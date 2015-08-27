@@ -1,0 +1,138 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Heather <Heather@live.ru>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\tutorial\introduction.rst:5
+msgid "Introduction"
+msgstr "Введение"
+
+#: ..\..\tutorial\introduction.rst:7
+msgid ""
+"In conventional programming languages, there is a clear distinction between "
+"*types* and *values*. For example, in `Haskell <http://www.haskell.org>`_, "
+"the following are types, representing integers, characters, lists of "
+"characters, and lists of any value respectively:"
+msgstr ""
+"В традиционных языках программирования, есть четкое различие между *типами* "
+"и *значениями*. К примеру, в `Haskell <http://www.haskell.org>`_, "
+"ниже перечислены типы, представляющие целые числа, символы, списки символов, "
+"и списки любого значения соответственно:"
+
+#: ..\..\tutorial\introduction.rst:13
+msgid "``Int``, ``Char``, ``[Char]``, ``[a]``"
+msgstr ""
+
+#: ..\..\tutorial\introduction.rst:15
+msgid ""
+"Correspondingly, the following values are examples of inhabitants of those "
+"types:"
+msgstr ""
+"Соответственно, следующие примеры являются примерами значений этих типов:"
+
+#: ..\..\tutorial\introduction.rst:18
+msgid "``42``, ``’a’``, ``Hello world!``, ``[2,3,4,5,6]``"
+msgstr ""
+
+#: ..\..\tutorial\introduction.rst:20
+msgid ""
+"In a language with *dependent types*, however, the distinction is less "
+"clear. Dependent types allow types to “depend” on values — in other words, "
+"types are a *first class* language construct and can be manipulated like any"
+" other value. The standard example is the type of lists of a given length "
+"[1]_, ``Vect n a``, where ``a`` is the element type and ``n`` is the length "
+"of the list and can be an arbitrary term."
+msgstr ""
+"В языке с *зависимыми типами*, однако, это различие менее заметно. "
+"Зависимые типы позволяют типам *зависеть* от значений - другими словами,"
+"типы - это языковая конструкция языка *первого класса* и ими можно "
+" манипулировать, как любыми другими значениями. Стандартным примером "
+" является тип списков заданной длины (вектор) [1]_, ``Vect n a``, где "
+"``a`` является типом элемента, а ``n`` длиной списка."
+
+#: ..\..\tutorial\introduction.rst:27
+msgid ""
+"When types can contain values, and where those values describe properties, "
+"for example the length of a list, the type of a function can begin to "
+"describe its own properties. Take for example the concatenation of two "
+"lists. This operation has the property that the resulting list's length is "
+"the sum of the lengths of the two input lists. We can therefore give the "
+"following type to the ``app`` function, which concatenates vectors:"
+msgstr ""
+"Когда типы могут содержать значения, и эти значения описывают свойства, "
+"например длина списка, тип функции может описывать свои свойства. "
+"Возьмем, к примеру конкатенацию двух списков. Эта операция обладает "
+"свойством, длиной результирующего списка, которая является "
+"суммой длин двух входных списков. Возможно задать следующий тип для "
+"``app`` функции, которые объединяет векторы:"
+
+#: ..\..\tutorial\introduction.rst:39
+msgid ""
+"This tutorial introduces Idris, a general purpose functional programming "
+"language with dependent types. The goal of the Idris project is to build a "
+"dependently typed language suitable for verifiable *systems* programming. To"
+" this end, Idris is a compiled language which aims to generate efficient "
+"executable code. It also has a lightweight foreign function interface which "
+"allows easy interaction with external ``C`` libraries."
+msgstr ""
+"Это руководство обучает основным принципам работы с языком "
+"программирования Idris, функциональным языком программирования общего "
+"назначения с зависимыми типами. Целью проекта Idris является создание "
+"языка программирования с зависимыми типами подходящего для проверяемых "
+"*систем* программирования. Idris является компилируемым языком, направленным "
+"на получение эффективного исполняемого кода. Он также имеет легковесный "
+"интерфейс вызова сторронних функций, это позволяет легко взаимодействовать "
+"с внешними ``C`` библиотеками."
+
+#: ..\..\tutorial\introduction.rst:48
+msgid "Intended Audience"
+msgstr "Целевая аудитория"
+
+#: ..\..\tutorial\introduction.rst:50
+msgid ""
+"This tutorial is intended as a brief introduction to the language, and is "
+"aimed at readers already familiar with a functional language such as "
+"`Haskell <http://www.haskell.org>`_ or `OCaml <http://ocaml.org>`_. In "
+"particular, a certain amount of familiarity with Haskell syntax is assumed, "
+"although most concepts will at least be explained briefly. The reader is "
+"also assumed to have some interest in using dependent types for writing and "
+"verifying systems software."
+msgstr ""
+"Это краткое введение в язык и предназначено для читателей уже знакомых "
+"с функциональным программированиями и такими языками как: "
+"`Haskell <http://www.haskell.org>`_ или `OCaml <http://ocaml.org>`_. В"
+"частности, предполагается определенное знакомство с синтаксисом Haskell,"
+"но значение большинства понятий будет кратко изложено. Также предполагается, "
+"что у читателя есть заинтересованность в использовании зависимых типов "
+"в области разработки и верификации программного обеспечения."
+
+#: ..\..\tutorial\introduction.rst:59
+msgid "Example Code"
+msgstr "Пример кода"
+
+#: ..\..\tutorial\introduction.rst:61
+msgid ""
+"This tutorial includes some example code, which has been tested with against"
+" Idris. These files are available with the Idris distribution, so that you "
+"can try them out easily. They can be found under ``samples``. It is, "
+"however, strongly recommended that you type them in yourself, rather than "
+"simply loading and reading them."
+msgstr ""
+"Эти примеры доступны из дистрибутива Idris и вы сами можете всё это "
+"попробовать. Они могут быть найдены в директории ``samples``. Но "
+"всё же, настоятельно рекомендуется, что вы сами используете их код, а не "
+"просто копируете исходный код примеров."
+
+#: ..\..\tutorial\introduction.rst:68
+msgid ""
+"Typically, and perhaps confusingly, referred to in the dependently typed "
+"programming literature as “vectors”"
+msgstr ""
+"В литературе программирования с зависимыми типами обозначаются как “векторы”"

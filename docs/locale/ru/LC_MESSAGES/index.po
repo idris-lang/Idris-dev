@@ -1,0 +1,82 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Heather <Heather@live.ru>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\index.rst:7
+msgid "Documentation for the Idris Language"
+msgstr "Документация языка программирования Idris"
+
+#: ..\..\index.rst:11
+msgid ""
+"The documentation for Idris has been published under the Creative Commons "
+"CC0 License. As such to the extent possible under law, *The Idris Community*"
+" has waived all copyright and related or neighboring rights to Documentation"
+" for Idris."
+msgstr ""
+"Документация опубликована под лицензией Creative Commons CC0."
+" Таким образом, *Сообщество Idris* отказывается от авторских прав"
+" и прав собственности на текущую документацию"
+
+#: ..\..\index.rst:16
+msgid ""
+"More information concerning the CC0 can be found online at: "
+"http://creativecommons.org/publicdomain/zero/1.0/"
+msgstr ""
+"Более подробную информацию о CC0 можно найти по адресу: "
+"http://creativecommons.org/publicdomain/zero/1.0/"
+
+#: ..\..\index.rst:19
+msgid ":ref:`tutorial-index`"
+msgstr ""
+
+#: ..\..\index.rst:20
+msgid ":ref:`eff-tutorial-index`"
+msgstr ""
+
+#: ..\..\index.rst:21
+msgid ":ref:`faq-index`"
+msgstr ""
+
+#: ..\..\index.rst:22
+msgid ":ref:`proofs-index`"
+msgstr ""
+
+#: ..\..\index.rst:23
+msgid ":ref:`reference-index`"
+msgstr ""
+
+#: ..\..\index.rst:24
+msgid ":ref:`guides-index`"
+msgstr ""
+
+#: ..\..\index.rst:31
+msgid "The Idris Tutorial"
+msgstr "Язык программирования Idris"
+
+#: ..\..\index.rst:55
+msgid "Frequently Asked Questions"
+msgstr "Часто задаваемые вопросы"
+
+#: ..\..\index.rst:66
+msgid "Learning Effects"
+msgstr "Изучение эффектов"
+
+#: ..\..\index.rst:84
+msgid "Theorem Proving"
+msgstr "Доказательство теорем"
+
+#: ..\..\index.rst:98
+msgid "Language Reference"
+msgstr "Справочник по языку"
+
+#: ..\..\index.rst:113
+msgid "Short Guides"
+msgstr "Краткие руководства"

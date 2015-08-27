@@ -11,6 +11,7 @@ cabal.config
 *.dll
 *.dylib
 *.swp
+*.mo
 *~
 .DS_Store
 .hpc

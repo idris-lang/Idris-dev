@@ -1,0 +1,429 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\effects\simpleeff.rst:5
+msgid "Simple Effects"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:7
+msgid ""
+"So far we have seen how to write programs with locally mutable state using "
+"the ``STATE`` effect. To recap, we have the definitions below in a module "
+"``Effect.State``"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:24
+msgid ""
+"The last line, ``instance Handler State m``, means that the ``STATE`` effect"
+" is usable in any computation context ``m``. That is, a program which uses "
+"this effect and returns something of type ``a`` can be evaluated to "
+"something of type ``m a`` using ``run``, for any ``m``. The lower case "
+"``State`` is a data type describing the operations which make up the "
+"``STATE`` effect itself—we will go into more detail about this in Section "
+":ref:`sect-impleff`."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:32
+msgid ""
+"In this section, we will introduce some other supported effects, allowing "
+"console I/O, exceptions, random number generation and non-deterministic "
+"programming. For each effect we introduce, we will begin with a summary of "
+"the effect, its supported operations, and the contexts in which it may be "
+"used, like that above for ``STATE``, and go on to present some simple "
+"examples. At the end, we will see some examples of programs which combine "
+"multiple effects."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:40
+msgid ""
+"All of the effects in the library, including those described in this "
+"section, are summarised in Appendix :ref:`sect-appendix`."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:44
+msgid "Console I/O"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:46
+msgid ""
+"Console I/O is supported with the ``STDIO`` effect, which allows reading and"
+" writing characters and strings to and from standard input and standard "
+"output. Notice that there is a constraint here on the computation context "
+"``m``, because it only makes sense to support console I/O operations in a "
+"context where we can perform (or at the very least simulate) console I/O:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:70
+msgid "Examples"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:72
+msgid ""
+"A program which reads the user’s name, then says hello, can be written as "
+"follows:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:82
+msgid ""
+"We use ``trim`` here to remove the trailing newline from the input. The "
+"resource associated with ``STDIO`` is simply the empty tuple, which has a "
+"default value ``()``, so we can run this as follows:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:92
+msgid ""
+"In ``hello`` we could also use ``!``-notation instead of ``x <- getStr``, "
+"since we only use the string that is read once:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:101
+msgid ""
+"More interestingly, we can combine multiple effects in one program. For "
+"example, we can loop, counting the number of people we’ve said hello to:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:114
+msgid ""
+"The list of effects given in ``hello`` means that the function can call "
+"``get`` and ``put`` on an integer state, and any functions which read and "
+"write from the console. To run this, ``main`` does not need to be changed."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:120
+msgid "Aside: Resource Types"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:122
+msgid ""
+"To find out the resource type of an effect, if necessary (for example if we "
+"want to initialise a resource explicitiy with ``runInit`` rather than using "
+"a default value with ``run``) we can run the ``resourceType`` function at "
+"the REPL:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:135
+msgid "Exceptions"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:137
+msgid ""
+"The ``EXCEPTION`` effect is declared in module ``Effect.Exception``. This "
+"allows programs to exit immediately with an error, or errors to be handled "
+"more generally:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:158 ..\..\effects\simpleeff.rst:266
+#: ..\..\effects\simpleeff.rst:340
+msgid "Example"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:160
+msgid ""
+"Suppose we have a ``String`` which is expected to represent an integer in "
+"the range ``0`` to ``n``. We can write a function ``parseNumber`` which "
+"returns an ``Int`` if parsing the string returns a number in the appropriate"
+" range, or throws an exception otherwise. Exceptions are paramaterised by an"
+" error type:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:179
+msgid ""
+"Programs which support the ``EXCEPTION`` effect can be run in any context "
+"which has some way of throwing errors, for example, we can run "
+"``parseNumber`` in the ``Either Err`` context. It returns a value of the "
+"form ``Right x`` if successful:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:189
+msgid "Or ``Left e`` on failure, carrying the appropriate exception:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:199
+msgid ""
+"In fact, we can do a little bit better with ``parseNumber``, and have it "
+"return a *proof* that the integer is in the required range along with the "
+"integer itself. One way to do this is define a type of bounded integers, "
+"``Bounded``:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:209
+msgid ""
+"Recall that ``So`` is parameterised by a ``Bool``, and only ``So True`` is "
+"inhabited. We can use ``choose`` to construct such a value from the result "
+"of a dynamic check:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:219
+msgid ""
+"We then write ``parseNumber`` using ``choose`` rather than an "
+"``if/then/else`` construct, passing the proof it returns on success as the "
+"boundedness proof:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:235
+msgid "Random Numbers"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:237
+msgid ""
+"Random number generation is also implemented by the library, in module "
+"``Effect.Random``:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:252
+msgid ""
+"Random number generation is considered side-effecting because its "
+"implementation generally relies on some external source of randomness. The "
+"default implementation here relies on an integer *seed*, which can be set "
+"with ``srand``. A specific seed will lead to a predictable, repeatable "
+"sequence of random numbers. There are two functions which produce a random "
+"number:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:260
+msgid "``rndInt``, which returns a random integer between the given lower"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:260
+msgid "and upper bounds."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:263
+msgid "``rndFin``, which returns a random element of a finite set"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:263
+msgid "(essentially a number with an upper bound given in its type)."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:268
+msgid ""
+"We can use the ``RND`` effect to implement a simple guessing game. The "
+"``guess`` function, given a target number, will repeatedly ask the user for "
+"a guess, and state whether the guess is too high, too low, or correct:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:277
+msgid "For reference, the code for ``guess`` is given below:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:296
+msgid ""
+"Note that we use ``parseNumber`` as defined previously to read user input, "
+"but we don’t need to list the ``EXCEPTION`` effect because we use a nested "
+"``run`` to invoke ``parseNumber``, independently of the calling effectful "
+"program."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:300
+msgid ""
+"To invoke this, we pick a random number within the range 0–100, having set "
+"up the random number generator with a seed, then run ``guess``:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:313
+msgid ""
+"If no seed is given, it is set to the ``default`` value. For a less "
+"predictable game, some better source of randomness would be required, for "
+"example taking an initial seed from the system time. To see how to do this, "
+"see the ``SYSTEM`` effect described in :ref:`sect-appendix`."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:320
+msgid "Non-determinism"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:322
+msgid ""
+"The listing below gives the definition of the non-determinism effect, which "
+"allows a program to choose a value non-deterministically from a list of "
+"possibilities in such a way that the entire computation succeeds:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:342
+msgid ""
+"The ``SELECT`` effect can be used to solve constraint problems, such as "
+"finding Pythagorean triples. The idea is to use ``select`` to give a set of "
+"candidate values, then throw an exception for any combination of values "
+"which does not satisfy the constraint:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:357
+msgid ""
+"This program chooses a value for ``z`` between ``1`` and ``max``, then "
+"values for ``y`` and ``x``. In operation, after a ``select``, the program "
+"executes the rest of the ``do``-block for every possible assignment, "
+"effectively searching depth-first. If the list is empty (or an exception is "
+"thrown) execution fails."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:363
+msgid ""
+"There are handlers defined for ``Maybe`` and ``List`` contexts, i.e. "
+"contexts which can capture failure. Depending on the context ``m``, "
+"``triple`` will either return the first triple it finds (if in ``Maybe`` "
+"context) or all triples in the range (if in ``List`` context). We can try "
+"this as follows:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:376
+msgid "``vadd`` revisited"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:378
+msgid ""
+"We now return to the ``vadd`` program from the introduction. Recall the "
+"definition:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:387
+msgid ""
+"Using , we can set up a program so that it reads input from a user, checks "
+"that the input is valid (i.e both vectors contain integers, and are the same"
+" length) and if so, pass it on to ``vadd``. First, we write a wrapper for "
+"``vadd`` which checks the lengths and throw an exception if they are not "
+"equal. We can do this for input vectors of length ``n`` and ``m`` by "
+"matching on the implicit arguments ``n`` and ``m`` and using ``decEq`` to "
+"produce a proof of their equality, if they are equal:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:404
+msgid ""
+"To read a vector from the console, we implement a function of the following "
+"type:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:411
+msgid ""
+"This returns a dependent pair of a length, and a vector of that length, "
+"because we cannot know in advance how many integers the user is going to "
+"input. One way to implement this function, using ``-1`` to indicate the end "
+"of input, is shown in Listing [readvec]. This uses a variation on "
+"``parseNumber`` which does not require a number to be within range."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:418
+msgid ""
+"Finally, we write a program which reads two vectors and prints the result of"
+" pairwise addition of them, throwing an exception if the inputs are of "
+"differing lengths:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:431
+msgid ""
+"By having explicit lengths in the type, we can be sure that ``vadd`` is only"
+" being used where the lengths of inputs are guaranteed to be equal.  This "
+"does not stop us reading vectors from user input, but it does require that "
+"the lengths are checked and any discrepancy is dealt with gracefully."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:456
+msgid "Example: An Expression Calculator"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:458
+msgid ""
+"To show how these effects can fit together, let us consider an evaluator for"
+" a simple expression language, with addition and integer values."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:467
+msgid ""
+"An evaluator for this language always returns an ``Integer``, and there are "
+"no situations in which it can fail!"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:476
+msgid ""
+"If we add variables, however, things get more interesting. The evaluator "
+"will need to be able to access the values stored in variables, and variables"
+" may be undefined."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:486
+msgid ""
+"To start, we will change the type of ``eval`` so that it is effectful, and "
+"supports an exception effect for throwing errors, and a state containing a "
+"mapping from variable names (as ``String``) to their values:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:500
+msgid ""
+"Note that we are using ``!``-notation to avoid having to bind subexpressions"
+" in a ``do`` block. Next, we add a case for evaluating ``Var``:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:510
+msgid ""
+"This retrieves the state (with ``get``, supported by the ``STATE Env`` "
+"effect) and raises an exception if the variable is not in the environment "
+"(with ``raise``, supported by the ``EXCEPTION String`` effect)."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:515
+msgid ""
+"To run the evaluator on a particular expression in a particular environment "
+"of names and their values, we can write a function which sets the state then"
+" invokes ``eval``:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:527
+msgid ""
+"We have picked ``Maybe`` as a computation context here; it needs to be a "
+"context which is available for every effect supported by ``eval``. In "
+"particular, because we have exceptions, it needs to be a context which "
+"supports exceptions. Alternatively, ``Either String`` or ``IO`` would be "
+"fine, for example."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:533
+msgid ""
+"What if we want to extend the evaluator further, with random number "
+"generation? To achieve this, we add a new constructor to ``Expr``, which "
+"gives a random number up to a maximum value:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:544
+msgid ""
+"Then, we need to deal with the new case, making sure that we extend the list"
+" of events to include ``RND``. It doen’t matter where ``RND`` appears in the"
+" list, as long as it is present:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:554
+msgid ""
+"For test purposes, we might also want to print the random number which has "
+"been generated:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:563
+msgid ""
+"If we try this without extending the effects list, we would see an error "
+"something like the following:"
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:573
+msgid ""
+"In other words, the ``STDIO`` effect is not available. We can correct this "
+"simply by updating the type of ``eval`` to include ``STDIO``."
+msgstr ""
+
+#: ..\..\effects\simpleeff.rst:580
+msgid ""
+"Note that using ``STDIO`` will restrict the number of contexts in which "
+"``eval`` can be ``run`` to those which support ``STDIO``, such as ``IO``. "
+"Once effect lists get longer, it can be a good idea instead to encapsulate "
+"sets of effects in a type synonym. This is achieved as follows, simply by "
+"defining a function which computes a type, since types are first class in "
+"Idris:"
+msgstr ""

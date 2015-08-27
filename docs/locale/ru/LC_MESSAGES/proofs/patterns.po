@@ -1,0 +1,373 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\proofs\patterns.rst:3
+msgid "Pattern Matching Proofs"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:5
+msgid ""
+"In this section, we will provide a proof of ``plus_commutes`` directly, by "
+"writing a pattern matching definition. We will use interactive editing "
+"features extensively, since it is significantly easier to produce a proof "
+"when the machine can give the types of intermediate values and construct "
+"components of the proof itself. The commands we will use are summarised "
+"below. Where we refer to commands directly, we will use the Vim version, but"
+" these commands have a direct mapping to Emacs commands."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:15
+msgid "Command"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:15
+msgid "Vim binding"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:15
+msgid "Emacs binding"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:15
+msgid "Explanation"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:17
+msgid "Check type"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:17
+msgid "``\\t``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:17
+msgid "``C-c C-t``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:17
+msgid "Show type of identifier or metavariable under the cursor."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:19
+msgid "Proof search"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:19
+msgid "``\\o``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:19
+msgid "``C-c C-a``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:19
+msgid ""
+"Attempt to solve metavariable under the cursor by applying simple proof "
+"search."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:21
+msgid "Make new definition"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:21
+msgid "``\\d``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:21
+msgid "``C-c C-s``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:21
+msgid "Add a template definition for the type defined under the cursor."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:23
+msgid "Make lemma"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:23
+msgid "``\\l``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:23
+msgid "``C-c C-e``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:23
+msgid ""
+"Add a top level function with a type which solves the metavariable under the"
+" cursor."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:25
+msgid "Split cases"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:25
+msgid "``\\c``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:25
+msgid "``C-c C-c``"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:25
+msgid ""
+"Create new constructor patterns for each possible case of the variable under"
+" the cursor."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:30
+msgid "Creating a Definition"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:32
+msgid ""
+"To begin, create a file ``pluscomm.idr`` containing the following type "
+"declaration:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:39
+msgid ""
+"To create a template definition for the proof, press ``\\d`` (or the "
+"equivalent in your editor of choice) on the line with the type declaration. "
+"You should see:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:48
+msgid ""
+"To prove this by induction on ``n``, as we sketched in Section :ref:`sect-"
+"inductive`, we begin with a case split on ``n`` (press ``\\c`` with the "
+"cursor over the ``n`` in the definition.) You should see:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:59
+msgid ""
+"If we inspect the types of the newly created metavariables, "
+"``plus_commutes_rhs_1`` and ``plus_commutes_rhs_2``, we see that the type of"
+" each reflects that ``n`` has been refined to ``Z`` and ``S k`` in each "
+"respective case. Pressing ``\\t`` over ``plus_commutes_rhs_1`` shows:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:71
+msgid ""
+"Note that ``Z`` renders as ``0`` because the pretty printer renders natural "
+"numbers as integer literals for readability. Similarly, for "
+"``plus_commutes_rhs_2``:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:82
+msgid "It is a good idea to give these slightly more meaningful names:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:91
+msgid "Base Case"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:93
+msgid ""
+"We can create a separate lemma for the base case interactively, by pressing "
+"``\\l`` with the cursor over ``plus_commutes_Z``. This yields:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:105
+msgid ""
+"That is, the metavariable has been filled with a call to a top level "
+"function ``plus_commutes_Z``. The argument ``m`` has been made implicit "
+"because it can be inferred from context when it is applied."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:109
+msgid ""
+"Unfortunately, we cannot prove this lemma directly, since ``plus`` is "
+"defined by matching on its *first* argument, and here ``plus m 0`` has a "
+"specific value for its *second argument* (in fact, the left hand side of the"
+" equality has been reduced from ``plus 0 m``.) Again, we can prove this by "
+"induction, this time on ``m``."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:115
+msgid "First, create a template definition with ``\\d``:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:122
+msgid ""
+"Since we are going to write this by induction on ``m``, which is implciit, "
+"we will need to bring ``m`` into scope manually:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:130
+msgid "Now, case split on ``m`` with ``\\c``:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:138
+msgid ""
+"Checking the type of ``plus_commutes_Z_rhs_1`` shows the following, which is"
+" easily proved by reflection:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:146
+msgid ""
+"For such trivial proofs, we can let write the proof automatically by "
+"pressing ``\\o`` with the cursor over ``plus_commutes_Z_rhs_1``. This "
+"yields:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:156
+msgid "For ``plus_commutes_Z_rhs_2``, we are not so lucky:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:164
+msgid ""
+"Inductively, we should know that ``k = plus k 0``, and we can get access to "
+"this inductive hypothesis by making a recursive call on k, as follows:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:175
+msgid "For ``plus_commutes_Z_rhs_2``, we now see:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:184
+msgid ""
+"Again, the ``fromInteger 0`` is merely due to ``Nat`` being an instance of "
+"the ``Num`` typeclass. So we know that ``k = plus k 0``, but how do we use "
+"this to update the goal to ``S k = S k``?"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:188
+msgid ""
+"To achieve this, Idris provides a ``replace`` function as part of the "
+"prelude:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:196
+msgid ""
+"Given a proof that ``x = y``, and a property ``P`` which holds for ``x``, we"
+" can get a proof of the same property for ``y``, because we know ``x`` and "
+"``y`` must be the same. In practice, this function can be a little tricky to"
+" use because in general the implicit argument ``P`` can be hard to infer by "
+"unification, so Idris provides a high level syntax which calculates the "
+"property and applies ``replace``:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:207
+msgid ""
+"If we have ``prf : x = y``, and the required type for ``expr`` is some "
+"property of ``x``, the ``rewrite ... in`` syntax will search for ``x`` in "
+"the required type of ``expr`` and replace it with ``y``. Concretely, in our "
+"example, we can say:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:217
+msgid "Checking the type of ``plus_commutes_Z_rhs_2`` now gives:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:227
+msgid ""
+"Using the rewrite rule ``rec`` (which we can see in the context here as "
+"``_rewrite_rule``\\  [1]_, the goal type has been updated with ``k`` "
+"replaced by ``plus k 0``."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:231
+msgid ""
+"Alternatively, we could have applied the rewrite in the other direction "
+"using the ``sym`` function:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:244
+msgid "In this case, inspecting the type of the hole gives:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:254
+msgid ""
+"Either way, we can use proof search (``\\o``) to complete the proof, giving:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:264
+msgid "The base case is now complete."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:267
+msgid "Inductive Step"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:269
+msgid ""
+"Our main theorem, ``plus_commutes`` should currently be in the following "
+"state:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:278
+msgid "Looking again at the type of ``plus_commutes_S``, we have:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:287
+msgid ""
+"Conveniently, by induction we can immediately tell that ``plus k m = plus m "
+"k``, so let us rewrite directly by making a recursive call to "
+"``plus_commutes``. We add this directly, by hand, as follows:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:298
+msgid "Checking the type of ``plus_commutes_S`` now gives:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:308
+msgid ""
+"The good news is that ``m`` and ``k`` now appear in the correct order. "
+"However, we still have to show that the successor symbol ``S`` can be moved "
+"to the front in the right hand side of this equality. This remaining lemma "
+"takes a similar form to the ``plus_commutes_Z``; we begin by making a new "
+"top level lemma with ``\\l``. This gives:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:318
+msgid ""
+"Unlike the previous case, ``k`` and ``m`` are not made implicit because we "
+"cannot in general infer arguments to a function from its result. Again, we "
+"make a template definition with ``\\d``:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:327
+msgid ""
+"Again, this is defined by induction over ``m``, since ``plus`` is defined by"
+" matching on its first argument. The complete definition is:"
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:337
+msgid "All metavariables have now been solved."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:339
+msgid ""
+"The ``total`` annotation means that we require the final function to pass "
+"the totality checker; i.e. it will terminate on all possible well-typed "
+"inputs. This is important for proofs, since it provides a guarantee that the"
+" proof is valid in *all* cases, not just those for which it happens to be "
+"well-defined."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:345
+msgid ""
+"Now that ``plus_commutes`` has a ``total`` annotation, we have completed the"
+" proof of commutativity of addition on natural numbers."
+msgstr ""
+
+#: ..\..\proofs\patterns.rst:349
+msgid ""
+"Note that the left and right hand sides of the equality have been swapped, "
+"because ``replace`` takes a proof of ``x=y`` and the property for ``x``, not"
+" ``y``."
+msgstr ""

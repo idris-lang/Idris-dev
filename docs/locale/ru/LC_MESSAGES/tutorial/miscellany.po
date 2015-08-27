@@ -1,0 +1,533 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\tutorial\miscellany.rst:5
+msgid "Miscellany"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:7
+msgid "In this section we discuss a variety of additional features:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:9
+msgid "auto, implicit, and default arguments;"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:10
+msgid "literate programming;"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:11
+msgid "interfacing with external libraries through the foreign function"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:12
+msgid "interface;"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:13
+msgid "type providers;"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:14
+msgid "code generation; and"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:15
+msgid "the universe hierarchy."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:18
+msgid "Auto implicit arguments"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:20
+msgid ""
+"We have already seen implicit arguments, which allows arguments to be "
+"omitted when they can be inferred by the type checker, e.g."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:27
+msgid ""
+"In other situations, it may be possible to infer arguments not by type "
+"checking but by searching the context for an appropriate value, or "
+"constructing a proof. For example, the following definition of ``head`` "
+"which requires a proof that the list is non-empty:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:41
+msgid ""
+"If the list is statically known to be non-empty, either because its value is"
+" known or because a proof already exists in the context, the proof can be "
+"constructed automatically. Auto implicit arguments allow this to happen "
+"silently. We define ``head`` as follows:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:51
+msgid ""
+"The ``auto`` annotation on the implicit argument means that Idris will "
+"attempt to fill in the implicit argument using the ``trivial`` tactic, which"
+" searches through the context for a proof, and tries to solve with ``refl`` "
+"if a proof is not found. Now when ``head`` is applied, the proof can be "
+"omitted. In the case that a proof is not found, it can be provided "
+"explicitly as normal:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:62
+msgid ""
+"More generally, we can fill in implicit arguments with a default value by "
+"annotating them with ``default``. The definition above is equivalent to:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:73
+msgid "Implicit conversions"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:75
+msgid ""
+"Idris supports the creation of *implicit conversions*, which allow automatic"
+" conversion of values from one type to another when required to make a term "
+"type correct. This is intended to increase convenience and reduce verbosity."
+" A contrived but simple example is the following:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:88
+msgid ""
+"In general, we cannot append an ``Int`` to a ``String``, but the implicit "
+"conversion function ``intString`` can convert ``x`` to a ``String``, so the "
+"definition of ``test`` is type correct. An implicit conversion is "
+"implemented just like any other function, but given the ``implicit`` "
+"modifier, and restricted to one explicit argument."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:94
+msgid ""
+"Only one implicit conversion will be applied at a time. That is, implicit "
+"conversions cannot be chained. Implicit conversions of simple types, as "
+"above, are however discouraged! More commonly, an implicit conversion would "
+"be used to reduce verbosity in an embedded domain specific language, or to "
+"hide details of a proof. Such examples are beyond the scope of this "
+"tutorial."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:102
+msgid "Literate programming"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:104
+msgid ""
+"Like Haskell, Idris supports *literate* programming. If a file has an "
+"extension of ``.lidr`` then it is assumed to be a literate file. In literate"
+" programs, everything is assumed to be a comment unless the line begins with"
+" a greater than sign ``>``, for example:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:118
+msgid ""
+"An additional restriction is that there must be a blank line between a "
+"program line (beginning with ``>``) and a comment line (beginning with any "
+"other character)."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:123
+msgid "Foreign function calls"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:125
+msgid ""
+"For practical programming, it is often necessary to be able to use external "
+"libraries, particularly for interfacing with the operating system, file "
+"system, networking, *et cetera*. Idris provides a lightweight foreign "
+"function interface for achieving this, as part of the prelude. For this, we "
+"assume a certain amount of knowledge of C and the ``gcc`` compiler. First, "
+"we define a datatype which describes the external types we can handle:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:137
+msgid ""
+"Each of these corresponds directly to a C type. Respectively: ``int``, "
+"``double``, ``char``, ``char*``, ``void*`` and ``void``. There is also a "
+"translation to a concrete Idris type, described by the following function:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:152
+msgid ""
+"A foreign function is described by a list of input types and a return type, "
+"which can then be converted to an Idris type:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:159
+msgid ""
+"A foreign function is assumed to be impure, so ``ForeignTy`` builds an "
+"``IO`` type, for example:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:170
+msgid ""
+"We build a call to a foreign function by giving the name of the function, a "
+"list of argument types and the return type. The built in construct "
+"``mkForeign`` converts this description to a function callable by Idris:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:183
+msgid ""
+"Note that the compiler expects ``mkForeign`` to be fully applied to build a "
+"complete foreign function call. For example, the ``putStr`` function is "
+"implemented as follows, as a call to an external function ``putStr`` defined"
+" in the run-time system:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:194
+msgid "Include and linker directives"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:196
+msgid ""
+"Foreign function calls are translated directly to calls to C functions, with"
+" appropriate conversion between the Idris representation of a value and the "
+"C representation. Often this will require extra libraries to be linked in, "
+"or extra header and object files. This is made possible through the "
+"following directives:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:202
+msgid ""
+"``%lib target x`` — include the ``libx`` library. If the target is ``C`` "
+"this is equivalent to passing the ``-lx`` option to ``gcc``. If the target "
+"is Java the library will be interpreted as a "
+"``groupId:artifactId:packaging:version`` dependency coordinate for maven."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:208
+msgid ""
+"``%include target x`` — use the header file or import ``x`` for the given "
+"back end target."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:211
+msgid ""
+"``%link target x.o`` — link with the object file ``x.o`` when using the "
+"given back end target."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:214
+msgid ""
+"``%dynamic x.so`` — dynamically link the interpreter with the shared object "
+"``x.so``."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:218
+msgid "Testing foreign function calls"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:220
+msgid ""
+"Normally, the Idris interpreter (used for typechecking and at the REPL) will"
+" not perform IO actions. Additionally, as it neither generates C code nor "
+"compiles to machine code, the ``%lib``, ``%include`` and ``%link`` "
+"directives have no effect. IO actions and FFI calls can be tested using the "
+"special REPL command ``:x EXPR``, and C libraries can be dynamically loaded "
+"in the interpreter by using the ``:dynamic`` command or the ``%dynamic`` "
+"directive. For example:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:235
+msgid "Type Providers"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:237
+msgid ""
+"Idris type providers, inspired by F#’s type providers, are a means of making"
+" our types be “about” something in the world outside of Idris. For example, "
+"given a type that represents a database schema and a query that is checked "
+"against it, a type provider could read the schema of a real database during "
+"type checking."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:243
+msgid ""
+"Idris type providers use the ordinary execution semantics of Idris to run an"
+" IO action and extract the result. This result is then saved as a constant "
+"in the compiled code. It can be a type, in which case it is used like any "
+"other type, or it can be a value, in which case it can be used as any other "
+"value, including as an index in types."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:249
+msgid ""
+"Type providers are still an experimental extension. To enable the extension,"
+" use the ``%language`` directive:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:256
+msgid ""
+"A provider ``p`` for some type ``t`` is simply an expression of type ``IO "
+"(Provider t)``. The ``%provide`` directive causes the type checker to "
+"execute the action and bind the result to a name. This is perhaps best "
+"illustrated with a simple example. The type provider ``fromFile`` reads a "
+"text file. If the file consists of the string ``Int``, then the type ``Int``"
+" will be provided. Otherwise, it will provide the type ``Nat``."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:274
+msgid "We then use the ``%provide`` directive:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:283
+msgid ""
+"If the file named ``theType`` consists of the word ``Int``, then ``foo`` "
+"will be an ``Int``. Otherwise, it will be a ``Nat``. When Idris encounters "
+"the directive, it first checks that the provider expression ``fromFile "
+"theType`` has type ``IO (Provider Type)``. Next, it executes the provider. "
+"If the result is ``Provide t``, then ``T1`` is defined as ``t``. Otherwise, "
+"the result is an error."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:290
+msgid "Our datatype ``Provider t`` has the following definition:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:297
+msgid ""
+"We have already seen the ``Provide`` constructor. The ``Error`` constructor "
+"allows type providers to return useful error messages. The example in this "
+"section was purposefully simple. More complex type provider implementations,"
+" including a statically-checked SQLite binding, are available in an external"
+" collection [1]_."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:304
+msgid "C Target"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:306
+msgid "The default target of Idris is C. Compiling via :"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:312
+msgid "is equivalent to :"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:318
+msgid ""
+"When the command above is used, a temporary C source is generated, which is "
+"then compiled into an executable named ``hello``."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:321
+msgid "In order to view the generated C code, compile via :"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:327
+msgid ""
+"To turn optimisations on, use the ``%flag C`` pragma within the code, as is "
+"shown below :"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:344
+msgid "JavaScript Target"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:346
+msgid ""
+"Idris is capable of producing *JavaScript* code that can be run in a browser"
+" as well as in the *NodeJS* environment or alike. One can use the FFI to "
+"communicate with the *JavaScript* ecosystem."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:351
+msgid "Code Generation"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:353
+msgid ""
+"Code generation is split into two separate targets. To generate code that is"
+" tailored for running in the browser issue the following command:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:360
+msgid ""
+"The resulting file can be embedded into your HTML just like any other "
+"*JavaScript* code."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:363
+msgid ""
+"Generating code for *NodeJS* is slightly different. Idris outputs a "
+"*JavaScript* file that can be directly executed via ``node``."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:372
+msgid ""
+"Take into consideration that the *JavaScript* code generator is using "
+"``console.log`` to write text to ``stdout``, this means that it will "
+"automatically add a newline to the end of each string. This behaviour does "
+"not show up in the *NodeJS* code generator."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:378
+msgid "Using the FFI"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:380
+msgid ""
+"To write a useful application we need to communicate with the outside world."
+" Maybe we want to manipulate the DOM or send an Ajax request. For this task "
+"we can use the FFI. Since most *JavaScript* APIs demand callbacks we need to"
+" extend the FFI so we can pass functions as arguments."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:386
+msgid ""
+"The *JavaScript* FFI works a little bit differently than the regular FFI. It"
+" uses positional arguments to directly insert our arguments into a piece of "
+"*JavaScript* code."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:390
+msgid "One could use the primitive addition of *JavaScript* like so:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:405
+msgid ""
+"Notice that the ``%n`` notation qualifies the position of the ``n``-th "
+"argument given to our foreign function starting from 0. When you need a "
+"percent sign rather than a position simply use ``%%`` instead."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:409
+msgid ""
+"Passing functions to a foreign function is very similar. Let’s assume that "
+"we want to call the following function from the *JavaScript* world:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:418
+msgid ""
+"We obviously need to pass a function ``f`` here (we can infer it from the "
+"way we use ``f`` in ``twice``, it would be more obvious if *JavaScript* had "
+"types)."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:422
+msgid ""
+"The *JavaScript* FFI is able to understand functions as arguments when you "
+"give it something of type ``FFunction``. The following example code calls "
+"``twice`` in *JavaScript* and returns the result to our Idris program:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:441
+msgid "The program outputs ``3``, just like we expected."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:444
+msgid "Including external *JavaScript* files"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:446
+msgid ""
+"Whenever one is working with *JavaScript* one might want to include external"
+" libraries or just some functions that she or he wants to call via FFI which"
+" are stored in external files. The *JavaScript* and *NodeJS* code generators"
+" understand the ``%include`` directive. Keep in mind that *JavaScript* and "
+"*NodeJS* are handled as different code generators, therefore you will have "
+"to state which one you want to target. This means that you can include "
+"different files for *JavaScript* and *NodeJS* in the same Idris source file."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:455
+msgid ""
+"So whenever you want to add an external *JavaScript* file you can do this "
+"like so:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:458
+msgid "For *NodeJS*:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:464
+msgid "And for use in the browser:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:470
+msgid "The given files will be added to the top of the generated code."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:473
+msgid "Including *NodeJS* modules"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:475
+msgid ""
+"The *NodeJS* code generator can also include modules with the ``%lib`` "
+"directive."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:482
+msgid "This directive compiles into the following *JavaScript*"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:489
+msgid "Shrinking down generated *JavaScript*"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:491
+msgid ""
+"Idris can produce very big chunks of *JavaScript* code. However, the "
+"generated code can be minified using the ``closure-compiler`` from Google. "
+"Any other minifier is also suitable but ``closure-compiler`` offers advanced"
+" compilation that does some aggressive inlining and code elimination. Idris "
+"can take full advantage of this compilation mode and it’s highly recommended"
+" to use it when shipping a *JavaScript* application written in Idris."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:500
+msgid "Cumulativity"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:502
+msgid ""
+"Since values can appear in types and *vice versa*, it is natural that types "
+"themselves have types. For example:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:512
+msgid "But what about the type of ``Type``? If we ask Idris it reports"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:519
+msgid ""
+"If ``Type`` were its own type, it would lead to an inconsistency due to "
+"`Girard’s paradox "
+"<http://www.cs.cmu.edu/afs/cs.cmu.edu/user/kw/www/scans/girard72thesis.pdf>`_"
+" , so internally there is a *hierarchy* of types (or *universes*):"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:527
+msgid ""
+"Universes are *cumulative*, that is, if ``x : Type n`` we can also have that"
+" ``x : Type m``, as long as ``n < m``. The typechecker generates such "
+"universe constraints and reports an error if any inconsistencies are found. "
+"Ordinarily, a programmer does not need to worry about this, but it does "
+"prevent (contrived) programs such as the following:"
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:541
+msgid ""
+"The application of ``myid`` to itself leads to a cycle in the universe "
+"hierarchy — ``myid``\\ ’s first argument is a ``Type``, which cannot be at a"
+" lower level than required if it is applied to itself."
+msgstr ""
+
+#: ..\..\tutorial\miscellany.rst:546
+msgid "https://github.com/david-christiansen/idris-type-providers"
+msgstr ""

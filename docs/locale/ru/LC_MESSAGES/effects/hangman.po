@@ -1,0 +1,368 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\effects\hangman.rst:5
+msgid "Example: A “Mystery Word” Guessing Game"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:7
+msgid ""
+"In this section, we will use the techniques and specific effects discussed "
+"in the tutorial so far to implement a larger example, a simple text-based "
+"word-guessing game. In the game, the computer chooses a word, which the "
+"player must guess letter by letter. After a limited number of wrong guesses,"
+" the player loses [1]_."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:13
+msgid "We will implement the game by following these steps:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:15
+msgid "Define the game state, in enough detail to express the rules"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:17
+msgid ""
+"Define the rules of the game (i.e. what actions the player may take, and how"
+" these actions affect the game state)"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:20
+msgid ""
+"Implement the rules of the game (i.e. implement state updates for each "
+"action)"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:23
+msgid "Implement a user interface which allows a player to direct actions"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:25
+msgid ""
+"Step 2 may be achieved by defining an effect which depends on the state "
+"defined in step 1. Then step 3 involves implementing a ``Handler`` for this "
+"effect. Finally, step 4 involves implementing a program in ``Eff`` using the"
+" newly defined effect (and any others required to implement the interface)."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:32
+msgid "Step 1: Game State"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:34
+msgid ""
+"First, we categorise the game states as running games (where there are a "
+"number of guesses available, and a number of letters still to guess), or "
+"non-running games (i.e. games which have not been started, or games which "
+"have been won or lost)."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:43
+msgid ""
+"Notice that at this stage, we say nothing about what it means to make a "
+"guess, what the word to be guessed is, how to guess letters, or any other "
+"implementation detail. We are only interested in what is necessary to "
+"describe the game rules."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:48
+msgid ""
+"We will, however, parameterise a concrete game state ``Mystery`` over this "
+"data:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:56
+msgid "Step 2: Game Rules"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:58
+msgid ""
+"We describe the game rules as a dependent effect, where each action has a "
+"*precondition* (i.e. what the game state must be before carrying out the "
+"action) and a *postcondition* (i.e. how the action affects the game state). "
+"Informally, these actions with the pre- and postconditions are:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:71
+msgid "Guess"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:64
+msgid "Guess a letter in the word."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:66
+msgid ""
+"Precondition: The game must be running, and there must be both guesses still"
+" available, and letters still to be guessed."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:69
+msgid ""
+"Postcondition: If the guessed letter is in the word and not yet guessed, "
+"reduce the number of letters, otherwise reduce the number of guesses."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:79
+msgid "Won"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:74
+msgid "Declare victory"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:76
+msgid ""
+"Precondition: The game must be running, and there must be no letters still "
+"to be guessed."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:79 ..\..\effects\hangman.rst:87
+msgid "Postcondition: The game is no longer running."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:87
+msgid "Lost"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:82
+msgid "Accept defeat"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:84
+msgid ""
+"Precondition: The game must be running, and there must be no guesses left."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:96
+msgid "NewWord"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:90
+msgid "Set a new word to be guessed"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:92
+msgid "Precondition: The game must not be running."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:94
+msgid ""
+"Postcondition: The game is running, with 6 guesses available (the choice of "
+"6 is somewhat arbitrary here) and the number of unique letters in the word "
+"still to be guessed."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:100
+msgid "StrState"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:99
+msgid ""
+"Get a string representation of the game state. This is for display purposes;"
+" there are no pre- or postconditions."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:102
+msgid ""
+"We can make these rules precise by declaring them more formally in an effect"
+" signature:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:120
+msgid ""
+"This description says nothing about how the rules are implemented. In "
+"particular, it does not specify *how* to tell whether a guessed letter was "
+"in a word, just that the result of ``Guess`` depends on it."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:124
+msgid ""
+"Nevertheless, we can still create an ``EFFECT`` from this, and use it in an "
+"``Eff`` program. Implementing a ``Handler`` for ``MysteryRules`` will then "
+"allow us to play the game."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:134
+msgid "Step 3: Implement Rules"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:136
+msgid ""
+"To *implement* the rules, we begin by giving a concrete definition of game "
+"state:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:151
+msgid ""
+"If a game is ``NotRunning``, that is either because it has not yet started "
+"(``Init``) or because it is won or lost (``GameWon`` and ``GameLost``, each "
+"of which carry the word so that showing the game state will reveal the word "
+"to the player). Finally, ``MkG`` captures a running game’s state, including "
+"the target word, the letters successfully guessed, and the missing letters. "
+"Using a ``Vect`` for the missing letters is convenient since its length is "
+"used in the type."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:159
+msgid ""
+"To initialise the state, we implement the following functions: ``letters``, "
+"which returns a list of unique letters in a ``String`` (ignoring spaces) and"
+" ``initState`` which sets up an initial state considered valid as a "
+"postcondition for ``NewWord``."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:169
+msgid ""
+"When checking if a guess is in the vector of missing letters, it is "
+"convenient to return a *proof* that the guess is in the vector, using "
+"``isElem`` below, rather than merely a ``Bool``:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:181
+msgid ""
+"The reason for returning a proof is that we can use it to remove an element "
+"from the correct position in a vector:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:188
+msgid ""
+"We leave the definitions of ``letters``, ``init``, ``isElem`` and ``shrink``"
+" as exercises. Having implemented these, the ``Handler`` implementation for "
+"``MysteryRules`` is surprisingly straightforward:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:206
+msgid ""
+"Each case simply involves directly updating the game state in a way which is"
+" consistent with the declared rules. In particular, in ``Guess``, if the "
+"handler claims that the guessed letter is in the word (by passing ``True`` "
+"to ``k``), there is no way to update the state in such a way that the number"
+" of missing letters or number of guesses does not follow the rules."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:214
+msgid "Step 4: Implement Interface"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:216
+msgid ""
+"Having described the rules, and implemented state transitions which follow "
+"those rules as an effect handler, we can now write an interface for the game"
+" which uses the ``MYSTERY`` effect:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:225
+msgid ""
+"The type indicates that the game must start in a running state, with some "
+"guesses available, and eventually reach a not-running state (i.e. won or "
+"lost). The only way to achieve this is by correctly following the stated "
+"rules."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:230
+msgid ""
+"Note that the type of ``game`` makes no assumption that there are letters to"
+" be guessed in the given word (i.e. it is ``w`` rather than ``S w``). This "
+"is because we will be choosing a word at random from a vector of ``String``,"
+" and at no point have we made it explicit that those ``String`` are non-"
+"empty."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:236
+msgid ""
+"Finally, we need to initialise the game by picking a word at random from a "
+"list of candidates, setting it as the target using ``NewWord``, then running"
+" ``game``:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:249
+msgid ""
+"We use the system time (``time`` from the ``SYSTEM`` effect; see Appendix "
+":ref:`sect-appendix`) to initialise the random number generator, then pick a"
+" random ``Fin`` to index into a list of ``words``. For example, we could "
+"initialise a word list as follows:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:264
+msgid ""
+"Rather than have to explicitly declare a type with the vector’s length, it "
+"is convenient to give a metavariable ``?wtype`` and let Idris’s proof search"
+" mechanism find the type. This is a limited form of type inference, but very"
+" useful in practice."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:269
+msgid "A possible complete implementation of ``game`` is presented below:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:301
+msgid "Discussion"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:303
+msgid ""
+"Writing the rules separately as an effect, then an implementation which uses"
+" that effect, ensures that the implementation must follow the rules.  This "
+"has practical applications in more serious contexts; ``MysteryRules`` for "
+"example can be though of as describing a *protocol* that a game player most "
+"follow, or alternative a *precisely-typed API*."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:310
+msgid ""
+"In practice, we wouldn’t really expect to write rules first then implement "
+"the game once the rules were complete. Indeed, I didn’t do so when "
+"constructing this example! Rather, I wrote down a set of likely rules making"
+" any assumptions *explicit* in the state transitions for ``MysteryRules``. "
+"Then, when implementing ``game`` at first, any incorrect assumption was "
+"caught as a type error. The following errors were caught during development:"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:320
+msgid "Not realising that allowing ``NewWord`` to be an arbitrary string"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:319
+msgid ""
+"would mean that ``game`` would have to deal with a zero-length word as a "
+"starting state."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:324
+msgid "Forgetting to check whether a game was won before recursively"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:323
+msgid ""
+"calling ``processGuess``, thus accidentally continuing a finished game."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:327
+msgid "Accidentally checking the number of missing letters, rather than the"
+msgstr ""
+
+#: ..\..\effects\hangman.rst:327
+msgid "number of remaining guesses, when checking if a game was lost."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:329
+msgid ""
+"These are, of course, simple errors, but were caught by the type checker "
+"before any testing of the game."
+msgstr ""
+
+#: ..\..\effects\hangman.rst:333
+msgid "Readers may recognise this game by the name “Hangman”."
+msgstr ""

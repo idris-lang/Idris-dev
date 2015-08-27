@@ -1,0 +1,147 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: Heather <Heather@live.ru>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\tutorial\starting.rst:5
+msgid "Getting Started"
+msgstr "Приступая к работе"
+
+#: ..\..\tutorial\starting.rst:8
+msgid "Prerequisites"
+msgstr "Предвартельные требования"
+
+#: ..\..\tutorial\starting.rst:10
+msgid ""
+"Before installing Idris, you will need to make sure you have all of the "
+"necessary libraries and tools. You will need:"
+msgstr ""
+"Перед установкой Idris, вам нужно будет убедиться, что у вас есть все "
+"необходимые библиотеки и инструменты. Вам понадобятся:"
+
+#: ..\..\tutorial\starting.rst:13
+msgid ""
+"A fairly recent Haskell platform. Version ``2013.2.0.0`` should be "
+"sufficiently recent, though it is better to be completely up to date."
+msgstr ""
+"Сравнительно новая платформа Haskell. Версия от ``2013.2.0.0``."
+
+#: ..\..\tutorial\starting.rst:15
+msgid ""
+"The *GNU Multiple Precision Arithmetic Library* (GMP) is available  from "
+"MacPorts/Homebrew and all major Linux distributions."
+msgstr ""
+"*GNU Multi-Precision Library* (GMP) доступен из "
+"MacPorts/Homebrew и на всех популярных дистрибутивах Linux."
+
+#: ..\..\tutorial\starting.rst:18
+msgid "Downloading and Installing"
+msgstr "Загрузка и установка"
+
+#: ..\..\tutorial\starting.rst:20
+msgid ""
+"The easiest way to install Idris, if you have all of the prerequisites, is "
+"to type:"
+msgstr ""
+"Самый простой способ установки используя ``cabal``:"
+
+#: ..\..\tutorial\starting.rst:27
+msgid ""
+"This will install the latest version released on Hackage, along with any "
+"dependencies. If, however, you would like the most up to date development "
+"version you can find it, as well as build instructions, on GitHub at: "
+"https://github.com/idris-lang/Idris-dev."
+msgstr ""
+"Это установит последнюю версию на Hackage с актуальными зависимостями. "
+"Для того, что бы собрать текущую версию из репозитория, на GitHub "
+"доступна инструкция по сборке: https://github.com/idris-lang/Idris-dev."
+
+#: ..\..\tutorial\starting.rst:32
+msgid ""
+"To check that installation has succeeded, and to write your first Idris "
+"program, create a file called ``hello.idr`` containing the following text:"
+msgstr ""
+"Для того, чтобы проверить установку можно написать свой первый Idris код. "
+"Создайте файл с именем ``hello.idr`` содержащий следующий текст:"
+
+#: ..\..\tutorial\starting.rst:43
+msgid ""
+"If you are familiar with Haskell, it should be fairly clear what the program"
+" is doing and how it works, but if not, we will explain the details later. "
+"You can compile the program to an executable by entering ``idris hello.idr "
+"-o hello`` at the shell prompt. This will create an executable called "
+"``hello``, which you can run:"
+msgstr ""
+"Если вы знакомы с Haskell, должно быть достаточно ясно, что программа "
+"делает и как она работает, но если нет, мы будем объяснять детали позже. "
+"Вы можете скомпилировать программу в исполняемый код введя: "
+"``idris hello.idr -o hello`` в командной строке. Это создаст исполняемый файл "
+"``hello``, который вы можете запустить:"
+
+#: ..\..\tutorial\starting.rst:55
+msgid ""
+"Please note that the dollar sign ``$`` indicates the shell prompt! Should "
+"the Idris executable not be found please ensure that you have added "
+"``~/.cabal/bin`` to your ``$PATH`` environment variable. Mac OS X users may "
+"find they need to add ``~/Library/Haskell/bin`` instead. Some useful options"
+" to the Idris command are:"
+msgstr ""
+"Если исполняемый файл Idris не удаётся найти, пожалуйста, убедитесь, что вы "
+"добавили ``~/.cabal/bin`` в переменную окружения ``$PATH``. Пользователям "
+"``Mac OS X`` нужно добавить ``~/Library/Haskell/bin``. Некоторые полезные "
+"опции и команды Idris:"
+
+#: ..\..\tutorial\starting.rst:61
+msgid "``-o prog`` to compile to an executable called ``prog``."
+msgstr "``-o prog`` скомпилировать в исполняемый файл с названием ``prog``."
+
+#: ..\..\tutorial\starting.rst:63
+msgid ""
+"``--check`` type check the file and its dependencies without starting the "
+"interactive environment."
+msgstr "``--check`` проверить тип файла и его зависимости без запуска "
+"интерактивной среды."
+
+#: ..\..\tutorial\starting.rst:65
+msgid "``--help`` display usage summary and command line options."
+msgstr "``--help`` отобразить описание использования и параметры "
+"командной строки."
+
+#: ..\..\tutorial\starting.rst:68
+msgid "The Interactive Environment"
+msgstr "Интерактивная среда"
+
+#: ..\..\tutorial\starting.rst:70
+msgid ""
+"Entering ``idris`` at the shell prompt starts up the interactive "
+"environment. You should see something like the following:"
+msgstr ""
+"Ввод ``idris`` в командной строке запускается интерактивную среду. "
+"Вы должны увидеть что-то вроде следующего:"
+
+#: ..\..\tutorial\starting.rst:75
+msgid ""
+"This gives a ``ghci`` style interface which allows evaluation of, as well as"
+" type checking of, expressions; theorem proving, compilation; editing; and "
+"various other operations. The command ``:?`` gives a list of supported "
+"commands. Below, we see an example run in which ``hello.idr`` is loaded, the"
+" type of ``main`` is checked and then the program is compiled to the "
+"executable ``hello``. Type checking a file, if successful, creates a "
+"bytecode version of the file (in this case ``hello.ibc``) to speed up "
+"loading in future. The bytecode is regenerated if the source file changes."
+msgstr ""
+"Это интерфейс аналогичный ``ghci``, который позволяет делать вычисления, "
+"проверку типа выражения; доказательство теорем, составление, редактирование и"
+"различные другие операции. Команда ``:.?`` выдаёт список поддерживаемых "
+"команд. Ниже мы видим пример в котором` `hello.idr`` загружается, "
+"Тип ``main`` проверяется, а затем программа компилируется в исполняемый "
+"файл ``hello``. После проверки на типы файла, в случае успеха, создается "
+"байт-код версия файла (в данном случае ``hello.ibc``), чтобы ускорить "
+"загрузку в будущем. Байт-код перегенерируется при изменении исходных файлов."

@@ -1,0 +1,219 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\tutorial\provisional.rst:5
+msgid "Provisional Definitions"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:7
+msgid ""
+"Sometimes when programming with dependent types, the type required by the "
+"type checker and the type of the program we have written will be different "
+"(in that they do not have the same normal form), but nevertheless provably "
+"equal. For example, recall the ``parity`` function:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:19
+msgid "We’d like to implement this as follows:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:30
+msgid ""
+"This simply states that zero is even, one is odd, and recursively, the "
+"parity of ``k+2`` is the same as the parity of ``k``. Explicitly marking the"
+" value of ``n`` is even and odd is necessary to help type inference. "
+"Unfortunately, the type checker rejects this:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:49
+msgid ""
+"The type checker is telling us that ``(j+1)+(j+1)`` and ``2+j+j`` do not "
+"normalise to the same value. This is because ``plus`` is defined by "
+"recursion on its first argument, and in the second value, there is a "
+"successor symbol on the second argument, so this will not help with "
+"reduction. These values are obviously equal — how can we rewrite the program"
+" to fix this problem?"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:57
+msgid "Provisional definitions"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:59
+msgid ""
+"*Provisional definitions* help with this problem by allowing us to defer the"
+" proof details until a later point. There are two main reasons why they are "
+"useful."
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:63
+msgid ""
+"When *prototyping*, it is useful to be able to test programs before "
+"finishing all the details of proofs."
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:66
+msgid ""
+"When *reading* a program, it is often much clearer to defer the proof "
+"details so that they do not distract the reader from the underlying "
+"algorithm."
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:70
+msgid ""
+"Provisional definitions are written in the same way as ordinary definitions,"
+" except that they introduce the right hand side with a ``?=`` rather than "
+"``=``. We define ``parity`` as follows:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:74
+msgid ""
+"When written in this form, instead of reporting a type error, Idris will "
+"insert a metavariable standing for a theorem which will correct the type "
+"error. Idris tells us we have two proof obligations, with names generated "
+"from the module and function names:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:85
+msgid "The first of these has the following type:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:96
+msgid ""
+"The two arguments are ``j``, the variable in scope from the pattern match, "
+"and ``value``, which is the value we gave in the right hand side of the "
+"provisional definition. Our goal is to rewrite the type so that we can use "
+"this value. We can achieve this using the following theorem from the "
+"prelude:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:107
+msgid "We need to use ``compute`` again to unfold the definition of ``plus``:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:117
+msgid "After applying ``intros`` we have:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:128
+msgid ""
+"Then we apply the ``plusSuccRightSucc`` rewrite rule, symmetrically, to "
+"``j`` and ``j``, giving:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:140
+msgid ""
+"``sym`` is a function, defined in the library, which reverses the order of "
+"the rewrite:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:148
+msgid ""
+"We can complete this proof using the ``trivial`` tactic, which finds "
+"``value`` in the premises. The proof of the second lemma proceeds in exactly"
+" the same way."
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:152
+msgid ""
+"We can now test the ``natToBin`` function from Section :ref:`sect-nattobin` "
+"at the prompt. The number 42 is 101010 in binary. The binary digits are "
+"reversed:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:162
+msgid "Suspension of Disbelief"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:164
+msgid ""
+"Idris requires that proofs be complete before compiling programs (although "
+"evaluation at the prompt is possible without proof details). Sometimes, "
+"especially when prototyping, it is easier not to have to do this. It might "
+"even be beneficial to test programs before attempting to prove things about "
+"them — if testing finds an error, you know you had better not waste your "
+"time proving something!"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:171
+msgid ""
+"Therefore, Idris provides a built-in coercion function, which allows you to "
+"use a value of the incorrect types:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:178
+msgid ""
+"Obviously, this should be used with extreme caution. It is useful when "
+"prototyping, and can also be appropriate when asserting properties of "
+"external code (perhaps in an external C library). The “proof” of "
+"``views.parity_lemma_1`` using this is:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:191
+msgid ""
+"The ``exact`` tactic allows us to provide an exact value for the proof. In "
+"this case, we assert that the value we gave was correct."
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:195
+msgid "Example: Binary numbers"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:197
+msgid ""
+"Previously, we implemented conversion to binary numbers using the ``Parity``"
+" view. Here, we show how to use the same view to implement a verified "
+"conversion to binary. We begin by indexing binary numbers over their ``Nat``"
+" equivalent. This is a common pattern, linking a representation (in this "
+"case ``Binary``) with a meaning (in this case ``Nat``):"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:211
+msgid ""
+"``bO`` and ``bI`` take a binary number as an argument and effectively shift "
+"it one bit left, adding either a zero or one as the new least significant "
+"bit. The index, ``n + n`` or ``S (n + n)`` states the result that this left "
+"shift then add will have to the meaning of the number. This will result in a"
+" representation with the least significant bit at the front."
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:218
+msgid ""
+"Now a function which converts a Nat to binary will state, in the type, that "
+"the resulting binary number is a faithful representation of the original "
+"Nat:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:226
+msgid ""
+"The ``Parity`` view makes the definition fairly simple — halving the number "
+"is effectively a right shift after all — although we need to use a "
+"provisional definition in the odd case:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:238
+msgid ""
+"The problem with the odd case is the same as in the definition of "
+"``parity``, and the proof proceeds in the same way:"
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:250
+msgid ""
+"To finish, we’ll implement a main program which reads an integer from the "
+"user and outputs it in binary."
+msgstr ""
+
+#: ..\..\tutorial\provisional.rst:260
+msgid ""
+"For this to work, of course, we need a ``Show`` instance for ``Binary n``:"
+msgstr ""

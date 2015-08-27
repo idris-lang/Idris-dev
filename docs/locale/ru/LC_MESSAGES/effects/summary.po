@@ -1,0 +1,49 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\effects\summary.rst:5
+msgid "Effects Summary"
+msgstr ""
+
+#: ..\..\effects\summary.rst:7
+msgid ""
+"This appendix gives interfaces for the core effects provided by the library."
+msgstr ""
+
+#: ..\..\effects\summary.rst:11
+msgid "EXCEPTION"
+msgstr ""
+
+#: ..\..\effects\summary.rst:32
+msgid "FILE\\_IO"
+msgstr ""
+
+#: ..\..\effects\summary.rst:61
+msgid "RND"
+msgstr ""
+
+#: ..\..\effects\summary.rst:80
+msgid "SELECT"
+msgstr ""
+
+#: ..\..\effects\summary.rst:96
+msgid "STATE"
+msgstr ""
+
+#: ..\..\effects\summary.rst:114
+msgid "STDIO"
+msgstr ""
+
+#: ..\..\effects\summary.rst:136
+msgid "SYSTEM"
+msgstr ""

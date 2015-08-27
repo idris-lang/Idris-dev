@@ -1,0 +1,121 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\proofs\interactive.rst:3
+msgid "Interactive Theorem Proving"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:5
+msgid ""
+"Idris also supports interactive theorem proving via tactics. This is "
+"generally not recommended to be used directly, but rather used as a "
+"mechanism for building proof automation which is beyond the scope of this "
+"tutorial. In this section, we briefly discus tactics."
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:10
+msgid ""
+"One way to write proofs interactively is to write the general *structure* of"
+" the proof, and use the interactive mode to complete the details. Consider "
+"the following definition, proved in :ref:`sect-theorems`:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:18
+msgid ""
+"We’ll be constructing the proof by *induction*, so we write the cases for "
+"``Z`` and ``S``, with a recursive call in the ``S`` case giving the "
+"inductive hypothesis, and insert *metavariables* for the rest of the "
+"definition:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:29
+msgid ""
+"On running , two global names are created, ``plusredZ_Z`` and "
+"``plusredZ_S``, with no definition. We can use the ``:m`` command at the "
+"prompt to find out which metavariables are still to be solved (or, more "
+"precisely, which functions exist but have no definitions), then the ``:t`` "
+"command to see their types:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:49
+msgid ""
+"The ``:p`` command enters interactive proof mode, which can be used to "
+"complete the missing definitions."
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:59
+msgid ""
+"This gives us a list of premises (above the line; there are none here) and "
+"the current goal (below the line; named ``{hole0}`` here). At the prompt we "
+"can enter tactics to direct the construction of the proof. In this case, we "
+"can normalise the goal with the ``compute`` tactic:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:71
+msgid ""
+"Now we have to prove that ``Z`` equals ``Z``, which is easy to prove by "
+"``Refl``. To apply a function, such as ``Refl``, we use ``refine`` which "
+"introduces subgoals for each of the function’s explicit arguments (``Refl`` "
+"has none):"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:81
+msgid ""
+"Here, we could also have used the ``trivial`` tactic, which tries to refine "
+"by ``Refl``, and if that fails, tries to refine by each name in the local "
+"context. When a proof is complete, we use the ``qed`` tactic to add the "
+"proof to the global context, and remove the metavariable from the unsolved "
+"metavariables list. This also outputs a trace of the proof:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:100
+msgid ""
+"The ``:addproof`` command, at the interactive prompt, will add the proof to "
+"the source file (effectively in an appendix). Let us now prove the other "
+"required lemma, ``plusredZ_S``:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:111
+msgid ""
+"In this case, the goal is a function type, using ``k`` (the argument "
+"accessible by pattern matching) and ``ih`` — the local variable containing "
+"the result of the recursive call. We can introduce these as premisses using "
+"the ``intro`` tactic twice (or ``intros``, which introduces all arguments as"
+" premisses). This gives:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:124
+msgid ""
+"Since plus is defined by recursion on its first argument, the term ``plus (S"
+" k) Z`` in the goal can be simplified, so we use ``compute``."
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:134
+msgid ""
+"We know, from the type of ``ih``, that ``k = plus k Z``, so we would like to"
+" use this knowledge to replace ``plus k Z`` in the goal with ``k``. We can "
+"achieve this with the ``rewrite`` tactic:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:149
+msgid ""
+"The ``rewrite`` tactic takes an equality proof as an argument, and tries to "
+"rewrite the goal using that proof. Here, it results in an equality which is "
+"trivially provable:"
+msgstr ""
+
+#: ..\..\proofs\interactive.rst:164
+msgid ""
+"Again, we can add this proof to the end of our source file using the "
+"``:addproof`` command at the interactive prompt."
+msgstr ""

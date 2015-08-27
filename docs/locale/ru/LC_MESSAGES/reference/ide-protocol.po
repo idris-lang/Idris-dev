@@ -1,0 +1,448 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\reference\ide-protocol.rst:3
+msgid "The IDE Protocol"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:5
+msgid ""
+"The Idris REPL has two modes of interaction: a human-readable syntax "
+"designed for direct use in a terminal, and a machine-readable syntax "
+"designed for using Idris as a backend for external tools."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:8
+msgid "Protocol Overview"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:10
+msgid ""
+"The communication protocol is of asynchronous request-reply style: a single "
+"request from the client is handled by Idris at a time. Idris waits for a "
+"request on its standard input stream, and outputs the answer or answers to "
+"standard output. The result of a request can be either success, failure, or "
+"intermediate output; and furthermore, before the result is delivered, there "
+"might be additional meta-messages."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:15
+msgid ""
+"A reply can consist of multiple messages: any number of messages to inform "
+"the user about the progress of the request or other informational output, "
+"and finally a result, either ``ok`` or ``error``."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:17
+msgid ""
+"The wire format is the length of the message in characters, encoded in 6 "
+"characters hexadecimal, followed by the message encoded as S-expression "
+"(sexp). Additionally, each request includes a unique integer (counting "
+"upwards), which is repeated in all messages corresponding to that request."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:20
+msgid ""
+"An example interaction from loading the file ``/home/hannes/empty.idr`` "
+"looks as follows on the wire:::"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:28
+msgid ""
+"The first message is the request from idris-mode to load the specific file, "
+"which length is hex 2a, decimal 42 (including the newline at the end). The "
+"request identifier is set to 1. The first message from Idris is to write the"
+" string ``Type checking /home/hannes/empty.idr'', another is to set the "
+"prompt to ``*/home/hannes/empty''. The answer, starting with ``:return`` is "
+"``ok``, and additional information is that the file was loaded."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:33
+msgid ""
+"There are three atoms in the wire language: numbers, strings, and symbols. "
+"The only compound object is a list, which is surrounded by parenthesis. The "
+"syntax is::"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:40
+msgid ""
+"where ``NUM`` is either 0 or a positive integer, ``ALPHA`` is an "
+"alphabetical character, and ``STR`` is the contents of a string, with ``\"``"
+" escaped by a backslash. The atom ``nil`` is accepted instead of ``()`` for "
+"compatibility with some regexp pretty-printing routines."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:43
+msgid ""
+"The state of the Idris process is mainly the active file, which needs to be "
+"kept synchronized between the editor and Idris. This is achieved by the "
+"already seen ``:load-file`` command."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:46
+msgid "The available commands include:"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:49
+msgid "``(:load-file FILENAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:49
+msgid "Load the named file"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:52
+msgid "``(:interpret STRING)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:52
+msgid "Interpret ``STRING`` at the Idris REPL, returning a highlighted result"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:55
+msgid "``(:repl-completions STRING)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:55
+msgid "Return the result of tab-completing ``STRING`` as a REPL command"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:59
+msgid "``(:type-of STRING)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:58
+msgid ""
+"Return the type of the name, written with Idris syntax in the ``STRING``. "
+"The reply may contain highlighting information."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:63
+msgid "``(:case-split LINE NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:62
+msgid ""
+"Generate a case-split for the pattern variable ``NAME`` on program line "
+"``LINE``. The pattern-match cases to be substituted are returned as a string"
+" with no highlighting."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:67
+msgid "``(:add-clause LINE NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:66
+msgid ""
+"Generate an initial pattern-match clause for the function declared as "
+"``NAME`` on program line ``LINE``. The initial clause is returned as a "
+"string with no highlighting."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:70
+msgid "``(:add-proof-clause LINE NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:70
+msgid "Add a clause driven by the ``<==`` syntax."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:74
+msgid "``(:add-missing LINE NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:73
+msgid ""
+"Add the missing cases discovered by totality checking the function declared "
+"as ``NAME`` on program line ``LINE``. The missing clauses are returned as a "
+"string with no highlighting."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:78
+msgid "``(:make-with LINE NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:77
+msgid ""
+"Create a with-rule pattern match template for the clause of function "
+"``NAME`` on line ``LINE``. The new code is returned with no highlighting."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:82
+msgid "``(:proof-search LINE NAME HINTS)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:81
+msgid ""
+"Attempt to fill out the metavariable on ``LINE```named ``NAME`` by proof "
+"search. ``HINTS`` is a possibly-empty list of additional things to try while"
+" searching."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:85
+msgid "``(:docs-for NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:85
+msgid ""
+"Look up the documentation for ``NAME``, and return it as a highlighted "
+"string."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:88
+msgid "``(:metavariables WIDTH)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:88
+msgid ""
+"List the currently-active metavariables, with their types pretty-printed "
+"with ``WIDTH`` columns."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:91
+msgid "``(:who-calls NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:91
+msgid "Get a list of callers of ``NAME``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:94
+msgid "``(:calls-who NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:94
+msgid "Get a list of callees of ``NAME``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:97
+msgid "``(:browse-namespace NAMESPACE)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:97
+msgid ""
+"Return the contents of ``NAMESPACE``, like ``:browse`` at the command-line "
+"REPL"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:100
+msgid "``(:normalise-term TM)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:100
+msgid ""
+"Return a highlighted string consisting of the results of normalising the "
+"serialised term ``TM`` (which would previously have been sent as the ``tt-"
+"term`` property of a string)"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:103
+msgid "``(:show-term-implicits TM)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:103
+msgid ""
+"Return a highlighted string consisting of the results of making all "
+"arguments in serialised term ``TM`` (which would previously have been sent "
+"as the ``tt-term`` property of a string) explicit."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:106
+msgid "``(:hide-term-implicits TM)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:106
+msgid ""
+"Return a highlighted string consisting of the results of making all "
+"arguments in serialised term ``TM`` (which would previously have been sent "
+"as the ``tt-term`` property of a string) follow their usual implicitness "
+"setting."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:109
+msgid "``(:elaborate-term TM)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:109
+msgid ""
+"Return a highlighted string consisting of the the core language term "
+"corresponding to serialised term ``TM`` (which would previously have been "
+"sent as the ``tt-term`` property of a string)."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:114
+msgid "``(:print-definition NAME)``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:112
+msgid "Return the definition of ``NAME`` as a highlighted string"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:116
+msgid "Possible replies include a normal final reply:::"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:121
+msgid "A normal intermediate reply:::"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:126
+msgid "Informational and/or abnormal replies:::"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:132
+msgid "Proof mode replies:::"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:140
+msgid "Output Highlighting"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:142
+msgid ""
+"Idris mode supports highlighting the output from Idris. In reality, this "
+"highlighting is controlled by the Idris compiler. Some of the return forms "
+"from Idris support an optional extra parameter: a list mapping spans of text"
+" to metadata about that text. Clients can then use this list both to "
+"highlight the displayed output and to enable richer interaction by having "
+"more metadata present. For example, the Emacs mode allows right-clicking "
+"identifiers to get a menu with access to documentation and type signatures."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:149
+msgid ""
+"A particular semantic span is a three element list. The first element of the"
+" list is the index at which the span begins, the second element is the "
+"number of characters included in the span, and the third is the semantic "
+"data itself. The semantic data is a list of lists. The head of each list is "
+"a key that denotes what kind of metadata is in the list, and the tail is the"
+" metadata itself."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:178
+msgid "The following keys are available:"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:155
+msgid "``name``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:156
+msgid "gives a reference to the fully-qualified Idris name"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:157
+msgid "``implicit``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:158
+msgid ""
+"provides a Boolean value that is True if the region is the name of an "
+"implicit argument"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:160
+msgid "``decor``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:160
+msgid ""
+"describes the category of a token, which can be ``type``, ``function``, "
+"``data``, ``keyword``, or ``bound``."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:172
+msgid "``source-loc``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:163
+msgid ""
+"states that the region refers to a source code location. Its body is a "
+"collection of key-value pairs, with the following possibilities:"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:166
+msgid "``filename``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:166
+msgid "provides the filename"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:169
+msgid "``start``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:169
+msgid ""
+"provides the line and column that the source location starts at as a two-"
+"element tail"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:172
+msgid "``end``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:172
+msgid ""
+"provides the line and column that the source location ends at as a two-"
+"element tail"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:175
+msgid "``text-formatting``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:175
+msgid ""
+"provides an attribute of formatted text. This is for use with natural-"
+"language text, not code, and is presently emitted only from inline "
+"documentation. The potential values are ``bold``, ``italic``, and "
+"``underline``."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:178
+msgid "``tt-term``"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:178
+msgid ""
+"A serialized representation of the Idris core term corresponding to the "
+"region of text."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:181
+msgid "Source Code Highlighting"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:183
+msgid ""
+"Idris supports instructing editors how to color their code. When elaborating"
+" source code or REPL input, Idris will locate regions of the source code "
+"corresponding to names, and emit information about these names using the "
+"same metadata as output highlighting."
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:186
+msgid ""
+"These messages will arrive as replies to the command that caused elaboration"
+" to occur, such as ``:load-file`` or ``:interpret``. They have the format:::"
+msgstr ""
+
+#: ..\..\reference\ide-protocol.rst:191
+msgid ""
+"where ``POSNS``is a list of positions to highlight. Each of these is a two-"
+"element list whose first element is a position (encoded as for the ``source-"
+"loc`` property above) and whose second element is highlighting metadata in "
+"the same format used for output."
+msgstr ""

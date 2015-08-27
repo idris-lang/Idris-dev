@@ -1,0 +1,411 @@
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Idris 0.9.17\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2015-05-20 17:05+0400\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ..\..\tutorial\classes.rst:5
+msgid "Type Classes"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:7
+msgid ""
+"We often want to define functions which work across several different data "
+"types. For example, we would like arithmetic operators to work on ``Int``, "
+"``Integer`` and ``Float`` at the very least. We would like ``==`` to work on"
+" the majority of data types. We would like to be able to display different "
+"types in a uniform way."
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:13
+msgid ""
+"To achieve this, we use a feature which has proved to be effective in "
+"Haskell, namely *type classes*. To define a type class, we provide a "
+"collection of overloaded operations which describe the interface for "
+"*instances* of that class. A simple example is the ``Show`` type class, "
+"which is defined in the prelude and provides an interface for converting "
+"values to ``String``:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:25
+msgid ""
+"This generates a function of the following type (which we call a *method* of"
+" the ``Show`` class):"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:32
+msgid ""
+"We can read this as: “under the constraint that ``a`` is an instance of "
+"``Show``, take an input ``a`` and return a ``String``.” An instance of a "
+"class is defined with an ``instance`` declaration, which provides "
+"implementations of the function for a specific type. For example, the "
+"``Show`` instance for ``Nat`` could be defined as:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:49
+msgid ""
+"Only one instance of a class can be given for a type — instances may not "
+"overlap. Instance declarations can themselves have constraints. To help with"
+" resolution, the arguments of an instance must be constructors (either data "
+"or type constructors), variables or constants (i.e. you cannot give an "
+"instance for a function).  For example, to define a ``Show`` instance for "
+"vectors, we need to know that there is a ``Show`` instance for the element "
+"type, because we are going to use it to convert each element to a "
+"``String``:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:68
+msgid "Default Definitions"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:70
+msgid ""
+"The library defines an ``Eq`` class which provides an interface for "
+"comparing values for equality or inequality, with instances for all of the "
+"built-in types:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:80
+msgid ""
+"To declare an instance of a type, we have to give definitions of all of the "
+"methods. For example, for an instance of ``Eq`` for ``Nat``:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:93
+msgid ""
+"It is hard to imagine many cases where the ``/=`` method will be anything "
+"other than the negation of the result of applying the ``==`` method. It is "
+"therefore convenient to give a default definition for each method in the "
+"class declaration, in terms of the other method:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:107
+msgid ""
+"A minimal complete definition of an ``Eq`` instance requires either ``==`` "
+"or ``/=`` to be defined, but does not require both. If a method definition "
+"is missing, and there is a default definition for it, then the default is "
+"used instead."
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:113
+msgid "Extending Classes"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:115
+msgid ""
+"Classes can also be extended. A logical next step from an equality relation "
+"``Eq`` is to define an ordering relation ``Ord``. We can define an ``Ord`` "
+"class which inherits methods from ``Eq`` as well as defining some of its "
+"own:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:136
+msgid ""
+"The ``Ord`` class allows us to compare two values and determine their "
+"ordering. Only the ``compare`` method is required; every other method has a "
+"default definition. Using this we can write functions such as ``sort``, a "
+"function which sorts a list into increasing order, provided that the element"
+" type of the list is in the ``Ord`` class. We give the constraints on the "
+"type variables left of the fat arrow ``=>``, and the function type to the "
+"right of the fat arrow:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:148
+msgid ""
+"Functions, classes and instances can have multiple constraints. Multiple "
+"constaints are written in brackets in a comma separated list, for example:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:158
+msgid "Functors and Applicatives"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:160
+msgid ""
+"So far, we have seen single parameter type classes, where the parameter is "
+"of type ``Type``. In general, there can be any number (greater than 0) of "
+"parameters, and the parameters can have *any* type. If the type of the "
+"parameter is not ``Type``, we need to give an explicit type declaration. For"
+" example, the ``Functor`` class is defined in the library:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:172
+msgid ""
+"A functor allows a function to be applied across a structure, for example to"
+" apply a function to every element in a ``List``:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:186
+msgid ""
+"Having defined ``Functor``, we can define ``Applicative`` which abstracts "
+"the notion of function application:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:198
+msgid "Monads and ``do``-notation"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:200
+msgid ""
+"The ``Monad`` class allows us to encapsulate binding and computation, and is"
+" the basis of ``do``-notation introduced in Section :ref:`sect-do`. It "
+"extends ``Applicative`` as defined above, and is defined as follows:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:210
+msgid ""
+"Inside a ``do`` block, the following syntactic transformations are applied:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:213
+msgid "``x <- v; e`` becomes ``v >>= (\\x => e)``"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:215
+msgid "``v; e`` becomes ``v >>= (\\_ => e)``"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:217
+msgid "``let x = v; e`` becomes ``let x = v in e``"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:219
+msgid ""
+"``IO`` is an instance of ``Monad``, defined using primitive functions. We "
+"can also define an instance for ``Maybe``, as follows:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:228
+msgid ""
+"Using this we can, for example, define a function which adds two ``Maybe "
+"Int``, using the monad to encapsulate the error handling:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:238
+msgid ""
+"This function will extract the values from ``x`` and ``y``, if they are both"
+" available, or return ``Nothing`` if one or both are not (\"fail fast\"). "
+"Managing the ``Nothing`` cases is achieved by the ``>>=`` operator, hidden "
+"by the ``do`` notation."
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:251
+msgid "``!``-notation"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:253
+msgid ""
+"In many cases, using ``do``-notation can make programs unnecessarily "
+"verbose, particularly in cases such as ``m_add`` above where the value bound"
+" is used once, immediately. In these cases, we can use a shorthand version, "
+"as follows:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:263
+msgid ""
+"The notation ``!expr`` means that the expression ``expr`` should be "
+"evaluated and then implicitly bound. Conceptually, we can think of ``!`` as "
+"being a prefix function with the following type:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:271
+msgid ""
+"Note, however, that it is not really a function, merely syntax! In practice,"
+" a subexpression ``!expr`` will lift ``expr`` as high as possible within its"
+" current scope, bind it to a fresh name ``x``, and replace ``!expr`` with "
+"``x``. Expressions are lifted depth first, left to right. In practice, "
+"``!``-notation allows us to program in a more direct style, while still "
+"giving a notational clue as to which expressions are monadic."
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:279
+msgid "For example, the expression:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:285
+msgid "is lifted to:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:295
+msgid "Monad comprehensions"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:297
+msgid ""
+"The list comprehension notation we saw in Section :ref:`sect-more-expr` is "
+"more general, and applies to anything which is an instance of both ``Monad``"
+" and ``Alternative``:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:307
+msgid ""
+"In general, a comprehension takes the form ``[ exp | qual1, qual2, …, qualn "
+"]`` where ``quali`` can be one of:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:310
+msgid "A generator ``x <- e``"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:312
+msgid "A *guard*, which is an expression of type ``Bool``"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:314
+msgid "A let binding ``let x = e``"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:316
+msgid ""
+"To translate a comprehension ``[exp | qual1, qual2, …, qualn]``, first any "
+"qualifier ``qual`` which is a *guard* is translated to ``guard qual``, using"
+" the following function:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:324
+msgid "Then the comprehension is converted to ``do`` notation:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:330
+msgid ""
+"Using monad comprehensions, an alternative definition for ``m_add`` would "
+"be:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:339
+msgid "Idiom brackets"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:341
+msgid ""
+"While ``do`` notation gives an alternative meaning to sequencing, idioms "
+"give an alternative meaning to *application*. The notation and larger "
+"example in this section is inspired by Conor McBride and Ross Paterson’s "
+"paper “Applicative Programming with Effects” [1]_."
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:346
+msgid ""
+"First, let us revisit ``m_add`` above. All it is really doing is applying an"
+" operator to two values extracted from ``Maybe Int``. We could abstract out "
+"the application:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:356
+msgid ""
+"Using this, we can write an alternative ``m_add`` which uses this "
+"alternative notion of function application, with explicit calls to "
+"``m_app``:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:365
+msgid ""
+"Rather than having to insert ``m_app`` everywhere there is an application, "
+"we can use to do the job for us. To do this, we can make ``Maybe`` an "
+"instance of ``Applicative`` as follows, where ``<*>`` is defined in the same"
+" way as ``m_app`` above (this is defined in the Idris library):"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:379
+msgid ""
+"Using ``<*>`` we can use this instance as follows, where a function "
+"application ``[| f a1 …an |]`` is translated into ``pure f <*> a1 <*> … <*> "
+"an``:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:389
+msgid "An error-handling interpreter"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:391
+msgid ""
+"Idiom notation is commonly useful when defining evaluators. McBride and "
+"Paterson describe such an evaluator [1]_, for a language similar to the "
+"following:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:401
+msgid ""
+"Evaluation will take place relative to a context mapping variables "
+"(represented as ``String``\\s) to ``Int`` values, and can possibly fail. We "
+"define a data type ``Eval`` to wrap an evaluator:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:410
+msgid ""
+"Wrapping the evaluator in a data type means we will be able to make it an "
+"instance of a type class later. We begin by defining a function to retrieve "
+"values from the context during evaluation:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:424
+msgid ""
+"When defining an evaluator for the language, we will be applying functions "
+"in the context of an ``Eval``, so it is natural to make ``Eval`` an instance"
+" of ``Applicative``. Before ``Eval`` can be an instance of ``Applicative`` "
+"it is necessary to make ``Eval`` an instance of ``Functor``:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:443
+msgid ""
+"Evaluating an expression can now make use of the idiomatic application to "
+"handle errors:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:458
+msgid "Named Instances"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:460
+msgid ""
+"It can be desirable to have multiple instances of a type class, for example "
+"to provide alternative methods for sorting or printing values. To achieve "
+"this, instances can be *named* as follows:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:472
+msgid ""
+"This declares an instance as normal, but with an explicit name, ``myord``. "
+"The syntax ``compare @{myord}`` gives an explicit instance to ``compare``, "
+"otherwise it would use the default instance for ``Nat``. We can use this, "
+"for example, to sort a list of ``Nat`` in reverse. Given the following list:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:483
+msgid ""
+"We can sort it using the default ``Ord`` instance, then the named instance "
+"``myord`` as follows, at the Idris prompt:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:495
+msgid "Determining Parameters"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:497
+msgid ""
+"When a class has more than one parameter, it can help resolution if the "
+"parameters used to resolve the type class are restricted. For example:"
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:507
+msgid ""
+"In this class, only ``m`` needs to be known to resolve this class, and ``s``"
+" can then be determined from the instance. This is declared with the ``| m``"
+" after the class declaration. We call ``m`` a *determining parameter* of the"
+" ``MonadState`` class, because it is the parameter used to resolve an "
+"instance."
+msgstr ""
+
+#: ..\..\tutorial\classes.rst:514
+msgid ""
+"Conor Mcbride and Ross Paterson. 2008. Applicative programming with effects."
+" J. Funct. Program. 18, 1 (January 2008), 1-13. "
+"DOI=10.1017/S0956796807006326 http://dx.doi.org/10.1017/S0956796807006326"
+msgstr ""
