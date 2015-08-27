@@ -102,16 +102,16 @@ instance Handler Logging IO where
 
 ||| The Logging effect.
 |||
-||| @cTy The type used to differentiate categories.
-LOG : (cTy : Type) -> EFFECT
-LOG cTy = MkEff (LogRes cTy) Logging
+||| @a The type used to differentiate categories.
+LOG : (a : Type) -> EFFECT
+LOG a = MkEff (LogRes a) Logging
 
 -- ----------------------------------------------------------- [ Effectful API ]
 
 ||| Change the logging level.
 |||
 ||| @l  The new logging level.
-setLoglvl : (Eq a, Show a) => (l : LogLevel n) -> Eff () [LOG a]
+setLoglvl : (Show a, Eq a) => (l : LogLevel n) -> Eff () [LOG a]
 setLoglvl l = call $ SetLogLvl l
 
 ||| Change the categories to show.
@@ -124,19 +124,33 @@ setLogCats cs = call $ SetLogCats cs
 |||
 ||| @l  The logging level.
 ||| @cs The categories to show.
-initLogger : (Eq a, Show a) => (l : LogLevel n)
+initLogger : (Show a, Eq a) => (l : LogLevel n)
                             -> (cs : List a)
                             -> Eff () [LOG a]
 initLogger l cs = call $ InitLogger l cs
 
-||| Log the given message at the given level and assign it the list of categories.
+||| Log the given message at the given level indicated by a natural number and assign it the list of categories.
 |||
 ||| @l The logging level.
 ||| @cs The logging categories.
 ||| @m THe message to be logged.
-log : (Show a, Eq a) => (l : Nat) -> {auto prf : LTE l 70}
-    -> (cs : List a) -> (m : String) -> Eff () [LOG a]
-log l cs msg = call $ Log (getProof lvl) cs msg
+log : (Show a, Eq a) => (l : LogLevel n)
+                     -> (cs : List a)
+                     -> (m : String)
+                     -> Eff () [LOG a]
+log l cs msg = call $ Log l cs msg
+
+||| Log the given message at the given level indicated by a natural number and assign it the list of categories.
+|||
+||| @l The logging level.
+||| @cs The logging categories.
+||| @m THe message to be logged.
+logN : (Show a, Eq a) => (l : Nat)
+                      -> {auto prf : LTE l 70}
+                      -> (cs : List a)
+                      -> (m : String)
+                      -> Eff () [LOG a]
+logN l cs msg = call $ Log (getProof lvl) cs msg
   where
     lvl : (n ** LogLevel n)
     lvl = case cast {to=String} (cast {to=Int} l) of

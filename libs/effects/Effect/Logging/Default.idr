@@ -15,6 +15,8 @@ module Effect.Logging.Default
 import Effects
 import public Effect.Logging.Level
 
+%access public
+
 -- ------------------------------------------------------------ [ The Resource ]
 
 ||| The resource that the log effect is defined over.
@@ -70,12 +72,19 @@ LOG = MkEff (LogRes) Logging
 setLogLvl : (l : LogLevel n) -> Eff () [LOG]
 setLogLvl l = call $ SetLvl l
 
-||| Log `msg` at the given level.
+||| Log `msg` at the given level specified as a natural number.
 |||
 ||| @l The level to log.
 ||| @m The message to log.
-log : (l : Nat) -> {auto prf : LTE l 70} -> (m : String) -> Eff () [LOG]
-log l msg = call $ Log (getProof lvl) msg
+log : (l : LogLevel n) -> (m : String) -> Eff () [LOG]
+log l msg = call $ Log l msg
+
+||| Log `msg` at the given level specified as a natural number.
+|||
+||| @l The level to log.
+||| @m The message to log.
+logN : (l : Nat) -> {auto prf : LTE l 70} -> (m : String) -> Eff () [LOG]
+logN l msg = call $ Log (getProof lvl) msg
   where
     lvl : (n ** LogLevel n)
     lvl = case cast {to=String} (cast {to=Int} l) of

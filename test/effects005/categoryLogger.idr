@@ -8,7 +8,7 @@ func x = do
 
 doubleFunc : Nat -> Eff Nat [LOG String]
 doubleFunc x = do
-  log 40 ["NumOPS"] $ unwords ["Doing the double with", show x ]
+  logN 40 ["NumOPS"] $ unwords ["Doing the double with", show x ]
   func x
   pure (x+x)
 

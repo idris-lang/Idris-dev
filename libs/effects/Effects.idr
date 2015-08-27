@@ -25,7 +25,7 @@ data EFFECT : Type where
      MkEff : Type -> Effect -> EFFECT
 
 -- 'sig' gives the signature for an effect. There are four versions
--- depending on whether there is no resource needed, 
+-- depending on whether there is no resource needed,
 -- no state change, a non-dependent change,
 -- or a dependent change. These are easily disambiguated by type.
 
@@ -42,7 +42,7 @@ namespace UpdateEffect
   sig e r e_in e_out = e r e_in (\v => e_out)
 
 namespace DepUpdateEffect
-  sig : Effect -> 
+  sig : Effect ->
         (ret : Type) -> (res_in : Type) -> (res_out : ret -> Type) -> Type
   sig e r e_in e_out = e r e_in e_out
 
@@ -193,17 +193,17 @@ namespace TransEff
   Eff : (x : Type) -> (es : List EFFECT) -> (ce : List EFFECT) -> Type
   Eff x es ce = {m : Type -> Type} -> EffM m x es (\_ => ce)
 
-  EffT : (m : Type -> Type) -> 
+  EffT : (m : Type -> Type) ->
          (x : Type) -> (es : List EFFECT) -> (ce : List EFFECT) -> Type
   EffT m x es ce = EffM m x es (\_ => ce)
 
 namespace DepEff
   -- Dependent effects, updates dependent on result
-  Eff : (x : Type) -> (es : List EFFECT) 
+  Eff : (x : Type) -> (es : List EFFECT)
         -> (ce : x -> List EFFECT) -> Type
   Eff x es ce = {m : Type -> Type} -> EffM m x es ce
 
-  EffT : (m : Type -> Type) -> (x : Type) -> (es : List EFFECT) 
+  EffT : (m : Type -> Type) -> (x : Type) -> (es : List EFFECT)
         -> (ce : x -> List EFFECT) -> Type
   EffT m x es ce = EffM m x es ce
 
@@ -269,7 +269,7 @@ eff env (callP prf effP) k = execEff env prf effP k
 eff env (liftP prf effP) k
    = let env' = dropEnv env prf in
          eff env' effP (\p', envk => k p' (rebuildEnv envk prf env))
-eff env (new (MkEff resTy newEff) res {prf=Refl} effP) k 
+eff env (new (MkEff resTy newEff) res {prf=Refl} effP) k
    = eff (res :: env) effP (\p', (val :: envk) => k p' envk)
 -- FIXME:
 -- xs is needed explicitly because otherwise the pattern binding for
@@ -313,7 +313,7 @@ lift e {prf} = liftP prf e
 |||
 ||| @prog The effectful program to run.
 %no_implicit
-run : Applicative m => 
+run : Applicative m =>
       (prog : EffM m a xs xs') -> {default MkDefaultEnv env : Env m xs} ->
       m a
 run prog {env} = eff env prog (\r, env => pure r)
@@ -325,8 +325,8 @@ run prog {env} = eff env prog (\r, env => pure r)
 |||
 ||| @prog The effectful program to run.
 %no_implicit
-runPure : (prog : EffM id a xs xs') -> 
-          {default MkDefaultEnv env : Env id xs} -> a 
+runPure : (prog : EffM id a xs xs') ->
+          {default MkDefaultEnv env : Env id xs} -> a
 runPure prog {env} = eff env prog (\r, env => r)
 
 ||| Run an effectful program in a given context `m` with a default value for the environment.
