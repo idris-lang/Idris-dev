@@ -114,7 +114,9 @@ repl orig mods efile
                         then ""
                         else showMVs colour theme mvs ++
                              let str = mkPrompt mods ++ ">" in
-                             (if colour then colourisePrompt theme str else str) ++ " "
+                             (if colour && not isWindows
+                                then colourisePrompt theme str
+                                else str) ++ " "
         x <- H.catch (getInputLine prompt)
                      (ctrlC (return Nothing))
         case x of
@@ -1624,8 +1626,8 @@ idrisMain opts =
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = True })
-       setColourise $ not quiet && last ((not isWindows) : opt getColour opts)
-       
+       setColourise $ not quiet && last (True : opt getColour opts)
+
 
 
        mapM_ addLangExt (opt getLanguageExt opts)

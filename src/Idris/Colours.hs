@@ -4,9 +4,10 @@ module Idris.Colours (
   defaultTheme,
   colouriseKwd, colouriseBound, colouriseImplicit, colourisePostulate,
   colouriseType, colouriseFun, colouriseData, colouriseKeyword,
-  colourisePrompt, colourise, ColourType(..)) where
+  colourisePrompt, colourise, ColourType(..), hStartColourise, hEndColourise) where
 
 import System.Console.ANSI
+import System.IO (Handle)
 
 data IdrisColour = IdrisColour { colour    :: Maybe Color
                                , vivid     :: Bool
@@ -42,15 +43,28 @@ defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True False True
                            , postulateColour = IdrisColour (Just Green) True False True False
                            }
 
+-- | Compute the ANSI colours corresponding to an Idris colour
+mkSGR :: IdrisColour -> [SGR]
+mkSGR (IdrisColour c v u b i) =
+    fg c ++
+    (if u then [SetUnderlining SingleUnderline] else []) ++
+    (if b then [SetConsoleIntensity BoldIntensity] else []) ++
+    (if i then [SetItalicized True] else [])
+  where
+    fg Nothing = []
+    fg (Just c) = [SetColor Foreground (if v then Vivid else Dull) c]
+
 -- | Set the colour of a string using POSIX escape codes
 colourise :: IdrisColour -> String -> String
-colourise (IdrisColour c v u b i) str = setSGRCode sgr ++ str ++ setSGRCode [Reset]
-    where sgr = fg c ++
-                (if u then [SetUnderlining SingleUnderline] else []) ++
-                (if b then [SetConsoleIntensity BoldIntensity] else []) ++
-                (if i then [SetItalicized True] else [])
-          fg Nothing = []
-          fg (Just c) = [SetColor Foreground (if v then Vivid else Dull) c]
+colourise c str = setSGRCode (mkSGR c) ++ str ++ setSGRCode [Reset]
+
+-- | Start a colour on a handle, to support colour output on Windows
+hStartColourise :: Handle -> IdrisColour -> IO ()
+hStartColourise h c = hSetSGR h (mkSGR c)
+
+-- | End a colour region on a handle
+hEndColourise :: Handle -> IdrisColour -> IO ()
+hEndColourise h _ = hSetSGR h [Reset]
 
 -- | Set the colour of a string using POSIX escape codes, with trailing '\STX' denoting the end
 -- (required by Haskeline in the prompt string)

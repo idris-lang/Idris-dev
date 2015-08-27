@@ -6,6 +6,7 @@ import Idris.Core.TT
 import Idris.Core.Evaluate (isDConName, isTConName, isFnName, normaliseAll)
 
 import Idris.AbsSyntax
+import Idris.Colours (hStartColourise, hEndColourise)
 import Idris.Delaborate
 import Idris.Docstrings
 import Idris.IdeMode
@@ -17,7 +18,7 @@ import Control.Monad.Trans.Except (ExceptT (ExceptT), runExceptT)
 
 import System.Console.Haskeline.MonadException
   (MonadException (controlIO), RunIO (RunIO))
-import System.IO (stdout, Handle, hPutStrLn)
+import System.IO (stdout, Handle, hPutStrLn, hPutStr)
 import System.FilePath (replaceExtension)
 
 import Prelude hiding ((<$>))
@@ -45,7 +46,7 @@ iWarn fc err =
                       case fc of
                         FC fn _ _ | fn /= "" -> text (show fc) <> colon <//> err
                         _ -> err
-            runIO . hPutStrLn h $ displayDecorated (consoleDecorate i) err'
+            hWriteDoc h i err'
        IdeMode n h ->
          do err' <- iRender . fmap (fancifyAnnots i True) $ err
             let (str, spans) = displaySpans err'
@@ -68,13 +69,23 @@ iRender d = do w <- getWidth
                                 | otherwise -> do width <- runIO getScreenWidth
                                                   return $ renderPretty 0.8 width d
 
+hWriteDoc :: Handle -> IState -> SimpleDoc OutputAnnotation -> Idris ()
+hWriteDoc h ist rendered =
+    do runIO $ displayDecoratedA
+                 (hPutStr h)
+                 (maybe (return ()) (hStartColourise h))
+                 (maybe (return ()) (hEndColourise h))
+                 (fmap (annotationColour ist) rendered)
+       runIO $ hPutStr h "\n" -- newline translation on the output
+                              -- stream should take care of this for
+                              -- Windows
+
 -- | Write a pretty-printed term to the console with semantic coloring
 consoleDisplayAnnotated :: Handle -> Doc OutputAnnotation -> Idris ()
-consoleDisplayAnnotated h output = do ist <- getIState
-                                      rendered <- iRender $ output
-                                      runIO . hPutStrLn h .
-                                        displayDecorated (consoleDecorate ist) $
-                                        rendered
+consoleDisplayAnnotated h output =
+    do ist <- getIState
+       rendered <- iRender output
+       hWriteDoc h ist rendered
 
 iPrintTermWithType :: Doc OutputAnnotation -> Doc OutputAnnotation -> Idris ()
 iPrintTermWithType tm ty = iRenderResult (tm <+> colon <+> align ty)
@@ -97,7 +108,8 @@ iRenderOutput doc =
   do i <- getIState
      case idris_outputmode i of
        RawOutput h -> do out <- iRender doc
-                         runIO $ putStrLn (displayDecorated (consoleDecorate i) out)
+                         hWriteDoc h i out
+
        IdeMode n h ->
         do (str, spans) <- fmap displaySpans . iRender . fmap (fancifyAnnots i True) $ doc
            let out = [toSExp str, toSExp spans]
@@ -168,7 +180,7 @@ idemodePutSExp cmd info = do i <- getIState
 iputGoal :: SimpleDoc OutputAnnotation -> Idris ()
 iputGoal g = do i <- getIState
                 case idris_outputmode i of
-                  RawOutput h -> runIO $ hPutStrLn h (displayDecorated (consoleDecorate i) g)
+                  RawOutput h -> hWriteDoc h i g
                   IdeMode n h ->
                     let (str, spans) = displaySpans . fmap (fancifyAnnots i True) $ g
                         goal = [toSExp str, toSExp spans]
