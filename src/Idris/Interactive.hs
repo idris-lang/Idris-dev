@@ -177,8 +177,8 @@ makeCase fn updatefile l n
                  Just (before, pos, after) ->
                       [before ++ (if b then "(" else "") ++ "case _ of",
                        take (pos + (if b then 6 else 5)) (repeat ' ') ++ 
-                             "case_val => ?" ++ n ++ if b then ")" else "",
-                       after]
+                             "case_val => ?" ++ n ++ (if b then ")" else "")
+                             ++ after]
                  Nothing -> fail "No such metavariable"
 
         -- Assume case needs to be bracketed unless the metavariable is
