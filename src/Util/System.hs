@@ -1,12 +1,17 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ForeignFunctionInterface #-}
 module Util.System(tempfile,withTempdir,rmFile,catchIO, isWindows,
                    writeSource, writeSourceText, readSource,
-                   setupBundledCC) where
+                   setupBundledCC, isATTY) where
 
 -- System helper functions.
+
+import Control.Exception as CE
 import Control.Monad (when)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+
+import Foreign.C
+
 import System.Directory (getTemporaryDirectory
                         , removeFile
                         , removeDirectoryRecursive
@@ -17,7 +22,6 @@ import System.FilePath ((</>), normalise, isAbsolute, dropFileName)
 import System.IO
 import System.Info
 import System.IO.Error
-import Control.Exception as CE
 
 #ifdef FREESTANDING
 import Tools_idris
@@ -50,6 +54,13 @@ writeSource f s = withFile f WriteMode (\h -> hSetEncoding h utf8 >> hPutStr h s
 -- | Write a utf-8 source file from Text
 writeSourceText :: FilePath -> T.Text -> IO ()
 writeSourceText f s = withFile f WriteMode (\h -> hSetEncoding h utf8 >> TIO.hPutStr h s)
+
+foreign import ccall "isatty" isATTYRaw :: CInt -> IO CInt
+
+isATTY :: IO Bool
+isATTY = do
+            tty <- isATTYRaw 1 -- fd stdout
+            return $ tty /= 0
 
 withTempdir :: String -> (FilePath -> IO a) -> IO a
 withTempdir subdir callback
