@@ -4,7 +4,7 @@ module System
 %default partial
 %access public
 
-||| Retrieves an value from the environment, if the given key is present,
+||| Retrieves a value from the environment if the given key is present,
 ||| otherwise it returns Nothing.
 getEnv : String -> IO (Maybe String)
 getEnv key = do
