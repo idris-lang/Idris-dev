@@ -170,7 +170,7 @@ makeCase fn updatefile l n
            do let fb = fn ++ "~"
               runIO $ writeSource fb (unlines (before ++ newcase ++ later))
               runIO $ copyFile fb fn
-           else iPrintResult (showSep "\n" newcase)
+           else iPrintResult (showSep "\n" newcase ++"\n")
   where addCaseSkel n line =
             let b = brackets False line in
             case findSubstr ('?':n) line of

@@ -321,7 +321,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (False, priority arg) 
 
--- In interactive mode, only search for things if there is some constructor
+-- In interactive mode, only search for things if there is some 
 -- index to help pick a relevant constructor
 checkConstructor :: IState -> [Name] -> ElabD ()
 checkConstructor ist [] = return ()

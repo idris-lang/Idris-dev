@@ -359,8 +359,20 @@ pprintErr' i (IncompleteTerm t)
             (map pprintIncomplete (nub $ getMissing [] [] t))))
  where 
    pprintIncomplete (tm, arg)
+    | expname arg
+      = text "Can't infer explicit argument to" <+>
+                   annTm tm (pprintTerm i (delabSugared i tm))
+    | otherwise
       = text "Can't infer argument" <+> annName arg <+> text "to" <+>
                    annTm tm (pprintTerm i (delabSugared i tm))
+
+   expname (UN n) = case str n of
+                         ('_':_) -> True
+                         _ -> False
+   expname (MN _ n) = case str n of
+                         ('_':_) -> True
+                         _ -> False
+   expname _ = False
 
    getMissing :: [Name] -> [Name] -> Term -> [(Term, Name)]
    getMissing hs env (Bind n (Hole ty) sc)

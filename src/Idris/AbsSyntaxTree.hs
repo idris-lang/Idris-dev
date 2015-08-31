@@ -1656,7 +1656,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe (decD d) startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe (decD d) startPrec ((n, False):bnd) sc)
     prettySe d p bnd (PPi (Exp l s _) n _ ty sc)
-      | n `elem` allNamesIn sc || ppopt_impl ppo || n `elem` docArgs
+      | n `elem` allNamesIn sc || ppopt_impl ppo && uname n || n `elem` docArgs
           || ppopt_pinames ppo && uname n =
           depth d . bracket p startPrec . group $
           enclose lparen rparen (group . align $ prettyBindingOf n False <+> colon <+> prettySe (decD d) startPrec bnd ty) <+>
