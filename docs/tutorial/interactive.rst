@@ -20,7 +20,7 @@ hole, and even a basic proof search mechanism. In this
 section, we explain how these features can be exploited by a text
 editor, and specifically how to do so in `Vim
 <https://github.com/idris-hackers/idris-vim>`_. An interactive mode
-for `Emacs <https://github.com/idris-hackers/idris-emacs>`_ is also
+for `Emacs <https://github.com/idris-hackers/idris-mode>`_ is also
 available.
 
 

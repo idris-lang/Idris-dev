@@ -247,6 +247,7 @@ So, for example, the following definitions are legal:
             d y = c (y + 1 + z y)
                   where z w = y + w
 
+
 Dependent Types
 ===============
 
@@ -393,10 +394,10 @@ elements. ``Fin`` is indexed by a ``Nat``, which represents the number
 of elements in the set. Since we can’t construct an element of an
 empty set, neither constructor targets ``Fin Z``.
 
-As mentioned above, a useful application of the ``Fin`` family is to represent bounded
-natural numbers. Since the first ``n`` natural numbers form a finite
-set of ``n`` elements, we can treat ``Fin n`` as the set of integers
-greater than or equal to zero and less than ``n``.
+As mentioned above, a useful application of the ``Fin`` family is to
+represent bounded natural numbers. Since the first ``n`` natural
+numbers form a finite set of ``n`` elements, we can treat ``Fin n`` as
+the set of integers greater than or equal to zero and less than ``n``.
 
 For example, the following function which looks up an element in a
 ``Vect``, by a bounded index given as a ``Fin n``, is defined in the
@@ -505,7 +506,7 @@ appear within the block:
          There : Elem x xs -> Elem x (y :: xs)
 
 Note: Declaration Order and ``mutual`` blocks
----------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In general, functions and data types must be defined before use, since
 dependent types allow functions to appear as part of types, and their
@@ -737,7 +738,7 @@ remember that Idris is still in development, so if you don’t see
 the function you need, please feel free to add it and submit a patch!
 
 Aside: Anonymous functions and operator sections
-------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There are actually neater ways to write the above expression. One way
 would be to use an anonymous function:
@@ -797,8 +798,8 @@ simply ``b``. Since the default value might not be used, we mark it as
 ``Lazy`` in case it is a large expression where evaluating it then
 discarding it would be wasteful.
 
-Tuples and Dependent Pairs
---------------------------
+Tuples
+------
 
 Values can be paired with the following built-in data type:
 
@@ -893,6 +894,142 @@ intermediate values:
       | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 
 We will see more on ``with`` notation later.
+
+
+Records
+-------
+
+*Records* are data types which collect several values (the record's
+*fields*) together. Idris provides syntax for defining records and
+*automatically generating field access and update functions*. Unlike
+*the syntax used for data structures, records in Idris follow a
+*different syntax to that seen with Haskell. For example, we can
+*represent a person's name and age in a record:
+
+.. code-block:: idris
+
+    record Person where
+        constructor MkPerson
+        firstName, middleName, lastName : String
+        age : Int
+
+    fred : Person
+    fred = MkPerson "Fred" "Joe" "Bloggs" 30
+
+
+The constructor name is provided using the ``constructor`` keyword,
+and the *fields* are then given which are in an indented block
+following the `where` keyword (here, ``firstName``, ``middleName``,
+``lastName``, and ``age``). You can declare multiple fields on a
+single line, provided that they have the same type.  The field names
+can be used to access the field values:
+
+::
+
+    *record> firstName fred
+    "Fred" : String
+    *record> age fred
+    30 : Int
+    *record> :t firstName
+    firstName : Person -> String
+
+We can also use the field names to update a record (or, more
+precisely, produce a copy of the record with the given fields
+updated):
+
+.. code-block:: bash
+
+    *record> record { firstName = "Jim" } fred
+    MkPerson "Jim" "Joe" "Bloggs" 30 : Person
+    *record> record { firstName = "Jim", age = 20 } fred
+    MkPerson "Jim" "Joe" "Bloggs" 20 : Person
+
+The syntax ``record { field = val, ... }`` generates a function which
+updates the given fields in a record.
+
+Records, and fields within records, can have dependent types. Updates
+are allowed to change the type of a field, provided that the result is
+well-typed.
+
+.. code-block:: idris
+
+    record Class where
+        constructor ClassInfo
+        students : Vect n Person
+        className : String
+
+It is safe to update the ``students`` field to a vector of a different
+length because it will not affect the type of the record:
+
+.. code-block:: idris
+
+    addStudent : Person -> Class -> Class
+    addStudent p c = record { students = p :: students c } c
+
+::
+
+    *record> addStudent fred (ClassInfo [] "CS")
+    ClassInfo [MkPerson "Fred" "Joe" "Bloggs" 30] "CS" : Class
+
+
+Nested record update
+~~~~~~~~~~~~~~~~~~~~
+
+Idris also provides a convenient syntax for accessing and updating
+nested records. For example, if a field is accessible with the
+expression ``c (b (a x))``, it can be updated using the following
+syntax:
+
+.. code-block:: idris
+
+    record { a->b->c = val } x
+
+This returns a new record, with the field accessed by the path
+``a->b->c`` set to ``x``. The syntax is first class, i.e.  ``record {
+a->b->c = val }`` itself has a function type. Symmetrically, the field
+can also be accessed with the following syntax:
+
+.. code-block:: idris
+
+    record { a->b->c } x
+
+
+Dependent Records
+-----------------
+
+Records can also be dependent on values. Records *parameters*, which
+are not subject to field updates. The parameters appear as arguments
+to the resulting type, and are written following the record type
+name. For example, a pair type could be defined as follows:
+
+.. code-block:: idris
+
+    record Prod a b where
+        constructor Times
+        fst : a
+        snd : b
+
+
+Using the class record from the original introduction to records.  The
+size of the class can be restricted using a ``Vect`` and the size
+promoted to the type level by parameterising the record with the size.
+Foe example:
+
+
+.. code-block:: idris
+
+    record SizedClass (size : Nat) where
+        constructor SizedClassInfo
+        students : Vect size Person
+        className : String
+
+**Note** that it is no longer possible to use the ``addStudent``
+method from earlier as that would change the size of the class. To provide an add student the function must specify in the type that the size of the class has been increased by one. As the size if specified using natural numbers, the new value can be incremeated using the successor constructor.
+
+.. code-block:: idris
+
+    addStudent : Person -> SizedClass n -> SizedClass (S n)
+    addStudent p c = record { students = p :: students c } c
 
 .. _sect-more-expr:
 
@@ -1004,126 +1141,3 @@ matching ``let`` and lambda bindings. It will *only* work if:
 - The type of the result is "known". i.e. the type of the expression
    can be determined *without* type checking the ``case``-expression
    itself.
-
-Dependent Records
-=================
-
-*Records* are data types which collect several values (the record's
-*fields*) together. Idris provides syntax for defining records and
-*automatically generating field access and update functions*. For
-example, we can represent a person's name and age in a record:
-
-.. code-block:: idris
-
-    record Person where
-        constructor MkPerson
-        firstName, middleName, lastName : String
-        age : Int
-
-    fred : Person
-    fred = MkPerson "Fred" "Joe" "Bloggs" 30
-
-Records can have *parameters*, which are listed between the record
-name and the ``where`` keyword, and *fields*, which are in an indented
-block following the `where` keyword (here, ``firstName``, ``middleName``,
-``lastName``, and ``age``). You can declare multiple fields on a single
-line, provided that they have the same type. The constructor name is
-provided after the ``constructor`` keyword. The field names can be used to
-access the field values:
-
-::
-
-    *record> firstName fred
-    "Fred" : String
-    *record> age fred
-    30 : Int
-    *record> :t firstName
-    firstName : Person -> String
-
-We can also use the field names to update a record (or, more
-precisely, produce a copy of the record with the given fields
-updated):
-
-.. code-block:: bash
-
-    *record> record { firstName = "Jim" } fred
-    MkPerson "Jim" "Joe" "Bloggs" 30 : Person
-    *record> record { firstName = "Jim", age = 20 } fred
-    MkPerson "Jim" "Joe" "Bloggs" 20 : Person
-
-The syntax ``record { field = val, ... }`` generates a function which
-updates the given fields in a record.
-
-Records, and fields within records, can have dependent types. Updates
-are allowed to change the type of a field, provided that the result is
-well-typed.
-
-.. code-block:: idris
-
-    record Class where
-        constructor ClassInfo
-        students : Vect n Person
-        className : String
-
-It is safe to update the ``students`` field to a vector of a different
-length because it will not affect the type of the record:
-
-.. code-block:: idris
-
-    addStudent : Person -> Class -> Class
-    addStudent p c = record { students = p :: students c } c
-
-::
-
-    *record> addStudent fred (ClassInfo [] "CS")
-    ClassInfo [MkPerson "Fred" "Joe" "Bloggs" 30] "CS" : Class
-
-Nested record update
---------------------
-
-Idris also provides a convenient syntax for accessing and updating
-nested records. For example, if a field is accessible with the
-expression ``c (b (a x))``, it can be updated using the following
-syntax:
-
-.. code-block:: idris
-
-    record { a->b->c = val } x
-
-This returns a new record, with the field accessed by the path
-``a->b->c`` set to ``x``. The syntax is first class, i.e.  ``record {
-a->b->c = val }`` itself has a function type. Symmetrically, the field
-can also be accessed with the following syntax:
-
-.. code-block:: idris
-
-    record { a->b->c } x
-
-Parameters and Fields
----------------------
-
-Records can have *parameters*, which are not subject to field
-updates. The parameters appear as arguments to the resulting type, and
-are written following the record type name. For example, a pair type
-could be defined as follows:
-
-.. code-block:: idris
-
-    record Prod a b where
-        constructor Times
-        fst : a
-        snd : b
-
-The parameters to a record type need not be types. For example, we can
-restrict the size of classes using a ``Nat`` parameter to the
-``Class`` record:
-
-.. code-block:: idris
-
-    record SizedClass (size : Nat) where
-        constructor SizedClassInfo
-        students : Vect size Person
-        className : String
-
-Note that it is no longer possible to write ``addStudent`` for this
-type, as that would change the size of the class.

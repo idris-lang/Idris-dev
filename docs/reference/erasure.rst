@@ -29,7 +29,7 @@ and we can use irrelevance-related methods to achieve erasure.
 However, sometimes we want to erase *indices* and this is where the
 traditional approaches stop being useful, mainly for reasons described
 in the `original proposal
-<https://github.com/idris-lang/Idris-dev/wiki/Egg-%232%3A-Erasure-annotations#prop-is-cumbersome-coq>`__.
+<https://github.com/idris-lang/Idris-dev/wiki/Egg-%232%3A-Erasure-annotations>`__.
 
 .. code-block:: idris
 
