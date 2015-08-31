@@ -333,7 +333,9 @@ checkConstructor ist (n : ns) =
   where
     conIndexed t = let (_, args) = unApply (getRetTy t) in
                        any conHead args
-    conHead t | (P _ n _, _) <- unApply t = isConName n (tt_ctxt ist)
+    conHead t | (P _ n _, _) <- unApply t = case lookupDefExact n (tt_ctxt ist) of
+                                                 Just _ -> True
+                                                 _ -> False
               | otherwise = False
 
 -- | Resolve type classes. This will only pick up 'normal' instances, never
