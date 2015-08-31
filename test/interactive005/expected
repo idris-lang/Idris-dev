@@ -7,7 +7,7 @@ Main.main : IO ()
 Main.main is Total
 Hello, World
 id : a -> a
-Prelude.Basics.id : {a : Type} -> (__pi_arg : a) -> a
+Prelude.Basics.id : {a : Type} -> a -> a
 id : a -> a
 
 	 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY  
