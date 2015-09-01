@@ -6,6 +6,7 @@ evaluation/checking inside the proof system, etc.
 -}
 
 module Idris.Core.ProofTerm(ProofTerm, Goal(..), mkProofTerm, getProofTerm,
+                            resetProofTerm,
                             updateSolved, updateSolvedTerm, updateSolvedTerm',
                             bound_in, bound_in_term, refocus, updsubst,
                             Hole, RunTactic',
@@ -128,6 +129,9 @@ mkProofTerm tm = PT Top [] tm []
 
 getProofTerm :: ProofTerm -> Term
 getProofTerm (PT path _ sub ups) = rebuildTerm sub (updateSolvedPath ups path) 
+
+resetProofTerm :: ProofTerm -> ProofTerm
+resetProofTerm = mkProofTerm . getProofTerm
 
 same :: Eq a => Maybe a -> a -> Bool
 same Nothing n  = True

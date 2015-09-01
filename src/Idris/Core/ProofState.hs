@@ -1022,13 +1022,16 @@ processTactic UnifyProblems ps
 processTactic (MatchProblems all) ps
     = do let (ns', probs') = matchProblems all ps [] (problems ps)
              (ns'', probs'') = matchProblems all ps ns' probs'
-             pterm' = updateSolved ns'' (pterm ps)
-         traceWhen (unifylog ps) ("(MatchProblems) Dropping holes: " ++ show (map fst ns'')) $
+             pterm' = orderUpdateSolved ns'' (resetProofTerm (pterm ps))
+         traceWhen (unifylog ps) ("(MatchProblems) Dropping holes: " ++ show ns'') $
           return (ps { pterm = pterm', solved = Nothing, problems = probs'',
                        previous = Just ps, plog = "",
                        notunified = updateNotunified ns'' (notunified ps),
                        recents = recents ps ++ map fst ns'',
                        holes = holes ps \\ (map fst ns'') }, plog ps)
+  where
+    orderUpdateSolved [] t = t
+    orderUpdateSolved (n : ns) t = orderUpdateSolved ns (updateSolved [n] t)
 processTactic t ps
     = case holes ps of
         [] -> case t of

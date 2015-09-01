@@ -92,31 +92,6 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
           StateT UInfo
           TC [(Name, TT Name)]
 
-    -- This rule is highly dubious... it certainly produces a valid answer
-    -- but it scares me. However, matching is never guaranteed to give a unique
-    -- answer, merely a valid one, so perhaps we're okay.
-    -- In other words: it may vanish without warning some day :)
-    un names x tm@(App _ (P _ f (Bind fn (Pi _ t _) sc)) a)
-        | (P (TCon _ _) _ _, _) <- unApply x,
-          holeIn env f || f `elem` holes
-           = let n' = uniqueName (sMN 0 "mv") (map fst env) in
-             checkCycle names (f, Bind n' (Lam t) x)
-    un names tm@(App _ (P _ f (Bind fn (Pi _ t _) sc)) a) x
-        | (P (TCon _ _) _ _, _) <- unApply x,
-          holeIn env f || f `elem` holes
-           = let n' = uniqueName fn (map fst env) in
-                 checkCycle names (f, Bind n' (Lam t) x)
-    un names x tm@(App _ (P _ f (Bind fn (Pi _ t _) sc)) a)
-        | (P (DCon _ _ _) _ _, _) <- unApply x,
-          holeIn env f || f `elem` holes
-           = let n' = uniqueName (sMN 0 "mv") (map fst env) in
-             checkCycle names (f, Bind n' (Lam t) x)
-    un names tm@(App _ (P _ f (Bind fn (Pi _ t _) sc)) a) x
-        | (P (DCon _ _ _) _ _, _) <- unApply x,
-          holeIn env f || f `elem` holes
-           = let n' = uniqueName fn (map fst env) in
-                 checkCycle names (f, Bind n' (Lam t) x)
-
     un names tx@(P _ x _) tm
         | tx /= tm && holeIn env x || x `elem` holes
             = do sc 1; checkCycle names (x, tm)
