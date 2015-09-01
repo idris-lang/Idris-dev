@@ -177,6 +177,7 @@ data IState = IState {
     idris_implicits :: Ctxt [PArg],
     idris_statics :: Ctxt [Bool],
     idris_classes :: Ctxt ClassInfo,
+    idris_records :: Ctxt RecordInfo,
     idris_dsls :: Ctxt DSL,
     idris_optimisation :: Ctxt OptInfo,
     idris_datatypes :: Ctxt TypeInfo,
@@ -336,7 +337,7 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   emptyContext
+                   emptyContext emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
@@ -1276,6 +1277,12 @@ data ClassInfo = CI { instanceCtorName :: Name,
 deriving instance Binary ClassInfo
 deriving instance NFData ClassInfo
 !-}
+
+-- Record data
+data RecordInfo = RI { record_parameters :: [(Name,PTerm)],
+                       record_constructor :: Name,
+                       record_projections :: [Name] }
+    deriving Show
 
 -- Type inference data
 

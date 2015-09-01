@@ -397,6 +397,10 @@ addClass n i
                       _ -> i
         putIState $ ist { idris_classes = addDef n i' (idris_classes ist) }
 
+addRecord :: Name -> RecordInfo -> Idris ()
+addRecord n ri = do ist <- getIState
+                    putIState $ ist { idris_records = addDef n ri (idris_records ist) }
+
 addAutoHint :: Name -> Name -> Idris ()
 addAutoHint n hint =
     do ist <- getIState
