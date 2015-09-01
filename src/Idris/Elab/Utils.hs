@@ -16,6 +16,7 @@ import Control.Applicative hiding (Const)
 import Control.Monad.State
 import Control.Monad
 import Data.List
+import Data.Maybe
 import qualified Data.Traversable as Traversable
 
 import Debug.Trace
@@ -211,6 +212,24 @@ getParamsInType i env ps t = let fix = getFixedInType i env ps t
                                  flex = getFlexInType i env fix t in
                                  [x | x <- fix, not (x `elem` flex)]
 
+getTCinj i (Bind n (Pi _ t _) sc) 
+    = getTCinj i t ++ getTCinj i (instantiate (P Bound n t) sc)
+getTCinj i ap@(App _ f a)
+    | (P _ n _, args) <- unApply ap,
+      isTCName n = mapMaybe getInjName args
+    | otherwise = []
+  where
+    isTCName n = case lookupCtxtExact n (idris_classes i) of
+                      Just _ -> True
+                      _ -> False
+    getInjName t | (P _ x _, _) <- unApply t = Just x
+                 | otherwise = Nothing
+getTCinj _ _ = []
+
+getTCParamsInType :: IState -> [Name] -> [PArg] -> Type -> [Name]
+getTCParamsInType i env ps t = let params = getParamsInType i env ps t
+                                   tcs = nub $ getTCinj i t in
+                                   filter (flip  elem tcs) params
 paramNames args env [] = []
 paramNames args env (p : ps)
    | length args > p = case args!!p of

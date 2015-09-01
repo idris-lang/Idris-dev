@@ -543,7 +543,10 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         let fn_is = case lookupCtxt fname (idris_implicits i) of
                          [t] -> t
                          _ -> []
-        let params = getParamsInType i [] fn_is (normalise ctxt [] fn_ty)
+        let norm_ty = normalise ctxt [] fn_ty
+        let params = getParamsInType i [] fn_is norm_ty
+        let tcparams = getTCParamsInType i [] fn_is norm_ty
+
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
                     propagateParams i params fn_ty (addImplPat i lhs_in)
 --         let lhs = mkLHSapp $ 
@@ -634,7 +637,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                     (do pbinds ist lhs_tm
                         -- proof search can use explicitly written names
                         mapM_ addPSname (allNamesIn lhs_in)
-                        mapM_ setinj (nub (params ++ inj))
+                        mapM_ setinj (nub (tcparams ++ inj))
                         setNextName
                         (ElabResult _ _ is ctxt' newDecls highlights) <-
                           errAt "right hand side of " fname
