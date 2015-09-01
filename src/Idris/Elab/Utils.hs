@@ -23,9 +23,9 @@ import Debug.Trace
 
 import qualified Data.Map as Map
 
-recheckC = recheckC_borrowing False []
+recheckC = recheckC_borrowing False True []
 
-recheckC_borrowing uniq_check bs fc mkerr env t
+recheckC_borrowing uniq_check addConstrs bs fc mkerr env t
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
          ctxt <- getContext
          t' <- case safeForget t of
@@ -34,8 +34,8 @@ recheckC_borrowing uniq_check bs fc mkerr env t
          (tm, ty, cs) <- tclift $ case recheck_borrowing uniq_check bs ctxt env t' t of
                                    Error e -> tfail (At fc (mkerr e))
                                    OK x -> return x
-         logLvl 6 $ "CONSTRAINTS ADDED: " ++ show cs
-         addConstraints fc cs
+         logLvl 6 $ "CONSTRAINTS ADDED: " ++ show (tm, ty, cs)
+         when addConstrs $ addConstraints fc cs
          return (tm, ty)
 
 iderr :: Name -> Err -> Err

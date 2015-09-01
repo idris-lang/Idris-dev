@@ -579,7 +579,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         -- If we're inferring metavariables in the type, don't recheck,
         -- because we're only doing this to try to work out those metavariables
         (clhs_c, clhsty) <- if not inf
-                               then recheckC fc id [] lhs_tm
+                               then recheckC_borrowing False (PEGenerated `notElem` opts)
+                                                       [] fc id [] lhs_tm
                                else return (lhs_tm, lhs_ty)
         let clhs = normalise ctxt [] clhs_c
         let borrowed = borrowedNames [] clhs
@@ -681,14 +682,16 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logLvl 6 $ " ==> " ++ show (forget rhs')
 
         (crhs, crhsty) <- if not inf
-                             then recheckC_borrowing True borrowed fc id [] rhs'
+                             then recheckC_borrowing True (PEGenerated `notElem` opts)
+                                                     borrowed fc id [] rhs'
                              else return (rhs', clhsty)
         logLvl 6 $ " ==> " ++ showEnvDbg [] crhsty ++ "   against   " ++ showEnvDbg [] clhsty
         ctxt <- getContext
         let constv = next_tvar ctxt
         case LState.runStateT (convertsC ctxt [] crhsty clhsty) (constv, []) of
-            OK (_, cs) -> do addConstraints fc cs 
-                             logLvl 6 $ "CONSTRAINTS ADDED: " ++ show cs
+            OK (_, cs) -> when (PEGenerated `notElem` opts) $ do
+                             addConstraints fc cs 
+                             logLvl 6 $ "CONSTRAINTS ADDED: " ++ show cs ++ "\n" ++ show (clhsty, crhsty)
                              return ()
             Error e -> ierror (At fc (CantUnify False (clhsty, Nothing) (crhsty, Nothing) e [] 0))
         i <- getIState
