@@ -1550,103 +1550,109 @@ addImpl = addImpl' False [] []
 
 addImpl' :: Bool -> [Name] -> [Name] -> [Name] -> IState -> PTerm -> PTerm
 addImpl' inpat env infns imp_meths ist ptm
-         = mkUniqueNames env [] (ai False (zip env (repeat Nothing)) [] ptm)
+   = mkUniqueNames env [] (ai inpat False (zip env (repeat Nothing)) [] ptm)
   where
-    ai :: Bool -> [(Name, Maybe PTerm)] -> [[T.Text]] -> PTerm -> PTerm
-    ai qq env ds (PRef fc fcs f)
+    topname = case ptm of
+                   PRef _ _ n -> n
+                   PApp _ (PRef _ _ n) _ -> n
+                   _ -> sUN "" -- doesn't matter then
+
+    ai :: Bool -> Bool -> [(Name, Maybe PTerm)] -> [[T.Text]] -> PTerm -> PTerm
+    ai inpat qq env ds (PRef fc fcs f)
         | f `elem` infns = PInferRef fc fcs f
-        | not (f `elem` map fst env) = handleErr $ aiFn inpat inpat qq imp_meths ist fc f fc ds []
-    ai qq env ds (PHidden (PRef fc hl f))
-        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn inpat False qq imp_meths ist fc f fc ds [])
-    ai qq env ds (PRewrite fc l r g)
-       = let l' = ai qq env ds l
-             r' = ai qq env ds r
-             g' = fmap (ai qq env ds) g in
+        | not (f `elem` map fst env) = handleErr $ aiFn topname inpat inpat qq imp_meths ist fc f fc ds [] []
+    ai inpat qq env ds (PHidden (PRef fc hl f))
+        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn topname inpat False qq imp_meths ist fc f fc ds [] [])
+    ai inpat qq env ds (PRewrite fc l r g)
+       = let l' = ai inpat qq env ds l
+             r' = ai inpat qq env ds r
+             g' = fmap (ai inpat qq env ds) g in
          PRewrite fc l' r' g'
-    ai qq env ds (PTyped l r)
-      = let l' = ai qq env ds l
-            r' = ai qq env ds r in
+    ai inpat qq env ds (PTyped l r)
+      = let l' = ai inpat qq env ds l
+            r' = ai inpat qq env ds r in
             PTyped l' r'
-    ai qq env ds (PPair fc hls p l r)
-      = let l' = ai qq env ds l
-            r' = ai qq env ds r in
+    ai inpat qq env ds (PPair fc hls p l r)
+      = let l' = ai inpat qq env ds l
+            r' = ai inpat qq env ds r in
             PPair fc hls p l' r'
-    ai qq env ds (PDPair fc hls p l t r)
-         = let l' = ai qq env ds l
-               t' = ai qq env ds t
-               r' = ai qq env ds r in
+    ai inpat qq env ds (PDPair fc hls p l t r)
+         = let l' = ai inpat qq env ds l
+               t' = ai inpat qq env ds t
+               r' = ai inpat qq env ds r in
            PDPair fc hls p l' t' r'
-    ai qq env ds (PAlternative ms a as)
-           = let as' = map (ai qq env ds) as in
+    ai inpat qq env ds (PAlternative ms a as)
+           = let as' = map (ai inpat qq env ds) as in
                  PAlternative ms a as'
-    ai qq env _ (PDisamb ds' as) = ai qq env ds' as
-    ai qq env ds (PApp fc (PInferRef ffc hl f) as)
-        = let as' = map (fmap (ai qq env ds)) as in
+    ai inpat qq env _ (PDisamb ds' as) = ai inpat qq env ds' as
+    ai inpat qq env ds (PApp fc (PInferRef ffc hl f) as)
+        = let as' = map (fmap (ai inpat qq env ds)) as in
               PApp fc (PInferRef ffc hl f) as'
-    ai qq env ds (PApp fc ftm@(PRef ffc hl f) as)
-        | f `elem` infns = ai qq env ds (PApp fc (PInferRef ffc hl f) as)
+    ai inpat qq env ds (PApp fc ftm@(PRef ffc hl f) as)
+        | f `elem` infns = ai inpat qq env ds (PApp fc (PInferRef ffc hl f) as)
         | not (f `elem` map fst env)
-                          = let as' = map (fmap (ai qq env ds)) as in
-                                handleErr $ aiFn inpat False qq imp_meths ist fc f ffc ds as'
+                          = let as' = map (fmap (ai inpat qq env ds)) as 
+                                asdotted' = map (fmap (ai False qq env ds)) as in
+                                handleErr $ aiFn topname inpat False qq imp_meths ist fc f ffc ds as' asdotted'
         | Just (Just ty) <- lookup f env =
-             let as' = map (fmap (ai qq env ds)) as
+             let as' = map (fmap (ai inpat qq env ds)) as
                  arity = getPArity ty in
               mkPApp fc arity ftm as'
-    ai qq env ds (PApp fc f as)
-      = let f' = ai qq env ds f
-            as' = map (fmap (ai qq env ds)) as in
+    ai inpat qq env ds (PApp fc f as)
+      = let f' = ai inpat qq env ds f
+            as' = map (fmap (ai inpat qq env ds)) as in
             mkPApp fc 1 f' as'
-    ai qq env ds (PCase fc c os)
-      = let c' = ai qq env ds c in
+    ai inpat qq env ds (PCase fc c os)
+      = let c' = ai inpat qq env ds c in
         -- leave os alone, because they get lifted into a new pattern match
-        -- definition which is passed through addImpl again with more scope
+        -- definition which is passed through addImpl agai inpatn with more scope
         -- information
             PCase fc c' os
 
-    ai qq env ds (PIfThenElse fc c t f) = PIfThenElse fc (ai qq env ds c)
-                                                         (ai qq env ds t)
-                                                         (ai qq env ds f)
+    ai inpat qq env ds (PIfThenElse fc c t f) = PIfThenElse fc (ai inpat qq env ds c)
+                                                         (ai inpat qq env ds t)
+                                                         (ai inpat qq env ds f)
 
     -- If the name in a lambda is a constructor name, do this as a 'case'
     -- instead (it is harmless to do so, especially since the lambda will
     -- be lifted anyway!)
-    ai qq env ds (PLam fc n nfc ty sc)
+    ai inpat qq env ds (PLam fc n nfc ty sc)
       = case lookupDef n (tt_ctxt ist) of
-             [] -> let ty' = ai qq env ds ty
-                       sc' = ai qq ((n, Just ty):env) ds sc in
+             [] -> let ty' = ai inpat qq env ds ty
+                       sc' = ai inpat qq ((n, Just ty):env) ds sc in
                        PLam fc n nfc ty' sc'
-             _ -> ai qq env ds (PLam fc (sMN 0 "lamp") NoFC ty
+             _ -> ai inpat qq env ds (PLam fc (sMN 0 "lamp") NoFC ty
                                      (PCase fc (PRef fc [] (sMN 0 "lamp") )
                                         [(PRef fc [] n, sc)]))
-    ai qq env ds (PLet fc n nfc ty val sc)
+    ai inpat qq env ds (PLet fc n nfc ty val sc)
       = case lookupDef n (tt_ctxt ist) of
-             [] -> let ty' = ai qq env ds ty
-                       val' = ai qq env ds val
-                       sc' = ai qq ((n, Just ty):env) ds sc in
+             [] -> let ty' = ai inpat qq env ds ty
+                       val' = ai inpat qq env ds val
+                       sc' = ai inpat qq ((n, Just ty):env) ds sc in
                        PLet fc n nfc ty' val' sc'
              defs ->
-               ai qq env ds (PCase fc val [(PRef fc [] n, sc)])
-    ai qq env ds (PPi p n nfc ty sc)
-      = let ty' = ai qq env ds ty
+               ai inpat qq env ds (PCase fc val [(PRef fc [] n, sc)])
+    ai inpat qq env ds (PPi p n nfc ty sc)
+      = let ty' = ai inpat qq env ds ty
             env' = if n `elem` imp_meths then env
                       else ((n, Just ty) : env)
-            sc' = ai qq env' ds sc in
+            sc' = ai inpat qq env' ds sc in
             PPi p n nfc ty' sc'
-    ai qq env ds (PGoal fc r n sc)
-      = let r' = ai qq env ds r
-            sc' = ai qq ((n, Nothing):env) ds sc in
+    ai inpat qq env ds (PGoal fc r n sc)
+      = let r' = ai inpat qq env ds r
+            sc' = ai inpat qq ((n, Nothing):env) ds sc in
             PGoal fc r' n sc'
-    ai qq env ds (PHidden tm) = PHidden (ai qq env ds tm)
+    ai inpat qq env ds (PHidden tm) = PHidden (ai inpat qq env ds tm)
     -- Don't do PProof or PTactics since implicits get added when scope is
     -- properly known in ElabTerm.runTac
-    ai qq env ds (PUnifyLog tm) = PUnifyLog (ai qq env ds tm)
-    ai qq env ds (PNoImplicits tm) = PNoImplicits (ai qq env ds tm)
-    ai qq env ds (PQuasiquote tm g) = PQuasiquote (ai True env ds tm)
-                                                  (fmap (ai True env ds) g)
-    ai qq env ds (PUnquote tm) = PUnquote (ai False env ds tm)
-    ai qq env ds (PRunElab fc tm ns) = PRunElab fc (ai False env ds tm) ns
-    ai qq env ds (PConstSugar fc tm) = PConstSugar fc (ai qq env ds tm)
-    ai qq env ds tm = tm
+    ai inpat qq env ds (PUnifyLog tm) = PUnifyLog (ai inpat qq env ds tm)
+    ai inpat qq env ds (PNoImplicits tm) = PNoImplicits (ai inpat qq env ds tm)
+    ai inpat qq env ds (PQuasiquote tm g) = PQuasiquote (ai inpat True env ds tm)
+                                                  (fmap (ai inpat True env ds) g)
+    ai inpat qq env ds (PUnquote tm) = PUnquote (ai inpat False env ds tm)
+    ai inpat qq env ds (PRunElab fc tm ns) = PRunElab fc (ai inpat False env ds tm) ns
+    ai inpat qq env ds (PConstSugar fc tm) = PConstSugar fc (ai inpat qq env ds tm)
+    ai inpat qq env ds tm = tm
 
     handleErr (Left err) = PElabError err
     handleErr (Right x) = x
@@ -1654,14 +1660,15 @@ addImpl' inpat env infns imp_meths ist ptm
 -- if in a pattern, and there are no arguments, and there's no possible
 -- names with zero explicit arguments, don't add implicits.
 
-aiFn :: Bool -> Bool -> Bool
+aiFn :: Name -> Bool -> Bool -> Bool
      -> [Name]
      -> IState -> FC
      -> Name -- ^ function being applied
      -> FC -> [[T.Text]]
-     -> [PArg] -- ^ initial arguments
+     -> [PArg] -- ^ initial arguments (if in a pattern)
+     -> [PArg] -- ^ initial arguments (if in an expression)
      -> Either Err PTerm
-aiFn inpat True qq imp_meths ist fc f ffc ds []
+aiFn topname inpat True qq imp_meths ist fc f ffc ds [] _
   = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar ffc f
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
@@ -1669,7 +1676,7 @@ aiFn inpat True qq imp_meths ist fc f ffc ds []
                     if (not (vname f) || tcname f
                            || any (conCaf (tt_ctxt ist)) ialts)
 --                            any constructor alts || any allImp ialts))
-                        then aiFn inpat False qq imp_meths ist fc f ffc ds [] -- use it as a constructor
+                        then aiFn topname inpat False qq imp_meths ist fc f ffc ds [] [] -- use it as a constructor
                         else Right $ PPatvar ffc f
     where imp (PExp _ _ _ _) = False
           imp _ = True
@@ -1683,9 +1690,9 @@ aiFn inpat True qq imp_meths ist fc f ffc ds []
           vname (UN n) = True -- non qualified
           vname _ = False
 
-aiFn inpat expat qq imp_meths ist fc f ffc ds as
+aiFn topname inpat expat qq imp_meths ist fc f ffc ds as asexp
     | f `elem` primNames = Right $ PApp fc (PRef ffc [ffc] f) as
-aiFn inpat expat qq imp_meths ist fc f ffc ds as
+aiFn topname inpat expat qq imp_meths ist fc f ffc ds as asexp
           -- This is where namespaces get resolved by adding PAlternative
      = do let ns = lookupCtxtName f (idris_implicits ist)
           let nh = filter (\(n, _) -> notHidden n) ns
@@ -1693,15 +1700,25 @@ aiFn inpat expat qq imp_meths ist fc f ffc ds as
                          [] -> nh
                          x -> x
           case ns' of
-            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef ffc [ffc] (isImpName f f')) (insertImpl ns as)
+            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef ffc [ffc] (isImpName f f')) 
+                                     (insertImpl ns (chooseArgs f' as asexp))
             [] -> if f `elem` (map fst (idris_metavars ist))
                     then Right $ PApp fc (PRef ffc [ffc] f) as
                     else Right $ mkPApp fc (length as) (PRef ffc [ffc] f) as
             alts -> Right $
                          PAlternative [] (ExactlyOne True) $
                            map (\(f', ns) -> mkPApp fc (length ns) (PRef ffc [ffc] (isImpName f f'))
-                                                  (insertImpl ns as)) alts
+                                                  (insertImpl ns (chooseArgs f' as asexp))) alts
   where
+    -- choose whether to treat the arguments as patterns or expressions
+    -- if 'f' is a defined function, treat as expression, otherwise do the default.
+    -- This is so any names which later go under a PHidden are treated
+    -- as function names rather than bound pattern variables
+    chooseArgs f as asexp | isConName f (tt_ctxt ist) = as
+                          | f == topname = as
+                          | Nothing <- lookupDefExact f (tt_ctxt ist) = as
+                          | otherwise = asexp
+
     -- if the name is in imp_meths, we should actually refer to the bound
     -- name rather than the global one after expanding implicits
     isImpName f f' | f `elem` imp_meths = f

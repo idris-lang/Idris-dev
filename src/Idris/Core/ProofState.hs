@@ -904,6 +904,8 @@ getProvenance :: Err -> (Maybe Provenance, Maybe Provenance)
 getProvenance (CantUnify _ (_, lp) (_, rp) _ _ _) = (lp, rp)
 getProvenance _ = (Nothing, Nothing)
 
+setReady (x, y, _, env, err, c, at) = (x, y, True, env, err, c, at)
+
 updateProblems :: ProofState -> [(Name, TT Name)] -> Fails 
                     -> ([(Name, TT Name)], Fails)
 -- updateProblems ctxt [] ps inj holes = ([], ps)
@@ -1009,7 +1011,7 @@ processTactic (ComputeLet n) ps
                               computeLet (context ps) n
                                          (getProofTerm (pterm ps)) }, "")
 processTactic UnifyProblems ps
-    = do let (ns', probs') = updateProblems ps [] (problems ps)
+    = do let (ns', probs') = updateProblems ps [] (map setReady (problems ps))
              pterm' = updateSolved ns' (pterm ps)
          traceWhen (unifylog ps) ("(UnifyProblems) Dropping holes: " ++ show (map fst ns')) $
           return (ps { pterm = pterm', solved = Nothing, problems = probs',
@@ -1020,7 +1022,7 @@ processTactic UnifyProblems ps
                        holes = holes ps \\ (map fst ns') }, plog ps)
    where notIn ns (h, _) = h `notElem` map fst ns
 processTactic (MatchProblems all) ps
-    = do let (ns', probs') = matchProblems all ps [] (problems ps)
+    = do let (ns', probs') = matchProblems all ps [] (map setReady (problems ps))
              (ns'', probs'') = matchProblems all ps ns' probs'
              pterm' = orderUpdateSolved ns'' (resetProofTerm (pterm ps))
          traceWhen (unifylog ps) ("(MatchProblems) Dropping holes: " ++ show ns'') $
