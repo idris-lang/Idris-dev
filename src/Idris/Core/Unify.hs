@@ -694,10 +694,14 @@ recoverable f (Bind _ (Pi _ _ _) sc)
     | (P (DCon _ _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
     | (Constant _) <- f = False
+    | TType _ <- f = False
+    | UType _ <- f = False
 recoverable (Bind _ (Pi _ _ _) sc) f
     | (P (DCon _ _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
     | (Constant _) <- f = False
+    | TType _ <- f = False
+    | UType _ <- f = False
 recoverable (Bind _ (Lam _) sc) f = recoverable sc f
 recoverable f (Bind _ (Lam _) sc) = recoverable f sc
 recoverable x y = True
