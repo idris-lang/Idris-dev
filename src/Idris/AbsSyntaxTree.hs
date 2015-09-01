@@ -291,6 +291,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCImp Name
               | IBCStatic Name
               | IBCClass Name
+              | IBCRecord Name
               | IBCInstance Bool Bool Name Name
               | IBCDSL Name
               | IBCData Name
