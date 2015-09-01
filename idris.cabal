@@ -606,6 +606,13 @@ Extra-source-files:
                        test/proof010/run
                        test/proof010/*.idr
                        test/proof010/expected
+                       
+                       test/proofsearch001/run
+                       test/proofsearch001/*.idr
+                       test/proofsearch001/expected
+                       test/proofsearch002/run
+                       test/proofsearch002/*.idr
+                       test/proofsearch002/expected
 
                        test/quasiquote001/run
                        test/quasiquote001/*.idr

@@ -206,7 +206,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
        | Constant _ <- c = not (n `elem` hs)
     -- if fa is a metavariable applied to anything, we're not ready to run yet.
     notHole hs (fa, c)
-       | (P _ fn _, args) <- unApply fa = fn `notElem` hs
+       | (P _ fn _, args@(_:_)) <- unApply fa = fn `notElem` hs
     notHole _ _ = True
 
     inHS hs (P _ n _) = n `elem` hs
