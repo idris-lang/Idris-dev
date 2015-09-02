@@ -113,7 +113,7 @@ We can do the same for the reduction behaviour of plus on successors:
     plusReducesS Z m = Refl
     plusReducesS (S k) m = cong (plusReducesS k m)
 
-Even for trival theorems like these, the proofs are a little tricky to
+Even for trivial theorems like these, the proofs are a little tricky to
 construct in one go. When things get even slightly more complicated, it
 becomes too much to think about to construct proofs in this ‘batch
 mode’.

@@ -119,7 +119,7 @@ argument which converges to a base case.
   higher order applications are not supported
 - Idris identifies arguments which converge to a base case by looking for
   recursive calls to syntactically smaller arguments of inputs. e.g.
-  ``k`` is syntactially smaller than ``S (S k)`` because ``k`` is a
+  ``k`` is syntactically smaller than ``S (S k)`` because ``k`` is a
   subterm of ``S (S k)``, but ``(k, k)`` is
   not syntactically smaller than ``(S k, S k)``.
 
@@ -147,8 +147,8 @@ Why does Idris use ``Float`` and ``Double`` instead of ``Float32`` and ``Float64
 
 Historically the C language and many other languages have used the
 names ``Float`` and ``Double`` to represent floating point numbers of
-size 32 and 64 respectivly.  Newer languages such as Rust and Julia
-have begun to follow the naming scheme described in `IEE Standard for
+size 32 and 64 respectively.  Newer languages such as Rust and Julia
+have begun to follow the naming scheme described in `IEEE Standard for
 Floating-Point Arithmetic (IEEE 754)
 <https://en.wikipedia.org/wiki/IEEE_floating_point>`_. This describes
 single and double precision numbers as ``Float32`` and ``Float64``;
@@ -186,4 +186,4 @@ Where can I find more answers?
 
 There is an `Unofficial FAQ
 <https://github.com/idris-lang/Idris-dev/wiki/Unofficial-FAQ>`_ on the wiki on
-github which answers more technical questions and may be updated more often.
+GitHub which answers more technical questions and may be updated more often.

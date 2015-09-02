@@ -267,7 +267,7 @@ Next, an Idris file to define our providers:
     bytesToType 2 = Provide (FIntT IT16)
     bytesToType 4 = Provide (FIntT IT32)
     bytesToType 8 = Provide (FIntT IT64)
-    bytesToType _ = Error "Unrecognized integral type."
+    bytesToType _ = Error "Unrecognised integral type."
 
     getDevT : IO (Provider FTy)
     getDevT = map bytesToType sizeOfDevT

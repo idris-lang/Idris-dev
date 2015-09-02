@@ -323,7 +323,7 @@ applying a function to the current state.
 
 Finally, our top level ``treeTag`` function now returns a pair of the
 number of leaves, and the new tree. Resources for labelled effects are
-intialised using the ``:=`` operator (reminisicent of assignment in an
+initialised using the ``:=`` operator (reminiscent of assignment in an
 imperative language):
 
 .. code-block:: idris
@@ -422,7 +422,7 @@ underlying type ``EffM``:
             -> (t -> List EFFECT) -> Type
 
 This is more general than the types we have been writing so far. It is
-parameterised over an underying computation context ``m``, a
+parameterised over an underlying computation context ``m``, a
 result type ``t`` as we have already seen, as well as a ``List EFFECT`` and a
 function type ``t -> List EFFECT``.
 

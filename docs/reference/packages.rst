@@ -92,7 +92,7 @@ Given an Idris package file ``text.ipkg`` it can be used with the Idris compiler
 
 + ``idris --checkpkg test.ipkg`` will type check all modules in the package only. This differs from build that type checks **and** generates code.
 
-+ ``idris --testpkg test.ipkg`` will compile and run any embedded tests you have specified in the ``tests`` paramater.
++ ``idris --testpkg test.ipkg`` will compile and run any embedded tests you have specified in the ``tests`` parameter.
 
 Once the test package has been installed, the command line option
 ``--package test`` makes it accessible (abbreviated to ``-p test``).

@@ -30,8 +30,8 @@ Commonly Used Tactics
 Compute
 -------
 
--  ``compute`` - Normalizes all terms in the goal (note: does not
-   normalize assumptions)
+-  ``compute`` - Normalises all terms in the goal (note: does not
+   normalise assumptions)
 
 ::
 

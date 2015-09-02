@@ -95,7 +95,7 @@ cannot get below O(n) with time complexities.
 One could argue that Idris in fact compiles ``Nat`` via GMP but
 that's a moot point for two reasons:
 
-+ First, whenever we try to index our datastructures with anything
++ First, whenever we try to index our data structures with anything
   else than ``Nat``, the compiler is not going to come to the rescue.
 
 + Second, even with ``Nat``, the GMP integers are *still* there and
@@ -277,7 +277,7 @@ has a slightly different meaning. We need more consistent and
 understandable naming.
 
 If the same type is used in both erased and non-erased context, it
-will retain its fields to accomodate the least common denominator --
+will retain its fields to accommodate the least common denominator --
 the non-erased context. This is particularly troublesome in the case
 of the type of (dependent) pairs, where it actually means that no
 erasure would be performed. We should probably locate disjoint uses of

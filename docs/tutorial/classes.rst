@@ -146,7 +146,7 @@ give the constraints on the type variables left of the fat arrow
     sort : Ord a => List a -> List a
 
 Functions, classes and instances can have multiple
-constraints. Multiple constaints are written in brackets in a comma
+constraints. Multiple constraints are written in brackets in a comma
 separated list, for example:
 
 .. code-block:: idris
@@ -511,7 +511,7 @@ parameter* of the ``MonadState`` class, because it is the parameter
 used to resolve an instance.
 
 
-.. [1] Conor Mcbride and Ross Paterson. 2008. Applicative programming
+.. [1] Conor McBride and Ross Paterson. 2008. Applicative programming
        with effects. J. Funct. Program. 18, 1 (January 2008),
        1-13. DOI=10.1017/S0956796807006326
        http://dx.doi.org/10.1017/S0956796807006326

@@ -40,7 +40,7 @@ lines, each of which begins with ``|||`` (three pipe symbols). The
 first paragraph of the documentation is taken to be an overview, and
 in some contexts, only this overview will be shown. After the
 documentation for the declaration as a whole, it is possible to
-associate documetation with specific named parameters, which can
+associate documentation with specific named parameters, which can
 either be explicitly name or the results of converting free variables
 to implicit parameters.  Annotations are the same as with Javadoc
 annotations, that is for the named parameter ``(n : T)``, the
@@ -75,7 +75,7 @@ italics correctly). A comprehensive set of examples is given below.
     ||| Append some vectors
     ||| @ a the contents of the vectors
     ||| @ xs the first vector (recursive param)
-    ||| @ ys the second vector (not analyzed)
+    ||| @ ys the second vector (not analysed)
     appendV : (xs : Vect n a) -> (ys : Vect m a) -> Vect (add n m) a
     appendV []      ys = ys
     appendV (x::xs) ys = x :: appendV xs ys
@@ -98,7 +98,7 @@ italics correctly). A comprehensive set of examples is given below.
     ||| @ ty the type of the term
     data Term : (ctxt : Vect n Ty) -> (ty : Ty) -> Type where
 
-      ||| The consructor of the unit type
+      ||| The constructor of the unit type
       ||| More comment
       ||| @ ctxt the typing context
       UnitCon : {ctxt : Vect n Ty} -> Term ctxt UNIT

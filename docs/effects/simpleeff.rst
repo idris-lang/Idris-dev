@@ -120,7 +120,7 @@ Aside: Resource Types
 ---------------------
 
 To find out the resource type of an effect, if necessary (for example
-if we want to initialise a resource explicitiy with ``runInit`` rather
+if we want to initialise a resource explicitly with ``runInit`` rather
 than using a default value with ``run``) we can run the
 ``resourceType`` function at the REPL:
 
@@ -161,7 +161,7 @@ Suppose we have a ``String`` which is expected to represent an integer
 in the range ``0`` to ``n``. We can write a function ``parseNumber``
 which returns an ``Int`` if parsing the string returns a number in the
 appropriate range, or throws an exception otherwise. Exceptions are
-paramaterised by an error type:
+parameterised by an error type:
 
 .. code-block:: idris
 
@@ -542,7 +542,7 @@ which gives a random number up to a maximum value:
               | Random Integer
 
 Then, we need to deal with the new case, making sure that we extend
-the list of events to include ``RND``. It doen’t matter where ``RND``
+the list of events to include ``RND``. It doesn't matter where ``RND``
 appears in the list, as long as it is present:
 
 .. code-block:: idris

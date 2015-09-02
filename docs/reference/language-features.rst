@@ -27,7 +27,7 @@ Core Language Features
 -  Heterogeneous equality
 -  ``do`` notation
 -  Idiom brackets
--  Type classes, suppoting default methods and dependencies between
+-  Type classes, supporting default methods and dependencies between
    methods
 -  ``rewrite`` prf ``in`` expr
 -  Metavariables
@@ -35,7 +35,7 @@ Core Language Features
 -  Implicit coercion
 -  ``codata``
 -  Also ``Inf : Type -> Type`` type constructor for mixed data/codata.
-   In fact ``codata`` is implemented by putting recusive arguments under
+   In fact ``codata`` is implemented by putting recursive arguments under
    ``Inf``.
 -  ``syntax`` rules for defining pattern and term syntactic sugar
 -  these are used in the standard library to define

@@ -147,7 +147,7 @@ Recursive Elaboration
 =====================
 
 The elaboration mechanism can be invoked recursively using the ``runElab`` tactic.
-This tactic takes a goal type and an elaboration script as arguments and runs the script in a fresh lexical evironment to create an inhabitant of the provided goal type.
+This tactic takes a goal type and an elaboration script as arguments and runs the script in a fresh lexical environment to create an inhabitant of the provided goal type.
 This is primarily useful for code generation, particularly for generating pattern-matching clauses, where variable scope needs to be one that isn't the present local context.
 
 Learn More

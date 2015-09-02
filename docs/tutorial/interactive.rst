@@ -171,7 +171,7 @@ then ``:ps 96 vzipWith_rhs_1`` will give
     []
 
 This works because it is searching for a ``Vect`` of length 0, of
-which the empty vector is the only possibiliy. Similarly, and perhaps
+which the empty vector is the only possibility. Similarly, and perhaps
 surprisingly, there is only one possibility if we try to solve ``:ps
 97 vzipWith_rhs_2``:
 
@@ -254,5 +254,5 @@ There are also commands to invoke the type checker and evaluator:
 - ``\r`` reloads and type checks the buffer.
 
 Corresponding commands are also available in the Emacs mode. Support
-for other editors can be added in a relatively straighforward manner
+for other editors can be added in a relatively straightforward manner
 by using ``idris –client``.

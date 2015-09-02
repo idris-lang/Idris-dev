@@ -60,8 +60,8 @@ or
     data List a = Nil | (::) a (List a)
 
 The second, more general kind of data type, is defined using Agda or
-GADT style syntax. This syntax defines a data type that is parameterized
-by some values (in the ``Vect`` exampe, a value of type ``Nat`` and a
+GADT style syntax. This syntax defines a data type that is parameterised
+by some values (in the ``Vect`` example, a value of type ``Nat`` and a
 value of type ``Type``).
 
 .. code:: idris
