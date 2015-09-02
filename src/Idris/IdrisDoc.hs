@@ -221,6 +221,7 @@ referredNss (n, Just d, _) =
   where getFunDocs (FunDoc f)                  = [f]
         getFunDocs (DataDoc f fs)              = f:fs
         getFunDocs (ClassDoc _ _ fs _ _ _ _ _) = fs
+        getFunDocs (RecordDoc _ _ f fs _)      = f:fs
         getFunDocs (NamedInstanceDoc _ fd)     = [fd]
         getFunDocs (ModDoc _ _)                = []
         types (FD _ _ args t _)                = t:(map second args)
@@ -594,6 +595,23 @@ createOtherDoc ist (ClassDoc n docstring fds _ _ _ _ c) = do
                          in  if (head n') `elem` opChars
                                 then '(':(n' ++ ")")
                                 else n'
+
+createOtherDoc ist (RecordDoc n doc ctor projs params) = do
+  H.dt ! (A.id $ toValue $ show n) $ do
+    H.span ! class_ "word" $ do "record"; nbsp
+    H.span ! class_ "name type"
+           ! title (toValue $ show n)
+           $ toHtml $ name $ nsroot n
+    H.span ! class_ "signature" $ nbsp
+  H.dd $ do
+    (if nullDocstring doc then Empty else Docstrings.renderHtml doc)
+    H.dl ! class_ "decls" $ createFunDoc ist ctor
+    H.dl ! class_ "decls" $ forM_ projs (createFunDoc ist)
+  where name (NS n ns) = show (NS (sUN $ name n) ns)
+        name n         = let n' = show n
+                         in if (head n') `elem` opChars
+                               then '(':(n' ++ ")")
+                               else n'
 
 createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
   H.dt ! (A.id $ toValue $ show n) $ do

@@ -41,6 +41,10 @@ data Docs' d = FunDoc (FunDoc' d)
                         [PTerm] -- subclasses
                         [PTerm] -- superclasses
                         (Maybe (FunDoc' d)) -- explicit constructor
+             | RecordDoc Name d -- record docs
+                         (FunDoc' d) -- data constructor docs
+                         [FunDoc' d] -- projection docs
+                         [(Name, PTerm, Maybe d)] -- parameters with type and doc
              | NamedInstanceDoc Name (FunDoc' d) -- name is class
              | ModDoc [String] -- Module name
                       d
@@ -209,6 +213,33 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
          then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
          else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
+pprintDocs ist (RecordDoc n doc ctor projs params)
+  = nest 4 (text "Record" <+> prettyName True (ppopt_impl ppo) [] n <>
+             if nullDocstring doc
+                then empty
+                else line <>
+                     renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc)
+    -- Parameters
+    <$> (if null params
+            then empty
+            else line <> nest 4 (text "Parameters:" <$> prettyParameters) <> line)
+    -- Constructor
+    <$> nest 4 (text "Constructor:" <$> pprintFDWithoutTotality ist False ctor)
+    -- Projections
+    <$> nest 4 (text "Projections:" <$> vsep (map (pprintFDWithoutTotality ist False) projs))
+  where
+    ppo = ppOptionIst ist
+    infixes = idris_infixes ist
+
+    pNames  = [n | (n,_,_) <- params]
+    params' = zip pNames (repeat False)
+
+    prettyParameters =
+      if any isJust [d | (_,_,d) <- params]
+         then vsep (map (\(n,pt,d) -> prettyParam (n,pt) <+> maybe empty (showDoc ist) d) params)
+         else hsep (punctuate comma (map prettyParam [(n,pt) | (n,pt,_) <- params]))
+    prettyParam (n,pt) = prettyName True False params' n <+> text ":" <+> pprintPTerm ppo params' [] infixes pt
+
 pprintDocs ist (NamedInstanceDoc _cls doc)
    = nest 4 (text "Named instance:" <$> pprintFDWithoutTotality ist True doc)
 
@@ -234,6 +265,8 @@ getDocs n w
    = do i <- getIState
         docs <- if | Just ci <- lookupCtxtExact n (idris_classes i)
                      -> docClass n ci
+                   | Just ri <- lookupCtxtExact n (idris_records i)
+                     -> docRecord n ri
                    | Just ti <- lookupCtxtExact n (idris_datatypes i)
                      -> docData n ti
                    | Just class_ <- classNameForInst i n
@@ -295,6 +328,17 @@ docClass n ci
       = isSubclass pt
     isSubclass _
       = False
+
+docRecord :: Name -> RecordInfo -> Idris Docs
+docRecord n ri
+  = do i <- getIState
+       let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
+           docstr = maybe emptyDocstring fst docStrings
+           params = map (\(pn,pt) -> (pn, pt, docStrings >>= (lookup pn . snd)))
+                        (record_parameters ri)
+       pdocs <- mapM docFun (record_projections ri)
+       ctorDocs <- docFun $ record_constructor ri
+       return $ RecordDoc n docstr ctorDocs pdocs params
 
 docFun :: Name -> Idris FunDoc
 docFun n
