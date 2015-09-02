@@ -901,10 +901,10 @@ Records
 
 *Records* are data types which collect several values (the record's
 *fields*) together. Idris provides syntax for defining records and
-*automatically generating field access and update functions*. Unlike
-*the syntax used for data structures, records in Idris follow a
-*different syntax to that seen with Haskell. For example, we can
-*represent a person's name and age in a record:
+automatically generating field access and update functions. Unlike
+the syntax used for data structures, records in Idris follow a
+different syntax to that seen with Haskell. For example, we can
+represent a person's name and age in a record:
 
 .. code-block:: idris
 
