@@ -27,7 +27,7 @@ following places:
    protocol description language.
 
 The inspiration for the ``Effects`` library was Bauer and Pretnar’s
-Eff language [2]_, which describes a langauge based on algebraic
+Eff language [2]_, which describes a language based on algebraic
 effects and handlers.  Other recent languages and libraries have also
 been built on this ideas, for example [3]_ and [4]_. The theoretical
 foundations are also well-studied see [5]_, [6]_, [7]_, [8]_.
