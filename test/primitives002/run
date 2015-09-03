@@ -2,8 +2,6 @@
 
 HEAD='module Main
 
-import Data.Floats
-
 strtake : Nat -> String -> String
 strtake n str = pack (take n (unpack str))
 
