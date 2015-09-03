@@ -55,7 +55,7 @@ Given an Idris package file ``maths.ipkg`` it can be used with the Idris compile
   generates code.
 
 + ``idris --testpkg maths.ipkg`` will compile and run any embedded
-  tests you have specified in the ``tests`` paramater. More
+  tests you have specified in the ``tests`` parameter. More
   information about testing is given in the next section.
 
 Once the maths package has been installed, the command line option

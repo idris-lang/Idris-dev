@@ -13,7 +13,7 @@ numbers. Recall that they are defined recursively, as follows:
          S : Nat -> Nat
 
 A *total* function over natural numbers must both terminate, and cover
-all possible inputs. Idris checks functions for totality by cheking that
+all possible inputs. Idris checks functions for totality by checking that
 all inputs are covered, and that all recursive calls are on
 *structurally smaller* values (so recursion will always reach a base
 case). Recalling ``plus``:

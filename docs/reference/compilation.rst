@@ -51,7 +51,7 @@ Idris supports the logging at various different levels of verbosity: 1 to 10.
 + Level 0: Show no logging output. Default level
 + Level 1: High level details of the compilation process.
 + Level 2: Provides details of the coverage checking, and further details the elaboration process specifically: Class, Clauses, Data, Term, and Types,
-+ Level 3: Provides details of compilation of the IRTS, erasue, parsing, case splitting, and further details elaboration of: Instances, Providers, and Values.
++ Level 3: Provides details of compilation of the IRTS, erasure, parsing, case splitting, and further details elaboration of: Instances, Providers, and Values.
 + Level 4: Provides further details on: Erasure, Coverage Checking, Case splitting, and elaboration of clauses.
 + Level 5: Provides details on the prover, and further details elaboration (adding declarations) and compilation of the IRTS.
 + Level 6: Further details elaboration and coverage checking.

@@ -120,7 +120,7 @@ First, create a template definition with ``\d``:
     plus_commutes_Z = ?plus_commutes_Z_rhs
 
 Since we are going to write this by induction on ``m``, which is
-implciit, we will need to bring ``m`` into scope manually:
+implicit, we will need to bring ``m`` into scope manually:
 
 .. code-block:: idris
 

@@ -111,8 +111,8 @@ other required lemma, ``plusredZ_S``:
 In this case, the goal is a function type, using ``k`` (the argument
 accessible by pattern matching) and ``ih`` — the local variable
 containing the result of the recursive call. We can introduce these as
-premisses using the ``intro`` tactic twice (or ``intros``, which
-introduces all arguments as premisses). This gives:
+premises using the ``intro`` tactic twice (or ``intros``, which
+introduces all arguments as premises). This gives:
 
 .. code-block:: idris
 

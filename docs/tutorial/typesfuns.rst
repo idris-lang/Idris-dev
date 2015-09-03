@@ -40,7 +40,7 @@ modules and the definitions in each module each have their own
 namespace. This is discussed further in Section
 :ref:`sect-namespaces`). When writing Idris programs both the order in which
 definitions are given and indentation are significant. Functions and
-data types must be defined before use, incidently each definition must
+data types must be defined before use, incidentally each definition must
 have a type declaration, for example see ``x : Int``, ``foo :
 String``, from the above listing. New declarations must begin at the
 same level of indentation as the preceding declaration.
@@ -901,10 +901,10 @@ Records
 
 *Records* are data types which collect several values (the record's
 *fields*) together. Idris provides syntax for defining records and
-*automatically generating field access and update functions*. Unlike
-*the syntax used for data structures, records in Idris follow a
-*different syntax to that seen with Haskell. For example, we can
-*represent a person's name and age in a record:
+automatically generating field access and update functions. Unlike
+the syntax used for data structures, records in Idris follow a
+different syntax to that seen with Haskell. For example, we can
+represent a person's name and age in a record:
 
 .. code-block:: idris
 
@@ -1024,7 +1024,7 @@ Foe example:
         className : String
 
 **Note** that it is no longer possible to use the ``addStudent``
-method from earlier as that would change the size of the class. To provide an add student the function must specify in the type that the size of the class has been increased by one. As the size if specified using natural numbers, the new value can be incremeated using the successor constructor.
+method from earlier as that would change the size of the class. To provide an add student the function must specify in the type that the size of the class has been increased by one. As the size if specified using natural numbers, the new value can be incremented using the successor constructor.
 
 .. code-block:: idris
 

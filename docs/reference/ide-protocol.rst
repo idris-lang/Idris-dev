@@ -40,7 +40,7 @@ The syntax is::
 where ``NUM`` is either 0 or a positive integer, ``ALPHA`` is an alphabetical character, and ``STR`` is the contents of a string, with ``"`` escaped by a backslash.
 The atom ``nil`` is accepted instead of ``()`` for compatibility with some regexp pretty-printing routines.
 
-The state of the Idris process is mainly the active file, which needs to be kept synchronized between the editor and Idris.
+The state of the Idris process is mainly the active file, which needs to be kept synchronised between the editor and Idris.
 This is achieved by the already seen ``:load-file`` command.
 
 The available commands include:
@@ -184,12 +184,12 @@ The following keys are available:
     states that the region is antiquoted.
 
   ``tt-term``
-    A serialized representation of the Idris core term corresponding to the region of text.
+    A serialised representation of the Idris core term corresponding to the region of text.
 
 Source Code Highlighting
 ------------------------
 
-Idris supports instructing editors how to color their code.
+Idris supports instructing editors how to colour their code.
 When elaborating source code or REPL input, Idris will locate regions of the source code corresponding to names, and emit information about these names using the same metadata as output highlighting.
 
 These messages will arrive as replies to the command that caused elaboration to occur, such as ``:load-file`` or ``:interpret``.
