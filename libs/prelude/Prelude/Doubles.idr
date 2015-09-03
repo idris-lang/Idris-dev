@@ -1,4 +1,7 @@
-module Data.Floats
+module Prelude.Doubles 
+
+import Builtins
+import Prelude.Classes
 
 %access public
 %default total
@@ -6,54 +9,55 @@ module Data.Floats
 %include C "math.h"
 %lib C "m"
 
-pi : Float
+pi : Double
 pi = 3.14159265358979323846 
 
-euler : Float
+euler : Double
 euler = 2.7182818284590452354
 
-exp : Float -> Float
+exp : Double -> Double
 exp x = prim__floatExp x
 
-log : Float -> Float
+log : Double -> Double
 log x = prim__floatLog x
 
-sin : Float -> Float
+sin : Double -> Double
 sin x = prim__floatSin x
 
-cos : Float -> Float
+cos : Double -> Double
 cos x = prim__floatCos x
 
-tan : Float -> Float
+tan : Double -> Double
 tan x = prim__floatTan x
 
-asin : Float -> Float
+asin : Double -> Double
 asin x = prim__floatASin x
 
-acos : Float -> Float
+acos : Double -> Double
 acos x = prim__floatACos x
 
-atan : Float -> Float
+atan : Double -> Double
 atan x = prim__floatATan x
 
-atan2 : Float -> Float -> Float
+atan2 : Double -> Double -> Double
 atan2 y x = atan (y/x)
 
-sinh : Float -> Float
+sinh : Double -> Double
 sinh x = (exp x - exp (-x)) / 2
 
-cosh : Float -> Float
+cosh : Double -> Double
 cosh x = (exp x + exp (-x)) / 2
 
-tanh : Float -> Float
+tanh : Double -> Double
 tanh x = sinh x / cosh x
 
-sqrt : Float -> Float
+sqrt : Double -> Double
 sqrt x = prim__floatSqrt x
 
-floor : Float -> Float
+floor : Double -> Double
 floor x = prim__floatFloor x
 
-ceiling : Float -> Float
+ceiling : Double -> Double
 ceiling x = prim__floatCeil x
+
 

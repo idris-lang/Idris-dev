@@ -5,8 +5,6 @@
 
 module Data.Complex
 
-import Data.Floats
-
 ------------------------------ Rectangular form
 
 infix 6 :+

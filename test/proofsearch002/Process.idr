@@ -339,7 +339,7 @@ removeConn cl acc [] = (cl, reverse acc)
 removeConn cl acc ((pid, ConnectMsg) :: xs) 
      = removeConn (cl + 1) acc xs
 removeConn cl acc ((pid, CloseMsg) :: xs) 
-     = removeConn (cl - 1) acc xs
+     = removeConn (minus cl 1) acc xs
 removeConn cl acc (x :: xs) = removeConn cl (x :: acc) xs
 
 -- Remove the first thing in the event list which is a request, if it

@@ -15,7 +15,7 @@ modules = System,
           Data.Bits, Data.Mod2,
           Data.Fin, Data.Vect, Data.VectType,
           Data.HVect, Data.Vect.Quantifiers,
-          Data.Floats, Data.Complex,
+          Data.Complex,
           Data.Erased, Data.List,
           Data.So,
 

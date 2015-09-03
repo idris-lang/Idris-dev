@@ -27,6 +27,7 @@ import public Prelude.Providers
 import public Prelude.Show
 import public Prelude.Interactive
 import public Prelude.File
+import public Prelude.Doubles
 import public Decidable.Equality
 import public Language.Reflection
 import public Language.Reflection.Errors

@@ -8,7 +8,6 @@ tlist = [1, 2, 3, 4, 5]
 
 main : IO ()
 main = do printLn (abs (-8))
-          printLn (abs (S Z))
           printLn (span isAlpha tstr)
           printLn (break isDigit tstr)
           printLn (span (\x => x < 3) tlist)
