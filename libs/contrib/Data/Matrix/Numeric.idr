@@ -24,10 +24,13 @@ infixr 7 <&>  -- matrix tensor product
 
 instance Num a => Num (Vect n a) where
   (+) = zipWith (+)
-  (-) = zipWith (+)
   (*) = zipWith (*)
-  abs = id
   fromInteger n = replicate _ (fromInteger n)
+
+instance Neg a => Neg (Vect n a) where
+  (-) = zipWith (-)
+  abs = map abs
+  negate = map negate
 
 -----------------------------------------------------------------------
 --                        Vector functions
@@ -88,7 +91,7 @@ basis i = replaceAt i 1 0
 (><) x y = col x <> row y
 
 ||| Matrix commutator
-(<<>>) : Num a => Matrix n n a -> Matrix n n a -> Matrix n n a
+(<<>>) : Neg a => Matrix n n a -> Matrix n n a -> Matrix n n a
 (<<>>) m1 m2 = (m1 <> m2) - (m2 <> m1)
 
 ||| Matrix anti-commutator
@@ -112,17 +115,17 @@ blockDiag {n} {m} g h = map (++ replicate m 0) g ++ map ((replicate n 0) ++) h
 -----------------------------------------------------------------------
 
 ||| Alternating sum
-altSum : Num a => Vect n a -> a
+altSum : Neg a => Vect n a -> a
 altSum (x::y::zs) = (x - y) + altSum zs
 altSum [x]        = x
 altSum []         = 0
 
 ||| Determinant of a 2-by-2 matrix
-det2 : Num a => Matrix 2 2 a -> a
+det2 : Neg a => Matrix 2 2 a -> a
 det2 [[x1,x2],[y1,y2]] = x1*y2 - x2*y1
 
 ||| Determinant of a square matrix
-det : Num a => Matrix (S (S n)) (S (S n)) a -> a
+det : Neg a => Matrix (S (S n)) (S (S n)) a -> a
 det {n} m = case n of
   Z     => det2 m
   (S k) => altSum . map (\c => indices FZ c m * det (subMatrix FZ c m))

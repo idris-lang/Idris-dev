@@ -28,11 +28,6 @@ instance Show ZZ where
   show (Pos n) = show n
   show (NegS n) = "-" ++ show (S n)
 
-instance Neg ZZ where
-  negate (Pos Z)     = Pos Z
-  negate (Pos (S n)) = NegS n
-  negate (NegS n)    = Pos (S n)
-
 negNat : Nat -> ZZ
 negNat Z = Pos Z
 negNat (S n) = NegS n
@@ -50,10 +45,6 @@ plusZ (Pos n) (Pos m) = Pos (n + m)
 plusZ (NegS n) (NegS m) = NegS (S (n + m))
 plusZ (Pos n) (NegS m) = minusNatZ n (S m)
 plusZ (NegS n) (Pos m) = minusNatZ m (S n)
-
-||| Subtract two `ZZ`s. Consider using `(-) {a=ZZ}`.
-subZ : ZZ -> ZZ -> ZZ
-subZ n m = plusZ n (negate m)
 
 instance Eq ZZ where
   (Pos n) == (Pos m) = n == m
@@ -85,10 +76,22 @@ instance Cast Nat ZZ where
 
 instance Num ZZ where
   (+) = plusZ
-  (-) = subZ
   (*) = multZ
-  abs = cast . absZ
   fromInteger = fromInt
+
+mutual
+  instance Neg ZZ where
+    negate (Pos Z)     = Pos Z
+    negate (Pos (S n)) = NegS n
+    negate (NegS n)    = Pos (S n)
+  
+    (-) = subZ
+    abs = cast . absZ
+
+  ||| Subtract two `ZZ`s. Consider using `(-) {a=ZZ}`.
+  subZ : ZZ -> ZZ -> ZZ
+  subZ n m = plusZ n (negate m)
+
 
 instance Cast ZZ Integer where
   cast (Pos n) = cast n

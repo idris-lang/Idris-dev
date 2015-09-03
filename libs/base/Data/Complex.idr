@@ -57,20 +57,21 @@ phase (x:+y) = atan2 y x
 
 ------------------------------ Conjugate
 
-conjugate : Num a => Complex a -> Complex a
+conjugate : Neg a => Complex a -> Complex a
 conjugate (r:+i) = (r :+ (0-i))
 
 instance Functor Complex where
-  map f (r :+ i) = f r :+ f i
-
-instance Neg a => Neg (Complex a) where
-  negate = map negate
+    map f (r :+ i) = f r :+ f i
 
 -- We can't do "instance Num a => Num (Complex a)" because
 -- we need "abs" which needs "magnitude" which needs "sqrt" which needs Float
 instance Num (Complex Float) where
     (+) (a:+b) (c:+d) = ((a+c):+(b+d))
-    (-) (a:+b) (c:+d) = ((a-c):+(b-d))
     (*) (a:+b) (c:+d) = ((a*c-b*d):+(b*c+a*d))
     fromInteger x = (fromInteger x:+0)
+
+instance Neg (Complex Float) where
+    negate = map negate
+    (-) (a:+b) (c:+d) = ((a-c):+(b-d))
     abs (a:+b) = (magnitude (a:+b):+0)
+

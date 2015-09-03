@@ -42,7 +42,7 @@ natToBits {n=n} x with (n)
     | S (S (S _)) = natToBits' {n=3} (prim__truncInt_B64 0) x
 
 getPad : Nat -> machineTy n
-getPad n = natToBits ((bitsUsed (nextBytes n)) - n)
+getPad n = natToBits (minus (bitsUsed (nextBytes n)) n)
 
 public
 data Bits : Nat -> Type where

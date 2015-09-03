@@ -134,10 +134,10 @@ natRange n = List.reverse (go n)
 total natEnumFromThen : Nat -> Nat -> Stream Nat
 natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
 total natEnumFromTo : Nat -> Nat -> List Nat
-natEnumFromTo n m = map (plus n) (natRange ((S m) - n))
+natEnumFromTo n m = map (plus n) (natRange (minus (S m) n))
 total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
 natEnumFromThenTo _ Z       _ = []
-natEnumFromThenTo n (S inc) m = map (plus n . (* (S inc))) (natRange (S (divNatNZ (m - n) (S inc) SIsNotZ)))
+natEnumFromThenTo n (S inc) m = map (plus n . (* (S inc))) (natRange (S (divNatNZ (minus m n) (S inc) SIsNotZ)))
 
 class Enum a where
   total pred : a -> a

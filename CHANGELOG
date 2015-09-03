@@ -9,7 +9,11 @@ Language updates
 Library updates
 ---------------
 
-[None so far]
+* The 'Neg' class now represents numeric types which can be negative. As
+such, the (-) operator and 'abs' have been moved there from 'Num'.
+* A special version of (-) on 'Nat' requires that the second argument is
+smaller than or equal to the first. 'minus' retains the old behaviour,
+returning Z if there is an underflow.
 
 Tool updates
 ------------

@@ -40,9 +40,7 @@ instance Ord (Mod2 n) where
 
 instance Num (Mod2 n) where
     (+) = modBin plus
-    (-) = modBin minus
     (*) = modBin times
-    abs = id
     fromInteger = intToMod
 
 instance Cast (Mod2 n) (Bits n) where

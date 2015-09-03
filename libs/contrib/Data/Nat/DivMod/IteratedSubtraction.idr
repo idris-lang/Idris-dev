@@ -47,7 +47,7 @@ ltToLTE LTSucc      = lteRefl
 ltToLTE (LTStep lt) = lteSuccRight $ ltToLTE lt
 
 ||| Subtraction gives a result that is actually smaller.
-minusLT' : (x,y : Nat) -> x - y `LT'` S x
+minusLT' : (x,y : Nat) -> minus x y `LT'` S x
 minusLT' Z     y = LTSucc
 minusLT' (S k) Z = LTSucc
 minusLT' (S k) (S j) = LTStep (minusLT' k j)

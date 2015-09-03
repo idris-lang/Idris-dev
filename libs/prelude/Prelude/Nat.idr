@@ -180,6 +180,9 @@ toIntNat n = toIntNat' n 0 where
 	toIntNat' Z     x = x
 	toIntNat' (S n) x = toIntNat' n (x + 1)
 
+(-) : (m : Nat) -> (n : Nat) -> {auto smaller : LTE n m} -> Nat
+(-) m n {smaller} = minus m n
+
 --------------------------------------------------------------------------------
 -- Type class instances
 --------------------------------------------------------------------------------
@@ -200,10 +203,7 @@ instance Ord Nat where
 
 instance Num Nat where
   (+) = plus
-  (-) = minus
   (*) = mult
-
-  abs x = x
 
   fromInteger = fromIntegerNat
 
@@ -307,7 +307,7 @@ modNatNZ left (S right) _ = mod' left left right
       if lte centre right then
         centre
       else
-        mod' left (centre - (S right)) right
+        mod' left (minus centre (S right)) right
 
 partial
 modNat : Nat -> Nat -> Nat
@@ -323,7 +323,7 @@ divNatNZ left (S right) _ = div' left left right
       if lte centre right then
         Z
       else
-        S (div' left (centre - (S right)) right)
+        S (div' left (minus centre (S right)) right)
 
 partial
 divNat : Nat -> Nat -> Nat
@@ -544,34 +544,34 @@ multOneRightNeutral (S left) =
 
 -- Minus
 total minusSuccSucc : (left : Nat) -> (right : Nat) ->
-  (S left) - (S right) = left - right
+  minus (S left) (S right) = minus left right
 minusSuccSucc left right = Refl
 
-total minusZeroLeft : (right : Nat) -> 0 - right = Z
+total minusZeroLeft : (right : Nat) -> minus 0 right = Z
 minusZeroLeft right = Refl
 
-total minusZeroRight : (left : Nat) -> left - 0 = left
+total minusZeroRight : (left : Nat) -> minus left 0 = left
 minusZeroRight Z        = Refl
 minusZeroRight (S left) = Refl
 
-total minusZeroN : (n : Nat) -> Z = n - n
+total minusZeroN : (n : Nat) -> Z = minus n n
 minusZeroN Z     = Refl
 minusZeroN (S n) = minusZeroN n
 
-total minusOneSuccN : (n : Nat) -> S Z = (S n) - n
+total minusOneSuccN : (n : Nat) -> S Z = minus (S n) n
 minusOneSuccN Z     = Refl
 minusOneSuccN (S n) = minusOneSuccN n
 
-total minusSuccOne : (n : Nat) -> S n - 1 = n
+total minusSuccOne : (n : Nat) -> minus (S n) 1 = n
 minusSuccOne Z     = Refl
 minusSuccOne (S n) = Refl
 
-total minusPlusZero : (n : Nat) -> (m : Nat) -> n - (n + m) = Z
+total minusPlusZero : (n : Nat) -> (m : Nat) -> minus n (n + m) = Z
 minusPlusZero Z     m = Refl
 minusPlusZero (S n) m = minusPlusZero n m
 
 total minusMinusMinusPlus : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
-  left - centre - right = left - (centre + right)
+  minus (minus left centre) right = minus left (centre + right)
 minusMinusMinusPlus Z        Z          right = Refl
 minusMinusMinusPlus (S left) Z          right = Refl
 minusMinusMinusPlus Z        (S centre) right = Refl
@@ -581,7 +581,7 @@ minusMinusMinusPlus (S left) (S centre) right =
             Refl
 
 total plusMinusLeftCancel : (left : Nat) -> (right : Nat) -> (right' : Nat) ->
-  (left + right) - (left + right') = right - right'
+  minus (left + right) (left + right') = minus right right'
 plusMinusLeftCancel Z right right'        = Refl
 plusMinusLeftCancel (S left) right right' =
   let inductiveHypothesis = plusMinusLeftCancel left right right' in
@@ -589,7 +589,7 @@ plusMinusLeftCancel (S left) right right' =
             Refl
 
 total multDistributesOverMinusLeft : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
-  (left - centre) * right = (left * right) - (centre * right)
+  (minus left centre) * right = minus (left * right) (centre * right)
 multDistributesOverMinusLeft Z        Z          right = Refl
 multDistributesOverMinusLeft (S left) Z          right =
     rewrite (minusZeroRight (plus right (mult left right))) in Refl
@@ -601,7 +601,7 @@ multDistributesOverMinusLeft (S left) (S centre) right =
             Refl
 
 total multDistributesOverMinusRight : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
-  left * (centre - right) = (left * centre) - (left * right)
+  left * (minus centre right) = minus (left * centre) (left * right)
 multDistributesOverMinusRight left centre right =
     rewrite multCommutative left (minus centre right) in
     rewrite multDistributesOverMinusLeft centre right left in
@@ -658,7 +658,7 @@ total predSucc : (n : Nat) -> pred (S n) = n
 predSucc n = Refl
 
 total minusSuccPred : (left : Nat) -> (right : Nat) ->
-  left - (S right) = pred (left - right)
+  minus left (S right) = pred (minus left right)
 minusSuccPred Z        right = Refl
 minusSuccPred (S left) Z =
     rewrite minusZeroRight left in Refl 
