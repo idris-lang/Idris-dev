@@ -334,7 +334,7 @@ docRecord n ri
   = do i <- getIState
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
            docstr = maybe emptyDocstring fst docStrings
-           params = map (\(pn,pt) -> (pn, pt, docStrings >>= (lookup pn . snd)))
+           params = map (\(pn,pt) -> (pn, pt, docStrings >>= (lookup (nsroot pn) . snd)))
                         (record_parameters ri)
        pdocs <- mapM docFun (record_projections ri)
        ctorDocs <- docFun $ record_constructor ri
