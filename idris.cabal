@@ -991,9 +991,9 @@ Executable idris
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
-Executable idris-c
+Executable idris-codegen-c
   Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-c
+  hs-source-dirs: codegen/idris-codegen-c
 
   Build-depends:  idris
                 , base
@@ -1004,9 +1004,9 @@ Executable idris-c
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
-Executable idris-javascript
+Executable idris-codegen-javascript
   Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-javascript
+  hs-source-dirs: codegen/idris-codegen-javascript
 
   Build-depends:  idris
                 , base
@@ -1017,9 +1017,9 @@ Executable idris-javascript
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
-Executable idris-node
+Executable idris-codegen-node
   Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-node
+  hs-source-dirs: codegen/idris-codegen-node
 
   Build-depends:  idris
                 , base
