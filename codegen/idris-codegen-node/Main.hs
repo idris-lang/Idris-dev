@@ -18,7 +18,8 @@ data Opts = Opts { really :: Bool
                  , output :: FilePath
                  }
 
-showUsage = do putStrLn "Usage: idris-codegen-node --yes-really <ibc-files> [-o <output-file>]"
+showUsage = do putStrLn "A code generator which is intended to be called by the compiler, not by a user.\n"
+               putStrLn "Usage: idris-codegen-node --yes-really <ibc-files> [-o <output-file>]"
                exitWith ExitSuccess
 
 getOpts :: IO Opts
@@ -42,6 +43,7 @@ main = do opts <- getOpts
           if (null (inputs opts))
              then showUsage
              else if (not $ really opts)
-                     then do putStrLn "This is not what you may expect it is."
-                             showUsage
+                     then do putStrLn "This code generator is intended to be called by the Idris compiler. \
+                                      \Please pass Idris the '--codegen' flag to choose a backend."
+                             exitWith ExitSuccess
                      else runMain (jsMain opts)
