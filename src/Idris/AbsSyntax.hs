@@ -2120,6 +2120,7 @@ shadow n n' t = sm t where
     sm (PHidden x) = PHidden (sm x)
     sm (PUnifyLog x) = PUnifyLog (sm x)
     sm (PNoImplicits x) = PNoImplicits (sm x)
+    sm (PCoerced t) = PCoerced (sm t)
     sm x = x
 
 -- | Rename any binders which are repeated (so that we don't have to mess
@@ -2231,7 +2232,8 @@ mkUniqueNames env shadows tm
   mkUniq nmap (PTactics ts) = liftM PTactics (mapM (mkUniqT nmap) ts)
   mkUniq nmap (PRunElab fc ts ns) = liftM (\tm -> PRunElab fc tm ns) (mkUniq nmap ts)
   mkUniq nmap (PConstSugar fc tm) = liftM (PConstSugar fc) (mkUniq nmap tm)
-  mkUniq nmap t = return (shadowAll (M.toList nmap) t)
+  mkUniq nmap (PCoerced tm) = liftM PCoerced (mkUniq nmap tm)
+  mkUniq nmap t = return $ shadowAll (M.toList nmap) t
     where
       shadowAll [] t = t
       shadowAll ((n, n') : ns) t = shadow n n' (shadowAll ns t)

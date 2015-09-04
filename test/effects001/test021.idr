@@ -23,7 +23,8 @@ readFile = readAcc [] where
 
 testFile : FileIO () ()
 testFile = do True <- open "testFile" Read  | False => putStrLn "Error!"
-              putStrLn (show !readFile)
+              fcontents <- readFile
+              putStrLn (show fcontents)
               close
               putStrLn (show !(Count :- get))
 

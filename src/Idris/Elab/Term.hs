@@ -442,6 +442,7 @@ elab ist info emode opts fn tm
 --              trace (show (map showHd as')) $ 
              ty <- goal
              case as' of
+                  [] -> lift $ tfail $ NoValidAlts (map showHd as)
                   [x] -> elab' ina fc x
                   -- If there's options, try now, and if that fails, postpone
                   -- to later.
@@ -458,18 +459,24 @@ elab ist info emode opts fn tm
                                        [x] -> elab' ina fc x
                                        _ -> tryAll (zip (map (elab' ina fc) as'') 
                                                         (map showHd as'')))
-        where showHd (PApp _ (PRef _ _ n) _) = n
+        where showHd (PApp _ (PRef _ _ (UN l)) [_, _, arg])
+                 | l == txt "Delay" = showHd (getTm arg)
+              showHd (PApp _ (PRef _ _ n) _) = n
               showHd (PRef _ _ n) = n
               showHd (PApp _ h _) = showHd h
               showHd x = NErased -- We probably should do something better than this here
 
               doPrune as = 
-                  do hnf_compute
+                  do compute
                      ty <- goal
-                     let (tc, _) = unApply ty
+                     let (tc, _) = unApply (unDelay ty)
                      env <- get_env
                      return $ pruneByType env tc ist as
 
+              unDelay t | (P _ (UN l) _, [_, arg]) <- unApply t,
+                          l == txt "Lazy'" = unDelay arg
+                        | otherwise = t
+                 
 
               isAmbiguous (CantResolveAlts _) = delayok
               isAmbiguous (Elaborating _ _ e) = isAmbiguous e
@@ -492,20 +499,21 @@ elab ist info emode opts fn tm
                              solveAutos ist fn False) (trySeq' deferr xs) True
     elab' ina fc (PAlternative ms TryImplicit (orig : alts)) = do
         env <- get_env
+        compute
         ty <- goal
         let doelab = elab' ina fc orig
         tryCatch doelab
             (\err -> 
                 if recoverableErr err
                    then -- trace ("NEED IMPLICIT! " ++ show orig ++ "\n" ++
-                        --       show alts ++ "\n" ++
-                        --       showQuick err) $
+                        --      show alts ++ "\n" ++
+                        --      showQuick err) $
                     -- Prune the coercions so that only the ones
                     -- with the right type to fix the error will be tried!
                     case pruneAlts err alts env of
                          [] -> lift $ tfail err
-                         alts' -> 
-                             try' (elab' ina fc (PAlternative [] (ExactlyOne False) alts'))
+                         alts' -> do
+                             try' (elab' ina fc (PAlternative ms (ExactlyOne False) alts'))
                                   (lift $ tfail err) -- take error from original if all fail
                                   True
                    else lift $ tfail err)
@@ -529,8 +537,8 @@ elab ist info emode opts fn tm
                    _ -> filter isLend alts -- special case hack for 'Borrowed'
         pruneAlts (ElaboratingArg _ _ _ e) alts env = pruneAlts e alts env
         pruneAlts (At _ e) alts env = pruneAlts e alts env
-        pruneAlts (NoValidAlts _) alts env = alts
-        pruneAlts _ alts _ = filter isLend alts
+        pruneAlts (NoValidAlts as) alts env = alts
+        pruneAlts err alts _ = filter isLend alts
 
         hasArg n env ap | isLend ap = True -- special case hack for 'Borrowed'
         hasArg n env (PApp _ (PRef _ _ a) _) 
@@ -538,7 +546,8 @@ elab ist info emode opts fn tm
                     Just ty -> let args = map snd (getArgTys (normalise (tt_ctxt ist) env ty)) in
                                    any (fnIs n) args
                     Nothing -> False
-        hasArg n _ _ = False
+        hasArg n env (PAlternative _ _ as) = any (hasArg n env) as
+        hasArg n _ tm = False
 
         isLend (PApp _ (PRef _ _ l) _) = l == sNS (sUN "lend") ["Ownership"]
         isLend _ = False
@@ -1376,7 +1385,7 @@ elab ist info emode opts fn tm
     notImplicitable (PRef _ _ n)
         | [opts] <- lookupCtxt n (idris_flags ist)
             = NoImplicit `elem` opts
-    notImplicitable (PAlternative _ (ExactlyOne _) as) = any notImplicitable as
+    notImplicitable (PAlternative _ _ as) = any notImplicitable as
     -- case is tricky enough without implicit coercions! If they are needed,
     -- they can go in the branches separately.
     notImplicitable (PCase _ _ _) = True
@@ -1420,9 +1429,11 @@ elab ist info emode opts fn tm
                          (PCoerced tm, _) -> tm
                          (_, []) -> t
                          (_, cs) -> PAlternative [] TryImplicit 
-                                        (t : map (mkCoerce env t) cs)
+                                         (t : map (mkCoerce env t) cs)
            return t'
        where
+         mkCoerce env (PAlternative ms aty tms) n
+             = PAlternative ms aty (map (\t -> mkCoerce env t n) tms)
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in
                                 addImplBound ist (map fst env)
                                   (PApp fc (PRef fc [] n) [pexp (PCoerced t)])
@@ -1520,6 +1531,8 @@ pruneByType env t c as
          n `elem` map fst env = Just t
        | otherwise = locallyBound ts
     getName (PRef _ _ n) = Just n
+    getName (PApp _ (PRef _ _ (UN l)) [_, _, arg]) -- ignore Delays
+       | l == txt "Delay" = getName (getTm arg)
     getName (PApp _ f _) = getName f
     getName (PHidden t) = getName t
     getName _ = Nothing
@@ -1528,18 +1541,20 @@ pruneByType env t c as
 pruneByType env (P _ n _) ist as
 -- if the goal type is polymorphic, keep everything
    | Nothing <- lookupTyExact n ctxt = as
+-- if the goal type is a ?metavariable, keep everything
+   | Just _ <- lookup n (idris_metavars ist) = as
    | otherwise
        = let asV = filter (headIs True n) as
              as' = filter (headIs False n) as in
              case as' of
-               [] -> case asV of
-                        [] -> as
-                        _ -> asV
+               [] -> asV
                _ -> as'
   where
     ctxt = tt_ctxt ist 
 
     headIs var f (PRef _ _ f') = typeHead var f f'
+    headIs var f (PApp _ (PRef _ _ (UN l)) [_, _, arg])
+        | l == txt "Delay" = headIs var f (getTm arg)
     headIs var f (PApp _ (PRef _ _ f') _) = typeHead var f f'
     headIs var f (PApp _ f' _) = headIs var f f'
     headIs var f (PPi _ _ _ _ sc) = headIs var f sc
