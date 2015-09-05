@@ -4,7 +4,7 @@ New in 0.9.20:
 Language updates
 ----------------
 
-[None so far]
+* Improved unification by implementing a pattern unification rule
 
 Library updates
 ---------------

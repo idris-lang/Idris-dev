@@ -10,7 +10,9 @@ class Category (cat : Type -> Type -> Type) where
 
 instance Category Morphism where
   id                = Mor id
-  (Mor f) . (Mor g) = Mor (f . g)
+  -- disambiguation needed below, because unification can now get further
+  -- here with Category.(.) and it's only type class resolution that fails!
+  (Mor f) . (Mor g) = with Basics (Mor (f . g))
 
 instance Monad m => Category (Kleislimorphism m) where
   id                        = Kleisli (return . id)

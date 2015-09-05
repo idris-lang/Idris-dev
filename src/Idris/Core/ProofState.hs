@@ -154,7 +154,7 @@ instance Pretty ProofState OutputAnnotation where
 holeName i = sMN i "hole"
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, hs, _, _, _, t) -> (t, x, y, hs)) fs)
+qshow fs = show (map (\ (x, y, hs, env, _, _, t) -> (t, map fst env, x, y, hs)) fs)
 
 match_unify' :: Context -> Env -> 
                 (TT Name, Maybe Provenance) -> 
@@ -218,7 +218,7 @@ unify' ctxt env (topx, xfrom) (topy, yfrom) =
                         ("Trying " ++ show (topx, topy) ++
                          "\nNormalised " ++ show (normalise ctxt env topx,
                                                   normalise ctxt env topy) ++
-                         " in " ++ show env ++
+                         " in\n" ++ show env ++
                          "\nHoles: " ++ show (holes ps)
                          ++ "\nInjective: " ++ show (injective ps)
                          ++ "\n") $
