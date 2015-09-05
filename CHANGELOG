@@ -17,8 +17,8 @@ returning Z if there is an underflow.
 
 Tool updates
 ------------
-
-[None so far]
+* Records are now shown as records in :doc, rather than as the underlying
+  datatype
 
 Miscellaneous updates
 ---------------------
