@@ -64,6 +64,12 @@ elabRecord info what doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc
                            _ -> PDatadecl tyn NoFC tycon [(cdoc, dconsArgDocs, dconName, NoFC, dconTy, fc, [])]
        elabData info rsyn doc paramDocs fc opts datadecl
 
+       -- Keep track of the record
+       let parameters = [(n,pt) | (n, _, _, pt) <- params]
+       let projections = [n | (n, _, _, _, _) <- fieldsWithName]
+       addRecord tyn (RI parameters dconName projections)
+       addIBC (IBCRecord tyn)
+
        when (what /= ETypes) $ do
            logLvl 1 $ "fieldsWithName " ++ show fieldsWithName
            logLvl 1 $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc

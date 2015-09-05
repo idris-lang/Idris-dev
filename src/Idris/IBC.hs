@@ -50,6 +50,7 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_fixes :: ![FixDecl],
                          ibc_statics :: ![(Name, [Bool])],
                          ibc_classes :: ![(Name, ClassInfo)],
+                         ibc_records :: ![(Name, RecordInfo)],
                          ibc_instances :: ![(Bool, Bool, Name, Name)],
                          ibc_dsls :: ![(Name, DSL)],
                          ibc_datatypes :: ![(Name, TypeInfo)],
@@ -93,7 +94,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -142,6 +143,7 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_fixes"  (ibc_fixes i),
                        makeEntry "ibc_statics"  (ibc_statics i),
                        makeEntry "ibc_classes"  (ibc_classes i),
+                       makeEntry "ibc_records"  (ibc_records i),
                        makeEntry "ibc_instances"  (ibc_instances i),
                        makeEntry "ibc_dsls"  (ibc_dsls i),
                        makeEntry "ibc_datatypes"  (ibc_datatypes i),
@@ -234,6 +236,10 @@ ibc i (IBCClass n) f
                    = case lookupCtxtExact n (idris_classes i) of
                         Just v -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> ifail "IBC write failed"
+ibc i (IBCRecord n) f
+                   = case lookupCtxtExact n (idris_records i) of
+                        Just v -> return f { ibc_records = (n,v): ibc_records f     }
+                        _ -> ifail "IBC write failed"
 ibc i (IBCInstance int res n ins) f
                    = return f { ibc_instances = (int, res, n, ins) : ibc_instances f }
 ibc i (IBCDSL n) f
@@ -324,6 +330,7 @@ process reexp i fn = do
                 pFixes =<< getEntry [] "ibc_fixes" i
                 pStatics =<< getEntry [] "ibc_statics" i
                 pClasses =<< getEntry [] "ibc_classes" i
+                pRecords =<< getEntry [] "ibc_records" i
                 pInstances =<< getEntry [] "ibc_instances" i
                 pDSLs =<< getEntry [] "ibc_dsls" i
                 pDatatypes =<< getEntry [] "ibc_datatypes" i
@@ -441,6 +448,13 @@ pClasses cs = mapM_ (\ (n, c) ->
                            putIState (i { idris_classes
                                            = addDef n c' (idris_classes i) }))
                     cs
+
+pRecords :: [(Name, RecordInfo)] -> Idris ()
+pRecords rs = mapM_ (\ (n, r) ->
+                        do i <- getIState
+                           putIState (i { idris_records
+                                           = addDef n r (idris_records i) }))
+                    rs
 
 pInstances :: [(Bool, Bool, Name, Name)] -> Idris ()
 pInstances cs = mapM_ (\ (i, res, n, ins) -> addInstance i res n ins) cs
@@ -2129,6 +2143,17 @@ instance Binary ClassInfo where
                x5 <- get
                x6 <- get
                return (CI x1 x2 x3 x4 x5 [] x6)
+
+instance Binary RecordInfo where
+        put (RI x1 x2 x3)
+          = do put x1
+               put x2
+               put x3
+        get
+          = do x1 <- get
+               x2 <- get
+               x3 <- get
+               return (RI x1 x2 x3)
 
 instance Binary OptInfo where
         put (Optimise x1 x2)
