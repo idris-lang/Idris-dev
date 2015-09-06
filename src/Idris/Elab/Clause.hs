@@ -491,6 +491,8 @@ propagateParams i ps t tm@(PApp _ (PRef fc hls n) args)
                     = t { getTm = PRef NoFC [] n } : addP sc ts
          addP (Bind n _ sc) (t : ts) = t : addP sc ts
          addP _ ts = ts
+propagateParams i ps t tm@(PApp fc ap args)
+     = PApp fc (propagateParams i ps t ap) args
 propagateParams i ps t (PRef fc hls n)
      = case lookupCtxt n (idris_implicits i) of
             [is] -> let ps' = filter (isImplicit is) ps in
@@ -548,9 +550,10 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         let tcparams = getTCParamsInType i [] fn_is norm_ty
 
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
-                    propagateParams i params fn_ty (addImplPat i lhs_in)
+                    propagateParams i params norm_ty (addImplPat i lhs_in)
 --         let lhs = mkLHSapp $ 
 --                     propagateParams i params fn_ty (addImplPat i lhs_in)
+        logLvl 10 (show (params, fn_ty) ++ " " ++ showTmImpls (addImplPat i lhs_in))
         logLvl 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
         logLvl 4 ("Fixed parameters: " ++ show params ++ " from " ++ show lhs_in ++
                   "\n" ++ show (fn_ty, fn_is))
