@@ -165,11 +165,22 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
             if ambigok || argsok then
                case lookupCtxt nroot (idris_tyinfodata ist) of
                     [TISolution ts] -> findInferredTy ts
-                    _ -> psRec rec maxDepth [] S.empty
-               else do ptm <- get_term
-                       autoArg (sUN "auto") -- not enough info in the type yet
+                    _ -> if ambigok then psRec rec maxDepth [] S.empty
+                            -- postpone if it fails early in elaboration
+                            else handleError cantsolve
+                                      (psRec rec maxDepth [] S.empty)
+                                      (autoArg (sUN "auto"))
+               else autoArg (sUN "auto") -- not enough info in the type yet
   where
     findInferredTy (t : _) = elab (delab ist (toUN t)) 
+
+    cantsolve (InternalMsg _) = True
+    cantsolve (CantSolveGoal _ _) = True
+    cantsolve (IncompleteTerm _) = True
+    cantsolve (At _ e) = cantsolve e
+    cantsolve (Elaborating _ _ e) = cantsolve e
+    cantsolve (ElaboratingArg _ _ _ e) = cantsolve e
+    cantsolve err = False
 
     conArgsOK ty
        = let (f, as) = unApply ty in

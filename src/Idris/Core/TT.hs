@@ -376,6 +376,21 @@ instance Show Err where
                                        show x ++ ": " ++ show e
     show (Elaborating what n e) = "Elaborating " ++ what ++ show n ++ ":" ++ show e
     show (ProofSearchFail e) = "Proof search fail: " ++ show e
+    show (InfiniteUnify _ _ _) = "InfiniteUnify"
+    show (UnifyScope _ _ _ _) = "UnifyScope"
+    show (NonFunctionType _ _) = "NonFunctionType"
+    show (NotEquality _ _) = "NotEquality"
+    show (TooManyArguments _) = "TooManyArguments"
+    show (CantIntroduce _) = "CantIntroduce"
+    show (NoSuchVariable _) = "NoSuchVariable"
+    show (WithFnType _) = "WithFnType"
+    show (NoTypeDecl _) = "NoTypeDecl"
+    show (NotInjective _ _ _) = "NotInjective"
+    show (CantResolve _ _) = "CantResolve"
+    show (InvalidTCArg _ _) = "InvalidTCArg"
+    show (CantResolveAlts _) = "CantResolveAlts"
+    show (NoValidAlts _) = "NoValidAlts"
+    show (IncompleteTerm _) = "IncompleteTerm"
     show _ = "Error"
 
 instance Pretty Err OutputAnnotation where

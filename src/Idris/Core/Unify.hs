@@ -412,7 +412,8 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
         = -- trace ("PATTERN RULE SOLVE: " ++ show (mv, tm, env, bindLams args (substEnv env tm))) $ 
           checkCycle bnames (mv, eta [] $ bindLams args (substEnv env tm))
       where rigid (V i) = True
-            rigid (P _ t _) = not (holeIn env t || t `elem` holes)
+            rigid (P _ t _) = t `elem` map fst env &&
+                              not (holeIn env t || t `elem` holes)
             rigid _ = False
 
             getV (V i) = Just i

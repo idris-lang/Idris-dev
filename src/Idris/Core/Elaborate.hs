@@ -309,7 +309,7 @@ get_instances = do ES p _ _ <- get
                    return $! (instances (fst p))
 
 -- | get auto argument names
-get_autos :: Elab' aux [(Name, [Name])]
+get_autos :: Elab' aux [(Name, ([FailContext], [Name]))]
 get_autos = do ES p _ _ <- get
                return $! (autos (fst p))
 

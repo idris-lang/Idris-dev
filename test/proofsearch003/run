@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris --check proofsearch003.idr 
+rm -f *.ibc

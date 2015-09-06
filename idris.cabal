@@ -616,6 +616,9 @@ Extra-source-files:
                        test/proofsearch002/run
                        test/proofsearch002/*.idr
                        test/proofsearch002/expected
+                       test/proofsearch003/run
+                       test/proofsearch003/*.idr
+                       test/proofsearch003/expected
 
                        test/quasiquote001/run
                        test/quasiquote001/*.idr

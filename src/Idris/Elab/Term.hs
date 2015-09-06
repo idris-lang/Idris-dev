@@ -91,7 +91,7 @@ build ist info emode opts fn tm
                                 ptm <- get_term
                                 resolveTC' True True 10 g fn ist) ivs
          
-         when (not pattern) $ solveAutos ist fn True
+         when (not pattern) $ solveAutos ist fn False
 
          tm <- get_term
          ctxt <- get_context
@@ -103,6 +103,8 @@ build ist info emode opts fn tm
            traceWhen u ("Remaining holes:\n" ++ show hs ++ "\n" ++
                         "Remaining problems:\n" ++ qshow probs) $
              do unify_all; matchProblems True; unifyProblems
+
+         when (not pattern) $ solveAutos ist fn True
 
          probs <- get_probs
          case probs of
@@ -269,8 +271,9 @@ elab ist info emode opts fn tm
         hs <- get_holes
         -- If any of the autos use variables which have recently been solved,
         -- have another go at solving them now.
-        mapM_ (\(a, ns) -> if any (\n -> n `elem` solved) ns && head hs /= a
-                              then solveAuto ist fn False a
+        mapM_ (\(a, (failc, ns)) -> 
+                       if any (\n -> n `elem` solved) ns && head hs /= a
+                              then solveAuto ist fn False (a, failc)
                               else return ()) as
      
         itm <- if not pattern then insertImpLam ina t else return t
@@ -452,7 +455,7 @@ elab ist info emode opts fn tm
                         (do movelast h
                             delayElab 5 $ do
                               hs <- get_holes
-                              when (not (null hs)) $ do
+                              when (h `elem` hs) $ do
                                   focus h
                                   as'' <- doPrune as'
                                   case as'' of
@@ -1620,21 +1623,36 @@ findHighlight n = do ctxt <- get_context
                                                  "Can't find name" ++ show n
 
 -- Try again to solve auto implicits
-solveAuto :: IState -> Name -> Bool -> Name -> ElabD ()
-solveAuto ist fn ambigok n
-           = do hs <- get_holes
-                tm <- get_term
-                when (n `elem` hs) $ do
-                  focus n
-                  g <- goal
-                  isg <- is_guess -- if it's a guess, we're working on it recursively, so stop
-                  when (not isg) $
-                    proofSearch' ist True ambigok 100 True Nothing fn [] []
+solveAuto :: IState -> Name -> Bool -> (Name, [FailContext]) -> ElabD ()
+solveAuto ist fn ambigok (n, failc) 
+  = do hs <- get_holes
+       when (not (null hs)) $ do
+        env <- get_env
+        g <- goal
+        handleError cantsolve (when (n `elem` hs) $ do
+                        focus n
+                        isg <- is_guess -- if it's a guess, we're working on it recursively, so stop
+                        when (not isg) $
+                          proofSearch' ist True ambigok 100 True Nothing fn [] [])
+             (lift $ Error (addLoc failc
+                   (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env))))
+        return ()
+  where addLoc (FailContext fc f x : prev) err 
+           = At fc (ElaboratingArg f x 
+                   (map (\(FailContext _ f' x') -> (f', x')) prev) err)
+        addLoc _ err = err
+
+        cantsolve (CantSolveGoal _ _) = True
+        cantsolve (InternalMsg _) = True
+        cantsolve (At _ e) = cantsolve e
+        cantsolve (Elaborating _ _ e) = cantsolve e
+        cantsolve (ElaboratingArg _ _ _ e) = cantsolve e
+        cantsolve _ = False
 
 solveAutos :: IState -> Name -> Bool -> ElabD ()
 solveAutos ist fn ambigok
            = do autos <- get_autos
-                mapM_ (solveAuto ist fn ambigok) (map fst autos)
+                mapM_ (solveAuto ist fn ambigok) (map (\(n, (fc, _)) -> (n, fc)) autos)
 
 trivial' ist
     = trivial (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
@@ -2337,6 +2355,7 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
           -- TODO: argument-specific error handlers go here for ElaboratingArg
           handle e = do ist <- getIState
                         logLvl 2 "Starting error reflection"
+                        logLvl 5 (show e)
                         let handlers = idris_errorhandlers ist
                         applyHandlers e handlers
           getFnHandlers :: Name -> Name -> Idris [Name]

@@ -38,7 +38,7 @@ data ProofState = PS { thname   :: Name,
                        injective :: [Name],
                        deferred :: [Name], -- ^ names we'll need to define
                        instances :: [Name], -- ^ instance arguments (for type classes)
-                       autos    :: [(Name, [Name])], -- ^ unsolved 'auto' implicits with their holes
+                       autos    :: [(Name, ([FailContext], [Name]))], -- ^ unsolved 'auto' implicits with their holes
                        psnames  :: [Name], -- ^ Local names okay to use in proof search
                        previous :: Maybe ProofState, -- ^ for undo
                        context  :: Context,
@@ -415,7 +415,7 @@ autoArg n ctxt env (Bind x (Hole t) sc)
                              Nothing ->
                                let hs = holes ps in
                                ps { holes = (hs \\ [x]) ++ [x],
-                                    autos = (x, refsIn t) : autos ps }
+                                    autos = (x, (while_elaborating ps, refsIn t)) : autos ps }
                              Just _ -> ps)
          return (Bind x (Hole t) sc)
 

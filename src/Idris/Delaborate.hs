@@ -355,8 +355,11 @@ pprintErr' i (WithFnType ty) =
 pprintErr' i (CantMatch t) =
   text "Can't match on" <+> annTm t (pprintTerm i (delabSugared i t))
 pprintErr' i (IncompleteTerm t) 
-    = align (cat (punctuate (comma <> space) 
-            (map pprintIncomplete (nub $ getMissing [] [] t))))
+    = let missing = getMissing [] [] t in
+          case missing of
+            [] -> text "Incomplete term" <+> annTm t (pprintTerm i (delabSugared i t))
+            _ -> align (cat (punctuate (comma <> space) 
+                       (map pprintIncomplete (nub $ getMissing [] [] t))))
  where 
    pprintIncomplete (tm, arg)
     | expname arg
