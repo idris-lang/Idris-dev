@@ -2,56 +2,117 @@
 -- Module    : Default.idr
 -- Copyright : (c) The Idris Community
 -- License   : see LICENSE
--- --------------------------------------------------------------------- [ EOH ]
-
-||| A logging effect that allows messages to be logged using both
-||| numerical levels and user specified categories. The higher the
-||| logging level the grater in verbosity the logging.
+--------------------------------------------------------------------- [ EOH ]
+||| The default logging effect that allows messages to be logged at
+||| different numerical levels. The higher the number the greater in
+||| verbosity the logging.
 |||
 ||| In this effect the resource we are computing over is the logging
-||| level itself and the list of categories to show.
+||| level itself.
 |||
 module Effect.Logging.Default
 
 import Effects
 import public Effect.Logging.Level
 
-import Control.IOExcept -- TODO Add IOExcept Logger.
+%access public
 
-||| A Logging effect to log levels and categories.
+-- ------------------------------------------------------------ [ The Resource ]
+
+||| The resource that the log effect is defined over.
+record LogRes where
+  constructor MkLogRes
+  getLevel : LogLevel n
+
+instance Default LogRes where
+  default = MkLogRes OFF
+
+-- ------------------------------------------------------ [ The Logging Effect ]
+
+||| A Logging effect that displays a logging message to be logged at a
+||| certain level.
 data Logging : Effect where
-    Log : (Eq a, Show a) =>
-          (lvl : Nat)
-       -> (cats : List a)
+    ||| Change the logging level.
+    |||
+    ||| @lvl The new logging level.
+    SetLvl : (lvl : LogLevel n)
+          -> sig Logging () (LogRes) (LogRes)
+
+    ||| Log a message.
+    |||
+    ||| @lvl  The logging level it should appear at.
+    ||| @msg  The message to log.
+    Log : (lvl : LogLevel n)
        -> (msg : String)
-       -> Logging () (Nat,List a) (\v => (Nat,List a))
+       -> sig Logging () (LogRes)
 
-||| The Logging effect.
-|||
-||| @cTy The type used to differentiate categories.
-LOG : (cTy : Type) -> EFFECT
-LOG a = MkEff (Nat, List a) Logging
+-- -------------------------------------------------------------- [ IO Handler ]
 
+-- For logging in the IO context
 instance Handler Logging IO where
-    handle (l,cs) (Log lvl cs' msg) k = do
-      case lvl <= l  of
-        False => k () (l,cs)
-        True  =>  do
-          let res = and $ map (\x => elem x cs') cs
-          let prompt = if isNil cs then "" else show cs
-          if res || isNil cs
-            then do
-              printLn $ unwords [show lvl, ":", prompt, ":", msg]
-              k () (l,cs)
-            else k () (l,cs)
+    handle st (SetLvl newLvl) k = k () (MkLogRes newLvl)
+    handle st (Log lvl msg) k = do
+      case cmpLevel lvl (getLevel st)  of
+        GT        => k () st
+        otherwise =>  do
+          putStrLn $ unwords [show lvl, ":", msg]
+          k () st
 
-||| Log the given message at the given level and assign it the list of categories.
+-- ------------------------------------------------------- [ Effect Descriptor ]
+
+||| A Logging Effect.
+LOG : EFFECT
+LOG = MkEff (LogRes) Logging
+
+-- ----------------------------------------------------------- [ Effectful API ]
+
+||| Set the logging level.
 |||
-||| @l The logging level.
-||| @cs The logging categories.
-||| @m THe message to be logged.
-log : (Show a, Eq a) => (l : Nat)
-    -> (cs : List a) -> (m : String) -> Eff () [LOG a]
-log lvl cs msg = call $ Log lvl cs msg
+||| @l The new logging level.
+setLogLvl : (l : LogLevel n) -> Eff () [LOG]
+setLogLvl l = call $ SetLvl l
+
+||| Log `msg` at the given level specified as a natural number.
+|||
+||| @l The level to log.
+||| @m The message to log.
+log : (l : LogLevel n) -> (m : String) -> Eff () [LOG]
+log l msg = call $ Log l msg
+
+||| Log `msg` at the given level specified as a natural number.
+|||
+||| @l The level to log.
+||| @m The message to log.
+logN : (l : Nat) -> {auto prf : LTE l 70} -> (m : String) -> Eff () [LOG]
+logN l msg = call $ Log (getProof lvl) msg
+  where
+    lvl : (n ** LogLevel n)
+    lvl = case cast {to=String} (cast {to=Int} l) of
+            "0"  => (_ ** OFF)
+            "10" => (_ ** TRACE)
+            "20" => (_ ** DEBUG)
+            "30" => (_ ** INFO)
+            "40" => (_ ** WARN)
+            "50" => (_ ** FATAL)
+            "60" => (_ ** ERROR)
+            _    => (_ ** CUSTOM l)
+
+trace :  String -> Eff () [LOG]
+trace msg = call $ Log TRACE msg
+
+debug :  String -> Eff () [LOG]
+debug msg = call $ Log DEBUG msg
+
+info :  String -> Eff () [LOG]
+info msg = call $ Log INFO msg
+
+warn :  String -> Eff () [LOG]
+warn msg = call $ Log WARN msg
+
+fatal :  String -> Eff () [LOG]
+fatal msg = call $ Log FATAL msg
+
+error :  String -> Eff () [LOG]
+error msg = call $ Log ERROR msg
 
 -- --------------------------------------------------------------------- [ EOF ]
