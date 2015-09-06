@@ -54,16 +54,16 @@ mkPatTm t = do i <- getIState
 genClauses :: FC -> Name -> [Term] -> [PTerm] -> Idris [PTerm]
 genClauses fc n xs given
    = do i <- getIState
-        let lhs_tms = map (\x -> delab' i x True True) xs
+        let lhs_tms = map (\x -> flattenArgs $ delab' i x True True) xs
         -- if a placeholder was given, don't bother generating cases for it
         let lhs_tms' = zipWith mergePlaceholders lhs_tms 
-                          (map (stripUnmatchable i) given)
+                          (map (stripUnmatchable i) (map flattenArgs given))
         let lhss = map pUnApply lhs_tms'
 
         let argss = transpose lhss
         let all_args = map (genAll i) argss
         logLvl 5 $ "COVERAGE of " ++ show n
-        logLvl 5 $ show lhss
+        logLvl 5 $ show (lhs_tms, lhss)
         logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logLvl 10 $ show argss ++ "\n" ++ show all_args
         logLvl 3 $ "Original: \n" ++
@@ -89,8 +89,12 @@ genClauses fc n xs given
             | (f, args) <- unApply term = map (\t -> delab' i t True True) args
             | otherwise = []
 
-        pUnApply (PApp _ _ args) = map getTm args
+        pUnApply (PApp _ f args) = map getTm args
         pUnApply _ = []
+
+        flattenArgs (PApp fc (PApp _ f as) as') 
+             = flattenArgs (PApp fc f (as ++ as'))
+        flattenArgs t = t
 
         -- Return whether the given clause matches none of the input clauses
         -- (xs)
