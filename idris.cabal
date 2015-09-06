@@ -76,9 +76,23 @@ Data-files:            idrisdoc/styles.css
                        rts/mini-gmp.h
                        rts/libtest.c
 
+Extra-doc-files:
+                       CHANGELOG
+                       CITATION.md
+                       CONTRIBUTING.md
+                       CONTRIBUTORS
+                       README.md
+                       idris-tutorial.pdf
+                       man/idris.1
+                       samples/effects/*.idr
+                       samples/misc/*.idr
+                       samples/misc/*.lidr
+                       samples/tutorial/*.idr
+
 Extra-source-files:
                        Makefile
                        config.mk
+                       stack.yaml
 
                        rts/*.c
                        rts/*.h
@@ -718,6 +732,22 @@ Extra-source-files:
                        test/docs003/*.idr
                        test/docs003/expected
 
+                       benchmarks/ALL
+                       benchmarks/*.pl
+                       benchmarks/README
+
+                       benchmarks/fasta/fasta.idr
+                       benchmarks/fasta/fasta.ipkg
+
+                       benchmarks/pidigits/pidigits.idr
+                       benchmarks/pidigits/pidigits.ipkg
+
+                       benchmarks/quasigroups/board
+                       benchmarks/quasigroups/*.idr
+                       benchmarks/quasigroups/qgsolve.ipkg
+
+                       benchmarks/trivial/sortvec.idr
+                       benchmarks/trivial/sortvec.ipkg
 
 source-repository head
   type:     git
