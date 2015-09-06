@@ -1,6 +1,10 @@
-***************************
-Interactive Theorem Proving
-***************************
+***************************************
+DEPRECATED: Interactive Theorem Proving
+***************************************
+
+.. warning::
+   The interactive theorem-proving interface documented here has been
+   deprecated in favor of :ref:`elaborator-reflection`.
 
 Idris also supports interactive theorem proving via tactics. This
 is generally not recommended to be used directly, but rather used as a
