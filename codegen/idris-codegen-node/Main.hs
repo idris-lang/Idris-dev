@@ -18,8 +18,9 @@ data Opts = Opts { really :: Bool
                  , output :: FilePath
                  }
 
-showUsage = do putStrLn "A code generator which is intended to be called by the compiler, not by a user.\n"
-               putStrLn "Usage: idris-codegen-node --yes-really <ibc-files> [-o <output-file>]"
+showUsage = do putStrLn "A code generator which is intended to be called by the compiler, not by a user."
+               putStrLn "To call the code generator manually, pass the --yes-really option.\n"
+               putStrLn "Usage: idris-codegen-c [--yes-really] <ibc-files> [-o <output-file>]"
                exitWith ExitSuccess
 
 getOpts :: IO Opts
