@@ -14,6 +14,8 @@ such, the (-) operator and 'abs' have been moved there from 'Num'.
 * A special version of (-) on 'Nat' requires that the second argument is
 smaller than or equal to the first. 'minus' retains the old behaviour,
 returning Z if there is an underflow.
+* New Logging Effects have been added to facilitate logging of effectful
+  programmes.
 
 Tool updates
 ------------

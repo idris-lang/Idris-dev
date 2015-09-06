@@ -1,5 +1,5 @@
-"3 : Doing the double with 3"
+WARN : Doing the double with 3
 6
 8
-"3 : [\"NumOPS\"] : Doing the double with 3"
+WARN : ["NumOPS"] : Doing the double with 3
 6
