@@ -200,7 +200,7 @@ getCoercionsTo i ty =
     where findCoercions t [] = []
           findCoercions t (n : ns) =
              let ps = case lookupTy n (tt_ctxt i) of
-                        [ty'] -> case unApply (getRetTy ty') of
+                        [ty'] -> case unApply (getRetTy (normalise (tt_ctxt i) [] ty')) of
                                    (t', _) ->
                                       if t == t' then [n] else []
                         _ -> [] in
