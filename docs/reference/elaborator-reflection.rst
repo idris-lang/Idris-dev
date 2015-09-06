@@ -1,3 +1,5 @@
+.. _elaborator-reflection:
+
 *********************
 Elaborator Reflection
 *********************

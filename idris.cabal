@@ -76,9 +76,23 @@ Data-files:            idrisdoc/styles.css
                        rts/mini-gmp.h
                        rts/libtest.c
 
+Extra-doc-files:
+                       CHANGELOG
+                       CITATION.md
+                       CONTRIBUTING.md
+                       CONTRIBUTORS
+                       README.md
+                       idris-tutorial.pdf
+                       man/idris.1
+                       samples/effects/*.idr
+                       samples/misc/*.idr
+                       samples/misc/*.lidr
+                       samples/tutorial/*.idr
+
 Extra-source-files:
                        Makefile
                        config.mk
+                       stack.yaml
 
                        rts/*.c
                        rts/*.h
@@ -718,6 +732,22 @@ Extra-source-files:
                        test/docs003/*.idr
                        test/docs003/expected
 
+                       benchmarks/ALL
+                       benchmarks/*.pl
+                       benchmarks/README
+
+                       benchmarks/fasta/fasta.idr
+                       benchmarks/fasta/fasta.ipkg
+
+                       benchmarks/pidigits/pidigits.idr
+                       benchmarks/pidigits/pidigits.ipkg
+
+                       benchmarks/quasigroups/board
+                       benchmarks/quasigroups/*.idr
+                       benchmarks/quasigroups/qgsolve.ipkg
+
+                       benchmarks/trivial/sortvec.idr
+                       benchmarks/trivial/sortvec.ipkg
 
 source-repository head
   type:     git
@@ -964,9 +994,9 @@ Executable idris
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
-Executable idris-c
+Executable idris-codegen-c
   Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-c
+  hs-source-dirs: codegen/idris-codegen-c
 
   Build-depends:  idris
                 , base
@@ -977,9 +1007,9 @@ Executable idris-c
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
-Executable idris-javascript
+Executable idris-codegen-javascript
   Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-javascript
+  hs-source-dirs: codegen/idris-codegen-javascript
 
   Build-depends:  idris
                 , base
@@ -990,9 +1020,9 @@ Executable idris-javascript
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
-Executable idris-node
+Executable idris-codegen-node
   Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-node
+  hs-source-dirs: codegen/idris-codegen-node
 
   Build-depends:  idris
                 , base
