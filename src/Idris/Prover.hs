@@ -127,9 +127,13 @@ prove mode opt ctxt lit n ty
            _ -> return ()
 
 elabStep :: ElabState EState -> ElabD a -> Idris (a, ElabState EState)
-elabStep st e = case runStateT eCheck st of
-                     OK (a, st') -> return (a, st')
-                     Error a -> ierror a
+elabStep st e =
+    case runStateT eCheck st of
+        OK ((a, ctxt'), ES (ps, est@EState{new_tyDecls = declTodo}) x old) ->
+          do setContext ctxt'
+             processTacticDecls toplevel declTodo
+             return (a, ES (ps, est {new_tyDecls = []}) x old)
+        Error a -> ierror a
   where eCheck = do res <- e
                     matchProblems True
                     unifyProblems
@@ -138,7 +142,7 @@ elabStep st e = case runStateT eCheck st of
                          [] -> do tm <- get_term
                                   ctxt <- get_context
                                   lift $ check ctxt [] (forget tm)
-                                  return res
+                                  return (res, ctxt)
                          ((_,_,_,_,e,_,_):_) -> lift $ Error e
 
 dumpState :: IState -> [(Name, Type, Term)] -> ProofState -> Idris ()
@@ -264,6 +268,7 @@ undoElab :: [String] -> [(Name, Type, Term)] -> ElabState EState -> [ElabShellHi
 undoElab prf env st [] = ifail "Nothing to undo"
 undoElab prf env st (h:hs) = do (prf', env', st') <- undoStep prf env st h
                                 return (prf', env', st', hs)
+
 
 elabloop :: Name -> Bool -> String -> [String] -> ElabState EState -> [ElabShellHistory] -> Maybe History -> [(Name, Type, Term)] -> Idris (Term, [String])
 elabloop fn d prompt prf e prev h env
