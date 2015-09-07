@@ -7,6 +7,7 @@ module Idris.Reflection where
 
 import Control.Applicative ((<$>), (<*>), pure)
 import Control.Monad (liftM, liftM2, liftM4)
+import Control.Monad.State.Strict (lift)
 import Data.Maybe (catMaybes)
 import Data.List ((\\), findIndex)
 import qualified Data.Text as T
@@ -20,6 +21,7 @@ import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,id
                             PArg'(..), PArg, PTactic, PTactic'(..), PTerm(..), Fixity (..),
                             initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
+
 
 data RErasure = RErased | RNotErased deriving Show
 
@@ -351,6 +353,11 @@ reifyTTConstApp f (Constant c@(B32 _))
                 | f == reflm "B32" = return $ c
 reifyTTConstApp f (Constant c@(B64 _))
                 | f == reflm "B64" = return $ c
+reifyTTConstApp f v@(P _ _ _) =
+    lift . tfail . Msg $
+      "Can't reify the variable " ++
+      show v ++
+      " as a constant, because its value is not statically known."
 reifyTTConstApp f arg = fail ("Unknown reflection constant: " ++ show (f, arg))
 
 reifyArithTy :: Term -> ElabD ArithTy
