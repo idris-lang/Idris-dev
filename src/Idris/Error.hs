@@ -147,7 +147,7 @@ warnDisamb ist (PNoImplicits tm) = warnDisamb ist tm
 warnDisamb ist (PQuasiquote tm goal) = warnDisamb ist tm >>
                                        Foldable.mapM_ (warnDisamb ist) goal
 warnDisamb ist (PUnquote tm) = warnDisamb ist tm
-warnDisamb ist (PQuoteName _ _) = return ()
+warnDisamb ist (PQuoteName _ _ _) = return ()
 warnDisamb ist (PAs _ _ tm) = warnDisamb ist tm
 warnDisamb ist (PAppImpl tm _) = warnDisamb ist tm
 warnDisamb ist (PRunElab _ tm _) = warnDisamb ist tm
