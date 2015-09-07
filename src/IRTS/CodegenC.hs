@@ -259,6 +259,10 @@ bcc i (CONSTCASE r code def)
   where
     intConsts ((I _, _ ) : _) = True
     intConsts ((Ch _, _ ) : _) = True
+    intConsts ((B8 _, _ ) : _) = True
+    intConsts ((B16 _, _ ) : _) = True
+    intConsts ((B32 _, _ ) : _) = True
+    intConsts ((B64 _, _ ) : _) = True
     intConsts _ = False
 
     bigintConsts ((BI _, _ ) : _) = True
@@ -279,7 +283,18 @@ bcc i (CONSTCASE r code def)
     iCase v (Ch b, bc) =
         indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show (fromEnum b) ++ ") {\n"
            ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
-
+    iCase v (B8 w, bc) =
+        indent i ++ "if (GETBITS8(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (B16 w, bc) =
+        indent i ++ "if (GETBITS16(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (B32 w, bc) =
+        indent i ++ "if (GETBITS32(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (B64 w, bc) =
+        indent i ++ "if (GETBITS64(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
     showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
                          ++ concatMap (bcc (i+1)) bc ++
                             indent (i + 1) ++ "break;\n"

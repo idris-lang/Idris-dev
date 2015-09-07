@@ -685,6 +685,10 @@ irAlt vs _ (ConstCase x rhs)
     matchable (BI _) = True
     matchable (Ch _) = True
     matchable (Str _) = True
+    matchable (B8 _) = True
+    matchable (B16 _) = True
+    matchable (B32 _) = True
+    matchable (B64 _) = True
     matchable _ = False
 
     matchableTy (AType (ATInt ITNative)) = True
