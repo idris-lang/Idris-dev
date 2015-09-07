@@ -490,12 +490,23 @@ runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
              if null underNSs && null names
                 then iPrintError "Invalid or empty namespace"
                 else do ist <- getIState
-                        let msg = (IdeMode.SymbolAtom "ok", (underNSs, map (pn ist) names))
+                        underNs <- mapM pn names
+                        let msg = (IdeMode.SymbolAtom "ok", (underNSs, underNs))
                         runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
-  where pn ist = displaySpans .
-                 renderPretty 0.9 1000 .
-                 fmap (fancifyAnnots ist True) .
-                 prettyName True True []
+  where pn n =
+          do ctxt <- getContext
+             ist <- getIState
+             return $
+               displaySpans .
+               renderPretty 0.9 1000 .
+               fmap (fancifyAnnots ist True) $
+                 prettyName True False [] n <>
+                 case lookupTyExact n ctxt of
+                   Just t ->
+                     space <> colon <> space <> align (group (pprintDelab ist t))
+                   Nothing ->
+                     empty
+
 runIdeModeCommand h id orig fn modes (IdeMode.TermNormalise bnd tm) =
   do ctxt <- getContext
      ist <- getIState
