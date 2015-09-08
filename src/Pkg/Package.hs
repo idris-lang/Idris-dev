@@ -5,7 +5,8 @@ import System.Process
 import System.Directory
 import System.Exit
 import System.IO
-import System.FilePath ((</>), addTrailingPathSeparator, takeFileName, takeDirectory, normalise)
+import System.FilePath ((</>), addTrailingPathSeparator, takeFileName,
+                        takeDirectory, normalise, addExtension, hasExtension)
 import System.Directory (createDirectoryIfMissing, copyFile)
 
 import Util.System
@@ -118,7 +119,7 @@ cleanPkg fp
                rmIdx (pkgname pkgdesc)
                case execout pkgdesc of
                     Nothing -> return ()
-                    Just s -> rmFile $ dir </> s
+                    Just s -> rmExe $ dir </> s
 
 -- | Generate IdrisDoc for package
 -- TODO: Handle case where module does not contain a matching namespace
@@ -231,7 +232,13 @@ rmIBC m = rmFile $ toIBCFile m
 rmIdx :: String -> IO ()
 rmIdx p = do let f = pkgIndex p
              ex <- doesFileExist f
-             when ex $ rmFile f 
+             when ex $ rmFile f
+
+rmExe :: String -> IO ()
+rmExe p = do
+            fn <- return $ if isWindows && not (hasExtension p)
+                                then addExtension p ".exe" else p
+            rmFile fn
 
 toIBCFile (UN n) = str n ++ ".ibc"
 toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : map str ns))
