@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns, ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Core.DeepSeq where
@@ -15,6 +16,48 @@ instance NFData Name where
         rnf NErased = ()
         rnf (SN x1) = rnf x1 `seq` ()
         rnf (SymRef x1) = rnf x1 `seq` ()
+
+instance NFData Context where
+  rnf ctxt = rnf (next_tvar ctxt) `seq` rnf (definitions ctxt) `seq` ()
+
+-- | Forcing the contents of a context, for diagnosing and working
+-- around space leaks
+forceDefCtxt :: Context -> Context
+forceDefCtxt (force -> !ctxt) = ctxt
+
+instance NFData NameOutput where
+    rnf TypeOutput = ()
+    rnf FunOutput = ()
+    rnf DataOutput = ()
+    rnf MetavarOutput = ()
+    rnf PostulateOutput = ()
+
+instance NFData TextFormatting where
+  rnf BoldText = ()
+  rnf ItalicText = ()
+  rnf UnderlineText = ()
+
+instance NFData Ordering where
+  rnf LT = ()
+  rnf EQ = ()
+  rnf GT = ()
+
+instance NFData OutputAnnotation where
+  rnf (AnnName x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
+  rnf (AnnBoundName x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+  rnf (AnnConst x1) = rnf x1 `seq` ()
+  rnf (AnnData x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+  rnf (AnnType x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+  rnf (AnnKeyword) = ()
+  rnf (AnnFC x) = rnf x `seq` ()
+  rnf (AnnTextFmt x) = rnf x `seq` ()
+  rnf (AnnLink x) = rnf x `seq` ()
+  rnf (AnnTerm x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+  rnf (AnnSearchResult  x1) = rnf x1 `seq` ()
+  rnf (AnnErr x1) = rnf x1 `seq` ()
+  rnf (AnnNamespace x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
+  rnf (AnnQuasiquote) = ()
+  rnf (AnnAntiquote) = ()
 
 instance NFData SpecialName where
         rnf (WhereN x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()

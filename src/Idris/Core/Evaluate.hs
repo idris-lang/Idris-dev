@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances,
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, BangPatterns,
              PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
@@ -802,12 +802,14 @@ data Context = MkContext {
                   definitions     :: Ctxt (Def, Accessibility, Totality, MetaInformation)
                 } deriving Show
 
+
 -- | The initial empty context
 initContext = MkContext 0 emptyContext
 
+
 mapDefCtxt :: (Def -> Def) -> Context -> Context
-mapDefCtxt f (MkContext t defs) = MkContext t (mapCtxt f' defs)
-   where f' (d, a, t, m) = f' (f d, a, t, m)
+mapDefCtxt f (MkContext t !defs) = MkContext t (mapCtxt f' defs)
+   where f' (!d, a, t, m) = f' (f d, a, t, m)
 
 -- | Get the definitions from a context
 ctxtAlist :: Context -> [(Name, Def)]
@@ -818,44 +820,44 @@ veval ctxt env t = evalState (eval False ctxt [] env t []) initEval
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (Function ty tm, Public, Unchecked, EmptyMI) ctxt in
+          !ctxt' = addDef n (Function ty tm, Public, Unchecked, EmptyMI) ctxt in
           uctxt { definitions = ctxt' }
 
 setAccess :: Name -> Accessibility -> Context -> Context
 setAccess n a uctxt
     = let ctxt = definitions uctxt
-          ctxt' = updateDef n (\ (d, _, t, m) -> (d, a, t, m)) ctxt in
+          !ctxt' = updateDef n (\ (d, _, t, m) -> (d, a, t, m)) ctxt in
           uctxt { definitions = ctxt' }
 
 setTotal :: Name -> Totality -> Context -> Context
 setTotal n t uctxt
     = let ctxt = definitions uctxt
-          ctxt' = updateDef n (\ (d, a, _, m) -> (d, a, t, m)) ctxt in
+          !ctxt' = updateDef n (\ (d, a, _, m) -> (d, a, t, m)) ctxt in
           uctxt { definitions = ctxt' }
 
 setMetaInformation :: Name -> MetaInformation -> Context -> Context
 setMetaInformation n m uctxt
     = let ctxt = definitions uctxt
-          ctxt' = updateDef n (\ (d, a, t, _) -> (d, a, t, m)) ctxt in
+          !ctxt' = updateDef n (\ (d, a, t, _) -> (d, a, t, m)) ctxt in
           uctxt { definitions = ctxt' }
 
 addCtxtDef :: Name -> Def -> Context -> Context
 addCtxtDef n d c = let ctxt = definitions c
-                       ctxt' = addDef n (d, Public, Unchecked, EmptyMI) $! ctxt in
+                       !ctxt' = addDef n (d, Public, Unchecked, EmptyMI) $! ctxt in
                        c { definitions = ctxt' }
 
 addTyDecl :: Name -> NameType -> Type -> Context -> Context
 addTyDecl n nt ty uctxt
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (TyDecl nt ty, Public, Unchecked, EmptyMI) ctxt in
+          !ctxt' = addDef n (TyDecl nt ty, Public, Unchecked, EmptyMI) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
 addDatatype (Data n tag ty unique cons) uctxt
     = let ctxt = definitions uctxt
           ty' = normalise uctxt [] ty
-          ctxt' = addCons 0 cons (addDef n
-                    (TyDecl (TCon tag (arity ty')) ty, Public, Unchecked, EmptyMI) ctxt) in
+          !ctxt' = addCons 0 cons (addDef n
+                     (TyDecl (TCon tag (arity ty')) ty, Public, Unchecked, EmptyMI) ctxt) in
           uctxt { definitions = ctxt' }
   where
     addCons tag [] ctxt = ctxt

@@ -309,7 +309,7 @@ ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f 
 getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
 getEntry alt f a = case findEntryByPath f a of
                 Nothing -> return alt
-                Just e -> return $ (force . decode . fromEntry) e
+                Just e -> return $! (force . decode . fromEntry) e
 
 process :: Bool -- ^ Reexporting
            -> Archive -> FilePath -> Idris ()
