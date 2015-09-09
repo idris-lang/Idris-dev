@@ -9,7 +9,7 @@ import Builtins
 
 ||| Return the ASCII representation of the character.
 chr : Int -> Char
-chr x = if (x >= 0 && x < 0x11000)
+chr x = if (x >= 0 && x < 0x110000)
                 then assert_total (prim__intToChar x)
                 else '\0'
 
