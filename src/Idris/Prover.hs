@@ -1,3 +1,4 @@
+
 {-# LANGUAGE PatternGuards #-}
 module Idris.Prover (prover, showProof, showRunElab) where
 
@@ -89,7 +90,10 @@ prove mode opt ctxt lit n ty
          (tm, prf) <-
             if mode
               then elabloop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) [] Nothing []
-              else ploop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) Nothing
+              else do iputStrLn $ "Warning: this interactive prover is deprecated and will be removed " ++
+                                  "in a future release. Please see :elab for a similar feature that "++
+                                  "will replace it."
+                      ploop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) Nothing
          logLvl 1 $ "Adding " ++ show tm
          i <- getIState
          let shower = if mode
