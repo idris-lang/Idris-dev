@@ -12,12 +12,14 @@ Library updates
 ---------------
 
 * The 'Neg' class now represents numeric types which can be negative. As
-such, the (-) operator and 'abs' have been moved there from 'Num'.
+  such, the (-) operator and 'abs' have been moved there from 'Num'.
 * A special version of (-) on 'Nat' requires that the second argument is
-smaller than or equal to the first. 'minus' retains the old behaviour,
-returning Z if there is an underflow.
+  smaller than or equal to the first. 'minus' retains the old behaviour,
+  returning Z if there is an underflow.
 * New Logging Effects have been added to facilitate logging of effectful
   programmes.
+* Elaborator reflection is now a part of the prelude. It is no longer
+  necessary to import Language.Reflection.Elab.
 
 Tool updates
 ------------
