@@ -139,6 +139,7 @@ data Elab : Type -> Type where
   prim__Compute : Elab ()
   prim__Normalise : (List (TTName, Binder TT)) -> TT -> Elab TT
   prim__Whnf : TT -> Elab TT
+  prim__Converts : (List (TTName, Binder TT)) -> TT -> TT -> Elab ()
 
   prim__DeclareType : TyDecl -> Elab ()
   prim__DefineFunction : FunDefn -> Elab ()
@@ -372,6 +373,21 @@ namespace Tactics
   ||| @ term the term to reduce
   whnf : (term : TT) -> Elab TT
   whnf term = prim__Whnf term
+
+  ||| Check that two terms are convertable in the current context and environment
+  |||
+  ||| @ env a lexical environment to compare the terms in (see `getEnv`)
+  ||| @ term1 the first term to convert
+  ||| @ term2 the second term to convert
+  convertsInEnv : (env : List (TTName, Binder TT)) -> (term1, term2 : TT) -> Elab ()
+  convertsInEnv env term1 term2 = prim__Converts env term1 term2
+
+  ||| Check that two terms are convertable in the current context and environment
+  |||
+  ||| @ term1 the first term to convert
+  ||| @ term2 the second term to convert
+  converts : (term1, term2 : TT) -> Elab ()
+  converts term1 term2 = convertsInEnv !getEnv term1 term2
 
   ||| Find the source context for the elaboration script
   getSourceLocation : Elab SourceLocation
