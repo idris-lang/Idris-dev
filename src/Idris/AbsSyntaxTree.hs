@@ -969,7 +969,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PNoImplicits PTerm -- ^ never run implicit converions on the term
            | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
            | PUnquote PTerm -- ^ ~Term
-           | PQuoteName Name FC -- ^ `{n} where the FC is the precise highlighting for the name in particular
+           | PQuoteName Name Bool FC -- ^ `{n} where the FC is the precise highlighting for the name in particular. If the Bool is False, then it's `{{n}} and the name won't be resolved.
            | PRunElab FC PTerm [String] -- ^ %runElab tm - New-style proof script. Args are location, script, enclosing namespace.
            | PConstSugar FC PTerm -- ^ A desugared constant. The FC is a precise source location that will be used to highlight it later.
        deriving (Eq, Data, Typeable)
@@ -1032,7 +1032,7 @@ mapPTermFC f g (PQuasiquote t1 t2) = PQuasiquote (mapPTermFC f g t1) (fmap (mapP
 mapPTermFC f g (PUnquote t) = PUnquote (mapPTermFC f g t)
 mapPTermFC f g (PRunElab fc tm ns) = PRunElab (f fc) (mapPTermFC f g tm) ns
 mapPTermFC f g (PConstSugar fc tm) = PConstSugar (g fc) (mapPTermFC f g tm)
-mapPTermFC f g (PQuoteName n fc) = PQuoteName n (g fc)
+mapPTermFC f g (PQuoteName n x fc) = PQuoteName n x (g fc)
 
 {-!
 dg instance Binary PTerm
@@ -1259,7 +1259,7 @@ highestFC (PUnifyLog tm) = highestFC tm
 highestFC (PNoImplicits tm) = highestFC tm
 highestFC (PQuasiquote _ _) = Nothing
 highestFC (PUnquote tm) = highestFC tm
-highestFC (PQuoteName _ fc) = Just fc
+highestFC (PQuoteName _ _ fc) = Just fc
 highestFC (PRunElab fc _ _) = Just fc
 highestFC (PConstSugar fc _) = Just fc
 highestFC (PAppImpl t _) = highestFC t
@@ -1870,7 +1870,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PQuasiquote t Nothing) = text "`(" <> prettySe (decD d) p [] t <> text ")"
     prettySe d p bnd (PQuasiquote t (Just g)) = text "`(" <> prettySe (decD d) p [] t <+> colon <+> prettySe (decD d) p [] g <> text ")"
     prettySe d p bnd (PUnquote t) = text "~" <> prettySe (decD d) p bnd t
-    prettySe d p bnd (PQuoteName n _) = text "`{" <> prettyName True (ppopt_impl ppo) bnd n <> text "}"
+    prettySe d p bnd (PQuoteName n res _) = text start <> prettyName True (ppopt_impl ppo) bnd n <> text end
+      where start = if res then "`{" else "`{{"
+            end = if res then "}" else "}}"
     prettySe d p bnd (PRunElab _ tm _) =
       bracket p funcAppPrec . group . align . hang 2 $
       text "%runElab" <$>

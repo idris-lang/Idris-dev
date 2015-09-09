@@ -226,7 +226,8 @@ updateSynMatch = update
     update ns (PNoImplicits t) = PNoImplicits $ update ns t
     update ns (PQuasiquote tm mty) = PQuasiquote (update ns tm) (fmap (update ns) mty)
     update ns (PUnquote t) = PUnquote $ update ns t
-    update ns (PQuoteName n fc) = uncurry PQuoteName (updateB ns (n, fc))
+    update ns (PQuoteName n res fc) = let (n', fc') = (updateB ns (n, fc))
+                                      in PQuoteName n' res fc'
     update ns (PRunElab fc t nsp) = PRunElab fc (update ns t) nsp
     update ns (PConstSugar fc t) = PConstSugar fc $ update ns t
     -- PConstSugar probably can't contain anything substitutable, but it's hard to track
@@ -736,15 +737,19 @@ unquote syn = do guard (syn_in_quasiquote syn > 0)
 
 -}
 namequote :: SyntaxInfo -> IdrisParser PTerm
-namequote syn = do startFC <- symbolFC "`{"
+namequote syn = do (startFC, res) <-
+                     try (do fc <- symbolFC "`{{"
+                             return (fc, False)) <|>
+                       (do fc <- symbolFC "`{"
+                           return (fc, True))
                    (n, nfc) <- fnName
-                   endFC <- symbolFC "}"
+                   endFC <- if res then symbolFC "}" else symbolFC "}}"
                    mapM_ (uncurry highlightP)
                          [ (startFC, AnnKeyword)
                          , (endFC, AnnKeyword)
                          , (spanFC startFC endFC, AnnQuasiquote)
                          ]
-                   return $ PQuoteName n nfc
+                   return $ PQuoteName n res nfc
                 <?> "quoted name"
 
 

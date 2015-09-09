@@ -5,6 +5,8 @@ Language updates
 ----------------
 
 * Improved unification by implementing a pattern unification rule
+* The syntax `{{n}} quotes n without resolving it, allowing short syntax
+  for defining new names. `{n} still quotes n to an existing name in scope.
 
 Library updates
 ---------------

@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 119
+ibcVersion = 120
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -309,7 +309,7 @@ ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f 
 getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
 getEntry alt f a = case findEntryByPath f a of
                 Nothing -> return alt
-                Just e -> return $ (force . decode . fromEntry) e
+                Just e -> return $! (force . decode . fromEntry) e
 
 process :: Bool -- ^ Reexporting
            -> Archive -> FilePath -> Idris ()
@@ -1674,9 +1674,10 @@ instance Binary PTerm where
                                         put x2
                 PUnquote x1 -> do putWord8 43
                                   put x1
-                PQuoteName x1 x2 -> do putWord8 44
-                                       put x1
-                                       put x2
+                PQuoteName x1 x2 x3 -> do putWord8 44
+                                          put x1
+                                          put x2
+                                          put x3
                 PIfThenElse x1 x2 x3 x4 -> do putWord8 45
                                               put x1
                                               put x2
@@ -1822,7 +1823,8 @@ instance Binary PTerm where
                             return (PUnquote x1)
                    44 -> do x1 <- get
                             x2 <- get
-                            return (PQuoteName x1 x2)
+                            x3 <- get
+                            return (PQuoteName x1 x2 x3)
                    45 -> do x1 <- get
                             x2 <- get
                             x3 <- get

@@ -1204,7 +1204,10 @@ elab ist info emode opts fn tm
 
 
     elab' ina fc (PUnquote t) = fail "Found unquote outside of quasiquote"
-    elab' ina fc (PQuoteName n nfc) =
+    elab' ina fc (PQuoteName n False nfc) =
+      do fill $ reflectName n
+         solve
+    elab' ina fc (PQuoteName n True nfc) =
       do ctxt <- get_context
          env <- get_env
          case lookup n env of

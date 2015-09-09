@@ -327,10 +327,13 @@ runIdeModeCommand h id orig fn mods (IdeMode.REPLCompletions str) =
                                    reverse unused)]
      runIO . hPutStrLn h $ IdeMode.convSExp "return" good id
 runIdeModeCommand h id orig fn mods (IdeMode.LoadFile filename toline) =
+  -- The $!! here prevents a space leak on reloading.
+  -- This isn't a solution - but it's a temporary stopgap.
+  -- See issue #2386
   do i <- getIState
      clearErr
-     putIState (orig { idris_options = idris_options i,
-                       idris_outputmode = (IdeMode id h) })
+     putIState $!! orig { idris_options = idris_options i,
+                          idris_outputmode = (IdeMode id h) }
      mods <- loadInputs [filename] toline
      isetPrompt (mkPrompt mods)
      -- Report either success or failure
@@ -490,12 +493,23 @@ runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
              if null underNSs && null names
                 then iPrintError "Invalid or empty namespace"
                 else do ist <- getIState
-                        let msg = (IdeMode.SymbolAtom "ok", (underNSs, map (pn ist) names))
+                        underNs <- mapM pn names
+                        let msg = (IdeMode.SymbolAtom "ok", (underNSs, underNs))
                         runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
-  where pn ist = displaySpans .
-                 renderPretty 0.9 1000 .
-                 fmap (fancifyAnnots ist True) .
-                 prettyName True True []
+  where pn n =
+          do ctxt <- getContext
+             ist <- getIState
+             return $
+               displaySpans .
+               renderPretty 0.9 1000 .
+               fmap (fancifyAnnots ist True) $
+                 prettyName True False [] n <>
+                 case lookupTyExact n ctxt of
+                   Just t ->
+                     space <> colon <> space <> align (group (pprintDelab ist t))
+                   Nothing ->
+                     empty
+
 runIdeModeCommand h id orig fn modes (IdeMode.TermNormalise bnd tm) =
   do ctxt <- getContext
      ist <- getIState
@@ -675,17 +689,23 @@ processInput cmd orig inputs efile
             Failure err ->   do iputStrLn $ show (fixColour c err)
                                 return (Just inputs)
             Success (Right Reload) ->
-                do putIState $ orig { idris_options = idris_options i
-                                    , idris_colourTheme = idris_colourTheme i
-                                    , imported = imported i
-                                    }
+                -- The $!! here prevents a space leak on reloading.
+                -- This isn't a solution - but it's a temporary stopgap.
+                -- See issue #2386
+                do putIState $!! orig { idris_options = idris_options i
+                                      , idris_colourTheme = idris_colourTheme i
+                                      , imported = imported i
+                                      }
                    clearErr
                    mods <- loadInputs inputs Nothing
                    return (Just mods)
             Success (Right (Load f toline)) ->
-                do putIState orig { idris_options = idris_options i
-                                  , idris_colourTheme = idris_colourTheme i
-                                  }
+                -- The $!! here prevents a space leak on reloading.
+                -- This isn't a solution - but it's a temporary stopgap.
+                -- See issue #2386
+                do putIState $!! orig { idris_options = idris_options i
+                                      , idris_colourTheme = idris_colourTheme i
+                                      }
                    clearErr
                    mod <- loadInputs [f] toline
                    return (Just mod)
@@ -735,9 +755,9 @@ edit f orig
          let args = line ++ [fixName f]
          runIO $ rawSystem editor args
          clearErr
-         putIState $ orig { idris_options = idris_options i
-                          , idris_colourTheme = idris_colourTheme i
-                          }
+         putIState $!! orig { idris_options = idris_options i
+                            , idris_colourTheme = idris_colourTheme i
+                            }
          loadInputs [f] Nothing
 --          clearOrigPats
          iucheck
@@ -1499,13 +1519,13 @@ loadInputs inputs toline -- furthest line to read in input source files
            -- If it worked, load the whole thing from all the ibcs together
            case errSpan inew of
               Nothing ->
-                do putIState (ist { idris_tyinfodata = tidata })
+                do putIState $!! ist { idris_tyinfodata = tidata }
                    ibcfiles <- mapM findNewIBC (nub (concat (map snd ifiles)))
                    tryLoad True (mapMaybe id ibcfiles)
               _ -> return ()
            ist <- getIState
-           putIState (ist { idris_tyinfodata = tidata,
-                            idris_patdefs = patdefs })
+           putIState $! ist { idris_tyinfodata = tidata,
+                              idris_patdefs = patdefs }
            exports <- findExports
 
            case opt getOutput opts of
@@ -1549,11 +1569,15 @@ loadInputs inputs toline -- furthest line to read in input source files
                       let tidata = idris_tyinfodata inew
                       let patdefs = idris_patdefs inew
                       ok <- noErrors
-                      when ok $ do when (not keepstate) $ putIState ist
-                                   ist <- getIState
-                                   putIState (ist { idris_tyinfodata = tidata,
-                                                    idris_patdefs = patdefs })
-                                   tryLoad keepstate fs
+                      when ok $
+                        -- The $!! here prevents a space leak on reloading.
+                        -- This isn't a solution - but it's a temporary stopgap.
+                        -- See issue #2386
+                        do when (not keepstate) $ putIState $!! ist
+                           ist <- getIState
+                           putIState $!! ist { idris_tyinfodata = tidata,
+                                               idris_patdefs = patdefs }
+                           tryLoad keepstate fs
 
          ibc (IBC _ _) = True
          ibc _ = False

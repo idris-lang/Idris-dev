@@ -51,6 +51,7 @@ import Prelude (Eq(..), Show(..), Ord(..), Functor(..), Monad(..), String, Int,
 
 import Control.Applicative (Applicative (..), Alternative)
 import qualified Control.Applicative as A (Alternative (..))
+import Control.DeepSeq (($!!))
 import Control.Monad.State.Strict
 import Control.Monad.Trans.Except (Except (..))
 import Debug.Trace
@@ -438,11 +439,11 @@ traceWhen False _  a = a
 
 -- | Names are hierarchies of strings, describing scope (so no danger of
 -- duplicate names, but need to be careful on lookup).
-data Name = UN T.Text -- ^ User-provided name
-          | NS Name [T.Text] -- ^ Root, namespaces
-          | MN Int T.Text -- ^ Machine chosen names
+data Name = UN !T.Text -- ^ User-provided name
+          | NS !Name [T.Text] -- ^ Root, namespaces
+          | MN !Int !T.Text -- ^ Machine chosen names
           | NErased -- ^ Name of something which is never used in scope
-          | SN SpecialName -- ^ Decorated function names
+          | SN !SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord, Data, Typeable)
 
@@ -463,7 +464,7 @@ sUN :: String -> Name
 sUN s = UN (txt s)
 
 sNS :: Name -> [String] -> Name
-sNS n ss = NS n (map txt ss)
+sNS n ss = NS n $!! (map txt ss)
 
 sMN :: Int -> String -> Name
 sMN i s = MN i (txt s)
@@ -473,15 +474,15 @@ deriving instance Binary Name
 deriving instance NFData Name
 !-}
 
-data SpecialName = WhereN Int Name Name
-                 | WithN Int Name
-                 | InstanceN Name [T.Text]
-                 | ParentN Name T.Text
-                 | MethodN Name
-                 | CaseN Name
-                 | ElimN Name
-                 | InstanceCtorN Name
-                 | MetaN Name Name
+data SpecialName = WhereN !Int !Name !Name
+                 | WithN !Int !Name
+                 | InstanceN !Name [T.Text]
+                 | ParentN !Name !T.Text
+                 | MethodN !Name
+                 | CaseN !Name
+                 | ElimN !Name
+                 | InstanceCtorN !Name
+                 | MetaN !Name !Name
   deriving (Eq, Ord, Data, Typeable)
 {-!
 deriving instance Binary SpecialName
