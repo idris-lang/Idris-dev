@@ -369,17 +369,10 @@ findIndex p []        = Nothing
 findIndex p (x :: xs) = if p x then Just 0 else map FS (findIndex p xs)
 
 ||| Find the indices of all elements that satisfy some test
-findIndices : (a -> Bool) -> Vect m a -> (p ** Vect p Nat)
-findIndices = findIndices' 0
-  where
-    total findIndices' : Nat -> (a -> Bool) -> Vect m a -> (p ** Vect p Nat)
-    findIndices' cnt p []      = (_ ** [])
-    findIndices' cnt p (x::xs) with (findIndices' (S cnt) p xs)
-      | (_ ** tail) =
-       if p x then
-        (_ ** cnt::tail)
-       else
-        (_ ** tail)
+findIndices : (a -> Bool) -> Vect m a -> List (Fin m)
+findIndices p []        = []
+findIndices p (x :: xs) = let is = map FS $ findIndices p xs
+                           in if p x then 0 :: is else is
 
 elemIndexBy : (a -> a -> Bool) -> a -> Vect m a -> Maybe (Fin m)
 elemIndexBy p e = findIndex $ p e
@@ -387,10 +380,10 @@ elemIndexBy p e = findIndex $ p e
 elemIndex : Eq a => a -> Vect m a -> Maybe (Fin m)
 elemIndex = elemIndexBy (==)
 
-elemIndicesBy : (a -> a -> Bool) -> a -> Vect m a -> (p ** Vect p Nat)
+elemIndicesBy : (a -> a -> Bool) -> a -> Vect m a -> List (Fin m)
 elemIndicesBy p e = findIndices $ p e
 
-elemIndices : Eq a => a -> Vect m a -> (p ** Vect p Nat)
+elemIndices : Eq a => a -> Vect m a -> List (Fin m)
 elemIndices = elemIndicesBy (==)
 
 --------------------------------------------------------------------------------
