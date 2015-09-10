@@ -342,6 +342,9 @@ proofExpr :: SyntaxInfo -> IdrisParser PTerm
 proofExpr syn = do kw <- reservedFC "proof"
                    ts <- indentedBlock1 (tactic syn)
                    highlightP kw AnnKeyword
+                   ist <- get
+                   put ist { parserWarnings =
+                               (kw, Msg "This style of tactic proof is deprecated. See %runElab for the replacement.") : parserWarnings ist }
                    return $ PProof ts
                 <?> "proof block"
 
@@ -356,6 +359,9 @@ tacticsExpr :: SyntaxInfo -> IdrisParser PTerm
 tacticsExpr syn = do kw <- reservedFC "tactics"
                      ts <- indentedBlock1 (tactic syn)
                      highlightP kw AnnKeyword
+                     ist <- get
+                     put ist { parserWarnings =
+                                 (kw, Msg "This style of tactic proof is deprecated. See %runElab for the replacement.") : parserWarnings ist }
                      return $ PTactics ts
                   <?> "tactics block"
 
