@@ -374,7 +374,8 @@ namespace Tactics
   whnf : (term : TT) -> Elab TT
   whnf term = prim__Whnf term
 
-  ||| Check that two terms are convertable in the current context and environment
+  ||| Check that two terms are convertable in the current context and
+  ||| in some environment.
   |||
   ||| @ env a lexical environment to compare the terms in (see `getEnv`)
   ||| @ term1 the first term to convert
