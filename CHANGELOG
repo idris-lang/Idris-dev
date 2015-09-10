@@ -7,6 +7,9 @@ Language updates
 * Improved unification by implementing a pattern unification rule
 * The syntax `{{n}} quotes n without resolving it, allowing short syntax
   for defining new names. `{n} still quotes n to an existing name in scope.
+* The previous syntax for tactic proofs and the previous interactive prover
+  are now deprecated in favour of reflected elaboration. They will be removed
+  at some point in the future.
 
 Library updates
 ---------------
