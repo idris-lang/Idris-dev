@@ -234,11 +234,7 @@ unzip3 ((l,c,r)::xs) with (unzip3 xs)
 
 instance (Eq a) => Eq (Vect n a) where
   (==) []      []      = True
-  (==) (x::xs) (y::ys) =
-    if x == y then
-      xs == ys
-    else
-      False
+  (==) (x::xs) (y::ys) = x == y && xs == ys
 
 
 --------------------------------------------------------------------------------
@@ -285,7 +281,7 @@ mapMaybe f (x::xs) =
 -- Folds
 --------------------------------------------------------------------------------
 
-total foldrImpl : (t -> acc -> acc) -> acc -> (acc -> acc) -> Vect n t -> acc
+foldrImpl : (t -> acc -> acc) -> acc -> (acc -> acc) -> Vect n t -> acc
 foldrImpl f e go [] = go e
 foldrImpl f e go (x::xs) = foldrImpl f e (go . (f x)) xs
 
@@ -326,9 +322,7 @@ scanl f q (x::xs) = q :: scanl f (f q x) xs
 ||| @ xs the vector to search in
 elemBy : (p : a -> a -> Bool) -> (e : a) -> (xs : Vect n a) -> Bool
 elemBy p e []      = False
-elemBy p e (x::xs) with (p e x)
-  | True  = True
-  | False = elemBy p e xs
+elemBy p e (x::xs) = p e x || elemBy p e xs
 
 ||| Use the default Boolean equality on elements to search for an item
 ||| @ x what to search for
@@ -341,9 +335,7 @@ elem = elemBy (==)
 ||| @ e the key to look for
 lookupBy : (p : a -> a -> Bool) -> (e : a) -> (xs : Vect n (a, b)) -> Maybe b
 lookupBy p e []           = Nothing
-lookupBy p e ((l, r)::xs) with (p e l)
-  | True  = Just r
-  | False = lookupBy p e xs
+lookupBy p e ((l, r)::xs) = if p e l then Just r else lookupBy p e xs
 
 ||| Find the assocation of some key using the default Boolean equality test
 lookup : Eq a => a -> Vect n (a, b) -> Maybe b
@@ -355,9 +347,7 @@ lookup = lookupBy (==)
 ||| @ xs what to search for
 hasAnyBy : (p : a -> a -> Bool) -> (elems : Vect m a) -> (xs : Vect n a) -> Bool
 hasAnyBy p elems []      = False
-hasAnyBy p elems (x::xs) with (elemBy p x elems)
-  | True  = True
-  | False = hasAnyBy p elems xs
+hasAnyBy p elems (x::xs) = elemBy p x elems || hasAnyBy p elems xs
 
 ||| Check if any element of xs is found in elems using the default Boolean equality test
 hasAny : Eq a => Vect m a -> Vect n a -> Bool
@@ -371,19 +361,15 @@ hasAny = hasAnyBy (==)
 ||| @ p the test to satisfy
 find : (p : a -> Bool) -> (xs : Vect n a) -> Maybe a
 find p []      = Nothing
-find p (x::xs) with (p x)
-  | True  = Just x
-  | False = find p xs
+find p (x::xs) = if p x then Just x else find p xs
 
 ||| Find the index of the first element of the vector that satisfies some test
 findIndex : (a -> Bool) -> Vect n a -> Maybe (Fin n)
 findIndex p []        = Nothing
-findIndex p (x :: xs) with (p x)
-  | True  = Just 0
-  | False = map FS (findIndex p xs)
+findIndex p (x :: xs) = if p x then Just 0 else map FS (findIndex p xs)
 
 ||| Find the indices of all elements that satisfy some test
-total findIndices : (a -> Bool) -> Vect m a -> (p ** Vect p Nat)
+findIndices : (a -> Bool) -> Vect m a -> (p ** Vect p Nat)
 findIndices = findIndices' 0
   where
     total findIndices' : Nat -> (a -> Bool) -> Vect m a -> (p ** Vect p Nat)
@@ -401,10 +387,10 @@ elemIndexBy p e = findIndex $ p e
 elemIndex : Eq a => a -> Vect m a -> Maybe (Fin m)
 elemIndex = elemIndexBy (==)
 
-total elemIndicesBy : (a -> a -> Bool) -> a -> Vect m a -> (p ** Vect p Nat)
+elemIndicesBy : (a -> a -> Bool) -> a -> Vect m a -> (p ** Vect p Nat)
 elemIndicesBy p e = findIndices $ p e
 
-total elemIndices : Eq a => a -> Vect m a -> (p ** Vect p Nat)
+elemIndices : Eq a => a -> Vect m a -> (p ** Vect p Nat)
 elemIndices = elemIndicesBy (==)
 
 --------------------------------------------------------------------------------
@@ -412,14 +398,14 @@ elemIndices = elemIndicesBy (==)
 --------------------------------------------------------------------------------
 
 ||| Find all elements of a vector that satisfy some test
-total filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
-filter p [] = ( _ ** [] )
-filter p (x::xs) with (filter p xs)
-  | (_ ** tail) =
-    if p x then
-      (_ ** x::tail)
-    else
-      (_ ** tail)
+filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
+filter p []      = ( _ ** [] )
+filter p (x::xs) =
+  let (_ ** tail) = filter p xs
+   in if p x then
+        (_ ** x::tail)
+      else
+        (_ ** tail)
 
 ||| Make the elements of some vector unique by some test
 nubBy : (a -> a -> Bool) -> Vect n a -> (p ** Vect p a)
@@ -473,9 +459,7 @@ partition p (x::xs) =
 isPrefixOfBy : (a -> a -> Bool) -> Vect m a -> Vect n a -> Bool
 isPrefixOfBy p [] right        = True
 isPrefixOfBy p left []         = False
-isPrefixOfBy p (x::xs) (y::ys) with (p x y)
-  | True  = isPrefixOfBy p xs ys
-  | False = False
+isPrefixOfBy p (x::xs) (y::ys) = p x y && isPrefixOfBy p xs ys
 
 isPrefixOf : Eq a => Vect m a -> Vect n a -> Bool
 isPrefixOf = isPrefixOfBy (==)
@@ -490,11 +474,11 @@ isSuffixOf = isSuffixOfBy (==)
 -- Conversions
 --------------------------------------------------------------------------------
 
-total maybeToVect : Maybe a -> (p ** Vect p a)
+maybeToVect : Maybe a -> (p ** Vect p a)
 maybeToVect Nothing  = (_ ** [])
 maybeToVect (Just j) = (_ ** [j])
 
-total vectToMaybe : Vect n a -> Maybe a
+vectToMaybe : Vect n a -> Maybe a
 vectToMaybe []      = Nothing
 vectToMaybe (x::xs) = Just x
 
@@ -505,21 +489,22 @@ vectToMaybe (x::xs) = Just x
 catMaybes : Vect n (Maybe a) -> (p ** Vect p a)
 catMaybes []             = (_ ** [])
 catMaybes (Nothing::xs)  = catMaybes xs
-catMaybes ((Just j)::xs) with (catMaybes xs)
-  | (_ ** tail) = (_ ** j::tail)
+catMaybes ((Just j)::xs) =
+  let (_ ** tail) = catMaybes xs
+   in (_ ** j::tail)
 
 diag : Vect n (Vect n a) -> Vect n a
 diag []             = []
 diag ((x::xs)::xss) = x :: diag (map tail xss)
 
-range : Vect n (Fin n)
+range : {n : Nat} -> Vect n (Fin n)
 range {n=Z}   = []
 range {n=S _} = FZ :: map FS range
 
 ||| Transpose a Vect of Vects, turning rows into columns and vice versa.
 |||
 ||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
-transpose : Vect m (Vect n a) -> Vect n (Vect m a)
+transpose : {n : Nat} -> Vect m (Vect n a) -> Vect n (Vect m a)
 transpose []        = replicate _ []
 transpose (x :: xs) = zipWith (::) x (transpose xs)
 
@@ -569,11 +554,9 @@ vectAppendAssociative (x :: xs) ys zs =
 -- DecEq
 --------------------------------------------------------------------------------
 
-total
 vectInjective1 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> x = y
 vectInjective1 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
 
-total
 vectInjective2 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> xs = ys
 vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
 
