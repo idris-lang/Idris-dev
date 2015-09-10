@@ -243,11 +243,7 @@ instance (Eq a) => Eq (Vect n a) where
 
 instance Ord a => Ord (Vect n a) where
   compare []      []      = EQ
-  compare (x::xs) (y::ys) =
-    if x /= y then
-      compare x y
-    else
-      compare xs ys
+  compare (x::xs) (y::ys) = compare x y `thenCompare` compare xs ys
 
 
 --------------------------------------------------------------------------------

@@ -71,6 +71,12 @@ instance Eq Ordering where
     GT == GT = True
     _  == _  = False
 
+||| Compose two comparisons into the lexicographic product
+thenCompare : Ordering -> Lazy Ordering -> Ordering
+thenCompare LT y = LT
+thenCompare EQ y = y
+thenCompare GT y = GT
+
 ||| The Ord class defines comparison operations on ordered data types.
 class Eq a => Ord a where
     compare : a -> a -> Ordering
