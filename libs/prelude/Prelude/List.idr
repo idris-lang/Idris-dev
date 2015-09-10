@@ -52,13 +52,12 @@ data NonEmpty : (xs : List a) -> Type where
     ||| The proof that a cons cell is non-empty
     IsNonEmpty : NonEmpty (x :: xs)
 
-private
-nonEmptyNil : NonEmpty [] -> Void
-nonEmptyNil IsNonEmpty impossible
+instance Uninhabited (NonEmpty []) where
+  uninhabited IsNonEmpty impossible
 
 ||| Decide whether a list is non-empty
 nonEmpty : (xs : List a) -> Dec (NonEmpty xs)
-nonEmpty [] = No nonEmptyNil
+nonEmpty [] = No absurd
 nonEmpty (x :: xs) = Yes IsNonEmpty
 
 ||| Satisfiable if `k` is a valid index into `xs`
