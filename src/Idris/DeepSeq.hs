@@ -160,7 +160,8 @@ instance NFData Opt where
     rnf (AutoWidth) = ()
     rnf (AutoSolve) = ()
     rnf (UseConsoleWidth cw) = rnf  cw `seq` ()
-    rnf (DumpHighlights) = ()
+    rnf DumpHighlights = ()
+    rnf NoElimDeprecationWarnings = ()
 
 
 instance NFData TIData where

@@ -503,6 +503,7 @@ data Opt = Filename String
          | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
          | UseConsoleWidth ConsoleWidth
          | DumpHighlights
+         | NoElimDeprecationWarnings -- ^ Don't show deprecation warnings for %elim
     deriving (Show, Eq)
 
 data ElabShellCmd = EQED | EAbandon | EUndo | EProofState | EProofTerm

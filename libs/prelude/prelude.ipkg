@@ -1,6 +1,6 @@
 package prelude
 
-opts = "--nobuiltins --total"
+opts = "--nobuiltins --total --no-elim-deprecation-warnings"
 modules = Builtins, Prelude, IO,
 
           Prelude.Algebra, Prelude.Basics, Prelude.Bool, Prelude.Cast,
