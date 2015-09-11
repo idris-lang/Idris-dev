@@ -125,7 +125,7 @@ generate codegen mainmod ir
        Via "c" -> codegenC ir
        -- Any external code generator
        Via cg -> do let cmd = "idris-codegen-" ++ cg
-                        args = ["--yes-really", mainmod, "-o", outputFile ir] ++ compilerFlags ir
+                        args = [mainmod, "-o", outputFile ir] ++ compilerFlags ir
                     exit <- rawSystem cmd args
                     when (exit /= ExitSuccess) $
                        putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
