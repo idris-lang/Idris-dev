@@ -3,7 +3,7 @@ module Prelude.Cast
 import Prelude.Bool
 import public Builtins
 
-||| Type class for transforming a instance of a data type to another type.
+||| Type class for transforming an instance of a data type to another type.
 class Cast from to where
     ||| Perform a cast operation.
     |||
