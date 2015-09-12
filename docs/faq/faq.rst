@@ -74,7 +74,7 @@ Booleans is defined as follows in the library:
     ifThenElse True  t e = t
     ifThenElse False t e = e
 
-The type ``Lazy a`` for ``t`` and ``f`` indicates that those arguments will
+The type ``Lazy a`` for ``t`` and ``e`` indicates that those arguments will
 only be evaluated if they are used, that is, they are evaluated lazily.
 
 Evaluation at the REPL doesn't behave as I expect. What's going on?
