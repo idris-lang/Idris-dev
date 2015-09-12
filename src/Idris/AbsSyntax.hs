@@ -977,10 +977,11 @@ setTypeCase t = do i <- getIState
 -- Dealing with parameters
 
 expandParams :: (Name -> Name) -> [(Name, PTerm)] ->
+                Maybe [Name] -> -- If present, names not in this list are only bound to placeholders
                 [Name] -> -- all names
                 [Name] -> -- names with no declaration
                 PTerm -> PTerm
-expandParams dec ps ns infs tm = en tm
+expandParams dec ps free ns infs tm = en tm
   where
     -- if we shadow a name (say in a lambda binding) that is used in a call to
     -- a lifted function, we need access to both names - once in the scope of the
@@ -1029,25 +1030,25 @@ expandParams dec ps ns infs tm = en tm
         | n `nselem` ns = PQuote (Var (dec n))
     en (PApp fc (PInferRef fc' hl n) as)
         | n `nselem` ns = PApp fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
+                           (map (mkexp fc hl) (map fst ps) ++ (map (fmap en) as))
     en (PApp fc (PRef fc' hl n) as)
         | n `elem` infs = PApp fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
+                           (map (mkexp fc hl) (map fst ps) ++ (map (fmap en) as))
         | n `nselem` ns = PApp fc (PRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
+                           (map (mkexp fc hl) (map fst ps) ++ (map (fmap en) as))
     en (PAppBind fc (PRef fc' hl n) as)
         | n `elem` infs = PAppBind fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
+                           (map (mkexp fc hl) (map fst ps) ++ (map (fmap en) as))
         | n `nselem` ns = PAppBind fc (PRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
+                           (map (mkexp fc hl) (map fst ps) ++ (map (fmap en) as))
     en (PRef fc hl n)
         | n `elem` infs = PApp fc (PInferRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map (mkexp fc hl) (map fst ps))
         | n `nselem` ns = PApp fc (PRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map (mkexp fc hl) (map fst ps))
     en (PInferRef fc hl n)
         | n `nselem` ns = PApp fc (PInferRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map (mkexp fc hl) (map fst ps))
     en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
     en (PAppBind fc f as) = PAppBind fc (en f) (map (fmap en) as)
     en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
@@ -1065,22 +1066,27 @@ expandParams dec ps ns infs tm = en tm
     enTacImp (TacImp aos st scr)  = TacImp aos st (en scr)
     enTacImp other                = other
 
+    mkexp fc hl n = pexp $ maybe (PRef fc hl n) (\free ->
+                            if n `elem` free
+                              then PRef fc hl n
+                              else Placeholder) free
+
 expandParamsD :: Bool -> -- True = RHS only
                  IState ->
                  (Name -> Name) -> [(Name, PTerm)] -> [Name] -> PDecl -> PDecl
 expandParamsD rhsonly ist dec ps ns (PTy doc argdocs syn fc o n nfc ty)
     = if n `elem` ns && (not rhsonly)
-         then -- trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc argdocs syn fc o (dec n) nfc (piBindp expl_param ps (expandParams dec ps ns [] ty))
-         else --trace (show (n, expandParams dec ps ns ty)) $
-              PTy doc argdocs syn fc o n nfc (expandParams dec ps ns [] ty)
+         then -- trace (show (n, expandParams dec ps Nothing ns ty)) $
+              PTy doc argdocs syn fc o (dec n) nfc (piBindp expl_param ps (expandParams dec ps Nothing ns [] ty))
+         else --trace (show (n, expandParams dec ps Nothing ns ty)) $
+              PTy doc argdocs syn fc o n nfc (expandParams dec ps Nothing ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PPostulate e doc syn fc nfc o n ty)
     = if n `elem` ns && (not rhsonly)
-         then -- trace (show (n, expandParams dec ps ns ty)) $
+         then -- trace (show (n, expandParams dec ps Nothing ns ty)) $
               PPostulate e doc syn fc nfc o (dec n)
-                         (piBind ps (expandParams dec ps ns [] ty))
-         else --trace (show (n, expandParams dec ps ns ty)) $
-              PPostulate e doc syn fc nfc o n (expandParams dec ps ns [] ty)
+                         (piBind ps (expandParams dec ps Nothing ns [] ty))
+         else --trace (show (n, expandParams dec ps Nothing ns ty)) $
+              PPostulate e doc syn fc nfc o n (expandParams dec ps Nothing ns [] ty)
 expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     = let n' = if n `elem` ns then dec n else n in
           PClauses fc opts n' (map expandParamsC cs)
@@ -1088,25 +1094,26 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     expandParamsC (PClause fc n lhs ws rhs ds)
         = let -- ps' = updateps True (namesIn ist rhs) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
-              lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
-              n' = if n `elem` ns then dec n else n
               -- names bound on the lhs should not be expanded on the rhs
-              ns' = removeBound lhs ns in
-              PClause fc n' lhs'
-                            (map (expandParams dec ps'' ns' []) ws)
-                            (expandParams dec ps'' ns' [] rhs)
-                            (map (expandParamsD True ist dec ps'' ns') ds)
+              ns' = removeBound lhs ns
+              rhs' = expandParams dec ps'' Nothing ns' [] rhs
+              ws' = map (expandParams dec ps'' Nothing ns' []) ws
+              ds' = map (expandParamsD True ist dec ps'' ns') ds
+              free = nub $ concatMap (namesIn [] ist) (rhs':ws') ++ concatMap namesInDecl ds'
+              lhs' = if rhsonly then lhs else (expandParams dec ps'' (Just free) ns [] lhs)
+              n' = if n `elem` ns then dec n else n in
+              PClause fc n' lhs' ws' rhs' ds'
     expandParamsC (PWith fc n lhs ws wval pn ds)
         = let -- ps' = updateps True (namesIn ist wval) (zip ps [0..])
               ps'' = updateps False (namesIn [] ist lhs) (zip ps [0..])
-              lhs' = if rhsonly then lhs else (expandParams dec ps'' ns [] lhs)
-              n' = if n `elem` ns then dec n else n
-              ns' = removeBound lhs ns in
-              PWith fc n' lhs'
-                          (map (expandParams dec ps'' ns' []) ws)
-                          (expandParams dec ps'' ns' [] wval)
-                          pn
-                          (map (expandParamsD rhsonly ist dec ps'' ns') ds)
+              ns' = removeBound lhs ns
+              wval' = expandParams dec ps'' Nothing ns' [] wval
+              ws' = map (expandParams dec ps'' Nothing ns' []) ws
+              ds' = map (expandParamsD True ist dec ps'' ns') ds
+              free = nub $ namesIn [] ist wval' ++ concatMap namesInDecl ds'
+              lhs' = if rhsonly then lhs else (expandParams dec ps'' (Just free) ns [] lhs)
+              n' = if n `elem` ns then dec n else n in
+              PWith fc n' lhs' ws' wval' pn ds'
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
@@ -1120,6 +1127,13 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     bnames (PDPair _ _ _ l Placeholder r) = bnames l ++ bnames r
     bnames _ = []
 
+    namesInDecl (PTy _ _ _ _ _ _ _ ty) = namesIn [] ist ty
+    namesInDecl (PClauses _ _ _ cs) = concatMap namesInClause cs
+    namesInDecl _ = []
+
+    namesInClause (PClause fc n lhs ws rhs ds) = concatMap (namesIn [] ist) (rhs:ws)
+    namesInClause (PWith fc n lhs ws wval pn ds) = namesIn [] ist wval
+
 -- | Expands parameters defined in parameter and where blocks inside of declarations
 expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
     = PData doc argDocs syn fc co (expandPData pd)
@@ -1128,24 +1142,24 @@ expandParamsD rhs ist dec ps ns (PData doc argDocs syn fc co pd)
     -- added implicitly)
     expandPData (PDatadecl n nfc ty cons)
        = if n `elem` ns
-            then PDatadecl (dec n) nfc (piBind ps (expandParams dec ps ns [] ty))
+            then PDatadecl (dec n) nfc (piBind ps (expandParams dec ps Nothing ns [] ty))
                            (map econ cons)
-            else PDatadecl n nfc (expandParams dec ps ns [] ty) (map econ cons)
+            else PDatadecl n nfc (expandParams dec ps Nothing ns [] ty) (map econ cons)
     econ (doc, argDocs, n, nfc, t, fc, fs)
-       = (doc, argDocs, dec n, nfc, piBindp expl ps (expandParams dec ps ns [] t), fc, fs)
+       = (doc, argDocs, dec n, nfc, piBindp expl ps (expandParams dec ps Nothing ns [] t), fc, fs)
 expandParamsD rhs ist dec ps ns d@(PRecord doc rsyn fc opts name nfc prs pdocs fls cn cdoc csyn)
   = d
 expandParamsD rhs ist dec ps ns (PParams f params pds)
-   = PParams f (ps ++ map (mapsnd (expandParams dec ps ns [])) params)
+   = PParams f (ps ++ map (mapsnd (expandParams dec ps Nothing ns [])) params)
                (map (expandParamsD True ist dec ps ns) pds)
 --                (map (expandParamsD ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PMutual f pds)
    = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds decls cn cd)
    = PClass doc info f
-           (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
+           (map (\ (n, t) -> (n, expandParams dec ps Nothing ns [] t)) cs)
            n nfc
-           (map (\(n, fc, t) -> (n, fc, expandParams dec ps ns [] t)) params)
+           (map (\(n, fc, t) -> (n, fc, expandParams dec ps Nothing ns [] t)) params)
            pDocs
            fds
            (map (expandParamsD rhs ist dec ps ns) decls)
@@ -1153,11 +1167,11 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds dec
            cd
 expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs n nfc params ty cn decls)
    = PInstance doc argDocs info f
-           (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
+           (map (\ (n, t) -> (n, expandParams dec ps Nothing ns [] t)) cs)
            n
            nfc
-           (map (expandParams dec ps ns []) params)
-           (expandParams dec ps ns [] ty)
+           (map (expandParams dec ps Nothing ns []) params)
+           (expandParams dec ps Nothing ns [] ty)
            cn
            (map (expandParamsD rhs ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns d = d

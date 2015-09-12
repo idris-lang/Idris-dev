@@ -630,9 +630,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         mapM_ (rec_elabDecl info EAll winfo) wbefore
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- getIState -- new implicits from where block
-        logLvl 5 (showTmImpls (expandParams decorate newargs defs (defs \\ decls) rhs_in))
+        logLvl 5 (showTmImpls (expandParams decorate newargs Nothing defs (defs \\ decls) rhs_in))
         let rhs = addImplBoundInf i (map fst newargs_all) (defs \\ decls)
-                                 (expandParams decorate newargs defs (defs \\ decls) rhs_in)
+                                 (expandParams decorate newargs Nothing defs (defs \\ decls) rhs_in)
         logLvl 2 $ "RHS: " ++ show (map fst newargs_all) ++ " " ++ showTmImpls rhs
         ctxt <- getContext -- new context with where block added
         logLvl 5 "STARTING CHECK"
