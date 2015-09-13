@@ -79,7 +79,7 @@ unsigned idris_utf8_index(char* s, int idx) {
 }
 
 char* idris_utf8_advance(char* str, int i) {
-    // the pointer is not at the beginning of a character - find the next one
+    // The pointer is not at the beginning of a character - find the next one
     while ((*str & 0xc0) == 0x80) { str++; }
 
     // Scan characters i times, but bail on end of string
@@ -96,6 +96,10 @@ char* idris_utf8_advance(char* str, int i) {
             str += 5;
         } else if ((*str & 0xfe) == 0xfc) {
             str += 6;
+        } else {
+            // This shouldn't happen - it means that the string is ill-formed.
+            // Assume we got a normal C string, and advance by one char.
+            str++;
         }
         i--;
     }
