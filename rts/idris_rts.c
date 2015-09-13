@@ -600,7 +600,7 @@ VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
     Closure* newstr = allocate(sizeof(Closure) + (end - start) +1, 0);
     SETTY(newstr, STRING);
     memcpy(newstr -> info.str, start, end - start);
-    end[1] = '\0';
+    *(newstr -> info.str + (end - start) + 1) = '\0';
     return newstr;
 }
 
