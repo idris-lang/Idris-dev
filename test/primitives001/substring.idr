@@ -32,3 +32,8 @@ main = do putStrLn $ prim__strSubstr 1 1004 foo
           putStrLn $ prim__strSubstr 10 5 firstSentence
           putStrLn $ prim__strSubstr (-10) 5 firstSentence
           putStrLn $ "[" ++ prim__strSubstr 0 (-1) firstSentence ++ "]"
+          input <- getLine
+          putStrLn $ prim__strSubstr 3 8 input
+          putStrLn $ prim__strSubstr 3 8000 input
+          putStrLn $ prim__strSubstr (-13) 18 input
+
