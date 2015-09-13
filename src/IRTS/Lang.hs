@@ -74,7 +74,7 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LFExp | LFLog | LFSin | LFCos | LFTan | LFASin | LFACos | LFATan
             | LFSqrt | LFFloor | LFCeil | LFNegate
 
-            | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev
+            | LStrHead | LStrTail | LStrCons | LStrIndex | LStrRev | LStrSubstr
             | LReadStr | LWriteStr
 
             -- system info

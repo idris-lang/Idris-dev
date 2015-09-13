@@ -1140,6 +1140,15 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
                 JSNum (JSInt 1),
                 JSBinOp "-" (JSProj v "length") (JSNum (JSInt 1))
               ]
+      | LStrSubstr <- op
+      , (offset:length:string:_) <- args =
+        let off = translateReg offset
+            len = translateReg length
+            str = translateReg string
+        in JSApp (JSProj str "substr") [
+             jsCall "Math.max" [JSNum (JSInt 0), off],
+             jsCall "Math.max" [JSNum (JSInt 0), len]
+           ]
 
       | LSystemInfo <- op
       , (arg:_) <- args = jsCall "i$systemInfo"  [translateReg arg]

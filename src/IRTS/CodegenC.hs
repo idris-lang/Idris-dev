@@ -559,6 +559,7 @@ doOp v LStrCons [x, y] = v ++ "idris_strCons(vm, " ++ creg x ++ "," ++ creg y ++
 doOp v LStrIndex [x, y] = v ++ "idris_strIndex(vm, " ++ creg x ++ "," ++ creg y ++ ")"
 doOp v LStrRev [x] = v ++ "idris_strRev(vm, " ++ creg x ++ ")"
 doOp v LStrLen [x] = v ++ "idris_strlen(vm, " ++ creg x ++ ")"
+doOp v LStrSubstr [x,y,z] = v ++ "idris_substr(vm, " ++ creg x ++ "," ++ creg y ++ "," ++ creg z ++ ")"
 
 doOp v LFork [x] = v ++ "MKPTR(vm, vmThread(vm, " ++ cname (sMN 0 "EVAL") ++ ", " ++ creg x ++ "))"
 doOp v LPar [x] = v ++ creg x -- "MKPTR(vm, vmThread(vm, " ++ cname (MN 0 "EVAL") ++ ", " ++ creg x ++ "))"

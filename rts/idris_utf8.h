@@ -18,5 +18,7 @@ unsigned idris_utf8_index(char* s, int j);
 char* idris_utf8_fromChar(int x);
 // Reverse a UTF8 encoded string, putting the result in 'result'
 char* idris_utf8_rev(char* s, char* result);
-
+// Advance a pointer into a string by i UTF8 characters.
+// Return original pointer if i <= 0.
+char* idris_utf8_advance(char* str, int i);
 #endif
