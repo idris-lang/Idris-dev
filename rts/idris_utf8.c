@@ -78,6 +78,32 @@ unsigned idris_utf8_index(char* s, int idx) {
    return top;
 }
 
+char* idris_utf8_advance(char* str, int i) {
+    // the pointer is not at the beginning of a character - find the next one
+    while ((*str & 0xc0) == 0x80) { str++; }
+
+    // Scan characters i times, but bail on end of string
+    while (i > 0 && *str != '\0') {
+        if ((*str & 0x80) == 0) {
+            str += 1;
+        }  else if ((*str & 0xe0) == 0xc0) {
+            str += 2;
+        } else if ((*str & 0xf0) == 0xe0) {
+            str += 3;
+        } else if ((*str & 0xf8) == 0xf0) {
+            str += 4;
+        } else if ((*str & 0xfc) == 0xf8) {
+            str += 5;
+        } else if ((*str & 0xfe) == 0xfc) {
+            str += 6;
+        }
+        i--;
+    }
+
+    return str;
+}
+
+
 char* idris_utf8_fromChar(int x) {
     char* str;
     int bytes = 0, top = 0;

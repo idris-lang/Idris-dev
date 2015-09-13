@@ -15,6 +15,8 @@ import Data.Char
 import Data.Function (on)
 import qualified Data.Vector.Unboxed as V
 
+import Debug.Trace
+
 data Prim = Prim { p_name  :: Name,
                    p_type  :: Type,
                    p_arity :: Int,
@@ -165,6 +167,8 @@ primitives =
     (2, LStrIndex) partial,
    Prim (sUN "prim__strRev") (ty [StrType] StrType) 1 (p_strRev)
     (1, LStrRev) total,
+   Prim (sUN "prim__strSubstr") (ty [AType (ATInt ITNative), AType (ATInt ITNative), StrType] StrType) 3 (p_strSubstr)
+    (3, LStrSubstr) total,
 
    Prim (sUN "prim__readString") (ty [WorldType] StrType) 1 (p_cantreduce)
      (1, LReadStr) total, -- total is okay, because we have 'WorldType'
@@ -493,7 +497,7 @@ p_floatSqrt = p_fPrim sqrt
 p_floatFloor = p_fPrim (fromInteger . floor)
 p_floatCeil = p_fPrim (fromInteger . ceiling)
 
-p_strLen, p_strHead, p_strTail, p_strIndex, p_strCons, p_strRev :: [Const] -> Maybe Const
+p_strLen, p_strHead, p_strTail, p_strIndex, p_strCons, p_strRev, p_strSubstr :: [Const] -> Maybe Const
 p_strLen [Str xs] = Just $ I (length xs)
 p_strLen _ = Nothing
 p_strHead [Str (x:xs)] = Just $ Ch x
@@ -507,6 +511,9 @@ p_strCons [Ch x, Str xs] = Just $ Str (x:xs)
 p_strCons _ = Nothing
 p_strRev [Str xs] = Just $ Str (reverse xs)
 p_strRev _ = Nothing
+p_strSubstr [I offset, I length, Str input] = Just $ Str (take length (drop offset input))
+p_strSubstr _ = Nothing
+
 
 p_cantreduce :: a -> Maybe b
 p_cantreduce _ = Nothing
