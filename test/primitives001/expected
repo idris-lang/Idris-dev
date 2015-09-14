@@ -9,6 +9,6 @@ ello! here's the thing
 用的依赖类
 Idris
 []
-is 是一个通用
-is 是一个通用的依赖类型纯函数式编程语言，其类型系统与 Agda 以及 Epigram 相似。
-Idris 是一个通用的依赖类型纯函
+is is a 
+is is a dependently typed pure functional programming language, related to Agda and Epigram.
+Idris is a depende

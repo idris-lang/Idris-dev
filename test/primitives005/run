@@ -1,0 +1,3 @@
+idris $@ substringunicode.idr -o substring
+./substring < input
+rm -f substring *.ibc

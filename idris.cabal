@@ -556,6 +556,10 @@ Extra-source-files:
                        test/primitives003/run
                        test/primitives003/*.idr
                        test/primitives003/expected
+                       test/primitives005/run
+                       test/primitives005/*.idr
+                       test/primitives005/expected
+                       test/primitives005/input
 
                        test/proof001/run
                        test/proof001/*.idr
