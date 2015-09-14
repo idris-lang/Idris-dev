@@ -10,14 +10,20 @@ var i$getLine = (function() {
 
   return function() {
     var ret = "";
-
+    var b = new Buffer(1024);
+    var i = 0;
     while(true) {
-      var b = new Buffer(1);
-      fs.readSync(0, b, 0, 1 )
-      if (b[0] == 10)
+      fs.readSync(0, b, i, 1 )
+      if (b[i] == 10) {
+        ret = b.toString('utf8', 0, i);
         break;
-      else
-        ret += String.fromCharCode(b[0]);
+      }
+      i++;
+      if (i == b.length) {
+        nb = new Buffer (b.length*2);
+        b.copy(nb)
+        b = nb;
+      }
     }
 
     return ret;
