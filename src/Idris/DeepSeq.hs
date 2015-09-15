@@ -84,6 +84,7 @@ instance NFData PrimFn where
     rnf (LStrCons) = ()
     rnf (LStrIndex) = ()
     rnf (LStrRev) = ()
+    rnf (LStrSubstr) = ()
     rnf (LReadStr) = ()
     rnf (LWriteStr) = ()
     rnf (LSystemInfo) = ()
