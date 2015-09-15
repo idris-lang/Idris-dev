@@ -25,6 +25,9 @@ negative = Refl
 negativeEnd : prim__strSubstr 0 (-1) firstSentence = ""
 negativeEnd = Refl
 
+negativeLength : prim__strSubstr 4 (-4) firstSentence = ""
+negativeLength = Refl
+
 main : IO ()
 main = do putStrLn $ prim__strSubstr 1 1004 foo
           printLn $ length $ prim__strSubstr 1 1000 foo
@@ -40,6 +43,8 @@ main = do putStrLn $ prim__strSubstr 1 1004 foo
           putStrLn $ show (length (prim__strSubstr 3 8000 input))
           putStrLn $ prim__strSubstr (-13) 18 input
           putStrLn $ show (length (prim__strSubstr (-13) 18 input))
+          putStrLn $ prim__strSubstr 4 (-4) input
+          putStrLn $ show (length (prim__strSubstr 4 (-4) input))
           -- Single-byte dynamic string
           input <- getLine
           putStrLn $ prim__strSubstr 3 8 input
@@ -48,4 +53,6 @@ main = do putStrLn $ prim__strSubstr 1 1004 foo
           putStrLn $ show (length (prim__strSubstr 3 8000 input))
           putStrLn $ prim__strSubstr (-13) 18 input
           putStrLn $ show (length (prim__strSubstr (-13) 18 input))
+          putStrLn $ prim__strSubstr 4 (-4) input
+          putStrLn $ show (length (prim__strSubstr 4 (-4) input))
 
