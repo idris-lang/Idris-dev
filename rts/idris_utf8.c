@@ -3,17 +3,25 @@
 #include <string.h>
 #include <stdlib.h>
 
-int idris_utf8_strlen(char *s) {
-   int i = 0, j = 0;
-   while (s[i]) {
-     if ((s[i] & 0xc0) != 0x80) j++;
+size_t idris_utf8_unitlen(const utf8_byte* s) {
+    return strlen((const char*) s);
+}
+
+unsigned int idris_utf8_strlen(SizedString s) {
+   unsigned int i = 0, j = 0;
+   while (i < s.size) {
+     if ((s.str_data[i] & 0xc0) != 0x80) j++;
      i++;
    }
    return j;
 }
 
-int idris_utf8_charlen(char* s) {
-    int init = (int)s[0];
+unsigned int idris_utf8_charlen(SizedString str) {
+    if (str.size < 1) {
+        fprintf(stderr, "Tried to take the first character of the empty string.\n");
+        exit(EXIT_FAILURE);
+    }
+    utf8_byte init = str.str_data[0];
     if ((init & 0x80) == 0) {
         return 1; // Top bit unset, so 1 byte
     }
@@ -22,14 +30,18 @@ int idris_utf8_charlen(char* s) {
         (init == 193)) {
         return 1; // Invalid characters
     }
-    int i = 1;
-    while ((s[i] & 0xc0) == 0x80) {
+    unsigned int i = 1;
+    while ((str.str_data[i] & 0xc0) == 0x80) {
         i++; // Move on until top 2 bits are not 10
+        if (i >= str.size) {
+            fprintf(stderr, "Malformed UTF-8 character extends past length of string.\n");
+            exit(EXIT_FAILURE);
+        }
     }
     return i;
 }
 
-unsigned idris_utf8_index(char* s, int idx) {
+unsigned idris_utf8_index(utf8_byte* s, int idx) {
    int i = 0, j = 0;
    while (j < idx) {
      if ((s[i] & 0xc0) != 0x80) j++;
@@ -78,17 +90,14 @@ unsigned idris_utf8_index(char* s, int idx) {
    return top;
 }
 
-char* idris_utf8_advance(char* str, int i) {
-    while (i > 0 && *str != '\0') {
+utf8_byte* idris_utf8_advance(utf8_byte* str, size_t len, int i) {
+    utf8_byte *end = str + len;
+    while (i > 0 && str < end) {
         // In a UTF8 single-byte char, the highest bit is 0.  In the
         // first byte of a multi-byte char, the highest two bits are
         // 11, but the rest of the bytes start with 10. So we can
         // decrement our character counter when we see something other
         // than 10 at the front.
-
-        // This is a bit of an overapproximation, as invalid multibyte
-        // sequences that are too long will be treated as if they are
-        // OK, but it's always paying attention to null-termination.
         if ((*str & 0xc0) != 0x80) {
             i--;
         }
@@ -96,23 +105,34 @@ char* idris_utf8_advance(char* str, int i) {
     }
     // Now we've found the first byte of the last character. Advance
     // to the end of it, or the end of the string, whichever is first.
-    // Here, we don't risk overrunning the end of the string because
-    // ('\0' & 0xc0) != 0x80.
-    while ((*str & 0xc0) == 0x80) { str++; }
+    while ((*str & 0xc0) == 0x80 && str < end) { str++; }
 
     return str;
 }
 
 
-char* idris_utf8_fromChar(int x) {
-    char* str;
+SizedString idris_utf8_fromChar(unsigned int x) {
+    utf8_byte* str;
     int bytes = 0, top = 0;
+    size_t size = 0;
 
-    if ((x & 0x80) == 0) {
+    if (x > 1114112) {
+        fprintf(stderr, "%i is larger than the largest Unicode code point", x);
+        exit(EXIT_FAILURE);
+    }
+
+    // Character requires a single byte - bits above 7 are all unset
+    if (x < 0x80) {
+        // Caller will free
         str = malloc(2);
-        str[0] = (char)x;
+        if (str == NULL) {
+            fprintf(stderr, "Couldn't allocate for character");
+            exit(EXIT_FAILURE);
+        }
+        str[0] = (utf8_byte)x;
         str[1] = '\0';
-        return str;
+        SizedString res = {.size = 1, .str_data = str};
+        return res;
     }
 
     if (x >= 0x80 && x <= 0x7ff) {
@@ -126,45 +146,49 @@ char* idris_utf8_fromChar(int x) {
         top = 0xf0;
     }
 
+    // Caller will free
     str = malloc(bytes + 1);
+    size = bytes;
+    if (str == NULL) {
+        fprintf(stderr, "Couldn't allocate for character");
+        exit(EXIT_FAILURE);
+    }
     str[bytes] = '\0';
     while(bytes > 0) {
         int xbits = x & 0x3f; // Next 6 bits
         bytes--;
         if (bytes > 0) {
-            str[bytes] = (char)xbits + 0x80;
+            str[bytes] = (utf8_byte)xbits + 0x80;
         } else {
-            str[0] = (char)xbits + top;
+            str[0] = (utf8_byte)xbits + top;
         }
         x = x >> 6;
     }
 
-    return str;
+    SizedString res = {.size = size, .str_data = str};
+    return res;
 }
 
-void reverse_range(char *start, char *end)
-{
-    while(start < end)
-    {
-        char c = *start;
+void reverse_range(utf8_byte *start, utf8_byte *end) {
+    while(start < end) {
+        utf8_byte c = *start;
         *start++ = *end;
         *end-- = c;
     }
 }
 
-char* reverse_char(char *start)
-{
-    char *end = start;
+utf8_byte* reverse_char(utf8_byte *start) {
+    utf8_byte *end = start;
     while((end[1] & 0xc0) == 0x80) { end++; }
     reverse_range(start, end);
-    return(end + 1);
+    return (end + 1);
 }
 
-char* idris_utf8_rev(char* s, char* result) {
-    strcpy(result, s);
-    char* end = result;
-    while(*end) { end = reverse_char(end); }
-    reverse_range(result, end-1);
+utf8_byte* idris_utf8_rev(utf8_byte* s, utf8_byte* result, size_t length) {
+    memcpy(result, s, length);
+    utf8_byte* end = result;
+    while(end < result + length) { end = reverse_char(end); }
+    reverse_range(result, result + length - 1);
     return result;
 }
 

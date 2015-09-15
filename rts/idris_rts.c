@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <limits.h>
+#include <ctype.h>
 
 #include "idris_rts.h"
 #include "idris_gc.h"
@@ -149,10 +151,10 @@ int space(VM* vm, size_t size) {
 }
 
 void* idris_alloc(size_t size) {
-    Closure* cl = (Closure*) allocate(sizeof(Closure)+size, 0);
+    Closure* cl = (Closure*) allocate(sizeof(Closure) + size, 0);
     SETTY(cl, RAWDATA);
     cl->info.size = size;
-    return (void*)cl+sizeof(Closure);
+    return (void*)cl + sizeof(Closure);
 }
 
 void* idris_realloc(void* old, size_t old_size, size_t size) {
@@ -231,29 +233,51 @@ VAL MKFLOAT(VM* vm, double val) {
     return cl;
 }
 
-VAL MKSTR(VM* vm, const char* str) {
-    int len;
-    if (str == NULL) {
-        len = 0;
-    } else {
-        len = strlen(str)+1;
-    }
-    Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
-                           sizeof(char)*len, 0);
+Closure *idris_allocate_string(size_t size, int outerlock) {
+    Closure* cl = allocate(sizeof(Closure) + // object header
+                           sizeof(SizedString) + // string bookkeeping
+                           sizeof(utf8_byte) * size + // the string data
+                           sizeof(utf8_byte), // the null terminator
+                           outerlock);
     SETTY(cl, STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    if (str == NULL) {
-        cl->info.str = NULL;
-    } else {
-        strcpy(cl -> info.str, str);
-    }
+    cl -> info.str = (SizedString *) ((uint8_t *)cl + sizeof(Closure));
+    cl -> info.str -> size = size;
+    cl -> info.str -> str_data = (utf8_byte*)cl + sizeof(Closure) + sizeof(SizedString);
+    // We keep the strings null-terminated to allow easier C interop without copying
+    cl -> info.str -> str_data[size] = '\0';
     return cl;
 }
 
-char* GETSTROFF(VAL stroff) {
+VAL MKSTR(VM* vm, const utf8_byte* str) {
+    if (str == NULL) {
+        // We need to preserve NULLness so that things like getenv
+        // work with the FFI as presently specified.
+        Closure* cl = idris_allocate_string(0, 0);
+        cl -> info.str -> str_data = NULL;
+        return cl;
+    } else {
+        size_t len = idris_utf8_unitlen(str);
+        Closure* cl = idris_allocate_string(len, 0);
+        if (str != NULL) {
+            memcpy(cl -> info.str -> str_data, str, len);
+        }
+        assert(cl -> info.str -> size == len);
+        return cl;
+    }
+}
+
+SizedString GETSTROFF(VAL stroff) {
     // Assume STROFF
     StrOffset* root = stroff->info.str_offset;
-    return (root->str->info.str + root->offset);
+    SizedString with_offset = {
+        .str_data = (utf8_byte *)(root ->str->info.str->str_data) + (root->offset),
+        .size = root->str->info.str->size - root->offset
+    };
+    return with_offset;
+}
+
+char *idris_get_c_str(SizedString str) {
+    return (char *) str.str_data;
 }
 
 VAL MKPTR(VM* vm, void* ptr) {
@@ -281,13 +305,9 @@ VAL MKFLOATc(VM* vm, double val) {
     return cl;
 }
 
-VAL MKSTRc(VM* vm, char* str) {
-    Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
-                           sizeof(char)*strlen(str)+1, 1);
-    SETTY(cl, STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-
-    strcpy(cl -> info.str, str);
+VAL MKSTRc(VM* vm, SizedString* str) {
+    Closure* cl = idris_allocate_string(str->size, 1);
+    memcpy(cl -> info.str -> str_data, str->str_data, str->size);
     return cl;
 }
 
@@ -340,7 +360,7 @@ VAL MKB64(VM* vm, uint64_t bits64) {
 void PROJECT(VM* vm, VAL r, int loc, int arity) {
     int i;
     for(i = 0; i < arity; ++i) {
-        LOC(i+loc) = r->info.c.args[i];
+        LOC(i + loc) = r->info.c.args[i];
     }
 }
 
@@ -382,7 +402,11 @@ void dumpVal(VAL v) {
         printf("] ");
         break;
     case STRING:
-        printf("STR[%s]", v->info.str);
+        printf("STR(%lu)[%.*s]\n", v->info.str->size, (int)v->info.str->size, v->info.str->str_data);
+        break;
+    case STROFFSET:
+        printf("STROFF(%lu)=\n\t", v->info.str_offset->offset);
+        dumpVal(v->info.str_offset->str);
         break;
     case FWD:
         printf("FWD ");
@@ -411,102 +435,186 @@ void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i
 }
 
 VAL idris_castIntStr(VM* vm, VAL i) {
+    // this is an overapproximation of what's needed to hold an int as a string
+    // Each byte will take log_10(256) ~= 2.4 digits, so 4 digits per byte is
+    // clearly enough. Then add 1 for the terminator.
+    char temp[sizeof(int) * 4 + 1] = {0};
     int x = (int) GETINT(i);
-    Closure* cl = allocate(sizeof(Closure) + sizeof(char)*16, 0);
-    SETTY(cl, STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    sprintf(cl -> info.str, "%d", x);
-    return cl;
+    sprintf(temp, "%d", x);
+
+    // avoid invalid UTF-8: all ASCII digits are acceptable as UTF-8 characters.
+    unsigned int j;
+    for (j = 0; j < sizeof(int) * 4 + 1; j++) {
+        if (temp[j] != '\0' && !(isdigit(temp[j])) && temp[j] != '-') {
+            fprintf(stderr, "Fatal error: invalid output from sprintf on an int!\n");
+            fprintf(stderr, "It was [%c] at index [%u] in [%s].\n", temp[j], j, temp);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    return MKSTR(vm, (const utf8_byte*)temp);
 }
 
 VAL idris_castBitsStr(VM* vm, VAL i) {
-    Closure* cl;
     ClosureType ty = i->ty;
+    // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
+    char temp[21] = { 0 };
 
     switch (ty) {
     case BITS8:
-        // max length 8 bit unsigned int str 3 chars (256)
-        cl = allocate(sizeof(Closure) + sizeof(char)*4, 0);
-        cl->info.str = (char*)cl + sizeof(Closure);
-        sprintf(cl->info.str, "%" PRIu8, (uint8_t)i->info.bits8);
+        sprintf(temp, "%" PRIu8, (uint8_t)i->info.bits8);
         break;
     case BITS16:
-        // max length 16 bit unsigned int str 5 chars (65,535)
-        cl = allocate(sizeof(Closure) + sizeof(char)*6, 0);
-        cl->info.str = (char*)cl + sizeof(Closure);
-        sprintf(cl->info.str, "%" PRIu16, (uint16_t)i->info.bits16);
+        sprintf(temp, "%" PRIu16, (uint16_t)i->info.bits16);
         break;
     case BITS32:
-        // max length 32 bit unsigned int str 10 chars (4,294,967,295)
-        cl = allocate(sizeof(Closure) + sizeof(char)*11, 0);
-        cl->info.str = (char*)cl + sizeof(Closure);
-        sprintf(cl->info.str, "%" PRIu32, (uint32_t)i->info.bits32);
+        sprintf(temp, "%" PRIu32, (uint32_t)i->info.bits32);
         break;
     case BITS64:
-        // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
-        cl = allocate(sizeof(Closure) + sizeof(char)*21, 0);
-        cl->info.str = (char*)cl + sizeof(Closure);
-        sprintf(cl->info.str, "%" PRIu64, (uint64_t)i->info.bits64);
+        sprintf(temp, "%" PRIu64, (uint64_t)i->info.bits64);
         break;
     default:
         fprintf(stderr, "Fatal Error: ClosureType %d, not an integer type", ty);
         exit(EXIT_FAILURE);
     }
 
-    SETTY(cl, STRING);
-    return cl;
+    // avoid invalid UTF-8: all ASCII digits are acceptable as UTF-8 characters.
+    int j;
+    for (j = 0; j < 21; j++) {
+        if (temp[j] != '\0' && !(isdigit(temp[j]))) {
+            fprintf(stderr, "Fatal error: invalid output from sprintf on bit type %d!", ty);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    return MKSTR(vm, (const utf8_byte *)temp);
 }
 
 VAL idris_castStrInt(VM* vm, VAL i) {
     char *end;
-    i_int v = strtol(GETSTR(i), &end, 10);
-    if (*end == '\0' || *end == '\n' || *end == '\r')
-        return MKINT(v);
+    SizedString str = GETSTR(i);
+
+    // First, we need to alloc a C string that's long enough (to get null-termination)
+    char *temp = (char *) malloc(str.size + 1);
+    if (temp == NULL) {
+        fprintf(stderr, "Couldn't allocate temp buffer of size %lu for int->string conversion", str.size);
+        exit(EXIT_FAILURE);
+    }
+    // Then grab the UTF8 bytes out of the Idris string. We don't have
+    // to worry about nulls in the middle because we'll later check to
+    // see if the whole string was used.
+    memcpy(temp, str.str_data, str.size);
+    temp[str.size] = '\0';
+
+    i_int v = strtol(temp, &end, 10);
+    Closure* answer;
+    // If we used the whole string, return the int, otherwise return 0. This is
+    // the meaning of the primitive in the evaluator.
+    if (end == temp + str.size)
+        answer = MKINT(v);
     else
-        return MKINT(0);
+        answer = MKINT(0);
+    free(temp);
+    return answer;
 }
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
-    Closure* cl = allocate(sizeof(Closure) + sizeof(char)*32, 0);
-    SETTY(cl, STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    snprintf(cl -> info.str, 32, "%.16g", GETFLOAT(i));
-    return cl;
+    char temp[32] = { 0 };
+    // snprintf will put a null at the end, so 31 chars are available for the float
+    snprintf(temp, 32, "%.16g", GETFLOAT(i));
+
+    // avoid invalid UTF-8: all ASCII digits, plus period, plus, and
+    // minus, are acceptable as UTF-8 characters.
+    int j;
+    for (j = 0; j < 21; j++) {
+        if (temp[j] != '\0' &&
+            temp[j] != '.' &&
+            temp[j] != '-' &&
+            temp[j] != '+' &&
+            !(isdigit(temp[j]))
+           ) {
+            fprintf(stderr, "Fatal error: invalid output from sprintf was %s!", temp);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+
+    return MKSTR(vm, (utf8_byte *)temp);
 }
 
 VAL idris_castStrFloat(VM* vm, VAL i) {
-    return MKFLOAT(vm, strtod(GETSTR(i), NULL));
+    SizedString str = GETSTR(i);
+
+    // First, we need to alloc a C string that's long enough (to get null-termination)
+    char *temp = (char *) malloc(str.size + 1);
+    if (temp == NULL) {
+        fprintf(stderr, "Couldn't allocate temp buffer of size %lu for int->string conversion", str.size);
+        exit(EXIT_FAILURE);
+    }
+    // Then grab the UTF8 bytes out of the Idris string. We don't have
+    // to worry about nulls in the middle because we'll later check to
+    // see if the whole string was used.
+    memcpy(temp, str.str_data, str.size);
+    temp[str.size] = '\0';
+
+    char *end;
+    double v = strtod(temp, &end);
+    Closure* answer;
+    // If we used the whole string, return the double, otherwise
+    // return 0.0. This is the meaning of the primitive in the
+    // evaluator.
+    if (end == temp + str.size)
+        answer = MKFLOAT(vm, v);
+    else
+        answer = MKFLOAT(vm, 0.0);
+    free(temp);
+    return answer;
 }
 
 VAL idris_concat(VM* vm, VAL l, VAL r) {
-    char *rs = GETSTR(r);
-    char *ls = GETSTR(l);
-    // dumpVal(l);
-    // printf("\n");
-    Closure* cl = allocate(sizeof(Closure) + strlen(ls) + strlen(rs) + 1, 0);
-    SETTY(cl, STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    strcpy(cl -> info.str, ls);
-    strcat(cl -> info.str, rs);
+    SizedString ls = GETSTR(l);
+    SizedString rs = GETSTR(r);
+
+    Closure* cl = idris_allocate_string(rs.size + ls.size, 0);
+    memcpy(cl -> info.str -> str_data, ls.str_data, ls.size);
+    memcpy(cl -> info.str -> str_data + ls.size, rs.str_data, rs.size);
+    assert(ISSTR(cl));
+    assert(cl -> info.str -> size == ls.size + rs.size);
     return cl;
 }
 
 VAL idris_strlt(VM* vm, VAL l, VAL r) {
-    char *ls = GETSTR(l);
-    char *rs = GETSTR(r);
+    SizedString ls = GETSTR(l);
+    SizedString rs = GETSTR(r);
 
-    return MKINT((i_int)(strcmp(ls, rs) < 0));
+    size_t min_size = ls.size < rs.size ? ls.size : rs.size;
+
+    //TODO: stop using strncmp to allow nulls in strings
+    return MKINT((i_int)(strncmp((char *) ls.str_data,
+                                 (char *) rs.str_data,
+                                 min_size
+                                ) < 0));
 }
 
 VAL idris_streq(VM* vm, VAL l, VAL r) {
-    char *ls = GETSTR(l);
-    char *rs = GETSTR(r);
+    SizedString ls = GETSTR(l);
+    SizedString rs = GETSTR(r);
 
-    return MKINT((i_int)(strcmp(ls, rs) == 0));
+    // if sizes are different, we don't need to compare contents
+    if (ls.size != rs.size) {
+        return MKINT(0);
+    } else {
+        //TODO: stop using strncmp to allow nulls in strings
+        return MKINT((i_int)(strncmp((char *) ls.str_data,
+                                     (char *) rs.str_data,
+                                     ls.size
+                                    ) == 0));
+    }
 }
 
 VAL idris_strlen(VM* vm, VAL l) {
-    return MKINT((i_int)(idris_utf8_strlen(GETSTR(l))));
+    SizedString str = GETSTR(l);
+    return MKINT((i_int)(idris_utf8_strlen(str)));
 }
 
 VAL idris_readStr(VM* vm, FILE* h) {
@@ -516,16 +624,19 @@ VAL idris_readStr(VM* vm, FILE* h) {
     ssize_t len;
     len = getline(&buffer, &n, h);
     if (len <= 0) {
-        ret = MKSTR(vm, "");
+        ret = MKSTR(vm, (utf8_byte *)"");
     } else {
-        ret = MKSTR(vm, buffer);
+        // TODO: validate that buffer points to correct UTF-8
+        ret = idris_allocate_string(len, 0);
+        memcpy(ret -> info.str -> str_data, (utf8_byte *) buffer, len);
     }
     free(buffer);
     return ret;
 }
 
 VAL idris_strHead(VM* vm, VAL str) {
-    return idris_strIndex(vm, str, 0);
+    VAL hd = idris_strIndex(vm, str, 0);
+    return hd;
 }
 
 VAL MKSTROFFc(VM* vm, StrOffset* off) {
@@ -540,9 +651,15 @@ VAL MKSTROFFc(VM* vm, StrOffset* off) {
 }
 
 VAL idris_strTail(VM* vm, VAL str) {
+    SizedString string = GETSTR(str);
+    // Crash with a message when taking the tail of an empty string
+    if (string.size < 1) {
+        fprintf(stderr, "Tried to take the tail of an empty string.\n");
+        exit(EXIT_FAILURE);
+    } else if (space(vm, sizeof(Closure) + sizeof(StrOffset))) {
     // If there's no room, just copy the string, or we'll have a problem after
     // gc moves str
-    if (space(vm, sizeof(Closure) + sizeof(StrOffset))) {
+//        printf("space\n");
         Closure* cl = allocate(sizeof(Closure) + sizeof(StrOffset), 0);
         SETTY(cl, STROFFSET);
         cl->info.str_offset = (StrOffset*)((char*)cl + sizeof(Closure));
@@ -556,62 +673,83 @@ VAL idris_strTail(VM* vm, VAL str) {
             root = root->info.str_offset->str;
         }
 
-        cl->info.str_offset->str = root;
-        cl->info.str_offset->offset = offset+idris_utf8_charlen(GETSTR(str));
+        cl -> info.str_offset -> str = root;
+        cl -> info.str_offset -> offset = offset + idris_utf8_charlen(string);
 
         return cl;
     } else {
-        char* nstr = GETSTR(str);
-        return MKSTR(vm, nstr+idris_utf8_charlen(nstr));
+        SizedString nstr = GETSTR(str);
+        unsigned int tailIdx = idris_utf8_charlen(nstr);
+        assert(tailIdx <= nstr.size);
+        Closure *cl = idris_allocate_string(nstr.size - tailIdx, 0);
+        // Use memcpy here instead of MKSTR because MKSTR assumes
+        // C-style strings, and 0 is a sensible Unicode character that
+        // is not allowed in C UTF-8 strings.
+        memcpy(cl -> info.str -> str_data, nstr.str_data + tailIdx, nstr.size - tailIdx);
+        return cl;
     }
 }
 
 VAL idris_strCons(VM* vm, VAL x, VAL xs) {
-    char *xstr = GETSTR(xs);
-    int xval = GETINT(x);
-    if ((xval & 0x80) == 0) { // ASCII char
-        Closure* cl = allocate(sizeof(Closure) +
-                               strlen(xstr) + 2, 0);
-        SETTY(cl, STRING);
-        cl -> info.str = (char*)cl + sizeof(Closure);
-        cl -> info.str[0] = (char)(GETINT(x));
-        strcpy(cl -> info.str+1, xstr);
+    SizedString xstr = GETSTR(xs);
+    unsigned int xval = GETINT(x);
+    if ((xval < 0x80)) { // ASCII char
+        Closure* cl = idris_allocate_string(1 + xstr.size, 0);
+        cl -> info.str -> str_data[0] = (utf8_byte) xval;
+        memcpy(cl -> info.str -> str_data + 1, xstr.str_data, xstr.size);
         return cl;
-    } else {
-        char *init = idris_utf8_fromChar(xval);
-        Closure* cl = allocate(sizeof(Closure) + strlen(init) + strlen(xstr) + 1, 0);
-        SETTY(cl, STRING);
-        cl -> info.str = (char*)cl + sizeof(Closure);
-        strcpy(cl -> info.str, init);
-        strcat(cl -> info.str, xstr);
-        free(init);
+    } else { // Multi-byte char
+        SizedString init = idris_utf8_fromChar(xval);
+        Closure* cl = idris_allocate_string(init.size + xstr.size, 0);
+        memcpy(cl -> info.str -> str_data, init.str_data, init.size);
+        memcpy(cl -> info.str -> str_data + init.size, xstr.str_data, xstr.size);
+        free(init.str_data);
         return cl;
     }
 }
 
 VAL idris_strIndex(VM* vm, VAL str, VAL i) {
-    int idx = idris_utf8_index(GETSTR(str), GETINT(i));
-    return MKINT((i_int)idx);
+    int j = GETINT(i);
+    SizedString xstr = GETSTR(str);
+    if (j < 0) {
+        //TODO: replace internal \0 in strings before reporting error
+        printf("Tried to take a negative index (%d) into a string (%s)", j, xstr.str_data);
+        exit(EXIT_FAILURE);
+    } else if (j >= (int)xstr.size) {
+        //TODO: replace internal \0 in strings before reporting error
+        printf("Tried to take too large of an index (%d) into a string (%s)", j, xstr.str_data);
+        exit(EXIT_FAILURE);
+    }
+    unsigned int ch = idris_utf8_index(xstr.str_data, j);
+    return MKINT((i_int)ch);
 }
 
 VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
-    char *start = idris_utf8_advance(GETSTR(str), GETINT(offset));
-    char *end = idris_utf8_advance(start, GETINT(length));
-    Closure* newstr = allocate(sizeof(Closure) + (end - start) +1, 0);
-    SETTY(newstr, STRING);
-    newstr -> info.str = (char*)newstr + sizeof(Closure);
-    memcpy(newstr -> info.str, start, end - start);
-    *(newstr -> info.str + (end - start) + 1) = '\0';
+    int off = GETINT(offset);
+    int len = GETINT(length);
+    SizedString xstr = GETSTR(str);
+    Closure *newstr;
+    if (off < 0) off = 0;
+    if ((size_t) off >= xstr.size || len <= 0) {
+        // If offset too far or no length, don't bother looking at
+        // string and just return "".
+        newstr = MKSTR(vm, (utf8_byte *) "");
+    } else {
+        utf8_byte *start = idris_utf8_advance(xstr.str_data, xstr.size, off);
+        utf8_byte *end = idris_utf8_advance(start, xstr.size - (start - xstr.str_data), len);
+        newstr = idris_allocate_string(end - start, 0);
+        memcpy(newstr -> info.str -> str_data, start, end - start);
+    }
+
     return newstr;
 }
 
 VAL idris_strRev(VM* vm, VAL str) {
-    char *xstr = GETSTR(str);
-    Closure* cl = allocate(sizeof(Closure) +
-                           strlen(xstr) + 1, 0);
-    SETTY(cl, STRING);
-    cl->info.str = (char*)cl + sizeof(Closure);
-    idris_utf8_rev(xstr, cl->info.str);
+    SizedString xstr = GETSTR(str);
+    Closure* cl = idris_allocate_string(xstr.size, 0);
+
+    idris_utf8_rev(xstr.str_data, cl->info.str->str_data, xstr.size);
+    assert(cl -> info.str -> size == xstr.size);
     return cl;
 }
 
@@ -619,13 +757,13 @@ VAL idris_systemInfo(VM* vm, VAL index) {
     int i = GETINT(index);
     switch(i) {
         case 0: // backend
-            return MKSTR(vm, "c");
+            return MKSTR(vm, (utf8_byte *)"c");
         case 1:
-            return MKSTR(vm, IDRIS_TARGET_OS);
+            return MKSTR(vm, (utf8_byte *)IDRIS_TARGET_OS);
         case 2:
-            return MKSTR(vm, IDRIS_TARGET_TRIPLE);
+            return MKSTR(vm, (utf8_byte *)IDRIS_TARGET_TRIPLE);
     }
-    return MKSTR(vm, "");
+    return MKSTR(vm, (utf8_byte *) "");
 }
 
 typedef struct {
@@ -781,7 +919,7 @@ int idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     }
 
     pthread_mutex_lock(&(dest->inbox_lock));
-    
+
     if (dest->inbox_write >= dest->inbox_end) {
         // FIXME: This is obviously bad in the long run. This should
         // either block, make the inbox bigger, or return an error code,
@@ -812,7 +950,7 @@ VM* idris_checkMessages(VM* vm) {
 
 VM* idris_checkMessagesFrom(VM* vm, VM* sender) {
     Msg* msg;
-    
+
     for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
         if (sender == NULL || msg->sender == sender) {
             return msg->sender;
@@ -895,7 +1033,7 @@ Msg* idris_recvMessageFrom(VM* vm, VM* sender) {
         // sender could be anywhere in the inbox
 
         for(;msg < vm->inbox_write; ++msg) {
-            if (msg+1 != vm->inbox_end) {
+            if (msg + 1 != vm->inbox_end) {
                 msg->sender = (msg + 1)->sender;
                 msg->msg = (msg + 1)->msg;
             }
