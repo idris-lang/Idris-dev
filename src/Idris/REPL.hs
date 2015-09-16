@@ -808,7 +808,7 @@ process fn (Eval t)
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
                       logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
                       let tmDoc = pprintDelab ist tm'
-                          tyDoc = pprintDelab ist ty'
+                          tyDoc =  pprintDelab ist ty'
                       iPrintTermWithType tmDoc tyDoc
   where perhapsForce tm | termSmallerThan 100 tm = force tm
                         | otherwise = tm
@@ -1265,6 +1265,9 @@ process fn (SetOpt WarnReach)     = fmodifyState opts_idrisCmdline $ nub . (Warn
 process fn (UnsetOpt WarnReach)   = fmodifyState opts_idrisCmdline $ delete WarnReach
 process fn (SetOpt EvalTypes)     = setEvalTypes True
 process fn (UnsetOpt EvalTypes)   = setEvalTypes False
+
+process fn (SetOpt DesugarNats)   = setDesugarNats True
+process fn (UnsetOpt DesugarNats) = setDesugarNats False
 
 process fn (SetOpt _) = iPrintError "Not a valid option"
 process fn (UnsetOpt _) = iPrintError "Not a valid option"
