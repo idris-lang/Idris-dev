@@ -90,8 +90,9 @@ data IOption = IOption { opt_logLevel     :: Int,
                          opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
                          opt_optimise     :: [Optimisation],
                          opt_printdepth   :: Maybe Int,
-                         opt_evaltypes    :: Bool -- ^ normalise types in :t
-                       }
+                         opt_evaltypes    :: Bool, -- ^ normalise types in :t
+                         opt_desugarnats  :: Bool
+       }
     deriving (Show, Eq)
 
 defaultOpts = IOption { opt_logLevel   = 0
@@ -117,10 +118,12 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_optimise   = defaultOptimise
                       , opt_printdepth = Just 5000
                       , opt_evaltypes  = True
+                      , opt_desugarnats = False
                       }
 
 data PPOption = PPOption {
     ppopt_impl :: Bool -- ^^ whether to show implicits
+  , ppopt_desugarnats :: Bool
   , ppopt_pinames :: Bool -- ^^ whether to show names in pi bindings
   , ppopt_depth :: Maybe Int
 } deriving (Show)
@@ -133,12 +136,14 @@ defaultOptimise = [PETransform]
 -- | Pretty printing options with default verbosity.
 defaultPPOption :: PPOption
 defaultPPOption = PPOption { ppopt_impl = False, 
+                             ppopt_desugarnats = False,
                              ppopt_pinames = False,
                              ppopt_depth = Just 200 }
 
 -- | Pretty printing options with the most verbosity.
 verbosePPOption :: PPOption
 verbosePPOption = PPOption { ppopt_impl = True,
+                             ppopt_desugarnats = True,
                              ppopt_pinames = True,
                              ppopt_depth = Just 200 }
 
@@ -147,7 +152,8 @@ ppOption :: IOption -> PPOption
 ppOption opt = PPOption {
     ppopt_impl = opt_showimp opt,
     ppopt_pinames = False,
-    ppopt_depth = opt_printdepth opt
+    ppopt_depth = opt_printdepth opt,
+    ppopt_desugarnats = opt_desugarnats opt
 }
 
 -- | Get pretty printing options from an idris state record.
@@ -503,6 +509,7 @@ data Opt = Filename String
          | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
          | UseConsoleWidth ConsoleWidth
          | DumpHighlights
+         | DesugarNats
     deriving (Show, Eq)
 
 data ElabShellCmd = EQED | EAbandon | EUndo | EProofState | EProofTerm
@@ -1653,7 +1660,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PPatvar fc n) = pretty n
     prettySe d p bnd e
       | Just str <- slist d p bnd e = depth d $ str
-      | Just n <- snat d p e = depth d $ annotate (AnnData "Nat" "") (text (show n))
+      | Just n <- snat ppo d p e = depth d $ annotate (AnnData "Nat" "") (text (show n))
     prettySe d p bnd (PRef fc _ n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe d p bnd (PLam fc n nfc ty sc) =
       depth d . bracket p startPrec . group . align . hang 2 $
@@ -1944,15 +1951,20 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
 
     natns = "Prelude.Nat."
 
-    snat :: Maybe Int -> Int -> PTerm -> Maybe Integer
-    snat (Just x) _ _ | x <= 0 = Nothing
-    snat d p (PRef _ _ z)
-      | show z == (natns++"Z") || show z == "Z" = Just 0
-    snat d p (PApp _ s [PExp {getTm=n}])
-      | show s == (natns++"S") || show s == "S",
-        Just n' <- snat (decD d) p n
-      = Just $ 1 + n'
-    snat _ _ _ = Nothing
+    snat :: PPOption -> Maybe Int -> Int -> PTerm -> Maybe Integer
+    snat ppo d p e
+         | ppopt_desugarnats ppo = Nothing
+         | otherwise = snat' d p e
+         where
+             snat' :: Maybe Int -> Int -> PTerm -> Maybe Integer
+             snat' (Just x) _ _ | x <= 0 = Nothing
+             snat' d p (PRef _ _ z)
+               | show z == (natns++"Z") || show z == "Z" = Just 0
+             snat' d p (PApp _ s [PExp {getTm=n}])
+               | show s == (natns++"S") || show s == "S",
+                 Just n' <- snat' (decD d) p n
+                 = Just $ 1 + n'
+             snat' _ _ _ = Nothing
 
     bracket outer inner doc
       | outer > inner = lparen <> doc <> rparen

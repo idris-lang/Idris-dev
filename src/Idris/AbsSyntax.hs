@@ -800,6 +800,18 @@ setEvalTypes n = do i <- getIState
                     let opt' = opts { opt_evaltypes = n }
                     putIState $ i { idris_options = opt' }
 
+getDesugarNats :: Idris Bool
+getDesugarNats = do i <- getIState
+                    let opts = idris_options i
+                    return (opt_desugarnats opts)
+
+
+setDesugarNats :: Bool -> Idris ()
+setDesugarNats n = do i <- getIState
+                      let opts = idris_options i
+                      let opt' = opts { opt_desugarnats = n }
+                      putIState $ i { idris_options = opt' }
+
 setQuiet :: Bool -> Idris ()
 setQuiet q = do i <- getIState
                 let opts = idris_options i
