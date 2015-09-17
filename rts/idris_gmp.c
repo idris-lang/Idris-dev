@@ -384,12 +384,11 @@ VAL idris_castBigStr(VM* vm, VAL i) {
 
     // Compute the appropriate size in bytes for a C string holding the result
     size_t max_len = mpz_sizeinbase(GETMPZ(GETBIG(vm, i)), 10) + 2;
-    char *temp = (char *)malloc(max_len);
+    char *temp = (char *)calloc(max_len, sizeof(char));
     if (temp == NULL) {
         fprintf(stderr, "Couldn't allocate %lu bytes for bigint as string", (unsigned long)max_len);
         exit(EXIT_FAILURE);
     }
-    memset(temp, '\0', max_len);
     mpz_get_str(temp, 10, GETMPZ(GETBIG(vm, i)));
 
     unsigned int j;
