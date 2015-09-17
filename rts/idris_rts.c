@@ -456,9 +456,12 @@ VAL idris_castIntStr(VM* vm, VAL i) {
 }
 
 VAL idris_castBitsStr(VM* vm, VAL i) {
-    ClosureType ty = i->ty;
+
     // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
-    char temp[21] = { 0 };
+    #define MAX_DIGITS_FOR_64_BITS 20
+    ClosureType ty = i->ty;
+
+    char temp[MAX_DIGITS_FOR_64_BITS + 1] = { 0 };
 
     switch (ty) {
     case BITS8:
@@ -480,7 +483,7 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
 
     // avoid invalid UTF-8: all ASCII digits are acceptable as UTF-8 characters.
     int j;
-    for (j = 0; j < 21; j++) {
+    for (j = 0; j < MAX_DIGITS_FOR_64_BITS + 1; j++) {
         if (temp[j] != '\0' && !(isdigit(temp[j]))) {
             fprintf(stderr, "Fatal error: invalid output from sprintf on bit type %d!", ty);
             exit(EXIT_FAILURE);
@@ -519,14 +522,17 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 }
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
-    char temp[32] = { 0 };
-    // snprintf will put a null at the end, so 31 chars are available for the float
-    snprintf(temp, 32, "%.16g", GETFLOAT(i));
+    // Use a maximum of 31 digits to print floats here, plus 1 char for null
+    const unsigned int MAX_CHARS_FOR_DOUBLE = 32;
+    char temp[MAX_CHARS_FOR_DOUBLE];
+    memset(temp, '\0', MAX_CHARS_FOR_DOUBLE);
+
+    snprintf(temp, MAX_CHARS_FOR_DOUBLE, "%.16g", GETFLOAT(i));
 
     // avoid invalid UTF-8: all ASCII digits, plus period, plus, and
     // minus, are acceptable as UTF-8 characters.
     int j;
-    for (j = 0; j < 21; j++) {
+    for (j = 0; j < MAX_CHARS_FOR_DOUBLE; j++) {
         if (temp[j] != '\0' &&
             temp[j] != '.' &&
             temp[j] != '-' &&
