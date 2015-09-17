@@ -87,6 +87,7 @@ completeOption = completeWord Nothing " \t" completeOpt
                                               , "originalerrors"
                                               , "autosolve"
                                               , "nobanner"
+                                              , "desugarnats"
                                               ]
 
 completeConsoleWidth :: CompletionFunc Idris
