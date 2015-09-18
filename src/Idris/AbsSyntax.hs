@@ -31,6 +31,8 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.Word (Word)
 
+import Data.Generics.Uniplate.Data (descend, descendM)
+
 import Debug.Trace
 
 import System.IO.Error(isUserError, ioeGetErrorString, tryIOError)
@@ -2102,44 +2104,46 @@ substMatchShadow n shs tm t = sm shs t where
     fullApp x = x
 
 shadow :: Name -> Name -> PTerm -> PTerm
-shadow n n' t = sm t where
-    sm (PRef fc hl x) | n == x = PRef fc hl n'
-    sm (PLam fc x xfc t sc) | n /= x = PLam fc x xfc (sm t) (sm sc)
-                            | otherwise = PLam fc x xfc (sm t) sc
-    sm (PPi p x fc t sc) | n /= x = PPi p x fc (sm t) (sm sc)
-                         | otherwise = PPi p x fc (sm t) sc
-    sm (PLet fc x xfc t v sc) | n /= x = PLet fc x xfc (sm t) (sm v) (sm sc)
-                              | otherwise = PLet fc x xfc (sm t) (sm v) sc
-    sm (PApp f x as) = PApp f (sm x) (map (fmap sm) as)
-    sm (PAppBind f x as) = PAppBind f (sm x) (map (fmap sm) as)
-    sm (PCase f x as) = PCase f (sm x) (map (pmap sm) as)
-    sm (PIfThenElse fc c t f) = PIfThenElse fc (sm c) (sm t) (sm f)
-    sm (PRewrite f x y tm) = PRewrite f (sm x) (sm y) (fmap sm tm)
-    sm (PTyped x y) = PTyped (sm x) (sm y)
-    sm (PPair f hls p x y) = PPair f hls p (sm x) (sm y)
-    sm (PDPair f hls p x t y) = PDPair f hls p (sm x) (sm t) (sm y)
-    sm (PAlternative ms a as) = PAlternative ms a (map sm as)
-    sm (PTactics ts) = PTactics (map (fmap sm) ts)
-    sm (PProof ts) = PProof (map (fmap sm) ts)
-    sm (PHidden x) = PHidden (sm x)
-    sm (PUnifyLog x) = PUnifyLog (sm x)
-    sm (PNoImplicits x) = PNoImplicits (sm x)
-    sm (PCoerced t) = PCoerced (sm t)
-    sm x = x
+shadow n n' t = sm 0 t where
+    sm 0 (PRef fc hl x) | n == x = PRef fc hl n'
+    sm 0 (PLam fc x xfc t sc) | n /= x = PLam fc x xfc (sm 0 t) (sm 0 sc)
+                            | otherwise = PLam fc x xfc (sm 0 t) sc
+    sm 0 (PPi p x fc t sc) | n /= x = PPi p x fc (sm 0 t) (sm 0 sc)
+                         | otherwise = PPi p x fc (sm 0 t) sc
+    sm 0 (PLet fc x xfc t v sc) | n /= x = PLet fc x xfc (sm 0 t) (sm 0 v) (sm 0 sc)
+                              | otherwise = PLet fc x xfc (sm 0 t) (sm 0 v) sc
+    sm 0 (PApp f x as) = PApp f (sm 0 x) (map (fmap (sm 0)) as)
+    sm 0 (PAppBind f x as) = PAppBind f (sm 0 x) (map (fmap (sm 0)) as)
+    sm 0 (PCase f x as) = PCase f (sm 0 x) (map (pmap (sm 0)) as)
+    sm 0 (PIfThenElse fc c t f) = PIfThenElse fc (sm 0 c) (sm 0 t) (sm 0 f)
+    sm 0 (PRewrite f x y tm) = PRewrite f (sm 0 x) (sm 0 y) (fmap (sm 0) tm)
+    sm 0 (PTyped x y) = PTyped (sm 0 x) (sm 0 y)
+    sm 0 (PPair f hls p x y) = PPair f hls p (sm 0 x) (sm 0 y)
+    sm 0 (PDPair f hls p x t y) = PDPair f hls p (sm 0 x) (sm 0 t) (sm 0 y)
+    sm 0 (PAlternative ms a as) = PAlternative ms a (map (sm 0) as)
+    sm 0 (PTactics ts) = PTactics (map (fmap (sm 0)) ts)
+    sm 0 (PProof ts) = PProof (map (fmap (sm 0)) ts)
+    sm 0 (PHidden x) = PHidden (sm 0 x)
+    sm 0 (PUnifyLog x) = PUnifyLog (sm 0 x)
+    sm 0 (PNoImplicits x) = PNoImplicits (sm 0 x)
+    sm 0 (PCoerced t) = PCoerced (sm 0 t)
+    sm ql (PQuasiquote tm ty) = PQuasiquote (sm (ql + 1) tm) (fmap (sm ql) ty)
+    sm ql (PUnquote tm) = PUnquote (sm (ql - 1) tm)
+    sm ql x = descend (sm ql) x
 
 -- | Rename any binders which are repeated (so that we don't have to mess
 -- about with shadowing anywhere else).
 mkUniqueNames :: [Name] -> [(Name, Name)] -> PTerm -> PTerm
 mkUniqueNames env shadows tm 
-      = evalState (mkUniq initMap tm) (S.fromList env) where
+      = evalState (mkUniq 0 initMap tm) (S.fromList env) where
 
   initMap = M.fromList shadows
 
   inScope :: S.Set Name
   inScope = S.fromList $ boundNamesIn tm
 
-  mkUniqA nmap arg = do t' <- mkUniq nmap (getTm arg)
-                        return (arg { getTm = t' })
+  mkUniqA ql nmap arg = do t' <- mkUniq ql nmap (getTm arg)
+                           return (arg { getTm = t' })
 
   -- Initialise the unique name with the environment length (so we're not
   -- looking for too long...)
@@ -2149,10 +2153,11 @@ mkUniqueNames env shadows tm
 
   -- FIXME: Probably ought to do this for completeness! It's fine as
   -- long as there are no bindings inside tactics though.
-  mkUniqT nmap tac = return tac
+  mkUniqT _ nmap tac = return tac
 
-  mkUniq :: M.Map Name Name -> PTerm -> State (S.Set Name) PTerm
-  mkUniq nmap (PLam fc n nfc ty sc)
+  mkUniq :: Int -- ^ The number of quotations that we're under
+         -> M.Map Name Name -> PTerm -> State (S.Set Name) PTerm
+  mkUniq 0 nmap (PLam fc n nfc ty sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -2162,10 +2167,10 @@ mkUniqueNames env shadows tm
                        else return (n, sc)
               put (S.insert n' env)
               let nmap' = M.insert n n' nmap
-              ty' <- mkUniq nmap ty
-              sc'' <- mkUniq nmap' sc'
+              ty' <- mkUniq 0 nmap ty
+              sc'' <- mkUniq 0 nmap' sc'
               return $! PLam fc n' nfc ty' sc''
-  mkUniq nmap (PPi p n fc ty sc)
+  mkUniq 0 nmap (PPi p n fc ty sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -2175,10 +2180,10 @@ mkUniqueNames env shadows tm
                        else return (n, sc)
               put (S.insert n' env)
               let nmap' = M.insert n n' nmap
-              ty' <- mkUniq nmap ty
-              sc'' <- mkUniq nmap' sc'
+              ty' <- mkUniq 0 nmap ty
+              sc'' <- mkUniq 0 nmap' sc'
               return $! PPi p n' fc ty' sc''
-  mkUniq nmap (PLet fc n nfc ty val sc)
+  mkUniq 0 nmap (PLet fc n nfc ty val sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -2188,28 +2193,28 @@ mkUniqueNames env shadows tm
                        else return (n, sc)
               put (S.insert n' env)
               let nmap' = M.insert n n' nmap
-              ty' <- mkUniq nmap ty; val' <- mkUniq nmap val
-              sc'' <- mkUniq nmap' sc'
+              ty' <- mkUniq 0 nmap ty; val' <- mkUniq 0 nmap val
+              sc'' <- mkUniq 0 nmap' sc'
               return $! PLet fc n' nfc ty' val' sc''
-  mkUniq nmap (PApp fc t args)
-         = do t' <- mkUniq nmap t
-              args' <- mapM (mkUniqA nmap) args
+  mkUniq 0 nmap (PApp fc t args)
+         = do t' <- mkUniq 0 nmap t
+              args' <- mapM (mkUniqA 0 nmap) args
               return $! PApp fc t' args'
-  mkUniq nmap (PAppBind fc t args)
-         = do t' <- mkUniq nmap t
-              args' <- mapM (mkUniqA nmap) args
+  mkUniq 0 nmap (PAppBind fc t args)
+         = do t' <- mkUniq 0 nmap t
+              args' <- mapM (mkUniqA 0 nmap) args
               return $! PAppBind fc t' args'
-  mkUniq nmap (PCase fc t alts)
-         = do t' <- mkUniq nmap t
-              alts' <- mapM (\(x,y)-> do x' <- mkUniq nmap x; y' <- mkUniq nmap y
+  mkUniq 0 nmap (PCase fc t alts)
+         = do t' <- mkUniq 0 nmap t
+              alts' <- mapM (\(x,y)-> do x' <- mkUniq 0 nmap x; y' <- mkUniq 0 nmap y
                                          return (x', y')) alts
               return $! PCase fc t' alts'
-  mkUniq nmap (PIfThenElse fc c t f)
-         = liftM3 (PIfThenElse fc) (mkUniq nmap c) (mkUniq nmap t) (mkUniq nmap f)
-  mkUniq nmap (PPair fc hls p l r)
-         = do l' <- mkUniq nmap l; r' <- mkUniq nmap r
+  mkUniq 0 nmap (PIfThenElse fc c t f)
+         = liftM3 (PIfThenElse fc) (mkUniq 0 nmap c) (mkUniq 0 nmap t) (mkUniq 0 nmap f)
+  mkUniq 0 nmap (PPair fc hls p l r)
+         = do l' <- mkUniq 0 nmap l; r' <- mkUniq 0 nmap r
               return $! PPair fc hls p l' r'
-  mkUniq nmap (PDPair fc hls p (PRef fc' hls' n) t sc)
+  mkUniq 0 nmap (PDPair fc hls p (PRef fc' hls' n) t sc)
       | t /= Placeholder
          = do env <- get
               (n', sc') <- if n `S.member` env
@@ -2218,27 +2223,37 @@ mkUniqueNames env shadows tm
                               else return (n, sc)
               put (S.insert n' env)
               let nmap' = M.insert n n' nmap
-              t' <- mkUniq nmap t
-              sc'' <- mkUniq nmap' sc'
+              t' <- mkUniq 0 nmap t
+              sc'' <- mkUniq 0 nmap' sc'
               return $! PDPair fc hls p (PRef fc' hls' n') t' sc''
-  mkUniq nmap (PDPair fc hls p l t r)
-         = do l' <- mkUniq nmap l; t' <- mkUniq nmap t; r' <- mkUniq nmap r
+  mkUniq 0 nmap (PDPair fc hls p l t r)
+         = do l' <- mkUniq 0 nmap l; t' <- mkUniq 0 nmap t; r' <- mkUniq 0 nmap r
               return $! PDPair fc hls p l' t' r'
-  mkUniq nmap (PAlternative ns b as)
+  mkUniq 0 nmap (PAlternative ns b as)
          -- store the nmap and defer the rest until we've pruned the set
          -- during elaboration
          = return $ PAlternative (M.toList nmap ++ ns) b as
-  mkUniq nmap (PHidden t) = liftM PHidden (mkUniq nmap t)
-  mkUniq nmap (PUnifyLog t) = liftM PUnifyLog (mkUniq nmap t)
-  mkUniq nmap (PDisamb n t) = liftM (PDisamb n) (mkUniq nmap t)
-  mkUniq nmap (PNoImplicits t) = liftM PNoImplicits (mkUniq nmap t)
-  mkUniq nmap (PProof ts) = liftM PProof (mapM (mkUniqT nmap) ts)
-  mkUniq nmap (PTactics ts) = liftM PTactics (mapM (mkUniqT nmap) ts)
-  mkUniq nmap (PRunElab fc ts ns) = liftM (\tm -> PRunElab fc tm ns) (mkUniq nmap ts)
-  mkUniq nmap (PConstSugar fc tm) = liftM (PConstSugar fc) (mkUniq nmap tm)
-  mkUniq nmap (PCoerced tm) = liftM PCoerced (mkUniq nmap tm)
-  mkUniq nmap t = return $ shadowAll (M.toList nmap) t
+  mkUniq 0 nmap (PHidden t) = liftM PHidden (mkUniq 0 nmap t)
+  mkUniq 0 nmap (PUnifyLog t) = liftM PUnifyLog (mkUniq 0 nmap t)
+  mkUniq 0 nmap (PDisamb n t) = liftM (PDisamb n) (mkUniq 0 nmap t)
+  mkUniq 0 nmap (PNoImplicits t) = liftM PNoImplicits (mkUniq 0 nmap t)
+  mkUniq 0 nmap (PProof ts) = liftM PProof (mapM (mkUniqT 0 nmap) ts)
+  mkUniq 0 nmap (PTactics ts) = liftM PTactics (mapM (mkUniqT 0 nmap) ts)
+  mkUniq 0 nmap (PRunElab fc ts ns) = liftM (\tm -> PRunElab fc tm ns) (mkUniq 0 nmap ts)
+  mkUniq 0 nmap (PConstSugar fc tm) = liftM (PConstSugar fc) (mkUniq 0 nmap tm)
+  mkUniq 0 nmap (PCoerced tm) = liftM PCoerced (mkUniq 0 nmap tm)
+  mkUniq 0 nmap t = return $ shadowAll (M.toList nmap) t
     where
       shadowAll [] t = t
       shadowAll ((n, n') : ns) t = shadow n n' (shadowAll ns t)
 
+  mkUniq ql nmap (PQuasiquote tm ty) =
+    do tm' <- mkUniq (ql + 1) nmap tm
+       ty' <- case ty of
+                Nothing -> return Nothing
+                Just t -> fmap Just $ mkUniq ql nmap t
+       return $! PQuasiquote tm' ty'
+  mkUniq ql nmap (PUnquote tm) = fmap PUnquote (mkUniq (ql - 1) nmap tm)
+
+  mkUniq ql nmap tm = descendM (mkUniq ql nmap) tm
+                      
