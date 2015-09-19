@@ -9,6 +9,9 @@ Language updates
   for defining new names. `{n} still quotes n to an existing name in scope.
 * A new primitive operator prim__strSubstr for more efficient extraction of
   substrings. External code generators should implement this.
+* Dependent pairs now can be specified using a telescope-style syntax, without
+requirement of nesting, e.g. it is possible to now write (a : Type ** n : Nat
+** Vect n a).
 
 Library updates
 ---------------

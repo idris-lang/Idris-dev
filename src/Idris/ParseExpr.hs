@@ -452,14 +452,19 @@ bracketed' open syn =
             do (FC f start (l, c)) <- getFC
                lchar ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
-        <|> try (do (ln, lnfc) <- name
-                    colonFC <- lcharFC ':'
-                    lty <- expr syn
-                    starsFC <- reservedOpFC "**"
+        <|> try (do (ln, lnfc, colonFC, lty, starsFC):bnds <- some $ do
+                        (ln, lnfc, colonFC) <- try $ do
+                          (ln, lnfc) <- name
+                          colonFC <- lcharFC ':'
+                          return (ln, lnfc, colonFC)
+                        lty <- expr syn
+                        starsFC <- reservedOpFC "**"
+                        return (ln, lnfc, colonFC, lty, starsFC)
                     fc <- getFC
                     r <- expr syn
                     close <- lcharFC ')'
-                    return (PDPair fc [open, colonFC, starsFC, close] TypeOrTerm (PRef lnfc [] ln) lty r))
+                    return (PDPair fc ([open, colonFC, starsFC, close] ++ (=<<) (\(_,_,cfc,_,sfc) -> [cfc, sfc]) bnds)
+                               TypeOrTerm (PRef lnfc [] ln) lty (mergePDPairs starsFC bnds r)))
         <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
                     -- No prefix operators! (bit of a hack here...)
                     if (o == "-" || o == "!")
@@ -470,7 +475,7 @@ bracketed' open syn =
         <|> try (do l <- simpleExpr syn
                     op <- option Nothing (do o <- operator
                                              lchar ')'
-                                             return (Just o)) 
+                                             return (Just o))
                     fc0 <- getFC
                     case op of
                          Nothing -> bracketedExpr syn open l
@@ -479,25 +484,35 @@ bracketed' open syn =
                                                               pexp (PRef fc0 [] (sMN 1000 "ARG"))]))
         <|> do l <- expr syn
                bracketedExpr syn open l
-
+    where mergePDPairs :: FC -> [(Name, FC, FC, PTerm, FC)] -> PTerm -> PTerm
+          mergePDPairs starsFC' [] r = r
+          mergePDPairs starsFC' ((ln, lnfc, colonFC, lty, starsFC):bnds) r =
+             PDPair starsFC' [] TypeOrTerm (PRef lnfc [] ln) lty (mergePDPairs starsFC bnds r)
+            
 -- | Parse the contents of parentheses, after an expression has been parsed.
 bracketedExpr :: SyntaxInfo -> FC -> PTerm -> IdrisParser PTerm
 bracketedExpr syn openParenFC e =
              do lchar ')'; return e
-        <|>  do exprs <- many (do comma <- lcharFC ','
+        <|>  do exprs <- some (do comma <- lcharFC ','
                                   r <- expr syn
                                   return (r, comma))
                 closeParenFC <- lcharFC ')'
                 let hilite = [openParenFC, closeParenFC] ++ map snd exprs
                 return $ PPair openParenFC hilite TypeOrTerm e (mergePairs exprs)
-        <|>  do starsFC <- reservedOpFC "**"
-                r <- expr syn
+        <|>  do exprs <- some $ do
+                  starsFC <- reservedOpFC "**"
+                  r <- expr syn
+                  return (r, starsFC)
                 closeParenFC <- lcharFC ')'
-                return (PDPair starsFC [openParenFC, starsFC, closeParenFC] TypeOrTerm e Placeholder r)
+                let hilite = [openParenFC, closeParenFC] ++ map snd exprs
+                return (PDPair openParenFC hilite TypeOrTerm e Placeholder (mergePDPairs exprs))
         <?> "end of bracketed expression"
   where mergePairs :: [(PTerm, FC)] -> PTerm
         mergePairs [(t, fc)]    = t
         mergePairs ((t, fc):rs) = PPair fc [] TypeOrTerm t (mergePairs rs)
+        mergePDPairs :: [(PTerm, FC)] -> PTerm
+        mergePDPairs [(t, fc)]    = t
+        mergePDPairs ((t, fc):rs) = PDPair fc [] TypeOrTerm t Placeholder (mergePDPairs rs)
 
 -- bit of a hack here. If the integer doesn't fit in an Int, treat it as a
 -- big integer, otherwise try fromInteger and the constants as alternatives.
