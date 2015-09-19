@@ -551,7 +551,8 @@ VAL idris_castFloatStr(VM* vm, VAL i) {
 VAL idris_castStrFloat(VM* vm, VAL i) {
     SizedString str = GETSTR(i);
 
-    // First, we need to alloc a C string that's long enough (to get null-termination)
+    // First, we need to alloc a C string that's long enough for the
+    // data and the null at the end
     char *temp = (char *) malloc(str.size + 1);
     if (temp == NULL) {
         fprintf(stderr, "Couldn't allocate temp buffer of size %lu for int->string conversion", str.size);
