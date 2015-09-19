@@ -331,6 +331,14 @@ caseOption syn = do lhs <- expr (syn { inPattern = True })
                     return (lhs, r)
                  <?> "case option"
 
+warnTacticDeprecation :: FC -> IdrisParser ()
+warnTacticDeprecation fc =
+    do ist <- get
+       let cmdline = opt_cmdline (idris_options ist)
+       unless (NoOldTacticDeprecationWarnings `elem` cmdline) $
+         put ist { parserWarnings =
+                     (fc, Msg "This style of tactic proof is deprecated. See %runElab for the replacement.") : parserWarnings ist }
+
 {- | Parses a proof block
 @
 ProofExpr ::=
@@ -342,9 +350,7 @@ proofExpr :: SyntaxInfo -> IdrisParser PTerm
 proofExpr syn = do kw <- reservedFC "proof"
                    ts <- indentedBlock1 (tactic syn)
                    highlightP kw AnnKeyword
-                   ist <- get
-                   put ist { parserWarnings =
-                               (kw, Msg "This style of tactic proof is deprecated. See %runElab for the replacement.") : parserWarnings ist }
+                   warnTacticDeprecation kw
                    return $ PProof ts
                 <?> "proof block"
 
@@ -359,9 +365,7 @@ tacticsExpr :: SyntaxInfo -> IdrisParser PTerm
 tacticsExpr syn = do kw <- reservedFC "tactics"
                      ts <- indentedBlock1 (tactic syn)
                      highlightP kw AnnKeyword
-                     ist <- get
-                     put ist { parserWarnings =
-                                 (kw, Msg "This style of tactic proof is deprecated. See %runElab for the replacement.") : parserWarnings ist }
+                     warnTacticDeprecation kw
                      return $ PTactics ts
                   <?> "tactics block"
 

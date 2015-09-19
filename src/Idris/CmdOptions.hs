@@ -149,6 +149,7 @@ parseFlags = many $
   <|> (UseConsoleWidth <$> option (str >>= parseConsoleWidth) (long "consolewidth" <> metavar "WIDTH" <> help "Select console width: auto, infinite, nat"))
   <|> flag' DumpHighlights (long "highlight" <> help "Emit source code highlighting")
   <|> flag' NoElimDeprecationWarnings (long "no-elim-deprecation-warnings" <> help "Disable deprecation warnings for %elim")
+  <|> flag' NoOldTacticDeprecationWarnings (long "no-tactic-deprecation-warnings" <> help "Disable deprecation warnings for the old tactic sublanguage")
 
   where
     getExt s = case maybeRead s of

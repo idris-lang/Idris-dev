@@ -162,6 +162,7 @@ instance NFData Opt where
     rnf (UseConsoleWidth cw) = rnf  cw `seq` ()
     rnf DumpHighlights = ()
     rnf NoElimDeprecationWarnings = ()
+    rnf NoOldTacticDeprecationWarnings = ()
 
 
 instance NFData TIData where

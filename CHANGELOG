@@ -31,8 +31,10 @@ Tool updates
 
 Miscellaneous updates
 ---------------------
+* Disable the deprecation warnings for %elim and old-style tactic scripts
+  with the --no-elim-deprecation-warnings and --no-tactic-deprecation-warnings
+  flags.
 
-[None so far]
 
 New in 0.9.19:
 --------------
