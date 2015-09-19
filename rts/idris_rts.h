@@ -314,6 +314,7 @@ VAL idris_strTail(VM* vm, VAL str);
 VAL idris_strCons(VM* vm, VAL x, VAL xs);
 VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
+VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str);
 
 // system infox
 // used indices:

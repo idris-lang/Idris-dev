@@ -28,7 +28,7 @@ import qualified Control.Monad.Trans.Class as Trans (lift)
 
 import Data.Data (Data)
 import Data.Function (on)
-import Data.Generics.Uniplate.Data (universe)
+import Data.Generics.Uniplate.Data (universe, children)
 import Data.List hiding (group)
 import Data.Char
 import qualified Data.Map.Strict as M
@@ -90,8 +90,9 @@ data IOption = IOption { opt_logLevel     :: Int,
                          opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
                          opt_optimise     :: [Optimisation],
                          opt_printdepth   :: Maybe Int,
-                         opt_evaltypes    :: Bool -- ^ normalise types in :t
-                       }
+                         opt_evaltypes    :: Bool, -- ^ normalise types in :t
+                         opt_desugarnats  :: Bool
+       }
     deriving (Show, Eq)
 
 defaultOpts = IOption { opt_logLevel   = 0
@@ -117,10 +118,12 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_optimise   = defaultOptimise
                       , opt_printdepth = Just 5000
                       , opt_evaltypes  = True
+                      , opt_desugarnats = False
                       }
 
 data PPOption = PPOption {
     ppopt_impl :: Bool -- ^^ whether to show implicits
+  , ppopt_desugarnats :: Bool
   , ppopt_pinames :: Bool -- ^^ whether to show names in pi bindings
   , ppopt_depth :: Maybe Int
 } deriving (Show)
@@ -133,12 +136,14 @@ defaultOptimise = [PETransform]
 -- | Pretty printing options with default verbosity.
 defaultPPOption :: PPOption
 defaultPPOption = PPOption { ppopt_impl = False, 
+                             ppopt_desugarnats = False,
                              ppopt_pinames = False,
                              ppopt_depth = Just 200 }
 
 -- | Pretty printing options with the most verbosity.
 verbosePPOption :: PPOption
 verbosePPOption = PPOption { ppopt_impl = True,
+                             ppopt_desugarnats = True,
                              ppopt_pinames = True,
                              ppopt_depth = Just 200 }
 
@@ -147,7 +152,8 @@ ppOption :: IOption -> PPOption
 ppOption opt = PPOption {
     ppopt_impl = opt_showimp opt,
     ppopt_pinames = False,
-    ppopt_depth = opt_printdepth opt
+    ppopt_depth = opt_printdepth opt,
+    ppopt_desugarnats = opt_desugarnats opt
 }
 
 -- | Get pretty printing options from an idris state record.
@@ -503,6 +509,7 @@ data Opt = Filename String
          | AutoSolve -- ^ Automatically issue "solve" tactic in old-style interactive prover
          | UseConsoleWidth ConsoleWidth
          | DumpHighlights
+         | DesugarNats
          | NoElimDeprecationWarnings -- ^ Don't show deprecation warnings for %elim
          | NoOldTacticDeprecationWarnings -- ^ Don't show deprecation warnings for old-style tactics
     deriving (Show, Eq)
@@ -1655,7 +1662,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PPatvar fc n) = pretty n
     prettySe d p bnd e
       | Just str <- slist d p bnd e = depth d $ str
-      | Just n <- snat d p e = depth d $ annotate (AnnData "Nat" "") (text (show n))
+      | Just n <- snat ppo d p e = depth d $ annotate (AnnData "Nat" "") (text (show n))
     prettySe d p bnd (PRef fc _ n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe d p bnd (PLam fc n nfc ty sc) =
       depth d . bracket p startPrec . group . align . hang 2 $
@@ -1946,15 +1953,20 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
 
     natns = "Prelude.Nat."
 
-    snat :: Maybe Int -> Int -> PTerm -> Maybe Integer
-    snat (Just x) _ _ | x <= 0 = Nothing
-    snat d p (PRef _ _ z)
-      | show z == (natns++"Z") || show z == "Z" = Just 0
-    snat d p (PApp _ s [PExp {getTm=n}])
-      | show s == (natns++"S") || show s == "S",
-        Just n' <- snat (decD d) p n
-      = Just $ 1 + n'
-    snat _ _ _ = Nothing
+    snat :: PPOption -> Maybe Int -> Int -> PTerm -> Maybe Integer
+    snat ppo d p e
+         | ppopt_desugarnats ppo = Nothing
+         | otherwise = snat' d p e
+         where
+             snat' :: Maybe Int -> Int -> PTerm -> Maybe Integer
+             snat' (Just x) _ _ | x <= 0 = Nothing
+             snat' d p (PRef _ _ z)
+               | show z == (natns++"Z") || show z == "Z" = Just 0
+             snat' d p (PApp _ s [PExp {getTm=n}])
+               | show s == (natns++"S") || show s == "S",
+                 Just n' <- snat' (decD d) p n
+                 = Just $ 1 + n'
+             snat' _ _ _ = Nothing
 
     bracket outer inner doc
       | outer > inner = lparen <> doc <> rparen
@@ -2167,160 +2179,183 @@ getPArity _ = 0
 -- Return all names, free or globally bound, in the given term.
 
 allNamesIn :: PTerm -> [Name]
-allNamesIn tm = nub $ ni [] tm
+allNamesIn tm = nub $ ni 0 [] tm
   where -- TODO THINK added niTacImp, but is it right?
-    ni env (PRef _ _ n)
+    ni 0 env (PRef _ _ n)
         | not (n `elem` env) = [n]
-    ni env (PPatvar _ n) = [n]
-    ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
-    ni env (PIfThenElse _ c t f) = ni env c ++ ni env t ++ ni env f
-    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
-    ni env (PLet _ n _ ty val sc) = ni env ty ++ ni env val ++ ni (n:env) sc
-    ni env (PHidden tm)    = ni env tm
-    ni env (PRewrite _ l r _) = ni env l ++ ni env r
-    ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ _ _ l r)   = ni env l ++ ni env r
-    ni env (PDPair _ _ _ (PRef _ _ n) Placeholder r)  = n : ni env r
-    ni env (PDPair _ _ _ (PRef _ _ n) t r)  = ni env t ++ ni (n:env) r
-    ni env (PDPair _ _ _ l t r)  = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative ns a ls) = concatMap (ni env) ls
-    ni env (PUnifyLog tm)    = ni env tm
-    ni env (PDisamb _ tm)    = ni env tm
-    ni env (PNoImplicits tm)    = ni env tm
-    ni env _               = []
+    ni 0 env (PPatvar _ n) = [n]
+    ni 0 env (PApp _ f as)   = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PAppBind _ f as)   = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PCase _ c os)  = ni 0 env c ++ concatMap (ni 0 env) (map snd os)
+    ni 0 env (PIfThenElse _ c t f) = ni 0 env c ++ ni 0 env t ++ ni 0 env f
+    ni 0 env (PLam fc n _ ty sc)  = ni 0 env ty ++ ni 0 (n:env) sc
+    ni 0 env (PPi p n _ ty sc) = niTacImp 0 env p ++ ni 0 env ty ++ ni 0 (n:env) sc
+    ni 0 env (PLet _ n _ ty val sc) = ni 0 env ty ++ ni 0 env val ++ ni 0 (n:env) sc
+    ni 0 env (PHidden tm)    = ni 0 env tm
+    ni 0 env (PRewrite _ l r _) = ni 0 env l ++ ni 0 env r
+    ni 0 env (PTyped l r)    = ni 0 env l ++ ni 0 env r
+    ni 0 env (PPair _ _ _ l r)   = ni 0 env l ++ ni 0 env r
+    ni 0 env (PDPair _ _ _ (PRef _ _ n) Placeholder r)  = n : ni 0 env r
+    ni 0 env (PDPair _ _ _ (PRef _ _ n) t r)  = ni 0 env t ++ ni 0 (n:env) r
+    ni 0 env (PDPair _ _ _ l t r)  = ni 0 env l ++ ni 0 env t ++ ni 0 env r
+    ni 0 env (PAlternative ns a ls) = concatMap (ni 0 env) ls
+    ni 0 env (PUnifyLog tm)    = ni 0 env tm
+    ni 0 env (PDisamb _ tm)    = ni 0 env tm
+    ni 0 env (PNoImplicits tm)    = ni 0 env tm
 
-    niTacImp env (TacImp _ _ scr) = ni env scr
-    niTacImp _ _                   = []
+    ni i env (PQuasiquote tm ty) = ni (i+1) env tm ++ maybe [] (ni i env) ty
+    ni i env (PUnquote tm) = ni (i - 1) env tm
+
+    ni i env tm               = concatMap (ni i env) (children tm)
+
+    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp _ _ _                  = []
 
 
 -- Return all names defined in binders in the given term
 boundNamesIn :: PTerm -> [Name]
-boundNamesIn tm = S.toList (ni S.empty tm)
+boundNamesIn tm = S.toList (ni 0 S.empty tm)
   where -- TODO THINK Added niTacImp, but is it right?
-    ni set (PApp _ f as) = niTms (ni set f) (map getTm as)
-    ni set (PAppBind _ f as) = niTms (ni set f) (map getTm as)
-    ni set (PCase _ c os)  = niTms (ni set c) (map snd os)
-    ni set (PIfThenElse _ c t f) = niTms set [c, t, f]
-    ni set (PLam fc n _ ty sc)  = S.insert n $ ni (ni set ty) sc
-    ni set (PLet fc n nfc ty val sc) = S.insert n $ ni (ni (ni set ty) val) sc
-    ni set (PPi p n _ ty sc) = niTacImp (S.insert n $ ni (ni set ty) sc) p
-    ni set (PRewrite _ l r _) = ni (ni set l) r
-    ni set (PTyped l r) = ni (ni set l) r
-    ni set (PPair _ _ _ l r) = ni (ni set l) r
-    ni set (PDPair _ _ _ (PRef _ _ n) t r) = ni (ni set t) r
-    ni set (PDPair _ _ _ l t r) = ni (ni (ni set l) t) r
-    ni set (PAlternative ns a as) = niTms set as
-    ni set (PHidden tm) = ni set tm
-    ni set (PUnifyLog tm) = ni set tm
-    ni set (PDisamb _ tm) = ni set tm
-    ni set (PNoImplicits tm) = ni set tm
-    ni set _               = set
+    ni :: Int -> S.Set Name -> PTerm -> S.Set Name
+    ni 0 set (PApp _ f as) = niTms 0 (ni 0 set f) (map getTm as)
+    ni 0 set (PAppBind _ f as) = niTms 0 (ni 0 set f) (map getTm as)
+    ni 0 set (PCase _ c os)  = niTms 0 (ni 0 set c) (map snd os)
+    ni 0 set (PIfThenElse _ c t f) = niTms 0 set [c, t, f]
+    ni 0 set (PLam fc n _ ty sc)  = S.insert n $ ni 0 (ni 0 set ty) sc
+    ni 0 set (PLet fc n nfc ty val sc) = S.insert n $ ni 0 (ni 0 (ni 0 set ty) val) sc
+    ni 0 set (PPi p n _ ty sc) = niTacImp 0 (S.insert n $ ni 0 (ni 0 set ty) sc) p
+    ni 0 set (PRewrite _ l r _) = ni 0 (ni 0 set l) r
+    ni 0 set (PTyped l r) = ni 0 (ni 0 set l) r
+    ni 0 set (PPair _ _ _ l r) = ni 0 (ni 0 set l) r
+    ni 0 set (PDPair _ _ _ (PRef _ _ n) t r) = ni 0 (ni 0 set t) r
+    ni 0 set (PDPair _ _ _ l t r) = ni 0 (ni 0 (ni 0 set l) t) r
+    ni 0 set (PAlternative ns a as) = niTms 0 set as
+    ni 0 set (PHidden tm) = ni 0 set tm
+    ni 0 set (PUnifyLog tm) = ni 0 set tm
+    ni 0 set (PDisamb _ tm) = ni 0 set tm
+    ni 0 set (PNoImplicits tm) = ni 0 set tm
 
-    niTms set [] = set
-    niTms set (x : xs) = niTms (ni set x) xs
+    ni i set (PQuasiquote tm ty) = ni (i + 1) set tm `S.union` maybe S.empty (ni i set) ty
+    ni i set (PUnquote tm) = ni (i - 1) set tm
 
-    niTacImp set (TacImp _ _ scr) = ni set scr
-    niTacImp set _                = set
+    ni i set tm               = foldr S.union set (map (ni i set) (children tm))
+
+    niTms :: Int -> S.Set Name -> [PTerm] -> S.Set Name
+    niTms i set [] = set
+    niTms i set (x : xs) = niTms i (ni i set x) xs
+
+    niTacImp i set (TacImp _ _ scr) = ni i set scr
+    niTacImp i set _                = set
 
 -- Return names which are valid implicits in the given term (type).
 implicitNamesIn :: [Name] -> IState -> PTerm -> [Name]
-implicitNamesIn uvars ist tm = nub $ ni [] tm
+implicitNamesIn uvars ist tm = nub $ ni 0 [] tm
   where
-    ni env (PRef _ _ n)
+    ni 0 env (PRef _ _ n)
         | not (n `elem` env)
             = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> if n `elem` uvars then [n] else []
-    ni env (PApp _ f@(PRef _ _ n) as)
-        | n `elem` uvars = ni env f ++ concatMap (ni env) (map getTm as)
-        | otherwise = concatMap (ni env) (map getTm as)
-    ni env (PApp _ f as) = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PCase _ c os)  = ni env c ++
+    ni 0 env (PApp _ f@(PRef _ _ n) as)
+        | n `elem` uvars = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+        | otherwise = concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PApp _ f as) = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PAppBind _ f as)   = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PCase _ c os)  = ni 0 env c ++
     -- names in 'os', not counting the names bound in the cases
-                                (nub (concatMap (ni env) (map snd os))
-                                     \\ nub (concatMap (ni env) (map fst os)))
-    ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n _ ty sc) = ni env ty ++ ni (n:env) sc
-    ni env (PRewrite _ l r _) = ni env l ++ ni env r
-    ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ _ _ l r)   = ni env l ++ ni env r
-    ni env (PDPair _ _ _ (PRef _ _ n) t r) = ni env t ++ ni (n:env) r
-    ni env (PDPair _ _ _ l t r) = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative ns a as) = concatMap (ni env) as
-    ni env (PHidden tm)    = ni env tm
-    ni env (PUnifyLog tm)    = ni env tm
-    ni env (PDisamb _ tm)    = ni env tm
-    ni env (PNoImplicits tm) = ni env tm
-    ni env _               = []
+                                (nub (concatMap (ni 0 env) (map snd os))
+                                     \\ nub (concatMap (ni 0 env) (map fst os)))
+    ni 0 env (PIfThenElse _ c t f) = concatMap (ni 0 env) [c, t, f]
+    ni 0 env (PLam fc n _ ty sc)  = ni 0 env ty ++ ni 0 (n:env) sc
+    ni 0 env (PPi p n _ ty sc) = ni 0 env ty ++ ni 0 (n:env) sc
+    ni 0 env (PRewrite _ l r _) = ni 0 env l ++ ni 0 env r
+    ni 0 env (PTyped l r)    = ni 0 env l ++ ni 0 env r
+    ni 0 env (PPair _ _ _ l r)   = ni 0 env l ++ ni 0 env r
+    ni 0 env (PDPair _ _ _ (PRef _ _ n) t r) = ni 0 env t ++ ni 0 (n:env) r
+    ni 0 env (PDPair _ _ _ l t r) = ni 0 env l ++ ni 0 env t ++ ni 0 env r
+    ni 0 env (PAlternative ns a as) = concatMap (ni 0 env) as
+    ni 0 env (PHidden tm)    = ni 0 env tm
+    ni 0 env (PUnifyLog tm)    = ni 0 env tm
+    ni 0 env (PDisamb _ tm)    = ni 0 env tm
+    ni 0 env (PNoImplicits tm) = ni 0 env tm
+
+    ni i env (PQuasiquote tm ty) = ni (i + 1) env tm ++
+                                   maybe [] (ni i env) ty
+    ni i env (PUnquote tm) = ni (i - 1) env tm
+
+    ni i env tm               = concatMap (ni i env) (children tm)
 
 -- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]
-namesIn uvars ist tm = nub $ ni [] tm
+namesIn uvars ist tm = nub $ ni 0 [] tm
   where
-    ni env (PRef _ _ n)
+    ni 0 env (PRef _ _ n)
         | not (n `elem` env)
             = case lookupTy n (tt_ctxt ist) of
                 [] -> [n]
                 _ -> if n `elem` (map fst uvars) then [n] else []
-    ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PCase _ c os)  = ni env c ++
+    ni 0 env (PApp _ f as)   = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PAppBind _ f as)   = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PCase _ c os)  = ni 0 env c ++
     -- names in 'os', not counting the names bound in the cases
-                                (nub (concatMap (ni env) (map snd os))
-                                     \\ nub (concatMap (ni env) (map fst os)))
-    ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n nfc ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
-    ni env (PRewrite _ l r _) = ni env l ++ ni env r
-    ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ _ _ l r)   = ni env l ++ ni env r
-    ni env (PDPair _ _ _ (PRef _ _ n) t r) = ni env t ++ ni (n:env) r
-    ni env (PDPair _ _ _ l t r) = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative ns a as) = concatMap (ni env) as
-    ni env (PHidden tm)    = ni env tm
-    ni env (PUnifyLog tm)    = ni env tm
-    ni env (PDisamb _ tm)    = ni env tm
-    ni env (PNoImplicits tm) = ni env tm
-    ni env _               = []
+                                (nub (concatMap (ni 0 env) (map snd os))
+                                     \\ nub (concatMap (ni 0 env) (map fst os)))
+    ni 0 env (PIfThenElse _ c t f) = concatMap (ni 0 env) [c, t, f]
+    ni 0 env (PLam fc n nfc ty sc)  = ni 0 env ty ++ ni 0 (n:env) sc
+    ni 0 env (PPi p n _ ty sc) = niTacImp 0 env p ++ ni 0 env ty ++ ni 0 (n:env) sc
+    ni 0 env (PRewrite _ l r _) = ni 0 env l ++ ni 0 env r
+    ni 0 env (PTyped l r)    = ni 0 env l ++ ni 0 env r
+    ni 0 env (PPair _ _ _ l r)   = ni 0 env l ++ ni 0 env r
+    ni 0 env (PDPair _ _ _ (PRef _ _ n) t r) = ni 0 env t ++ ni 0 (n:env) r
+    ni 0 env (PDPair _ _ _ l t r) = ni 0 env l ++ ni 0 env t ++ ni 0 env r
+    ni 0 env (PAlternative ns a as) = concatMap (ni 0 env) as
+    ni 0 env (PHidden tm)    = ni 0 env tm
+    ni 0 env (PUnifyLog tm)    = ni 0 env tm
+    ni 0 env (PDisamb _ tm)    = ni 0 env tm
+    ni 0 env (PNoImplicits tm) = ni 0 env tm
 
-    niTacImp env (TacImp _ _ scr) = ni env scr
-    niTacImp _ _                  = []
+    ni i env (PQuasiquote tm ty) = ni (i + 1) env tm ++ maybe [] (ni i env) ty
+    ni i env (PUnquote tm) = ni (i - 1) env tm
+
+    ni i env tm               = concatMap (ni i env) (children tm)
+
+    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp _ _ _                  = []
 
 -- Return which of the given names are used in the given term.
 
 usedNamesIn :: [Name] -> IState -> PTerm -> [Name]
-usedNamesIn vars ist tm = nub $ ni [] tm
+usedNamesIn vars ist tm = nub $ ni 0 [] tm
   where -- TODO THINK added niTacImp, but is it right?
-    ni env (PRef _ _ n)
+    ni 0 env (PRef _ _ n)
         | n `elem` vars && not (n `elem` env)
             = case lookupDefExact n (tt_ctxt ist) of
                 Nothing -> [n]
                 _ -> []
-    ni env (PApp _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PAppBind _ f as)   = ni env f ++ concatMap (ni env) (map getTm as)
-    ni env (PCase _ c os)  = ni env c ++ concatMap (ni env) (map snd os)
-    ni env (PIfThenElse _ c t f) = concatMap (ni env) [c, t, f]
-    ni env (PLam fc n _ ty sc)  = ni env ty ++ ni (n:env) sc
-    ni env (PPi p n _ ty sc) = niTacImp env p ++ ni env ty ++ ni (n:env) sc
-    ni env (PRewrite _ l r _) = ni env l ++ ni env r
-    ni env (PTyped l r)    = ni env l ++ ni env r
-    ni env (PPair _ _ _ l r)   = ni env l ++ ni env r
-    ni env (PDPair _ _ _ (PRef _ _ n) t r) = ni env t ++ ni (n:env) r
-    ni env (PDPair _ _ _ l t r) = ni env l ++ ni env t ++ ni env r
-    ni env (PAlternative ns a as) = concatMap (ni env) as
-    ni env (PHidden tm)    = ni env tm
-    ni env (PUnifyLog tm)    = ni env tm
-    ni env (PDisamb _ tm)    = ni env tm
-    ni env (PNoImplicits tm) = ni env tm
-    ni env _               = []
+    ni 0 env (PApp _ f as)   = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PAppBind _ f as)   = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
+    ni 0 env (PCase _ c os)  = ni 0 env c ++ concatMap (ni 0 env) (map snd os)
+    ni 0 env (PIfThenElse _ c t f) = concatMap (ni 0 env) [c, t, f]
+    ni 0 env (PLam fc n _ ty sc)  = ni 0 env ty ++ ni 0 (n:env) sc
+    ni 0 env (PPi p n _ ty sc) = niTacImp 0 env p ++ ni 0 env ty ++ ni 0 (n:env) sc
+    ni 0 env (PRewrite _ l r _) = ni 0 env l ++ ni 0 env r
+    ni 0 env (PTyped l r)    = ni 0 env l ++ ni 0 env r
+    ni 0 env (PPair _ _ _ l r)   = ni 0 env l ++ ni 0 env r
+    ni 0 env (PDPair _ _ _ (PRef _ _ n) t r) = ni 0 env t ++ ni 0 (n:env) r
+    ni 0 env (PDPair _ _ _ l t r) = ni 0 env l ++ ni 0 env t ++ ni 0 env r
+    ni 0 env (PAlternative ns a as) = concatMap (ni 0 env) as
+    ni 0 env (PHidden tm)    = ni 0 env tm
+    ni 0 env (PUnifyLog tm)    = ni 0 env tm
+    ni 0 env (PDisamb _ tm)    = ni 0 env tm
+    ni 0 env (PNoImplicits tm) = ni 0 env tm
 
-    niTacImp env (TacImp _ _ scr) = ni env scr
-    niTacImp _ _                = []
+    ni i env (PQuasiquote tm ty) = ni (i + 1) env tm ++ maybe [] (ni i env) ty
+    ni i env (PUnquote tm) = ni (i - 1) env tm
+
+    ni i env tm               = concatMap (ni i env) (children tm)
+
+    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp _ _ _                = []
 
 -- Return the list of inaccessible (= dotted) positions for a name.
 getErasureInfo :: IState -> Name -> [Int]

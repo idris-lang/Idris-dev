@@ -1,3 +1,3 @@
-Tacs.idr:251:15:
+Tacs.idr:290:15:
 When checking right hand side of testElab3:
 Unifying ty and ARR ty t would lead to infinite value

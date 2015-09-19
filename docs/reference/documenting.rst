@@ -9,7 +9,7 @@ for a reader’s edification and are ignored by the compiler, and inline
 API documentation, which the compiler parses and stores for future
 reference. To consult the documentation for a declaration ``f``, write
 ``:doc f`` at the REPL or use the appropriate command in your editor
-(``C-c C-d`` in Emacs, in Vim).
+(``C-c C-d`` in Emacs, ``<LocalLeader>h`` in Vim).
 
 Comments
 ========

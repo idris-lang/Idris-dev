@@ -594,6 +594,17 @@ VAL idris_strIndex(VM* vm, VAL str, VAL i) {
     return MKINT((i_int)idx);
 }
 
+VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
+    char *start = idris_utf8_advance(GETSTR(str), GETINT(offset));
+    char *end = idris_utf8_advance(start, GETINT(length));
+    Closure* newstr = allocate(sizeof(Closure) + (end - start) +1, 0);
+    SETTY(newstr, STRING);
+    newstr -> info.str = (char*)newstr + sizeof(Closure);
+    memcpy(newstr -> info.str, start, end - start);
+    *(newstr -> info.str + (end - start) + 1) = '\0';
+    return newstr;
+}
+
 VAL idris_strRev(VM* vm, VAL str) {
     char *xstr = GETSTR(str);
     Closure* cl = allocate(sizeof(Closure) +

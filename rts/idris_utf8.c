@@ -78,6 +78,32 @@ unsigned idris_utf8_index(char* s, int idx) {
    return top;
 }
 
+char* idris_utf8_advance(char* str, int i) {
+    while (i > 0 && *str != '\0') {
+        // In a UTF8 single-byte char, the highest bit is 0.  In the
+        // first byte of a multi-byte char, the highest two bits are
+        // 11, but the rest of the bytes start with 10. So we can
+        // decrement our character counter when we see something other
+        // than 10 at the front.
+
+        // This is a bit of an overapproximation, as invalid multibyte
+        // sequences that are too long will be treated as if they are
+        // OK, but it's always paying attention to null-termination.
+        if ((*str & 0xc0) != 0x80) {
+            i--;
+        }
+        str++;
+    }
+    // Now we've found the first byte of the last character. Advance
+    // to the end of it, or the end of the string, whichever is first.
+    // Here, we don't risk overrunning the end of the string because
+    // ('\0' & 0xc0) != 0x80.
+    while ((*str & 0xc0) == 0x80) { str++; }
+
+    return str;
+}
+
+
 char* idris_utf8_fromChar(int x) {
     char* str;
     int bytes = 0, top = 0;

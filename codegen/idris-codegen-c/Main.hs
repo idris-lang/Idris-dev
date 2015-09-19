@@ -16,21 +16,18 @@ import Paths_idris
 
 import Util.System
 
-data Opts = Opts { really :: Bool,
-                   inputs :: [FilePath],
+data Opts = Opts { inputs :: [FilePath],
                    interface :: Bool,
                    output :: FilePath }
 
 showUsage = do putStrLn "A code generator which is intended to be called by the compiler, not by a user."
-               putStrLn "To call the code generator manually, pass the --yes-really option.\n"
-               putStrLn "Usage: idris-codegen-c [--yes-really] <ibc-files> [-o <output-file>]"
+               putStrLn "Usage: idris-codegen-c <ibc-files> [-o <output-file>]"
                exitWith ExitSuccess
 
 getOpts :: IO Opts
 getOpts = do xs <- getArgs
-             return $ process (Opts False [] False "a.out") xs
+             return $ process (Opts [] False "a.out") xs
   where
-    process opts ("--yes-really":xs) = process (opts { really = True }) xs
     process opts ("-o":o:xs) = process (opts { output = o }) xs
     process opts ("--interface":xs) = process (opts { interface = True }) xs
     process opts (x:xs) = process (opts { inputs = x:inputs opts }) xs
@@ -50,8 +47,4 @@ main :: IO ()
 main = do opts <- getOpts
           if (null (inputs opts))
              then showUsage
-             else if (not $ really opts)
-                     then do putStrLn "This code generator is intended to be called by the Idris compiler. \
-                                      \Please pass Idris the '--codegen' flag to choose a backend."
-                             exitWith ExitSuccess
-                     else runMain (c_main opts)
+             else  runMain (c_main opts)

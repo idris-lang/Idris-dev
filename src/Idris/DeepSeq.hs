@@ -84,6 +84,7 @@ instance NFData PrimFn where
     rnf (LStrCons) = ()
     rnf (LStrIndex) = ()
     rnf (LStrRev) = ()
+    rnf (LStrSubstr) = ()
     rnf (LReadStr) = ()
     rnf (LWriteStr) = ()
     rnf (LSystemInfo) = ()
@@ -124,6 +125,7 @@ instance NFData Opt where
     rnf (WarnPartial) = ()
     rnf (WarnReach) = ()
     rnf (EvalTypes) = ()
+    rnf (DesugarNats) = ()
     rnf (NoCoverage) = ()
     rnf (ErrContext) = ()
     rnf (ShowImpl) = ()
@@ -193,7 +195,8 @@ instance NFData IOption where
          opt_autoImport
          opt_optimise
          opt_printdepth
-         opt_evaltypes) =
+         opt_evaltypes
+         opt_desugarnats) =
          rnf opt_logLevel
          `seq` rnf opt_typecase
          `seq` rnf opt_typeintype
@@ -217,6 +220,7 @@ instance NFData IOption where
          `seq` rnf opt_optimise
          `seq` rnf opt_printdepth
          `seq` rnf opt_evaltypes
+         `seq` rnf opt_desugarnats
          `seq` ()
 
 instance NFData LanguageExt where

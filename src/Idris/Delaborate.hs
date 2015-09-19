@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Delaborate (annName, bugaddr, delab, delab', delabMV, delabSugared, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintDelabTy, pprintErr, resugar) where
+module Idris.Delaborate (annName, bugaddr, delab, delab', delabMV, delabSugared, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintNoDelab, pprintDelabTy, pprintErr, resugar) where
 
 -- Convert core TT back into high level syntax, primarily for display
 -- purposes.
@@ -225,6 +225,10 @@ indented = nest errorIndent . (line <>)
 pprintDelab :: IState -> Term -> Doc OutputAnnotation
 pprintDelab ist tm = annotate (AnnTerm [] tm)
                               (prettyIst ist (delabSugared ist tm))
+
+pprintNoDelab :: IState -> Term -> Doc OutputAnnotation
+pprintNoDelab ist tm = annotate (AnnTerm [] tm)
+                              (prettyIst ist (delab ist tm))
 
 -- | Pretty-print the type of some name
 pprintDelabTy :: IState -> Name -> Doc OutputAnnotation

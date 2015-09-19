@@ -4,6 +4,89 @@ Syntax Guide
 
 Examples are mostly adapted from the Idris tutorial.
 
+Source File Structure
+---------------------
+
+Source files consist of:
+
+1. An optional :ref:`syntax-module-headers`.
+2. Zero or more :ref:`syntax-imports`.
+3. Zero or more declarations, e.g. :ref:`syntax-variables`,
+   :ref:`syntax-data-types`, etc.
+
+For example:
+
+.. code:: idris
+
+    module MyModule   -- module header
+
+    import Data.Vect  -- an import
+
+    %default total    -- a directive
+
+    foo : Nat         -- a declaration
+    foo = 5
+
+.. _syntax-module-headers:
+
+Module Header
+~~~~~~~~~~~~~
+
+A file can start with a module header, introduced by the ``module`` keyword:
+
+.. code-block:: idris
+
+  module Semantics
+
+Module names can be hierarchical, with parts separated by ``.``:
+
+.. code-block:: idris
+
+  module Semantics.Transform
+
+Each file can define only a single module, which includes everything defined in
+that file.
+
+Like with declarations, a :ref:`docstring <syntax-comments>` can be used to
+provide documentation for a module:
+
+.. code-block:: idris
+
+  ||| Implementation of predicate transformer semantics.
+  module Semantics.Transform
+
+.. _syntax-imports:
+
+Imports
+~~~~~~~
+
+An ``import`` makes the names in another module available for use by the current
+module:
+
+.. code-block:: idris
+
+    import Data.Vect
+
+All the declarations in an imported module are available for use in the file.
+In a case where a name is ambiguous --- e.g. because it is imported from
+multiple modules, or appears in multiple visible namespaces --- the ambiguity can be resolved using :ref:`syntax-qualified-names`.  (Often, the compiler can
+resolve the ambiguity for you, using the types involved.)
+
+Imported modules can be given aliases to make qualified names more compact:
+
+.. code-block:: idris
+
+    import Data.Vect as V
+
+Note that names made visible by import are not, by default, re-exported to
+users of the module being written.  This can be done using ``import public``:
+
+.. code-block:: idris
+
+    import public Data.Vect
+
+.. _syntax-variables:
+
 Variables
 ---------
 
@@ -42,6 +125,8 @@ a more interesting example:
 
     MyListType : Type
     MyListType = List Int
+
+.. _syntax-data-types:
 
 Data types
 ~~~~~~~~~~
@@ -246,6 +331,36 @@ Options
 Misc
 ----
 
+.. _syntax-qualified-names:
+
+Qualified Names
+~~~~~~~~~~~~~~~
+
+If multiple declarations with the same name are visible, using the name can
+result in an ambiguous situation.  The compiler will attempt to resolve the
+ambiguity using the types involved.  If it's unable --- for example, because
+the declarations with the same name also have the same type signatures --- the
+situation can be cleared up using a *qualified name*.
+
+A qualified name has the symbol's namespace prefixed, separated by a ``.``:
+
+.. code-block:: idris
+
+  Data.Vect.length
+
+This would specifically reference a ``length`` declaration from ``Data.Vect``.
+
+Qualified names can be written using two different shorthands:
+
+1. Names in modules that are :ref:`imported <syntax-imports>` using an alias
+   can be qualified by the alias.
+
+2. The name can be qualified by the *shortest unique suffix* of the
+   namespace in question.  For example, the ``length`` case above can likely
+   be shortened to ``Vect.length``.
+
+.. _syntax-comments:
+
 Comments
 ~~~~~~~~
 
@@ -263,6 +378,8 @@ Multi line String literals
     foo = """
     this is a
     string literal"""
+
+.. _syntax-directives:
 
 Directives
 ----------

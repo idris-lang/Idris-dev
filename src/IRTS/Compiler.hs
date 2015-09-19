@@ -44,8 +44,7 @@ import System.Directory
 import System.Environment
 import System.FilePath ((</>), addTrailingPathSeparator)
 
--- |  Given a 'main' term to compiler, return the IRs which can be used to
--- generate code.
+-- |  Compile to simplified forms and return CodegenInfo
 compile :: Codegen -> FilePath -> Maybe Term -> Idris CodegenInfo
 compile codegen f mtm
    = do checkMVs  -- check for undefined metavariables
@@ -74,7 +73,7 @@ compile codegen f mtm
                          Just _ -> False
 
         let defs = defsIn ++ maindef
-        -- iputStrLn $ showSep "\n" (map show defs)
+
         -- Inlined top level LDecl made here
         let defsInlined = inlineAll defs
         let defsUniq = map (allocUnique (addAlist defsInlined emptyContext))
@@ -90,7 +89,7 @@ compile codegen f mtm
         let defuns = inline defuns_in
         logLvl 5 $ show defuns
         logLvl 1 "Resolving variables for CG"
-        -- iputStrLn $ showSep "\n" (map show (toAlist defuns))
+
         let checked = simplifyDefs defuns (toAlist defuns)
         outty <- outputTy
         dumpCases <- getDumpCases
@@ -109,13 +108,6 @@ compile codegen f mtm
                                             hdrs impdirs objs libs flags
                                             NONE c (toAlist defuns)
                                             tagged iface exports
---                        runIO $ case codegen of
---                               ViaC -> codegenC cginfo
---                               ViaJava -> codegenJava cginfo
---                               ViaJavaScript -> codegenJavaScript cginfo
---                               ViaNode -> codegenNode cginfo
---                               ViaLLVM -> codegenLLVM cginfo
---                               Bytecode -> dumpBC c f
             Error e -> ierror e
   where checkMVs = do i <- getIState
                       case map fst (idris_metavars i) \\ primDefs of
@@ -125,9 +117,6 @@ compile codegen f mtm
                            case idris_totcheckfail i of
                              [] -> return ()
                              ((fc, msg):fs) -> ierror . At fc . Msg $ "Cannot compile:\n  " ++ msg
-        inDir d h = do let f = d </> h
-                       ex <- doesFileExist f
-                       if ex then return f else return h
 
 generate :: Codegen -> FilePath -> CodegenInfo -> IO ()
 generate codegen mainmod ir
@@ -136,7 +125,7 @@ generate codegen mainmod ir
        Via "c" -> codegenC ir
        -- Any external code generator
        Via cg -> do let cmd = "idris-codegen-" ++ cg
-                        args = ["--yes-really", mainmod, "-o", outputFile ir] ++ compilerFlags ir
+                        args = [mainmod, "-o", outputFile ir] ++ compilerFlags ir
                     exit <- rawSystem cmd args
                     when (exit /= ExitSuccess) $
                        putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
@@ -484,75 +473,6 @@ doForeign vs env (ret : fname : world : args)
     deNS (NS n _) = n
     deNS n = n
 doForeign vs env xs = ifail "Badly formed foreign function call"
-
-{-
- - | (_, (Constant (Str fgnName) : fgnArgTys : ret : [])) <- unApply fgn
-    = case getFTypes fgnArgTys of
-        Nothing -> ifail $ "Foreign type specification is not a constant list: " ++ show (fgn:args)
-        Just tys -> do
-            args' <- mapM (irTerm vs env) (init args)
-            return $ LForeign LANG_C (mkIty' ret) fgnName (zip tys args')
-
-    | otherwise = ifail "Badly formed foreign function call"
-  where
-    getFTypes :: TT Name -> Maybe [FType]
-    getFTypes tm = case unApply tm of
-        -- nil : {a : Type} -> List a
-        (nil,  [_])         -> Just []
-        -- cons : {a : Type} -> a -> List a -> List a
-        (cons, [_, ty, xs]) -> (mkIty' ty :) <$> getFTypes xs
-        _ -> Nothing
-
-    mkIty' (P _ (UN ty) _) = mkIty (str ty)
-    mkIty' (App (P _ (UN fi) _) (P _ (UN intTy) _))
-        | fi == txt "FIntT"
-        = mkIntIty (str intTy)
-
-    mkIty' (App (App (P _ (UN ff) _) _) (App (P _ (UN fa) _) (App (P _ (UN io) _) _)))
-        | ff == txt "FFunction"
-        , fa == txt "FAny"
-        , io == txt "IO"
-        = FFunctionIO
-
-    mkIty' (App (App (P _ (UN ff) _) _) _)
-        | ff == txt "FFunction"
-        = FFunction
-
-    mkIty' _ = FAny
-
-    -- would be better if these FInt types were evaluated at compile time
-    -- TODO: add %eval directive for such things
-    -- Issue #1742 on the issue tracker.
-    --     https://github.com/idris-lang/Idris-dev/issues/1742
-    mkIty "FFloat"      = FArith ATFloat
-    mkIty "FInt"        = mkIntIty "ITNative"
-    mkIty "FChar"       = mkIntIty "ITChar"
-    mkIty "FByte"       = mkIntIty "IT8"
-    mkIty "FShort"      = mkIntIty "IT16"
-    mkIty "FLong"       = mkIntIty "IT64"
-    mkIty "FBits8"      = mkIntIty "IT8"
-    mkIty "FBits16"     = mkIntIty "IT16"
-    mkIty "FBits32"     = mkIntIty "IT32"
-    mkIty "FBits64"     = mkIntIty "IT64"
-    mkIty "FString"     = FString
-    mkIty "FPtr"        = FPtr
-    mkIty "FManagedPtr" = FManagedPtr
-    mkIty "FUnit"       = FUnit
-    mkIty "FFunction"   = FFunction
-    mkIty "FFunctionIO" = FFunctionIO
-    mkIty "FBits8x16"   = FArith (ATInt (ITVec IT8 16))
-    mkIty "FBits16x8"   = FArith (ATInt (ITVec IT16 8))
-    mkIty "FBits32x4"   = FArith (ATInt (ITVec IT32 4))
-    mkIty "FBits64x2"   = FArith (ATInt (ITVec IT64 2))
-    mkIty x             = error $ "Unknown type " ++ x
-
-    mkIntIty "ITNative" = FArith (ATInt ITNative)
-    mkIntIty "ITChar" = FArith (ATInt ITChar)
-    mkIntIty "IT8"  = FArith (ATInt (ITFixed IT8))
-    mkIntIty "IT16" = FArith (ATInt (ITFixed IT16))
-    mkIntIty "IT32" = FArith (ATInt (ITFixed IT32))
-    mkIntIty "IT64" = FArith (ATInt (ITFixed IT64))
--}
 
 irTree :: [Name] -> SC -> Idris LExp
 irTree args tree = do
