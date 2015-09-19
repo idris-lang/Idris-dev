@@ -994,7 +994,7 @@ expandParams :: (Name -> Name) -> [(Name, PTerm)] ->
                 [Name] -> -- all names
                 [Name] -> -- names with no declaration
                 PTerm -> PTerm
-expandParams dec ps ns infs tm = en tm
+expandParams dec ps ns infs tm = en 0 tm
   where
     -- if we shadow a name (say in a lambda binding) that is used in a call to
     -- a lifted function, we need access to both names - once in the scope of the
@@ -1006,69 +1006,76 @@ expandParams dec ps ns infs tm = en tm
     mkShadow (MN i n) = MN (i+1) n
     mkShadow (NS x s) = NS (mkShadow x) s
 
-    en (PLam fc n nfc t s)
+    en :: Int -- ^ The quotation level - only transform terms that are used, not terms
+              -- that are merely mentioned.
+        -> PTerm -> PTerm
+    en 0 (PLam fc n nfc t s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
-                     PLam fc n' nfc (en t) (en (shadow n n' s))
-       | otherwise = PLam fc n nfc (en t) (en s)
-    en (PPi p n nfc t s)
+                     PLam fc n' nfc (en 0 t) (en 0 (shadow n n' s))
+       | otherwise = PLam fc n nfc (en 0 t) (en 0 s)
+    en 0 (PPi p n nfc t s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in -- TODO THINK SHADOWING TacImp?
-                     PPi (enTacImp p) n' nfc (en t) (en (shadow n n' s))
-       | otherwise = PPi (enTacImp p) n nfc (en t) (en s)
-    en (PLet fc n nfc ty v s)
+                     PPi (enTacImp 0 p) n' nfc (en 0 t) (en 0 (shadow n n' s))
+       | otherwise = PPi (enTacImp 0 p) n nfc (en 0 t) (en 0 s)
+    en 0 (PLet fc n nfc ty v s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
-                     PLet fc n' nfc (en ty) (en v) (en (shadow n n' s))
-       | otherwise = PLet fc n nfc (en ty) (en v) (en s)
+                     PLet fc n' nfc (en 0 ty) (en 0 v) (en 0 (shadow n n' s))
+       | otherwise = PLet fc n nfc (en 0 ty) (en 0 v) (en 0 s)
     -- FIXME: Should only do this in a type signature!
-    en (PDPair f hls p (PRef f' fcs n) t r)
+    en 0 (PDPair f hls p (PRef f' fcs n) t r)
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
            = let n' = mkShadow n in
-                 PDPair f hls p (PRef f' fcs n') (en t) (en (shadow n n' r))
-    en (PRewrite f l r g) = PRewrite f (en l) (en r) (fmap en g)
-    en (PTyped l r) = PTyped (en l) (en r)
-    en (PPair f hls p l r) = PPair f hls p (en l) (en r)
-    en (PDPair f hls p l t r) = PDPair f hls p (en l) (en t) (en r)
-    en (PAlternative ns a as) = PAlternative ns a (map en as)
-    en (PHidden t) = PHidden (en t)
-    en (PUnifyLog t) = PUnifyLog (en t)
-    en (PDisamb ds t) = PDisamb ds (en t)
-    en (PNoImplicits t) = PNoImplicits (en t)
-    en (PDoBlock ds) = PDoBlock (map (fmap en) ds)
-    en (PProof ts)   = PProof (map (fmap en) ts)
-    en (PTactics ts) = PTactics (map (fmap en) ts)
+                 PDPair f hls p (PRef f' fcs n') (en 0 t) (en 0 (shadow n n' r))
+    en 0 (PRewrite f l r g) = PRewrite f (en 0 l) (en 0 r) (fmap (en 0) g)
+    en 0 (PTyped l r) = PTyped (en 0 l) (en 0 r)
+    en 0 (PPair f hls p l r) = PPair f hls p (en 0 l) (en 0 r)
+    en 0 (PDPair f hls p l t r) = PDPair f hls p (en 0 l) (en 0 t) (en 0 r)
+    en 0 (PAlternative ns a as) = PAlternative ns a (map (en 0) as)
+    en 0 (PHidden t) = PHidden (en 0 t)
+    en 0 (PUnifyLog t) = PUnifyLog (en 0 t)
+    en 0 (PDisamb ds t) = PDisamb ds (en 0 t)
+    en 0 (PNoImplicits t) = PNoImplicits (en 0 t)
+    en 0 (PDoBlock ds) = PDoBlock (map (fmap (en 0)) ds)
+    en 0 (PProof ts)   = PProof (map (fmap (en 0)) ts)
+    en 0 (PTactics ts) = PTactics (map (fmap (en 0)) ts)
 
-    en (PQuote (Var n))
+    en 0 (PQuote (Var n))
         | n `nselem` ns = PQuote (Var (dec n))
-    en (PApp fc (PInferRef fc' hl n) as)
+    en 0 (PApp fc (PInferRef fc' hl n) as)
         | n `nselem` ns = PApp fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
-    en (PApp fc (PRef fc' hl n) as)
+                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+    en 0 (PApp fc (PRef fc' hl n) as)
         | n `elem` infs = PApp fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
+                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
         | n `nselem` ns = PApp fc (PRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
-    en (PAppBind fc (PRef fc' hl n) as)
+                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+    en 0 (PAppBind fc (PRef fc' hl n) as)
         | n `elem` infs = PAppBind fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
+                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
         | n `nselem` ns = PAppBind fc (PRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap en) as))
-    en (PRef fc hl n)
+                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+    en 0 (PRef fc hl n)
         | n `elem` infs = PApp fc (PInferRef fc hl (dec n))
                            (map (pexp . (PRef fc hl)) (map fst ps))
         | n `nselem` ns = PApp fc (PRef fc hl (dec n))
                            (map (pexp . (PRef fc hl)) (map fst ps))
-    en (PInferRef fc hl n)
+    en 0 (PInferRef fc hl n)
         | n `nselem` ns = PApp fc (PInferRef fc hl (dec n))
                            (map (pexp . (PRef fc hl)) (map fst ps))
-    en (PApp fc f as) = PApp fc (en f) (map (fmap en) as)
-    en (PAppBind fc f as) = PAppBind fc (en f) (map (fmap en) as)
-    en (PCase fc c os) = PCase fc (en c) (map (pmap en) os)
-    en (PIfThenElse fc c t f) = PIfThenElse fc (en c) (en t) (en f)
-    en (PRunElab fc tm ns) = PRunElab fc (en tm) ns
-    en (PConstSugar fc tm) = PConstSugar fc (en tm)
-    en t = t
+    en 0 (PApp fc f as) = PApp fc (en 0 f) (map (fmap (en 0)) as)
+    en 0 (PAppBind fc f as) = PAppBind fc (en 0 f) (map (fmap (en 0)) as)
+    en 0 (PCase fc c os) = PCase fc (en 0 c) (map (pmap (en 0)) os)
+    en 0 (PIfThenElse fc c t f) = PIfThenElse fc (en 0 c) (en 0 t) (en 0 f)
+    en 0 (PRunElab fc tm ns) = PRunElab fc (en 0 tm) ns
+    en 0 (PConstSugar fc tm) = PConstSugar fc (en 0 tm)
+
+    en ql (PQuasiquote tm ty) = PQuasiquote (en (ql + 1) tm) (fmap (en ql) ty)
+    en ql (PUnquote tm) = PUnquote (en (ql - 1) tm)
+
+    en ql t = descend (en ql) t
 
     nselem x [] = False
     nselem x (y : xs) | nseq x y = True
@@ -1076,8 +1083,8 @@ expandParams dec ps ns infs tm = en tm
 
     nseq x y = nsroot x == nsroot y
 
-    enTacImp (TacImp aos st scr)  = TacImp aos st (en scr)
-    enTacImp other                = other
+    enTacImp ql (TacImp aos st scr)  = TacImp aos st (en ql scr)
+    enTacImp ql other                = other
 
 expandParamsD :: Bool -> -- True = RHS only
                  IState ->
