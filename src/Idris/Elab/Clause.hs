@@ -162,7 +162,7 @@ elabClauses info' fc opts n_in cs =
                  simpleCase tcase (UnmatchedCase "Error") reflect CompileTime fc inacc atys pdef erInfo
            cov <- coverage
            pmissing <-
-                   if cov && not (hasDefault cs)
+                   if cov && not (hasDefault pats_raw)
                       then do missing <- genClauses fc n (map getLHS pdef) cs_full
                               -- missing <- genMissing n scargs sc
                               missing' <- filterM (checkPossible info fc True n) missing
@@ -291,9 +291,19 @@ elabClauses info' fc opts n_in cs =
     depat acc (Bind n (PVar t) sc) = depat (n : acc) (instantiate (P Bound n t) sc)
     depat acc x = (acc, x)
 
-    hasDefault cs | (PClause _ _ last _ _ _ :_) <- reverse cs
-                  , (PApp fn s args) <- last = all ((==Placeholder) . getTm) args
+
+    getPVs (Bind x (PVar _) tm) = let (vs, tm') = getPVs tm
+                                  in (x:vs, tm')
+    getPVs tm = ([], tm)
+
+    isPatVar vs (P Bound n _) = n `elem` vs
+    isPatVar _ _ = False
+
+    hasDefault cs | (Right (lhs, rhs) : _) <- reverse cs
+                  , (pvs, tm) <- getPVs (explicitNames lhs)
+                  , (f, args) <- unApply tm = all (isPatVar pvs) args
     hasDefault _ = False
+
 
     getLHS (_, l, _) = l
 
