@@ -52,6 +52,45 @@ test1 = %runElab triv
 test2 : Nat
 test2 = %runElab triv
 
+obvious : Elab ()
+obvious = do g <- goalType
+             case g of
+               `(() : Type) =>
+                 do fill `(() : ())
+                    solve
+               `((~a, ~b) : Type) =>
+                 do aH <- gensym "a"
+                    bH <- gensym "b"
+                    claim aH a
+                    claim bH b
+                    fill `(MkPair {A=~a} {B=~b} ~(Var aH) ~(Var bH))
+                    solve
+                    focus aH; obvious
+                    focus bH; obvious
+               `(Either ~a ~b) =>
+                 (do h <- gensym "a"
+                     claim h a
+                     fill  `(Left {a=~a} {b=~b} ~(Var h))
+                     solve
+                     focus h; obvious) <|>
+                   -- This second h didn't work at one point - this
+                   -- test makes sure the fix stays fixed. The
+                   -- uniquification of binder names didn't
+                   -- appropriately treat quotation.
+                   (do h <- gensym "a"
+                       claim h b
+                       fill `(Right {a=~a} {b=~b} ~(Var h))
+                       solve
+                       focus h; obvious)
+
+easy : ()
+easy = %runElab obvious
+
+
+easy2 : ((), ((), (Either () Void)))
+easy2 = %runElab obvious
+
+
 
 namespace STLC
 
@@ -254,3 +293,4 @@ namespace STLC
     -- Tacs.idr line 247 col 14:
     --     When elaborating right hand side of testElab3:
     --     Unifying ty and Tacs.STLC.ARR ty t would lead to infinite value
+
