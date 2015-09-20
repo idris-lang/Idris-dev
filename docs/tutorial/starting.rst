@@ -66,6 +66,8 @@ Some useful options to the Idris command are:
 
 - ``--check`` type check the file and its dependencies without starting the interactive environment.
 
+- ``--package pkg`` add package as dependency, e.g. ``--package contrib`` to make use of the contrib package.
+
 - ``--help`` display usage summary and command line options.
 
 The Interactive Environment
