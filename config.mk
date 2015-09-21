@@ -27,7 +27,11 @@ else
 ifneq (, $(findstring mingw, $(MACHINE)))
 	OS      :=windows
 else
+ifneq (, $(findstring windows, $(MACHINE)))
+	OS      :=windows
+else
 	OS      :=unix
+endif
 endif
 endif
 endif
