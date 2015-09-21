@@ -2247,41 +2247,74 @@ boundNamesIn tm = S.toList (ni 0 S.empty tm)
 
 -- Return names which are valid implicits in the given term (type).
 implicitNamesIn :: [Name] -> IState -> PTerm -> [Name]
-implicitNamesIn uvars ist tm = nub $ ni 0 [] tm
+implicitNamesIn uvars ist tm 
+      = let (imps, fns) = execState (ni 0 [] tm) ([], []) in
+            nub imps \\ nub fns
   where
-    ni 0 env (PRef _ _ n)
+    addImp n = do (imps, fns) <- get
+                  put (n : imps, fns)
+    addFn n = do (imps, fns) <- get
+                 put (imps, n: fns)
+
+    notCAF [] = False
+    notCAF (PExp _ _ _ _ : _) = True
+    notCAF (_ : xs) = notCAF xs
+
+    notHidden (n, _) = case getAccessibility n of
+                            Hidden -> False
+                            _ -> True
+
+    getAccessibility n
+             = case lookupDefAccExact n False (tt_ctxt ist) of
+                    Just (n,t) -> t
+                    _ -> Public
+
+    ni 0 env (PRef _ _ n@(NS _ _))
         | not (n `elem` env)
-            = case lookupTy n (tt_ctxt ist) of
-                [] -> [n]
-                _ -> if n `elem` uvars then [n] else []
+          -- Never implicitly bind if there's a namespace
+            = addFn n
+    ni 0 env (PRef _ _ n)
+        | not (n `elem` env) && implicitable n || n `elem` uvars = addImp n
     ni 0 env (PApp _ f@(PRef _ _ n) as)
-        | n `elem` uvars = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
-        | otherwise = concatMap (ni 0 env) (map getTm as)
-    ni 0 env (PApp _ f as) = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
-    ni 0 env (PAppBind _ f as)   = ni 0 env f ++ concatMap (ni 0 env) (map getTm as)
-    ni 0 env (PCase _ c os)  = ni 0 env c ++
+        | n `elem` uvars = do ni 0 env f 
+                              mapM_ (ni 0 env) (map getTm as)
+        | otherwise = do case lookupTy n (tt_ctxt ist) of
+                              [] -> return ()
+                              _ -> addFn n
+                         mapM_ (ni 0 env) (map getTm as)
+    ni 0 env (PApp _ f as) = do ni 0 env f 
+                                mapM_ (ni 0 env) (map getTm as)
+    ni 0 env (PAppBind _ f as) = do ni 0 env f 
+                                    mapM_ (ni 0 env) (map getTm as)
+    ni 0 env (PCase _ c os)  = do ni 0 env c
     -- names in 'os', not counting the names bound in the cases
-                                (nub (concatMap (ni 0 env) (map snd os))
-                                     \\ nub (concatMap (ni 0 env) (map fst os)))
-    ni 0 env (PIfThenElse _ c t f) = concatMap (ni 0 env) [c, t, f]
-    ni 0 env (PLam fc n _ ty sc)  = ni 0 env ty ++ ni 0 (n:env) sc
-    ni 0 env (PPi p n _ ty sc) = ni 0 env ty ++ ni 0 (n:env) sc
-    ni 0 env (PRewrite _ l r _) = ni 0 env l ++ ni 0 env r
-    ni 0 env (PTyped l r)    = ni 0 env l ++ ni 0 env r
-    ni 0 env (PPair _ _ _ l r)   = ni 0 env l ++ ni 0 env r
-    ni 0 env (PDPair _ _ _ (PRef _ _ n) t r) = ni 0 env t ++ ni 0 (n:env) r
-    ni 0 env (PDPair _ _ _ l t r) = ni 0 env l ++ ni 0 env t ++ ni 0 env r
-    ni 0 env (PAlternative ns a as) = concatMap (ni 0 env) as
+                                  mapM_ (ni 0 env) (map snd os)
+                                  (imps, fns) <- get
+                                  put ([] ,[])
+                                  mapM_ (ni 0 env) (map fst os)
+                                  (impsfst, _) <- get
+                                  put (nub imps \\ nub impsfst, fns)
+    ni 0 env (PIfThenElse _ c t f) = mapM_ (ni 0 env) [c, t, f]
+    ni 0 env (PLam fc n _ ty sc)  = do ni 0 env ty; ni 0 (n:env) sc
+    ni 0 env (PPi p n _ ty sc) = do ni 0 env ty; ni 0 (n:env) sc
+    ni 0 env (PRewrite _ l r _) = do ni 0 env l; ni 0 env r
+    ni 0 env (PTyped l r)    = do ni 0 env l; ni 0 env r
+    ni 0 env (PPair _ _ _ l r)   = do ni 0 env l; ni 0 env r
+    ni 0 env (PDPair _ _ _ (PRef _ _ n) t r) = do ni 0 env t; ni 0 (n:env) r
+    ni 0 env (PDPair _ _ _ l t r) = do ni 0 env l 
+                                       ni 0 env t
+                                       ni 0 env r
+    ni 0 env (PAlternative ns a as) = mapM_ (ni 0 env) as
     ni 0 env (PHidden tm)    = ni 0 env tm
     ni 0 env (PUnifyLog tm)    = ni 0 env tm
     ni 0 env (PDisamb _ tm)    = ni 0 env tm
     ni 0 env (PNoImplicits tm) = ni 0 env tm
 
-    ni i env (PQuasiquote tm ty) = ni (i + 1) env tm ++
-                                   maybe [] (ni i env) ty
+    ni i env (PQuasiquote tm ty) = do ni (i + 1) env tm
+                                      maybe (return ()) (ni i env) ty
     ni i env (PUnquote tm) = ni (i - 1) env tm
 
-    ni i env tm               = concatMap (ni i env) (children tm)
+    ni i env tm               = mapM_ (ni i env) (children tm)
 
 -- Return names which are free in the given term.
 namesIn :: [(Name, PTerm)] -> IState -> PTerm -> [Name]

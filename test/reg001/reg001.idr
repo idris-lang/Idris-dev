@@ -7,7 +7,7 @@ import Data.Fin
 import Control.Isomorphism
 
 class Functor f => VerifiedFunctor (f : Type -> Type) where
-   identity : (fa : f a) -> map id fa = fa
+   identity : (fa : f a) -> map Basics.id fa = fa
 
 data Imp : Type where
    MkImp : {any : Type} -> any -> Imp

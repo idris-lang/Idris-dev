@@ -611,7 +611,6 @@ elab ist info emode opts fn tm
                                 [] -> False
                                 _ -> True
             bindable (NS _ _) = False
-            bindable (UN xs) = True
             bindable n = implicitable n
     elab' ina _ f@(PInferRef fc hls n) = elab' ina (Just fc) (PApp NoFC f [])
     elab' ina fc' tm@(PRef fc hls n)

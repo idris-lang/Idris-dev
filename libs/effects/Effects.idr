@@ -325,8 +325,8 @@ run prog {env} = eff env prog (\r, env => pure r)
 |||
 ||| @prog The effectful program to run.
 %no_implicit
-runPure : (prog : EffM id a xs xs') ->
-          {default MkDefaultEnv env : Env id xs} -> a
+runPure : (prog : EffM Basics.id a xs xs') ->
+          {default MkDefaultEnv env : Env Basics.id xs} -> a
 runPure prog {env} = eff env prog (\r, env => r)
 
 ||| Run an effectful program in a given context `m` with a default value for the environment.
@@ -346,7 +346,7 @@ runInit env prog = eff env prog (\r, env => pure r)
 ||| @env The environment to use.
 ||| @prog The effectful program to run.
 %no_implicit
-runPureInit : (env : Env id xs) -> (prog : EffM id a xs xs') -> a
+runPureInit : (env : Env Basics.id xs) -> (prog : EffM Basics.id a xs xs') -> a
 runPureInit env prog = eff env prog (\r, env => r)
 
 %no_implicit

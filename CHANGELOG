@@ -9,6 +9,10 @@ Language updates
   for defining new names. `{n} still quotes n to an existing name in scope.
 * A new primitive operator prim__strSubstr for more efficient extraction of
   substrings. External code generators should implement this.
+* Changed scoping rules for unbound implicits: any name which would be a
+  valid unbound implicit is now *always* an unbound implicit. This is much
+  more resilient to changes in inputs, but does require that function names
+  be explicitly qualified when in argument position.
 
 Library updates
 ---------------
