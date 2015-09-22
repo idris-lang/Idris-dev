@@ -346,6 +346,9 @@ Extra-source-files:
                        test/basic014/run
                        test/basic014/*.idr
                        test/basic014/expected
+                       test/basic015/run
+                       test/basic015/*.idr
+                       test/basic015/expected
 
                        test/bignum001/run
                        test/bignum001/*.idr
