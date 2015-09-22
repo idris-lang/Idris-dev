@@ -254,9 +254,8 @@ execEff : Env m xs -> (p : EffElem e res xs) ->
           ((v : a) -> Env m (updateResTy v xs p eff) -> m t) -> m t
 execEff (val :: env) Here eff' k
     = handle val eff' (\v, res => k v (res :: env))
--- FIXME: Teach the elaborator to propagate parameters here
-execEff {e} {a} {res} {resk} (val :: env) (There p) eff k
-    = execEff {e} {a} {res} {resk} env p eff (\v, env' => k v (val :: env'))
+execEff (val :: env) (There p) eff k
+    = execEff env p eff (\v, env' => k v (val :: env'))
 
 -- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
 -- updates can be propagated even through failing computations?
@@ -271,11 +270,7 @@ eff env (liftP prf effP) k
          eff env' effP (\p', envk => k p' (rebuildEnv envk prf env))
 eff env (new (MkEff resTy newEff) res {prf=Refl} effP) k
    = eff (res :: env) effP (\p', (val :: envk) => k p' envk)
--- FIXME:
--- xs is needed explicitly because otherwise the pattern binding for
--- 'l' appears too late. Solution seems to be to reorder patterns at the
--- end so that everything is in scope when it needs to be.
-eff {xs = [l ::: x]} env (l :- prog) k
+eff env (l :- prog) k
    = let env' = unlabel env in
          eff env' prog (\p', envk => k p' (relabel l envk))
 
