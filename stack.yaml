@@ -1,8 +1,6 @@
 flags: {}
 packages:
 - '.'
-extra-deps: 
-- cheapskate-0.1.0.4
-- hscurses-1.4.2.0
+extra-deps:
 - libffi-0.1
-resolver: lts-3.0
+resolver: nightly-2015-09-21
