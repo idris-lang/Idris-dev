@@ -980,7 +980,7 @@ elab ist info emode opts fn tm
              let n' = metavarName (namespace info) n
              attack
              psns <- getPSnames
-             defer unique_used n'
+             n' <- defer unique_used n'
              solve
              highlightSource nfc (AnnName n' (Just MetavarOutput) Nothing Nothing)
     elab' ina fc (PProof ts) = do compute; mapM_ (runTac True ist (elabFC info) fn) ts
@@ -1056,10 +1056,9 @@ elab ist info emode opts fn tm
 
              let args' = filter (\(n, _) -> n `notElem` argsDropped) args
 
-             cname <- unique_hole' True (mkCaseName fn)
-             let cname' = mkN cname
---              elab' ina fc (PMetavar cname')
-             attack; defer argsDropped cname'; solve
+             attack
+             cname' <- defer argsDropped (mkN (mkCaseName fn))
+             solve
 
              -- if the scrutinee is one of the 'args' in env, we should
              -- inspect it directly, rather than adding it as a new argument

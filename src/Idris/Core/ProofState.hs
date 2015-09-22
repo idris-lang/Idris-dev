@@ -429,7 +429,8 @@ defer :: [Name] -> Name -> RunTactic
 defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     do let env' = filter (\(n, t) -> n `notElem` dropped) env
        action (\ps -> let hs = holes ps in
-                          ps { holes = hs \\ [x] })
+                          ps { usedns = n : usedns ps,
+                               holes = hs \\ [x] })
        ps <- get
        return (Bind n (GHole (length env') (psnames ps) (mkTy (reverse env') t))
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
