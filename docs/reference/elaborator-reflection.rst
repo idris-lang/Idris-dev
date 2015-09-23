@@ -11,11 +11,6 @@ For details, see Edwin Brady's 2013 paper in the Journal of Functional Programmi
 Elaborator reflection makes the elaboration type as well as a selection of its tactics available to Idris code.
 This means that metaprograms written in Idris can have complete control over the elaboration process, generating arbitrary code, and they have access to all of the facilities available in the elaborator, such as higher-order unification, type checking, and emitting auxiliary definitions.
 
-WARNING
-=======
-
-Elaborator reflection is a new, **experimental** feature. It **will change**. You've been warned.
-
 The Elaborator State
 ====================
 
@@ -81,8 +76,15 @@ Interactively Building Elab Scripts
 
 To build an ``Elab`` script interactively, use the ``:elab`` command at the REPL.
 It takes the name of a hole as an argument.
-The interface is largely the same as in Idris's interactive prover, except all meta-commands start with colon.
-For example, use ``:qed`` instead of ``qed``, ``:abandon`` instead of ``abandon``, and ``:undo`` instead of ``undo``.
+To list all available holes, use the command ``:m``.
+
+In interactive elaboration shell, the following commands are available:
+-  ``:q`` - Quits the elaboration shell (gives up on proving current lemma).
+-  ``:abandon`` - Same as :q
+-  ``:state`` - Displays the current state of the term being constructed.
+-  ``:term`` - Displays the current proof term complete with its yet-to-be-filled holes.
+-  ``:undo`` - Undoes the last tactic.
+-  ``:qed`` - Once the elaboration shell tells you "No more goals," you get to type this in celebration! (Completes the construction and exits the shell)
 
 
 Failure
