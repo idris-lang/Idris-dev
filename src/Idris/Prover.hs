@@ -6,7 +6,7 @@ module Idris.Prover (prover, showProof, showRunElab) where
 -- This exludes (<$>) as fmap, because wl-pprint uses it for newline
 import Prelude (Eq(..), Show(..),
                 Bool(..), Either(..), Maybe(..), String,
-                (.), ($), (++), (||),
+                (.), ($), (++), (||), (&&),
                 concatMap, id, elem, error, fst, flip, foldl, foldr, init,
                 length, lines, map, not, null, repeat, reverse, tail, zip)
 
@@ -149,16 +149,16 @@ elabStep st e =
                                   return (res, ctxt)
                          ((_,_,_,_,e,_,_):_) -> lift $ Error e
 
-dumpState :: IState -> [(Name, Type, Term)] -> ProofState -> Idris ()
-dumpState ist menv ps | [] <- holes ps =
+dumpState :: IState -> Bool -> [(Name, Type, Term)] -> ProofState -> Idris ()
+dumpState ist inElab menv ps | [] <- holes ps =
   do let nm = thname ps
      rendered <- iRender $ prettyName True False [] nm <> colon <+> text "No more goals."
      iputGoal rendered
-dumpState ist menv ps | (h : hs) <- holes ps = do
+dumpState ist inElab menv ps | (h : hs) <- holes ps = do
   let OK ty  = goalAtFocus ps
   let OK env = envAtFocus ps
   let state = prettyOtherGoals hs <> line <>
-              prettyAssumptions ty env <> line <>
+              prettyAssumptions inElab ty env <> line <>
               prettyMetaValues (reverse menv) <>
               prettyGoal (zip (assumptionNames env) (repeat False)) ty
   rendered <- iRender state
@@ -176,18 +176,18 @@ dumpState ist menv ps | (h : hs) <- holes ps = do
     assumptionNames :: Env -> [Name]
     assumptionNames = map fst
 
-    prettyPs :: Binder Type -> [(Name, Bool)] -> Env -> Doc OutputAnnotation
-    prettyPs g bnd [] = empty
-    prettyPs g bnd ((n@(MN _ r), _) : bs)
-        | r == txt "rewrite_rule" = prettyPs g ((n, False):bnd) bs
-    prettyPs g bnd ((n@(MN _ _), _) : bs)
-        | not (n `elem` freeEnvNames bs || n `elem` goalNames g) = prettyPs g bnd bs
-    prettyPs g bnd ((n, Let t v) : bs) =
+    prettyPs :: Bool -> Binder Type -> [(Name, Bool)] -> Env -> Doc OutputAnnotation
+    prettyPs all g bnd [] = empty
+    prettyPs all g bnd ((n@(MN _ r), _) : bs)
+        | not all && r == txt "rewrite_rule" = prettyPs all g ((n, False):bnd) bs
+    prettyPs all g bnd ((n@(MN _ _), _) : bs)
+        | not (all || n `elem` freeEnvNames bs || n `elem` goalNames g) = prettyPs all g bnd bs
+    prettyPs all g bnd ((n, Let t v) : bs) =
       line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
-        align (tPretty bnd t) <> prettyPs g ((n, False):bnd) bs
-    prettyPs g bnd ((n, b) : bs) =
+        align (tPretty bnd t) <> prettyPs all g ((n, False):bnd) bs
+    prettyPs all g bnd ((n, b) : bs) =
       line <> bindingOf n False <+> colon <+>
-      align (tPretty bnd (binderTy b)) <> prettyPs g ((n, False):bnd) bs
+      align (tPretty bnd (binderTy b)) <> prettyPs all g ((n, False):bnd) bs
 
     prettyMetaValues [] = empty
     prettyMetaValues mvs =
@@ -214,12 +214,12 @@ dumpState ist menv ps | (h : hs) <- holes ps = do
       text "----------                 Goal:                  ----------" <$$>
       bindingOf h False <+> colon <+> align (prettyG bnd ty)
 
-    prettyAssumptions g env =
+    prettyAssumptions inElab g env =
       if length env == 0 then
         empty
       else
         text "----------              Assumptions:              ----------" <>
-        nest nestingSize (prettyPs g [] $ reverse env)
+        nest nestingSize (prettyPs inElab g [] $ reverse env)
 
     prettyOtherGoals hs =
       if length hs == 0 then
@@ -277,7 +277,7 @@ undoElab prf env st (h:hs) = do (prf', env', st') <- undoStep prf env st h
 elabloop :: Name -> Bool -> String -> [String] -> ElabState EState -> [ElabShellHistory] -> Maybe History -> [(Name, Type, Term)] -> Idris (Term, [String])
 elabloop fn d prompt prf e prev h env
   = do ist <- getIState
-       when d $ dumpState ist env (proof e)
+       when d $ dumpState ist True env (proof e)
        (x, h') <-
          case idris_outputmode ist of
            RawOutput _ ->
@@ -394,7 +394,7 @@ ploop :: Name -> Bool -> String -> [String] -> ElabState EState -> Maybe History
 ploop fn d prompt prf e h
     = do i <- getIState
          let autoSolve = opt_autoSolve (idris_options i)
-         when d $ dumpState i [] (proof e)
+         when d $ dumpState i False [] (proof e)
          (x, h') <-
            case idris_outputmode i of
              RawOutput _ ->
