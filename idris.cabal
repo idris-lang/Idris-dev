@@ -143,6 +143,13 @@ Extra-source-files:
 		       libs/effects/Effect/Logging/*.idr
                        libs/effects/*.idr
 
+                       libs/pruviloj/Makefile
+                       libs/pruviloj/pruviloj.ipkg
+                       libs/pruviloj/*.idr
+                       libs/pruviloj/Pruviloj/*.idr
+                       libs/pruviloj/Pruviloj/Derive/*.idr
+                       libs/pruviloj/Pruviloj/Internals/*.idr
+
                        test/Makefile
                        test/runtest.pl
                        test/reg001/run
@@ -601,6 +608,10 @@ Extra-source-files:
                        test/proofsearch003/run
                        test/proofsearch003/*.idr
                        test/proofsearch003/expected
+
+                       test/pruviloj001/run
+                       test/pruviloj001/*.idr
+                       test/pruviloj001/expected
 
                        test/quasiquote001/run
                        test/quasiquote001/*.idr
