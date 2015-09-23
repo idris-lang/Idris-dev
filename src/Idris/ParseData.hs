@@ -157,11 +157,21 @@ DefaultEliminator ::= 'noelim'?
  -}
 dataOpts :: DataOpts -> IdrisParser DataOpts
 dataOpts opts
-    = do reserved "%elim"; dataOpts (DefaultEliminator : DefaultCaseFun : opts)
-  <|> do reserved "%case"; dataOpts (DefaultCaseFun : opts)
+    = do fc <- reservedFC "%elim"
+         warnElim fc
+         dataOpts (DefaultEliminator : DefaultCaseFun : opts)
+  <|> do fc <- reservedFC "%case"
+         warnElim fc
+         dataOpts (DefaultCaseFun : opts)
   <|> do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
   <|> return opts
   <?> "data options"
+  where warnElim fc =
+          do ist <- get
+             let cmdline = opt_cmdline (idris_options ist)
+             unless (NoElimDeprecationWarnings `elem` cmdline) $
+               put ist { parserWarnings =
+                           (fc, Msg "Eliminator generation is deprecated. Use an eliminator generator in a library instead.") : parserWarnings ist }
 
 {- | Parses a data type declaration
 Data ::= DocComment? Accessibility? DataI DefaultEliminator FnName TypeSig ExplicitTypeDataRest?

@@ -133,21 +133,21 @@ instance Ord a => Monoid (MaxiphobicHeap a) where
 -- Properties
 --------------------------------------------------------------------------------
 
-total absurdBoolDischarge : False = True -> Void
-absurdBoolDischarge p = replace {P = disjointTy} p ()
-  where
-    total disjointTy : Bool -> Type
-    disjointTy False  = ()
-    disjointTy True   = Void
+total
+absurdBoolDischarge : False = True -> Void
+absurdBoolDischarge Refl impossible
 
-total isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h = Z
+total
+isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h = Z
 isEmptySizeZero Empty          p = Refl
-isEmptySizeZero (Node s l e r) p = ?isEmptySizeZeroNodeAbsurd
+isEmptySizeZero (Node s l e r) Refl impossible
 
-total emptyHeapValid : Ord a => isValidHeap (empty {a}) = True
+total
+emptyHeapValid : Ord a => isValidHeap (empty {a}) = True
 emptyHeapValid = Refl
 
-total singletonHeapValid : Ord a => (e : a) -> isValidHeap $ singleton e = True
+total
+singletonHeapValid : Ord a => (e : a) -> isValidHeap $ singleton e = True
 singletonHeapValid e = Refl
 
 {-
@@ -161,16 +161,7 @@ mergePreservesValidHeaps (Node ls ll le lr) (Node rs rl re rr) lp rp =
   ?mergePreservesValidHeapsBody
 -}
 
---------------------------------------------------------------------------------
--- Proofs
---------------------------------------------------------------------------------
 
-isEmptySizeZeroNodeAbsurd = proof {
-    intros;
-    refine void;
-    refine absurdBoolDischarge;
-    exact p;
-}
 
 --------------------------------------------------------------------------------
 -- Debug

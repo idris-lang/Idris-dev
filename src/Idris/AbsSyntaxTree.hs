@@ -506,10 +506,12 @@ data Opt = Filename String
          | Client String
          | ShowOrigErr
          | AutoWidth -- ^ Automatically adjust terminal width
-         | AutoSolve -- ^ Automatically issue "solve" tactic in interactive prover
+         | AutoSolve -- ^ Automatically issue "solve" tactic in old-style interactive prover
          | UseConsoleWidth ConsoleWidth
          | DumpHighlights
          | DesugarNats
+         | NoElimDeprecationWarnings -- ^ Don't show deprecation warnings for %elim
+         | NoOldTacticDeprecationWarnings -- ^ Don't show deprecation warnings for old-style tactics
     deriving (Show, Eq)
 
 data ElabShellCmd = EQED | EAbandon | EUndo | EProofState | EProofTerm

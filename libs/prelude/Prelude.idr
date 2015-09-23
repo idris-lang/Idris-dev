@@ -30,6 +30,7 @@ import public Prelude.File
 import public Prelude.Doubles
 import public Decidable.Equality
 import public Language.Reflection
+import public Language.Reflection.Elab
 import public Language.Reflection.Errors
 
 %access public

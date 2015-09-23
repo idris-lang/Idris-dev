@@ -1961,6 +1961,13 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       = do tm' <- reifyTT tm
            ctxt <- get_context
            fmap fst . checkClosed . reflect $ whnf ctxt tm'
+      | n == tacN "prim__Converts", [env, tm1, tm2] <- args
+      = do env' <- reifyEnv env
+           tm1' <- reifyTT tm1
+           tm2' <- reifyTT tm2
+           ctxt <- get_context
+           lift $ converts ctxt env' tm1' tm2'
+           returnUnit
       | n == tacN "prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context

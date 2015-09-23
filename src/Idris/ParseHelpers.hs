@@ -100,7 +100,8 @@ reportParserWarnings = do ist <- getIState
                           mapM_ (uncurry iWarn)
                                 (map (\ (fc, err) -> (fc, pprintErr ist err)) .
                                  reverse .
-                                 nub $
+                                 nubBy (\(fc, err) (fc', err') ->
+                                         FC' fc == FC' fc' && err == err') $
                                  parserWarnings ist)
                           clearParserWarnings
 

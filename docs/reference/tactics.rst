@@ -1,6 +1,10 @@
 ***************************
-Tactics and Theorem Proving
+DEPRECATED: Tactics and Theorem Proving
 ***************************
+
+.. warning::
+   The interactive theorem-proving interface documented here has been
+   deprecated in favor of :ref:`elaborator-reflection`.
 
 Idris supports interactive theorem proving, and the analyse of context
 through holes.  To list all unproven holes, use the command ``:m``.
@@ -15,12 +19,12 @@ Basic commands
 ==============
 
 -  ``:q`` - Quits the prover (gives up on proving current lemma).
--  ``abandon`` - Same as :q
--  ``state`` - Displays the current state of the proof.
--  ``term`` - Displays the current proof term complete with its
+-  ``:abandon`` - Same as :q
+-  ``:state`` - Displays the current state of the proof.
+-  ``:term`` - Displays the current proof term complete with its
    yet-to-be-filled holes (is only really useful for debugging).
--  ``undo`` - Undoes the last tactic.
--  ``qed`` - Once the interactive theorem prover tells you "No more
+-  ``:undo`` - Undoes the last tactic.
+-  ``:qed`` - Once the interactive theorem prover tells you "No more
    goals," you get to type this in celebration! (Completes the proof and
    exits the prover)
 

@@ -8,7 +8,7 @@ import System
 ||| @ loc     The source location to display for the error
 ||| @ message The error to print
 partial
-error : {default tactics {sourceLocation} loc : SourceLocation} ->
+error : {default (%runElab sourceLocation) loc : SourceLocation} ->
         (message : String) ->
         a
 error {loc = FileLoc filename (line, col) _} message =

@@ -9,6 +9,9 @@ Language updates
   for defining new names. `{n} still quotes n to an existing name in scope.
 * A new primitive operator prim__strSubstr for more efficient extraction of
   substrings. External code generators should implement this.
+* The previous syntax for tactic proofs and the previous interactive prover
+  are now deprecated in favour of reflected elaboration. They will be removed
+  at some point in the future.
 * Changed scoping rules for unbound implicits: any name which would be a
   valid unbound implicit is now *always* an unbound implicit. This is much
   more resilient to changes in inputs, but does require that function names
@@ -18,13 +21,15 @@ Library updates
 ---------------
 
 * The 'Neg' class now represents numeric types which can be negative. As
-such, the (-) operator and 'abs' have been moved there from 'Num'.
+  such, the (-) operator and 'abs' have been moved there from 'Num'.
 * A special version of (-) on 'Nat' requires that the second argument is
-smaller than or equal to the first. 'minus' retains the old behaviour,
-returning Z if there is an underflow.
+  smaller than or equal to the first. 'minus' retains the old behaviour,
+  returning Z if there is an underflow.
 * The (+), (-), and (*) operations on Fin have been removed.
 * New Logging Effects have been added to facilitate logging of effectful
   programmes.
+* Elaborator reflection is now a part of the prelude. It is no longer
+  necessary to import Language.Reflection.Elab.
 
 Tool updates
 ------------
@@ -33,8 +38,10 @@ Tool updates
 
 Miscellaneous updates
 ---------------------
+* Disable the deprecation warnings for %elim and old-style tactic scripts
+  with the --no-elim-deprecation-warnings and --no-tactic-deprecation-warnings
+  flags.
 
-[None so far]
 
 New in 0.9.19:
 --------------

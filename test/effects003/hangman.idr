@@ -223,3 +223,7 @@ were caught by the type checker:
 
 main : IO ()
 main = run runGame
+
+-- Local Variables:
+-- idris-load-packages: ("effects")
+-- End:
