@@ -42,7 +42,7 @@ finToNatInjective FZ     FZ     Refl = Refl
 finToNatInjective (FS m) FZ     Refl impossible
 finToNatInjective FZ     (FS n) Refl impossible
 finToNatInjective (FS m) (FS n) prf  =
-  cong (finToNatInjective m n (succInjective (finToNat m) (finToNat n) prf)) 
+  cong (finToNatInjective m n (succInjective (finToNat m) (finToNat n) prf))
 
 instance Cast (Fin n) Nat where
     cast x = finToNat x
@@ -94,31 +94,13 @@ instance Ord (Fin n) where
   compare  FZ    (FS _) = LT
   compare (FS _)  FZ    = GT
   compare (FS x) (FS y) = compare x y
-  
+
 instance MinBound (Fin (S n)) where
   minBound = FZ
 
 instance MaxBound (Fin (S n)) where
   maxBound = last
 
-
-||| Add two Fins, extending the bound
-(+) : Fin n -> Fin m -> Fin (n + m)
-(+) {n=S n} {m=m} FZ f' = rewrite plusCommutative n m in weaken (weakenN n f')
-(+) (FS f) f' = FS (f + f')
-
-||| Substract two Fins, keeping the bound of the minuend
-(-) : Fin n -> Fin m -> Fin n
-FZ - _ = FZ
-f - FZ = f
-(FS f) - (FS f') = weaken $ f - f'
-
-||| Multiply two Fins, extending the bound
-(*) : Fin n -> Fin m -> Fin (n * m)
-(*) {n=Z} f f' = FinZElim f
-(*) {m=Z} f f' = FinZElim f'
-(*) {n=S n} {m=S m} FZ     f' = FZ
-(*) {n=S n} {m=S m} (FS f) f' = f' + (f * f')
 
 -- Construct a Fin from an integer literal which must fit in the given Fin
 

@@ -43,5 +43,5 @@ test2 = specs ((x, y : INT) -> x === y)
 test3 : Spec []
 test3 = ForAll INT . ForAll INT . ItHolds $ Var (FS FZ) === Var FZ
 
-test4 : test2 = test3
+test4 : DSLPi.test2 = DSLPi.test3
 test4 = Refl

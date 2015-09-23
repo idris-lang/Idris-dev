@@ -21,7 +21,7 @@ badShow = MkMyShow (const "hej")
 test1 : twiceAString 2 = "22"
 test1 = Refl
 
-test2 : twiceAString @{badShow} 2 = "hejhej"
+test2 : twiceAString @{ClassName.badShow} 2 = "hejhej"
 test2 = Refl
 
 

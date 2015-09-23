@@ -502,9 +502,10 @@ matchProblems all = processTactic' (MatchProblems all)
 unifyProblems :: Elab' aux ()
 unifyProblems = processTactic' UnifyProblems
 
-defer :: [Name] -> Name -> Elab' aux ()
+defer :: [Name] -> Name -> Elab' aux Name
 defer ds n = do n' <- unique_hole n
                 processTactic' (Defer ds n')
+                return n'
 
 deferType :: Name -> Raw -> [Name] -> Elab' aux ()
 deferType n ty ns = processTactic' (DeferType n ty ns)

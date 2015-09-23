@@ -1,4 +1,13 @@
 MAIN-PASS
-Faulty.idr:6:7:When checking type of Faulty.fault:
-Can't disambiguate name: A.num, B.C.num
+Faulty.idr:7:7:When checking right hand side of fault:
+Type mismatch between
+        0 = 0 (Type of Refl)
+and
+        num = 0 (Expected type)
+
+Specifically:
+        Type mismatch between
+                0
+        and
+                num
 Multiple.idr:3:1:import alias not unique: "X"
