@@ -109,6 +109,15 @@ partial -- and the call to foldr isn't guarded anyway!
 scanr : (f : a -> Inf b -> b) -> (xs : Stream a) -> Stream b
 scanr f (x :: xs) = f x (foldr f xs) :: scanr f xs
 
+||| Produce a Stream repeating a sequence
+||| @ xs the sequence to repeat
+||| @ ok proof that the list is non-empty
+cycle : (xs : List a) -> {auto ok : NonEmpty xs} -> Stream a
+cycle {a} (x :: xs) {ok = IsNonEmpty} = x :: cycle' xs
+  where cycle' : List a -> Stream a
+        cycle' []        = x :: cycle' xs
+        cycle' (y :: ys) = y :: cycle' ys
+
 instance Applicative Stream where
   pure = repeat
   (<*>) = zipWith apply
