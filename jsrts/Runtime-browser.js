@@ -1,3 +1,7 @@
+var i$getLine = function() {
+    return prompt("Prelude.getLine");
+}
+
 var i$putStr = function(s) {
   console.log(s);
 };
