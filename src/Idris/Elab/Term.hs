@@ -1621,7 +1621,7 @@ findHighlight n = do ctxt <- get_context
                        Nothing -> case lookupTyExact n ctxt of
                                     Just _ -> return $ AnnName n Nothing Nothing Nothing
                                     Nothing -> lift . tfail . InternalMsg $
-                                                 "Can't find name" ++ show n
+                                                 "Can't find name " ++ show n
 
 -- Try again to solve auto implicits
 solveAuto :: IState -> Name -> Bool -> (Name, [FailContext]) -> ElabD ()
