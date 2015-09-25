@@ -39,6 +39,7 @@ A: Please read the Idris documentation on elaborator reflection.
 
 
 Q: Where does the name come from?
-A: "Pruviloj" is Esperanto for "proof tools". Perhaps confusingly
-   for Esperantists, the Pruviloj library also contains utilities
-   for code generation.
+A: "Pruviloj" is Esperanto for "proof tools". The stress goes on
+   the penultimate syllable, and in IPA the pronunciation is written
+   [pruˈvi.loi̯]. Perhaps confusingly for Esperantists, the Pruviloj
+   library also contains utilities for code generation.
