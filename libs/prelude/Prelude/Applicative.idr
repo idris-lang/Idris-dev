@@ -72,3 +72,7 @@ when False f = pure ()
 ||| Note: In Haskell, `choice` is called `asum`.
 choice : (Foldable t, Alternative f) => t (f a) -> f a
 choice x = foldr (<|>) empty x
+
+||| A fused version of choice and map.
+choiceMap : (Foldable t, Alternative f) => (a -> f b) -> t a -> f b
+choiceMap f x = foldr (\elt, acc => f elt <|> acc) empty x
