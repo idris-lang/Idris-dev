@@ -35,6 +35,9 @@ Tool updates
 ------------
 * Records are now shown as records in :doc, rather than as the underlying
   datatype
+* iPKG files have a new option `pkgs` which takes a comma-separated list
+  of package names that the idris project depends on. This reduces bloat
+  in the `opts` option with mutliple package declarations.
 
 Miscellaneous updates
 ---------------------
