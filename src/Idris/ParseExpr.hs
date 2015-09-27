@@ -392,7 +392,7 @@ simpleExpr syn =
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
-        <|> try (do reserved "Type"; symbol "*"; return $ PUniverse AllTypes)
+        <|> try (do reserved "Type*"; return $ PUniverse AllTypes)
         <|> do reserved "AnyType"; return $ PUniverse AllTypes
         <|> PType <$> reservedFC "Type"
         <|> do reserved "UniqueType"; return $ PUniverse UniqueType
@@ -457,7 +457,7 @@ bracketed' open syn =
                           (ln, lnfc) <- name
                           colonFC <- lcharFC ':'
                           return (ln, lnfc, colonFC)
-                        lty <- expr syn
+                        lty <- expr' syn
                         starsFC <- reservedOpFC "**"
                         return (ln, lnfc, colonFC, lty, starsFC)
                     fc <- getFC
