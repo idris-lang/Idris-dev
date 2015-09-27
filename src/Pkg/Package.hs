@@ -32,80 +32,93 @@ import Pkg.PParser
 
 import IRTS.System
 
--- To build a package:
--- * read the package description
--- * check all the library dependencies exist
--- * invoke the makefile if there is one
--- * invoke idris on each module, with idris_opts
--- * install everything into datadir/pname, if install flag is set
+{- Package Build Instructions
+
+To build a package:
+
+* read the package description
+* check all the library dependencies exist
+* invoke the makefile if there is one
+* invoke idris on each module, with idris_opts
+* install everything into datadir/pname, if install flag is set
+
+-}
 
 -- | Run the package through the idris compiler.
-buildPkg :: Bool -> (Bool, FilePath) -> IO ()
-buildPkg warnonly (install, fp)
-     = do pkgdesc <- parseDesc fp
-          dir <- getCurrentDirectory
-          let idx = PkgIndex (pkgIndex (pkgname pkgdesc))
-          ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
-          when (and ok) $
-            do m_ist <- inPkgDir pkgdesc $
-                          do make (makefile pkgdesc)
-                             case (execout pkgdesc) of
-                               Nothing -> buildMods (idx : NoREPL : Verbose : idris_opts pkgdesc)
-                                                    (modules pkgdesc)
-                               Just o -> do let exec = dir </> o
-                                            buildMods
-                                              (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc)
-                                              [idris_main pkgdesc]
-               case m_ist of
-                    Nothing -> exitWith (ExitFailure 1)
-                    Just ist -> do
-                       -- Quit with error code if there was a problem
-                       case errSpan ist of
-                            Just _ -> exitWith (ExitFailure 1)
-                            _ -> return ()
-                       when install $ installPkg pkgdesc
+buildPkg :: [Opt]            -- ^ Command Line Options
+         -> Bool             -- ^ Provide Warnings
+         -> (Bool, FilePath) -- ^ (Install as a well, Location of iPKG file)
+         -> IO ()
+buildPkg copts warnonly (install, fp) = do
+  pkgdesc <- parseDesc fp
+  dir <- getCurrentDirectory
+  let idx = PkgIndex (pkgIndex (pkgname pkgdesc))
+  ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
+  when (and ok) $ do
+    m_ist <- inPkgDir pkgdesc $ do
+      make (makefile pkgdesc)
+      case (execout pkgdesc) of
+        Nothing -> buildMods (idx : NoREPL : Verbose : idris_opts pkgdesc)
+                             (modules pkgdesc)
+        Just o  -> do
+          let exec = dir </> o
+          buildMods (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc)
+                    [idris_main pkgdesc]
+    case m_ist of
+      Nothing  -> exitWith (ExitFailure 1)
+      Just ist -> do
+        -- Quit with error code if there was a problem
+        case errSpan ist of
+          Just _ -> exitWith (ExitFailure 1)
+          _      -> return ()
+        when install $ installPkg pkgdesc
 
 -- | Type check packages only
 --
 -- This differs from build in that executables are not built, if the
 -- package contains an executable.
-checkPkg :: Bool         -- ^ Show Warnings
-            -> Bool      -- ^ quit on failure
-            -> FilePath  -- ^ Path to ipkg file.
-            -> IO ()
-checkPkg warnonly quit fpath
-  = do pkgdesc <- parseDesc fpath
-       ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
-       when (and ok) $
-         do res <- inPkgDir pkgdesc $
-                     do make (makefile pkgdesc)
-                        buildMods (NoREPL : Verbose : idris_opts pkgdesc)
-                                  (modules pkgdesc)
-            when quit $ case res of
-                          Nothing -> exitWith (ExitFailure 1)
-                          Just res' -> do
-                            case errSpan res' of
-                              Just _ -> exitWith (ExitFailure 1)
-                              _ -> return ()
+checkPkg :: [Opt]    -- ^ Command line options
+         -> Bool     -- ^ Show Warnings
+         -> Bool     -- ^ quit on failure
+         -> FilePath -- ^ Path to ipkg file.
+         -> IO ()
+checkPkg copts warnonly quit fpath = do
+  pkgdesc <- parseDesc fpath
+  ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
+  when (and ok) $ do
+    res <- inPkgDir pkgdesc $ do
+      make (makefile pkgdesc)
+      buildMods (NoREPL : Verbose : idris_opts pkgdesc)
+                (modules pkgdesc)
+    when quit $ case res of
+                  Nothing   -> exitWith (ExitFailure 1)
+                  Just res' -> do
+                    case errSpan res' of
+                      Just _ -> exitWith (ExitFailure 1)
+                      _      -> return ()
 
 -- | Check a package and start a REPL
-replPkg :: FilePath -> Idris ()
-replPkg fp = do orig <- getIState
-                runIO $ checkPkg False False fp
-                pkgdesc <- runIO $ parseDesc fp -- bzzt, repetition!
-                let opts = idris_opts pkgdesc
-                let mod = idris_main pkgdesc
-                let f = toPath (showCG mod)
-                putIState orig
-                dir <- runIO $ getCurrentDirectory
-                runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
+replPkg :: [Opt]    -- ^ Command line options
+        -> FilePath -- ^ Path to ipkg file.
+        -> Idris ()
+replPkg copts fp = do
+  orig <- getIState
+  runIO $ checkPkg copts False False fp
+  pkgdesc <- runIO $ parseDesc fp -- bzzt, repetition!
+  let opts = idris_opts pkgdesc
+  let mod = idris_main pkgdesc
+  let f = toPath (showCG mod)
+  putIState orig
+  dir <- runIO $ getCurrentDirectory
+  runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
 
-                if (f /= "")
-                   then idrisMain ((Filename f) : opts)
-                   else iputStrLn "Can't start REPL: no main module given"
-                runIO $ setCurrentDirectory dir
+  if (f /= "")
+    then idrisMain ((Filename f) : opts)
+    else iputStrLn "Can't start REPL: no main module given"
+  runIO $ setCurrentDirectory dir
 
-    where toPath n = foldl1' (</>) $ splitOn "." n
+    where
+      toPath n = foldl1' (</>) $ splitOn "." n
 
 -- | Clean Package build files
 cleanPkg :: FilePath -- ^ Path to ipkg file.
@@ -127,9 +140,10 @@ cleanPkg fp
 --
 -- Issue number #1572 on the issue tracker
 --       https://github.com/idris-lang/Idris-dev/issues/1572
-documentPkg :: FilePath -- ^ Path to .ipkg file.
+documentPkg :: [Opt]    -- ^ Command line options
+            -> FilePath -- ^ Path to iPKG file.
             -> IO ()
-documentPkg fp =
+documentPkg copts fp =
   do pkgdesc        <- parseDesc fp
      cd             <- getCurrentDirectory
      let pkgDir      = cd </> takeDirectory fp
@@ -156,8 +170,10 @@ documentPkg fp =
                                        exitWith (ExitFailure 1)
 
 -- | Build a package with a sythesized main function that runs the tests
-testPkg :: FilePath -> IO ()
-testPkg fp
+testPkg :: [Opt]    -- ^ Command line options
+        -> FilePath -- ^ Path to iPKG File.
+        -> IO ()
+testPkg copts fp
      = do pkgdesc <- parseDesc fp
           ok <- mapM (testLib True (pkgname pkgdesc)) (libdeps pkgdesc)
           when (and ok) $
@@ -191,15 +207,16 @@ testPkg fp
         tempIdr = do dir <- getTemporaryDirectory
                      openTempFile (normalise dir) "idristests.idr"
 
--- | Install package
+-- | Do the act of installation for a package.
 installPkg :: PkgDesc -> IO ()
-installPkg pkgdesc
-     = inPkgDir pkgdesc $
-         do case (execout pkgdesc) of
-              Nothing -> do mapM_ (installIBC (pkgname pkgdesc)) (modules pkgdesc)
-                            installIdx (pkgname pkgdesc)
-              Just o -> return () -- do nothing, keep executable locally, for noe
-            mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
+installPkg pkgdesc =
+  inPkgDir pkgdesc $ do
+    case (execout pkgdesc) of
+      Nothing -> do
+        mapM_ (installIBC (pkgname pkgdesc)) (modules pkgdesc)
+        installIdx (pkgname pkgdesc)
+      Just o -> return () -- do nothing, keep executable locally, for noe
+    mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
 
 -- ---------------------------------------------------------- [ Helper Methods ]
 -- Methods for building, testing, installing, and removal of idris
@@ -257,7 +274,7 @@ installIBC p m = do let f = toIBCFile m
 installIdx :: String -> IO ()
 installIdx p = do d <- getTargetDir
                   let f = pkgIndex p
-                  let destdir = d </> p 
+                  let destdir = d </> p
                   putStrLn $ "Installing " ++ f ++ " to " ++ destdir
                   createDirectoryIfMissing True destdir
                   copyFile f (destdir </> takeFileName f)
