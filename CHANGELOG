@@ -16,6 +16,10 @@ Language updates
   valid unbound implicit is now *always* an unbound implicit. This is much
   more resilient to changes in inputs, but does require that function names
   be explicitly qualified when in argument position.
+* Dependent pairs now can be specified using a telescope-style syntax, without
+  requirement of nesting, e.g. it is possible to now write the following:
+    (a : Type ** n : Nat ** Vect n a)
+
 
 Library updates
 ---------------
