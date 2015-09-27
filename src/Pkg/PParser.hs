@@ -2,13 +2,6 @@
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
 #endif
---  ------------------------------------------------------------- [ PParser.hs ]
---  Module    : PParser.hs
---  Copyright : (c) The Idris Community.
---  License   : see LICENSE
---
---  The parser for Idris ipkg files.
---  -------------------------------------------------------------------- [ EOH ]
 module Pkg.PParser where
 
 import Text.Trifecta hiding (span, charLiteral, natural, symbol, char, string, whiteSpace)
@@ -112,5 +105,3 @@ pClause = do reserved "executable"; lchar '=';
              ts <- sepBy1 (fst <$> iName []) (lchar ',')
              st <- get
              put st { idris_tests = idris_tests st ++ ts }
-
---  -------------------------------------------------------------------- [ EOF ]
