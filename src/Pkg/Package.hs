@@ -58,11 +58,11 @@ buildPkg copts warnonly (install, fp) = do
     m_ist <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
       case (execout pkgdesc) of
-        Nothing -> buildMods (idx : NoREPL : Verbose : idris_opts pkgdesc)
+        Nothing -> buildMods (mergeOptions copts (idx : NoREPL : Verbose : idris_opts pkgdesc))
                              (modules pkgdesc)
         Just o  -> do
           let exec = dir </> o
-          buildMods (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc)
+          buildMods (mergeOptions copts (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc))
                     [idris_main pkgdesc]
     case m_ist of
       Nothing  -> exitWith (ExitFailure 1)
@@ -88,7 +88,7 @@ checkPkg copts warnonly quit fpath = do
   when (and ok) $ do
     res <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
-      buildMods (NoREPL : Verbose : idris_opts pkgdesc)
+      buildMods (mergeOptions copts (NoREPL : Verbose : idris_opts pkgdesc))
                 (modules pkgdesc)
     when quit $ case res of
                   Nothing   -> exitWith (ExitFailure 1)
@@ -105,7 +105,7 @@ replPkg copts fp = do
   orig <- getIState
   runIO $ checkPkg copts False False fp
   pkgdesc <- runIO $ parseDesc fp -- bzzt, repetition!
-  let opts = idris_opts pkgdesc
+  let opts = mergeOptions copts (idris_opts pkgdesc)
   let mod = idris_main pkgdesc
   let f = toPath (showCG mod)
   putIState orig
@@ -157,7 +157,7 @@ documentPkg copts fp =
      let run l       = runExceptT . execStateT l
          load []     = return ()
          load (f:fs) = do loadModule f; load fs
-         loader      = do idrisMain opts; addImportDir (sourcedir pkgdesc); load fs
+         loader      = do idrisMain (mergeOptions copts opts); addImportDir (sourcedir pkgdesc); load fs
      idrisInstance  <- run loader idrisInit
      setCurrentDirectory cd
      case idrisInstance of
@@ -173,37 +173,40 @@ documentPkg copts fp =
 testPkg :: [Opt]    -- ^ Command line options
         -> FilePath -- ^ Path to iPKG File.
         -> IO ()
-testPkg copts fp
-     = do pkgdesc <- parseDesc fp
-          ok <- mapM (testLib True (pkgname pkgdesc)) (libdeps pkgdesc)
-          when (and ok) $
-            do m_ist <- inPkgDir pkgdesc $
-                          do make (makefile pkgdesc)
-                             -- Get a temporary file to save the tests' source in
-                             (tmpn, tmph) <- tempIdr
-                             hPutStrLn tmph $
-                               "module Test_______\n" ++
-                               concat ["import " ++ show m ++ "\n"
-                                       | m <- modules pkgdesc] ++
-                               "namespace Main\n" ++
-                               "  main : IO ()\n" ++
-                               "  main = do " ++
-                               concat [show t ++ "\n            "
-                                       | t <- idris_tests pkgdesc]
-                             hClose tmph
-                             (tmpn', tmph') <- tempfile
-                             hClose tmph'
-                             m_ist <- idris (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
-                             rawSystem tmpn' []
-                             return m_ist
-               case m_ist of
-                 Nothing -> exitWith (ExitFailure 1)
-                 Just ist -> do
-                    -- Quit with error code if problem building
-                    case errSpan ist of
-                      Just _ -> exitWith (ExitFailure 1)
-                      _      -> return ()
-  where tempIdr :: IO (FilePath, Handle)
+testPkg copts fp = do
+  pkgdesc <- parseDesc fp
+  ok <- mapM (testLib True (pkgname pkgdesc)) (libdeps pkgdesc)
+  when (and ok) $ do
+    m_ist <- inPkgDir pkgdesc $ do
+      make (makefile pkgdesc)
+      -- Get a temporary file to save the tests' source in
+      (tmpn, tmph) <- tempIdr
+      hPutStrLn tmph $
+        "module Test_______\n" ++
+        concat ["import " ++ show m ++ "\n"
+               | m <- modules pkgdesc] ++
+        "namespace Main\n" ++
+        "  main : IO ()\n" ++
+        "  main = do " ++
+        concat [show t ++ "\n            "
+               | t <- idris_tests pkgdesc]
+      hClose tmph
+      (tmpn', tmph') <- tempfile
+      hClose tmph'
+      let popts = (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
+      let opts = mergeOptions copts popts
+      m_ist <- idris opts
+      rawSystem tmpn' []
+      return m_ist
+    case m_ist of
+      Nothing  -> exitWith (ExitFailure 1)
+      Just ist -> do
+        -- Quit with error code if problem building
+        case errSpan ist of
+          Just _ -> exitWith (ExitFailure 1)
+          _      -> return ()
+      where
+        tempIdr :: IO (FilePath, Handle)
         tempIdr = do dir <- getTemporaryDirectory
                      openTempFile (normalise dir) "idristests.idr"
 
@@ -319,4 +322,28 @@ clean Nothing = return ()
 clean (Just s) = do rawSystem "make" ["-f", s, "clean"]
                     return ()
 
+-- | Merge an option list representing the command line options into those specified for a package description.
+--
+-- This is not a complete union between the two options sets. First,
+-- to prevent important package specified options from being
+-- overwritten. Second, the semantics for this merge are not fully
+-- defined.
+--
+-- A discussion for this is on the issue tracker:
+--     https://github.com/idris-lang/Idris-dev/issues/1448
+--
+mergeOptions :: [Opt] -- ^ The command line options
+             -> [Opt] -- ^ The package options
+             -> [Opt]
+mergeOptions copts popts = (filter optsFilter copts) ++ popts
+  where
+    optsFilter :: Opt -> Bool
+    optsFilter (OLogging _)     = True
+    optsFilter (DefaultTotal)   = True
+    optsFilter (DefaultPartial) = True
+    optsFilter (WarnPartial)    = True
+    optsFilter (WarnReach)      = True
+    optsFilter (IBCSubDir _)    = True
+    optsFilter (ImportDir _ )   = True
+    optsFilter _ = False
 -- --------------------------------------------------------------------- [ EOF ]
