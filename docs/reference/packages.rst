@@ -44,8 +44,11 @@ Other common fields which may be present in an ``ipkg`` file are:
 + ``main = <module>``, which takes the name of the main module, and
   must be present if the executable field is present.
 
-+ ``opts = "<idris options>"``, which allows options (such as other
-  packages) to be passed to Idris.
++ ``opts = "<idris options>"``, which allows options to be passed to
+  Idris.
+
++ ``pkgs = <pkg name> (',' <pkg name>)+``, a comma separated list of
+  package names that the Idris package requires.
 
 Binding to C
 ------------

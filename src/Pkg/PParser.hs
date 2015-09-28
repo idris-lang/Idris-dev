@@ -2,7 +2,6 @@
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
 #endif
-
 module Pkg.PParser where
 
 import Text.Trifecta hiding (span, charLiteral, natural, symbol, char, string, whiteSpace)
@@ -18,21 +17,20 @@ import Control.Applicative
 
 import Util.System
 
-
 type PParser = StateT PkgDesc IdrisInnerParser
 
-data PkgDesc = PkgDesc { pkgname :: String,
-                         libdeps :: [String],
-                         objs :: [String],
-                         makefile :: Maybe String,
-                         idris_opts :: [Opt],
-                         sourcedir :: String,
-                         modules :: [Name],
-                         idris_main :: Name,
-                         execout :: Maybe String,
-                         idris_tests :: [Name]
-                       }
-    deriving Show
+data PkgDesc = PkgDesc {
+    pkgname     :: String
+  , libdeps     :: [String]
+  , objs        :: [String]
+  , makefile    :: Maybe String
+  , idris_opts  :: [Opt]
+  , sourcedir   :: String
+  , modules     :: [Name]
+  , idris_main  :: Name
+  , execout     :: Maybe String
+  , idris_tests :: [Name]
+  } deriving (Show)
 
 instance HasLastTokenSpan PParser where
   getLastTokenSpan = return Nothing
@@ -44,23 +42,25 @@ instance TokenParsing PParser where
 #endif
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
-
+defaultPkg :: PkgDesc
 defaultPkg = PkgDesc "" [] [] Nothing [] "" [] (sUN "") Nothing []
 
 parseDesc :: FilePath -> IO PkgDesc
-parseDesc fp = do p <- readFile fp
-                  case runparser pPkg defaultPkg fp p of
-                       Failure err -> fail (show err)
-                       Success x -> return x
+parseDesc fp = do
+    p <- readFile fp
+    case runparser pPkg defaultPkg fp p of
+      Failure err -> fail (show err)
+      Success x -> return x
 
 pPkg :: PParser PkgDesc
-pPkg = do reserved "package"; p <- fst <$> identifier
-          st <- get
-          put (st { pkgname = p })
-          some pClause
-          st <- get
-          eof
-          return st
+pPkg = do
+    reserved "package"; p <- fst <$> identifier
+    st <- get
+    put (st { pkgname = p })
+    some pClause
+    st <- get
+    eof
+    return st
 
 pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
@@ -80,6 +80,11 @@ pClause = do reserved "executable"; lchar '=';
              st <- get
              let args = pureArgParser (words opts)
              put (st { idris_opts = args })
+      <|> do reserved "pkgs"; lchar '=';
+             ps <- sepBy1 (fst <$> identifier) (lchar ',')
+             st <- get
+             let pkgs = pureArgParser $ map (\x -> unwords ["-p", x]) ps
+             put (st {idris_opts = idris_opts st ++ pkgs})
       <|> do reserved "modules"; lchar '=';
              ms <- sepBy1 (fst <$> iName []) (lchar ',')
              st <- get
@@ -100,4 +105,3 @@ pClause = do reserved "executable"; lchar '=';
              ts <- sepBy1 (fst <$> iName []) (lchar ',')
              st <- get
              put st { idris_tests = idris_tests st ++ ts }
-
