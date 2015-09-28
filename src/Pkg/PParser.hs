@@ -79,12 +79,12 @@ pClause = do reserved "executable"; lchar '=';
              opts <- stringLiteral
              st <- get
              let args = pureArgParser (words opts)
-             put (st { idris_opts = args })
+             put (st { idris_opts = args ++ idris_opts st })
       <|> do reserved "pkgs"; lchar '=';
              ps <- sepBy1 (fst <$> identifier) (lchar ',')
              st <- get
              let pkgs = pureArgParser $ map (\x -> unwords ["-p", x]) ps
-             put (st {idris_opts = idris_opts st ++ pkgs})
+             put (st {idris_opts = pkgs ++ idris_opts st})
       <|> do reserved "modules"; lchar '=';
              ms <- sepBy1 (fst <$> iName []) (lchar ',')
              st <- get
