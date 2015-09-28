@@ -570,6 +570,7 @@ Extra-source-files:
                        test/pkg001/run
                        test/pkg001/test.ipkg
                        test/pkg001/*.idr
+                       test/pkg001/expected
 
                        test/proof001/run
                        test/proof001/*.idr
