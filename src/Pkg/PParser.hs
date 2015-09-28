@@ -83,7 +83,7 @@ pClause = do reserved "executable"; lchar '=';
       <|> do reserved "pkgs"; lchar '=';
              ps <- sepBy1 (fst <$> identifier) (lchar ',')
              st <- get
-             let pkgs = pureArgParser $ map (\x -> unwords ["-p", x]) ps
+             let pkgs = pureArgParser $ concatMap (\x -> ["-p", x]) ps
              put (st {idris_opts = pkgs ++ idris_opts st})
       <|> do reserved "modules"; lchar '=';
              ms <- sepBy1 (fst <$> iName []) (lchar ',')

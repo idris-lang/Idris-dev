@@ -140,7 +140,7 @@ Extra-source-files:
                        libs/effects/Makefile
                        libs/effects/effects.ipkg
                        libs/effects/Effect/*.idr
-		       libs/effects/Effect/Logging/*.idr
+		               libs/effects/Effect/Logging/*.idr
                        libs/effects/*.idr
 
                        libs/pruviloj/Makefile
@@ -567,6 +567,10 @@ Extra-source-files:
                        test/primitives003/*.idr
                        test/primitives003/expected
 
+                       test/pkg001/run
+                       test/pkg001/test.ipkg
+                       test/pkg001/*.idr
+
                        test/proof001/run
                        test/proof001/*.idr
                        test/proof001/expected
@@ -598,7 +602,7 @@ Extra-source-files:
                        test/proof010/run
                        test/proof010/*.idr
                        test/proof010/expected
-                       
+
                        test/proofsearch001/run
                        test/proofsearch001/*.idr
                        test/proofsearch001/expected

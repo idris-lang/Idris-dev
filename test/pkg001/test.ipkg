@@ -1,0 +1,7 @@
+package test
+
+pkgs = effects
+
+opts = "--warnpartial --warnreach"
+
+modules = Main
