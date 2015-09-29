@@ -200,10 +200,15 @@ exprArg cmd name = do
         eof
         return $ Left ("Usage is :" ++ name ++ " <expression>")
 
+    let justOperator = do
+        (op, fc) <- P.maybeWithNS P.operatorFC False []
+        eof
+        return $ Right $ cmd (PRef fc [] op)
+
     let properArg = do
         t <- P.fullExpr defaultSyntax
         return $ Right (cmd t)
-    try noArg <|> properArg
+    try noArg <|> try justOperator <|> properArg
 
 
 
