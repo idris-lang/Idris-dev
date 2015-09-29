@@ -8,6 +8,7 @@ import Prelude.Either
 import Prelude.List
 import Prelude.Nat
 import Prelude.Maybe
+import Prelude.Uninhabited
 
 --------------------------------------------------------------------------------
 -- Utility lemmas
@@ -26,6 +27,20 @@ negEqSym p h = p (sym h)
 class DecEq t where
   ||| Decide whether two elements of `t` are propositionally equal
   total decEq : (x1 : t) -> (x2 : t) -> Dec (x1 = x2)
+
+||| `decEq` produces `Yes Refl` when applied to the same argument twice.
+total decEq_refl : (DecEq t) => (x : t) -> decEq x x = Yes Refl
+decEq_refl x with (decEq x x)
+  decEq_refl x | Yes Refl = Refl
+  decEq_refl x | No notEq = absurd (notEq Refl)
+
+||| When two terms are not propositionally equal, `decEq`'s result reflects
+||| this.
+total decEq_not : (DecEq t) => (x, y : t) -> Not (x = y) ->
+                  (c ** decEq x y = No c)
+decEq_not x y neq with (decEq x y)
+  decEq_not x x neq | Yes Refl = absurd (neq Refl)
+  decEq_not x y neq | No contra = (contra ** Refl)
 
 --------------------------------------------------------------------------------
 --- Unit
