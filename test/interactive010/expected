@@ -1,0 +1,7 @@
+Idris> Prelude.List.(++) : List a -> List a -> List a
+Prelude.Strings.(++) : String -> String -> String
+Idris> Prelude.List.(++) : List a -> List a -> List a
+Prelude.Strings.(++) : String -> String -> String
+Idris> (++) : List a -> List a -> List a
+Idris> (++) : List a -> List a -> List a
+Idris> Bye bye
