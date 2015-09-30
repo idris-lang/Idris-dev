@@ -189,11 +189,13 @@ processNetCmd orig i h fn cmd
   where
     processNet fn Reload = processNet fn (Load fn Nothing)
     processNet fn (Load f toline) =
-        do let ist = orig { idris_options = idris_options i
-                          , idris_colourTheme = idris_colourTheme i
-                          , idris_colourRepl = False
-                          }
-           putIState ist
+  -- The $!! here prevents a space leak on reloading.
+  -- This isn't a solution - but it's a temporary stopgap.
+  -- See issue #2386
+        do putIState $!! orig { idris_options = idris_options i
+                              , idris_colourTheme = idris_colourTheme i
+                              , idris_colourRepl = False
+                              }
            setErrContext True
            setOutH h
            setQuiet True
@@ -755,6 +757,9 @@ edit f orig
          let args = line ++ [fixName f]
          runIO $ rawSystem editor args
          clearErr
+  -- The $!! here prevents a space leak on reloading.
+  -- This isn't a solution - but it's a temporary stopgap.
+  -- See issue #2386
          putIState $!! orig { idris_options = idris_options i
                             , idris_colourTheme = idris_colourTheme i
                             }
@@ -1704,6 +1709,7 @@ idrisMain opts =
          iputStrLn banner
 
        orig <- getIState
+
        mods <- if idesl then return [] else loadInputs inputs Nothing
        let efile = case inputs of
                         [] -> ""
