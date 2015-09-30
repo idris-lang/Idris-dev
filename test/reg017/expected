@@ -1,1 +1,5 @@
+reg017.idr:5:17-24:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+reg017.idr:8:17-24:
+This style of tactic proof is deprecated. See %runElab for the replacement.
 4

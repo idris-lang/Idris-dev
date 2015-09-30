@@ -1,3 +1,9 @@
+Reflect.idr:173:21-26:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+Reflect.idr:182:21-26:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+Reflect.idr:190:15-20:
+This style of tactic proof is deprecated. See %runElab for the replacement.
 test030a.idr:12:26-14:1:
 When checking right hand side of testReflect1:
 When checking an application of function Reflect.getJust:

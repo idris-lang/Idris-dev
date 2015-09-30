@@ -611,7 +611,6 @@ elab ist info emode opts fn tm
                                 [] -> False
                                 _ -> True
             bindable (NS _ _) = False
-            bindable (UN xs) = True
             bindable n = implicitable n
     elab' ina _ f@(PInferRef fc hls n) = elab' ina (Just fc) (PApp NoFC f [])
     elab' ina fc' tm@(PRef fc hls n)
@@ -981,7 +980,7 @@ elab ist info emode opts fn tm
              let n' = metavarName (namespace info) n
              attack
              psns <- getPSnames
-             defer unique_used n'
+             n' <- defer unique_used n'
              solve
              highlightSource nfc (AnnName n' (Just MetavarOutput) Nothing Nothing)
     elab' ina fc (PProof ts) = do compute; mapM_ (runTac True ist (elabFC info) fn) ts
@@ -1057,10 +1056,9 @@ elab ist info emode opts fn tm
 
              let args' = filter (\(n, _) -> n `notElem` argsDropped) args
 
-             cname <- unique_hole' True (mkCaseName fn)
-             let cname' = mkN cname
---              elab' ina fc (PMetavar cname')
-             attack; defer argsDropped cname'; solve
+             attack
+             cname' <- defer argsDropped (mkN (mkCaseName fn))
+             solve
 
              -- if the scrutinee is one of the 'args' in env, we should
              -- inspect it directly, rather than adding it as a new argument
@@ -1623,7 +1621,7 @@ findHighlight n = do ctxt <- get_context
                        Nothing -> case lookupTyExact n ctxt of
                                     Just _ -> return $ AnnName n Nothing Nothing Nothing
                                     Nothing -> lift . tfail . InternalMsg $
-                                                 "Can't find name" ++ show n
+                                                 "Can't find name " ++ show n
 
 -- Try again to solve auto implicits
 solveAuto :: IState -> Name -> Bool -> (Name, [FailContext]) -> ElabD ()
@@ -1963,6 +1961,13 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       = do tm' <- reifyTT tm
            ctxt <- get_context
            fmap fst . checkClosed . reflect $ whnf ctxt tm'
+      | n == tacN "prim__Converts", [env, tm1, tm2] <- args
+      = do env' <- reifyEnv env
+           tm1' <- reifyTT tm1
+           tm2' <- reifyTT tm2
+           ctxt <- get_context
+           lift $ converts ctxt env' tm1' tm2'
+           returnUnit
       | n == tacN "prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context

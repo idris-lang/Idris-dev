@@ -1,3 +1,11 @@
+SourceLoc.idr:11:19-26:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+SourceLoc.idr:20:19-24:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+SourceLoc.idr:40:20-27:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+SourceLoc.idr:98:18-23:
+This style of tactic proof is deprecated. See %runElab for the replacement.
 Testing using definition
 FileLoc "SourceLoc.idr" (16, 11) (16, 17)
 Testing using inline tactics

@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.19
+Version:        0.9.19.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -142,6 +142,13 @@ Extra-source-files:
                        libs/effects/Effect/*.idr
 		       libs/effects/Effect/Logging/*.idr
                        libs/effects/*.idr
+
+                       libs/pruviloj/Makefile
+                       libs/pruviloj/pruviloj.ipkg
+                       libs/pruviloj/*.idr
+                       libs/pruviloj/Pruviloj/*.idr
+                       libs/pruviloj/Pruviloj/Derive/*.idr
+                       libs/pruviloj/Pruviloj/Internals/*.idr
 
                        test/Makefile
                        test/runtest.pl
@@ -346,6 +353,9 @@ Extra-source-files:
                        test/basic014/run
                        test/basic014/*.idr
                        test/basic014/expected
+                       test/basic015/run
+                       test/basic015/*.idr
+                       test/basic015/expected
 
                        test/bignum001/run
                        test/bignum001/*.idr
@@ -598,6 +608,10 @@ Extra-source-files:
                        test/proofsearch003/run
                        test/proofsearch003/*.idr
                        test/proofsearch003/expected
+
+                       test/pruviloj001/run
+                       test/pruviloj001/*.idr
+                       test/pruviloj001/expected
 
                        test/quasiquote001/run
                        test/quasiquote001/*.idr

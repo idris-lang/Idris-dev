@@ -13,19 +13,19 @@ foo = "Hello! here's the thing"
 firstSentence : String
 firstSentence = "Idris 是一个通用的依赖类型纯函数式编程语言，其类型系统与 Agda 以及 Epigram 相似。"
 
-emptyTest : prim__strSubstr 100000 14 firstSentence = ""
+emptyTest : prim__strSubstr 100000 14 Main.firstSentence = ""
 emptyTest = Refl
 
-multiTest : prim__strSubstr 10 5 firstSentence = "用的依赖类"
+multiTest : prim__strSubstr 10 5 Main.firstSentence = "用的依赖类"
 multiTest = Refl
 
-negative : prim__strSubstr (-10) 5 firstSentence = "Idris"
+negative : prim__strSubstr (-10) 5 Main.firstSentence = "Idris"
 negative = Refl
 
-negativeEnd : prim__strSubstr 0 (-1) firstSentence = ""
+negativeEnd : prim__strSubstr 0 (-1) Main.firstSentence = ""
 negativeEnd = Refl
 
-negativeLength : prim__strSubstr 4 (-4) firstSentence = ""
+negativeLength : prim__strSubstr 4 (-4) Main.firstSentence = ""
 negativeLength = Refl
 
 main : IO ()

@@ -2,7 +2,7 @@
 a : TTName
 a = `{Nat}
 
-aOK : a = NS (UN "Nat") ["Nat", "Prelude"]
+aOK : Main.a = NS (UN "Nat") ["Nat", "Prelude"]
 aOK = Refl
 
 b : TTName
@@ -17,5 +17,5 @@ d = `{(::)}
 d : TTName
 d = `{List.(::)}
 
-dOK : d = NS (UN "::") ["List", "Prelude"]
+dOK : Main.d = NS (UN "::") ["List", "Prelude"]
 dOK = Refl

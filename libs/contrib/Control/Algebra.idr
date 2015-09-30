@@ -113,7 +113,7 @@ class Ring a => RingWithUnity a where
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 class RingWithUnity a => Field a where
-  inverseM : (x : a) -> Not (x = neutral) -> a
+  inverseM : (x : a) -> Not (x = Algebra.neutral) -> a
 
 sum' : (Foldable t, Monoid a) => t a -> a
 sum' = concat

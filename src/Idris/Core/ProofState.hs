@@ -429,7 +429,8 @@ defer :: [Name] -> Name -> RunTactic
 defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     do let env' = filter (\(n, t) -> n `notElem` dropped) env
        action (\ps -> let hs = holes ps in
-                          ps { holes = hs \\ [x] })
+                          ps { usedns = n : usedns ps,
+                               holes = hs \\ [x] })
        ps <- get
        return (Bind n (GHole (length env') (psnames ps) (mkTy (reverse env') t))
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
@@ -620,19 +621,19 @@ introTy ty n ctxt env _ = fail "Can't introduce here."
 
 intro :: Maybe Name -> RunTactic
 intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
-    do let n = case mn of
-                  Just name -> name
-                  Nothing -> x
-       let t' = case t of
+    do let t' = case t of
                     x@(Bind y (Pi _ s _) _) -> x
                     _ -> hnf ctxt env t
        case t' of
            Bind y (Pi _ s _) t ->
+               let n = case mn of
+                      Just name -> name
+                      Nothing -> y
                -- It's important that this be subst and not updsubst,
                -- because we want to substitute even in portions of
                -- terms that we know do not contain holes.
-               let t' = subst y (P Bound n s) t in
-                   return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
+                   t' = subst y (P Bound n s) t
+               in return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
 

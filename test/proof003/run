@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-idris $@ test015.idr -o test015
+idris $@ test015.idr --nocolour --consolewidth 80 --no-tactic-deprecation-warnings -o test015
 ./test015
 rm -f test015 Parity.ibc test015.ibc

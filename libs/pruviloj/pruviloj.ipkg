@@ -1,0 +1,10 @@
+package pruviloj
+
+opts    = "--nobasepkgs -i ../prelude -i ../base"
+modules = Pruviloj
+        , Pruviloj.Core
+        , Pruviloj.Derive.Eliminators
+        , Pruviloj.Induction
+        , Pruviloj.Internals
+        , Pruviloj.Internals.TyConInfo
+        , Pruviloj.Renamers

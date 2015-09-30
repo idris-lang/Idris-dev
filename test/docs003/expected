@@ -15,6 +15,7 @@ Instances:
     Functor Stream
     Functor Provider
     Functor Binder
+    Functor Elab
     Functor PrimIO
     Functor Maybe
     Functor (Either e)

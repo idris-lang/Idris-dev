@@ -27,6 +27,7 @@ import Data.Word
 import Data.Traversable hiding (mapM)
 import System.IO
 import System.Directory
+import System.FilePath
 
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
@@ -113,6 +114,10 @@ codegenJS_all target definitions includes libs filename outputType = do
   let js = concatMap (translateDecl info) bytecode
   let full = concatMap processFunction js
   let code = deadCodeElim full
+  let ext = takeExtension filename
+  let isHtml = target == JavaScript && ext == ".html"
+  let htmlPrologue = T.pack "<!doctype html><html><head><script>\n"
+  let htmlEpilogue = T.pack "\n</script></head><body></body></html>"
   let (cons, opt) = optimizeConstructors code
   let (header, rt) = case target of
                           Node -> ("#!/usr/bin/env node\n", "-node")
@@ -132,12 +137,15 @@ codegenJS_all target definitions includes libs filename outputType = do
                 ++ idrRuntime
                 ++ tgtRuntime
                 )
-  writeSourceText filename (  T.pack runtime
-                           `T.append` T.concat (map compileJS opt)
-                           `T.append` T.concat (map compileJS cons)
-                           `T.append` main
-                           `T.append` invokeMain
-                           )
+  let jsSource = T.pack runtime
+                 `T.append` T.concat (map compileJS opt)
+                 `T.append` T.concat (map compileJS cons)
+                 `T.append` main
+                 `T.append` invokeMain
+  let source = if isHtml
+                    then htmlPrologue `T.append` jsSource `T.append` htmlEpilogue
+                    else jsSource
+  writeSourceText filename source
   setPermissions filename (emptyPermissions { readable   = True
                                             , executable = target == Node
                                             , writable   = True

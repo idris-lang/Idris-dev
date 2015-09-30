@@ -1,3 +1,5 @@
+test017.idr:94:26-31:
+This style of tactic proof is deprecated. See %runElab for the replacement.
 test017a.idr:7:1:
 scg.vtrans is possibly not total due to recursive path scg.vtrans --> scg.vtrans
 test017b.idr:4:1:
