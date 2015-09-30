@@ -1820,20 +1820,35 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
                       TypeOrTerm -> id
                       IsType -> annName pairTy
                       IsTerm -> annName pairCon
-    prettySe d p bnd (PDPair _ _ pun l t r) =
-      depth d $
-      annotated lparen <>
-      left <+>
-      annotated (text "**") <+>
-      prettySe (decD d) startPrec (addBinding bnd) r <>
-      annotated rparen
+    prettySe d p bnd dpair@(PDPair _ _ pun l t r)
+      | Just elts <- dPairElts dpair
+      = depth d . enclose (annotated lparen) (annotated rparen) .
+        align . group . vsep . punctuate (space <> annotated (text "**")) $
+        ppElts elts bnd
+      | otherwise
+      = depth d $
+        annotated lparen <>
+        left <+>
+        annotated (text "**") <+>
+        prettySe (decD d) startPrec (addBinding bnd) r <>
+        annotated rparen
       where annotated = case pun of
               IsType -> annName sigmaTy
               IsTerm -> annName sigmaCon
               TypeOrTerm -> id
+
             (left, addBinding) = case (l, pun) of
               (PRef _ _ n, IsType) -> (bindingOf n False <+> text ":" <+> prettySe (decD d) startPrec bnd t, ((n, False) :))
               _ ->                    (prettySe (decD d) startPrec bnd l, id)
+
+            ppElts [] bs = []
+            ppElts [(_, v)] bs = [prettySe (decD d) startPrec bs v]
+            ppElts ((PRef _ _ n, t):rs) bs
+              | IsType <- pun
+              =  (bindingOf n False <+> colon <+>
+                  prettySe (decD d) startPrec bs t) : ppElts rs ((n, False):bs)
+            ppElts ((l, t):rs) bs
+              = (prettySe (decD d) startPrec bs l) : ppElts rs bs
     prettySe d p bnd (PAlternative ns a as) =
       lparen <> text "|" <> prettyAs <> text "|" <> rparen
         where
@@ -1950,6 +1965,11 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     pairElts (PPair _ _ _ x y) | Just elts <- pairElts y = Just (x:elts)
                                | otherwise = Just [x, y]
     pairElts _ = Nothing
+
+    dPairElts :: PTerm -> Maybe [(PTerm, PTerm)]
+    dPairElts (PDPair _ _ _ l t r) | Just elts <- dPairElts r = Just ((l, t):elts)
+                                   | otherwise = Just [(l, t), (Placeholder, r)]
+    dPairElts _ = Nothing
 
     natns = "Prelude.Nat."
 

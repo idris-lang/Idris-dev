@@ -1,15 +1,3 @@
-Parity.idr:15:18-23:
-This style of tactic proof is deprecated. See %runElab for the replacement.
-Parity.idr:22:18-23:
-This style of tactic proof is deprecated. See %runElab for the replacement.
-test015.idr:88:15-20:
-This style of tactic proof is deprecated. See %runElab for the replacement.
-test015.idr:97:16-21:
-This style of tactic proof is deprecated. See %runElab for the replacement.
-test015.idr:108:20-25:
-This style of tactic proof is deprecated. See %runElab for the replacement.
-test015.idr:136:20-25:
-This style of tactic proof is deprecated. See %runElab for the replacement.
 00101010
 01011001
 010000011
