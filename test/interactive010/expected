@@ -1,7 +1,13 @@
-Idris> Prelude.List.(++) : List a -> List a -> List a
+Prelude.List.(++) : List a -> List a -> List a
 Prelude.Strings.(++) : String -> String -> String
-Idris> Prelude.List.(++) : List a -> List a -> List a
-Prelude.Strings.(++) : String -> String -> String
-Idris> (++) : List a -> List a -> List a
-Idris> (++) : List a -> List a -> List a
-Idris> Bye bye
+Prelude.Classes./ : (__pi_arg : Float) →
+                    (__pi_arg1 : Float) → Float
+Usage is :doc <functionname>
+Usage is :printdef <functionname>
+prim__divFloat
+Prelude.Classes./
+
+ : Float -> Float -> Float
+prim__divFloat : Double -> Double -> Double
+(input):Can't infer argument a to (++)
+prim__divFloat

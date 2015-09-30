@@ -1,4 +1,9 @@
-:type (++)
 :type ++
-:type List.(++)
-:type List.++
+:core /
+:doc +
+:printdef -
+:spec /
+:patt /
+/
+++
+:whnf /
