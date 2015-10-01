@@ -711,8 +711,8 @@ checkPiGoal n
             = do g <- goal
                  case g of
                     Bind _ (Pi _ _ _) _ -> return ()
-                    _ -> do a <- getNameFrom (sMN 0 "pargTy")
-                            b <- getNameFrom (sMN 0 "pretTy")
+                    _ -> do a <- getNameFrom (sMN 0 "__pargTy")
+                            b <- getNameFrom (sMN 0 "__pretTy")
                             f <- getNameFrom (sMN 0 "pf")
                             claim a RType
                             claim b RType
@@ -725,8 +725,8 @@ checkPiGoal n
 
 simple_app :: Bool -> Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
 simple_app infer fun arg str = 
-    do a <- getNameFrom (sMN 0 "argTy")
-       b <- getNameFrom (sMN 0 "retTy")
+    do a <- getNameFrom (sMN 0 "__argTy")
+       b <- getNameFrom (sMN 0 "__retTy")
        f <- getNameFrom (sMN 0 "f")
        s <- getNameFrom (sMN 0 "s")
        claim a RType

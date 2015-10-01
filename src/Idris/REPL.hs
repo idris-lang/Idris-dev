@@ -942,12 +942,14 @@ process fn (Check (PRef _ _ n))
     putTy :: PPOption -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     putTy ppo ist 0 bnd sc = putGoal ppo ist bnd sc
     putTy ppo ist i bnd (PPi _ n _ t sc)
-               = let current = text "  " <>
-                               (case n of
-                                   MN _ _ -> text "_"
-                                   UN nm | ('_':'_':_) <- str nm -> text "_"
-                                   _ -> bindingOf n False) <+>
-                               colon <+> align (tPretty bnd ist t) <> line
+               = let current = case n of
+                                   MN _ _ -> text ""
+                                   UN nm | ('_':'_':_) <- str nm -> text ""
+                                   _ -> text "  " <> 
+                                        bindingOf n False
+                                            <+> colon 
+                                            <+> align (tPretty bnd ist t) 
+                                            <> line
                  in
                     current <> putTy ppo ist (i-1) ((n,False):bnd) sc
     putTy ppo ist _ bnd sc = putGoal ppo ist ((n,False):bnd) sc
