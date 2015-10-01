@@ -3,12 +3,7 @@
 ||| eventual Prelude inclusion.
 module Pruviloj.Core
 
-
-import Language.Reflection.Elab
 import Language.Reflection.Utils
-
-data Infer : Type where
-  MkInfer : (a : Type) -> a -> Infer
 
 ||| Run something for effects, throwing away the return value
 ignore : Functor f => f a -> f ()
@@ -85,11 +80,11 @@ intros = do g <- snd <$> getGoal
 
 ||| Run a tactic inside of a particular hole, if it still exists. If
 ||| it has been solved, do nothing.
-inHole : TTName -> Elab () -> Elab ()
+inHole : TTName -> Elab a -> Elab (Maybe a)
 inHole h todo =
-  when (h `elem` !getHoles) $
-    do focus h
-       todo
+  if (h `elem` !getHoles)
+    then do focus h; Just <$> todo
+    else return Nothing
 
 ||| Restrict a polymorphic type to () for contexts where it doesn't
 ||| matter. This is nice for sticking `debug` in a context where
@@ -142,3 +137,26 @@ bindPat = do compute
              case g of
                Bind n (PVTy _) _ => patbind n
                _ => fail [TermPart g, TextPart "isn't looking for a pattern."]
+
+||| The underlying implementation type for the inferType operator.
+data Infer : Type where
+  MkInfer : (a : Type) -> a -> Infer
+
+||| Run a tactic script in a context where the type of the resulting
+||| expression must be solvable via unification. Return the term and
+||| its type.
+|||
+||| @ tac a tactic script that will be run with focus on the hole
+|||       whose type is to be inferred.
+total
+inferType : (tac : Elab ()) -> Elab (TT, TT)
+inferType tac =
+    case fst !(runElab `(Infer) (startInfer *> tac)) of
+        `(MkInfer ~ty ~tm) => return (tm, ty)
+        _ => fail [TextPart "Not infer"]
+  where
+    startInfer : Elab ()
+    startInfer = do [_, (_, tmH)] <- apply (Var `{MkInfer}) [(True, 0), (False, 1)]
+                       | err => fail [TextPart "Type inference failure"]
+                    solve
+                    focus tmH
