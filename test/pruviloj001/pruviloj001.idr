@@ -19,14 +19,6 @@ auto = do compute
           hypothesis <|> search
           solve
 
-
-||| ; in Coq (roughly)
-andThen : Elab (List TTName) -> Elab a -> Elab ()
-andThen tac1 tac2 =
-    do hs <- tac1
-       for_ hs $ \h =>
-         inHole h $ ignore tac2
-
 ||| Common pattern of proofs by induction.
 partial
 mush : Elab ()
@@ -34,7 +26,7 @@ mush =
     do n <- gensym "j"
        intro n
        try intros
-       induction (Var n) `andThen` auto
+       ignore $ induction (Var n) `andThen` auto
 
 plusAssoc : (j, k, l : Nat) -> plus (plus j k) l = plus j (plus k l)
 plusAssoc = %runElab mush

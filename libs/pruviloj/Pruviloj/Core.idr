@@ -160,3 +160,38 @@ inferType tac =
                        | err => fail [TextPart "Type inference failure"]
                     solve
                     focus tmH
+
+||| Given one tactic that produces a list of subgoal names and another
+||| that produces some result, run the second tactic in each hole
+||| produced by the first and return the resulting values.
+|||
+||| Elab has no built-in notion of "subgoals", so this simulates the
+||| Coq or JonPRL semicolon operators.
+|||
+||| @ first run this tactic to produce subgoals
+||| @ after run this tactic in each subgoal
+andThen : (first : Elab (List TTName)) -> (after : Elab a) -> Elab (List a)
+andThen first after =
+    do hs <- first
+       catMaybes <$> for hs (flip inHole after)
+
+||| Refine the current goal using some term, constructing holes for
+||| all arguments that can't be inferred. Return the list of generated
+||| holes.
+|||
+||| @ tm the term to apply to some number of goals
+refine : (tm : Raw) -> Elab (List TTName)
+refine tm =
+    do ty <- (snd <$> check tm) >>= forgetTypes
+       g <- goalType
+
+       -- we don't care about negative results because it'll just fail anyway
+       let argCount = minus (countPi ty) (countPi g)
+       newHoles <- apply tm (replicate argCount (True, 0))
+       solve
+       actualHoles <- getHoles
+       return (filter (flip elem actualHoles) (map snd newHoles))
+
+  where countPi : Raw -> Nat
+        countPi (RBind _ (Pi _ _) body) = S (countPi body)
+        countPi _ = Z
