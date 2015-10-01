@@ -8,8 +8,8 @@ import Control.IOExcept
 ||| A Dependent type to describe File Handles. File handles are
 ||| parameterised with the current state of the file: Closed; Open for
 ||| reading; and Open for writing.
-||| 
-||| @ m The file mode. 
+|||
+||| @ m The file mode.
 data OpenFile : (m : Mode) -> Type where
      FH : File -> OpenFile m
 
@@ -21,27 +21,27 @@ openOK m False = ()
 
 ||| Here the protocol for resource access is defined as an effect.
 ||| The state transitions diagram for the protocol is as follows:
-||| 
+|||
 |||     digraph G {
-||| 
+|||
 |||       empty; read; write; // States
-||| 
+|||
 |||       empty -> read [label="Open R"];
 |||       read -> empty [label="Close"];
 |||       read -> read [label="ReadLine"];
 |||       read -> read [label="EOF"];
-|||           
+|||
 |||       empty -> write [label="Open W"];
 |||       write -> empty [label="Close"];
 |||       write -> write [label="WriteLine"];
-||| 
+|||
 |||     }
 data FileIO : Effect where
   ||| Open a file with the specified mode.
-  ||| 
+  |||
   ||| Opening a file successful moves the state from 'empty' to the
   ||| specified mode. If not successful the state is still 'empty'.
-  ||| 
+  |||
   ||| @ fname The file name to be opened.
   ||| @ m The file mode.
   Open : (fname: String)
@@ -51,22 +51,22 @@ data FileIO : Effect where
                                              False => ())
 
   ||| Close a file.
-  ||| 
+  |||
   ||| Closing a file moves the state from Open to closed.
-  Close : sig FileIO () (OpenFile m) () 
+  Close : sig FileIO () (OpenFile m) ()
 
   ||| Read a line from the file.
-  ||| 
+  |||
   ||| Only files that are open for reading can be read.
   ReadLine : sig FileIO String (OpenFile Read)
-  
+
   ||| Write a string to a file.
-  ||| 
+  |||
   ||| Only file that are open for writing can be written to.
   WriteString : String -> sig FileIO () (OpenFile Write)
 
   ||| End of file?
-  ||| 
+  |||
   ||| Only files open for reading can be tested for EOF
   EOF : sig FileIO Bool (OpenFile Read)
 
@@ -76,7 +76,7 @@ data FileIO : Effect where
 instance Handler FileIO IO where
     handle () (Open fname m) k = do h <- openFile fname m
                                     valid <- validFile h
-                                    if valid then k True (FH h) 
+                                    if valid then k True (FH h)
                                              else k False ()
     handle (FH h) Close      k = do closeFile h
                                     k () ()
@@ -112,12 +112,12 @@ FILE_IO t = MkEff t FileIO
 --
 
 ||| Open a file with the specified mode.
-||| 
+|||
 ||| @ fname The file name to be opened.
 ||| @ m The file mode.
 open : (fname : String)
        -> (m : Mode)
-       -> Eff Bool [FILE_IO ()] 
+       -> Eff Bool [FILE_IO ()]
                    (\res => [FILE_IO (case res of
                                            True => OpenFile m
                                            False => ())])
@@ -144,4 +144,45 @@ writeLine str = call $ WriteString (str ++ "\n")
 eof : Eff Bool [FILE_IO (OpenFile Read)]
 eof = call $ EOF
 
+||| Read a complete file, returning a user defined error if
+||| unsuccesful.
+|||
+readFile : (errFunc : String -> e)
+        -> (fname   : String)
+        -> Eff (Either e String) [FILE_IO ()]
+readFile errFunc fname = do
+    case !(open fname Read) of
+      False => pure $ Left (errFunc fname)
+      True => do
+        src <- readAcc ""
+        close
+        pure $ Right src
+  where
+    readAcc : String -> Eff String [FILE_IO (OpenFile Read)]
+    readAcc acc = if (not !(eof))
+                     then readAcc (acc ++ !(readLine))
+                     else pure acc
+
+||| Write a file containing the provided string, returning a user
+||| defined error if unsuccesful.
+|||
+writeFile : (errFunc : String -> e)
+         -> (fname   : String)
+         -> (content : String)
+         -> Eff (Either e ()) [FILE_IO ()]
+writeFile errFunc fname content = do
+    case !(open fname Write) of
+      True => do
+        writeString content
+        close
+        pure $ Right ()
+      False => pure $ Left (errFunc fname)
+
+
+namespace Default
+  readFile : String -> Eff (Either String String) [FILE_IO ()]
+  readFile = File.readFile id
+
+  writeFile : String -> String -> Eff (Either String ()) [FILE_IO ()]
+  writeFile = File.writeFile id
 -- --------------------------------------------------------------------- [ EOF ]
