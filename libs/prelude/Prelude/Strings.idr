@@ -348,10 +348,10 @@ toUpper x with (strM x)
 parseInt : String -> Maybe Int                                                                                                                                                       
 parseInt s with (strM s)                                                                                                                                                             
   parseInt ""             | StrNil         = Nothing                                                                                                                                 
-  parseInt (strCons x xs) | (StrCons x xs) = parseIntAux (unpack xs) (ord x - 48) where                                                                                              
+  parseInt (strCons x xs) | (StrCons x xs) = parseIntAux (unpack xs) (ord x - ord '0') where                                                                                              
     parseIntAux : (List Char) -> Int -> Maybe Int                                                                                                                                    
     parseIntAux []        acc = Just acc                                                                                                                                             
-    parseIntAux (c :: cs) acc = if (c >= '0' && c <= '9') then parseIntAux cs ((acc * 10) + (ord c) - 48)                                                                            
+    parseIntAux (c :: cs) acc = if (c >= '0' && c <= '9') then parseIntAux cs ((acc * 10) + (ord c) - (ord '0'))                                                                            
                                                           else Nothing
 
 --------------------------------------------------------------------------------
