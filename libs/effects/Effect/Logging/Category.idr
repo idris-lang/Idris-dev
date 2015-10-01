@@ -25,9 +25,6 @@ record LogRes (a : Type) where
   getLevel      : LogLevel n
   getCategories : List a
 
-instance (Show a) => Show (LogRes a) where
-  show (MkLogRes l cs) = unwords ["Log Settings:", show l, show cs]
-
 instance Default (LogRes a) where
   default = MkLogRes OFF Nil
 
