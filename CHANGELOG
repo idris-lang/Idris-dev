@@ -30,6 +30,8 @@ Library updates
   programmes.
 * Elaborator reflection is now a part of the prelude. It is no longer
   necessary to import Language.Reflection.Elab.
+* The `PERF` effect allows for simple performance metrics to be collected
+  from Effectful programs.
 
 Tool updates
 ------------
