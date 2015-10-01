@@ -379,4 +379,3 @@ nullStr : String -> IO Bool
 nullStr p = do ok <- foreign FFI_C "isNull" (String -> IO Int) p
                return (ok /= 0)
 
-
