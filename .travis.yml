@@ -1,23 +1,95 @@
-language: haskell
-ghc:
-  # Idris won't build on 7.4 and earlier due to dependency
-  # problems. 7.10 isn't yet supported on Travis.
-  - 7.6
-  - 7.8
+sudo: false
+
+language: c
+
+addons:
+  apt:
+    sources:
+      - hvr-ghc
+    packages:
+      - ghc-7.6.3
+      - ghc-7.8.4
+      - ghc-7.10.2
+      - cabal-install-1.20
+      - cabal-install-1.22
+      # test dependencies
+      - expect
+      - cppcheck
+      - hscolour
+
+matrix:
+  include:
+    - env: CABALVER="1.20" GHCVER="7.6.3" TESTS="test_c"
+      # separate caches for different compiler versions
+      # until https://github.com/travis-ci/travis-ci/issues/4393 is resolved
+      compiler: ": #GHC 7.6.3"
+    - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="lib_doc doc"
+      compiler: ": #GHC 7.8.4"
+    - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="test_js"
+      compiler: ": #GHC 7.8.4"
+    - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="test_c"
+      compiler: ": #GHC 7.8.4"
+    - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="lib_doc doc"
+      compiler: ": #GHC 7.10.2"
+    - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="test_js"
+      compiler: ": #GHC 7.10.2"
+    - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="test_c"
+      compiler: ": #GHC 7.10.2"
+
+cache:
+  directories:
+    - $HOME/.cabsnap
+    - $HOME/.cabal/packages
+
+before_cache:
+  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
+  - rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index.tar
 
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq libghc-unordered-containers-dev libghc-mtl-dev libghc-network-dev libghc-transformers-dev libghc-text-dev libghc-utf8-string-dev libghc-vector-dev libghc-split-dev libghc-ansi-terminal-dev libghc-ansi-wl-pprint-dev
-  # trifecta dependencies
-  - sudo apt-get install -qq libghc-blaze-builder-dev libghc-blaze-html-dev libghc-bifunctors-dev libghc-hashable-dev libghc-semigroups-dev libghc-semigroupoids-dev libghc-parallel-dev libghc-comonad-dev libghc-terminfo-dev libghc-keys-dev
-  # Haddock dependencies
-  - sudo apt-get install hscolour
-  # test dependency
-  - sudo apt-get install -qq expect
-  - sudo apt-get install -qq cppcheck
+  - unset CC
+  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
+  - env
+
 install:
-  - cabal install -f FFI --enable-tests --dependencies-only --max-backjumps=-1
-  - ghc-pkg list
+  - cabal --version
+  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+  - if [ -f $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz ];
+    then
+      zcat $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
+          $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
+    fi
+  - travis_retry cabal update -v
+  # Run build with 2 parallel jobs
+  # The container environment reports 16 cores,
+  # causing cabal's default configuration (jobs: $ncpus)
+  # to run into the GHC #9221 bug which can result in longer build-times.
+  - sed -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
+  - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
+  - sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
+
+  # check whether current requested install-plan matches cached package-db snapshot
+  - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
+    then
+      echo "cabal build-cache HIT";
+      rm -rfv .ghc;
+      cp -a $HOME/.cabsnap/ghc $HOME/.ghc;
+      cp -a $HOME/.cabsnap/lib $HOME/.cabsnap/share $HOME/.cabsnap/bin $HOME/.cabal/;
+    else
+      echo "cabal build-cache MISS";
+      rm -rf $HOME/.cabsnap;
+      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
+      cabal install -f FFI --only-dependencies --enable-tests;
+    fi
+
+  # snapshot package-db on cache miss
+  - if [ ! -d $HOME/.cabsnap ];
+    then
+      echo "snapshotting package-db to build-cache";
+      mkdir $HOME/.cabsnap;
+      cp -a $HOME/.ghc $HOME/.cabsnap/ghc;
+      cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
+    fi
+
 before_script:
   - cabal sdist
   - cd ..
@@ -25,15 +97,13 @@ before_script:
   - cd idris*
 script:
   - cabal configure -f FFI -f CI
-  - if [[ "$TESTS" != "doc" ]]; then cabal build; fi
-  - if [[ "$TESTS" != "doc" ]]; then cabal copy; fi
-  - if [[ "$TESTS" != "doc" ]]; then cabal register; fi
-  - if [[ "$TESTS" == "test_c" ]]; then cppcheck -j 2 --error-exitcode=1 ./rts/idris_bitstring.c ./rts/idris_bitstring.h ./rts/idris_gc.h ./rts/idris_gc.c ./rts/idris_gmp.h ./rts/idris_gmp.c ./rts/idris_heap.h ./rts/idris_heap.c ./rts/idris_main.c ./rts/idris_net.h ./rts/idris_net.c ./rts/idris_opts.h ./rts/idris_opts.c ./rts/idris_rts.h ./rts/idris_rts.c ./rts/idris_stats.h ./rts/idris_stats.c ./rts/idris_stdfgn.h ./rts/idris_stdfgn.c ./rts/libtest.c ; fi
-  - if [[ "$TESTS" == "test_llvm" ]]; then git clone --depth 1 https://github.com/idris-hackers/idris-llvm.git ; cd idris-llvm ; cabal install ; cd .. ; fi
-  - make -j2 $TESTS
-env:
-  - TESTS="doc"
-  - TESTS="lib_doc"
-  - TESTS="test_c"
-  #- TESTS="test_llvm"
-  - TESTS="test_js"
+  - cabal build
+  - cabal copy
+  - cabal register
+  - if [[ "$TESTS" == "test_c" ]]; then
+      cppcheck -i 'mini-gmp.c' rts;
+    fi
+  - for test in $TESTS; do
+      echo "make -j2 $test";
+      make -j2 $test;
+    done

@@ -1,11 +1,13 @@
 {-| Code related to Idris's reflection system. This module contains
 quoters and unquoters along with some supporting datatypes.
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, CPP #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
 module Idris.Reflection where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>), (<*>), pure)
+#endif
 import Control.Monad (liftM, liftM2, liftM4)
 import Control.Monad.State.Strict (lift)
 import Data.Maybe (catMaybes)
@@ -916,7 +918,7 @@ reflectErr (CantResolveAlts ss) =
   raw_apply (Var $ reflErrName "CantResolveAlts")
             [rawList (Var $ reflm "TTName") (map reflectName ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
-reflectErr (NoEliminator str t) 
+reflectErr (NoEliminator str t)
   = raw_apply (Var $ reflErrName "NoEliminator") [RConstant (Str str),
                                                   reflect t]
 reflectErr (UniverseError fc ue old new tys) =
