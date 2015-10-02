@@ -1990,7 +1990,6 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            set_context ctxt'
            updateAux $ \e -> e { new_tyDecls = (RTyDeclInstrs n fc (map rFunArgToPArg args) checked) :
                                                new_tyDecls e }
-           aux <- getAux
            returnUnit
       | n == tacN "prim__DefineFunction", [decl] <- args
       = do defn <- reifyFunDefn decl
@@ -2035,17 +2034,23 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            aux <- getAux
            datatypes <- get_datatypes
            env <- get_env
-           (_, ES (p, aux') _ _) <-
+
+           (ctxt', ES (p, aux') _ _) <-
               do (ES (current_p, _) _ _) <- get
-                 lift $ runElab aux (runElabAction ist fc [] script ns)
-                                 ((newProof recH ctxt datatypes goalTT)
-                                  { nextname = nextname current_p})
+                 lift $ runElab aux
+                             (do runElabAction ist fc [] script ns
+                                 ctxt' <- get_context
+                                 return ctxt')
+                             ((newProof recH ctxt datatypes goalTT)
+                              { nextname = nextname current_p })
+           set_context ctxt'
+
            let tm_out = getProofTerm (pterm p)
            do (ES (prf, _) s e) <- get
               let p' = prf { nextname = nextname p }
               put (ES (p', aux') s e)
            env' <- get_env
-           (tm, ty, _) <- lift $ recheck ctxt env (forget tm_out) tm_out
+           (tm, ty, _) <- lift $ recheck ctxt' env (forget tm_out) tm_out
            let (tm', ty') = (reflect tm, reflect ty)
            fmap fst . checkClosed $
              rawPair (Var $ reflm "TT", Var $ reflm "TT")
