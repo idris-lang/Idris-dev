@@ -195,3 +195,31 @@ refine tm =
   where countPi : Raw -> Nat
         countPi (RBind _ (Pi _ _) body) = S (countPi body)
         countPi _ = Z
+
+
+||| Split a pair into its projections, binding them in the context
+||| with the supplied names. A special case of Coq's `inversion`.
+both : Raw -> TTName -> TTName -> Elab ()
+both tm n1 n2 =
+    do -- We don't know that the term is canonical, so let-bind projections applied to it
+       (A, B) <- isPairTy (snd !(check tm))
+       remember n1 A; apply `(fst {a=~A} {b=~B} ~tm) []; solve
+       remember n2 B; apply `(snd {a=~A} {b=~B} ~tm) []; solve
+  where
+    isPairTy : TT -> Elab (Raw, Raw)
+    isPairTy `((~A, ~B) : Type) = [| MkPair (forgetTypes A) (forgetTypes B) |]
+    isPairTy tm = fail [TermPart tm, TextPart "is not a pair"]
+
+||| Let-bind all results of completely destructuring nested tuples.
+|||
+||| This makes them available to the `hypothesis` tactic, among others.
+|||
+||| @ tm the nested tuple to destructure
+covering
+unproduct : (tm : Raw) -> Elab ()
+unproduct tm =
+    do n1 <- gensym "left"
+       n2 <- gensym "right"
+       both tm n1 n2
+       try (unproduct (Var n1))
+       try (unproduct (Var n2))
