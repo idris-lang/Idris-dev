@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 idris $@ --build test.ipkg
 rm -f  *.ibc
+idris $@ --build test.ipkg --quiet
