@@ -18,6 +18,8 @@ import Control.Monad.Trans.Except (runExceptT)
 import Data.List
 import Data.List.Split(splitOn)
 
+import Data.Either
+
 import Idris.Core.TT
 import Idris.REPL
 import Idris.Parser (loadModule)
@@ -27,6 +29,7 @@ import Idris.IdrisDoc
 import Idris.IBC
 import Idris.Output
 import Idris.Imports
+import Idris.Error (ifail)
 
 import Pkg.PParser
 
@@ -58,12 +61,19 @@ buildPkg copts warnonly (install, fp) = do
     m_ist <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
       case (execout pkgdesc) of
-        Nothing -> buildMods (mergeOptions copts (idx : NoREPL : Verbose : idris_opts pkgdesc))
-                             (modules pkgdesc)
+        Nothing -> do
+          case (mergeOptions copts (idx : NoREPL : Verbose : idris_opts pkgdesc)) of
+               Left emsg -> do
+                 putStrLn emsg
+                 exitWith (ExitFailure 1)
+               Right opts -> buildMods opts (modules pkgdesc)
         Just o  -> do
           let exec = dir </> o
-          buildMods (mergeOptions copts (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc))
-                    [idris_main pkgdesc]
+          case (mergeOptions copts (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc)) of
+            Left emsg -> do
+              putStrLn emsg
+              exitWith (ExitFailure 1)
+            Right opts -> buildMods opts [idris_main pkgdesc]
     case m_ist of
       Nothing  -> exitWith (ExitFailure 1)
       Just ist -> do
@@ -88,8 +98,12 @@ checkPkg copts warnonly quit fpath = do
   when (and ok) $ do
     res <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
-      buildMods (mergeOptions copts (NoREPL : Verbose : idris_opts pkgdesc))
-                (modules pkgdesc)
+      case mergeOptions copts (NoREPL : Verbose : idris_opts pkgdesc) of
+        Left emsg -> do
+          putStrLn emsg
+          exitWith (ExitFailure 1)
+        Right opts -> do
+          buildMods opts (modules pkgdesc)
     when quit $ case res of
                   Nothing   -> exitWith (ExitFailure 1)
                   Just res' -> do
@@ -105,17 +119,19 @@ replPkg copts fp = do
   orig <- getIState
   runIO $ checkPkg copts False False fp
   pkgdesc <- runIO $ parseDesc fp -- bzzt, repetition!
-  let opts = mergeOptions copts (idris_opts pkgdesc)
-  let mod = idris_main pkgdesc
-  let f = toPath (showCG mod)
-  putIState orig
-  dir <- runIO $ getCurrentDirectory
-  runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
+  case mergeOptions copts (idris_opts pkgdesc) of
+    Left emsg  -> ifail emsg
+    Right opts -> do
+      let mod = idris_main pkgdesc
+      let f = toPath (showCG mod)
+      putIState orig
+      dir <- runIO $ getCurrentDirectory
+      runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
 
-  if (f /= "")
-    then idrisMain ((Filename f) : opts)
-    else iputStrLn "Can't start REPL: no main module given"
-  runIO $ setCurrentDirectory dir
+      if (f /= "")
+        then idrisMain ((Filename f) : opts)
+        else iputStrLn "Can't start REPL: no main module given"
+      runIO $ setCurrentDirectory dir
 
     where
       toPath n = foldl1' (</>) $ splitOn "." n
@@ -148,26 +164,31 @@ documentPkg copts fp =
      cd             <- getCurrentDirectory
      let pkgDir      = cd </> takeDirectory fp
          outputDir   = cd </> pkgname pkgdesc ++ "_doc"
-         opts        = NoREPL : Verbose : idris_opts pkgdesc
+         opts'       = NoREPL : Verbose : idris_opts pkgdesc
          mods        = modules pkgdesc
          fs          = map (foldl1' (</>) . splitOn "." . showCG) mods
      setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
      make (makefile pkgdesc)
      setCurrentDirectory pkgDir
-     let run l       = runExceptT . execStateT l
-         load []     = return ()
-         load (f:fs) = do loadModule f; load fs
-         loader      = do idrisMain (mergeOptions copts opts); addImportDir (sourcedir pkgdesc); load fs
-     idrisInstance  <- run loader idrisInit
-     setCurrentDirectory cd
-     case idrisInstance of
-          Left  err -> do putStrLn $ pshow idrisInit err; exitWith (ExitFailure 1)
-          Right ist ->
-                do docRes <- generateDocs ist mods outputDir
-                   case docRes of
-                        Right _  -> return ()
-                        Left msg -> do putStrLn msg
-                                       exitWith (ExitFailure 1)
+     case mergeOptions copts opts' of
+       Left emsg -> do
+         putStrLn emsg
+         exitWith (ExitFailure 1)
+       Right opts -> do
+         let run l       = runExceptT . execStateT l
+             load []     = return ()
+             load (f:fs) = do loadModule f; load fs
+             loader      = do idrisMain opts; addImportDir (sourcedir pkgdesc); load fs
+         idrisInstance  <- run loader idrisInit
+         setCurrentDirectory cd
+         case idrisInstance of
+              Left  err -> do putStrLn $ pshow idrisInit err; exitWith (ExitFailure 1)
+              Right ist ->
+                    do docRes <- generateDocs ist mods outputDir
+                       case docRes of
+                            Right _  -> return ()
+                            Left msg -> do putStrLn msg
+                                           exitWith (ExitFailure 1)
 
 -- | Build a package with a sythesized main function that runs the tests
 testPkg :: [Opt]    -- ^ Command line options
@@ -194,10 +215,14 @@ testPkg copts fp = do
       (tmpn', tmph') <- tempfile
       hClose tmph'
       let popts = (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
-      let opts = mergeOptions copts popts
-      m_ist <- idris opts
-      rawSystem tmpn' []
-      return m_ist
+      case mergeOptions copts popts of
+        Left emsg  -> do
+          putStrLn emsg
+          exitWith (ExitFailure 1)
+        Right opts -> do
+          m_ist <- idris opts
+          rawSystem tmpn' []
+          return m_ist
     case m_ist of
       Nothing  -> exitWith (ExitFailure 1)
       Just ist -> do
@@ -334,16 +359,39 @@ clean (Just s) = do rawSystem "make" ["-f", s, "clean"]
 --
 mergeOptions :: [Opt] -- ^ The command line options
              -> [Opt] -- ^ The package options
-             -> [Opt]
-mergeOptions copts popts = (filter optsFilter copts) ++ popts
+             -> Either String [Opt]
+mergeOptions copts popts =
+    case partitionEithers (map chkOpt copts') of
+      ([], copts') -> Right (copts' ++ popts)
+      (es, _)      -> Left $ genErrMsg es
   where
-    optsFilter :: Opt -> Bool
-    optsFilter (OLogging _)     = True
-    optsFilter (DefaultTotal)   = True
-    optsFilter (DefaultPartial) = True
-    optsFilter (WarnPartial)    = True
-    optsFilter (WarnReach)      = True
-    optsFilter (IBCSubDir _)    = True
-    optsFilter (ImportDir _ )   = True
-    optsFilter _ = False
+    pkgOptsFilter :: Opt -> Bool
+    pkgOptsFilter (PkgBuild   _) = False
+    pkgOptsFilter (PkgInstall _) = False
+    pkgOptsFilter (PkgClean   _) = False
+    pkgOptsFilter (PkgCheck   _) = False
+    pkgOptsFilter (PkgREPL    _) = False
+    pkgOptsFilter (PkgMkDoc   _) = False
+    pkgOptsFilter (PkgTest    _) = False
+    pkgOptsFilter _              = True
+
+    copts' = filter pkgOptsFilter copts
+
+    chkOpt :: Opt -> Either String Opt
+    chkOpt o@(OLogging _)     = Right o
+    chkOpt o@(DefaultTotal)   = Right o
+    chkOpt o@(DefaultPartial) = Right o
+    chkOpt o@(WarnPartial)    = Right o
+    chkOpt o@(WarnReach)      = Right o
+    chkOpt o@(IBCSubDir _)    = Right o
+    chkOpt o@(ImportDir _ )   = Right o
+    chkOpt o                  = Left (unwords ["\t", show o, "\n"])
+
+    genErrMsg :: [String] -> String
+    genErrMsg es = unlines [ "Not all command line options can be used to override package options."
+                          , "\nThe only changeable options are:"
+                          , "   --log <lvl>, --total, --warnpartial, --warnreach"
+                          , "   --ibcsubdir <path>, -i --idrispath <path>"]
+
+
 -- --------------------------------------------------------------------- [ EOF ]
