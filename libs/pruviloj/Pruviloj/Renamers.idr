@@ -6,6 +6,10 @@ import Language.Reflection.Utils
 Renamer : Type
 Renamer = TTName -> Maybe TTName
 
+||| A renamer that renames nothing
+noRenames : Renamer
+noRenames = const Nothing
+
 ||| Cause a renamer to forget a renaming
 restrict : Renamer -> TTName -> Renamer
 restrict f n n' = if n == n' then Nothing else f n'
@@ -19,7 +23,7 @@ extend f n n' n'' = if n'' == n then Just n' else f n''
 ||| @ from the old name
 ||| @ to the new name
 rename : (from, to : TTName) -> Renamer
-rename from to = extend (const Nothing) from to
+rename from to = extend noRenames from to
 
 ||| Alpha-convert `Raw` terms
 ||| @ subst a renamer
