@@ -2002,6 +2002,11 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            updateAux $ \e -> e { new_tyDecls = RAddInstance className instName :
                                                new_tyDecls e}
            returnUnit
+      | n == tacN "prim__IsTCName", [n] <- args
+      = do n' <- reifyTTName n
+           case lookupCtxtExact n' (idris_classes ist) of
+             Just _ -> fmap fst . checkClosed $ Var (sNS (sUN "True") ["Bool", "Prelude"])
+             Nothing -> fmap fst . checkClosed $ Var (sNS (sUN "False") ["Bool", "Prelude"])
       | n == tacN "prim__ResolveTC", [fn] <- args
       = do g <- goal
            fn <- reifyTTName fn
