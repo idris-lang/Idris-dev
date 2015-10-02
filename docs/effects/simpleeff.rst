@@ -382,7 +382,7 @@ definition:
 
     vadd : Vect n Int -> Vect n Int -> Vect n Int
     vadd []        []        = []
-    vadd (x :: idris xs) (y :: ys) = x + y :: vadd xs ys
+    vadd (x :: xs) (y :: ys) = x + y :: vadd xs ys
 
 Using , we can set up a program so that it reads input from a user,
 checks that the input is valid (i.e both vectors contain integers, and
@@ -410,10 +410,28 @@ following type:
 
 This returns a dependent pair of a length, and a vector of that
 length, because we cannot know in advance how many integers the user
-is going to input. One way to implement this function, using ``-1`` to
-indicate the end of input, is shown in Listing [readvec]. This uses a
-variation on ``parseNumber`` which does not require a number to be
-within range.
+is going to input. We can use ``-1`` to indicate the end of input:
+
+.. code-block:: idris
+
+    read_vec : Eff (p ** Vect p Int) [STDIO]
+    read_vec = do putStr "Number (-1 when done): "
+                  case the (Maybe Int) $ run (parseNumber (trim !getStr)) of
+                       Nothing => do putStrLn "Input error"
+                                     read_vec
+                       Just v => if (v /= -1)
+                                    then do (_ ** xs) <- read_vec
+                                            pure (_ ** v :: xs)
+                                    else pure (_ ** [])
+      where
+        parseNumber : String -> Eff Int [EXCEPTION String]
+        parseNumber str
+          = if all (\x => isDigit x || x == '-') (unpack str)
+               then pure (cast str)
+               else raise "Not a number"
+
+This uses a variation on ``parseNumber`` which does not require a
+number to be within range.
 
 Finally, we write a program which reads two vectors and prints the
 result of pairwise addition of them, throwing an exception if the
@@ -434,23 +452,6 @@ equal.  This does not stop us reading vectors from user input, but it
 does require that the lengths are checked and any discrepancy is dealt
 with gracefully.
 
-.. code-block:: idris
-
-    read_vec : Eff (p ** Vect p Int) [STDIO]
-    read_vec = do putStr "Number (-1 when done): "
-                  case run (parseNumber (trim !getStr)) of
-                       Nothing => do putStrLn "Input error"
-                                     read_vec
-                       Just v => if (v /= -1)
-                                    then do (_ ** xs) <- read_vec
-                                            pure (_ ** v :: xs)
-                                    else pure (_ ** [])
-      where
-        parseNumber : String -> Eff Int [EXCEPTION String]
-        parseNumber str
-          = if all (\x => isDigit x || x == '-') (unpack str)
-               then pure (cast str)
-               else raise "Not a number"
 
 Example: An Expression Calculator
 =================================
