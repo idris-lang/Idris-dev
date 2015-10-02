@@ -61,6 +61,7 @@ buildPkg copts warnonly (install, fp) = do
     m_ist <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
       case (execout pkgdesc) of
+<<<<<<< HEAD
         Nothing -> do
           case (mergeOptions copts (idx : NoREPL : Verbose : idris_opts pkgdesc)) of
                Left emsg -> do
@@ -74,6 +75,14 @@ buildPkg copts warnonly (install, fp) = do
               putStrLn emsg
               exitWith (ExitFailure 1)
             Right opts -> buildMods opts [idris_main pkgdesc]
+=======
+        Nothing -> buildMods (mergeOptions copts (idx : NoREPL : Verbose : idris_opts pkgdesc))
+                             (modules pkgdesc)
+        Just o  -> do
+          let exec = dir </> o
+          buildMods (mergeOptions copts (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc))
+                    [idris_main pkgdesc]
+>>>>>>> 3e5b8bac50d2009407f9c59b2999853980e25d52
     case m_ist of
       Nothing  -> exitWith (ExitFailure 1)
       Just ist -> do
@@ -98,12 +107,17 @@ checkPkg copts warnonly quit fpath = do
   when (and ok) $ do
     res <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
+<<<<<<< HEAD
       case mergeOptions copts (NoREPL : Verbose : idris_opts pkgdesc) of
         Left emsg -> do
           putStrLn emsg
           exitWith (ExitFailure 1)
         Right opts -> do
           buildMods opts (modules pkgdesc)
+=======
+      buildMods (mergeOptions copts (NoREPL : Verbose : idris_opts pkgdesc))
+                (modules pkgdesc)
+>>>>>>> 3e5b8bac50d2009407f9c59b2999853980e25d52
     when quit $ case res of
                   Nothing   -> exitWith (ExitFailure 1)
                   Just res' -> do
@@ -119,6 +133,7 @@ replPkg copts fp = do
   orig <- getIState
   runIO $ checkPkg copts False False fp
   pkgdesc <- runIO $ parseDesc fp -- bzzt, repetition!
+<<<<<<< HEAD
   case mergeOptions copts (idris_opts pkgdesc) of
     Left emsg  -> ifail emsg
     Right opts -> do
@@ -132,6 +147,19 @@ replPkg copts fp = do
         then idrisMain ((Filename f) : opts)
         else iputStrLn "Can't start REPL: no main module given"
       runIO $ setCurrentDirectory dir
+=======
+  let opts = mergeOptions copts (idris_opts pkgdesc)
+  let mod = idris_main pkgdesc
+  let f = toPath (showCG mod)
+  putIState orig
+  dir <- runIO $ getCurrentDirectory
+  runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
+
+  if (f /= "")
+    then idrisMain ((Filename f) : opts)
+    else iputStrLn "Can't start REPL: no main module given"
+  runIO $ setCurrentDirectory dir
+>>>>>>> 3e5b8bac50d2009407f9c59b2999853980e25d52
 
     where
       toPath n = foldl1' (</>) $ splitOn "." n
@@ -170,6 +198,7 @@ documentPkg copts fp =
      setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
      make (makefile pkgdesc)
      setCurrentDirectory pkgDir
+<<<<<<< HEAD
      case mergeOptions copts opts' of
        Left emsg -> do
          putStrLn emsg
@@ -189,6 +218,22 @@ documentPkg copts fp =
                             Right _  -> return ()
                             Left msg -> do putStrLn msg
                                            exitWith (ExitFailure 1)
+=======
+     let run l       = runExceptT . execStateT l
+         load []     = return ()
+         load (f:fs) = do loadModule f; load fs
+         loader      = do idrisMain (mergeOptions copts opts); addImportDir (sourcedir pkgdesc); load fs
+     idrisInstance  <- run loader idrisInit
+     setCurrentDirectory cd
+     case idrisInstance of
+          Left  err -> do putStrLn $ pshow idrisInit err; exitWith (ExitFailure 1)
+          Right ist ->
+                do docRes <- generateDocs ist mods outputDir
+                   case docRes of
+                        Right _  -> return ()
+                        Left msg -> do putStrLn msg
+                                       exitWith (ExitFailure 1)
+>>>>>>> 3e5b8bac50d2009407f9c59b2999853980e25d52
 
 -- | Build a package with a sythesized main function that runs the tests
 testPkg :: [Opt]    -- ^ Command line options
@@ -215,6 +260,7 @@ testPkg copts fp = do
       (tmpn', tmph') <- tempfile
       hClose tmph'
       let popts = (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
+<<<<<<< HEAD
       case mergeOptions copts popts of
         Left emsg  -> do
           putStrLn emsg
@@ -223,6 +269,12 @@ testPkg copts fp = do
           m_ist <- idris opts
           rawSystem tmpn' []
           return m_ist
+=======
+      let opts = mergeOptions copts popts
+      m_ist <- idris opts
+      rawSystem tmpn' []
+      return m_ist
+>>>>>>> 3e5b8bac50d2009407f9c59b2999853980e25d52
     case m_ist of
       Nothing  -> exitWith (ExitFailure 1)
       Just ist -> do
@@ -392,6 +444,5 @@ mergeOptions copts popts =
                           , "\nThe only changeable options are:"
                           , "   --log <lvl>, --total, --warnpartial, --warnreach"
                           , "   --ibcsubdir <path>, -i --idrispath <path>"]
-
 
 -- --------------------------------------------------------------------- [ EOF ]
