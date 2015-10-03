@@ -368,14 +368,7 @@ mergeOptions copts popts =
       (es, _)      -> Left $ genErrMsg es
   where
     pkgOptsFilter :: Opt -> Bool
-    pkgOptsFilter (PkgBuild   _) = False
-    pkgOptsFilter (PkgInstall _) = False
-    pkgOptsFilter (PkgClean   _) = False
-    pkgOptsFilter (PkgCheck   _) = False
-    pkgOptsFilter (PkgREPL    _) = False
-    pkgOptsFilter (PkgMkDoc   _) = False
-    pkgOptsFilter (PkgTest    _) = False
-    pkgOptsFilter _              = True
+    pkgOptsFilter _ = False
 
     copts' = filter pkgOptsFilter copts
 
