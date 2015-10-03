@@ -96,7 +96,7 @@ value read from the user was valid. We can express this in the type:
                               else [STATE (Vect n Int), STDIO])
     readInt = do let x = trim !getStr
                  case all isDigit (unpack x) of
-                      False => pure False
+                      False => pureM False
                       True => do putM (cast x :: !get)
                                  pureM True
 
