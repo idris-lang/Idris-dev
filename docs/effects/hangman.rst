@@ -117,7 +117,7 @@ effect signature:
          Lost : sig MysteryRules () (Mystery (Running 0 g))
                                     (Mystery NotRunning)
          NewWord : (w : String) -> 
-                   sig MysteryRules () h (Mystery (Running 6 (length (letters w))))
+                   sig MysteryRules () h (Mystery (Running 6 (length w)))
          Get : sig MysteryRules String (Mystery h)
 
 This description says nothing about how the rules are implemented. In
