@@ -1013,7 +1013,7 @@ name. For example, a pair type could be defined as follows:
 Using the class record from the original introduction to records.  The
 size of the class can be restricted using a ``Vect`` and the size
 promoted to the type level by parameterising the record with the size.
-Foe example:
+For example:
 
 
 .. code-block:: idris
