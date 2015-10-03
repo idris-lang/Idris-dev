@@ -282,7 +282,7 @@ value.
 Here, the continuation is called multiple times in each handler, for
 each value in the list of possible values. In the ``List`` handler, we
 accumulate all successful results, and in the ``Maybe`` handler we try
-the first value in the last, and try later values only if that fails.
+the first value in the list, and try later values only if that fails.
 
 File Management
 ===============
