@@ -95,7 +95,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
 
 headers xs =
   concatMap
-    (\h -> "#include <" ++ h ++ ">\n")
+    (\h -> "#include \"" ++ h ++ "\"\n")
     (xs ++ ["idris_rts.h", "idris_bitstring.h", "idris_stdfgn.h"])
 
 debug TRACE = "#define IDRIS_TRACE\n\n"
