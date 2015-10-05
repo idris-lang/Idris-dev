@@ -37,9 +37,10 @@ throwIO = CE.throw
 isWindows :: Bool
 isWindows = os `elem` ["win32", "mingw32", "cygwin32"]
 
-tempfile :: IO (FilePath, Handle)
-tempfile = do dir <- getTemporaryDirectory
-              openTempFile (normalise dir) "idris"
+-- | Create a temp file with the extensiom ext (in the format ".xxx")
+tempfile :: String -> IO (FilePath, Handle)
+tempfile ext = do dir <- getTemporaryDirectory
+                  openTempFile (normalise dir) $ "idris" ++ ext
 
 -- | Read a source file, same as readFile but make sure the encoding is utf-8.
 readSource :: FilePath -> IO String

@@ -1189,7 +1189,7 @@ process fn (Execute tm)
                    = idrisCatch
                        (do ist <- getIState
                            (m, _) <- elabVal recinfo ERHS (elabExec fc tm)
-                           (tmpn, tmph) <- runIO tempfile
+                           (tmpn, tmph) <- runIO $ tempfile ""
                            runIO $ hClose tmph
                            t <- codegen
                            -- gcc adds .exe when it builds windows programs
