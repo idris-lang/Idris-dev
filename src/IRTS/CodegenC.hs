@@ -66,7 +66,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
            MavenProject -> putStrLn ("FAILURE: output type not supported")
            Raw -> writeSource out cout
            _ -> do
-             (tmpn, tmph) <- tempfile
+             (tmpn, tmph) <- tempfile ".c"
              hPutStr tmph cout
              hFlush tmph
              hClose tmph
@@ -78,7 +78,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
                         gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
                         ["-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS",
-                         "-I."] ++ objs ++ ["-x", "c"] ++ envFlags ++
+                         "-I."] ++ objs ++ envFlags ++
                         (if (exec == Executable) then [] else ["-c"]) ++
                         [tmpn] ++
                         (if not iface then concatMap words libFlags else []) ++
