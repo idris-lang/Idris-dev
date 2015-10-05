@@ -4,6 +4,7 @@ module Data.String
 |||
 ||| ```idris example
 ||| parsePositive "123"
+||| ```
 ||| ```idris example
 ||| parsePositive {a=Int} " +123"
 ||| ```
