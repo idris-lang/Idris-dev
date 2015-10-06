@@ -776,7 +776,6 @@ data Raw = Var Name
          | RApp Raw Raw
          | RType
          | RUType Universe
-         | RForce Raw
          | RConstant Const
   deriving (Show, Eq, Data, Typeable)
 
@@ -786,7 +785,6 @@ instance Sized Raw where
   size (RApp left right) = 1 + size left + size right
   size RType = 1
   size (RUType _) = 1
-  size (RForce raw) = 1 + size raw
   size (RConstant const) = size const
 
 instance Pretty Raw OutputAnnotation where
@@ -1823,9 +1821,6 @@ pprintRaw bound (RApp f x) =
 pprintRaw bound RType = text "RType"
 pprintRaw bound (RUType u) = enclose lparen rparen . group . align . hang 2 $
                              text "RUType" <$> text (show u)
-pprintRaw bound (RForce r) =
-  enclose lparen rparen . group . align . hang 2 $
-  vsep [text "RForce", pprintRaw bound r]
 pprintRaw bound (RConstant c) =
   enclose lparen rparen . group . align . hang 2 $
   vsep [text "RConstant", annotate (AnnConst c) (text (show c))]

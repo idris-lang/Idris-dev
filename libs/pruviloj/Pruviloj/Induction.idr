@@ -36,7 +36,6 @@ mutual
       alphaEqual subst f g && alphaEqual subst x y
   alphaEqual subst RType RType  = True
   alphaEqual subst (RUType u) (RUType u') = u == u'
-  alphaEqual subst (RForce tm) (RForce tm') = alphaEqual subst tm tm'
   alphaEqual subst (RConstant c) (RConstant c')  = c == c'
   alphaEqual subst _ _ = False
 

@@ -39,5 +39,4 @@ alphaRaw subst (RBind n b tm) =
 alphaRaw subst (RApp tm tm') = RApp (alphaRaw subst tm) (alphaRaw subst tm')
 alphaRaw subst RType = RType
 alphaRaw subst (RUType x) = RUType x
-alphaRaw subst (RForce tm) = RForce (alphaRaw subst tm)
 alphaRaw subst (RConstant c) = RConstant c
