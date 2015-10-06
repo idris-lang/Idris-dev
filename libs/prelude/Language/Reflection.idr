@@ -175,14 +175,11 @@ data TT =
         App TT TT |
         ||| Embed a constant
         TConst Const |
-        ||| Argument projection; runtime only
-        Proj TT Int |
         ||| Erased terms
         Erased |
-        ||| Impossible terms
-        Impossible |
         ||| The type of types along (with universe constraints)
         TType TTUExp |
+        ||| Alternative universes for dealing with uniqueness
         UType Universe
 %name TT tm, tm'
 
@@ -196,8 +193,8 @@ data Raw =
          RApp Raw Raw |
          ||| The type of types
          RType |
+         ||| Alternative universes for dealing with uniqueness
          RUType Universe |
-         RForce Raw |
          ||| Embed a constant
          RConstant Const
 %name Raw tm, tm'
@@ -556,9 +553,7 @@ mutual
     quote (Bind n b tm) = `(Bind ~(quote n) ~(assert_total (quote b)) ~(quote tm))
     quote (App f x) = `(App ~(quote f) ~(quote x))
     quote (TConst c) = `(TConst ~(quote c))
-    quote (Proj tm x) = `(Proj ~(quote tm) ~(quote x))
     quote Erased = `(Erased)
-    quote Impossible = `(Impossible)
     quote (TType uexp) = `(TType ~(quote uexp))
     quote (UType u) = `(UType ~(quote u))
 
@@ -585,7 +580,6 @@ mutual
   quoteRawTT (RApp tm tm') = `(RApp ~(quoteRawTT tm) ~(quoteRawTT tm'))
   quoteRawTT RType = `(RType)
   quoteRawTT (RUType u) = `(RUType ~(quote u))
-  quoteRawTT (RForce tm) = `(RForce ~(quoteRawTT tm))
   quoteRawTT (RConstant c) = `(RConstant ~(quote c))
 
   quoteRawBinderTT : Binder Raw -> TT
@@ -614,7 +608,6 @@ mutual
   quoteRawRaw (RApp tm tm') = `(RApp ~(quoteRawRaw tm) ~(quoteRawRaw tm'))
   quoteRawRaw RType = `(RType)
   quoteRawRaw (RUType u) = `(RUType ~(quote u))
-  quoteRawRaw (RForce tm) = `(RForce ~(quoteRawRaw tm))
   quoteRawRaw (RConstant c) = `(RConstant ~(quote c))
 
   quoteRawBinderRaw : Binder Raw -> Raw

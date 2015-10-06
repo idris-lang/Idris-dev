@@ -223,9 +223,7 @@ instance Show TT where
           my_show d (Bind n b t) = showCon d "Bind" $ showArg n ++ showArg b ++ showArg t
           my_show d (App t1 t2) = showCon d "App" $ showArg t1 ++ showArg t2
           my_show d (TConst c) = showCon d "TConst" $ showArg c
-          my_show d (Proj tm i) = showCon d "Proj" $ showArg tm ++ showArg i
           my_show d Erased = "Erased"
-          my_show d Impossible = "Impossible"
           my_show d (TType u) = showCon d "TType" $ showArg u
 
 instance Eq TT where
@@ -236,9 +234,7 @@ instance Eq TT where
           equalp (Bind n b t) (Bind n' b' t')  = n == n' && b == b' && t == t'
           equalp (App t1 t2)  (App t1' t2')    = t1 == t1' && t2 == t2'
           equalp (TConst c)   (TConst c')      = c == c'
-          equalp (Proj tm i)  (Proj tm' i')    = tm == tm' && i == i'
           equalp Erased       Erased           = True
-          equalp Impossible   Impossible       = True
           equalp (TType u)    (TType u')       = u == u'
           equalp x            y                = False
 
@@ -267,10 +263,8 @@ forget tm = fe [] tm
     fe env (Bind n b sc) = [| RBind (pure n) (traverse (fe env) b) (fe (n::env) sc) |]
     fe env (App f a)     = [| RApp (fe env f) (fe env a) |]
     fe env (TConst c)    = Just $ RConstant c
-    fe env (Proj tm i)   = Nothing -- runtime only, not useful for metaprogramming
     fe env (TType i)     = Just RType
     fe env Erased        = Just $ RConstant Forgot
-    fe env Impossible    = Nothing
 
 instance Show Raw where
   showPrec = my_show
@@ -279,7 +273,6 @@ instance Show Raw where
           my_show d (RBind n b tm) = showCon d "RBind" $ showArg n ++ showArg b ++ " " ++ my_show App tm
           my_show d (RApp tm tm') = showCon d "RApp" $ " " ++ my_show App tm ++ " " ++ my_show App tm'
           my_show d RType = "RType"
-          my_show d (RForce tm) = showCon d "RForce" $ " " ++ my_show App tm
           my_show d (RConstant c) = showCon d "RConstant" $ showArg c
 
 instance Show SourceLocation where

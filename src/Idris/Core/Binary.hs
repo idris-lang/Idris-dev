@@ -452,9 +452,7 @@ instance Binary Raw where
                 RType -> putWord8 3
                 RConstant x1 -> do putWord8 4
                                    put x1
-                RForce x1 -> do putWord8 5
-                                put x1
-                RUType x1 -> do putWord8 6
+                RUType x1 -> do putWord8 5
                                 put x1
         get
           = do i <- getWord8
@@ -472,8 +470,6 @@ instance Binary Raw where
                    4 -> do x1 <- get
                            return (RConstant x1)
                    5 -> do x1 <- get
-                           return (RForce x1)
-                   6 -> do x1 <- get
                            return (RUType x1)
                    _ -> error "Corrupted binary data for Raw"
 
