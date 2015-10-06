@@ -222,3 +222,19 @@ unproduct tm =
        both tm n1 n2
        try (unproduct (Var n1))
        try (unproduct (Var n2))
+
+
+||| A special-purpose tactic that attempts to solve a goal using
+||| `Refl`. This is useful for ensuring that goals in fact are trivial
+||| when developing or testing other tactics; otherwise, consider
+||| using `search`.
+reflexivity : Elab ()
+reflexivity =
+    case !goalType of
+      `((=) {A=~A} {B=~_} ~x ~_) =>
+        do fill `(Refl {A=~A} {x=~x})
+           solve
+      _ => fail [ TextPart "The goal is not an equality, so"
+                , NamePart `{reflexivity}
+                , TextPart "is not applicable."
+                ]
