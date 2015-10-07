@@ -32,6 +32,8 @@ Library updates
   necessary to import Language.Reflection.Elab.
 * The `PERF` effect allows for simple performance metrics to be collected
   from Effectful programs.
+* Some constructors that never actually occurred have been removed from
+  the TT and Raw reflection datatypes in Language.Reflection.
 
 Tool updates
 ------------
