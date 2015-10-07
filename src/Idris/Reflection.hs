@@ -310,8 +310,6 @@ reifyTTBinderApp reif f [t, k]
                       | f == reflm "Pi" = liftM2 (Pi Nothing) (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Let" = liftM2 Let (reif x) (reif y)
-reifyTTBinderApp reif f [x, y]
-                      | f == reflm "NLet" = liftM2 NLet (reif x) (reif y)
 reifyTTBinderApp reif f [t]
                       | f == reflm "Hole" = liftM Hole (reif t)
 reifyTTBinderApp reif f [t]
@@ -586,7 +584,7 @@ reflectBinderQuotePattern q ty unq (Let x y)
 reflectBinderQuotePattern q ty unq (NLet x y)
    = do x' <- claimTy (sMN 0 "ty") ty; movelast x'
         y' <- claimTy (sMN 0 "v") ty; movelast y'
-        fill $ reflCall "NLet" [ty, Var x', Var y']
+        fill $ reflCall "Let" [ty, Var x', Var y']
         solve
         focus x'; q unq x
         focus y'; q unq y
@@ -743,7 +741,7 @@ reflectBinderQuote q ty unq (Pi _ t k)
 reflectBinderQuote q ty unq (Let x y)
    = reflCall "Let" [Var ty, q unq x, q unq y]
 reflectBinderQuote q ty unq (NLet x y)
-   = reflCall "NLet" [Var ty, q unq x, q unq y]
+   = reflCall "Let" [Var ty, q unq x, q unq y]
 reflectBinderQuote q ty unq (Hole t)
    = reflCall "Hole" [Var ty, q unq t]
 reflectBinderQuote q ty unq (GHole _ _ t)
