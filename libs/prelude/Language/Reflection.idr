@@ -116,14 +116,56 @@ data NameType =
 
 ||| Types annotations for bound variables in different
 ||| binding contexts
-data Binder a = Lam a
-              | Pi a a
-              | Let a a
-              | Hole a
-              | GHole a
-              | Guess a a
-              | PVar a
-              | PVTy a
+|||
+||| @ tmTy the terms that can occur inside the binder, as type
+|||        annotations or bound values
+data Binder : (tmTy : Type) -> Type where
+  ||| Lambdas
+  |||
+  ||| @ ty the type of the argument
+  Lam : (ty : a) -> Binder a
+
+  ||| Function types.
+  |||
+  ||| @ kind The kind of arrow. Only relevant when dealing with
+  |||        uniqueness, so you can usually pretend that this
+  |||        field doesn't exist. For ordinary functions, use the
+  |||        type of types here.
+  Pi : (ty, kind : a) -> Binder a
+
+  ||| A let binder
+  |||
+  ||| @ ty the type of the bound variable
+  ||| @ val the bound value
+  Let : (ty, val : a) -> Binder a
+
+  ||| A hole that can occur during elaboration, and must be filled
+  |||
+  ||| @ ty the type of the value that will eventually be put into the hole
+  Hole : (ty : a) -> Binder a
+
+  ||| A hole that will later become a top-level metavariable
+  GHole : (ty : a) -> Binder a
+
+  ||| A hole with a solution in it. Computationally inert.
+  |||
+  ||| @ ty the type of the value in the hole
+  ||| @ val the value in the hole
+  Guess : (ty, val : a) -> Binder a
+
+  ||| A pattern variable. These bindings surround the terms that make
+  ||| up the left and right sides of pattern-matching definition
+  ||| clauses.
+  |||
+  ||| @ ty the type of the pattern variable
+  PVar : (ty : a) -> Binder a
+
+  ||| The type of a pattern binding. This is to `PVar` as `Pi` is to
+  ||| `Lam`.
+  |||
+  ||| @ ty the type of the pattern variable
+  PVTy : (ty : a) -> Binder a
+
 %name Binder b, b'
 
 instance Functor Binder where
@@ -156,7 +198,7 @@ instance Traversable Binder where
   traverse f (PVar x) = [| PVar (f x) |]
   traverse f (PVTy x) = [| PVTy (f x) |]
 
-||| Universes
+||| The various universes involved in the uniqueness mechanism
 data Universe = NullType | UniqueType | AllTypes
 
 ||| Reflection of the well typed core language
@@ -195,8 +237,18 @@ data Raw =
          RConstant Const
 %name Raw tm, tm'
 
-data SourceLocation : Type where
-  FileLoc : (filename : String) -> (start : (Int, Int)) -> (end : (Int, Int)) -> SourceLocation
+||| A source location in an Idris file
+record SourceLocation where
+  ||| Either a source span or a source location. `start` and `end`
+  ||| will be the same if it's a point location.
+  constructor FileLoc
+
+  ||| The file name of the source location
+  filename : String
+  ||| The line and column of the beginning of the source span
+  start : (Int, Int)
+  ||| The line and column of the end of the source span
+  end : (Int, Int)
 
 %name SourceLocation loc
 
@@ -214,7 +266,7 @@ data ErrorReportPart =
                      SubReport (List ErrorReportPart)
 %name ErrorReportPart part, p
 
-||| A representation of Idris's tactics that can be returned from custom
+||| A representation of Idris's old tactics that can be returned from custom
 ||| tactic implementations. Generate these using `applyTactic`.
 data Tactic =
             ||| Try the first tactic and resort to the second one on failure
@@ -273,6 +325,7 @@ data Tactic =
             Fail (List ErrorReportPart) |
             ||| Attempt to fill the hole with source code information
             SourceFC
+
 %name Tactic tac, tac'
 
 
