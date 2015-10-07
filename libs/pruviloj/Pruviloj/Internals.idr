@@ -63,7 +63,6 @@ getBinderTy : Binder t -> t
 getBinderTy (Lam t) = t
 getBinderTy (Pi t _) = t
 getBinderTy (Let t _) = t
-getBinderTy (NLet t _) = t
 getBinderTy (Hole t) = t
 getBinderTy (GHole t) = t
 getBinderTy (Guess t _) = t

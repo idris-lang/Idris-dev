@@ -55,7 +55,6 @@ binderTy : Binder t -> t
 binderTy (Lam t)       = t
 binderTy (Pi t _)      = t
 binderTy (Let t1 t2)   = t1
-binderTy (NLet t1 t2)  = t1
 binderTy (Hole t)      = t
 binderTy (GHole t)     = t
 binderTy (Guess t1 t2) = t1
@@ -196,7 +195,6 @@ instance (Show a) => Show (Binder a) where
   showPrec d (Lam t) = showCon d "Lam" $ showArg t
   showPrec d (Pi t1 t2) = showCon d "Pi" $ showArg t1 ++ showArg t2
   showPrec d (Let t1 t2) = showCon d "Let" $ showArg t1 ++ showArg t2
-  showPrec d (NLet t1 t2) = showCon d "NLet" $ showArg t1 ++ showArg t2
   showPrec d (Hole t) = showCon d "Hole" $ showArg t
   showPrec d (GHole t) = showCon d "GHole" $ showArg t
   showPrec d (Guess t1 t2) = showCon d "Guess" $ showArg t1 ++ showArg t2
@@ -207,7 +205,6 @@ instance (Eq a) => Eq (Binder a) where
   (Lam t)       == (Lam t')         = t == t'
   (Pi t k)      == (Pi t' k')       = t == t' && k == k'
   (Let t1 t2)   == (Let t1' t2')    = t1 == t1' && t2 == t2'
-  (NLet t1 t2)  == (NLet t1' t2')   = t1 == t1' && t2 == t2'
   (Hole t)      == (Hole t')        = t == t'
   (GHole t)     == (GHole t')       = t == t'
   (Guess t1 t2) == (Guess t1' t2')  = t1 == t1' && t2 == t2'

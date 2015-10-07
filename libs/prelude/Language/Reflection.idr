@@ -119,7 +119,6 @@ data NameType =
 data Binder a = Lam a
               | Pi a a
               | Let a a
-              | NLet a a
               | Hole a
               | GHole a
               | Guess a a
@@ -131,7 +130,6 @@ instance Functor Binder where
   map f (Lam x) = Lam (f x)
   map f (Pi x k) = Pi (f x) (f k)
   map f (Let x y) = Let (f x) (f y)
-  map f (NLet x y) = NLet (f x) (f y)
   map f (Hole x) = Hole (f x)
   map f (GHole x) = GHole (f x)
   map f (Guess x y) = Guess (f x) (f y)
@@ -142,7 +140,6 @@ instance Foldable Binder where
   foldr f z (Lam x) = f x z
   foldr f z (Pi x k) = f x (f k z)
   foldr f z (Let x y) = f x (f y z)
-  foldr f z (NLet x y) = f x (f y z)
   foldr f z (Hole x) = f x z
   foldr f z (GHole x) = f x z
   foldr f z (Guess x y) = f x (f y z)
@@ -153,7 +150,6 @@ instance Traversable Binder where
   traverse f (Lam x) = [| Lam (f x) |]
   traverse f (Pi x k) = [| Pi (f x) (f k) |]
   traverse f (Let x y) = [| Let (f x) (f y) |]
-  traverse f (NLet x y) = [| NLet (f x) (f y) |]
   traverse f (Hole x) = [| Hole (f x) |]
   traverse f (GHole x) = [| GHole (f x) |]
   traverse f (Guess x y) = [| Guess (f x) (f y) |]
@@ -564,8 +560,6 @@ mutual
                                  ~(assert_total (quote k)))
     quote (Let x y) = `(Let {a=TT} ~(assert_total (quote x))
                                            ~(assert_total (quote y)))
-    quote (NLet x y) = `(NLet {a=TT} ~(assert_total (quote x))
-                                           ~(assert_total (quote y)))
     quote (Hole x) = `(Hole {a=TT} ~(assert_total (quote x)))
     quote (GHole x) = `(GHole {a=TT} ~(assert_total (quote x)))
     quote (Guess x y) = `(Guess {a=TT} ~(assert_total (quote x))
@@ -586,7 +580,6 @@ mutual
   quoteRawBinderTT (Lam x) = `(Lam {a=Raw} ~(quoteRawTT x))
   quoteRawBinderTT (Pi x k) = `(Pi {a=Raw} ~(quoteRawTT x) ~(quoteRawTT k))
   quoteRawBinderTT (Let x y) = `(Let {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
-  quoteRawBinderTT (NLet x y) = `(NLet {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
   quoteRawBinderTT (Hole x) = `(Hole {a=Raw} ~(quoteRawTT x))
   quoteRawBinderTT (GHole x) = `(GHole {a=Raw} ~(quoteRawTT x))
   quoteRawBinderTT (Guess x y) = `(Guess {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
@@ -614,7 +607,6 @@ mutual
   quoteRawBinderRaw (Lam x) = `(Lam {a=Raw} ~(quoteRawRaw x))
   quoteRawBinderRaw (Pi x k) = `(Pi {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw k))
   quoteRawBinderRaw (Let x y) = `(Let {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))
-  quoteRawBinderRaw (NLet x y) = `(NLet {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))
   quoteRawBinderRaw (Hole x) = `(Hole {a=Raw} ~(quoteRawRaw x))
   quoteRawBinderRaw (GHole x) = `(GHole {a=Raw} ~(quoteRawRaw x))
   quoteRawBinderRaw (Guess x y) = `(Guess {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))

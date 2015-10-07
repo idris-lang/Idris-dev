@@ -810,27 +810,44 @@ deriving instance NFData ImplicitInfo
 -- the types of bindings (and their values, if any); the attached identifiers are part
 -- of the 'Bind' constructor for the 'TT' type.
 data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
+                -- ^ A function binding
               | Pi    { binderImpl :: Maybe ImplicitInfo,
                         binderTy  :: !b,
                         binderKind :: !b }
-                {-^ A binding that occurs in a function type expression, e.g. @(x:Int) -> ...@
-                    The 'binderImpl' flag says whether it was a scoped implicit
-                    (i.e. forall bound) in the high level Idris, but otherwise
-                    has no relevance in TT. -}
+                -- ^ A binding that occurs in a function type
+                -- expression, e.g. @(x:Int) -> ...@ The 'binderImpl'
+                -- flag says whether it was a scoped implicit
+                -- (i.e. forall bound) in the high level Idris, but
+                -- otherwise has no relevance in TT.
               | Let   { binderTy  :: !b,
                         binderVal :: b {-^ value for bound variable-}}
                 -- ^ A binding that occurs in a @let@ expression
               | NLet  { binderTy  :: !b,
                         binderVal :: b }
+                -- ^ NLet is an intermediate product in the evaluator
+                -- that's used for temporarily naming locals during
+                -- reduction. It won't occur outside the evaluator.
               | Hole  { binderTy  :: !b}
+                -- ^ A hole in a term under construction in the
+                -- elaborator. If this is not filled during
+                -- elaboration, it is an error.
               | GHole { envlen :: Int,
                         localnames :: [Name],
                         binderTy  :: !b}
+                -- ^ A saved TT hole that will later be converted to a
+                -- top-level Idris metavariable applied to all
+                -- elements of its local environment.
               | Guess { binderTy  :: !b,
                         binderVal :: b }
+                -- ^ A provided value for a hole. It will later be
+                -- substituted - the guess is to keep it
+                -- computationally inert while working on other things
+                -- if necessary.
               | PVar  { binderTy  :: !b }
-                -- ^ A pattern variable
+                -- ^ A pattern variable (these are bound around terms
+                -- that make up pattern-match clauses)
               | PVTy  { binderTy  :: !b }
+                -- ^ The type of a pattern binding
   deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Data, Typeable)
 {-!
 deriving instance Binary Binder

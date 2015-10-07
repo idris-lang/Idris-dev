@@ -48,9 +48,6 @@ mutual
   alphaEqualBinders subst (Let tm1 tm2) (Let tm1' tm2') =
       alphaEqual subst tm1 tm1' &&
       alphaEqual subst tm2 tm2'
-  alphaEqualBinders subst (NLet tm1 tm2) (NLet tm1' tm2') =
-      alphaEqual subst tm1 tm1' &&
-      alphaEqual subst tm2 tm2'
   alphaEqualBinders subst (Hole tm) (Hole tm') =
       alphaEqual subst tm tm'
   alphaEqualBinders subst (GHole tm) (GHole tm') =
@@ -78,7 +75,6 @@ generalize hint ctxt subj = do n <- gensym hint
       genB n (Lam ty)       inner = [| Lam (gen' n ty inner) |]
       genB n (Pi ty ty')    inner = [| Pi (gen' n ty inner) (gen' n ty' inner) |]
       genB n (Let ty val)   inner = [| Let (gen' n ty inner) (gen' n val inner) |]
-      genB n (NLet ty val)  inner = [| NLet (gen' n ty inner) (gen' n val inner) |]
       genB n (Hole ty)      inner = [| Hole (gen' n ty inner) |]
       genB n (GHole ty)     inner = [| GHole (gen' n ty inner) |]
       genB n (Guess ty val) inner = [| Guess (gen' n ty inner) (gen' n val inner) |]
