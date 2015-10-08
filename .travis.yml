@@ -16,6 +16,8 @@ addons:
       - expect
       - cppcheck
       - hscolour
+      # Stack dependencies
+      - libgmp-dev
 
 matrix:
   include:
@@ -40,6 +42,7 @@ cache:
   directories:
     - $HOME/.cabsnap
     - $HOME/.cabal/packages
+    - $HOME/.stack
 
 before_cache:
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
@@ -49,6 +52,10 @@ before_install:
   - unset CC
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
   - env
+  - mkdir -p ~/.local/bin
+  - export PATH=$HOME/.local/bin:$PATH
+  - travis_retry curl -L https://github.com/commercialhaskell/stack/releases/download/v0.1.4.0/stack-0.1.4.0-x86_64-linux.tar.gz | tar xz -C ~/.local/bin
+
 
 install:
   - cabal --version
@@ -107,3 +114,5 @@ script:
       echo "make -j2 $test";
       make -j2 $test;
     done
+  # Stack test to build Idris, using system ghc.
+  - stack --no-terminal --system-ghc build
