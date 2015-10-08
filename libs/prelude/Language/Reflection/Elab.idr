@@ -183,27 +183,28 @@ namespace Tactics
   fail : List ErrorReportPart -> Elab a
   fail err = prim__Fail err
 
-  ||| Look up the lexical binding at the focused hole
+  ||| Look up the lexical binding at the focused hole. Fails if no holes are present.
   getEnv : Elab (List (TTName, Binder TT))
   getEnv = prim__Env
 
-  ||| Get the name and type of the focused hole
+  ||| Get the name and type of the focused hole. Fails if not holes are present.
   getGoal : Elab (TTName, TT)
   getGoal = prim__Goal
 
-  ||| Get the hole queue, in order
+  ||| Get the hole queue, in order.
   getHoles : Elab (List TTName)
   getHoles = prim__Holes
 
-  ||| If the current hole contains a guess, return it
+  ||| If the current hole contains a guess, return it. Otherwise, fail.
   getGuess : Elab (Maybe TT)
   getGuess = prim__Guess
 
-  ||| Look up the types of every overloading of a name
+  ||| Look up the types of every overloading of a name.
   lookupTy :  TTName -> Elab (List (TTName, NameType, TT))
   lookupTy n = prim__LookupTy n
 
-  ||| Get the type of a fully-qualified name
+  ||| Get the type of a fully-qualified name. Fail if it doesn not
+  ||| resolve uniquely.
   lookupTyExact : TTName -> Elab (TTName, NameType, TT)
   lookupTyExact n = case !(lookupTy n) of
                       [res] => return res
@@ -211,28 +212,29 @@ namespace Tactics
                       xs    => fail [NamePart n, TextPart "is ambiguous."]
 
   ||| Find the reflected representation of all datatypes whose names
-  ||| are overloadings of some name
+  ||| are overloadings of some name.
   lookupDatatype : TTName -> Elab (List Datatype)
   lookupDatatype n = prim__LookupDatatype n
 
   ||| Find the reflected representation of a datatype, given its
-  ||| fully-qualified name.
+  ||| fully-qualified name. Fail if the name does not uniquely resolve
+  ||| to a datatype.
   lookupDatatypeExact : TTName -> Elab Datatype
   lookupDatatypeExact n = case !(lookupDatatype n) of
                             [res] => return res
                             []    => fail [TextPart "No datatype named", NamePart n]
                             xs    => fail [TextPart "More than one datatype named", NamePart n]
 
-  ||| Attempt to type-check a term, getting back itself and its type
+  ||| Attempt to type-check a term, getting back itself and its type.
   check : (tm : Raw) -> Elab (TT, TT)
   check tm = prim__Check tm
 
   ||| Convert a type-annotated reflected term to its untyped
-  ||| equivalent
+  ||| equivalent.
   forgetTypes : TT -> Elab Raw
   forgetTypes tt = prim__Forget tt
 
-  ||| Get the goal type as a Raw term
+  ||| Get the goal type as a Raw term. Fails if there are no holes.
   goalType : Elab Raw
   goalType = do g <- getGoal
                 forgetTypes (snd g)
@@ -249,7 +251,8 @@ namespace Tactics
   solve : Elab ()
   solve = prim__Solve
 
-  ||| Place a term into a hole, unifying its type
+  ||| Place a term into a hole, unifying its type. Fails if the focus
+  ||| is not a hole.
   fill : Raw -> Elab ()
   fill tm = prim__Fill tm
 
@@ -297,7 +300,8 @@ namespace Tactics
                Elab (List (TTName, TTName))
   matchApply tm argSpec = prim__Apply tm argSpec
 
-  ||| Move the focus to the specified hole
+  ||| Move the focus to the specified hole. Fails if the hole does not
+  ||| exist.
   |||
   ||| @ hole the hole to focus on
   focus : (hole : TTName) -> Elab ()
@@ -308,7 +312,9 @@ namespace Tactics
   unfocus : TTName -> Elab ()
   unfocus hole = prim__Unfocus hole
 
-  ||| Convert a hole to make it suitable for bindings.
+  ||| Convert a hole to make it suitable for bindings - that is,
+  ||| transform it such that it has the form `?h : t . h` as opposed to
+  ||| `?h : t . f h`.
   |||
   ||| The binding tactics require that a hole be directly under its
   ||| binding, or else the scopes of the generated terms won't make
@@ -320,7 +326,8 @@ namespace Tactics
   ||| Introduce a new hole with a specified name and type.
   |||
   ||| The new hole will be focused, and the previously-focused hole
-  ||| will be immediately after it in the hole queue.
+  ||| will be immediately after it in the hole queue. Because this
+  ||| tactic introduces a new binding, you may need to `attack` first.
   claim : TTName -> Raw -> Elab ()
   claim n ty = prim__Claim n ty
 
@@ -333,12 +340,19 @@ namespace Tactics
   intro n = prim__Intro (Just n)
 
   ||| Introduce a lambda binding around the current hole and focus on
-  ||| the body, using the name provided by the type of the hole.
+  ||| the body, using the name provided by the type of the
+  ||| hole.
+  |||
+  ||| Requires that the hole be immediately under its binder (use
+  ||| `attack` if it might not be).
   intro' : Elab ()
   intro' = prim__Intro Nothing
 
   ||| Introduce a dependent function type binding into the current hole,
   ||| and focus on the body.
+  |||
+  ||| Requires that the hole be immediately under its binder (use
+  ||| `attack` if it might not be).
   forall : TTName -> Raw -> Elab ()
   forall n ty = prim__Forall n ty
 
@@ -347,10 +361,16 @@ namespace Tactics
   patvar n = prim__PatVar n
 
   ||| Introduce a new pattern binding.
+  |||
+  ||| Requires that the hole be immediately under its binder (use
+  ||| `attack` if it might not be).
   patbind : TTName -> Elab ()
   patbind n = prim__PatBind n
 
-  ||| Introduce a new let binding
+  ||| Introduce a new let binding.
+  |||
+  ||| Requires that the hole be immediately under its binder (use
+  ||| `attack` if it might not be).
   |||
   ||| @ n the name to let bind
   ||| @ ty the type of the term to be let-bound
@@ -415,6 +435,10 @@ namespace Tactics
   ||| constructs a context for `replace` using them. In some cases,
   ||| this is not possible, and `replace` must be called manually with
   ||| an appropriate context.
+  |||
+  ||| Because this tactic internally introduces a `let` binding, it
+  ||| requires that the hole be immediately under its binder (use
+  ||| `attack` if it might not be).
   rewriteWith : Raw -> Elab ()
   rewriteWith rule = prim__Rewrite rule
 
