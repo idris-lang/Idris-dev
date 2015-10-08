@@ -114,5 +114,7 @@ script:
       echo "make -j2 $test";
       make -j2 $test;
     done
-  # Stack test to build Idris, using system ghc.
-  - stack --no-terminal --system-ghc build
+  # Stack test to build Idris, using system ghc if possible.
+  - if [[ "$GHCVER" == "7.10.2" ]]; then
+      stack --no-terminal --system-ghc build
+    fi
