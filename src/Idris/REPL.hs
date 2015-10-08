@@ -1189,7 +1189,7 @@ process fn (Execute tm)
                    = idrisCatch
                        (do ist <- getIState
                            (m, _) <- elabVal recinfo ERHS (elabExec fc tm)
-                           (tmpn, tmph) <- runIO tempfile
+                           (tmpn, tmph) <- runIO $ tempfile ""
                            runIO $ hClose tmph
                            t <- codegen
                            -- gcc adds .exe when it builds windows programs
@@ -1225,12 +1225,16 @@ process fn (Pattelab t)
 
 process fn (Missing n)
     = do i <- getIState
-         let i' = i { idris_options = (idris_options i) { opt_showimp = True } }
+         ppOpts <- fmap ppOptionIst getIState
          case lookupCtxt n (idris_patdefs i) of
-                  [] -> iPrintError $ "Unknown operator " ++ show n
-                  [(_, tms)] ->
-                       iPrintResult (showSep "\n" (map (showTm i') tms))
-                  _ -> iPrintError $ "Ambiguous name"
+           [] -> iPrintError $ "Unknown operator " ++ show n
+           [(_, tms)] ->
+             iRenderResult (vsep (map (pprintPTerm ppOpts {ppopt_impl = True}
+                                                   []
+                                                   []
+                                                   (idris_infixes i))
+                                      tms))
+           _ -> iPrintError $ "Ambiguous name"
 process fn (DynamicLink l)
                            = do i <- getIState
                                 let importdirs = opt_importdirs (idris_options i)

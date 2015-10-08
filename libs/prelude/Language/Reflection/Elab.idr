@@ -144,6 +144,7 @@ data Elab : Type -> Type where
   prim__DeclareType : TyDecl -> Elab ()
   prim__DefineFunction : FunDefn -> Elab ()
   prim__AddInstance : TTName -> TTName -> Elab ()
+  prim__IsTCName : TTName -> Elab Bool
 
   prim__ResolveTC : TTName -> Elab ()
   prim__Search : Int -> List TTName -> Elab ()
@@ -427,12 +428,18 @@ namespace Tactics
   defineFunction : FunDefn -> Elab ()
   defineFunction defun = prim__DefineFunction defun
 
-  ||| Register a new instance for type class resolution
+  ||| Register a new instance for type class resolution.
   |||
   ||| @ className the name of the class for which an instance is being registered
   ||| @ instName the name of the definition to use in instance search
   addInstance : (className, instName : TTName) -> Elab ()
   addInstance className instName = prim__AddInstance className instName
+
+  ||| Determine whether a name denotes a class.
+  |||
+  ||| @ name a name that might denote a class.
+  isTCName : (name : TTName) -> Elab Bool
+  isTCName name = prim__IsTCName name
 
   ||| Attempt to solve the current goal with a type class dictionary
   |||

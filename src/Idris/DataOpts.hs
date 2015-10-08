@@ -40,7 +40,6 @@ instance Optimisable Raw where
         | otherwise = RApp <$> applyOpts f <*> applyOpts a
 
     applyOpts (RBind n b t) = RBind n <$> applyOpts b <*> applyOpts t
-    applyOpts (RForce t)    = applyOpts t
     applyOpts t = return t
 
 -- Erase types (makes ibc smaller, and we don't need them)

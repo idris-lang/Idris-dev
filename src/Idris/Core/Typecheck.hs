@@ -160,9 +160,6 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
           constType TheWorld = Constant WorldType
           constType Forgot  = Erased
           constType _       = TType (UVal 0)
-  chk u env (RForce t) 
-      = do (_, ty) <- chk u env t
-           return (Erased, ty)
   chk u env (RBind n (Pi i s k) t)
       = do (sv, st) <- chk u env s
            (v, cs) <- get

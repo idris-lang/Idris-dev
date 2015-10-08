@@ -81,7 +81,6 @@ instance NFData Raw where
         rnf (RApp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf RType = ()
         rnf (RUType x1) = rnf x1 `seq` ()
-        rnf (RForce x1) = rnf x1 `seq` ()
         rnf (RConstant x1) = x1 `seq` ()
 
 instance NFData FC where

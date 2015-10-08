@@ -36,7 +36,6 @@ mutual
       alphaEqual subst f g && alphaEqual subst x y
   alphaEqual subst RType RType  = True
   alphaEqual subst (RUType u) (RUType u') = u == u'
-  alphaEqual subst (RForce tm) (RForce tm') = alphaEqual subst tm tm'
   alphaEqual subst (RConstant c) (RConstant c')  = c == c'
   alphaEqual subst _ _ = False
 
@@ -47,9 +46,6 @@ mutual
       alphaEqual subst tm1 tm1' &&
       alphaEqual subst tm2 tm2'
   alphaEqualBinders subst (Let tm1 tm2) (Let tm1' tm2') =
-      alphaEqual subst tm1 tm1' &&
-      alphaEqual subst tm2 tm2'
-  alphaEqualBinders subst (NLet tm1 tm2) (NLet tm1' tm2') =
       alphaEqual subst tm1 tm1' &&
       alphaEqual subst tm2 tm2'
   alphaEqualBinders subst (Hole tm) (Hole tm') =
@@ -79,7 +75,6 @@ generalize hint ctxt subj = do n <- gensym hint
       genB n (Lam ty)       inner = [| Lam (gen' n ty inner) |]
       genB n (Pi ty ty')    inner = [| Pi (gen' n ty inner) (gen' n ty' inner) |]
       genB n (Let ty val)   inner = [| Let (gen' n ty inner) (gen' n val inner) |]
-      genB n (NLet ty val)  inner = [| NLet (gen' n ty inner) (gen' n val inner) |]
       genB n (Hole ty)      inner = [| Hole (gen' n ty inner) |]
       genB n (GHole ty)     inner = [| GHole (gen' n ty inner) |]
       genB n (Guess ty val) inner = [| Guess (gen' n ty inner) (gen' n val inner) |]

@@ -116,22 +116,62 @@ data NameType =
 
 ||| Types annotations for bound variables in different
 ||| binding contexts
-data Binder a = Lam a
-              | Pi a a
-              | Let a a
-              | NLet a a
-              | Hole a
-              | GHole a
-              | Guess a a
-              | PVar a
-              | PVTy a
+|||
+||| @ tmTy the terms that can occur inside the binder, as type
+|||        annotations or bound values
+data Binder : (tmTy : Type) -> Type where
+  ||| Lambdas
+  |||
+  ||| @ ty the type of the argument
+  Lam : (ty : a) -> Binder a
+
+  ||| Function types.
+  |||
+  ||| @ kind The kind of arrow. Only relevant when dealing with
+  |||        uniqueness, so you can usually pretend that this
+  |||        field doesn't exist. For ordinary functions, use the
+  |||        type of types here.
+  Pi : (ty, kind : a) -> Binder a
+
+  ||| A let binder
+  |||
+  ||| @ ty the type of the bound variable
+  ||| @ val the bound value
+  Let : (ty, val : a) -> Binder a
+
+  ||| A hole that can occur during elaboration, and must be filled
+  |||
+  ||| @ ty the type of the value that will eventually be put into the hole
+  Hole : (ty : a) -> Binder a
+
+  ||| A hole that will later become a top-level metavariable
+  GHole : (ty : a) -> Binder a
+
+  ||| A hole with a solution in it. Computationally inert.
+  |||
+  ||| @ ty the type of the value in the hole
+  ||| @ val the value in the hole
+  Guess : (ty, val : a) -> Binder a
+
+  ||| A pattern variable. These bindings surround the terms that make
+  ||| up the left and right sides of pattern-matching definition
+  ||| clauses.
+  |||
+  ||| @ ty the type of the pattern variable
+  PVar : (ty : a) -> Binder a
+
+  ||| The type of a pattern binding. This is to `PVar` as `Pi` is to
+  ||| `Lam`.
+  |||
+  ||| @ ty the type of the pattern variable
+  PVTy : (ty : a) -> Binder a
+
 %name Binder b, b'
 
 instance Functor Binder where
   map f (Lam x) = Lam (f x)
   map f (Pi x k) = Pi (f x) (f k)
   map f (Let x y) = Let (f x) (f y)
-  map f (NLet x y) = NLet (f x) (f y)
   map f (Hole x) = Hole (f x)
   map f (GHole x) = GHole (f x)
   map f (Guess x y) = Guess (f x) (f y)
@@ -142,7 +182,6 @@ instance Foldable Binder where
   foldr f z (Lam x) = f x z
   foldr f z (Pi x k) = f x (f k z)
   foldr f z (Let x y) = f x (f y z)
-  foldr f z (NLet x y) = f x (f y z)
   foldr f z (Hole x) = f x z
   foldr f z (GHole x) = f x z
   foldr f z (Guess x y) = f x (f y z)
@@ -153,14 +192,13 @@ instance Traversable Binder where
   traverse f (Lam x) = [| Lam (f x) |]
   traverse f (Pi x k) = [| Pi (f x) (f k) |]
   traverse f (Let x y) = [| Let (f x) (f y) |]
-  traverse f (NLet x y) = [| NLet (f x) (f y) |]
   traverse f (Hole x) = [| Hole (f x) |]
   traverse f (GHole x) = [| GHole (f x) |]
   traverse f (Guess x y) = [| Guess (f x) (f y) |]
   traverse f (PVar x) = [| PVar (f x) |]
   traverse f (PVTy x) = [| PVTy (f x) |]
 
-||| Universes
+||| The various universes involved in the uniqueness mechanism
 data Universe = NullType | UniqueType | AllTypes
 
 ||| Reflection of the well typed core language
@@ -175,14 +213,11 @@ data TT =
         App TT TT |
         ||| Embed a constant
         TConst Const |
-        ||| Argument projection; runtime only
-        Proj TT Int |
         ||| Erased terms
         Erased |
-        ||| Impossible terms
-        Impossible |
         ||| The type of types along (with universe constraints)
         TType TTUExp |
+        ||| Alternative universes for dealing with uniqueness
         UType Universe
 %name TT tm, tm'
 
@@ -196,14 +231,24 @@ data Raw =
          RApp Raw Raw |
          ||| The type of types
          RType |
+         ||| Alternative universes for dealing with uniqueness
          RUType Universe |
-         RForce Raw |
          ||| Embed a constant
          RConstant Const
 %name Raw tm, tm'
 
-data SourceLocation : Type where
-  FileLoc : (filename : String) -> (start : (Int, Int)) -> (end : (Int, Int)) -> SourceLocation
+||| A source location in an Idris file
+record SourceLocation where
+  ||| Either a source span or a source location. `start` and `end`
+  ||| will be the same if it's a point location.
+  constructor FileLoc
+
+  ||| The file name of the source location
+  filename : String
+  ||| The line and column of the beginning of the source span
+  start : (Int, Int)
+  ||| The line and column of the end of the source span
+  end : (Int, Int)
 
 %name SourceLocation loc
 
@@ -221,7 +266,7 @@ data ErrorReportPart =
                      SubReport (List ErrorReportPart)
 %name ErrorReportPart part, p
 
-||| A representation of Idris's tactics that can be returned from custom
+||| A representation of Idris's old tactics that can be returned from custom
 ||| tactic implementations. Generate these using `applyTactic`.
 data Tactic =
             ||| Try the first tactic and resort to the second one on failure
@@ -280,6 +325,7 @@ data Tactic =
             Fail (List ErrorReportPart) |
             ||| Attempt to fill the hole with source code information
             SourceFC
+
 %name Tactic tac, tac'
 
 
@@ -556,9 +602,7 @@ mutual
     quote (Bind n b tm) = `(Bind ~(quote n) ~(assert_total (quote b)) ~(quote tm))
     quote (App f x) = `(App ~(quote f) ~(quote x))
     quote (TConst c) = `(TConst ~(quote c))
-    quote (Proj tm x) = `(Proj ~(quote tm) ~(quote x))
     quote Erased = `(Erased)
-    quote Impossible = `(Impossible)
     quote (TType uexp) = `(TType ~(quote uexp))
     quote (UType u) = `(UType ~(quote u))
 
@@ -568,8 +612,6 @@ mutual
     quote (Pi x k) = `(Pi {a=TT} ~(assert_total (quote x))
                                  ~(assert_total (quote k)))
     quote (Let x y) = `(Let {a=TT} ~(assert_total (quote x))
-                                           ~(assert_total (quote y)))
-    quote (NLet x y) = `(NLet {a=TT} ~(assert_total (quote x))
                                            ~(assert_total (quote y)))
     quote (Hole x) = `(Hole {a=TT} ~(assert_total (quote x)))
     quote (GHole x) = `(GHole {a=TT} ~(assert_total (quote x)))
@@ -585,14 +627,12 @@ mutual
   quoteRawTT (RApp tm tm') = `(RApp ~(quoteRawTT tm) ~(quoteRawTT tm'))
   quoteRawTT RType = `(RType)
   quoteRawTT (RUType u) = `(RUType ~(quote u))
-  quoteRawTT (RForce tm) = `(RForce ~(quoteRawTT tm))
   quoteRawTT (RConstant c) = `(RConstant ~(quote c))
 
   quoteRawBinderTT : Binder Raw -> TT
   quoteRawBinderTT (Lam x) = `(Lam {a=Raw} ~(quoteRawTT x))
   quoteRawBinderTT (Pi x k) = `(Pi {a=Raw} ~(quoteRawTT x) ~(quoteRawTT k))
   quoteRawBinderTT (Let x y) = `(Let {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
-  quoteRawBinderTT (NLet x y) = `(NLet {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
   quoteRawBinderTT (Hole x) = `(Hole {a=Raw} ~(quoteRawTT x))
   quoteRawBinderTT (GHole x) = `(GHole {a=Raw} ~(quoteRawTT x))
   quoteRawBinderTT (Guess x y) = `(Guess {a=Raw} ~(quoteRawTT x) ~(quoteRawTT y))
@@ -614,14 +654,12 @@ mutual
   quoteRawRaw (RApp tm tm') = `(RApp ~(quoteRawRaw tm) ~(quoteRawRaw tm'))
   quoteRawRaw RType = `(RType)
   quoteRawRaw (RUType u) = `(RUType ~(quote u))
-  quoteRawRaw (RForce tm) = `(RForce ~(quoteRawRaw tm))
   quoteRawRaw (RConstant c) = `(RConstant ~(quote c))
 
   quoteRawBinderRaw : Binder Raw -> Raw
   quoteRawBinderRaw (Lam x) = `(Lam {a=Raw} ~(quoteRawRaw x))
   quoteRawBinderRaw (Pi x k) = `(Pi {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw k))
   quoteRawBinderRaw (Let x y) = `(Let {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))
-  quoteRawBinderRaw (NLet x y) = `(NLet {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))
   quoteRawBinderRaw (Hole x) = `(Hole {a=Raw} ~(quoteRawRaw x))
   quoteRawBinderRaw (GHole x) = `(GHole {a=Raw} ~(quoteRawRaw x))
   quoteRawBinderRaw (Guess x y) = `(Guess {a=Raw} ~(quoteRawRaw x) ~(quoteRawRaw y))

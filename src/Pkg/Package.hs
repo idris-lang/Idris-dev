@@ -202,7 +202,7 @@ testPkg copts fp = do
     m_ist <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
       -- Get a temporary file to save the tests' source in
-      (tmpn, tmph) <- tempIdr
+      (tmpn, tmph) <- tempfile ".idr"
       hPutStrLn tmph $
         "module Test_______\n" ++
         concat ["import " ++ show m ++ "\n"
@@ -213,7 +213,7 @@ testPkg copts fp = do
         concat [show t ++ "\n            "
                | t <- idris_tests pkgdesc]
       hClose tmph
-      (tmpn', tmph') <- tempfile
+      (tmpn', tmph') <- tempfile ""
       hClose tmph'
       let popts = (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
       case mergeOptions copts popts of
@@ -232,10 +232,6 @@ testPkg copts fp = do
         case errSpan ist of
           Just _ -> exitWith (ExitFailure 1)
           _      -> return ()
-      where
-        tempIdr :: IO (FilePath, Handle)
-        tempIdr = do dir <- getTemporaryDirectory
-                     openTempFile (normalise dir) "idristests.idr"
 
 -- | Do the act of installation for a package.
 installPkg :: PkgDesc -> IO ()
@@ -261,7 +257,7 @@ testLib :: Bool -> String -> String -> IO Bool
 testLib warn p f
     = do d <- getDataDir
          gcc <- getCC
-         (tmpf, tmph) <- tempfile
+         (tmpf, tmph) <- tempfile ""
          hClose tmph
          let libtest = d </> "rts" </> "libtest.c"
          e <- rawSystem gcc [libtest, "-l" ++ f, "-o", tmpf]

@@ -11,7 +11,6 @@ import Data.Vect
 
 import Language.Reflection
 import Language.Reflection.Errors
-import Language.Reflection.Elab
 import Language.Reflection.Utils
 
 %default total
@@ -33,7 +32,9 @@ foo = %runElab (do intro (UN "fnord")
                    solve)
 
 
-
+%runElab (do n <- isTCName `{Nat}
+             s <- isTCName `{Show}
+             if n || not s then fail [TextPart "nope"] else return ())
 
 -- Note that <|> is equivalent to "try" in the old tactics.
 -- In these tactics, we use ordinary do notation and ordinary documentation strings!

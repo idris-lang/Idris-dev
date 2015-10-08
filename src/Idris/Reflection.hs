@@ -219,8 +219,6 @@ reifyRawApp t [n, b, x]
                                       return $ RBind n' b' x'
 reifyRawApp t [f, x]
             | t == reflm "RApp" = liftM2 RApp (reifyRaw f) (reifyRaw x)
-reifyRawApp t [t']
-            | t == reflm "RForce" = liftM RForce (reifyRaw t')
 reifyRawApp t [c]
             | t == reflm "RConstant" = liftM RConstant (reifyTTConst c)
 reifyRawApp t args = fail ("Unknown reflection raw term in reifyRawApp: " ++ show (t, args))
@@ -312,8 +310,6 @@ reifyTTBinderApp reif f [t, k]
                       | f == reflm "Pi" = liftM2 (Pi Nothing) (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Let" = liftM2 Let (reif x) (reif y)
-reifyTTBinderApp reif f [x, y]
-                      | f == reflm "NLet" = liftM2 NLet (reif x) (reif y)
 reifyTTBinderApp reif f [t]
                       | f == reflm "Hole" = liftM Hole (reif t)
 reifyTTBinderApp reif f [t]
@@ -475,18 +471,15 @@ reflectTTQuotePattern unq (Constant c)
   = do fill $ reflCall "TConst" [reflectConstant c]
        solve
 reflectTTQuotePattern unq (Proj t i)
-  = do t' <- claimTy (sMN 0 "t") (Var (reflm "TT")) ; movelast t'
-       fill $ reflCall "Proj" [Var t', RConstant (I i)]
-       solve
-       focus t'; reflectTTQuotePattern unq t
-reflectTTQuotePattern unq (Erased)
+  = lift . tfail . InternalMsg $
+      "Phase error! The Proj constructor is for optimization only and should not have been reflected during elaboration."
+reflectTTQuotePattern unq Erased
   = do erased <- claimTy (sMN 0 "erased") (Var (reflm "TT"))
        movelast erased
        fill $ (Var erased)
-       solve
-reflectTTQuotePattern unq (Impossible)
-  = do fill $ Var (reflm "Impossible")
-       solve
+reflectTTQuotePattern unq Impossible
+  = lift . tfail . InternalMsg $
+      "Phase error! The Impossible constructor is for optimization only and should not have been reflected during elaboration."
 reflectTTQuotePattern unq (TType exp)
   = do ue <- getNameFrom (sMN 0 "uexp")
        claim ue (Var (sNS (sUN "TTUExp") ["Reflection", "Language"]))
@@ -539,7 +532,6 @@ reflectRawQuotePattern unq (RBind n b sc) =
         freeNamesR (RApp f x) = freeNamesR f ++ freeNamesR x
         freeNamesR RType = []
         freeNamesR (RUType _) = []
-        freeNamesR (RForce r) = freeNamesR r
         freeNamesR (RConstant _) = []
 reflectRawQuotePattern unq (RApp f x) =
   do fH <- getNameFrom (sMN 0 "f")
@@ -562,13 +554,6 @@ reflectRawQuotePattern unq (RUType univ) =
      fill $ reflCall "RUType" [Var uH]
      solve
      focus uH; fill (reflectUniverse univ); solve
-reflectRawQuotePattern unq (RForce r) =
-  do rH <- getNameFrom (sMN 0 "raw")
-     claim rH (Var (reflm "Raw"))
-     movelast rH
-     fill $ reflCall "RForce" [Var rH]
-     solve
-     focus rH; reflectRawQuotePattern unq r
 reflectRawQuotePattern unq (RConstant c) =
   do cH <- getNameFrom (sMN 0 "const")
      claim cH (Var (reflm "Constant"))
@@ -599,7 +584,7 @@ reflectBinderQuotePattern q ty unq (Let x y)
 reflectBinderQuotePattern q ty unq (NLet x y)
    = do x' <- claimTy (sMN 0 "ty") ty; movelast x'
         y' <- claimTy (sMN 0 "v") ty; movelast y'
-        fill $ reflCall "NLet" [ty, Var x', Var y']
+        fill $ reflCall "Let" [ty, Var x', Var y']
         solve
         focus x'; q unq x
         focus y'; q unq y
@@ -651,12 +636,13 @@ reflectTTQuote unq (App _ f x)
   = reflCall "App" [reflectTTQuote unq f, reflectTTQuote unq x]
 reflectTTQuote unq (Constant c)
   = reflCall "TConst" [reflectConstant c]
-reflectTTQuote unq (Proj t i)
-  = reflCall "Proj" [reflectTTQuote unq t, RConstant (I i)]
-reflectTTQuote unq (Erased) = Var (reflm "Erased")
-reflectTTQuote unq (Impossible) = Var (reflm "Impossible")
 reflectTTQuote unq (TType exp) = reflCall "TType" [reflectUExp exp]
 reflectTTQuote unq (UType u) = reflCall "UType" [reflectUniverse u]
+reflectTTQuote _   (Proj _ _) =
+  error "Phase error! The Proj constructor is for optimization only and should not have been reflected during elaboration."
+reflectTTQuote unq Erased = Var (reflm "Erased")
+reflectTTQuote _   Impossible =
+  error "Phase error! The Impossible constructor is for optimization only and should not have been reflected during elaboration."
 
 reflectRawQuote :: [Name] -> Raw -> Raw
 reflectRawQuote unq (Var n)
@@ -669,7 +655,6 @@ reflectRawQuote unq (RApp f x) =
 reflectRawQuote unq RType = Var (reflm "RType")
 reflectRawQuote unq (RUType u) =
   reflCall "RUType" [reflectUniverse u]
-reflectRawQuote unq (RForce r) = reflCall "RForce" [reflectRawQuote unq r]
 reflectRawQuote unq (RConstant cst) = reflCall "RConstant" [reflectConstant cst]
 
 reflectNameType :: NameType -> Raw
@@ -756,7 +741,7 @@ reflectBinderQuote q ty unq (Pi _ t k)
 reflectBinderQuote q ty unq (Let x y)
    = reflCall "Let" [Var ty, q unq x, q unq y]
 reflectBinderQuote q ty unq (NLet x y)
-   = reflCall "NLet" [Var ty, q unq x, q unq y]
+   = reflCall "Let" [Var ty, q unq x, q unq y]
 reflectBinderQuote q ty unq (Hole t)
    = reflCall "Hole" [Var ty, q unq t]
 reflectBinderQuote q ty unq (GHole _ _ t)
