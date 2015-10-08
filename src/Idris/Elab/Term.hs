@@ -28,6 +28,7 @@ import qualified Util.Pretty as U
 import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Monad.State.Strict
+import Data.Foldable (for_)
 import Data.List
 import qualified Data.Map as M
 import Data.Maybe (mapMaybe, fromMaybe, catMaybes)
@@ -1245,6 +1246,7 @@ elab ist info emode opts fn tm
          attack -- to get an extra hole
          elab' ina (Just fc') tm
          script <- get_guess
+         fullyElaborated script
          solve -- eliminate the hole. Becuase there are no references, the script is only in the binding
          env <- get_env
          runElabAction ist (maybe fc' id fc) env script ns
@@ -1359,6 +1361,19 @@ elab ist info emode opts fn tm
     getFC d (PRef fc _ _) = fc
     getFC d (PAlternative _ _ (x:_)) = getFC d x
     getFC d x = d
+
+    -- Fail if a term is not yet fully elaborated (e.g. if it contains
+    -- case block functions that don't yet exist)
+    fullyElaborated :: Term -> ElabD ()
+    fullyElaborated (P _ n _) =
+      do EState cases _ _ _ <- getAux
+         case lookup n cases of
+           Nothing -> return ()
+           Just _  -> lift . tfail $ ElabScriptStaging n
+    fullyElaborated (Bind n b body) = fullyElaborated body >> for_ b fullyElaborated
+    fullyElaborated (App _ l r) = fullyElaborated l >> fullyElaborated r
+    fullyElaborated (Proj t _) = fullyElaborated t
+    fullyElaborated _ = return ()
 
     insertLazy :: PTerm -> ElabD PTerm
     insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = return t
