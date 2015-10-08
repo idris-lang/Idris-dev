@@ -37,6 +37,9 @@ matrix:
       compiler: ": #GHC 7.10.2"
     - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="test_c"
       compiler: ": #GHC 7.10.2"
+    - env: CABALVER="1.22" GHCVER="7.10.2" STACKTEST="stack_test"
+      compiler: ": #GHC 7.10.2"
+
 
 cache:
   directories:
@@ -102,19 +105,23 @@ before_script:
   - cd ..
   - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
+
 script:
-  - cabal configure -f FFI -f CI
-  - cabal build
-  - cabal copy
-  - cabal register
-  - if [[ "$TESTS" == "test_c" ]]; then
-      cppcheck -i 'mini-gmp.c' rts;
-    fi
-  - for test in $TESTS; do
-      echo "make -j2 $test";
-      make -j2 $test;
-    done
-  # Stack test to build Idris, using system ghc if possible.
-  - if [[ "$GHCVER" == "7.10.2" ]]; then
-      stack --no-terminal --system-ghc build
+  - if [[ "$STACKTEST" == "stack_test" ]];
+    then
+      stack --no-terminal --system-ghc build;
+    else
+      cabal configure -f FFI -f CI;
+      cabal build;
+      cabal copy;
+      cabal register;
+      if [[ "$TESTS" == "test_c" ]];
+      then
+        cppcheck -i 'mini-gmp.c' rts;
+      fi
+      for test in $TESTS;
+      do
+        echo "make -j2 $test";
+        make -j2 $test;
+      done
     fi
