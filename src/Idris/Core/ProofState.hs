@@ -408,6 +408,8 @@ instanceArg n ctxt env (Bind x (Hole t) sc)
                             ps { holes = (hs \\ [x]) ++ [x],
                                  instances = x:is })
          return (Bind x (Hole t) sc)
+instanceArg n ctxt env _
+    = fail "The current focus is not a hole."
 
 autoArg :: Name -> RunTactic
 autoArg n ctxt env (Bind x (Hole t) sc)
@@ -418,6 +420,8 @@ autoArg n ctxt env (Bind x (Hole t) sc)
                                     autos = (x, (while_elaborating ps, refsIn t)) : autos ps }
                              Just _ -> ps)
          return (Bind x (Hole t) sc)
+autoArg n ctxt env _
+    = fail "The current focus not a hole."
 
 setinj :: Name -> RunTactic
 setinj n ctxt env (Bind x b sc)
@@ -439,6 +443,7 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     mkTy ((n,b) : bs) t = Bind n (Pi Nothing (binderTy b) (TType (UVar 0))) (mkTy bs t)
 
     getP (n, b) = P Bound n (binderTy b)
+defer dropped n ctxt env _ = fail "Can't defer a non-hole focus."
 
 -- as defer, but build the type and application explicitly
 deferType :: Name -> Raw -> [Name] -> RunTactic
@@ -454,6 +459,7 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     getP n = case lookup n env of
                   Just b -> P Bound n (binderTy b)
                   Nothing -> error ("deferType can't find " ++ show n)
+deferType _ _ _ _ _ _ = fail "Can't defer a non-hole focus."
 
 regret :: RunTactic
 regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
@@ -462,12 +468,14 @@ regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
        return sc
 regret ctxt env (Bind x (Hole t) _)
     = fail $ show x ++ " : " ++ show t ++ " is not solved..."
+regret _ _ _ = fail "The current focus is not a hole."
 
 unifyGoal :: Raw -> RunTactic
 unifyGoal tm ctxt env h@(Bind x b sc) =
     do (tmv, _) <- lift $ check ctxt env tm
        ns' <- unify' ctxt env (binderTy b, Nothing) (tmv, Nothing)
        return h
+unifyGoal _ _ _ _ = fail "The focus is not a binder."
 
 exact :: Raw -> RunTactic
 exact guess ctxt env (Bind x (Hole ty) sc) =
