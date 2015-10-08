@@ -1237,17 +1237,17 @@ elab ist info emode opts fn tm
     elab' ina fc (PRunElab fc' tm ns) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
-         n' <- getNameFrom (sMN 0 "tacticExpr")
          let scriptTy = RApp (Var (sNS (sUN "Elab")
                                   ["Elab", "Reflection", "Language"]))
                              (Var unitTy)
          claim n scriptTy
-         movelast n
-         letbind n' scriptTy (Var n)
          focus n
+         attack -- to get an extra hole
          elab' ina (Just fc') tm
+         script <- get_guess
+         solve -- eliminate the hole. Becuase there are no references, the script is only in the binding
          env <- get_env
-         runElabAction ist (maybe fc' id fc) env (P Bound n' Erased) ns
+         runElabAction ist (maybe fc' id fc) env script ns
          solve
     elab' ina fc (PConstSugar constFC tm) =
       -- Here we elaborate the contained term, then calculate
