@@ -270,8 +270,6 @@ reifyTTNameApp t [sn]
                 | t == reflm "MetaN" =
                   MetaN <$> reifyTTName n1 <*> reifyTTName n2
         reifySN t args = fail $ "Can't reify special name " ++ show t ++ show args
-reifyTTNameApp t []
-               | t == reflm "NErased" = return NErased
 reifyTTNameApp t args = fail ("Unknown reflection term name: " ++ show (t, args))
 
 reifyTTNamespace :: Term -> ElabD [String]
@@ -679,7 +677,6 @@ reflectName (NS n ns)
                   ]
 reflectName (MN i n)
   = reflCall "MN" [RConstant (I i), RConstant (Str (str n))]
-reflectName NErased = Var (reflm "NErased")
 reflectName (SN sn) = raw_apply (Var (reflm "SN")) [reflectSpecialName sn]
 reflectName (SymRef _) = error "The impossible happened: symbol table ref survived IBC loading"
 
@@ -963,7 +960,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "
     Right (TextPart msg)
 reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
-    case runElab initEState (reifyTTName ttn) (initElaborator NErased initContext emptyContext Erased) of
+    case runElab initEState (reifyTTName ttn) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
@@ -971,7 +968,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
-  case runElab initEState (reifyTT tm) (initElaborator NErased initContext emptyContext Erased) of
+  case runElab initEState (reifyTT tm) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
       show tm ++
@@ -979,7 +976,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
     OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "RawPart" =
-  case runElab initEState (reifyRaw tm) (initElaborator NErased initContext emptyContext Erased) of
+  case runElab initEState (reifyRaw tm) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected raw term " ++
       show tm ++

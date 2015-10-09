@@ -85,14 +85,12 @@ mutual
     showPrec d (NS n ns)  = showCon d "NS" $ showArg n ++ showArg ns
     showPrec d (MN i str) = showCon d "MN" $ showArg i ++ showArg str
     showPrec d (SN sn)    = showCon d "SN" $ assert_total (showArg sn)
-    showPrec d NErased    = "NErased"
 
 mutual
   instance Eq TTName where
     (UN str1)  == (UN str2)     = str1 == str2
     (NS n ns)  == (NS n' ns')   = n == n' && ns == ns'
     (MN i str) == (MN i' str')  = i == i' && str == str'
-    NErased    == NErased       = True
     (SN sn)    == (SN sn')      = assert_total $ sn == sn'
     x          == y             = False
 

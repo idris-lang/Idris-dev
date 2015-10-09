@@ -447,7 +447,6 @@ traceWhen False _  a = a
 data Name = UN !T.Text -- ^ User-provided name
           | NS !Name [T.Text] -- ^ Root, namespaces
           | MN !Int !T.Text -- ^ Machine chosen names
-          | NErased -- ^ Name of something which is never used in scope
           | SN !SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord, Data, Typeable)
@@ -514,7 +513,6 @@ instance Pretty Name OutputAnnotation where
   pretty n@(SN s) = annotate (AnnName n Nothing Nothing Nothing) $ text (show s)
   pretty n@(SymRef i) = annotate (AnnName n Nothing Nothing Nothing) $
                         text $ "##symbol" ++ show i ++ "##"
-  pretty NErased = annotate (AnnName NErased Nothing Nothing Nothing) $ text "_"
 
 instance Pretty [Name] OutputAnnotation where
   pretty = encloseSep empty empty comma . map pretty
@@ -526,7 +524,6 @@ instance Show Name where
     show (MN i s) = "{" ++ str s ++ show i ++ "}"
     show (SN s) = show s
     show (SymRef i) = "##symbol" ++ show i ++ "##"
-    show NErased = "_"
 
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
@@ -566,7 +563,6 @@ showCG (SN s) = showCG' s
                         "_" ++ show (fst e) ++ "_" ++ show (snd e)
         cgFN = concatMap (\c -> if not (isDigit c || isLetter c) then "__" else [c])
 showCG (SymRef i) = error "can't do codegen for a symbol reference"
-showCG NErased = "_"
 
 
 -- |Contexts allow us to map names to things. A root name maps to a collection
@@ -1455,7 +1451,6 @@ nextName (SN x) = SN (nextName' x)
     nextName' (MethodN n) = MethodN (nextName n)
     nextName' (InstanceCtorN n) = InstanceCtorN (nextName n)
     nextName' (MetaN parent meta) = MetaN parent (nextName meta)
-nextName NErased = NErased
 nextName (SymRef i) = error "Can't generate a name from a symbol reference"
 
 type Term = TT Name

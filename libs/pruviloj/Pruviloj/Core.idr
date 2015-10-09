@@ -41,7 +41,6 @@ nameFrom (MN x n) =
                then "n"
                else n
 nameFrom (SN x) = gensym "SN"
-nameFrom NErased = gensym "wasErased"
 
 ||| Get the name at the head of the term, if it exists.
 headName : Raw -> Maybe TTName
