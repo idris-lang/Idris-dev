@@ -1058,7 +1058,7 @@ elab ist info emode opts fn tm
              let args' = filter (\(n, _) -> n `notElem` argsDropped) args
 
              attack
-             cname' <- defer argsDropped (mkN (mkCaseName fn))
+             cname' <- defer argsDropped (mkN (mkCaseName fc fn))
              solve
 
              -- if the scrutinee is one of the 'args' in env, we should
@@ -1071,8 +1071,8 @@ elab ist info emode opts fn tm
              -- if we haven't got the type yet, hopefully we'll get it later!
              movelast tyn
              solve
-        where mkCaseName (NS n ns) = NS (mkCaseName n) ns
-              mkCaseName n = SN (CaseN n)
+        where mkCaseName fc (NS n ns) = NS (mkCaseName fc n) ns
+              mkCaseName fc n = SN (CaseN (FC' fc) n)
 --               mkCaseName (UN x) = UN (x ++ "_case")
 --               mkCaseName (MN i x) = MN i (x ++ "_case")
               mkN n@(NS _ _) = n

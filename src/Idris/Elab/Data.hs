@@ -350,7 +350,7 @@ elabCaseFun ind paramPos n ty cons info = do
         elimFC = fileFC "(casefun)"
 
         elimDeclName :: Name
-        elimDeclName = if ind then SN . ElimN $ n else SN . CaseN $ n
+        elimDeclName = if ind then SN . ElimN $ n else SN . CaseN (FC' emptyFC) $ n
 
         applyNS :: Name -> [String] -> Name
         applyNS n []  = n

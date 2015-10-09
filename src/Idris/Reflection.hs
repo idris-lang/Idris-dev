@@ -257,9 +257,9 @@ reifyTTNameApp t [sn]
         reifySN t [n]
                 | t == reflm "MethodN" =
                   MethodN <$> reifyTTName n
-        reifySN t [n]
+        reifySN t [fc, n]
                 | t == reflm "CaseN" =
-                  CaseN <$> reifyTTName n
+                  CaseN <$> (FC' <$> reifyFC fc) <*> reifyTTName n
         reifySN t [n]
                 | t == reflm "ElimN" =
                   ElimN <$> reifyTTName n
@@ -698,8 +698,8 @@ reflectSpecialName (ParentN n s) =
   reflCall "ParentN" [reflectName n, RConstant (Str (T.unpack s))]
 reflectSpecialName (MethodN n) =
   reflCall "MethodN" [reflectName n]
-reflectSpecialName (CaseN n) =
-  reflCall "CaseN" [reflectName n]
+reflectSpecialName (CaseN fc n) =
+  reflCall "CaseN" [reflectFC (unwrapFC fc), reflectName n]
 reflectSpecialName (ElimN n) =
   reflCall "ElimN" [reflectName n]
 reflectSpecialName (InstanceCtorN n) =
@@ -940,6 +940,12 @@ reflectFC fc = raw_apply (Var (reflm "FileLoc"))
                                  ]
                          ]
   where intTy = RConstant (AType (ATInt ITNative))
+
+reifyFC :: Term -> ElabD FC
+reifyFC tm
+  | (P (DCon _ _ _) cn _, [Constant (Str fn), st, end]) <- unApply tm
+  , cn == reflm "FileLoc" = FC fn <$> reifyPair reifyInt reifyInt st <*> reifyPair reifyInt reifyInt end
+  | otherwise = fail $ "Not a source location: " ++ show tm
 
 fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
 fromTTMaybe (App _ (App _ (P (DCon _ _ _) (NS (UN just) _) _) ty) tm)

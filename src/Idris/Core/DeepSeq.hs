@@ -65,7 +65,7 @@ instance NFData SpecialName where
         rnf (InstanceN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (ParentN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (MethodN x1) = rnf x1 `seq` ()
-        rnf (CaseN x1) = rnf x1 `seq` ()
+        rnf (CaseN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (ElimN x1) = rnf x1 `seq` ()
         rnf (InstanceCtorN x1) = rnf x1 `seq` ()
         rnf (MetaN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
@@ -87,6 +87,9 @@ instance NFData FC where
         rnf (FC x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf NoFC = ()
         rnf (FileFC f) = rnf f `seq` ()
+
+instance NFData FC' where
+        rnf (FC' fc) = rnf fc `seq` ()
 
 instance NFData Provenance where
         rnf ExpectedType = ()

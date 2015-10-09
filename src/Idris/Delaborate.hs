@@ -192,7 +192,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     isCaseApp tm | P _ n _ <- fst (unApply tm) = isCN n
                  | otherwise = False
       where isCN (NS n _) = isCN n
-            isCN (SN (CaseN _)) = True
+            isCN (SN (CaseN _ _)) = True
             isCN _ = False
 
     delabCase :: [(Name, Name)] -> [PArg] -> Name -> Term -> Name -> [Term] -> Maybe PTerm
