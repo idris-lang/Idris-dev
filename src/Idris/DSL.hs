@@ -42,7 +42,7 @@ mkTTName fc n =
                                                         , pexp (mkList fc ns)]
          MN i nm   -> PApp fc (PRef fc [] (reflm "MN")) [ pexp (intC i)
                                                         , pexp (stringC nm)]
-         otherwise -> PRef fc [] $ reflm "NErased"
+         _ -> error "Invalid name from user syntax for DSL name"
 
 expandSugar :: DSL -> PTerm -> PTerm
 expandSugar dsl (PLam fc n nfc ty tm)

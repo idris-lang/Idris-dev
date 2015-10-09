@@ -13,7 +13,6 @@ instance NFData Name where
         rnf (UN x1) = rnf x1 `seq` ()
         rnf (NS x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (MN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf NErased = ()
         rnf (SN x1) = rnf x1 `seq` ()
         rnf (SymRef x1) = rnf x1 `seq` ()
 

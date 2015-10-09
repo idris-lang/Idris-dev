@@ -443,16 +443,17 @@ elab ist info emode opts fn tm
              uns <- get_usedns
              let as' = map (mkUniqueNames (uns ++ map snd ms) ms) as_pruned
              (h : hs) <- get_holes
---              trace (show (map showHd as')) $ 
              ty <- goal
              case as' of
-                  [] -> lift $ tfail $ NoValidAlts (map showHd as)
+                  [] -> do hds <- mapM showHd as
+                           lift $ tfail $ NoValidAlts hds
                   [x] -> elab' ina fc x
                   -- If there's options, try now, and if that fails, postpone
                   -- to later.
                   _ -> handleError isAmbiguous
-                           (tryAll (zip (map (elab' ina fc) as') 
-                                        (map showHd as')))
+                           (do hds <- mapM showHd as'
+                               tryAll (zip (map (elab' ina fc) as')
+                                           hds))
                         (do movelast h
                             delayElab 5 $ do
                               hs <- get_holes
@@ -461,16 +462,17 @@ elab ist info emode opts fn tm
                                   as'' <- doPrune as'
                                   case as'' of
                                        [x] -> elab' ina fc x
-                                       _ -> tryAll (zip (map (elab' ina fc) as'') 
-                                                        (map showHd as'')))
+                                       _ -> do hds <- mapM showHd as''
+                                               tryAll (zip (map (elab' ina fc) as'')
+                                                           hds))
         where showHd (PApp _ (PRef _ _ (UN l)) [_, _, arg])
                  | l == txt "Delay" = showHd (getTm arg)
-              showHd (PApp _ (PRef _ _ n) _) = n
-              showHd (PRef _ _ n) = n
+              showHd (PApp _ (PRef _ _ n) _) = return n
+              showHd (PRef _ _ n) = return n
               showHd (PApp _ h _) = showHd h
-              showHd x = NErased -- We probably should do something better than this here
+              showHd x = getNameFrom (sMN 0 "_") -- We probably should do something better than this here
 
-              doPrune as = 
+              doPrune as =
                   do compute
                      ty <- goal
                      let (tc, _) = unApply (unDelay ty)
@@ -480,7 +482,6 @@ elab ist info emode opts fn tm
               unDelay t | (P _ (UN l) _, [_, arg]) <- unApply t,
                           l == txt "Lazy'" = unDelay arg
                         | otherwise = t
-                 
 
               isAmbiguous (CantResolveAlts _) = delayok
               isAmbiguous (Elaborating _ _ e) = isAmbiguous e

@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 122
+ibcVersion = 123
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,

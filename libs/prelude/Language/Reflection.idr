@@ -40,9 +40,7 @@ mutual
               MN Int String |
               ||| Special names, to make conflicts impossible and language features
               ||| predictable
-              SN SpecialName |
-              ||| Name of something which is never used in scope
-              NErased
+              SN SpecialName
   %name TTName n, n'
 
   data SpecialName = WhereN Int TTName TTName
@@ -478,7 +476,6 @@ mutual
     quote (NS n xs) = `(NS ~(quote n) ~(quote xs))
     quote (MN x y) = `(MN ~(quote x) ~(quote y))
     quote (SN sn) = `(SN ~(assert_total $ quote sn))
-    quote NErased = `(NErased)
 
   instance Quotable SpecialName TT where
     quotedTy = `(SpecialName)
@@ -499,7 +496,6 @@ mutual
     quote (NS n xs) = `(NS ~(quote {t=Raw} n) ~(quote {t=Raw} xs))
     quote (MN x y) = `(MN ~(quote {t=Raw} x) ~(quote {t=Raw} y))
     quote (SN sn) = `(SN ~(assert_total $ quote sn))
-    quote NErased = `(NErased)
 
   instance Quotable SpecialName Raw where
     quotedTy = `(SpecialName)

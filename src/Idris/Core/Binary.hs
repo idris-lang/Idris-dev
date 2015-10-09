@@ -302,10 +302,9 @@ instance Binary Name where
                 MN x1 x2 -> do putWord8 2
                                put x1
                                put x2
-                NErased -> putWord8 3
-                SN x1 -> do putWord8 4
+                SN x1 -> do putWord8 3
                             put x1
-                SymRef x1 -> do putWord8 5
+                SymRef x1 -> do putWord8 4
                                 put x1
         get
           = do i <- getWord8
@@ -318,10 +317,9 @@ instance Binary Name where
                    2 -> do x1 <- get
                            x2 <- get
                            return (MN x1 x2)
-                   3 -> return NErased
-                   4 -> do x1 <- get
+                   3 -> do x1 <- get
                            return (SN x1)
-                   5 -> do x1 <- get
+                   4 -> do x1 <- get
                            return (SymRef x1)
                    _ -> error "Corrupted binary data for Name"
 
