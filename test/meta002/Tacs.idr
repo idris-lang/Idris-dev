@@ -53,6 +53,7 @@ test1 = %runElab triv
 test2 : Nat
 test2 = %runElab triv
 
+partial
 obvious : Elab ()
 obvious = do g <- goalType
              case g of
@@ -120,8 +121,12 @@ namespace STLC
                                unfocus holeName
                                return holeName
 
-  foo : %runElab (elabTy $ ARR (ARR UNIT UNIT) (ARR UNIT UNIT))
-  foo = id
+  -- FIXME: Removing the let-bound Elab script showed a deficiency in
+  -- how accessible arguments are identified in type signatures. It
+  -- would be nice if this worked without the extraneous
+  -- `let`. (perhaps a flag on Pi that says it came from the parser?)
+  someDef : let x = () in %runElab ((elabTy $ ARR (ARR UNIT UNIT) (ARR UNIT UNIT)))
+  someDef = id
 
   namespace Untyped
     ||| Completely untyped terms

@@ -503,6 +503,10 @@ pprintErr' i (ElabScriptStuck tm) =
   text "Is it a stuck term?"
 pprintErr' i (RunningElabScript e) =
   text "While running an elaboration script, the following error occurred" <> colon <$> pprintErr' i e
+pprintErr' i (ElabScriptStaging n) =
+  text "Can't run elaboration script because it contains pattern matching that has not yet been elaborated." <$>
+  text "Try lifting the script to a top-level definition." <$>
+  text "In particular, the problem is caused by:" <+> annName n
 
 showPart :: IState -> ErrorReportPart -> Doc OutputAnnotation
 showPart ist (TextPart str) = fillSep . map text . words $ str

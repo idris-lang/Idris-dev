@@ -293,6 +293,7 @@ data Err' t
             -- ^ User-specified message, proof term, goals with context (first goal is focused)
           | ElabScriptStuck t
           | RunningElabScript (Err' t) -- ^ The error occurred during a top-level elaboration script
+          | ElabScriptStaging Name
   deriving (Eq, Functor, Data, Typeable)
 
 type Err = Err' Term
