@@ -722,7 +722,7 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
   let tmt' = normalise ctxt env tmt
   let (tacn, tacstr, tactt) = if induction
               then (ElimN, "eliminator", "Induction")
-              else (CaseN, "case analysis", "Case analysis")
+              else (CaseN (FC' emptyFC), "case analysis", "Case analysis")
   case unApply tmt' of
     (P _ tnm _, tyargs) -> do
         case lookupTy (SN (tacn tnm)) ctxt of

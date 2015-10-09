@@ -58,6 +58,7 @@ import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
 import Data.Data (Data)
+import Data.Monoid (mconcat)
 import Numeric (showIntAtBase)
 import qualified Data.Text as T
 import Data.List hiding (group, insert)
@@ -148,7 +149,7 @@ instance Eq FC where
   _ == _ = True
 
 -- | FC with equality
-newtype FC' = FC' { unwrapFC :: FC }
+newtype FC' = FC' { unwrapFC :: FC } deriving (Data, Typeable, Ord)
 
 instance Eq FC' where
   FC' fc == FC' fc' = fcEq fc fc'
@@ -156,6 +157,9 @@ instance Eq FC' where
           fcEq NoFC NoFC = True
           fcEq (FileFC f) (FileFC f') = f == f'
           fcEq _ _ = False
+
+instance Show FC' where
+  showsPrec d (FC' fc) = showsPrec d fc
 
 -- | Empty source location
 emptyFC :: FC
@@ -480,7 +484,7 @@ data SpecialName = WhereN !Int !Name !Name
                  | InstanceN !Name [T.Text]
                  | ParentN !Name !T.Text
                  | MethodN !Name
-                 | CaseN !Name
+                 | CaseN !FC' !Name
                  | ElimN !Name
                  | InstanceCtorN !Name
                  | MetaN !Name !Name
@@ -530,7 +534,8 @@ instance Show SpecialName where
     show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " instance of " ++ show cl
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
-    show (CaseN n) = "case block in " ++ show n
+    show (CaseN fc n) = "case block in " ++ show n ++
+                        if fc == FC' emptyFC then "" else " at " ++ show fc
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
     show (InstanceCtorN n) = "constructor of " ++ show n
     show (MetaN parent meta) = "<<" ++ show parent ++ " " ++ show meta ++ ">>"
@@ -547,10 +552,19 @@ showCG (SN s) = showCG' s
         showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
-        showCG' (CaseN c) = showCG c ++ "_case"
+        showCG' (CaseN fc c) = showCG c ++ showFC' fc ++ "_case"
         showCG' (ElimN sn) = showCG sn ++ "_elim"
         showCG' (InstanceCtorN n) = showCG n ++ "_ictor"
         showCG' (MetaN parent meta) = showCG parent ++ "_meta_" ++ showCG meta
+        showFC' (FC' NoFC) = ""
+        showFC' (FC' (FileFC f)) = "_" ++ cgFN f
+        showFC' (FC' (FC f s e))
+          | s == e = "_" ++ cgFN f ++
+                     "_" ++ show (fst s) ++ "_" ++ show (snd s)
+          | otherwise = "_" ++ cgFN f ++
+                        "_" ++ show (fst s) ++ "_" ++ show (snd s) ++
+                        "_" ++ show (fst e) ++ "_" ++ show (snd e)
+        cgFN = concatMap (\c -> if not (isDigit c || isLetter c) then "__" else [c])
 showCG (SymRef i) = error "can't do codegen for a symbol reference"
 showCG NErased = "_"
 
@@ -1436,7 +1450,7 @@ nextName (SN x) = SN (nextName' x)
     nextName' (WithN i n) = WithN i (nextName n)
     nextName' (InstanceN n ns) = InstanceN (nextName n) ns
     nextName' (ParentN n ns) = ParentN (nextName n) ns
-    nextName' (CaseN n) = CaseN (nextName n)
+    nextName' (CaseN fc n) = CaseN fc (nextName n)
     nextName' (ElimN n) = ElimN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
     nextName' (InstanceCtorN n) = InstanceCtorN (nextName n)

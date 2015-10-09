@@ -287,6 +287,9 @@ instance Binary FC where
                          return (FileFC x1)
                  _ -> error "Corrupted binary data for FC"
 
+instance Binary FC' where
+    put (FC' fc) = put fc
+    get = fmap FC' get
 
 instance Binary Name where
         put x
@@ -337,7 +340,7 @@ instance Binary SpecialName where
                                     put x2
                 MethodN x1 -> do putWord8 3
                                  put x1
-                CaseN x1 -> do putWord8 4; put x1
+                CaseN x1 x2 -> do putWord8 4; put x1; put x2
                 ElimN x1 -> do putWord8 5; put x1
                 InstanceCtorN x1 -> do putWord8 6; put x1
                 WithN x1 x2 -> do putWord8 7
@@ -362,7 +365,8 @@ instance Binary SpecialName where
                    3 -> do x1 <- get
                            return (MethodN x1)
                    4 -> do x1 <- get
-                           return (CaseN x1)
+                           x2 <- get
+                           return (CaseN x1 x2)
                    5 -> do x1 <- get
                            return (ElimN x1)
                    6 -> do x1 <- get

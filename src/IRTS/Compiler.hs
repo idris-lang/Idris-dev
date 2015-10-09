@@ -167,7 +167,7 @@ showCaseTrees = showSep "\n\n" . map showCT . sortBy (comparing defnRank)
     snRank (InstanceN n args) = "2" ++ nameRank n ++ concatMap show args
     snRank (ParentN n s) = "3" ++ nameRank n ++ show s
     snRank (MethodN n) = "4" ++ nameRank n
-    snRank (CaseN n) = "5" ++ nameRank n
+    snRank (CaseN _ n) = "5" ++ nameRank n
     snRank (ElimN n) = "6" ++ nameRank n
     snRank (InstanceCtorN n) = "7" ++ nameRank n
     snRank (WithN i n) = "8" ++ nameRank n ++ show i
@@ -205,7 +205,7 @@ mkLDecl n (CaseOp ci _ _ _ pats cd)
     (args, sc) = cases_runtime cd
 
     -- Always attempt to inline functions arising from 'case' expressions
-    caseName (SN (CaseN _)) = True
+    caseName (SN (CaseN _ _)) = True
     caseName (SN (WithN _ _)) = True
     caseName (NS n _) = caseName n
     caseName _ = False

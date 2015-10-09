@@ -61,6 +61,12 @@ binderTy (Guess t1 t2) = t1
 binderTy (PVar t)      = t
 binderTy (PVTy t)      = t
 
+instance Show SourceLocation where
+  showPrec d (FileLoc filename line col) = showCon d "FileLoc" $ showArg filename ++ showArg line ++ showArg col
+
+instance Eq SourceLocation where
+  (FileLoc fn s e) == (FileLoc fn' s' e') = fn == fn' && s == s' && e == e'
+
 mutual
   instance Show SpecialName where
     showPrec d (WhereN i n1 n2) = showCon d "WhereN" $ showArg i ++
@@ -69,7 +75,7 @@ mutual
     showPrec d (InstanceN i ss) = showCon d "InstanceN" $ showArg i ++ showArg ss
     showPrec d (ParentN n s) = showCon d "ParentN" $ showArg n ++ showArg s
     showPrec d (MethodN n) = showCon d "MethodN" $ showArg n
-    showPrec d (CaseN n) = showCon d "CaseN" $ showArg n
+    showPrec d (CaseN fc n) = showCon d "CaseN" $ showArg fc ++ showArg n
     showPrec d (ElimN n) = showCon d "ElimN" $ showArg n
     showPrec d (InstanceCtorN n) = showCon d "InstanceCtorN" $ showArg n
     showPrec d (MetaN parent meta) = showCon d "MetaN" $ showArg parent ++ showArg meta
@@ -96,7 +102,7 @@ mutual
     (InstanceN i ss)    == (InstanceN i' ss')    = i == i' && ss == ss'
     (ParentN n s)       == (ParentN n' s')       = n == n' && s == s'
     (MethodN n)         == (MethodN n')          = n == n'
-    (CaseN n)           == (CaseN n')            = n == n'
+    (CaseN fc n)        == (CaseN fc' n')        = fc == fc' && n == n'
     (ElimN n)           == (ElimN n')            = n == n'
     (InstanceCtorN n)   == (InstanceCtorN n')    = n == n'
     (MetaN parent meta) == (MetaN parent' meta') = parent == parent' && meta == meta'
@@ -272,8 +278,6 @@ instance Show Raw where
           my_show d RType = "RType"
           my_show d (RConstant c) = showCon d "RConstant" $ showArg c
 
-instance Show SourceLocation where
-  showPrec d (FileLoc filename line col) = showCon d "FileLoc" $ showArg filename ++ showArg line ++ showArg col
 
 instance Show Err where
   showPrec d (Msg x) = showCon d "Msg" $ showArg x

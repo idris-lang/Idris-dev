@@ -11,6 +11,22 @@ import Prelude.Traversable
 
 %access public
 
+||| A source location in an Idris file
+record SourceLocation where
+  ||| Either a source span or a source location. `start` and `end`
+  ||| will be the same if it's a point location.
+  constructor FileLoc
+
+  ||| The file name of the source location
+  filename : String
+  ||| The line and column of the beginning of the source span
+  start : (Int, Int)
+  ||| The line and column of the end of the source span
+  end : (Int, Int)
+
+%name SourceLocation loc
+
+
 mutual
   data TTName =
               ||| A user-provided name
@@ -34,7 +50,7 @@ mutual
                    | InstanceN TTName (List String)
                    | ParentN TTName String
                    | MethodN TTName
-                   | CaseN TTName
+                   | CaseN SourceLocation TTName
                    | ElimN TTName
                    | InstanceCtorN TTName
                    | MetaN TTName TTName
@@ -236,21 +252,6 @@ data Raw =
          ||| Embed a constant
          RConstant Const
 %name Raw tm, tm'
-
-||| A source location in an Idris file
-record SourceLocation where
-  ||| Either a source span or a source location. `start` and `end`
-  ||| will be the same if it's a point location.
-  constructor FileLoc
-
-  ||| The file name of the source location
-  filename : String
-  ||| The line and column of the beginning of the source span
-  start : (Int, Int)
-  ||| The line and column of the end of the source span
-  end : (Int, Int)
-
-%name SourceLocation loc
 
 ||| Error reports are a list of report parts
 data ErrorReportPart =
@@ -455,6 +456,21 @@ instance Quotable a Raw => Quotable (List a) Raw where
   quote [] = `(List.Nil {elem=~(quotedTy {a})})
   quote (x :: xs) = `(List.(::) {elem=~(quotedTy {a})} ~(quote x) ~(quote xs))
 
+instance Quotable SourceLocation TT where
+  quotedTy = `(SourceLocation)
+  quote (FileLoc fn (sl, sc) (el, ec)) =
+    `(FileLoc ~(quote fn)
+              (~(quote sl), ~(quote sc))
+              (~(quote el), ~(quote ec)))
+
+instance Quotable SourceLocation Raw where
+  quotedTy = `(SourceLocation)
+  quote (FileLoc fn (sl, sc) (el, ec)) =
+    `(FileLoc ~(quote {t=Raw} fn)
+              (~(quote {t=Raw} sl), ~(quote {t=Raw} sc))
+              (~(quote {t=Raw} el), ~(quote {t=Raw} ec)))
+
+
 mutual
   instance Quotable TTName TT where
     quotedTy = `(TTName)
@@ -471,7 +487,7 @@ mutual
     quote (InstanceN i ss) = `(InstanceN ~(quote i) ~(quote ss))
     quote (ParentN n s) = `(ParentN ~(quote n) ~(quote s))
     quote (MethodN n) = `(MethodN ~(quote n))
-    quote (CaseN n) = `(CaseN ~(quote n))
+    quote (CaseN fc n) = `(CaseN ~(quote fc) ~(quote n))
     quote (ElimN n) = `(ElimN ~(quote n))
     quote (InstanceCtorN n) = `(InstanceCtorN ~(quote n))
     quote (MetaN parent meta) = `(MetaN ~(quote parent) ~(quote meta))
@@ -492,7 +508,7 @@ mutual
     quote (InstanceN i ss) = `(InstanceN ~(quote i) ~(quote ss))
     quote (ParentN n s) = `(ParentN ~(quote n) ~(quote s))
     quote (MethodN n) = `(MethodN ~(quote n))
-    quote (CaseN n) = `(CaseN ~(quote n))
+    quote (CaseN fc n) = `(CaseN ~(quote fc) ~(quote n))
     quote (ElimN n) = `(ElimN ~(quote n))
     quote (InstanceCtorN n) = `(InstanceCtorN ~(quote n))
     quote (MetaN parent meta) = `(MetaN ~(quote parent) ~(quote meta))
@@ -711,18 +727,3 @@ instance Quotable Tactic TT where
   quote Skip = `(Skip)
   quote (Fail xs) = `(Fail ~(quote xs))
   quote SourceFC = `(SourceFC)
-
-
-instance Quotable SourceLocation TT where
-  quotedTy = `(SourceLocation)
-  quote (FileLoc fn (sl, sc) (el, ec)) =
-    `(FileLoc ~(quote fn)
-              (~(quote sl), ~(quote sc))
-              (~(quote el), ~(quote ec)))
-
-instance Quotable SourceLocation Raw where
-  quotedTy = `(SourceLocation)
-  quote (FileLoc fn (sl, sc) (el, ec)) =
-    `(FileLoc ~(quote {t=Raw} fn)
-              (~(quote {t=Raw} sl), ~(quote {t=Raw} sc))
-              (~(quote {t=Raw} el), ~(quote {t=Raw} ec)))
