@@ -298,6 +298,7 @@ data Err' t
           | ElabScriptStuck t
           | RunningElabScript (Err' t) -- ^ The error occurred during a top-level elaboration script
           | ElabScriptStaging Name
+          | FancyMsg [ErrorReportPart]
   deriving (Eq, Functor, Data, Typeable)
 
 type Err = Err' Term
