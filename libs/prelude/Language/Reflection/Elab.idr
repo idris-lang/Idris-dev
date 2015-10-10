@@ -54,25 +54,28 @@ data TyConArg =
   TyConIndex FunArg
 
 ||| A type declaration
-data TyDecl : Type where
-  ||| A type declaration.
-  |||
-  ||| Each argument is in the scope of the names of previous
-  ||| arguments, and the return type is in the scope of all the
-  ||| argument names.
-  |||
-  ||| @ fn the name to be declared, fully-qualified
-  ||| @ args the arguments to the function
-  ||| @ ret the final return type
-  Declare : (fn : TTName) -> (args : List FunArg) -> (ret : Raw) -> TyDecl
+record TyDecl where
+  constructor Declare
+
+  ||| The name of the function being declared.
+  tyDeclName : TTName
+
+  ||| Each argument is in the scope of the names of previous arguments.
+  tyDeclArgs : List FunArg
+
+  ||| The return type is in the scope of all the argument names.
+  tyDeclReturnTy : Raw
+
 
 ||| A single pattern-matching clause
 data FunClause : Type where
   MkFunClause : (lhs, rhs : Raw) -> FunClause
 
 ||| A reflected function definition.
-data FunDefn : Type where
-  DefineFun : TTName -> List FunClause -> FunDefn
+record FunDefn where
+  constructor DefineFun
+  funDefnName : TTName
+  funDefnClauses : List FunClause
 
 
 data CtorArg = CtorParameter FunArg | CtorField FunArg
