@@ -79,6 +79,7 @@ It takes the name of a hole as an argument.
 To list all available holes, use the command ``:m``.
 
 In interactive elaboration shell, the following commands are available:
+
 -  ``:q`` - Quits the elaboration shell (gives up on proving current lemma).
 -  ``:abandon`` - Same as :q
 -  ``:state`` - Displays the current state of the term being constructed.
