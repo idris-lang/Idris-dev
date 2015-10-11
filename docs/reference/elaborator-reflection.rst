@@ -79,17 +79,47 @@ Use the command ``:metavars``, or ``:m`` for short, to list the available holes.
 Then, issue the ``:elab <hole>`` command at the REPL
 to enter the elaboration shell.
 
-The interactive elaboration shell accepts the following commands:
+At the shell, you can enter proof tactics to alter the proof state.
+It is recommended to issue ``:module Language.Reflection.Elab``
+prior to entering the elaboration shell in order to have the system-provided
+tactics available to you.
+When you have discharged all goals, you can complete the proof
+using the ``:qed`` command and receive in return an elaboration script
+that fills the hole.
+
+The interactive elaboration shell accepts a limited number of commands,
+including a subset of the commands understood by the normal Idris reply
+as well as some elaboration-specific commands.
+
+General-purpose commands that remain available in the elaboration shell:
+
+- ``:eval <EXPR>``, or ``:e <EXPR>`` for short, evaluates the provided expression
+  and prints the result.
+
+- ``:type <EXPR>``, or ``:t <EXPR>`` for short, prints the provided expression
+  together with its type.
+
+- ``:search <TYPE>`` searches for definitions having the provided type.
+
+- ``:doc <NAME>`` searches for definitions with the provided name and prints their
+  documentation.
+
+
+Commands for viewing the proof state:
+
+- ``:state`` displays the current state of the term being constructed. It lists both
+  other goals and the current goal.
+
+- ``:term`` displays the current proof term as well as its yet-to-be-filled holes.
+
+
+Commands for manipulating the manipulating the proof state:
+
+- ``:undo`` undoes the effects of the last tactic.
 
 - ``:abandon`` gives up on proving the current lemma and quits the elaboration shell.
 
--  ``:state`` displays the current state of the term being constructed.
-
--  ``:term`` displays the current proof term as well as its yet-to-be-filled holes.
-
--  ``:undo`` undoes the last tactic.
-
--  ``:qed`` finishes the script and exits the elaboration shell. The shell will only accept
+- ``:qed`` finishes the script and exits the elaboration shell. The shell will only accept
   this command once it reports, "No more goals." On exit, it will print out the finished
   elaboration script for you to copy into your program.
 
