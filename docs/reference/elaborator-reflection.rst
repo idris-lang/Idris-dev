@@ -81,8 +81,7 @@ to enter the elaboration shell.
 
 The interactive elaboration shell accepts the following commands:
 
-- ``:abandon``, or ``:q`` for short,
-  quits the elaboration shell, which abandons proving the current lemma.
+- ``:abandon`` gives up on proving the current lemma and quits the elaboration shell.
 
 -  ``:state`` displays the current state of the term being constructed.
 
