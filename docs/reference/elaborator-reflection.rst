@@ -74,18 +74,25 @@ We can generate identity functions at any concrete type using the same script:
 Interactively Building Elab Scripts
 ===================================
 
-To build an ``Elab`` script interactively, use the ``:elab`` command at the REPL.
-It takes the name of a hole as an argument.
-To list all available holes, use the command ``:m``.
+You can build an ``Elab`` script interactively at the REPL.
+Use the command ``:metavars``, or ``:m`` for short, to list the available holes.
+Then, issue the ``:elab <hole>`` command at the REPL
+to enter the elaboration shell.
 
-In interactive elaboration shell, the following commands are available:
+The interactive elaboration shell accepts the following commands:
 
--  ``:q`` - Quits the elaboration shell (gives up on proving current lemma).
--  ``:abandon`` - Same as :q
--  ``:state`` - Displays the current state of the term being constructed.
--  ``:term`` - Displays the current proof term complete with its yet-to-be-filled holes.
--  ``:undo`` - Undoes the last tactic.
--  ``:qed`` - Once the elaboration shell tells you "No more goals," you get to type this in celebration! (Completes the construction and exits the shell)
+- ``:abandon``, or ``:q`` for short,
+  quits the elaboration shell, which abandons proving the current lemma.
+
+-  ``:state`` displays the current state of the term being constructed.
+
+-  ``:term`` displays the current proof term as well as its yet-to-be-filled holes.
+
+-  ``:undo`` undoes the last tactic.
+
+-  ``:qed`` finishes the script and exits the elaboration shell. The shell will only accept
+  this command once it reports, "No more goals." On exit, it will print out the finished
+  elaboration script for you to copy into your program.
 
 
 Failure
