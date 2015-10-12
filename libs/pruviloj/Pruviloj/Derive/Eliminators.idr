@@ -86,10 +86,10 @@ elabMethodTy info motiveName [] res ctorApp =
      focus argH; fill ctorApp; solve
      solve
 elabMethodTy info motiveName (CtorParameter arg  :: args) res ctorApp =
-  elabMethodTy info motiveName args  res (RApp ctorApp (Var (argName arg)))
+  elabMethodTy info motiveName args  res (RApp ctorApp (Var (name arg)))
 elabMethodTy info motiveName (CtorField arg :: args) res ctorApp =
-  do let n = argName arg
-     let t = argTy arg
+  do let n = name arg
+     let t = type arg
      attack; forall n t
      mkIh info motiveName n t (result info)
      elabMethodTy info motiveName args res (RApp ctorApp (Var n))
@@ -153,8 +153,8 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         for {b=()} args $ \arg =>
           case arg of
             CtorParameter _ => return ()
-            CtorField arg => do claim (argName arg) (argTy arg)
-                                unfocus (argName arg)
+            CtorField arg => do claim (name arg) (type arg)
+                                unfocus (name arg)
 
         -- Establish a hole for the scrutinee (infer type)
         scrutinee <- newHole "scrutinee" resTy
@@ -177,8 +177,8 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         focus scrutinee
         apply (mkApp (Var cn) $
                  map (\x => case x of
-                              CtorParameter param => Var (argName param)
-                              CtorField arg => Var (argName arg))
+                              CtorParameter param => Var (name param)
+                              CtorField arg => Var (name arg))
                      args)
               []
         solve)
@@ -195,8 +195,8 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
                             case x of
                               CtorParameter _ => return List.Nil
                               CtorField arg =>
-                                do let n = argName arg
-                                   let t = argTy arg
+                                do let n = name arg
+                                   let t = type arg
                                    (argArgs, argRes) <- stealBindings t (const Nothing)
                                    if headsMatch argRes (result info) --recursive
                                      then return [ NormalArgument n
