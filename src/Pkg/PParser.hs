@@ -72,9 +72,9 @@ filename = try $ (token $ stringLiteral <|> (fst <$> identifier)) <?> "filename"
 
 pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
-             exec <- fst <$> iName []
+             exec <- filename
              st <- get
-             put (st { execout = Just (show exec) })
+             put (st { execout = Just exec })
       <|> do reserved "main"; lchar '=';
              main <- fst <$> iName []
              st <- get
