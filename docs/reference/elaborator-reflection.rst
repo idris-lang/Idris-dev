@@ -91,7 +91,7 @@ The interactive elaboration shell accepts a limited number of commands,
 including a subset of the commands understood by the normal Idris REPL
 as well as some elaboration-specific commands.
 
-General-purpose commands that remain available in the elaboration shell:
+General-purpose commands:
 
 - ``:eval <EXPR>``, or ``:e <EXPR>`` for short, evaluates the provided expression
   and prints the result.
