@@ -80,9 +80,8 @@ Then, issue the ``:elab <hole>`` command at the REPL
 to enter the elaboration shell.
 
 At the shell, you can enter proof tactics to alter the proof state.
-It is recommended to issue ``:module Language.Reflection.Elab``
-prior to entering the elaboration shell in order to have the system-provided
-tactics available to you.
+You can view the system-provided tactics prior to entering the shell
+by issuing the REPL command ``:browse Language.Reflection.Elab.Tactics``.
 When you have discharged all goals, you can complete the proof
 using the ``:qed`` command and receive in return an elaboration script
 that fills the hole.
