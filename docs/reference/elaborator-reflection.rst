@@ -113,7 +113,7 @@ Commands for viewing the proof state:
 - ``:term`` displays the current proof term as well as its yet-to-be-filled holes.
 
 
-Commands for manipulating the manipulating the proof state:
+Commands for manipulating the proof state:
 
 - ``:undo`` undoes the effects of the last tactic.
 
