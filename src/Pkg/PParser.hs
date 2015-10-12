@@ -62,6 +62,14 @@ pPkg = do
     eof
     return st
 
+
+-- | Parses a filename.
+-- |
+-- | Treated for now as an identifier or a double-quoted string.
+filename :: (MonadicParsing m, HasLastTokenSpan m) => m String
+filename = try $ (token $ stringLiteral <|> (fst <$> identifier)) <?> "filename"
+
+
 pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
              exec <- fst <$> iName []
