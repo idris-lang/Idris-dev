@@ -67,7 +67,17 @@ pPkg = do
 -- |
 -- | Treated for now as an identifier or a double-quoted string.
 filename :: (MonadicParsing m, HasLastTokenSpan m) => m String
-filename = (token $ stringLiteral <|> (fst <$> identifier)) <?> "filename"
+filename = token $
+    -- Treat a double-quoted string as a filename to support spaces.
+    -- This also moves away from tying filenames to identifiers, so
+    -- it will also accept hyphens
+    -- (https://github.com/idris-lang/Idris-dev/issues/2721)
+    stringLiteral
+    <|>
+    -- Through at least version 0.9.19.1, IPKG executable values were
+    -- possibly namespaced identifiers, like foo.bar.baz.
+    show <$> fst <$> iName []
+    <?> "filename"
 
 
 pClause :: PParser ()
