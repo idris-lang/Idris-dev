@@ -1,0 +1,6 @@
+package test
+
+modules = Main
+
+main = Main
+executable = "filenames/cannot include\a directory separator"
