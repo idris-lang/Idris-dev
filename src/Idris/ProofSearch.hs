@@ -196,7 +196,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                               Nothing -> -- local variable, go for it
                                     return True
               TType _ -> return True
-              _ -> fail "Not a data type"
+              _ -> typeNotSearchable ty
 
     conReady :: [Term] -> Name -> ElabD Bool
     conReady as n 
@@ -282,8 +282,8 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                                    -- since that's part of the point...)
                                    $ checkConstructor ist others
                              tryCons d locs tys (others ++ getFn d fn)
-                          Nothing -> fail "Not a data type"
-                _ -> fail "Not a data type"
+                          Nothing -> typeNotSearchable t
+                _ -> typeNotSearchable t
 
     -- if there are local variables which have a function type, try
     -- applying them too
@@ -326,11 +326,20 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
             let newhs = filter (\ (x, y) -> not x) (zip (map fst imps) args)
             mapM_ (\ (_, h) -> do focus h
                                   aty <- goal
-                                  psRec True d locs tys) newhs      
+                                  psRec True d locs tys) newhs
             solve
 
     isImp (PImp p _ _ _ _) = (True, p)
-    isImp arg = (False, priority arg) 
+    isImp arg = (False, priority arg)
+
+    typeNotSearchable ty =
+       lift $ tfail $ FancyMsg $
+       [TextPart "Attempted to find an element of type",
+        TermPart ty,
+        TextPart "using proof search, but proof search only works on datatypes with constructors."] ++
+       case ty of
+         (Bind _ (Pi _ _ _) _) -> [TextPart "In particular, function types are not supported."]
+         _ -> []
 
 -- In interactive mode, only search for things if there is some 
 -- index to help pick a relevant constructor

@@ -43,10 +43,10 @@ getInjectivity cn = exists <|> declare
                      let res = foldr (\t1, t2 => RApp (RApp (Var `{Pair}) t1) t2)
                                      `(() : Type)
                                      (map (\(a1, a2) =>
-                                            `((=) {A=~(argTy a1)}
-                                                  {B=~(argTy a2)}
-                                                  ~(Var (argName a1))
-                                                  ~(Var (argName a2))))
+                                            `((=) {A=~(type a1)}
+                                                  {B=~(type a2)}
+                                                  ~(Var (name a1))
+                                                  ~(Var (name a2))))
                                           (zip impls1 impls2))
 
                      declareType $ Declare fn (impls1 ++ impls2 ++

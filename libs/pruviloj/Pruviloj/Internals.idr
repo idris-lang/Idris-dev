@@ -9,20 +9,20 @@ import Data.Vect
 
 ||| Get the name of a reflected type constructor argument.
 tyConArgName : TyConArg -> TTName
-tyConArgName (TyConParameter a) = argName a
-tyConArgName (TyConIndex a) = argName a
+tyConArgName (TyConParameter a) = name a
+tyConArgName (TyConIndex a) = name a
 
 ||| Modify the name of a reflected type constructor argument.
 setTyConArgName : TyConArg -> TTName -> TyConArg
-setTyConArgName (TyConParameter a) n = TyConParameter (record {argName = n} a)
-setTyConArgName (TyConIndex a) n = TyConIndex (record {argName = n} a)
+setTyConArgName (TyConParameter a) n = TyConParameter (record {name = n} a)
+setTyConArgName (TyConIndex a) n = TyConIndex (record {name = n} a)
 
 ||| Modify the type of a reflected type constructor argument using some function.
 updateTyConArgTy : (Raw -> Raw) -> TyConArg -> TyConArg
 updateTyConArgTy f (TyConParameter a) =
-    TyConParameter (record {argTy = f (argTy a) } a)
+    TyConParameter (record {type = f (type a) } a)
 updateTyConArgTy f (TyConIndex a) =
-    TyConIndex (record {argTy = f (argTy a) } a)
+    TyConIndex (record {type = f (type a) } a)
 
 unApply : Raw -> (Raw, List Raw)
 unApply tm = unApply' tm []

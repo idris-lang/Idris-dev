@@ -37,8 +37,8 @@ data Plicity =
 ||| used for functions.
 record FunArg where
   constructor MkFunArg
-  argName : TTName
-  argTy   : Raw
+  name    : TTName
+  type    : Raw
   plicity : Plicity
   erasure : Erasure
 
@@ -54,25 +54,30 @@ data TyConArg =
   TyConIndex FunArg
 
 ||| A type declaration
-data TyDecl : Type where
-  ||| A type declaration.
-  |||
-  ||| Each argument is in the scope of the names of previous
-  ||| arguments, and the return type is in the scope of all the
-  ||| argument names.
-  |||
-  ||| @ fn the name to be declared, fully-qualified
-  ||| @ args the arguments to the function
-  ||| @ ret the final return type
-  Declare : (fn : TTName) -> (args : List FunArg) -> (ret : Raw) -> TyDecl
+record TyDecl where
+  constructor Declare
 
+  ||| The name of the function being declared.
+  name : TTName
+
+  ||| Each argument is in the scope of the names of previous arguments.
+  arguments : List FunArg
+
+  ||| The return type is in the scope of all the argument names.
+  returnType : Raw
+
+
+-- Note: FunClause is not a record because impossible clauses may be
+-- added at some point.
 ||| A single pattern-matching clause
 data FunClause : Type where
   MkFunClause : (lhs, rhs : Raw) -> FunClause
 
 ||| A reflected function definition.
-data FunDefn : Type where
-  DefineFun : TTName -> List FunClause -> FunDefn
+record FunDefn where
+  constructor DefineFun
+  name : TTName
+  clauses : List FunClause
 
 
 data CtorArg = CtorParameter FunArg | CtorField FunArg
@@ -82,7 +87,7 @@ record Datatype where
   constructor MkDatatype
 
   ||| The name of the type constructor
-  familyName : TTName
+  name : TTName
 
   ||| The arguments to the type constructor
   tyConArgs : List TyConArg
