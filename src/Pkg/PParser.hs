@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ConstraintKinds #-}
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
 #endif
