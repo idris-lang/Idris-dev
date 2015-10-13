@@ -74,9 +74,11 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
          -- temporary, to check cons
          when undef $ updateContext (addTyDecl n (TCon 0 0) cty)
          let cnameinfo = cinfo info (map cname dcons)
-         let unique = case getRetTy cty of
-                           UType UniqueType -> True
-                           _ -> False
+         unique <- case getRetTy (normalise (tt_ctxt i) [] cty) of
+                        UType UniqueType -> return True
+                        UType _ -> return False
+                        TType _ -> return False
+                        rt -> tclift $ tfail (At fc (Elaborating "type constructor " n (Msg "Not a valid type constructor")))
          cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty) ckind) dcons
          ttag <- getName
          i <- getIState
