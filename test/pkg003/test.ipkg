@@ -1,0 +1,6 @@
+package test
+
+modules = Main
+
+main = Main
+executable = "quoting-allows-hyphens and spaces? and fun stuff!"
