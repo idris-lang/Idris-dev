@@ -79,8 +79,9 @@ filename = (do
         -- Through at least version 0.9.19.1, IPKG executable values were
         -- possibly namespaced identifiers, like foo.bar.baz.
         show <$> fst <$> iName []
-    guard $ isValidFilename filename
-    return filename)
+    if isValidFilename filename
+      then return filename
+      else fail "a filename must be non-empty and have no directory component")
     <?> "filename"
     where
         isValidFilename :: FilePath -> Bool
