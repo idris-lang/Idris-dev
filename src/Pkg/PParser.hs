@@ -14,7 +14,7 @@ import Idris.CmdOptions
 
 import Control.Monad.State.Strict
 import Control.Applicative
-import System.FilePath (takeFileName)
+import System.FilePath (takeFileName, isValid)
 
 import Util.System
 
@@ -85,9 +85,11 @@ filename = (do
     <?> "filename"
     where
         isValidFilename :: FilePath -> Bool
-        isValidFilename path = isNonEmpty && hasNoDirectoryComponent
+        isValidFilename path =
+            and [isNonEmpty, isValidPath, hasNoDirectoryComponent]
             where
                 isNonEmpty = path /= ""
+                isValidPath = System.FilePath.isValid path
                 hasNoDirectoryComponent = path == takeFileName path
 
 
