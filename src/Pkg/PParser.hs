@@ -67,7 +67,7 @@ pPkg = do
 -- |
 -- | Treated for now as an identifier or a double-quoted string.
 filename :: (MonadicParsing m, HasLastTokenSpan m) => m String
-filename = try $ (token $ stringLiteral <|> (fst <$> identifier)) <?> "filename"
+filename = (token $ stringLiteral <|> (fst <$> identifier)) <?> "filename"
 
 
 pClause :: PParser ()
