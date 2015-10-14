@@ -1,0 +1,6 @@
+package test
+
+modules = Main
+
+main = Main
+executable = some.namespaced.identifier

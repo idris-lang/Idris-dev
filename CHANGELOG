@@ -41,7 +41,7 @@ Tool updates
   datatype
 * iPKG files have a new option `pkgs` which takes a comma-separated list
   of package names that the idris project depends on. This reduces bloat
-  in the `opts` option with mutliple package declarations.
+  in the `opts` option with multiple package declarations.
 
 Miscellaneous updates
 ---------------------

@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, ConstraintKinds #-}
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
 #endif
@@ -14,6 +14,7 @@ import Idris.CmdOptions
 
 import Control.Monad.State.Strict
 import Control.Applicative
+import System.FilePath (takeFileName, isValid)
 
 import Util.System
 
@@ -62,11 +63,41 @@ pPkg = do
     eof
     return st
 
+
+-- | Parses a filename.
+-- |
+-- | Treated for now as an identifier or a double-quoted string.
+filename :: (MonadicParsing m, HasLastTokenSpan m) => m String
+filename = (do
+    filename <- token $
+        -- Treat a double-quoted string as a filename to support spaces.
+        -- This also moves away from tying filenames to identifiers, so
+        -- it will also accept hyphens
+        -- (https://github.com/idris-lang/Idris-dev/issues/2721)
+        stringLiteral
+        <|>
+        -- Through at least version 0.9.19.1, IPKG executable values were
+        -- possibly namespaced identifiers, like foo.bar.baz.
+        show <$> fst <$> iName []
+    if isValidFilename filename
+      then return filename
+      else fail "a filename must be non-empty and have no directory component")
+    <?> "filename"
+    where
+        isValidFilename :: FilePath -> Bool
+        isValidFilename path =
+            and [isNonEmpty, isValidPath, hasNoDirectoryComponent]
+            where
+                isNonEmpty = path /= ""
+                isValidPath = System.FilePath.isValid path
+                hasNoDirectoryComponent = path == takeFileName path
+
+
 pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
-             exec <- fst <$> iName []
+             exec <- filename
              st <- get
-             put (st { execout = Just (show exec) })
+             put (st { execout = Just exec })
       <|> do reserved "main"; lchar '=';
              main <- fst <$> iName []
              st <- get

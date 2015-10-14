@@ -166,4 +166,4 @@ To help increase the chance of your pull request being accepted:
 * [General GitHub Documentation](https://help.github.com/).
 
 
-Adapted from the most excellent contributing files from the [Puppet project](https://github.com/puppetlabs/puppet) and [Factroy Girl Rails](https://github.com/thoughtbot/factory_girl_rails/blob/master/CONTRIBUTING.md)
+Adapted from the most excellent contributing files from the [Puppet project](https://github.com/puppetlabs/puppet) and [Factory Girl Rails](https://github.com/thoughtbot/factory_girl_rails/blob/master/CONTRIBUTING.md)
