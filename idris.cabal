@@ -957,7 +957,7 @@ Library
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
                 , utf8-string < 1.1
-                , vector < 0.11
+                , vector < 0.12
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.2.4
                 , zlib < 0.6
