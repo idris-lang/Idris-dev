@@ -1,1 +1,6 @@
 Type checking ./Main.idr
+Not all command line options can be used to override package options.
+
+The only changeable options are:
+   --log <lvl>, --total, --warnpartial, --warnreach
+   --ibcsubdir <path>, -i --idrispath <path>
