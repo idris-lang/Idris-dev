@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+idris $@ CycleA.idr --check
+rm -f *.ibc

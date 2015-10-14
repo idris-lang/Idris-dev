@@ -1,0 +1,4 @@
+module CycleA
+
+import CycleB
+

@@ -1513,8 +1513,9 @@ loadInputs inputs toline -- furthest line to read in input source files
            -- For each ifile list, check it and build ibcs in the same clean IState
            -- so that they don't interfere with each other when checking
 
-           importlists <- mapM getImports inputs
-           logLvl 5 (show (map (\(i,m) -> (i, map import_path m)) importlists))
+           importlists <- getImports [] inputs
+
+           logLvl 1 (show (map (\(i,m) -> (i, map import_path m)) importlists))
 
            let ninputs = zip [1..] inputs
            ifiles <- mapWhileOK (\(num, input) ->

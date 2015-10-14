@@ -1,5 +1,6 @@
 module Idris.Chaser(buildTree, getImports, getModuleFiles, ModuleTree(..)) where
 
+import Idris.Core.TT
 import Idris.Parser
 import Idris.AbsSyntax
 import Idris.Imports
@@ -79,22 +80,31 @@ getIModTime (IBC i _) = getModificationTime i
 getIModTime (IDR i) = getModificationTime i
 getIModTime (LIDR i) = getModificationTime i
 
-getImports :: FilePath -> Idris (FilePath, [ImportInfo])
-getImports f = do 
-       i <- getIState
-       let file = extractFileName f
-       ibcsd <- valIBCSubDir i
-       ids <- allImportDirs
-       fp <- findImport ids ibcsd file
+getImports :: [(FilePath, [ImportInfo])] -> [FilePath] -> 
+              Idris [(FilePath, [ImportInfo])]
+getImports acc [] = return acc
+getImports acc (f : fs) = do 
+   i <- getIState
+   let file = extractFileName f
+   ibcsd <- valIBCSubDir i
+   ids <- allImportDirs
+   idrisCatch (do
+       fp <- findImport ["."] ibcsd file
        let parsef = fname fp
-       exist <- runIO $ doesFileExist parsef
-       if exist then do
-           src_in <- runIO $ readSource parsef
-           src <- if lit fp then tclift $ unlit parsef src_in else return src_in
-           (_, _, modules, _) <- parseImports parsef src
-           clearParserWarnings
-           return (parsef, modules)
-         else return (parsef, [])
+       case lookup parsef acc of
+            Just _ -> getImports acc fs
+            _ -> do
+               exist <- runIO $ doesFileExist parsef
+               if exist then do
+                   src_in <- runIO $ readSource parsef
+                   src <- if lit fp then tclift $ unlit parsef src_in 
+                                    else return src_in
+                   (_, _, modules, _) <- parseImports parsef src
+                   clearParserWarnings
+                   getImports ((parsef, modules) : acc)
+                              (fs ++ map import_path modules)
+                     else getImports ((parsef, []) : acc) fs)
+        (\_ -> getImports acc fs) -- not in current soure tree, ignore
   where
     lit (LIDR _) = True
     lit _ = False
@@ -127,7 +137,10 @@ buildTree built importlists fp = evalStateT (btree [] fp) []
        mt <- lift $ runIO $ getIModTime fp
        if (file `elem` built)
           then return [MTree fp False mt []]
-               else if file `elem` stk then return []
+               else if file `elem` stk then 
+                       do lift $ tclift $ tfail
+                            (Msg $ "Cycle detected in imports: "
+                                     ++ showSep " -> " (reverse (file : stk)))
                  else do donetree <- get
                          case lookup file donetree of
                             Just t -> return t
