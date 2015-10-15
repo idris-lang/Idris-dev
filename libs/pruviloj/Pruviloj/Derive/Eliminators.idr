@@ -65,7 +65,7 @@ mkIh info motiveName recArg argty fam =
                 for_ {b=()} argArgs $ \(n, b) =>
                   forall n (getBinderTy b)
                 let argTm : Raw = mkApp (Var recArg) (map (Var . fst) argArgs)
-                argTmTy <- forgetTypes (snd !(check argTm))
+                argTmTy <- forgetTypes (snd !(check !getEnv argTm))
                 argHoles <- apply (Var motiveName)
                                   (replicate (length (getIndices info))
                                              (True, 0) ++

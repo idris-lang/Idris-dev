@@ -95,7 +95,7 @@ countBinders _ = Z
 covering public
 injective : (tm : Raw) -> (n : TTName) -> Elab ()
 injective tm n =
-  do (_, ty) <- check tm
+  do (_, ty) <- check !getEnv tm
      case !(forgetTypes ty) of
        `((=) {A=~A} {B=~B} ~x ~y) =>
          case (headName x, headName y) of

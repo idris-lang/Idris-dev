@@ -129,7 +129,7 @@ public
 induction : Raw -> Elab (List TTName)
 induction subj =
     do g <- goalType
-       (_, ty) <- check subj
+       (_, ty) <- check !getEnv subj
        ty' <- forgetTypes ty
        case headName ty' of
          Nothing => fail [TermPart ty, TextPart "is not an inductive family"]

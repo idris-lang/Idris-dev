@@ -181,7 +181,7 @@ andThen first after =
 ||| @ tm the term to apply to some number of goals
 refine : (tm : Raw) -> Elab (List TTName)
 refine tm =
-    do ty <- (snd <$> check tm) >>= forgetTypes
+    do ty <- (snd <$> check !getEnv tm) >>= forgetTypes
        g <- goalType
 
        -- we don't care about negative results because it'll just fail anyway
@@ -201,7 +201,7 @@ refine tm =
 both : Raw -> TTName -> TTName -> Elab ()
 both tm n1 n2 =
     do -- We don't know that the term is canonical, so let-bind projections applied to it
-       (A, B) <- isPairTy (snd !(check tm))
+       (A, B) <- isPairTy (snd !(check !getEnv tm))
        remember n1 A; apply `(fst {a=~A} {b=~B} ~tm) []; solve
        remember n2 B; apply `(snd {a=~A} {b=~B} ~tm) []; solve
   where

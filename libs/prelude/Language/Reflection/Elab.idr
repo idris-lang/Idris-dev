@@ -115,7 +115,7 @@ data Elab : Type -> Type where
   prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
   prim__LookupDatatype : TTName -> Elab (List Datatype)
 
-  prim__Check : Raw -> Elab (TT, TT)
+  prim__Check : List (TTName, Binder TT) -> Raw -> Elab (TT, TT)
 
   prim__SourceLocation : Elab SourceLocation
   prim__Namespace : Elab (List String)
@@ -231,8 +231,11 @@ namespace Tactics
                             xs    => fail [TextPart "More than one datatype named", NamePart n]
 
   ||| Attempt to type-check a term, getting back itself and its type.
-  check : (tm : Raw) -> Elab (TT, TT)
-  check tm = prim__Check tm
+  |||
+  ||| @ env the environment within which to check the type
+  ||| @ tm the term to check
+  check : (env : List (TTName, Binder TT)) -> (tm : Raw) -> Elab (TT, TT)
+  check env tm = prim__Check env tm
 
   ||| Convert a type-annotated reflected term to its untyped
   ||| equivalent.
