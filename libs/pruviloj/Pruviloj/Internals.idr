@@ -113,13 +113,13 @@ elabPatternClause lhs rhs =
                        lhs
                        -- Convert all remaining holes to pattern variables
                        traverse_ {b=()} (\h => focus h *> patvar h) !getHoles
-     (pvars, `(MkInfer ~rhsTy ~lhsTm)) <- extractBinders <$> (forgetTypes pat)
+     (pvars, `(MkInfer ~rhsTy ~lhsTm)) <- extractBinders <$> (forget pat)
         | fail [TextPart "Couldn't infer type of left-hand pattern"]
      rhsTm <- runElab (bindPatTys pvars rhsTy) $
                 do -- Introduce all the pattern variables from the LHS
                    repeatUntilFail bindPat <|> return ()
                    rhs
-     realRhs <- forgetTypes (fst rhsTm)
+     realRhs <- forget (fst rhsTm)
      return $ MkFunClause (bindPats pvars lhsTm) realRhs
 
 ||| Introduce a unique binder name, returning it

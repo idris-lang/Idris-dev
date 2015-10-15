@@ -130,7 +130,7 @@ induction : Raw -> Elab (List TTName)
 induction subj =
     do g <- goalType
        (_, ty) <- check !getEnv subj
-       ty' <- forgetTypes ty
+       ty' <- forget ty
        case headName ty' of
          Nothing => fail [TermPart ty, TextPart "is not an inductive family"]
          Just fam =>
@@ -140,18 +140,18 @@ induction subj =
               tydef <- lookupDatatypeExact fam
               info <- getTyConInfo (tyConArgs tydef) (tyConRes tydef)
               argHoles <- apply (Var elim)
-                                (replicate (length (args info)) (True, 0) ++
-                                 [(False, 0), (False, 0)] ++ -- scrutinee, motive
-                                 replicate (length (constructors tydef)) (False, 1))
+                                (replicate (length (args info)) True ++
+                                 [False, False] ++ -- scrutinee, motive
+                                 replicate (length (constructors tydef)) False)
               solve
 
               -- Apply the eliminator to our scrutinee
-              scrutH <- snd <$> unsafeNth (length (args info)) argHoles
+              scrutH <- unsafeNth (length (args info)) argHoles
               focus scrutH
               apply subj []
               solve
 
-              motiveH <- snd <$> unsafeNth (length (args info) + 1) argHoles
+              motiveH <- unsafeNth (length (args info) + 1) argHoles
               focus motiveH; makeMotive info subj ty' g
 
-              return (map snd (drop (2 + length (tyConArgs tydef)) argHoles))
+              return (drop (2 + length (tyConArgs tydef)) argHoles)

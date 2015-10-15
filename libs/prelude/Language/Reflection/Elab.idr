@@ -120,14 +120,12 @@ data Elab : Type -> Type where
   prim__SourceLocation : Elab SourceLocation
   prim__Namespace : Elab (List String)
 
-  prim__Forget : TT -> Elab Raw
-
   prim__Gensym : String -> Elab TTName
 
   prim__Solve : Elab ()
   prim__Fill : Raw -> Elab ()
-  prim__Apply : Raw -> List (Bool, Int) -> Elab (List (TTName, TTName))
-  prim__MatchApply : Raw -> List (Bool, Int) -> Elab (List (TTName, TTName))
+  prim__Apply : Raw -> List Bool -> Elab (List (TTName, TTName))
+  prim__MatchApply : Raw -> List Bool -> Elab (List (TTName, TTName))
   prim__Focus : TTName -> Elab ()
   prim__Unfocus : TTName -> Elab ()
   prim__Attack : Elab ()
@@ -187,7 +185,7 @@ namespace Tactics
   ||| Halt elaboration with an error
   fail : List ErrorReportPart -> Elab a
   fail err = prim__Fail err
-
+  
   ||| Look up the lexical binding at the focused hole. Fails if no holes are present.
   getEnv : Elab (List (TTName, Binder TT))
   getEnv = prim__Env
@@ -237,16 +235,6 @@ namespace Tactics
   check : (env : List (TTName, Binder TT)) -> (tm : Raw) -> Elab (TT, TT)
   check env tm = prim__Check env tm
 
-  ||| Convert a type-annotated reflected term to its untyped
-  ||| equivalent.
-  forgetTypes : TT -> Elab Raw
-  forgetTypes tt = prim__Forget tt
-
-  ||| Get the goal type as a Raw term. Fails if there are no holes.
-  goalType : Elab Raw
-  goalType = do g <- getGoal
-                forgetTypes (snd g)
-
 
   ||| Generate a unique name based on some hint.
   |||
@@ -281,10 +269,8 @@ namespace Tactics
   |||     where the Boolean states whether or not to attempt to solve
   |||     the argument and the Int gives the priority in which to do
   |||     so
-  apply : (op : Raw) ->
-          (argSpec : List (Bool, Int)) ->
-          Elab (List (TTName, TTName))
-  apply tm argSpec = prim__Apply tm argSpec
+  apply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
+  apply tm argSpec = map snd <$> prim__Apply tm argSpec
 
   ||| Attempt to apply an operator to fill the current hole,
   ||| potentially solving arugments by matching.
@@ -303,10 +289,8 @@ namespace Tactics
   |||     where the Boolean states whether or not to attempt to solve
   |||     the argument and the Int gives the priority in which to do
   |||     so
-  matchApply : (op : Raw) ->
-               (argSpec : List (Bool, Int)) ->
-               Elab (List (TTName, TTName))
-  matchApply tm argSpec = prim__Apply tm argSpec
+  matchApply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
+  matchApply tm argSpec = map snd <$> prim__Apply tm argSpec
 
   ||| Move the focus to the specified hole. Fails if the hole does not
   ||| exist.
