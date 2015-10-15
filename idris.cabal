@@ -993,6 +993,7 @@ Library
      cpp-options:   -DIDRIS_FFI
   if flag(GMP)
      build-depends: libffi < 0.2
+     extra-libraries: gmp
      cpp-options:   -DIDRIS_GMP
   if flag(curses)
      build-depends: hscurses < 1.5
