@@ -1,0 +1,5 @@
+#+TITLE: Scripts
+
+This directory contains various scripts used as part of the Idris
+building and testing process. If run incorrectly they may not work as
+intended.
