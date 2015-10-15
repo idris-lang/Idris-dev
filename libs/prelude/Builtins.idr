@@ -27,11 +27,11 @@ namespace Builtins
   ||| UniqueTypes.
   ||| @A the type of the left elements in the pair
   ||| @B the type of the left elements in the pair
-  data UPair : (A : AnyType) -> (B : AnyType) -> AnyType where
+  data UniquePair : (A : AnyType) -> (B : AnyType) -> AnyType where
      ||| A pair of elements
      ||| @a the left element of the pair
      ||| @b the right element of the pair
-     MkUPair : {A, B : AnyType} -> (a : A) -> (b : B) -> UPair A B
+     MkUniquePair : {A, B : AnyType} -> (a : A) -> (b : B) -> UniquePair A B
 
   ||| Dependent pairs aid in the construction of dependent types by
   ||| providing evidence that some value resides in the type.
@@ -40,10 +40,16 @@ namespace Builtins
   ||| quantification - they consist of a witness for the existential
   ||| claim and a proof that the property holds for it.
   |||
-  |||  @ a the value to place in the type.
-  |||  @ P the dependent type that requires the value.
-  data Sigma : (a : Type) -> (P : a -> Type) -> Type where
-      MkSigma : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
+  |||  @a the value to place in the type.
+  |||  @P the dependent type that requires the value.
+  data DepPair : (a : Type) -> (P : a -> Type) -> Type where
+      MkDepPair : .{P : a -> Type} -> (x : a) -> (pf : P x) -> DepPair a P
+
+  Sigma : (a : Type) -> (P : a -> Type) -> Type
+  Sigma wit prf = DepPair wit prf
+
+  MkSigma : .{P : a -> Type} -> (x : a) -> (prf : P x) -> DepPair a P
+  MkSigma wit prf = MkDepPair wit prf
 
 ||| The empty type, also known as the trivially false proposition.
 |||

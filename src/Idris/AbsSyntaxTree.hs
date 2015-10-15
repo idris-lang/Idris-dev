@@ -1567,8 +1567,8 @@ falseTy   = sUN "Void"
 pairTy    = sNS (sUN "Pair") ["Builtins"]
 pairCon   = sNS (sUN "MkPair") ["Builtins"]
 
-upairTy   = sNS (sUN "UPair") ["Builtins"]
-upairCon  = sNS (sUN "MkUPair") ["Builtins"]
+upairTy    = sNS (sUN "UniquePair") ["Builtins"]
+upairCon   = sNS (sUN "MkUniquePair") ["Builtins"]
 
 eqTy  = sUN "="
 eqCon = sUN "Refl"
@@ -1615,8 +1615,8 @@ modDocName :: Name
 modDocName = sMN 0 "ModuleDocs"
 
 -- Defined in builtins.idr
-sigmaTy  = sNS (sUN "Sigma") ["Builtins"]
-sigmaCon = sNS (sUN "MkSigma") ["Builtins"]
+sigmaTy   = sNS (sUN "DepPair") ["Builtins"]
+sigmaCon = sNS (sUN "MkDepPair") ["Builtins"]
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind = piBindp expl

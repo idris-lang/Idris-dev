@@ -14,7 +14,7 @@ using (a : Type, P : a -> Type)
   data Exists : (P : a -> Type) -> Type where
     Evidence : .(x : a) -> (pf : P x) -> Exists P
 
-  ||| Dependent pair where the second field is erased. 
+  ||| Dependent pair where the second field is erased.
   data Subset : (a : Type) -> (P : a -> Type) -> Type where
     Element : (x : a) -> .(pf : P x) -> Subset a P
 
@@ -34,12 +34,18 @@ using (a : Type, P : a -> Type)
     getProof : (x : Subset a P) -> P (getWitness x)
     getProof (Element x pf) = pf
 
-  namespace Sigma
-    getWitness : Sigma a P -> a
-    getWitness (x ** pf) = x
+  namespace DepPair
+    fst : DepPair a P -> a
+    fst (x ** pf) = x
 
-    getProof : (x : Sigma a P) -> P (getWitness x)
-    getProof (x ** pf) = pf
+    snd : (x : DepPair a P) -> P (fst x)
+    snd (x ** pf) = pf
+
+    getWitness : DepPair a P -> a
+    getWitness = fst
+
+    getProof : (x : Sigma a P) -> P (fst x)
+    getProof = snd
 
   -- Polymorphic (class-based) projections have been removed
   -- because type-directed name disambiguation works better.
