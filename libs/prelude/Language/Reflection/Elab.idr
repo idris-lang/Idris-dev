@@ -255,10 +255,8 @@ namespace Tactics
   ||| Attempt to apply an operator to fill the current hole,
   ||| potentially solving arguments by unification.
   |||
-  ||| The return value is a list of pairs of names, one for each input
-  ||| argument. The first projection of these pairs is the original
-  ||| name of the argument, from the type declaration, and the second
-  ||| projection is the hole into which it is placed.
+  ||| The return value is the list of holes established for the
+  ||| arguments to the function.
   |||
   ||| Note that not all of the returned hole names still exist, as
   ||| they may have been solved.
@@ -267,18 +265,15 @@ namespace Tactics
   |||
   ||| @ argSpec instructions for finding the arguments to the term,
   |||     where the Boolean states whether or not to attempt to solve
-  |||     the argument and the Int gives the priority in which to do
-  |||     so
+  |||     the argument by unification.
   apply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
   apply tm argSpec = map snd <$> prim__Apply tm argSpec
 
   ||| Attempt to apply an operator to fill the current hole,
-  ||| potentially solving arugments by matching.
+  ||| potentially solving arguments by matching.
   |||
-  ||| The return value is a list of pairs of names, one for each input
-  ||| argument. The first projection of these pairs is the original
-  ||| name of the argument, from the type declaration, and the second
-  ||| projection is the hole into which it is placed.
+  ||| The return value is the list of holes established for the
+  ||| arguments to the function.
   |||
   ||| Note that not all of the returned hole names still exist, as
   ||| they may have been solved.
@@ -287,8 +282,8 @@ namespace Tactics
   |||
   ||| @ argSpec instructions for finding the arguments to the term,
   |||     where the Boolean states whether or not to attempt to solve
-  |||     the argument and the Int gives the priority in which to do
-  |||     so
+  |||     the argument by matching.
+
   matchApply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
   matchApply tm argSpec = map snd <$> prim__Apply tm argSpec
 
