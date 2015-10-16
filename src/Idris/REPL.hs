@@ -1534,7 +1534,6 @@ loadInputs inputs toline -- furthest line to read in input source files
                       ninputs
            inew <- getIState
            let tidata = idris_tyinfodata inew
-           let patdefs = idris_patdefs inew
            -- If it worked, load the whole thing from all the ibcs together
            case errSpan inew of
               Nothing ->
@@ -1542,9 +1541,6 @@ loadInputs inputs toline -- furthest line to read in input source files
                    ibcfiles <- mapM findNewIBC (nub (concat (map snd ifiles)))
                    tryLoad True (mapMaybe id ibcfiles)
               _ -> return ()
-           ist <- getIState
-           putIState $! ist { idris_tyinfodata = tidata,
-                              idris_patdefs = patdefs }
            exports <- findExports
 
            case opt getOutput opts of

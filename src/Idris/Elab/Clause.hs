@@ -223,46 +223,47 @@ elabClauses info' fc opts n_in cs =
            putIState (ist { idris_patdefs = addDef n (force pdef_pe, force pmissing)
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (inlinable opts) (dictionary opts)
-           case lookupTy n ctxt of
-               [ty] -> do ctxt' <- do ctxt <- getContext
-                                      tclift $
-                                        addCasedef n erInfo caseInfo
-                                                       tcase defaultcase
-                                                       reflect
-                                                       (AssertTotal `elem` opts)
-                                                       atys
-                                                       inacc
-                                                       pats_pe
-                                                       pdef
-                                                       pdef -- compile time
-                                                       pdef_inl -- inlined
-                                                       pdef' ty
-                                                       ctxt
-                          setContext ctxt'
-                          addIBC (IBCDef n)
-                          setTotality n tot
-                          when (not reflect && PEGenerated `notElem` opts) $ 
-                                               do totcheck (fc, n)
-                                                  defer_totcheck (fc, n)
-                          when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
-                          i <- getIState
-                          case lookupDef n (tt_ctxt i) of
-                              (CaseOp _ _ _ _ _ cd : _) ->
-                                let (scargs, sc) = cases_compiletime cd
-                                    (scargs', sc') = cases_runtime cd in
-                                  do let calls = findCalls sc' scargs'
-                                     let used = findUsedArgs sc' scargs'
-                                     -- let scg = buildSCG i sc scargs
-                                     -- add SCG later, when checking totality
-                                     let cg = CGInfo scargs' calls [] used []  -- TODO: remove this, not needed anymore
-                                     logLvl 2 $ "Called names: " ++ show cg
-                                     addToCG n cg
-                                     addToCalledG n (nub (map fst calls)) -- plus names in type!
-                                     addIBC (IBCCG n)
-                              _ -> return ()
-                          return ()
+           case lookupTyExact n ctxt of
+               Just ty -> 
+                   do ctxt' <- do ctxt <- getContext
+                                  tclift $
+                                    addCasedef n erInfo caseInfo
+                                                   tcase defaultcase
+                                                   reflect
+                                                   (AssertTotal `elem` opts)
+                                                   atys
+                                                   inacc
+                                                   pats_pe
+                                                   pdef
+                                                   pdef -- compile time
+                                                   pdef_inl -- inlined
+                                                   pdef' ty
+                                                   ctxt
+                      setContext ctxt'
+                      addIBC (IBCDef n)
+                      setTotality n tot
+                      when (not reflect && PEGenerated `notElem` opts) $ 
+                                           do totcheck (fc, n)
+                                              defer_totcheck (fc, n)
+                      when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
+                      i <- getIState
+                      case lookupDef n (tt_ctxt i) of
+                          (CaseOp _ _ _ _ _ cd : _) ->
+                            let (scargs, sc) = cases_compiletime cd
+                                (scargs', sc') = cases_runtime cd in
+                              do let calls = findCalls sc' scargs'
+                                 let used = findUsedArgs sc' scargs'
+                                 -- let scg = buildSCG i sc scargs
+                                 -- add SCG later, when checking totality
+                                 let cg = CGInfo scargs' calls [] used []  -- TODO: remove this, not needed anymore
+                                 logLvl 2 $ "Called names: " ++ show cg
+                                 addToCG n cg
+                                 addToCalledG n (nub (map fst calls)) -- plus names in type!
+                                 addIBC (IBCCG n)
+                          _ -> return ()
+                      return ()
   --                         addIBC (IBCTotal n tot)
-               [] -> return ()
+               _ -> return ()
            -- Check it's covering, if 'covering' option is used. Chase
            -- all called functions, and fail if any of them are also
            -- 'Partial NotCovering'

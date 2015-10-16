@@ -337,17 +337,21 @@ nameRoot acc nm =
 
 getClause :: Int      -- ^ line number that the type is declared on
           -> Name     -- ^ Function name
+          -> Name     -- ^ User given name
           -> FilePath -- ^ Source file name
           -> Idris String
-getClause l fn fp 
+getClause l fn un fp 
     = do i <- getIState
          case lookupCtxt fn (idris_classes i) of
               [c] -> return (mkClassBodies i (class_methods c))
-              _ -> do ty <- getInternalApp fp l
+              _ -> do ty_in <- getInternalApp fp l
+                      let ty = case ty_in of
+                                    PTyped n t -> t
+                                    x -> x
                       ist <- get
                       let ap = mkApp ist ty []
-                      return (show fn ++ " " ++ ap ++ "= ?" 
-                                      ++ show fn ++ "_rhs")
+                      return (show un ++ " " ++ ap ++ "= ?" 
+                                      ++ show un ++ "_rhs")
    where mkApp :: IState -> PTerm -> [Name] -> String
          mkApp i (PPi (Exp _ _ False) (MN _ _) _ ty sc) used
                = let n = getNameFrom i used ty in
@@ -380,7 +384,7 @@ getClause l fn fp
                             def (show (nsroot n)) ++ " "
                                  ++ mkApp i ty []
                                  ++ "= ?" 
-                                 ++ show fn ++ "_rhs_" ++ show m) ns [1..])
+                                 ++ show un ++ "_rhs_" ++ show m) ns [1..])
 
          def n@(x:xs) | not (isAlphaNum x) = "(" ++ n ++ ")"
          def n = n
@@ -390,7 +394,10 @@ getProofClause :: Int      -- ^ line number that the type is declared
                -> FilePath -- ^ Source file name
                -> Idris String
 getProofClause l fn fp
-                  = do ty <- getInternalApp fp l
+                  = do ty_in <- getInternalApp fp l
+                       let ty = case ty_in of
+                                     PTyped n t -> t
+                                     x -> x
                        return (mkApp ty ++ " = ?" ++ show fn ++ "_rhs")
    where mkApp (PPi _ _ _ _ sc) = mkApp sc
          mkApp rt = "(" ++ show rt ++ ") <== " ++ show fn
