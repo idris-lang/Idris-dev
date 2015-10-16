@@ -1227,7 +1227,7 @@ process fn (Missing n)
     = do i <- getIState
          ppOpts <- fmap ppOptionIst getIState
          case lookupCtxt n (idris_patdefs i) of
-           [] -> iPrintError $ "Unknown operator " ++ show n
+           [] -> iPrintError $ "Unknown name " ++ show n
            [(_, tms)] ->
              iRenderResult (vsep (map (pprintPTerm ppOpts {ppopt_impl = True}
                                                    []

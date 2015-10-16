@@ -153,7 +153,7 @@ import_ = do fc <- getFC
 prog :: SyntaxInfo -> IdrisParser [PDecl]
 prog syn = do whiteSpace
               decls <- many (decl syn)
-              let c = (concat decls)
+              let c = concat decls
               case maxline syn of
                    Nothing -> do notOpenBraces; eof
                    _ -> return ()
@@ -191,17 +191,27 @@ decl syn = try (externalDecl syn)
 internalDecl :: SyntaxInfo -> IdrisParser [PDecl]
 internalDecl syn 
          = do fc <- getFC
-              -- if we're after maxline, stop here
+              -- if we're after maxline, stop at the next type declaration
+              -- (so we get all cases of a definition to preserve totality
+              -- results, in particular).
               let continue = case maxline syn of
                                 Nothing -> True
                                 Just l -> if fst (fc_end fc) > l
                                              then mut_nesting syn /= 0
                                              else True
-              if continue then do notEndBlock
-                                  declBody
-                          else fail "End of readable input"
-  where declBody :: IdrisParser [PDecl]
-        declBody =     declBody'
+              -- What I'd really like to do here is explicitly save the
+              -- current state, then if reading ahead finds we've passed
+              -- the end of the definition, reset the state. But I've lost
+              -- patience with trying to find out how to do that from the
+              -- trifecta docs, so this does the job instead.
+              if continue then 
+                 do notEndBlock
+                    declBody continue
+                else try (do notEndBlock
+                             declBody continue)
+                     <|> fail "End of readable input"
+  where declBody :: Bool -> IdrisParser [PDecl]
+        declBody b = declBody' b
                    <|> using_ syn
                    <|> params syn
                    <|> mutual syn
@@ -214,11 +224,17 @@ internalDecl syn
                    <|> transform syn
                    <|> do import_; fail "imports must be at top of file"
                    <?> "declaration"
-        declBody' :: IdrisParser [PDecl]
-        declBody' = do d <- decl' syn
-                       i <- get
-                       let d' = fmap (debindApp syn . (desugar syn i)) d
-                       return [d']
+        declBody' :: Bool -> IdrisParser [PDecl]
+        declBody' cont = do d <- decl' syn
+                            i <- get
+                            let d' = fmap (debindApp syn . (desugar syn i)) d
+                            if continue cont d'
+                               then return [d']
+                               else fail "End of readable input"
+
+        -- Keep going while we're still parsing clauses
+        continue False (PClauses _ _ _ _) = True
+        continue c _ = c
 
 {- | Parses a top-level declaration with possible syntax sugar
 
