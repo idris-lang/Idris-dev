@@ -1884,12 +1884,12 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            try' (runTacTm first') (runTacTm alt') True
       | n == tacN "prim__Fill", [raw] <- args
       = do raw' <- reifyRaw =<< eval raw
-           fill raw'
+           apply raw' []
            returnUnit
       | n == tacN "prim__Apply" || n == tacN "prim__MatchApply"
       , [raw, argSpec] <- args
       = do raw' <- reifyRaw =<< eval raw
-           argSpec' <- reifyList (reifyPair reifyBool reifyInt) argSpec
+           argSpec' <- map (\b -> (b, 0)) <$> reifyList reifyBool argSpec
            let op = if n == tacN "prim__Apply"
                        then apply
                        else match_apply
@@ -1912,17 +1912,14 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            ty' <- reifyRaw ty
            claim n' ty'
            returnUnit
-      | n == tacN "prim__Check", [raw] <- args
-      = do raw' <- reifyRaw =<< eval raw
+      | n == tacN "prim__Check", [env', raw] <- args
+      = do env <- reifyEnv env'
+           raw' <- reifyRaw =<< eval raw
            ctxt <- get_context
-           env <- get_env
            (tm, ty) <- lift $ check ctxt env raw'
            fmap fst . checkClosed $
              rawPair (Var (reflm "TT"), Var (reflm "TT"))
                      (reflect tm,       reflect ty)
-      | n == tacN "prim__Forget", [tt] <- args
-      = do tt' <- reifyTT tt
-           fmap fst . checkClosed . reflectRaw $ forget tt'
       | n == tacN "prim__Attack", [] <- args
       = do attack
            returnUnit

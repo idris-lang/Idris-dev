@@ -46,8 +46,8 @@ getDisjointness l r = exists <|> declare
                        fail [ NamePart l', TextPart "and"
                             , NamePart r', TextPart "are clearly not disjoint!"
                             ]
-                     (argsl, resl) <- stealBindings !(forgetTypes lty) noRenames
-                     (argsr, resr) <- stealBindings !(forgetTypes rty) noRenames
+                     (argsl, resl) <- stealBindings !(forget lty) noRenames
+                     (argsr, resr) <- stealBindings !(forget rty) noRenames
                      let args = map {b=FunArg}
                                     (\(n, b) => MkFunArg n (binderTy b) Implicit NotErased)
                                     (argsl ++ argsr)
@@ -74,9 +74,9 @@ disjoint =
      g <- snd <$> getGoal
      case g of
        `(((=) {A=~A} {B=~B} ~a ~b) -> Void) =>
-         do Just lHead <- headName <$> forgetTypes a
+         do Just lHead <- headName <$> forget a
               | Nothing => fail [TermPart a, TextPart "doesn't have a name at the head"]
-            Just rHead <- headName <$> forgetTypes b
+            Just rHead <- headName <$> forget b
               | Nothing => fail [TermPart b, TextPart "doesn't have a name at the head"]
             [] <- refine (Var !(getDisjointness lHead rHead))
               | _ => fail [TextPart "Didn't solve argument to disjointness lemma"]

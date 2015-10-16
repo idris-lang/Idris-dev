@@ -65,12 +65,12 @@ mkIh info motiveName recArg argty fam =
                 for_ {b=()} argArgs $ \(n, b) =>
                   forall n (getBinderTy b)
                 let argTm : Raw = mkApp (Var recArg) (map (Var . fst) argArgs)
-                argTmTy <- forgetTypes (snd !(check argTm))
+                argTmTy <- forget (snd !(check !getEnv argTm))
                 argHoles <- apply (Var motiveName)
                                   (replicate (length (getIndices info))
-                                             (True, 0) ++
-                                   [(False,1)])
-                argH <- snd <$> last argHoles
+                                             True ++
+                                   [False])
+                argH <- last argHoles
                 focus argH
                 fill argTm; solve
                 solve -- attack
@@ -80,9 +80,9 @@ mkIh info motiveName recArg argty fam =
 elabMethodTy : TyConInfo -> TTName -> List CtorArg -> Raw -> Raw -> Elab ()
 elabMethodTy info motiveName [] res ctorApp =
   do argHoles <- apply (Var motiveName)
-                       (replicate (length (getIndices info)) (True, 0) ++
-                        [(False, 1)])
-     argH <- snd <$> last argHoles
+                       (replicate (length (getIndices info)) True ++
+                        [False])
+     argH <- last argHoles
      focus argH; fill ctorApp; solve
      solve
 elabMethodTy info motiveName (CtorParameter arg  :: args) res ctorApp =
@@ -129,7 +129,7 @@ getElimTy info ctors =
                                  [Var scrut])
                 apply (alphaRaw iren ret) []
                 solve
-     forgetTypes (fst ty)
+     forget (fst ty)
 
 
 
@@ -167,9 +167,9 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         -- We leave the RHS with a function type: motive -> method* -> res
         -- to make it easier to map methods to constructors
         holes <- apply paramApp (replicate (length (getIndices info))
-                                           (True, 0) ++
-                                 [(False, 1)])
-        scr <- snd <$> last holes
+                                           True ++
+                                 [False])
+        scr <- last holes
         focus scr; fill (Var scrutinee); solve
         solve
 
@@ -204,12 +204,12 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
                                                  ]
                                      else return [NormalArgument n])
 
-        argHs <- apply (Var methN) (replicate (List.length argSpec) (True, 0))
+        argHs <- apply (Var methN) (replicate (List.length argSpec) True)
         solve
 
         -- Now build the recursive calls for the induction hypotheses
         for_ {a=(ElimArg, TTName)} {b=()}
-             !(zipH argSpec (map snd argHs))
+             !(zipH argSpec argHs)
              (\(spec, nh) =>
                 case spec of
                   NormalArgument n => do focus nh
@@ -220,12 +220,12 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
                        attack
                        local <- intros
                        ihHs <- apply (Var elimn) $
-                         replicate (length (TyConInfo.args info)) (True, 0) ++
-                         [(False, 1)] ++
-                         replicate (S methCount) (True, 0)
+                         replicate (length (TyConInfo.args info)) True ++
+                         [False] ++
+                         replicate (S methCount) True
                        solve -- application
 
-                       let (arg::motive::methods) = map snd $ drop (length (TyConInfo.args info)) ihHs
+                       let (arg::motive::methods) = drop (length (TyConInfo.args info)) ihHs
                        focus arg
 
                        apply (mkApp (Var n) (map Var local)) []; solve

@@ -257,14 +257,16 @@ forget tm = fe [] tm
         LT => Nothing
         GT => atIndex xs (n-1)
 
-    %assert_total
     fe : List TTName -> TT -> Maybe Raw
     fe env (P _ n _)     = Just $ Var n
-    fe env (V i)         = map Var (atIndex env i)
-    fe env (Bind n b sc) = [| RBind (pure n) (traverse (fe env) b) (fe (n::env) sc) |]
+    fe env (V i)         = [| Var (atIndex env i) |]
+    fe env (Bind n b sc) = [| RBind (pure n)
+                                    (assert_total $ traverse (fe env) b)
+                                    (fe (n::env) sc) |]
     fe env (App f a)     = [| RApp (fe env f) (fe env a) |]
     fe env (TConst c)    = Just $ RConstant c
     fe env (TType i)     = Just RType
+    fe env (UType uni)   = Just (RUType uni)
     fe env Erased        = Just $ RConstant Forgot
 
 instance Show Raw where

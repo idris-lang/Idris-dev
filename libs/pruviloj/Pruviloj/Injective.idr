@@ -34,8 +34,8 @@ getInjectivity cn = exists <|> declare
         declare = do (cn', DCon _ _, cty) <- lookupTyExact cn
                        | _ => notConstructor cn
                      let fn = injName cn'
-                     (args1, res1) <- stealBindings !(forgetTypes cty) noRenames
-                     (args2, res2) <- stealBindings !(forgetTypes cty) noRenames
+                     (args1, res1) <- stealBindings !(forget cty) noRenames
+                     (args2, res2) <- stealBindings !(forget cty) noRenames
                      let impls1 = map (\(n, b) => MkFunArg n (binderTy b) Implicit NotErased)
                                       args1
                      let impls2 = map (\(n, b) => MkFunArg n (binderTy b) Implicit NotErased)
@@ -62,11 +62,11 @@ getInjectivity cn = exists <|> declare
 
                                            res
                      clause <- elabPatternClause
-                                 (do ((_, h)::_) <- reverse <$>
-                                                    apply (Var fn)
-                                                          (replicate (2 * length args1)
-                                                                     (True, 0) ++
-                                                           [(False, 0)])
+                                 (do (h::_) <- reverse <$>
+                                                 apply (Var fn)
+                                                       (replicate (2 * length args1)
+                                                                  True ++
+                                                        [False])
                                        | _ => fail [TextPart "Missing hole"]
                                      solve
                                      focus h; search)
@@ -95,8 +95,8 @@ countBinders _ = Z
 covering public
 injective : (tm : Raw) -> (n : TTName) -> Elab ()
 injective tm n =
-  do (_, ty) <- check tm
-     case !(forgetTypes ty) of
+  do (_, ty) <- check !getEnv tm
+     case !(forget ty) of
        `((=) {A=~A} {B=~B} ~x ~y) =>
          case (headName x, headName y) of
            (Just xHd, Just yHd) =>
@@ -112,7 +112,7 @@ injective tm n =
                        focus tmH
                        (_, _, fnTy) <- lookupTyExact fn
 
-                       ((_, arg) :: _) <- reverse <$> apply (Var fn) (replicate (pred (countBinders fnTy)) (True, 0) ++ [(False,0)])
+                       (arg :: _) <- reverse <$> apply (Var fn) (replicate (pred (countBinders fnTy)) True ++ [False])
                          | _ => fail [TextPart "No hole for argument"]
                        solve
 

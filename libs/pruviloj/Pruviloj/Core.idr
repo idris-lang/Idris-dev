@@ -17,6 +17,34 @@ skip = pure ()
 try : Alternative f => f a -> f ()
 try tac = ignore tac <|> pure ()
 
+||| Remove type information from a `TT` term, in a context. Fails if
+||| de Bruijn indices are out of scope.
+forget' : List TTName -> TT -> Elab Raw
+forget' env (P nt n tm) = pure (Var n)
+forget' env (V x) = Var <$> getName x env
+  where getName : Int -> List a -> Elab a
+        getName _ [] = fail [TextPart "Scope error when forget'ting types"]
+        getName i (n::ns) = if i <= 0 then pure n else getName (i-1) ns
+forget' env (Bind n b tm) =
+    [| (RBind n)
+       (assert_total $ traverse (forget' env) b)
+       (forget' (n::env) tm) |]
+forget' env (App tm tm') = [| RApp (forget' env tm) (forget' env tm') |]
+forget' env (TConst c) = pure (RConstant c)
+forget' env Erased = pure (RConstant Forgot)
+forget' env (TType uexp) = pure RType
+forget' env (UType uni) = pure (RUType uni)
+
+||| Remove type information from a `TT` term. Fails if de Bruijn
+||| indices are out of scope.
+forget : TT -> Elab Raw
+forget tm = forget' [] tm
+
+||| Get the goal type as a Raw term. Fails if there are no holes.
+goalType : Elab Raw
+goalType = do g <- getGoal
+              forget (snd g)
+
 ||| Solve the goal using the most recent applicable hypothesis
 hypothesis : Elab ()
 hypothesis =
@@ -155,7 +183,7 @@ inferType tac =
         _ => fail [TextPart "Not infer"]
   where
     startInfer : Elab ()
-    startInfer = do [_, (_, tmH)] <- apply (Var `{MkInfer}) [(True, 0), (False, 1)]
+    startInfer = do [_, tmH] <- apply (Var `{MkInfer}) [True, False]
                        | err => fail [TextPart "Type inference failure"]
                     solve
                     focus tmH
@@ -181,15 +209,15 @@ andThen first after =
 ||| @ tm the term to apply to some number of goals
 refine : (tm : Raw) -> Elab (List TTName)
 refine tm =
-    do ty <- (snd <$> check tm) >>= forgetTypes
+    do ty <- (snd <$> check !getEnv tm) >>= forget
        g <- goalType
 
        -- we don't care about negative results because it'll just fail anyway
        let argCount = minus (countPi ty) (countPi g)
-       newHoles <- apply tm (replicate argCount (True, 0))
+       newHoles <- apply tm (replicate argCount True)
        solve
        actualHoles <- getHoles
-       return (filter (flip elem actualHoles) (map snd newHoles))
+       return (filter (flip elem actualHoles) newHoles)
 
   where countPi : Raw -> Nat
         countPi (RBind _ (Pi _ _) body) = S (countPi body)
@@ -201,12 +229,12 @@ refine tm =
 both : Raw -> TTName -> TTName -> Elab ()
 both tm n1 n2 =
     do -- We don't know that the term is canonical, so let-bind projections applied to it
-       (A, B) <- isPairTy (snd !(check tm))
+       (A, B) <- isPairTy (snd !(check !getEnv tm))
        remember n1 A; apply `(fst {a=~A} {b=~B} ~tm) []; solve
        remember n2 B; apply `(snd {a=~A} {b=~B} ~tm) []; solve
   where
     isPairTy : TT -> Elab (Raw, Raw)
-    isPairTy `((~A, ~B) : Type) = [| MkPair (forgetTypes A) (forgetTypes B) |]
+    isPairTy `((~A, ~B) : Type) = [| MkPair (forget A) (forget B) |]
     isPairTy tm = fail [TermPart tm, TextPart "is not a pair"]
 
 ||| Let-bind all results of completely destructuring nested tuples.

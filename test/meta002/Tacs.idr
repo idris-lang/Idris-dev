@@ -13,6 +13,8 @@ import Language.Reflection
 import Language.Reflection.Errors
 import Language.Reflection.Utils
 
+import Pruviloj.Core
+
 %default total
 
 -- Tactics can now query the elaborator and bind variables
