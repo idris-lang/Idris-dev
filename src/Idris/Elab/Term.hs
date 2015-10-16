@@ -31,7 +31,7 @@ import Control.Monad.State.Strict
 import Data.Foldable (for_)
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (mapMaybe, fromMaybe, catMaybes)
+import Data.Maybe (mapMaybe, fromMaybe, catMaybes, maybeToList)
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -1832,9 +1832,9 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       | n == tacN "prim__LookupTy", [n] <- args
       = do n' <- reifyTTName n
            ctxt <- get_context
-           let getNameTypeAndType = \case Function ty _ -> (Ref, ty)
-                                          TyDecl nt ty -> (nt, ty)
-                                          Operator ty _ _ -> (Ref, ty)
+           let getNameTypeAndType = \case Function ty _       -> (Ref, ty)
+                                          TyDecl nt ty        -> (nt, ty)
+                                          Operator ty _ _     -> (Ref, ty)
                                           CaseOp _ ty _ _ _ _ -> (Ref, ty)
                -- Idris tuples nest to the right
                reflectTriple (x, y, z) =
@@ -1858,6 +1858,30 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            fmap fst . checkClosed $
              rawList (Var (tacN "Datatype"))
                      (map reflectDatatype (buildDatatypes ist n'))
+      | n == tacN "prim__LookupArgs", [name] <- args
+      = do n' <- reifyTTName name
+           let listTy = Var (sNS (sUN "List") ["List", "Prelude"])
+               listFunArg = RApp listTy (Var (tacN "FunArg"))
+            -- Idris tuples nest to the right
+           let reflectTriple (x, y, z) =
+                 raw_apply (Var pairCon) [ Var (reflm "TTName")
+                                         , raw_apply (Var pairTy) [listFunArg, Var (reflm "Raw")]
+                                         , x
+                                         , raw_apply (Var pairCon) [listFunArg, Var (reflm "Raw")
+                                                                   , y, z]]
+           let out =
+                 [ reflectTriple (reflectName fn, reflectList (Var (tacN "FunArg")) (map reflectArg args), reflectRaw res)
+                 | (fn, pargs) <- lookupCtxtName n' (idris_implicits ist)
+                 , (args, res) <- getArgs pargs . forget <$>
+                                   maybeToList (lookupTyExact fn (tt_ctxt ist))
+                 ]
+
+           fmap fst . checkClosed $
+             rawList (raw_apply (Var pairTy) [Var (reflm "TTName")
+                                             , raw_apply (Var pairTy) [ RApp listTy
+                                                                             (Var (tacN "FunArg"))
+                                                                      , Var (reflm "Raw")]])
+                     out
       | n == tacN "prim__SourceLocation", [] <- args
       = fmap fst . checkClosed $
           reflectFC fc

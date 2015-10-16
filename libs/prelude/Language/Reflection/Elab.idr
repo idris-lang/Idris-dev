@@ -34,7 +34,9 @@ data Plicity =
 ||| Function arguments
 |||
 ||| These are the simplest representation of argument lists, and are
-||| used for functions.
+||| used for functions. Additionally, because a FunArg provides enough
+||| information to build an application, a generic type lookup of a
+||| top-level identifier will return its FunArgs, if applicable.
 record FunArg where
   constructor MkFunArg
   name    : TTName
@@ -114,6 +116,7 @@ data Elab : Type -> Type where
   prim__Guess : Elab (Maybe TT)
   prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
   prim__LookupDatatype : TTName -> Elab (List Datatype)
+  prim__LookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
 
   prim__Check : List (TTName, Binder TT) -> Raw -> Elab (TT, TT)
 
@@ -185,7 +188,7 @@ namespace Tactics
   ||| Halt elaboration with an error
   fail : List ErrorReportPart -> Elab a
   fail err = prim__Fail err
-  
+
   ||| Look up the lexical binding at the focused hole. Fails if no holes are present.
   getEnv : Elab (List (TTName, Binder TT))
   getEnv = prim__Env
@@ -228,6 +231,19 @@ namespace Tactics
                             []    => fail [TextPart "No datatype named", NamePart n]
                             xs    => fail [TextPart "More than one datatype named", NamePart n]
 
+
+  ||| Get the argument specification for each overloading of a name.
+  lookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
+  lookupArgs n = prim__LookupArgs n
+
+  ||| Get the argument specification for a name. Fail if the name does
+  ||| not uniquely resolve.
+  lookupArgsExact : TTName -> Elab (TTName, List FunArg, Raw)
+  lookupArgsExact n = case !(lookupArgs n) of
+                        [res] => return res
+                        []    => fail [NamePart n, TextPart "is not defined."]
+                        xs    => fail [NamePart n, TextPart "is ambiguous."]
+
   ||| Attempt to type-check a term, getting back itself and its type.
   |||
   ||| @ env the environment within which to check the type
@@ -255,10 +271,8 @@ namespace Tactics
   ||| Attempt to apply an operator to fill the current hole,
   ||| potentially solving arguments by unification.
   |||
-  ||| The return value is a list of pairs of names, one for each input
-  ||| argument. The first projection of these pairs is the original
-  ||| name of the argument, from the type declaration, and the second
-  ||| projection is the hole into which it is placed.
+  ||| The return value is the list of holes established for the
+  ||| arguments to the function.
   |||
   ||| Note that not all of the returned hole names still exist, as
   ||| they may have been solved.
@@ -267,18 +281,15 @@ namespace Tactics
   |||
   ||| @ argSpec instructions for finding the arguments to the term,
   |||     where the Boolean states whether or not to attempt to solve
-  |||     the argument and the Int gives the priority in which to do
-  |||     so
+  |||     the argument by unification.
   apply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
   apply tm argSpec = map snd <$> prim__Apply tm argSpec
 
   ||| Attempt to apply an operator to fill the current hole,
-  ||| potentially solving arugments by matching.
+  ||| potentially solving arguments by matching.
   |||
-  ||| The return value is a list of pairs of names, one for each input
-  ||| argument. The first projection of these pairs is the original
-  ||| name of the argument, from the type declaration, and the second
-  ||| projection is the hole into which it is placed.
+  ||| The return value is the list of holes established for the
+  ||| arguments to the function.
   |||
   ||| Note that not all of the returned hole names still exist, as
   ||| they may have been solved.
@@ -287,8 +298,8 @@ namespace Tactics
   |||
   ||| @ argSpec instructions for finding the arguments to the term,
   |||     where the Boolean states whether or not to attempt to solve
-  |||     the argument and the Int gives the priority in which to do
-  |||     so
+  |||     the argument by matching.
+
   matchApply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
   matchApply tm argSpec = map snd <$> prim__Apply tm argSpec
 
