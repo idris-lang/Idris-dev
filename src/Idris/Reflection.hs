@@ -1047,6 +1047,12 @@ envTupleType
                            , (RApp (Var $ reflm "Binder") (Var $ reflm "TT"))
                            ]
 
+reflectList :: Raw -> [Raw] -> Raw
+reflectList ty []     = RApp (Var (sNS (sUN "Nil") ["List", "Prelude"])) ty
+reflectList ty (x:xs) = RApp (RApp (RApp (Var (sNS (sUN "::") ["List", "Prelude"])) ty)
+                                   x)
+                             (reflectList ty xs)
+
 -- | Apply Idris's implicit info to get a signature. The [PArg] should
 -- come from a lookup in idris_implicits on IState.
 getArgs :: [PArg] -> Raw -> ([RFunArg], Raw)
