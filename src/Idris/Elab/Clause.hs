@@ -477,7 +477,9 @@ checkPossible info fc tcgen fname lhs_in
         let lhs = addImplPat i lhs_in
         -- if the LHS type checks, it is possible
         case elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
-                            (erun fc (buildTC i info ELHS [] fname (infTerm lhs))) of
+                            (erun fc (buildTC i info ELHS [] fname 
+                                                (allNamesIn lhs_in)
+                                                (infTerm lhs))) of
             OK (ElabResult lhs' _ _ ctxt' newDecls highlights, _) ->
                do setContext ctxt'
                   processTacticDecls info newDecls
@@ -492,19 +494,19 @@ checkPossible info fc tcgen fname lhs_in
                                                  recoverableCoverage ctxt err)
 
 
-propagateParams :: IState -> [Name] -> Type -> PTerm -> PTerm
-propagateParams i ps t tm@(PApp _ (PRef fc hls n) args)
+propagateParams :: IState -> [Name] -> Type -> [Name] -> PTerm -> PTerm
+propagateParams i ps t bound tm@(PApp _ (PRef fc hls n) args)
      = PApp fc (PRef fc hls n) (addP t args)
    where addP (Bind n _ sc) (t : ts)
               | Placeholder <- getTm t,
                 n `elem` ps,
-                not (n `elem` allNamesIn tm)
+                not (n `elem` bound)
                     = t { getTm = PRef NoFC [] n } : addP sc ts
          addP (Bind n _ sc) (t : ts) = t : addP sc ts
          addP _ ts = ts
-propagateParams i ps t tm@(PApp fc ap args)
-     = PApp fc (propagateParams i ps t ap) args
-propagateParams i ps t (PRef fc hls n)
+propagateParams i ps t bound (PApp fc ap args)
+     = PApp fc (propagateParams i ps t bound ap) args
+propagateParams i ps t bound (PRef fc hls n)
      = case lookupCtxt n (idris_implicits i) of
             [is] -> let ps' = filter (isImplicit is) ps in
                         PApp fc (PRef fc hls n) (map (\x -> pimp x (PRef fc [] x) True) ps')
@@ -512,7 +514,7 @@ propagateParams i ps t (PRef fc hls n)
     where isImplicit [] n = False
           isImplicit (PImp _ _ _ x _ : is) n | x == n = True
           isImplicit (_ : is) n = isImplicit is n
-propagateParams i ps t x = x
+propagateParams i ps t bound x = x
 
 findUnique :: Context -> Env -> Term -> [Name]
 findUnique ctxt env (Bind n b sc)
@@ -561,7 +563,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         let tcparams = getTCParamsInType i [] fn_is norm_ty
 
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
-                    propagateParams i params norm_ty (addImplPat i lhs_in)
+                    propagateParams i params norm_ty (allNamesIn lhs_in) (addImplPat i lhs_in)
 --         let lhs = mkLHSapp $ 
 --                     propagateParams i params fn_ty (addImplPat i lhs_in)
         logLvl 10 (show (params, fn_ty) ++ " " ++ showTmImpls (addImplPat i lhs_in))
@@ -572,7 +574,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ((ElabResult lhs' dlhs [] ctxt' newDecls highlights, probs, inj), _) <-
            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
                     (do res <- errAt "left hand side of " fname Nothing
-                                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs)))
+                                 (erun fc (buildTC i info ELHS opts fname 
+                                          (allNamesIn lhs_in)
+                                          (infTerm lhs)))
                         probs <- get_probs
                         inj <- get_inj
                         return (res, probs, inj))
@@ -813,12 +817,16 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                          [t] -> t
                          _ -> []
         let params = getParamsInType i [] fn_is (normalise ctxt [] fn_ty)
-        let lhs = stripLinear i $ stripUnmatchable i $ propagateParams i params fn_ty (addImplPat i lhs_in)
+        let lhs = stripLinear i $ stripUnmatchable i $ 
+                   propagateParams i params fn_ty (allNamesIn lhs_in) 
+                    (addImplPat i lhs_in)
         logLvl 2 ("LHS: " ++ show lhs)
         (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-
             tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
               (errAt "left hand side of with in " fname Nothing
-                (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
+                (erun fc (buildTC i info ELHS opts fname 
+                                  (allNamesIn lhs_in)
+                                  (infTerm lhs))) )
         setContext ctxt'
         processTacticDecls info newDecls
         sendHighlighting highlights

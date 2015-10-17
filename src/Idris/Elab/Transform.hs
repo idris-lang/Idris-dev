@@ -57,7 +57,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-
               tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "transLHS") infP initEState
                        (erun fc (buildTC i info ETransLHS [] (sUN "transform")
-                                   (infTerm lhs)))
+                                   (allNamesIn lhs_in) (infTerm lhs)))
          setContext ctxt'
          processTacticDecls info newDecls
          sendHighlighting highlights

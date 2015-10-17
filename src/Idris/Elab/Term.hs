@@ -138,15 +138,16 @@ build ist info emode opts fn tm
 -- (Separate, so we don't go overboard resolving things that we don't
 -- know about yet on the LHS of a pattern def)
 
-buildTC :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> PTerm ->
+buildTC :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name -> 
+         [Name] -> -- Cached names in the PTerm, before adding PAlternatives
+         PTerm ->
          ElabD ElabResult
-buildTC ist info emode opts fn tm
-    = do -- set name supply to begin after highest index in tm
-         let ns = allNamesIn tm
-         let tmIn = tm
+buildTC ist info emode opts fn ns tm
+    = do let tmIn = tm
          let inf = case lookupCtxt fn (idris_tyinfodata ist) of
                         [TIPartial] -> True
                         _ -> False
+         -- set name supply to begin after highest index in tm 
          initNextNameFrom ns
          elab ist info emode opts fn tm
          probs <- get_probs
@@ -2540,7 +2541,8 @@ processTacticDecls info steps =
           let fc = fileFC "elab_reflected_totality"
           let tcgen = False -- TODO: later we may support dictionary generation
           case elaborate ctxt (idris_datatypes ist) (sMN 0 "refPatLHS") infP initEState
-                (erun fc (buildTC ist info ELHS [] fname (infTerm lhs))) of
+                (erun fc (buildTC ist info ELHS [] fname (allNamesIn lhs_in)
+                                                         (infTerm lhs))) of
             OK (ElabResult lhs' _ _ _ _ _, _) ->
               do -- not recursively calling here, because we don't
                  -- want to run infinitely many times
