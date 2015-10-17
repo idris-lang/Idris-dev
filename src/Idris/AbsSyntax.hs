@@ -1694,7 +1694,9 @@ aiFn :: Name -> Bool -> Bool -> Bool
      -> [PArg] -- ^ initial arguments (if in an expression)
      -> Either Err PTerm
 aiFn topname inpat True qq imp_meths ist fc f ffc ds [] _
-  = case lookupDef f (tt_ctxt ist) of
+  | inpat && implicitable f && unqualified f = Right $ PPatvar ffc f
+  | otherwise 
+     = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar ffc f
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
                     -- trace (show f ++ " " ++ show (fc, any (all imp) ialts, ialts, any constructor alts)) $
@@ -1707,6 +1709,10 @@ aiFn topname inpat True qq imp_meths ist fc f ffc ds [] _
           imp _ = True
 --           allImp [] = False
           allImp xs = all imp xs
+
+          unqualified (NS _ _) = False
+          unqualified _ = True
+
           constructor (TyDecl (DCon _ _ _) _) = True
           constructor _ = False
 
@@ -1887,9 +1893,11 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su tm@(PRef fc hl f)
        | (Bind n (Pi _ t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
-       | (TType _ : _) <- lookupTy f (tt_ctxt i)
+       | (TType _ : _) <- lookupTy f (tt_ctxt i),
+         not (implicitable f)
           = PHidden tm
-       | (UType _ : _) <- lookupTy f (tt_ctxt i)
+       | (UType _ : _) <- lookupTy f (tt_ctxt i),
+         not (implicitable f)
           = PHidden tm
     su (PApp fc f@(PRef _ _ fn) args)
        -- here we use canBeDConName because the impossible pattern

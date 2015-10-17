@@ -501,7 +501,7 @@ propagateParams i ps t bound tm@(PApp _ (PRef fc hls n) args)
               | Placeholder <- getTm t,
                 n `elem` ps,
                 not (n `elem` bound)
-                    = t { getTm = PRef NoFC [] n } : addP sc ts
+                    = t { getTm = PPatvar NoFC n } : addP sc ts
          addP (Bind n _ sc) (t : ts) = t : addP sc ts
          addP _ ts = ts
 propagateParams i ps t bound (PApp fc ap args)

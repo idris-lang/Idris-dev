@@ -17,13 +17,13 @@ using (G : Vect n Ty)
       (::) : interpTy a -> Env G -> Env (a :: G)
 
   data HasType : (i : Fin n) -> Vect n Ty -> Ty -> Type where
-      stop : HasType FZ (t :: G) t
-      pop  : HasType k G t -> HasType (FS k) (u :: G) t
+      Stop : HasType FZ (t :: G) t
+      Pop  : HasType k G t -> HasType (FS k) (u :: G) t
 
   lookup : HasType i G t -> Env G -> interpTy t
-  lookup stop    (x :: xs) = x
-  lookup (pop k) (x :: xs) = lookup k xs
-  lookup stop    [] impossible
+  lookup Stop    (x :: xs) = x
+  lookup (Pop k) (x :: xs) = lookup k xs
+  lookup Stop    [] impossible
 
   data Expr : Vect n Ty -> Ty -> Type where
       Var : HasType i G t -> Expr G t
@@ -41,8 +41,8 @@ using (G : Vect n Ty)
   dsl expr
       lambda = lam_
       variable = Var
-      index_first = stop
-      index_next = pop
+      index_first = Stop
+      index_next = Pop
 
   total
   interp : Env G -> [static] (e : Expr G t) -> interpTy t
@@ -67,7 +67,7 @@ using (G : Vect n Ty)
 --   eDouble = Lam (App (App (Lam (Lam (Op' (+) (Var FZ) (Var (FS FZ))))) (Var FZ)) (Var FZ))
 
   eDouble : Expr G (TyFun TyInt TyInt)
-  eDouble = expr (\x => App (App eAdd x) (Var stop))
+  eDouble = expr (\x => App (App eAdd x) (Var Stop))
 
 --   app : Lazy (Expr G (TyFun a t)) -> Expr G a -> Expr G t
 --   app = \f, a => App (Force f) a
@@ -81,8 +81,8 @@ using (G : Vect n Ty)
 
   eProg : Expr G (TyFun TyInt (TyFun TyInt TyInt))
   eProg = Lam (Lam
-                    (Bind (App eDouble (Var (pop stop)))
-              (\x => Bind (App eDouble (Var stop))
+                    (Bind (App eDouble (Var (Pop Stop)))
+              (\x => Bind (App eDouble (Var Stop))
               (\y => Bind (App eDouble (Val x))
               (\z => App (App eAdd (Val y)) (Val z))))))
 

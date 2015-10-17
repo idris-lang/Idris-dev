@@ -30,10 +30,10 @@ argsAreDiff _ _ = ()
 
 
 data SameNats : Type where
-  same : (n:Nat) -> (m:Nat) -> {{ same : accept (decEq m n) }} -> SameNats
+  Same : (n:Nat) -> (m:Nat) -> {{ same : accept (decEq m n) }} -> SameNats
 
 data DiffNats : Type where
-  diff : (n:Nat) -> (m:Nat) -> {{ diff : reject (decEq m n) }} -> DiffNats
+  Diff : (n:Nat) -> (m:Nat) -> {{ diff : reject (decEq m n) }} -> DiffNats
 
 
 zArgsAreSame : ()
@@ -43,7 +43,7 @@ zszArgsAreDiff : ()
 zszArgsAreDiff = argsAreDiff Z (S Z)
 
 sameNatZs : SameNats
-sameNatZs = same Z Z
+sameNatZs = Same Z Z
 
 diffNatsZSZ : DiffNats
-diffNatsZSZ = diff Z (S Z)
+diffNatsZSZ = Diff Z (S Z)

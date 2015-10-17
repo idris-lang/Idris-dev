@@ -445,7 +445,8 @@ are not given in applications of ``index``; their values can be
 inferred from the types of the ``Fin n`` and ``Vect n a``
 arguments. Any name beginning with a lower case letter which appears
 as a parameter or index in a
-type declaration, but which is otherwise unbound, will be automatically
+type declaration, which is not applied to any arguments, will 
+*always* be automatically
 bound as an implicit argument. Implicit arguments can still be given
 explicitly in applications, using ``{a=value}`` and ``{n=value}``, for
 example:

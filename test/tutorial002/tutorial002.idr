@@ -1,31 +1,31 @@
 module Main
 
 data Binary : Nat -> Type where
-    bEnd : Binary Z
-    bO : Binary n -> Binary (n + n)
-    bI : Binary n -> Binary (S (n + n))
+    BEnd : Binary Z
+    BO : Binary n -> Binary (n + n)
+    BI : Binary n -> Binary (S (n + n))
 
 instance Show (Binary n) where
-    show (bO x) = show x ++ "0"
-    show (bI x) = show x ++ "1"
-    show bEnd = ""
+    show (BO x) = show x ++ "0"
+    show (BI x) = show x ++ "1"
+    show BEnd = ""
 
 data Parity : Nat -> Type where
-   even : Parity (n + n)
-   odd  : Parity (S (n + n))
+   Even : Parity (n + n)
+   Odd  : Parity (S (n + n))
 
 parity : (n:Nat) -> Parity n
-parity Z     = even {n=Z}
-parity (S Z) = odd {n=Z}
+parity Z     = Even {n=Z}
+parity (S Z) = Odd {n=Z}
 parity (S (S k)) with (parity k)
-    parity (S (S (j + j)))     | even ?= even {n=S j}
-    parity (S (S (S (j + j)))) | odd  ?= odd {n=S j}
+    parity (S (S (j + j)))     | Even ?= Even {n=S j}
+    parity (S (S (S (j + j)))) | Odd  ?= Odd {n=S j}
 
 natToBin : (n:Nat) -> Binary n
-natToBin Z = bEnd
+natToBin Z = BEnd
 natToBin (S k) with (parity k)
-   natToBin (S (j + j))     | even  = bI (natToBin j)
-   natToBin (S (S (j + j))) | odd  ?= bO (natToBin (S j))
+   natToBin (S (j + j))     | Even  = BI (natToBin j)
+   natToBin (S (S (j + j))) | Odd  ?= BO (natToBin (S j))
 
 intToNat : Int -> Nat
 intToNat 0 = Z

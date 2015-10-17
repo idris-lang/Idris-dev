@@ -1,2 +1,2 @@
-?prf : (x : Bool) -> (x1 : Bool) -> El (EQ two x two x1) -> El (EQ two x two x1)
+?prf : (x : Bool) -> (x1 : Bool) -> El (EQ Two x Two x1) -> El (EQ Two x Two x1)
 Z

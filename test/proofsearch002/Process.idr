@@ -119,7 +119,7 @@ mutual
      Pure : a -> Process a iface hs (const hs) p (const p)
      Quit : a -> Process a iface hs (const hs) p (const (resetReplied p))
 
-     bind : Process a iface hs hs' p p' -> 
+     Bind : Process a iface hs hs' p p' -> 
             ((x : a) -> Process b iface (hs' x) hs'' (p' x) p'') ->
             Process b iface hs hs'' p p''
 
@@ -207,7 +207,7 @@ Lift = Lift'
 (>>=) : Process a iface hs hs' p p' -> 
         ((x : a) -> Process b iface (hs' x) hs'' (p' x) p'') ->
         Process b iface hs hs'' p p''
-(>>=) = bind
+(>>=) = Bind
 
 TrySend : (proc : ProcID iface) -> iface ty -> 
           Process (Maybe ty) iface' 
@@ -371,7 +371,7 @@ eval st (Lift' x) k = do x' <- x
                          k x' st
 eval st (Pure x) k = k x st
 eval st (Quit x) k = k x st
-eval st (bind x f) k = eval st x (\x', st' => eval st' (f x') k)
+eval st (Bind x f) k = eval st x (\x', st' => eval st' (f x') k)
 
 eval st (Fork proc) k 
         = do ptr <- fork (eval (MkEvalState [] [] 1 0) proc (\_, _ => pure ()))

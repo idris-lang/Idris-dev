@@ -16,6 +16,9 @@ Language updates
   valid unbound implicit is now *always* an unbound implicit. This is much
   more resilient to changes in inputs, but does require that function names
   be explicitly qualified when in argument position.
+* Name binding in patterns follows the same rule as name binding for implicits
+  in types: names which begin with lower case letters, not applied to any
+  arguments, are treated as bound pattern variables.
 
 Library updates
 ---------------
