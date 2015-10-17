@@ -437,9 +437,14 @@ pprintErr' i (AlreadyDefined n) = annName n<+>
 pprintErr' i (ProofSearchFail e) = pprintErr' i e
 pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delabSugared i tm))
 pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
-pprintErr' i (Elaborating s n e) = text "When checking" <+> text s <>
-                                   annName' n (showqual i n) <> colon <$>
-                                   pprintErr' i e
+pprintErr' i (Elaborating s n ty e) = text "When checking" <+> text s <>
+                                      annName' n (showqual i n) <> 
+                                      pprintTy ty <$>
+                                      pprintErr' i e
+    where pprintTy Nothing = colon
+          pprintTy (Just ty) = text " with expected type" <> 
+                               indented (annTm ty (pprintTerm i (delabSugared i ty)))
+                               <> line
 pprintErr' i (ElaboratingArg f x _ e)
   | isInternal f = pprintErr' i e
   | isUN x =

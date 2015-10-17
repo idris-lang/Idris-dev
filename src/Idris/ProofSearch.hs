@@ -178,7 +178,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
     cantsolve (CantSolveGoal _ _) = True
     cantsolve (IncompleteTerm _) = True
     cantsolve (At _ e) = cantsolve e
-    cantsolve (Elaborating _ _ e) = cantsolve e
+    cantsolve (Elaborating _ _ _ e) = cantsolve e
     cantsolve (ElaboratingArg _ _ _ e) = cantsolve e
     cantsolve err = False
 

@@ -571,7 +571,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         ((ElabResult lhs' dlhs [] ctxt' newDecls highlights, probs, inj), _) <-
            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
-                    (do res <- errAt "left hand side of " fname
+                    (do res <- errAt "left hand side of " fname Nothing
                                  (erun fc (buildTC i info ELHS opts fname (infTerm lhs)))
                         probs <- get_probs
                         inj <- get_inj
@@ -655,9 +655,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         mapM_ setinj (nub (tcparams ++ inj))
                         setNextName
                         (ElabResult _ _ is ctxt' newDecls highlights) <-
-                          errAt "right hand side of " fname
+                          errAt "right hand side of " fname (Just clhsty)
                                 (erun fc (build i winfo ERHS opts fname rhs))
-                        errAt "right hand side of " fname
+                        errAt "right hand side of " fname (Just clhsty)
                               (erun fc $ psolve lhs_tm)
                         hs <- get_holes
                         mapM_ (elabCaseHole is) hs
@@ -677,7 +677,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logLvl 4 $ "---> " ++ show rhs'
         when (not (null defer)) $ logLvl 1 $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t,_)) -> (n, t)) defer)
-        def' <- checkDef fc (Elaborating "deferred type of ") defer
+        def' <- checkDef fc (\n -> Elaborating "deferred type of " n Nothing) defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
         addDeferred def''
         mapM_ (\(n, _) -> addIBC (IBCDef n)) def''
@@ -817,7 +817,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         logLvl 2 ("LHS: " ++ show lhs)
         (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-
             tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patLHS") infP initEState
-              (errAt "left hand side of with in " fname
+              (errAt "left hand side of with in " fname Nothing
                 (erun fc (buildTC i info ELHS opts fname (infTerm lhs))) )
         setContext ctxt'
         processTacticDecls info newDecls
@@ -842,7 +842,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                             mapM_ addPSname (allNamesIn lhs_in)
                             setNextName
                             -- TODO: may want where here - see winfo abpve
-                            (ElabResult _ d is ctxt' newDecls highlights) <- errAt "with value in " fname
+                            (ElabResult _ d is ctxt' newDecls highlights) <- errAt "with value in " fname Nothing
                               (erun fc (build i info ERHS opts fname (infTerm wval)))
                             erun fc $ psolve lhs_tm
                             tt <- get_term

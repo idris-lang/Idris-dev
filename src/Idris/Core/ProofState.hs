@@ -878,7 +878,7 @@ updateProv ns p = p
 
 updateError [] err = err
 updateError ns (At f e) = At f (updateError ns e)
-updateError ns (Elaborating s n e) = Elaborating s n (updateError ns e)
+updateError ns (Elaborating s n ty e) = Elaborating s n ty (updateError ns e)
 updateError ns (ElaboratingArg f a env e)
  = ElaboratingArg f a env (updateError ns e)
 updateError ns (CantUnify b (l,lp) (r,rp) e xs sc)

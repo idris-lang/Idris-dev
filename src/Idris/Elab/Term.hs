@@ -309,7 +309,7 @@ elab ist info emode opts fn tm
     forceErr orig env (InfiniteUnify _ t _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
             ht == txt "Lazy'" = notDelay orig
-    forceErr orig env (Elaborating _ _ t) = forceErr orig env t
+    forceErr orig env (Elaborating _ _ _ t) = forceErr orig env t
     forceErr orig env (ElaboratingArg _ _ _ t) = forceErr orig env t
     forceErr orig env (At _ t) = forceErr orig env t
     forceErr orig env t = False
@@ -484,7 +484,7 @@ elab ist info emode opts fn tm
                         | otherwise = t
 
               isAmbiguous (CantResolveAlts _) = delayok
-              isAmbiguous (Elaborating _ _ e) = isAmbiguous e
+              isAmbiguous (Elaborating _ _ _ e) = isAmbiguous e
               isAmbiguous (ElaboratingArg _ _ _ e) = isAmbiguous e
               isAmbiguous (At _ e) = isAmbiguous e
               isAmbiguous _ = False
@@ -1662,7 +1662,7 @@ solveAuto ist fn ambigok (n, failc)
         cantsolve (CantSolveGoal _ _) = True
         cantsolve (InternalMsg _) = True
         cantsolve (At _ e) = cantsolve e
-        cantsolve (Elaborating _ _ e) = cantsolve e
+        cantsolve (Elaborating _ _ _ e) = cantsolve e
         cantsolve (ElaboratingArg _ _ _ e) = cantsolve e
         cantsolve _ = False
 
@@ -2396,9 +2396,9 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
           handle e@(At fc err) = do logLvl 3 "Reflecting body of At"
                                     err' <- handle err
                                     return (At fc err')
-          handle e@(Elaborating what n err) = do logLvl 3 "Reflecting body of Elaborating"
-                                                 err' <- handle err
-                                                 return (Elaborating what n err')
+          handle e@(Elaborating what n ty err) = do logLvl 3 "Reflecting body of Elaborating"
+                                                    err' <- handle err
+                                                    return (Elaborating what n ty err')
           handle e@(ElaboratingArg f a prev err) = do logLvl 3 "Reflecting body of ElaboratingArg"
                                                       hs <- getFnHandlers f a
                                                       err' <- if null hs

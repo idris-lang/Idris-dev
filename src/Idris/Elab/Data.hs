@@ -78,7 +78,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
                         UType UniqueType -> return True
                         UType _ -> return False
                         TType _ -> return False
-                        rt -> tclift $ tfail (At fc (Elaborating "type constructor " n (Msg "Not a valid type constructor")))
+                        rt -> tclift $ tfail (At fc (Elaborating "type constructor " n Nothing (Msg "Not a valid type constructor")))
          cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty) ckind) dcons
          ttag <- getName
          i <- getIState
@@ -255,9 +255,9 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
   where
     tyIs con (Bind n b sc) = tyIs con sc
     tyIs con t | (P _ n' _, _) <- unApply t
-        = if n' /= tn then tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show n' ++ " is not " ++ show tn))))
+        = if n' /= tn then tclift $ tfail (At fc (Elaborating "constructor " con Nothing (Msg (show n' ++ " is not " ++ show tn))))
              else return ()
-    tyIs con t = tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show t ++ " is not " ++ show tn))))
+    tyIs con t = tclift $ tfail (At fc (Elaborating "constructor " con Nothing (Msg (show t ++ " is not " ++ show tn))))
 
     mkLazy (PPi pl n nfc ty sc)
         = let ty' = if getTyName ty
@@ -339,12 +339,12 @@ elabCaseFun ind paramPos n ty cons info = do
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
   elimLog $ "-- case function definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
   State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorTyDecl)
-                    (ierror . Elaborating "type declaration of " elimDeclName)
+                    (ierror . Elaborating "type declaration of " elimDeclName Nothing)
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
     [] -> State.lift $ solveDeferred elimDeclName -- Remove meta-variable for type
     _  -> State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorDef)
-                    (ierror . Elaborating "clauses of " elimDeclName)
+                    (ierror . Elaborating "clauses of " elimDeclName Nothing)
   where elimLog :: String -> EliminatorState ()
         elimLog s = State.lift (logLvl 2 s)
 

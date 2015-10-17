@@ -145,10 +145,11 @@ instance Binary a => Binary (Err' a) where
   put (At fc e) = do putWord8 27
                      put fc
                      put e
-  put (Elaborating str n e) = do putWord8 28
-                                 put str
-                                 put n
-                                 put e
+  put (Elaborating str n ty e) = do putWord8 28
+                                    put str
+                                    put n
+                                    put ty
+                                    put e
   put (ElaboratingArg n1 n2 ns e) = do putWord8 29
                                        put n1
                                        put n2
@@ -233,8 +234,8 @@ instance Binary a => Binary (Err' a) where
              26 -> fmap NoRewriting get
              27 -> do x <- get ; y <- get
                       return $ At x y
-             28 -> do x <- get ; y <- get ; z <- get
-                      return $ Elaborating x y z
+             28 -> do w <- get; x <- get ; y <- get ; z <- get
+                      return $ Elaborating w x y z
              29 -> do w <- get ; x <- get ; y <- get ; z <- get
                       return $ ElaboratingArg w x y z
              30 -> fmap ProviderError get

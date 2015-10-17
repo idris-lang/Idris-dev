@@ -69,7 +69,7 @@ buildType info syn fc opts n ty' = do
 
          (ElabResult tyT' defer is ctxt' newDecls highlights, log) <-
             tclift $ elaborate ctxt (idris_datatypes i) n (TType (UVal 0)) initEState
-                     (errAt "type of " n (erun fc (build i info ETyDecl [] n ty)))
+                     (errAt "type of " n Nothing (erun fc (build i info ETyDecl [] n ty)))
          setContext ctxt'
          processTacticDecls info newDecls
          sendHighlighting highlights

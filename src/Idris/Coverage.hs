@@ -137,7 +137,7 @@ validCoverageCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
                    _ -> False
 validCoverageCase ctxt (CantConvert _ _ _) = False
 validCoverageCase ctxt (At _ e) = validCoverageCase ctxt e
-validCoverageCase ctxt (Elaborating _ _ e) = validCoverageCase ctxt e
+validCoverageCase ctxt (Elaborating _ _ _ e) = validCoverageCase ctxt e
 validCoverageCase ctxt (ElaboratingArg _ _ _ e) = validCoverageCase ctxt e
 validCoverageCase ctxt _ = True
 
@@ -167,7 +167,7 @@ recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
                   | (Bound, Bound) <- (x, y) = True
                   | otherwise = False -- name is different, unrecoverable
 recoverableCoverage ctxt (At _ e) = recoverableCoverage ctxt e
-recoverableCoverage ctxt (Elaborating _ _ e) = recoverableCoverage ctxt e
+recoverableCoverage ctxt (Elaborating _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (ElaboratingArg _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage _ _ = False
 

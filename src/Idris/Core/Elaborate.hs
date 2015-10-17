@@ -119,8 +119,8 @@ transformErr f elab = do s <- get
       rewriteErr (ProofSearchFail e) = ProofSearchFail (rewriteErr e)
       rewriteErr e = f e
 
-errAt :: String -> Name -> Elab' aux a -> Elab' aux a
-errAt thing n = transformErr (Elaborating thing n)
+errAt :: String -> Name -> Maybe Type -> Elab' aux a -> Elab' aux a
+errAt thing n ty = transformErr (Elaborating thing n ty)
 
 
 erun :: FC -> Elab' aux a -> Elab' aux a

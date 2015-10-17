@@ -1,4 +1,7 @@
-reg023.idr:7:5:When checking right hand side of bad:
+reg023.idr:7:5:
+When checking right hand side of bad with expected type
+        f Nat
+
 Type mismatch between
         Nat (Type of 0)
 and

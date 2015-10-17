@@ -5,5 +5,7 @@ This style of tactic proof is deprecated. See %runElab for the replacement.
 Quasiquote004.idr:50:27-32:
 This style of tactic proof is deprecated. See %runElab for the replacement.
 Quasiquote004.idr:50:25:
-When checking right hand side of Quasiquote004.getMeNat':
+When checking right hand side of Quasiquote004.getMeNat' with expected type
+        String
+
 Not a Nat goal

@@ -181,7 +181,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
              ctxt <- getContext
              (ElabResult tyT _ _ ctxt' newDecls highlights, _) <-
                 tclift $ elaborate ctxt (idris_datatypes i) iname (TType (UVal 0)) initEState
-                         (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
+                         (errAt "type of " iname Nothing (erun fc (build i info ERHS [] iname ty)))
              setContext ctxt'
              processTacticDecls info newDecls
              sendHighlighting highlights

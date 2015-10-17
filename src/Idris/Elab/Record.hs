@@ -171,7 +171,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
        ttConsTy <-
          case lookupTyExact dconName (tt_ctxt i) of
                Just as -> return as
-               Nothing -> tclift $ tfail $ At fc (Elaborating "record " tyn (InternalMsg "It seems like the constructor for this record has disappeared. :( \n This is a bug. Please report."))
+               Nothing -> tclift $ tfail $ At fc (Elaborating "record " tyn Nothing (InternalMsg "It seems like the constructor for this record has disappeared. :( \n This is a bug. Please report."))
 
        -- The arguments to the constructor
        let constructorArgs = getArgTys ttConsTy

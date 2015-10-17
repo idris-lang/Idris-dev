@@ -1344,7 +1344,7 @@ addUsingImpls syn n fc t
         let badnames = filter (\n -> not (implicitable n) &&
                                      n `notElem` (map iname uimpls)) ns
         when (not (null badnames)) $
-           throwError (At fc (Elaborating "type of " n
+           throwError (At fc (Elaborating "type of " n Nothing
                          (NoSuchVariable (head badnames))))
         let cs = getArgnames t -- get already bound names
         let addimpls = filter (\n -> iname n `notElem` cs) uimpls

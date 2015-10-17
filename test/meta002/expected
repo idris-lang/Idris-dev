@@ -1,6 +1,10 @@
 Tacs.idr:298:15:
-When checking right hand side of testElab3:
+When checking right hand side of testElab3 with expected type
+        Sigma Ty (Tm [])
+
 Unifying ty and ARR ty t would lead to infinite value
 AgdaStyleReflection.idr:243:5:
-When checking right hand side of baz:
+When checking right hand side of baz with expected type
+        (Nat, Void)
+
 PROOF SEARCH FAILURE is not defined.

@@ -287,7 +287,7 @@ data Err' t
           | ProofSearchFail (Err' t)
           | NoRewriting t
           | At FC (Err' t)
-          | Elaborating String Name (Err' t)
+          | Elaborating String Name (Maybe t) (Err' t)
           | ElaboratingArg Name Name [(Name, Name)] (Err' t)
           | ProviderError String
           | LoadingFailed String (Err' t)
@@ -360,7 +360,7 @@ instance Sized Err where
   size (IncompleteTerm trm) = size trm
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
-  size (Elaborating _ n err) = size err
+  size (Elaborating _ _ _ err) = size err
   size (ElaboratingArg _ _ _ err) = size err
   size (ProviderError msg) = length msg
   size (LoadingFailed fn e) = 1 + length fn + size e
@@ -381,7 +381,11 @@ instance Show Err where
     show (At f e) = show f ++ ":" ++ show e
     show (ElaboratingArg f x prev e) = "Elaborating " ++ show f ++ " arg " ++
                                        show x ++ ": " ++ show e
-    show (Elaborating what n e) = "Elaborating " ++ what ++ show n ++ ":" ++ show e
+    show (Elaborating what n ty e) = "Elaborating " ++ what ++ show n ++ 
+                                     showType ty ++ ":" ++ show e
+        where
+          showType Nothing = ""
+          showType (Just ty) = " with expected type " ++ show ty
     show (ProofSearchFail e) = "Proof search fail: " ++ show e
     show (InfiniteUnify _ _ _) = "InfiniteUnify"
     show (UnifyScope _ _ _ _) = "UnifyScope"

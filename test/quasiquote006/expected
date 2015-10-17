@@ -1,12 +1,18 @@
 quasiquote006.idr:9:3:
-When checking right hand side of b:
+When checking right hand side of b with expected type
+        TTName
+
 Can't disambiguate name: ForeignEnv.Nil, 
                          Prelude.List.Nil
 quasiquote006.idr:12:3:
-When checking right hand side of c:
+When checking right hand side of c with expected type
+        TTName
+
 No such variable alsdkjflkj
 quasiquote006.idr:15:3:
-When checking right hand side of d:
+When checking right hand side of d with expected type
+        TTName
+
 Can't disambiguate name: ForeignEnv.::, 
                          Prelude.List.::, 
                          Prelude.Stream.::

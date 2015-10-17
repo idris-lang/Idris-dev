@@ -36,6 +36,7 @@ record FFI where
 ||| The IO type, parameterised over the FFI that is available within
 ||| it.
 abstract
+%error_reverse
 data IO' : (lang : FFI) -> Type -> Type where
      MkIO : (World -> PrimIO (WorldRes a)) -> IO' lang a
 
@@ -171,9 +172,11 @@ namespace FFI_C
 
   ||| A descriptor for the C FFI. See the constructors of `C_Types`
   ||| and `C_IntTypes` for the concrete types that are available.
+  %error_reverse
   FFI_C : FFI
   FFI_C = MkFFI C_Types String String
 
+%error_reverse
 IO : Type -> Type
 IO = IO' FFI_C
 
@@ -228,9 +231,11 @@ mutual
 ||| The JavaScript FFI. The strings naming functions in this API are
 ||| JavaScript code snippets, into which the arguments are substituted
 ||| for the placeholders `%0`, `%1`, etc.
+%error_reverse
 FFI_JS : FFI
 FFI_JS = MkFFI JS_Types String String
 
+%error_reverse
 JS_IO : Type -> Type
 JS_IO = IO' FFI_JS
 
