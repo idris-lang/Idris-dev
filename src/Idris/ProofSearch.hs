@@ -462,9 +462,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
     boundVar (P Bound _ _) = True
     boundVar _ = False
 
-    blunderbuss t d stk [] = do -- c <- get_env
-                            -- ps <- get_probs
-                            lift $ tfail $ CantResolve False topg
+    blunderbuss t d stk [] = lift $ tfail $ CantResolve False topg
     blunderbuss t d stk (n:ns)
         | n /= fn -- && (n `elem` stk)
               = tryCatch (resolve n d)

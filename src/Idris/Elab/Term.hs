@@ -714,8 +714,9 @@ elab ist info emode opts fn tm
                                    g <- goal
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
-                                    then try (resolveTC' True False 10 g fn ist)
-                                             (movelast n)
+                                    then handleError (tcRecoverable emode)
+                                           (resolveTC' True False 10 g fn ist)
+                                           (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
                -- HACK: If the name leaks into its type, it may leak out of
@@ -886,7 +887,8 @@ elab ist info emode opts fn tm
                                                     env <- get_env
                                                     hs <- get_holes
                                                     if all (\n -> not (n `elem` hs)) (freeNames g)
-                                                     then try (resolveTC' False False 10 g fn ist)
+                                                     then handleError (tcRecoverable emode)
+                                                              (resolveTC' False False 10 g fn ist)
                                                               (movelast n)
                                                      else movelast n)
                                           (ivs' \\ ivs)
@@ -1671,6 +1673,15 @@ solveAutos :: IState -> Name -> Bool -> ElabD ()
 solveAutos ist fn ambigok
            = do autos <- get_autos
                 mapM_ (solveAuto ist fn ambigok) (map (\(n, (fc, _)) -> (n, fc)) autos)
+
+-- Return true if the given error suggests a type class failure is
+-- recoverable
+tcRecoverable :: ElabMode -> Err -> Bool
+tcRecoverable ERHS (CantResolve f g) = f
+tcRecoverable ETyDecl (CantResolve f g) = f
+tcRecoverable e (ElaboratingArg _ _ _ err) = tcRecoverable e err
+tcRecoverable e (At _ err) = tcRecoverable e err
+tcRecoverable _ _ = True
 
 trivial' ist
     = trivial (elab ist toplevel ERHS [] (sMN 0 "tac")) ist
