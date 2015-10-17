@@ -346,6 +346,14 @@ getNameHints i n =
 addToCalledG :: Name -> [Name] -> Idris ()
 addToCalledG n ns = return () -- TODO
 
+addDeprecated :: Name -> String -> Idris ()
+addDeprecated n reason = do i <- getIState
+                            putIState $ i { idris_deprecated = addDef n reason (idris_deprecated i) }
+
+getDeprecated :: Name -> Idris (Maybe String)
+getDeprecated n = do i <- getIState
+                     return $ lookupCtxtExact n (idris_deprecated i)
+
 push_estack :: Name -> Bool -> Idris ()
 push_estack n inst
     = do i <- getIState

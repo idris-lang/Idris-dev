@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 125
+ibcVersion = 126
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -86,7 +86,8 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_parsedSpan :: !(Maybe FC),
                          ibc_usage :: ![(Name, Int)],
                          ibc_exports :: ![Name],
-                         ibc_autohints :: ![(Name, Name)]
+                         ibc_autohints :: ![(Name, Name)],
+                         ibc_deprecated :: ![(Name, String)]
                        }
    deriving Show
 {-!
@@ -94,7 +95,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -179,7 +180,8 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        toEntry "ibc_parsedSpan" 0 . encode <$> ibc_parsedSpan i,
                        makeEntry "ibc_usage"  (ibc_usage i),
                        makeEntry "ibc_exports"  (ibc_exports i),
-                       makeEntry "ibc_autohints"  (ibc_autohints i)]
+                       makeEntry "ibc_autohints"  (ibc_autohints i),
+                       makeEntry "ibc_deprecated"  (ibc_deprecated i)]
 
 writeArchive :: FilePath -> IBCFile -> Idris ()
 writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
@@ -305,6 +307,7 @@ ibc i (IBCModDocs n) f = case lookupCtxtExact n (idris_moduledocs i) of
 ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
 ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f }
+ibc i (IBCDeprecate n r) f = return f { ibc_deprecated = (n, r) : ibc_deprecated f }
 
 getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
 getEntry alt f a = case findEntryByPath f a of
@@ -367,6 +370,7 @@ process reexp i fn = do
                 pUsage =<< getEntry [] "ibc_usage" i
                 pExports =<< getEntry [] "ibc_exports" i
                 pAutoHints =<< getEntry [] "ibc_autohints" i
+                pDeprecate =<< getEntry [] "ibc_deprecated" i
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -393,6 +397,9 @@ pExports ns = updateIState (\i -> i { idris_exports = ns ++ idris_exports i })
 
 pAutoHints :: [(Name, Name)] -> Idris ()
 pAutoHints ns = mapM_ (\(n,h) -> addAutoHint n h) ns
+
+pDeprecate :: [(Name, String)] -> Idris ()
+pDeprecate ns = mapM_ (\(n,reason) -> addDeprecated n reason) ns
 
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs

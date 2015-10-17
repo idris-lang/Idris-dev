@@ -1323,6 +1323,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     return [PDirective (DErrorHandlers fn nfc arg afc ns) ]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (DLanguage ext)]
+             <|> do try (lchar '%' *> reserved "deprecate")
+                    n <- fst <$> fnName
+                    alt <- option "" (fst <$> stringLiteral)
+                    return [PDirective (DDeprecate n alt)]
              <|> do fc <- getFC
                     try (lchar '%' *> reserved "used")
                     fn <- fst <$> fnName

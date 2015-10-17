@@ -6,11 +6,14 @@ import Idris.Error
 import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
+import Idris.Output
 
 import Idris.Core.TT
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.Typecheck
+
+import Util.Pretty
 
 import Control.Applicative hiding (Const)
 import Control.Monad.State
@@ -36,7 +39,19 @@ recheckC_borrowing uniq_check addConstrs bs fc mkerr env t
                                    OK x -> return x
          logLvl 6 $ "CONSTRAINTS ADDED: " ++ show (tm, ty, cs)
          when addConstrs $ addConstraints fc cs
+         mapM_ (checkDeprecated fc) (allTTNames tm)
+         mapM_ (checkDeprecated fc) (allTTNames ty)
          return (tm, ty)
+
+checkDeprecated :: FC -> Name -> Idris ()
+checkDeprecated fc n 
+    = do r <- getDeprecated n
+         case r of
+              Nothing -> return ()
+              Just r -> do iWarn fc $ text "Use of deprecated name " <> annName n
+                                 <> case r of
+                                         "" -> Util.Pretty.empty
+                                         _ -> line <> text r
 
 iderr :: Name -> Err -> Err
 iderr _ e = e

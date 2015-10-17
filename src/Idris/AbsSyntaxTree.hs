@@ -259,7 +259,8 @@ data IState = IState {
     idris_symbols :: M.Map Name Name, -- ^ Symbol table (preserves sharing of names)
     idris_exports :: [Name], -- ^ Functions with ExportList
     idris_highlightedRegions :: [(FC, OutputAnnotation)], -- ^ Highlighting information to output
-    idris_parserHighlights :: [(FC, OutputAnnotation)] -- ^ Highlighting information from the parser
+    idris_parserHighlights :: [(FC, OutputAnnotation)], -- ^ Highlighting information from the parser
+    idris_deprecated :: Ctxt String -- ^ Deprecated names and explanation
    }
 
 -- Required for parsers library, and therefore trifecta
@@ -335,6 +336,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCUsage (Name, Int)
               | IBCExport Name
               | IBCAutoHint Name Name
+              | IBCDeprecate Name String
   deriving Show
 
 -- | The initial state for the compiler
@@ -349,6 +351,7 @@ idrisInit = IState initContext S.empty []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
+                   emptyContext
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -708,6 +711,7 @@ data Directive = DLib Codegen String |
                  DNameHint Name FC [(Name, FC)] |
                  DErrorHandlers Name FC Name FC [(Name, FC)] |
                  DLanguage LanguageExt |
+                 DDeprecate Name String |
                  DUsed FC Name Name
 
 -- | A set of instructions for things that need to happen in IState
