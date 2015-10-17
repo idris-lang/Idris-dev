@@ -19,11 +19,11 @@ instance Catchable (Either a) a where
     throw x = Left x
 
 instance Catchable (IOExcept err) err where
-    catch (ioM prog) h = ioM (do p' <- prog
+    catch (IOM prog) h = IOM (do p' <- prog
                                  case p' of
-                                      Left e => let ioM he = h e in he
+                                      Left e => let IOM he = h e in he
                                       Right val => return (Right val))
-    throw x = ioM (return (Left x))
+    throw x = IOM (return (Left x))
 
 instance Catchable List () where
     catch [] h = h ()

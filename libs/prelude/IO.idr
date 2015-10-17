@@ -8,7 +8,7 @@ import Prelude.List
 ||| Idris's primitive IO, for building abstractions on top of
 abstract
 data PrimIO : Type -> Type where
-     prim__IO : a -> PrimIO a
+     Prim__IO : a -> PrimIO a
 
 ||| A token representing the world, for use in `IO`
 abstract data World = TheWorld prim__WorldType
@@ -94,14 +94,14 @@ foreign ffi fname ty {fty} = foreign_prim ffi fname fty []
 
 abstract
 prim_io_bind : PrimIO a -> (a -> PrimIO b) -> PrimIO b
-prim_io_bind (prim__IO v) k = k v
+prim_io_bind (Prim__IO v) k = k v
 
 unsafePerformPrimIO : PrimIO a -> a
 -- compiled as primitive
 
 abstract
 prim_io_return : a -> PrimIO a
-prim_io_return x = prim__IO x
+prim_io_return x = Prim__IO x
 
 abstract
 io_bind : IO' l a -> (a -> IO' l b) -> IO' l b

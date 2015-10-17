@@ -104,62 +104,62 @@ record Datatype where
 abstract
 data Elab : Type -> Type where
   -- obligatory control stuff
-  prim__PureElab : a -> Elab a
-  prim__BindElab : {a, b : Type} -> Elab a -> (a -> Elab b) -> Elab b
+  Prim__PureElab : a -> Elab a
+  Prim__BindElab : {a, b : Type} -> Elab a -> (a -> Elab b) -> Elab b
 
-  prim__Try : {a : Type} -> Elab a -> Elab a -> Elab a
-  prim__Fail : {a : Type} -> List ErrorReportPart -> Elab a
+  Prim__Try : {a : Type} -> Elab a -> Elab a -> Elab a
+  Prim__Fail : {a : Type} -> List ErrorReportPart -> Elab a
 
-  prim__Env : Elab (List (TTName, Binder TT))
-  prim__Goal : Elab (TTName, TT)
-  prim__Holes : Elab (List TTName)
-  prim__Guess : Elab (Maybe TT)
-  prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
-  prim__LookupDatatype : TTName -> Elab (List Datatype)
-  prim__LookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
+  Prim__Env : Elab (List (TTName, Binder TT))
+  Prim__Goal : Elab (TTName, TT)
+  Prim__Holes : Elab (List TTName)
+  Prim__Guess : Elab (Maybe TT)
+  Prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
+  Prim__LookupDatatype : TTName -> Elab (List Datatype)
+  Prim__LookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
 
-  prim__Check : List (TTName, Binder TT) -> Raw -> Elab (TT, TT)
+  Prim__Check : List (TTName, Binder TT) -> Raw -> Elab (TT, TT)
 
-  prim__SourceLocation : Elab SourceLocation
-  prim__Namespace : Elab (List String)
+  Prim__SourceLocation : Elab SourceLocation
+  Prim__Namespace : Elab (List String)
 
-  prim__Gensym : String -> Elab TTName
+  Prim__Gensym : String -> Elab TTName
 
-  prim__Solve : Elab ()
-  prim__Fill : Raw -> Elab ()
-  prim__Apply : Raw -> List Bool -> Elab (List (TTName, TTName))
-  prim__MatchApply : Raw -> List Bool -> Elab (List (TTName, TTName))
-  prim__Focus : TTName -> Elab ()
-  prim__Unfocus : TTName -> Elab ()
-  prim__Attack : Elab ()
+  Prim__Solve : Elab ()
+  Prim__Fill : Raw -> Elab ()
+  Prim__Apply : Raw -> List Bool -> Elab (List (TTName, TTName))
+  Prim__MatchApply : Raw -> List Bool -> Elab (List (TTName, TTName))
+  Prim__Focus : TTName -> Elab ()
+  Prim__Unfocus : TTName -> Elab ()
+  Prim__Attack : Elab ()
 
-  prim__Rewrite : Raw -> Elab ()
+  Prim__Rewrite : Raw -> Elab ()
 
-  prim__Claim : TTName -> Raw -> Elab ()
-  prim__Intro : Maybe TTName -> Elab ()
-  prim__Forall : TTName -> Raw -> Elab ()
-  prim__PatVar : TTName -> Elab ()
-  prim__PatBind : TTName -> Elab ()
-  prim__LetBind : TTName -> Raw -> Raw -> Elab ()
+  Prim__Claim : TTName -> Raw -> Elab ()
+  Prim__Intro : Maybe TTName -> Elab ()
+  Prim__Forall : TTName -> Raw -> Elab ()
+  Prim__PatVar : TTName -> Elab ()
+  Prim__PatBind : TTName -> Elab ()
+  Prim__LetBind : TTName -> Raw -> Raw -> Elab ()
 
-  prim__Compute : Elab ()
-  prim__Normalise : (List (TTName, Binder TT)) -> TT -> Elab TT
-  prim__Whnf : TT -> Elab TT
-  prim__Converts : (List (TTName, Binder TT)) -> TT -> TT -> Elab ()
+  Prim__Compute : Elab ()
+  Prim__Normalise : (List (TTName, Binder TT)) -> TT -> Elab TT
+  Prim__Whnf : TT -> Elab TT
+  Prim__Converts : (List (TTName, Binder TT)) -> TT -> TT -> Elab ()
 
-  prim__DeclareType : TyDecl -> Elab ()
-  prim__DefineFunction : FunDefn -> Elab ()
-  prim__AddInstance : TTName -> TTName -> Elab ()
-  prim__IsTCName : TTName -> Elab Bool
+  Prim__DeclareType : TyDecl -> Elab ()
+  Prim__DefineFunction : FunDefn -> Elab ()
+  Prim__AddInstance : TTName -> TTName -> Elab ()
+  Prim__IsTCName : TTName -> Elab Bool
 
-  prim__ResolveTC : TTName -> Elab ()
-  prim__Search : Int -> List TTName -> Elab ()
-  prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
+  Prim__ResolveTC : TTName -> Elab ()
+  Prim__Search : Int -> List TTName -> Elab ()
+  Prim__RecursiveElab : Raw -> Elab () -> Elab (TT, TT)
 
-  prim__Fixity : String -> Elab Fixity
+  Prim__Fixity : String -> Elab Fixity
 
-  prim__Debug : {a : Type} -> List ErrorReportPart -> Elab a
-  prim__Metavar : TTName -> Elab ()
+  Prim__Debug : {a : Type} -> List ErrorReportPart -> Elab a
+  Prim__Metavar : TTName -> Elab ()
 
 -------------
 -- Public API
@@ -167,47 +167,47 @@ data Elab : Type -> Type where
 %access public
 namespace Tactics
   instance Functor Elab where
-    map f t = prim__BindElab t (\x => prim__PureElab (f x))
+    map f t = Prim__BindElab t (\x => Prim__PureElab (f x))
 
   instance Applicative Elab where
-    pure x  = prim__PureElab x
-    f <*> x = prim__BindElab f $ \g =>
-              prim__BindElab x $ \y =>
-              prim__PureElab   $ g y
+    pure x  = Prim__PureElab x
+    f <*> x = Prim__BindElab f $ \g =>
+              Prim__BindElab x $ \y =>
+              Prim__PureElab   $ g y
 
   ||| The Alternative instance on Elab represents left-biased error
   ||| handling. In other words, `t <|> t'` will run `t`, and if it
   ||| fails, roll back the elaboration state and run `t'`.
   instance Alternative Elab where
-    empty   = prim__Fail [TextPart "empty"]
-    x <|> y = prim__Try x y
+    empty   = Prim__Fail [TextPart "empty"]
+    x <|> y = Prim__Try x y
 
   instance Monad Elab where
-    x >>= f = prim__BindElab x f
+    x >>= f = Prim__BindElab x f
 
   ||| Halt elaboration with an error
   fail : List ErrorReportPart -> Elab a
-  fail err = prim__Fail err
+  fail err = Prim__Fail err
 
   ||| Look up the lexical binding at the focused hole. Fails if no holes are present.
   getEnv : Elab (List (TTName, Binder TT))
-  getEnv = prim__Env
+  getEnv = Prim__Env
 
   ||| Get the name and type of the focused hole. Fails if not holes are present.
   getGoal : Elab (TTName, TT)
-  getGoal = prim__Goal
+  getGoal = Prim__Goal
 
   ||| Get the hole queue, in order.
   getHoles : Elab (List TTName)
-  getHoles = prim__Holes
+  getHoles = Prim__Holes
 
   ||| If the current hole contains a guess, return it. Otherwise, fail.
   getGuess : Elab (Maybe TT)
-  getGuess = prim__Guess
+  getGuess = Prim__Guess
 
   ||| Look up the types of every overloading of a name.
   lookupTy :  TTName -> Elab (List (TTName, NameType, TT))
-  lookupTy n = prim__LookupTy n
+  lookupTy n = Prim__LookupTy n
 
   ||| Get the type of a fully-qualified name. Fail if it doesn not
   ||| resolve uniquely.
@@ -220,7 +220,7 @@ namespace Tactics
   ||| Find the reflected representation of all datatypes whose names
   ||| are overloadings of some name.
   lookupDatatype : TTName -> Elab (List Datatype)
-  lookupDatatype n = prim__LookupDatatype n
+  lookupDatatype n = Prim__LookupDatatype n
 
   ||| Find the reflected representation of a datatype, given its
   ||| fully-qualified name. Fail if the name does not uniquely resolve
@@ -234,7 +234,7 @@ namespace Tactics
 
   ||| Get the argument specification for each overloading of a name.
   lookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
-  lookupArgs n = prim__LookupArgs n
+  lookupArgs n = Prim__LookupArgs n
 
   ||| Get the argument specification for a name. Fail if the name does
   ||| not uniquely resolve.
@@ -249,7 +249,7 @@ namespace Tactics
   ||| @ env the environment within which to check the type
   ||| @ tm the term to check
   check : (env : List (TTName, Binder TT)) -> (tm : Raw) -> Elab (TT, TT)
-  check env tm = prim__Check env tm
+  check env tm = Prim__Check env tm
 
 
   ||| Generate a unique name based on some hint.
@@ -257,16 +257,16 @@ namespace Tactics
   ||| **NB**: the generated name is unique _for this run of the
   ||| elaborator_. Do not assume that they are globally unique.
   gensym : (hint : String) -> Elab TTName
-  gensym hint = prim__Gensym hint
+  gensym hint = Prim__Gensym hint
 
   ||| Substitute a guess into a hole.
   solve : Elab ()
-  solve = prim__Solve
+  solve = Prim__Solve
 
   ||| Place a term into a hole, unifying its type. Fails if the focus
   ||| is not a hole.
   fill : Raw -> Elab ()
-  fill tm = prim__Fill tm
+  fill tm = Prim__Fill tm
 
   ||| Attempt to apply an operator to fill the current hole,
   ||| potentially solving arguments by unification.
@@ -283,7 +283,7 @@ namespace Tactics
   |||     where the Boolean states whether or not to attempt to solve
   |||     the argument by unification.
   apply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
-  apply tm argSpec = map snd <$> prim__Apply tm argSpec
+  apply tm argSpec = map snd <$> Prim__Apply tm argSpec
 
   ||| Attempt to apply an operator to fill the current hole,
   ||| potentially solving arguments by matching.
@@ -301,19 +301,19 @@ namespace Tactics
   |||     the argument by matching.
 
   matchApply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
-  matchApply tm argSpec = map snd <$> prim__Apply tm argSpec
+  matchApply tm argSpec = map snd <$> Prim__Apply tm argSpec
 
   ||| Move the focus to the specified hole. Fails if the hole does not
   ||| exist.
   |||
   ||| @ hole the hole to focus on
   focus : (hole : TTName) -> Elab ()
-  focus hole = prim__Focus hole
+  focus hole = Prim__Focus hole
 
   ||| Send the currently-focused hole to the end of the hole queue and
   ||| focus on the next hole.
   unfocus : TTName -> Elab ()
-  unfocus hole = prim__Unfocus hole
+  unfocus hole = Prim__Unfocus hole
 
   ||| Convert a hole to make it suitable for bindings - that is,
   ||| transform it such that it has the form `?h : t . h` as opposed to
@@ -324,7 +324,7 @@ namespace Tactics
   ||| sense. This tactic creates a new hole of the proper form, and
   ||| points the old hole at it.
   attack : Elab ()
-  attack = prim__Attack
+  attack = Prim__Attack
 
   ||| Introduce a new hole with a specified name and type.
   |||
@@ -332,7 +332,7 @@ namespace Tactics
   ||| will be immediately after it in the hole queue. Because this
   ||| tactic introduces a new binding, you may need to `attack` first.
   claim : TTName -> Raw -> Elab ()
-  claim n ty = prim__Claim n ty
+  claim n ty = Prim__Claim n ty
 
   ||| Introduce a lambda binding around the current hole and focus on
   ||| the body. Requires that the hole be in binding form (use
@@ -340,7 +340,7 @@ namespace Tactics
   |||
   ||| @ n the name to use for the argument
   intro : (n : TTName) -> Elab ()
-  intro n = prim__Intro (Just n)
+  intro n = Prim__Intro (Just n)
 
   ||| Introduce a lambda binding around the current hole and focus on
   ||| the body, using the name provided by the type of the
@@ -349,7 +349,7 @@ namespace Tactics
   ||| Requires that the hole be immediately under its binder (use
   ||| `attack` if it might not be).
   intro' : Elab ()
-  intro' = prim__Intro Nothing
+  intro' = Prim__Intro Nothing
 
   ||| Introduce a dependent function type binding into the current hole,
   ||| and focus on the body.
@@ -357,18 +357,18 @@ namespace Tactics
   ||| Requires that the hole be immediately under its binder (use
   ||| `attack` if it might not be).
   forall : TTName -> Raw -> Elab ()
-  forall n ty = prim__Forall n ty
+  forall n ty = Prim__Forall n ty
 
   ||| Convert a hole into a pattern variable.
   patvar : TTName -> Elab ()
-  patvar n = prim__PatVar n
+  patvar n = Prim__PatVar n
 
   ||| Introduce a new pattern binding.
   |||
   ||| Requires that the hole be immediately under its binder (use
   ||| `attack` if it might not be).
   patbind : TTName -> Elab ()
-  patbind n = prim__PatBind n
+  patbind n = Prim__PatBind n
 
   ||| Introduce a new let binding.
   |||
@@ -379,24 +379,24 @@ namespace Tactics
   ||| @ ty the type of the term to be let-bound
   ||| @ tm the term to be bound
   letbind : (n : TTName) -> (ty, tm : Raw) -> Elab ()
-  letbind n ty tm = prim__LetBind n ty tm
+  letbind n ty tm = Prim__LetBind n ty tm
 
   ||| Normalise the goal.
   compute : Elab ()
-  compute = prim__Compute
+  compute = Prim__Compute
 
   ||| Normalise a term in some lexical environment
   |||
   ||| @ env the environment in which to compute (get one of these from `getEnv`)
   ||| @ term the term to normalise
   normalise : (env : List (TTName, Binder TT)) -> (term : TT) -> Elab TT
-  normalise env term = prim__Normalise env term
+  normalise env term = Prim__Normalise env term
 
   ||| Reduce a closed term to weak-head normal form
   |||
   ||| @ term the term to reduce
   whnf : (term : TT) -> Elab TT
-  whnf term = prim__Whnf term
+  whnf term = Prim__Whnf term
 
   ||| Check that two terms are convertable in the current context and
   ||| in some environment.
@@ -405,7 +405,7 @@ namespace Tactics
   ||| @ term1 the first term to convert
   ||| @ term2 the second term to convert
   convertsInEnv : (env : List (TTName, Binder TT)) -> (term1, term2 : TT) -> Elab ()
-  convertsInEnv env term1 term2 = prim__Converts env term1 term2
+  convertsInEnv env term1 term2 = Prim__Converts env term1 term2
 
   ||| Check that two terms are convertable in the current context and environment
   |||
@@ -416,7 +416,7 @@ namespace Tactics
 
   ||| Find the source context for the elaboration script
   getSourceLocation : Elab SourceLocation
-  getSourceLocation = prim__SourceLocation
+  getSourceLocation = Prim__SourceLocation
 
   ||| Attempt to solve the current goal with the source code location
   sourceLocation : Elab ()
@@ -430,7 +430,7 @@ namespace Tactics
   ||| The namespace is represented as a reverse-order list of strings,
   ||| just as in the representation of names.
   currentNamespace : Elab (List String)
-  currentNamespace = prim__Namespace
+  currentNamespace = Prim__Namespace
 
   ||| Attempt to rewrite the goal using an equality.
   |||
@@ -443,48 +443,48 @@ namespace Tactics
   ||| requires that the hole be immediately under its binder (use
   ||| `attack` if it might not be).
   rewriteWith : Raw -> Elab ()
-  rewriteWith rule = prim__Rewrite rule
+  rewriteWith rule = Prim__Rewrite rule
 
   ||| Add a type declaration to the global context.
   declareType : TyDecl -> Elab ()
-  declareType decl = prim__DeclareType decl
+  declareType decl = Prim__DeclareType decl
 
   ||| Define a function in the global context. The function must have
   ||| already been declared, either in ordinary Idris code or using
   ||| `declareType`.
   defineFunction : FunDefn -> Elab ()
-  defineFunction defun = prim__DefineFunction defun
+  defineFunction defun = Prim__DefineFunction defun
 
   ||| Register a new instance for type class resolution.
   |||
   ||| @ className the name of the class for which an instance is being registered
   ||| @ instName the name of the definition to use in instance search
   addInstance : (className, instName : TTName) -> Elab ()
-  addInstance className instName = prim__AddInstance className instName
+  addInstance className instName = Prim__AddInstance className instName
 
   ||| Determine whether a name denotes a class.
   |||
   ||| @ name a name that might denote a class.
   isTCName : (name : TTName) -> Elab Bool
-  isTCName name = prim__IsTCName name
+  isTCName name = Prim__IsTCName name
 
   ||| Attempt to solve the current goal with a type class dictionary
   |||
   ||| @ fn the name of the definition being elaborated (to prevent Idris
   ||| from looping)
   resolveTC : (fn : TTName) -> Elab ()
-  resolveTC fn = prim__ResolveTC fn
+  resolveTC fn = Prim__ResolveTC fn
 
   ||| Use Idris's internal proof search.
   search : Elab ()
-  search = prim__Search 100 []
+  search = Prim__Search 100 []
 
   ||| Use Idris's internal proof search, with more control.
   |||
   ||| @ depth the search depth
   ||| @ hints additional names to try
   search' : (depth : Int) -> (hints : List TTName) -> Elab ()
-  search' depth hints = prim__Search depth hints
+  search' depth hints = Prim__Search depth hints
 
   ||| Look up the declared fixity for an operator.
   |||
@@ -493,14 +493,14 @@ namespace Tactics
   |||
   ||| @ operator the operator string to look up
   operatorFixity : (operator : String) -> Elab Fixity
-  operatorFixity operator = prim__Fixity operator
+  operatorFixity operator = Prim__Fixity operator
 
   ||| Halt elaboration, dumping the internal state for inspection.
   |||
   ||| This is intended for elaboration script developers, not for
   ||| end-users. Use `fail` for final scripts.
   debug : Elab a
-  debug = prim__Debug []
+  debug = Prim__Debug []
 
   ||| Halt elaboration, dumping the internal state and displaying a
   ||| message.
@@ -510,17 +510,17 @@ namespace Tactics
   |||
   ||| @ msg the message to display
   debugMessage : (msg : List ErrorReportPart) -> Elab a
-  debugMessage msg = prim__Debug msg
+  debugMessage msg = Prim__Debug msg
 
   ||| Create a new top-level metavariable to solve the current hole.
   |||
   ||| @ name the name for the top-level variable
   metavar : (name : TTName) -> Elab ()
-  metavar name = prim__Metavar name
+  metavar name = Prim__Metavar name
 
   ||| Recursively invoke the reflected elaborator with some goal.
   |||
   ||| The result is the final term and its type.
   runElab : Raw -> Elab () -> Elab (TT, TT)
-  runElab goal script = prim__RecursiveElab goal script
+  runElab goal script = Prim__RecursiveElab goal script
 
