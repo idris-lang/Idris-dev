@@ -159,17 +159,17 @@ relabel {xs = (MkEff a e :: xs)} l (v :: vs) = (l := v) :: relabel l vs
 data EffM : (m : Type -> Type) -> (x : Type)
             -> (es : List EFFECT)
             -> (ce : x -> List EFFECT) -> Type where
-     value    : (val : a) -> EffM m a (xs val) xs
-     ebind    : EffM m a xs xs' ->
+     Value    : (val : a) -> EffM m a (xs val) xs
+     EBind    : EffM m a xs xs' ->
                 ((val : a) -> EffM m b (xs' val) xs'') -> EffM m b xs xs''
-     callP    : (prf : EffElem e a xs) ->
+     CallP    : (prf : EffElem e a xs) ->
                 (eff : e t a b) ->
                 EffM m t xs (\v => updateResTy v xs prf eff)
 
-     liftP    : (prf : SubList ys xs) ->
+     LiftP    : (prf : SubList ys xs) ->
                 EffM m t ys ys' -> EffM m t xs (\v => updateWith (ys' v) xs prf)
 
-     new      : Handler e' m => (e : EFFECT) -> resTy ->
+     New      : Handler e' m => (e : EFFECT) -> resTy ->
                 {auto prf : e = MkEff resTy e'} ->
                 EffM m t (e :: es) (\v => e :: es) ->
                 EffM m t es (\v => es)
@@ -211,12 +211,12 @@ namespace DepEff
 %no_implicit
 (>>=)   : EffM m a xs xs' ->
           ((val : a) -> EffM m b (xs' val) xs'') -> EffM m b xs xs''
-(>>=) = ebind
+(>>=) = EBind
 
 -- namespace SimpleBind
 --   (>>=) : Eff m a xs (\v => xs) ->
 --           ((val : a) -> Eff m b xs xs') -> Eff m b xs xs'
---   (>>=) = ebind
+--   (>>=) = EBind
 
 ||| Run a subprogram which results in an effect state the same as the input.
 staticEff : EffM m a xs (\v => xs) -> EffM m a xs (\v => xs)
@@ -228,23 +228,29 @@ toEff : .(xs' : List EFFECT) -> EffM m a xs (\v => xs') -> EffM m a xs (\v => xs
 toEff xs' = id
 
 return : a -> EffM m a xs (\v => xs)
-return x = value x
+return x = Value x
 
 -- ------------------------------------------------------ [ for idiom brackets ]
 
 infixl 2 <*>
 
 pure : a -> EffM m a xs (\v => xs)
-pure = value
+pure = Value
 
 pureM : (val : a) -> EffM m a (xs val) xs
-pureM = value
+pureM = Value
 
 (<*>) : EffM m (a -> b) xs (\v => xs) ->
         EffM m a xs (\v => xs) -> EffM m b xs (\v => xs)
 (<*>) prog v = do fn <- prog
                   arg <- v
                   return (fn arg)
+     
+new : Handler e' m => (e : EFFECT) -> resTy ->
+      {auto prf : e = MkEff resTy e'} ->
+      EffM m t (e :: es) (\v => e :: es) ->
+      EffM m t es (\v => es)
+new = New
 
 -- ---------------------------------------------------------- [ an interpreter ]
 
@@ -261,14 +267,14 @@ execEff (val :: env) (There p) eff k
 -- updates can be propagated even through failing computations?
 
 eff : Env m xs -> EffM m a xs xs' -> ((x : a) -> Env m (xs' x) -> m b) -> m b
-eff env (value x) k = k x env
-eff env (prog `ebind` c) k
+eff env (Value x) k = k x env
+eff env (prog `EBind` c) k
    = eff env prog (\p', env' => eff env' (c p') k)
-eff env (callP prf effP) k = execEff env prf effP k
-eff env (liftP prf effP) k
+eff env (CallP prf effP) k = execEff env prf effP k
+eff env (LiftP prf effP) k
    = let env' = dropEnv env prf in
          eff env' effP (\p', envk => k p' (rebuildEnv envk prf env))
-eff env (new (MkEff resTy newEff) res {prf=Refl} effP) k
+eff env (New (MkEff resTy newEff) res {prf=Refl} effP) k
    = eff (res :: env) effP (\p', (val :: envk) => k p' envk)
 eff env (l :- prog) k
    = let env' = unlabel env in
@@ -286,17 +292,18 @@ syntax MkDefaultEnv = with Env
                           [default, default, default, default, default, default, default],
                           [default, default, default, default, default, default, default, default] |)
 
+%no_implicit
 call : {a, b: _} -> {e : Effect} ->
        (eff : e t a b) ->
        {auto prf : EffElem e a xs} ->
       EffM m t xs (\v => updateResTy v xs prf eff)
-call e {prf} = callP prf e
+call e {prf} = CallP prf e
 
 implicit
 lift : EffM m t ys ys' ->
        {auto prf : SubList ys xs} ->
        EffM m t xs (\v => updateWith (ys' v) xs prf)
-lift e {prf} = liftP prf e
+lift e {prf} = LiftP prf e
 
 
 -- --------------------------------------------------------- [ Running Effects ]

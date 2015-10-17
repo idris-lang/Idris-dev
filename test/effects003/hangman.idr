@@ -107,7 +107,7 @@ data HangmanRules : Effect where
 HANGMAN : HState -> EFFECT
 HANGMAN h = MkEff (Hangman h) HangmanRules
 
--- Promote explicit effecst to Eff programs
+-- Promote explicit effects to Eff programs
 
 guess : Char -> Eff Bool
                 [HANGMAN (Running (S g) (S w))]

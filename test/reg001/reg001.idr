@@ -3,6 +3,7 @@
 
 import Data.So
 import Data.Vect
+import Data.HVect
 import Data.Fin
 import Control.Isomorphism
 
@@ -176,4 +177,8 @@ mapFilter f p (a :: as) with (p a)
  | True  = (_  ** (f a) :: (getProof (mapFilter f p as)))
  | False = mapFilter f p as
 
-
+hVectEx1 : HVect [String, List Nat, Nat, (Nat, Nat)]
+hVectEx1 = ["Hello",[1,2,3],42,(0,10)]
+  
+vecfoo : HVect [String, List Nat, Nat, (Nat, Nat)]
+vecfoo = put (S (S Z)) hVectEx1

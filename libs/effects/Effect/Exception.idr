@@ -28,3 +28,4 @@ EXCEPTION t = MkEff () (Exception t)
 
 raise : a -> Eff b [EXCEPTION a]
 raise err = call $ Raise err
+
