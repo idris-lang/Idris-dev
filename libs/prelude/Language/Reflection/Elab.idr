@@ -113,7 +113,7 @@ data Elab : Type -> Type where
   Prim__Env : Elab (List (TTName, Binder TT))
   Prim__Goal : Elab (TTName, TT)
   Prim__Holes : Elab (List TTName)
-  Prim__Guess : Elab (Maybe TT)
+  Prim__Guess : Elab TT
   Prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
   Prim__LookupDatatype : TTName -> Elab (List Datatype)
   Prim__LookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
@@ -202,7 +202,7 @@ namespace Tactics
   getHoles = Prim__Holes
 
   ||| If the current hole contains a guess, return it. Otherwise, fail.
-  getGuess : Elab (Maybe TT)
+  getGuess : Elab TT
   getGuess = Prim__Guess
 
   ||| Look up the types of every overloading of a name.
