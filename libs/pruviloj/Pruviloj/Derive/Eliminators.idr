@@ -18,7 +18,7 @@ bindParams info = traverse_ (uncurry forall) (getParams info)
 ||| rewrite an application of something to their designated global
 ||| names
 bindIndices : TyConInfo -> Elab Renamer
-bindIndices info = bind' (getIndices info) (const Nothing)
+bindIndices info = bind' (getIndices info) noRenames
   where bind' : List (TTName, Raw) -> Renamer -> Elab Renamer
         bind' []              ren = return ren
         bind' ((n, t) :: ixs) ren = do n' <- nameFrom n
@@ -54,7 +54,7 @@ headsMatch x y =
 ||| Make an induction hypothesis if one is called for
 mkIh : TyConInfo -> (motiveName : TTName) -> (recArg : TTName) -> (argty, fam : Raw) -> Elab ()
 mkIh info motiveName recArg argty fam =
-  case !(stealBindings argty (const Nothing)) of
+  case !(stealBindings argty noRenames) of
     (argArgs, argRes) =>
       if headsMatch argRes fam
         then do ih <- gensym "ih"
@@ -96,19 +96,13 @@ elabMethodTy info motiveName (CtorField arg :: args) res ctorApp =
      solve
 
 
-
-elabMethod : TyConInfo -> (motiveName, ctorN : TTName) -> List CtorArg -> Raw -> Elab ()
-elabMethod info motiveName ctorN ctorArgs resTy =
-  do elabMethodTy info motiveName ctorArgs resTy (Var ctorN)
-
-
 ||| Bind a method for a constructor
 bindMethod : TyConInfo -> (motiveName, cn : TTName) -> List CtorArg -> Raw -> Elab ()
 bindMethod info motiveName cn cargs cty =
   do n <- nameFrom cn
      h <- newHole "methTy" `(Type)
      forall n (Var h)
-     focus h; elabMethod info motiveName cn cargs cty
+     focus h; elabMethodTy info motiveName cargs cty (Var cn)
 
 getElimTy : TyConInfo -> List (TTName, List CtorArg, Raw) -> Elab Raw
 getElimTy info ctors =
@@ -197,7 +191,7 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
                               CtorField arg =>
                                 do let n = name arg
                                    let t = type arg
-                                   (argArgs, argRes) <- stealBindings t (const Nothing)
+                                   (argArgs, argRes) <- stealBindings t noRenames
                                    if headsMatch argRes (result info) --recursive
                                      then return [ NormalArgument n
                                                  , IHArgument n
