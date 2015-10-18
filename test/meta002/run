@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 idris $@ -p pruviloj --nocolour --check --consolewidth 70 Tacs.idr
 idris $@ -p pruviloj --nocolour --check --consolewidth 70 AgdaStyleReflection.idr
+idris $@ -p pruviloj --nocolour --check --consolewidth 70 Deriving.idr
 rm -f *.ibc
