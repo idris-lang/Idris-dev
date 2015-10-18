@@ -811,7 +811,7 @@ deriving instance Binary Raw
 deriving instance NFData Raw
 !-}
 
-data ImplicitInfo = Impl { tcinstance :: Bool }
+data ImplicitInfo = Impl { tcinstance :: Bool, toplevel_imp :: Bool }
   deriving (Show, Eq, Ord, Data, Typeable)
 
 {-!

@@ -587,9 +587,9 @@ is_scoped :: Plicity -> Maybe ImplicitInfo
 is_scoped (Imp _ _ _ s) = s
 is_scoped _ = Nothing
 
-impl = Imp [] Dynamic False Nothing
-forall_imp = Imp [] Dynamic False (Just (Impl False))
-forall_constraint = Imp [] Dynamic False (Just (Impl True))
+impl = Imp [] Dynamic False (Just (Impl False True))
+forall_imp = Imp [] Dynamic False (Just (Impl False False))
+forall_constraint = Imp [] Dynamic False (Just (Impl True False))
 expl = Exp [] Dynamic False
 expl_param = Exp [] Dynamic True
 constraint = Constraint [] Static

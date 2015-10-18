@@ -43,7 +43,7 @@ relib: lib_clean
 	$(CABAL) install $(CABALFLAGS)
 
 linecount:
-	wc -l src/Idris/*.hs src/Idris/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs
+	wc -l src/Idris/*.hs src/Idris/Elab/*.hs src/Idris/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs src/Util/*.hs
 
 #Note: this doesn't yet link to Hackage properly
 doc: dist/setup-config

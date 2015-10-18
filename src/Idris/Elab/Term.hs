@@ -1415,9 +1415,9 @@ elab ist info emode opts fn tm
     notImplicitable _ = False
 
     insertScopedImps fc (Bind n (Pi im@(Just i) _ _) sc) xs
-      | tcinstance i
+      | tcinstance i && not (toplevel_imp i)
           = pimp n (PResolveTC fc) True : insertScopedImps fc sc xs
-      | otherwise
+      | not (toplevel_imp i)
           = pimp n Placeholder True : insertScopedImps fc sc xs
     insertScopedImps fc (Bind n (Pi _ _ _) sc) (x : xs)
         = x : insertScopedImps fc sc xs

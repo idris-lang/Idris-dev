@@ -110,6 +110,9 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                                   _ -> PRef un [] n
     de env _ (Bind n (Lam ty) sc)
           = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
+    de env (_ : is) (Bind n (Pi (Just impl) ty _) sc)
+       | toplevel_imp impl -- information in 'imps' repeated
+          = PPi (Imp [] Dynamic False (Just impl)) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env is (Bind n (Pi (Just impl) ty _) sc)
        | tcinstance impl
           = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
