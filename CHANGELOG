@@ -45,6 +45,10 @@ Tool updates
 * iPKG files have a new option `pkgs` which takes a comma-separated list
   of package names that the idris project depends on. This reduces bloat
   in the `opts` option with multiple package declarations.
+* iPKG files now allow `executable = "your filename here"` in addition to
+  the existing `executable = yourFilenameHere` style. While the unquoted
+  version is limited to filenames that look like namespaced Idris identifiers
+  (`your.filename.here`), the quoted version accepts any valid filename.
 * Add definition command (\d in Vim, Ctrl-Alt-A in Atom, C-c C-s in Emacs) now
   adds missing clauses if there is already a definition.
 
