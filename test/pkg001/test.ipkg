@@ -2,6 +2,6 @@ package test
 
 pkgs = effects
 
-opts = "--warnpartial --warnreach"
+opts = "--warnpartial --warnreach --nocolour --quiet --consolewidth 80"
 
 modules = Main
