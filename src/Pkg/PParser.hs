@@ -80,10 +80,9 @@ filename = (do
         -- Through at least version 0.9.19.1, IPKG executable values were
         -- possibly namespaced identifiers, like foo.bar.baz.
         show <$> fst <$> iName []
-    let errorMessage = filenameErrorMessage filename
-    if isNothing errorMessage
-      then return filename
-      else fail $ fromJust errorMessage)
+    case filenameErrorMessage filename of
+      Just errorMessage -> fail errorMessage
+      Nothing -> return filename)
     <?> "filename"
     where
         -- TODO: Report failing span better! We could lookAhead,
