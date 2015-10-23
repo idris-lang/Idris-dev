@@ -2,5 +2,6 @@ package test
 
 modules = Main
 
+opts = "--warnpartial --warnreach --nocolour --quiet --consolewidth 80"
 main = Main
-executable = "quoting-allows-hyphens and spaces? and fun stuff!"
+executable = "quoting-allows-hyphens and spaces and fun stuff!"

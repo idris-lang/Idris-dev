@@ -2,5 +2,7 @@ package test
 
 modules = Main
 
+
+opts = "--warnpartial --warnreach --nocolour --quiet --consolewidth 80"
 main = Main
 executable = some.namespaced.identifier
