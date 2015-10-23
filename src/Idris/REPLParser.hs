@@ -174,10 +174,9 @@ pCmd :: P.IdrisParser (Either String Command)
 pCmd = choice [ do c <- cmd names; parser c 
               | (names, _, _, parser) <- parserCommandsForHelp ++ parserCommands ]
      <|> unrecognized 
-     <|> nop 
+     <|> nop
      <|> eval
     where nop = do eof; return (Right NOP)
-          eval = exprArg Eval ""
           unrecognized = do
               P.lchar ':'
               cmd <- many anyChar
@@ -205,16 +204,26 @@ noArgs cmd name = do
 
     emptyArgs <|> failure
 
+eval :: P.IdrisParser (Either String Command)
+eval = do
+  t <- P.fullExpr defaultSyntax
+  return $ Right (Eval t)
+
 exprArg :: (PTerm -> Command) -> String -> P.IdrisParser (Either String Command)
 exprArg cmd name = do
     let noArg = do
         eof
         return $ Left ("Usage is :" ++ name ++ " <expression>")
 
+    let justOperator = do
+        (op, fc) <- P.operatorFC
+        eof
+        return $ Right $ cmd (PRef fc [] (sUN op))
+
     let properArg = do
         t <- P.fullExpr defaultSyntax
         return $ Right (cmd t)
-    try noArg <|> properArg
+    try noArg <|> try justOperator <|> properArg
 
 
 
