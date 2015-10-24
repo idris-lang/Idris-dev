@@ -34,10 +34,10 @@ import Debug.Trace
 caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
 caseSplitAt fn updatefile l n
    = do src <- runIO $ readSource fn
-        res <- splitOnLine l n fn
+        (ok, res) <- splitOnLine l n fn
         logLvl 1 (showSep "\n" (map show res))
         let (before, (ap : later)) = splitAt (l-1) (lines src)
-        res' <- replaceSplits ap res
+        res' <- replaceSplits ap res (not ok)
         let new = concat res'
         if updatefile
           then do let fb = fn ++ "~" -- make a backup!
