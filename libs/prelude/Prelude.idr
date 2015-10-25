@@ -37,6 +37,8 @@ import public Language.Reflection.Errors
 %default total
 
 -- Things that can't be elsewhere for import cycle reasons
+%runElab (defineFunction $ DefineFun `{void} [])
+
 decAsBool : Dec p -> Bool
 decAsBool (Yes _) = True
 decAsBool (No _)  = False

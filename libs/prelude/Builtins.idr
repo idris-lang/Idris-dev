@@ -48,7 +48,6 @@ namespace Builtins
     
 ||| The eliminator for the `Void` type.
 void : Void -> a
-void {a} v = elim_for Void (\_ => a) v
 
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
