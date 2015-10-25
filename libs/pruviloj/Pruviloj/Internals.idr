@@ -112,8 +112,9 @@ elabPatternClause lhs rhs =
                        focus patH
                        lhs
                        -- Convert all remaining holes to pattern variables
-                       traverse_ {b=()} (\h => focus h *> patvar h) !getHoles
-     (pvars, `(MkInfer ~rhsTy ~lhsTm)) <- extractBinders <$> (forget pat)
+                       for_ {b=()} !getHoles $ \h =>
+                         do focus h; patvar h
+     (pvars, `(MkInfer ~rhsTy ~lhsTm)) <- extractBinders <$> forget pat
         | fail [TextPart "Couldn't infer type of left-hand pattern"]
      rhsTm <- runElab (bindPatTys pvars rhsTy) $
                 do -- Introduce all the pattern variables from the LHS

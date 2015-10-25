@@ -1831,16 +1831,8 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            fmap fst . checkClosed $
              mkList (Var $ reflm "TTName") (map reflectName hs)
       | n == tacN "Prim__Guess", [] <- args
-      = do ok <- is_guess
-           if ok
-              then do guess <- fmap forget get_guess
-                      fmap fst . get_type_val $
-                        RApp (RApp (Var (sNS (sUN "Just") ["Maybe", "Prelude"]))
-                                   (Var (reflm "TT")))
-                             guess
-              else fmap fst . checkClosed $
-                     RApp (Var (sNS (sUN "Nothing") ["Maybe", "Prelude"]))
-                          (Var (reflm "TT"))
+      = do g <- get_guess
+           fmap fst . checkClosed $ reflect g
       | n == tacN "Prim__LookupTy", [n] <- args
       = do n' <- reifyTTName n
            ctxt <- get_context
