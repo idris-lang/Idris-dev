@@ -21,6 +21,7 @@ int main(int argc, char* argv[]) {
     init_gmpalloc();
 
     init_nullaries();
+    init_signals();
 
     _idris__123_runMain0_125_(vm, NULL);
 
