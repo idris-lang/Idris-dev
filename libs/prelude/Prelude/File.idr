@@ -17,7 +17,11 @@ import IO
 
 ||| A file handle
 abstract
-data File = FHandle Ptr
+data File : Type where
+  FHandle : (p : Ptr) -> File
+
+-- Usage hints for erasure analysis
+%used FHandle p
 
 ||| Standard input
 stdin : File

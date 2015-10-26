@@ -19,15 +19,19 @@ infix 5 \\
 infixr 7 ::,++
 
 ||| Generic lists
-%elim data List elem =
+%elim data List : (elem : Type) -> Type where
   ||| Empty list
-  Nil |
+  Nil : List elem
   ||| A non-empty list, consisting of a head element and the rest of
   ||| the list.
-  (::) elem (List elem)
+  (::) : (x : elem) -> (xs : List elem) -> List elem
 
 -- Name hints for interactive editing
 %name List xs, ys, zs, ws
+
+-- Usage hints for erasure analysis
+%used List.(::) x
+%used List.(::) xs
 
 --------------------------------------------------------------------------------
 -- Syntactic tests
