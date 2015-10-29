@@ -19,6 +19,7 @@ anyNilAbsurd (There _) impossible
 instance Uninhabited (Any p Nil) where
   uninhabited = anyNilAbsurd
 
+||| Eliminator for `Any`
 anyElim : {xs : List a} -> {P : a -> Type} -> (Any P xs -> b) -> (P x -> b) -> Any P (x :: xs) -> b
 anyElim _ f (Here p) = f p
 anyElim f _ (There p) = f p
