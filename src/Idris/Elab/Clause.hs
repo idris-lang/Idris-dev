@@ -551,6 +551,12 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         -- pattern bindings
         i <- getIState
         inf <- isTyInferred fname
+
+        -- Check if we have "with" patterns outside of "with" block
+        when (isOutsideWith lhs_in && (not $ null withs)) $
+            ierror $ (At fc (Elaborating "left hand side of " fname Nothing
+                             (Msg "unexpected patterns outside of \"with\" block")))
+
         -- get the parameters first, to pass through to any where block
         let fn_ty = case lookupTy fname (tt_ctxt i) of
                          [t] -> t
@@ -802,6 +808,11 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                           _ -> False) (map getTm args)
         isArg' _ = False
     isArg _ _ = False
+
+    -- term is not within "with" block
+    isOutsideWith :: PTerm -> Bool
+    isOutsideWith (PApp _ (PRef _ _ (SN (WithN _ _))) _) = False
+    isOutsideWith _ = True
 
 elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
    = do let tcgen = Dictionary `elem` opts
