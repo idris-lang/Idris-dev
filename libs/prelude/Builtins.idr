@@ -48,6 +48,12 @@ namespace Builtins
     
 ||| The eliminator for the `Void` type.
 void : Void -> a
+-- We can't define void yet. We can't define a function with no clauses without
+-- elaborator reflection, and we can't do elaborator reflection without
+-- Language.Reflection.Elab, and Language.Reflection.Elab depends on Builtins.
+-- We can't delay the declaration of void, because Prelude.Uninhabited depends on
+-- it, Prelude.Nat depends on Prelude.Uninhabited, and Language.Reflection.Elab
+-- depends on Prelude.Nat. Instead, void is defined in Prelude.idr
 
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
