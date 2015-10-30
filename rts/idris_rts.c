@@ -72,6 +72,7 @@ VM* idris_vm() {
     init_threaddata(vm);
     init_gmpalloc();
     init_nullaries();
+    init_signals();
 
     return vm;
 }
@@ -89,6 +90,12 @@ void init_threadkeys() {
 void init_threaddata(VM *vm) {
 #ifdef HAS_PTHREAD
     pthread_setspecific(vm_key, vm);
+#endif
+}
+
+void init_signals() {
+#if (__linux__ || __APPLE__ || __FreeBSD__)
+    signal(SIGPIPE, SIG_IGN);
 #endif
 }
 
