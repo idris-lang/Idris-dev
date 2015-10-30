@@ -2,8 +2,9 @@ module Control.IOExcept
 
 -- An IO monad with exception handling
 
-data IOExcept : Type -> Type -> Type where
-     IOM : IO (Either err a) -> IOExcept err a
+record IOExcept err a where
+     constructor IOM
+     runIOExcept : IO (Either err a)
 
 instance Functor (IOExcept e) where
      map f (IOM fn) = IOM (map (map f) fn)
@@ -13,11 +14,7 @@ instance Applicative (IOExcept e) where
      (IOM f) <*> (IOM a) = IOM [| f <*> a |]
 
 instance Monad (IOExcept e) where
-     (IOM x) >>= k = IOM (do x' <- x;
-                             case x' of
-                                  Right a => let (IOM ka) = k a in
-                                                 ka
-                                  Left err => return (Left err))
+     (IOM x) >>= f = IOM $ x >>= either (pure . Left) (runIOExcept . f)
 
 ioe_lift : IO a -> IOExcept err a
 ioe_lift op = IOM $ map Right op
