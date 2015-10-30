@@ -1,0 +1,2 @@
+WithPatsNoWith.idr:4:5:When checking left hand side of foo:
+unexpected patterns outside of "with" block
