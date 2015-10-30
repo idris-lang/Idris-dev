@@ -15,6 +15,7 @@ import Idris.CmdOptions
 import Control.Monad.State.Strict
 import Control.Applicative
 import System.FilePath (takeFileName, isValid)
+import Data.Maybe (isNothing, fromJust)
 
 import Util.System
 
@@ -79,18 +80,32 @@ filename = (do
         -- Through at least version 0.9.19.1, IPKG executable values were
         -- possibly namespaced identifiers, like foo.bar.baz.
         show <$> fst <$> iName []
-    if isValidFilename filename
-      then return filename
-      else fail "a filename must be non-empty and have no directory component")
+    case filenameErrorMessage filename of
+      Just errorMessage -> fail errorMessage
+      Nothing -> return filename)
     <?> "filename"
     where
-        isValidFilename :: FilePath -> Bool
-        isValidFilename path =
-            and [isNonEmpty, isValidPath, hasNoDirectoryComponent]
+        -- TODO: Report failing span better! We could lookAhead,
+        -- or do something with DeltaParsing?
+        filenameErrorMessage :: FilePath -> Maybe String
+        filenameErrorMessage path = either Just (const Nothing) $ do
+            checkEmpty path
+            checkValid path
+            checkNoDirectoryComponent path
             where
-                isNonEmpty = path /= ""
-                isValidPath = System.FilePath.isValid path
-                hasNoDirectoryComponent = path == takeFileName path
+                checkThat ok message =
+                    if ok then Right () else Left message
+
+                checkEmpty path =
+                    checkThat (path /= "") "filename must not be empty"
+
+                checkValid path =
+                    checkThat (System.FilePath.isValid path)
+                        "filename must contain only valid characters"
+
+                checkNoDirectoryComponent path =
+                    checkThat (path == takeFileName path)
+                        "filename must contain no directory component"
 
 
 pClause :: PParser ()
