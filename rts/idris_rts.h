@@ -15,6 +15,7 @@
 
 #include "idris_heap.h"
 #include "idris_stats.h"
+#include "idris_utf8.h"
 
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS 0
@@ -59,7 +60,7 @@ typedef struct Closure {
         con c;
         int i;
         double f;
-        char* str;
+        SizedString* str;
         StrOffset* str_offset;
         void* ptr;
         uint8_t bits8;
@@ -143,7 +144,8 @@ typedef void(*func)(VM*, VAL*);
 #define ALIGN(__p, __alignment) ((__p + __alignment - 1) & ~(__alignment - 1))
 
 // Retrieving values
-#define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str) : GETSTROFF(x))
+#define GETSTR(x) (ISSTR(x) ? (*(((VAL)(x))->info.str)) : GETSTROFF(x))
+#define GETCSTR(x) (idris_get_c_str(GETSTR(x)))
 #define GETPTR(x) (((VAL)(x))->info.ptr)
 #define GETMPTR(x) (((VAL)(x))->info.mptr->data)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
@@ -198,9 +200,14 @@ typedef intptr_t i_int;
 #define CALL(f) f(vm, myoldbase);
 #define TAILCALL(f) f(vm, oldbase);
 
+// Set up the memory layout of a bounds-checked string that will take
+// up size bytes in UTF-8. outerlock is forwarded on to
+// allocate. Return a pointer to the object.
+Closure *idris_allocate_string(size_t size, int outerlock);
+
 // Creating new values (each value placed at the top of the stack)
 VAL MKFLOAT(VM* vm, double val);
-VAL MKSTR(VM* vm, const char* str);
+VAL MKSTR(VM* vm, const utf8_byte* str);
 VAL MKPTR(VM* vm, void* ptr);
 VAL MKMPTR(VM* vm, void* ptr, size_t size);
 VAL MKB8(VM* vm, uint8_t b);
@@ -211,11 +218,12 @@ VAL MKB64(VM* vm, uint64_t b);
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
-VAL MKSTRc(VM* vm, char* str);
+VAL MKSTRc(VM* vm, SizedString* str);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKMPTRc(VM* vm, void* ptr, size_t size);
 
-char* GETSTROFF(VAL stroff);
+SizedString GETSTROFF(VAL stroff);
+char *idris_get_c_str(SizedString str);
 
 // #define SETTAG(x, a) (x)->info.c.tag = (a)
 #define SETARG(x, i, a) ((x)->info.c.args)[i] = ((VAL)(a))

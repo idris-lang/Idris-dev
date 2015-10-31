@@ -6,6 +6,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 // TMP HACK! Require this much space in the heap before a GMP operation
 // so it doesn't garbage collect in the middle.
@@ -374,11 +375,36 @@ VAL idris_castFloatBig(VM* vm, VAL f) {
 }
 
 VAL idris_castStrBig(VM* vm, VAL i) {
-    return MKBIGC(vm, GETSTR(i));
+    // TODO: validate that the string is actually an integer
+    return MKBIGC(vm, (char *) GETSTR(i).str_data);
 }
 
 VAL idris_castBigStr(VM* vm, VAL i) {
-    char* str = mpz_get_str(NULL, 10, GETMPZ(GETBIG(vm, i)));
-    return MKSTR(vm, str);
+
+
+    // Compute the appropriate size in bytes for a C string holding the result
+    size_t max_len = mpz_sizeinbase(GETMPZ(GETBIG(vm, i)), 10) + 2;
+    char *temp = (char *)calloc(max_len, sizeof(char));
+    if (temp == NULL) {
+        fprintf(stderr, "Couldn't allocate %lu bytes for bigint as string", (unsigned long)max_len);
+        exit(EXIT_FAILURE);
+    }
+    mpz_get_str(temp, 10, GETMPZ(GETBIG(vm, i)));
+
+    unsigned int j;
+    for (j = 0; j < max_len; j++) {
+        if (temp[j] != '\0' && !(isdigit(temp[j])) && temp[j] != '-') {
+            fprintf(stderr, "Fatal error: invalid output from sprintf on an int!");
+            fprintf(stderr, "It was [%c] at index [%u] in [%s].\n", temp[j], j, temp);
+            exit(EXIT_FAILURE);
+        }
+    }
+
+
+    // TODO: validate that mpz_get_str created valid UTF-8
+    VAL res = MKSTR(vm, (utf8_byte *)temp);
+    free(temp);
+
+    return res;
 }
 

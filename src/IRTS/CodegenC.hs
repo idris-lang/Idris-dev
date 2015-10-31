@@ -250,7 +250,7 @@ bcc i (CONSTCASE r code def)
      = concatMap (iCase (creg r)) code ++
        indent i ++ "{\n" ++ showDefS i def ++ indent i ++ "}\n"
    | strConsts code
-     = concatMap (strCase ("GETSTR(" ++ creg r ++ ")")) code ++
+     = concatMap (strCase ("GETCSTR(" ++ creg r ++ ")")) code ++
        indent i ++ "{\n" ++ showDefS i def ++ indent i ++ "}\n"
    | bigintConsts code
      = concatMap (biCase (creg r)) code ++
@@ -364,7 +364,7 @@ irts_c (FArith (ATInt ITNative)) x = "GETINT(" ++ x ++ ")"
 irts_c (FArith (ATInt ITChar)) x = irts_c (FArith (ATInt ITNative)) x
 irts_c (FArith (ATInt (ITFixed ity))) x
     = "(" ++ x ++ "->info.bits" ++ show (nativeTyWidth ity) ++ ")"
-irts_c FString x = "GETSTR(" ++ x ++ ")"
+irts_c FString x = "GETCSTR(" ++ x ++ ")"
 irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
 irts_c FManagedPtr x = "GETMPTR(" ++ x ++ ")"
@@ -546,10 +546,9 @@ doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v LReadStr [_] = v ++ "idris_readStr(vm, stdin)"
-doOp v LWriteStr [_,s] 
+doOp v LWriteStr [_,s]
              = v ++ "MKINT((i_int)(idris_writeStr(stdout"
-                 ++ ",GETSTR("
-                 ++ creg s ++ "))))"
+                 ++ ",GETCSTR(" ++ creg s ++ "))))"
 
 
 -- String functions which need to know we're UTF8
@@ -578,7 +577,7 @@ doOp v (LExternal rf) [_,x]
 doOp v (LExternal wf) [_,x,s] 
    | wf == sUN "prim__writeFile"
        = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
-                              ++ "),GETSTR("
+                              ++ "),GETCSTR("
                               ++ creg s ++ "))))"
 doOp v (LExternal vm) [] | vm == sUN "prim__vm" = v ++ "MKPTR(vm, vm)"
 doOp v (LExternal si) [] | si == sUN "prim__stdin" = v ++ "MKPTR(vm, stdin)"
