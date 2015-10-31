@@ -734,6 +734,10 @@ Extra-source-files:
                        test/tutorial006/run
                        test/tutorial006/*.idr
                        test/tutorial006/expected
+                       test/tutorial007/run
+                       test/tutorial007/*.idr
+                       test/tutorial007/*.c
+                       test/tutorial007/expected
 
                        test/unique001/run
                        test/unique001/*.idr
