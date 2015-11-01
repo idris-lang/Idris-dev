@@ -198,6 +198,9 @@ namespace IO
   forceGC : IO ()
   forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
 
+  getErrno : IO Int
+  getErrno = foreign FFI_C "idris_errno" (IO Int)
+
 --------- The Javascript/Node FFI
 
 

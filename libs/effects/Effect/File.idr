@@ -74,29 +74,33 @@ data FileIO : Effect where
 
 --- An implementation of the resource access protocol for the IO Context.
 instance Handler FileIO IO where
-    handle () (Open fname m) k = do h <- openFile fname m
-                                    valid <- validFile h
-                                    if valid then k True (FH h)
-                                             else k False ()
+    handle () (Open fname m) k = do Right h <- openFile fname m
+                                        | Left err => k False ()
+                                    k True (FH h)
     handle (FH h) Close      k = do closeFile h
                                     k () ()
-    handle (FH h) ReadLine        k = do str <- fread h
+    handle (FH h) ReadLine        k = do Right str <- fread h
+                                         -- Need proper error handling!
+                                             | Left err => k "" (FH h)
                                          k str (FH h)
-    handle (FH h) (WriteString str) k = do fwrite h str
+    handle (FH h) (WriteString str) k = do Right () <- fwrite h str
+                                             | Left err => k () (FH h)
                                            k () (FH h)
     handle (FH h) EOF             k = do e <- feof h
                                          k e (FH h)
 
 instance Handler FileIO (IOExcept a) where
-    handle () (Open fname m) k = do h <- ioe_lift $ openFile fname m
-                                    valid <- ioe_lift $ validFile h
-                                    if valid then k True (FH h)
-                                             else k False ()
+    handle () (Open fname m) k = do Right h <- ioe_lift $ openFile fname m
+                                        | Left err => k False ()
+                                    k True (FH h)
     handle (FH h) Close      k = do ioe_lift $ closeFile h
                                     k () ()
-    handle (FH h) ReadLine        k = do str <- ioe_lift $ fread h
+    handle (FH h) ReadLine        k = do Right str <- ioe_lift $ fread h
+                                         -- Need proper error handling!
+                                             | Left err => k "" (FH h)
                                          k str (FH h)
-    handle (FH h) (WriteString str) k = do ioe_lift $ fwrite h str
+    handle (FH h) (WriteString str) k = do Right () <- ioe_lift $ fwrite h str
+                                             | Left err => k () (FH h)
                                            k () (FH h)
     handle (FH h) EOF             k = do e <- ioe_lift $ feof h
                                          k e (FH h)

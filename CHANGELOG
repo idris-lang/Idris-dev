@@ -37,6 +37,9 @@ Library updates
   from Effectful programs.
 * Some constructors that never actually occurred have been removed from
   the TT and Raw reflection datatypes in Language.Reflection.
+* File IO operations (for example openFile/fread/fwrite) now return 
+  'Either FileError ty' where the return type was previously 'ty' to indicate
+  that they may fail.
 
 Tool updates
 ------------

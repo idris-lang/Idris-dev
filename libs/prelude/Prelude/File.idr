@@ -10,7 +10,8 @@ import Prelude.Cast
 import Prelude.Bool
 import Prelude.Basics
 import Prelude.Classes
-import Prelude.Monad
+import Prelude.Either
+import Prelude.Show
 import IO
 
 %access public
@@ -18,6 +19,31 @@ import IO
 ||| A file handle
 abstract
 data File = FHandle Ptr
+
+||| An error from a file operation
+-- This is built in idris_mkFileError() in rts/idris_stdfgn.c. Make sure
+-- the values correspond!
+data FileError = FileReadError
+               | FileWriteError
+               | FileNotFound
+               | PermissionDenied
+               | GenericFileError Int -- errno
+
+private
+strError : Int -> String
+strError err = unsafePerformIO -- yeah, yeah...
+                  (foreign FFI_C "idris_showerror" (Int -> IO String) err)
+
+getFileError : IO FileError
+getFileError = do MkRaw err <- foreign FFI_C "idris_mkFileError" 
+                                    (Ptr -> IO (Raw FileError)) prim__vm
+                  return err
+
+instance Show FileError where
+  show Success = "Success"
+  show FileNotFound = "File Not Found"
+  show PermissionDenied = "Permission Denied"
+  show (GenericFileError errno) = strError errno
 
 ||| Standard input
 stdin : File
@@ -31,6 +57,13 @@ stdout = FHandle prim__stdout
 stderr : File
 stderr = FHandle prim__stderr
 
+do_ferror : Ptr -> IO Int
+do_ferror h = foreign FFI_C "fileError" (Ptr -> IO Int) h
+
+ferror : File -> IO Bool
+ferror (FHandle h) = do err <- do_ferror h
+                        return (not (err == 0))
+
 ||| Call the RTS's file opening function
 do_fopen : String -> String -> IO Ptr
 do_fopen f m
@@ -39,12 +72,14 @@ do_fopen f m
 ||| Open a file
 ||| @ f the filename
 ||| @ m the mode as a String (`"r"`, `"w"`, or `"r+"`)
-fopen : (f : String) -> (m : String) -> IO File
+fopen : (f : String) -> (m : String) -> IO (Either FileError File)
 fopen f m = do h <- do_fopen f m
-               return (FHandle h)
+               if !(nullPtr h)
+                  then do err <- getFileError
+                          return (Left err)
+                  else return (Right (FHandle h))
 
 ||| Check whether a file handle is actually a null pointer
-partial
 validFile : File -> IO Bool
 validFile (FHandle h) = do x <- nullPtr h
                            return (not x)
@@ -55,33 +90,26 @@ data Mode = Read | Write | ReadWrite
 ||| Open a file
 ||| @ f the filename
 ||| @ m the mode
-partial
-openFile : (f : String) -> (m : Mode) -> IO File
+openFile : (f : String) -> (m : Mode) -> IO (Either FileError File)
 openFile f m = fopen f (modeStr m) where
   modeStr Read  = "r"
   modeStr Write = "w"
   modeStr ReadWrite = "r+"
 
-partial
 do_fclose : Ptr -> IO ()
 do_fclose h = foreign FFI_C "fileClose" (Ptr -> IO ()) h
 
-partial
 closeFile : File -> IO ()
 closeFile (FHandle h) = do_fclose h
 
-partial
 do_fread : Ptr -> IO' l String
 do_fread h = prim_fread h
 
-fgetc : File -> IO Char
-fgetc (FHandle h) = return (cast !(foreign FFI_C "fgetc" (Ptr -> IO Int) h))
-
-fgetc' : File -> IO (Maybe Char)
-fgetc' (FHandle h)
-   = do x <- foreign FFI_C "fgetc" (Ptr -> IO Int) h
-        if (x < 0) then return Nothing
-                   else return (Just (cast x))
+fgetc : File -> IO (Either FileError Char)
+fgetc (FHandle h) = do let c = cast !(foreign FFI_C "fgetc" (Ptr -> IO Int) h)
+                       if !(ferror (FHandle h))
+                          then return (Left FileReadError)
+                          else return (Right c)
 
 fflush : File -> IO ()
 fflush (FHandle h) = foreign FFI_C "fflush" (Ptr -> IO ()) h
@@ -89,9 +117,12 @@ fflush (FHandle h) = foreign FFI_C "fflush" (Ptr -> IO ()) h
 do_popen : String -> String -> IO Ptr
 do_popen f m = foreign FFI_C "do_popen" (String -> String -> IO Ptr) f m
 
-popen : String -> Mode -> IO File
+popen : String -> Mode -> IO (Either FileError File)
 popen f m = do ptr <- do_popen f (modeStr m)
-               return (FHandle ptr)
+               if !(nullPtr ptr)
+                  then do err <- getFileError
+                          return (Left err)
+                  else return (Right (FHandle ptr))
   where
     modeStr Read  = "r"
     modeStr Write = "w"
@@ -103,20 +134,25 @@ pclose (FHandle h) = foreign FFI_C "pclose" (Ptr -> IO ()) h
 -- mkForeign (FFun "idris_readStr" [FPtr, FPtr] (FAny String))
 --                        prim__vm h
 
-partial
-fread : File -> IO' l String
-fread (FHandle h) = do_fread h
+fread : File -> IO (Either FileError String)
+fread (FHandle h) = do str <- do_fread h
+                       if !(ferror (FHandle h))
+                          then return (Left FileReadError)
+                          else return (Right str)
 
-partial
-do_fwrite : Ptr -> String -> IO ()
-do_fwrite h s = do prim_fwrite h s
-                   return ()
+do_fwrite : Ptr -> String -> IO (Either FileError ())
+do_fwrite h s = do res <- prim_fwrite h s
+                   if (res /= 0)
+                      then do errno <- getErrno
+                              if errno == 0 
+                                 then return (Left FileWriteError)
+                                 else do err <- getFileError
+                                         return (Left err)
+                      else return (Right ())
 
-partial
-fwrite : File -> String -> IO ()
+fwrite : File -> String -> IO (Either FileError ())
 fwrite (FHandle h) s = do_fwrite h s
 
-partial
 do_feof : Ptr -> IO Int
 do_feof h = foreign FFI_C "fileEOF" (Ptr -> IO Int) h
 
@@ -125,32 +161,27 @@ feof : File -> IO Bool
 feof (FHandle h) = do eof <- do_feof h
                       return (not (eof == 0))
 
-partial
-do_ferror : Ptr -> IO Int
-do_ferror h = foreign FFI_C "fileError" (Ptr -> IO Int) h
-
-ferror : File -> IO Bool
-ferror (FHandle h) = do err <- do_ferror h
-                        return (not (err == 0))
-
 fpoll : File -> IO Bool
 fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
                        return (p > 0)
 
 ||| Read the contents of a file into a string
-partial -- no error checking!
-readFile : String -> IO String
-readFile fn = do h <- openFile fn Read
+partial -- might be reading something infinitely long like /dev/null ... 
+covering
+readFile : String -> IO (Either FileError String)
+readFile fn = do Right h <- openFile fn Read
+                    | Left err => return (Left err)
                  c <- readFile' h ""
                  closeFile h
                  return c
   where
     partial
-    readFile' : File -> String -> IO String
+    readFile' : File -> String -> IO (Either FileError String)
     readFile' h contents =
        do x <- feof h
-          if not x then do l <- fread h
+          if not x then do Right l <- fread h
+                               | Left err => return (Left err)
                            readFile' h (contents ++ l)
-                   else return contents
+                   else return (Right contents)
 
 

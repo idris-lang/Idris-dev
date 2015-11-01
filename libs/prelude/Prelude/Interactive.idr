@@ -17,6 +17,7 @@ import Prelude.Show
 import Prelude.Cast
 import Prelude.Maybe
 import Prelude.Functor
+import Prelude.Either
 import Prelude.Monad
 import IO
 
@@ -97,7 +98,8 @@ processHandle : File ->
 processHandle h acc onRead onEOF 
    = if !(feof h)
         then putStr (onEOF acc)
-        else do x <- fread h
+        else do Right x <- fread h
+                    | Left err => putStr (onEOF acc)
                 let (out, acc') = onRead acc x
                 putStr out
                 processHandle h acc' onRead onEOF    

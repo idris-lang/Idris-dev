@@ -143,10 +143,6 @@ record Socket where
   socketType : SocketType
   protocalNumber : ProtocolNumber
 
-||| Get the C error number
-getErrno : IO Int
-getErrno = foreign FFI_C "idrnet_errno" (IO Int)
-
 ||| Creates a UNIX socket with the given family, socket type and protocol
 ||| number. Returns either a socket or an error.
 socket : SocketFamily -> SocketType -> ProtocolNumber -> IO (Either SocketError Socket)
