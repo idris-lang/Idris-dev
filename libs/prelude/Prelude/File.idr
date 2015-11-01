@@ -40,7 +40,6 @@ getFileError = do MkRaw err <- foreign FFI_C "idris_mkFileError"
                   return err
 
 instance Show FileError where
-  show Success = "Success"
   show FileNotFound = "File Not Found"
   show PermissionDenied = "Permission Denied"
   show (GenericFileError errno) = strError errno
@@ -184,4 +183,11 @@ readFile fn = do Right h <- openFile fn Read
                            readFile' h (contents ++ l)
                    else return (Right contents)
 
-
+||| Write a string to a file
+writeFile : (filepath : String) -> (contents : String) -> 
+            IO (Either FileError ())
+writeFile fn contents = do
+     Right h <- openFile fn Write | Left err => return (Left err)
+     Right () <- fwrite h contents | Left err => return (Left err)
+     closeFile h
+     return (Right ())
