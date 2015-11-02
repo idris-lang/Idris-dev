@@ -117,11 +117,11 @@ io_return x = MkIO (\w => prim_io_return x)
 liftPrimIO : (World -> PrimIO a) -> IO' l a
 liftPrimIO = MkIO
 
-call__IO : IO' l a -> PrimIO a
+call__IO : IO' ffi a -> PrimIO a
 call__IO (MkIO f) = f (TheWorld prim__TheWorld)
 
 -- Concrete type makes it easier to elaborate at top level
-run__IO : IO' l () -> PrimIO ()
+run__IO : IO' ffi () -> PrimIO ()
 run__IO f = call__IO f
 
 unsafePerformIO : IO' ffi a -> a
@@ -176,8 +176,11 @@ namespace FFI_C
   FFI_C : FFI
   FFI_C = MkFFI C_Types String String
 
+||| The type of interactive programs, performing some I/O side effects
+||| and returning a value.
+||| @res The result type of the program 
 %error_reverse
-IO : Type -> Type
+IO : (res : Type) -> Type
 IO = IO' FFI_C
 
 -- Cannot be relaxed as is used by type providers and they expect IO a

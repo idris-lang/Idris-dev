@@ -19,6 +19,8 @@ Language updates
 * Name binding in patterns follows the same rule as name binding for implicits
   in types: names which begin with lower case letters, not applied to any
   arguments, are treated as bound pattern variables.
+* Added %deprecate directive, which gives a warning and a message when a 
+  deprecated name is referenced.
 
 Library updates
 ---------------
