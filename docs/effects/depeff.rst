@@ -48,7 +48,7 @@ express this as follows:
     readInt = do let x = trim !getStr
                  putM (cast x :: !get)
 
-The notation ``Eff a xs xs'`` in a type means that the operation
+The type ``Eff a xs xs'`` means that the operation
 begins with effects ``xs`` available, and ends with effects ``xs’``
 available. We have used ``putM`` to update the state, where the ``M``
 suffix indicates that the *type* is being updated as well as the value.
