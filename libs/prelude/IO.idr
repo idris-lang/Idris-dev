@@ -36,7 +36,6 @@ record FFI where
 ||| The IO type, parameterised over the FFI that is available within
 ||| it.
 abstract
-%error_reverse
 data IO' : (lang : FFI) -> Type -> Type where
      MkIO : (World -> PrimIO (WorldRes a)) -> IO' lang a
 
