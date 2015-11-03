@@ -255,6 +255,9 @@ void idris_free(void* ptr, size_t size);
 
 #define NULL_CON(x) nullary_cons[x]
 
+int idris_errno();
+char* idris_showerror(int err);
+
 extern VAL* nullary_cons;
 void init_nullaries();
 void free_nullaries();

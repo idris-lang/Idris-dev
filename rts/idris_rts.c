@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 
 #include "idris_rts.h"
 #include "idris_gc.h"
@@ -932,6 +933,14 @@ VM* idris_getSender(Msg* msg) {
 
 void idris_freeMsg(Msg* msg) {
     free(msg);
+}
+
+int idris_errno() {
+    return errno;
+}
+
+char* idris_showerror(int err) {
+    return strerror(err);
 }
 
 VAL* nullary_cons;

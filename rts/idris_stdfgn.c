@@ -4,6 +4,7 @@
 #include "idris_gc.h"
 #include <sys/select.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <stdio.h>
 #include <time.h>
 
@@ -84,6 +85,25 @@ char* getEnvPair(int i) {
 VAL idris_time() {
     time_t t = time(NULL);
     return MKBIGI(t);
+}
+
+VAL idris_mkFileError(VM* vm) {
+    VAL result;
+    switch(errno) {
+        // Make sure this corresponds to the FileError structure in
+        // Prelude.File
+        case ENOENT:
+            idris_constructor(result, vm, 2, 0, 0);
+            break;
+        case EACCES:
+            idris_constructor(result, vm, 3, 0, 0);
+            break;
+        default:
+            idris_constructor(result, vm, 4, 1, 0);
+            idris_setConArg(result, 0, MKINT((intptr_t)errno));
+            break;
+    }
+    return result;
 }
 
 void idris_forceGC(void* vm) {
