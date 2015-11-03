@@ -5,5 +5,7 @@ import Providers
 
 main : IO ()
 main = do
-  putStr "sizeof(size_t): "
-  putStrLn (show szSizeT)
+  expected <- readFile "sizefromc.txt"
+  putStrLn $ if show szSizeT == expected
+             then "Pass"
+             else "Fail: \"" ++ show szSizeT ++ "\" /= \"" ++ expected ++ "\""
