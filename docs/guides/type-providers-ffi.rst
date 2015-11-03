@@ -242,6 +242,8 @@ First, let's write a C file containing functions that we'll bind to.
 .. code-block:: c
 
     /* stattypes.c */
+    #include <sys/stat.h>
+
     int sizeof_dev_t() { return sizeof(dev_t); }
     int sizeof_ino_t() { return sizeof(ino_t); }
     /* lots more functions like this */
@@ -256,20 +258,30 @@ Next, an Idris file to define our providers:
     %dynamic "./stattypes.so"
 
     sizeOfDevT : IO Int
-    sizeOfDevT = mkForeign (FFun "sizeof_dev_t" [] FInt)
+    sizeOfDevT = foreign FFI_C "sizeof_dev_t" (IO Int)
     {- lots of similar functions -}
 
-    -- now we have an integer, but we want a Provider FTy
-    -- since our sizeOf* functions are ordinary IO actions, we
+    -- Indicates how many bits are used to represent various system
+    -- stat types.
+    data BitWidth = B8 | B16 | B32 | B64
+
+    instance Show BitWidth where
+      show B8 = "8 bits"
+      show B16 = "16 bits"
+      show B32 = "32 bits"
+      show B64 = "64 bits"
+
+    -- Now we have an integer, but we want a Provider BitWidth.
+    -- Since our sizeOf* functions are ordinary IO actions, we
     -- can just map over them.
-    bytesToType : Int -> Provider FTy
-    bytesToType 1 = Provide (FIntT IT8) -- "8 bit foreign integer"
-    bytesToType 2 = Provide (FIntT IT16)
-    bytesToType 4 = Provide (FIntT IT32)
-    bytesToType 8 = Provide (FIntT IT64)
+    bytesToType : Int -> Provider BitWidth
+    bytesToType 1 = Provide B8  -- "8 bit value"
+    bytesToType 2 = Provide B16
+    bytesToType 4 = Provide B32
+    bytesToType 8 = Provide B64
     bytesToType _ = Error "Unrecognised integral type."
 
-    getDevT : IO (Provider FTy)
+    getDevT : IO (Provider BitWidth)
     getDevT = map bytesToType sizeOfDevT
     {- lots of similar functions -}
 
@@ -282,10 +294,8 @@ providers:
     module Main
     import Providers
     %language TypeProviders
-    %provide (FDevT : FTy) with getDevT
+    %provide (DevTBitWidth : BitWidth) with getDevT
 
-    -- interpFTy translates a foreign type to the corresponding idris type
-    DevT : Type
-    DevT = interpFTy FDevT -- on most systems, DevT = Bits64
-
-    -- We can now use DevT in our program and FDevT in our FFun expressions!
+    -- We can now use DevTBitWidth in our program!
+    main : IO ()
+    main = putStrLn $ "size of dev_t: " ++ show DevTBitWidth
