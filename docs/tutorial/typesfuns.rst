@@ -1034,8 +1034,8 @@ For example:
         className : String
 
 **Note** that it is no longer possible to use the ``addStudent``
-method from earlier as that would change the size of the class. A
-method to add a student must now specify in the type that the
+function from earlier, since that would change the size of the class. A
+function to add a student must now specify in the type that the
 size of the class has been increased by one. As the size is specified
 using natural numbers, the new value can be incremented using the
 ``S`` constructor.
