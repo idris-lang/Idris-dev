@@ -56,7 +56,7 @@ answer. For example:
 ::
 
     *prims> 6*6+6
-    42 : Int
+    42 : Integer
     *prims> x == 6*6+6
     True : Bool
 
@@ -792,12 +792,12 @@ providing a default value:
 
 .. code-block:: idris
 
-    maybe : Lazy b -> (a -> b) -> Maybe a -> b
+    maybe : Lazy b -> Lazy (a -> b) -> Maybe a -> b
 
-Note that the type of the first argument is ``Lazy b`` rather than
-simply ``b``. Since the default value might not be used, we mark it as
-``Lazy`` in case it is a large expression where evaluating it then
-discarding it would be wasteful.
+Note that the types of the first two arguments are wrapped in
+``Lazy``. Since only one of the two arguments will actually be used,
+we mark them as ``Lazy`` in case they are large expressions where it
+would be wasteful to compute and then discard them.
 
 Tuples
 ------
@@ -819,6 +819,15 @@ contain an arbitrary number of values, represented as nested pairs:
 
     jim : (String, Int, String)
     jim = ("Jim", 25, "Cambridge")
+
+::
+
+    *usefultypes> fst jim
+    "Jim" : String
+    *usefultypes> snd jim
+    (25, "Cambridge") : (Int, String)
+    *usefultypes> jim == ("Jim", (25, "Cambridge"))
+    True : Bool
 
 Dependent Pairs
 ---------------
@@ -1025,7 +1034,11 @@ For example:
         className : String
 
 **Note** that it is no longer possible to use the ``addStudent``
-method from earlier as that would change the size of the class. To provide an add student the function must specify in the type that the size of the class has been increased by one. As the size if specified using natural numbers, the new value can be incremented using the successor constructor.
+method from earlier as that would change the size of the class. A
+method to add a student must now specify in the type that the
+size of the class has been increased by one. As the size is specified
+using natural numbers, the new value can be incremented using the
+``S`` constructor.
 
 .. code-block:: idris
 
@@ -1137,8 +1150,8 @@ auxiliary functions, and is also used internally to implement pattern
 matching ``let`` and lambda bindings. It will *only* work if:
 
 - Each branch *matches* a value of the same type, and *returns* a
-   value of the same type.
+  value of the same type.
 
 - The type of the result is "known". i.e. the type of the expression
-   can be determined *without* type checking the ``case``-expression
-   itself.
+  can be determined *without* type checking the ``case``-expression
+  itself.
