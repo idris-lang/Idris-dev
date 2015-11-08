@@ -1612,7 +1612,7 @@ pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
     pureBinder (Let t v) = pureTerm t && pureTerm v
     pureBinder t = pureTerm (binderTy t)
 
-    notClassName (MN _ c) | c == txt "class" = False
+    notClassName (MN _ c) | c == txt "__class" = False
     notClassName _ = True
 
 pureTerm _ = True

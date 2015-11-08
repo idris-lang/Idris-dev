@@ -175,8 +175,7 @@ namespace FFI_C
   FFI_C : FFI
   FFI_C = MkFFI C_Types String String
 
-||| The type of interactive programs, performing some I/O side effects
-||| and returning a value.
+||| Interactive programs, describing I/O actions and returning a value.
 ||| @res The result type of the program 
 %error_reverse
 IO : (res : Type) -> Type

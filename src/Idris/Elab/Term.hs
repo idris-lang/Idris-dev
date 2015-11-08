@@ -363,7 +363,7 @@ elab ist info emode opts fn tm
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC' False False 5 g fn ist
     elab' ina fc (PResolveTC fc')
-        = do c <- getNameFrom (sMN 0 "class")
+        = do c <- getNameFrom (sMN 0 "__class")
              instanceArg c
     -- Elaborate the equality type first homogeneously, then
     -- heterogeneously as a fallback
