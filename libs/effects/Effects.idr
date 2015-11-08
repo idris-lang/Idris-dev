@@ -245,6 +245,11 @@ pureM = Value
 (<*>) prog v = do fn <- prog
                   arg <- v
                   return (fn arg)
+
+(*>) : EffM m a xs (\v => xs) ->
+       EffM m b xs (\v => xs) -> EffM m b xs (\v => xs)
+a *> b = do a
+            b
      
 new : Handler e' m => (e : EFFECT) -> resTy ->
       {auto prf : e = MkEff resTy e'} ->

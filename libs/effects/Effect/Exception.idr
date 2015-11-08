@@ -18,7 +18,7 @@ instance Show a => Handler (Exception a) IO where
                                believe_me (exit 1)
 
 instance Handler (Exception a) (IOExcept a) where
-     handle _ (Raise e) k = IOM (return (Left e))
+     handle _ (Raise e) k = ioe_fail e
 
 instance Handler (Exception a) (Either a) where
      handle _ (Raise e) k = Left e
