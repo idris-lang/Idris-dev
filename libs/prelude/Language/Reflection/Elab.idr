@@ -69,11 +69,10 @@ record TyDecl where
   returnType : Raw
 
 
--- Note: FunClause is not a record because impossible clauses may be
--- added at some point.
 ||| A single pattern-matching clause
 data FunClause : Type where
   MkFunClause : (lhs, rhs : Raw) -> FunClause
+  MkImpossibleClause : (lhs : Raw) -> FunClause
 
 ||| A reflected function definition.
 record FunDefn where
