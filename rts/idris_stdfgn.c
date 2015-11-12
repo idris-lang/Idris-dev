@@ -25,13 +25,13 @@ void fileClose(void* h) {
 }
 
 int fileEOF(void* h) {
-  FILE* f = (FILE*)h;
-  return feof(f);
+    FILE* f = (FILE*)h;
+    return feof(f);
 }
 
 int fileError(void* h) {
-  FILE* f = (FILE*)h;
-  return ferror(f);
+    FILE* f = (FILE*)h;
+    return ferror(f);
 }
 
 int idris_writeStr(void* h, char* str) {
@@ -107,5 +107,5 @@ VAL idris_mkFileError(VM* vm) {
 }
 
 void idris_forceGC(void* vm) {
-   idris_gc((VM*)vm); 
+    idris_gc((VM*)vm);
 }

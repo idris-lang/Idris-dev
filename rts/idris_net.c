@@ -38,15 +38,15 @@ void idrnet_free(void* ptr) {
 }
 
 // We call this from quite a few functions. Given a textual host and an int port,
-// populates a struct addrinfo. 
-int idrnet_getaddrinfo(struct addrinfo** address_res, char* host, int port, 
+// populates a struct addrinfo.
+int idrnet_getaddrinfo(struct addrinfo** address_res, char* host, int port,
                        int family, int socket_type) {
 
     struct addrinfo hints;
     // Convert port into string
     char str_port[8];
     sprintf(str_port, "%d", port);
-    
+
     // Set up hints structure
     memset(&hints, 0, sizeof(hints)); // zero out hints
     hints.ai_family = family;
@@ -57,7 +57,7 @@ int idrnet_getaddrinfo(struct addrinfo** address_res, char* host, int port,
     if (strlen(host) == 0) {
         hints.ai_flags = AI_PASSIVE; // fill in IP automatically
         return getaddrinfo(NULL, str_port, &hints, address_res);
-    } 
+    }
     return getaddrinfo(host, str_port, &hints, address_res);
 
 }
@@ -75,7 +75,7 @@ int idrnet_bind(int sockfd, int family, int socket_type, char* host, int port) {
         //freeaddrinfo(address_res);
         //printf("Lib err: bind\n");
         return -1;
-    } 
+    }
     return 0;
 }
 
@@ -111,7 +111,7 @@ char* idrnet_sockaddr_ipv4(void* sockaddr) {
 
 int idrnet_sockaddr_ipv4_port(void* sockaddr) {
     struct sockaddr_in* addr = (struct sockaddr_in*) sockaddr;
-    return ((int) ntohs(addr->sin_port));  
+    return ((int) ntohs(addr->sin_port));
 }
 
 void* idrnet_create_sockaddr() {
@@ -141,13 +141,13 @@ int idrnet_send_buf(int sockfd, void* data, int len) {
 }
 
 void* idrnet_recv(int sockfd, int len) {
-    idrnet_recv_result* res_struct = 
+    idrnet_recv_result* res_struct =
         (idrnet_recv_result*) malloc(sizeof(idrnet_recv_result));
     char* buf = malloc(len + 1);
     memset(buf, 0, len + 1);
     int recv_res = recv(sockfd, buf, len, 0);
     res_struct->result = recv_res;
-    
+
     if (recv_res > 0) { // Data was received
         buf[recv_res + 1] = 0x00; // Null-term, so Idris can interpret it
     }
@@ -172,7 +172,7 @@ char* idrnet_get_recv_payload(void* res_struct) {
 }
 
 void idrnet_free_recv_struct(void* res_struct) {
-    idrnet_recv_result* i_res_struct = 
+    idrnet_recv_result* i_res_struct =
         (idrnet_recv_result*) res_struct;
     if (i_res_struct->payload != NULL) {
         free(i_res_struct->payload);
@@ -191,9 +191,9 @@ int idrnet_sendto(int sockfd, char* data, char* host, int port, int family) {
     int addr_res = idrnet_getaddrinfo(&remote_host, host, port, family, SOCK_DGRAM);
     if (addr_res == -1) {
         return -1;
-    } 
+    }
 
-    int send_res = sendto(sockfd, data, strlen(data), 0, 
+    int send_res = sendto(sockfd, data, strlen(data), 0,
                         remote_host->ai_addr, remote_host->ai_addrlen);
     freeaddrinfo(remote_host);
     return send_res;
@@ -206,11 +206,11 @@ int idrnet_sendto_buf(int sockfd, void* buf, int buf_len, char* host, int port, 
     if (addr_res == -1) {
         //printf("lib err: sendto getaddrinfo \n");
         return -1;
-    } 
+    }
 
     buf_htonl(buf, buf_len);
 
-    int send_res = sendto(sockfd, buf, buf_len, 0, 
+    int send_res = sendto(sockfd, buf, buf_len, 0,
                         remote_host->ai_addr, remote_host->ai_addrlen);
     if (send_res == -1) {
         perror("lib err: sendto \n");
@@ -224,13 +224,13 @@ int idrnet_sendto_buf(int sockfd, void* buf, int buf_len, char* host, int port, 
 void* idrnet_recvfrom(int sockfd, int len) {
 /*
  * int recvfrom(int sockfd, void *buf, int len, unsigned int flags,
-             struct sockaddr *from, int *fromlen); 
+             struct sockaddr *from, int *fromlen);
 */
     // Allocate the required structures, and nuke them
-    struct sockaddr_storage* remote_addr = 
+    struct sockaddr_storage* remote_addr =
         (struct sockaddr_storage*) malloc(sizeof(struct sockaddr_storage));
     char* buf = (char*) malloc(len + 1);
-    idrnet_recvfrom_result* ret = 
+    idrnet_recvfrom_result* ret =
         (idrnet_recvfrom_result*) malloc(sizeof(idrnet_recvfrom_result));
     memset(remote_addr, 0, sizeof(struct sockaddr_storage));
     memset(buf, 0, len + 1);
@@ -240,7 +240,7 @@ void* idrnet_recvfrom(int sockfd, int len) {
     int recv_res = recvfrom(sockfd, buf, len, 0, (struct sockaddr*) remote_addr, &fromlen);
     ret->result = recv_res;
     // Check for failure...
-    if (recv_res == -1) { 
+    if (recv_res == -1) {
         free(buf);
         free(remote_addr);
     } else {
@@ -255,12 +255,11 @@ void* idrnet_recvfrom(int sockfd, int len) {
     return ret;
 }
 
-
 void* idrnet_recvfrom_buf(int sockfd, void* buf, int len) {
     // Allocate the required structures, and nuke them
-    struct sockaddr_storage* remote_addr = 
+    struct sockaddr_storage* remote_addr =
         (struct sockaddr_storage*) malloc(sizeof(struct sockaddr_storage));
-    idrnet_recvfrom_result* ret = 
+    idrnet_recvfrom_result* ret =
         (idrnet_recvfrom_result*) malloc(sizeof(idrnet_recvfrom_result));
     memset(remote_addr, 0, sizeof(struct sockaddr_storage));
     memset(ret, 0, sizeof(idrnet_recvfrom_result));
@@ -269,7 +268,7 @@ void* idrnet_recvfrom_buf(int sockfd, void* buf, int len) {
     int recv_res = recvfrom(sockfd, buf, len, 0, (struct sockaddr*) remote_addr, &fromlen);
     // Check for failure... But don't free the buffer! Not our job.
     ret->result = recv_res;
-    if (recv_res == -1) { 
+    if (recv_res == -1) {
         free(remote_addr);
     }
     // Payload will be NULL -- since it's been put into the user-specified buffer. We
@@ -298,7 +297,7 @@ void* idrnet_get_recvfrom_sockaddr(void* res_struct) {
 int idrnet_get_recvfrom_port(void* res_struct) {
     idrnet_recvfrom_result* recv_struct = (idrnet_recvfrom_result*) res_struct;
     if (recv_struct->remote_addr != NULL) {
-        struct sockaddr_in* remote_addr_in = 
+        struct sockaddr_in* remote_addr_in =
             (struct sockaddr_in*) recv_struct->remote_addr;
         return ((int) ntohs(remote_addr_in->sin_port));
     }
@@ -316,5 +315,3 @@ void idrnet_free_recvfrom_struct(void* res_struct) {
         }
     }
 }
-
-
