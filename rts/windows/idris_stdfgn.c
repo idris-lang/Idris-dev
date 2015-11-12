@@ -26,13 +26,13 @@ void fileClose(void* h) {
 }
 
 int fileEOF(void* h) {
-  FILE* f = (FILE*)h;
-  return feof(f);
+    FILE* f = (FILE*)h;
+    return feof(f);
 }
 
 int fileError(void* h) {
-  FILE* f = (FILE*)h;
-  return ferror(f);
+    FILE* f = (FILE*)h;
+    return ferror(f);
 }
 
 int idris_writeStr(void* h, char* str) {
@@ -77,6 +77,25 @@ VAL idris_time() {
     return MKBIGI(t);
 }
 
+VAL idris_mkFileError(VM* vm) {
+    VAL result;
+    switch(errno) {
+        // Make sure this corresponds to the FileError structure in
+        // Prelude.File
+        case ENOENT:
+            idris_constructor(result, vm, 2, 0, 0);
+            break;
+        case EACCES:
+            idris_constructor(result, vm, 3, 0, 0);
+            break;
+        default:
+            idris_constructor(result, vm, 4, 1, 0);
+            idris_setConArg(result, 0, MKINT((intptr_t)errno));
+            break;
+    }
+    return result;
+}
+
 void idris_forceGC(void* vm) {
-   idris_gc((VM*)vm);
+    idris_gc((VM*)vm);
 }

@@ -12,7 +12,7 @@
 #include <Ws2tcpip.h>
 
 
-// inet_ntop isn't defined in the old mingw delivered with GHC, 
+// inet_ntop isn't defined in the old mingw delivered with GHC,
 // so put the prototype here, cribbed from a newer version of it
 WINSOCK_API_LINKAGE LPCSTR WSAAPI InetNtopA(INT Family, PVOID pAddr,
         LPSTR pStringBuf, size_t StringBufSize);
@@ -50,7 +50,7 @@ int idrnet_bind(int sockfd, int family, int socket_type, char* host, int port) {
     // Convert port into string
     char str_port[8];
     sprintf(str_port, "%d", port);
-    
+
     if (!check_init()) {
         return -1;
     }
@@ -73,7 +73,7 @@ int idrnet_bind(int sockfd, int family, int socket_type, char* host, int port) {
     int bind_res = bind(sockfd, address_res->ai_addr, address_res->ai_addrlen);
     if (bind_res == -1) {
         return -1;
-    } 
+    }
 
     return 0;
 }
@@ -152,13 +152,13 @@ void* idrnet_recv(int sockfd, int len) {
     if (!check_init()) {
         return NULL;
     }
-    idrnet_recv_result* res_struct = 
+    idrnet_recv_result* res_struct =
         (idrnet_recv_result*) malloc(sizeof(idrnet_recv_result));
 
     char* buf = malloc(len + 1);
     int recv_res = recv(sockfd, buf, len, 0);
     res_struct->result = recv_res;
-    
+
     if (recv_res > 0) { // Data was received
         buf[recv_res + 1] = 0x00; // Null-term, so Idris can interpret it
     }
@@ -182,7 +182,7 @@ char* idrnet_get_recv_payload(void* res_struct) {
 }
 
 void idrnet_free_recv_struct(void* res_struct) {
-    idrnet_recv_result* i_res_struct = 
+    idrnet_recv_result* i_res_struct =
         (idrnet_recv_result*) res_struct;
     if (i_res_struct->payload != NULL) {
         free(i_res_struct->payload);
@@ -193,4 +193,3 @@ void idrnet_free_recv_struct(void* res_struct) {
 int idrnet_errno() {
     return errno;
 }
-
