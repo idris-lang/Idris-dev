@@ -362,7 +362,7 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> Idris String
 getClause l fn un fp 
     = do i <- getIState
-         case lookupCtxt fn (idris_classes i) of
+         case lookupCtxt un (idris_classes i) of
               [c] -> return (mkClassBodies i (class_methods c))
               _ -> do ty_in <- getInternalApp fp l
                       let ty = case ty_in of
