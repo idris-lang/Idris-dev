@@ -2,11 +2,17 @@
 #include "idris_rts.h"
 #include "idris_gmp.h"
 #include "idris_gc.h"
-#include <sys/select.h>
+
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
 #include <time.h>
+
+#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+int win_fpoll(void* h);
+#else
+#include <sys/select.h>
+#endif
 
 extern char** environ;
 
@@ -45,6 +51,9 @@ int idris_writeStr(void* h, char* str) {
 
 int fpoll(void* h)
 {
+#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+    return win_fpoll(h);
+#else
     FILE* f = (FILE*)h;
     fd_set x;
     struct timeval timeout;
@@ -57,6 +66,7 @@ int fpoll(void* h)
 
     int r = select(fd+1, &x, 0, 0, &timeout);
     return r;
+#endif
 }
 
 void* do_popen(const char* cmd, const char* mode) {
