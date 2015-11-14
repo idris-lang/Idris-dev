@@ -416,7 +416,7 @@ is going to input. We can use ``-1`` to indicate the end of input:
 
     read_vec : Eff (p ** Vect p Int) [STDIO]
     read_vec = do putStr "Number (-1 when done): "
-                  case the (Maybe Int) $ run (parseNumber (trim !getStr)) of
+                  case run (parseNumber (trim !getStr)) of
                        Nothing => do putStrLn "Input error"
                                      read_vec
                        Just v => if (v /= -1)

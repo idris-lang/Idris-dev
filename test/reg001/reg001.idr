@@ -182,3 +182,12 @@ hVectEx1 = ["Hello",[1,2,3],42,(0,10)]
   
 vecfoo : HVect [String, List Nat, Nat, (Nat, Nat)]
 vecfoo = put (S (S Z)) hVectEx1
+
+foom : Monad m => Int -> m Int
+foom = pure 
+  
+bar : IO ()
+bar = case foom 5 of
+           Nothing => print 42
+           Just n => print n
+

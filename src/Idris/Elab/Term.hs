@@ -1028,12 +1028,22 @@ elab ist info emode opts fn tm
                    solve
     elab' ina _ c@(PCase fc scr opts)
         = do attack
+             
              tyn <- getNameFrom (sMN 0 "scty")
              claim tyn RType
              valn <- getNameFrom (sMN 0 "scval")
              scvn <- getNameFrom (sMN 0 "scvar")
              claim valn (Var tyn)
              letbind scvn (Var tyn) (Var valn)
+             
+             -- Start filling in the scrutinee type, if we can work one
+             -- out from the case options
+             let scrTy = getScrType (map fst opts)
+             case scrTy of
+                  Nothing -> return ()
+                  Just ty -> do focus tyn
+                                elabE ina (Just fc) ty
+
              focus valn
              elabE (ina { e_inarg = True }) (Just fc) scr
              -- Solve any remaining implicits - we need to solve as many
@@ -1083,6 +1093,21 @@ elab ist info emode opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
+
+              getScrType [] = Nothing
+              getScrType (f : os) = maybe (getScrType os) Just (getAppType f)
+
+              getAppType (PRef _ _ n) = 
+                 case lookupTyName n (tt_ctxt ist) of
+                      [(n', ty)] | isDConName n' (tt_ctxt ist) -> 
+                         case unApply (getRetTy ty) of
+                           (P _ tyn _, args) ->
+                               Just (PApp fc (PRef fc [] tyn)
+                                    (map pexp (map (const Placeholder) args)))
+                           _ -> Nothing
+                      _ -> Nothing -- ambiguity is no help to us!
+              getAppType (PApp _ t as) = getAppType t
+              getAppType _ = Nothing
 
               inApp (P _ n _) = [n]
               inApp (App _ f a) = inApp f ++ inApp a
