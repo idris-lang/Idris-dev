@@ -108,7 +108,10 @@ expandSugar dsl (PDoBlock ds)
     block b (DoExp fc tm : rest)
         = PApp fc b
             [pexp tm,
-             pexp (PLam fc (sMN 0 "bindx") NoFC Placeholder (block b rest))]
+             pexp (PLam fc (sMN 0 "bindx") NoFC (mkTy tm) (block b rest))]
+        where mkTy (PCase _ _ _) = PRef fc [] unitTy
+              mkTy (PMetavar _ _) = PRef fc [] unitTy
+              mkTy _ = Placeholder
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandSugar dsl (PIdiom fc e) = expandSugar dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e
