@@ -353,6 +353,9 @@ claimFn n bn t = processTactic' (ClaimFn n bn t)
 unifyGoal :: Raw -> Elab' aux ()
 unifyGoal t = processTactic' (UnifyGoal t)
 
+unifyTerms :: Raw -> Raw -> Elab' aux ()
+unifyTerms t1 t2 = processTactic' (UnifyTerms t1 t2)
+
 exact :: Raw -> Elab' aux ()
 exact t = processTactic' (Exact t)
 
@@ -724,7 +727,12 @@ checkPiGoal n
                             focus f
 
 simple_app :: Bool -> Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
-simple_app infer fun arg str = 
+simple_app infer fun arg str =
+    try (dep_app fun arg str)
+        (infer_app infer fun arg str)
+
+infer_app :: Bool -> Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
+infer_app infer fun arg str =
     do a <- getNameFrom (sMN 0 "__argTy")
        b <- getNameFrom (sMN 0 "__retTy")
        f <- getNameFrom (sMN 0 "f")
@@ -755,8 +763,49 @@ simple_app infer fun arg str =
        when (a `elem` hs) $ do movelast a
        when (b `elem` hs) $ do movelast b
        end_unify
- where
-  regretWith err = try regret (lift $ tfail err)
+
+dep_app :: Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
+dep_app fun arg str = 
+    do a <- getNameFrom (sMN 0 "__argTy")
+       b <- getNameFrom (sMN 0 "__retTy")
+       fty <- getNameFrom (sMN 0 "__fnTy")
+       f <- getNameFrom (sMN 0 "f")
+       s <- getNameFrom (sMN 0 "s")
+       claim a RType
+       claim fty RType
+       claim f (Var fty)
+       tm <- get_term
+       g <- goal
+       start_unify s
+       claim s (Var a)
+       
+       prep_fill f [s]
+       focus f; attack; fun
+       end_unify
+       fty <- goal
+       solve
+       focus s; attack; 
+       ctxt <- get_context
+       env <- get_env
+       case normalise ctxt env fty of
+            -- if f gives a function type, unify our argument type with
+            -- f's expected argument type
+            Bind _ (Pi _ argty _) _ -> unifyGoal (forget argty)
+            -- Can't infer a type for 'f', so fail here (and drop back to
+            -- simply typed application where we infer the type for f)
+            _ -> fail "Can't make type"
+       end_unify
+       arg
+       solve
+       complete_fill
+
+       -- We don't need a and b in the hole queue any more since they were
+       -- just for checking f, so move them to the end. If they never end up
+       -- getting solved, we'll get an 'Incomplete term' error.
+       hs <- get_holes
+       when (a `elem` hs) $ do movelast a
+       when (b `elem` hs) $ do movelast b
+       end_unify
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.

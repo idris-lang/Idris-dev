@@ -191,3 +191,9 @@ bar = case foom 5 of
            Nothing => print 42
            Just n => print n
 
+Max : (Nat -> Type) -> Type
+Max p = (Nat , (k : Nat) -> p k -> Nat)
+    
+maxEquiv : Max p -> (n1 : Nat) -> p n1 -> Nat
+maxEquiv a n1 pr1 = snd a n1 pr1
+

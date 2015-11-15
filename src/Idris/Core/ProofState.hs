@@ -91,6 +91,7 @@ data Tactic = Attack
             | MatchProblems Bool
             | UnifyProblems
             | UnifyGoal Raw
+            | UnifyTerms Raw Raw
             | ProofState
             | Undo
             | QED
@@ -476,6 +477,13 @@ unifyGoal tm ctxt env h@(Bind x b sc) =
        ns' <- unify' ctxt env (binderTy b, Nothing) (tmv, Nothing)
        return h
 unifyGoal _ _ _ _ = fail "The focus is not a binder."
+
+unifyTerms :: Raw -> Raw -> RunTactic
+unifyTerms tm1 tm2 ctxt env h =
+    do (tm1v, _) <- lift $ check ctxt env tm1
+       (tm2v, _) <- lift $ check ctxt env tm2
+       ns' <- unify' ctxt env (tm1v, Nothing) (tm2v, Nothing)
+       return h
 
 exact :: Raw -> RunTactic
 exact guess ctxt env (Bind x (Hole ty) sc) =
@@ -1113,3 +1121,5 @@ process t h = tactic (Just h) (mktac t)
          mktac (SetInjective n)  = setinj n
          mktac (MoveLast n)      = movelast n
          mktac (UnifyGoal r)     = unifyGoal r
+         mktac (UnifyTerms x y)  = unifyTerms x y
+
