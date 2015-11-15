@@ -103,6 +103,59 @@ the difference between:
     Idris> \n, m => n + (S m)
     \n => \m => plus n (S m) : Nat -> Nat -> Nat
 
+
+Why can't I use a function with no arguments in a type?
+=======================================================
+
+If you use a name in a type which begins with a lower case letter, and which is
+not applied to any arguments, then Idris will treat it as an implicitly
+bound argument. For example:
+
+.. code-block:: idris
+
+    append : Vect n ty -> Vect m ty -> Vect (n + m) ty
+
+Here, ``n``, ``m``, and ``ty`` are implicitly bound. This rule applies even
+if there are functions defined elsewhere with any of these names. For example,
+you may also have:
+
+.. code-block:: idris
+
+    ty : Type
+    ty = String
+
+Even in this case, ``ty`` is still considered implicitly bound in the definition
+of ``append``, rather than making the type of ``append`` equivalent to...
+
+.. code-block:: idris
+
+    append : Vect n String -> Vect m String -> Vect (n + m) String
+
+...which is probably not what was intended!  The reason for this rule is so
+that it is clear just from looking at the type of ``append``, and no other
+context, what the implicitly bound names are. 
+
+If you want to use an unapplied name in a type, you have two options. You
+can either explicitly qualify it, for example, if ``ty`` is defined in the
+namespace ``Main`` you can do the following:
+
+.. code-block:: idris
+
+    append : Vect n Main.ty -> Vect m Main.ty -> Vect (n + m) Main.ty
+
+Alternatively, you can use a name which does not begin with a lower case
+letter, which will never be implicitly bound:
+    
+.. code-block:: idris
+
+    Ty : Type
+    Ty = String
+
+    append : Vect n Ty -> Vect m Ty -> Vect (n + m) Ty
+
+As a convention, if a name is intended to be used as a type synonym, it is
+best for it to begin with a capital letter to avoid this restriction.
+
 I have an obviously terminating program, but Idris says it possibly isn't total. Why is that?
 =============================================================================================
 
