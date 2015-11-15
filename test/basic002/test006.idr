@@ -23,7 +23,7 @@ main = do printLn (natToBin 42)
 ---------- Proofs ----------
 
 Main.parity_lemma_2 = proof {
-    intro;
+    intro j;
     intro;
     rewrite sym (plusSuccRightSucc j j);
     trivial;

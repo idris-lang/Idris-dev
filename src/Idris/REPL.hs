@@ -943,7 +943,8 @@ process fn (Check (PRef _ _ n))
   where
     showMetavarInfo ppo ist n i
          = case lookupTy n (tt_ctxt ist) of
-                (ty:_) -> putTy ppo ist i [] (delab ist (errReverse ist ty))
+                (ty:_) -> let ty' = normaliseC (tt_ctxt ist) [] ty in
+                              putTy ppo ist i [] (delab ist (errReverse ist ty'))
     putTy :: PPOption -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     putTy ppo ist 0 bnd sc = putGoal ppo ist bnd sc
     putTy ppo ist i bnd (PPi _ n _ t sc)

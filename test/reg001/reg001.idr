@@ -197,3 +197,14 @@ Max p = (Nat , (k : Nat) -> p k -> Nat)
 maxEquiv : Max p -> (n1 : Nat) -> p n1 -> Nat
 maxEquiv a n1 pr1 = snd a n1 pr1
 
+data Rho = R
+
+rho : Rho -> Rho
+rho r = case r of R => r
+
+data Kappa : (r : Rho) -> Type where K : Kappa r
+
+kappa : Kappa (rho r) -> Kappa (rho r)
+kappa {r} k = k' where -- k' : Kappa (rho r)
+                       k' = k
+

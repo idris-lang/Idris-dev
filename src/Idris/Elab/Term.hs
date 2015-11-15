@@ -1721,38 +1721,25 @@ resolveTC' di mv depth tm n ist
 
 collectDeferred :: Maybe Name -> [Name] -> Context ->
                    Term -> State [(Name, (Int, Maybe Name, Type, [Name]))] Term
-collectDeferred top casenames ctxt (Bind n (GHole i psns t) app) =
-    do ds <- get
-       t' <- collectDeferred top casenames ctxt t
-       when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, tidyArg [] t', psns))])
-       collectDeferred top casenames ctxt app
+collectDeferred top casenames ctxt tm = cd [] tm
   where
-    -- Evaluate the top level functions in arguments, if possible, and if it's
-    -- not a name we're immediately going to define in a case block, so that
-    -- any immediate specialisation of the function applied to constructors 
-    -- can be done
-    tidyArg env (Bind n b@(Pi im t k) sc) 
-        = Bind n (Pi im (tidy ctxt env t) k)
-                 (tidyArg ((n, b) : env) sc)
-    tidyArg env t = tidy ctxt env t
-
-    tidy ctxt env t = normalise ctxt env t
-
-    getFn (Bind n (Lam _) t) = getFn t
-    getFn t | (f, a) <- unApply t = f
-
-collectDeferred top ns ctxt (Bind n b t) 
-     = do b' <- cdb b
-          t' <- collectDeferred top ns ctxt t
-          return (Bind n b' t')
-  where
-    cdb (Let t v)   = liftM2 Let (collectDeferred top ns ctxt t) (collectDeferred top ns ctxt v)
-    cdb (Guess t v) = liftM2 Guess (collectDeferred top ns ctxt t) (collectDeferred top ns ctxt v)
-    cdb b           = do ty' <- collectDeferred top ns ctxt (binderTy b)
-                         return (b { binderTy = ty' })
-collectDeferred top ns ctxt (App s f a) = liftM2 (App s) (collectDeferred top ns ctxt f) 
-                                                         (collectDeferred top ns ctxt a)
-collectDeferred top ns ctxt t = return t
+    cd env (Bind n (GHole i psns t) app) =
+        do ds <- get
+           t' <- collectDeferred top casenames ctxt t
+           when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, t', psns))])
+           cd env app
+    cd env (Bind n b t) 
+         = do b' <- cdb b
+              t' <- cd ((n, b) : env) t
+              return (Bind n b' t')
+      where
+        cdb (Let t v)   = liftM2 Let (cd env t) (cd env v)
+        cdb (Guess t v) = liftM2 Guess (cd env t) (cd env v)
+        cdb b           = do ty' <- cd env (binderTy b)
+                             return (b { binderTy = ty' })
+    cd env (App s f a) = liftM2 (App s) (cd env f) 
+                                        (cd env a)
+    cd env t = return t
 
 case_ :: Bool -> Bool -> IState -> Name -> PTerm -> ElabD ()
 case_ ind autoSolve ist fn tm = do
