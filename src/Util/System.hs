@@ -16,9 +16,9 @@ import System.Directory (getTemporaryDirectory
                         , removeFile
                         , removeDirectoryRecursive
                         , createDirectoryIfMissing
-                        , doesDirectoryExist
+                        , doesFileExist
                         )
-import System.FilePath ((</>), normalise, isAbsolute, dropFileName)
+import System.FilePath ((</>), normalise)
 import System.IO
 import System.Info
 import System.IO.Error
@@ -76,10 +76,13 @@ withTempdir subdir callback
        return result
 
 rmFile :: FilePath -> IO ()
-rmFile f = do putStrLn $ "Removing " ++ f
-              catchIO (removeFile f)
-                      (\ioerr -> putStrLn $ "WARNING: Cannot remove file "
-                                 ++ f ++ ", Error msg:" ++ show ioerr)
+rmFile f = do
+  fileExists <- doesFileExist f
+  when fileExists
+   $ do putStrLn $ "Removing " ++ f
+        catchIO (removeFile f)
+                (\ioerr -> putStrLn $ "WARNING: Cannot remove file "
+                           ++ f ++ ", Error msg:" ++ show ioerr)
 
 setupBundledCC :: IO()
 #ifdef FREESTANDING
