@@ -16,9 +16,8 @@ import System.Directory (getTemporaryDirectory
                         , removeFile
                         , removeDirectoryRecursive
                         , createDirectoryIfMissing
-                        , doesDirectoryExist
                         )
-import System.FilePath ((</>), normalise, isAbsolute, dropFileName)
+import System.FilePath ((</>), normalise)
 import System.IO
 import System.Info
 import System.IO.Error
@@ -66,7 +65,7 @@ isATTY = do
 withTempdir :: String -> (FilePath -> IO a) -> IO a
 withTempdir subdir callback
   = do dir <- getTemporaryDirectory
-       let tmpDir = (normalise dir) </> subdir
+       let tmpDir = normalise dir </> subdir
        removeLater <- catchIO (createDirectoryIfMissing True tmpDir >> return True)
                               (\ ioError -> if isAlreadyExistsError ioError then return False
                                             else throw ioError
@@ -76,10 +75,15 @@ withTempdir subdir callback
        return result
 
 rmFile :: FilePath -> IO ()
-rmFile f = do putStrLn $ "Removing " ++ f
-              catchIO (removeFile f)
-                      (\ioerr -> putStrLn $ "WARNING: Cannot remove file "
-                                 ++ f ++ ", Error msg:" ++ show ioerr)
+rmFile f = do
+  result <- try (removeFile f)
+  case result of
+    Right _ -> putStrLn $ "Removed: " ++ f
+    Left err -> handleExists err
+     where handleExists e
+            | isDoesNotExistError e = return ()
+            | otherwise = putStrLn $ "WARNING: Cannot remove file "
+                          ++ f ++ ", Error msg:" ++ show e
 
 setupBundledCC :: IO()
 #ifdef FREESTANDING
