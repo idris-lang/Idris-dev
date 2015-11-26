@@ -162,7 +162,7 @@ namespace FFI_C
   ||| Supported C foreign types
   data C_Types : Type -> Type where
        C_Str   : C_Types String
-       C_Float : C_Types Float
+       C_Float : C_Types Double
        C_Ptr   : C_Types Ptr
        C_MPtr  : C_Types ManagedPtr
        C_Unit  : C_Types ()
@@ -221,7 +221,7 @@ mutual
 
   data JS_Types : Type -> Type where
        JS_Str   : JS_Types String
-       JS_Float : JS_Types Float
+       JS_Float : JS_Types Double
        JS_Ptr   : JS_Types Ptr
        JS_Unit  : JS_Types ()
        JS_FnT   : JS_FnTypes a -> JS_Types (JsFn a)

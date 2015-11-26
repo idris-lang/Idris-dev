@@ -1,14 +1,14 @@
 Prelude.List.(++) : List a -> List a -> List a
 Prelude.Strings.(++) : String -> String -> String
-Prelude.Classes./ : (__pi_arg : Float) →
-                    (__pi_arg1 : Float) → Float
+Prelude.Classes./ : (__pi_arg : Double) →
+                    (__pi_arg1 : Double) → Double
 Usage is :doc <functionname>
 Usage is :wc <functionname>
 Usage is :printdef <functionname>
 prim__divFloat
 Prelude.Classes./
 
- : Float -> Float -> Float
+ : Double -> Double -> Double
 (input):1:1: error: expected: ":",
     dependent type signature,
     end of input
