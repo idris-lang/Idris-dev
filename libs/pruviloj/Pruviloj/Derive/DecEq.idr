@@ -44,9 +44,7 @@ partial -- TODO make covering/total
 matchCase : List Raw -> Elab ()
 matchCase []          = search
 matchCase (tm :: tms) =
-    do hs <- induction tm
-       y <- unsafeNth 0 hs
-       n <- unsafeNth 1 hs
+    do (y :: n :: _)  <- induction tm
 
        focus n; compute
        contra <- gensym "contra"
