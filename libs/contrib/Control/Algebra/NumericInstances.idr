@@ -44,24 +44,24 @@ instance RingWithUnity Int where
   unity = 1
 
 
-instance Semigroup Float where
+instance Semigroup Double where
   (<+>) = (+)
 
-instance Monoid Float where
+instance Monoid Double where
   neutral = 0
 
-instance Group Float where
+instance Group Double where
   inverse = (* -1)
 
-instance AbelianGroup Float
+instance AbelianGroup Double
 
-instance Ring Float where
+instance Ring Double where
   (<.>) = (*)
 
-instance RingWithUnity Float where
+instance RingWithUnity Double where
   unity = 1
 
-instance Field Float where
+instance Field Double where
   inverseM f _ = 1 / f
 
 
