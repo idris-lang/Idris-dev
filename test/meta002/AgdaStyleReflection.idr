@@ -1,4 +1,4 @@
- ||| Implement an Agda-style reflection system as a DSL inside of
+||| Implement an Agda-style reflection system as a DSL inside of
 ||| Idris's reflected elaboration. Requires handling type class
 ||| resolution and implicit arguments - some of the same features as
 ||| the Idris elaborator itself.
@@ -183,49 +183,16 @@ covering
 spliceTerm : Term -> Elab ()
 spliceTerm = spliceTerm' []
 
+||| Lift an Agda-style tactic into an Idris-style tactic
+covering
+quoteGoalImpl : (Term -> Term) -> Elab ()
+quoteGoalImpl f = do compute
+                     g <- goalType >>= quoteTerm
+                     spliceTerm (f g)
 
-mutual
-  instance Quotable Plicity Raw where
-    quotedTy = `(Plicity)
-    quote Explicit = `(Explicit)
-    quote Implicit = `(Implicit)
-    quote Constraint = `(Constraint)
+syntax "quoteGoal" {x} "in" [expr] = %runElab (quoteGoalImpl (\x => expr))
 
-  instance Quotable a Raw => Quotable (Arg a) Raw where
-    quotedTy = `(Arg ~(quotedTy {a=a}))
-    quote (MkArg plicity argValue) = `(MkArg {a=~(quotedTy {a=a})} ~(quote plicity) ~(quote argValue) )
-
-  instance Quotable Term Raw where
-    quotedTy = `(Term)
-
-    quote (Var k xs) = `(Var ~(quote k) ~(assert_total $ quote xs))
-    quote (Ctor n xs) = `(Ctor ~(quote n) ~(assert_total $ quote xs))
-    quote (TyCtor n xs) = `(TyCtor ~(quote n) ~(assert_total $ quote xs))
-    quote (Def n xs) = `(Def ~(quote n) ~(assert_total $ quote xs))
-    quote (Lam x) = `(Lam ~(quote x) : Term)
-    quote (Pi x y) = `(Pi ~(quote x) ~(quote y) : Term)
-    quote (Constant c) = `(Constant ~(quote c) : Term)
-    quote Ty = `(Ty)
-
--- ||| Lift an Agda-style tactic into an Idris-style tactic
--- covering
--- quoteGoalImpl : TTName -> Elab ()
--- quoteGoalImpl f = do compute
---                      g <- goalType >>= quoteTerm
---                      spliceTerm (f g)
-
-partial
-quoteGoalImpl : Elab ()
-quoteGoalImpl =
-  do g <- goalType >>= quoteTerm
-     fill (quote g)
-     solve
-
-syntax "quoteGoal" {x} "in" [expr] =
-    let z = %runElab quoteGoalImpl
-    in (\x => expr) z
-
---syntax "tactic" [expr] = %runElab (quoteGoalImpl expr)
+syntax "tactic" [expr] = %runElab (quoteGoalImpl expr)
 
 
 
@@ -264,19 +231,16 @@ covering
 trivial : (goal : Term) -> Term
 trivial = perhaps . trivial'
 
-gargle : Nat -> Nat -> Term
-gargle = quoteGoal x in \a, b => x
-
 foo : (Nat, (), Nat, Either (() -> ()) Void)
---foo = quoteGoal x in trivial x
+foo = quoteGoal x in trivial x
 
 bar : (Nat, (), Either Void Nat, Nat -> ())
---bar = tactic trivial
+bar = tactic trivial
 
 --     When checking right hand side of baz:
 --     PROOF SEARCH FAILURE is not defined.
---baz : (Nat, Void)
---baz = tactic trivial
+baz : (Nat, Void)
+baz = tactic trivial
 
 -- Local Variables:
 -- idris-load-packages: ("pruviloj")
