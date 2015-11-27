@@ -17,6 +17,8 @@ modules = Control.Algebra,
           Data.Heap,
           Data.SortedMap, Data.SortedSet,
           Data.CoList,
+          Data.Always,
+          Data.Elem,
 
           Decidable.Decidable, Decidable.Order,
 
