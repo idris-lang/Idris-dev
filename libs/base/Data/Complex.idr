@@ -25,7 +25,7 @@ instance Show a => Show (Complex a) where
             plus_i = User 6
 
 
--- when we have a type class 'Fractional' (which contains Float and Double),
+-- when we have a type class 'Fractional' (which contains Double),
 -- we can do:
 {-
 instance Fractional a => Fractional (Complex a) where

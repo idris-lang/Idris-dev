@@ -357,8 +357,8 @@ reifyTTConstApp f v@(P _ _ _) =
 reifyTTConstApp f arg = fail ("Unknown reflection constant: " ++ show (f, arg))
 
 reifyArithTy :: Term -> ElabD ArithTy
-reifyArithTy (App _ (P _ n _) intTy) | n == reflm "ATInt"   = fmap ATInt (reifyIntTy intTy)
-reifyArithTy (P _ n _)             | n == reflm "ATFloat" = return ATFloat
+reifyArithTy (App _ (P _ n _) intTy) | n == reflm "ATInt"    = fmap ATInt (reifyIntTy intTy)
+reifyArithTy (P _ n _)               | n == reflm "ATDouble" = return ATFloat
 reifyArithTy x = fail ("Couldn't reify reflected ArithTy: " ++ show x)
 
 reifyNativeTy :: Term -> ElabD NativeTy
@@ -768,7 +768,7 @@ reflectConstant c@(B32 _) = reflCall "B32" [RConstant c]
 reflectConstant c@(B64 _) = reflCall "B64" [RConstant c]
 reflectConstant (AType (ATInt ITNative)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITNative")]]
 reflectConstant (AType (ATInt ITBig)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITBig")]]
-reflectConstant (AType ATFloat) = reflCall "AType" [Var (reflm "ATFloat")]
+reflectConstant (AType ATFloat) = reflCall "AType" [Var (reflm "ATDouble")]
 reflectConstant (AType (ATInt ITChar)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITChar")]]
 reflectConstant StrType = Var (reflm "StrType")
 reflectConstant (AType (ATInt (ITFixed IT8)))  = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT8")]]]

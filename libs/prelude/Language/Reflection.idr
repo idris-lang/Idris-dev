@@ -70,10 +70,10 @@ data NativeTy = IT8 | IT16 | IT32 | IT64
 
 data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
 
-data ArithTy = ATInt Language.Reflection.IntTy | ATFloat
+data ArithTy = ATInt Language.Reflection.IntTy | ATDouble
 
 ||| Primitive constants
-data Const = I Int | BI Integer | Fl Float | Ch Char | Str String
+data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8 Bits8 | B16 Bits16 | B32 Bits32 | B64 Bits64
            | AType ArithTy | StrType
            | VoidType | Forgot
@@ -89,7 +89,7 @@ instance ReflConst Int where
 instance ReflConst Integer where
    toConst = BI
 
-instance ReflConst Float where
+instance ReflConst Double where
    toConst = Fl
 
 instance ReflConst Char where
@@ -366,12 +366,12 @@ instance Quotable Int Raw where
   quotedTy = `(Int)
   quote x = RConstant (I x)
 
-instance Quotable Float TT where
-  quotedTy = `(Float)
+instance Quotable Double TT where
+  quotedTy = `(Double)
   quote x = TConst (Fl x)
 
-instance Quotable Float Raw where
-  quotedTy = `(Float)
+instance Quotable Double Raw where
+  quotedTy = `(Double)
   quote x = RConstant (Fl x)
 
 instance Quotable Char TT where
@@ -541,12 +541,12 @@ instance Quotable Reflection.IntTy Raw where
 instance Quotable ArithTy TT where
   quotedTy = `(ArithTy)
   quote (ATInt x) = `(ATInt ~(quote x))
-  quote ATFloat = `(ATFloat)
+  quote ATDouble = `(ATDouble)
 
 instance Quotable ArithTy Raw where
   quotedTy = `(ArithTy)
   quote (ATInt x) = `(ATInt ~(quote {t=Raw} x))
-  quote ATFloat = `(ATFloat)
+  quote ATDouble = `(ATDouble)
 
 instance Quotable Const TT where
   quotedTy = `(Const)
