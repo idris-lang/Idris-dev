@@ -37,6 +37,10 @@ import public Language.Reflection.Errors
 %default total
 
 -- Things that can't be elsewhere for import cycle reasons
+-- See comment after declaration of void in Builtins.idr
+-- for explanation of this definition's location
+%runElab (defineFunction $ DefineFun `{void} [])
+
 decAsBool : Dec p -> Bool
 decAsBool (Yes _) = True
 decAsBool (No _)  = False
