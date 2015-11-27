@@ -152,8 +152,8 @@ public %assert_total
 really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
 
-||| Alias for `Double`. Idris does not support 32 bit floats at
-||| present.
+||| Deprecated alias for `Double`, for the purpose of backwards
+||| compatibility. Idris does not support 32 bit floats at present.
 Float : Type
 Float = Double
 %deprecate Float
