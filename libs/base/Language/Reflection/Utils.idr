@@ -129,7 +129,7 @@ instance Show IntTy where
 
 instance Show ArithTy where
   showPrec d (ATInt t) = showCon d "ATInt" $ showArg t
-  showPrec d ATFloat   = "ATFloat"
+  showPrec d ATDouble   = "ATDouble"
 
 instance Show Const where
   showPrec d (I i)      = showCon d "I" $ showArg i
@@ -162,7 +162,7 @@ instance Eq Reflection.IntTy where
 
 instance Eq ArithTy where
   (ATInt x) == (ATInt y) = x == y
-  ATFloat   == ATFloat   = True
+  ATDouble  == ATDouble   = True
   _         == _         = False
 
 instance Eq Const where

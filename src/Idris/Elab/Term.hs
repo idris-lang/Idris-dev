@@ -363,7 +363,7 @@ elab ist info emode opts fn tm
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
        = do g <- goal; resolveTC' False False 5 g fn ist
     elab' ina fc (PResolveTC fc')
-        = do c <- getNameFrom (sMN 0 "class")
+        = do c <- getNameFrom (sMN 0 "__class")
              instanceArg c
     -- Elaborate the equality type first homogeneously, then
     -- heterogeneously as a fallback
@@ -1028,12 +1028,22 @@ elab ist info emode opts fn tm
                    solve
     elab' ina _ c@(PCase fc scr opts)
         = do attack
+             
              tyn <- getNameFrom (sMN 0 "scty")
              claim tyn RType
              valn <- getNameFrom (sMN 0 "scval")
              scvn <- getNameFrom (sMN 0 "scvar")
              claim valn (Var tyn)
              letbind scvn (Var tyn) (Var valn)
+             
+             -- Start filling in the scrutinee type, if we can work one
+             -- out from the case options
+             let scrTy = getScrType (map fst opts)
+             case scrTy of
+                  Nothing -> return ()
+                  Just ty -> do focus tyn
+                                elabE ina (Just fc) ty
+
              focus valn
              elabE (ina { e_inarg = True }) (Just fc) scr
              -- Solve any remaining implicits - we need to solve as many
@@ -1083,6 +1093,21 @@ elab ist info emode opts fn tm
               mkN n = case namespace info of
                         Just xs@(_:_) -> sNS n xs
                         _ -> n
+
+              getScrType [] = Nothing
+              getScrType (f : os) = maybe (getScrType os) Just (getAppType f)
+
+              getAppType (PRef _ _ n) = 
+                 case lookupTyName n (tt_ctxt ist) of
+                      [(n', ty)] | isDConName n' (tt_ctxt ist) -> 
+                         case unApply (getRetTy ty) of
+                           (P _ tyn _, args) ->
+                               Just (PApp fc (PRef fc [] tyn)
+                                    (map pexp (map (const Placeholder) args)))
+                           _ -> Nothing
+                      _ -> Nothing -- ambiguity is no help to us!
+              getAppType (PApp _ t as) = getAppType t
+              getAppType _ = Nothing
 
               inApp (P _ n _) = [n]
               inApp (App _ f a) = inApp f ++ inApp a
@@ -1415,9 +1440,9 @@ elab ist info emode opts fn tm
     notImplicitable _ = False
 
     insertScopedImps fc (Bind n (Pi im@(Just i) _ _) sc) xs
-      | tcinstance i
+      | tcinstance i && not (toplevel_imp i)
           = pimp n (PResolveTC fc) True : insertScopedImps fc sc xs
-      | otherwise
+      | not (toplevel_imp i)
           = pimp n Placeholder True : insertScopedImps fc sc xs
     insertScopedImps fc (Bind n (Pi _ _ _) sc) (x : xs)
         = x : insertScopedImps fc sc xs
@@ -1696,38 +1721,25 @@ resolveTC' di mv depth tm n ist
 
 collectDeferred :: Maybe Name -> [Name] -> Context ->
                    Term -> State [(Name, (Int, Maybe Name, Type, [Name]))] Term
-collectDeferred top casenames ctxt (Bind n (GHole i psns t) app) =
-    do ds <- get
-       t' <- collectDeferred top casenames ctxt t
-       when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, tidyArg [] t', psns))])
-       collectDeferred top casenames ctxt app
+collectDeferred top casenames ctxt tm = cd [] tm
   where
-    -- Evaluate the top level functions in arguments, if possible, and if it's
-    -- not a name we're immediately going to define in a case block, so that
-    -- any immediate specialisation of the function applied to constructors 
-    -- can be done
-    tidyArg env (Bind n b@(Pi im t k) sc) 
-        = Bind n (Pi im (tidy ctxt env t) k)
-                 (tidyArg ((n, b) : env) sc)
-    tidyArg env t = tidy ctxt env t
-
-    tidy ctxt env t = normalise ctxt env t
-
-    getFn (Bind n (Lam _) t) = getFn t
-    getFn t | (f, a) <- unApply t = f
-
-collectDeferred top ns ctxt (Bind n b t) 
-     = do b' <- cdb b
-          t' <- collectDeferred top ns ctxt t
-          return (Bind n b' t')
-  where
-    cdb (Let t v)   = liftM2 Let (collectDeferred top ns ctxt t) (collectDeferred top ns ctxt v)
-    cdb (Guess t v) = liftM2 Guess (collectDeferred top ns ctxt t) (collectDeferred top ns ctxt v)
-    cdb b           = do ty' <- collectDeferred top ns ctxt (binderTy b)
-                         return (b { binderTy = ty' })
-collectDeferred top ns ctxt (App s f a) = liftM2 (App s) (collectDeferred top ns ctxt f) 
-                                                         (collectDeferred top ns ctxt a)
-collectDeferred top ns ctxt t = return t
+    cd env (Bind n (GHole i psns t) app) =
+        do ds <- get
+           t' <- collectDeferred top casenames ctxt t
+           when (not (n `elem` map fst ds)) $ put (ds ++ [(n, (i, top, t', psns))])
+           cd env app
+    cd env (Bind n b t) 
+         = do b' <- cdb b
+              t' <- cd ((n, b) : env) t
+              return (Bind n b' t')
+      where
+        cdb (Let t v)   = liftM2 Let (cd env t) (cd env v)
+        cdb (Guess t v) = liftM2 Guess (cd env t) (cd env v)
+        cdb b           = do ty' <- cd env (binderTy b)
+                             return (b { binderTy = ty' })
+    cd env (App s f a) = liftM2 (App s) (cd env f) 
+                                        (cd env a)
+    cd env t = return t
 
 case_ :: Bool -> Bool -> IState -> Name -> PTerm -> ElabD ()
 case_ ind autoSolve ist fn tm = do

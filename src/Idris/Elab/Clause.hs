@@ -551,6 +551,12 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         -- pattern bindings
         i <- getIState
         inf <- isTyInferred fname
+
+        -- Check if we have "with" patterns outside of "with" block
+        when (isOutsideWith lhs_in && (not $ null withs)) $
+            ierror $ (At fc (Elaborating "left hand side of " fname Nothing
+                             (Msg "unexpected patterns outside of \"with\" block")))
+
         -- get the parameters first, to pass through to any where block
         let fn_ty = case lookupTy fname (tt_ctxt i) of
                          [t] -> t
@@ -663,8 +669,6 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                                 (erun fc (build i winfo ERHS opts fname rhs))
                         errAt "right hand side of " fname (Just clhsty)
                               (erun fc $ psolve lhs_tm)
-                        hs <- get_holes
-                        mapM_ (elabCaseHole is) hs
                         tt <- get_term
                         aux <- getAux
                         let (tm, ds) = runState (collectDeferred (Just fname) 
@@ -782,26 +786,10 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                                    (b : bf, af)
       sepBlocks' ns [] = ([], [])
 
-
-    -- if a hole is just an argument/result of a case block, treat it as
-    -- the unit type. Hack to help elaborate case in do blocks.
-    elabCaseHole aux h = do
-        focus h
-        g <- goal
-        case g of
-             TType _ -> when (any (isArg h) aux) $ do apply (Var unitTy) []; solve
-             _ -> return ()
-
-    -- Is the name a pattern argument in the declaration
-    isArg :: Name -> PDecl -> Bool
-    isArg n (PClauses _ _ _ cs) = any isArg' cs
-      where
-        isArg' (PClause _ _ (PApp _ _ args) _ _ _)
-           = any (\x -> case x of
-                          PRef _ _ n' -> n == n'
-                          _ -> False) (map getTm args)
-        isArg' _ = False
-    isArg _ _ = False
+    -- term is not within "with" block
+    isOutsideWith :: PTerm -> Bool
+    isOutsideWith (PApp _ (PRef _ _ (SN (WithN _ _))) _) = False
+    isOutsideWith _ = True
 
 elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
    = do let tcgen = Dictionary `elem` opts

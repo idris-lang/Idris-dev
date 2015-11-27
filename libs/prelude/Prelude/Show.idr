@@ -10,6 +10,7 @@ import Prelude.Chars
 import Prelude.Classes
 import Prelude.List
 import Prelude.Maybe
+import Prelude.Either
 import Prelude.Nat
 import Prelude.Strings
 
@@ -184,6 +185,10 @@ instance Show a => Show (List a) where
 instance Show a => Show (Maybe a) where
   showPrec d Nothing  = "Nothing"
   showPrec d (Just x) = showCon d "Just" $ showArg x
+
+instance (Show a, Show b) => Show (Either a b) where
+  showPrec d (Left x)  = showCon d "Left" $ showArg x
+  showPrec d (Right x) = showCon d "Right" $ showArg x
 
 instance (Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
     show (y ** prf) = "(" ++ show y ++ " ** " ++ show prf ++ ")"

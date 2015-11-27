@@ -13,7 +13,7 @@ import IO
 infixl 5 >>=
 
 class Applicative m => Monad (m : Type -> Type) where
-    (>>=)  : m a -> (a -> m b) -> m b
+    (>>=)  : m a -> ((result : a) -> m b) -> m b
 
 ||| Also called `join` or mu
 flatten : Monad m => m (m a) -> m a

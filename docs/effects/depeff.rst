@@ -48,7 +48,7 @@ express this as follows:
     readInt = do let x = trim !getStr
                  putM (cast x :: !get)
 
-The notation ``{ xs ==> xs’ } Eff a`` in a type means that the operation
+The type ``Eff a xs xs'`` means that the operation
 begins with effects ``xs`` available, and ends with effects ``xs’``
 available. We have used ``putM`` to update the state, where the ``M``
 suffix indicates that the *type* is being updated as well as the value.
@@ -96,7 +96,7 @@ value read from the user was valid. We can express this in the type:
                               else [STATE (Vect n Int), STDIO])
     readInt = do let x = trim !getStr
                  case all isDigit (unpack x) of
-                      False => pure False
+                      False => pureM False
                       True => do putM (cast x :: !get)
                                  pureM True
 

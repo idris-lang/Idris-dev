@@ -1,0 +1,10 @@
+:type ++
+:core /
+:doc +
+:wc +
+:printdef -
+:spec /
+:patt /
+/
+++
+:whnf /

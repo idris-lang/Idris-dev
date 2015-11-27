@@ -805,7 +805,11 @@ process fn (Eval t)
                       getIState >>= flip warnDisamb t
                       (tm, ty) <- elabREPL recinfo ERHS t
                       ctxt <- getContext
-                      let tm' = perhapsForce $ normaliseAll ctxt [] tm
+                      let tm' = perhapsForce $ normaliseBlocking ctxt [] 
+                                                  [sUN "foreign",
+                                                   sUN "prim_read",
+                                                   sUN "prim_write"]
+                                                 tm
                       let ty' = perhapsForce $ normaliseAll ctxt [] ty
                       -- Add value to context, call it "it"
                       updateContext (addCtxtDef (sUN "it") (Function ty' tm'))
@@ -813,7 +817,8 @@ process fn (Eval t)
                       logLvl 3 $ "Raw: " ++ show (tm', ty')
                       logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
                       let tmDoc = pprintDelab ist tm'
-                          tyDoc =  pprintDelab ist ty'
+                          -- errReverse to make type more readable
+                          tyDoc =  pprintDelab ist (errReverse ist ty')
                       iPrintTermWithType tmDoc tyDoc
   where perhapsForce tm | termSmallerThan 100 tm = force tm
                         | otherwise = tm
@@ -938,7 +943,8 @@ process fn (Check (PRef _ _ n))
   where
     showMetavarInfo ppo ist n i
          = case lookupTy n (tt_ctxt ist) of
-                (ty:_) -> putTy ppo ist i [] (delab ist (errReverse ist ty))
+                (ty:_) -> let ty' = normaliseC (tt_ctxt ist) [] ty in
+                              putTy ppo ist i [] (delab ist (errReverse ist ty'))
     putTy :: PPOption -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     putTy ppo ist 0 bnd sc = putGoal ppo ist bnd sc
     putTy ppo ist i bnd (PPi _ n _ t sc)
@@ -1059,6 +1065,8 @@ process fn (DebugInfo n)
         when (not (null si)) $ iputStrLn (show si)
         let di = lookupCtxt n (idris_datatypes i)
         when (not (null di)) $ iputStrLn (show di)
+        let imps = lookupCtxt n (idris_implicits i)
+        when (not (null imps)) $ iputStrLn (show imps)
         let d = lookupDef n (tt_ctxt i)
         when (not (null d)) $ iputStrLn $ "Definition: " ++ (show (head d))
         let cg = lookupCtxtName n (idris_callgraph i)

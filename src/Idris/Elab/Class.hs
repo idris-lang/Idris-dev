@@ -258,7 +258,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     insertConstraint :: PTerm -> [Name] -> PTerm -> PTerm
     insertConstraint c all (PPi p@(Imp _ _ _ _) n fc ty sc)
                               = PPi p n fc ty (insertConstraint c all sc)
-    insertConstraint c all sc = let dictN = sMN 0 "class"
+    insertConstraint c all sc = let dictN = sMN 0 "__class"
                                 in  PPi (constraint { pstatic = Static })
                                         dictN NoFC c
                                         (constrainMeths (map basename all)

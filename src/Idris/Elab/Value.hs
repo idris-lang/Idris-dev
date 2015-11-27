@@ -127,7 +127,8 @@ elabExec fc tm = runtm (PAlternative [] FirstSuccess
                     printtm tm
                     ])
   where
-    runtm t = PApp fc (PRef fc [] (sUN "run__IO")) [pexp t]
+    runtm t = PApp fc (PRef fc [] (sUN "run__IO")) 
+                  [pimp (sUN "ffi") (PRef fc [] (sUN "FFI_C")) False, pexp t]
     printtm t = PApp fc (PRef fc [] (sUN "printLn"))
                   [pimp (sUN "ffi") (PRef fc [] (sUN "FFI_C")) False, pexp t]
 

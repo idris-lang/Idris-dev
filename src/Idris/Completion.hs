@@ -12,7 +12,7 @@ import Idris.Colours
 import Idris.ParseHelpers(opChars)
 import qualified Idris.ParseExpr (constants, tactics)
 import Idris.ParseExpr (TacticArg (..))
-import Idris.REPLParser (allHelp)
+import Idris.REPLParser (allHelp, setOptions)
 import Control.Monad.State.Strict
 
 import Data.List
@@ -82,13 +82,7 @@ completeMetaVar = completeWord Nothing (" \t(){}:" ++ opChars) completeM
 
 completeOption :: CompletionFunc Idris
 completeOption = completeWord Nothing " \t" completeOpt
-    where completeOpt = return . completeWith [ "errorcontext"
-                                              , "showimplicits"
-                                              , "originalerrors"
-                                              , "autosolve"
-                                              , "nobanner"
-                                              , "desugarnats"
-                                              ]
+    where completeOpt = return . completeWith (map fst setOptions)
 
 completeConsoleWidth :: CompletionFunc Idris
 completeConsoleWidth = completeWord Nothing " \t" completeW

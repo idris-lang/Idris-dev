@@ -3,4 +3,4 @@
 ### containing a valid filename.
 idris $@ --build test.ipkg
 rm -f *.ibc
-rm -f 'quoting-allows-hyphens and spaces? and fun stuff!'
+rm -f 'quoting-allows-hyphens and spaces and fun stuff!'

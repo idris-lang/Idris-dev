@@ -50,8 +50,11 @@ names over '_', patterns over names, etc.
 -}
 
 -- Given a variable to split, and a term application, return a list of
--- variable updates
-split :: Name -> PTerm -> Idris [[(Name, PTerm)]]
+-- variable updates, paired with a flag to say whether the given update
+-- typechecks (False = impossible)
+-- if the flag is 'False' the splits should be output with the 'impossible'
+-- flag, otherwise they should be output as normal
+split :: Name -> PTerm -> Idris (Bool, [[(Name, PTerm)]])
 split n t'
    = do ist <- getIState
         -- Make sure all the names in the term are accessible
@@ -77,15 +80,26 @@ split n t'
                    logLvl 4 ("Working from " ++ show t)
                    logLvl 4 ("Trying " ++ showSep "\n" 
                                (map (showTmImpls) newPats_in))
-                   newPats <- mapM elabNewPat newPats_in
-                   logLvl 3 ("Original:\n" ++ show t)
-                   logLvl 3 ("Split:\n" ++
-                              (showSep "\n" (map show (mapMaybe id newPats))))
-                   logLvl 3 "----"
-                   let newPats' = mergeAllPats ist n t (mapMaybe id newPats)
-                   logLvl 1 ("Name updates " ++ showSep "\n"
-                         (map (\ (p, u) -> show u ++ " " ++ show p) newPats'))
-                   return (map snd newPats')
+                   newPats_in <- mapM elabNewPat newPats_in
+                   case anyValid [] [] newPats_in of
+                        Left fails -> do
+                           let fails' = mergeAllPats ist n t fails
+                           return (False, (map snd fails'))
+                        Right newPats -> do
+                           logLvl 3 ("Original:\n" ++ show t)
+                           logLvl 3 ("Split:\n" ++
+                                      (showSep "\n" (map show newPats)))
+                           logLvl 3 "----"
+                           let newPats' = mergeAllPats ist n t newPats
+                           logLvl 1 ("Name updates " ++ showSep "\n"
+                                 (map (\ (p, u) -> show u ++ " " ++ show p) newPats'))
+                           return (True, (map snd newPats'))
+   where 
+     anyValid ok bad [] = if null ok then Left (reverse bad) 
+                                     else Right (reverse ok)
+     anyValid ok bad ((tc, p) : ps)
+         | tc = anyValid (p : ok) bad ps
+         | otherwise = anyValid ok (p : bad) ps
 
 data MergeState = MS { namemap :: [(Name, Name)],
                        invented :: [(Name, Name)],
@@ -208,13 +222,13 @@ tidy ist tm ty = return tm
 --   where tidyVar (PRef _ _) = Placeholder
 --         tidyVar t = t
 
-elabNewPat :: PTerm -> Idris (Maybe PTerm)
+elabNewPat :: PTerm -> Idris (Bool, PTerm)
 elabNewPat t = idrisCatch (do (tm, ty) <- elabVal recinfo ELHS t
                               i <- getIState
-                              return (Just (delab i tm)))
+                              return (True, delab i tm))
                           (\e -> do i <- getIState
                                     logLvl 5 $ "Not a valid split:\n" ++ pshow i e
-                                    return Nothing)
+                                    return (False, t))
 
 findPats :: IState -> Type -> [PTerm]
 findPats ist t | (P _ n _, _) <- unApply t
@@ -248,26 +262,27 @@ replaceVar ctxt n t pat = pat
 splitOnLine :: Int         -- ^ line number
             -> Name        -- ^ variable
             -> FilePath    -- ^ name of file
-            -> Idris [[(Name, PTerm)]]
+            -> Idris (Bool, [[(Name, PTerm)]])
 splitOnLine l n fn = do
---     let (before, later) = splitAt (l-1) (lines inp)
---     i <- getIState
     cl <- getInternalApp fn l
     logLvl 3 ("Working with " ++ showTmImpls cl)
     tms <- split n cl
---     iputStrLn (showSep "\n" (map show tms))
-    return tms -- "" -- not yet done...
+    return tms 
 
-replaceSplits :: String -> [[(Name, PTerm)]] -> Idris [String]
-replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
+replaceSplits :: String -> [[(Name, PTerm)]] -> Bool -> Idris [String]
+replaceSplits l ups impossible
+    = updateRHSs 1 (map (rep (expandBraces l)) ups)
   where
     rep str [] = str ++ "\n"
     rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow tm) str) ups
 
     updateRHSs i [] = return []
-    updateRHSs i (x : xs) = do (x', i') <- updateRHS (null xs) i x
-                               xs' <- updateRHSs i' xs
-                               return (x' : xs')
+    updateRHSs i (x : xs) 
+       | impossible = do xs' <- updateRHSs i xs
+                         return (setImpossible False x : xs')
+       | otherwise = do (x', i') <- updateRHS (null xs) i x
+                        xs' <- updateRHSs i' xs
+                        return (x' : xs')
 
     updateRHS last i ('?':'=':xs) = do (xs', i') <- updateRHS last i xs
                                        return ("?=" ++ xs', i')
@@ -283,6 +298,11 @@ replaceSplits l ups = updateRHSs 1 (map (rep (expandBraces l)) ups)
                                    return (x : xs', i')
     updateRHS last i [] = return ("", i)
 
+    setImpossible brace ('}':xs) = '}' : setImpossible False xs
+    setImpossible brace ('{':xs) = '{' : setImpossible True xs
+    setImpossible False ('=':xs) = "impossible\n"
+    setImpossible brace (x : xs) = x : setImpossible brace xs
+    setImpossible brace [] = ""
 
     -- TMP HACK: If there are Nats, we don't want to show as numerals since
     -- this isn't supported in a pattern, so special case here
@@ -342,7 +362,7 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> Idris String
 getClause l fn un fp 
     = do i <- getIState
-         case lookupCtxt fn (idris_classes i) of
+         case lookupCtxt un (idris_classes i) of
               [c] -> return (mkClassBodies i (class_methods c))
               _ -> do ty_in <- getInternalApp fp l
                       let ty = case ty_in of
@@ -434,8 +454,8 @@ nameMissing ps = do ist <- get
 
     nm ptm = do mptm <- elabNewPat ptm
                 case mptm of
-                     Nothing -> return ptm
-                     Just ptm' -> return ptm'
+                     (False, _) -> return ptm
+                     (True, ptm') -> return ptm'
                        
 
 

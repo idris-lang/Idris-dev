@@ -1,5 +1,5 @@
 
-module Idris.REPLParser (parseCmd, help, allHelp) where
+module Idris.REPLParser (parseCmd, help, allHelp, setOptions) where
 
 import System.FilePath ((</>))
 import System.Console.ANSI (Color(..))
@@ -31,6 +31,16 @@ parseCmd i inputname = P.runparser pCmd i inputname . trim
 
 type CommandTable = [ ( [String], CmdArg, String
                     , String -> P.IdrisParser (Either String Command) ) ]
+
+setOptions :: [(String, Opt)]
+setOptions = [("errorcontext", ErrContext),
+              ("showimplicits", ShowImpl),
+              ("originalerrors", ShowOrigErr),
+              ("autosolve", AutoSolve),
+              ("nobanner", NoBanner),
+              ("warnreach", WarnReach),
+              ("evaltypes", EvalTypes),
+              ("desugarnats", DesugarNats)]
 
 help :: [([String], CmdArg, String)]
 help = (["<expr>"], NoArg, "Evaluate an expression") : 
@@ -80,7 +90,7 @@ parserCommandsForHelp =
   , (["dynamic"], FileArg, "Dynamically load a C library (similar to %dynamic)", cmd_dynamic)
   , (["dynamic"], NoArg, "List dynamically loaded C libraries", cmd_dynamic)
   , noArgCmd ["?", "h", "help"] Help "Display this help text"
-  , optArgCmd ["set"] SetOpt "Set an option (errorcontext, showimplicits)"
+  , optArgCmd ["set"] SetOpt $ "Set an option (" ++ optionsList ++ ")"
   , optArgCmd ["unset"] UnsetOpt "Unset an option"
   , (["color", "colour"], ColourArg
     , "Turn REPL colours on or off; set a specific colour"
@@ -100,6 +110,7 @@ parserCommandsForHelp =
     , "Pretty prints an Idris function in either LaTeX or HTML and for a specified width."
     , cmd_pprint)
   ]
+  where optionsList = intercalate ", " $ map fst setOptions
 
 parserCommands =
   [ noArgCmd ["u", "universes"] Universes "Display universe constraints"
@@ -163,10 +174,9 @@ pCmd :: P.IdrisParser (Either String Command)
 pCmd = choice [ do c <- cmd names; parser c 
               | (names, _, _, parser) <- parserCommandsForHelp ++ parserCommands ]
      <|> unrecognized 
-     <|> nop 
+     <|> nop
      <|> eval
     where nop = do eof; return (Right NOP)
-          eval = exprArg Eval ""
           unrecognized = do
               P.lchar ':'
               cmd <- many anyChar
@@ -194,16 +204,26 @@ noArgs cmd name = do
 
     emptyArgs <|> failure
 
+eval :: P.IdrisParser (Either String Command)
+eval = do
+  t <- P.fullExpr defaultSyntax
+  return $ Right (Eval t)
+
 exprArg :: (PTerm -> Command) -> String -> P.IdrisParser (Either String Command)
 exprArg cmd name = do
     let noArg = do
         eof
         return $ Left ("Usage is :" ++ name ++ " <expression>")
 
+    let justOperator = do
+        (op, fc) <- P.operatorFC
+        eof
+        return $ Right $ cmd (PRef fc [] (sUN op))
+
     let properArg = do
         t <- P.fullExpr defaultSyntax
         return $ Right (cmd t)
-    try noArg <|> properArg
+    try noArg <|> try justOperator <|> properArg
 
 
 
@@ -253,14 +273,7 @@ optArg cmd name = do
 
     where
         pOption :: P.IdrisParser Opt
-        pOption = do discard (P.symbol "errorcontext"); return ErrContext
-              <|> do discard (P.symbol "showimplicits"); return ShowImpl
-              <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
-              <|> do discard (P.symbol "autosolve"); return AutoSolve
-              <|> do discard (P.symbol "nobanner") ; return NoBanner
-              <|> do discard (P.symbol "warnreach"); return WarnReach
-              <|> do discard (P.symbol "evaltypes"); return EvalTypes
-              <|> do discard (P.symbol "desugarnats"); return DesugarNats
+        pOption = foldl (<|>) empty $ map (\(a, b) -> do discard (P.symbol a); return b) setOptions
 
 proofArg :: (Bool -> Int -> Name -> Command) -> String -> P.IdrisParser (Either String Command)
 proofArg cmd name = do

@@ -614,11 +614,11 @@ mapElem (There e) = There (mapElem e)
 ||| @xs the vector with the desired length
 -- Needs to be Maybe rather than Dec, because if 'n' is unequal to m, we 
 -- only know we don't know how to make a Vect n a, not that one can't exist.
-isLength : {m : Nat} -> -- expected at run-time
-           (len : Nat) -> (xs : Vect m a) -> Maybe (Vect len a)
-isLength {m} len xs with (decEq m len)
-  isLength {m = m} m xs | (Yes Refl) = Just xs
-  isLength {m = m} len xs | (No contra) = Nothing
+exactLength : {m : Nat} -> -- expected at run-time
+              (len : Nat) -> (xs : Vect m a) -> Maybe (Vect len a)
+exactLength {m} len xs with (decEq m len)
+  exactLength {m = m} m xs | (Yes Refl) = Just xs
+  exactLength {m = m} len xs | (No contra) = Nothing
 
 ||| If the given Vect is at least the required length, return a Vect with
 ||| at least that length in its type, otherwise return Nothing

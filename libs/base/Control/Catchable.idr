@@ -16,14 +16,14 @@ instance Catchable (Either a) a where
     catch (Left err) h = h err
     catch (Right x)  h = (Right x)
 
-    throw x = Left x
+    throw = Left
 
 instance Catchable (IOExcept err) err where
     catch (IOM prog) h = IOM (do p' <- prog
                                  case p' of
                                       Left e => let IOM he = h e in he
                                       Right val => return (Right val))
-    throw x = IOM (return (Left x))
+    throw = ioe_fail
 
 instance Catchable List () where
     catch [] h = h ()

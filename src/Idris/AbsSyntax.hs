@@ -1393,7 +1393,11 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
             = (n, (p, t)) : collectImps sc
         collectImps _ = []
 
-        getImps (Bind n (Pi (Just _) _ _) sc) imps = getImps sc imps
+        scopedimpl (Just i) = not (toplevel_imp i)
+        scopedimpl _ = False
+
+        getImps (Bind n (Pi i _ _) sc) imps 
+             | scopedimpl i = getImps sc imps
         getImps (Bind n (Pi _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
@@ -1556,9 +1560,9 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     pibind using []     sc = sc
     pibind using (n:ns) sc
       = case lookup n using of
-            Just ty -> PPi (Imp [] Dynamic False Nothing)
+            Just ty -> PPi (Imp [] Dynamic False (Just (Impl False True)))
                            n NoFC ty (pibind using ns sc)
-            Nothing -> PPi (Imp [InaccessibleArg] Dynamic False Nothing)
+            Nothing -> PPi (Imp [InaccessibleArg] Dynamic False (Just (Impl False True)))
                            n NoFC Placeholder (pibind using ns sc)
 
 -- Add implicit arguments in function calls

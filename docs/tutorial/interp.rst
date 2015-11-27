@@ -36,7 +36,9 @@ We’re going to define a representation of our language in such a way
 that only well-typed programs can be represented. We’ll index the
 representations of expressions by their type and the types of local
 variables (the context), which we’ll be using regularly as an implicit
-argument, so we define everything in a ``using`` block:
+argument, so we define everything in a ``using`` block (keep in mind
+that everything after this point needs to be indented so as to be
+inside the ``using`` block):
 
 .. code-block:: idris
 

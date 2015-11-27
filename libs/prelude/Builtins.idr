@@ -152,9 +152,11 @@ public %assert_total
 really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
 
--- Deprecated - for backward compatibility
+||| Deprecated alias for `Double`, for the purpose of backwards
+||| compatibility. Idris does not support 32 bit floats at present.
 Float : Type
 Float = Double
+%deprecate Float
 
 -- Pointers as external primitive; there's no literals for these, so no
 -- need for them to be part of the compiler.

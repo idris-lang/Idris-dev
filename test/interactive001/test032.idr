@@ -34,3 +34,12 @@ isElem3 x (y :: ys) with (decEq x y)
 foo : List a -> List a
 foo xs = case xs of
               xs' => ?bar
+
+elemVoid1 : elem.Elem x [] -> Void
+elemVoid1 x = ?elemVoid1_rhs
+
+elemVoid2 : elem.Elem x [] -> Void
+elemVoid2 x = case x of
+                   case_val => ?elemVoid2_rhs
+
+

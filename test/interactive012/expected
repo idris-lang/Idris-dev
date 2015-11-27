@@ -1,0 +1,33 @@
+  x : Int
+--------------------------------------
+mkString_rhs_1 : String
+  x : String
+--------------------------------------
+mkString_rhs_2 : String
+--------------------------------------
+mkThing_rhs_1 : Int
+--------------------------------------
+mkThing_rhs_2 : String
+  str : Bool
+  x : IntString str
+--------------------------------------
+mkString2_rhs : String
+  x : ?what
+--------------------------------------
+mkString3_rhs_1 : String
+  x : ?what
+--------------------------------------
+mkString3_rhs_2 : String
+  a : Type
+  m : Nat
+  ys : Vect m a
+--------------------------------------
+append_rhs_1 : Vect m a
+  a : Type
+  x : a
+  k : Nat
+  xs : Vect k a
+  m : Nat
+  ys : Vect m a
+--------------------------------------
+append_rhs_2 : Vect (S (plus k m)) a

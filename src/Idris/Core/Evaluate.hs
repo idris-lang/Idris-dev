@@ -2,7 +2,8 @@
              PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, normaliseAll, toValue, quoteTerm,
+module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, 
+                normaliseAll, normaliseBlocking, toValue, quoteTerm,
                 rt_simplify, simplify, specialise, hnf, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Totality(..), PReason(..), MetaInformation(..),
@@ -79,9 +80,17 @@ normaliseC ctxt env t
    = evalState (do val <- eval False ctxt [] (map finalEntry env) t []
                    quote 0 val) initEval
 
+-- | Normalise everything, whether abstract, private or public
 normaliseAll :: Context -> Env -> TT Name -> TT Name
 normaliseAll ctxt env t
    = evalState (do val <- eval False ctxt [] (map finalEntry env) t [AtREPL]
+                   quote 0 val) initEval
+
+-- | As normaliseAll, but with an explicit list of names *not* to reduce
+normaliseBlocking :: Context -> Env -> [Name] -> TT Name -> TT Name
+normaliseBlocking ctxt env blocked t
+   = evalState (do val <- eval False ctxt (map (\n -> (n, 0)) blocked)
+                                          (map finalEntry env) t [AtREPL]
                    quote 0 val) initEval
 
 normalise :: Context -> Env -> TT Name -> TT Name

@@ -36,7 +36,6 @@ record FFI where
 ||| The IO type, parameterised over the FFI that is available within
 ||| it.
 abstract
-%error_reverse
 data IO' : (lang : FFI) -> Type -> Type where
      MkIO : (World -> PrimIO (WorldRes a)) -> IO' lang a
 
@@ -117,11 +116,11 @@ io_return x = MkIO (\w => prim_io_return x)
 liftPrimIO : (World -> PrimIO a) -> IO' l a
 liftPrimIO = MkIO
 
-call__IO : IO' l a -> PrimIO a
+call__IO : IO' ffi a -> PrimIO a
 call__IO (MkIO f) = f (TheWorld prim__TheWorld)
 
 -- Concrete type makes it easier to elaborate at top level
-run__IO : IO' l () -> PrimIO ()
+run__IO : IO' ffi () -> PrimIO ()
 run__IO f = call__IO f
 
 unsafePerformIO : IO' ffi a -> a
@@ -163,7 +162,7 @@ namespace FFI_C
   ||| Supported C foreign types
   data C_Types : Type -> Type where
        C_Str   : C_Types String
-       C_Float : C_Types Float
+       C_Float : C_Types Double
        C_Ptr   : C_Types Ptr
        C_MPtr  : C_Types ManagedPtr
        C_Unit  : C_Types ()
@@ -176,8 +175,10 @@ namespace FFI_C
   FFI_C : FFI
   FFI_C = MkFFI C_Types String String
 
+||| Interactive programs, describing I/O actions and returning a value.
+||| @res The result type of the program 
 %error_reverse
-IO : Type -> Type
+IO : (res : Type) -> Type
 IO = IO' FFI_C
 
 -- Cannot be relaxed as is used by type providers and they expect IO a
@@ -198,6 +199,9 @@ namespace IO
   forceGC : IO ()
   forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
 
+  getErrno : IO Int
+  getErrno = foreign FFI_C "idris_errno" (IO Int)
+
 --------- The Javascript/Node FFI
 
 
@@ -217,7 +221,7 @@ mutual
 
   data JS_Types : Type -> Type where
        JS_Str   : JS_Types String
-       JS_Float : JS_Types Float
+       JS_Float : JS_Types Double
        JS_Ptr   : JS_Types Ptr
        JS_Unit  : JS_Types ()
        JS_FnT   : JS_FnTypes a -> JS_Types (JsFn a)

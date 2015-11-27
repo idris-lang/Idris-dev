@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.19.1
+Version:        0.9.20.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -538,6 +538,17 @@ Extra-source-files:
                        test/interactive009/input
                        test/interactive009/*.idr
                        test/interactive009/expected
+                       test/interactive010/expected
+                       test/interactive010/input
+                       test/interactive010/run
+                       test/interactive011/expected
+                       test/interactive011/input
+                       test/interactive011/run
+                       test/interactive011/*.idr
+                       test/interactive012/expected
+                       test/interactive012/input
+                       test/interactive012/run
+                       test/interactive012/*.idr
 
                        test/io001/run
                        test/io001/*.idr
@@ -993,6 +1004,7 @@ Library
      cpp-options:   -DIDRIS_FFI
   if flag(GMP)
      build-depends: libffi < 0.2
+     extra-libraries: gmp
      cpp-options:   -DIDRIS_GMP
   if flag(curses)
      build-depends: hscurses < 1.5

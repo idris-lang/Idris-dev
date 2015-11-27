@@ -12,9 +12,9 @@ import Data.Vect
 ||| The Effect type describes effectful computations.
 |||
 ||| This type is parameterised by:
-||| + The input resource.
 ||| + The return type of the computation.
-||| + The computation to run on the resource.
+||| + The input resource.
+||| + The computation to run on the resource given the return value.
 Effect : Type
 Effect = (x : Type) -> Type -> (x -> Type) -> Type
 
@@ -245,6 +245,11 @@ pureM = Value
 (<*>) prog v = do fn <- prog
                   arg <- v
                   return (fn arg)
+
+(*>) : EffM m a xs (\v => xs) ->
+       EffM m b xs (\v => xs) -> EffM m b xs (\v => xs)
+a *> b = do a
+            b
      
 new : Handler e' m => (e : EFFECT) -> resTy ->
       {auto prf : e = MkEff resTy e'} ->

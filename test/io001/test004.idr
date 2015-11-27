@@ -8,20 +8,20 @@ mwhile t b = do v <- t
                      False => return ()
 
 dumpFile : String -> IO ()
-dumpFile fn = do { h <- openFile fn Read
+dumpFile fn = do { Right h <- openFile fn Read
                    mwhile (do { -- putStrLn "TEST"
                                 x <- feof h
                                 return (not x) })
-                          (do { l <- fread h
+                          (do { Right l <- fread h
                                 putStr l })
                    closeFile h }
 
 main : IO ()
-main = do { h <- openFile "testfile" Write
+main = do { Right h <- openFile "testfile" Write
             fwrite h "Hello!\nWorld!\n...\n3\n4\nLast line\n"
             closeFile h
             putStrLn "Reading testfile"
-            f <- readFile "testfile"
+            Right f <- readFile "testfile"
             putStrLn f
             putStrLn "---"
             dumpFile "testfile"
