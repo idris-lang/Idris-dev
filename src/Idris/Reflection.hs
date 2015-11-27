@@ -7,9 +7,11 @@ module Idris.Reflection where
 
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>), (<*>), pure)
+import Prelude hiding (mapM)
+import Data.Traversable (mapM)
 #endif
 import Control.Monad (liftM, liftM2, liftM4)
-import Control.Monad.State.Strict (lift)
+import Control.Monad.State.Strict (lift, State, runState, put)
 import Data.Maybe (catMaybes)
 import Data.List ((\\), findIndex)
 import qualified Data.Text as T
@@ -19,7 +21,7 @@ import Idris.Core.Elaborate (claim, fill, focus, getNameFrom, initElaborator,
 import Idris.Core.Evaluate (Def(TyDecl), initContext, lookupDefExact, lookupTyExact)
 import Idris.Core.TT
 
-import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes),
+import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes, idris_patdefs),
                             PArg'(..), PArg, PTactic, PTactic'(..), PTerm(..), Fixity (..),
                             initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
@@ -1074,6 +1076,40 @@ unApplyRaw tm = ua [] tm
     ua args (RApp f a) = ua (a:args) f
     ua args t         = (t, args)
 
+-- | Build the reflected function definition(s) that correspond(s) to
+-- a provided unqualifed name
+buildFunDefns :: IState -> Name -> [RFunDefn]
+buildFunDefns ist n =
+  [ mkFunDefn name clauses
+  | (name, (clauses, _)) <- lookupCtxtName n $ idris_patdefs ist
+  ]
+  where mkFunDefn name clauses = RDefineFun name (map (mkFunClause name) clauses)
+
+        mkFunClause :: Name -> ([Name], Term, Term) -> RFunClause
+        mkFunClause _ ([], lhs, Impossible) = RMkImpossibleClause (forget lhs)
+        mkFunClause _ ([], lhs, rhs) = RMkFunClause (forget lhs) (forget rhs)
+        mkFunClause name ((n : ns), lhs, rhs) = mkFunClause name (ns, lhs', rhs') where
+          (lhs', ty) = case (runState (subst 0 lhs) Nothing) of
+                        (_, Nothing) -> error $ "Patvar " ++ show n ++ " not bound on the LHS of " ++ show name
+                        (tm', Just ty) -> (Bind n (PVar ty) tm', ty)
+
+          rhs' = case (runState (subst 0 rhs) (Just ty)) of
+                   (tm', _) -> Bind n (PVar ty) tm'
+
+          subst :: Int -> Term -> State (Maybe Term) Term
+          subst i (P nt n' ty) | n' == n && nt == Bound = put (Just ty) >> return (V i)
+                               | otherwise = subst i ty >>= return . P nt n'
+          subst i t@(Bind n' b sc) | n == n = return t -- The name is shadowed, so we won't find it here
+                                   | otherwise = do b' <- mapM (subst i) b
+                                                    sc' <- subst (i + 1) sc
+                                                    return $ Bind n' b' sc'
+          subst i (App s f a) = do f' <- subst i f
+                                   a' <- subst i a
+                                   return $ App s f' a'
+          subst i (Proj x idx) = do x' <- subst i x
+                                    return $ Proj x' idx
+          subst i t = return t
+
 -- | Build the reflected datatype definition(s) that correspond(s) to
 -- a provided unqualified name
 buildDatatypes :: IState -> Name -> [RDatatype]
@@ -1163,3 +1199,10 @@ reflectDatatype (RDatatype tyn tyConArgs tyConRes constrs) =
           RApp (Var $ tacN "TyConParameter") (reflectArg a)
         reflectConArg (RIndex a) =
           RApp (Var $ tacN "TyConIndex") (reflectArg a)
+
+reflectFunClause :: RFunClause -> Raw
+reflectFunClause (RMkFunClause lhs rhs) = raw_apply (Var $ tacN "MkFunClause") [ lhs, rhs ]
+reflectFunClause (RMkImpossibleClause lhs) = RApp (Var $ tacN "MkImpossibleClause") lhs
+
+reflectFunDefn :: RFunDefn -> Raw
+reflectFunDefn (RDefineFun name clauses) = raw_apply (Var $ tacN "DefineFun") [reflectName name, rawList (Var $ tacN "FunClause") (map reflectFunClause clauses)]

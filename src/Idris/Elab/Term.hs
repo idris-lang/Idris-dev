@@ -1862,6 +1862,11 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            fmap fst . checkClosed $
              rawList (Var (tacN "Datatype"))
                      (map reflectDatatype (buildDatatypes ist n'))
+      | n == tacN "Prim__LookupFunDefn", [name] <- args
+      = do n' <- reifyTTName name
+           fmap fst . checkClosed $
+             rawList (Var (tacN "FunDefn"))
+               (map reflectFunDefn (buildFunDefns ist n'))
       | n == tacN "Prim__LookupArgs", [name] <- args
       = do n' <- reifyTTName name
            let listTy = Var (sNS (sUN "List") ["List", "Prelude"])

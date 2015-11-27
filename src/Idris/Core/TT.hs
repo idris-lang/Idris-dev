@@ -1107,6 +1107,7 @@ instantiate e = subst 0 where
     subst i (Bind x b sc) = Bind x (fmap (subst i) b) (subst (i+1) sc)
     subst i (App s f a) = App s (subst i f) (subst i a)
     subst i (Proj x idx) = Proj (subst i x) idx
+    -- If ever adding a clause here, please update mkFunClause in Idris/Reflection.hs
     subst i t = t
 
 -- | As 'instantiate', but also decrement the indices of all de Bruijn variables

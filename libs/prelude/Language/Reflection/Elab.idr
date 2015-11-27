@@ -115,6 +115,7 @@ data Elab : Type -> Type where
   Prim__Guess : Elab TT
   Prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
   Prim__LookupDatatype : TTName -> Elab (List Datatype)
+  Prim__LookupFunDefn : TTName -> Elab (List FunDefn)
   Prim__LookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
 
   Prim__Check : List (TTName, Binder TT) -> Raw -> Elab (TT, TT)
@@ -230,6 +231,19 @@ namespace Tactics
                             []    => fail [TextPart "No datatype named", NamePart n]
                             xs    => fail [TextPart "More than one datatype named", NamePart n]
 
+  ||| Find the reflected function definition of all functions whose names
+  ||| are overloadings of some name.
+  lookupFunDefn : TTName -> Elab (List FunDefn)
+  lookupFunDefn n = Prim__LookupFunDefn n
+
+  ||| Find the reflected function definition of a function, given its
+  ||| fully-qualified name. Fail if the name does not uniquely resolve
+  ||| to a function.
+  lookupFunDefnExact : TTName -> Elab FunDefn
+  lookupFunDefnExact n = case !(lookupFunDefn n) of
+                           [res] => return res
+                           []    => fail [TextPart "No function named", NamePart n]
+                           xs    => fail [TextPart "More than one function named", NamePart n]
 
   ||| Get the argument specification for each overloading of a name.
   lookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
