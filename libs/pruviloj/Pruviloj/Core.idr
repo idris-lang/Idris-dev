@@ -91,7 +91,7 @@ newHole hint ty =
 |||
 ||| @ tm the term that has the right type for the hole
 exact : (tm : Raw) -> Elab ()
-exact tm = do apply tm []
+exact tm = do fill tm
               solve
 
 ||| Introduce as many names as possible, returning them.
@@ -178,7 +178,7 @@ data Infer : Type where
 total
 inferType : (tac : Elab ()) -> Elab (TT, TT)
 inferType tac =
-    case fst !(runElab `(Infer) (startInfer *> tac)) of
+    case fst !(runElab `(Infer) (do startInfer; tac)) of
         `(MkInfer ~ty ~tm) => return (tm, ty)
         _ => fail [TextPart "Not infer"]
   where
