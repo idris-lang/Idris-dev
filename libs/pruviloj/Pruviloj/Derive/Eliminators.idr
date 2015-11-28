@@ -134,7 +134,7 @@ instance Show ElimArg where
   show (NormalArgument x) = "NormalArgument " ++ show x
 
 getElimClause : TyConInfo -> (elimn : TTName) -> (methCount : Nat) ->
-                (TTName, List CtorArg, Raw) -> Nat -> Elab FunClause
+                (TTName, List CtorArg, Raw) -> Nat -> Elab (FunClause Raw)
 getElimClause info elimn methCount (cn, args, resTy) whichCon =
   elabPatternClause
     (do -- Establish a hole for each parameter
@@ -242,13 +242,13 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         bindLam ((n, b)::rest) x = RBind n (Lam (getBinderTy b)) $ bindLam rest x
 
 getElimClauses : TyConInfo -> (elimn : TTName) ->
-                 List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+                 List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
 getElimClauses info elimn ctors =
   let methodCount = length ctors
   in traverse (\(i, con) => getElimClause info elimn methodCount con i)
               (enumerate ctors)
 
-instance Show FunClause where
+instance (Show a) => Show (FunClause a) where
   show (MkFunClause x y) = "(MkFunClause " ++ show x ++ " " ++ show y ++ ")"
 
 abstract

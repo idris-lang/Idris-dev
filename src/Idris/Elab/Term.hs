@@ -1770,7 +1770,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
     pullVars :: (Term, Term) -> ([Name], Term, Term)
     pullVars (lhs, rhs) = (fst (patvars [] lhs), snd (patvars [] lhs), snd (patvars [] rhs)) -- TODO alpha-convert rhs
 
-    defineFunction :: RFunDefn -> ElabD ()
+    defineFunction :: RFunDefn Raw -> ElabD ()
     defineFunction (RDefineFun n clauses) =
       do ctxt <- get_context
          ty <- maybe (fail "no type decl") return $ lookupTyExact n ctxt
@@ -1865,7 +1865,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       | n == tacN "Prim__LookupFunDefn", [name] <- args
       = do n' <- reifyTTName name
            fmap fst . checkClosed $
-             rawList (Var (tacN "FunDefn"))
+             rawList (RApp (Var $ tacN "FunDefn") (Var $ reflm "TT"))
                (map reflectFunDefn (buildFunDefns ist n'))
       | n == tacN "Prim__LookupArgs", [name] <- args
       = do n' <- reifyTTName name

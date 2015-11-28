@@ -101,7 +101,7 @@ bindPatTys ((n, b)::bs) res = RBind n (PVTy (getBinderTy b)) $ bindPatTys bs res
 |||       It will be run in a context where the pattern variables are
 |||       already bound, and should leave behind no holes.
 partial
-elabPatternClause : (lhs, rhs : Elab ()) -> Elab FunClause
+elabPatternClause : (lhs, rhs : Elab ()) -> Elab (FunClause Raw)
 elabPatternClause lhs rhs =
   do -- Elaborate the LHS in a context where its type will be solved via unification
      (pat, _) <- runElab `(Infer) $

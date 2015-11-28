@@ -70,15 +70,15 @@ record TyDecl where
 
 
 ||| A single pattern-matching clause
-data FunClause : Type where
-  MkFunClause : (lhs, rhs : Raw) -> FunClause
-  MkImpossibleClause : (lhs : Raw) -> FunClause
+data FunClause : Type -> Type where
+  MkFunClause : (lhs, rhs : a) -> FunClause a
+  MkImpossibleClause : (lhs : a) -> FunClause a
 
 ||| A reflected function definition.
-record FunDefn where
+record FunDefn a where
   constructor DefineFun
   name : TTName
-  clauses : List FunClause
+  clauses : List (FunClause a)
 
 
 data CtorArg = CtorParameter FunArg | CtorField FunArg
@@ -115,7 +115,7 @@ data Elab : Type -> Type where
   Prim__Guess : Elab TT
   Prim__LookupTy : TTName -> Elab (List (TTName, NameType, TT))
   Prim__LookupDatatype : TTName -> Elab (List Datatype)
-  Prim__LookupFunDefn : TTName -> Elab (List FunDefn)
+  Prim__LookupFunDefn : TTName -> Elab (List (FunDefn TT))
   Prim__LookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
 
   Prim__Check : List (TTName, Binder TT) -> Raw -> Elab (TT, TT)
@@ -148,7 +148,7 @@ data Elab : Type -> Type where
   Prim__Converts : (List (TTName, Binder TT)) -> TT -> TT -> Elab ()
 
   Prim__DeclareType : TyDecl -> Elab ()
-  Prim__DefineFunction : FunDefn -> Elab ()
+  Prim__DefineFunction : FunDefn Raw -> Elab ()
   Prim__AddInstance : TTName -> TTName -> Elab ()
   Prim__IsTCName : TTName -> Elab Bool
 
@@ -233,13 +233,13 @@ namespace Tactics
 
   ||| Find the reflected function definition of all functions whose names
   ||| are overloadings of some name.
-  lookupFunDefn : TTName -> Elab (List FunDefn)
+  lookupFunDefn : TTName -> Elab (List (FunDefn TT))
   lookupFunDefn n = Prim__LookupFunDefn n
 
   ||| Find the reflected function definition of a function, given its
   ||| fully-qualified name. Fail if the name does not uniquely resolve
   ||| to a function.
-  lookupFunDefnExact : TTName -> Elab FunDefn
+  lookupFunDefnExact : TTName -> Elab (FunDefn TT)
   lookupFunDefnExact n = case !(lookupFunDefn n) of
                            [res] => return res
                            []    => fail [TextPart "No function named", NamePart n]
@@ -465,7 +465,7 @@ namespace Tactics
   ||| Define a function in the global context. The function must have
   ||| already been declared, either in ordinary Idris code or using
   ||| `declareType`.
-  defineFunction : FunDefn -> Elab ()
+  defineFunction : FunDefn Raw -> Elab ()
   defineFunction defun = Prim__DefineFunction defun
 
   ||| Register a new instance for type class resolution.
