@@ -24,9 +24,6 @@ mathsServer = do Lift $ putStrLn "Serving maths!"
                                                         Pure (fact k, ()))
                  Loop mathsServer
 
-instance Cast String Nat where
-    cast orig = cast (the Integer (cast orig))
-
 -- Start up a couple of servers, send them requests
 testProg1 : Program () (const Void)
 testProg1 = do -- with Process do 

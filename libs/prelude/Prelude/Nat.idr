@@ -214,6 +214,9 @@ instance MinBound Nat where
 instance Cast Integer Nat where
   cast = fromInteger
 
+instance Cast String Nat where
+    cast str = cast (the Integer (cast str))
+
 ||| A wrapper for Nat that specifies the semigroup and monad instances that use (*)
 record Multiplicative where
   constructor GetMultiplicative
