@@ -1,6 +1,8 @@
 ||| Test some deriving features
 module Deriving
 
+-- NB: test disabled due to excess memory consumption
+
 import Pruviloj
 import Pruviloj.Derive.DecEq
 
