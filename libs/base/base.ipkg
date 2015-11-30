@@ -17,6 +17,7 @@ modules = System,
           Data.HVect, Data.Vect.Quantifiers,
           Data.Complex,
           Data.Erased, Data.List,
+          Data.List.Quantifiers,
           Data.So, Data.String,
 
           Control.Isomorphism,

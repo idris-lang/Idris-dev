@@ -115,6 +115,7 @@ Extra-source-files:
                        libs/base/Control/*.idr
                        libs/base/Control/Monad/*.idr
                        libs/base/Data/*.idr
+                       libs/base/Data/List/*.idr
                        libs/base/Data/Vect/*.idr
                        libs/base/Debug/*.idr
                        libs/base/Language/Reflection/*.idr
