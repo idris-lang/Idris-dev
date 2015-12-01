@@ -86,6 +86,15 @@ last : Fin (S n)
 last {n=Z} = FZ
 last {n=S _} = FS last
 
+||| Forcefully tighten the bound on a Fin.
+||| If tightening the bound would not work with the current value,
+||| decrement the value such that it is within the tightened bound.
+crimp : Fin (S (S n)) -> Fin (S n)
+crimp x =
+  case (strengthen x) of
+       Left _ => last
+       Right x' => x'
+
 total FSinjective : {f : Fin n} -> {f' : Fin n} -> (FS f = FS f') -> f = f'
 FSinjective Refl = Refl
 
