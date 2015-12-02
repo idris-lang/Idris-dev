@@ -604,7 +604,7 @@ jsBASETOP _ 0 = JSAssign jsSTACKBASE jsSTACKTOP
 jsBASETOP _ n = JSAssign jsSTACKBASE (JSBinOp "+" jsSTACKTOP (JSNum (JSInt n)))
 
 jsNULL :: CompileInfo -> Reg -> JS
-jsNULL _ r = JSDelete (translateReg r)
+jsNULL _ r = JSClear (translateReg r)
 
 jsERROR :: CompileInfo -> String -> JS
 jsERROR _ = JSError
@@ -1277,4 +1277,3 @@ toFType (FApp c [_,ity])
 toFType (FApp c [_,fty])
     | c == sUN "JS_FnT" = toFnType fty
 toFType t = error (show t ++ " not yet defined in toFType")
-
