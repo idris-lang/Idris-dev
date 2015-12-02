@@ -133,7 +133,7 @@ elabClauses info' fc opts n_in cs =
 
            -- pdef is the compile-time pattern definition.
            -- This will get further inlined to help with totality checking.
-           let pdef = map debind pats_raw
+           let pdef = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $ map debind pats_raw
            -- pdef_pe is the one which will get further optimised 
            -- for run-time, and, partially evaluated
            let pdef_pe = map debind pats_transformed
@@ -182,7 +182,7 @@ elabClauses info' fc opts n_in cs =
 
            -- pdef' is the version that gets compiled for run-time,
            -- so we start from the partially evaluated version
-           pdef_in' <- applyOpts pdef_pe
+           pdef_in' <- applyOpts $ map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) pdef_pe
            let pdef' = map (simple_rt (tt_ctxt ist)) pdef_in'
 
            logLvl 5 $ "After data structure transformations:\n" ++ show pdef'
@@ -289,7 +289,7 @@ elabClauses info' fc opts n_in cs =
     debind (Left x)       = let (vs, x') = depat [] x in
                                 (vs, x', Impossible)
 
-    depat acc (Bind n (PVar t) sc) = depat (n : acc) (instantiate (P Bound n t) sc)
+    depat acc (Bind n (PVar t) sc) = depat ((n, t) : acc) (instantiate (P Bound n t) sc)
     depat acc x = (acc, x)
 
 

@@ -204,8 +204,8 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                     [(cases, _)] -> return cases
                     _ -> Nothing
          return $ PCase un (de env imps scrutinee)
-                    [ (de (env ++ map (\n -> (n, n)) vars) imps (splitArg lhs),
-                       de (env ++ map (\n -> (n, n)) vars) imps rhs)
+                    [ (de (env ++ map (\(n, _) -> (n, n)) vars) imps (splitArg lhs),
+                       de (env ++ map (\(n, _) -> (n, n)) vars) imps rhs)
                     | (vars, lhs, rhs) <- cases
                     ]
       where splitArg tm | (_, args) <- unApply tm = nonVar (reverse args)

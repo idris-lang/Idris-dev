@@ -1775,11 +1775,11 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
 
     returnUnit = return $ P (DCon 0 0 False) unitCon (P (TCon 0 0) unitTy Erased)
 
-    patvars :: [Name] -> Term -> ([Name], Term)
-    patvars ns (Bind n (PVar t) sc) = patvars (n : ns) (instantiate (P Bound n t) sc)
+    patvars :: [(Name, Term)] -> Term -> ([(Name, Term)], Term)
+    patvars ns (Bind n (PVar t) sc) = patvars ((n, t) : ns) (instantiate (P Bound n t) sc)
     patvars ns tm                   = (ns, tm)
 
-    pullVars :: (Term, Term) -> ([Name], Term, Term)
+    pullVars :: (Term, Term) -> ([(Name, Term)], Term, Term)
     pullVars (lhs, rhs) = (fst (patvars [] lhs), snd (patvars [] lhs), snd (patvars [] rhs)) -- TODO alpha-convert rhs
 
     defineFunction :: RFunDefn Raw -> ElabD ()
@@ -1800,16 +1800,17 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
                                     Left lhs -> let (ns, lhs') = patvars [] lhs'
                                                 in (ns, lhs', Impossible))
                             clauses'
+         let clauses''' = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) clauses''
          ctxt'<- lift $
                   addCasedef n (const [])
                              info False (STerm Erased)
                              True False -- TODO what are these?
                              (map snd $ getArgTys ty) [] -- TODO inaccessible types
                              clauses'
-                             clauses''
-                             clauses''
-                             clauses''
-                             clauses''
+                             clauses'''
+                             clauses'''
+                             clauses'''
+                             clauses'''
                              ty
                              ctxt
          set_context ctxt'

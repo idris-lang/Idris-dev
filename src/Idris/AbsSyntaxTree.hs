@@ -188,7 +188,7 @@ data IState = IState {
     idris_optimisation :: Ctxt OptInfo,
     idris_datatypes :: Ctxt TypeInfo,
     idris_namehints :: Ctxt [Name],
-    idris_patdefs :: Ctxt ([([Name], Term, Term)], [PTerm]), -- not exported
+    idris_patdefs :: Ctxt ([([(Name, Term)], Term, Term)], [PTerm]), -- not exported
       -- ^ list of lhs/rhs, and a list of missing clauses
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
@@ -717,7 +717,7 @@ data Directive = DLib Codegen String |
 -- | A set of instructions for things that need to happen in IState
 -- after a term elaboration when there's been reflected elaboration.
 data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
-                       | RClausesInstrs Name [([Name], Term, Term)]
+                       | RClausesInstrs Name [([(Name, Term)], Term, Term)]
                        | RAddInstance Name Name
 
 -- | For elaborator state

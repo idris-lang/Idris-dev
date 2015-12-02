@@ -1450,11 +1450,11 @@ pprintDef n =
      return $ map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
               map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
               map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
-  where ppDef :: Bool -> IState -> (Name, ([([Name], Term, Term)], [PTerm])) -> Doc OutputAnnotation
+  where ppDef :: Bool -> IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
         ppDef amb ist (n, (clauses, missing)) =
           prettyName True amb [] n <+> colon <+>
           align (pprintDelabTy ist n) <$>
-          ppClauses ist clauses <> ppMissing missing
+          ppClauses ist (map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) clauses) <> ppMissing missing
         ppClauses ist [] = text "No clauses."
         ppClauses ist cs = vsep (map pp cs)
           where pp (vars, lhs, rhs) =

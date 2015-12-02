@@ -1088,9 +1088,9 @@ buildFunDefns ist n =
 
         mkFunClause ([], lhs, Impossible) = RMkImpossibleClause lhs
         mkFunClause ([], lhs, rhs) = RMkFunClause lhs rhs
-        mkFunClause ((n : ns), lhs, rhs) = mkFunClause (ns, bind lhs, bind rhs) where
+        mkFunClause (((n, ty) : ns), lhs, rhs) = mkFunClause (ns, bind lhs, bind rhs) where
           bind Impossible = Impossible
-          bind tm = Bind n (PVar Erased) tm
+          bind tm = Bind n (PVar ty) tm
 
 -- | Build the reflected datatype definition(s) that correspond(s) to
 -- a provided unqualified name
