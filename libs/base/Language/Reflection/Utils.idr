@@ -349,3 +349,7 @@ instance Show CtorArg where
 instance Show TyDecl where
   showPrec d (Declare fn args ret) = showCon d "Declare" $ showArg fn ++
                                      showArg args ++ showArg ret
+
+instance Show FunClause where
+  showPrec d (MkFunClause lhs rhs) = showCon d "MkFunClause" $ showArg lhs ++
+                                     showArg rhs
