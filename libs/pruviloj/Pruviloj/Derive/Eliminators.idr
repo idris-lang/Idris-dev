@@ -248,9 +248,6 @@ getElimClauses info elimn ctors =
   in traverse (\(i, con) => getElimClause info elimn methodCount con i)
               (enumerate ctors)
 
-instance (Show a) => Show (FunClause a) where
-  show (MkFunClause x y) = "(MkFunClause " ++ show x ++ " " ++ show y ++ ")"
-
 abstract
 deriveElim : (tyn, elimn : TTName) -> Elab ()
 deriveElim tyn elimn =
