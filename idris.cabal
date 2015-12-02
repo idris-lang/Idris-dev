@@ -571,6 +571,9 @@ Extra-source-files:
                        test/meta002/run
                        test/meta002/*.idr
                        test/meta002/expected
+                       test/meta004/run
+                       test/meta004/*.idr
+                       test/meta004/expected
 
                        test/primitives001/run
                        test/primitives001/*.idr

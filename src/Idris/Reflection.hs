@@ -7,6 +7,8 @@ module Idris.Reflection where
 
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>), (<*>), pure)
+import Prelude hiding (mapM)
+import Data.Traversable (mapM)
 #endif
 import Control.Monad (liftM, liftM2, liftM4)
 import Control.Monad.State.Strict (lift)
@@ -19,7 +21,7 @@ import Idris.Core.Elaborate (claim, fill, focus, getNameFrom, initElaborator,
 import Idris.Core.Evaluate (Def(TyDecl), initContext, lookupDefExact, lookupTyExact)
 import Idris.Core.TT
 
-import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes),
+import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes, idris_patdefs),
                             PArg'(..), PArg, PTactic, PTactic'(..), PTerm(..), Fixity (..),
                             initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
@@ -55,11 +57,11 @@ rFunArgToPArg (RFunArg n _ RExplicit e) = PExp 0 (rArgOpts e) n Placeholder
 rFunArgToPArg (RFunArg n _ RImplicit e) = PImp 0 False (rArgOpts e) n Placeholder
 rFunArgToPArg (RFunArg n _ RConstraint e) = PConstraint 0 (rArgOpts e) n Placeholder
 
-data RFunClause = RMkFunClause Raw Raw
-                | RMkImpossibleClause Raw
-                deriving Show
+data RFunClause a = RMkFunClause a a
+                  | RMkImpossibleClause a
+                  deriving Show
 
-data RFunDefn = RDefineFun Name [RFunClause] deriving Show
+data RFunDefn a = RDefineFun Name [RFunClause a] deriving Show
 
 -- | Prefix a name with the "Language.Reflection" namespace
 reflm :: String -> Name
@@ -1023,21 +1025,21 @@ reifyTyDecl (App _ (App _ (App _ (P (DCon _ _ _) n _) tyN) args) ret)
      return $ RDeclare tyN' args' ret'
 reifyTyDecl tm = fail $ "Couldn't reify " ++ show tm ++ " as a type declaration."
 
-reifyFunDefn :: Term -> ElabD RFunDefn
-reifyFunDefn (App _ (App _ (P _ n _) fnN) clauses)
-  | n == tacN "DefineFun" =
+reifyFunDefn :: Term -> ElabD (RFunDefn Raw)
+reifyFunDefn (App _ (App _ (App _ (P _ n _) (P _ t _)) fnN) clauses)
+  | n == tacN "DefineFun" && t == reflm "Raw" =
   do fnN' <- reifyTTName fnN
      clauses' <- case unList clauses of
                    Nothing -> fail $ "Couldn't reify " ++ show clauses ++ " as a clause list"
                    Just cs -> mapM reifyC cs
      return $ RDefineFun fnN' clauses'
-  where reifyC :: Term -> ElabD RFunClause
-        reifyC (App _ (App _ (P (DCon _ _ _) n _) lhs) rhs)
-          | n == tacN "MkFunClause" = liftM2 RMkFunClause
+  where reifyC :: Term -> ElabD (RFunClause Raw)
+        reifyC (App _ (App _ (App _ (P (DCon _ _ _) n _) (P _ t _)) lhs) rhs)
+          | n == tacN "MkFunClause" && t == reflm "Raw" = liftM2 RMkFunClause
                                              (reifyRaw lhs)
                                              (reifyRaw rhs)
-        reifyC (App _ (P (DCon _ _ _) n _) lhs)
-          | n == tacN "MkImpossibleClause" = fmap RMkImpossibleClause $ reifyRaw lhs
+        reifyC (App _ (App _ (P (DCon _ _ _) n _) (P _ t _)) lhs)
+          | n == tacN "MkImpossibleClause" && t == reflm "Raw" = fmap RMkImpossibleClause $ reifyRaw lhs
         reifyC tm = fail $ "Couldn't reify " ++ show tm ++ " as a clause."
 reifyFunDefn tm = fail $ "Couldn't reify " ++ show tm ++ " as a function declaration."
 
@@ -1073,6 +1075,22 @@ unApplyRaw tm = ua [] tm
   where
     ua args (RApp f a) = ua (a:args) f
     ua args t         = (t, args)
+
+-- | Build the reflected function definition(s) that correspond(s) to
+-- a provided unqualifed name
+buildFunDefns :: IState -> Name -> [RFunDefn Term]
+buildFunDefns ist n =
+  [ mkFunDefn name clauses
+  | (name, (clauses, _)) <- lookupCtxtName n $ idris_patdefs ist
+  ]
+
+  where mkFunDefn name clauses = RDefineFun name (map mkFunClause clauses)
+
+        mkFunClause ([], lhs, Impossible) = RMkImpossibleClause lhs
+        mkFunClause ([], lhs, rhs) = RMkFunClause lhs rhs
+        mkFunClause ((n : ns), lhs, rhs) = mkFunClause (ns, bind lhs, bind rhs) where
+          bind Impossible = Impossible
+          bind tm = Bind n (PVar Erased) tm
 
 -- | Build the reflected datatype definition(s) that correspond(s) to
 -- a provided unqualified name
@@ -1163,3 +1181,13 @@ reflectDatatype (RDatatype tyn tyConArgs tyConRes constrs) =
           RApp (Var $ tacN "TyConParameter") (reflectArg a)
         reflectConArg (RIndex a) =
           RApp (Var $ tacN "TyConIndex") (reflectArg a)
+
+reflectFunClause :: RFunClause Term -> Raw
+reflectFunClause (RMkFunClause lhs rhs) = raw_apply (Var $ tacN "MkFunClause") $ (Var $ reflm "TT") : map reflect [ lhs, rhs ]
+reflectFunClause (RMkImpossibleClause lhs) = raw_apply (Var $ tacN "MkImpossibleClause") $ [ Var $ reflm "TT", reflect lhs ]
+
+reflectFunDefn :: RFunDefn Term -> Raw
+reflectFunDefn (RDefineFun name clauses) = raw_apply (Var $ tacN "DefineFun") [ Var $ reflm "TT"
+                                                                              , reflectName name
+                                                                              , rawList (RApp (Var $ tacN "FunClause") (Var $ reflm "TT")) (map reflectFunClause clauses)
+                                                                              ]

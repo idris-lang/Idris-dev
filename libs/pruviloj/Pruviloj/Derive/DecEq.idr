@@ -181,7 +181,7 @@ deriveDecEq fn =
                     Nothing => return False
 
     partial -- mkRhs
-    mkCase : Nat -> TTName -> (x, y : (TTName, List CtorArg, Raw)) -> Elab (Maybe FunClause)
+    mkCase : Nat -> TTName -> (x, y : (TTName, List CtorArg, Raw)) -> Elab (Maybe (FunClause Raw))
     mkCase k fam (cn1, args1, _) (cn2, args2, _) =
         perhaps $ elabPatternClause
           (do (h2 :: h1 :: _) <- reverse <$>
