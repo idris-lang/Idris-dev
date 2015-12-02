@@ -1782,6 +1782,25 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
     pullVars :: (Term, Term) -> ([(Name, Term)], Term, Term)
     pullVars (lhs, rhs) = (fst (patvars [] lhs), snd (patvars [] lhs), snd (patvars [] rhs)) -- TODO alpha-convert rhs
 
+    requireError :: Err -> ElabD a -> ElabD ()
+    requireError orErr elab =
+      do state <- get
+         case runStateT elab state of
+           OK (_, state') -> lift (tfail orErr)
+           Error e -> return ()
+
+    -- create a fake TT term for the LHS of an impossible case
+    fakeTT :: Raw -> Term
+    fakeTT (Var n) =
+      case lookupNameDef n (tt_ctxt ist) of
+        [(n', TyDecl nt _)] -> P nt n' Erased
+        _ -> P Ref n Erased
+    fakeTT (RBind n b body) = Bind n (fmap fakeTT b) (fakeTT body)
+    fakeTT (RApp f a) = App Complete (fakeTT f) (fakeTT a)
+    fakeTT RType = TType (UVar (-1))
+    fakeTT (RUType u) = UType u
+    fakeTT (RConstant c) = Constant c
+
     defineFunction :: RFunDefn Raw -> ElabD ()
     defineFunction (RDefineFun n clauses) =
       do ctxt <- get_context
@@ -1794,10 +1813,11 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
                                            lift $ converts ctxt [] lty rty
                                            return $ Right (lhs', rhs')
                                       RMkImpossibleClause lhs ->
-                                        do lhs' <- fmap fst . lift $ check ctxt [] lhs
-                                           return $ Left lhs')
+                                        do requireError (Msg "Not an impossible case") . lift $
+                                             check ctxt [] lhs
+                                           return $ Left (fakeTT lhs))
          let clauses'' = map (\case Right c -> pullVars c
-                                    Left lhs -> let (ns, lhs') = patvars [] lhs'
+                                    Left lhs -> let (ns, lhs') = patvars [] lhs
                                                 in (ns, lhs', Impossible))
                             clauses'
          let clauses''' = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) clauses''

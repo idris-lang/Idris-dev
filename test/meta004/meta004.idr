@@ -1,3 +1,4 @@
+import Data.Fin
 import Language.Reflection.Utils
 import Pruviloj.Core
 
@@ -23,3 +24,25 @@ total
 p : (a : Nat) -> (b : Nat) -> plus a b = plus' a b
 p Z right = Refl
 p (S left) right = Refl
+
+
+-- Test handling of impossible clauses in function definitions
+foo : Fin Z -> Nat
+bar : Nat -> Fin Z
+
+doit : Elab ()
+doit = defineFunction $
+          DefineFun `{foo} [MkImpossibleClause
+                             (RBind `{{n}}
+                               (PVar (Var `{Nat}))
+                               (RApp (Var `{foo})
+                                 (RApp (Var `{FZ}) (Var `{{n}}))))]
+
+domore : Elab ()
+domore = defineFunction $
+            DefineFun `{foo} [MkImpossibleClause $
+                                RBind `{{k}} (PVar `(Nat)) $
+                                  RApp (Var `{bar}) (Var `{{k}})]
+
+%runElab doit
+%runElab domore
