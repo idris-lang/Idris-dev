@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 127
+ibcVersion = 128
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -80,7 +80,7 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_errorhandlers :: ![Name],
                          ibc_function_errorhandlers :: ![(Name, Name, Name)], -- fn, arg, handler
                          ibc_metavars :: ![(Name, (Maybe Name, Int, [Name], Bool))],
-                         ibc_patdefs :: ![(Name, ([([Name], Term, Term)], [PTerm]))],
+                         ibc_patdefs :: ![(Name, ([([(Name, Term)], Term, Term)], [PTerm]))],
                          ibc_postulates :: ![Name],
                          ibc_externs :: ![(Name, Int)],
                          ibc_parsedSpan :: !(Maybe FC),
@@ -505,7 +505,7 @@ pDyLibs ls = do res <- mapM (addDyLib . return) ls
 pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
 
-pPatdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))] -> Idris ()
+pPatdefs :: [(Name, ([([(Name, Term)], Term, Term)], [PTerm]))] -> Idris ()
 pPatdefs ds = mapM_ (\ (n, d) -> updateIState (\i ->
             i { idris_patdefs = addDef n (force d) (idris_patdefs i) })) ds
 
