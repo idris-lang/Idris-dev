@@ -196,6 +196,88 @@ VAL bigMod(VM* vm, VAL x, VAL y) {
     return cl;
 }
 
+VAL bigAnd(VM* vm, VAL x, VAL y) {
+    idris_requireAlloc(IDRIS_MAXGMP);
+
+    mpz_t* bigint;
+    VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
+    bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
+    mpz_and(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+    return cl;
+}
+
+VAL bigOr(VM* vm, VAL x, VAL y) {
+    idris_requireAlloc(IDRIS_MAXGMP);
+
+    mpz_t* bigint;
+    VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
+    bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
+    mpz_ior(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+    return cl;
+}
+
+VAL bigShiftLeft(VM* vm, VAL x, VAL y) {
+    idris_requireAlloc(IDRIS_MAXGMP);
+
+    mpz_t* bigint;
+    VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
+    bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
+    mpz_mul_2exp(*bigint, GETMPZ(GETBIG(vm,x)), GETINT(y));
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+    return cl;
+}
+
+
+VAL bigLShiftRight(VM* vm, VAL x, VAL y) {
+    idris_requireAlloc(IDRIS_MAXGMP);
+
+    mpz_t* bigint;
+    VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
+    bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
+    mpz_fdiv_q_2exp(*bigint, GETMPZ(GETBIG(vm,x)), GETINT(y));
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+    return cl;
+}
+
+VAL bigAShiftRight(VM* vm, VAL x, VAL y) {
+    idris_requireAlloc(IDRIS_MAXGMP);
+
+    mpz_t* bigint;
+    VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+    idris_doneAlloc();
+    bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
+    mpz_fdiv_q_2exp(*bigint, GETMPZ(GETBIG(vm,x)), GETINT(y));
+    SETTY(cl, BIGINT);
+    cl -> info.ptr = (void*)bigint;
+    return cl;
+}
+
+VAL idris_bigAnd(VM* vm, VAL x, VAL y) {
+    if (ISINT(x) && ISINT(y)) {
+        return INTOP(&, x, y);
+    } else {
+        return bigAnd(vm, GETBIG(vm, x), GETBIG(vm, y));
+    }
+}
+
+VAL idris_bigOr(VM* vm, VAL x, VAL y) {
+    if (ISINT(x) && ISINT(y)) {
+        return INTOP(|, x, y);
+    } else {
+        return bigOr(vm, GETBIG(vm, x), GETBIG(vm, y));
+    }
+}
+
 VAL idris_bigPlus(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         i_int vx = GETINT(x);
@@ -250,6 +332,30 @@ VAL idris_bigTimes(VM* vm, VAL x, VAL y) {
         }
     } else {
         return bigMul(vm, GETBIG(vm, x), GETBIG(vm, y));
+    }
+}
+
+VAL idris_bigShiftLeft(VM* vm, VAL x, VAL y) {
+    if (ISINT(x) && ISINT(y)) {
+        return INTOP(<<, x, y);
+    } else {
+        return bigShiftLeft(vm, GETBIG(vm, x), GETBIG(vm, y));
+    }
+}
+
+VAL idris_bigAShiftRight(VM* vm, VAL x, VAL y) {
+    if (ISINT(x) && ISINT(y)) {
+        return INTOP(>>, x, y);
+    } else {
+        return bigAShiftRight(vm, GETBIG(vm, x), GETBIG(vm, y));
+    }
+}
+
+VAL idris_bigLShiftRight(VM* vm, VAL x, VAL y) {
+    if (ISINT(x) && ISINT(y)) {
+        return INTOP(>>, x, y);
+    } else {
+        return bigLShiftRight(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
