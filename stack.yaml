@@ -1,6 +1,6 @@
 flags: {}
 packages:
 - '.'
-extra-deps: 
-- cheapskate-0.1.0.4
-resolver: nightly-2015-07-24
+extra-deps:
+- libffi-0.1
+resolver: nightly-2015-09-21
