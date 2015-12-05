@@ -1,6 +1,13 @@
-flags: {}
+resolver: lts-3.16
 packages:
 - '.'
+flags:
+  # idris:
+  #   FFI: true
+  #   GMP: True
+  #   curses: True
 extra-deps: 
+- annotated-wl-pprint-0.7.0
 - cheapskate-0.1.0.4
-resolver: nightly-2015-07-24
+# - hscurses-1.4.2.0
+# - libffi-0.1
