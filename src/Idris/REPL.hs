@@ -126,10 +126,8 @@ repl orig mods efile
                 do ms <- H.catch (lift $ processInput input orig mods efile)
                                  (ctrlC (return (Just mods)))
                    case ms of
-                        Just mods -> let efile' = case mods of
-                                                       [] -> efile
-                                                       (e:_) -> e in
-                                         repl orig mods efile'
+                        Just mods -> let efile' = fromMaybe efile (listToMaybe mods)
+                                     in repl orig mods efile'
                         Nothing -> return ()
 --                             ctrlC)
 --       ctrlC
@@ -154,15 +152,13 @@ repl orig mods efile
 
 -- | Run the REPL server
 startServer :: PortID -> IState -> [FilePath] -> Idris ()
-startServer port orig fn_in = do tid <- runIO $ forkOS (serverLoop port)
+startServer port orig fn_in = do tid <- runIO $ forkIO (serverLoop port)
                                  return ()
   where serverLoop port = withSocketsDo $
                               do sock <- listenOnLocalhost port
                                  loop fn orig { idris_colourRepl = False } sock
 
-        fn = case fn_in of
-                  (f:_) -> f
-                  _ -> ""
+        fn = fromMaybe "" (listToMaybe fn_in)
 
         loop fn ist sock
             = do (h,_,_) <- accept sock
@@ -276,9 +272,7 @@ idemode h orig mods
              i <- getIState
              putIState $ i { idris_outputmode = (IdeMode id h) }
              idrisCatch -- to report correct id back!
-               (do let fn = case mods of
-                              (f:_) -> f
-                              _     -> ""
+               (do let fn = fromMaybe "" (listToMaybe mods)
                    case IdeMode.sexpToCommand sexp of
                      Just cmd -> runIdeModeCommand h id orig fn mods cmd
                      Nothing  -> iPrintError "did not understand" )
@@ -683,9 +677,7 @@ processInput cmd orig inputs efile
     = do i <- getIState
          let opts = idris_options i
          let quiet = opt_quiet opts
-         let fn = case inputs of
-                        (f:_) -> f
-                        _ -> ""
+         let fn = fromMaybe "" (listToMaybe inputs)
          c <- colourise
          case parseCmd i "(input)" cmd of
             Failure err ->   do iputStrLn $ show (fixColour c err)
