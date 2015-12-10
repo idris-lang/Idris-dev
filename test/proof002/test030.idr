@@ -10,4 +10,3 @@ total
 testReflect1 : (xs, ys : List a) ->
                ((xs ++ (x :: ys ++ xs)) = ((xs ++ [x]) ++ (ys ++ xs)))
 testReflect1 {a} xs ys = AssocProof a
-

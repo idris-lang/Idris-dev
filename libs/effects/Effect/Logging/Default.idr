@@ -84,7 +84,7 @@ log l msg = call $ Log l msg
 ||| @l The level to log.
 ||| @m The message to log.
 logN : (l : Nat) -> {auto prf : LTE l 70} -> (m : String) -> Eff () [LOG]
-logN l msg = call $ Log (getProof lvl) msg
+logN l msg = call $ Log (snd lvl) msg
   where
     lvl : (n ** LogLevel n)
     lvl = case cast {to=String} (cast {to=Int} l) of

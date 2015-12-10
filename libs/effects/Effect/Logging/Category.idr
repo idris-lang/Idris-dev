@@ -147,7 +147,7 @@ logN : (Show a, Eq a) => (l : Nat)
                       -> (cs : List a)
                       -> (m : String)
                       -> Eff () [LOG a]
-logN l cs msg = call $ Log (getProof lvl) cs msg
+logN l cs msg = call $ Log (snd lvl) cs msg
   where
     lvl : (n ** LogLevel n)
     lvl = case cast {to=String} (cast {to=Int} l) of

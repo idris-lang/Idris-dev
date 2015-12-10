@@ -43,9 +43,11 @@ using (a : Type, P : a -> Type)
 
     getWitness : DepPair a P -> a
     getWitness = fst
+    %deprecate DepPair.getWitness "This is being deprecated in favour of `fst`."
 
-    getProof : (x : Sigma a P) -> P (fst x)
+    getProof : (x : DepPair a P) -> P (fst x)
     getProof = snd
+    %deprecate DepPair.getProof "This is being deprecated in favour of `snd`."
 
   -- Polymorphic (class-based) projections have been removed
   -- because type-directed name disambiguation works better.

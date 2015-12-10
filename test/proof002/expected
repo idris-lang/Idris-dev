@@ -12,7 +12,7 @@ When checking an application of function Reflect.getJust:
         Type mismatch between
                 IsJust (Just x1) (Type of ItIsJust)
         and
-                IsJust (prove (getProof x)) (Expected type)
+                IsJust (prove (snd x)) (Expected type)
         
         Specifically:
                 Type mismatch between

@@ -6,7 +6,7 @@ Dec0 : Type -> Type
 Dec0 = Dec
 
 Dec1 : {A : Type} -> (P : A -> Type) -> Type
-Dec1 {A} P = (a : A) -> Dec0 (P a) 
+Dec1 {A} P = (a : A) -> Dec0 (P a)
 
 Unique : Type -> Type
 Unique t = (p : t) -> (q : t) -> p = q
@@ -53,8 +53,8 @@ namespace Finite
 filterTag : {A : Type} ->
             {P : A -> Type} ->
             Dec1 P ->
-            Vect n A -> 
-            Sigma Nat (\ m => Vect m (Sigma A P))
+            Vect n A ->
+            DepPair Nat (\ m => Vect m (DepPair A P))
 filterTag d1P Nil = (_ ** Nil)
 filterTag d1P (a :: as) with (filterTag d1P as)
   | (_ ** tail) with (d1P a)
@@ -66,7 +66,7 @@ toVect : {A : Type} ->
          {P : A -> Type} ->
          Finite A ->
          Dec1 P ->
-         (n : Nat ** Vect n (Sigma A P))
+         (n : Nat ** Vect n (DepPair A P))
 toVect fA d1P = filterTag d1P (toVect fA)
 
 sigmaUniqueLemma1 : {A   : Type} ->
@@ -74,16 +74,14 @@ sigmaUniqueLemma1 : {A   : Type} ->
                     Unique1 {t0 = A} P ->
                     (a : A) ->
                     (p : P a) ->
-                    (ss : Vect n (Sigma A P)) ->
-                    Elem a (map getWitness ss) -> 
+                    (ss : Vect n (DepPair A P)) ->
+                    Elem a (map fst ss) ->
                     Elem (a ** p) ss
 
 toVectComplete : {A   : Type} ->
                  {P   : A -> Type} ->
-                 (fA  : Finite A) -> 
-                 (d1P : Dec1 P) -> 
+                 (fA  : Finite A) ->
+                 (d1P : Dec1 P) ->
                  Unique1 {t0 = A} P ->
-                 (s   : Sigma A P) -> 
-                 Elem s (getProof (toVect fA d1P))
-
-
+                 (s   : DepPair A P) ->
+                 Elem s (snd (toVect fA d1P))

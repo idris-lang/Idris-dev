@@ -47,9 +47,11 @@ namespace Builtins
 
   Sigma : (a : Type) -> (P : a -> Type) -> Type
   Sigma wit prf = DepPair wit prf
+  %deprecate Sigma "This name is being deprecated in favour of `DepPair`."
 
   MkSigma : .{P : a -> Type} -> (x : a) -> (prf : P x) -> DepPair a P
   MkSigma wit prf = MkDepPair wit prf
+  %deprecate MkSigma "This constructor is being deprecated in favour of `MkDepPair`."
 
 ||| The empty type, also known as the trivially false proposition.
 |||

@@ -192,5 +192,5 @@ Show a => Show (Maybe a) where
   showPrec d (Left x)  = showCon d "Left" $ showArg x
   showPrec d (Right x) = showCon d "Right" $ showArg x
 
-(Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
+(Show a, {y : a} -> Show (p y)) => Show (DepPair a p) where
     show (y ** prf) = "(" ++ show y ++ " ** " ++ show prf ++ ")"
