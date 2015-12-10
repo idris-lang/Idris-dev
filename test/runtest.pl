@@ -55,9 +55,15 @@ sub runtest {
 
     chdir($test);
 
+    my $startTime = time();
     print "Running $test...\n";
     my $got = `$sandbox ./run @idrOpts`;
     my $exp = `cat expected`;
+
+    my $endTime = time();
+    my $elapsedTime = $endTime - $startTime;
+
+    print "Duration of $test was $elapsedTime\n";
 
     # Allow for variant expected output for tests by overriding expected
     # when there is an expected.<os> file in the test.
