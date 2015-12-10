@@ -189,7 +189,7 @@ decl syn = try (externalDecl syn)
            <?> "declaration"
 
 internalDecl :: SyntaxInfo -> IdrisParser [PDecl]
-internalDecl syn 
+internalDecl syn
          = do fc <- getFC
               -- if we're after maxline, stop at the next type declaration
               -- (so we get all cases of a definition to preserve totality
@@ -204,7 +204,7 @@ internalDecl syn
               -- the end of the definition, reset the state. But I've lost
               -- patience with trying to find out how to do that from the
               -- trifecta docs, so this does the job instead.
-              if continue then 
+              if continue then
                  do notEndBlock
                     declBody continue
                 else try (do notEndBlock
@@ -283,7 +283,7 @@ declExtensions syn rules = declExtension syn [] (filter isDeclRule rules)
      isDeclRule (DeclRule _ _) = True
      isDeclRule _ = False
 
-declExtension :: SyntaxInfo -> [Maybe (Name, SynMatch)] -> [Syntax] 
+declExtension :: SyntaxInfo -> [Maybe (Name, SynMatch)] -> [Syntax]
                  -> IdrisParser [PDecl]
 declExtension syn ns rules =
   choice $ flip map (groupBy (ruleGroup `on` syntaxSymbols) rules) $ \rs ->
@@ -318,7 +318,7 @@ declExtension syn ns rules =
     updateNs :: [(Name, SynMatch)] -> PDecl -> PDecl
     updateNs ns (PTy doc argdoc s fc o n fc' t)
           = PTy doc argdoc s fc o (updateB ns n) fc' t
-    updateNs ns (PClauses fc o n cs) 
+    updateNs ns (PClauses fc o n cs)
          = PClauses fc o (updateB ns n) (map (updateClause ns) cs)
     updateNs ns (PCAF fc n t) = PCAF fc (updateB ns n) t
     updateNs ns (PData ds cds s fc o dat)
@@ -338,10 +338,10 @@ declExtension syn ns rules =
                   cdocs
     updateNs ns (PInstance docs pdocs s fc cs cn fc' ps ity ni ds)
          = PInstance docs pdocs s fc cs (updateB ns cn) fc'
-                     ps ity (fmap (updateB ns) ni) 
+                     ps ity (fmap (updateB ns) ni)
                             (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
-    updateNs ns (PProvider docs s fc fc' pw n) 
+    updateNs ns (PProvider docs s fc fc' pw n)
         = PProvider docs s fc fc' pw (updateB ns n)
     updateNs ns d = d
 
@@ -482,7 +482,7 @@ syntaxRule syn
        where ts = dropWhile isSpace . dropWhileEnd isSpace $ s
     mkSimple' (e : es) = e : mkSimple' es
     mkSimple' [] = []
-    
+
     -- Prevent syntax variable capture by making all binders under syntax unique
     -- (the ol' Common Lisp GENSYM approach)
     uniquifyBinders :: [Name] -> PTerm -> IdrisParser PTerm

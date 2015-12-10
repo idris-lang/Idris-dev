@@ -805,7 +805,7 @@ process fn (Eval t)
                       getIState >>= flip warnDisamb t
                       (tm, ty) <- elabREPL recinfo ERHS t
                       ctxt <- getContext
-                      let tm' = perhapsForce $ normaliseBlocking ctxt [] 
+                      let tm' = perhapsForce $ normaliseBlocking ctxt []
                                                   [sUN "foreign",
                                                    sUN "prim_read",
                                                    sUN "prim_write"]
@@ -951,10 +951,10 @@ process fn (Check (PRef _ _ n))
                = let current = case n of
                                    MN _ _ -> text ""
                                    UN nm | ('_':'_':_) <- str nm -> text ""
-                                   _ -> text "  " <> 
+                                   _ -> text "  " <>
                                         bindingOf n False
-                                            <+> colon 
-                                            <+> align (tPretty bnd ist t) 
+                                            <+> colon
+                                            <+> align (tPretty bnd ist t)
                                             <> line
                  in
                     current <> putTy ppo ist (i-1) ((n,False):bnd) sc
@@ -986,8 +986,8 @@ process fn (Core t)
         iPrintTermWithType (pprintTT [] tm) (pprintTT [] ty)
 
 process fn (DocStr (Left n) w)
-  | UN ty <- n, ty == T.pack "Type" = getIState >>= iRenderResult . pprintTypeDoc  
-  | otherwise = do    
+  | UN ty <- n, ty == T.pack "Type" = getIState >>= iRenderResult . pprintTypeDoc
+  | otherwise = do
         ist <- getIState
         let docs = lookupCtxtName n (idris_docstrings ist) ++
                    map (\(n,d)-> (n, (d, [])))
@@ -1010,7 +1010,7 @@ process fn (DocStr (Right c) _) -- constants only have overviews
 process fn Universes
                      = do i <- getIState
                           let cs = idris_constraints i
-                          let cslist = S.toAscList cs 
+                          let cslist = S.toAscList cs
 --                        iputStrLn $ showSep "\n" (map show cs)
                           iputStrLn $ show (map uconstraint cslist)
                           let n = length cslist
@@ -1226,6 +1226,7 @@ process fn (Compile codegen f)
                        runIO $ generate codegen (fst (head (idris_imported i))) ir
   where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
+process fn (LogCategory cs) = setLogCats cs
 -- Elaborate as if LHS of a pattern (debug command)
 process fn (Pattelab t)
      = do (tm, ty) <- elabVal recinfo ELHS t
@@ -1528,7 +1529,7 @@ loadInputs inputs toline -- furthest line to read in input source files
            let ninputs = zip [1..] inputs
            ifiles <- mapWhileOK (\(num, input) ->
                 do putIState ist
-                   modTree <- buildTree 
+                   modTree <- buildTree
                                    (map snd (take (num-1) ninputs))
                                    importlists
                                    input
@@ -1777,12 +1778,13 @@ idrisMain opts =
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))
   where
-    makeOption (OLogging i) = setLogLevel i
-    makeOption TypeCase = setTypeCase True
-    makeOption TypeInType = setTypeInType True
-    makeOption NoCoverage = setCoverage False
-    makeOption ErrContext = setErrContext True
-    makeOption _ = return ()
+    makeOption (OLogging i)  = setLogLevel i
+    makeOption (OLogCats cs) = setLogCats cs
+    makeOption TypeCase      = setTypeCase True
+    makeOption TypeInType    = setTypeInType True
+    makeOption NoCoverage    = setCoverage False
+    makeOption ErrContext    = setErrContext True
+    makeOption _             = return ()
 
     addPkgDir :: String -> Idris ()
     addPkgDir p = do ddir <- runIO $ getIdrisLibDir

@@ -43,11 +43,11 @@ setOptions = [("errorcontext", ErrContext),
               ("desugarnats", DesugarNats)]
 
 help :: [([String], CmdArg, String)]
-help = (["<expr>"], NoArg, "Evaluate an expression") : 
+help = (["<expr>"], NoArg, "Evaluate an expression") :
   [ (map (':' :) names, args, text) | (names, args, text, _) <- parserCommandsForHelp ]
 
 allHelp :: [([String], CmdArg, String)]
-allHelp = [ (map (':' :) names, args, text) 
+allHelp = [ (map (':' :) names, args, text)
           | (names, args, text, _) <- parserCommandsForHelp ++ parserCommands ]
 
 parserCommandsForHelp :: CommandTable
@@ -124,7 +124,7 @@ parserCommands =
   , exprArgCmd ["spec"] Spec "?"
   , exprArgCmd ["whnf"] WHNF "(Debugging) Show weak head normal form of an expression"
   , exprArgCmd ["inline"] TestInline "?"
-  , proofArgCmd ["cs", "casesplit"] CaseSplitAt 
+  , proofArgCmd ["cs", "casesplit"] CaseSplitAt
       ":cs <line> <name> splits the pattern variable on the line"
   , proofArgCmd ["apc", "addproofclause"] AddProofClauseFrom
       ":apc <line> <name> adds a pattern-matching proof clause to name on line"
@@ -138,6 +138,10 @@ parserCommands =
       ":mc <line> <name> adds a case block for the definition of the metavariable on the line"
   , proofArgCmd ["ml", "makelemma"] MakeLemma "?"
   , (["log"], NumberArg, "Set logging verbosity level", cmd_log)
+  , ( ["logacts"]
+    , ManyArgs NameArg
+    , "Set logging categories"
+    , cmd_cats)
   , (["lto", "loadto"], SeqArgs NumberArg FileArg
     , "Load file up to line number", cmd_loadto)
   , (["ps", "proofsearch"], NoArg
@@ -148,8 +152,8 @@ parserCommands =
     , cmd_refine)
   , (["debugunify"], SeqArgs ExprArg ExprArg
     , "(Debugging) Try to unify two expressions", const $ do
-       l <- P.simpleExpr defaultSyntax 
-       r <- P.simpleExpr defaultSyntax 
+       l <- P.simpleExpr defaultSyntax
+       r <- P.simpleExpr defaultSyntax
        eof
        return (Right (DebugUnify l r))
     )
@@ -171,9 +175,9 @@ proofArgCmd names command doc =
   (names, NoArg, doc, proofArg command)
 
 pCmd :: P.IdrisParser (Either String Command)
-pCmd = choice [ do c <- cmd names; parser c 
+pCmd = choice [ do c <- cmd names; parser c
               | (names, _, _, parser) <- parserCommandsForHelp ++ parserCommands ]
-     <|> unrecognized 
+     <|> unrecognized
      <|> nop
      <|> eval
     where nop = do eof; return (Right NOP)
@@ -227,7 +231,7 @@ exprArg cmd name = do
 
 
 
-genArg :: String -> P.IdrisParser a -> (a -> Command) 
+genArg :: String -> P.IdrisParser a -> (a -> Command)
            -> String -> P.IdrisParser (Either String Command)
 genArg argName argParser cmd name = do
     let emptyArgs = do eof; failure
@@ -246,12 +250,12 @@ strArg :: (String -> Command) -> String -> P.IdrisParser (Either String Command)
 strArg = genArg "string" (many anyChar)
 
 moduleArg :: (FilePath -> Command) -> String -> P.IdrisParser (Either String Command)
-moduleArg = genArg "module" (fmap (toPath . fst) P.identifier) 
+moduleArg = genArg "module" (fmap (toPath . fst) P.identifier)
   where
     toPath n = foldl1' (</>) $ splitOn "." n
 
 namespaceArg :: ([String] -> Command) -> String -> P.IdrisParser (Either String Command)
-namespaceArg = genArg "namespace" (fmap (toNS . fst) P.identifier) 
+namespaceArg = genArg "namespace" (fmap (toNS . fst) P.identifier)
   where
     toNS  = splitOn "."
 
@@ -290,7 +294,7 @@ cmd_doc name = do
         c <- fmap fst P.constant
         eof
         return $ Right (DocStr (Right c) FullDocs)
-    
+
     let pType = do
         P.reserved "Type"
         eof
@@ -391,6 +395,32 @@ cmd_log name = do
     i <- fmap (fromIntegral . fst) P.natural
     eof
     return (Right (LogLvl i))
+
+cmd_cats :: String -> P.IdrisParser (Either String Command)
+cmd_cats name = do
+    cs <- sepBy pLogCats (P.whiteSpace)
+    eof
+    return $ Right $ LogCategory (concat cs)
+  where
+    badCat = do
+      c <- fst <$> P.identifier
+      fail $ "Category: " ++ c ++ " is not recognised."
+
+    pLogCats :: P.IdrisParser [LogCat]
+    pLogCats = try (P.symbol "parser"     >> return parserCats)
+           <|> try (P.symbol "tychecker"  >> return checkingCats)
+           <|> try (P.symbol "backend"    >> return backendCats)
+           <|> try (P.symbol "parse"      >> return [IParse])
+           <|> try (P.symbol "elaborator" >> return [IElab])
+           <|> try (P.symbol "coverage"   >> return [ICover])
+           <|> try (P.symbol "unifyer"    >> return [IUnify])
+           <|> try (P.symbol "totality"   >> return [ITotal])
+           <|> try (P.symbol "eraser"     >> return [IErase])
+           <|> try (P.symbol "defunc"     >> return [IDefun])
+           <|> try (P.symbol "inliner"    >> return [IInline])
+           <|> try (P.symbol "resolver"   >> return [IResolve])
+           <|> try (P.symbol "codegen"    >> return [ICodeGen])
+           <|> badCat
 
 cmd_let :: String -> P.IdrisParser (Either String Command)
 cmd_let name = do
