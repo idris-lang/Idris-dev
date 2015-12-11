@@ -63,7 +63,7 @@ sub runtest {
     my $endTime = time();
     my $elapsedTime = $endTime - $startTime;
 
-    print "Duration of $test was $elapsedTime\n";
+    printf("Duration of $test was %d\n", $elapsedTime);
 
     # Allow for variant expected output for tests by overriding expected
     # when there is an expected.<os> file in the test.
@@ -203,6 +203,6 @@ foreach my $test (@tests) {
 my $endTime = time();
 my $elapsedTime = $endTime - $startTime;
 
-print "Duration of Entire Test Suite was $elapsedTime\n";
+printf("Duration of Entire Test Suite was %d\n", $elapsedTime);
 
 exit $exitstatus;
