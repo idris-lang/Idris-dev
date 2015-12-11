@@ -177,6 +177,8 @@ my $idris  = $ENV{IDRIS};
 my $path   = $ENV{PATH};
 $ENV{PATH} = cwd() . "/" . $idris . ":" . $path;
 
+my $startTime = time();
+
 foreach my $test (@tests) {
     if ($diff == 0 && $show == 0) {
 	    runtest($test,$update);
@@ -197,5 +199,10 @@ foreach my $test (@tests) {
         chdir "..";
     }
 }
+
+my $endTime = time();
+my $elapsedTime = $endTime - $startTime;
+
+print "Duration of Entire Test Suite was $elapsedTime\n";
 
 exit $exitstatus;
