@@ -8,18 +8,46 @@ use Env;
 my $exitstatus = 0;
 my @idrOpts    = ();
 
+
+# Determines how idris was built locally, returning a PATH modifier.
+#
+# Order of checking is:
+#
+#  1. Cabal Sandboxing
+#  2. Stack
+#  3. Pure cabal.
+#
 sub sandbox_path {
     my ($test_dir,) = @_;
     my $sandbox = "$test_dir/../../.cabal-sandbox/bin";
 
+    my $stack_bin_path = `stack path --dist-dir`;
+    $stack_bin_path =~ s/\n//g;
+    my $stack_work_dir = "$test_dir/../../$stack_bin_path/build/idris";
+
     if ( -d $sandbox ) {
+
         my $sandbox_abs = abs_path($sandbox);
+        print "Using Cabal Sandbox\n";
+        printf("Sandbox located at: %s\n", $sandbox_abs);
         return "PATH=\"$sandbox_abs:$PATH\"";
+
+    } elsif ( -d $stack_work_dir ) {
+
+        my $stack_work_abs = abs_path($stack_work_dir);
+        print "Using Stack Work\n";
+        printf("Stack work located at: %s\n", $stack_work_abs);
+        return "PATH=\"$stack_work_abs:$PATH\"";
+
     } else {
+        print "Using Default Cabal.\n";
         return "";
     }
 }
 
+# Run an individual test, and compare expected output with given
+# output and report results.
+#
 sub runtest {
     my ($test, $update) = @_;
 
@@ -73,8 +101,13 @@ sub runtest {
     chdir "..";
 }
 
+# Main test running program to sort test input, and execute individual
+# tests.
+#
+
 my ( @without, @args, @tests, @opts );
 
+# Deal with the Args.
 if ($#ARGV>=0) {
     my $test = shift @ARGV;
     if ($test eq "all") {
@@ -119,6 +152,8 @@ else {
     print "Give a test name, or 'all' to run all.\n";
     exit;
 }
+
+# Run the tests.
 
 my $update  = 0;
 my $diff    = 0;
