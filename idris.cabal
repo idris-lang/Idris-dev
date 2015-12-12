@@ -975,8 +975,11 @@ Library
                 , vector < 0.12
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.2.4
-                , zlib < 0.6
                 , safe
+  -- zlib >= 0.6.1 is broken with GHC < 7.10.3
+  if impl(ghc < 7.10.3)
+     build-depends: zlib < 0.6.1
+
   Extensions:     MultiParamTypeClasses
                 , DeriveFoldable
                 , DeriveTraversable
