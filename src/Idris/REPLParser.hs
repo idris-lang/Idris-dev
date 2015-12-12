@@ -67,6 +67,7 @@ parserCommandsForHelp =
   , namespaceArgCmd ["browse"] Browse "List the contents of some namespace"
   , nameArgCmd ["total"] TotCheck "Check the totality of a name"
   , noArgCmd ["r", "reload"] Reload "Reload current file"
+  , noArgCmd ["w", "watch"] Watch "Watch the current file for changes"
   , (["l", "load"], FileArg, "Load a new file"
     , strArg (\f -> Load f Nothing))
   , (["cd"], FileArg, "Change working directory"
@@ -98,7 +99,7 @@ parserCommandsForHelp =
   , (["consolewidth"], ConsoleWidthArg, "Set the width of the console", cmd_consolewidth)
   , (["printerdepth"], OptionalArg NumberArg, "Set the maximum pretty-printer depth (no arg for infinite)", cmd_printdepth)
   , noArgCmd ["q", "quit"] Quit "Exit the Idris system"
-  , noArgCmd ["w", "warranty"] Warranty "Displays warranty information"
+  , noArgCmd ["warranty"] Warranty "Displays warranty information"
   , (["let"], ManyArgs DeclArg
     , "Evaluate a declaration, such as a function definition, instance implementation, or fixity declaration"
     , cmd_let)

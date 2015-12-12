@@ -94,6 +94,10 @@ import Data.Word (Word)
 import Data.Either (partitionEithers)
 import Control.DeepSeq
 
+import Control.Concurrent.Async (race)
+import System.FSNotify (withManager, watchDir)
+import System.FSNotify.Devel (allEvents, doAllEvents)
+
 import Numeric ( readHex )
 
 import Debug.Trace
@@ -671,6 +675,33 @@ lit f = case splitExtension f of
             (_, ".lidr") -> True
             _ -> False
 
+reload :: IState -> [FilePath] -> Idris (Maybe [FilePath])
+reload orig inputs = do
+  i <- getIState
+  -- The $!! here prevents a space leak on reloading.
+  -- This isn't a solution - but it's a temporary stopgap.
+  -- See issue #2386
+  putIState $!! orig { idris_options = idris_options i
+    , idris_colourTheme = idris_colourTheme i
+    , imported = imported i
+  }
+  clearErr
+  fmap Just $ loadInputs inputs Nothing
+
+watch :: IState -> [FilePath] -> Idris (Maybe [FilePath])
+watch orig inputs = do
+  let inputSet = S.fromList inputs
+  let dirs = nub $ map takeDirectory inputs
+  resp <- runIO $ do
+    signal <- newEmptyMVar
+    withManager $ \mgr -> do
+      forM_ dirs $ \dir ->
+        watchDir mgr dir (allEvents $ flip S.member inputSet) (doAllEvents $ putMVar signal)
+      race getLine (takeMVar signal)
+  case resp of
+    Left _ -> return (Just inputs) -- canceled, so nop
+    Right _ -> reload orig inputs >> watch orig inputs
+
 processInput :: String ->
                 IState -> [FilePath] -> FilePath -> Idris (Maybe [FilePath])
 processInput cmd orig inputs efile
@@ -683,16 +714,15 @@ processInput cmd orig inputs efile
             Failure err ->   do iputStrLn $ show (fixColour c err)
                                 return (Just inputs)
             Success (Right Reload) ->
-                -- The $!! here prevents a space leak on reloading.
-                -- This isn't a solution - but it's a temporary stopgap.
-                -- See issue #2386
-                do putIState $!! orig { idris_options = idris_options i
-                                      , idris_colourTheme = idris_colourTheme i
-                                      , imported = imported i
-                                      }
-                   clearErr
-                   mods <- loadInputs inputs Nothing
-                   return (Just mods)
+                reload orig inputs
+            Success (Right Watch) ->
+                if null inputs then
+                  do iputStrLn "No loaded files to watch."
+                     return (Just inputs)
+                else
+                  do iputStrLn efile
+                     iputStrLn $ "Watching for .idr changes in " ++ show inputs ++ ", press enter to cancel."
+                     watch orig inputs
             Success (Right (Load f toline)) ->
                 -- The $!! here prevents a space leak on reloading.
                 -- This isn't a solution - but it's a temporary stopgap.
