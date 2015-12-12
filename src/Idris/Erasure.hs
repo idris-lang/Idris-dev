@@ -414,7 +414,7 @@ buildDepMap ci used externs ctx startNames
             V i -> snd (bs !! i) cd `union` unconditionalDeps args
 
             -- we interpret applied lambdas as lets in order to reuse code here
-            Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet [] app)
+            Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet app)
 
             -- and we interpret applied lets as lambdas
             Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam ty) t) t')
@@ -491,11 +491,8 @@ buildDepMap ci used externs ctx startNames
 
     -- convert applications of lambdas to lets
     -- Note that this transformation preserves de bruijn numbering
-    lamToLet :: [Term] -> Term -> Term
-    lamToLet    xs  (App _ f x)         = lamToLet (x:xs) f
-    lamToLet (x:xs) (Bind n (Lam ty) t) = Bind n (Let ty x) (lamToLet xs t)
-    lamToLet (x:xs)  t                  = App Complete (lamToLet xs t) x
-    lamToLet    []   t                  = t
+    lamToLet :: Term -> Term
+    lamToLet (App _ (Bind n (Lam ty) tm) val) = Bind n (Let ty val) tm
 
     -- split "\x_i -> T(x_i)" into [x_i] and T
     unfoldLams :: Term -> ([Name], Term)
