@@ -207,6 +207,12 @@ instance Enum Int where
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
 
+instance Enum Char where
+  toNat c   = toNat (ord c)
+  fromNat n = chr (fromNat n)
+  
+  pred c = fromNat (pred (toNat c))
+
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end
 syntax "[" [start] "," [next] ".." [end] "]"
