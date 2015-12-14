@@ -18,7 +18,11 @@ import IO
 
 ||| A file handle
 abstract
-data File = FHandle Ptr
+data File : Type where
+  FHandle : (p : Ptr) -> File
+
+-- Usage hints for erasure analysis
+%used FHandle p
 
 ||| An error from a file operation
 -- This is built in idris_mkFileError() in rts/idris_stdfgn.c. Make sure

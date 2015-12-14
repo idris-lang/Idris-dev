@@ -19,6 +19,10 @@ namespace Builtins
      ||| @b the right element of the pair
      MkPair : {A, B : Type} -> (a : A) -> (b : B) -> Pair A B
 
+  -- Usage hints for erasure analysis
+  %used MkPair a
+  %used MkPair b
+
   ||| The non-dependent pair type, also known as conjunction, usable with
   ||| UniqueTypes.
   ||| @A the type of the left elements in the pair
@@ -28,6 +32,10 @@ namespace Builtins
      ||| @a the left element of the pair
      ||| @b the right element of the pair
      MkUPair : {A, B : AnyType} -> (a : A) -> (b : B) -> UPair A B
+
+  -- Usage hints for erasure analysis
+  %used MkUPair a
+  %used MkUPair b
 
   ||| Dependent pairs
   |||

@@ -9,11 +9,15 @@ import Prelude.Maybe
 import Prelude.List
 
 ||| A sum type
-%elim data Either a b =
+%elim data Either : (a, b : Type) -> Type where
   ||| One possibility of the sum, conventionally used to represent errors
-  Left a |
+  Left : (l : a) -> Either a b
   ||| The other possibility, conventionally used to represent success
-  Right b
+  Right : (r : b) -> Either a b
+
+-- Usage hints for erasure analysis
+%used Left l
+%used Right r
 
 --------------------------------------------------------------------------------
 -- Syntactic tests

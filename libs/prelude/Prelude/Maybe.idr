@@ -13,11 +13,14 @@ import Prelude.Foldable
 
 ||| An optional value. This can be used to represent the possibility of
 ||| failure, where a function may return a value, or not.
-data Maybe a
-    = ||| No value stored
-      Nothing
-    | ||| A value of type `a` is stored
-      Just a
+data Maybe : (a : Type) -> Type where
+    ||| No value stored
+    Nothing : Maybe a
+    ||| A value of type `a` is stored
+    Just : (x : a) -> Maybe a
+
+-- Used hints for erasure analysis
+%used Just x
 
 --------------------------------------------------------------------------------
 -- Syntactic tests
