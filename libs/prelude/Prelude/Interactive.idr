@@ -121,9 +121,9 @@ processHandle : File ->
                 (onEOF : a -> String) -> 
                 IO ()
 processHandle h acc onRead onEOF 
-   = if !(feof h)
+   = if !(fEOF h)
         then putStr (onEOF acc)
-        else do Right x <- fread h
+        else do Right x <- fGetLine h
                     | Left err => putStr (onEOF acc)
                 let (out, acc') = onRead acc x
                 putStr out

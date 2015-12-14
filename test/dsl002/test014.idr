@@ -23,12 +23,12 @@ close : FILE p -> Updater ()
 close (OpenH h) = iou (closeFile h)
 
 readLine : FILE Reading -> Reader String
-readLine (OpenH h) = ior (do Right str <- fread h
+readLine (OpenH h) = ior (do Right str <- fGetLine h
                                    | return ""
                              return str)
 
 eof : FILE Reading -> Reader Bool
-eof (OpenH h) = ior (feof h)
+eof (OpenH h) = ior (fEOF h)
 
 syntax rclose [h]    = Update close h
 syntax rreadLine [h] = Use readLine h

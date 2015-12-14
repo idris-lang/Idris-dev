@@ -92,7 +92,7 @@ data Mode = Read | Write | ReadWrite
 
 ||| Open a file
 ||| @ f the filename
-||| @ m the mode
+||| @ m the mode; either Read, Write, or ReadWrite
 openFile : (f : String) -> (m : Mode) -> IO (Either FileError File)
 openFile f m = fopen f (modeStr m) where
   modeStr Read  = "r"
@@ -143,6 +143,13 @@ fread (FHandle h) = do str <- do_fread h
                           then return (Left FileReadError)
                           else return (Right str)
 
+||| Read a line from a file
+||| @h a file handle which must be open for reading
+fGetLine : (h : File) -> IO (Either FileError String)
+fGetLine = fread
+
+%deprecate fread "Use fGetLine instead"
+
 do_fwrite : Ptr -> String -> IO (Either FileError ())
 do_fwrite h s = do res <- prim_fwrite h s
                    if (res /= 0)
@@ -156,13 +163,30 @@ do_fwrite h s = do res <- prim_fwrite h s
 fwrite : File -> String -> IO (Either FileError ())
 fwrite (FHandle h) s = do_fwrite h s
 
+||| Write a line to a file
+||| @h a file handle which must be open for writing
+||| @str the line to write to the file
+fPutStr : (h : File) -> (str : String) -> IO (Either FileError ())
+fPutStr (FHandle h) s = do_fwrite h s
+
+fPutStrLn : File -> String -> IO (Either FileError ())
+fPutStrLn (FHandle h) s = do_fwrite h (s ++ "\n")
+
+%deprecate fwrite "Use fPutStr instead"
+
 do_feof : Ptr -> IO Int
 do_feof h = foreign FFI_C "fileEOF" (Ptr -> IO Int) h
 
 ||| Check if a file handle has reached the end
-feof : File -> IO Bool
-feof (FHandle h) = do eof <- do_feof h
+fEOF : File -> IO Bool
+fEOF (FHandle h) = do eof <- do_feof h
                       return (not (eof == 0))
+
+||| Check if a file handle has reached the end
+feof : File -> IO Bool
+feof = fEOF
+
+%deprecate feof "Use fEOF instead"
 
 fpoll : File -> IO Bool
 fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
@@ -181,8 +205,8 @@ readFile fn = do Right h <- openFile fn Read
     partial
     readFile' : File -> String -> IO (Either FileError String)
     readFile' h contents =
-       do x <- feof h
-          if not x then do Right l <- fread h
+       do x <- fEOF h
+          if not x then do Right l <- fGetLine h
                                | Left err => return (Left err)
                            readFile' h (contents ++ l)
                    else return (Right contents)
@@ -192,6 +216,6 @@ writeFile : (filepath : String) -> (contents : String) ->
             IO (Either FileError ())
 writeFile fn contents = do
      Right h <- openFile fn Write | Left err => return (Left err)
-     Right () <- fwrite h contents | Left err => return (Left err)
+     Right () <- fPutStr h contents | Left err => return (Left err)
      closeFile h
      return (Right ())

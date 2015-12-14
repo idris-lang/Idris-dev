@@ -178,7 +178,7 @@ instance DecEq Char where
 instance DecEq Integer where
     decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (Refl {x})
+             primitiveEq = really_believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
 
 

@@ -79,14 +79,14 @@ instance Handler FileIO IO where
                                     k True (FH h)
     handle (FH h) Close      k = do closeFile h
                                     k () ()
-    handle (FH h) ReadLine        k = do Right str <- fread h
+    handle (FH h) ReadLine        k = do Right str <- fGetStr h
                                          -- Need proper error handling!
                                              | Left err => k "" (FH h)
                                          k str (FH h)
-    handle (FH h) (WriteString str) k = do Right () <- fwrite h str
+    handle (FH h) (WriteString str) k = do Right () <- fPutStr h str
                                              | Left err => k () (FH h)
                                            k () (FH h)
-    handle (FH h) EOF             k = do e <- feof h
+    handle (FH h) EOF             k = do e <- fEOF h
                                          k e (FH h)
 
 instance Handler FileIO (IOExcept a) where
@@ -95,14 +95,14 @@ instance Handler FileIO (IOExcept a) where
                                     k True (FH h)
     handle (FH h) Close      k = do ioe_lift $ closeFile h
                                     k () ()
-    handle (FH h) ReadLine        k = do Right str <- ioe_lift $ fread h
+    handle (FH h) ReadLine        k = do Right str <- ioe_lift $ fGetStr h
                                          -- Need proper error handling!
                                              | Left err => k "" (FH h)
                                          k str (FH h)
-    handle (FH h) (WriteString str) k = do Right () <- ioe_lift $ fwrite h str
+    handle (FH h) (WriteString str) k = do Right () <- ioe_lift $ fPutStr h str
                                              | Left err => k () (FH h)
                                            k () (FH h)
-    handle (FH h) EOF             k = do e <- ioe_lift $ feof h
+    handle (FH h) EOF             k = do e <- ioe_lift $ fEOF h
                                          k e (FH h)
 
 -- -------------------------------------------------------------- [ The Effect ]

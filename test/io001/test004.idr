@@ -10,15 +10,15 @@ mwhile t b = do v <- t
 dumpFile : String -> IO ()
 dumpFile fn = do { Right h <- openFile fn Read
                    mwhile (do { -- putStrLn "TEST"
-                                x <- feof h
+                                x <- fEOF h
                                 return (not x) })
-                          (do { Right l <- fread h
+                          (do { Right l <- fGetLine h
                                 putStr l })
                    closeFile h }
 
 main : IO ()
 main = do { Right h <- openFile "testfile" Write
-            fwrite h "Hello!\nWorld!\n...\n3\n4\nLast line\n"
+            fPutStr h "Hello!\nWorld!\n...\n3\n4\nLast line\n"
             closeFile h
             putStrLn "Reading testfile"
             Right f <- readFile "testfile"
