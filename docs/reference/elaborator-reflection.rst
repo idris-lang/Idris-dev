@@ -163,7 +163,7 @@ If the goal type turns out to have been the unit type, we fill using the unit co
 Otherwise, we fail with an error message informing the user that the current goal is not trivial.
 
 Additionally, the elaboration state can be dumped into an error message with the ``debug`` tactic.
-A variant, ``debugMessage``, allows arbitrary messages to be included with the state, allowing for a kind of "``printf`` debuggging" of elaboration scripts.
+A variant, ``debugMessage``, allows arbitrary messages to be included with the state, allowing for a kind of "``printf`` debugging" of elaboration scripts.
 The message format used by ``debugMessage`` is the same for errors produced by the error reflection mechanism, allowing the re-use of the Idris pretty-printer when rendering messages.
 
 Changing the Global Context
