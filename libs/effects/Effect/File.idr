@@ -79,7 +79,7 @@ instance Handler FileIO IO where
                                     k True (FH h)
     handle (FH h) Close      k = do closeFile h
                                     k () ()
-    handle (FH h) ReadLine        k = do Right str <- fGetStr h
+    handle (FH h) ReadLine        k = do Right str <- fGetLine h
                                          -- Need proper error handling!
                                              | Left err => k "" (FH h)
                                          k str (FH h)
@@ -95,7 +95,7 @@ instance Handler FileIO (IOExcept a) where
                                     k True (FH h)
     handle (FH h) Close      k = do ioe_lift $ closeFile h
                                     k () ()
-    handle (FH h) ReadLine        k = do Right str <- ioe_lift $ fGetStr h
+    handle (FH h) ReadLine        k = do Right str <- ioe_lift $ fGetLine h
                                          -- Need proper error handling!
                                              | Left err => k "" (FH h)
                                          k str (FH h)
