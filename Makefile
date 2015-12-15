@@ -36,6 +36,9 @@ test_all:
 	$(MAKE) test_llvm
 	$(MAKE) test_java
 
+test_timed:
+	$(MAKE) -C test IDRIS=../dist/build/idris time
+
 lib_clean:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris RTS=../../dist/build/rts/libidris_rts clean
 
