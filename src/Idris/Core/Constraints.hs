@@ -167,13 +167,11 @@ solve maxUniverseLevel ucs =
             doms <- gets domainStore
             let (oldDom@(Domain _ upper), suspects) = doms M.! Var var
             let newDom = Domain lower upper
-            when (wipeOut newDom) $ lift $ Error $ At (ufc suspect) $ Msg $ unlines
-                $ "Universe inconsistency."
-                : ("Working on: " ++ show (UVar var))
-                : ("Old domain: " ++ show oldDom)
-                : ("New domain: " ++ show newDom)
-                : "Involved constraints: "
-                : map (("\t"++) . show) (suspect : S.toList suspects)
+            when (wipeOut newDom) $
+              lift $ Error $
+                UniverseError (ufc suspect) (UVar var)
+                              (asPair oldDom) (asPair newDom)
+                              (suspect : S.toList suspects)
             modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
             addToQueueLHS (uconstraint suspect) (Var var)
         updateLowerBoundOf _ UVal{} _ = return ()
