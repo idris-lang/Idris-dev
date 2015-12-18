@@ -87,9 +87,9 @@ parseFlags = many $
   -- Logging Flags
   <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
   <|> (OLogCats <$> option (str >>= parseLogCats)
-                           (long "logcats"
+                           (long "logging-categories"
                          <> metavar "CATS"
-                         <> help "Colon separated logging categories: parser, tychecker, backend, parse, elaborator, coverage, unifyer, totality, eraser, defunc, inliner, resolver, codegen"))
+                         <> help "Colon separated logging categories: parser, elab, codegen"))
 
   -- Turn off Certain libraries.
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
@@ -189,19 +189,9 @@ parseLogCats s =
       return (concat cs)
 
     parseLogCat :: ReadP [LogCat]
-    parseLogCat = (string "parser"     *> return parserCats)
-              <|> (string "tychecker"  *> return checkingCats)
-              <|> (string "backend"    *> return backendCats)
-              <|> (string "parse"      *> return [IParse])
-              <|> (string "elaborator" *> return [IElab])
-              <|> (string "coverage"   *> return [ICover])
-              <|> (string "unifyer"    *> return [IUnify])
-              <|> (string "totality"   *> return [ITotal])
-              <|> (string "eraser"     *> return [IErase])
-              <|> (string "defunc"     *> return [IDefun])
-              <|> (string "inliner"    *> return [IInline])
-              <|> (string "resolver"   *> return [IResolve])
-              <|> (string "codegen"    *> return [ICodeGen])
+    parseLogCat = (string "parser"   *> return parserCats)
+              <|> (string "elab"     *> return elabCats)
+              <|> (string "codegen"  *> return codegenCats)
               <|> parseLogCatBad
 
     parseLogCatBad :: ReadP [LogCat]

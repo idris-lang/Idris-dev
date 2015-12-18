@@ -980,44 +980,18 @@ setColour ct c = do i <- getIState
 logLvl :: Int -> String -> Idris ()
 logLvl = logLvlCats []
 
+-- | Log an action of the parser
 logParser :: Int -> String -> Idris ()
 logParser = logLvlCats parserCats
 
-logParse :: Int -> String -> Idris ()
-logParse = logLvlCats [IParse]
-
-logTypeChecking :: Int -> String -> Idris ()
-logTypeChecking = logLvlCats checkingCats
-
+-- | Log an action of the elaborator.
 logElab :: Int -> String -> Idris ()
-logElab = logLvlCats [IElab]
+logElab = logLvlCats elabCats
 
-logCover :: Int -> String -> Idris ()
-logCover = logLvlCats [ICover]
-
-logUnify :: Int -> String -> Idris ()
-logUnify = logLvlCats [IUnify]
-
-logTotal :: Int -> String -> Idris ()
-logTotal = logLvlCats [ITotal]
-
-logErase :: Int -> String -> Idris ()
-logErase = logLvlCats [IErase]
-
-logBackend :: Int -> String -> Idris ()
-logBackend = logLvlCats backendCats
-
-logDefun :: Int -> String -> Idris ()
-logDefun = logLvlCats [IDefun]
-
-logInline :: Int -> String -> Idris ()
-logInline = logLvlCats [IInline]
-
-logResolve :: Int -> String -> Idris ()
-logResolve = logLvlCats [IResolve]
-
+-- | Log an action of the compiler.
 logCodeGen :: Int -> String -> Idris ()
-logCodeGen = logLvlCats [ICodeGen]
+logCodeGen = logLvlCats codegenCats
+
 
 -- | Log aspect of Idris execution
 --

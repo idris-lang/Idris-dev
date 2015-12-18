@@ -455,26 +455,21 @@ data Command = Quit
 data OutputFmt = HTMLOutput | LaTeXOutput
 
 -- | Recognised logging categories for the Idris compiler.
+--
+-- @TODO add in sub categories.
 data LogCat = IParse
             | IElab
-            | ICover
-            | IUnify
-            | ITotal
-            | IErase
-            | IDefun
-            | IInline
-            | IResolve
             | ICodeGen
             deriving (Show, Eq, Ord)
 
-backendCats :: [LogCat]
-backendCats =  [IDefun, IInline, IResolve, ICodeGen]
+codegenCats :: [LogCat]
+codegenCats =  [ICodeGen]
 
 parserCats :: [LogCat]
 parserCats = [IParse]
 
-checkingCats :: [LogCat]
-checkingCats = [IElab, ICover, IUnify, ITotal, IElab]
+elabCats :: [LogCat]
+elabCats = [IElab]
 
 data Opt = Filename String
          | Quiet

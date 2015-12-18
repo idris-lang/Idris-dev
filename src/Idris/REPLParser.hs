@@ -408,18 +408,8 @@ cmd_cats name = do
 
     pLogCats :: P.IdrisParser [LogCat]
     pLogCats = try (P.symbol "parser"     >> return parserCats)
-           <|> try (P.symbol "tychecker"  >> return checkingCats)
-           <|> try (P.symbol "backend"    >> return backendCats)
-           <|> try (P.symbol "parse"      >> return [IParse])
-           <|> try (P.symbol "elaborator" >> return [IElab])
-           <|> try (P.symbol "coverage"   >> return [ICover])
-           <|> try (P.symbol "unifyer"    >> return [IUnify])
-           <|> try (P.symbol "totality"   >> return [ITotal])
-           <|> try (P.symbol "eraser"     >> return [IErase])
-           <|> try (P.symbol "defunc"     >> return [IDefun])
-           <|> try (P.symbol "inliner"    >> return [IInline])
-           <|> try (P.symbol "resolver"   >> return [IResolve])
-           <|> try (P.symbol "codegen"    >> return [ICodeGen])
+           <|> try (P.symbol "elab"       >> return elabCats)
+           <|> try (P.symbol "codegen"    >> return codegenCats)
            <|> badCat
 
 cmd_let :: String -> P.IdrisParser (Either String Command)
