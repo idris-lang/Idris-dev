@@ -980,6 +980,12 @@ setColour ct c = do i <- getIState
 logLvl :: Int -> String -> Idris ()
 logLvl = logLvlCats []
 
+logCoverage :: Int -> String -> Idris ()
+logCoverage = logLvlCats [ICoverage]
+
+logErasure :: Int -> String -> Idris ()
+logErasure = logLvlCats [IErasure]
+
 -- | Log an action of the parser
 logParser :: Int -> String -> Idris ()
 logParser = logLvlCats parserCats

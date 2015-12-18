@@ -1552,7 +1552,7 @@ loadModule' f
         ids <- allImportDirs
         fp <- findImport ids ibcsd file
         if file `elem` imported i
-          then do logLvl 1 $ "Already read " ++ file
+          then do logParser 1 $ "Already read " ++ file
                   return Nothing
           else do putIState (i { imported = file : imported i })
                   case fp of
@@ -1560,7 +1560,7 @@ loadModule' f
                     LIDR fn -> loadSource True  fn Nothing
                     IBC fn src ->
                       idrisCatch (loadIBC True fn)
-                                 (\c -> do logLvl 1 $ fn ++ " failed " ++ pshow i c
+                                 (\c -> do logParser 1 $ fn ++ " failed " ++ pshow i c
                                            case src of
                                              IDR sfn -> loadSource False sfn Nothing
                                              LIDR sfn -> loadSource True sfn Nothing)
@@ -1569,7 +1569,7 @@ loadModule' f
 {- | Load idris code from file -}
 loadFromIFile :: Bool -> IFileType -> Maybe Int -> Idris ()
 loadFromIFile reexp i@(IBC fn src) maxline
-   = do logLvl 1 $ "Skipping " ++ getSrcFile i
+   = do logParser 1 $ "Skipping " ++ getSrcFile i
         idrisCatch (loadIBC reexp fn)
                 (\err -> ierror $ LoadingFailed fn err)
   where
@@ -1593,7 +1593,7 @@ loadSource' lidr r maxline
 {- | Load Idris source code-}
 loadSource :: Bool -> FilePath -> Maybe Int -> Idris ()
 loadSource lidr f toline
-             = do logLvl 1 ("Reading " ++ f)
+             = do logParser 1 ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
                   file_in <- runIO $ readSource f
@@ -1637,7 +1637,7 @@ loadSource lidr f toline
                                    ]
                       histogram = groupBy ((==) `on` fst) . sortBy (comparing fst) $ aliasNames
                   case map head . filter ((/= 1) . length) $ histogram of
-                    []       -> logLvl 3 $ "Module aliases: " ++ show (M.toList modAliases)
+                    []       -> logParser 3 $ "Module aliases: " ++ show (M.toList modAliases)
                     (n,fc):_ -> throwError . At fc . Msg $ "import alias not unique: " ++ show n
 
                   i <- getIState
@@ -1676,7 +1676,7 @@ loadSource lidr f toline
                   -- Parsing done, now process declarations
 
                   let ds = namespaces mname ds'
-                  logLvl 3 (show $ showDecls verbosePPOption ds)
+                  logParser 3 (show $ showDecls verbosePPOption ds)
                   i <- getIState
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))

@@ -801,7 +801,7 @@ process fn (ModImport f) = do fmod <- loadModule f
                                 Nothing -> iPrintError $ "Can't find import " ++ f
 process fn (Eval t)
                  = withErrorReflection $
-                   do logLvl 5 $ show t
+                   do logParser 5 $ show t
                       getIState >>= flip warnDisamb t
                       (tm, ty) <- elabREPL recinfo ERHS t
                       ctxt <- getContext
@@ -814,8 +814,8 @@ process fn (Eval t)
                       -- Add value to context, call it "it"
                       updateContext (addCtxtDef (sUN "it") (Function ty' tm'))
                       ist <- getIState
-                      logLvl 3 $ "Raw: " ++ show (tm', ty')
-                      logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
+                      logParser 3 $ "Raw: " ++ show (tm', ty')
+                      logParser 10 $ "Debug: " ++ showEnvDbg [] tm'
                       let tmDoc = pprintDelab ist tm'
                           -- errReverse to make type more readable
                           tyDoc =  pprintDelab ist (errReverse ist ty')
@@ -824,7 +824,7 @@ process fn (Eval t)
                         | otherwise = tm
 
 process fn (NewDefn decls) = do
-        logLvl 3 ("Defining names using these decls: " ++ show (showDecls verbosePPOption decls))
+        logParser 3 ("Defining names using these decls: " ++ show (showDecls verbosePPOption decls))
         mapM_ defineName namedGroups where
   namedGroups = groupBy (\d1 d2 -> getName d1 == getName d2) decls
   getName :: PDecl -> Maybe Name
@@ -1253,7 +1253,7 @@ process fn (DynamicLink l)
                                   Nothing -> iPrintError $ "Could not load dynamic lib \"" ++ l ++ "\""
                                   Just x -> do let libs = idris_dynamic_libs i
                                                if x `elem` libs
-                                                  then do logLvl 1 ("Tried to load duplicate library " ++ lib_name x)
+                                                  then do logParser 1 ("Tried to load duplicate library " ++ lib_name x)
                                                           return ()
                                                   else putIState $ i { idris_dynamic_libs = x:libs }
     where trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
@@ -1524,7 +1524,7 @@ loadInputs inputs toline -- furthest line to read in input source files
 
            importlists <- getImports [] inputs
 
-           logLvl 1 (show (map (\(i,m) -> (i, map import_path m)) importlists))
+           logParser 1 (show (map (\(i,m) -> (i, map import_path m)) importlists))
 
            let ninputs = zip [1..] inputs
            ifiles <- mapWhileOK (\(num, input) ->
@@ -1534,8 +1534,8 @@ loadInputs inputs toline -- furthest line to read in input source files
                                    importlists
                                    input
                    let ifiles = getModuleFiles modTree
-                   logLvl 1 ("MODULE TREE : " ++ show modTree)
-                   logLvl 1 ("RELOAD: " ++ show ifiles)
+                   logParser 1 ("MODULE TREE : " ++ show modTree)
+                   logParser 1 ("RELOAD: " ++ show ifiles)
                    when (not (all ibc ifiles) || loadCode) $
                         tryLoad False (filter (not . ibc) ifiles)
                    -- return the files that need rechecking

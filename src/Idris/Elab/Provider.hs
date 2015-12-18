@@ -84,7 +84,7 @@ elabProvider doc info syn fc nfc what n
          rhs <- execute (mkApp (P Ref (sUN "run__provider") Erased)
                                           [Erased, e])
          let rhs' = normalise ctxt [] rhs
-         logLvl 3 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
+         logElab 3 $ "Normalised " ++ show n ++ "'s RHS to " ++ show rhs
 
          -- Extract the provided term or postulate from the type provider
          provided <- getProvided fc rhs'
@@ -95,11 +95,11 @@ elabProvider doc info syn fc nfc what n
                do -- Finally add a top-level definition of the provided term
                   elabType info syn doc [] fc [] n NoFC ty
                   elabClauses info fc [] n [PClause fc n (PApp fc (PRef fc [] n) []) [] (delab i tm) []]
-                  logLvl 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
+                  logElab 3 $ "Elaborated provider " ++ show n ++ " as: " ++ show tm
              | ProvPostulate _ <- what ->
                do -- Add the postulate
                   elabPostulate info syn doc fc nfc [] n (delab i tm)
-                  logLvl 3 $ "Elaborated provided postulate " ++ show n
+                  logElab 3 $ "Elaborated provided postulate " ++ show n
              | otherwise ->
                ierror . Msg $ "Attempted to provide a postulate where a term was expected."
 

@@ -13,7 +13,7 @@ import Data.Maybe
 findExports :: Idris [ExportIFace]
 findExports = do exps <- getExports
                  es <- mapM toIFace exps
-                 logLvl 2 $ "Exporting " ++ show es
+                 logCodeGen 2 $ "Exporting " ++ show es
                  return es
 
 getExpNames :: [ExportIFace] -> [Name]
@@ -39,7 +39,7 @@ toIFace n = do i <- getIState
     getExpList _ = ifail "Badly formed export list"
 
 toIFaceTyVal :: Type -> Term -> Idris ExportIFace
-toIFaceTyVal ty tm 
+toIFaceTyVal ty tm
    | (P _ exp _, [P _ ffi _, Constant (Str hdr), _]) <- unApply ty
          = do tm' <- toIFaceVal tm
               return $ Export ffi hdr tm'
@@ -51,7 +51,7 @@ toIFaceVal tm
    | (P _ fun _, [_,_,_,_,(P _ fn _),extnm,prf,rest]) <- unApply tm,
      fun == sNS (sUN "Fun") ["FFI_Export"]
        = do rest' <- toIFaceVal rest
-            return $ 
+            return $
               ExportFun fn (toFDesc extnm) (toFDescRet prf) (toFDescArgs prf)
                   : rest'
    | (P _ dat _, [_,_,_,_,d,rest]) <- unApply tm,
@@ -63,7 +63,7 @@ toIFaceVal tm
 toFDesc :: Term -> FDesc
 toFDesc (Constant (Str str)) = FStr str
 toFDesc tm
-   | (P _ n _, []) <- unApply tm = FCon (deNS n) 
+   | (P _ n _, []) <- unApply tm = FCon (deNS n)
    | (P _ n _, as) <- unApply tm = FApp (deNS n) (map toFDesc as)
 toFDesc _ = FUnknown
 
@@ -91,20 +91,17 @@ toFDescBase tm
    | otherwise = error "Badly formed export type"
 
 toFDescArgs :: Term -> [FDesc]
-toFDescArgs tm 
+toFDescArgs tm
    | (P _ fun _, [_,_,_,_,b,t]) <- unApply tm,
      fun == sNS (sUN "FFI_Fun") ["FFI_Export"]
        = toFDescBase b : toFDescArgs t
    | otherwise = []
 
-toFDescPrim (Constant (Str str)) = FStr str 
-toFDescPrim tm 
-   | (P _ n _, []) <- unApply tm = FCon (deNS n) 
+toFDescPrim (Constant (Str str)) = FStr str
+toFDescPrim tm
+   | (P _ n _, []) <- unApply tm = FCon (deNS n)
    | (P _ n _, as) <- unApply tm = FApp (deNS n) (map toFDescPrim as)
 toFDescPrim _ = FUnknown
 
 deNS (NS n _) = n
 deNS n = n
-
-
-

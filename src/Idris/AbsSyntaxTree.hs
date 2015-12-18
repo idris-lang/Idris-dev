@@ -460,6 +460,8 @@ data OutputFmt = HTMLOutput | LaTeXOutput
 data LogCat = IParse
             | IElab
             | ICodeGen
+            | IErasure
+            | ICoverage
             deriving (Show, Eq, Ord)
 
 codegenCats :: [LogCat]

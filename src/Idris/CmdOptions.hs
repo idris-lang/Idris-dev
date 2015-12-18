@@ -192,6 +192,8 @@ parseLogCats s =
     parseLogCat = (string "parser"   *> return parserCats)
               <|> (string "elab"     *> return elabCats)
               <|> (string "codegen"  *> return codegenCats)
+              <|> (string "coverage" *> return [ICoverage])
+              <|> (string "erasure"  *> return [IErasure])
               <|> parseLogCatBad
 
     parseLogCatBad :: ReadP [LogCat]
