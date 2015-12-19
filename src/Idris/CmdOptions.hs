@@ -89,7 +89,7 @@ parseFlags = many $
   <|> (OLogCats <$> option (str >>= parseLogCats)
                            (long "logging-categories"
                          <> metavar "CATS"
-                         <> help "Colon separated logging categories: parser, elab, codegen, coverage, erasure"))
+                         <> help "Colon separated logging categories. Use --listlogcats to see list."))
 
   -- Turn off Certain libraries.
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
@@ -106,11 +106,13 @@ parseFlags = many $
   <|> flag' WarnReach (long "warnreach" <> help "Warn about reachable but inaccessible arguments")
   <|> flag' NoCoverage (long "nocoverage")
   <|> flag' ErrContext (long "errorcontext")
-  <|> flag' ShowLibs (long "link" <> help "Display link flags")
-  <|> flag' ShowPkgs (long "listlibs" <> help "Display installed libraries")
-  <|> flag' ShowLibdir (long "libdir" <> help "Display library directory")
-  <|> flag' ShowIncs (long "include" <> help "Display the includes flags")
-  <|> flag' Verbose (short 'V' <> long "verbose" <> help "Loud verbosity")
+  -- Show things
+  <|> flag' ShowLoggingCats (long "listlogcats"          <> help "Display logging categories")
+  <|> flag' ShowLibs        (long "link"                 <> help "Display link flags")
+  <|> flag' ShowPkgs        (long "listlibs"             <> help "Display installed libraries")
+  <|> flag' ShowLibdir      (long "libdir"               <> help "Display library directory")
+  <|> flag' ShowIncs        (long "include"              <> help "Display the includes flags")
+  <|> flag' Verbose         (short 'V' <> long "verbose" <> help "Loud verbosity")
   <|> (IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory"))
   <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))
   <|> flag' WarnOnly (long "warn")
@@ -189,12 +191,12 @@ parseLogCats s =
       return (concat cs)
 
     parseLogCat :: ReadP [LogCat]
-    parseLogCat = (string "parser"   *> return parserCats)
-              <|> (string "elab"     *> return elabCats)
-              <|> (string "codegen"  *> return codegenCats)
-              <|> (string "coverage" *> return [ICoverage])
-              <|> (string "ibc"      *> return [IIBC])
-              <|> (string "erasure"  *> return [IErasure])
+    parseLogCat = (string (strLogCat IParse)    *> return parserCats)
+              <|> (string (strLogCat IElab)     *> return elabCats)
+              <|> (string (strLogCat ICodeGen)  *> return codegenCats)
+              <|> (string (strLogCat ICoverage) *> return [ICoverage])
+              <|> (string (strLogCat IIBC)      *> return [IIBC])
+              <|> (string (strLogCat IErasure)  *> return [IErasure])
               <|> parseLogCatBad
 
     parseLogCatBad :: ReadP [LogCat]

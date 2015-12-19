@@ -107,6 +107,7 @@ instance NFData Opt where
     rnf (ColourREPL bool) = rnf  bool `seq` ()
     rnf (Idemode) = ()
     rnf (IdemodeSocket) = ()
+    rnf (ShowLoggingCats) = ()
     rnf (ShowLibs) = ()
     rnf (ShowLibdir) = ()
     rnf (ShowIncs) = ()
