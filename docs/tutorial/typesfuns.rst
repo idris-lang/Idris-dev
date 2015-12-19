@@ -149,12 +149,11 @@ Idris prompt:
 
 .. note::
 
-   When displaying an element of ``Nat``,
-   such as ``(S (S (S (S Z))))``, for a user.
-   Idris displays it as 4 -- a more human readable format.
+   When displaying an element of ``Nat`` such as ``(S (S (S (S Z))))``,
+   Idris displays it as ``4``.
    The result of ``plus (S (S Z)) (S (S Z))``
    is actually ``(S (S (S (S Z))))``
-   which is the natural number 4.
+   which is the natural number ``4``.
    This can be checked at the Idris prompt:
 
 ::
