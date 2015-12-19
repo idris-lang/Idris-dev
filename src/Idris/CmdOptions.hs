@@ -193,6 +193,7 @@ parseLogCats s =
               <|> (string "elab"     *> return elabCats)
               <|> (string "codegen"  *> return codegenCats)
               <|> (string "coverage" *> return [ICoverage])
+              <|> (string "ibc"      *> return [IIBC])
               <|> (string "erasure"  *> return [IErasure])
               <|> parseLogCatBad
 

@@ -462,6 +462,7 @@ data LogCat = IParse
             | ICodeGen
             | IErasure
             | ICoverage
+            | IIBC
             deriving (Show, Eq, Ord)
 
 codegenCats :: [LogCat]

@@ -411,6 +411,7 @@ cmd_cats name = do
            <|> try (P.symbol "elab"     >> return elabCats)
            <|> try (P.symbol "codegen"  >> return codegenCats)
            <|> try (P.symbol "coverage" >> return [ICoverage])
+           <|> try (P.symbol "ibc"      >> return [IIBC])
            <|> try (P.symbol "erasure"  >> return [IErasure])
            <|> badCat
 

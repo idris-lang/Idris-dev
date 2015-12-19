@@ -998,6 +998,8 @@ logElab = logLvlCats elabCats
 logCodeGen :: Int -> String -> Idris ()
 logCodeGen = logLvlCats codegenCats
 
+logIBC :: Int -> String -> Idris ()
+logIBC = logLvlCats [IIBC]
 
 -- | Log aspect of Idris execution
 --
