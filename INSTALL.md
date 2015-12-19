@@ -84,10 +84,16 @@ version of GHC.
 
 ### `libGMP` and `libFFI`
 
-To build with support for `libGMP` and `libFFI` you need to pass build
-commands for the Idris library either from the command line:
+By default the stack configuration in `stack.yaml` will build with
+support for `libGMP` and `libFFI`.  To turn this support off, the
+option flags needs to be fully commented out.
 
-* `stack build --flag idris:GMP --flag idris:FFI`
+There have been reports in the past over building Idris on Mac OS X,
+using stack, and linking to a HomeBrew installation of `libFFI`. The
+build has failed to find the correct `libFFI` installation. If you
+encounter this then the fix is to augment the `PKG_CONFIG_PATH` when
+running the stack build:
 
-or un-comment the options `idris:GMP` and `idris:FFI` and their
-dependencies in the `stack.yaml` file.
+```
+PKG_CONFIG_PATH=/usr/local/Cellar/libffi/3.0.13/lib/pkgconfig stack build
+```
