@@ -1,3 +1,14 @@
+New in 0.9.21:
+==============
+
+* Idris' logging infrastructure has been categorised. Command line and repl
+  are available. For command line the option `--logging-categories CATS`
+  is used to pass in the categories. Here `CATS` is a colon separated quoted
+  string containing the categories to log. The REPL command is `logcats CATS`.
+  Where `CATS` is a whitespace separated list of categoriese. Default is for
+  all categories to be logged.
+
+
 New in 0.9.20:
 ==============
 
@@ -19,7 +30,7 @@ Language updates
 * Name binding in patterns follows the same rule as name binding for implicits
   in types: names which begin with lower case letters, not applied to any
   arguments, are treated as bound pattern variables.
-* Added %deprecate directive, which gives a warning and a message when a 
+* Added %deprecate directive, which gives a warning and a message when a
   deprecated name is referenced.
 
 Library updates
@@ -39,7 +50,7 @@ Library updates
   from Effectful programs.
 * Some constructors that never actually occurred have been removed from
   the TT and Raw reflection datatypes in Language.Reflection.
-* File IO operations (for example openFile/fread/fwrite) now return 
+* File IO operations (for example openFile/fread/fwrite) now return
   'Either FileError ty' where the return type was previously 'ty' to indicate
   that they may fail.
 

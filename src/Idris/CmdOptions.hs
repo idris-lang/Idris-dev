@@ -89,7 +89,7 @@ parseFlags = many $
   <|> (OLogCats <$> option (str >>= parseLogCats)
                            (long "logging-categories"
                          <> metavar "CATS"
-                         <> help "Colon separated logging categories: parser, elab, codegen"))
+                         <> help "Colon separated logging categories: parser, elab, codegen, coverage, erasure"))
 
   -- Turn off Certain libraries.
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")

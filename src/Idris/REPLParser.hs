@@ -138,7 +138,7 @@ parserCommands =
       ":mc <line> <name> adds a case block for the definition of the metavariable on the line"
   , proofArgCmd ["ml", "makelemma"] MakeLemma "?"
   , (["log"], NumberArg, "Set logging verbosity level", cmd_log)
-  , ( ["logacts"]
+  , ( ["logcats"]
     , ManyArgs NameArg
     , "Set logging categories"
     , cmd_cats)
