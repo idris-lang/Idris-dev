@@ -85,10 +85,10 @@ performUsageAnalysis startNames = do
             usage = M.toList minUse
 
         -- Print some debug info.
-        logLvl 5 $ "Original deps:\n" ++ unlines (map fmtItem . M.toList $ depMap)
-        logLvl 3 $ "Reachable names:\n" ++ unlines (map (indent . show) . S.toList $ reachableNames)
-        logLvl 4 $ "Minimal usage:\n" ++ fmtUseMap usage
-        logLvl 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
+        logErasure 5 $ "Original deps:\n" ++ unlines (map fmtItem . M.toList $ depMap)
+        logErasure 3 $ "Reachable names:\n" ++ unlines (map (indent . show) . S.toList $ reachableNames)
+        logErasure 4 $ "Minimal usage:\n" ++ fmtUseMap usage
+        logErasure 5 $ "Residual deps:\n" ++ unlines (map fmtItem . M.toList $ residDeps)
 
         -- Check that everything reachable is accessible.
         checkEnabled <- (WarnReach `elem`) . opt_cmdline . idris_options <$> getIState
@@ -135,7 +135,7 @@ performUsageAnalysis startNames = do
       where
         fmt n [] = show n ++ " (no more information available)"
         fmt n rs = show n ++ " from " ++ intercalate ", " [show rn ++ " arg# " ++ show ri | (rn,ri) <- rs]
-        warn = logLvl 0
+        warn = logErasure 0
 
 -- Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
@@ -150,7 +150,7 @@ minimalUsage = second gather . forwardChain
 
 forwardChain :: Deps -> (Deps, DepSet)
 forwardChain deps
-    | Just trivials <- M.lookup S.empty deps 
+    | Just trivials <- M.lookup S.empty deps
         = (M.unionWith S.union trivials)
             `second` forwardChain (remove trivials . M.delete S.empty $ deps)
     | otherwise = (deps, M.empty)
@@ -164,7 +164,7 @@ forwardChain deps
 -- starting the depth-first search from a list of Names.
 buildDepMap :: Ctxt ClassInfo -> [(Name, Int)] -> [(Name, Int)] ->
                Context -> [Name] -> Deps
-buildDepMap ci used externs ctx startNames 
+buildDepMap ci used externs ctx startNames
     = addPostulates used $ dfs S.empty M.empty startNames
   where
     -- mark the result of Main.main as used with the empty assumption
@@ -181,7 +181,7 @@ buildDepMap ci used externs ctx startNames
         usedNames = allNames deps S.\\ specialPrims
         usedPrims = [(p_name p, p_arity p) | p <- primitives, p_name p `S.member` usedNames]
 
-        postulates used = 
+        postulates used =
             [ [] ==> concat
                 -- Main.main ( + export lists) and run__IO, are always evaluated
                 -- but they elude analysis since they come from the seed term.
@@ -190,7 +190,7 @@ buildDepMap ci used externs ctx startNames
                 ,[(sUN "call__IO", Result), (sUN "call__IO", Arg 2)]
 
                 -- Explicit usage declarations from a %used pragma
-                , map (\(n, i) -> (n, Arg i)) used 
+                , map (\(n, i) -> (n, Arg i)) used
 
                 -- MkIO is read by run__IO,
                 -- but this cannot be observed in the source code of programs.
@@ -200,7 +200,7 @@ buildDepMap ci used externs ctx startNames
                 -- Foreign calls are built with pairs, but mkForeign doesn't
                 -- have an implementation so analysis won't see them
                 , [(pairCon, Arg 2),
-                   (pairCon, Arg 3)] -- Used in foreign calls 
+                   (pairCon, Arg 3)] -- Used in foreign calls
 
                 -- these have been discovered as builtins but are not listed
                 -- among Idris.Primitives.primitives
@@ -211,7 +211,7 @@ buildDepMap ci used externs ctx startNames
                 -- believe_me is a primitive but it only uses its third argument
                 -- it is special-cased in usedNames above
                 , it "prim__believe_me" [2]
-    
+
                 -- in general, all other primitives use all their arguments
                 , [(n, Arg i) | (n,arity) <- usedPrims, i <- [0..arity-1]]
 
@@ -324,7 +324,7 @@ buildDepMap ci used externs ctx startNames
             , viMethod = meth j
             })
           | (v, j) <- zip ns [0..]]
-        
+
         -- this is safe because it's certainly a patvar
         varIdx = fromJust (viFunArg var)
 

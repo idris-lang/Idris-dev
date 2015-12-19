@@ -86,6 +86,11 @@ parseFlags = many $
   <|> (Client <$> strOption (long "client"))
   -- Logging Flags
   <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
+  <|> (OLogCats <$> option (str >>= parseLogCats)
+                           (long "logging-categories"
+                         <> metavar "CATS"
+                         <> help "Colon separated logging categories: parser, elab, codegen, coverage, erasure"))
+
   -- Turn off Certain libraries.
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
   <|> flag' NoPrelude (long "noprelude" <> help "Do not use the given prelude")
@@ -161,21 +166,44 @@ parseVersion :: Parser (a -> a)
 parseVersion = infoOption ver (short 'v' <> long "version" <> help "Print version information")
 
 preProcOpts :: [Opt] -> [Opt] -> [Opt]
-preProcOpts [] ys = ys
+preProcOpts []              ys = ys
 preProcOpts (NoBuiltins:xs) ys = NoBuiltins : NoPrelude : preProcOpts xs ys
-preProcOpts (Output s:xs) ys = Output s : NoREPL : preProcOpts xs ys
-preProcOpts (BCAsm s:xs) ys = BCAsm s : NoREPL : preProcOpts xs ys
-preProcOpts (x:xs) ys = preProcOpts xs (x:ys)
+preProcOpts (Output s:xs)   ys = Output s : NoREPL : preProcOpts xs ys
+preProcOpts (BCAsm s:xs)    ys = BCAsm s : NoREPL : preProcOpts xs ys
+preProcOpts (x:xs)          ys = preProcOpts xs (x:ys)
 
 parseCodegen :: String -> Codegen
 parseCodegen "bytecode" = Bytecode
-parseCodegen cg = Via (map toLower cg)
+parseCodegen cg         = Via (map toLower cg)
 
+parseLogCats :: Monad m => String -> m [LogCat]
+parseLogCats s =
+    case lastMay (readP_to_S (doParse) s) of
+      Just (xs, _) -> return xs
+      _            -> fail $ "Incorrect categories specified"
+  where
+    doParse :: ReadP [LogCat]
+    doParse = do
+      cs <- sepBy1 parseLogCat (char ':')
+      eof
+      return (concat cs)
 
+    parseLogCat :: ReadP [LogCat]
+    parseLogCat = (string "parser"   *> return parserCats)
+              <|> (string "elab"     *> return elabCats)
+              <|> (string "codegen"  *> return codegenCats)
+              <|> (string "coverage" *> return [ICoverage])
+              <|> (string "ibc"      *> return [IIBC])
+              <|> (string "erasure"  *> return [IErasure])
+              <|> parseLogCatBad
 
+    parseLogCatBad :: ReadP [LogCat]
+    parseLogCatBad = do
+      s <- look
+      fail $ "Category: " ++ s ++ " is not recognised."
 
 parseConsoleWidth :: Monad m => String -> m ConsoleWidth
-parseConsoleWidth "auto" = return AutomaticWidth
+parseConsoleWidth "auto"     = return AutomaticWidth
 parseConsoleWidth "infinite" = return InfinitelyWide
 parseConsoleWidth  s =
   case lastMay (readP_to_S (integerReader) s) of

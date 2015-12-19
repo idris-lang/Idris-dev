@@ -1,5 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
-module Idris.Elab.Type (buildType, elabType, elabType', 
+module Idris.Elab.Type (buildType, elabType, elabType',
                         elabPostulate, elabExtern) where
 
 import Idris.AbsSyntax
@@ -52,20 +52,20 @@ import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
 
-buildType :: ElabInfo -> SyntaxInfo -> FC -> FnOpts -> Name -> PTerm -> 
+buildType :: ElabInfo -> SyntaxInfo -> FC -> FnOpts -> Name -> PTerm ->
              Idris (Type, Type, PTerm, [(Int, Name)])
 buildType info syn fc opts n ty' = do
          ctxt <- getContext
          i <- getIState
 
-         logLvl 2 $ show n ++ " pre-type " ++ showTmImpls ty' ++ show (no_imp syn)
+         logElab 2 $ show n ++ " pre-type " ++ showTmImpls ty' ++ show (no_imp syn)
          ty' <- addUsingConstraints syn fc ty'
          ty' <- addUsingImpls syn n fc ty'
          let ty = addImpl (imp_methods syn) i ty'
 
-         logLvl 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
-         logLvl 5 $ show "with methods " ++ show (imp_methods syn)
-         logLvl 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
+         logElab 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
+         logElab 5 $ show "with methods " ++ show (imp_methods syn)
+         logElab 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
          (ElabResult tyT' defer is ctxt' newDecls highlights, log) <-
             tclift $ elaborate ctxt (idris_datatypes i) n (TType (UVal 0)) initEState
@@ -76,7 +76,7 @@ buildType info syn fc opts n ty' = do
 
          let tyT = patToImp tyT'
 
-         logLvl 3 $ show ty ++ "\nElaborated: " ++ show tyT'
+         logElab 3 $ show ty ++ "\nElaborated: " ++ show tyT'
 
          ds <- checkAddDef True False fc iderr defer
          -- if the type is not complete, note that we'll need to infer
@@ -86,20 +86,20 @@ buildType info syn fc opts n ty' = do
 
          mapM_ (elabCaseBlock info opts) is
          ctxt <- getContext
-         logLvl 5 $ "Rechecking"
-         logLvl 6 $ show tyT
-         logLvl 10 $ "Elaborated to " ++ showEnvDbg [] tyT
+         logElab 5 $ "Rechecking"
+         logElab 6 $ show tyT
+         logElab 10 $ "Elaborated to " ++ showEnvDbg [] tyT
          (cty, ckind)   <- recheckC fc id [] tyT
 
          -- record the implicit and inaccessible arguments
          i <- getIState
          let (inaccData, impls) = unzip $ getUnboundImplicits i cty ty
          let inacc = inaccessibleImps 0 cty inaccData
-         logLvl 3 $ show n ++ ": inaccessible arguments: " ++ show inacc ++
+         logElab 3 $ show n ++ ": inaccessible arguments: " ++ show inacc ++
                      " from " ++ show cty ++ "\n" ++ showTmImpls ty
 
          putIState $ i { idris_implicits = addDef n impls (idris_implicits i) }
-         logLvl 3 ("Implicit " ++ show n ++ " " ++ show impls)
+         logElab 3 ("Implicit " ++ show n ++ " " ++ show impls)
          addIBC (IBCImp n)
 
          when (Constructor `notElem` opts) $ do
@@ -114,7 +114,7 @@ buildType info syn fc opts n ty' = do
     patToImp (Bind n b sc) = Bind n b (patToImp sc)
     patToImp t = t
 
-    param_pos i ns (Bind n (Pi _ t _) sc) 
+    param_pos i ns (Bind n (Pi _ t _) sc)
         | n `elem` ns = i : param_pos (i + 1) ns sc
         | otherwise = param_pos (i + 1) ns sc
     param_pos i ns t = []
@@ -140,9 +140,9 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          let nty = cty -- normalise ctxt [] cty
          -- if the return type is something coinductive, freeze the definition
          ctxt <- getContext
-         logLvl 2 $ "Rechecked to " ++ show nty
+         logElab 2 $ "Rechecked to " ++ show nty
          let nty' = normalise ctxt [] nty
-         logLvl 2 $ "Rechecked to " ++ show nty'
+         logElab 2 $ "Rechecked to " ++ show nty'
 
          -- Add function name to internals (used for making :addclause know
          -- the name unambiguously)
@@ -158,7 +158,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
                                         [TI _ True _ _ _] -> True
                                         _ -> False
                         _ -> False
-         -- Productivity checking now via checking for guarded 'Delay' 
+         -- Productivity checking now via checking for guarded 'Delay'
          let opts' = opts -- if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
          ds <- checkDef fc iderr [(n, (-1, Nothing, usety, []))]
@@ -177,7 +177,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          addIBC (IBCOpt n)
          when (Implicit `elem` opts') $ do addCoercion n
                                            addIBC (IBCCoercion n)
-         when (AutoHint `elem` opts') $ 
+         when (AutoHint `elem` opts') $
              case fam of
                 P _ tyn _ -> do addAutoHint tyn n
                                 addIBC (IBCAutoHint tyn n)
@@ -201,7 +201,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          sendHighlighting [(nfc, AnnName n Nothing Nothing Nothing)]
          -- if it's an export list type, make a note of it
          case (unApply usety) of
-              (P _ ut _, _) 
+              (P _ ut _, _)
                  | ut == ffiexport -> do addIBC (IBCExport n)
                                          addExport n
               _ -> return ()
@@ -256,6 +256,3 @@ elabExtern info syn doc fc nfc opts n ty = do
 
     -- remove it from the deferred definitions list
     solveDeferred n
-
-
-

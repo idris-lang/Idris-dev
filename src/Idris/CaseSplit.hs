@@ -65,20 +65,20 @@ split n t'
         -- ASSUMPTION: tm is in normal form after elabValBind, so we don't
         -- need to do anything special to find out what family each argument
         -- is in
-        logLvl 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
+        logElab 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
 --         iputStrLn (show (delab ist tm) ++ " : " ++ show (delab ist ty))
 --         iputStrLn (show pats)
-        let t = mergeUserImpl (addImplPat ist t') (delab ist tm) 
+        let t = mergeUserImpl (addImplPat ist t') (delab ist tm)
         let ctxt = tt_ctxt ist
         case lookup n pats of
              Nothing -> ifail $ show n ++ " is not a pattern variable"
              Just ty ->
                 do let splits = findPats ist ty
-                   logLvl 1 ("New patterns " ++ showSep ", "  
+                   logElab 1 ("New patterns " ++ showSep ", "
                          (map showTmImpls splits))
                    let newPats_in = zipWith (replaceVar ctxt n) splits (repeat t)
-                   logLvl 4 ("Working from " ++ show t)
-                   logLvl 4 ("Trying " ++ showSep "\n" 
+                   logElab 4 ("Working from " ++ show t)
+                   logElab 4 ("Trying " ++ showSep "\n"
                                (map (showTmImpls) newPats_in))
                    newPats_in <- mapM elabNewPat newPats_in
                    case anyValid [] [] newPats_in of
@@ -86,16 +86,16 @@ split n t'
                            let fails' = mergeAllPats ist n t fails
                            return (False, (map snd fails'))
                         Right newPats -> do
-                           logLvl 3 ("Original:\n" ++ show t)
-                           logLvl 3 ("Split:\n" ++
+                           logElab 3 ("Original:\n" ++ show t)
+                           logElab 3 ("Split:\n" ++
                                       (showSep "\n" (map show newPats)))
-                           logLvl 3 "----"
+                           logElab 3 "----"
                            let newPats' = mergeAllPats ist n t newPats
-                           logLvl 1 ("Name updates " ++ showSep "\n"
+                           logElab 1 ("Name updates " ++ showSep "\n"
                                  (map (\ (p, u) -> show u ++ " " ++ show p) newPats'))
                            return (True, (map snd newPats'))
-   where 
-     anyValid ok bad [] = if null ok then Left (reverse bad) 
+   where
+     anyValid ok bad [] = if null ok then Left (reverse bad)
                                      else Right (reverse ok)
      anyValid ok bad ((tc, p) : ps)
          | tc = anyValid (p : ok) bad ps
@@ -111,7 +111,7 @@ addUpdate n tm = do ms <- get
                     put (ms { updates = ((n, stripNS tm) : updates ms) } )
 
 inventName :: Idris.AbsSyntaxTree.IState -> Maybe Name -> Name -> State MergeState Name
-inventName ist ty n = 
+inventName ist ty n =
     do ms <- get
        let supp = case ty of
                        Nothing -> []
@@ -131,11 +131,11 @@ inventName ist ty n =
              do let n' = uniqueNameFrom nsupp badnames
                 put (ms { invented = (n, n') : invented ms })
                 return n'
-                
+
 mkSupply :: [Name] -> [Name]
 mkSupply ns = mkSupply' ns (map nextName ns)
   where mkSupply' xs ns' = xs ++ mkSupply ns'
-   
+
 varlist :: [Name]
 varlist = map (sUN . (:[])) "xyzwstuv" -- EB's personal preference :)
 
@@ -147,7 +147,7 @@ stripNS tm = mapPT dens tm where
 mergeAllPats :: IState -> Name -> PTerm -> [PTerm] -> [(PTerm, [(Name, PTerm)])]
 mergeAllPats ist cv t [] = []
 mergeAllPats ist cv t (p : ps)
-    = let (p', MS _ _ _ u) = runState (mergePat ist t p Nothing) 
+    = let (p', MS _ _ _ u) = runState (mergePat ist t p Nothing)
                                       (MS [] [] (filter (/=cv) (patvars t)) [])
           ps' = mergeAllPats ist cv t ps in
           ((p', u) : ps')
@@ -192,7 +192,7 @@ mergeUserImpl :: PTerm -> PTerm -> PTerm
 mergeUserImpl x y = x
 
 argTys :: IState -> PTerm -> [Maybe Name]
-argTys ist (PRef fc hls n) 
+argTys ist (PRef fc hls n)
     = case lookupTy n (tt_ctxt ist) of
            [ty] -> map (tyName . snd) (getArgTys ty) ++ repeat Nothing
            _ -> repeat Nothing
@@ -227,7 +227,7 @@ elabNewPat t = idrisCatch (do (tm, ty) <- elabVal recinfo ELHS t
                               i <- getIState
                               return (True, delab i tm))
                           (\e -> do i <- getIState
-                                    logLvl 5 $ "Not a valid split:\n" ++ pshow i e
+                                    logElab 5 $ "Not a valid split:\n" ++ pshow i e
                                     return (False, t))
 
 findPats :: IState -> Type -> [PTerm]
@@ -250,7 +250,7 @@ replaceVar ctxt n t (PApp fc f pats) = PApp fc f (map substArg pats)
         subst orig@(PRef _ _ v) | v == n = t
                                 | isDConName v ctxt = orig
         subst (PRef _ _ _) = Placeholder
-        subst (PApp fc (PRef _ _ t) pats) 
+        subst (PApp fc (PRef _ _ t) pats)
             | isTConName t ctxt = Placeholder -- infer types
         subst (PApp fc f pats) = PApp fc f (map substArg pats)
         subst x = x
@@ -265,9 +265,9 @@ splitOnLine :: Int         -- ^ line number
             -> Idris (Bool, [[(Name, PTerm)]])
 splitOnLine l n fn = do
     cl <- getInternalApp fn l
-    logLvl 3 ("Working with " ++ showTmImpls cl)
+    logElab 3 ("Working with " ++ showTmImpls cl)
     tms <- split n cl
-    return tms 
+    return tms
 
 replaceSplits :: String -> [[(Name, PTerm)]] -> Bool -> Idris [String]
 replaceSplits l ups impossible
@@ -277,7 +277,7 @@ replaceSplits l ups impossible
     rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow tm) str) ups
 
     updateRHSs i [] = return []
-    updateRHSs i (x : xs) 
+    updateRHSs i (x : xs)
        | impossible = do xs' <- updateRHSs i xs
                          return (setImpossible False x : xs')
        | otherwise = do (x', i') <- updateRHS (null xs) i x
@@ -286,7 +286,7 @@ replaceSplits l ups impossible
 
     updateRHS last i ('?':'=':xs) = do (xs', i') <- updateRHS last i xs
                                        return ("?=" ++ xs', i')
-    updateRHS last i ('?':xs) 
+    updateRHS last i ('?':xs)
         = do let (nm, rest_in) = span (not . (\x -> isSpace x || x == ')'
                                                               || x == '(')) xs
              let rest = if last then rest_in else
@@ -341,7 +341,7 @@ replaceSplits l ups impossible
                    | otherwise = tm
 
 
-getUniq :: (Show t, Num t) => [Char] -> t -> Idris ([Char], t) 
+getUniq :: (Show t, Num t) => [Char] -> t -> Idris ([Char], t)
 getUniq nm i
        = do ist <- getIState
             let n = nameRoot [] nm ++ "_" ++ show i
@@ -360,7 +360,7 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> Name     -- ^ User given name
           -> FilePath -- ^ Source file name
           -> Idris String
-getClause l fn un fp 
+getClause l fn un fp
     = do i <- getIState
          case lookupCtxt un (idris_classes i) of
               [c] -> return (mkClassBodies i (class_methods c))
@@ -370,18 +370,18 @@ getClause l fn un fp
                                     x -> x
                       ist <- get
                       let ap = mkApp ist ty []
-                      return (show un ++ " " ++ ap ++ "= ?" 
+                      return (show un ++ " " ++ ap ++ "= ?"
                                       ++ show un ++ "_rhs")
    where mkApp :: IState -> PTerm -> [Name] -> String
          mkApp i (PPi (Exp _ _ False) (MN _ _) _ ty sc) used
                = let n = getNameFrom i used ty in
-                     show n ++ " " ++ mkApp i sc (n : used) 
+                     show n ++ " " ++ mkApp i sc (n : used)
          mkApp i (PPi (Exp _ _ False) (UN n) _ ty sc) used
             | thead n == '_'
                = let n = getNameFrom i used ty in
-                     show n ++ " " ++ mkApp i sc (n : used) 
-         mkApp i (PPi (Exp _ _ False) n _ _ sc) used 
-               = show n ++ " " ++ mkApp i sc (n : used) 
+                     show n ++ " " ++ mkApp i sc (n : used)
+         mkApp i (PPi (Exp _ _ False) n _ _ sc) used
+               = show n ++ " " ++ mkApp i sc (n : used)
          mkApp i (PPi _ _ _ _ sc) used = mkApp i sc used
          mkApp i _ _ = ""
 
@@ -394,16 +394,16 @@ getClause l fn un fp
                                                    sUN "z"]) used
                    ns -> uniqueNameFrom (mkSupply ns) used
          getNameFrom i used _ = uniqueNameFrom (mkSupply [sUN "x", sUN "y",
-                                                          sUN "z"]) used 
+                                                          sUN "z"]) used
 
          -- write method declarations, indent with 4 spaces
          mkClassBodies :: IState -> [(Name, (FnOpts, PTerm))] -> String
-         mkClassBodies i ns 
+         mkClassBodies i ns
              = showSep "\n"
-                  (zipWith (\(n, (_, ty)) m -> "    " ++ 
+                  (zipWith (\(n, (_, ty)) m -> "    " ++
                             def (show (nsroot n)) ++ " "
                                  ++ mkApp i ty []
-                                 ++ "= ?" 
+                                 ++ "= ?"
                                  ++ show un ++ "_rhs_" ++ show m) ns [1..])
 
          def n@(x:xs) | not (isAlphaNum x) = "(" ++ n ++ ")"
@@ -456,7 +456,3 @@ nameMissing ps = do ist <- get
                 case mptm of
                      (False, _) -> return ptm
                      (True, ptm') -> return ptm'
-                       
-
-
-
