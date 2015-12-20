@@ -45,8 +45,27 @@ Use of this option will still result in the generation of the Idris binary ``.ib
 Logging Output
 ==============
 
-Logging of the Idris output can be used to diagnose problems with the compilation of your program.
-Idris supports the logging at various different levels of verbosity: 1 to 10.
+The internal operation of Idris is captured using a category based logger.
+Currently, the logging infrastructure has support for the following categories:
+
++ Parser
++ Elaborator
++ Code generation
++ Erasure
++ Coverage Checking
++ IBC generation
+
+
+These categories are specified using the command-line option:
+``--logging-categories CATS``, where ``CATS`` is a quoted colon
+seperated string of the categories you want to see. By default if this
+option is not specified all categories are allowed.  Sub-categories
+have yet to be defined but will be in the future, especially for the
+elaborator.
+
+Further, the verbosity of logging can be controlled by specifying a
+logging level between: 1 to 10 using the command-line option: ``--log
+<level>``.
 
 + Level 0: Show no logging output. Default level
 + Level 1: High level details of the compilation process.
