@@ -7,7 +7,7 @@ New in 0.9.21:
   string containing the categories to log. The REPL command is `logcats CATS`.
   Where `CATS` is a whitespace separated list of categoriese. Default is for
   all categories to be logged.
-
+* New flag `--listlogcats` to list logging categories.`
 
 New in 0.9.20:
 ==============

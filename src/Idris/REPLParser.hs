@@ -407,12 +407,12 @@ cmd_cats name = do
       fail $ "Category: " ++ c ++ " is not recognised."
 
     pLogCats :: P.IdrisParser [LogCat]
-    pLogCats = try (P.symbol "parser"   >> return parserCats)
-           <|> try (P.symbol "elab"     >> return elabCats)
-           <|> try (P.symbol "codegen"  >> return codegenCats)
-           <|> try (P.symbol "coverage" >> return [ICoverage])
-           <|> try (P.symbol "ibc"      >> return [IIBC])
-           <|> try (P.symbol "erasure"  >> return [IErasure])
+    pLogCats = try (P.symbol (strLogCat IParse)    >> return parserCats)
+           <|> try (P.symbol (strLogCat IElab)     >> return elabCats)
+           <|> try (P.symbol (strLogCat ICodeGen)  >> return codegenCats)
+           <|> try (P.symbol (strLogCat ICoverage) >> return [ICoverage])
+           <|> try (P.symbol (strLogCat IIBC)      >> return [IIBC])
+           <|> try (P.symbol (strLogCat IErasure)  >> return [IErasure])
            <|> badCat
 
 cmd_let :: String -> P.IdrisParser (Either String Command)

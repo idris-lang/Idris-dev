@@ -465,6 +465,14 @@ data LogCat = IParse
             | IIBC
             deriving (Show, Eq, Ord)
 
+strLogCat :: LogCat -> String
+strLogCat IParse    = "parser"
+strLogCat IElab     = "elab"
+strLogCat ICodeGen  = "codegen"
+strLogCat IErasure  = "erasure"
+strLogCat ICoverage = "coverage"
+strLogCat IIBC      = "ibc"
+
 codegenCats :: [LogCat]
 codegenCats =  [ICodeGen]
 
@@ -473,6 +481,16 @@ parserCats = [IParse]
 
 elabCats :: [LogCat]
 elabCats = [IElab]
+
+loggingCatsStr :: String
+loggingCatsStr = unlines
+    [ (strLogCat IParse)
+    , (strLogCat IElab)
+    , (strLogCat ICodeGen)
+    , (strLogCat IErasure)
+    , (strLogCat ICoverage)
+    , (strLogCat IIBC)
+    ]
 
 data Opt = Filename String
          | Quiet
@@ -484,6 +502,7 @@ data Opt = Filename String
          | ShowLibdir
          | ShowIncs
          | ShowPkgs
+         | ShowLoggingCats
          | NoBasePkgs
          | NoPrelude
          | NoBuiltins -- only for the really primitive stuff!
