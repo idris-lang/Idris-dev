@@ -54,12 +54,12 @@ compile codegen f mtm
                              Nothing -> []
                              Just t -> freeNames t
 
-        reachableNames <- performUsageAnalysis 
+        reachableNames <- performUsageAnalysis
                               (rootNames ++ getExpNames exports)
         maindef <- case mtm of
                         Nothing -> return []
                         Just tm -> do md <- irMain tm
-                                      logLvl 1 $ "MAIN: " ++ show md
+                                      logCodeGen 1 $ "MAIN: " ++ show md
                                       return [(sMN 0 "runMain", md)]
         objs <- getObjectFiles codegen
         libs <- getLibs codegen
@@ -82,13 +82,13 @@ compile codegen f mtm
         let (nexttag, tagged) = addTags 65536 (liftAll defsUniq)
         let ctxtIn = addAlist tagged emptyContext
 
-        logLvl 1 "Defunctionalising"
+        logCodeGen 1 "Defunctionalising"
         let defuns_in = defunctionalise nexttag ctxtIn
-        logLvl 5 $ show defuns_in
-        logLvl 1 "Inlining"
+        logCodeGen 5 $ show defuns_in
+        logCodeGen 1 "Inlining"
         let defuns = inline defuns_in
-        logLvl 5 $ show defuns
-        logLvl 1 "Resolving variables for CG"
+        logCodeGen 5 $ show defuns
+        logCodeGen 1 "Resolving variables for CG"
 
         let checked = simplifyDefs defuns (toAlist defuns)
         outty <- outputTy
@@ -102,7 +102,7 @@ compile codegen f mtm
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
-        logLvl 1 "Building output"
+        logCodeGen 1 "Building output"
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags
@@ -184,10 +184,10 @@ build (n, d)
                       return (n, (LFun [] n (take ar args)
                                          (LOp op (map (LV . Glob) (take ar args)))))
               _ -> do def <- mkLDecl n d
-                      logLvl 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
+                      logCodeGen 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
                       return (n, def)
-   where getPrim n i 
-             | Just (ar, op) <- lookup n (idris_scprims i) 
+   where getPrim n i
+             | Just (ar, op) <- lookup n (idris_scprims i)
                   = Just (ar, op)
              | Just ar <- lookup n (S.toList (idris_externs i))
                   = Just (ar, LExternal n)
@@ -224,7 +224,7 @@ data VarInfo = VI
 type Vars = M.Map Name VarInfo
 
 irTerm :: Vars -> [Name] -> Term -> Idris LExp
-irTerm vs env tm@(App _ f a) = do 
+irTerm vs env tm@(App _ f a) = do
   ist <- getIState
   case unApply tm of
     (P _ (UN m) _, args)
@@ -454,19 +454,19 @@ irTerm vs env Impossible   = return $ LNothing
 doForeign :: Vars -> [Name] -> [Term] -> Idris LExp
 doForeign vs env (ret : fname : world : args)
      = do args' <- mapM splitArg args
-          let fname' = toFDesc fname 
+          let fname' = toFDesc fname
           let ret' = toFDesc ret
           return $ LForeign ret' fname' args'
   where
     splitArg tm | (_, [_,_,l,r]) <- unApply tm -- pair, two implicits
-        = do let l' = toFDesc l 
+        = do let l' = toFDesc l
              r' <- irTerm vs env r
              return (l', r')
     splitArg _ = ifail "Badly formed foreign function call"
 
-    toFDesc (Constant (Str str)) = FStr str 
-    toFDesc tm 
-       | (P _ n _, []) <- unApply tm = FCon (deNS n) 
+    toFDesc (Constant (Str str)) = FStr str
+    toFDesc tm
+       | (P _ n _, []) <- unApply tm = FCon (deNS n)
        | (P _ n _, as) <- unApply tm = FApp (deNS n) (map toFDesc as)
     toFDesc _ = FUnknown
 
@@ -476,7 +476,7 @@ doForeign vs env xs = ifail "Badly formed foreign function call"
 
 irTree :: [Name] -> SC -> Idris LExp
 irTree args tree = do
-    logLvl 3 $ "Compiling " ++ show args ++ "\n" ++ show tree
+    logCodeGen 3 $ "Compiling " ++ show args ++ "\n" ++ show tree
     LLam args <$> irSC M.empty tree
 
 irSC :: Vars -> SC -> Idris LExp

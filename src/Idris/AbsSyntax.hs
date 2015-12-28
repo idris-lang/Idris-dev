@@ -699,6 +699,13 @@ setLogLevel l = do i <- getIState
                    let opt' = opts { opt_logLevel = l }
                    putIState $ i { idris_options = opt' }
 
+setLogCats :: [LogCat] -> Idris ()
+setLogCats cs = do
+  i <- getIState
+  let opts = idris_options i
+  let opt' = opts { opt_logcats = cs }
+  putIState $ i { idris_options = opt' }
+
 setCmdLine :: [Opt] -> Idris ()
 setCmdLine opts = do i <- getIState
                      let iopts = idris_options i
@@ -969,15 +976,55 @@ setColour ct c = do i <- getIState
           setColour' PromptColour    c t = t { promptColour = c }
           setColour' PostulateColour c t = t { postulateColour = c }
 
+
 logLvl :: Int -> String -> Idris ()
-logLvl l str = do i <- getIState
-                  let lvl = opt_logLevel (idris_options i)
-                  when (lvl >= l) $
-                    case idris_outputmode i of
-                      RawOutput h -> do runIO $ hPutStrLn h str
-                      IdeMode n h ->
-                        do let good = SexpList [IntegerAtom (toInteger l), toSExp str]
-                           runIO . hPutStrLn h $ convSExp "log" good n
+logLvl = logLvlCats []
+
+logCoverage :: Int -> String -> Idris ()
+logCoverage = logLvlCats [ICoverage]
+
+logErasure :: Int -> String -> Idris ()
+logErasure = logLvlCats [IErasure]
+
+-- | Log an action of the parser
+logParser :: Int -> String -> Idris ()
+logParser = logLvlCats parserCats
+
+-- | Log an action of the elaborator.
+logElab :: Int -> String -> Idris ()
+logElab = logLvlCats elabCats
+
+-- | Log an action of the compiler.
+logCodeGen :: Int -> String -> Idris ()
+logCodeGen = logLvlCats codegenCats
+
+logIBC :: Int -> String -> Idris ()
+logIBC = logLvlCats [IIBC]
+
+-- | Log aspect of Idris execution
+--
+-- An empty set of logging levels is used to denote all categories.
+--
+-- @TODO update IDE protocol
+logLvlCats :: [LogCat] -- ^ The categories that the message should appear under.
+           -> Int      -- ^ The Logging level the message should appear.
+           -> String   -- ^ The message to show the developer.
+           -> Idris ()
+logLvlCats cs l str = do
+    i <- getIState
+    let lvl  = opt_logLevel (idris_options i)
+    let cats = opt_logcats (idris_options i)
+    when (lvl >= l) $
+      when (inCat cs cats || null cats) $
+        case idris_outputmode i of
+          RawOutput h -> do
+            runIO $ hPutStrLn h str
+          IdeMode n h -> do
+            let good = SexpList [IntegerAtom (toInteger l), toSExp str]
+            runIO . hPutStrLn h $ convSExp "log" good n
+  where
+    inCat :: [LogCat] -> [LogCat] -> Bool
+    inCat cs cats = or $ map (\x -> elem x cats) cs
 
 cmdOptType :: Opt -> Idris Bool
 cmdOptType x = do i <- getIState
@@ -1396,7 +1443,7 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
         scopedimpl (Just i) = not (toplevel_imp i)
         scopedimpl _ = False
 
-        getImps (Bind n (Pi i _ _) sc) imps 
+        getImps (Bind n (Pi i _ _) sc) imps
              | scopedimpl i = getImps sc imps
         getImps (Bind n (Pi _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
@@ -1628,7 +1675,7 @@ addImpl' inpat env infns imp_meths ist ptm
     ai inpat qq env ds (PApp fc ftm@(PRef ffc hl f) as)
         | f `elem` infns = ai inpat qq env ds (PApp fc (PInferRef ffc hl f) as)
         | not (f `elem` map fst env)
-                          = let as' = map (fmap (ai inpat qq env ds)) as 
+                          = let as' = map (fmap (ai inpat qq env ds)) as
                                 asdotted' = map (fmap (ai False qq env ds)) as in
                                 handleErr $ aiFn topname inpat False qq imp_meths ist fc f ffc ds as' asdotted'
         | Just (Just ty) <- lookup f env =
@@ -1707,7 +1754,7 @@ aiFn :: Name -> Bool -> Bool -> Bool
      -> Either Err PTerm
 aiFn topname inpat True qq imp_meths ist fc f ffc ds [] _
   | inpat && implicitable f && unqualified f = Right $ PPatvar ffc f
-  | otherwise 
+  | otherwise
      = case lookupDef f (tt_ctxt ist) of
         [] -> Right $ PPatvar ffc f
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
@@ -1743,7 +1790,7 @@ aiFn topname inpat expat qq imp_meths ist fc f ffc ds as asexp
                          [] -> nh
                          x -> x
           case ns' of
-            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef ffc [ffc] (isImpName f f')) 
+            [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef ffc [ffc] (isImpName f f'))
                                      (insertImpl ns (chooseArgs f' as asexp))
             [] -> if f `elem` (map fst (idris_metavars ist))
                     then Right $ PApp fc (PRef ffc [ffc] f) as
@@ -2173,7 +2220,7 @@ shadow n n' t = sm 0 t where
 -- | Rename any binders which are repeated (so that we don't have to mess
 -- about with shadowing anywhere else).
 mkUniqueNames :: [Name] -> [(Name, Name)] -> PTerm -> PTerm
-mkUniqueNames env shadows tm 
+mkUniqueNames env shadows tm
       = evalState (mkUniq 0 initMap tm) (S.fromList env) where
 
   initMap = M.fromList shadows
@@ -2295,4 +2342,3 @@ mkUniqueNames env shadows tm
   mkUniq ql nmap (PUnquote tm) = fmap PUnquote (mkUniq (ql - 1) nmap tm)
 
   mkUniq ql nmap tm = descendM (mkUniq ql nmap) tm
-                      

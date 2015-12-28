@@ -78,7 +78,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let idecls = filter instdecl ds -- default superclass instance declarations
          mapM_ checkDefaultSuperclassInstance idecls
          let mnames = map getMName mdecls
-         logLvl 1 $ "Building methods " ++ show mnames
+         logElab 1 $ "Building methods " ++ show mnames
          ims <- mapM (tdecl mnames) mdecls
          defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint)
                       (filter clause ds)
@@ -94,7 +94,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let cons = [(cd, pDocs ++ mapMaybe memberDocs ds, cn, NoFC, cty, fc, [])]
          let ddecl = PDatadecl tn NoFC tty cons
 
-         logLvl 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
+         logElab 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
 
          -- Elaborate the data declaration
          elabData info (syn { no_imp = no_imp syn ++ mnames,
@@ -109,7 +109,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          -- for each method, build a top level function
          fns <- mapM (tfun cn constraint (syn { imp_methods = mnames })
                            (map fst imethods)) imethods
-         logLvl 5 $ "Functions " ++ show fns
+         logElab 5 $ "Functions " ++ show fns
          -- Elaborate the the top level methods
          mapM_ (rec_elabDecl info EAll info) (concat fns)
 
@@ -159,7 +159,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     getMName (PTy _ _ _ _ _ n nfc _) = nsroot n
     tdecl allmeths (PTy doc _ syn _ o n nfc t)
            = do t' <- implicit' info syn (map (\(n, _, _) -> n) ps ++ allmeths) n t
-                logLvl 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
+                logElab 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map (\(pn, _, _) -> pn) ps) Exp t')),
                          (n, (nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
                                               (\ l s p -> Imp l s p Nothing) t'))),
@@ -174,7 +174,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                  let ds = map (decorateid defaultdec)
                               [PTy emptyDocstring [] syn fc [] n nfc ty',
                                PClauses fc (o ++ opts) n cs]
-                 logLvl 1 (show ds)
+                 logElab 1 (show ds)
                  return (n, ((defaultdec n, ds!!1), ds))
             _ -> ifail $ show n ++ " is not a method"
     defdecl _ _ _ = ifail "Can't happen (defdecl)"
@@ -199,8 +199,8 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              let lhs = PApp fc (PRef fc [] cfn) [pconst capp]
              let rhs = PResolveTC (fileFC "HACK")
              let ty = PPi constraint cnm NoFC c con
-             logLvl 2 ("Dictionary constraint: " ++ showTmImpls ty)
-             logLvl 2 (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
+             logElab 2 ("Dictionary constraint: " ++ showTmImpls ty)
+             logElab 2 (showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              i <- getIState
              let conn = case con of
                             PRef _ _ n -> n
@@ -230,9 +230,9 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              let anames = map (\x -> sMN x "arg") [0..]
              let lhs = PApp fc (PRef fc [] m) (pconst capp : lhsArgs margs anames)
              let rhs = PApp fc (getMeth mnames all m) (rhsArgs margs anames)
-             logLvl 2 ("Top level type: " ++ showTmImpls ty')
-             logLvl 1 (show (m, ty', capp, margs))
-             logLvl 2 ("Definition: " ++ showTmImpls lhs ++ " = " ++ showTmImpls rhs)
+             logElab 2 ("Top level type: " ++ showTmImpls ty')
+             logElab 1 (show (m, ty', capp, margs))
+             logElab 2 ("Definition: " ++ showTmImpls lhs ++ " = " ++ showTmImpls rhs)
              return [PTy doc [] syn fc o m mfc ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
@@ -318,5 +318,3 @@ findDets n ns =
        | n `elem` ns = i : getDetPos (i + 1) ns sc
        | otherwise = getDetPos (i + 1) ns sc
     getDetPos _ _ _ = []
-
-

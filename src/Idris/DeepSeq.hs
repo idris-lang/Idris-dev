@@ -107,6 +107,7 @@ instance NFData Opt where
     rnf (ColourREPL bool) = rnf  bool `seq` ()
     rnf (Idemode) = ()
     rnf (IdemodeSocket) = ()
+    rnf (ShowLoggingCats) = ()
     rnf (ShowLibs) = ()
     rnf (ShowLibdir) = ()
     rnf (ShowIncs) = ()
@@ -116,6 +117,7 @@ instance NFData Opt where
     rnf (NoBuiltins) = ()
     rnf (NoREPL) = ()
     rnf (OLogging i) = rnf  i `seq` ()
+    rnf (OLogCats cs) = rnf  cs `seq` ()
     rnf (Output str) = rnf  str `seq` ()
     rnf (Interface) = ()
     rnf (TypeCase) = ()
@@ -174,6 +176,7 @@ instance NFData TIData where
 instance NFData IOption where
     rnf (IOption
          opt_logLevel
+         opt_logcats
          opt_typecase
          opt_typeintype
          opt_coverage
@@ -226,7 +229,7 @@ instance NFData IOption where
 instance NFData LanguageExt where
     rnf TypeProviders = ()
     rnf ErrorReflection = ()
-    
+
 instance NFData Optimisation where
     rnf PETransform = ()
 
@@ -357,6 +360,9 @@ instance NFData FnInfo where
 instance NFData Codegen where
         rnf (Via x1) = rnf x1 `seq` ()
         rnf Bytecode = ()
+
+instance NFData LogCat where
+       rnf _ = ()
 
 instance NFData CGInfo where
         rnf (CGInfo x1 x2 x3 x4 x5)
@@ -563,7 +569,7 @@ instance NFData PTerm where
 instance NFData PAltType where
         rnf (ExactlyOne x1) = rnf x1 `seq` ()
         rnf FirstSuccess = ()
-        rnf TryImplicit = () 
+        rnf TryImplicit = ()
 
 instance (NFData t) => NFData (PTactic' t) where
         rnf (Intro x1) = rnf x1 `seq` ()
@@ -687,7 +693,7 @@ instance NFData OutputMode where
 
 
 instance NFData IState where
-  rnf (IState x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 
+  rnf (IState x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20
               x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40
               x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60
               x61 x62 x63 x64 x65 x66 x67 x68 x69 x70 x71 x72 x73 x74)

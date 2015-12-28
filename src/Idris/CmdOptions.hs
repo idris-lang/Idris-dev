@@ -86,6 +86,11 @@ parseFlags = many $
   <|> (Client <$> strOption (long "client"))
   -- Logging Flags
   <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
+  <|> (OLogCats <$> option (str >>= parseLogCats)
+                           (long "logging-categories"
+                         <> metavar "CATS"
+                         <> help "Colon separated logging categories. Use --listlogcats to see list."))
+
   -- Turn off Certain libraries.
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
   <|> flag' NoPrelude (long "noprelude" <> help "Do not use the given prelude")
@@ -101,11 +106,13 @@ parseFlags = many $
   <|> flag' WarnReach (long "warnreach" <> help "Warn about reachable but inaccessible arguments")
   <|> flag' NoCoverage (long "nocoverage")
   <|> flag' ErrContext (long "errorcontext")
-  <|> flag' ShowLibs (long "link" <> help "Display link flags")
-  <|> flag' ShowPkgs (long "listlibs" <> help "Display installed libraries")
-  <|> flag' ShowLibdir (long "libdir" <> help "Display library directory")
-  <|> flag' ShowIncs (long "include" <> help "Display the includes flags")
-  <|> flag' Verbose (short 'V' <> long "verbose" <> help "Loud verbosity")
+  -- Show things
+  <|> flag' ShowLoggingCats (long "listlogcats"          <> help "Display logging categories")
+  <|> flag' ShowLibs        (long "link"                 <> help "Display link flags")
+  <|> flag' ShowPkgs        (long "listlibs"             <> help "Display installed libraries")
+  <|> flag' ShowLibdir      (long "libdir"               <> help "Display library directory")
+  <|> flag' ShowIncs        (long "include"              <> help "Display the includes flags")
+  <|> flag' Verbose         (short 'V' <> long "verbose" <> help "Loud verbosity")
   <|> (IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory"))
   <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))
   <|> flag' WarnOnly (long "warn")
@@ -161,21 +168,44 @@ parseVersion :: Parser (a -> a)
 parseVersion = infoOption ver (short 'v' <> long "version" <> help "Print version information")
 
 preProcOpts :: [Opt] -> [Opt] -> [Opt]
-preProcOpts [] ys = ys
+preProcOpts []              ys = ys
 preProcOpts (NoBuiltins:xs) ys = NoBuiltins : NoPrelude : preProcOpts xs ys
-preProcOpts (Output s:xs) ys = Output s : NoREPL : preProcOpts xs ys
-preProcOpts (BCAsm s:xs) ys = BCAsm s : NoREPL : preProcOpts xs ys
-preProcOpts (x:xs) ys = preProcOpts xs (x:ys)
+preProcOpts (Output s:xs)   ys = Output s : NoREPL : preProcOpts xs ys
+preProcOpts (BCAsm s:xs)    ys = BCAsm s : NoREPL : preProcOpts xs ys
+preProcOpts (x:xs)          ys = preProcOpts xs (x:ys)
 
 parseCodegen :: String -> Codegen
 parseCodegen "bytecode" = Bytecode
-parseCodegen cg = Via (map toLower cg)
+parseCodegen cg         = Via (map toLower cg)
 
+parseLogCats :: Monad m => String -> m [LogCat]
+parseLogCats s =
+    case lastMay (readP_to_S (doParse) s) of
+      Just (xs, _) -> return xs
+      _            -> fail $ "Incorrect categories specified"
+  where
+    doParse :: ReadP [LogCat]
+    doParse = do
+      cs <- sepBy1 parseLogCat (char ':')
+      eof
+      return (concat cs)
 
+    parseLogCat :: ReadP [LogCat]
+    parseLogCat = (string (strLogCat IParse)    *> return parserCats)
+              <|> (string (strLogCat IElab)     *> return elabCats)
+              <|> (string (strLogCat ICodeGen)  *> return codegenCats)
+              <|> (string (strLogCat ICoverage) *> return [ICoverage])
+              <|> (string (strLogCat IIBC)      *> return [IIBC])
+              <|> (string (strLogCat IErasure)  *> return [IErasure])
+              <|> parseLogCatBad
 
+    parseLogCatBad :: ReadP [LogCat]
+    parseLogCatBad = do
+      s <- look
+      fail $ "Category: " ++ s ++ " is not recognised."
 
 parseConsoleWidth :: Monad m => String -> m ConsoleWidth
-parseConsoleWidth "auto" = return AutomaticWidth
+parseConsoleWidth "auto"     = return AutomaticWidth
 parseConsoleWidth "infinite" = return InfinitelyWide
 parseConsoleWidth  s =
   case lastMay (readP_to_S (integerReader) s) of

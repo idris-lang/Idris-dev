@@ -24,6 +24,8 @@ import System.IO.Error
 
 #ifdef FREESTANDING
 import Tools_idris
+import System.FilePath (isAbsolute, dropFileName)
+import System.Directory (doesDirectoryExist)
 import System.Environment (getEnv, setEnv, getExecutablePath)
 #endif
 
