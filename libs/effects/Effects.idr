@@ -97,31 +97,32 @@ namespace EffElem
     Here : EffElem x a (MkEff a x :: xs)
     There : EffElem x a xs -> EffElem x a (y :: xs)
     
-envElem : SubElem x xs -> Env m xs -> Env m [x]
+total envElem : SubElem x xs -> Env m xs -> Env m [x]
 envElem Z (x :: xs) = [x]
 envElem (S k) (x :: xs) = envElem k xs
 
 ||| make an environment corresponding to a sub-list
-dropEnv : Env m ys -> SubList xs ys -> Env m xs
+%assert_total dropEnv : Env m ys -> SubList xs ys -> Env m xs
 dropEnv [] SubNil = []
+-- dropEnv [] (InList y z) impossible
 dropEnv (y::ys) SubNil = []
 dropEnv e@(y::ys) (InList idx rest) = 
   let [x] = envElem idx e
   in x :: dropEnv e rest
 
-updateAt : (idx : SubElem x' xs) -> (a:Type) -> List EFFECT -> List EFFECT
+total updateAt : (idx : SubElem x' xs) -> (a:Type) -> List EFFECT -> List EFFECT
 updateAt Z a [] = []
 updateAt Z a ((MkEff b eff) :: xs) = (MkEff a eff) :: xs
 updateAt (S k) a [] = []
 updateAt (S k) a (x :: xs) = x :: updateAt k a xs
 
-updateWith : (ys' : List EFFECT) -> (xs : List EFFECT) ->
+total updateWith : (ys' : List EFFECT) -> (xs : List EFFECT) ->
              SubList ys xs -> List EFFECT
 updateWith [] xs sl = xs
 updateWith (y :: ys) xs SubNil = xs
 updateWith ((MkEff a f) :: ys) xs (InList idx rest) = updateAt idx a (updateWith ys xs rest)
 
-replaceEnvAt : (x : a) -> (idx : SubElem x' xs) -> Env m ys ->
+total replaceEnvAt : (x : a) -> (idx : SubElem x' xs) -> Env m ys ->
                Env m (updateAt idx a ys)
 replaceEnvAt x Z [] = []
 replaceEnvAt x Z (y :: ys) = x :: ys
@@ -129,7 +130,7 @@ replaceEnvAt x (S k) [] = []
 replaceEnvAt x (S k) (y :: ys) = y :: replaceEnvAt x k ys
 
 ||| Put things back, replacing old with new in the sub-environment
-rebuildEnv : {ys':List EFFECT} -> Env m ys' -> (prf : SubList ys xs) ->
+total rebuildEnv : {ys':List EFFECT} -> Env m ys' -> (prf : SubList ys xs) ->
              Env m xs -> Env m (updateWith ys' xs prf)
 rebuildEnv [] SubNil env = env
 rebuildEnv (x :: xs) SubNil env = env
@@ -138,7 +139,7 @@ rebuildEnv (x :: xs) (InList idx rest) env = replaceEnvAt x idx (rebuildEnv xs r
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
 
-updateResTy : (val : t) ->
+total updateResTy : (val : t) ->
               (xs : List EFFECT) -> EffElem e a xs -> e t a b ->
               List EFFECT
 updateResTy {b} val (MkEff a e :: xs) Here n = (MkEff (b val) e) :: xs
