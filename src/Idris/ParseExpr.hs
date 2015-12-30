@@ -451,10 +451,9 @@ Bracketed' ::=
   ')'
   | Expr ')'
   | ExprList ')'
-  | Expr '**' Expr ')'
+  | DependentPair ')'
   | Operator Expr ')'
   | Expr Operator ')'
-  | Name ':' Expr '**' Expr ')'
   ;
 @
 -}
@@ -486,16 +485,17 @@ bracketed' open syn =
 
 
 
+{-| Parses the rest of a dependent pair after '(' or '(Expr **' -}
 dependentPair :: PunInfo -> [(PTerm, Maybe (FC, PTerm), FC)] -> FC -> SyntaxInfo -> IdrisParser PTerm
 dependentPair pun prev openFC syn =
     case pun of
-      IsType -> nametypePart <|> namePart
-      IsTerm -> exprPart
+      IsType -> nametypePart <|> namePart <|> exprPart True
+      IsTerm -> exprPart False
       TypeOrTerm ->
         if prev /= [] then -- To avoid ambiguity with later parsing
           nametypePart <|> namePart
         else
-          nametypePart <|> namePart <|> exprPart
+          nametypePart <|> namePart <|> exprPart False
   where nametypePart = do
           (ln, lnfc, colonFC) <- try $ do
             (ln, lnfc) <- name
@@ -508,9 +508,12 @@ dependentPair pun prev openFC syn =
           (ln, lnfc) <- name
           starsFC <- reservedOpFC "**"
           dependentPair pun ((PRef lnfc [] ln, Nothing, starsFC):prev) openFC syn
-        exprPart = do
+        exprPart isEnd = do
           e <- expr syn
-          sepFCE <- (Left <$> reservedOpFC "**") <|> (Right <$> lcharFC ')')
+          sepFCE <-
+            let stars = (Left <$> reservedOpFC "**")
+                ending = (Right <$> lcharFC ')')
+            in if isEnd then ending else stars <|> ending
           case sepFCE of
             Left starsFC -> dependentPair IsTerm ((e, Nothing, starsFC):prev) openFC syn
             Right closeFC ->
