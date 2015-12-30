@@ -6,11 +6,14 @@ import Idris.Error
 import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
+import Idris.Output
 
 import Idris.Core.TT
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.Typecheck
+
+import Util.Pretty
 
 import Control.Applicative hiding (Const)
 import Control.Monad.State
@@ -34,9 +37,21 @@ recheckC_borrowing uniq_check addConstrs bs fc mkerr env t
          (tm, ty, cs) <- tclift $ case recheck_borrowing uniq_check bs ctxt env t' t of
                                    Error e -> tfail (At fc (mkerr e))
                                    OK x -> return x
-         logLvl 6 $ "CONSTRAINTS ADDED: " ++ show (tm, ty, cs)
+         logElab 6 $ "CONSTRAINTS ADDED: " ++ show (tm, ty, cs)
          when addConstrs $ addConstraints fc cs
+         mapM_ (checkDeprecated fc) (allTTNames tm)
+         mapM_ (checkDeprecated fc) (allTTNames ty)
          return (tm, ty)
+
+checkDeprecated :: FC -> Name -> Idris ()
+checkDeprecated fc n
+    = do r <- getDeprecated n
+         case r of
+              Nothing -> return ()
+              Just r -> do iWarn fc $ text "Use of deprecated name " <> annName n
+                                 <> case r of
+                                         "" -> Util.Pretty.empty
+                                         _ -> line <> text r
 
 iderr :: Name -> Err -> Err
 iderr _ e = e
@@ -49,8 +64,9 @@ checkAddDef :: Bool -> Bool -> FC -> (Name -> Err -> Err)
             -> [(Name, (Int, Maybe Name, Type, [Name]))]
             -> Idris [(Name, (Int, Maybe Name, Type, [Name]))]
 checkAddDef add toplvl fc mkerr [] = return []
-checkAddDef add toplvl fc mkerr ((n, (i, top, t, psns)) : ns) 
+checkAddDef add toplvl fc mkerr ((n, (i, top, t, psns)) : ns)
                = do ctxt <- getContext
+                    logElab 5 $ "Rechecking deferred name " ++ show (n, t)
                     (t', _) <- recheckC fc (mkerr n) [] t
                     when add $ do addDeferred [(n, (i, top, t, psns, toplvl))]
                                   addIBC (IBCDef n)
@@ -77,7 +93,7 @@ inaccessibleArgs _ _ = []
 elabCaseBlock :: ElabInfo -> FnOpts -> PDecl -> Idris ()
 elabCaseBlock info opts d@(PClauses f o n ps)
         = do addIBC (IBCDef n)
-             logLvl 5 $ "CASE BLOCK: " ++ show (n, d)
+             logElab 5 $ "CASE BLOCK: " ++ show (n, d)
              let opts' = nub (o ++ opts)
              -- propagate totality assertion to the new definitions
              when (AssertTotal `elem` opts) $ setFlags n [AssertTotal]
@@ -88,16 +104,16 @@ elabCaseBlock info opts d@(PClauses f o n ps)
 -- they are the same!)
 checkInferred :: FC -> PTerm -> PTerm -> Idris ()
 checkInferred fc inf user =
-     do logLvl 6 $ "Checked to\n" ++ showTmImpls inf ++ "\n\nFROM\n\n" ++
+     do logElab 6 $ "Checked to\n" ++ showTmImpls inf ++ "\n\nFROM\n\n" ++
                                      showTmImpls user
-        logLvl 10 $ "Checking match"
+        logElab 10 $ "Checking match"
         i <- getIState
         tclift $ case matchClause' True i user inf of
             _ -> return ()
 --             Left (x, y) -> tfail $ At fc
 --                                     (Msg $ "The type-checked term and given term do not match: "
 --                                            ++ show x ++ " and " ++ show y)
-        logLvl 10 $ "Checked match"
+        logElab 10 $ "Checked match"
 --                           ++ "\n" ++ showImp True inf ++ "\n" ++ showImp True user)
 
 -- | Return whether inferred term is different from given term
@@ -105,7 +121,7 @@ checkInferred fc inf user =
 inferredDiff :: FC -> PTerm -> PTerm -> Idris Bool
 inferredDiff fc inf user =
      do i <- getIState
-        logLvl 6 $ "Checked to\n" ++ showTmImpls inf ++ "\n" ++
+        logElab 6 $ "Checked to\n" ++ showTmImpls inf ++ "\n" ++
                                      showTmImpls user
         tclift $ case matchClause' True i user inf of
             Right vs -> return False
@@ -136,7 +152,7 @@ decorateid decorate (PClauses f o n cs)
 
 -- if 't' is a type class application, assume its arguments are injective
 pbinds :: IState -> Term -> ElabD ()
-pbinds i (Bind n (PVar t) sc) 
+pbinds i (Bind n (PVar t) sc)
     = do attack; patbind n
          env <- get_env
          case unApply (normalise (tt_ctxt i) env t) of
@@ -191,14 +207,14 @@ getFlexInType i env ps tm@(App _ f a)
     | (P nt tn _, args) <- unApply tm, nt /= Bound
        = case lookupCtxtExact tn (idris_datatypes i) of
             Just t -> nub $ paramNames args env [x | x <- [0..length args],
-                                                     not (x `elem` param_pos t)] 
+                                                     not (x `elem` param_pos t)]
                           ++ getFlexInType i env ps f ++
                              getFlexInType i env ps a
             Nothing -> let ppos = case lookupCtxtExact tn (idris_fninfo i) of
                                        Just fi -> fn_params fi
                                        Nothing -> []
                        in nub $ paramNames args env [x | x <- [0..length args],
-                                                         not (x `elem` ppos)] 
+                                                         not (x `elem` ppos)]
                            ++ getFlexInType i env ps f ++
                               getFlexInType i env ps a
     | otherwise = nub $ getFlexInType i env ps f ++
@@ -212,7 +228,7 @@ getParamsInType i env ps t = let fix = getFixedInType i env ps t
                                  flex = getFlexInType i env fix t in
                                  [x | x <- fix, not (x `elem` flex)]
 
-getTCinj i (Bind n (Pi _ t _) sc) 
+getTCinj i (Bind n (Pi _ t _) sc)
     = getTCinj i t ++ getTCinj i (instantiate (P Bound n t) sc)
 getTCinj i ap@(App _ f a)
     | (P _ n _, args) <- unApply ap,
@@ -242,7 +258,7 @@ paramNames args env (p : ps)
 getUniqueUsed :: Context -> Term -> [Name]
 getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
   where
-    getUniq :: Env -> [(Name, Bool)] -> Term -> State [Name] () 
+    getUniq :: Env -> [(Name, Bool)] -> Term -> State [Name] ()
     getUniq env us (Bind n b sc)
        = let uniq = case check ctxt env (forgetEnv (map fst env) (binderTy b)) of
                          OK (_, UType UniqueType) -> True
@@ -269,9 +285,9 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
 -- In a functional application, return the names which are used
 -- directly in a static position
 getStaticNames :: IState -> Term -> [Name]
-getStaticNames ist (Bind n (PVar _) sc) 
+getStaticNames ist (Bind n (PVar _) sc)
     = getStaticNames ist (instantiate (P Bound n Erased) sc)
-getStaticNames ist tm 
+getStaticNames ist tm
     | (P _ fn _, args) <- unApply tm
         = case lookupCtxtExact fn (idris_statics ist) of
                Just stpos -> getStatics args stpos
@@ -289,15 +305,12 @@ getStatics ns (Bind n (Pi _ _ _) t)
 getStatics _ _ = []
 
 mkStatic :: [Name] -> PDecl -> PDecl
-mkStatic ns (PTy doc argdocs syn fc o n nfc ty) 
+mkStatic ns (PTy doc argdocs syn fc o n nfc ty)
     = PTy doc argdocs syn fc o n nfc (mkStaticTy ns ty)
 mkStatic ns t = t
 
 mkStaticTy :: [Name] -> PTerm -> PTerm
-mkStaticTy ns (PPi p n fc ty sc) 
+mkStaticTy ns (PPi p n fc ty sc)
     | n `elem` ns = PPi (p { pstatic = Static }) n fc ty (mkStaticTy ns sc)
     | otherwise = PPi p n fc ty (mkStaticTy ns sc)
 mkStaticTy ns t = t
-
-
-

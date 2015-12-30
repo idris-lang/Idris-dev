@@ -1,0 +1,5 @@
+Uncaught error: user error ([1mtest.ipkg[0m:[1m10[0m:[1m1[0m: [91merror[0m: filename
+    must contain no directory
+    component, expected: space
+[1m[94m<EOF>[0;1m[0m 
+[92m^[0m     )

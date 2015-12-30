@@ -16,15 +16,16 @@ import System.Directory (getTemporaryDirectory
                         , removeFile
                         , removeDirectoryRecursive
                         , createDirectoryIfMissing
-                        , doesDirectoryExist
                         )
-import System.FilePath ((</>), normalise, isAbsolute, dropFileName)
+import System.FilePath ((</>), normalise)
 import System.IO
 import System.Info
 import System.IO.Error
 
 #ifdef FREESTANDING
 import Tools_idris
+import System.FilePath (isAbsolute, dropFileName)
+import System.Directory (doesDirectoryExist)
 import System.Environment (getEnv, setEnv, getExecutablePath)
 #endif
 
@@ -37,9 +38,10 @@ throwIO = CE.throw
 isWindows :: Bool
 isWindows = os `elem` ["win32", "mingw32", "cygwin32"]
 
-tempfile :: IO (FilePath, Handle)
-tempfile = do dir <- getTemporaryDirectory
-              openTempFile (normalise dir) "idris"
+-- | Create a temp file with the extensiom ext (in the format ".xxx")
+tempfile :: String -> IO (FilePath, Handle)
+tempfile ext = do dir <- getTemporaryDirectory
+                  openTempFile (normalise dir) $ "idris" ++ ext
 
 -- | Read a source file, same as readFile but make sure the encoding is utf-8.
 readSource :: FilePath -> IO String
@@ -65,7 +67,7 @@ isATTY = do
 withTempdir :: String -> (FilePath -> IO a) -> IO a
 withTempdir subdir callback
   = do dir <- getTemporaryDirectory
-       let tmpDir = (normalise dir) </> subdir
+       let tmpDir = normalise dir </> subdir
        removeLater <- catchIO (createDirectoryIfMissing True tmpDir >> return True)
                               (\ ioError -> if isAlreadyExistsError ioError then return False
                                             else throw ioError
@@ -75,10 +77,15 @@ withTempdir subdir callback
        return result
 
 rmFile :: FilePath -> IO ()
-rmFile f = do putStrLn $ "Removing " ++ f
-              catchIO (removeFile f)
-                      (\ioerr -> putStrLn $ "WARNING: Cannot remove file "
-                                 ++ f ++ ", Error msg:" ++ show ioerr)
+rmFile f = do
+  result <- try (removeFile f)
+  case result of
+    Right _ -> putStrLn $ "Removed: " ++ f
+    Left err -> handleExists err
+     where handleExists e
+            | isDoesNotExistError e = return ()
+            | otherwise = putStrLn $ "WARNING: Cannot remove file "
+                          ++ f ++ ", Error msg:" ++ show e
 
 setupBundledCC :: IO()
 #ifdef FREESTANDING

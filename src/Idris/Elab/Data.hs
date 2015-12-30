@@ -48,13 +48,19 @@ import qualified Data.Text as T
 import Data.Char(isLetter, toLower)
 import Data.List.Split (splitOn)
 
-import Util.Pretty(pretty, text)
+import Util.Pretty
+
+warnLC :: FC -> Name -> Idris ()
+warnLC fc n
+   = iWarn fc $ annName n <+> text "has a name which may be implicitly bound."
+           <> line <> text "This is likely to lead to problems!"
 
 elabData :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] -> FC -> DataOpts -> PData -> Idris ()
 elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
     = do let codata = Codata `elem` opts
-         logLvl 1 (show (fc, doc))
+         logElab 1 (show (fc, doc))
          checkUndefined fc n
+         when (implicitable n) $ warnLC fc n
          (cty, _, t, inacc) <- buildType info syn fc [] n t_in
 
          addIBC (IBCDef n)
@@ -63,8 +69,9 @@ elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
 
 elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
     = do let codata = Codata `elem` opts
-         logLvl 1 (show fc)
+         logElab 1 (show fc)
          undef <- isUndefined fc n
+         when (implicitable n) $ warnLC fc n
          (cty, ckind, t, inacc) <- buildType info syn fc [] n t_in
          -- if n is defined already, make sure it is just a type declaration
          -- with the same type we've just elaborated, and no constructors
@@ -74,15 +81,17 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
          -- temporary, to check cons
          when undef $ updateContext (addTyDecl n (TCon 0 0) cty)
          let cnameinfo = cinfo info (map cname dcons)
-         let unique = case getRetTy cty of
-                           UType UniqueType -> True
-                           _ -> False
+         unique <- case getRetTy (normalise (tt_ctxt i) [] cty) of
+                        UType UniqueType -> return True
+                        UType _ -> return False
+                        TType _ -> return False
+                        rt -> tclift $ tfail (At fc (Elaborating "type constructor " n Nothing (Msg "Not a valid type constructor")))
          cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty) ckind) dcons
          ttag <- getName
          i <- getIState
          let as = map (const (Left (Msg ""))) (getArgTys cty)
          let params = findParams  (map snd cons)
-         logLvl 2 $ "Parameters : " ++ show params
+         logElab 2 $ "Parameters : " ++ show params
          -- TI contains information about mutually declared types - this will
          -- be updated when the mutual block is complete
          putIState (i { idris_datatypes =
@@ -222,7 +231,8 @@ elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
            Idris (Name, Type)
 elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcenames)
     = do checkUndefined fc n
-         logLvl 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t_in
+         when (implicitable n) $ warnLC fc n
+         logElab 2 $ show fc ++ ":Constructor " ++ show n ++ " : " ++ show t_in
          (cty, ckind, t, inacc) <- buildType info syn fc [Constructor] n (if codata then mkLazy t_in else t_in)
          ctxt <- getContext
          let cty' = normalise ctxt [] cty
@@ -232,13 +242,13 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
          -- Check that the constructor type is, in fact, a part of the family being defined
          tyIs n cty'
 
-         logLvl 5 $ show fc ++ ":Constructor " ++ show n ++ " elaborated : " ++ show t
-         logLvl 5 $ "Inaccessible args: " ++ show inacc
-         logLvl 2 $ "---> " ++ show n ++ " : " ++ show cty'
+         logElab 5 $ show fc ++ ":Constructor " ++ show n ++ " elaborated : " ++ show t
+         logElab 5 $ "Inaccessible args: " ++ show inacc
+         logElab 2 $ "---> " ++ show n ++ " : " ++ show cty'
 
          -- Add to the context (this is temporary, so that later constructors
          -- can be indexed by it)
-         updateContext (addTyDecl n (DCon 0 0 False) cty) 
+         updateContext (addTyDecl n (DCon 0 0 False) cty)
 
          addIBC (IBCDef n)
          checkDocs fc argDocs t
@@ -253,9 +263,9 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
   where
     tyIs con (Bind n b sc) = tyIs con sc
     tyIs con t | (P _ n' _, _) <- unApply t
-        = if n' /= tn then tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show n' ++ " is not " ++ show tn))))
+        = if n' /= tn then tclift $ tfail (At fc (Elaborating "constructor " con Nothing (Msg (show n' ++ " is not " ++ show tn))))
              else return ()
-    tyIs con t = tclift $ tfail (At fc (Elaborating "constructor " con (Msg (show t ++ " is not " ++ show tn))))
+    tyIs con t = tclift $ tfail (At fc (Elaborating "constructor " con Nothing (Msg (show t ++ " is not " ++ show tn))))
 
     mkLazy (PPi pl n nfc ty sc)
         = let ty' = if getTyName ty
@@ -288,12 +298,12 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
         = tclift $ tfail (At fc (UniqueKindError UniqueType n))
     checkUniqueKind (UType AllTypes) (UType AllTypes) = return ()
     checkUniqueKind (UType AllTypes) (UType UniqueType) = return ()
-    checkUniqueKind (UType AllTypes) _ 
+    checkUniqueKind (UType AllTypes) _
         = tclift $ tfail (At fc (UniqueKindError AllTypes n))
     checkUniqueKind _ _ = return ()
 
     -- Constructor's kind must be <= expected kind
-    addDataConstraint (TType con) (TType exp) 
+    addDataConstraint (TType con) (TType exp)
        = do ctxt <- getContext
             let v = next_tvar ctxt
             addConstraints fc (v, [ULT con exp])
@@ -337,20 +347,20 @@ elabCaseFun ind paramPos n ty cons info = do
   let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
   elimLog $ "-- case function definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
   State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorTyDecl)
-                    (ierror . Elaborating "type declaration of " elimDeclName)
+                    (ierror . Elaborating "type declaration of " elimDeclName Nothing)
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
     [] -> State.lift $ solveDeferred elimDeclName -- Remove meta-variable for type
     _  -> State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorDef)
-                    (ierror . Elaborating "clauses of " elimDeclName)
+                    (ierror . Elaborating "clauses of " elimDeclName Nothing)
   where elimLog :: String -> EliminatorState ()
-        elimLog s = State.lift (logLvl 2 s)
+        elimLog s = State.lift (logElab 2 s)
 
         elimFC :: FC
         elimFC = fileFC "(casefun)"
 
         elimDeclName :: Name
-        elimDeclName = if ind then SN . ElimN $ n else SN . CaseN $ n
+        elimDeclName = if ind then SN . ElimN $ n else SN . CaseN (FC' emptyFC) $ n
 
         applyNS :: Name -> [String] -> Name
         applyNS n []  = n

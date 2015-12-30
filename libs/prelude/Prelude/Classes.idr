@@ -37,7 +37,7 @@ instance Eq Int where
 instance Eq Integer where
     (==) = boolOp prim__eqBigInt
 
-instance Eq Float where
+instance Eq Double where
     (==) = boolOp prim__eqFloat
 
 instance Eq Char where
@@ -118,7 +118,7 @@ instance Ord Integer where
                   GT
 
 
-instance Ord Float where
+instance Ord Double where
     compare x y = if (x == y) then EQ else
                   if (boolOp prim__sltFloat x y) then LT else
                   GT
@@ -170,7 +170,7 @@ instance Num Int where
     fromInteger = prim__truncBigInt_Int
 
 
-instance Num Float where
+instance Num Double where
     (+) = prim__addFloat
     (*) = prim__mulFloat
 
@@ -215,7 +215,7 @@ instance Neg Int where
     (-) = prim__subInt
     abs x = if x < (prim__truncBigInt_Int 0) then -x else x
 
-instance Neg Float where
+instance Neg Double where
     negate x = prim__negFloat x
     (-) = prim__subFloat
     abs x = if x < (prim__toFloatBigInt 0) then -x else x
@@ -306,8 +306,8 @@ instance MaxBound Bits64 where
 
 -- ------------------------------------------------------------- [ Fractionals ]
 
-||| Fractional division of two Floats.
-(/) : Float -> Float -> Float
+||| Fractional division of two Doubles.
+(/) : Double -> Double -> Double
 (/) = prim__divFloat
 
 

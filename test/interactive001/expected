@@ -11,3 +11,9 @@ isElem2 x (y :: ys) with (_)
               [] => ?bar_1
               (x :: ys) => ?bar_2
 
+elemVoid1 Here impossible
+elemVoid1 (There _) impossible
+
+                   Here impossible
+                   (There _) impossible
+

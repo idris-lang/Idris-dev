@@ -71,7 +71,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
     let constraint = PApp fc (PRef fc [] n) (map pexp ps)
     let iname = mkiname n (namespace info) ps expn
     let emptyclass = null (class_methods ci)
-    when (what /= EDefns) $ do 
+    when (what /= EDefns) $ do
          nty <- elabType' True info syn doc argDocs fc [] iname NoFC t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
@@ -106,19 +106,19 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
                        (decorate ns iname n,
                            op, coninsert cs t', t'))
               (class_methods ci)
-         logLvl 3 (show (mtys, ips))
-         logLvl 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (class_methods ci)))
+         logElab 3 (show (mtys, ips))
+         logElab 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (class_methods ci)))
          let ds_defs = insertDefaults i iname (class_defaults ci) ns ds
-         logLvl 3 ("After defaults: " ++ show ds_defs ++ "\n")
+         logElab 3 ("After defaults: " ++ show ds_defs ++ "\n")
          let ds' = reorderDefs (map fst (class_methods ci)) $ ds_defs
-         logLvl 1 ("Reordered: " ++ show ds' ++ "\n")
+         logElab 1 ("Reordered: " ++ show ds' ++ "\n")
          mapM_ (warnMissing ds' ns iname) (map fst (class_methods ci))
          mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
          let wbTys = map mkTyDecl mtys
          let wbVals = map (decorateid (decorate ns iname)) ds'
          let wb = wbTys ++ wbVals
-         logLvl 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
-         logLvl 3 $ "Instance is " ++ show ps ++ " implicits " ++
+         logElab 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
+         logElab 3 $ "Instance is " ++ show ps ++ " implicits " ++
                                       show (concat (nub wparams))
 
          -- Bring variables in instance head into scope
@@ -134,12 +134,12 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
          let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
                            (map (pexp . mkMethApp) mtys)
 
-         logLvl 5 $ "Instance LHS " ++ show lhs ++ " " ++ show headVars
-         logLvl 5 $ "Instance RHS " ++ show rhs
+         logElab 5 $ "Instance LHS " ++ show lhs ++ " " ++ show headVars
+         logElab 5 $ "Instance RHS " ++ show rhs
 
          let idecls = [PClauses fc [Dictionary] iname
                                  [PClause fc iname lhs [] rhs wb]]
-         logLvl 1 (show idecls)
+         logElab 1 (show idecls)
          push_estack iname True
          mapM_ (rec_elabDecl info EAll info) idecls
          pop_estack
@@ -181,7 +181,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
              ctxt <- getContext
              (ElabResult tyT _ _ ctxt' newDecls highlights, _) <-
                 tclift $ elaborate ctxt (idris_datatypes i) iname (TType (UVal 0)) initEState
-                         (errAt "type of " iname (erun fc (build i info ERHS [] iname ty)))
+                         (errAt "type of " iname Nothing (erun fc (build i info ERHS [] iname ty)))
              setContext ctxt'
              processTacticDecls info newDecls
              sendHighlighting highlights
@@ -267,11 +267,11 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
     reorderDefs :: [Name] -> [PDecl] -> [PDecl]
     reorderDefs ns [] = []
     reorderDefs [] ds = ds
-    reorderDefs (n : ns) ds = case pick n [] ds of 
+    reorderDefs (n : ns) ds = case pick n [] ds of
                                   Just (def, ds') -> def : reorderDefs ns ds'
                                   Nothing -> reorderDefs ns ds
 
-    pick n acc [] = Nothing 
+    pick n acc [] = Nothing
     pick n acc (def@(PClauses _ _ cn cs) : ds)
          | nsroot n == nsroot cn = Just (def, acc ++ ds)
     pick n acc (d : ds) = pick n (acc ++ [d]) ds
@@ -313,13 +313,13 @@ checkInjectiveArgs fc n ds (Just ty)
         let (_, args) = unApply (instantiateRetTy ty)
         ci 0 ist args
   where
-    ci i ist (a : as) | i `elem` ds 
+    ci i ist (a : as) | i `elem` ds
        = if isInj ist a then ci (i + 1) ist as
             else tclift $ tfail (At fc (InvalidTCArg n a))
     ci i ist (a : as) = ci (i + 1) ist as
     ci i ist [] = return ()
 
-    isInj i (P Bound n _) = True 
+    isInj i (P Bound n _) = True
     isInj i (P _ n _) = isConName n (tt_ctxt i)
     isInj i (App _ f a) = isInj i f && isInj i a
     isInj i (V _) = True
@@ -329,4 +329,3 @@ checkInjectiveArgs fc n ds (Just ty)
     instantiateRetTy (Bind n (Pi _ _ _) sc)
        = substV (P Bound n Erased) (instantiateRetTy sc)
     instantiateRetTy t = t
-

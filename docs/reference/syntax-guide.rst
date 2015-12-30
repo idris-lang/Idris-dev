@@ -112,7 +112,7 @@ Types
 
 In Idris, types are first class values. So a type declaration is the
 same as just declaration of a variable whose type is ``Type``. In Idris,
-variables that denote a type must begin with a capital letter. Example:
+variables that denote a type need not be capitalised. Example:
 
 .. code:: idris
 
@@ -125,6 +125,9 @@ a more interesting example:
 
     MyListType : Type
     MyListType = List Int
+
+While capitalising types is not required, the rules for generating implicit
+arguments mean it is often a good idea.
 
 .. _syntax-data-types:
 

@@ -1,5 +1,6 @@
-module Idris.Chaser(buildTree, getModuleFiles, ModuleTree(..)) where
+module Idris.Chaser(buildTree, getImports, getModuleFiles, ModuleTree(..)) where
 
+import Idris.Core.TT
 import Idris.Parser
 import Idris.AbsSyntax
 import Idris.Imports
@@ -79,42 +80,86 @@ getIModTime (IBC i _) = getModificationTime i
 getIModTime (IDR i) = getModificationTime i
 getIModTime (LIDR i) = getModificationTime i
 
+getImports :: [(FilePath, [ImportInfo])] -> [FilePath] -> 
+              Idris [(FilePath, [ImportInfo])]
+getImports acc [] = return acc
+getImports acc (f : fs) = do 
+   i <- getIState
+   let file = extractFileName f
+   ibcsd <- valIBCSubDir i
+   ids <- allImportDirs
+   idrisCatch (do
+       fp <- findImport ["."] ibcsd file
+       let parsef = fname fp
+       case lookup parsef acc of
+            Just _ -> getImports acc fs
+            _ -> do
+               exist <- runIO $ doesFileExist parsef
+               if exist then do
+                   src_in <- runIO $ readSource parsef
+                   src <- if lit fp then tclift $ unlit parsef src_in 
+                                    else return src_in
+                   (_, _, modules, _) <- parseImports parsef src
+                   clearParserWarnings
+                   getImports ((parsef, modules) : acc)
+                              (fs ++ map import_path modules)
+                     else getImports ((parsef, []) : acc) fs)
+        (\_ -> getImports acc fs) -- not in current soure tree, ignore
+  where
+    lit (LIDR _) = True
+    lit _ = False
+
+    fname (IDR fn) = fn
+    fname (LIDR fn) = fn
+    fname (IBC _ src) = fname src
+
 buildTree :: [FilePath] -> -- already guaranteed built
+             [(FilePath, [ImportInfo])] -> -- import lists (don't reparse)
              FilePath -> Idris [ModuleTree]
-buildTree built fp = btree [] fp
---                    = idrisCatch (btree [] fp)
---                         (\e -> do now <- runIO $ getCurrentTime
---                                   iputStrLn (show e)
---                                   return [MTree (IDR fp) True now []])
+buildTree built importlists fp = evalStateT (btree [] fp) []
  where
-  btree done f =
-    do i <- getIState
+  addFile :: FilePath -> [ModuleTree] -> 
+             StateT [(FilePath, [ModuleTree])] Idris [ModuleTree]
+  addFile f m = do fs <- get
+                   put ((f, m) : fs)
+                   return m
+
+  btree :: [FilePath] -> FilePath -> 
+           StateT [(FilePath, [ModuleTree])] Idris [ModuleTree]
+  btree stk f =
+    do i <- lift getIState
        let file = extractFileName f
-       logLvl 1 $ "CHASING " ++ show file
-       ibcsd <- valIBCSubDir i
-       ids <- allImportDirs
-       fp <- findImport ids ibcsd file
-       logLvl 1 $ "Found " ++ show fp
-       mt <- runIO $ getIModTime fp
+       lift $ logLvl 1 $ "CHASING " ++ show file ++ " (" ++ show fp ++ ")"
+       ibcsd <- lift $ valIBCSubDir i
+       ids <- lift $ allImportDirs
+       fp <- lift $ findImport ids ibcsd file
+       lift $ logLvl 1 $ "Found " ++ show fp
+       mt <- lift $ runIO $ getIModTime fp
        if (file `elem` built)
           then return [MTree fp False mt []]
-          else if file `elem` done
-                  then return []
-                  else mkChildren fp
+               else if file `elem` stk then 
+                       do lift $ tclift $ tfail
+                            (Msg $ "Cycle detected in imports: "
+                                     ++ showSep " -> " (reverse (file : stk)))
+                 else do donetree <- get
+                         case lookup file donetree of
+                            Just t -> return t
+                            _ -> do ms <- mkChildren file fp
+                                    addFile file ms
 
-    where mkChildren (LIDR fn) = do ms <- children True fn (f:done)
-                                    mt <- runIO $ getModificationTime fn
-                                    return [MTree (LIDR fn) True mt ms]
-          mkChildren (IDR fn) = do ms <- children False fn (f:done)
-                                   mt <- runIO $ getModificationTime fn
-                                   return [MTree (IDR fn) True mt ms]
-          mkChildren (IBC fn src)
-              = do srcexist <- runIO $ doesFileExist (getSrcFile src)
+    where mkChildren file (LIDR fn) = do ms <- children True fn (file : stk)
+                                         mt <- lift $ runIO $ getModificationTime fn
+                                         return [MTree (LIDR fn) True mt ms]
+          mkChildren file (IDR fn) = do ms <- children False fn (file : stk)
+                                        mt <- lift $ runIO $ getModificationTime fn
+                                        return [MTree (IDR fn) True mt ms]
+          mkChildren file (IBC fn src)
+              = do srcexist <- lift $ runIO $ doesFileExist (getSrcFile src)
                    ms <- if srcexist then
-                               do [MTree _ _ _ ms'] <- mkChildren src
+                               do [MTree _ _ _ ms'] <- mkChildren file src
                                   return ms'
                              else return []
-                   mt <- idrisCatch (runIO $ getModificationTime fn)
+                   mt <- lift $ idrisCatch (runIO $ getModificationTime fn)
                                     (\c -> runIO $ getIModTime src)
                    -- FIXME: It's also not up to date if anything it imports has
                    -- been modified since its own ibc has.
@@ -122,7 +167,7 @@ buildTree built fp = btree [] fp
                    -- Issue #1592 on the issue tracker.
                    --
                    -- https://github.com/idris-lang/Idris-dev/issues/1592
-                   ibcOutdated <- fn `younger` (getSrcFile src)
+                   ibcOutdated <- lift $ fn `younger` (getSrcFile src)
                    -- FIXME (EB): The below 'hasValidIBCVersion' that's
                    -- commented out appears to be breaking reloading in vim
                    -- mode. Until we know why, I've commented it out.
@@ -140,16 +185,14 @@ buildTree built fp = btree [] fp
                                    return (srct > ibct)
                                  else return False
 
-  children :: Bool -> FilePath -> [FilePath] -> Idris [ModuleTree]
-  children lit f done = -- idrisCatch
-     do exist <- runIO $ doesFileExist f
+  children :: Bool -> FilePath -> [FilePath] ->
+              StateT [(FilePath, [ModuleTree])] Idris [ModuleTree]
+  children lit f stk = -- idrisCatch
+     do exist <- lift $ runIO $ doesFileExist f
         if exist then do
-            file_in <- runIO $ readSource f
-            file <- if lit then tclift $ unlit f file_in else return file_in
-            (_, _, modules, _) <- parseImports f file
-            -- The chaser should never report warnings from sub-modules
-            clearParserWarnings
-            ms <- mapM (btree done . import_path) modules
+            lift $ logLvl 1 $ "Reading source " ++ show f
+            let modules = maybe [] id (lookup f importlists)
+            ms <- mapM (btree stk . import_path) modules
             return (concat ms)
            else return [] -- IBC with no source available
 --     (\c -> return []) -- error, can't chase modules here

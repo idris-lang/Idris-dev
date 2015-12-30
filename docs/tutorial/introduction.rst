@@ -15,7 +15,7 @@ respectively:
 Correspondingly, the following values are examples of inhabitants of
 those types:
 
--  ``42``, ``’a’``, ``Hello world!``, ``[2,3,4,5,6]``
+-  ``42``, ``’a’``, ``"Hello world!"``, ``[2,3,4,5,6]``
 
 In a language with *dependent types*, however, the distinction is less
 clear. Dependent types allow types to “depend” on values — in other

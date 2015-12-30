@@ -56,7 +56,7 @@ answer. For example:
 ::
 
     *prims> 6*6+6
-    42 : Int
+    42 : Integer
     *prims> x == 6*6+6
     True : Bool
 
@@ -445,7 +445,8 @@ are not given in applications of ``index``; their values can be
 inferred from the types of the ``Fin n`` and ``Vect n a``
 arguments. Any name beginning with a lower case letter which appears
 as a parameter or index in a
-type declaration, but which is otherwise unbound, will be automatically
+type declaration, which is not applied to any arguments, will
+*always* be automatically
 bound as an implicit argument. Implicit arguments can still be given
 explicitly in applications, using ``{a=value}`` and ``{n=value}``, for
 example:
@@ -791,12 +792,12 @@ providing a default value:
 
 .. code-block:: idris
 
-    maybe : Lazy b -> (a -> b) -> Maybe a -> b
+    maybe : Lazy b -> Lazy (a -> b) -> Maybe a -> b
 
-Note that the type of the first argument is ``Lazy b`` rather than
-simply ``b``. Since the default value might not be used, we mark it as
-``Lazy`` in case it is a large expression where evaluating it then
-discarding it would be wasteful.
+Note that the types of the first two arguments are wrapped in
+``Lazy``. Since only one of the two arguments will actually be used,
+we mark them as ``Lazy`` in case they are large expressions where it
+would be wasteful to compute and then discard them.
 
 Tuples
 ------
@@ -818,6 +819,15 @@ contain an arbitrary number of values, represented as nested pairs:
 
     jim : (String, Int, String)
     jim = ("Jim", 25, "Cambridge")
+
+::
+
+    *usefultypes> fst jim
+    "Jim" : String
+    *usefultypes> snd jim
+    (25, "Cambridge") : (Int, String)
+    *usefultypes> jim == ("Jim", (25, "Cambridge"))
+    True : Bool
 
 Dependent Pairs
 ---------------
@@ -1013,7 +1023,7 @@ name. For example, a pair type could be defined as follows:
 Using the class record from the original introduction to records.  The
 size of the class can be restricted using a ``Vect`` and the size
 promoted to the type level by parameterising the record with the size.
-Foe example:
+For example:
 
 
 .. code-block:: idris
@@ -1024,7 +1034,11 @@ Foe example:
         className : String
 
 **Note** that it is no longer possible to use the ``addStudent``
-method from earlier as that would change the size of the class. To provide an add student the function must specify in the type that the size of the class has been increased by one. As the size if specified using natural numbers, the new value can be incremented using the successor constructor.
+function from earlier, since that would change the size of the class. A
+function to add a student must now specify in the type that the
+size of the class has been increased by one. As the size is specified
+using natural numbers, the new value can be incremented using the
+``S`` constructor.
 
 .. code-block:: idris
 
@@ -1043,11 +1057,9 @@ Intermediate values can be calculated using ``let`` bindings:
 
 .. code-block:: idris
 
-    data Person = MkPerson String Int
-
-    showPerson : Person -> String
-    showPerson p = let MkPerson name age = p in
-                       name ++ " is " ++ show age ++ " years old"
+   mirror : List a -> List a
+   mirror xs = let xs' = reverse xs in
+                   xs ++ xs'
 
 We can do simple pattern matching in ``let`` bindings too. For
 example, we can extract fields from a record as follows, as well as by
@@ -1136,8 +1148,8 @@ auxiliary functions, and is also used internally to implement pattern
 matching ``let`` and lambda bindings. It will *only* work if:
 
 - Each branch *matches* a value of the same type, and *returns* a
-   value of the same type.
+  value of the same type.
 
 - The type of the result is "known". i.e. the type of the expression
-   can be determined *without* type checking the ``case``-expression
-   itself.
+  can be determined *without* type checking the ``case``-expression
+  itself.

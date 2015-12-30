@@ -1,12 +1,13 @@
 Type class Functor
-    Functors
+    Functors allow a uniform action over a parameterised type.
 
 Parameters:
-    f   -- the action of the functor on objects
+    f   -- a parameterised type
 
 Methods:
     map : Functor f => (m : a -> b) -> f a -> f b
-        The action of the functor on morphisms
+        Apply a function across everything of type 'a' in a
+        parameterised type
         
         The function is Total
 Instances:

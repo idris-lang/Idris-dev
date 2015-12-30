@@ -8,7 +8,7 @@ typedef struct {
     char*  heap;   // Point to bottom of heap
     char*  end;    // Point to top of heap
     size_t size;   // Size of _next_ heap. Size of current heap is /end - heap/.
-    size_t growth; // Quantity of heap growth in bytes. 
+    size_t growth; // Quantity of heap growth in bytes.
 
     char* old;
 } Heap;
@@ -23,7 +23,7 @@ void heap_check_all(Heap * heap);
 // Should be used _between_ gc's.
 #define HEAP_CHECK(vm) heap_check_all(&(vm->heap));
 #else
-#define HEAP_CHECK(vm) 
+#define HEAP_CHECK(vm)
 #endif // IDRIS_DEBUG
 
 #endif // _IDRIS_HEAP_H

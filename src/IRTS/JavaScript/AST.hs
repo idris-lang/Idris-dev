@@ -77,6 +77,7 @@ data JS = JSRaw String
         | JSFFI String [JS]
         | JSAnnotation JSAnnotation JS
         | JSDelete JS
+        | JSClear JS
         | JSNoop
         deriving Eq
 
@@ -132,6 +133,9 @@ compileJS' indent (JSAnnotation annotation js) =
 
 compileJS' indent (JSDelete js) =
   "delete " `T.append` compileJS' 0 js
+
+compileJS' indent (JSClear js) =
+   compileJS' 0 js `T.append` " = undefined"
 
 compileJS' indent (JSFFI raw args) =
   ffi raw (map (T.unpack . compileJS' indent) args)
@@ -398,4 +402,3 @@ jsPackSBits16 js = JSNew "Int16Array" [JSArray [js]]
 
 jsPackSBits32 :: JS -> JS
 jsPackSBits32 js = JSNew "Int32Array" [JSArray [js]]
-

@@ -38,6 +38,11 @@ VAL idris_castBigFloat(VM* vm, VAL i);
 VAL idris_castStrBig(VM* vm, VAL i);
 VAL idris_castBigStr(VM* vm, VAL i);
 
+VAL idris_bigAnd(VM* vm, VAL x, VAL y);
+VAL idris_bigOr(VM* vm, VAL x, VAL y);
+VAL idris_bigShiftLeft(VM* vm, VAL x, VAL y);
+VAL idris_bigShiftRight(VM* vm, VAL x, VAL y);
+
 #define GETMPZ(x) *((mpz_t*)((x)->info.ptr))
 
 #endif

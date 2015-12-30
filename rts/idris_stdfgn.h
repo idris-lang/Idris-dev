@@ -14,6 +14,8 @@ int fileEOF(void* h);
 int fileError(void* h);
 // return 0 on success
 int idris_writeStr(void*h, char* str);
+// construct a file error structure (see Prelude.File) from errno
+VAL idris_mkFileError(VM* vm);
 
 void* do_popen(const char* cmd, const char* mode);
 int fpoll(void* h);

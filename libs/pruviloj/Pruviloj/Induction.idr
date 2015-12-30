@@ -36,7 +36,6 @@ mutual
       alphaEqual subst f g && alphaEqual subst x y
   alphaEqual subst RType RType  = True
   alphaEqual subst (RUType u) (RUType u') = u == u'
-  alphaEqual subst (RForce tm) (RForce tm') = alphaEqual subst tm tm'
   alphaEqual subst (RConstant c) (RConstant c')  = c == c'
   alphaEqual subst _ _ = False
 
@@ -47,9 +46,6 @@ mutual
       alphaEqual subst tm1 tm1' &&
       alphaEqual subst tm2 tm2'
   alphaEqualBinders subst (Let tm1 tm2) (Let tm1' tm2') =
-      alphaEqual subst tm1 tm1' &&
-      alphaEqual subst tm2 tm2'
-  alphaEqualBinders subst (NLet tm1 tm2) (NLet tm1' tm2') =
       alphaEqual subst tm1 tm1' &&
       alphaEqual subst tm2 tm2'
   alphaEqualBinders subst (Hole tm) (Hole tm') =
@@ -79,7 +75,6 @@ generalize hint ctxt subj = do n <- gensym hint
       genB n (Lam ty)       inner = [| Lam (gen' n ty inner) |]
       genB n (Pi ty ty')    inner = [| Pi (gen' n ty inner) (gen' n ty' inner) |]
       genB n (Let ty val)   inner = [| Let (gen' n ty inner) (gen' n val inner) |]
-      genB n (NLet ty val)  inner = [| NLet (gen' n ty inner) (gen' n val inner) |]
       genB n (Hole ty)      inner = [| Hole (gen' n ty inner) |]
       genB n (GHole ty)     inner = [| GHole (gen' n ty inner) |]
       genB n (Guess ty val) inner = [| Guess (gen' n ty inner) (gen' n val inner) |]
@@ -134,8 +129,8 @@ public
 induction : Raw -> Elab (List TTName)
 induction subj =
     do g <- goalType
-       (_, ty) <- check subj
-       ty' <- forgetTypes ty
+       (_, ty) <- check !getEnv subj
+       ty' <- forget ty
        case headName ty' of
          Nothing => fail [TermPart ty, TextPart "is not an inductive family"]
          Just fam =>
@@ -145,18 +140,18 @@ induction subj =
               tydef <- lookupDatatypeExact fam
               info <- getTyConInfo (tyConArgs tydef) (tyConRes tydef)
               argHoles <- apply (Var elim)
-                                (replicate (length (args info)) (True, 0) ++
-                                 [(False, 0), (False, 0)] ++ -- scrutinee, motive
-                                 replicate (length (constructors tydef)) (False, 1))
+                                (replicate (length (args info)) True ++
+                                 [False, False] ++ -- scrutinee, motive
+                                 replicate (length (constructors tydef)) False)
               solve
 
               -- Apply the eliminator to our scrutinee
-              scrutH <- snd <$> unsafeNth (length (args info)) argHoles
+              scrutH <- unsafeNth (length (args info)) argHoles
               focus scrutH
               apply subj []
               solve
 
-              motiveH <- snd <$> unsafeNth (length (args info) + 1) argHoles
+              motiveH <- unsafeNth (length (args info) + 1) argHoles
               focus motiveH; makeMotive info subj ty' g
 
-              return (map snd (drop (2 + length (tyConArgs tydef)) argHoles))
+              return (drop (2 + length (tyConArgs tydef)) argHoles)

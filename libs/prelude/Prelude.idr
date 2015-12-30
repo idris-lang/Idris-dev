@@ -37,6 +37,10 @@ import public Language.Reflection.Errors
 %default total
 
 -- Things that can't be elsewhere for import cycle reasons
+-- See comment after declaration of void in Builtins.idr
+-- for explanation of this definition's location
+%runElab (defineFunction $ DefineFun `{void} [])
+
 decAsBool : Dec p -> Bool
 decAsBool (Yes _) = True
 decAsBool (No _)  = False
@@ -202,6 +206,12 @@ instance Enum Int where
     where go : List Nat -> List Int
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
+
+instance Enum Char where
+  toNat c   = toNat (ord c)
+  fromNat n = chr (fromNat n)
+  
+  pred c = fromNat (pred (toNat c))
 
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end

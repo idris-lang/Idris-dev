@@ -42,7 +42,7 @@ mkTTName fc n =
                                                         , pexp (mkList fc ns)]
          MN i nm   -> PApp fc (PRef fc [] (reflm "MN")) [ pexp (intC i)
                                                         , pexp (stringC nm)]
-         otherwise -> PRef fc [] $ reflm "NErased"
+         _ -> error "Invalid name from user syntax for DSL name"
 
 expandSugar :: DSL -> PTerm -> PTerm
 expandSugar dsl (PLam fc n nfc ty tm)
@@ -98,8 +98,8 @@ expandSugar dsl (PDoBlock ds)
     block b (DoBind fc n nfc tm : rest)
         = PApp fc b [pexp tm, pexp (PLam fc n nfc Placeholder (block b rest))]
     block b (DoBindP fc p tm alts : rest)
-        = PApp fc b [pexp tm, pexp (PLam fc (sMN 0 "bpat") NoFC Placeholder
-                                   (PCase fc (PRef fc [] (sMN 0 "bpat"))
+        = PApp fc b [pexp tm, pexp (PLam fc (sMN 0 "__bpat") NoFC Placeholder
+                                   (PCase fc (PRef fc [] (sMN 0 "__bpat"))
                                              ((p, block b rest) : alts)))]
     block b (DoLet fc n nfc ty tm : rest)
         = PLet fc n nfc ty tm (block b rest)
@@ -108,7 +108,10 @@ expandSugar dsl (PDoBlock ds)
     block b (DoExp fc tm : rest)
         = PApp fc b
             [pexp tm,
-             pexp (PLam fc (sMN 0 "bindx") NoFC Placeholder (block b rest))]
+             pexp (PLam fc (sMN 0 "__bindx") NoFC (mkTy tm) (block b rest))]
+        where mkTy (PCase _ _ _) = PRef fc [] unitTy
+              mkTy (PMetavar _ _) = PRef fc [] unitTy
+              mkTy _ = Placeholder
     block b _ = PElabError (Msg "Invalid statement in do block")
 
 expandSugar dsl (PIdiom fc e) = expandSugar dsl $ unIdiom (dsl_apply dsl) (dsl_pure dsl) fc e

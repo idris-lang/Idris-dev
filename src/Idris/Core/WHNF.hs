@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
--- Reduction to Weak Head Normal Form
+-- | Reduction to Weak Head Normal Form
 module Idris.Core.WHNF(whnf, WEnv) where
 
 import Idris.Core.TT
@@ -11,7 +11,7 @@ import qualified Idris.Core.Evaluate as Evaluate
 
 import Debug.Trace
 
--- A stack entry consists of a term and the environment it is to be
+-- | A stack entry consists of a term and the environment it is to be
 -- evaluated in (i.e. it's a thunk)
 type StackEntry = (Term, WEnv)
 data WEnv = WEnv Int -- number of free variables
@@ -20,17 +20,17 @@ data WEnv = WEnv Int -- number of free variables
 
 type Stack = [StackEntry]
 
--- A WHNF is a top level term evaluated in the empty environment. It is
+-- | A WHNF is a top level term evaluated in the empty environment. It is
 -- always headed by either an irreducible expression, i.e. a constructor,
 -- a lambda, a constant, or a postulate
-
+--
 -- Every 'Term' or 'Type' in this structure is associated with the
 -- environment it was encountered in, so that when we quote back to a term
 -- we get the substitutions right.
 
-data WHNF = WDCon Int Int Bool Name (Type, WEnv) -- data constructor
-          | WTCon Int Int Name (Type, WEnv) -- type constructor
-          | WPRef Name (Type, WEnv) -- irreducible global (e.g. a postulate)
+data WHNF = WDCon Int Int Bool Name (Type, WEnv) -- ^ data constructor
+          | WTCon Int Int Name (Type, WEnv) -- ^ type constructor
+          | WPRef Name (Type, WEnv) -- ^irreducible global (e.g. a postulate)
           | WBind Name (Binder Term) (Term, WEnv)
           | WApp WHNF (Term, WEnv)
           | WConstant Const
@@ -40,7 +40,7 @@ data WHNF = WDCon Int Int Bool Name (Type, WEnv) -- data constructor
           | WErased
           | WImpossible
 
--- Reduce a *closed* term to weak head normal form.
+-- | Reduce a *closed* term to weak head normal form.
 whnf :: Context -> Term -> Term
 whnf ctxt tm = quote (do_whnf ctxt (WEnv 0 []) tm)
 

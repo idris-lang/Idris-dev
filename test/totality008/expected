@@ -1,2 +1,2 @@
 totality008.idr:7:1:
-Main.ElimT is possibly not total due to: Main.c2
+Main.ElimT is possibly not total due to: Main.C2

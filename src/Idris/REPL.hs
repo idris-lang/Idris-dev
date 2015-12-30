@@ -189,11 +189,13 @@ processNetCmd orig i h fn cmd
   where
     processNet fn Reload = processNet fn (Load fn Nothing)
     processNet fn (Load f toline) =
-        do let ist = orig { idris_options = idris_options i
-                          , idris_colourTheme = idris_colourTheme i
-                          , idris_colourRepl = False
-                          }
-           putIState ist
+  -- The $!! here prevents a space leak on reloading.
+  -- This isn't a solution - but it's a temporary stopgap.
+  -- See issue #2386
+        do putIState $!! orig { idris_options = idris_options i
+                              , idris_colourTheme = idris_colourTheme i
+                              , idris_colourRepl = False
+                              }
            setErrContext True
            setOutH h
            setQuiet True
@@ -755,6 +757,9 @@ edit f orig
          let args = line ++ [fixName f]
          runIO $ rawSystem editor args
          clearErr
+  -- The $!! here prevents a space leak on reloading.
+  -- This isn't a solution - but it's a temporary stopgap.
+  -- See issue #2386
          putIState $!! orig { idris_options = idris_options i
                             , idris_colourTheme = idris_colourTheme i
                             }
@@ -796,25 +801,30 @@ process fn (ModImport f) = do fmod <- loadModule f
                                 Nothing -> iPrintError $ "Can't find import " ++ f
 process fn (Eval t)
                  = withErrorReflection $
-                   do logLvl 5 $ show t
+                   do logParser 5 $ show t
                       getIState >>= flip warnDisamb t
                       (tm, ty) <- elabREPL recinfo ERHS t
                       ctxt <- getContext
-                      let tm' = perhapsForce $ normaliseAll ctxt [] tm
+                      let tm' = perhapsForce $ normaliseBlocking ctxt []
+                                                  [sUN "foreign",
+                                                   sUN "prim_read",
+                                                   sUN "prim_write"]
+                                                 tm
                       let ty' = perhapsForce $ normaliseAll ctxt [] ty
                       -- Add value to context, call it "it"
                       updateContext (addCtxtDef (sUN "it") (Function ty' tm'))
                       ist <- getIState
-                      logLvl 3 $ "Raw: " ++ show (tm', ty')
-                      logLvl 10 $ "Debug: " ++ showEnvDbg [] tm'
+                      logParser 3 $ "Raw: " ++ show (tm', ty')
+                      logParser 10 $ "Debug: " ++ showEnvDbg [] tm'
                       let tmDoc = pprintDelab ist tm'
-                          tyDoc =  pprintDelab ist ty'
+                          -- errReverse to make type more readable
+                          tyDoc =  pprintDelab ist (errReverse ist ty')
                       iPrintTermWithType tmDoc tyDoc
   where perhapsForce tm | termSmallerThan 100 tm = force tm
                         | otherwise = tm
 
 process fn (NewDefn decls) = do
-        logLvl 3 ("Defining names using these decls: " ++ show (showDecls verbosePPOption decls))
+        logParser 3 ("Defining names using these decls: " ++ show (showDecls verbosePPOption decls))
         mapM_ defineName namedGroups where
   namedGroups = groupBy (\d1 d2 -> getName d1 == getName d2) decls
   getName :: PDecl -> Maybe Name
@@ -933,16 +943,19 @@ process fn (Check (PRef _ _ n))
   where
     showMetavarInfo ppo ist n i
          = case lookupTy n (tt_ctxt ist) of
-                (ty:_) -> putTy ppo ist i [] (delab ist (errReverse ist ty))
+                (ty:_) -> let ty' = normaliseC (tt_ctxt ist) [] ty in
+                              putTy ppo ist i [] (delab ist (errReverse ist ty'))
     putTy :: PPOption -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     putTy ppo ist 0 bnd sc = putGoal ppo ist bnd sc
     putTy ppo ist i bnd (PPi _ n _ t sc)
-               = let current = text "  " <>
-                               (case n of
-                                   MN _ _ -> text "_"
-                                   UN nm | ('_':'_':_) <- str nm -> text "_"
-                                   _ -> bindingOf n False) <+>
-                               colon <+> align (tPretty bnd ist t) <> line
+               = let current = case n of
+                                   MN _ _ -> text ""
+                                   UN nm | ('_':'_':_) <- str nm -> text ""
+                                   _ -> text "  " <>
+                                        bindingOf n False
+                                            <+> colon
+                                            <+> align (tPretty bnd ist t)
+                                            <> line
                  in
                     current <> putTy ppo ist (i-1) ((n,False):bnd) sc
     putTy ppo ist _ bnd sc = putGoal ppo ist ((n,False):bnd) sc
@@ -973,8 +986,8 @@ process fn (Core t)
         iPrintTermWithType (pprintTT [] tm) (pprintTT [] ty)
 
 process fn (DocStr (Left n) w)
-  | UN ty <- n, ty == T.pack "Type" = getIState >>= iRenderResult . pprintTypeDoc  
-  | otherwise = do    
+  | UN ty <- n, ty == T.pack "Type" = getIState >>= iRenderResult . pprintTypeDoc
+  | otherwise = do
         ist <- getIState
         let docs = lookupCtxtName n (idris_docstrings ist) ++
                    map (\(n,d)-> (n, (d, [])))
@@ -997,7 +1010,7 @@ process fn (DocStr (Right c) _) -- constants only have overviews
 process fn Universes
                      = do i <- getIState
                           let cs = idris_constraints i
-                          let cslist = S.toAscList cs 
+                          let cslist = S.toAscList cs
 --                        iputStrLn $ showSep "\n" (map show cs)
                           iputStrLn $ show (map uconstraint cslist)
                           let n = length cslist
@@ -1052,6 +1065,8 @@ process fn (DebugInfo n)
         when (not (null si)) $ iputStrLn (show si)
         let di = lookupCtxt n (idris_datatypes i)
         when (not (null di)) $ iputStrLn (show di)
+        let imps = lookupCtxt n (idris_implicits i)
+        when (not (null imps)) $ iputStrLn (show imps)
         let d = lookupDef n (tt_ctxt i)
         when (not (null d)) $ iputStrLn $ "Definition: " ++ (show (head d))
         let cg = lookupCtxtName n (idris_callgraph i)
@@ -1182,7 +1197,7 @@ process fn (Execute tm)
                    = idrisCatch
                        (do ist <- getIState
                            (m, _) <- elabVal recinfo ERHS (elabExec fc tm)
-                           (tmpn, tmph) <- runIO tempfile
+                           (tmpn, tmph) <- runIO $ tempfile ""
                            runIO $ hClose tmph
                            t <- codegen
                            -- gcc adds .exe when it builds windows programs
@@ -1211,6 +1226,7 @@ process fn (Compile codegen f)
                        runIO $ generate codegen (fst (head (idris_imported i))) ir
   where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
+process fn (LogCategory cs) = setLogCats cs
 -- Elaborate as if LHS of a pattern (debug command)
 process fn (Pattelab t)
      = do (tm, ty) <- elabVal recinfo ELHS t
@@ -1218,12 +1234,16 @@ process fn (Pattelab t)
 
 process fn (Missing n)
     = do i <- getIState
-         let i' = i { idris_options = (idris_options i) { opt_showimp = True } }
+         ppOpts <- fmap ppOptionIst getIState
          case lookupCtxt n (idris_patdefs i) of
-                  [] -> iPrintError $ "Unknown operator " ++ show n
-                  [(_, tms)] ->
-                       iPrintResult (showSep "\n" (map (showTm i') tms))
-                  _ -> iPrintError $ "Ambiguous name"
+           [] -> iPrintError $ "Unknown name " ++ show n
+           [(_, tms)] ->
+             iRenderResult (vsep (map (pprintPTerm ppOpts {ppopt_impl = True}
+                                                   []
+                                                   []
+                                                   (idris_infixes i))
+                                      tms))
+           _ -> iPrintError $ "Ambiguous name"
 process fn (DynamicLink l)
                            = do i <- getIState
                                 let importdirs = opt_importdirs (idris_options i)
@@ -1233,7 +1253,7 @@ process fn (DynamicLink l)
                                   Nothing -> iPrintError $ "Could not load dynamic lib \"" ++ l ++ "\""
                                   Just x -> do let libs = idris_dynamic_libs i
                                                if x `elem` libs
-                                                  then do logLvl 1 ("Tried to load duplicate library " ++ lib_name x)
+                                                  then do logParser 1 ("Tried to load duplicate library " ++ lib_name x)
                                                           return ()
                                                   else putIState $ i { idris_dynamic_libs = x:libs }
     where trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
@@ -1431,11 +1451,11 @@ pprintDef n =
      return $ map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
               map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
               map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
-  where ppDef :: Bool -> IState -> (Name, ([([Name], Term, Term)], [PTerm])) -> Doc OutputAnnotation
+  where ppDef :: Bool -> IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
         ppDef amb ist (n, (clauses, missing)) =
           prettyName True amb [] n <+> colon <+>
           align (pprintDelabTy ist n) <$>
-          ppClauses ist clauses <> ppMissing missing
+          ppClauses ist (map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) clauses) <> ppMissing missing
         ppClauses ist [] = text "No clauses."
         ppClauses ist cs = vsep (map pp cs)
           where pp (vars, lhs, rhs) =
@@ -1502,15 +1522,20 @@ loadInputs inputs toline -- furthest line to read in input source files
            -- For each ifile list, check it and build ibcs in the same clean IState
            -- so that they don't interfere with each other when checking
 
+           importlists <- getImports [] inputs
+
+           logParser 1 (show (map (\(i,m) -> (i, map import_path m)) importlists))
+
            let ninputs = zip [1..] inputs
            ifiles <- mapWhileOK (\(num, input) ->
                 do putIState ist
                    modTree <- buildTree
                                    (map snd (take (num-1) ninputs))
+                                   importlists
                                    input
                    let ifiles = getModuleFiles modTree
-                   logLvl 1 ("MODULE TREE : " ++ show modTree)
-                   logLvl 1 ("RELOAD: " ++ show ifiles)
+                   logParser 1 ("MODULE TREE : " ++ show modTree)
+                   logParser 1 ("RELOAD: " ++ show ifiles)
                    when (not (all ibc ifiles) || loadCode) $
                         tryLoad False (filter (not . ibc) ifiles)
                    -- return the files that need rechecking
@@ -1518,7 +1543,6 @@ loadInputs inputs toline -- furthest line to read in input source files
                       ninputs
            inew <- getIState
            let tidata = idris_tyinfodata inew
-           let patdefs = idris_patdefs inew
            -- If it worked, load the whole thing from all the ibcs together
            case errSpan inew of
               Nothing ->
@@ -1526,9 +1550,6 @@ loadInputs inputs toline -- furthest line to read in input source files
                    ibcfiles <- mapM findNewIBC (nub (concat (map snd ifiles)))
                    tryLoad True (mapMaybe id ibcfiles)
               _ -> return ()
-           ist <- getIState
-           putIState $! ist { idris_tyinfodata = tidata,
-                              idris_patdefs = patdefs }
            exports <- findExports
 
            case opt getOutput opts of
@@ -1704,6 +1725,7 @@ idrisMain opts =
          iputStrLn banner
 
        orig <- getIState
+
        mods <- if idesl then return [] else loadInputs inputs Nothing
        let efile = case inputs of
                         [] -> ""
@@ -1756,12 +1778,13 @@ idrisMain opts =
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))
   where
-    makeOption (OLogging i) = setLogLevel i
-    makeOption TypeCase = setTypeCase True
-    makeOption TypeInType = setTypeInType True
-    makeOption NoCoverage = setCoverage False
-    makeOption ErrContext = setErrContext True
-    makeOption _ = return ()
+    makeOption (OLogging i)  = setLogLevel i
+    makeOption (OLogCats cs) = setLogCats cs
+    makeOption TypeCase      = setTypeCase True
+    makeOption TypeInType    = setTypeInType True
+    makeOption NoCoverage    = setCoverage False
+    makeOption ErrContext    = setErrContext True
+    makeOption _             = return ()
 
     addPkgDir :: String -> Idris ()
     addPkgDir p = do ddir <- runIO $ getIdrisLibDir

@@ -36,6 +36,9 @@ test_all:
 	$(MAKE) test_llvm
 	$(MAKE) test_java
 
+test_timed:
+	$(MAKE) -C test IDRIS=../dist/build/idris time
+
 lib_clean:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris RTS=../../dist/build/rts/libidris_rts clean
 
@@ -43,7 +46,7 @@ relib: lib_clean
 	$(CABAL) install $(CABALFLAGS)
 
 linecount:
-	wc -l src/Idris/*.hs src/Idris/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs
+	wc -l src/Idris/*.hs src/Idris/Elab/*.hs src/Idris/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs src/Util/*.hs
 
 #Note: this doesn't yet link to Hackage properly
 doc: dist/setup-config

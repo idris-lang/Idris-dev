@@ -32,11 +32,14 @@ calculated just like any other value:
     interpTy TyBool      = Bool
     interpTy (TyFun A T) = interpTy A -> interpTy T
 
-We’re going to define a representation of our language in such a way
-that only well-typed programs can be represented. We’ll index the
-representations of expressions by their type and the types of local
-variables (the context), which we’ll be using regularly as an implicit
-argument, so we define everything in a ``using`` block:
+We're going to define a representation of our language in such a way
+that only well-typed programs can be represented. We'll index the
+representations of expressions by their type, **and** the types of
+local variables (the context). The context can be represented using
+the ``Vect`` data type, and as it will be used regularly it will be
+represented as an implicit argument. To do so we define everything in
+a ``using`` block (keep in mind that everything after this point needs
+to be indented so as to be inside the ``using`` block):
 
 .. code-block:: idris
 
@@ -151,7 +154,7 @@ that only the branch which is taken need be evaluated:
 Writing the Interpreter
 =======================
 
-When we evaluate an ``Expr``, we’ll need to know the values in scope,
+When we evaluate an ``Expr``, we'll need to know the values in scope,
 as well as their types. ``Env`` is an environment, indexed over the
 types in scope. Since an environment is just another form of list,
 albeit with a strongly specified connection to the vector of local

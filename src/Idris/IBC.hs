@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 120
+ibcVersion = 128
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -80,13 +80,14 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_errorhandlers :: ![Name],
                          ibc_function_errorhandlers :: ![(Name, Name, Name)], -- fn, arg, handler
                          ibc_metavars :: ![(Name, (Maybe Name, Int, [Name], Bool))],
-                         ibc_patdefs :: ![(Name, ([([Name], Term, Term)], [PTerm]))],
+                         ibc_patdefs :: ![(Name, ([([(Name, Term)], Term, Term)], [PTerm]))],
                          ibc_postulates :: ![Name],
                          ibc_externs :: ![(Name, Int)],
                          ibc_parsedSpan :: !(Maybe FC),
                          ibc_usage :: ![(Name, Int)],
                          ibc_exports :: ![Name],
-                         ibc_autohints :: ![(Name, Name)]
+                         ibc_autohints :: ![(Name, Name)],
+                         ibc_deprecated :: ![(Name, String)]
                        }
    deriving Show
 {-!
@@ -94,7 +95,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -112,7 +113,7 @@ loadIBC reexport fp
                                 Nothing -> True
                                 Just p -> not p && reexport
                 when redo $
-                  do logLvl 1 $ "Loading ibc " ++ fp ++ " " ++ show reexport
+                  do logIBC 1 $ "Loading ibc " ++ fp ++ " " ++ show reexport
                      archiveFile <- runIO $ B.readFile fp
                      case toArchiveOrFail archiveFile of
                         Left _ -> ifail $ fp ++ " isn't loadable, it may have an old ibc format.\n"
@@ -179,7 +180,8 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        toEntry "ibc_parsedSpan" 0 . encode <$> ibc_parsedSpan i,
                        makeEntry "ibc_usage"  (ibc_usage i),
                        makeEntry "ibc_exports"  (ibc_exports i),
-                       makeEntry "ibc_autohints"  (ibc_autohints i)]
+                       makeEntry "ibc_autohints"  (ibc_autohints i),
+                       makeEntry "ibc_deprecated"  (ibc_deprecated i)]
 
 writeArchive :: FilePath -> IBCFile -> Idris ()
 writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
@@ -187,7 +189,7 @@ writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArch
 
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
-    = do logLvl 1 $ "Writing ibc " ++ show f
+    = do logIBC 1 $ "Writing ibc " ++ show f
          i <- getIState
 --          case (Data.List.map fst (idris_metavars i)) \\ primDefs of
 --                 (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"
@@ -196,8 +198,8 @@ writeIBC src f
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src })
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
-                        logLvl 1 "Written")
-            (\c -> do logLvl 1 $ "Failed " ++ pshow i c)
+                        logIBC 1 "Written")
+            (\c -> do logIBC 1 $ "Failed " ++ pshow i c)
          return ()
 
 -- Write a package index containing all the imports in the current IState
@@ -206,20 +208,20 @@ writePkgIndex :: FilePath -> Idris ()
 writePkgIndex f
     = do i <- getIState
          let imps = map (\ (x, y) -> (True, x)) $ idris_imported i
-         logLvl 1 $ "Writing package index " ++ show f ++ " including\n" ++
+         logIBC 1 $ "Writing package index " ++ show f ++ " including\n" ++
                 show (map snd imps)
          resetNameIdx
          let ibcf = initIBC { ibc_imports = imps }
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
-                        logLvl 1 "Written")
-            (\c -> do logLvl 1 $ "Failed " ++ pshow i c)
+                        logIBC 1 "Written")
+            (\c -> do logIBC 1 $ "Failed " ++ pshow i c)
          return ()
 
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
 mkIBC [] f = return f
 mkIBC (i:is) f = do ist <- getIState
-                    logLvl 5 $ show i ++ " " ++ show (L.length is)
+                    logIBC 5 $ show i ++ " " ++ show (L.length is)
                     f' <- ibc ist i f
                     mkIBC is f'
 
@@ -305,6 +307,7 @@ ibc i (IBCModDocs n) f = case lookupCtxtExact n (idris_moduledocs i) of
 ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
 ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f }
+ibc i (IBCDeprecate n r) f = return f { ibc_deprecated = (n, r) : ibc_deprecated f }
 
 getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
 getEntry alt f a = case findEntryByPath f a of
@@ -316,7 +319,7 @@ process :: Bool -- ^ Reexporting
 process reexp i fn = do
                 ver <- getEntry 0 "ver" i
                 when (ver /= ibcVersion) $ do
-                                    logLvl 1 "ibc out of date"
+                                    logIBC 1 "ibc out of date"
                                     let e = if ver < ibcVersion
                                             then " an earlier " else " a later "
                                     ifail $ "Incompatible ibc version.\nThis library was built with"
@@ -367,6 +370,7 @@ process reexp i fn = do
                 pUsage =<< getEntry [] "ibc_usage" i
                 pExports =<< getEntry [] "ibc_exports" i
                 pAutoHints =<< getEntry [] "ibc_autohints" i
+                pDeprecate =<< getEntry [] "ibc_deprecated" i
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -394,6 +398,9 @@ pExports ns = updateIState (\i -> i { idris_exports = ns ++ idris_exports i })
 pAutoHints :: [(Name, Name)] -> Idris ()
 pAutoHints ns = mapM_ (\(n,h) -> addAutoHint n h) ns
 
+pDeprecate :: [(Name, String)] -> Idris ()
+pDeprecate ns = mapM_ (\(n,reason) -> addDeprecated n reason) ns
+
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs
 
@@ -408,10 +415,12 @@ pImports reexp fs
 --                         then logLvl 1 $ "Already read " ++ f
                        putIState (i { imported = f : imported i })
                        case fp of
-                            LIDR fn -> do logLvl 1 $ "Failed at " ++ fn
-                                          ifail "Must be an ibc"
-                            IDR fn -> do logLvl 1 $ "Failed at " ++ fn
-                                         ifail "Must be an ibc"
+                            LIDR fn -> do
+                              logIBC 1 $ "Failed at " ++ fn
+                              ifail "Must be an ibc"
+                            IDR fn -> do
+                              logIBC 1 $ "Failed at " ++ fn
+                              ifail "Must be an ibc"
                             IBC fn src -> loadIBC (reexp && re) fn)
              fs
 
@@ -498,7 +507,7 @@ pDyLibs ls = do res <- mapM (addDyLib . return) ls
 pHdrs :: [(Codegen, String)] -> Idris ()
 pHdrs hs = mapM_ (uncurry addHdr) hs
 
-pPatdefs :: [(Name, ([([Name], Term, Term)], [PTerm]))] -> Idris ()
+pPatdefs :: [(Name, ([([(Name, Term)], Term, Term)], [PTerm]))] -> Idris ()
 pPatdefs ds = mapM_ (\ (n, d) -> updateIState (\i ->
             i { idris_patdefs = addDef n (force d) (idris_patdefs i) })) ds
 
@@ -508,13 +517,13 @@ pDefs reexp ds
                do d' <- updateDef d
                   case d' of
                        TyDecl _ _ -> return ()
-                       _ -> do logLvl 1 $ "SOLVING " ++ show n
+                       _ -> do logIBC 1 $ "SOLVING " ++ show n
                                solveDeferred n
                   updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
 --                   logLvl 1 $ "Added " ++ show (n, d')
-                  if (not reexp) then do logLvl 1 $ "Not exporting " ++ show n
+                  if (not reexp) then do logIBC 1 $ "Not exporting " ++ show n
                                          setAccessibility n Hidden
-                                 else logLvl 1 $ "Exporting " ++ show n) ds
+                                 else logIBC 1 $ "Exporting " ++ show n) ds
   where
     updateDef (CaseOp c t args o s cd)
       = do o' <- mapM updateOrig o
@@ -579,7 +588,7 @@ pAccess :: Bool -- ^ Reexporting?
 pAccess reexp ds
         = mapM_ (\ (n, a_in) ->
                       do let a = if reexp then a_in else Hidden
-                         logLvl 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
+                         logIBC 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
                          updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })) ds
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
@@ -1836,7 +1845,7 @@ instance Binary PTerm where
                    _ -> error "Corrupted binary data for PTerm"
 
 instance Binary PAltType where
-        put x 
+        put x
           = case x of
                 ExactlyOne x1 -> do putWord8 0
                                     put x1

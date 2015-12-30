@@ -122,7 +122,7 @@ hard to program this way in practice. Recall the factorial program in
 
     fact : Expr G (TyFun TyInt TyInt)
     fact = Lam (If (Op (==) (Var Stop) (Val 0))
-                   (Val 1) (Op (*) (app fact (Op (-) (Var Stop) (Val 1)))
+                   (Val 1) (Op (*) (App fact (Op (-) (Var Stop) (Val 1)))
                                    (Var Stop)))
 
 Since this is a particularly useful pattern, Idris provides syntax
@@ -162,8 +162,8 @@ declaring:
 
 .. code-block:: idris
 
-    (<$>) : (f : Lazy (Expr G (TyFun a t))) -> Expr G a -> Expr G t
-    (<$>) f a = App f a
+    (<*>) : (f : Lazy (Expr G (TyFun a t))) -> Expr G a -> Expr G t
+    (<*>) f a = App f a
 
     pure : Expr G a -> Expr G a
     pure = id

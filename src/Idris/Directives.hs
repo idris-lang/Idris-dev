@@ -64,7 +64,10 @@ directiveAction (DErrorHandlers fn nfc arg afc ns) =
        map (\(n, fc) -> (fc, AnnName n Nothing Nothing Nothing)) ns'
 
 directiveAction (DLanguage ext) = addLangExt ext
-
+directiveAction (DDeprecate n reason) 
+    = do n' <- disambiguate n
+         addDeprecated n' reason
+         addIBC (IBCDeprecate n' reason)
 directiveAction (DUsed fc fn arg) = addUsedName fc fn arg
 
 disambiguate :: Name -> Idris Name

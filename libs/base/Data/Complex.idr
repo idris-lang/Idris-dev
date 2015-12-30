@@ -25,7 +25,7 @@ instance Show a => Show (Complex a) where
             plus_i = User 6
 
 
--- when we have a type class 'Fractional' (which contains Float and Double),
+-- when we have a type class 'Fractional' (which contains Double),
 -- we can do:
 {-
 instance Fractional a => Fractional (Complex a) where
@@ -40,16 +40,16 @@ instance Fractional a => Fractional (Complex a) where
 
 ------------------------------ Polarform
 
-mkPolar : Float -> Float -> Complex Float
+mkPolar : Double -> Double -> Complex Double
 mkPolar radius angle = radius * cos angle :+ radius * sin angle
 
-cis : Float -> Complex Float
+cis : Double -> Complex Double
 cis angle = cos angle :+ sin angle
 
-magnitude : Complex Float -> Float
+magnitude : Complex Double -> Double
 magnitude (r:+i) = sqrt (r*r+i*i)
 
-phase : Complex Float -> Float
+phase : Complex Double -> Double
 phase (x:+y) = atan2 y x
 
 
@@ -62,13 +62,13 @@ instance Functor Complex where
     map f (r :+ i) = f r :+ f i
 
 -- We can't do "instance Num a => Num (Complex a)" because
--- we need "abs" which needs "magnitude" which needs "sqrt" which needs Float
-instance Num (Complex Float) where
+-- we need "abs" which needs "magnitude" which needs "sqrt" which needs Double
+instance Num (Complex Double) where
     (+) (a:+b) (c:+d) = ((a+c):+(b+d))
     (*) (a:+b) (c:+d) = ((a*c-b*d):+(b*c+a*d))
     fromInteger x = (fromInteger x:+0)
 
-instance Neg (Complex Float) where
+instance Neg (Complex Double) where
     negate = map negate
     (-) (a:+b) (c:+d) = ((a-c):+(b-d))
     abs (a:+b) = (magnitude (a:+b):+0)

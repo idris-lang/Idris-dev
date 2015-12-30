@@ -1,5 +1,5 @@
 
-module Idris.REPLParser (parseCmd, help, allHelp) where
+module Idris.REPLParser (parseCmd, help, allHelp, setOptions) where
 
 import System.FilePath ((</>))
 import System.Console.ANSI (Color(..))
@@ -32,12 +32,22 @@ parseCmd i inputname = P.runparser pCmd i inputname . trim
 type CommandTable = [ ( [String], CmdArg, String
                     , String -> P.IdrisParser (Either String Command) ) ]
 
+setOptions :: [(String, Opt)]
+setOptions = [("errorcontext", ErrContext),
+              ("showimplicits", ShowImpl),
+              ("originalerrors", ShowOrigErr),
+              ("autosolve", AutoSolve),
+              ("nobanner", NoBanner),
+              ("warnreach", WarnReach),
+              ("evaltypes", EvalTypes),
+              ("desugarnats", DesugarNats)]
+
 help :: [([String], CmdArg, String)]
-help = (["<expr>"], NoArg, "Evaluate an expression") : 
+help = (["<expr>"], NoArg, "Evaluate an expression") :
   [ (map (':' :) names, args, text) | (names, args, text, _) <- parserCommandsForHelp ]
 
 allHelp :: [([String], CmdArg, String)]
-allHelp = [ (map (':' :) names, args, text) 
+allHelp = [ (map (':' :) names, args, text)
           | (names, args, text, _) <- parserCommandsForHelp ++ parserCommands ]
 
 parserCommandsForHelp :: CommandTable
@@ -80,7 +90,7 @@ parserCommandsForHelp =
   , (["dynamic"], FileArg, "Dynamically load a C library (similar to %dynamic)", cmd_dynamic)
   , (["dynamic"], NoArg, "List dynamically loaded C libraries", cmd_dynamic)
   , noArgCmd ["?", "h", "help"] Help "Display this help text"
-  , optArgCmd ["set"] SetOpt "Set an option (errorcontext, showimplicits)"
+  , optArgCmd ["set"] SetOpt $ "Set an option (" ++ optionsList ++ ")"
   , optArgCmd ["unset"] UnsetOpt "Unset an option"
   , (["color", "colour"], ColourArg
     , "Turn REPL colours on or off; set a specific colour"
@@ -100,6 +110,7 @@ parserCommandsForHelp =
     , "Pretty prints an Idris function in either LaTeX or HTML and for a specified width."
     , cmd_pprint)
   ]
+  where optionsList = intercalate ", " $ map fst setOptions
 
 parserCommands =
   [ noArgCmd ["u", "universes"] Universes "Display universe constraints"
@@ -113,7 +124,7 @@ parserCommands =
   , exprArgCmd ["spec"] Spec "?"
   , exprArgCmd ["whnf"] WHNF "(Debugging) Show weak head normal form of an expression"
   , exprArgCmd ["inline"] TestInline "?"
-  , proofArgCmd ["cs", "casesplit"] CaseSplitAt 
+  , proofArgCmd ["cs", "casesplit"] CaseSplitAt
       ":cs <line> <name> splits the pattern variable on the line"
   , proofArgCmd ["apc", "addproofclause"] AddProofClauseFrom
       ":apc <line> <name> adds a pattern-matching proof clause to name on line"
@@ -127,6 +138,10 @@ parserCommands =
       ":mc <line> <name> adds a case block for the definition of the metavariable on the line"
   , proofArgCmd ["ml", "makelemma"] MakeLemma "?"
   , (["log"], NumberArg, "Set logging verbosity level", cmd_log)
+  , ( ["logcats"]
+    , ManyArgs NameArg
+    , "Set logging categories"
+    , cmd_cats)
   , (["lto", "loadto"], SeqArgs NumberArg FileArg
     , "Load file up to line number", cmd_loadto)
   , (["ps", "proofsearch"], NoArg
@@ -137,8 +152,8 @@ parserCommands =
     , cmd_refine)
   , (["debugunify"], SeqArgs ExprArg ExprArg
     , "(Debugging) Try to unify two expressions", const $ do
-       l <- P.simpleExpr defaultSyntax 
-       r <- P.simpleExpr defaultSyntax 
+       l <- P.simpleExpr defaultSyntax
+       r <- P.simpleExpr defaultSyntax
        eof
        return (Right (DebugUnify l r))
     )
@@ -160,13 +175,12 @@ proofArgCmd names command doc =
   (names, NoArg, doc, proofArg command)
 
 pCmd :: P.IdrisParser (Either String Command)
-pCmd = choice [ do c <- cmd names; parser c 
+pCmd = choice [ do c <- cmd names; parser c
               | (names, _, _, parser) <- parserCommandsForHelp ++ parserCommands ]
-     <|> unrecognized 
-     <|> nop 
+     <|> unrecognized
+     <|> nop
      <|> eval
     where nop = do eof; return (Right NOP)
-          eval = exprArg Eval ""
           unrecognized = do
               P.lchar ':'
               cmd <- many anyChar
@@ -194,20 +208,30 @@ noArgs cmd name = do
 
     emptyArgs <|> failure
 
+eval :: P.IdrisParser (Either String Command)
+eval = do
+  t <- P.fullExpr defaultSyntax
+  return $ Right (Eval t)
+
 exprArg :: (PTerm -> Command) -> String -> P.IdrisParser (Either String Command)
 exprArg cmd name = do
     let noArg = do
         eof
         return $ Left ("Usage is :" ++ name ++ " <expression>")
 
+    let justOperator = do
+        (op, fc) <- P.operatorFC
+        eof
+        return $ Right $ cmd (PRef fc [] (sUN op))
+
     let properArg = do
         t <- P.fullExpr defaultSyntax
         return $ Right (cmd t)
-    try noArg <|> properArg
+    try noArg <|> try justOperator <|> properArg
 
 
 
-genArg :: String -> P.IdrisParser a -> (a -> Command) 
+genArg :: String -> P.IdrisParser a -> (a -> Command)
            -> String -> P.IdrisParser (Either String Command)
 genArg argName argParser cmd name = do
     let emptyArgs = do eof; failure
@@ -226,12 +250,12 @@ strArg :: (String -> Command) -> String -> P.IdrisParser (Either String Command)
 strArg = genArg "string" (many anyChar)
 
 moduleArg :: (FilePath -> Command) -> String -> P.IdrisParser (Either String Command)
-moduleArg = genArg "module" (fmap (toPath . fst) P.identifier) 
+moduleArg = genArg "module" (fmap (toPath . fst) P.identifier)
   where
     toPath n = foldl1' (</>) $ splitOn "." n
 
 namespaceArg :: ([String] -> Command) -> String -> P.IdrisParser (Either String Command)
-namespaceArg = genArg "namespace" (fmap (toNS . fst) P.identifier) 
+namespaceArg = genArg "namespace" (fmap (toNS . fst) P.identifier)
   where
     toNS  = splitOn "."
 
@@ -253,14 +277,7 @@ optArg cmd name = do
 
     where
         pOption :: P.IdrisParser Opt
-        pOption = do discard (P.symbol "errorcontext"); return ErrContext
-              <|> do discard (P.symbol "showimplicits"); return ShowImpl
-              <|> do discard (P.symbol "originalerrors"); return ShowOrigErr
-              <|> do discard (P.symbol "autosolve"); return AutoSolve
-              <|> do discard (P.symbol "nobanner") ; return NoBanner
-              <|> do discard (P.symbol "warnreach"); return WarnReach
-              <|> do discard (P.symbol "evaltypes"); return EvalTypes
-              <|> do discard (P.symbol "desugarnats"); return DesugarNats
+        pOption = foldl (<|>) empty $ map (\(a, b) -> do discard (P.symbol a); return b) setOptions
 
 proofArg :: (Bool -> Int -> Name -> Command) -> String -> P.IdrisParser (Either String Command)
 proofArg cmd name = do
@@ -277,7 +294,7 @@ cmd_doc name = do
         c <- fmap fst P.constant
         eof
         return $ Right (DocStr (Right c) FullDocs)
-    
+
     let pType = do
         P.reserved "Type"
         eof
@@ -378,6 +395,25 @@ cmd_log name = do
     i <- fmap (fromIntegral . fst) P.natural
     eof
     return (Right (LogLvl i))
+
+cmd_cats :: String -> P.IdrisParser (Either String Command)
+cmd_cats name = do
+    cs <- sepBy pLogCats (P.whiteSpace)
+    eof
+    return $ Right $ LogCategory (concat cs)
+  where
+    badCat = do
+      c <- fst <$> P.identifier
+      fail $ "Category: " ++ c ++ " is not recognised."
+
+    pLogCats :: P.IdrisParser [LogCat]
+    pLogCats = try (P.symbol (strLogCat IParse)    >> return parserCats)
+           <|> try (P.symbol (strLogCat IElab)     >> return elabCats)
+           <|> try (P.symbol (strLogCat ICodeGen)  >> return codegenCats)
+           <|> try (P.symbol (strLogCat ICoverage) >> return [ICoverage])
+           <|> try (P.symbol (strLogCat IIBC)      >> return [IIBC])
+           <|> try (P.symbol (strLogCat IErasure)  >> return [IErasure])
+           <|> badCat
 
 cmd_let :: String -> P.IdrisParser (Either String Command)
 cmd_let name = do

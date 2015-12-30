@@ -4,28 +4,28 @@ import Effects
 import Data.Vect
 
 data Random : Effect where 
-     getRandom : sig Random Integer Integer
-     setSeed   : Integer -> sig Random () Integer
+     GetRandom : sig Random Integer Integer
+     SetSeed   : Integer -> sig Random () Integer
 
 instance Handler Random m where
-  handle seed getRandom k
+  handle seed GetRandom k
            = let seed' = assert_total ((1664525 * seed + 1013904223) `prim__sremBigInt` (pow 2 32)) in
                  k seed' seed'
-  handle seed (setSeed n) k = k () n
+  handle seed (SetSeed n) k = k () n
 
 RND : EFFECT
 RND = MkEff Integer Random
 
 ||| Generates a random Integer in a given range
 rndInt : Integer -> Integer -> Eff Integer [RND]
-rndInt lower upper = do v <- call $ getRandom
+rndInt lower upper = do v <- call $ GetRandom
                         return ((v `prim__sremBigInt` (upper - lower)) + lower)
 
 ||| Generate a random number in Fin (S `k`)
 ||| 
 ||| Note that rndFin k takes values 0, 1, ..., k.
 rndFin : (k : Nat) -> Eff (Fin (S k)) [RND]
-rndFin k = do let v = assert_total $ !(call getRandom) `prim__sremBigInt` (cast (S k))
+rndFin k = do let v = assert_total $ !(call GetRandom) `prim__sremBigInt` (cast (S k))
               return (toFin v)
  where toFin : Integer -> Fin (S k) 
        toFin x = case integerToFin x (S k) of
@@ -43,5 +43,5 @@ rndSelect (x::xs) = return (Just !(rndSelect' (x::(fromList xs))))
 
 ||| Sets the random seed
 srand : Integer -> Eff () [RND]
-srand n = call $ setSeed n
+srand n = call $ SetSeed n
 

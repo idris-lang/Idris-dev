@@ -11,8 +11,9 @@ import Data.Vect
 
 import Language.Reflection
 import Language.Reflection.Errors
-import Language.Reflection.Elab
 import Language.Reflection.Utils
+
+import Pruviloj.Core
 
 %default total
 
@@ -33,7 +34,9 @@ foo = %runElab (do intro (UN "fnord")
                    solve)
 
 
-
+%runElab (do n <- isTCName `{Nat}
+             s <- isTCName `{Show}
+             if n || not s then fail [TextPart "nope"] else return ())
 
 -- Note that <|> is equivalent to "try" in the old tactics.
 -- In these tactics, we use ordinary do notation and ordinary documentation strings!
@@ -52,6 +55,7 @@ test1 = %runElab triv
 test2 : Nat
 test2 = %runElab triv
 
+partial
 obvious : Elab ()
 obvious = do g <- goalType
              case g of
@@ -119,8 +123,12 @@ namespace STLC
                                unfocus holeName
                                return holeName
 
-  foo : %runElab (elabTy $ ARR (ARR UNIT UNIT) (ARR UNIT UNIT))
-  foo = id
+  -- FIXME: Removing the let-bound Elab script showed a deficiency in
+  -- how accessible arguments are identified in type signatures. It
+  -- would be nice if this worked without the extraneous
+  -- `let`. (perhaps a flag on Pi that says it came from the parser?)
+  someDef : let x = () in %runElab ((elabTy $ ARR (ARR UNIT UNIT) (ARR UNIT UNIT)))
+  someDef = id
 
   namespace Untyped
     ||| Completely untyped terms

@@ -23,13 +23,13 @@ record TyConInfo where
 getParams : TyConInfo -> List (TTName, Raw)
 getParams info = mapMaybe param (args info)
   where param : TyConArg -> Maybe (TTName, Raw)
-        param (TyConParameter a) = Just (argName a, argTy a)
+        param (TyConParameter a) = Just (name a, type a)
         param _ = Nothing
 
 getIndices : TyConInfo -> List (TTName, Raw)
 getIndices info = mapMaybe index (args info)
   where index : TyConArg -> Maybe (TTName, Raw)
-        index (TyConIndex a) = Just (argName a, argTy a)
+        index (TyConIndex a) = Just (name a, type a)
         index _ = Nothing
 
 ||| Rename a bound variable across a telescope
@@ -75,7 +75,7 @@ processCtorArgs info (cn, cargs, resTy) =
     findParam : TTName -> List Raw -> List TyConArg -> Elab TTName
     findParam paramN (Var n :: args) (TyConParameter a :: tcArgs) =
       if n == paramN
-        then return (argName a)
+        then return (name a)
         else findParam paramN args tcArgs
     findParam paramN (_ :: args) (_ :: tcArgs) =
       findParam paramN args tcArgs
@@ -89,20 +89,20 @@ processCtorArgs info (cn, cargs, resTy) =
                TyConInfo -> Elab (List CtorArg, Raw)
     convert' subst [] ty info = return ([], alphaRaw subst ty)
     convert' subst (CtorField a :: args) ty info =
-      do n' <- nameFrom (argName a)
+      do n' <- nameFrom (name a)
          let a' = record {
-                    argName = n'
-                  , argTy = alphaRaw subst (argTy a)
+                    name = n'
+                  , type = alphaRaw subst (type a)
                   } a
-         let subst' = extend subst (argName a) n'
+         let subst' = extend subst (name a) n'
          (args', ty') <- convert' subst' args ty info
          return (CtorField a' :: args', ty')
     convert' subst (CtorParameter a :: ctorArgs) ty info =
-      do n' <- findParam (argName a) (snd (unApply ty)) (args info)
+      do n' <- findParam (name a) (snd (unApply ty)) (args info)
          let a' = record {
-                    argName = n'
-                  , argTy = alphaRaw subst (argTy a)
+                    name = n'
+                  , type = alphaRaw subst (type a)
                   } a
-         let subst' = extend subst (argName a) n'
+         let subst' = extend subst (name a) n'
          (args', ty') <- convert' subst' ctorArgs ty info
          return (CtorParameter a' :: args', ty')

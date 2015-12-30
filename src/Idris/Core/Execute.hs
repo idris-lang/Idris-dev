@@ -349,6 +349,17 @@ execForeign env ctxt arity ty fn xs onfail
                       "The argument to fileEOF should be a file handle, but it was " ++
                       show handle ++
                       ". Are all cases covered?"
+    | Just (FFun "fileError" [(_,handle)] _) <- foreignFromTT arity ty fn xs
+           = case handle of
+             -- errors handled differently in Haskell than in C, so if
+             -- there's been an error we'll have had an exception already.
+             -- Therefore, assume we're okay.
+               EHandle h -> do let res = ioWrap (EConstant (I 0))
+                               execApp env ctxt res (drop arity xs)
+               _ -> execFail . Msg $
+                      "The argument to fileError should be a file handle, but it was " ++
+                      show handle ++
+                      ". Are all cases covered?"
     | Just (FFun "fileClose" [(_,handle)] _) <- foreignFromTT arity ty fn xs
            = case handle of
                EHandle h -> do execIO $ hClose h

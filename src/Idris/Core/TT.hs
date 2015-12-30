@@ -58,6 +58,7 @@ import Debug.Trace
 import qualified Data.Map.Strict as Map
 import Data.Char
 import Data.Data (Data)
+import Data.Monoid (mconcat)
 import Numeric (showIntAtBase)
 import qualified Data.Text as T
 import Data.List hiding (group, insert)
@@ -148,7 +149,7 @@ instance Eq FC where
   _ == _ = True
 
 -- | FC with equality
-newtype FC' = FC' { unwrapFC :: FC }
+newtype FC' = FC' { unwrapFC :: FC } deriving (Data, Typeable, Ord)
 
 instance Eq FC' where
   FC' fc == FC' fc' = fcEq fc fc'
@@ -156,6 +157,9 @@ instance Eq FC' where
           fcEq NoFC NoFC = True
           fcEq (FileFC f) (FileFC f') = f == f'
           fcEq _ _ = False
+
+instance Show FC' where
+  showsPrec d (FC' fc) = showsPrec d fc
 
 -- | Empty source location
 emptyFC :: FC
@@ -283,7 +287,7 @@ data Err' t
           | ProofSearchFail (Err' t)
           | NoRewriting t
           | At FC (Err' t)
-          | Elaborating String Name (Err' t)
+          | Elaborating String Name (Maybe t) (Err' t)
           | ElaboratingArg Name Name [(Name, Name)] (Err' t)
           | ProviderError String
           | LoadingFailed String (Err' t)
@@ -293,6 +297,8 @@ data Err' t
             -- ^ User-specified message, proof term, goals with context (first goal is focused)
           | ElabScriptStuck t
           | RunningElabScript (Err' t) -- ^ The error occurred during a top-level elaboration script
+          | ElabScriptStaging Name
+          | FancyMsg [ErrorReportPart]
   deriving (Eq, Functor, Data, Typeable)
 
 type Err = Err' Term
@@ -354,7 +360,7 @@ instance Sized Err where
   size (IncompleteTerm trm) = size trm
   size ProgramLineComment = 1
   size (At fc err) = size fc + size err
-  size (Elaborating _ n err) = size err
+  size (Elaborating _ _ _ err) = size err
   size (ElaboratingArg _ _ _ err) = size err
   size (ProviderError msg) = length msg
   size (LoadingFailed fn e) = 1 + length fn + size e
@@ -375,7 +381,11 @@ instance Show Err where
     show (At f e) = show f ++ ":" ++ show e
     show (ElaboratingArg f x prev e) = "Elaborating " ++ show f ++ " arg " ++
                                        show x ++ ": " ++ show e
-    show (Elaborating what n e) = "Elaborating " ++ what ++ show n ++ ":" ++ show e
+    show (Elaborating what n ty e) = "Elaborating " ++ what ++ show n ++ 
+                                     showType ty ++ ":" ++ show e
+        where
+          showType Nothing = ""
+          showType (Just ty) = " with expected type " ++ show ty
     show (ProofSearchFail e) = "Proof search fail: " ++ show e
     show (InfiniteUnify _ _ _) = "InfiniteUnify"
     show (UnifyScope _ _ _ _) = "UnifyScope"
@@ -442,7 +452,6 @@ traceWhen False _  a = a
 data Name = UN !T.Text -- ^ User-provided name
           | NS !Name [T.Text] -- ^ Root, namespaces
           | MN !Int !T.Text -- ^ Machine chosen names
-          | NErased -- ^ Name of something which is never used in scope
           | SN !SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
   deriving (Eq, Ord, Data, Typeable)
@@ -479,7 +488,7 @@ data SpecialName = WhereN !Int !Name !Name
                  | InstanceN !Name [T.Text]
                  | ParentN !Name !T.Text
                  | MethodN !Name
-                 | CaseN !Name
+                 | CaseN !FC' !Name
                  | ElimN !Name
                  | InstanceCtorN !Name
                  | MetaN !Name !Name
@@ -509,7 +518,6 @@ instance Pretty Name OutputAnnotation where
   pretty n@(SN s) = annotate (AnnName n Nothing Nothing Nothing) $ text (show s)
   pretty n@(SymRef i) = annotate (AnnName n Nothing Nothing Nothing) $
                         text $ "##symbol" ++ show i ++ "##"
-  pretty NErased = annotate (AnnName NErased Nothing Nothing Nothing) $ text "_"
 
 instance Pretty [Name] OutputAnnotation where
   pretty = encloseSep empty empty comma . map pretty
@@ -521,7 +529,6 @@ instance Show Name where
     show (MN i s) = "{" ++ str s ++ show i ++ "}"
     show (SN s) = show s
     show (SymRef i) = "##symbol" ++ show i ++ "##"
-    show NErased = "_"
 
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
@@ -529,7 +536,8 @@ instance Show SpecialName where
     show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " instance of " ++ show cl
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
-    show (CaseN n) = "case block in " ++ show n
+    show (CaseN fc n) = "case block in " ++ show n ++
+                        if fc == FC' emptyFC then "" else " at " ++ show fc
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
     show (InstanceCtorN n) = "constructor of " ++ show n
     show (MetaN parent meta) = "<<" ++ show parent ++ " " ++ show meta ++ ">>"
@@ -546,12 +554,20 @@ showCG (SN s) = showCG' s
         showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
-        showCG' (CaseN c) = showCG c ++ "_case"
+        showCG' (CaseN fc c) = showCG c ++ showFC' fc ++ "_case"
         showCG' (ElimN sn) = showCG sn ++ "_elim"
         showCG' (InstanceCtorN n) = showCG n ++ "_ictor"
         showCG' (MetaN parent meta) = showCG parent ++ "_meta_" ++ showCG meta
+        showFC' (FC' NoFC) = ""
+        showFC' (FC' (FileFC f)) = "_" ++ cgFN f
+        showFC' (FC' (FC f s e))
+          | s == e = "_" ++ cgFN f ++
+                     "_" ++ show (fst s) ++ "_" ++ show (snd s)
+          | otherwise = "_" ++ cgFN f ++
+                        "_" ++ show (fst s) ++ "_" ++ show (snd s) ++
+                        "_" ++ show (fst e) ++ "_" ++ show (snd e)
+        cgFN = concatMap (\c -> if not (isDigit c || isLetter c) then "__" else [c])
 showCG (SymRef i) = error "can't do codegen for a symbol reference"
-showCG NErased = "_"
 
 
 -- |Contexts allow us to map names to things. A root name maps to a collection
@@ -776,7 +792,6 @@ data Raw = Var Name
          | RApp Raw Raw
          | RType
          | RUType Universe
-         | RForce Raw
          | RConstant Const
   deriving (Show, Eq, Data, Typeable)
 
@@ -786,7 +801,6 @@ instance Sized Raw where
   size (RApp left right) = 1 + size left + size right
   size RType = 1
   size (RUType _) = 1
-  size (RForce raw) = 1 + size raw
   size (RConstant const) = size const
 
 instance Pretty Raw OutputAnnotation where
@@ -797,7 +811,7 @@ deriving instance Binary Raw
 deriving instance NFData Raw
 !-}
 
-data ImplicitInfo = Impl { tcinstance :: Bool }
+data ImplicitInfo = Impl { tcinstance :: Bool, toplevel_imp :: Bool }
   deriving (Show, Eq, Ord, Data, Typeable)
 
 {-!
@@ -812,27 +826,44 @@ deriving instance NFData ImplicitInfo
 -- the types of bindings (and their values, if any); the attached identifiers are part
 -- of the 'Bind' constructor for the 'TT' type.
 data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
+                -- ^ A function binding
               | Pi    { binderImpl :: Maybe ImplicitInfo,
                         binderTy  :: !b,
                         binderKind :: !b }
-                {-^ A binding that occurs in a function type expression, e.g. @(x:Int) -> ...@
-                    The 'binderImpl' flag says whether it was a scoped implicit
-                    (i.e. forall bound) in the high level Idris, but otherwise
-                    has no relevance in TT. -}
+                -- ^ A binding that occurs in a function type
+                -- expression, e.g. @(x:Int) -> ...@ The 'binderImpl'
+                -- flag says whether it was a scoped implicit
+                -- (i.e. forall bound) in the high level Idris, but
+                -- otherwise has no relevance in TT.
               | Let   { binderTy  :: !b,
                         binderVal :: b {-^ value for bound variable-}}
                 -- ^ A binding that occurs in a @let@ expression
               | NLet  { binderTy  :: !b,
                         binderVal :: b }
+                -- ^ NLet is an intermediate product in the evaluator
+                -- that's used for temporarily naming locals during
+                -- reduction. It won't occur outside the evaluator.
               | Hole  { binderTy  :: !b}
+                -- ^ A hole in a term under construction in the
+                -- elaborator. If this is not filled during
+                -- elaboration, it is an error.
               | GHole { envlen :: Int,
                         localnames :: [Name],
                         binderTy  :: !b}
+                -- ^ A saved TT hole that will later be converted to a
+                -- top-level Idris metavariable applied to all
+                -- elements of its local environment.
               | Guess { binderTy  :: !b,
                         binderVal :: b }
+                -- ^ A provided value for a hole. It will later be
+                -- substituted - the guess is to keep it
+                -- computationally inert while working on other things
+                -- if necessary.
               | PVar  { binderTy  :: !b }
-                -- ^ A pattern variable
+                -- ^ A pattern variable (these are bound around terms
+                -- that make up pattern-match clauses)
               | PVTy  { binderTy  :: !b }
+                -- ^ The type of a pattern binding
   deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Data, Typeable)
 {-!
 deriving instance Binary Binder
@@ -1420,12 +1451,11 @@ nextName (SN x) = SN (nextName' x)
     nextName' (WithN i n) = WithN i (nextName n)
     nextName' (InstanceN n ns) = InstanceN (nextName n) ns
     nextName' (ParentN n ns) = ParentN (nextName n) ns
-    nextName' (CaseN n) = CaseN (nextName n)
+    nextName' (CaseN fc n) = CaseN fc (nextName n)
     nextName' (ElimN n) = ElimN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
     nextName' (InstanceCtorN n) = InstanceCtorN (nextName n)
     nextName' (MetaN parent meta) = MetaN parent (nextName meta)
-nextName NErased = NErased
 nextName (SymRef i) = error "Can't generate a name from a symbol reference"
 
 type Term = TT Name
@@ -1582,7 +1612,7 @@ pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
     pureBinder (Let t v) = pureTerm t && pureTerm v
     pureBinder t = pureTerm (binderTy t)
 
-    notClassName (MN _ c) | c == txt "class" = False
+    notClassName (MN _ c) | c == txt "__class" = False
     notClassName _ = True
 
 pureTerm _ = True
@@ -1823,9 +1853,6 @@ pprintRaw bound (RApp f x) =
 pprintRaw bound RType = text "RType"
 pprintRaw bound (RUType u) = enclose lparen rparen . group . align . hang 2 $
                              text "RUType" <$> text (show u)
-pprintRaw bound (RForce r) =
-  enclose lparen rparen . group . align . hang 2 $
-  vsep [text "RForce", pprintRaw bound r]
 pprintRaw bound (RConstant c) =
   enclose lparen rparen . group . align . hang 2 $
   vsep [text "RConstant", annotate (AnnConst c) (text (show c))]

@@ -17,6 +17,7 @@ import Prelude.Show
 import Prelude.Cast
 import Prelude.Maybe
 import Prelude.Functor
+import Prelude.Either
 import Prelude.Monad
 import IO
 
@@ -24,32 +25,57 @@ import IO
 
 ---- some basic io
 
+||| Output a string to stdout without a trailing newline, for any FFI
+||| descriptor
+putStr' : String -> IO' ffi ()
+putStr' x = do prim_write x
+               return ()
+
 ||| Output a string to stdout without a trailing newline
-putStr : String -> IO' ffi ()
-putStr x = do prim_write x
-              return ()
+putStr : String -> IO ()
+putStr = putStr'
+
+||| Output a string to stdout with a trailing newline, for any FFI
+||| descriptor
+putStrLn' : String -> IO' ffi ()
+putStrLn' x = putStr' (x ++ "\n")
 
 ||| Output a string to stdout with a trailing newline
-putStrLn : String -> IO' ffi ()
-putStrLn x = putStr (x ++ "\n")
+putStrLn : String -> IO ()
+putStrLn = putStrLn'
+
+||| Output something showable to stdout, without a trailing newline, for any FFI
+||| descriptor
+print' : Show a => a -> IO' ffi ()
+print' x = putStr' (show x)
 
 ||| Output something showable to stdout, without a trailing newline
-print : Show a => a -> IO' ffi ()
-print x = putStr (show x)
+print : Show a => a -> IO ()
+print = print'
+
+||| Output something showable to stdout, with a trailing newline, for any FFI
+||| descriptor
+printLn' : Show a => a -> IO' ffi ()
+printLn' x = putStrLn' (show x)
 
 ||| Output something showable to stdout, with a trailing newline
-printLn : Show a => a -> IO' ffi ()
-printLn x = putStrLn (show x)
+printLn : Show a => a -> IO ()
+printLn = printLn'
 
-||| Read one line of input from stdin, without the trailing newline
-getLine : IO' ffi String
-getLine = do x <- prim_read
-             return (reverse (trimNL (reverse x)))
+||| Read one line of input from stdin, without the trailing newline, for any FFI
+||| descriptor
+getLine' : IO' ffi String
+getLine' = do x <- prim_read
+              return (reverse (trimNL (reverse x)))
   where trimNL : String -> String
         trimNL str with (strM str)
           trimNL "" | StrNil = ""
           trimNL (strCons '\n' xs) | StrCons _ _ = xs
           trimNL (strCons x xs)    | StrCons _ _ = strCons x xs
+
+||| Read one line of input from stdin, without the trailing newline
+getLine : IO String
+getLine = getLine'
 
 ||| Write a single character to stdout
 putChar : Char -> IO ()
@@ -95,9 +121,10 @@ processHandle : File ->
                 (onEOF : a -> String) -> 
                 IO ()
 processHandle h acc onRead onEOF 
-   = if !(feof h)
+   = if !(fEOF h)
         then putStr (onEOF acc)
-        else do x <- fread h
+        else do Right x <- fGetLine h
+                    | Left err => putStr (onEOF acc)
                 let (out, acc') = onRead acc x
                 putStr out
                 processHandle h acc' onRead onEOF    

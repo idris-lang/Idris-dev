@@ -1,6 +1,6 @@
-***************************
+****************************************
 DEPRECATED: Tactics and Theorem Proving
-***************************
+****************************************
 
 .. warning::
    The interactive theorem-proving interface documented here has been

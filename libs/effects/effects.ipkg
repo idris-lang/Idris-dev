@@ -18,3 +18,4 @@ modules = Effects
         , Effect.Logging.Level
         , Effect.Logging.Default
         , Effect.Logging.Category
+        , Effect.Perf

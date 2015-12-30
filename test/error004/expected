@@ -1,6 +1,12 @@
-FunErrTest.idr:35:17:When checking right hand side of badCadr1:
+FunErrTest.idr:35:17:
+When checking right hand side of badCadr1 with expected type
+        Int
+
 When checking argument cons2 to function FunErrTest.cadr:
         Could not prove that [] has at least two elements.
-FunErrTest.idr:38:17:When checking right hand side of badCadr2:
+FunErrTest.idr:38:17:
+When checking right hand side of badCadr2 with expected type
+        Int
+
 When checking argument cons2 to function FunErrTest.cadr:
         Could not prove that [] has at least two elements.

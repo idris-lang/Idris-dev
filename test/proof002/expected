@@ -5,7 +5,9 @@ This style of tactic proof is deprecated. See %runElab for the replacement.
 Reflect.idr:190:15-20:
 This style of tactic proof is deprecated. See %runElab for the replacement.
 test030a.idr:12:26-14:1:
-When checking right hand side of testReflect1:
+When checking right hand side of testReflect1 with expected type
+        ys ++ x :: ys ++ xs = (xs ++ [x]) ++ ys ++ xs
+
 When checking an application of function Reflect.getJust:
         Type mismatch between
                 IsJust (Just x1) (Type of ItIsJust)

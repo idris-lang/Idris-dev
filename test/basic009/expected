@@ -1,5 +1,8 @@
 MAIN-PASS
-Faulty.idr:7:7:When checking right hand side of fault:
+Faulty.idr:7:7:
+When checking right hand side of fault with expected type
+        num = 0
+
 Type mismatch between
         0 = 0 (Type of Refl)
 and

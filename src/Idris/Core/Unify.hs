@@ -40,7 +40,7 @@ unrecoverable = any bad
 
         unrec (CantUnify r _ _ _ _ _) = not r
         unrec (At _ e) = unrec e
-        unrec (Elaborating _ _ e) = unrec e
+        unrec (Elaborating _ _ _ e) = unrec e
         unrec (ElaboratingArg _ _ _ e) = unrec e
         unrec _ = False
 

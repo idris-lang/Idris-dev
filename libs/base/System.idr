@@ -56,7 +56,7 @@ getEnvironment = getAllPairs 0 []
 exit : Int -> IO ()
 exit code = foreign FFI_C "exit" (Int -> IO ()) code
 
-||| Get the Unix time
+||| Get the numbers of sections since 1st January 1970, 00:00 UTC 
 time : IO Integer
 time = do MkRaw t <- foreign FFI_C "idris_time" (IO (Raw Integer))
           return t

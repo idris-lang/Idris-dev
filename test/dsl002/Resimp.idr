@@ -49,35 +49,35 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
   interpTy (a :-> b) = a -> interpTy b
 
   data HasType : Vect n Ty -> Fin n -> Ty -> Type where
-       stop : HasType (a :: gam) FZ a
-       pop  : HasType gam i b -> HasType (a :: gam) (FS i) b
+       Stop : HasType (a :: gam) FZ a
+       Pop  : HasType gam i b -> HasType (a :: gam) (FS i) b
 
   data Env : Vect n Ty -> Type where
        Nil : Env Nil
        (::) : interpTy a -> Env gam -> Env (a :: gam)
 
   envLookup : HasType gam i a -> Env gam -> interpTy a
-  envLookup stop    (x :: xs) = x
-  envLookup (pop k) (x :: xs) = envLookup k xs
+  envLookup Stop    (x :: xs) = x
+  envLookup (Pop k) (x :: xs) = envLookup k xs
 
   update : (gam : Vect n Ty) -> HasType gam i b -> Ty -> Vect n Ty
-  update (x :: xs) stop    y = y :: xs
-  update (x :: xs) (pop k) y = x :: update xs k y
-  update Nil       stop    _ impossible
+  update (x :: xs) Stop    y = y :: xs
+  update (x :: xs) (Pop k) y = x :: update xs k y
+  update Nil       Stop    _ impossible
 
   total
   envUpdate : (p:HasType gam i a) -> (val:interpTy b) ->
               Env gam -> Env (update gam p b)
-  envUpdate stop    val (x :: xs) = val :: xs
-  envUpdate (pop k) val (x :: xs) = x :: envUpdate k val xs
-  envUpdate stop    _   Nil impossible
+  envUpdate Stop    val (x :: xs) = val :: xs
+  envUpdate (Pop k) val (x :: xs) = x :: envUpdate k val xs
+  envUpdate Stop    _   Nil impossible
 
   total
   envUpdateVal : (p:HasType gam i a) -> (val:b) ->
               Env gam -> Env (update gam p (Val b))
-  envUpdateVal stop    val (x :: xs) = val :: xs
-  envUpdateVal (pop k) val (x :: xs) = x :: envUpdateVal k val xs
-  envUpdateVal stop    _   Nil impossible
+  envUpdateVal Stop    val (x :: xs) = val :: xs
+  envUpdateVal (Pop k) val (x :: xs) = x :: envUpdateVal k val xs
+  envUpdateVal Stop    _   Nil impossible
 
   envTail : Env (a :: gam) -> Env gam
   envTail (x :: xs) = xs
@@ -169,8 +169,8 @@ syntax run [prog] = interp [] prog (\env, res => res)
 dsl res
    variable = id
    let = let_
-   index_first = stop
-   index_next = pop
+   index_first = Stop
+   index_next = Pop
 
 syntax RES [x] = {gam:Vect n Ty} -> Res gam gam (R x)
 

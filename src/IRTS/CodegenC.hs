@@ -66,7 +66,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
            MavenProject -> putStrLn ("FAILURE: output type not supported")
            Raw -> writeSource out cout
            _ -> do
-             (tmpn, tmph) <- tempfile
+             (tmpn, tmph) <- tempfile ".c"
              hPutStr tmph cout
              hFlush tmph
              hClose tmph
@@ -78,7 +78,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
                         gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
                         ["-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS",
-                         "-I."] ++ objs ++ ["-x", "c"] ++ envFlags ++
+                         "-I."] ++ objs ++ envFlags ++
                         (if (exec == Executable) then [] else ["-c"]) ++
                         [tmpn] ++
                         (if not iface then concatMap words libFlags else []) ++
@@ -95,7 +95,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
 
 headers xs =
   concatMap
-    (\h -> "#include <" ++ h ++ ">\n")
+    (\h -> "#include \"" ++ h ++ "\"\n")
     (xs ++ ["idris_rts.h", "idris_bitstring.h", "idris_stdfgn.h"])
 
 debug TRACE = "#define IDRIS_TRACE\n\n"
@@ -444,6 +444,11 @@ doOp v (LMinus (ATInt ITBig)) [l, r] = v ++ "idris_bigMinus(vm, " ++ creg l ++ "
 doOp v (LTimes (ATInt ITBig)) [l, r] = v ++ "idris_bigTimes(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LSDiv (ATInt ITBig)) [l, r] = v ++ "idris_bigDivide(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LSRem (ATInt ITBig)) [l, r] = v ++ "idris_bigMod(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LAnd ITBig) [l, r] = v ++ "idris_bigAnd(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LOr ITBig) [l, r] = v ++ "idris_bigOr(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSHL ITBig) [l, r] = v ++ "idris_bigShiftLeft(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLSHR ITBig) [l, r] = v ++ "idris_bigLShiftRight(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LASHR ITBig) [l, r] = v ++ "idris_bigAShiftRight(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LEq (ATInt ITBig)) [l, r] = v ++ "idris_bigEq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LSLt (ATInt ITBig)) [l, r] = v ++ "idris_bigLt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LSLe (ATInt ITBig)) [l, r] = v ++ "idris_bigLe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"

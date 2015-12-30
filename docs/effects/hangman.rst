@@ -108,16 +108,15 @@ effect signature:
          Guess : (x : Char) ->
                  sig MysteryRules Bool
                      (Mystery (Running (S g) (S w)))
-                     (\inword =>
-                            Mystery (case inword of
-                                 True => (Running (S g) w)
-                                 False => (Running g (S w))))
+                     (\inword => if inword
+                                 then Mystery (Running (S g) w)
+                                 else Mystery (Running g (S w)))
          Won  : sig MysteryRules () (Mystery (Running g 0))
                                     (Mystery NotRunning)
          Lost : sig MysteryRules () (Mystery (Running 0 g))
                                     (Mystery NotRunning)
          NewWord : (w : String) -> 
-                   sig MysteryRules () h (Mystery (Running 6 (length (letters w))))
+                   sig MysteryRules () (Mystery NotRunning) (Mystery (Running 6 (length (letters w))))
          Get : sig MysteryRules String (Mystery h)
 
 This description says nothing about how the rules are implemented. In
@@ -243,11 +242,11 @@ running ``game``:
 .. code-block:: idris
 
     runGame : Eff () [MYSTERY NotRunning, RND, SYSTEM, STDIO]
-    runGame = do srand (cast !time)
-                 let w = index !(rndFin WEWEWE) words
-                 NewWord w
+    runGame = do srand !time
+                 let w = index !(rndFin _) words
+                 call $ NewWord w
                  game
-                 putStrLn !Get
+                 putStrLn !(call Get)
 
 We use the system time (``time`` from the ``SYSTEM`` effect; see
 Appendix :ref:`sect-appendix`) to initialise the random number

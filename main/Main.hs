@@ -45,6 +45,7 @@ main = do opts <- runArgParser
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do
        runIO setupBundledCC
+       when (ShowLoggingCats `elem` opts) $ runIO showLoggingCats
        when (ShowIncs `elem` opts) $ runIO showIncs
        when (ShowLibs `elem` opts) $ runIO showLibs
        when (ShowLibdir `elem` opts) $ runIO showLibdir
@@ -101,3 +102,8 @@ showIncs = do incFlags <- getIncFlags
 showPkgs :: IO b
 showPkgs = do mapM putStrLn =<< installedPackages
               exitWith ExitSuccess
+
+showLoggingCats :: IO b
+showLoggingCats = do
+    putStrLn loggingCatsStr
+    exitWith ExitSuccess

@@ -28,26 +28,26 @@
 >   )
 
 > data Set : Type -> Type where
->   setify : (as : List a) -> Set a
+>   Setify : (as : List a) -> Set a
 
 > instance (Eq a) => Eq (Set a) where
->   (==) (setify as) (setify bs) = setEq as bs
+>   (==) (Setify as) (Setify bs) = setEq as bs
 
 > postulate reflexive_Set_eqeq : (Eq a) => 
 >                                (as : Set a) -> 
 >                                So (as == as)
 
 > unwrap : Set a -> List a
-> unwrap (setify as) = as
+> unwrap (Setify as) = as
 
 > union : Set (Set a) -> Set a
-> union (setify ss) = setify (concat (map unwrap ss)) 
+> union (Setify ss) = Setify (concat (map unwrap ss)) 
 
 > listify : (Eq a) => Set a -> List a
 > listify = nub . unwrap
 
 > arePairwiseDisjoint : (Eq a) => Set (Set a) -> Bool
-> arePairwiseDisjoint (setify ss) = 
+> arePairwiseDisjoint (Setify ss) = 
 >   hasNoDuplicates (concat (map listify ss))
 
 > isPartition : (Eq a) => Set (Set a) -> Set a -> Bool

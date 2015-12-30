@@ -55,12 +55,17 @@ binderTy : Binder t -> t
 binderTy (Lam t)       = t
 binderTy (Pi t _)      = t
 binderTy (Let t1 t2)   = t1
-binderTy (NLet t1 t2)  = t1
 binderTy (Hole t)      = t
 binderTy (GHole t)     = t
 binderTy (Guess t1 t2) = t1
 binderTy (PVar t)      = t
 binderTy (PVTy t)      = t
+
+instance Show SourceLocation where
+  showPrec d (FileLoc filename line col) = showCon d "FileLoc" $ showArg filename ++ showArg line ++ showArg col
+
+instance Eq SourceLocation where
+  (FileLoc fn s e) == (FileLoc fn' s' e') = fn == fn' && s == s' && e == e'
 
 mutual
   instance Show SpecialName where
@@ -70,7 +75,7 @@ mutual
     showPrec d (InstanceN i ss) = showCon d "InstanceN" $ showArg i ++ showArg ss
     showPrec d (ParentN n s) = showCon d "ParentN" $ showArg n ++ showArg s
     showPrec d (MethodN n) = showCon d "MethodN" $ showArg n
-    showPrec d (CaseN n) = showCon d "CaseN" $ showArg n
+    showPrec d (CaseN fc n) = showCon d "CaseN" $ showArg fc ++ showArg n
     showPrec d (ElimN n) = showCon d "ElimN" $ showArg n
     showPrec d (InstanceCtorN n) = showCon d "InstanceCtorN" $ showArg n
     showPrec d (MetaN parent meta) = showCon d "MetaN" $ showArg parent ++ showArg meta
@@ -80,14 +85,12 @@ mutual
     showPrec d (NS n ns)  = showCon d "NS" $ showArg n ++ showArg ns
     showPrec d (MN i str) = showCon d "MN" $ showArg i ++ showArg str
     showPrec d (SN sn)    = showCon d "SN" $ assert_total (showArg sn)
-    showPrec d NErased    = "NErased"
 
 mutual
   instance Eq TTName where
     (UN str1)  == (UN str2)     = str1 == str2
     (NS n ns)  == (NS n' ns')   = n == n' && ns == ns'
     (MN i str) == (MN i' str')  = i == i' && str == str'
-    NErased    == NErased       = True
     (SN sn)    == (SN sn')      = assert_total $ sn == sn'
     x          == y             = False
 
@@ -97,7 +100,7 @@ mutual
     (InstanceN i ss)    == (InstanceN i' ss')    = i == i' && ss == ss'
     (ParentN n s)       == (ParentN n' s')       = n == n' && s == s'
     (MethodN n)         == (MethodN n')          = n == n'
-    (CaseN n)           == (CaseN n')            = n == n'
+    (CaseN fc n)        == (CaseN fc' n')        = fc == fc' && n == n'
     (ElimN n)           == (ElimN n')            = n == n'
     (InstanceCtorN n)   == (InstanceCtorN n')    = n == n'
     (MetaN parent meta) == (MetaN parent' meta') = parent == parent' && meta == meta'
@@ -126,7 +129,7 @@ instance Show IntTy where
 
 instance Show ArithTy where
   showPrec d (ATInt t) = showCon d "ATInt" $ showArg t
-  showPrec d ATFloat   = "ATFloat"
+  showPrec d ATDouble   = "ATDouble"
 
 instance Show Const where
   showPrec d (I i)      = showCon d "I" $ showArg i
@@ -159,7 +162,7 @@ instance Eq Reflection.IntTy where
 
 instance Eq ArithTy where
   (ATInt x) == (ATInt y) = x == y
-  ATFloat   == ATFloat   = True
+  ATDouble  == ATDouble   = True
   _         == _         = False
 
 instance Eq Const where
@@ -196,7 +199,6 @@ instance (Show a) => Show (Binder a) where
   showPrec d (Lam t) = showCon d "Lam" $ showArg t
   showPrec d (Pi t1 t2) = showCon d "Pi" $ showArg t1 ++ showArg t2
   showPrec d (Let t1 t2) = showCon d "Let" $ showArg t1 ++ showArg t2
-  showPrec d (NLet t1 t2) = showCon d "NLet" $ showArg t1 ++ showArg t2
   showPrec d (Hole t) = showCon d "Hole" $ showArg t
   showPrec d (GHole t) = showCon d "GHole" $ showArg t
   showPrec d (Guess t1 t2) = showCon d "Guess" $ showArg t1 ++ showArg t2
@@ -207,7 +209,6 @@ instance (Eq a) => Eq (Binder a) where
   (Lam t)       == (Lam t')         = t == t'
   (Pi t k)      == (Pi t' k')       = t == t' && k == k'
   (Let t1 t2)   == (Let t1' t2')    = t1 == t1' && t2 == t2'
-  (NLet t1 t2)  == (NLet t1' t2')   = t1 == t1' && t2 == t2'
   (Hole t)      == (Hole t')        = t == t'
   (GHole t)     == (GHole t')       = t == t'
   (Guess t1 t2) == (Guess t1' t2')  = t1 == t1' && t2 == t2'
@@ -223,9 +224,7 @@ instance Show TT where
           my_show d (Bind n b t) = showCon d "Bind" $ showArg n ++ showArg b ++ showArg t
           my_show d (App t1 t2) = showCon d "App" $ showArg t1 ++ showArg t2
           my_show d (TConst c) = showCon d "TConst" $ showArg c
-          my_show d (Proj tm i) = showCon d "Proj" $ showArg tm ++ showArg i
           my_show d Erased = "Erased"
-          my_show d Impossible = "Impossible"
           my_show d (TType u) = showCon d "TType" $ showArg u
 
 instance Eq TT where
@@ -236,9 +235,7 @@ instance Eq TT where
           equalp (Bind n b t) (Bind n' b' t')  = n == n' && b == b' && t == t'
           equalp (App t1 t2)  (App t1' t2')    = t1 == t1' && t2 == t2'
           equalp (TConst c)   (TConst c')      = c == c'
-          equalp (Proj tm i)  (Proj tm' i')    = tm == tm' && i == i'
           equalp Erased       Erased           = True
-          equalp Impossible   Impossible       = True
           equalp (TType u)    (TType u')       = u == u'
           equalp x            y                = False
 
@@ -260,17 +257,17 @@ forget tm = fe [] tm
         LT => Nothing
         GT => atIndex xs (n-1)
 
-    %assert_total
     fe : List TTName -> TT -> Maybe Raw
     fe env (P _ n _)     = Just $ Var n
-    fe env (V i)         = map Var (atIndex env i)
-    fe env (Bind n b sc) = [| RBind (pure n) (traverse (fe env) b) (fe (n::env) sc) |]
+    fe env (V i)         = [| Var (atIndex env i) |]
+    fe env (Bind n b sc) = [| RBind (pure n)
+                                    (assert_total $ traverse (fe env) b)
+                                    (fe (n::env) sc) |]
     fe env (App f a)     = [| RApp (fe env f) (fe env a) |]
     fe env (TConst c)    = Just $ RConstant c
-    fe env (Proj tm i)   = Nothing -- runtime only, not useful for metaprogramming
     fe env (TType i)     = Just RType
+    fe env (UType uni)   = Just (RUType uni)
     fe env Erased        = Just $ RConstant Forgot
-    fe env Impossible    = Nothing
 
 instance Show Raw where
   showPrec = my_show
@@ -279,11 +276,8 @@ instance Show Raw where
           my_show d (RBind n b tm) = showCon d "RBind" $ showArg n ++ showArg b ++ " " ++ my_show App tm
           my_show d (RApp tm tm') = showCon d "RApp" $ " " ++ my_show App tm ++ " " ++ my_show App tm'
           my_show d RType = "RType"
-          my_show d (RForce tm) = showCon d "RForce" $ " " ++ my_show App tm
           my_show d (RConstant c) = showCon d "RConstant" $ showArg c
 
-instance Show SourceLocation where
-  showPrec d (FileLoc filename line col) = showCon d "FileLoc" $ showArg filename ++ showArg line ++ showArg col
 
 instance Show Err where
   showPrec d (Msg x) = showCon d "Msg" $ showArg x
@@ -355,3 +349,9 @@ instance Show CtorArg where
 instance Show TyDecl where
   showPrec d (Declare fn args ret) = showCon d "Declare" $ showArg fn ++
                                      showArg args ++ showArg ret
+
+instance Show tm => Show (FunClause tm) where
+  showPrec d (MkFunClause lhs rhs) =
+      showCon d "MkFunClause" $ showArg lhs ++ showArg rhs
+  showPrec d (MkImpossibleClause lhs) =
+      showCon d "MkImpossibleClause" $ showArg lhs

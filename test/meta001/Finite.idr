@@ -29,7 +29,7 @@ mkFin (S k) (S j) = do i <- mkFin k j
 
 mkToClause : TTName -> (size, i : Nat) ->
              (constr : (TTName, List CtorArg, Raw)) ->
-             Elab FunClause
+             Elab (FunClause Raw)
 mkToClause fn size i (n, [], Var ty) =
   MkFunClause (RApp (Var fn) (Var n)) <$> mkFin size i
 mkToClause fn size i (n, _, ty) =
@@ -38,14 +38,14 @@ mkToClause fn size i (n, _, ty) =
 
 mkFromClause : TTName -> (size, i : Nat) ->
                (constr : (TTName, List CtorArg, Raw)) ->
-               Elab FunClause
+               Elab (FunClause Raw)
 mkFromClause fn size i (n, [], Var ty) =
   return $ MkFunClause (RApp (Var fn) !(mkFin size i)) (Var n)
 mkFromClause fn size i (n, _, ty) =
   fail [TextPart "unsupported constructor", NamePart n]
 
 
-mkOk1Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List CtorArg, Raw)) -> Elab FunClause
+mkOk1Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List CtorArg, Raw)) -> Elab (FunClause Raw)
 mkOk1Clause fn size i (n, [], Var ty) =
   return $ MkFunClause (RApp (Var fn) (Var n))
                        [| (Var (UN "Refl")) (Var ty) (Var n) |]
@@ -53,7 +53,7 @@ mkOk1Clause fn size i (n, _, ty) =
   fail [TextPart "unsupported constructor", NamePart n]
 
 
-mkOk2Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List CtorArg, Raw)) -> Elab FunClause
+mkOk2Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List CtorArg, Raw)) -> Elab (FunClause Raw)
 mkOk2Clause fn size i (n, [], Var ty) =
   return $ MkFunClause (RApp (Var fn) !(mkFin size i))
                        [| (Var "Refl") `(Fin ~(quote size))
@@ -62,9 +62,9 @@ mkOk2Clause fn size i (n, _, ty) =
   fail [TextPart "unsupported constructor", NamePart n]
 
 
-mkToClauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+mkToClauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
 mkToClauses fn size xs = mkToClauses' Z xs
-  where mkToClauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+  where mkToClauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
         mkToClauses' k []        = return []
         mkToClauses' k (x :: xs) = do rest <- mkToClauses' (S k) xs
                                       clause <- mkToClause fn size k x
@@ -76,7 +76,7 @@ mkToClauses fn size xs = mkToClauses' Z xs
 ||| This is to satisfy the totality checker, because `impossible`
 ||| clauses are still
 mkAbsurdFinClause : (fn : TTName) -> (goal : Raw -> Raw) -> (size : Nat) ->
-                    Elab FunClause
+                    Elab (FunClause Raw)
 mkAbsurdFinClause fn goal size =
   do pv <- gensym "badfin"
      lhsArg <- lhsBody pv size
@@ -92,26 +92,26 @@ mkAbsurdFinClause fn goal size =
 
 
 mkFromClauses : TTName -> TTName -> Nat ->
-                List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+                List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
 mkFromClauses fn ty size xs = mkFromClauses' Z xs
-  where mkFromClauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+  where mkFromClauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
         mkFromClauses' k []        =
              return [!(mkAbsurdFinClause fn (const (Var ty)) size)]
         mkFromClauses' k (x :: xs) = do rest <- mkFromClauses' (S k) xs
                                         clause <- mkFromClause fn size k x
                                         return $ clause :: rest
 
-mkOk1Clauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+mkOk1Clauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
 mkOk1Clauses fn size xs = mkOk1Clauses' Z xs
-  where mkOk1Clauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+  where mkOk1Clauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
         mkOk1Clauses' k []        = return []
         mkOk1Clauses' k (x :: xs) = do rest <- mkOk1Clauses' (S k) xs
                                        clause <- mkOk1Clause fn size k x
                                        return $ clause :: rest
 
-mkOk2Clauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> (Raw -> Raw) -> Elab (List FunClause)
+mkOk2Clauses : TTName -> Nat -> List (TTName, List CtorArg, Raw) -> (Raw -> Raw) -> Elab (List (FunClause Raw))
 mkOk2Clauses fn size xs resTy = mkOk2Clauses' Z xs
-  where mkOk2Clauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+  where mkOk2Clauses' : Nat -> List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
         mkOk2Clauses' k []        = return [!(mkAbsurdFinClause fn resTy size)]
         mkOk2Clauses' k (x :: xs) = do rest <- mkOk2Clauses' (S k) xs
                                        clause <- mkOk2Clause fn size k x

@@ -1,3 +1,17 @@
+New in 0.9.21:
+==============
+
+* Idris' logging infrastructure has been categorised. Command line and repl
+  are available. For command line the option `--logging-categories CATS`
+  is used to pass in the categories. Here `CATS` is a colon separated quoted
+  string containing the categories to log. The REPL command is `logcats CATS`.
+  Where `CATS` is a whitespace separated list of categoriese. Default is for
+  all categories to be logged.
+* New flag `--listlogcats` to list logging categories.`
+* Dependent pairs now can be specified using a telescope-style syntax, without
+  requirement of nesting, e.g. it is possible to now write the following:
+    (a : Type ** n : Nat ** Vect n a)
+
 New in 0.9.20:
 ==============
 
@@ -16,10 +30,11 @@ Language updates
   valid unbound implicit is now *always* an unbound implicit. This is much
   more resilient to changes in inputs, but does require that function names
   be explicitly qualified when in argument position.
-* Dependent pairs now can be specified using a telescope-style syntax, without
-  requirement of nesting, e.g. it is possible to now write the following:
-    (a : Type ** n : Nat ** Vect n a)
-
+* Name binding in patterns follows the same rule as name binding for implicits
+  in types: names which begin with lower case letters, not applied to any
+  arguments, are treated as bound pattern variables.
+* Added %deprecate directive, which gives a warning and a message when a
+  deprecated name is referenced.
 
 Library updates
 ---------------
@@ -34,6 +49,13 @@ Library updates
   programmes.
 * Elaborator reflection is now a part of the prelude. It is no longer
   necessary to import Language.Reflection.Elab.
+* The `PERF` effect allows for simple performance metrics to be collected
+  from Effectful programs.
+* Some constructors that never actually occurred have been removed from
+  the TT and Raw reflection datatypes in Language.Reflection.
+* File IO operations (for example openFile/fread/fwrite) now return
+  'Either FileError ty' where the return type was previously 'ty' to indicate
+  that they may fail.
 
 Tool updates
 ------------
@@ -41,7 +63,13 @@ Tool updates
   datatype
 * iPKG files have a new option `pkgs` which takes a comma-separated list
   of package names that the idris project depends on. This reduces bloat
-  in the `opts` option with mutliple package declarations.
+  in the `opts` option with multiple package declarations.
+* iPKG files now allow `executable = "your filename here"` in addition to
+  the existing `executable = yourFilenameHere` style. While the unquoted
+  version is limited to filenames that look like namespaced Idris identifiers
+  (`your.filename.here`), the quoted version accepts any valid filename.
+* Add definition command (\d in Vim, Ctrl-Alt-A in Atom, C-c C-s in Emacs) now
+  adds missing clauses if there is already a definition.
 
 Miscellaneous updates
 ---------------------

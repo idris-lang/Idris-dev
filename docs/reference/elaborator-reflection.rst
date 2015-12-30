@@ -74,17 +74,53 @@ We can generate identity functions at any concrete type using the same script:
 Interactively Building Elab Scripts
 ===================================
 
-To build an ``Elab`` script interactively, use the ``:elab`` command at the REPL.
-It takes the name of a hole as an argument.
-To list all available holes, use the command ``:m``.
+You can build an ``Elab`` script interactively at the REPL.
+Use the command ``:metavars``, or ``:m`` for short, to list the available holes.
+Then, issue the ``:elab <hole>`` command at the REPL
+to enter the elaboration shell.
 
-In interactive elaboration shell, the following commands are available:
--  ``:q`` - Quits the elaboration shell (gives up on proving current lemma).
--  ``:abandon`` - Same as :q
--  ``:state`` - Displays the current state of the term being constructed.
--  ``:term`` - Displays the current proof term complete with its yet-to-be-filled holes.
--  ``:undo`` - Undoes the last tactic.
--  ``:qed`` - Once the elaboration shell tells you "No more goals," you get to type this in celebration! (Completes the construction and exits the shell)
+At the shell, you can enter proof tactics to alter the proof state.
+You can view the system-provided tactics prior to entering the shell
+by issuing the REPL command ``:browse Language.Reflection.Elab.Tactics``.
+When you have discharged all goals, you can complete the proof
+using the ``:qed`` command and receive in return an elaboration script
+that fills the hole.
+
+The interactive elaboration shell accepts a limited number of commands,
+including a subset of the commands understood by the normal Idris REPL
+as well as some elaboration-specific commands.
+
+General-purpose commands:
+
+- ``:eval <EXPR>``, or ``:e <EXPR>`` for short, evaluates the provided expression
+  and prints the result.
+
+- ``:type <EXPR>``, or ``:t <EXPR>`` for short, prints the provided expression
+  together with its type.
+
+- ``:search <TYPE>`` searches for definitions having the provided type.
+
+- ``:doc <NAME>`` searches for definitions with the provided name and prints their
+  documentation.
+
+
+Commands for viewing the proof state:
+
+- ``:state`` displays the current state of the term being constructed. It lists both
+  other goals and the current goal.
+
+- ``:term`` displays the current proof term as well as its yet-to-be-filled holes.
+
+
+Commands for manipulating the proof state:
+
+- ``:undo`` undoes the effects of the last tactic.
+
+- ``:abandon`` gives up on proving the current lemma and quits the elaboration shell.
+
+- ``:qed`` finishes the script and exits the elaboration shell. The shell will only accept
+  this command once it reports, "No more goals." On exit, it will print out the finished
+  elaboration script for you to copy into your program.
 
 
 Failure
@@ -127,7 +163,7 @@ If the goal type turns out to have been the unit type, we fill using the unit co
 Otherwise, we fail with an error message informing the user that the current goal is not trivial.
 
 Additionally, the elaboration state can be dumped into an error message with the ``debug`` tactic.
-A variant, ``debugMessage``, allows arbitrary messages to be included with the state, allowing for a kind of "``printf`` debuggging" of elaboration scripts.
+A variant, ``debugMessage``, allows arbitrary messages to be included with the state, allowing for a kind of "``printf`` debugging" of elaboration scripts.
 The message format used by ``debugMessage`` is the same for errors produced by the error reflection mechanism, allowing the re-use of the Idris pretty-printer when rendering messages.
 
 Changing the Global Context

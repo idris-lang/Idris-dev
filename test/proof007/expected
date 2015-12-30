@@ -1,4 +1,6 @@
 DefaultArgUnknownName.idr:9:6:
-When checking right hand side of test:
+When checking right hand side of test with expected type
+        ()
+
 When checking argument arg to function DefaultArgUnknownName.funWithBadDefArg:
         No such variable sadgjhsag

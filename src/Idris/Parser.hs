@@ -153,7 +153,7 @@ import_ = do fc <- getFC
 prog :: SyntaxInfo -> IdrisParser [PDecl]
 prog syn = do whiteSpace
               decls <- many (decl syn)
-              let c = (concat decls)
+              let c = concat decls
               case maxline syn of
                    Nothing -> do notOpenBraces; eof
                    _ -> return ()
@@ -189,19 +189,29 @@ decl syn = try (externalDecl syn)
            <?> "declaration"
 
 internalDecl :: SyntaxInfo -> IdrisParser [PDecl]
-internalDecl syn 
+internalDecl syn
          = do fc <- getFC
-              -- if we're after maxline, stop here
+              -- if we're after maxline, stop at the next type declaration
+              -- (so we get all cases of a definition to preserve totality
+              -- results, in particular).
               let continue = case maxline syn of
                                 Nothing -> True
                                 Just l -> if fst (fc_end fc) > l
                                              then mut_nesting syn /= 0
                                              else True
-              if continue then do notEndBlock
-                                  declBody
-                          else fail "End of readable input"
-  where declBody :: IdrisParser [PDecl]
-        declBody =     declBody'
+              -- What I'd really like to do here is explicitly save the
+              -- current state, then if reading ahead finds we've passed
+              -- the end of the definition, reset the state. But I've lost
+              -- patience with trying to find out how to do that from the
+              -- trifecta docs, so this does the job instead.
+              if continue then
+                 do notEndBlock
+                    declBody continue
+                else try (do notEndBlock
+                             declBody continue)
+                     <|> fail "End of readable input"
+  where declBody :: Bool -> IdrisParser [PDecl]
+        declBody b = declBody' b
                    <|> using_ syn
                    <|> params syn
                    <|> mutual syn
@@ -214,11 +224,17 @@ internalDecl syn
                    <|> transform syn
                    <|> do import_; fail "imports must be at top of file"
                    <?> "declaration"
-        declBody' :: IdrisParser [PDecl]
-        declBody' = do d <- decl' syn
-                       i <- get
-                       let d' = fmap (debindApp syn . (desugar syn i)) d
-                       return [d']
+        declBody' :: Bool -> IdrisParser [PDecl]
+        declBody' cont = do d <- decl' syn
+                            i <- get
+                            let d' = fmap (debindApp syn . (desugar syn i)) d
+                            if continue cont d'
+                               then return [d']
+                               else fail "End of readable input"
+
+        -- Keep going while we're still parsing clauses
+        continue False (PClauses _ _ _ _) = True
+        continue c _ = c
 
 {- | Parses a top-level declaration with possible syntax sugar
 
@@ -267,7 +283,7 @@ declExtensions syn rules = declExtension syn [] (filter isDeclRule rules)
      isDeclRule (DeclRule _ _) = True
      isDeclRule _ = False
 
-declExtension :: SyntaxInfo -> [Maybe (Name, SynMatch)] -> [Syntax] 
+declExtension :: SyntaxInfo -> [Maybe (Name, SynMatch)] -> [Syntax]
                  -> IdrisParser [PDecl]
 declExtension syn ns rules =
   choice $ flip map (groupBy (ruleGroup `on` syntaxSymbols) rules) $ \rs ->
@@ -302,7 +318,7 @@ declExtension syn ns rules =
     updateNs :: [(Name, SynMatch)] -> PDecl -> PDecl
     updateNs ns (PTy doc argdoc s fc o n fc' t)
           = PTy doc argdoc s fc o (updateB ns n) fc' t
-    updateNs ns (PClauses fc o n cs) 
+    updateNs ns (PClauses fc o n cs)
          = PClauses fc o (updateB ns n) (map (updateClause ns) cs)
     updateNs ns (PCAF fc n t) = PCAF fc (updateB ns n) t
     updateNs ns (PData ds cds s fc o dat)
@@ -322,10 +338,10 @@ declExtension syn ns rules =
                   cdocs
     updateNs ns (PInstance docs pdocs s fc cs cn fc' ps ity ni ds)
          = PInstance docs pdocs s fc cs (updateB ns cn) fc'
-                     ps ity (fmap (updateB ns) ni) 
+                     ps ity (fmap (updateB ns) ni)
                             (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
-    updateNs ns (PProvider docs s fc fc' pw n) 
+    updateNs ns (PProvider docs s fc fc' pw n)
         = PProvider docs s fc fc' pw (updateB ns n)
     updateNs ns d = d
 
@@ -466,7 +482,7 @@ syntaxRule syn
        where ts = dropWhile isSpace . dropWhileEnd isSpace $ s
     mkSimple' (e : es) = e : mkSimple' es
     mkSimple' [] = []
-    
+
     -- Prevent syntax variable capture by making all binders under syntax unique
     -- (the ol' Common Lisp GENSYM approach)
     uniquifyBinders :: [Name] -> PTerm -> IdrisParser PTerm
@@ -1307,6 +1323,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     return [PDirective (DErrorHandlers fn nfc arg afc ns) ]
              <|> do try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (DLanguage ext)]
+             <|> do try (lchar '%' *> reserved "deprecate")
+                    n <- fst <$> fnName
+                    alt <- option "" (fst <$> stringLiteral)
+                    return [PDirective (DDeprecate n alt)]
              <|> do fc <- getFC
                     try (lchar '%' *> reserved "used")
                     fn <- fst <$> fnName
@@ -1532,7 +1552,7 @@ loadModule' f
         ids <- allImportDirs
         fp <- findImport ids ibcsd file
         if file `elem` imported i
-          then do logLvl 1 $ "Already read " ++ file
+          then do logParser 1 $ "Already read " ++ file
                   return Nothing
           else do putIState (i { imported = file : imported i })
                   case fp of
@@ -1540,7 +1560,7 @@ loadModule' f
                     LIDR fn -> loadSource True  fn Nothing
                     IBC fn src ->
                       idrisCatch (loadIBC True fn)
-                                 (\c -> do logLvl 1 $ fn ++ " failed " ++ pshow i c
+                                 (\c -> do logParser 1 $ fn ++ " failed " ++ pshow i c
                                            case src of
                                              IDR sfn -> loadSource False sfn Nothing
                                              LIDR sfn -> loadSource True sfn Nothing)
@@ -1549,7 +1569,7 @@ loadModule' f
 {- | Load idris code from file -}
 loadFromIFile :: Bool -> IFileType -> Maybe Int -> Idris ()
 loadFromIFile reexp i@(IBC fn src) maxline
-   = do logLvl 1 $ "Skipping " ++ getSrcFile i
+   = do logParser 1 $ "Skipping " ++ getSrcFile i
         idrisCatch (loadIBC reexp fn)
                 (\err -> ierror $ LoadingFailed fn err)
   where
@@ -1573,7 +1593,7 @@ loadSource' lidr r maxline
 {- | Load Idris source code-}
 loadSource :: Bool -> FilePath -> Maybe Int -> Idris ()
 loadSource lidr f toline
-             = do logLvl 1 ("Reading " ++ f)
+             = do logParser 1 ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
                   file_in <- runIO $ readSource f
@@ -1617,7 +1637,7 @@ loadSource lidr f toline
                                    ]
                       histogram = groupBy ((==) `on` fst) . sortBy (comparing fst) $ aliasNames
                   case map head . filter ((/= 1) . length) $ histogram of
-                    []       -> logLvl 3 $ "Module aliases: " ++ show (M.toList modAliases)
+                    []       -> logParser 3 $ "Module aliases: " ++ show (M.toList modAliases)
                     (n,fc):_ -> throwError . At fc . Msg $ "import alias not unique: " ++ show n
 
                   i <- getIState
@@ -1656,7 +1676,7 @@ loadSource lidr f toline
                   -- Parsing done, now process declarations
 
                   let ds = namespaces mname ds'
-                  logLvl 3 (show $ showDecls verbosePPOption ds)
+                  logParser 3 (show $ showDecls verbosePPOption ds)
                   i <- getIState
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))

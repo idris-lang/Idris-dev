@@ -1,2 +1,5 @@
-NoInfer.idr:11:5:When checking right hand side of zzz:
+NoInfer.idr:11:5:
+When checking right hand side of zzz with expected type
+        TT
+
 No such variable k

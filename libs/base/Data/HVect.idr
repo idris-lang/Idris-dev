@@ -73,17 +73,17 @@ instance (Shows k ts) => Show (HVect ts) where
 
 ||| Extract an arbitrary element of the correct type.
 ||| @ t the goal type
-get : {auto p : Elem t ts} -> HVect ts -> t
-get {p = Here} (x::xs) = x
-get {p = There p'} (x::xs) = get {p = p'} xs
+get : HVect ts -> {auto p : Elem t ts} -> t
+get (x :: xs) {p = Here} = x
+get (x :: xs) {p = There p'} = get {p = p'} xs
 
 ||| Replace an element with the correct type.
-put : {auto p : Elem t ts} -> t -> HVect ts -> HVect ts
-put {p = Here} y (x::xs) = y :: xs
-put {p = There p'} y (x::xs) = x :: put {p = p'} y xs
+put : t -> HVect ts -> {auto p : Elem t ts} -> HVect ts
+put y (x::xs) {p = Here} = y :: xs
+put y (x::xs) {p = There p'} = x :: put {p = p'} y xs
 
 ||| Update an element with the correct type.
-update : {auto p : Elem t ts} -> (t -> u) -> HVect ts -> HVect (replaceByElem ts p u)
-update {p = Here} f (x::xs) = f x :: xs
-update {p = There p'} f (x::xs) = x :: update {p = p'} f xs
+update : (t -> u) -> HVect ts -> {auto p : Elem t ts} -> HVect (replaceByElem ts p u)
+update f (x::xs) {p = Here} = f x :: xs
+update f (x::xs) {p = There p'} = x :: update {p = p'} f xs
 

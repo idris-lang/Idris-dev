@@ -34,10 +34,10 @@ import Debug.Trace
 caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
 caseSplitAt fn updatefile l n
    = do src <- runIO $ readSource fn
-        res <- splitOnLine l n fn
+        (ok, res) <- splitOnLine l n fn
         logLvl 1 (showSep "\n" (map show res))
         let (before, (ap : later)) = splitAt (l-1) (lines src)
-        res' <- replaceSplits ap res
+        res' <- replaceSplits ap res (not ok)
         let new = concat res'
         if updatefile
           then do let fb = fn ++ "~" -- make a backup!
@@ -47,11 +47,20 @@ caseSplitAt fn updatefile l n
             iPrintResult new
 
 addClauseFrom :: FilePath -> Bool -> Int -> Name -> Idris ()
-addClauseFrom fn updatefile l n
-   = do src <- runIO $ readSource fn
+addClauseFrom fn updatefile l n = do
+    -- if a definition already exists, add missing cases rather than
+    -- adding a new definition.
+    ist <- getIState
+    cl <- getInternalApp fn l
+    let fulln = getAppName cl
+
+    case lookup fulln (idris_metavars ist) of
+      Nothing -> addMissing fn updatefile l n
+      Just _ -> do
+        src <- runIO $ readSource fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
-        cl <- getClause l n fn
+        cl <- getClause l fulln n fn
         -- add clause before first blank line in 'later'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
@@ -62,11 +71,16 @@ addClauseFrom fn updatefile l n
                                         unlines rest)
                   runIO $ copyFile fb fn
           else iPrintResult cl
-    where
-       getIndent i n [] = 0
-       getIndent i n xs | take 9 xs == "instance " = i
-       getIndent i n xs | take (length n) xs == n = i
-       getIndent i n (x : xs) = getIndent (i + 1) n xs
+  where
+    getIndent i n [] = 0
+    getIndent i n xs | take 9 xs == "instance " = i
+    getIndent i n xs | take (length n) xs == n = i
+    getIndent i n (x : xs) = getIndent (i + 1) n xs
+          
+    getAppName (PApp _ r _) = getAppName r
+    getAppName (PRef _ _ r) = r
+    getAppName (PTyped n _) = getAppName n
+    getAppName _ = n
 
 addProofClauseFrom :: FilePath -> Bool -> Int -> Name -> Idris ()
 addProofClauseFrom fn updatefile l n
@@ -98,16 +112,17 @@ addMissing fn updatefile l n
         cl <- getInternalApp fn l
         let n' = getAppName cl
 
-        extras <- case lookupCtxt n' (idris_patdefs i) of
-                       [] -> return ""
-                       [(_, tms)] -> do tms' <- nameMissing tms
-                                        showNew (show n ++ "_rhs") 1 indent tms'
-                       other -> return "" -- happens if called on a metavar, or with no clauses
+        extras <- case lookupCtxtExact n' (idris_patdefs i) of
+                       Nothing -> return ""
+                       Just (_, tms) -> do tms' <- nameMissing tms
+                                           showNew (show n ++ "_rhs") 1 indent tms'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
         if updatefile
           then do let fb = fn ++ "~"
                   runIO $ writeSource fb (unlines (before ++ nonblank)
-                                        ++ extras ++ unlines rest)
+                                        ++ extras ++ 
+                                           (if null extras then ""
+                                                    else "\n" ++ unlines rest))
                   runIO $ copyFile fb fn
           else iPrintResult extras
     where showPat = show . stripNS
@@ -121,6 +136,7 @@ addMissing fn updatefile l n
 
           getAppName (PApp _ r _) = getAppName r
           getAppName (PRef _ _ r) = r
+          getAppName (PTyped n _) = getAppName n
           getAppName _ = n
 
           makeIndent ind | ".lidr" `isSuffixOf` fn = '>' : ' ' : replicate (ind-2) ' '
@@ -131,7 +147,8 @@ addMissing fn updatefile l n
                              rest <- showNew nm i' ind tms
                              return (makeIndent ind ++
                                      showPat tm ++ " = ?" ++ nm' ++
-                                     "\n" ++ rest)
+                                     (if null rest then "" else
+                                         "\n" ++ rest))
           showNew nm i _ [] = return ""
 
           getIndent i n [] = 0

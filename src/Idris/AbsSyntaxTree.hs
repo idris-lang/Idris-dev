@@ -68,34 +68,36 @@ toplevel = EInfo [] emptyContext id Nothing Nothing (\_ _ _ -> fail "Not impleme
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
 
-data IOption = IOption { opt_logLevel     :: Int,
-                         opt_typecase     :: Bool,
-                         opt_typeintype   :: Bool,
-                         opt_coverage     :: Bool,
-                         opt_showimp      :: Bool, -- ^^ show implicits
-                         opt_errContext   :: Bool,
-                         opt_repl         :: Bool,
-                         opt_verbose      :: Bool,
-                         opt_nobanner     :: Bool,
-                         opt_quiet        :: Bool,
-                         opt_codegen      :: Codegen,
-                         opt_outputTy     :: OutputType,
-                         opt_ibcsubdir    :: FilePath,
-                         opt_importdirs   :: [FilePath],
-                         opt_triple       :: String,
-                         opt_cpu          :: String,
-                         opt_cmdline      :: [Opt], -- remember whole command line
-                         opt_origerr      :: Bool,
-                         opt_autoSolve    :: Bool, -- ^ automatically apply "solve" tactic in prover
-                         opt_autoImport   :: [FilePath], -- ^ e.g. Builtins+Prelude
-                         opt_optimise     :: [Optimisation],
-                         opt_printdepth   :: Maybe Int,
-                         opt_evaltypes    :: Bool, -- ^ normalise types in :t
-                         opt_desugarnats  :: Bool
-       }
-    deriving (Show, Eq)
+data IOption = IOption {
+    opt_logLevel     :: Int
+  , opt_logcats      :: [LogCat]      -- ^ List of logging categories.
+  , opt_typecase     :: Bool
+  , opt_typeintype   :: Bool
+  , opt_coverage     :: Bool
+  , opt_showimp      :: Bool          -- ^ show implicits
+  , opt_errContext   :: Bool
+  , opt_repl         :: Bool
+  , opt_verbose      :: Bool
+  , opt_nobanner     :: Bool
+  , opt_quiet        :: Bool
+  , opt_codegen      :: Codegen
+  , opt_outputTy     :: OutputType
+  , opt_ibcsubdir    :: FilePath
+  , opt_importdirs   :: [FilePath]
+  , opt_triple       :: String
+  , opt_cpu          :: String
+  , opt_cmdline      :: [Opt]          -- remember whole command line
+  , opt_origerr      :: Bool
+  , opt_autoSolve    :: Bool           -- ^ automatically apply "solve" tactic in prover
+  , opt_autoImport   :: [FilePath]     -- ^ e.g. Builtins+Prelude
+  , opt_optimise     :: [Optimisation]
+  , opt_printdepth   :: Maybe Int
+  , opt_evaltypes    :: Bool           -- ^ normalise types in :t
+  , opt_desugarnats  :: Bool
+  } deriving (Show, Eq)
 
 defaultOpts = IOption { opt_logLevel   = 0
+                      , opt_logcats    = []
                       , opt_typecase   = False
                       , opt_typeintype = False
                       , opt_coverage   = True
@@ -135,7 +137,7 @@ defaultOptimise = [PETransform]
 
 -- | Pretty printing options with default verbosity.
 defaultPPOption :: PPOption
-defaultPPOption = PPOption { ppopt_impl = False, 
+defaultPPOption = PPOption { ppopt_impl = False,
                              ppopt_desugarnats = False,
                              ppopt_pinames = False,
                              ppopt_depth = Just 200 }
@@ -188,7 +190,7 @@ data IState = IState {
     idris_optimisation :: Ctxt OptInfo,
     idris_datatypes :: Ctxt TypeInfo,
     idris_namehints :: Ctxt [Name],
-    idris_patdefs :: Ctxt ([([Name], Term, Term)], [PTerm]), -- not exported
+    idris_patdefs :: Ctxt ([([(Name, Term)], Term, Term)], [PTerm]), -- not exported
       -- ^ list of lhs/rhs, and a list of missing clauses
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
@@ -259,7 +261,8 @@ data IState = IState {
     idris_symbols :: M.Map Name Name, -- ^ Symbol table (preserves sharing of names)
     idris_exports :: [Name], -- ^ Functions with ExportList
     idris_highlightedRegions :: [(FC, OutputAnnotation)], -- ^ Highlighting information to output
-    idris_parserHighlights :: [(FC, OutputAnnotation)] -- ^ Highlighting information from the parser
+    idris_parserHighlights :: [(FC, OutputAnnotation)], -- ^ Highlighting information from the parser
+    idris_deprecated :: Ctxt String -- ^ Deprecated names and explanation
    }
 
 -- Required for parsers library, and therefore trifecta
@@ -335,6 +338,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCUsage (Name, Int)
               | IBCExport Name
               | IBCAutoHint Name Name
+              | IBCDeprecate Name String
   deriving Show
 
 -- | The initial state for the compiler
@@ -349,6 +353,7 @@ idrisInit = IState initContext S.empty []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
+                   emptyContext
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -403,6 +408,7 @@ data Command = Quit
              | Proofs
              | Universes
              | LogLvl Int
+             | LogCategory [LogCat]
              | Spec PTerm
              | WHNF PTerm
              | TestInline PTerm
@@ -448,6 +454,44 @@ data Command = Quit
 
 data OutputFmt = HTMLOutput | LaTeXOutput
 
+-- | Recognised logging categories for the Idris compiler.
+--
+-- @TODO add in sub categories.
+data LogCat = IParse
+            | IElab
+            | ICodeGen
+            | IErasure
+            | ICoverage
+            | IIBC
+            deriving (Show, Eq, Ord)
+
+strLogCat :: LogCat -> String
+strLogCat IParse    = "parser"
+strLogCat IElab     = "elab"
+strLogCat ICodeGen  = "codegen"
+strLogCat IErasure  = "erasure"
+strLogCat ICoverage = "coverage"
+strLogCat IIBC      = "ibc"
+
+codegenCats :: [LogCat]
+codegenCats =  [ICodeGen]
+
+parserCats :: [LogCat]
+parserCats = [IParse]
+
+elabCats :: [LogCat]
+elabCats = [IElab]
+
+loggingCatsStr :: String
+loggingCatsStr = unlines
+    [ (strLogCat IParse)
+    , (strLogCat IElab)
+    , (strLogCat ICodeGen)
+    , (strLogCat IErasure)
+    , (strLogCat ICoverage)
+    , (strLogCat IIBC)
+    ]
+
 data Opt = Filename String
          | Quiet
          | NoBanner
@@ -458,11 +502,13 @@ data Opt = Filename String
          | ShowLibdir
          | ShowIncs
          | ShowPkgs
+         | ShowLoggingCats
          | NoBasePkgs
          | NoPrelude
          | NoBuiltins -- only for the really primitive stuff!
          | NoREPL
          | OLogging Int
+         | OLogCats [LogCat]
          | Output String
          | Interface
          | TypeCase
@@ -584,9 +630,9 @@ is_scoped :: Plicity -> Maybe ImplicitInfo
 is_scoped (Imp _ _ _ s) = s
 is_scoped _ = Nothing
 
-impl = Imp [] Dynamic False Nothing
-forall_imp = Imp [] Dynamic False (Just (Impl False))
-forall_constraint = Imp [] Dynamic False (Just (Impl True))
+impl = Imp [] Dynamic False (Just (Impl False True))
+forall_imp = Imp [] Dynamic False (Just (Impl False False))
+forall_constraint = Imp [] Dynamic False (Just (Impl True False))
 expl = Exp [] Dynamic False
 expl_param = Exp [] Dynamic True
 constraint = Constraint [] Static
@@ -708,12 +754,13 @@ data Directive = DLib Codegen String |
                  DNameHint Name FC [(Name, FC)] |
                  DErrorHandlers Name FC Name FC [(Name, FC)] |
                  DLanguage LanguageExt |
+                 DDeprecate Name String |
                  DUsed FC Name Name
 
 -- | A set of instructions for things that need to happen in IState
 -- after a term elaboration when there's been reflected elaboration.
 data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
-                       | RClausesInstrs Name [([Name], Term, Term)]
+                       | RClausesInstrs Name [([(Name, Term)], Term, Term)]
                        | RAddInstance Name Name
 
 -- | For elaborator state
@@ -763,7 +810,7 @@ data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
                | PLaterdecl { d_name :: Name, d_name_fc :: FC, d_tcon :: t }
                  -- ^ "Placeholder" for data whose constructors are defined later
     deriving Functor
-    
+
 -- | Transform the FCs in a PData and its associated terms. The first
 -- function transforms the general-purpose FCs, and the second transforms
 -- those that are used for semantic source highlighting, so they can be
@@ -1084,7 +1131,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
                 | Exact t | Compute | Trivial | TCInstance
-                | ProofSearch Bool Bool Int (Maybe Name) 
+                | ProofSearch Bool Bool Int (Maybe Name)
                               [Name] -- allowed local names
                               [Name] -- hints
                   -- ^ the bool is whether to search recursively
@@ -1175,7 +1222,7 @@ type PDo = PDo' PTerm
 data PArg' t = PImp { priority :: Int,
                       machine_inf :: Bool, -- true if the machine inferred it
                       argopts :: [ArgOpt],
-                      pname :: Name, 
+                      pname :: Name,
                       getTm :: t }
              | PExp { priority :: Int,
                       argopts :: [ArgOpt],
@@ -1901,7 +1948,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       bracket p funcAppPrec . group . align . hang 2 $
       text "%runElab" <$>
       prettySe (decD d) funcAppPrec bnd tm
-    prettySe d p bnd (PConstSugar fc tm) = prettySe d p bnd tm -- should never occur, but harmless 
+    prettySe d p bnd (PConstSugar fc tm) = prettySe d p bnd tm -- should never occur, but harmless
 
     prettySe d p bnd _ = text "missing pretty-printer for term"
 
@@ -2153,7 +2200,7 @@ showTm ist = displayDecorated (consoleDecorate ist) .
 showTmImpls :: PTerm -> String
 showTmImpls = flip (displayS . renderCompact . prettyImp verbosePPOption) ""
 
--- | Show a term with specific options 
+-- | Show a term with specific options
 showTmOpts :: PPOption -> PTerm -> String
 showTmOpts opt = flip (displayS . renderPretty 1.0 10000000 . prettyImp opt) ""
 
@@ -2269,7 +2316,7 @@ boundNamesIn tm = S.toList (ni 0 S.empty tm)
 
 -- Return names which are valid implicits in the given term (type).
 implicitNamesIn :: [Name] -> IState -> PTerm -> [Name]
-implicitNamesIn uvars ist tm 
+implicitNamesIn uvars ist tm
       = let (imps, fns) = execState (ni 0 [] tm) ([], []) in
             nub imps \\ nub fns
   where
@@ -2298,15 +2345,15 @@ implicitNamesIn uvars ist tm
     ni 0 env (PRef _ _ n)
         | not (n `elem` env) && implicitable n || n `elem` uvars = addImp n
     ni 0 env (PApp _ f@(PRef _ _ n) as)
-        | n `elem` uvars = do ni 0 env f 
+        | n `elem` uvars = do ni 0 env f
                               mapM_ (ni 0 env) (map getTm as)
         | otherwise = do case lookupTy n (tt_ctxt ist) of
                               [] -> return ()
                               _ -> addFn n
                          mapM_ (ni 0 env) (map getTm as)
-    ni 0 env (PApp _ f as) = do ni 0 env f 
+    ni 0 env (PApp _ f as) = do ni 0 env f
                                 mapM_ (ni 0 env) (map getTm as)
-    ni 0 env (PAppBind _ f as) = do ni 0 env f 
+    ni 0 env (PAppBind _ f as) = do ni 0 env f
                                     mapM_ (ni 0 env) (map getTm as)
     ni 0 env (PCase _ c os)  = do ni 0 env c
     -- names in 'os', not counting the names bound in the cases
@@ -2323,7 +2370,7 @@ implicitNamesIn uvars ist tm
     ni 0 env (PTyped l r)    = do ni 0 env l; ni 0 env r
     ni 0 env (PPair _ _ _ l r)   = do ni 0 env l; ni 0 env r
     ni 0 env (PDPair _ _ _ (PRef _ _ n) t r) = do ni 0 env t; ni 0 (n:env) r
-    ni 0 env (PDPair _ _ _ l t r) = do ni 0 env l 
+    ni 0 env (PDPair _ _ _ l t r) = do ni 0 env l
                                        ni 0 env t
                                        ni 0 env r
     ni 0 env (PAlternative ns a as) = mapM_ (ni 0 env) as

@@ -3,8 +3,11 @@ package pruviloj
 opts    = "--nobasepkgs -i ../prelude -i ../base"
 modules = Pruviloj
         , Pruviloj.Core
+        , Pruviloj.Derive.DecEq
         , Pruviloj.Derive.Eliminators
+        , Pruviloj.Disjoint
         , Pruviloj.Induction
+        , Pruviloj.Injective
         , Pruviloj.Internals
         , Pruviloj.Internals.TyConInfo
         , Pruviloj.Renamers

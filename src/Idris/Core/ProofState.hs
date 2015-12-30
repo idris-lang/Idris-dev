@@ -91,6 +91,7 @@ data Tactic = Attack
             | MatchProblems Bool
             | UnifyProblems
             | UnifyGoal Raw
+            | UnifyTerms Raw Raw
             | ProofState
             | Undo
             | QED
@@ -408,6 +409,8 @@ instanceArg n ctxt env (Bind x (Hole t) sc)
                             ps { holes = (hs \\ [x]) ++ [x],
                                  instances = x:is })
          return (Bind x (Hole t) sc)
+instanceArg n ctxt env _
+    = fail "The current focus is not a hole."
 
 autoArg :: Name -> RunTactic
 autoArg n ctxt env (Bind x (Hole t) sc)
@@ -418,6 +421,8 @@ autoArg n ctxt env (Bind x (Hole t) sc)
                                     autos = (x, (while_elaborating ps, refsIn t)) : autos ps }
                              Just _ -> ps)
          return (Bind x (Hole t) sc)
+autoArg n ctxt env _
+    = fail "The current focus not a hole."
 
 setinj :: Name -> RunTactic
 setinj n ctxt env (Bind x b sc)
@@ -439,6 +444,7 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     mkTy ((n,b) : bs) t = Bind n (Pi Nothing (binderTy b) (TType (UVar 0))) (mkTy bs t)
 
     getP (n, b) = P Bound n (binderTy b)
+defer dropped n ctxt env _ = fail "Can't defer a non-hole focus."
 
 -- as defer, but build the type and application explicitly
 deferType :: Name -> Raw -> [Name] -> RunTactic
@@ -454,6 +460,7 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     getP n = case lookup n env of
                   Just b -> P Bound n (binderTy b)
                   Nothing -> error ("deferType can't find " ++ show n)
+deferType _ _ _ _ _ _ = fail "Can't defer a non-hole focus."
 
 regret :: RunTactic
 regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
@@ -462,11 +469,20 @@ regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
        return sc
 regret ctxt env (Bind x (Hole t) _)
     = fail $ show x ++ " : " ++ show t ++ " is not solved..."
+regret _ _ _ = fail "The current focus is not a hole."
 
 unifyGoal :: Raw -> RunTactic
 unifyGoal tm ctxt env h@(Bind x b sc) =
     do (tmv, _) <- lift $ check ctxt env tm
        ns' <- unify' ctxt env (binderTy b, Nothing) (tmv, Nothing)
+       return h
+unifyGoal _ _ _ _ = fail "The focus is not a binder."
+
+unifyTerms :: Raw -> Raw -> RunTactic
+unifyTerms tm1 tm2 ctxt env h =
+    do (tm1v, _) <- lift $ check ctxt env tm1
+       (tm2v, _) <- lift $ check ctxt env tm2
+       ns' <- unify' ctxt env (tm1v, Nothing) (tm2v, Nothing)
        return h
 
 exact :: Raw -> RunTactic
@@ -714,7 +730,7 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
   let tmt' = normalise ctxt env tmt
   let (tacn, tacstr, tactt) = if induction
               then (ElimN, "eliminator", "Induction")
-              else (CaseN, "case analysis", "Case analysis")
+              else (CaseN (FC' emptyFC), "case analysis", "Case analysis")
   case unApply tmt' of
     (P _ tnm _, tyargs) -> do
         case lookupTy (SN (tacn tnm)) ctxt of
@@ -870,7 +886,7 @@ updateProv ns p = p
 
 updateError [] err = err
 updateError ns (At f e) = At f (updateError ns e)
-updateError ns (Elaborating s n e) = Elaborating s n (updateError ns e)
+updateError ns (Elaborating s n ty e) = Elaborating s n ty (updateError ns e)
 updateError ns (ElaboratingArg f a env e)
  = ElaboratingArg f a env (updateError ns e)
 updateError ns (CantUnify b (l,lp) (r,rp) e xs sc)
@@ -1105,3 +1121,5 @@ process t h = tactic (Just h) (mktac t)
          mktac (SetInjective n)  = setinj n
          mktac (MoveLast n)      = movelast n
          mktac (UnifyGoal r)     = unifyGoal r
+         mktac (UnifyTerms x y)  = unifyTerms x y
+

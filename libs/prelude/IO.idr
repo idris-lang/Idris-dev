@@ -8,7 +8,7 @@ import Prelude.List
 ||| Idris's primitive IO, for building abstractions on top of
 abstract
 data PrimIO : Type -> Type where
-     prim__IO : a -> PrimIO a
+     Prim__IO : a -> PrimIO a
 
 ||| A token representing the world, for use in `IO`
 abstract data World = TheWorld prim__WorldType
@@ -93,14 +93,14 @@ foreign ffi fname ty {fty} = foreign_prim ffi fname fty []
 
 abstract
 prim_io_bind : PrimIO a -> (a -> PrimIO b) -> PrimIO b
-prim_io_bind (prim__IO v) k = k v
+prim_io_bind (Prim__IO v) k = k v
 
 unsafePerformPrimIO : PrimIO a -> a
 -- compiled as primitive
 
 abstract
 prim_io_return : a -> PrimIO a
-prim_io_return x = prim__IO x
+prim_io_return x = Prim__IO x
 
 abstract
 io_bind : IO' l a -> (a -> IO' l b) -> IO' l b
@@ -116,11 +116,11 @@ io_return x = MkIO (\w => prim_io_return x)
 liftPrimIO : (World -> PrimIO a) -> IO' l a
 liftPrimIO = MkIO
 
-call__IO : IO' l a -> PrimIO a
+call__IO : IO' ffi a -> PrimIO a
 call__IO (MkIO f) = f (TheWorld prim__TheWorld)
 
 -- Concrete type makes it easier to elaborate at top level
-run__IO : IO' l () -> PrimIO ()
+run__IO : IO' ffi () -> PrimIO ()
 run__IO f = call__IO f
 
 unsafePerformIO : IO' ffi a -> a
@@ -162,7 +162,7 @@ namespace FFI_C
   ||| Supported C foreign types
   data C_Types : Type -> Type where
        C_Str   : C_Types String
-       C_Float : C_Types Float
+       C_Float : C_Types Double
        C_Ptr   : C_Types Ptr
        C_MPtr  : C_Types ManagedPtr
        C_Unit  : C_Types ()
@@ -171,10 +171,14 @@ namespace FFI_C
 
   ||| A descriptor for the C FFI. See the constructors of `C_Types`
   ||| and `C_IntTypes` for the concrete types that are available.
+  %error_reverse
   FFI_C : FFI
   FFI_C = MkFFI C_Types String String
 
-IO : Type -> Type
+||| Interactive programs, describing I/O actions and returning a value.
+||| @res The result type of the program 
+%error_reverse
+IO : (res : Type) -> Type
 IO = IO' FFI_C
 
 -- Cannot be relaxed as is used by type providers and they expect IO a
@@ -195,6 +199,9 @@ namespace IO
   forceGC : IO ()
   forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
 
+  getErrno : IO Int
+  getErrno = foreign FFI_C "idris_errno" (IO Int)
+
 --------- The Javascript/Node FFI
 
 
@@ -214,7 +221,7 @@ mutual
 
   data JS_Types : Type -> Type where
        JS_Str   : JS_Types String
-       JS_Float : JS_Types Float
+       JS_Float : JS_Types Double
        JS_Ptr   : JS_Types Ptr
        JS_Unit  : JS_Types ()
        JS_FnT   : JS_FnTypes a -> JS_Types (JsFn a)
@@ -228,9 +235,11 @@ mutual
 ||| The JavaScript FFI. The strings naming functions in this API are
 ||| JavaScript code snippets, into which the arguments are substituted
 ||| for the placeholders `%0`, `%1`, etc.
+%error_reverse
 FFI_JS : FFI
 FFI_JS = MkFFI JS_Types String String
 
+%error_reverse
 JS_IO : Type -> Type
 JS_IO = IO' FFI_JS
 

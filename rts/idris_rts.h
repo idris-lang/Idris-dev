@@ -9,6 +9,9 @@
 #include <pthread.h>
 #endif
 #include <stdint.h>
+#if (__linux__ || __APPLE__ || __FreeBSD__)
+#include <signal.h>
+#endif
 
 #include "idris_heap.h"
 #include "idris_stats.h"
@@ -252,9 +255,14 @@ void idris_free(void* ptr, size_t size);
 
 #define NULL_CON(x) nullary_cons[x]
 
+int idris_errno();
+char* idris_showerror(int err);
+
 extern VAL* nullary_cons;
 void init_nullaries();
 void free_nullaries();
+
+void init_signals();
 
 void* vmThread(VM* callvm, func f, VAL arg);
 

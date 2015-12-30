@@ -9,20 +9,20 @@ import Data.Vect
 
 ||| Get the name of a reflected type constructor argument.
 tyConArgName : TyConArg -> TTName
-tyConArgName (TyConParameter a) = argName a
-tyConArgName (TyConIndex a) = argName a
+tyConArgName (TyConParameter a) = name a
+tyConArgName (TyConIndex a) = name a
 
 ||| Modify the name of a reflected type constructor argument.
 setTyConArgName : TyConArg -> TTName -> TyConArg
-setTyConArgName (TyConParameter a) n = TyConParameter (record {argName = n} a)
-setTyConArgName (TyConIndex a) n = TyConIndex (record {argName = n} a)
+setTyConArgName (TyConParameter a) n = TyConParameter (record {name = n} a)
+setTyConArgName (TyConIndex a) n = TyConIndex (record {name = n} a)
 
 ||| Modify the type of a reflected type constructor argument using some function.
 updateTyConArgTy : (Raw -> Raw) -> TyConArg -> TyConArg
 updateTyConArgTy f (TyConParameter a) =
-    TyConParameter (record {argTy = f (argTy a) } a)
+    TyConParameter (record {type = f (type a) } a)
 updateTyConArgTy f (TyConIndex a) =
-    TyConIndex (record {argTy = f (argTy a) } a)
+    TyConIndex (record {type = f (type a) } a)
 
 unApply : Raw -> (Raw, List Raw)
 unApply tm = unApply' tm []
@@ -63,7 +63,6 @@ getBinderTy : Binder t -> t
 getBinderTy (Lam t) = t
 getBinderTy (Pi t _) = t
 getBinderTy (Let t _) = t
-getBinderTy (NLet t _) = t
 getBinderTy (Hole t) = t
 getBinderTy (GHole t) = t
 getBinderTy (Guess t _) = t
@@ -76,10 +75,6 @@ enumerate xs = enumerate' xs 0
   where enumerate' : List a -> Nat -> List (Nat, a)
         enumerate' [] _ = []
         enumerate' (x::xs) n = (n, x) :: enumerate' xs (S n)
-
-getSigmaArgs : Raw -> Elab (Raw, Raw)
-getSigmaArgs `(MkSigma {a=~_} {P=~_} ~rhsTy ~lhs) = return (rhsTy, lhs)
-getSigmaArgs arg = fail [TextPart "Not a sigma constructor"]
 
 bindPats : List (TTName, Binder Raw) -> Raw -> Raw
 bindPats [] res = res
@@ -106,25 +101,26 @@ bindPatTys ((n, b)::bs) res = RBind n (PVTy (getBinderTy b)) $ bindPatTys bs res
 |||       It will be run in a context where the pattern variables are
 |||       already bound, and should leave behind no holes.
 partial
-elabPatternClause : (lhs, rhs : Elab ()) -> Elab FunClause
+elabPatternClause : (lhs, rhs : Elab ()) -> Elab (FunClause Raw)
 elabPatternClause lhs rhs =
   do -- Elaborate the LHS in a context where its type will be solved via unification
-     (pat, _) <- runElab `(Sigma Type id) $
+     (pat, _) <- runElab `(Infer) $
                     do th <- newHole "finalTy" `(Type)
                        patH <- newHole "pattern" (Var th)
-                       fill `(MkSigma ~(Var th) ~(Var patH) : Sigma Type id)
+                       fill `(MkInfer ~(Var th) ~(Var patH))
                        solve
                        focus patH
                        lhs
                        -- Convert all remaining holes to pattern variables
-                       traverse_ {b=()} (\h => focus h *> patvar h) !getHoles
-     let (pvars, sigma) = extractBinders !(forgetTypes pat)
-     (rhsTy, lhsTm) <- getSigmaArgs sigma
+                       for_ {b=()} !getHoles $ \h =>
+                         do focus h; patvar h
+     (pvars, `(MkInfer ~rhsTy ~lhsTm)) <- extractBinders <$> forget pat
+        | fail [TextPart "Couldn't infer type of left-hand pattern"]
      rhsTm <- runElab (bindPatTys pvars rhsTy) $
-                                  do -- Introduce all the pattern variables from the LHS
+                do -- Introduce all the pattern variables from the LHS
                    repeatUntilFail bindPat <|> return ()
                    rhs
-     realRhs <- forgetTypes (fst rhsTm)
+     realRhs <- forget (fst rhsTm)
      return $ MkFunClause (bindPats pvars lhsTm) realRhs
 
 ||| Introduce a unique binder name, returning it

@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms, 
+module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms,
                         elabExec, elabREPL) where
 
 import Idris.AbsSyntax
@@ -58,7 +58,7 @@ elabValBind info aspat norm tm_in
    = do ctxt <- getContext
         i <- getIState
         let tm = addImpl [] i tm_in
-        logLvl 10 (showTmImpls tm)
+        logElab 10 (showTmImpls tm)
         -- try:
         --    * ordinary elaboration
         --    * elaboration as a Type
@@ -80,7 +80,7 @@ elabValBind info aspat norm tm_in
         addDeferred def''
         mapM_ (elabCaseBlock info []) is
 
-        logLvl 3 ("Value: " ++ show vtm)
+        logElab 3 ("Value: " ++ show vtm)
         (vtm_in, vty) <- recheckC (fileFC "(input)") id [] vtm
 
         let vtm = if norm then normalise (tt_ctxt i) [] vtm_in
@@ -127,7 +127,8 @@ elabExec fc tm = runtm (PAlternative [] FirstSuccess
                     printtm tm
                     ])
   where
-    runtm t = PApp fc (PRef fc [] (sUN "run__IO")) [pexp t]
+    runtm t = PApp fc (PRef fc [] (sUN "run__IO"))
+                  [pimp (sUN "ffi") (PRef fc [] (sUN "FFI_C")) False, pexp t]
     printtm t = PApp fc (PRef fc [] (sUN "printLn"))
                   [pimp (sUN "ffi") (PRef fc [] (sUN "FFI_C")) False, pexp t]
 

@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 
 #include "idris_rts.h"
 #include "idris_gc.h"
@@ -72,6 +73,7 @@ VM* idris_vm() {
     init_threaddata(vm);
     init_gmpalloc();
     init_nullaries();
+    init_signals();
 
     return vm;
 }
@@ -89,6 +91,12 @@ void init_threadkeys() {
 void init_threaddata(VM *vm) {
 #ifdef HAS_PTHREAD
     pthread_setspecific(vm_key, vm);
+#endif
+}
+
+void init_signals() {
+#if (__linux__ || __APPLE__ || __FreeBSD__)
+    signal(SIGPIPE, SIG_IGN);
 #endif
 }
 
@@ -925,6 +933,14 @@ VM* idris_getSender(Msg* msg) {
 
 void idris_freeMsg(Msg* msg) {
     free(msg);
+}
+
+int idris_errno() {
+    return errno;
+}
+
+char* idris_showerror(int err) {
+    return strerror(err);
 }
 
 VAL* nullary_cons;

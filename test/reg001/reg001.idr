@@ -3,6 +3,7 @@
 
 import Data.So
 import Data.Vect
+import Data.HVect
 import Data.Fin
 import Control.Isomorphism
 
@@ -176,4 +177,34 @@ mapFilter f p (a :: as) with (p a)
  | True  = (_  ** (f a) :: (getProof (mapFilter f p as)))
  | False = mapFilter f p as
 
+hVectEx1 : HVect [String, List Nat, Nat, (Nat, Nat)]
+hVectEx1 = ["Hello",[1,2,3],42,(0,10)]
+  
+vecfoo : HVect [String, List Nat, Nat, (Nat, Nat)]
+vecfoo = put (S (S Z)) hVectEx1
+
+foom : Monad m => Int -> m Int
+foom = pure 
+  
+bar : IO ()
+bar = case foom 5 of
+           Nothing => print 42
+           Just n => print n
+
+Max : (Nat -> Type) -> Type
+Max p = (Nat , (k : Nat) -> p k -> Nat)
+    
+maxEquiv : Max p -> (n1 : Nat) -> p n1 -> Nat
+maxEquiv a n1 pr1 = snd a n1 pr1
+
+data Rho = R
+
+rho : Rho -> Rho
+rho r = case r of R => r
+
+data Kappa : (r : Rho) -> Type where K : Kappa r
+
+kappa : Kappa (rho r) -> Kappa (rho r)
+kappa {r} k = k' where -- k' : Kappa (rho r)
+                       k' = k
 

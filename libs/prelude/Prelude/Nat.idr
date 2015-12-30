@@ -214,47 +214,50 @@ instance MinBound Nat where
 instance Cast Integer Nat where
   cast = fromInteger
 
+instance Cast String Nat where
+    cast str = cast (the Integer (cast str))
+
 ||| A wrapper for Nat that specifies the semigroup and monad instances that use (*)
 record Multiplicative where
-  constructor getMultiplicative
+  constructor GetMultiplicative
   _ : Nat
 
 ||| A wrapper for Nat that specifies the semigroup and monad instances that use (+)
 record Additive where
-  constructor getAdditive  
+  constructor GetAdditive  
   _ : Nat
   
 instance Semigroup Multiplicative where
-  (<+>) left right = getMultiplicative $ left' * right'
+  (<+>) left right = GetMultiplicative $ left' * right'
     where
       left'  : Nat
       left'  =
        case left of
-          getMultiplicative m => m
+          GetMultiplicative m => m
 
       right' : Nat
       right' =
         case right of
-          getMultiplicative m => m
+          GetMultiplicative m => m
 
 instance Semigroup Additive where
-  left <+> right = getAdditive $ left' + right'
+  left <+> right = GetAdditive $ left' + right'
     where
       left'  : Nat
       left'  =
         case left of
-          getAdditive m => m
+          GetAdditive m => m
 
       right' : Nat
       right' =
         case right of
-          getAdditive m => m
+          GetAdditive m => m
 
 instance Monoid Multiplicative where
-  neutral = getMultiplicative $ S Z
+  neutral = GetMultiplicative $ S Z
 
 instance Monoid Additive where
-  neutral = getAdditive Z
+  neutral = GetAdditive Z
 
 ||| Casts negative `Ints` to 0.
 instance Cast Int Nat where

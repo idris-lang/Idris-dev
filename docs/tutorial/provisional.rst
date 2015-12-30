@@ -213,11 +213,11 @@ representation (in this case ``Binary``) with a meaning (in this case
 .. code-block:: idris
 
     data Binary : Nat -> Type where
-       bEnd : Binary Z
-       bO : Binary n -> Binary (n + n)
-       bI : Binary n -> Binary (S (n + n))
+       BEnd : Binary Z
+       BO : Binary n -> Binary (n + n)
+       BI : Binary n -> Binary (S (n + n))
 
-``bO`` and ``bI`` take a binary number as an argument and effectively
+``BO`` and ``BI`` take a binary number as an argument and effectively
 shift it one bit left, adding either a zero or one as the new least
 significant bit. The index, ``n + n`` or ``S (n + n)`` states the result
 that this left shift then add will have to the meaning of the number.
@@ -234,17 +234,17 @@ original Nat:
 
 The ``Parity`` view makes the definition fairly simple — halving the
 number is effectively a right shift after all — although we need to use
-a provisional definition in the odd case:
+a provisional definition in the Odd case:
 
 .. code-block:: idris
 
     natToBin : (n:Nat) -> Binary n
-    natToBin Z = bEnd
+    natToBin Z = BEnd
     natToBin (S k) with (parity k)
-       natToBin (S (j + j))     | even  = bI (natToBin j)
-       natToBin (S (S (j + j))) | odd  ?= bO (natToBin (S j))
+       natToBin (S (j + j))     | Even  = BI (natToBin j)
+       natToBin (S (S (j + j))) | Odd  ?= BO (natToBin (S j))
 
-The problem with the odd case is the same as in the definition of
+The problem with the Odd case is the same as in the definition of
 ``parity``, and the proof proceeds in the same way:
 
 .. code-block:: idris
@@ -272,6 +272,6 @@ For this to work, of course, we need a ``Show`` instance for
 .. code-block:: idris
 
     instance Show (Binary n) where
-        show (bO x) = show x ++ "0"
-        show (bI x) = show x ++ "1"
-        show bEnd = ""
+        show (BO x) = show x ++ "0"
+        show (BI x) = show x ++ "1"
+        show BEnd = ""

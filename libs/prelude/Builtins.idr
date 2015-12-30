@@ -19,6 +19,10 @@ namespace Builtins
      ||| @b the right element of the pair
      MkPair : {A, B : Type} -> (a : A) -> (b : B) -> Pair A B
 
+  -- Usage hints for erasure analysis
+  %used MkPair a
+  %used MkPair b
+
   ||| The non-dependent pair type, also known as conjunction, usable with
   ||| UniqueTypes.
   ||| @A the type of the left elements in the pair
@@ -28,6 +32,10 @@ namespace Builtins
      ||| @a the left element of the pair
      ||| @b the right element of the pair
      MkUPair : {A, B : AnyType} -> (a : A) -> (b : B) -> UPair A B
+
+  -- Usage hints for erasure analysis
+  %used MkUPair a
+  %used MkUPair b
 
   ||| Dependent pairs
   |||
@@ -48,7 +56,12 @@ namespace Builtins
     
 ||| The eliminator for the `Void` type.
 void : Void -> a
-void {a} v = elim_for Void (\_ => a) v
+-- We can't define void yet. We can't define a function with no clauses without
+-- elaborator reflection, and we can't do elaborator reflection without
+-- Language.Reflection.Elab, and Language.Reflection.Elab depends on Builtins.
+-- We can't delay the declaration of void, because Prelude.Uninhabited depends on
+-- it, Prelude.Nat depends on Prelude.Uninhabited, and Language.Reflection.Elab
+-- depends on Prelude.Nat. Instead, void is defined in Prelude.idr
 
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
@@ -152,9 +165,11 @@ public %assert_total
 really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
 
--- Deprecated - for backward compatibility
+||| Deprecated alias for `Double`, for the purpose of backwards
+||| compatibility. Idris does not support 32 bit floats at present.
 Float : Type
 Float = Double
+%deprecate Float
 
 -- Pointers as external primitive; there's no literals for these, so no
 -- need for them to be part of the compiler.

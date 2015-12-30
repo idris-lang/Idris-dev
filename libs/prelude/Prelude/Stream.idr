@@ -14,10 +14,13 @@ import Prelude.List
 
 ||| An infinite stream
 codata Stream : Type -> Type where
-  (::) : a -> Stream a -> Stream a
+  (::) : (e : a) -> Stream a -> Stream a
 
 -- Hints for interactive editing
 %name Stream xs,ys,zs,ws
+
+-- Usage hints for erasure analysis
+%used Stream.(::) e
 
 instance Functor Stream where
     map f (x::xs) = f x :: map f xs

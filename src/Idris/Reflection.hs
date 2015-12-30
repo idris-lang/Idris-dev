@@ -1,11 +1,15 @@
 {-| Code related to Idris's reflection system. This module contains
 quoters and unquoters along with some supporting datatypes.
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternGuards, CPP #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
 module Idris.Reflection where
 
+#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>), (<*>), pure)
+import Prelude hiding (mapM)
+import Data.Traversable (mapM)
+#endif
 import Control.Monad (liftM, liftM2, liftM4)
 import Control.Monad.State.Strict (lift)
 import Data.Maybe (catMaybes)
@@ -17,7 +21,7 @@ import Idris.Core.Elaborate (claim, fill, focus, getNameFrom, initElaborator,
 import Idris.Core.Evaluate (Def(TyDecl), initContext, lookupDefExact, lookupTyExact)
 import Idris.Core.TT
 
-import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes),
+import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes, idris_patdefs),
                             PArg'(..), PArg, PTactic, PTactic'(..), PTerm(..), Fixity (..),
                             initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
@@ -53,11 +57,11 @@ rFunArgToPArg (RFunArg n _ RExplicit e) = PExp 0 (rArgOpts e) n Placeholder
 rFunArgToPArg (RFunArg n _ RImplicit e) = PImp 0 False (rArgOpts e) n Placeholder
 rFunArgToPArg (RFunArg n _ RConstraint e) = PConstraint 0 (rArgOpts e) n Placeholder
 
-data RFunClause = RMkFunClause Raw Raw
-                | RMkImpossibleClause Raw
-                deriving Show
+data RFunClause a = RMkFunClause a a
+                  | RMkImpossibleClause a
+                  deriving Show
 
-data RFunDefn = RDefineFun Name [RFunClause] deriving Show
+data RFunDefn a = RDefineFun Name [RFunClause a] deriving Show
 
 -- | Prefix a name with the "Language.Reflection" namespace
 reflm :: String -> Name
@@ -217,8 +221,6 @@ reifyRawApp t [n, b, x]
                                       return $ RBind n' b' x'
 reifyRawApp t [f, x]
             | t == reflm "RApp" = liftM2 RApp (reifyRaw f) (reifyRaw x)
-reifyRawApp t [t']
-            | t == reflm "RForce" = liftM RForce (reifyRaw t')
 reifyRawApp t [c]
             | t == reflm "RConstant" = liftM RConstant (reifyTTConst c)
 reifyRawApp t args = fail ("Unknown reflection raw term in reifyRawApp: " ++ show (t, args))
@@ -257,9 +259,9 @@ reifyTTNameApp t [sn]
         reifySN t [n]
                 | t == reflm "MethodN" =
                   MethodN <$> reifyTTName n
-        reifySN t [n]
+        reifySN t [fc, n]
                 | t == reflm "CaseN" =
-                  CaseN <$> reifyTTName n
+                  CaseN <$> (FC' <$> reifyFC fc) <*> reifyTTName n
         reifySN t [n]
                 | t == reflm "ElimN" =
                   ElimN <$> reifyTTName n
@@ -270,8 +272,6 @@ reifyTTNameApp t [sn]
                 | t == reflm "MetaN" =
                   MetaN <$> reifyTTName n1 <*> reifyTTName n2
         reifySN t args = fail $ "Can't reify special name " ++ show t ++ show args
-reifyTTNameApp t []
-               | t == reflm "NErased" = return NErased
 reifyTTNameApp t args = fail ("Unknown reflection term name: " ++ show (t, args))
 
 reifyTTNamespace :: Term -> ElabD [String]
@@ -310,8 +310,6 @@ reifyTTBinderApp reif f [t, k]
                       | f == reflm "Pi" = liftM2 (Pi Nothing) (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Let" = liftM2 Let (reif x) (reif y)
-reifyTTBinderApp reif f [x, y]
-                      | f == reflm "NLet" = liftM2 NLet (reif x) (reif y)
 reifyTTBinderApp reif f [t]
                       | f == reflm "Hole" = liftM Hole (reif t)
 reifyTTBinderApp reif f [t]
@@ -361,8 +359,8 @@ reifyTTConstApp f v@(P _ _ _) =
 reifyTTConstApp f arg = fail ("Unknown reflection constant: " ++ show (f, arg))
 
 reifyArithTy :: Term -> ElabD ArithTy
-reifyArithTy (App _ (P _ n _) intTy) | n == reflm "ATInt"   = fmap ATInt (reifyIntTy intTy)
-reifyArithTy (P _ n _)             | n == reflm "ATFloat" = return ATFloat
+reifyArithTy (App _ (P _ n _) intTy) | n == reflm "ATInt"    = fmap ATInt (reifyIntTy intTy)
+reifyArithTy (P _ n _)               | n == reflm "ATDouble" = return ATFloat
 reifyArithTy x = fail ("Couldn't reify reflected ArithTy: " ++ show x)
 
 reifyNativeTy :: Term -> ElabD NativeTy
@@ -473,18 +471,15 @@ reflectTTQuotePattern unq (Constant c)
   = do fill $ reflCall "TConst" [reflectConstant c]
        solve
 reflectTTQuotePattern unq (Proj t i)
-  = do t' <- claimTy (sMN 0 "t") (Var (reflm "TT")) ; movelast t'
-       fill $ reflCall "Proj" [Var t', RConstant (I i)]
-       solve
-       focus t'; reflectTTQuotePattern unq t
-reflectTTQuotePattern unq (Erased)
+  = lift . tfail . InternalMsg $
+      "Phase error! The Proj constructor is for optimization only and should not have been reflected during elaboration."
+reflectTTQuotePattern unq Erased
   = do erased <- claimTy (sMN 0 "erased") (Var (reflm "TT"))
        movelast erased
        fill $ (Var erased)
-       solve
-reflectTTQuotePattern unq (Impossible)
-  = do fill $ Var (reflm "Impossible")
-       solve
+reflectTTQuotePattern unq Impossible
+  = lift . tfail . InternalMsg $
+      "Phase error! The Impossible constructor is for optimization only and should not have been reflected during elaboration."
 reflectTTQuotePattern unq (TType exp)
   = do ue <- getNameFrom (sMN 0 "uexp")
        claim ue (Var (sNS (sUN "TTUExp") ["Reflection", "Language"]))
@@ -537,7 +532,6 @@ reflectRawQuotePattern unq (RBind n b sc) =
         freeNamesR (RApp f x) = freeNamesR f ++ freeNamesR x
         freeNamesR RType = []
         freeNamesR (RUType _) = []
-        freeNamesR (RForce r) = freeNamesR r
         freeNamesR (RConstant _) = []
 reflectRawQuotePattern unq (RApp f x) =
   do fH <- getNameFrom (sMN 0 "f")
@@ -560,13 +554,6 @@ reflectRawQuotePattern unq (RUType univ) =
      fill $ reflCall "RUType" [Var uH]
      solve
      focus uH; fill (reflectUniverse univ); solve
-reflectRawQuotePattern unq (RForce r) =
-  do rH <- getNameFrom (sMN 0 "raw")
-     claim rH (Var (reflm "Raw"))
-     movelast rH
-     fill $ reflCall "RForce" [Var rH]
-     solve
-     focus rH; reflectRawQuotePattern unq r
 reflectRawQuotePattern unq (RConstant c) =
   do cH <- getNameFrom (sMN 0 "const")
      claim cH (Var (reflm "Constant"))
@@ -597,7 +584,7 @@ reflectBinderQuotePattern q ty unq (Let x y)
 reflectBinderQuotePattern q ty unq (NLet x y)
    = do x' <- claimTy (sMN 0 "ty") ty; movelast x'
         y' <- claimTy (sMN 0 "v") ty; movelast y'
-        fill $ reflCall "NLet" [ty, Var x', Var y']
+        fill $ reflCall "Let" [ty, Var x', Var y']
         solve
         focus x'; q unq x
         focus y'; q unq y
@@ -649,12 +636,13 @@ reflectTTQuote unq (App _ f x)
   = reflCall "App" [reflectTTQuote unq f, reflectTTQuote unq x]
 reflectTTQuote unq (Constant c)
   = reflCall "TConst" [reflectConstant c]
-reflectTTQuote unq (Proj t i)
-  = reflCall "Proj" [reflectTTQuote unq t, RConstant (I i)]
-reflectTTQuote unq (Erased) = Var (reflm "Erased")
-reflectTTQuote unq (Impossible) = Var (reflm "Impossible")
 reflectTTQuote unq (TType exp) = reflCall "TType" [reflectUExp exp]
 reflectTTQuote unq (UType u) = reflCall "UType" [reflectUniverse u]
+reflectTTQuote _   (Proj _ _) =
+  error "Phase error! The Proj constructor is for optimization only and should not have been reflected during elaboration."
+reflectTTQuote unq Erased = Var (reflm "Erased")
+reflectTTQuote _   Impossible =
+  error "Phase error! The Impossible constructor is for optimization only and should not have been reflected during elaboration."
 
 reflectRawQuote :: [Name] -> Raw -> Raw
 reflectRawQuote unq (Var n)
@@ -667,7 +655,6 @@ reflectRawQuote unq (RApp f x) =
 reflectRawQuote unq RType = Var (reflm "RType")
 reflectRawQuote unq (RUType u) =
   reflCall "RUType" [reflectUniverse u]
-reflectRawQuote unq (RForce r) = reflCall "RForce" [reflectRawQuote unq r]
 reflectRawQuote unq (RConstant cst) = reflCall "RConstant" [reflectConstant cst]
 
 reflectNameType :: NameType -> Raw
@@ -692,7 +679,6 @@ reflectName (NS n ns)
                   ]
 reflectName (MN i n)
   = reflCall "MN" [RConstant (I i), RConstant (Str (str n))]
-reflectName NErased = Var (reflm "NErased")
 reflectName (SN sn) = raw_apply (Var (reflm "SN")) [reflectSpecialName sn]
 reflectName (SymRef _) = error "The impossible happened: symbol table ref survived IBC loading"
 
@@ -711,8 +697,8 @@ reflectSpecialName (ParentN n s) =
   reflCall "ParentN" [reflectName n, RConstant (Str (T.unpack s))]
 reflectSpecialName (MethodN n) =
   reflCall "MethodN" [reflectName n]
-reflectSpecialName (CaseN n) =
-  reflCall "CaseN" [reflectName n]
+reflectSpecialName (CaseN fc n) =
+  reflCall "CaseN" [reflectFC (unwrapFC fc), reflectName n]
 reflectSpecialName (ElimN n) =
   reflCall "ElimN" [reflectName n]
 reflectSpecialName (InstanceCtorN n) =
@@ -754,7 +740,7 @@ reflectBinderQuote q ty unq (Pi _ t k)
 reflectBinderQuote q ty unq (Let x y)
    = reflCall "Let" [Var ty, q unq x, q unq y]
 reflectBinderQuote q ty unq (NLet x y)
-   = reflCall "NLet" [Var ty, q unq x, q unq y]
+   = reflCall "Let" [Var ty, q unq x, q unq y]
 reflectBinderQuote q ty unq (Hole t)
    = reflCall "Hole" [Var ty, q unq t]
 reflectBinderQuote q ty unq (GHole _ _ t)
@@ -784,7 +770,7 @@ reflectConstant c@(B32 _) = reflCall "B32" [RConstant c]
 reflectConstant c@(B64 _) = reflCall "B64" [RConstant c]
 reflectConstant (AType (ATInt ITNative)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITNative")]]
 reflectConstant (AType (ATInt ITBig)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITBig")]]
-reflectConstant (AType ATFloat) = reflCall "AType" [Var (reflm "ATFloat")]
+reflectConstant (AType ATFloat) = reflCall "AType" [Var (reflm "ATDouble")]
 reflectConstant (AType (ATInt ITChar)) = reflCall "AType" [reflCall "ATInt" [Var (reflm "ITChar")]]
 reflectConstant StrType = Var (reflm "StrType")
 reflectConstant (AType (ATInt (ITFixed IT8)))  = reflCall "AType" [reflCall "ATInt" [reflCall "ITFixed" [Var (reflm "IT8")]]]
@@ -916,7 +902,7 @@ reflectErr (CantResolveAlts ss) =
   raw_apply (Var $ reflErrName "CantResolveAlts")
             [rawList (Var $ reflm "TTName") (map reflectName ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
-reflectErr (NoEliminator str t) 
+reflectErr (NoEliminator str t)
   = raw_apply (Var $ reflErrName "NoEliminator") [RConstant (Str str),
                                                   reflect t]
 reflectErr (UniverseError fc ue old new tys) =
@@ -954,6 +940,12 @@ reflectFC fc = raw_apply (Var (reflm "FileLoc"))
                          ]
   where intTy = RConstant (AType (ATInt ITNative))
 
+reifyFC :: Term -> ElabD FC
+reifyFC tm
+  | (P (DCon _ _ _) cn _, [Constant (Str fn), st, end]) <- unApply tm
+  , cn == reflm "FileLoc" = FC fn <$> reifyPair reifyInt reifyInt st <*> reifyPair reifyInt reifyInt end
+  | otherwise = fail $ "Not a source location: " ++ show tm
+
 fromTTMaybe :: Term -> Maybe Term -- WARNING: Assumes the term has type Maybe a
 fromTTMaybe (App _ (App _ (P (DCon _ _ _) (NS (UN just) _) _) ty) tm)
   | just == txt "Just" = Just tm
@@ -970,7 +962,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "
     Right (TextPart msg)
 reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
-    case runElab initEState (reifyTTName ttn) (initElaborator NErased initContext emptyContext Erased) of
+    case runElab initEState (reifyTTName ttn) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
@@ -978,7 +970,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
-  case runElab initEState (reifyTT tm) (initElaborator NErased initContext emptyContext Erased) of
+  case runElab initEState (reifyTT tm) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
       show tm ++
@@ -986,7 +978,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
     OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "RawPart" =
-  case runElab initEState (reifyRaw tm) (initElaborator NErased initContext emptyContext Erased) of
+  case runElab initEState (reifyRaw tm) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected raw term " ++
       show tm ++
@@ -1033,21 +1025,21 @@ reifyTyDecl (App _ (App _ (App _ (P (DCon _ _ _) n _) tyN) args) ret)
      return $ RDeclare tyN' args' ret'
 reifyTyDecl tm = fail $ "Couldn't reify " ++ show tm ++ " as a type declaration."
 
-reifyFunDefn :: Term -> ElabD RFunDefn
-reifyFunDefn (App _ (App _ (P _ n _) fnN) clauses)
-  | n == tacN "DefineFun" =
+reifyFunDefn :: Term -> ElabD (RFunDefn Raw)
+reifyFunDefn (App _ (App _ (App _ (P _ n _) (P _ t _)) fnN) clauses)
+  | n == tacN "DefineFun" && t == reflm "Raw" =
   do fnN' <- reifyTTName fnN
      clauses' <- case unList clauses of
                    Nothing -> fail $ "Couldn't reify " ++ show clauses ++ " as a clause list"
                    Just cs -> mapM reifyC cs
      return $ RDefineFun fnN' clauses'
-  where reifyC :: Term -> ElabD RFunClause
-        reifyC (App _ (App _ (P (DCon _ _ _) n _) lhs) rhs)
-          | n == tacN "MkFunClause" = liftM2 RMkFunClause
+  where reifyC :: Term -> ElabD (RFunClause Raw)
+        reifyC (App _ (App _ (App _ (P (DCon _ _ _) n _) (P _ t _)) lhs) rhs)
+          | n == tacN "MkFunClause" && t == reflm "Raw" = liftM2 RMkFunClause
                                              (reifyRaw lhs)
                                              (reifyRaw rhs)
-        reifyC (App _ (P (DCon _ _ _) n _) lhs)
-          | n == tacN "MkImpossibleClause" = fmap RMkImpossibleClause $ reifyRaw lhs
+        reifyC (App _ (App _ (P (DCon _ _ _) n _) (P _ t _)) lhs)
+          | n == tacN "MkImpossibleClause" && t == reflm "Raw" = fmap RMkImpossibleClause $ reifyRaw lhs
         reifyC tm = fail $ "Couldn't reify " ++ show tm ++ " as a clause."
 reifyFunDefn tm = fail $ "Couldn't reify " ++ show tm ++ " as a function declaration."
 
@@ -1056,6 +1048,12 @@ envTupleType
   = raw_apply (Var pairTy) [ (Var $ reflm "TTName")
                            , (RApp (Var $ reflm "Binder") (Var $ reflm "TT"))
                            ]
+
+reflectList :: Raw -> [Raw] -> Raw
+reflectList ty []     = RApp (Var (sNS (sUN "Nil") ["List", "Prelude"])) ty
+reflectList ty (x:xs) = RApp (RApp (RApp (Var (sNS (sUN "::") ["List", "Prelude"])) ty)
+                                   x)
+                             (reflectList ty xs)
 
 -- | Apply Idris's implicit info to get a signature. The [PArg] should
 -- come from a lookup in idris_implicits on IState.
@@ -1077,6 +1075,22 @@ unApplyRaw tm = ua [] tm
   where
     ua args (RApp f a) = ua (a:args) f
     ua args t         = (t, args)
+
+-- | Build the reflected function definition(s) that correspond(s) to
+-- a provided unqualifed name
+buildFunDefns :: IState -> Name -> [RFunDefn Term]
+buildFunDefns ist n =
+  [ mkFunDefn name clauses
+  | (name, (clauses, _)) <- lookupCtxtName n $ idris_patdefs ist
+  ]
+
+  where mkFunDefn name clauses = RDefineFun name (map mkFunClause clauses)
+
+        mkFunClause ([], lhs, Impossible) = RMkImpossibleClause lhs
+        mkFunClause ([], lhs, rhs) = RMkFunClause lhs rhs
+        mkFunClause (((n, ty) : ns), lhs, rhs) = mkFunClause (ns, bind lhs, bind rhs) where
+          bind Impossible = Impossible
+          bind tm = Bind n (PVar ty) tm
 
 -- | Build the reflected datatype definition(s) that correspond(s) to
 -- a provided unqualified name
@@ -1167,3 +1181,13 @@ reflectDatatype (RDatatype tyn tyConArgs tyConRes constrs) =
           RApp (Var $ tacN "TyConParameter") (reflectArg a)
         reflectConArg (RIndex a) =
           RApp (Var $ tacN "TyConIndex") (reflectArg a)
+
+reflectFunClause :: RFunClause Term -> Raw
+reflectFunClause (RMkFunClause lhs rhs) = raw_apply (Var $ tacN "MkFunClause") $ (Var $ reflm "TT") : map reflect [ lhs, rhs ]
+reflectFunClause (RMkImpossibleClause lhs) = raw_apply (Var $ tacN "MkImpossibleClause") $ [ Var $ reflm "TT", reflect lhs ]
+
+reflectFunDefn :: RFunDefn Term -> Raw
+reflectFunDefn (RDefineFun name clauses) = raw_apply (Var $ tacN "DefineFun") [ Var $ reflm "TT"
+                                                                              , reflectName name
+                                                                              , rawList (RApp (Var $ tacN "FunClause") (Var $ reflm "TT")) (map reflectFunClause clauses)
+                                                                              ]

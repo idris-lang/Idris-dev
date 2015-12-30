@@ -18,7 +18,7 @@ bindParams info = traverse_ (uncurry forall) (getParams info)
 ||| rewrite an application of something to their designated global
 ||| names
 bindIndices : TyConInfo -> Elab Renamer
-bindIndices info = bind' (getIndices info) (const Nothing)
+bindIndices info = bind' (getIndices info) noRenames
   where bind' : List (TTName, Raw) -> Renamer -> Elab Renamer
         bind' []              ren = return ren
         bind' ((n, t) :: ixs) ren = do n' <- nameFrom n
@@ -54,7 +54,7 @@ headsMatch x y =
 ||| Make an induction hypothesis if one is called for
 mkIh : TyConInfo -> (motiveName : TTName) -> (recArg : TTName) -> (argty, fam : Raw) -> Elab ()
 mkIh info motiveName recArg argty fam =
-  case !(stealBindings argty (const Nothing)) of
+  case !(stealBindings argty noRenames) of
     (argArgs, argRes) =>
       if headsMatch argRes fam
         then do ih <- gensym "ih"
@@ -65,12 +65,12 @@ mkIh info motiveName recArg argty fam =
                 for_ {b=()} argArgs $ \(n, b) =>
                   forall n (getBinderTy b)
                 let argTm : Raw = mkApp (Var recArg) (map (Var . fst) argArgs)
-                argTmTy <- forgetTypes (snd !(check argTm))
+                argTmTy <- forget (snd !(check !getEnv argTm))
                 argHoles <- apply (Var motiveName)
                                   (replicate (length (getIndices info))
-                                             (True, 0) ++
-                                   [(False,1)])
-                argH <- snd <$> last argHoles
+                                             True ++
+                                   [False])
+                argH <- last argHoles
                 focus argH
                 fill argTm; solve
                 solve -- attack
@@ -80,26 +80,20 @@ mkIh info motiveName recArg argty fam =
 elabMethodTy : TyConInfo -> TTName -> List CtorArg -> Raw -> Raw -> Elab ()
 elabMethodTy info motiveName [] res ctorApp =
   do argHoles <- apply (Var motiveName)
-                       (replicate (length (getIndices info)) (True, 0) ++
-                        [(False, 1)])
-     argH <- snd <$> last argHoles
+                       (replicate (length (getIndices info)) True ++
+                        [False])
+     argH <- last argHoles
      focus argH; fill ctorApp; solve
      solve
 elabMethodTy info motiveName (CtorParameter arg  :: args) res ctorApp =
-  elabMethodTy info motiveName args  res (RApp ctorApp (Var (argName arg)))
+  elabMethodTy info motiveName args  res (RApp ctorApp (Var (name arg)))
 elabMethodTy info motiveName (CtorField arg :: args) res ctorApp =
-  do let n = argName arg
-     let t = argTy arg
+  do let n = name arg
+     let t = type arg
      attack; forall n t
      mkIh info motiveName n t (result info)
      elabMethodTy info motiveName args res (RApp ctorApp (Var n))
      solve
-
-
-
-elabMethod : TyConInfo -> (motiveName, ctorN : TTName) -> List CtorArg -> Raw -> Elab ()
-elabMethod info motiveName ctorN ctorArgs resTy =
-  do elabMethodTy info motiveName ctorArgs resTy (Var ctorN)
 
 
 ||| Bind a method for a constructor
@@ -108,7 +102,7 @@ bindMethod info motiveName cn cargs cty =
   do n <- nameFrom cn
      h <- newHole "methTy" `(Type)
      forall n (Var h)
-     focus h; elabMethod info motiveName cn cargs cty
+     focus h; elabMethodTy info motiveName cargs cty (Var cn)
 
 getElimTy : TyConInfo -> List (TTName, List CtorArg, Raw) -> Elab Raw
 getElimTy info ctors =
@@ -129,7 +123,7 @@ getElimTy info ctors =
                                  [Var scrut])
                 apply (alphaRaw iren ret) []
                 solve
-     forgetTypes (fst ty)
+     forget (fst ty)
 
 
 
@@ -140,7 +134,7 @@ instance Show ElimArg where
   show (NormalArgument x) = "NormalArgument " ++ show x
 
 getElimClause : TyConInfo -> (elimn : TTName) -> (methCount : Nat) ->
-                (TTName, List CtorArg, Raw) -> Nat -> Elab FunClause
+                (TTName, List CtorArg, Raw) -> Nat -> Elab (FunClause Raw)
 getElimClause info elimn methCount (cn, args, resTy) whichCon =
   elabPatternClause
     (do -- Establish a hole for each parameter
@@ -153,8 +147,8 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         for {b=()} args $ \arg =>
           case arg of
             CtorParameter _ => return ()
-            CtorField arg => do claim (argName arg) (argTy arg)
-                                unfocus (argName arg)
+            CtorField arg => do claim (name arg) (type arg)
+                                unfocus (name arg)
 
         -- Establish a hole for the scrutinee (infer type)
         scrutinee <- newHole "scrutinee" resTy
@@ -167,9 +161,9 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         -- We leave the RHS with a function type: motive -> method* -> res
         -- to make it easier to map methods to constructors
         holes <- apply paramApp (replicate (length (getIndices info))
-                                           (True, 0) ++
-                                 [(False, 1)])
-        scr <- snd <$> last holes
+                                           True ++
+                                 [False])
+        scr <- last holes
         focus scr; fill (Var scrutinee); solve
         solve
 
@@ -177,8 +171,8 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         focus scrutinee
         apply (mkApp (Var cn) $
                  map (\x => case x of
-                              CtorParameter param => Var (argName param)
-                              CtorField arg => Var (argName arg))
+                              CtorParameter param => Var (name param)
+                              CtorField arg => Var (name arg))
                      args)
               []
         solve)
@@ -195,21 +189,21 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
                             case x of
                               CtorParameter _ => return List.Nil
                               CtorField arg =>
-                                do let n = argName arg
-                                   let t = argTy arg
-                                   (argArgs, argRes) <- stealBindings t (const Nothing)
+                                do let n = name arg
+                                   let t = type arg
+                                   (argArgs, argRes) <- stealBindings t noRenames
                                    if headsMatch argRes (result info) --recursive
                                      then return [ NormalArgument n
                                                  , IHArgument n
                                                  ]
                                      else return [NormalArgument n])
 
-        argHs <- apply (Var methN) (replicate (List.length argSpec) (True, 0))
+        argHs <- apply (Var methN) (replicate (List.length argSpec) True)
         solve
 
         -- Now build the recursive calls for the induction hypotheses
         for_ {a=(ElimArg, TTName)} {b=()}
-             !(zipH argSpec (map snd argHs))
+             !(zipH argSpec argHs)
              (\(spec, nh) =>
                 case spec of
                   NormalArgument n => do focus nh
@@ -220,12 +214,12 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
                        attack
                        local <- intros
                        ihHs <- apply (Var elimn) $
-                         replicate (length (TyConInfo.args info)) (True, 0) ++
-                         [(False, 1)] ++
-                         replicate (S methCount) (True, 0)
+                         replicate (length (TyConInfo.args info)) True ++
+                         [False] ++
+                         replicate (S methCount) True
                        solve -- application
 
-                       let (arg::motive::methods) = map snd $ drop (length (TyConInfo.args info)) ihHs
+                       let (arg::motive::methods) = drop (length (TyConInfo.args info)) ihHs
                        focus arg
 
                        apply (mkApp (Var n) (map Var local)) []; solve
@@ -248,14 +242,11 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         bindLam ((n, b)::rest) x = RBind n (Lam (getBinderTy b)) $ bindLam rest x
 
 getElimClauses : TyConInfo -> (elimn : TTName) ->
-                 List (TTName, List CtorArg, Raw) -> Elab (List FunClause)
+                 List (TTName, List CtorArg, Raw) -> Elab (List (FunClause Raw))
 getElimClauses info elimn ctors =
   let methodCount = length ctors
   in traverse (\(i, con) => getElimClause info elimn methodCount con i)
               (enumerate ctors)
-
-instance Show FunClause where
-  show (MkFunClause x y) = "(MkFunClause " ++ show x ++ " " ++ show y ++ ")"
 
 abstract
 deriveElim : (tyn, elimn : TTName) -> Elab ()

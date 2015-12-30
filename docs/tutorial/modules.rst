@@ -212,13 +212,23 @@ using a ``parameters`` declaration, for example:
       addAll z = x + y + z
 
 The effect of a ``parameters`` block is to add the declared parameters
-to every function, type and data constructor within the block. Outside
-the block, the parameters must be given explicitly:
+to every function, type and data constructor within the
+block. Specifically, adding the parameters to the front of the
+argument list. Outside the block, the parameters must be given
+explicitly. The ``addAll`` function, when called from the REPL, will
+thus have the following type signature.
 
 ::
 
     *params> :t addAll
     addAll : Nat -> Nat -> Nat -> Nat
+
+and the following definition.
+
+.. code-block:: idris
+
+    addAll : (x : Nat) -> (y : Nat) -> (z : Nat) -> Nat
+    addAll x y z = x + y + z
 
 Parameters blocks can be nested, and can also include data declarations,
 in which case the parameters are added explicitly to all type and data

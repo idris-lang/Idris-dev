@@ -56,17 +56,17 @@ genClauses fc n xs given
    = do i <- getIState
         let lhs_tms = map (\x -> flattenArgs $ delab' i x True True) xs
         -- if a placeholder was given, don't bother generating cases for it
-        let lhs_tms' = zipWith mergePlaceholders lhs_tms 
+        let lhs_tms' = zipWith mergePlaceholders lhs_tms
                           (map (stripUnmatchable i) (map flattenArgs given))
         let lhss = map pUnApply lhs_tms'
 
         let argss = transpose lhss
         let all_args = map (genAll i) argss
-        logLvl 5 $ "COVERAGE of " ++ show n
-        logLvl 5 $ show (lhs_tms, lhss)
-        logLvl 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
-        logLvl 10 $ show argss ++ "\n" ++ show all_args
-        logLvl 3 $ "Original: \n" ++
+        logCoverage 5 $ "COVERAGE of " ++ show n
+        logCoverage 5 $ show (lhs_tms, lhss)
+        logCoverage 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
+        logCoverage 10 $ show argss ++ "\n" ++ show all_args
+        logCoverage 3 $ "Original: \n" ++
              showSep "\n" (map (\t -> showTm i (delab' i t True True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
         -- cases for (the return type may be variadic, or function type, so
@@ -77,11 +77,11 @@ genClauses fc n xs given
                           p ++ repeat (PExp 0 [] (sMN 0 "gcarg") Placeholder)
                         _       -> repeat (pexp Placeholder)
         let tryclauses = mkClauses parg all_args
-        logLvl 3 $ show (length tryclauses) ++ " initially to check"
-        logLvl 2 $ showSep "\n" (map (showTm i) tryclauses)
+        logCoverage 3 $ show (length tryclauses) ++ " initially to check"
+        logCoverage 2 $ showSep "\n" (map (showTm i) tryclauses)
         let new = filter (noMatch i) (nub tryclauses)
-        logLvl 2 $ show (length new) ++ " clauses to check for impossibility"
-        logLvl 4 $ "New clauses: \n" ++ showSep "\n" (map (showTm i) new)
+        logCoverage 2 $ show (length new) ++ " clauses to check for impossibility"
+        logCoverage 4 $ "New clauses: \n" ++ showSep "\n" (map (showTm i) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses)
         return new
 --         return (map (\t -> PClause n t [] PImpossible []) new)
@@ -92,7 +92,7 @@ genClauses fc n xs given
         pUnApply (PApp _ f args) = map getTm args
         pUnApply _ = []
 
-        flattenArgs (PApp fc (PApp _ f as) as') 
+        flattenArgs (PApp fc (PApp _ f as) as')
              = flattenArgs (PApp fc f (as ++ as'))
         flattenArgs t = t
 
@@ -137,7 +137,7 @@ validCoverageCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
                    _ -> False
 validCoverageCase ctxt (CantConvert _ _ _) = False
 validCoverageCase ctxt (At _ e) = validCoverageCase ctxt e
-validCoverageCase ctxt (Elaborating _ _ e) = validCoverageCase ctxt e
+validCoverageCase ctxt (Elaborating _ _ _ e) = validCoverageCase ctxt e
 validCoverageCase ctxt (ElaboratingArg _ _ _ e) = validCoverageCase ctxt e
 validCoverageCase ctxt _ = True
 
@@ -167,7 +167,7 @@ recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
                   | (Bound, Bound) <- (x, y) = True
                   | otherwise = False -- name is different, unrecoverable
 recoverableCoverage ctxt (At _ e) = recoverableCoverage ctxt e
-recoverableCoverage ctxt (Elaborating _ _ e) = recoverableCoverage ctxt e
+recoverableCoverage ctxt (Elaborating _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (ElaboratingArg _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage _ _ = False
 
@@ -248,7 +248,7 @@ genAll i args
 
     -- put it back to its original form
     resugar (PApp _ (PRef fc hl n) [_,_,t,v])
-      | n == sigmaCon 
+      | n == sigmaCon
         = PDPair fc [] TypeOrTerm (getTm t) Placeholder (getTm v)
     resugar (PApp _ (PRef fc hl n) [_,_,l,r])
       | n == pairCon
@@ -330,7 +330,7 @@ checkPositive mut_ns (cn, ty')
          let tot = if p then Total (args ty) else Partial NotPositive
          let ctxt' = setTotal cn tot (tt_ctxt i)
          putIState (i { tt_ctxt = ctxt' })
-         logLvl 5 $ "Constructor " ++ show cn ++ " is " ++ show tot ++ " with " ++ show mut_ns
+         logCoverage 5 $ "Constructor " ++ show cn ++ " is " ++ show tot ++ " with " ++ show mut_ns
          addIBC (IBCTotal cn tot)
          return tot
   where
@@ -350,56 +350,6 @@ checkPositive mut_ns (cn, ty')
 
     noRec arg = all (\x -> x `notElem` mut_ns) (allTTNames arg)
 
-
-calcProd :: IState -> FC -> Name -> [([Name], Term, Term)] -> Idris Totality
-calcProd i fc topn pats
-    = cp topn pats []
-   where
-     -- every application of n must be in an argument of a coinductive
-     -- constructor, in every function reachable from here in the
-     -- call graph.
-     cp n pats done = do patsprod <- mapM (prodRec n done) pats
-                         if (and patsprod)
-                            then return Productive
-                            else return (Partial NotProductive)
-
-     prodRec :: Name -> [Name] -> ([Name], Term, Term) -> Idris Bool
-     prodRec n done _ | n `elem` done = return True
-     prodRec n done (_, _, tm) = prod n done False (delazy' True tm)
-
-     prod :: Name -> [Name] -> Bool -> Term -> Idris Bool
-     prod n done ok ap@(App _ _ _)
-        | (P nt f _, args) <- unApply ap
-            = do recOK <- checkProdRec (n:done) f
-                 let ctxt = tt_ctxt i
-                 let [ty] = lookupTy f ctxt -- must exist!
-                 let co = cotype nt f ty in
-                     if (not recOK) then return False else
-                       if f == topn
-                         then do argsprod <- mapM (prod n done co) args
-                                 return (and (ok : argsprod) )
-                         else do argsprod <- mapM (prod n done co) args
-                                 return (and argsprod)
-     prod n done ok (App _ f a) = liftM2 (&&) (prod n done False f)
-                                              (prod n done False a)
-     prod n done ok (Bind _ (Let t v) sc)
-         = liftM2 (&&) (prod n done False v) (prod n done False v)
-     prod n done ok (Bind _ b sc) = prod n done ok sc
-     prod n done ok t = return True
-
-     checkProdRec :: [Name] -> Name -> Idris Bool
-     checkProdRec done f
-        = case lookupCtxt f (idris_patdefs i) of
-               [(def, _)] -> do ok <- mapM (prodRec f done) def
-                                return (and ok)
-               _ -> return True -- defined elsewhere, can't call topn
-
-     cotype (DCon _ _ _) n ty
-        | (P _ t _, _) <- unApply (getRetTy ty)
-            = case lookupCtxt t (idris_datatypes i) of
-                   [TI _ True _ _ _] -> True
-                   _ -> False
-     cotype nt n ty = False
 
 -- | Calculate the totality of a function from its patterns.
 -- Either follow the size change graph (if inductive) or check for
@@ -482,9 +432,9 @@ checkTotality path fc n
 
 checkDeclTotality :: (FC, Name) -> Idris Totality
 checkDeclTotality (fc, n)
-    = do logLvl 2 $ "Checking " ++ show n ++ " for totality"
+    = do logCoverage 2 $ "Checking " ++ show n ++ " for totality"
 --          buildSCG (fc, n)
---          logLvl 2 $ "Built SCG"
+--          logCoverage 2 $ "Built SCG"
          i <- getIState
          let opts = case lookupCtxt n (idris_flags i) of
                               [fs] -> fs
@@ -496,7 +446,7 @@ checkDeclTotality (fc, n)
               -- typechecking decidable
               p@(Partial _) -> do setAccessibility n Frozen
                                   addIBC (IBCAccess n Frozen)
-                                  logLvl 5 $ "HIDDEN: "
+                                  logCoverage 5 $ "HIDDEN: "
                                                ++ show n ++ show p
               _ -> return ()
          return t
@@ -519,12 +469,12 @@ buildSCG (_, n) = do
        [cg] -> case lookupDefExact n (tt_ctxt ist) of
            Just (CaseOp _ _ _ pats _ cd) ->
              let (args, sc) = cases_totcheck cd in
-               do logLvl 2 $ "Building SCG for " ++ show n ++ " from\n"
+               do logCoverage 2 $ "Building SCG for " ++ show n ++ " from\n"
                                 ++ show pats ++ "\n" ++ show sc
                   let newscg = buildSCG' ist (rights pats) args
-                  logLvl 5 $ "SCG is: " ++ show newscg
+                  logCoverage 5 $ "SCG is: " ++ show newscg
                   addToCG n ( cg { scg = newscg } )
-       [] -> logLvl 5 $ "Could not build SCG for " ++ show n ++ "\n"
+       [] -> logCoverage 5 $ "Could not build SCG for " ++ show n ++ "\n"
        x -> error $ "buildSCG: " ++ show (n, x)
 
 delazy = delazy' False -- not lazy codata
@@ -644,20 +594,20 @@ checkSizeChange n = do
    ist <- getIState
    case lookupCtxt n (idris_callgraph ist) of
        [cg] -> do let ms = mkMultiPaths ist [] (scg cg)
-                  logLvl 5 ("Multipath for " ++ show n ++ ":\n" ++
+                  logCoverage 5 ("Multipath for " ++ show n ++ ":\n" ++
                             "from " ++ show (scg cg) ++ "\n" ++
                             show (length ms) ++ "\n" ++
                             showSep "\n" (map show ms))
-                  logLvl 6 (show cg)
+                  logCoverage 6 (show cg)
                   -- every multipath must have an infinitely descending
                   -- thread, then the function terminates
                   -- also need to checks functions called are all total
                   -- (Unchecked is okay as we'll spot problems here)
                   let tot = map (checkMP ist (getArity ist n)) ms
-                  logLvl 4 $ "Generated " ++ show (length tot) ++ " paths"
-                  logLvl 6 $ "Paths for " ++ show n ++ " yield " ++ (show tot)
+                  logCoverage 4 $ "Generated " ++ show (length tot) ++ " paths"
+                  logCoverage 6 $ "Paths for " ++ show n ++ " yield " ++ (show tot)
                   return (noPartial tot)
-       [] -> do logLvl 5 $ "No paths for " ++ show n
+       [] -> do logCoverage 5 $ "No paths for " ++ show n
                 return Unchecked
   where getArity ist n
           = case lookupTy n (tt_ctxt ist) of

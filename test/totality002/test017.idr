@@ -62,14 +62,14 @@ ack Z     n     = S n
 ack (S m) Z     = ack m (S Z)
 ack (S m) (S n) = ack m (ack (S m) n)
 
-data Bin = eps | c0 Bin | c1 Bin
+data Bin = EPS | C0 Bin | C1 Bin
 
 foo : Bin -> Nat
-foo eps = Z
-foo (c0 eps) = Z
-foo (c0 (c1 x)) = S (foo (c1 x))
-foo (c0 (c0 x)) = foo (c0 x)
-foo (c1 x) = S (foo x)
+foo EPS = Z
+foo (C0 EPS) = Z
+foo (C0 (C1 x)) = S (foo (C1 x))
+foo (C0 (C0 x)) = foo (C0 x)
+foo (C1 x) = S (foo x)
 
 bar : Nat -> Nat -> Nat
 bar x y = mp x y where

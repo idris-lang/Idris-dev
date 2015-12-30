@@ -13,7 +13,6 @@ instance NFData Name where
         rnf (UN x1) = rnf x1 `seq` ()
         rnf (NS x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (MN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf NErased = ()
         rnf (SN x1) = rnf x1 `seq` ()
         rnf (SymRef x1) = rnf x1 `seq` ()
 
@@ -65,7 +64,7 @@ instance NFData SpecialName where
         rnf (InstanceN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (ParentN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (MethodN x1) = rnf x1 `seq` ()
-        rnf (CaseN x1) = rnf x1 `seq` ()
+        rnf (CaseN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (ElimN x1) = rnf x1 `seq` ()
         rnf (InstanceCtorN x1) = rnf x1 `seq` ()
         rnf (MetaN x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
@@ -81,13 +80,15 @@ instance NFData Raw where
         rnf (RApp x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf RType = ()
         rnf (RUType x1) = rnf x1 `seq` ()
-        rnf (RForce x1) = rnf x1 `seq` ()
         rnf (RConstant x1) = x1 `seq` ()
 
 instance NFData FC where
         rnf (FC x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf NoFC = ()
         rnf (FileFC f) = rnf f `seq` ()
+
+instance NFData FC' where
+        rnf (FC' fc) = rnf fc `seq` ()
 
 instance NFData Provenance where
         rnf ExpectedType = ()
@@ -148,13 +149,15 @@ instance NFData Err where
         rnf (ProofSearchFail x1) = rnf x1 `seq` ()
         rnf (NoRewriting x1) = rnf x1 `seq` ()
         rnf (At x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
-        rnf (Elaborating x1 x2 x3)
-          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
+        rnf (Elaborating x1 x2 x3 x4)
+          = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
         rnf (ProviderError x1) = rnf x1 `seq` ()
         rnf (LoadingFailed x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (ElabScriptDebug x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (ElabScriptStuck x1) = rnf x1 `seq` ()
         rnf (RunningElabScript x1) = rnf x1 `seq` ()
+        rnf (ElabScriptStaging x1) = rnf x1 `seq` ()
+        rnf (FancyMsg x1) = rnf x1 `seq` ()
 
 instance NFData ErrorReportPart where
   rnf (TextPart x1) = rnf x1 `seq` ()
@@ -164,7 +167,7 @@ instance NFData ErrorReportPart where
   rnf (SubReport x1) = rnf x1 `seq` ()
 
 instance NFData ImplicitInfo where
-        rnf (Impl x1) = rnf x1 `seq` ()
+        rnf (Impl x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
 
 instance (NFData b) => NFData (Binder b) where
         rnf (Lam x1) = rnf x1 `seq` ()

@@ -1,7 +1,7 @@
 module test
 
 data TTSigma : (A : Type) -> (B : A -> Type) -> Type where
-    sigma : (A : Type) -> (B : A -> Type) -> (a : A) -> B a -> TTSigma A B
+    Sigma : (A : Type) -> (B : A -> Type) -> (a : A) -> B a -> TTSigma A B
 
 data MNat = Zero | Succ MNat
 
@@ -15,10 +15,10 @@ zzzz : Id MNat Zero Zero
 zzzz = IdRefl MNat Zero
 
 eep : TTSigma MNat (\ c =>  Id MNat c Zero)
-eep = (sigma MNat (\b => Id MNat b Zero) Zero zzzz)
+eep = (Sigma MNat (\b => Id MNat b Zero) Zero zzzz)
 
 eep2 : TTSigma MNat (\ c =>  Id MNat c Zero)
-eep2 = (sigma MNat (\b => Id MNat b Zero) Zero (IdRefl MNat Zero))
+eep2 = (Sigma MNat (\b => Id MNat b Zero) Zero (IdRefl MNat Zero))
 
 
 

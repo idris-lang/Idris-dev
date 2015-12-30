@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.19.1
+Version:        0.9.20.2
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -115,6 +115,7 @@ Extra-source-files:
                        libs/base/Control/*.idr
                        libs/base/Control/Monad/*.idr
                        libs/base/Data/*.idr
+                       libs/base/Data/List/*.idr
                        libs/base/Data/Vect/*.idr
                        libs/base/Debug/*.idr
                        libs/base/Language/Reflection/*.idr
@@ -309,6 +310,9 @@ Extra-source-files:
                        test/reg066/run
                        test/reg066/*.idr
                        test/reg066/expected
+                       test/reg067/run
+                       test/reg067/*.idr
+                       test/reg067/expected
 
                        test/basic001/run
                        test/basic001/*.idr
@@ -356,6 +360,9 @@ Extra-source-files:
                        test/basic015/run
                        test/basic015/*.idr
                        test/basic015/expected
+                       test/basic016/run
+                       test/basic016/*.idr
+                       test/basic016/expected
 
                        test/bignum001/run
                        test/bignum001/*.idr
@@ -535,6 +542,17 @@ Extra-source-files:
                        test/interactive009/input
                        test/interactive009/*.idr
                        test/interactive009/expected
+                       test/interactive010/expected
+                       test/interactive010/input
+                       test/interactive010/run
+                       test/interactive011/expected
+                       test/interactive011/input
+                       test/interactive011/run
+                       test/interactive011/*.idr
+                       test/interactive012/expected
+                       test/interactive012/input
+                       test/interactive012/run
+                       test/interactive012/*.idr
 
                        test/io001/run
                        test/io001/*.idr
@@ -556,6 +574,9 @@ Extra-source-files:
                        test/meta002/run
                        test/meta002/*.idr
                        test/meta002/expected
+                       test/meta004/run
+                       test/meta004/*.idr
+                       test/meta004/expected
 
                        test/primitives001/run
                        test/primitives001/*.idr
@@ -954,11 +975,14 @@ Library
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
                 , utf8-string < 1.1
-                , vector < 0.11
+                , vector < 0.12
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.2.4
-                , zlib < 0.6
                 , safe
+  -- zlib >= 0.6.1 is broken with GHC < 7.10.3
+  if impl(ghc < 7.10.3)
+     build-depends: zlib < 0.6.1
+
   Extensions:     MultiParamTypeClasses
                 , DeriveFoldable
                 , DeriveTraversable
@@ -990,6 +1014,7 @@ Library
      cpp-options:   -DIDRIS_FFI
   if flag(GMP)
      build-depends: libffi < 0.2
+     extra-libraries: gmp
      cpp-options:   -DIDRIS_GMP
   if flag(curses)
      build-depends: hscurses < 1.5
