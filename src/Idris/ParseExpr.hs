@@ -488,14 +488,13 @@ bracketed' open syn =
 {-| Parses the rest of a dependent pair after '(' or '(Expr **' -}
 dependentPair :: PunInfo -> [(PTerm, Maybe (FC, PTerm), FC)] -> FC -> SyntaxInfo -> IdrisParser PTerm
 dependentPair pun prev openFC syn =
+  if prev == [] then
+      nametypePart <|> namePart
+  else
     case pun of
       IsType -> nametypePart <|> namePart <|> exprPart True
       IsTerm -> exprPart False
-      TypeOrTerm ->
-        if prev /= [] then -- To avoid ambiguity with later parsing
-          nametypePart <|> namePart
-        else
-          nametypePart <|> namePart <|> exprPart False
+      TypeOrTerm -> nametypePart <|> namePart <|> exprPart False
   where nametypePart = do
           (ln, lnfc, colonFC) <- try $ do
             (ln, lnfc) <- name
