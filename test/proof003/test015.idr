@@ -37,8 +37,8 @@ natToBin (S w) (S k) with (parity k)
   natToBin (S w) (S (plus j j)) | Even = do jbin <- natToBin w j
                                             let value = jbin # B1
                                             ?ntbEven
-  natToBin (S w) (S (S (plus j j))) | odd = do jbin <- natToBin w (S j)
-                                               let value = jbin # b0
+  natToBin (S w) (S (S (plus j j))) | Odd = do jbin <- natToBin w (S j)
+                                               let value = jbin # B0
                                                ?ntbOdd
 
 testBin : Maybe (Binary 8 42)
@@ -49,14 +49,14 @@ term    syntax bitpair [x] [y] = (_ ** _ ** (x, y, Refl))
 
 addBit : Bit x -> Bit y -> Bit c ->
           (bX ** bY ** (Bit bX, Bit bY, c + x + y = bY + 2 * bX))
-addBit b0 b0 b0 = bitpair b0 b0
-addBit b0 b0 b1 = bitpair b0 b1
-addBit b0 b1 b0 = bitpair b0 b1
-addBit b0 b1 b1 = bitpair b1 b0
-addBit b1 b0 b0 = bitpair b0 b1
-addBit b1 b0 b1 = bitpair b1 b0
-addBit b1 b1 b0 = bitpair b1 b0
-addBit b1 b1 b1 = bitpair b1 b1
+addBit B0 B0 B0 = bitpair B0 B0
+addBit B0 B0 B1 = bitpair B0 B1
+addBit B0 B1 B0 = bitpair B0 B1
+addBit B0 B1 B1 = bitpair B1 B0
+addBit B1 B0 B0 = bitpair B0 B1
+addBit B1 B0 B1 = bitpair B1 B0
+addBit B1 B1 B0 = bitpair B1 B0
+addBit B1 B1 B1 = bitpair B1 B1
 
 adc : Binary w x -> Binary w y -> Bit c -> Binary (S w) (c + x + y)
 adc Zero        Zero        carry ?= Zero # carry
