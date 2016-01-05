@@ -1,7 +1,9 @@
 module Main
 
 import System
+import Effects
 import Effect.Random
+import Data.Vect
 
 total
 insert : Ord a => a -> Vect n a -> Vect (S n) a
@@ -12,13 +14,12 @@ vsort : Ord a => Vect n a -> Vect n a
 vsort [] = []
 vsort (x :: xs) = insert x (vsort xs)
 
-mkSortVec : (n : Nat) -> Eff m [RND] (Vect n Int)
+mkSortVec : (n : Nat) -> Eff (Vect n Int) [RND]
 mkSortVec Z = return []
 mkSortVec (S k) = return (fromInteger !(rndInt 0 10000) :: !(mkSortVec k))
 
 main : IO ()
 main = do (_ :: arg :: _) <- getArgs
---           let arg = "2000"
-          let vec = runPure [123456789] (mkSortVec (fromInteger (cast arg)))
+          let vec = runPure $ (srand 123456789 *> mkSortVec (fromInteger (cast arg)))
           putStrLn "Made vector"
           printLn (vsort vec)

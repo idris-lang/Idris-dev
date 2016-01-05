@@ -1,6 +1,7 @@
 module Parser
 
 import Decidable.Equality
+import Data.Vect
 
 import Solver
 
@@ -61,9 +62,9 @@ parseRows {n=S k} _ l rs = helper last l
     step : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
     step i l =
       let cs = fromList (words (index i rs)) in
-      case decEq (length cs) (S k) of
+      case decEq (Parser.length cs) (S k) of
         No _  => Left "Row length not equal to column height"
-        Yes prf => let foo = (replace {P=\n => Vect n String} prf cs) in parseCols i l foo -- TODO: foo shouldn't be needed
+        Yes prf => parseCols i l (replace {P=\n => Vect n String} prf cs)
 
     helper : {b : Board (S k)} -> Fin (S k) -> LegalBoard b -> Parser (S k)
     helper FZ l = step FZ l
