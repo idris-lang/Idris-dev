@@ -53,7 +53,7 @@ usesGMP flags =
   case lookup (FlagName "gmp") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
-    Nothing -> True
+    Nothing -> False
 
 execOnly :: S.ConfigFlags -> Bool
 execOnly flags =
