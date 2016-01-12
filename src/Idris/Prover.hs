@@ -156,8 +156,8 @@ dumpState ist inElab menv ps | [] <- holes ps =
      iputGoal rendered
 dumpState ist inElab menv ps | (h : hs) <- holes ps = do
   let OK ty  = goalAtFocus ps
-  let OK env = envAtFocus ps
-  let state = prettyOtherGoals hs <> line <>
+      OK env = envAtFocus ps
+      state = prettyOtherGoals hs <> line <>
               prettyAssumptions inElab ty env <> line <>
               prettyMetaValues (reverse menv) <>
               prettyGoal (zip (assumptionNames env) (repeat False)) ty
@@ -215,21 +215,19 @@ dumpState ist inElab menv ps | (h : hs) <- holes ps = do
       bindingOf h False <+> colon <+> align (prettyG bnd ty)
 
     prettyAssumptions inElab g env =
-      if length env == 0 then
-        empty
+      if null env then empty
       else
         text "----------              Assumptions:              ----------" <>
         nest nestingSize (prettyPs inElab g [] $ reverse env)
 
     prettyOtherGoals hs =
-      if length hs == 0 then
-        empty
+      if null hs then empty
       else
         text "----------              Other goals:              ----------" <$$>
-        nest nestingSize (align . cat . punctuate (text ",") . map (flip bindingOf False) $ hs)
+        nest nestingSize (align . cat . punctuate (text ",") . map (`bindingOf` False) $ hs)
 
     freeEnvNames :: Env -> [Name]
-    freeEnvNames = foldl (++) [] . map (\(n, b) -> freeNames (Bind n b Erased))
+    freeEnvNames = concatMap (\(n, b) -> freeNames (Bind n b Erased))
 
 lifte :: ElabState EState -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
@@ -247,7 +245,7 @@ receiveInput h e =
      (sexp, id) <- case IdeMode.parseMessage l of
                      Left err -> ierror err
                      Right (sexp, id) -> return (sexp, id)
-     putIState $ i { idris_outputmode = (IdeMode id h) }
+     putIState $ i { idris_outputmode = IdeMode id h }
      case IdeMode.sexpToCommand sexp of
        Just (IdeMode.REPLCompletions prefix) ->
          do (unused, compls) <- proverCompletion (assumptionNames e) (reverse prefix, "")
@@ -309,7 +307,7 @@ elabloop fn d prompt prf e prev h env
               Success (Left cmd') ->
                 case cmd' of
                   EQED -> do hs <- lifte e get_holes
-                             when (not (null hs)) $ ifail "Incomplete proof"
+                             unless (null hs) $ ifail "Incomplete proof"
                              iputStrLn "Proof completed!"
                              return (False, prev, e, True, prf, env, Right $ iPrintResult "")
                   EUndo -> do (prf', env', st', prev') <- undoElab prf env e prev
@@ -333,8 +331,8 @@ elabloop fn d prompt prf e prev h env
                                   return (d', prev, st', done, prf', env, go)
               Success (Right cmd') ->
                 case cmd' of
-                  DoLetP _ _ _ -> ifail "Pattern-matching let not supported here"
-                  DoBindP _ _ _ _ -> ifail "Pattern-matching <- not supported here"
+                  DoLetP  {} -> ifail "Pattern-matching let not supported here"
+                  DoBindP {} -> ifail "Pattern-matching <- not supported here"
                   DoLet fc i ifc Placeholder expr ->
                     do (tm, ty) <- elabVal recinfo ERHS (inLets ist env expr)
                        ctxt <- getContext
@@ -380,7 +378,7 @@ elabloop fn d prompt prf e prev h env
                    else do ok
                            elabloop fn d prompt prf' st prev' h' env'
 
-  where 
+  where
     -- A bit of a hack: wrap the value up in a let binding, which will
     -- normalise away. It would be better to figure out how to call
     -- the elaborator with a custom environment here to avoid the
@@ -412,7 +410,7 @@ ploop fn d prompt prf e h
                   return (i, h)
          (cmd, step) <- case x of
             Nothing -> do iPrintError ""; ifail "Abandoned"
-            Just input -> do return (parseTactic i input, input)
+            Just input -> return (parseTactic i input, input)
          case cmd of
             Success Abandon -> do iPrintError ""; ifail "Abandoned"
             _ -> return ()
@@ -426,7 +424,7 @@ ploop fn d prompt prf e h
                                       iputStrLn $ "TT: " ++ show tm ++ "\n"
                                       return (False, e, False, prf, Right $ iPrintResult "")
               Success Qed -> do hs <- lifte e get_holes
-                                when (not (null hs)) $ ifail "Incomplete proof"
+                                unless (null hs) $ ifail "Incomplete proof"
                                 iputStrLn "Proof completed!"
                                 return (False, e, True, prf, Right $ iPrintResult "")
               Success (TCheck (PRef _ _ n)) -> checkNameType e prf n
