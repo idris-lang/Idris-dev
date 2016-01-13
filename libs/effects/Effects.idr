@@ -46,9 +46,9 @@ namespace DepUpdateEffect
         (ret : Type) -> (res_in : Type) -> (res_out : ret -> Type) -> Type
   sig e r e_in e_out = e r e_in e_out
 
-||| Handler classes describe how an effect `e` is translated to the
+||| Handler interfaces describe how an effect `e` is translated to the
 ||| underlying computation context `m` for execution.
-class Handler (e : Effect) (m : Type -> Type) where
+interface Handler (e : Effect) (m : Type -> Type) where
   ||| How to handle the effect.
   |||
   ||| @ r The resource being handled.
@@ -138,7 +138,7 @@ data LRes : lbl -> Type -> Type where
 (:::) {lbl} x (MkEff r e) = MkEff (LRes x r) e
 
 using (lbl : Type)
-  instance Default a => Default (LRes lbl a) where
+  implementation Default a => Default (LRes lbl a) where
     default = lbl := default
 
 private
@@ -285,7 +285,7 @@ eff env (l :- prog) k
    = let env' = unlabel env in
          eff env' prog (\p', envk => k p' (relabel l envk))
 
--- yuck :) Haven't got type class instances working nicely in tactic
+-- yuck :) Haven't got interface instances working nicely in tactic
 -- proofs yet, and 'search' can't be told about any hints yet,
 -- so just brute force it.
 syntax MkDefaultEnv = with Env

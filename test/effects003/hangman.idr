@@ -27,10 +27,10 @@ data Hangman : HState -> Type where
                 (missing : Vect m Char) ->
                 Hangman (Running guesses m)
 
-instance Default (Hangman NotRunning) where
+implementation Default (Hangman NotRunning) where
     default = Init
 
-instance Show (Hangman s) where
+implementation Show (Hangman s) where
     show Init = "Not ready yet"
     show (GameWon w) = "You won! Successfully guessed " ++ w
     show (GameLost w) = "You lost! The word was " ++ w
@@ -139,7 +139,7 @@ whether the letter is in the word, and branch accordingly (and if it
 is in the word, update the vector of missing letters to be the right
 length). -}
 
-instance Handler HangmanRules m where
+implementation Handler HangmanRules m where
     handle (MkH w g got []) Won k = k () (GameWon w)
     handle (MkH w Z got m) Lost k = k () (GameLost w)
 

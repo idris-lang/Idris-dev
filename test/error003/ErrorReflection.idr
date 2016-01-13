@@ -11,7 +11,7 @@ import Data.Vect
 
 data Ty = TUnit | TFun Ty Ty
 
-instance Show Ty where
+implementation Show Ty where
   show TUnit = "()"
   show (TFun t1 t2) = "(" ++ show t1 ++ " => " ++ show t2 ++ ")"
 
@@ -33,7 +33,7 @@ namespace ErrorReports
            | TFun Ty' Ty'
            | TVar Int String -- To show in unification failures
 
-  instance Show Ty' where
+  implementation Show Ty' where
     show TUnit = "()"
     show (TFun x y) = "(" ++ show x ++ " => " ++ show y ++ ")"
     show (TVar i n) = n ++ "(" ++ cast i ++ ")"

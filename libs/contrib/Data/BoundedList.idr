@@ -62,7 +62,7 @@ replicate (S n) x = x :: replicate n x
 -- Folds
 --------------------------------------------------------------------------------
 
-instance Foldable (BoundedList n) where
+implementation Foldable (BoundedList n) where
   foldr f e []      = e
   foldr f e (x::xs) = f x (foldr f e xs)
   foldl f e []      = e
@@ -72,7 +72,7 @@ instance Foldable (BoundedList n) where
 -- Maps
 --------------------------------------------------------------------------------
 
-instance Functor (BoundedList n) where
+implementation Functor (BoundedList n) where
   map f [] = []
   map f (x :: xs) = f x :: map f xs
 

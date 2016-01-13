@@ -8,5 +8,5 @@ using (m : Nat, ts : Vect m Type)
   showHV : Shows m ts => HV ts -> String
   showHV (MkHV v) = show v
 
-  instance Shows m ts => Show (HV ts) where
+  implementation Shows m ts => Show (HV ts) where
     show = showHV

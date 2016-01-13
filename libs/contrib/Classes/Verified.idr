@@ -6,18 +6,18 @@ import Control.Algebra.VectorSpace
 
 -- Due to these being basically unused and difficult to implement,
 -- they're in contrib for a bit. Once a design is found that lets them
--- be implemented for a number of instances, and we get those
+-- be implemented for a number of implementations, and we get those
 -- implementations, then some of them can move back to base (or even
 -- prelude, in the cases of Functor, Applicative, Monad, Semigroup,
 -- and Monoid).
 
-class Functor f => VerifiedFunctor (f : Type -> Type) where
+interface Functor f => VerifiedFunctor (f : Type -> Type) where
   functorIdentity : {a : Type} -> (x : f a) -> map id x = id x
   functorComposition : {a : Type} -> {b : Type} -> (x : f a) ->
                        (g1 : a -> b) -> (g2 : b -> c) ->
                        map (g2 . g1) x = (map g2 . map g1) x
 
-class (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type -> Type) where
+interface (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type -> Type) where
   applicativeMap : (x : f a) -> (g : a -> b) ->
                    map g x = pure g <*> x
   applicativeIdentity : (x : f a) -> pure Basics.id <*> x = x
@@ -28,7 +28,7 @@ class (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type -> Typ
   applicativeInterchange : (x : a) -> (g : f (a -> b)) ->
                            g <*> pure x = pure (\g' : a -> b => g' x) <*> g
 
-class (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) where
+interface (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) where
   monadApplicative : (mf : m (a -> b)) -> (mx : m a) ->
                      mf <*> mx = mf >>= \f =>
                                  mx >>= \x =>
@@ -39,76 +39,76 @@ class (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) where
                        (mx >>= f) >>= g = mx >>= (\x => f x >>= g)
 
 
-class Semigroup a => VerifiedSemigroup a where
+interface Semigroup a => VerifiedSemigroup a where
   total semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
 
-instance VerifiedSemigroup (List a) where
+implementation VerifiedSemigroup (List a) where
   semigroupOpIsAssociative = appendAssociative
 
---instance VerifiedSemigroup Nat where
+--implementation VerifiedSemigroup Nat where
 --  semigroupOpIsAssociative = plusAssociative
 
 
-class (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
+interface (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
   total monoidNeutralIsNeutralL : (l : a) -> l <+> Algebra.neutral = l
   total monoidNeutralIsNeutralR : (r : a) -> Algebra.neutral <+> r = r
 
--- instance VerifiedMonoid Nat where
+-- implementation VerifiedMonoid Nat where
 --   monoidNeutralIsNeutralL = plusZeroRightNeutral
 --   monoidNeutralIsNeutralR = plusZeroLeftNeutral
 
-instance VerifiedMonoid (List a) where
+implementation VerifiedMonoid (List a) where
   monoidNeutralIsNeutralL = appendNilRightNeutral
   monoidNeutralIsNeutralR xs = Refl
 
-class (VerifiedMonoid a, Group a) => VerifiedGroup a where
+interface (VerifiedMonoid a, Group a) => VerifiedGroup a where
   total groupInverseIsInverseL : (l : a) -> l <+> inverse l = Algebra.neutral
   total groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
 
-class (VerifiedGroup a, AbelianGroup a) => VerifiedAbelianGroup a where
+interface (VerifiedGroup a, AbelianGroup a) => VerifiedAbelianGroup a where
   total abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
 
-class (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
+interface (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
   total ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
   total ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
   total ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)
 
-class (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
+interface (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
   total ringWithUnityIsUnityL : (l : a) -> l <.> Algebra.unity = l
   total ringWithUnityIsUnityR : (r : a) -> Algebra.unity <.> r = r
 
---class (VerifiedRingWithUnity a, Field a) => VerifiedField a where
+--interface (VerifiedRingWithUnity a, Field a) => VerifiedField a where
 --  total fieldInverseIsInverseL : (l : a) -> (notId : Not (l = neutral)) -> l <.> (inverseM l notId) = Algebra.unity
 --  total fieldInverseIsInverseR : (r : a) -> (notId : Not (r = neutral)) -> (inverseM r notId) <.> r = Algebra.unity
 
 
-class JoinSemilattice a => VerifiedJoinSemilattice a where
+interface JoinSemilattice a => VerifiedJoinSemilattice a where
   total joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
   total joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
   total joinSemilatticeJoinIsIdempotent  : (e : a)       -> join e e = e
 
-class MeetSemilattice a => VerifiedMeetSemilattice a where
+interface MeetSemilattice a => VerifiedMeetSemilattice a where
   total meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
   total meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
   total meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
 
-class (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJoinSemilattice a where
+interface (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJoinSemilattice a where
   total boundedJoinSemilatticeBottomIsBottom : (e : a) -> join e Algebra.bottom = e
 
-class (VerifiedMeetSemilattice a, BoundedMeetSemilattice a) => VerifiedBoundedMeetSemilattice a where
+interface (VerifiedMeetSemilattice a, BoundedMeetSemilattice a) => VerifiedBoundedMeetSemilattice a where
   total boundedMeetSemilatticeTopIsTop : (e : a) -> meet e Algebra.top = e
 
-class (VerifiedJoinSemilattice a, VerifiedMeetSemilattice a) => VerifiedLattice a where
+interface (VerifiedJoinSemilattice a, VerifiedMeetSemilattice a) => VerifiedLattice a where
   total latticeMeetAbsorbsJoin : (l, r : a) -> meet l (join l r) = l
   total latticeJoinAbsorbsMeet : (l, r : a) -> join l (meet l r) = l
 
-class (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, VerifiedLattice a) => VerifiedBoundedLattice a where { }
+interface (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, VerifiedLattice a) => VerifiedBoundedLattice a where { }
 
 
---class (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
+--interface (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
 --  total moduleScalarMultiplyComposition : (x,y : a) -> (v : b) -> x <#> (y <#> v) = (x <.> y) <#> v
 --  total moduleScalarUnityIsUnity : (v : b) -> Algebra.unity {a} <#> v = v
 --  total moduleScalarMultDistributiveWRTVectorAddition : (s : a) -> (v, w : b) -> s <#> (v <+> w) = (s <#> v) <+> (s <#> w)
 --  total moduleScalarMultDistributiveWRTModuleAddition : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
 
---class (VerifiedField a, VerifiedModule a b) => VerifiedVectorSpace a b where {}
+--interface (VerifiedField a, VerifiedModule a b) => VerifiedVectorSpace a b where {}

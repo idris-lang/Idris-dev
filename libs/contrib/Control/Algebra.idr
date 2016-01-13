@@ -15,7 +15,7 @@ infixl 7 <.>
 ||| + Inverse for `<+>`:
 |||     forall a,     a <+> inverse a == neutral
 |||     forall a,     inverse a <+> a == neutral
-class Monoid a => Group a where
+interface Monoid a => Group a where
   inverse : a -> a
 
 (<->) : Group a => a -> a -> a
@@ -35,7 +35,7 @@ class Monoid a => Group a where
 ||| + Inverse for `<+>`:
 |||     forall a,     a <+> inverse a == neutral
 |||     forall a,     inverse a <+> a == neutral
-class Group a => AbelianGroup a where { }
+interface Group a => AbelianGroup a where { }
 
 ||| Sets equipped with two binary operations, one associative and commutative
 ||| supplied with a neutral element, and the other associative, with
@@ -57,7 +57,7 @@ class Group a => AbelianGroup a where { }
 ||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
-class AbelianGroup a => Ring a where
+interface AbelianGroup a => Ring a where
   (<.>) : a -> a -> a
 
 ||| Sets equipped with two binary operations, one associative and commutative
@@ -83,7 +83,7 @@ class AbelianGroup a => Ring a where
 ||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
-class Ring a => RingWithUnity a where
+interface Ring a => RingWithUnity a where
   unity : a
 
 ||| Sets equipped with two binary operations – both associative, commutative and
@@ -112,7 +112,7 @@ class Ring a => RingWithUnity a where
 ||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
-class RingWithUnity a => Field a where
+interface RingWithUnity a => Field a where
   inverseM : (x : a) -> Not (x = Algebra.neutral) -> a
 
 sum' : (Foldable t, Monoid a) => t a -> a

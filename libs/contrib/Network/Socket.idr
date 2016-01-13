@@ -13,7 +13,7 @@ module IdrisNet.Socket
 ByteLength : Type
 ByteLength = Int
 
-class ToCode a where
+interface ToCode a where
   toCode : a -> Int
 
 ||| Socket Families
@@ -28,12 +28,12 @@ data SocketFamily =
   |||  IP / UDP etc. IPv6
   AF_INET6
 
-instance Show SocketFamily where
+implementation Show SocketFamily where
   show AF_UNSPEC = "AF_UNSPEC"
   show AF_INET   = "AF_INET"
   show AF_INET6  = "AF_INET6"
 
-instance ToCode SocketFamily where
+implementation ToCode SocketFamily where
   toCode AF_UNSPEC = 0
   toCode AF_INET   = 2
   toCode AF_INET6  = 10
@@ -52,13 +52,13 @@ data SocketType =
   ||| Raw sockets
   RawSocket
 
-instance Show SocketType where
+implementation Show SocketType where
   show NotASocket = "Not a socket"
   show Stream     = "Stream"
   show Datagram   = "Datagram"
   show RawSocket  = "Raw"
 
-instance ToCode SocketType where
+implementation ToCode SocketType where
   toCode NotASocket = 0
   toCode Stream     = 1
   toCode Datagram   = 2
@@ -89,7 +89,7 @@ data SocketAddress = IPv4Addr Int Int Int Int
                    | Hostname String
                    | InvalidAddress -- Used when there's a parse error
 
-instance Show SocketAddress where
+implementation Show SocketAddress where
   show (IPv4Addr i1 i2 i3 i4) = concat $ Prelude.List.intersperse "." (map show [i1, i2, i3, i4])
   show IPv6Addr = "NOT IMPLEMENTED YET"
   show (Hostname host) = host

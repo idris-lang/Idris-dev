@@ -232,7 +232,7 @@ unzip3 ((l,c,r)::xs) with (unzip3 xs)
 -- Equality
 --------------------------------------------------------------------------------
 
-instance (Eq a) => Eq (Vect n a) where
+implementation (Eq a) => Eq (Vect n a) where
   (==) []      []      = True
   (==) (x::xs) (y::ys) = x == y && xs == ys
 
@@ -241,7 +241,7 @@ instance (Eq a) => Eq (Vect n a) where
 -- Order
 --------------------------------------------------------------------------------
 
-instance Ord a => Ord (Vect n a) where
+implementation Ord a => Ord (Vect n a) where
   compare []      []      = EQ
   compare (x::xs) (y::ys) = compare x y `thenCompare` compare xs ys
 
@@ -250,7 +250,7 @@ instance Ord a => Ord (Vect n a) where
 -- Maps
 --------------------------------------------------------------------------------
 
-instance Functor (Vect n) where
+implementation Functor (Vect n) where
   map f []        = []
   map f (x::xs) = f x :: map f xs
 
@@ -281,7 +281,7 @@ foldrImpl : (t -> acc -> acc) -> acc -> (acc -> acc) -> Vect n t -> acc
 foldrImpl f e go [] = go e
 foldrImpl f e go (x::xs) = foldrImpl f e (go . (f x)) xs
 
-instance Foldable (Vect n) where
+implementation Foldable (Vect n) where
   foldr f e xs = foldrImpl f e id xs
 
 --------------------------------------------------------------------------------
@@ -501,17 +501,17 @@ transpose (x :: xs) = zipWith (::) x (transpose xs)
 -- Applicative/Monad/Traversable
 --------------------------------------------------------------------------------
 
-instance Applicative (Vect k) where
+implementation Applicative (Vect k) where
     pure = replicate _
 
     fs <*> vs = zipWith apply fs vs
 
 ||| This monad is different from the List monad, (>>=)
 ||| uses the diagonal.
-instance Monad (Vect n) where
+implementation Monad (Vect n) where
     m >>= f = diag (map f m)
 
-instance Traversable (Vect n) where
+implementation Traversable (Vect n) where
     traverse f [] = pure Vect.Nil
     traverse f (x::xs) = [| Vect.(::) (f x) (traverse f xs) |]
 
@@ -519,7 +519,7 @@ instance Traversable (Vect n) where
 -- Show
 --------------------------------------------------------------------------------
 
-instance Show a => Show (Vect n a) where
+implementation Show a => Show (Vect n a) where
     show = show . toList
 
 --------------------------------------------------------------------------------
@@ -549,7 +549,7 @@ vectInjective1 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
 vectInjective2 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> xs = ys
 vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
 
-instance DecEq a => DecEq (Vect n a) where
+implementation DecEq a => DecEq (Vect n a) where
   decEq [] [] = Yes Refl
   decEq (x :: xs) (y :: ys) with (decEq x y)
     decEq (x :: xs) (x :: ys)   | Yes Refl with (decEq xs ys)
@@ -558,7 +558,7 @@ instance DecEq a => DecEq (Vect n a) where
     decEq (x :: xs) (y :: ys)   | No  neq             = No (neq . vectInjective1)
 
 {- The following definition is elaborated in a wrong case-tree. Examination pending.
-instance DecEq a => DecEq (Vect n a) where
+implementation DecEq a => DecEq (Vect n a) where
   decEq [] [] = Yes Refl
   decEq (x :: xs) (y :: ys) with (decEq x y, decEq xs ys)
     decEq (x :: xs) (x :: xs) | (Yes Refl, Yes Refl) = Yes Refl

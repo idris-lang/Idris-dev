@@ -44,11 +44,11 @@ transpose_vec (row :: rest) = let rest_trans = transpose_vec rest in
 
 ------- A main program to read dimensions, generate and tranpose a vector
 
-instance Functor (Vect m) where
+implementation Functor (Vect m) where
     map m [] = []
     map m (x :: xs) = m x :: map m xs
 
-instance Show a => Show (Vect m a) where
+implementation Show a => Show (Vect m a) where
     show x = show (toList x)
       where
         toList : Vect m a -> List a

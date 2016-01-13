@@ -23,7 +23,7 @@ import Prelude.Uninhabited
 -- name hints for interactive editing
 %name Nat k,j,i,n,m
 
-instance Uninhabited (Z = S n) where
+implementation Uninhabited (Z = S n) where
   uninhabited Refl impossible
 
 --------------------------------------------------------------------------------
@@ -100,7 +100,7 @@ data LTE  : (n, m : Nat) -> Type where
   ||| If n <= m, then n + 1 <= m + 1
   LTESucc : LTE left right -> LTE (S left) (S right)
 
-instance Uninhabited (LTE (S n) Z) where
+implementation Uninhabited (LTE (S n) Z) where
   uninhabited LTEZero impossible
 
 ||| Greater than or equal to
@@ -184,50 +184,50 @@ toIntNat n = toIntNat' n 0 where
 (-) m n {smaller} = minus m n
 
 --------------------------------------------------------------------------------
--- Type class instances
+-- Type class implementations
 --------------------------------------------------------------------------------
 
-instance Eq Nat where
+implementation Eq Nat where
   Z == Z         = True
   (S l) == (S r) = l == r
   _ == _         = False
 
-instance Cast Nat Integer where
+implementation Cast Nat Integer where
   cast = toIntegerNat
 
-instance Ord Nat where
+implementation Ord Nat where
   compare Z Z         = EQ
   compare Z (S k)     = LT
   compare (S k) Z     = GT
   compare (S x) (S y) = compare x y
 
-instance Num Nat where
+implementation Num Nat where
   (+) = plus
   (*) = mult
 
   fromInteger = fromIntegerNat
 
-instance MinBound Nat where
+implementation MinBound Nat where
   minBound = Z
 
 ||| Casts negative `Integers` to 0.
-instance Cast Integer Nat where
+implementation Cast Integer Nat where
   cast = fromInteger
 
-instance Cast String Nat where
+implementation Cast String Nat where
     cast str = cast (the Integer (cast str))
 
-||| A wrapper for Nat that specifies the semigroup and monad instances that use (*)
+||| A wrapper for Nat that specifies the semigroup and monad implementations that use (*)
 record Multiplicative where
   constructor GetMultiplicative
   _ : Nat
 
-||| A wrapper for Nat that specifies the semigroup and monad instances that use (+)
+||| A wrapper for Nat that specifies the semigroup and monad implementations that use (+)
 record Additive where
   constructor GetAdditive  
   _ : Nat
   
-instance Semigroup Multiplicative where
+implementation Semigroup Multiplicative where
   (<+>) left right = GetMultiplicative $ left' * right'
     where
       left'  : Nat
@@ -240,7 +240,7 @@ instance Semigroup Multiplicative where
         case right of
           GetMultiplicative m => m
 
-instance Semigroup Additive where
+implementation Semigroup Additive where
   left <+> right = GetAdditive $ left' + right'
     where
       left'  : Nat
@@ -253,20 +253,20 @@ instance Semigroup Additive where
         case right of
           GetAdditive m => m
 
-instance Monoid Multiplicative where
+implementation Monoid Multiplicative where
   neutral = GetMultiplicative $ S Z
 
-instance Monoid Additive where
+implementation Monoid Additive where
   neutral = GetAdditive Z
 
 ||| Casts negative `Ints` to 0.
-instance Cast Int Nat where
+implementation Cast Int Nat where
   cast i = fromInteger (cast i)
 
-instance Cast Nat Int where
+implementation Cast Nat Int where
   cast = toIntNat
 
-instance Cast Nat Double where
+implementation Cast Nat Double where
   cast = cast . toIntegerNat
 
 --------------------------------------------------------------------------------
@@ -341,7 +341,7 @@ partial
 divCeil : Nat -> Nat -> Nat
 divCeil x (S y) = divCeilNZ x (S y) SIsNotZ
 
-instance Integral Nat where
+implementation Integral Nat where
   div = divNat
   mod = modNat
 

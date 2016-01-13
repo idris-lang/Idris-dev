@@ -11,7 +11,7 @@ infixr 3 &&&
 infixr 2 +++
 infixr 2 \|/
 
-class Category arr => Arrow (arr : Type -> Type -> Type) where
+interface Category arr => Arrow (arr : Type -> Type -> Type) where
   arrow  : (a -> b) -> arr a b
   first  : arr a b -> arr (a, c) (b, c)
 
@@ -26,14 +26,14 @@ class Category arr => Arrow (arr : Type -> Type -> Type) where
     dup : x -> (x,x)
     dup x = (x,x)
 
-instance Arrow Morphism where
+implementation Arrow Morphism where
   arrow  f            = Mor f
   first  (Mor f)      = Mor $ \(a, b) => (f a, b)
   second (Mor f)      = Mor $ \(a, b) => (a, f b)
   (Mor f) *** (Mor g) = Mor $ \(a, b) => (f a, g b)
   (Mor f) &&& (Mor g) = Mor $ \a => (f a, g a)
 
-instance Monad m => Arrow (Kleislimorphism m) where
+implementation Monad m => Arrow (Kleislimorphism m) where
   arrow f = Kleisli (return . f)
   first (Kleisli f) =  Kleisli $ \(a, b) => do x <- f a
                                                return (x, b)
@@ -49,13 +49,13 @@ instance Monad m => Arrow (Kleislimorphism m) where
                                                    y <- g a
                                                    return (x, y)
 
-class Arrow arr => ArrowZero (arr : Type -> Type -> Type) where
+interface Arrow arr => ArrowZero (arr : Type -> Type -> Type) where
   zeroArrow : arr a b
 
-class ArrowZero arr => ArrowPlus (arr : Type -> Type -> Type) where
+interface ArrowZero arr => ArrowPlus (arr : Type -> Type -> Type) where
   (<++>) : arr a b -> arr a b -> arr a b
 
-class Arrow arr => ArrowChoice (arr : Type -> Type -> Type) where
+interface Arrow arr => ArrowChoice (arr : Type -> Type -> Type) where
   left  : arr a b -> arr (Either a c) (Either b c)
 
   right : arr a b -> arr (Either c a) (Either c b)
@@ -67,16 +67,16 @@ class Arrow arr => ArrowChoice (arr : Type -> Type -> Type) where
   (\|/) : arr a b -> arr c b -> arr (Either a c) b
   f \|/ g = f +++ g >>> arrow fromEither
 
-instance Monad m => ArrowChoice (Kleislimorphism m) where
+implementation Monad m => ArrowChoice (Kleislimorphism m) where
   left f                      = f          +++ (arrow id)
   right f                     = (arrow id) +++ f
   f           +++ g           = (f >>> (arrow Left)) \|/ (g >>> (arrow Right))
   (Kleisli f) \|/ (Kleisli g) = Kleisli (either f g)
 
-class Arrow arr => ArrowApply (arr : Type -> Type -> Type) where
+interface Arrow arr => ArrowApply (arr : Type -> Type -> Type) where
   app : arr (arr a b, a) b
 
-instance Monad m => ArrowApply (Kleislimorphism m) where
+implementation Monad m => ArrowApply (Kleislimorphism m) where
   app = Kleisli $ \(Kleisli f, x) => f x
 
 data ArrowMonad : (Type -> Type -> Type) -> Type -> Type where
@@ -85,16 +85,16 @@ data ArrowMonad : (Type -> Type -> Type) -> Type -> Type where
 runArrowMonad : ArrowMonad arr a -> arr (the Type ()) a
 runArrowMonad (MkArrowMonad a) = a
 
-instance Arrow a => Functor (ArrowMonad a) where
+implementation Arrow a => Functor (ArrowMonad a) where
   map f (MkArrowMonad m) = MkArrowMonad $ m >>> arrow f
 
-instance Arrow a => Applicative (ArrowMonad a) where
+implementation Arrow a => Applicative (ArrowMonad a) where
   pure x = MkArrowMonad $ arrow $ \_ => x
   (MkArrowMonad f) <*> (MkArrowMonad x) = MkArrowMonad $ f &&& x >>> arrow (uncurry id)
 
-instance ArrowApply a => Monad (ArrowMonad a) where
+implementation ArrowApply a => Monad (ArrowMonad a) where
   (MkArrowMonad m) >>= f =
     MkArrowMonad $ m >>> (arrow $ \x => (runArrowMonad (f x), ())) >>> app
 
-class Arrow arr => ArrowLoop (arr : Type -> Type -> Type) where
+interface Arrow arr => ArrowLoop (arr : Type -> Type -> Type) where
   loop : arr (Pair a c) (Pair b c) -> arr a b

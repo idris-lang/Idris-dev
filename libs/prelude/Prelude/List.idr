@@ -56,7 +56,7 @@ data NonEmpty : (xs : List a) -> Type where
     ||| The proof that a cons cell is non-empty
     IsNonEmpty : NonEmpty (x :: xs)
 
-instance Uninhabited (NonEmpty []) where
+implementation Uninhabited (NonEmpty []) where
   uninhabited IsNonEmpty impossible
 
 ||| Decide whether a list is non-empty
@@ -74,7 +74,7 @@ data InBounds : (k : Nat) -> (xs : List a) -> Type where
     ||| Valid indices can be extended
     InLater : InBounds k xs -> InBounds (S k) (x :: xs)
 
-instance Uninhabited (InBounds k []) where
+implementation Uninhabited (InBounds k []) where
     uninhabited InFirst impossible
 
 ||| Decide whether `k` is a valid index into `xs`
@@ -252,7 +252,7 @@ replicate (S n) x = x :: replicate n x
 -- Instances
 --------------------------------------------------------------------------------
 
-instance (Eq a) => Eq (List a) where
+implementation (Eq a) => Eq (List a) where
   (==) []      []      = True
   (==) (x::xs) (y::ys) =
     if x == y then
@@ -262,7 +262,7 @@ instance (Eq a) => Eq (List a) where
   (==) _ _ = False
 
 
-instance Ord a => Ord (List a) where
+implementation Ord a => Ord (List a) where
   compare [] [] = EQ
   compare [] _ = LT
   compare _ [] = GT
@@ -272,13 +272,13 @@ instance Ord a => Ord (List a) where
     else
       compare xs ys
 
-instance Semigroup (List a) where
+implementation Semigroup (List a) where
   (<+>) = (++)
 
-instance Monoid (List a) where
+implementation Monoid (List a) where
   neutral = []
 
-instance Functor List where
+implementation Functor List where
   map f []      = []
   map f (x::xs) = f x :: map f xs
 
@@ -349,7 +349,7 @@ mapMaybe f (x::xs) =
 -- Folds
 --------------------------------------------------------------------------------
 
-instance Foldable List where
+implementation Foldable List where
   foldr c n [] = n
   foldr c n (x::xs) = c x (foldr c n xs)
 
@@ -590,7 +590,7 @@ delete = deleteBy (==)
 unionBy : (a -> a -> Bool) -> List a -> List a -> List a
 unionBy eq xs ys = xs ++ foldl (flip (deleteBy eq)) (nubBy eq ys) xs
 
-||| Compute the union of two lists according to their `Eq` instance.
+||| Compute the union of two lists according to their `Eq` implementation.
 |||
 ||| ```idris example
 ||| union ['d', 'o', 'g'] ['c', 'o', 'w']

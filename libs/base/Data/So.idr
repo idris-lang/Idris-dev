@@ -14,7 +14,7 @@ module Data.So
 data So : Bool -> Type where 
   Oh : So True
 
-instance Uninhabited (So False) where
+implementation Uninhabited (So False) where
   uninhabited Oh impossible
 
 ||| Perform a case analysis on a Boolean, providing clients with a `So` proof

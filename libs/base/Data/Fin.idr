@@ -12,14 +12,14 @@ data Fin : (n : Nat) -> Type where
     FZ : Fin (S k)
     FS : Fin k -> Fin (S k)
 
-instance Uninhabited (Fin Z) where
+implementation Uninhabited (Fin Z) where
   uninhabited FZ impossible
   uninhabited (FS f) impossible
 
 FSInjective : (m : Fin k) -> (n : Fin k) -> FS m = FS n -> m = n
 FSInjective left _ Refl = Refl
 
-instance Eq (Fin n) where
+implementation Eq (Fin n) where
     (==) FZ FZ = True
     (==) (FS k) (FS k') = k == k'
     (==) _ _ = False
@@ -44,7 +44,7 @@ finToNatInjective FZ     (FS n) Refl impossible
 finToNatInjective (FS m) (FS n) prf  =
   cong (finToNatInjective m n (succInjective (finToNat m) (finToNat n) prf))
 
-instance Cast (Fin n) Nat where
+implementation Cast (Fin n) Nat where
     cast x = finToNat x
 
 ||| Convert a Fin to an Integer
@@ -52,7 +52,7 @@ finToInteger : Fin n -> Integer
 finToInteger FZ     = 0
 finToInteger (FS k) = 1 + finToInteger k
 
-instance Cast (Fin n) Integer where
+implementation Cast (Fin n) Integer where
     cast x = finToInteger x
 
 ||| Weaken the bound on a Fin by 1
@@ -89,16 +89,16 @@ last {n=S _} = FS last
 total FSinjective : {f : Fin n} -> {f' : Fin n} -> (FS f = FS f') -> f = f'
 FSinjective Refl = Refl
 
-instance Ord (Fin n) where
+implementation Ord (Fin n) where
   compare  FZ     FZ    = EQ
   compare  FZ    (FS _) = LT
   compare (FS _)  FZ    = GT
   compare (FS x) (FS y) = compare x y
 
-instance MinBound (Fin (S n)) where
+implementation MinBound (Fin (S n)) where
   minBound = FZ
 
-instance MaxBound (Fin (S n)) where
+implementation MaxBound (Fin (S n)) where
   maxBound = last
 
 
@@ -174,7 +174,7 @@ finFromIntegerErrors _ = Nothing
 
 %error_handlers Data.Fin.fromInteger prf finFromIntegerErrors
 
-instance Enum (Fin (S n)) where
+implementation Enum (Fin (S n)) where
   pred FZ = FZ
   pred (FS n) = weaken n
   succ n = case strengthen (FS n) of
@@ -192,7 +192,7 @@ instance Enum (Fin (S n)) where
 total FZNotFS : {f : Fin n} -> FZ {k = n} = FS f -> Void
 FZNotFS Refl impossible
 
-instance DecEq (Fin n) where
+implementation DecEq (Fin n) where
   decEq FZ FZ = Yes Refl
   decEq FZ (FS f) = No FZNotFS
   decEq (FS f) FZ = No $ negEqSym FZNotFS

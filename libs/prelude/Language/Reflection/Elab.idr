@@ -28,7 +28,7 @@ data Plicity =
   Explicit |
   ||| The argument is found by Idris at the application site
   Implicit |
-  ||| The argument is solved using type class resolution
+  ||| The argument is solved using interface resolution
   Constraint
 
 ||| Function arguments
@@ -166,23 +166,23 @@ data Elab : Type -> Type where
 -------------
 %access public
 namespace Tactics
-  instance Functor Elab where
+  implementation Functor Elab where
     map f t = Prim__BindElab t (\x => Prim__PureElab (f x))
 
-  instance Applicative Elab where
+  implementation Applicative Elab where
     pure x  = Prim__PureElab x
     f <*> x = Prim__BindElab f $ \g =>
               Prim__BindElab x $ \y =>
               Prim__PureElab   $ g y
 
-  ||| The Alternative instance on Elab represents left-biased error
+  ||| The Alternative implementation on Elab represents left-biased error
   ||| handling. In other words, `t <|> t'` will run `t`, and if it
   ||| fails, roll back the elaboration state and run `t'`.
-  instance Alternative Elab where
+  implementation Alternative Elab where
     empty   = Prim__Fail [TextPart "empty"]
     x <|> y = Prim__Try x y
 
-  instance Monad Elab where
+  implementation Monad Elab where
     x >>= f = Prim__BindElab x f
 
   ||| Halt elaboration with an error
@@ -468,20 +468,20 @@ namespace Tactics
   defineFunction : FunDefn Raw -> Elab ()
   defineFunction defun = Prim__DefineFunction defun
 
-  ||| Register a new instance for type class resolution.
+  ||| Register a new implementation for interface resolution.
   |||
-  ||| @ className the name of the class for which an instance is being registered
-  ||| @ instName the name of the definition to use in instance search
-  addInstance : (className, instName : TTName) -> Elab ()
-  addInstance className instName = Prim__AddInstance className instName
+  ||| @ ifaceName the name of the interface for which an implementation is being registered
+  ||| @ instName the name of the definition to use in implementation search
+  addInstance : (ifaceName, instName : TTName) -> Elab ()
+  addInstance ifaceName instName = Prim__AddInstance ifaceName instName
 
-  ||| Determine whether a name denotes a class.
+  ||| Determine whether a name denotes an interface.
   |||
-  ||| @ name a name that might denote a class.
+  ||| @ name a name that might denote an interface.
   isTCName : (name : TTName) -> Elab Bool
   isTCName name = Prim__IsTCName name
 
-  ||| Attempt to solve the current goal with a type class dictionary
+  ||| Attempt to solve the current goal with an interface dictionary
   |||
   ||| @ fn the name of the definition being elaborated (to prevent Idris
   ||| from looping)

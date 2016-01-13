@@ -46,80 +46,80 @@ decAsBool (Yes _) = True
 decAsBool (No _)  = False
 
 
----- Functor instances
+---- Functor implementations
 
-instance Functor PrimIO where
+implementation Functor PrimIO where
     map f io = prim_io_bind io (prim_io_return . f)
 
-instance Functor Maybe where
+implementation Functor Maybe where
     map f (Just x) = Just (f x)
     map f Nothing  = Nothing
 
-instance Functor (Either e) where
+implementation Functor (Either e) where
     map f (Left l) = Left l
     map f (Right r) = Right (f r)
 
----- Applicative instances
+---- Applicative implementations
 
-instance Applicative PrimIO where
+implementation Applicative PrimIO where
     pure = prim_io_return
 
     am <*> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
 
-instance Applicative Maybe where
+implementation Applicative Maybe where
     pure = Just
 
     (Just f) <*> (Just a) = Just (f a)
     _        <*> _        = Nothing
 
-instance Applicative (Either e) where
+implementation Applicative (Either e) where
     pure = Right
 
     (Left a) <*> _          = Left a
     (Right f) <*> (Right r) = Right (f r)
     (Right _) <*> (Left l)  = Left l
 
-instance Applicative List where
+implementation Applicative List where
     pure x = [x]
 
     fs <*> vs = concatMap (\f => map f vs) fs
 
----- Alternative instances
+---- Alternative implementations
 
-instance Alternative Maybe where
+implementation Alternative Maybe where
     empty = Nothing
 
     (Just x) <|> _ = Just x
     Nothing  <|> v = v
 
-instance Alternative List where
+implementation Alternative List where
     empty = []
 
     (<|>) = (++)
 
----- Monad instances
+---- Monad implementations
 
-instance Monad PrimIO where
+implementation Monad PrimIO where
     b >>= k = prim_io_bind b k
 
-instance Monad Maybe where
+implementation Monad Maybe where
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
 
-instance Monad (Either e) where
+implementation Monad (Either e) where
     (Left n) >>= _ = Left n
     (Right r) >>= f = f r
 
-instance Monad List where
+implementation Monad List where
     m >>= f = concatMap f m
 
----- Traversable instances
+---- Traversable implementations
 
-instance Traversable Maybe where
+implementation Traversable Maybe where
     traverse f Nothing = pure Nothing
     traverse f (Just x) = [| Just (f x) |]
 
-instance Traversable List where
+implementation Traversable List where
     traverse f [] = pure List.Nil
     traverse f (x::xs) = [| List.(::) (f x) (traverse f xs) |]
 
@@ -145,7 +145,7 @@ total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
 natEnumFromThenTo _ Z       _ = []
 natEnumFromThenTo n (S inc) m = map (plus n . (* (S inc))) (natRange (S (divNatNZ (minus m n) (S inc) SIsNotZ)))
 
-class Enum a where
+interface Enum a where
   total pred : a -> a
   total succ : a -> a
   succ e = fromNat (S (toNat e))
@@ -160,7 +160,7 @@ class Enum a where
   total enumFromThenTo : a -> a -> a -> List a
   enumFromThenTo x1 x2 y = map fromNat (natEnumFromThenTo (toNat x1) (toNat x2) (toNat y))
 
-instance Enum Nat where
+implementation Enum Nat where
   pred n = Nat.pred n
   succ n = S n
   toNat x = id x
@@ -169,7 +169,7 @@ instance Enum Nat where
   enumFromThenTo x y z = natEnumFromThenTo x y z
   enumFromTo x y = natEnumFromTo x y
 
-instance Enum Integer where
+implementation Enum Integer where
   pred n = n - 1
   succ n = n + 1
   toNat n = cast n
@@ -187,7 +187,7 @@ instance Enum Integer where
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
 
-instance Enum Int where
+implementation Enum Int where
   pred n = n - 1
   succ n = n + 1
   toNat n = cast n
@@ -207,7 +207,7 @@ instance Enum Int where
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
 
-instance Enum Char where
+implementation Enum Char where
   toNat c   = toNat (ord c)
   fromNat n = chr (fromNat n)
   

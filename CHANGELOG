@@ -1,6 +1,9 @@
 New in 0.9.21:
 ==============
 
+* 'class' and 'instance' are now deprecated keywords. They have been
+  replaced by 'interface' and 'implementation' respectively. This is to
+  properly reflect their purpose.
 * Idris' logging infrastructure has been categorised. Command line and repl
   are available. For command line the option `--logging-categories CATS`
   is used to pass in the categories. Here `CATS` is a colon separated quoted

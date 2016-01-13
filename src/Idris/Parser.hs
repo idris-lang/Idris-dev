@@ -856,7 +856,7 @@ class_ :: SyntaxInfo -> IdrisParser [PDecl]
 class_ syn = do (doc, argDocs, acc)
                   <- try (do (doc, argDocs) <- docstring syn
                              acc <- optional accessibility
-                             reservedHL "class"
+                             classKeyword
                              return (doc, argDocs, acc))
                 fc <- getFC
                 cons <- constraintList syn
@@ -872,6 +872,15 @@ class_ syn = do (doc, argDocs, acc)
   where
     fundeps :: IdrisParser [(Name, FC)]
     fundeps = do lchar '|'; sepBy name (lchar ',')
+                             
+    classKeyword :: IdrisParser ()
+    classKeyword = reservedHL "interface"
+               <|> do reservedHL "class"
+                      fc <- getFC
+                      ist <- get
+                      put ist { parserWarnings = 
+                         (fc, Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
+                              : parserWarnings ist }
 
     carg :: IdrisParser (Name, FC, PTerm)
     carg = do lchar '('; (i, ifc) <- name; lchar ':'; ty <- expr syn; lchar ')'
@@ -894,7 +903,7 @@ InstanceName ::= '[' Name ']';
 -}
 instance_ :: SyntaxInfo -> IdrisParser [PDecl]
 instance_ syn = do (doc, argDocs)
-                     <- try (docstring syn <* reservedHL "instance")
+                     <- try (docstring syn <* instanceKeyword)
                    fc <- getFC
                    en <- optional instanceName
                    cs <- constraintList syn
@@ -911,6 +920,14 @@ instance_ syn = do (doc, argDocs)
                           let n = expandNS syn n_in
                           return n
                        <?> "instance name"
+        instanceKeyword :: IdrisParser ()
+        instanceKeyword = reservedHL "implementation"
+                      <|> do reservedHL "instance"
+                             fc <- getFC
+                             ist <- get
+                             put ist { parserWarnings = 
+                                (fc, Msg "The 'instance' keyword is deprecated. Use 'implementation' instead.")
+                                     : parserWarnings ist }
 
 
 -- | Parse a docstring

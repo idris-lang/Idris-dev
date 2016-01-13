@@ -13,17 +13,17 @@ codata CoList : Type -> Type where
 (++) []      right = right
 (++) (x::xs) right = x :: (xs ++ right)
 
-instance Semigroup (CoList a) where
+implementation Semigroup (CoList a) where
   (<+>) = (++)
 
-instance Monoid (CoList a) where
+implementation Monoid (CoList a) where
   neutral = []
 
-instance Functor CoList where
+implementation Functor CoList where
   map f []      = []
   map f (x::xs) = f x :: map f xs
 
-instance Show a => Show (CoList a) where
+implementation Show a => Show (CoList a) where
   show xs = "[" ++ show' "" 20 xs ++ "]" where
     show' : String -> (n : Nat) -> (xs : CoList a) -> String
     show' acc Z _             = acc ++ "..."

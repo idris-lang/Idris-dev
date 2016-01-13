@@ -26,7 +26,7 @@ data Accessible : (rel : a -> a -> Type) -> (x : a) -> Type where
 ||| acessible.
 |||
 ||| @ rel the well-founded relation
-class WellFounded (rel : a -> a -> Type) where
+interface WellFounded (rel : a -> a -> Type) where
   wellFounded : (x : _) -> Accessible rel x
 
 

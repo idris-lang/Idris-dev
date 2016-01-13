@@ -9,7 +9,7 @@ data State : Effect where
   Put : b -> sig State () a b
 
 -- using (m : Type -> Type)
-instance Handler State m where
+implementation Handler State m where
      handle st Get     k = k st st
      handle st (Put n) k = k () n
 

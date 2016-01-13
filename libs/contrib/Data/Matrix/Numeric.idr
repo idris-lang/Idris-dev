@@ -22,12 +22,12 @@ infixr 7 <&>  -- matrix tensor product
 --                   Vectors as members of Num
 -----------------------------------------------------------------------
 
-instance Num a => Num (Vect n a) where
+implementation Num a => Num (Vect n a) where
   (+) = zipWith (+)
   (*) = zipWith (*)
   fromInteger n = replicate _ (fromInteger n)
 
-instance Neg a => Neg (Vect n a) where
+implementation Neg a => Neg (Vect n a) where
   (-) = zipWith (-)
   abs = map abs
   negate = map negate

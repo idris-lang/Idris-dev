@@ -79,7 +79,7 @@ do_poke ptr offset (b::bs)
   = do foreign FFI_C "idris_poke" (Ptr -> Int -> Bits8 -> IO ()) ptr (fromInteger $ cast offset) b
        do_poke ptr (S offset) bs
 
-instance Handler RawMemory (IOExcept String) where
+implementation Handler RawMemory (IOExcept String) where
   handle () (Allocate n) k
     = do ptr <- do_malloc n
          k () (CH ptr)

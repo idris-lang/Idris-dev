@@ -25,14 +25,14 @@ share : UTree -> Tree
 share ULeaf = Leaf
 share (UNode x y z) = Node (share x) y (share z)
 
-class UFunctor (f : Type -> AnyType) where
+interface UFunctor (f : Type -> AnyType) where
     fmap : (a -> b) -> f a -> f b
 
-instance UFunctor List where
+implementation UFunctor List where
     fmap f [] = []
     fmap f (x :: xs) = f x :: fmap f xs
 
-instance UFunctor UList where
+implementation UFunctor UList where
     fmap f UNil = UNil
     fmap f (UCons x xs) = UCons (f x) (fmap f xs)
 

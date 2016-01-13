@@ -7,7 +7,7 @@ infixl 6 <+>
 %access public
 
 --------------------------------------------------------------------------------
--- A modest class hierarchy
+-- A modest interface hierarchy
 --------------------------------------------------------------------------------
 
 ||| Sets equipped with a single binary operation that is associative.  Must
@@ -15,7 +15,7 @@ infixl 6 <+>
 |||
 ||| + Associativity of `<+>`:
 |||     forall a b c, a <+> (b <+> c) == (a <+> b) <+> c
-class Semigroup a where
+interface Semigroup a where
   (<+>) : a -> a -> a
 
 
@@ -28,6 +28,6 @@ class Semigroup a where
 ||| + Neutral for `<+>`:
 |||     forall a,     a <+> neutral   == a
 |||     forall a,     neutral <+> a   == a
-class Semigroup a => Monoid a where
+interface Semigroup a => Monoid a where
   neutral : a
 

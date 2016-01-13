@@ -19,7 +19,7 @@ import Prelude.Strings
 ||| The precedence of an Idris operator or syntactic context.
 data Prec = Open | Eq | Dollar | Backtick | User Nat | PrefixMinus | App
 
-||| Gives the constructor index of the Prec as a helper for writing instances.
+||| Gives the constructor index of the Prec as a helper for writing implementations.
 precCon : Prec -> Integer
 precCon Open        = 0
 precCon Eq          = 1
@@ -29,16 +29,16 @@ precCon (User n)    = 4
 precCon PrefixMinus = 5
 precCon App         = 6
 
-instance Eq Prec where
+implementation Eq Prec where
   (==) (User m) (User n) = m == n
   (==) x        y        = precCon x == precCon y
 
-instance Ord Prec where
+implementation Ord Prec where
   compare (User m) (User n) = compare m n
   compare x        y        = compare (precCon x) (precCon y)
 
 ||| Things that have a canonical `String` representation.
-class Show a where
+interface Show a where
   ||| Convert a value to its `String` representation.
   |||
   ||| @ a the value to convert
@@ -78,7 +78,7 @@ showParens True  s = "(" ++ s ++ ")"
 ||| ```
 ||| data Ann a = MkAnn String a
 |||
-||| instance Show a => Show (Ann a) where
+||| implementation Show a => Show (Ann a) where
 |||   showPrec d (MkAnn s x) = showCon d "MkAnn" $ showArg s ++ showArg x
 ||| ```
 showCon : (d : Prec) -> (conName : String) -> (shownArgs : String) -> String
@@ -100,13 +100,13 @@ firstCharIs p s with (strM s)
 primNumShow : (a -> String) -> Prec -> a -> String
 primNumShow f d x = let str = f x in showParens (d >= PrefixMinus && firstCharIs (== '-') str) str
 
-instance Show Int where
+implementation Show Int where
   showPrec = primNumShow prim__toStrInt
 
-instance Show Integer where
+implementation Show Integer where
   showPrec = primNumShow prim__toStrBigInt
 
-instance Show Double where
+implementation Show Double where
   showPrec = primNumShow prim__floatToStr
 
 protectEsc : (Char -> Bool) -> String -> String -> String
@@ -144,52 +144,52 @@ showLitString []        = id
 showLitString ('"'::cs) = ("\\\"" ++) . showLitString cs
 showLitString (c  ::cs) = showLitChar c . showLitString cs
 
-instance Show Char where
+implementation Show Char where
   show '\'' = "'\\''"
   show c    = strCons '\'' (showLitChar c "'")
 
-instance Show String where
+implementation Show String where
   show cs = strCons '"' (showLitString (cast cs) "\"")
 
-instance Show Nat where
+implementation Show Nat where
     show n = show (the Integer (cast n))
 
-instance Show Bool where
+implementation Show Bool where
     show True = "True"
     show False = "False"
 
-instance Show () where
+implementation Show () where
   show () = "()"
 
-instance Show Bits8 where
+implementation Show Bits8 where
   show b = b8ToString b
 
-instance Show Bits16 where
+implementation Show Bits16 where
   show b = b16ToString b
 
-instance Show Bits32 where
+implementation Show Bits32 where
   show b = b32ToString b
 
-instance Show Bits64 where
+implementation Show Bits64 where
   show b = b64ToString b
 
-instance (Show a, Show b) => Show (a, b) where
+implementation (Show a, Show b) => Show (a, b) where
     show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
 
-instance Show a => Show (List a) where
+implementation Show a => Show (List a) where
     show xs = "[" ++ show' "" xs ++ "]" where
         show' acc []        = acc
         show' acc [x]       = acc ++ show x
         show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
 
-instance Show a => Show (Maybe a) where
+implementation Show a => Show (Maybe a) where
   showPrec d Nothing  = "Nothing"
   showPrec d (Just x) = showCon d "Just" $ showArg x
 
-instance (Show a, Show b) => Show (Either a b) where
+implementation (Show a, Show b) => Show (Either a b) where
   showPrec d (Left x)  = showCon d "Left" $ showArg x
   showPrec d (Right x) = showCon d "Right" $ showArg x
 
-instance (Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
+implementation (Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
     show (y ** prf) = "(" ++ show y ++ " ** " ++ show prf ++ ")"
 

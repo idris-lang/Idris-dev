@@ -13,10 +13,10 @@ fetch x = MkEval (\e => fetchVal e) where
     fetchVal [] = Nothing
     fetchVal ((v, val) :: xs) = if (x == v) then (Just val) else (fetchVal xs)
 
-instance Functor Eval where
+implementation Functor Eval where
     map f (MkEval g) = MkEval (\e => map f (g e))
 
-instance Applicative Eval where
+implementation Applicative Eval where
     pure x = MkEval (\e => Just x)
 
     (<*>) (MkEval f) (MkEval g) = MkEval (\x => appAux (f x) (g x)) where

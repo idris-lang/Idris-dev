@@ -2,30 +2,30 @@ module Control.Catchable
 
 import Control.IOExcept
 
-class Catchable (m : Type -> Type) t where
+interface Catchable (m : Type -> Type) t where
     throw : t -> m a
     catch : m a -> (t -> m a) -> m a
 
-instance Catchable Maybe () where
+implementation Catchable Maybe () where
     catch Nothing  h = h ()
     catch (Just x) h = Just x
 
     throw () = Nothing
 
-instance Catchable (Either a) a where
+implementation Catchable (Either a) a where
     catch (Left err) h = h err
     catch (Right x)  h = (Right x)
 
     throw = Left
 
-instance Catchable (IOExcept err) err where
+implementation Catchable (IOExcept err) err where
     catch (IOM prog) h = IOM (do p' <- prog
                                  case p' of
                                       Left e => let IOM he = h e in he
                                       Right val => return (Right val))
     throw = ioe_fail
 
-instance Catchable List () where
+implementation Catchable List () where
     catch [] h = h ()
     catch xs h = xs
 

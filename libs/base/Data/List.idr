@@ -15,7 +15,7 @@ data Elem : a -> List a -> Type where
      ||| Example: `the (Elem "b" ["a", "b"]) (There Here)`
      There : Elem x xs -> Elem x (y :: xs)
 
-instance Uninhabited (Elem {a} x []) where
+implementation Uninhabited (Elem {a} x []) where
      uninhabited Here impossible
      uninhabited (There p) impossible
 
@@ -49,7 +49,7 @@ dropElem (x :: ys) (There p) = x :: dropElem ys p
 intersectBy : (a -> a -> Bool) -> List a -> List a -> List a
 intersectBy eq xs ys = [x | x <- xs, any (eq x) ys]
 
-||| Compute the intersection of two lists according to their `Eq` instance.
+||| Compute the intersection of two lists according to their `Eq` implementation.
 |||
 ||| ```idris example
 ||| intersect [1, 2, 3, 4] [2, 4, 6, 8]

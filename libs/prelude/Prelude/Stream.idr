@@ -22,7 +22,7 @@ codata Stream : Type -> Type where
 -- Usage hints for erasure analysis
 %used Stream.(::) e
 
-instance Functor Stream where
+implementation Functor Stream where
     map f (x::xs) = f x :: map f xs
 
 ||| The first element of an infinite stream
@@ -121,10 +121,10 @@ cycle {a} (x :: xs) {ok = IsNonEmpty} = x :: cycle' xs
         cycle' []        = x :: cycle' xs
         cycle' (y :: ys) = y :: cycle' ys
 
-instance Applicative Stream where
+implementation Applicative Stream where
   pure = repeat
   (<*>) = zipWith apply
 
-instance Monad Stream where
+implementation Monad Stream where
   s >>= f = diag (map f s)
 

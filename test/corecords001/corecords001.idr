@@ -5,7 +5,7 @@ corecord Str a where -- Current stream is codata, not a corecord
   head : a
   tail : Str a
 
-instance Functor Str where
+implementation Functor Str where
   map f (x :: xs) = (f x) :: (map f xs)
 
 total -- marked total to check that corecords are indeed treated as coinductive types

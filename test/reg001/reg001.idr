@@ -7,7 +7,7 @@ import Data.HVect
 import Data.Fin
 import Control.Isomorphism
 
-class Functor f => VerifiedFunctor (f : Type -> Type) where
+interface Functor f => VerifiedFunctor (f : Type -> Type) where
    identity : (fa : f a) -> map Basics.id fa = fa
 
 data Imp : Type where
@@ -66,7 +66,7 @@ soTrue                  :  So b -> b = True
 soTrue {b = False} x    =  soFalseElim x
 soTrue {b = True}  x    =  Refl
 
-class Eq alpha => ReflEqEq alpha where
+interface Eq alpha => ReflEqEq alpha where
   reflexive_eqeq : (a : alpha) -> So (a == a)
 
 modifyFun : (Eq alpha) =>
@@ -126,7 +126,7 @@ interp (TNot x) = map not (interp x)
 
 data Result str a = Success str a | Failure String
 
-instance Functor (Result str) where
+implementation Functor (Result str) where
    map f (Success s x) = Success s (f x)
    map f (Failure e  ) = Failure e
 
@@ -154,13 +154,13 @@ admissible {t} x Left  = column {t} x <= 2
 admissible {t} x Right = column {t} x >= 2
 
 
-class Set univ where
+interface Set univ where
   member : univ -> univ -> Type
 
 isSubsetOf : Set univ => univ -> univ -> Type
 isSubsetOf {univ} a b = (c : univ) -> (member c a) -> (member c b)
 
-class Set univ => HasPower univ where
+interface Set univ => HasPower univ where
   Powerset : (a : univ) -> 
              Sigma univ (\Pa => (c : univ) ->
                                  (isSubsetOf c a) -> member c Pa)

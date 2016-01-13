@@ -7,7 +7,7 @@ import Control.Monad.Trans
 %access public
 
 ||| A monad representing a computation that produces a stream of output
-class (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where
+interface (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where
     ||| tell w produces the output w
     tell   : w -> m ()
     ||| Execute an action and add it's output to the value of the computation
@@ -20,32 +20,32 @@ record WriterT (w : Type) (m : Type -> Type) (a : Type) where
   constructor WR
   runWriterT : m (a, w)
 
-instance Functor f => Functor (WriterT w f) where
+implementation Functor f => Functor (WriterT w f) where
     map f (WR g) = WR $ map (\w => (f . fst $ w, snd w)) g
 
-instance (Monoid w, Applicative m) => Applicative (WriterT w m) where
+implementation (Monoid w, Applicative m) => Applicative (WriterT w m) where
     pure a            = WR $ pure (a, neutral)
     (WR f) <*> (WR v) = WR $ liftA2 merge f v where
         merge (fn, w) (a, w') = (fn a, w <+> w')
 
-instance (Monoid w, Alternative m) => Alternative (WriterT w m) where
+implementation (Monoid w, Alternative m) => Alternative (WriterT w m) where
     empty             = WR empty
     (WR m) <|> (WR n) = WR $ m <|> n
 
-instance (Monoid w, Monad m) => Monad (WriterT w m) where
+implementation (Monoid w, Monad m) => Monad (WriterT w m) where
     (WR m) >>= k = WR $ do (a, w) <- m
                            let WR ka = k a
                            (b, w') <- ka
                            return (b, w <+> w')
 
-instance (Monoid w, Monad m) => MonadWriter w (WriterT w m) where
+implementation (Monoid w, Monad m) => MonadWriter w (WriterT w m) where
     tell w        = WR $ return ((), w)
     listen (WR m) = WR $ do (a, w) <- m
                             return ((a, w), w)
     pass (WR m)   = WR $ do ((a, f), w) <- m
                             return (a, f w)
 
-instance Monoid w => MonadTrans (WriterT w) where
+implementation Monoid w => MonadTrans (WriterT w) where
     lift x = WR $ do r <- x
                      return (r, neutral)
 
@@ -61,6 +61,6 @@ censor : MonadWriter w m => (w -> w) -> m a -> m a
 censor f m = pass $ do a <- m
                        return (a, f)
 
-||| The Writer monad itself. See the MonadWriter class
+||| The Writer monad itself. See the MonadWriter interface
 Writer : Type -> Type -> Type
 Writer w a = WriterT w Identity a

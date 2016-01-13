@@ -17,7 +17,7 @@ record Arg a where
   plicity : Plicity
   argValue : a
 
-instance Functor Arg where
+implementation Functor Arg where
   map f (MkArg plic x) = MkArg plic (f x)
 
 ||| Reflected terms, in the tradition of Agda's reflection library

@@ -2,7 +2,7 @@ module ClassName
 
 ||| A fancy shower with a constructor
 ||| @ a the thing to be shown
-class MyShow a where
+interface MyShow a where
   ||| Build a MyShow
   constructor MkMyShow
   ||| The shower
@@ -12,7 +12,7 @@ class MyShow a where
 twiceAString : MyShow a => a -> String
 twiceAString x = myShow x ++ myShow x
 
-instance MyShow Integer where
+implementation MyShow Integer where
   myShow x = show x
 
 badShow : MyShow Integer
@@ -25,17 +25,17 @@ test2 : twiceAString @{ClassName.badShow} 2 = "hejhej"
 test2 = Refl
 
 
-||| Superclass fun
-class MyMagma a where
+||| Parent interface fun
+interface MyMagma a where
   constructor MkMyMagma
   total op : a -> a -> a
 
 ||| Semigroup
-class MyMagma a => MySemigroup a where
+interface MyMagma a => MySemigroup a where
   constructor MkMySemigroup
   total isAssoc : (x, y, z : a) -> op x $ op y z = op (op x y) z
 
-instance [addition] MyMagma Nat where
+implementation [addition] MyMagma Nat where
   op = plus
 
 additionS : MySemigroup Nat

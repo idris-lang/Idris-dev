@@ -23,7 +23,7 @@ data LT' : (n,m : Nat) -> Type where
 %name LT' lt, lt'
 
 ||| Nothing is strictly less than zero
-instance Uninhabited (LT' n 0) where
+implementation Uninhabited (LT' n 0) where
   uninhabited LTSucc impossible
 
 ||| Zero is less than any non-zero number.
@@ -56,7 +56,7 @@ minusLT' (S k) (S j) = LTStep (minusLT' k j)
 ||| zero (because there's nothing less than zero). This can't be done
 ||| for LTE, because that one doesn't stop at zero (because `LTE 0 0`
 ||| is inhabited).
-instance WellFounded LT' where
+implementation WellFounded LT' where
   wellFounded x = Access (acc x)
     where
       ||| Show accessibility by induction on the structure of the LT' witness

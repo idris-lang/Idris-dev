@@ -1,7 +1,7 @@
-||| class
+||| interface
 ||| @ t a type
-class C (t : Type) where
-  ||| member of class
+interface C (t : Type) where
+  ||| member of interface
   m : t
 
 ||| type
@@ -10,11 +10,11 @@ data A = B
 ||| type 2
 data D a b = E
 
-||| instance of class
-instance C A where
+||| implementation of interface
+implementation C A where
   m = B
 
-||| another instance of class
+||| another implementation of interface
 ||| @ a parameter type
-instance C (D a b) where
+implementation C (D a b) where
   m = E

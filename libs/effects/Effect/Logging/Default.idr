@@ -24,7 +24,7 @@ record LogRes where
   constructor MkLogRes
   getLevel : LogLevel n
 
-instance Default LogRes where
+implementation Default LogRes where
   default = MkLogRes OFF
 
 -- ------------------------------------------------------ [ The Logging Effect ]
@@ -49,7 +49,7 @@ data Logging : Effect where
 -- -------------------------------------------------------------- [ IO Handler ]
 
 -- For logging in the IO context
-instance Handler Logging IO where
+implementation Handler Logging IO where
     handle st (SetLvl newLvl) k = k () (MkLogRes newLvl)
     handle st (Log lvl msg) k = do
       case cmpLevel lvl (getLevel st)  of

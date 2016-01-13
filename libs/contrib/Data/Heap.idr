@@ -110,23 +110,23 @@ sort : Ord a => List a -> List a
 sort = Heap.toList . Heap.fromList
 
 --------------------------------------------------------------------------------
--- Class instances
+-- Interface implementations
 --------------------------------------------------------------------------------
 
-instance Show a => Show (MaxiphobicHeap a) where
+implementation Show a => Show (MaxiphobicHeap a) where
   showPrec d Empty = "Empty"
   showPrec d (Node s l e r) = showCon d "Node" $ " _" ++ showArg l ++ showArg e ++ showArg r
 
-instance Eq a => Eq (MaxiphobicHeap a) where
+implementation Eq a => Eq (MaxiphobicHeap a) where
   Empty              == Empty              = True
   (Node ls ll le lr) == (Node rs rl re rr) =
     ls == rs && ll == rl && le == re && lr == rr
   _                  == _                  = False
 
-instance Ord a => Semigroup (MaxiphobicHeap a) where
+implementation Ord a => Semigroup (MaxiphobicHeap a) where
   (<+>) = merge
 
-instance Ord a => Monoid (MaxiphobicHeap a) where
+implementation Ord a => Monoid (MaxiphobicHeap a) where
   neutral = empty
 
 --------------------------------------------------------------------------------

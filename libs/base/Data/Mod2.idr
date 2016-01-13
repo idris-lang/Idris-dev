@@ -28,25 +28,25 @@ public
 intToMod : {n : Nat} -> Integer -> Mod2 n
 intToMod {n=n} x = MkMod2 (intToBits x)
 
-instance Eq (Mod2 n) where
+implementation Eq (Mod2 n) where
     (==) = modComp (==)
 
-instance Ord (Mod2 n) where
+implementation Ord (Mod2 n) where
     (<) = modComp (<)
     (<=) = modComp (<=)
     (>=) = modComp (>=)
     (>) = modComp (>)
     compare = modComp compare
 
-instance Num (Mod2 n) where
+implementation Num (Mod2 n) where
     (+) = modBin plus
     (*) = modBin times
     fromInteger = intToMod
 
-instance Cast (Mod2 n) (Bits n) where
+implementation Cast (Mod2 n) (Bits n) where
     cast (MkMod2 x) = x
 
-instance Cast (Bits n) (Mod2 n) where
+implementation Cast (Bits n) (Mod2 n) where
     cast x = MkMod2 x
 
 modToStr : Mod2 n -> String
@@ -58,5 +58,5 @@ modToStr x = pack (reverse (helper x))
                  :: (if x < 10 then [] else helper (x `div` 10))
 
 
-instance Show (Mod2 n) where
+implementation Show (Mod2 n) where
     show = modToStr

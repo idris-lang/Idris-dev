@@ -11,14 +11,14 @@ data Erased : Type -> Type where
     ||| Construct an erased value from any value.
     Erase : .(x : a) -> Erased a
 
-instance Functor Erased where
+implementation Functor Erased where
   map f (Erase x) = Erase (f x)
 
-instance Applicative Erased where
+implementation Applicative Erased where
   pure = Erase
   (<*>) (Erase f) (Erase x) = Erase (f x)
 
-instance Monad Erased where
+implementation Monad Erased where
   (>>=) (Erase x) f = f x
 
 ||| Project the erased value out of the monad.

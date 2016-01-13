@@ -3,8 +3,8 @@ module Prelude.Cast
 import Prelude.Bool
 import public Builtins
 
-||| Type class for transforming an instance of a data type to another type.
-class Cast from to where
+||| Interface for transforming an instance of a data type to another type.
+interface Cast from to where
     ||| Perform a cast operation.
     |||
     ||| @orig The original type.
@@ -12,46 +12,46 @@ class Cast from to where
 
 -- String casts
 
-instance Cast String Int where
+implementation Cast String Int where
     cast = prim__fromStrInt
 
-instance Cast String Double where
+implementation Cast String Double where
     cast = prim__strToFloat
 
-instance Cast String Integer where
+implementation Cast String Integer where
     cast = prim__fromStrBigInt
 
 -- Int casts
 
-instance Cast Int String where
+implementation Cast Int String where
     cast = prim__toStrInt
 
-instance Cast Int Double where
+implementation Cast Int Double where
     cast = prim__toFloatInt
 
-instance Cast Int Integer where
+implementation Cast Int Integer where
     cast = prim__sextInt_BigInt
 
 -- Double casts
 
-instance Cast Double String where
+implementation Cast Double String where
     cast = prim__floatToStr
 
-instance Cast Double Int where
+implementation Cast Double Int where
     cast = prim__fromFloatInt
 
-instance Cast Double Integer where
+implementation Cast Double Integer where
     cast = prim__fromFloatBigInt
 
 -- Integer casts
 
-instance Cast Integer String where
+implementation Cast Integer String where
     cast = prim__toStrBigInt
 
-instance Cast Integer Double where
+implementation Cast Integer Double where
     cast = prim__toFloatBigInt
 
 -- Char casts
 
-instance Cast Char Int where
+implementation Cast Char Int where
     cast = prim__charToInt

@@ -6,10 +6,10 @@ data Seq : Fin 9 -> Fin 9 -> Type where
   Seq12 : {n : Fin 8} -> Seq (weaken n) (FS n)
   Seq21 : {n : Fin 8} -> Seq (FS n) (weaken n)
 
-class Evil t where
+interface Evil t where
   value : t -> Fin 9
 
-instance Evil Wrapper where
+implementation Evil Wrapper where
   value (Wrap n) = n
 
 consTest : (Evil t) => (a : t) -> (b : t) -> 

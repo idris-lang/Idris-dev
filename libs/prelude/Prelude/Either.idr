@@ -90,7 +90,7 @@ maybeToEither def Nothing  = Left  def
 -- Instances
 --------------------------------------------------------------------------------
 
-instance (Eq a, Eq b) => Eq (Either a b) where
+implementation (Eq a, Eq b) => Eq (Either a b) where
   (==) (Left x)  (Left y)  = x == y
   (==) (Right x) (Right y) = x == y
   (==) _         _         = False

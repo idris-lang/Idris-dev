@@ -14,7 +14,7 @@ total
 decVectEq : DecEq a => (xs, ys : Vect n a) -> Dec (xs = ys)
 %runElab (deriveDecEq `{decVectEq})
 
-instance DecEq a => DecEq (Vect n a) where
+implementation DecEq a => DecEq (Vect n a) where
   decEq xs ys = decVectEq xs ys
 
 forgetProof : Dec a -> Bool

@@ -4,5 +4,5 @@ module Data.Sign
 data Sign = Plus | Zero | Minus
 
 ||| Discover the sign of some type
-class Signed t where
+interface Signed t where
   total sign : t -> Sign

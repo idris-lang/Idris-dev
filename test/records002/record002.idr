@@ -2,7 +2,7 @@ record Foo (param : Nat) where
   constructor MkFoo
   num : Int
 
-instance Show (Foo n) where
+implementation Show (Foo n) where
   show f = show (param_param f) ++ ", " ++ show (num f)
 
 main : IO ()

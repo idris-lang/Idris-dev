@@ -15,7 +15,7 @@ import Data.Vect
 -}
 
 ||| A type that can be hashed
-class Hashable a where
+interface Hashable a where
   saltedHash64 : a -> Bits64 -> Bits64 -- value to hash, salt, hash
 
 ||| Computes a non cryptographic hash
@@ -40,48 +40,48 @@ private
 mod64 : Integer -> Bits64
 mod64 i = assert_total $ prim__truncBigInt_B64 (abs i `mod` 0xffffffffffffffff)
 
-instance Hashable Bits64 where
+implementation Hashable Bits64 where
   saltedHash64 w salt = foldr (\b,acc => (acc `prim__shlB64` 10) + acc + b)
                               salt
                               [byte (fromInteger n) w | n <- [7,6..0]] -- djb2 hash function. Not meant for crypto
 
-instance Hashable Integer where
+implementation Hashable Integer where
   saltedHash64 i = saltedHash64 (mod64 i)
 
-instance Hashable () where
+implementation Hashable () where
   saltedHash64 _ salt = salt
 
-instance Hashable Bool where
+implementation Hashable Bool where
   saltedHash64 True  = saltedHash64 (the Bits64 1)
   saltedHash64 False = saltedHash64 (the Bits64 0)
 
-instance Hashable Int where
+implementation Hashable Int where
   saltedHash64 w = saltedHash64 (prim__zextInt_B64 w)
 
-instance Hashable Char where
+implementation Hashable Char where
   saltedHash64 w = saltedHash64 (the Int (cast w))
 
-instance Hashable Bits8 where
+implementation Hashable Bits8 where
   saltedHash64 w = saltedHash64 (prim__zextB8_B64 w)
 
-instance Hashable Bits16 where
+implementation Hashable Bits16 where
   saltedHash64 w = saltedHash64 (prim__zextB16_B64 w)
 
-instance Hashable Bits32 where
+implementation Hashable Bits32 where
   saltedHash64 w = saltedHash64 (prim__zextB32_B64 w)
 
-instance Hashable a => Hashable (Maybe a) where
+implementation Hashable a => Hashable (Maybe a) where
   saltedHash64 Nothing  salt = salt
   saltedHash64 (Just k) salt = saltedHash64 k salt
 
-instance (Hashable a, Hashable b) => Hashable (a, b) where
+implementation (Hashable a, Hashable b) => Hashable (a, b) where
   saltedHash64 (a,b) salt = saltedHash64 b (saltedHash64 a salt)
 
-instance Hashable a => Hashable (List a) where
+implementation Hashable a => Hashable (List a) where
   saltedHash64 l salt = foldr (\c,acc => saltedHash64 c acc) salt l
 
-instance Hashable a => Hashable (Vect n a) where
+implementation Hashable a => Hashable (Vect n a) where
   saltedHash64 l salt = foldr (\c,acc => saltedHash64 c acc) salt l
 
-instance Hashable String where
+implementation Hashable String where
   saltedHash64 s = saltedHash64 (unpack s)

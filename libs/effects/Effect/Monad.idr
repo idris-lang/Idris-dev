@@ -5,18 +5,18 @@ import Effects
 data MonadEffT : List EFFECT -> (Type -> Type) -> Type -> Type where
      MkMonadEffT : EffM m a xs (\v => xs) -> MonadEffT xs m a
 
-instance Functor (MonadEffT xs f) where
+implementation Functor (MonadEffT xs f) where
     map f (MkMonadEffT x) = MkMonadEffT (do x' <- x
                                             pure (f x'))
 
-instance Applicative (MonadEffT xs f) where
+implementation Applicative (MonadEffT xs f) where
     pure x = MkMonadEffT (pure x)
     (<*>) (MkMonadEffT f) (MkMonadEffT x) 
           = MkMonadEffT (do f' <- f
                             x' <- x
                             pure (f' x'))
 
-instance Monad (MonadEffT xs f) where
+implementation Monad (MonadEffT xs f) where
     (>>=) (MkMonadEffT x) f = MkMonadEffT (do x' <- x
                                               let MkMonadEffT fx = f x'
                                               fx)

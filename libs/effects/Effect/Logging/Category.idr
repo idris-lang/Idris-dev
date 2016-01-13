@@ -25,7 +25,7 @@ record LogRes (a : Type) where
   getLevel      : LogLevel n
   getCategories : List a
 
-instance Default (LogRes a) where
+implementation Default (LogRes a) where
   default = MkLogRes OFF Nil
 
 -- ------------------------------------------------------- [ Effect Definition ]
@@ -68,7 +68,7 @@ data Logging : Effect where
 
 -- -------------------------------------------------------------- [ IO Handler ]
 
-instance Handler Logging IO where
+implementation Handler Logging IO where
     handle st (SetLogLvl  nlvl)  k = do
         let newSt = record {getLevel = nlvl}  st
         k () newSt

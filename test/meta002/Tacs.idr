@@ -102,7 +102,7 @@ namespace STLC
 
   %name Ty t,t',t''
 
-  instance Quotable Ty TT where
+  implementation Quotable Ty TT where
     quotedTy = `(Ty : Type)
     quote UNIT = `(UNIT : Ty)
     quote (ARR t t') = `(ARR ~(quote t) ~(quote t'))

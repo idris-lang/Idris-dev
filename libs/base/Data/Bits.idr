@@ -273,10 +273,10 @@ gt {n=n} x y with (nextBytes n)
     | S (S Z) = prim__gtB32 x y
     | S (S (S _)) = prim__gtB64 x y
 
-instance Eq (Bits n) where
+implementation Eq (Bits n) where
     (MkBits x) == (MkBits y) = boolOp eq x y
 
-instance Ord (Bits n) where
+implementation Ord (Bits n) where
     (MkBits x) < (MkBits y) = boolOp lt x y
     (MkBits x) <= (MkBits y) = boolOp lte x y
     (MkBits x) >= (MkBits y) = boolOp gte x y
@@ -338,7 +338,7 @@ public
 intToBits : Integer -> Bits n
 intToBits n = MkBits (intToBits' n)
 
-instance Cast Integer (Bits n) where
+implementation Cast Integer (Bits n) where
     cast = intToBits
 
 bitsToInt' : machineTy (nextBytes n) -> Integer
@@ -356,7 +356,7 @@ bitsToInt (MkBits x) = bitsToInt' x
 zeroUnused : machineTy (nextBytes n) -> machineTy (nextBytes n)
 zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
 
---instance Cast Nat (Bits n) where
+--implementation Cast Nat (Bits n) where
 --    cast x = MkBits (zeroUnused (natToBits n))
 
 -- TODO: Prove
@@ -437,6 +437,6 @@ bitsToStr x = pack (helper last x)
       helper FZ _ = []
       helper (FS x) b = (if getBit x b then '1' else '0') :: helper (weaken x) b
 
-instance Show (Bits n) where
+implementation Show (Bits n) where
     show = bitsToStr
 

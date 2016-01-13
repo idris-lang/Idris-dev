@@ -6,14 +6,14 @@ record IOExcept err a where
      constructor IOM
      runIOExcept : IO (Either err a)
 
-instance Functor (IOExcept e) where
+implementation Functor (IOExcept e) where
      map f (IOM fn) = IOM (map (map f) fn)
 
-instance Applicative (IOExcept e) where
+implementation Applicative (IOExcept e) where
      pure x = IOM (pure (pure x))
      (IOM f) <*> (IOM a) = IOM [| f <*> a |]
 
-instance Monad (IOExcept e) where
+implementation Monad (IOExcept e) where
      (IOM x) >>= f = IOM $ x >>= either (pure . Left) (runIOExcept . f)
 
 ioe_lift : IO a -> IOExcept err a

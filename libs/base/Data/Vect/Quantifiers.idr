@@ -16,7 +16,7 @@ anyNilAbsurd : {P : a -> Type} -> Any P Nil -> Void
 anyNilAbsurd (Here _) impossible
 anyNilAbsurd (There _) impossible
 
-instance Uninhabited (Any p Nil) where
+implementation Uninhabited (Any p Nil) where
   uninhabited = anyNilAbsurd
 
 ||| Eliminator for `Any`

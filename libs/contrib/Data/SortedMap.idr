@@ -242,7 +242,7 @@ treeMap f (Branch2 t1 k t2) = Branch2 (treeMap f t1) k (treeMap f t2)
 treeMap f (Branch3 t1 k1 t2 k2 t3) 
     = Branch3 (treeMap f t1) k1 (treeMap f t2) k2 (treeMap f t3)
 
-instance Functor (SortedMap k) where
+implementation Functor (SortedMap k) where
   map _ Empty = Empty
   map f (M n t) = M _ (treeMap f t)
 

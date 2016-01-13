@@ -203,7 +203,7 @@ elabInstance info syn doc argDocs what fc cs n nfc ps t expn ds = do
                                        Left _ -> Nothing
             _ -> Nothing
     overlapping t' = tclift $ tfail (At fc (Msg $
-                          "Overlapping instance: " ++ show t' ++ " already defined"))
+                          "Overlapping implementation: " ++ show t' ++ " already defined"))
     getRetType (PPi _ _ _ _ sc) = getRetType sc
     getRetType t = t
 

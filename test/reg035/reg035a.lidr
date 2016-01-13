@@ -30,7 +30,7 @@
 > data Set : Type -> Type where
 >   Setify : (as : List a) -> Set a
 
-> instance (Eq a) => Eq (Set a) where
+> implementation (Eq a) => Eq (Set a) where
 >   (==) (Setify as) (Setify bs) = setEq as bs
 
 > postulate reflexive_Set_eqeq : (Eq a) => 

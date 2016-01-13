@@ -1,7 +1,7 @@
 %default total
 
-class C a (f : Bool -> Bool) | a where {}
-instance C Int Bool.not where {}
+interface C a (f : Bool -> Bool) | a where {}
+implementation C Int Bool.not where {}
 
 foo : C Int g => {auto pf : g True = False} -> Unit
 foo = ()

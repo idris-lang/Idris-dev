@@ -3,7 +3,7 @@ module VectMissing
 import Data.Fin
 import Data.Vect
 
-instance Uninhabited (Elem x []) where
+implementation Uninhabited (Elem x []) where
     uninhabited Here impossible
 
 shrink : (xs : Vect (S n) a) -> Elem x xs -> Vect n a

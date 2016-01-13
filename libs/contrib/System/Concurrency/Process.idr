@@ -14,14 +14,14 @@ data ProcID msg = MkPID Ptr
 data Process : (msgType : Type) -> Type -> Type where
      Lift : IO a -> Process msg a
 
-instance Functor (Process msg) where
+implementation Functor (Process msg) where
      map f (Lift a) = Lift (map f a)
 
-instance Applicative (Process msg) where
+implementation Applicative (Process msg) where
      pure = Lift . return
      (Lift f) <*> (Lift a) = Lift (f <*> a)
 
-instance Monad (Process msg) where
+implementation Monad (Process msg) where
      (Lift io) >>= k = Lift (do x <- io
                                 case k x of
                                      Lift v => v)

@@ -1,4 +1,4 @@
-Type class Functor
+Interface Functor
     Functors allow a uniform action over a parameterised type.
 
 Parameters:
@@ -10,7 +10,7 @@ Methods:
         parameterised type
         
         The function is Total
-Instances:
+Implementations:
     Functor List
     Functor (IO' ffi)
     Functor Stream
@@ -21,12 +21,12 @@ Instances:
     Functor Maybe
     Functor (Either e)
 
-Named instances:
+Named implementations:
     docs003.mine : Functor List
     docs003.another : Functor List
         More functors!
 
-Subclasses:
+Child interfaces:
     Traversable f
     Applicative f
 Named instance:

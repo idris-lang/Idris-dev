@@ -9,7 +9,7 @@ import Prelude.Algebra
 %access public
 %default total
 
-class Foldable (t : Type -> Type) where
+interface Foldable (t : Type -> Type) where
   foldr : (elt -> acc -> acc) -> acc -> t elt -> acc
   foldl : (acc -> elt -> acc) -> acc -> t elt -> acc
   foldl f z t = foldr (flip (.) . flip f) id t z

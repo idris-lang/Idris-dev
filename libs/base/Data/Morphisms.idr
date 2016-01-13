@@ -20,20 +20,20 @@ applyMor (Mor f) a = f a
 applyEndo : Endomorphism a -> a -> a
 applyEndo (Endo f) a = f a
 
-instance Functor (Morphism r) where
+implementation Functor (Morphism r) where
   map f (Mor a) = Mor (f . a)
 
-instance Applicative (Morphism r) where
+implementation Applicative (Morphism r) where
   pure a                = Mor $ const a
   (Mor f) <*> (Mor a) = Mor $ \r => f r $ a r
 
-instance Monad (Morphism r) where
+implementation Monad (Morphism r) where
   (Mor h) >>= f = Mor $ \r => applyMor (f $ h r) r
 
-instance Semigroup (Endomorphism a) where
+implementation Semigroup (Endomorphism a) where
   (Endo f) <+> (Endo g) = Endo $ g . f
 
-instance Monoid (Endomorphism a) where
+implementation Monoid (Endomorphism a) where
   neutral = Endo id
 
 infixr 1 ~>

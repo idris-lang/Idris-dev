@@ -4,7 +4,7 @@ import Prelude.Basics
 
 ||| Functors allow a uniform action over a parameterised type.
 ||| @ f a parameterised type 
-class Functor (f : Type -> Type) where
+interface Functor (f : Type -> Type) where
     ||| Apply a function across everything of type 'a' in a 
     ||| parameterised type
     ||| @ f the parameterised type

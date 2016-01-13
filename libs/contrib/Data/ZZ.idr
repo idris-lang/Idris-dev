@@ -14,7 +14,7 @@ import Data.Sign
 |||
 data ZZ = Pos Nat | NegS Nat
 
-instance Signed ZZ where
+implementation Signed ZZ where
   sign (Pos Z) = Zero
   sign (Pos _) = Plus
   sign (NegS _) = Minus
@@ -24,7 +24,7 @@ absZ : ZZ -> Nat
 absZ (Pos n) = n
 absZ (NegS n) = S n
 
-instance Show ZZ where
+implementation Show ZZ where
   show (Pos n) = show n
   show (NegS n) = "-" ++ show (S n)
 
@@ -46,13 +46,13 @@ plusZ (NegS n) (NegS m) = NegS (S (n + m))
 plusZ (Pos n) (NegS m) = minusNatZ n (S m)
 plusZ (NegS n) (Pos m) = minusNatZ m (S n)
 
-instance Eq ZZ where
+implementation Eq ZZ where
   (Pos n) == (Pos m) = n == m
   (NegS n) == (NegS m) = n == m
   _ == _ = False
 
 
-instance Ord ZZ where
+implementation Ord ZZ where
   compare (Pos n) (Pos m) = compare n m
   compare (NegS n) (NegS m) = compare m n
   compare (Pos _) (NegS _) = GT
@@ -71,16 +71,16 @@ fromInt n = if n < 0
             then NegS $ fromInteger {a=Nat} ((-n) - 1)
             else Pos $ fromInteger {a=Nat} n
 
-instance Cast Nat ZZ where
+implementation Cast Nat ZZ where
   cast n = Pos n
 
-instance Num ZZ where
+implementation Num ZZ where
   (+) = plusZ
   (*) = multZ
   fromInteger = fromInt
 
 mutual
-  instance Neg ZZ where
+  implementation Neg ZZ where
     negate (Pos Z)     = Pos Z
     negate (Pos (S n)) = NegS n
     negate (NegS n)    = Pos (S n)
@@ -93,11 +93,11 @@ mutual
   subZ n m = plusZ n (negate m)
 
 
-instance Cast ZZ Integer where
+implementation Cast ZZ Integer where
   cast (Pos n) = cast n
   cast (NegS n) = (-1) * (cast n + 1)
 
-instance Cast Integer ZZ where
+implementation Cast Integer ZZ where
   cast = fromInteger
 
 
@@ -130,7 +130,7 @@ posNotNeg : Pos n = NegS m -> Void
 posNotNeg Refl impossible
 
 -- Decidable equality
-instance DecEq ZZ where
+implementation DecEq ZZ where
   decEq (Pos n) (NegS m) = No posNotNeg
   decEq (NegS n) (Pos m) = No $ negEqSym posNotNeg
   decEq (Pos n) (Pos m) with (decEq n m)

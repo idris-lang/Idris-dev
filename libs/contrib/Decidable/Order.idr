@@ -16,20 +16,20 @@ import Data.Rel
 -- Preorders, Posets, total Orders, Equivalencies, Congruencies
 --------------------------------------------------------------------------------
 
-class Preorder t (po : t -> t -> Type) where
+interface Preorder t (po : t -> t -> Type) where
   total transitive : (a : t) -> (b : t) -> (c : t) -> po a b -> po b c -> po a c
   total reflexive : (a : t) -> po a a
 
-class (Preorder t po) => Poset t (po : t -> t -> Type) where
+interface (Preorder t po) => Poset t (po : t -> t -> Type) where
   total antisymmetric : (a : t) -> (b : t) -> po a b -> po b a -> a = b
 
-class (Poset t to) => Ordered t (to : t -> t -> Type) where
+interface (Poset t to) => Ordered t (to : t -> t -> Type) where
   total order : (a : t) -> (b : t) -> Either (to a b) (to b a)
 
-class (Preorder t eq) => Equivalence t (eq : t -> t -> Type) where
+interface (Preorder t eq) => Equivalence t (eq : t -> t -> Type) where
   total symmetric : (a : t) -> (b : t) -> eq a b -> eq b a
 
-class (Equivalence t eq) => Congruence t (f : t -> t) (eq : t -> t -> Type) where
+interface (Equivalence t eq) => Congruence t (f : t -> t) (eq : t -> t -> Type) where
   total congruent : (a : t) -> 
                     (b : t) -> 
                     eq a b -> 
@@ -49,14 +49,14 @@ maximum {to} x y with (order {to} x y)
 -- Syntactic equivalence (=)
 --------------------------------------------------------------------------------
 
-instance Preorder t ((=) {A = t} {B = t}) where
+implementation Preorder t ((=) {A = t} {B = t}) where
   transitive a b c = trans {a = a} {b = b} {c = c}
   reflexive a = Refl
 
-instance Equivalence t ((=) {A = t} {B = t}) where
+implementation Equivalence t ((=) {A = t} {B = t}) where
   symmetric a b prf = sym prf
 
-instance Congruence t f ((=) {A = t} {B = t}) where
+implementation Congruence t f ((=) {A = t} {B = t}) where
   congruent a b = cong {a = a} {b = b} {f = f}
 
 --------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ total LTEIsReflexive : (n : Nat) -> LTE n n
 LTEIsReflexive Z      = LTEZero
 LTEIsReflexive (S n)  = LTESucc (LTEIsReflexive n)
 
-instance Preorder Nat LTE where
+implementation Preorder Nat LTE where
   transitive = LTEIsTransitive
   reflexive  = LTEIsReflexive
 
@@ -84,7 +84,7 @@ LTEIsAntisymmetric (S n) (S m) (LTESucc mLTEn) (LTESucc nLTEm) with (LTEIsAntisy
    LTEIsAntisymmetric (S n) (S n) (LTESucc mLTEn) (LTESucc nLTEm)    | Refl = Refl           
 
 
-instance Poset Nat LTE where
+implementation Poset Nat LTE where
   antisymmetric = LTEIsAntisymmetric
 
 total zeroNeverGreater : {n : Nat} -> LTE (S n) Z -> Void
@@ -108,7 +108,7 @@ decideLTE (S x)   (S y) with (decEq (S x) (S y))
     | Yes nLTEm = Yes (LTESucc nLTEm)
     | No  nGTm  = No (ltesuccinjective nGTm)
 
-instance Decidable [Nat,Nat] LTE where
+implementation Decidable [Nat,Nat] LTE where
   decide = decideLTE
 
 total
@@ -119,7 +119,7 @@ total
 shift : (m : Nat) -> (n : Nat) -> LTE m n -> LTE (S m) (S n)
 shift m n mLTEn = LTESucc mLTEn
       
-instance Ordered Nat LTE where
+implementation Ordered Nat LTE where
   order Z      n = Left LTEZero
   order m      Z = Right LTEZero
   order (S k) (S j) with (order {to=LTE} k j)
@@ -134,21 +134,21 @@ using (k : Nat)
   data FinLTE : Fin k -> Fin k -> Type where
     FromNatPrf : {m : Fin k} -> {n : Fin k} -> LTE (finToNat m) (finToNat n) -> FinLTE m n
 
-  instance Preorder (Fin k) FinLTE where
+  implementation Preorder (Fin k) FinLTE where
     transitive m n o (FromNatPrf p1) (FromNatPrf p2) = 
       FromNatPrf (LTEIsTransitive (finToNat m) (finToNat n) (finToNat o) p1 p2)
     reflexive n = FromNatPrf (LTEIsReflexive (finToNat n))
 
-  instance Poset (Fin k) FinLTE where
+  implementation Poset (Fin k) FinLTE where
     antisymmetric m n (FromNatPrf p1) (FromNatPrf p2) =
       finToNatInjective m n (LTEIsAntisymmetric (finToNat m) (finToNat n) p1 p2)
   
-  instance Decidable [Fin k, Fin k] FinLTE where
+  implementation Decidable [Fin k, Fin k] FinLTE where
     decide m n with (decideLTE (finToNat m) (finToNat n))
       | Yes prf    = Yes (FromNatPrf prf)
       | No  disprf = No (\ (FromNatPrf prf) => disprf prf)
 
-  instance Ordered (Fin k) FinLTE where
+  implementation Ordered (Fin k) FinLTE where
     order m n =
       either (Left . FromNatPrf) 
              (Right . FromNatPrf)

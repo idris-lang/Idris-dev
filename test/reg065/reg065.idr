@@ -1,21 +1,21 @@
-||| Test that dependent type class definitions work.
+||| Test that dependent type interface definitions work.
 |||
 ||| Fixes a regression where previous methods used in a later method's
-||| type would lead to "can't resolve type class" errors
+||| type would lead to "can't find interface" errors
 module TypeClassDep
 
 import Data.Vect
 
 
-class Foo a where
+interface Foo a where
   getLen : Nat
   item : a -> Vect getLen a
 
-instance Foo () where
+implementation Foo () where
   getLen  = 3
   item () = [(), (), ()]
 
-instance Foo String where
+implementation Foo String where
   getLen = 1
   item str = [str]
 

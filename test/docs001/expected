@@ -1,17 +1,17 @@
-Type class C
-    class
+Interface C
+    interface
 
 Parameters:
     t   -- a type
 
 Methods:
     m : C t => t
-        member of class
+        member of interface
         
         The function is Total
-Instances:
+Implementations:
     C A
-        instance of class
+        implementation of interface
     C (D a b)
-        another instance of class
+        another implementation of interface
         a   -- parameter type

@@ -7,7 +7,7 @@ data Bit : Nat -> Type where
      B0 : Bit Z
      B1 : Bit (S Z)
 
-instance Show (Bit n) where
+implementation Show (Bit n) where
      show = show' where
         show' : Bit x -> String
         show' B0 = "0"
@@ -19,7 +19,7 @@ data Binary : (width : Nat) -> (value : Nat) -> Type where
      Zero : Binary Z Z
      (#)  : Binary w v -> Bit bit -> Binary (S w) (bit + 2 * v)
 
-instance Show (Binary w k) where
+implementation Show (Binary w k) where
      show Zero = ""
      show (bin # bit) = show bin ++ show bit
 

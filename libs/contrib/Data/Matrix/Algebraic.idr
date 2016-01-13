@@ -26,29 +26,29 @@ infixr 7 <&>  -- matrix tensor product
 --               Vectors as members of algebraic classes
 -----------------------------------------------------------------------
 
-instance Semigroup a => Semigroup (Vect n a) where
+implementation Semigroup a => Semigroup (Vect n a) where
   (<+>)= zipWith (<+>)
 
-instance Monoid a => Monoid (Vect n a) where
+implementation Monoid a => Monoid (Vect n a) where
   neutral {n} = replicate n neutral
 
-instance Group a => Group (Vect n a) where
+implementation Group a => Group (Vect n a) where
   inverse = map inverse
 
-instance AbelianGroup a => AbelianGroup (Vect n a) where {}
+implementation AbelianGroup a => AbelianGroup (Vect n a) where {}
 
-instance Ring a => Ring (Vect n a) where
+implementation Ring a => Ring (Vect n a) where
   (<.>) = zipWith (<.>)
 
-instance RingWithUnity a => RingWithUnity (Vect n a) where
+implementation RingWithUnity a => RingWithUnity (Vect n a) where
   unity {n} = replicate n unity
 
-instance RingWithUnity a => Module a (Vect n a) where
+implementation RingWithUnity a => Module a (Vect n a) where
   (<#>) r = map (r <.>)
 
-instance RingWithUnity a => Module a (Vect n (Vect l a)) where
+implementation RingWithUnity a => Module a (Vect n (Vect l a)) where
   (<#>) r = map (r <#>)
--- should be Module a b => Module a (Vect n b), but results in 'overlapping instance'
+-- should be Module a b => Module a (Vect n b), but results in 'overlapping implementation'
 
 -----------------------------------------------------------------------
 --                        (Ring) Vector functions

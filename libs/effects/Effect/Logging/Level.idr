@@ -54,10 +54,10 @@ data LogLevel : Nat -> Type where
   ||| User defined logging level.
   CUSTOM : (n : Nat) -> {auto prf : LTE n 70} -> LogLevel n
 
-instance Cast (LogLevel n) Nat where
+implementation Cast (LogLevel n) Nat where
   cast {n} _ = n
 
-instance Show (LogLevel n) where
+implementation Show (LogLevel n) where
   show OFF        = "OFF"
   show TRACE      = "TRACE"
   show DEBUG      = "DEBUG"
@@ -68,7 +68,7 @@ instance Show (LogLevel n) where
   show ALL        = "ALL"
   show (CUSTOM n) = unwords ["CUSTOM", show n]
 
-instance Eq (LogLevel n) where
+implementation Eq (LogLevel n) where
   (==) x y = lvlEq x y
     where
       lvlEq : LogLevel a -> LogLevel b -> Bool

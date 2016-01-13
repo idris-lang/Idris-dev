@@ -35,10 +35,10 @@ updateAt (FS j) f (x::xs) = x :: updateAt j f xs
 (++) [] ys = ys
 (++) (x::xs) ys = x :: (xs ++ ys)
 
-instance Eq (HVect []) where
+implementation Eq (HVect []) where
   [] == [] = True
 
-instance (Eq t, Eq (HVect ts)) => Eq (HVect (t::ts)) where
+implementation (Eq t, Eq (HVect ts)) => Eq (HVect (t::ts)) where
   (x::xs) == (y::ys) = x == y && xs == ys
 
 total
@@ -49,26 +49,26 @@ total
 hvectInjective2 : {xs, ys: HVect ts} -> {x, y:a} -> x :: xs = y :: ys -> xs = ys
 hvectInjective2 Refl = Refl
 
-instance DecEq (HVect []) where
+implementation DecEq (HVect []) where
   decEq [] [] = Yes Refl
 
-instance (DecEq t, DecEq (HVect ts)) => DecEq (HVect (t::ts)) where
+implementation (DecEq t, DecEq (HVect ts)) => DecEq (HVect (t::ts)) where
   decEq (x::xs) (y::ys) with (decEq x y)
     decEq (z::xs) (z::ys) | Yes Refl with (decEq xs ys)
       decEq (z::zs) (z::zs) | Yes Refl | Yes Refl = Yes Refl
       decEq (z::xs) (z::ys) | Yes Refl | No ctr = No (ctr . hvectInjective2)
     decEq (x::xs) (y::ys) | No ctr = No (ctr . hvectInjective1)
 
-class Shows (k : Nat) (ts : Vect k Type) where
+interface Shows (k : Nat) (ts : Vect k Type) where
   shows : HVect ts -> Vect k String
 
-instance Shows Z [] where
+implementation Shows Z [] where
   shows [] = []
 
-instance (Show t, Shows k ts) => Shows (S k) (t::ts) where
+implementation (Show t, Shows k ts) => Shows (S k) (t::ts) where
   shows (x::xs) = show x :: shows xs
 
-instance (Shows k ts) => Show (HVect ts) where
+implementation (Shows k ts) => Show (HVect ts) where
   show xs = "[" ++ (pack . intercalate [','] . map unpack . toList $ shows xs) ++ "]"
 
 ||| Extract an arbitrary element of the correct type.

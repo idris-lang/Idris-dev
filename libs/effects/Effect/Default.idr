@@ -2,43 +2,43 @@ module Default
 
 import Data.Vect
 
-class Default a where
+interface Default a where
     default : a
 
-instance Default Int where
+implementation Default Int where
     default = 0
 
-instance Default Integer where
+implementation Default Integer where
     default = 0
 
-instance Default Double where
+implementation Default Double where
     default = 0
 
-instance Default Nat where
+implementation Default Nat where
     default = 0
 
-instance Default Char where
+implementation Default Char where
     default = '\0'
 
-instance Default String where
+implementation Default String where
     default = ""
 
-instance Default Bool where
+implementation Default Bool where
     default = False
 
-instance Default () where
+implementation Default () where
     default = ()
 
-instance (Default a, Default b) => Default (a, b) where
+implementation (Default a, Default b) => Default (a, b) where
     default = (default, default)
 
-instance Default (Maybe a) where
+implementation Default (Maybe a) where
     default = Nothing
 
-instance Default (List a) where
+implementation Default (List a) where
     default = []
 
-instance Default a => Default (Vect n a) where
+implementation Default a => Default (Vect n a) where
     default = mkDef _ where
       mkDef : (n : Nat) -> Vect n a
       mkDef Z = []

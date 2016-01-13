@@ -7,7 +7,7 @@ decl syntax newtype {tname} "=" {conname} [tysyn]
      = data tname = conname tysyn
 
 decl syntax EmptyShow {n} =
-     instance Show n where
+     implementation Show n where
         show x = "Nothing" 
 
 fun add : (Int -> Int -> Int) = \x, y => x + y

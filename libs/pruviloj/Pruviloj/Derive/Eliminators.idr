@@ -129,7 +129,7 @@ getElimTy info ctors =
 
 data ElimArg = IHArgument TTName | NormalArgument TTName
 
-instance Show ElimArg where
+implementation Show ElimArg where
   show (IHArgument x) = "IHArgument " ++ show x
   show (NormalArgument x) = "NormalArgument " ++ show x
 

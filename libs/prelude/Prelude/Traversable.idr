@@ -16,7 +16,7 @@ sequence_ = foldr (*>) (pure ())
 for_ : (Foldable t, Applicative f) => t a -> (a -> f b) -> f ()
 for_ = flip traverse_
 
-class (Functor t, Foldable t) => Traversable (t : Type -> Type) where
+interface (Functor t, Foldable t) => Traversable (t : Type -> Type) where
   traverse : Applicative f => (a -> f b) -> t a -> f (t b)
 
 sequence : (Traversable t, Applicative f) => t (f a) -> f (t a)

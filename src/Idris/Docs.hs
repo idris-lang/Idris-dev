@@ -116,7 +116,7 @@ pprintDocs ist (DataDoc t args)
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFDWithoutTotality ist False) args))
 pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ctor)
-           = nest 4 (text "Type class" <+> prettyName True (ppopt_impl ppo) [] n <>
+           = nest 4 (text "Interface" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
                        else line <> renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc)
@@ -128,24 +128,24 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
              <$>
              maybe empty
                    ((<> line) . nest 4 .
-                    (text "Instance constructor:" <$>) .
+                    (text "Implementation constructor:" <$>) .
                     pprintFDWithoutTotality ist False)
                    ctor
              <>
-             nest 4 (text "Instances:" <$>
-                       vsep (if null instances then [text "<no instances>"]
+             nest 4 (text "Implementations:" <$>
+                       vsep (if null instances then [text "<no implementations>"]
                              else map pprintInstance normalInstances))
              <>
              (if null namedInstances then empty
-              else line <$> nest 4 (text "Named instances:" <$>
+              else line <$> nest 4 (text "Named implementations:" <$>
                                     vsep (map pprintInstance namedInstances)))
              <>
              (if null subclasses then empty
-              else line <$> nest 4 (text "Subclasses:" <$>
+              else line <$> nest 4 (text "Child interfaces:" <$>
                                     vsep (map (dumpInstance . prettifySubclasses) subclasses)))
              <>
              (if null superclasses then empty
-              else line <$> nest 4 (text "Default superclass instances:" <$>
+              else line <$> nest 4 (text "Default parent implementations:" <$>
                                      vsep (map dumpInstance superclasses)))
   where
     params' = zip pNames (repeat False)

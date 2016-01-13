@@ -4,7 +4,7 @@ data ListZ : Type -> Type where
   (::) : a -> Lazy (ListZ a) -> ListZ a
   Nil  : ListZ a
 
-instance Show a => Show (ListZ a) where
+implementation Show a => Show (ListZ a) where
   show xs = "[" ++ show' "" xs ++ "]"
       where
         show' acc Nil        = acc

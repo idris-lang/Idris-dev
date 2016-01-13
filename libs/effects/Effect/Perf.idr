@@ -57,7 +57,7 @@ record PMetrics where
   stamps   : List (String, Integer)
 
 
-instance Default PMetrics where
+implementation Default PMetrics where
   default = MkPMetrics False False Nil Nil 0 Nil
 
 displayPerfMetrics : PMetrics -> String
@@ -121,7 +121,7 @@ data Perf : Effect where
 
 -- ---------------------------------------------------------- [ Handler for IO ]
 
-instance Handler Perf IO where
+implementation Handler Perf IO where
   handle res (TurnOn b) k = do
       v <- time
       let res' = record {canPerf = True, livePerf = b, stime = v} res

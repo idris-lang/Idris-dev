@@ -1,4 +1,4 @@
-Type class MyShow
+Interface MyShow
     A fancy shower with a constructor
 
 Parameters:
@@ -9,7 +9,7 @@ Methods:
         The shower
         
         The function is Total
-Instance constructor:
+Implementation constructor:
     MkMyShow : (myShow : a -> String) -> MyShow a
         Build a MyShow
         Arguments:
@@ -17,7 +17,7 @@ Instance constructor:
             
             myShow : a -> String  -- The shower
             
-Instances:
+Implementations:
     MyShow Integer
 MkMyShow : (myShow : a -> String) -> MyShow a
     Build a MyShow

@@ -73,7 +73,7 @@ data FileIO : Effect where
 -- ------------------------------------------------------------ [ The Handlers ]
 
 --- An implementation of the resource access protocol for the IO Context.
-instance Handler FileIO IO where
+implementation Handler FileIO IO where
     handle () (Open fname m) k = do Right h <- openFile fname m
                                         | Left err => k False ()
                                     k True (FH h)
@@ -89,7 +89,7 @@ instance Handler FileIO IO where
     handle (FH h) EOF             k = do e <- fEOF h
                                          k e (FH h)
 
-instance Handler FileIO (IOExcept a) where
+implementation Handler FileIO (IOExcept a) where
     handle () (Open fname m) k = do Right h <- ioe_lift $ openFile fname m
                                         | Left err => k False ()
                                     k True (FH h)

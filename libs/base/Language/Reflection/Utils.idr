@@ -61,14 +61,14 @@ binderTy (Guess t1 t2) = t1
 binderTy (PVar t)      = t
 binderTy (PVTy t)      = t
 
-instance Show SourceLocation where
+implementation Show SourceLocation where
   showPrec d (FileLoc filename line col) = showCon d "FileLoc" $ showArg filename ++ showArg line ++ showArg col
 
-instance Eq SourceLocation where
+implementation Eq SourceLocation where
   (FileLoc fn s e) == (FileLoc fn' s' e') = fn == fn' && s == s' && e == e'
 
 mutual
-  instance Show SpecialName where
+  implementation Show SpecialName where
     showPrec d (WhereN i n1 n2) = showCon d "WhereN" $ showArg i ++
                             showArg n1 ++ showArg n2
     showPrec d (WithN i n) = showCon d "WithN" $ showArg i ++ showArg n
@@ -80,21 +80,21 @@ mutual
     showPrec d (InstanceCtorN n) = showCon d "InstanceCtorN" $ showArg n
     showPrec d (MetaN parent meta) = showCon d "MetaN" $ showArg parent ++ showArg meta
 
-  instance Show TTName where
+  implementation Show TTName where
     showPrec d (UN str)   = showCon d "UN" $ showArg str
     showPrec d (NS n ns)  = showCon d "NS" $ showArg n ++ showArg ns
     showPrec d (MN i str) = showCon d "MN" $ showArg i ++ showArg str
     showPrec d (SN sn)    = showCon d "SN" $ assert_total (showArg sn)
 
 mutual
-  instance Eq TTName where
+  implementation Eq TTName where
     (UN str1)  == (UN str2)     = str1 == str2
     (NS n ns)  == (NS n' ns')   = n == n' && ns == ns'
     (MN i str) == (MN i' str')  = i == i' && str == str'
     (SN sn)    == (SN sn')      = assert_total $ sn == sn'
     x          == y             = False
 
-  instance Eq SpecialName where
+  implementation Eq SpecialName where
     (WhereN i n1 n2)    == (WhereN i' n1' n2')   = i == i' && n1 == n1' && n2 == n2'
     (WithN i n)         == (WithN i' n')         = i == i' && n == n'
     (InstanceN i ss)    == (InstanceN i' ss')    = i == i' && ss == ss'
@@ -106,32 +106,32 @@ mutual
     (MetaN parent meta) == (MetaN parent' meta') = parent == parent' && meta == meta'
     _                   == _                     = False
 
-instance Show TTUExp where
+implementation Show TTUExp where
   showPrec d (UVar i) = showCon d "UVar" $ showArg i
   showPrec d (UVal i) = showCon d "UVal" $ showArg i
 
-instance Eq TTUExp where
+implementation Eq TTUExp where
   (UVar i) == (UVar j) = i == j
   (UVal i) == (UVal j) = i == j
   x        == y        = False
 
-instance Show NativeTy where
+implementation Show NativeTy where
   show IT8  = "IT8"
   show IT16 = "IT16"
   show IT32 = "IT32"
   show IT64 = "IT64"
 
-instance Show IntTy where
+implementation Show IntTy where
   showPrec d (ITFixed t) = showCon d "ITFixed" $ showArg t
   showPrec d ITNative    = "ITNative"
   showPrec d ITBig       = "ITBig"
   showPrec d ITChar      = "ITChar"
 
-instance Show ArithTy where
+implementation Show ArithTy where
   showPrec d (ATInt t) = showCon d "ATInt" $ showArg t
   showPrec d ATDouble   = "ATDouble"
 
-instance Show Const where
+implementation Show Const where
   showPrec d (I i)      = showCon d "I" $ showArg i
   showPrec d (BI n)     = showCon d "BI" $ showArg n
   showPrec d (Fl f)     = showCon d "Fl" $ showArg f
@@ -146,26 +146,26 @@ instance Show Const where
   showPrec d VoidType   = "VoidType"
   showPrec d Forgot     = "Forgot"
 
-instance Eq NativeTy where
+implementation Eq NativeTy where
   IT8  == IT8  = True
   IT16 == IT16 = True
   IT32 == IT32 = True
   IT64 == IT64 = True
   _    == _    = False
 
-instance Eq Reflection.IntTy where
+implementation Eq Reflection.IntTy where
   (ITFixed x) == (ITFixed y) = x == y
   ITNative    == ITNative    = True
   ITBig       == ITBig       = True
   ITChar      == ITChar      = True
   _           == _           = False
 
-instance Eq ArithTy where
+implementation Eq ArithTy where
   (ATInt x) == (ATInt y) = x == y
   ATDouble  == ATDouble   = True
   _         == _         = False
 
-instance Eq Const where
+implementation Eq Const where
   (I x)          == (I y)           = x == y
   (BI x)         == (BI y)          = x == y
   (Fl x)         == (Fl y)          = x == y
@@ -182,20 +182,20 @@ instance Eq Const where
   _              == _               = False
 
 
-instance Show NameType where
+implementation Show NameType where
   showPrec d Bound = "Bound"
   showPrec d Ref = "Ref"
   showPrec d (DCon t ar) = showCon d "DCon" $ showArg t ++ showArg ar
   showPrec d (TCon t ar) = showCon d "TCon" $ showArg t ++ showArg ar
 
-instance Eq NameType where
+implementation Eq NameType where
   Bound       == Bound          = True
   Ref         == Ref            = True
   (DCon t ar) == (DCon t' ar')  = t == t' && ar == ar'
   (TCon t ar) == (TCon t' ar')  = t == t' && ar == ar'
   x           == y              = False
 
-instance (Show a) => Show (Binder a) where
+implementation (Show a) => Show (Binder a) where
   showPrec d (Lam t) = showCon d "Lam" $ showArg t
   showPrec d (Pi t1 t2) = showCon d "Pi" $ showArg t1 ++ showArg t2
   showPrec d (Let t1 t2) = showCon d "Let" $ showArg t1 ++ showArg t2
@@ -205,7 +205,7 @@ instance (Show a) => Show (Binder a) where
   showPrec d (PVar t) = showCon d "PVar" $ showArg t
   showPrec d (PVTy t) = showCon d "PVTy" $ showArg t
 
-instance (Eq a) => Eq (Binder a) where
+implementation (Eq a) => Eq (Binder a) where
   (Lam t)       == (Lam t')         = t == t'
   (Pi t k)      == (Pi t' k')       = t == t' && k == k'
   (Let t1 t2)   == (Let t1' t2')    = t1 == t1' && t2 == t2'
@@ -216,7 +216,7 @@ instance (Eq a) => Eq (Binder a) where
   (PVTy t)      == (PVTy t')        = t == t'
   x             == y                = False
 
-instance Show TT where
+implementation Show TT where
   showPrec = my_show
     where %assert_total my_show : Prec -> TT -> String
           my_show d (P nt n t) = showCon d "P" $ showArg nt ++ showArg n ++ showArg t
@@ -227,7 +227,7 @@ instance Show TT where
           my_show d Erased = "Erased"
           my_show d (TType u) = showCon d "TType" $ showArg u
 
-instance Eq TT where
+implementation Eq TT where
   a == b = equalp a b
     where %assert_total equalp : TT -> TT -> Bool
           equalp (P nt n t)   (P nt' n' t')    = nt == nt' && n == n' && t == t'
@@ -239,7 +239,7 @@ instance Eq TT where
           equalp (TType u)    (TType u')       = u == u'
           equalp x            y                = False
 
-instance Eq Universe where
+implementation Eq Universe where
   Reflection.NullType   == Reflection.NullType   = True
   Reflection.UniqueType == Reflection.UniqueType = True
   Reflection.AllTypes   == Reflection.AllTypes   = True
@@ -269,7 +269,7 @@ forget tm = fe [] tm
     fe env (UType uni)   = Just (RUType uni)
     fe env Erased        = Just $ RConstant Forgot
 
-instance Show Raw where
+implementation Show Raw where
   showPrec = my_show
     where %assert_total my_show : Prec -> Raw -> String
           my_show d (Var n) = showCon d "Var" $ showArg n
@@ -279,7 +279,7 @@ instance Show Raw where
           my_show d (RConstant c) = showCon d "RConstant" $ showArg c
 
 
-instance Show Err where
+implementation Show Err where
   showPrec d (Msg x) = showCon d "Msg" $ showArg x
   showPrec d (InternalMsg x) = showCon d "InternalMsg" $ showArg x
   showPrec d (CantUnify x tm tm' err xs y) = showCon d "CantUnify" $ showArg x ++
@@ -329,28 +329,28 @@ pure = id
 --------------------------------------
 -- Instances for definition reflection
 --------------------------------------
-instance Show Erasure where
+implementation Show Erasure where
   show Erased    = "Erased"
   show NotErased = "NotErased"
 
-instance Show Plicity where
+implementation Show Plicity where
   show Explicit = "Explicit"
   show Implicit = "Implicit"
   show Constraint = "Constraint"
 
-instance Show FunArg where
+implementation Show FunArg where
   showPrec d (MkFunArg n ty plic era) = showCon d "MkFunArg" $ showArg n ++
                                         showArg ty ++ showArg plic ++ showArg era
 
-instance Show CtorArg where
+implementation Show CtorArg where
   showPrec d (CtorParameter fa) = showCon d "CtorParameter" $ showArg fa
   showPrec d (CtorField fa) = showCon d "CtorField" $ showArg fa
 
-instance Show TyDecl where
+implementation Show TyDecl where
   showPrec d (Declare fn args ret) = showCon d "Declare" $ showArg fn ++
                                      showArg args ++ showArg ret
 
-instance Show tm => Show (FunClause tm) where
+implementation Show tm => Show (FunClause tm) where
   showPrec d (MkFunClause lhs rhs) =
       showCon d "MkFunClause" $ showArg lhs ++ showArg rhs
   showPrec d (MkImpossibleClause lhs) =

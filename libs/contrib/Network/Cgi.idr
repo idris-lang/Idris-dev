@@ -30,21 +30,20 @@ data CGI : Type -> Type where
 getAction : CGI a -> CGIInfo -> IO (a, CGIInfo)
 getAction (MkCGI act) = act
 
-instance Functor CGI where
+implementation Functor CGI where
     map f (MkCGI c) = MkCGI (\s => do (a, i) <- c s
                                       return (f a, i))
 
-instance Applicative CGI where
+implementation Applicative CGI where
     pure v = MkCGI (\s => return (v, s))
 
     (MkCGI a) <*> (MkCGI b) = MkCGI (\s => do (f, i) <- a s
                                               (c, j) <- b i
                                               return (f c, j))
 
-instance Monad CGI where {
+implementation Monad CGI where
     (>>=) (MkCGI f) k = MkCGI (\s => do v <- f s
                                         getAction (k (fst v)) (snd v))
-}
 
 setInfo : CGIInfo -> CGI ()
 setInfo i = MkCGI (\s => return ((), i))
