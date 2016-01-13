@@ -13,7 +13,7 @@ chr x = if (x >= 0 && x < 0x110000)
                 then assert_total (prim__intToChar x)
                 else '\0'
 
-implementation Cast Int Char where
+Cast Int Char where
     cast = chr
 
 ||| Return the ASCII representation of the character.

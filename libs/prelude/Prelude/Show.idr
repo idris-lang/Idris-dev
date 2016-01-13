@@ -29,11 +29,11 @@ precCon (User n)    = 4
 precCon PrefixMinus = 5
 precCon App         = 6
 
-implementation Eq Prec where
+Eq Prec where
   (==) (User m) (User n) = m == n
   (==) x        y        = precCon x == precCon y
 
-implementation Ord Prec where
+Ord Prec where
   compare (User m) (User n) = compare m n
   compare x        y        = compare (precCon x) (precCon y)
 
@@ -78,7 +78,7 @@ showParens True  s = "(" ++ s ++ ")"
 ||| ```
 ||| data Ann a = MkAnn String a
 |||
-||| implementation Show a => Show (Ann a) where
+||| Show a => Show (Ann a) where
 |||   showPrec d (MkAnn s x) = showCon d "MkAnn" $ showArg s ++ showArg x
 ||| ```
 showCon : (d : Prec) -> (conName : String) -> (shownArgs : String) -> String
@@ -100,13 +100,13 @@ firstCharIs p s with (strM s)
 primNumShow : (a -> String) -> Prec -> a -> String
 primNumShow f d x = let str = f x in showParens (d >= PrefixMinus && firstCharIs (== '-') str) str
 
-implementation Show Int where
+Show Int where
   showPrec = primNumShow prim__toStrInt
 
-implementation Show Integer where
+Show Integer where
   showPrec = primNumShow prim__toStrBigInt
 
-implementation Show Double where
+Show Double where
   showPrec = primNumShow prim__floatToStr
 
 protectEsc : (Char -> Bool) -> String -> String -> String
@@ -144,52 +144,52 @@ showLitString []        = id
 showLitString ('"'::cs) = ("\\\"" ++) . showLitString cs
 showLitString (c  ::cs) = showLitChar c . showLitString cs
 
-implementation Show Char where
+Show Char where
   show '\'' = "'\\''"
   show c    = strCons '\'' (showLitChar c "'")
 
-implementation Show String where
+Show String where
   show cs = strCons '"' (showLitString (cast cs) "\"")
 
-implementation Show Nat where
+Show Nat where
     show n = show (the Integer (cast n))
 
-implementation Show Bool where
+Show Bool where
     show True = "True"
     show False = "False"
 
-implementation Show () where
+Show () where
   show () = "()"
 
-implementation Show Bits8 where
+Show Bits8 where
   show b = b8ToString b
 
-implementation Show Bits16 where
+Show Bits16 where
   show b = b16ToString b
 
-implementation Show Bits32 where
+Show Bits32 where
   show b = b32ToString b
 
-implementation Show Bits64 where
+Show Bits64 where
   show b = b64ToString b
 
-implementation (Show a, Show b) => Show (a, b) where
+(Show a, Show b) => Show (a, b) where
     show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
 
-implementation Show a => Show (List a) where
+Show a => Show (List a) where
     show xs = "[" ++ show' "" xs ++ "]" where
         show' acc []        = acc
         show' acc [x]       = acc ++ show x
         show' acc (x :: xs) = show' (acc ++ show x ++ ", ") xs
 
-implementation Show a => Show (Maybe a) where
+Show a => Show (Maybe a) where
   showPrec d Nothing  = "Nothing"
   showPrec d (Just x) = showCon d "Just" $ showArg x
 
-implementation (Show a, Show b) => Show (Either a b) where
+(Show a, Show b) => Show (Either a b) where
   showPrec d (Left x)  = showCon d "Left" $ showArg x
   showPrec d (Right x) = showCon d "Right" $ showArg x
 
-implementation (Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
+(Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
     show (y ** prf) = "(" ++ show y ++ " ** " ++ show prf ++ ")"
 

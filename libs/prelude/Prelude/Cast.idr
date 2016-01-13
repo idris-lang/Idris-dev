@@ -12,46 +12,46 @@ interface Cast from to where
 
 -- String casts
 
-implementation Cast String Int where
+Cast String Int where
     cast = prim__fromStrInt
 
-implementation Cast String Double where
+Cast String Double where
     cast = prim__strToFloat
 
-implementation Cast String Integer where
+Cast String Integer where
     cast = prim__fromStrBigInt
 
 -- Int casts
 
-implementation Cast Int String where
+Cast Int String where
     cast = prim__toStrInt
 
-implementation Cast Int Double where
+Cast Int Double where
     cast = prim__toFloatInt
 
-implementation Cast Int Integer where
+Cast Int Integer where
     cast = prim__sextInt_BigInt
 
 -- Double casts
 
-implementation Cast Double String where
+Cast Double String where
     cast = prim__floatToStr
 
-implementation Cast Double Int where
+Cast Double Int where
     cast = prim__fromFloatInt
 
-implementation Cast Double Integer where
+Cast Double Integer where
     cast = prim__fromFloatBigInt
 
 -- Integer casts
 
-implementation Cast Integer String where
+Cast Integer String where
     cast = prim__toStrBigInt
 
-implementation Cast Integer Double where
+Cast Integer Double where
     cast = prim__toFloatBigInt
 
 -- Char casts
 
-implementation Cast Char Int where
+Cast Char Int where
     cast = prim__charToInt

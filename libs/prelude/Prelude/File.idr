@@ -43,7 +43,7 @@ getFileError = do MkRaw err <- foreign FFI_C "idris_mkFileError"
                                     (Ptr -> IO (Raw FileError)) prim__vm
                   return err
 
-implementation Show FileError where
+Show FileError where
   show FileNotFound = "File Not Found"
   show PermissionDenied = "Permission Denied"
   show (GenericFileError errno) = strError errno

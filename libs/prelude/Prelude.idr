@@ -48,78 +48,78 @@ decAsBool (No _)  = False
 
 ---- Functor implementations
 
-implementation Functor PrimIO where
+Functor PrimIO where
     map f io = prim_io_bind io (prim_io_return . f)
 
-implementation Functor Maybe where
+Functor Maybe where
     map f (Just x) = Just (f x)
     map f Nothing  = Nothing
 
-implementation Functor (Either e) where
+Functor (Either e) where
     map f (Left l) = Left l
     map f (Right r) = Right (f r)
 
 ---- Applicative implementations
 
-implementation Applicative PrimIO where
+Applicative PrimIO where
     pure = prim_io_return
 
     am <*> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
 
-implementation Applicative Maybe where
+Applicative Maybe where
     pure = Just
 
     (Just f) <*> (Just a) = Just (f a)
     _        <*> _        = Nothing
 
-implementation Applicative (Either e) where
+Applicative (Either e) where
     pure = Right
 
     (Left a) <*> _          = Left a
     (Right f) <*> (Right r) = Right (f r)
     (Right _) <*> (Left l)  = Left l
 
-implementation Applicative List where
+Applicative List where
     pure x = [x]
 
     fs <*> vs = concatMap (\f => map f vs) fs
 
 ---- Alternative implementations
 
-implementation Alternative Maybe where
+Alternative Maybe where
     empty = Nothing
 
     (Just x) <|> _ = Just x
     Nothing  <|> v = v
 
-implementation Alternative List where
+Alternative List where
     empty = []
 
     (<|>) = (++)
 
 ---- Monad implementations
 
-implementation Monad PrimIO where
+Monad PrimIO where
     b >>= k = prim_io_bind b k
 
-implementation Monad Maybe where
+Monad Maybe where
     Nothing  >>= k = Nothing
     (Just x) >>= k = k x
 
-implementation Monad (Either e) where
+Monad (Either e) where
     (Left n) >>= _ = Left n
     (Right r) >>= f = f r
 
-implementation Monad List where
+Monad List where
     m >>= f = concatMap f m
 
 ---- Traversable implementations
 
-implementation Traversable Maybe where
+Traversable Maybe where
     traverse f Nothing = pure Nothing
     traverse f (Just x) = [| Just (f x) |]
 
-implementation Traversable List where
+Traversable List where
     traverse f [] = pure List.Nil
     traverse f (x::xs) = [| List.(::) (f x) (traverse f xs) |]
 
@@ -160,7 +160,7 @@ interface Enum a where
   total enumFromThenTo : a -> a -> a -> List a
   enumFromThenTo x1 x2 y = map fromNat (natEnumFromThenTo (toNat x1) (toNat x2) (toNat y))
 
-implementation Enum Nat where
+Enum Nat where
   pred n = Nat.pred n
   succ n = S n
   toNat x = id x
@@ -169,7 +169,7 @@ implementation Enum Nat where
   enumFromThenTo x y z = natEnumFromThenTo x y z
   enumFromTo x y = natEnumFromTo x y
 
-implementation Enum Integer where
+Enum Integer where
   pred n = n - 1
   succ n = n + 1
   toNat n = cast n
@@ -187,7 +187,7 @@ implementation Enum Integer where
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
 
-implementation Enum Int where
+Enum Int where
   pred n = n - 1
   succ n = n + 1
   toNat n = cast n
@@ -207,7 +207,7 @@ implementation Enum Int where
           go [] = []
           go (x :: xs) = n + (cast x * inc) :: go xs
 
-implementation Enum Char where
+Enum Char where
   toNat c   = toNat (ord c)
   fromNat n = chr (fromNat n)
   

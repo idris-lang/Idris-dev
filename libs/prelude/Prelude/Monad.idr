@@ -27,16 +27,16 @@ return = pure
 -- Annoyingly, these need to be here, so that we can use them in other
 -- Prelude modules other than the top level.
 
-implementation Functor (IO' ffi) where
+Functor (IO' ffi) where
     map f io = io_bind io (\b => io_return (f b))
 
-implementation Applicative (IO' ffi) where
+Applicative (IO' ffi) where
     pure x = io_return x
     f <*> a = io_bind f (\f' =>
                 io_bind a (\a' =>
                   io_return (f' a')))
 
 
-implementation Monad (IO' ffi) where
+Monad (IO' ffi) where
     b >>= k = io_bind b k
 

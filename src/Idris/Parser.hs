@@ -211,13 +211,14 @@ internalDecl syn
                              declBody continue)
                      <|> fail "End of readable input"
   where declBody :: Bool -> IdrisParser [PDecl]
-        declBody b = declBody' b
+        declBody b = 
+                   try (instance_ True syn)
+                   <|> declBody' b
                    <|> using_ syn
                    <|> params syn
                    <|> mutual syn
                    <|> namespace syn
                    <|> class_ syn
-                   <|> instance_ syn
                    <|> do d <- dsl syn; return [d]
                    <|> directive syn
                    <|> provider syn
@@ -798,7 +799,7 @@ instanceBlock syn = do reservedHL "where"
                        ds <- many (fnDecl syn)
                        closeBlock
                        return (concat ds)
-                    <?> "instance block"
+                    <?> "implementation block"
 
 {- | Parses a methods and instances block (for type classes)
 
@@ -825,7 +826,7 @@ classBlock syn = do reservedHL "where"
                     ist <- get
                     let cd' = annotate syn ist cd
 
-                    ds <- many (notEndBlock >> instance_ syn <|> fnDecl syn)
+                    ds <- many (notEndBlock >> try (instance_ True syn) <|> fnDecl syn)
                     closeBlock
                     return (cn, cd', concat ds)
                  <?> "class block"
@@ -901,9 +902,12 @@ class_ syn = do (doc, argDocs, acc)
 InstanceName ::= '[' Name ']';
 @
 -}
-instance_ :: SyntaxInfo -> IdrisParser [PDecl]
-instance_ syn = do (doc, argDocs)
-                     <- try (docstring syn <* instanceKeyword)
+instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
+instance_ kwopt syn 
+              = do (doc, argDocs)
+                     <- try (docstring syn <* if kwopt then optional instanceKeyword
+                                                       else do instanceKeyword
+                                                               return (Just ()))
                    fc <- getFC
                    en <- optional instanceName
                    cs <- constraintList syn
@@ -912,14 +916,14 @@ instance_ syn = do (doc, argDocs)
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
-                   ds <- option [] (instanceBlock syn)
+                   ds <- instanceBlock syn
                    return [PInstance doc argDocs syn fc cs' cn cnfc args t en ds]
-                 <?> "instance declaration"
+                 <?> "implementation declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
                           let n = expandNS syn n_in
                           return n
-                       <?> "instance name"
+                       <?> "implementation name"
         instanceKeyword :: IdrisParser ()
         instanceKeyword = reservedHL "implementation"
                       <|> do reservedHL "instance"

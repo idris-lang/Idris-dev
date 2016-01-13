@@ -23,7 +23,7 @@ import Prelude.Uninhabited
 -- name hints for interactive editing
 %name Nat k,j,i,n,m
 
-implementation Uninhabited (Z = S n) where
+Uninhabited (Z = S n) where
   uninhabited Refl impossible
 
 --------------------------------------------------------------------------------
@@ -100,7 +100,7 @@ data LTE  : (n, m : Nat) -> Type where
   ||| If n <= m, then n + 1 <= m + 1
   LTESucc : LTE left right -> LTE (S left) (S right)
 
-implementation Uninhabited (LTE (S n) Z) where
+Uninhabited (LTE (S n) Z) where
   uninhabited LTEZero impossible
 
 ||| Greater than or equal to
@@ -187,34 +187,34 @@ toIntNat n = toIntNat' n 0 where
 -- Type class implementations
 --------------------------------------------------------------------------------
 
-implementation Eq Nat where
+Eq Nat where
   Z == Z         = True
   (S l) == (S r) = l == r
   _ == _         = False
 
-implementation Cast Nat Integer where
+Cast Nat Integer where
   cast = toIntegerNat
 
-implementation Ord Nat where
+Ord Nat where
   compare Z Z         = EQ
   compare Z (S k)     = LT
   compare (S k) Z     = GT
   compare (S x) (S y) = compare x y
 
-implementation Num Nat where
+Num Nat where
   (+) = plus
   (*) = mult
 
   fromInteger = fromIntegerNat
 
-implementation MinBound Nat where
+MinBound Nat where
   minBound = Z
 
 ||| Casts negative `Integers` to 0.
-implementation Cast Integer Nat where
+Cast Integer Nat where
   cast = fromInteger
 
-implementation Cast String Nat where
+Cast String Nat where
     cast str = cast (the Integer (cast str))
 
 ||| A wrapper for Nat that specifies the semigroup and monad implementations that use (*)
@@ -227,7 +227,7 @@ record Additive where
   constructor GetAdditive  
   _ : Nat
   
-implementation Semigroup Multiplicative where
+Semigroup Multiplicative where
   (<+>) left right = GetMultiplicative $ left' * right'
     where
       left'  : Nat
@@ -240,7 +240,7 @@ implementation Semigroup Multiplicative where
         case right of
           GetMultiplicative m => m
 
-implementation Semigroup Additive where
+Semigroup Additive where
   left <+> right = GetAdditive $ left' + right'
     where
       left'  : Nat
@@ -253,20 +253,20 @@ implementation Semigroup Additive where
         case right of
           GetAdditive m => m
 
-implementation Monoid Multiplicative where
+Monoid Multiplicative where
   neutral = GetMultiplicative $ S Z
 
-implementation Monoid Additive where
+Monoid Additive where
   neutral = GetAdditive Z
 
 ||| Casts negative `Ints` to 0.
-implementation Cast Int Nat where
+Cast Int Nat where
   cast i = fromInteger (cast i)
 
-implementation Cast Nat Int where
+Cast Nat Int where
   cast = toIntNat
 
-implementation Cast Nat Double where
+Cast Nat Double where
   cast = cast . toIntegerNat
 
 --------------------------------------------------------------------------------
@@ -341,7 +341,7 @@ partial
 divCeil : Nat -> Nat -> Nat
 divCeil x (S y) = divCeilNZ x (S y) SIsNotZ
 
-implementation Integral Nat where
+Integral Nat where
   div = divNat
   mod = modNat
 

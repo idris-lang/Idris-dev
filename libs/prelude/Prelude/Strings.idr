@@ -143,19 +143,19 @@ pack = foldr strCons ""
 singleton : Char -> String
 singleton c = strCons c ""
 
-implementation Cast String (List Char) where
+Cast String (List Char) where
   cast = unpack
 
-implementation Cast (List Char) String where
+Cast (List Char) String where
   cast = pack
 
-implementation Cast Char String where
+Cast Char String where
   cast = singleton
 
-implementation Semigroup String where
+Semigroup String where
   (<+>) = (++)
 
-implementation Monoid String where
+Monoid String where
   neutral = ""
 
 ||| Splits the string into a part before the predicate

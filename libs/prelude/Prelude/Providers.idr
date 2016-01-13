@@ -15,16 +15,16 @@ data Provider : (a : Type) -> Type where
   ||| @ msg the error message
   Error : (msg : String) -> Provider a
 
-implementation Functor Provider where
+Functor Provider where
   map f (Provide a) = Provide (f a)
   map f (Error err) = Error err
 
-implementation Applicative Provider where
+Applicative Provider where
   (Provide f) <*> (Provide x) = Provide (f x)
   (Provide f) <*> (Error err) = Error err
   (Error err) <*> _           = Error err
   pure = Provide
 
-implementation Monad Provider where
+Monad Provider where
   (Provide x) >>= f = f x
   (Error err) >>= _ = Error err

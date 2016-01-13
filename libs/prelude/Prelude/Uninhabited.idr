@@ -11,7 +11,7 @@ interface Uninhabited t where
   ||| @ t the uninhabited type
   total uninhabited : t -> Void
 
-implementation Uninhabited Void where
+Uninhabited Void where
   uninhabited a = a
 
 ||| Use an absurd assumption to discharge a proof obligation

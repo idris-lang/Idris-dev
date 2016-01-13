@@ -79,7 +79,7 @@ maybe_bind : Maybe a -> (a -> Maybe b) -> Maybe b
 maybe_bind Nothing  k = Nothing
 maybe_bind (Just x) k = k x
 
-implementation (Eq a) => Eq (Maybe a) where
+(Eq a) => Eq (Maybe a) where
   Nothing  == Nothing  = True
   Nothing  == (Just _) = False
   (Just _) == Nothing  = False
@@ -90,7 +90,7 @@ implementation (Eq a) => Eq (Maybe a) where
 |||
 ||| **NB**: This is a different choice than in the Haskell libraries.
 ||| Use `collectJust` to get the Haskell behaviour.
-implementation Semigroup (Maybe a) where
+Semigroup (Maybe a) where
   Nothing   <+> m = m
   (Just x)  <+> _ = Just x
 
@@ -98,20 +98,20 @@ implementation Semigroup (Maybe a) where
 ||| designated neutral element and collecting the contents of the
 ||| `Just` constructors using a semigroup structure on `a`. This is
 ||| the behaviour in the Haskell libraries.
-implementation [collectJust] Semigroup a => Semigroup (Maybe a) where
+[collectJust] Semigroup a => Semigroup (Maybe a) where
   Nothing   <+> m       = m
   m         <+> Nothing = m
   (Just m1) <+> (Just m2) = Just (m1 <+> m2)
 
-implementation  Monoid (Maybe a) where
+ Monoid (Maybe a) where
   neutral = Nothing
 
-implementation (Monoid a, Eq a) => Cast a (Maybe a) where
+(Monoid a, Eq a) => Cast a (Maybe a) where
   cast = raiseToMaybe
 
-implementation (Monoid a) => Cast (Maybe a) a where
+(Monoid a) => Cast (Maybe a) a where
   cast = lowerMaybe
 
-implementation Foldable Maybe where
+Foldable Maybe where
   foldr _ z Nothing  = z
   foldr f z (Just x) = f x z

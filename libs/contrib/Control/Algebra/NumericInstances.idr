@@ -8,106 +8,106 @@ import Data.Complex
 import Data.ZZ
 
 
-implementation Semigroup Integer where
+Semigroup Integer where
   (<+>) = (+)
 
-implementation Monoid Integer where
+Monoid Integer where
   neutral = 0
 
-implementation Group Integer where
+Group Integer where
   inverse = (* -1)
 
-implementation AbelianGroup Integer
+AbelianGroup Integer where 
 
-implementation Ring Integer where
+Ring Integer where
   (<.>) = (*)
 
-implementation RingWithUnity Integer where
+RingWithUnity Integer where
   unity = 1
 
 
-implementation Semigroup Int where
+Semigroup Int where
   (<+>) = (+)
 
-implementation Monoid Int where
+Monoid Int where
   neutral = 0
 
-implementation Group Int where
+Group Int where
   inverse = (* -1)
 
-implementation AbelianGroup Int
+AbelianGroup Int where
 
-implementation Ring Int where
+Ring Int where
   (<.>) = (*)
 
-implementation RingWithUnity Int where
+RingWithUnity Int where
   unity = 1
 
 
-implementation Semigroup Double where
+Semigroup Double where
   (<+>) = (+)
 
-implementation Monoid Double where
+Monoid Double where
   neutral = 0
 
-implementation Group Double where
+Group Double where
   inverse = (* -1)
 
-implementation AbelianGroup Double
+AbelianGroup Double where
 
-implementation Ring Double where
+Ring Double where
   (<.>) = (*)
 
-implementation RingWithUnity Double where
+RingWithUnity Double where
   unity = 1
 
-implementation Field Double where
+Field Double where
   inverseM f _ = 1 / f
 
 
-implementation Semigroup Nat where
+Semigroup Nat where
   (<+>) = (+)
 
-implementation Monoid Nat where
+Monoid Nat where
   neutral = 0
 
-implementation Semigroup ZZ where
+Semigroup ZZ where
   (<+>) = (+)
 
-implementation Monoid ZZ where
+Monoid ZZ where
   neutral = 0
 
-implementation Group ZZ where
+Group ZZ where
   inverse = (* -1)
 
-implementation AbelianGroup ZZ
+AbelianGroup ZZ where
 
-implementation Ring ZZ where
+Ring ZZ where
   (<.>) = (*)
 
-implementation RingWithUnity ZZ where
+RingWithUnity ZZ where
   unity = 1
 
 
-implementation Semigroup a => Semigroup (Complex a) where
+Semigroup a => Semigroup (Complex a) where
   (<+>) (a :+ b) (c :+ d) = (a <+> c) :+ (b <+> d)
 
-implementation Monoid a => Monoid (Complex a) where
+Monoid a => Monoid (Complex a) where
   neutral = (neutral :+ neutral)
 
-implementation Group a => Group (Complex a) where
+Group a => Group (Complex a) where
   inverse (r :+ i) = (inverse r :+ inverse i)
 
-implementation Ring a => AbelianGroup (Complex a) where {}
+Ring a => AbelianGroup (Complex a) where {}
 
-implementation Ring a => Ring (Complex a) where
+Ring a => Ring (Complex a) where
   (<.>) (a :+ b) (c :+ d) = (a <.> c <-> b <.> d) :+ (a <.> d <+> b <.> c)
 
-implementation RingWithUnity a => RingWithUnity (Complex a) where
+RingWithUnity a => RingWithUnity (Complex a) where
   unity = (unity :+ neutral)
 
-implementation RingWithUnity a => Module a (Complex a) where
+RingWithUnity a => Module a (Complex a) where
   (<#>) x = map (x <.>)
 
-implementation RingWithUnity a => InnerProductSpace a (Complex a) where
+RingWithUnity a => InnerProductSpace a (Complex a) where
   (x :+ y) <||> z = realPart $ (x :+ inverse y) <.> z

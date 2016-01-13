@@ -1118,7 +1118,7 @@ constraintList1 syn = try (do lchar '('
                         return (n, fc, e))
                 <|> do e <- expr syn
                        return (defname, NoFC, e)
-        defname = sMN 0 "constrarg"
+        defname = sMN 0 "constraint"
 
 {- | Parses a type declaration list
 @
