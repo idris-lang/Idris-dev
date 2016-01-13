@@ -533,7 +533,7 @@ instance Show Name where
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
     show (WithN i n) = "with block in " ++ show n
-    show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " instance of " ++ show cl
+    show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " implementation of " ++ show cl
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN fc n) = "case block in " ++ show n ++
