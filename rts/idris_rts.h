@@ -9,7 +9,7 @@
 #include <pthread.h>
 #endif
 #include <stdint.h>
-#if (__linux__ || __APPLE__ || __FreeBSD__)
+#if (__linux__ || __APPLE__ || __FreeBSD__ || __DragonFly__)
 #include <signal.h>
 #endif
 

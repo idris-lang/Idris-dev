@@ -95,7 +95,7 @@ void init_threaddata(VM *vm) {
 }
 
 void init_signals() {
-#if (__linux__ || __APPLE__ || __FreeBSD__)
+#if (__linux__ || __APPLE__ || __FreeBSD__ || __DragonFly__)
     signal(SIGPIPE, SIG_IGN);
 #endif
 }
