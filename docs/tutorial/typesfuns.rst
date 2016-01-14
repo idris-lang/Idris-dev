@@ -997,7 +997,7 @@ syntax:
     record { a->b->c = val } x
 
 This returns a new record, with the field accessed by the path
-``a->b->c`` set to ``x``. The syntax is first class, i.e.  ``record {
+``a->b->c`` set to ``val``. The syntax is first class, i.e.  ``record {
 a->b->c = val }`` itself has a function type. Symmetrically, the field
 can also be accessed with the following syntax:
 
