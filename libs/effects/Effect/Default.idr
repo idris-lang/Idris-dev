@@ -1,4 +1,4 @@
-module Default
+module Effect.Default
 
 import Data.Vect
 
@@ -43,4 +43,3 @@ implementation Default a => Default (Vect n a) where
       mkDef : (n : Nat) -> Vect n a
       mkDef Z = []
       mkDef (S k) = default :: mkDef k
-
