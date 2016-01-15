@@ -1,14 +1,15 @@
 Prelude.List.(++) : List a -> List a -> List a
 Prelude.Strings.(++) : String -> String -> String
-Prelude.Classes./ : (__pi_arg : Double) →
-                    (__pi_arg1 : Double) → Double
+Prelude.Classes./ Double
+  Prelude.Classes.Double implementation of Prelude.Classes.Fractional : (__pi_arg : Double) →
+                                                                        (__pi_arg3 : Double) →
+                                                                        Double
 Usage is :doc <functionname>
 Usage is :wc <functionname>
 Usage is :printdef <functionname>
-prim__divFloat
-Prelude.Classes./
+pat {a504} : Type u. pat {__class505} : Prelude.Classes.Fractional {a504}. Prelude.Classes./ {a504} {__class505}
 
- : Double -> Double -> Double
+ : pty {a504} : Type u. pty {__class505} : Prelude.Classes.Fractional {a504}. {a504} -> {a504} -> {a504}
 (input):1:1: error: expected: ":",
     dependent type signature,
     end of input
@@ -19,4 +20,4 @@ Prelude.Classes./
     end of input
 ++<EOF> 
 ^       
-prim__divFloat
+Can't resolve type class Fractional a

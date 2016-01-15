@@ -306,15 +306,19 @@ MaxBound Bits64 where
 
 -- ------------------------------------------------------------- [ Fractionals ]
 
-||| Fractional division of two Doubles.
-(/) : Double -> Double -> Double
-(/) = prim__divFloat
+interface Num a => Fractional a where
+  (/) : a -> a -> a
+  recip : a -> a
 
+  recip x = 1 / x
+
+Fractional Double where
+  (/) = prim__divFloat
 
 -- --------------------------------------------------------------- [ Integrals ]
 %default partial
 
-interface Integral a where
+interface Num a => Integral a where
    div : a -> a -> a
    mod : a -> a -> a
 

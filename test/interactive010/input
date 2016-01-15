@@ -1,9 +1,8 @@
 :type ++
-:core /
+:core (/) {a=Double}
 :doc +
 :wc +
 :printdef -
-:spec /
 :patt /
 /
 ++
