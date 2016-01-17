@@ -464,8 +464,8 @@ elab ist info emode opts fn tm
                                   case as'' of
                                        [x] -> elab' ina fc x
                                        _ -> do hds <- mapM showHd as''
-                                               tryAll (zip (map (elab' ina fc) as'')
-                                                           hds))
+                                               tryAll' False (zip (map (elab' ina fc) as'')
+                                                                  hds))
         where showHd (PApp _ (PRef _ _ (UN l)) [_, _, arg])
                  | l == txt "Delay" = showHd (getTm arg)
               showHd (PApp _ (PRef _ _ n) _) = return n

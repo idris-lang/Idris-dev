@@ -400,10 +400,14 @@ makeLemma fn updatefile l n
                 = n : guessImps ist ctxt sc
            | isClass ist ty
                 = n : guessImps ist ctxt sc
-           | TType _ <- ty = n : guessImps ist ctxt sc
+           | paramty ty = n : guessImps ist ctxt sc
            | ignoreName n = n : guessImps ist ctxt sc
            | otherwise = guessImps ist ctxt sc
         guessImps ist ctxt _ = []
+       
+        paramty (TType _) = True
+        paramty (Bind _ (Pi _ (TType _) _) sc) = paramty sc
+        paramty _ = False
         
         -- TMP HACK unusable name so don't lift
         ignoreName n = case show n of

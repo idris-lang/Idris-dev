@@ -863,7 +863,7 @@ try' t1 t2 proofSearch
        ps <- get_probs
        ulog <- getUnifyLog
        ivs <- get_instances
-       case prunStateT 999999 False ps t1 s of
+       case prunStateT 999999 False ps Nothing t1 s of
             OK ((v, _, _), s') -> do put s'
                                      return $! v
             Error e1 -> traceWhen ulog ("try failed " ++ show e1) $
@@ -906,8 +906,11 @@ tryWhen False a b = a
 -- Bool says whether it's okay to create new unification problems. If set
 -- to False, then the whole tactic fails if there are any new problems
 tryAll :: [(Elab' aux a, Name)] -> Elab' aux a
-tryAll [(x, _)] = x
-tryAll xs = tryAll' [] 999999 xs
+tryAll = tryAll' True
+
+tryAll' :: Bool -> [(Elab' aux a, Name)] -> Elab' aux a
+tryAll' _ [(x, _)] = x
+tryAll' constrok xs = doAll [] 999999 xs
   where
     cantResolve :: Elab' aux a
     cantResolve = lift $ tfail $ CantResolveAlts (map snd xs)
@@ -915,44 +918,53 @@ tryAll xs = tryAll' [] 999999 xs
     noneValid :: Elab' aux a
     noneValid = lift $ tfail $ NoValidAlts (map snd xs)
 
-    tryAll' :: [Elab' aux a] -> -- successes
-               Int -> -- most problems
-               [(Elab' aux a, Name)] -> -- still to try
-               Elab' aux a
-    tryAll' [res] pmax [] = res
-    tryAll' (_:_) pmax [] = cantResolve
-    tryAll' [] pmax    [] = noneValid
-    tryAll' cs pmax    ((x, msg):xs)
+    doAll :: [Elab' aux a] -> -- successes
+             Int -> -- most problems
+             [(Elab' aux a, Name)] -> -- still to try
+             Elab' aux a
+    doAll [res] pmax [] = res
+    doAll (_:_) pmax [] = cantResolve
+    doAll [] pmax    [] = noneValid
+    doAll cs pmax    ((x, msg):xs)
        = do s <- get
             ps <- get_probs
-            case prunStateT pmax True ps x s of
+            ivs <- get_instances
+            case prunStateT pmax True ps (if constrok then Nothing
+                                                      else Just ivs) x s of
                 OK ((v, newps, probs), s') -> 
                       do let cs' = if (newps < pmax)
                                       then [do put s'; return $! v]
                                       else (do put s'; return $! v) : cs
-                         tryAll' cs' newps xs
+                         doAll cs' newps xs
                 Error err -> do put s
-                                tryAll' cs pmax xs
+                                doAll cs pmax xs
 
--- Run an elaborator, and fail if any problems are introduced
+-- Run an elaborator, and fail if any problems or constraints are introduced
 prunStateT
   :: Int
      -> Bool
      -> [a]
+     -> Maybe [b] -- constraints left, if we're interested
      -> Control.Monad.State.Strict.StateT
           (ElabState t) TC t1
      -> ElabState t
      -> TC ((t1, Int, Idris.Core.Unify.Fails), ElabState t)
-prunStateT pmax zok ps x s
+prunStateT pmax zok ps ivs x s
       = case runStateT x s of
              OK (v, s'@(ES (p, _) _ _)) ->
                  let newps = length (problems p) - length ps
+                     ibad = badInstances (instances p) ivs
                      newpmax = if newps < 0 then 0 else newps in
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
                             ((_,_,_,_,e,_,_):_) -> Error e
-                    else OK ((v, newpmax, problems p), s')
+                    else if ibad 
+                            then Error (InternalMsg "Constraint introduced in disambiguation")
+                            else OK ((v, newpmax, problems p), s')
              Error e -> Error e
+  where
+    badInstances _ Nothing = False
+    badInstances inow (Just ithen) = length inow > length ithen
 
 debugElaborator :: [ErrorReportPart] -> Elab' aux a
 debugElaborator msg = do ps <- fmap proof get
