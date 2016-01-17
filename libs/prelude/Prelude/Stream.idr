@@ -90,27 +90,12 @@ unzip3 xs = (map (\(x,_,_) => x) xs, map (\(_,x,_) => x) xs, map (\(_,_,x) => x)
 diag : Stream (Stream a) -> Stream a
 diag ((x::xs)::xss) = x :: diag (map tail xss)
 
-||| Fold a Stream corecursively. Since there is no Nil, no initial value is used.
-||| @ f the combining function
-||| @ xs the Stream to fold up
-partial -- the recursive call isn't guarded!
-foldr : (f : a -> Inf b -> b) -> (xs : Stream a) -> b
-foldr f (x :: xs) = f x (foldr f xs)
-
 ||| Produce a Stream of left folds of prefixes of the given Stream
 ||| @ f the combining function
 ||| @ acc the initial value
 ||| @ xs the Stream to process
 scanl : (f : a -> b -> a) -> (acc : a) -> (xs : Stream b) -> Stream a
 scanl f acc (x :: xs) = acc :: scanl f (f acc x) xs
-
-||| Produce a Stream of (corecursive) right folds of tails of the given Stream
-||| @ f the combining function
-||| @ xs the Stream to fold up
--- Reusing the head of the corecursion in the obvious way doesn't productivity check
-partial -- and the call to foldr isn't guarded anyway!
-scanr : (f : a -> Inf b -> b) -> (xs : Stream a) -> Stream b
-scanr f (x :: xs) = f x (foldr f xs) :: scanr f xs
 
 ||| Produce a Stream repeating a sequence
 ||| @ xs the sequence to repeat
