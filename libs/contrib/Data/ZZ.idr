@@ -68,8 +68,8 @@ multZ (Pos n) (NegS m) = negNat $ n * (S m)
 ||| Convert an `Integer` to an inductive representation.
 fromInt : Integer -> ZZ
 fromInt n = if n < 0
-            then NegS $ fromInteger {a=Nat} ((-n) - 1)
-            else Pos $ fromInteger {a=Nat} n
+            then NegS $ fromInteger ((-n) - 1)
+            else Pos $ fromInteger n
 
 implementation Cast Nat ZZ where
   cast n = Pos n

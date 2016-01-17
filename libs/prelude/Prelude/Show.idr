@@ -38,12 +38,12 @@ Ord Prec where
   compare x        y        = compare (precCon x) (precCon y)
 
 ||| Things that have a canonical `String` representation.
-interface Show a where
+interface Show ty where
   ||| Convert a value to its `String` representation.
   |||
-  ||| @ a the value to convert
+  ||| @ x the value to convert
   partial
-  show : (x : a) -> String
+  show : (x : ty) -> String
   show = showPrec Open
 
   ||| Convert a value to its `String` representation in a certain precedence
@@ -58,9 +58,9 @@ interface Show a where
   ||| their own bracketing, like `Pair` and `List`.
   |||
   ||| @ d the precedence context.
-  ||| @ a the value to convert
+  ||| @ x the value to convert
   partial
-  showPrec : (d : Prec) -> (x : a) -> String
+  showPrec : (d : Prec) -> (x : ty) -> String
   showPrec _ = show
 
 ||| Surround a `String` with parentheses depending on a condition.

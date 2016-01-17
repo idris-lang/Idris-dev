@@ -46,20 +46,20 @@ putStrLn = putStrLn'
 
 ||| Output something showable to stdout, without a trailing newline, for any FFI
 ||| descriptor
-print' : Show a => a -> IO' ffi ()
+print' : Show ty => ty -> IO' ffi ()
 print' x = putStr' (show x)
 
 ||| Output something showable to stdout, without a trailing newline
-print : Show a => a -> IO ()
+print : Show ty => ty -> IO ()
 print = print'
 
 ||| Output something showable to stdout, with a trailing newline, for any FFI
 ||| descriptor
-printLn' : Show a => a -> IO' ffi ()
+printLn' : Show ty => ty -> IO' ffi ()
 printLn' x = putStrLn' (show x)
 
 ||| Output something showable to stdout, with a trailing newline
-printLn : Show a => a -> IO ()
+printLn : Show ty => ty -> IO ()
 printLn = printLn'
 
 ||| Read one line of input from stdin, without the trailing newline, for any FFI

@@ -21,9 +21,9 @@ boolOp op x y = intToBool (op x y)
 
 -- ---------------------------------------------------------- [ Equality Interface ]
 ||| The Eq interface defines inequality and equality.
-interface Eq a where
-    (==) : a -> a -> Bool
-    (/=) : a -> a -> Bool
+interface Eq ty where
+    (==) : ty -> ty -> Bool
+    (/=) : ty -> ty -> Bool
 
     x /= y = not (x == y)
     x == y = not (x /= y)
@@ -78,29 +78,29 @@ thenCompare EQ y = y
 thenCompare GT y = GT
 
 ||| The Ord interface defines comparison operations on ordered data types.
-interface Eq a => Ord a where
-    compare : a -> a -> Ordering
+interface Eq ty => Ord ty where
+    compare : ty -> ty -> Ordering
 
-    (<) : a -> a -> Bool
+    (<) : ty -> ty -> Bool
     (<) x y with (compare x y)
         (<) x y | LT = True
         (<) x y | _  = False
 
-    (>) : a -> a -> Bool
+    (>) : ty -> ty -> Bool
     (>) x y with (compare x y)
         (>) x y | GT = True
         (>) x y | _  = False
 
-    (<=) : a -> a -> Bool
+    (<=) : ty -> ty -> Bool
     (<=) x y = x < y || x == y
 
-    (>=) : a -> a -> Bool
+    (>=) : ty -> ty -> Bool
     (>=) x y = x > y || x == y
 
-    max : a -> a -> a
+    max : ty -> ty -> ty
     max x y = if x > y then x else y
 
-    min : a -> a -> a
+    min : ty -> ty -> ty
     min x y = if (x < y) then x else y
 
 Ord () where
@@ -151,11 +151,11 @@ Ord Bool where
 
 -- --------------------------------------------------------- [ Numerical Interface ]
 ||| The Num interface defines basic numerical arithmetic.
-interface Num a where
-    (+) : a -> a -> a
-    (*) : a -> a -> a
+interface Num ty where
+    (+) : ty -> ty -> ty
+    (*) : ty -> ty -> ty
     ||| Conversion from Integer.
-    fromInteger : Integer -> a
+    fromInteger : Integer -> ty
 
 Num Integer where
     (+) = prim__addBigInt
@@ -198,12 +198,12 @@ Num Bits64 where
 
 -- --------------------------------------------------------- [ Negatable Interface ]
 ||| The `Neg` interface defines operations on numbers which can be negative.
-interface Num a => Neg a where
+interface Num ty => Neg ty where
     ||| The underlying of unary minus. `-5` desugars to `negate (fromInteger 5)`.
-    negate : a -> a
-    (-) : a -> a -> a
+    negate : ty -> ty
+    (-) : ty -> ty -> ty
     ||| Absolute value
-    abs : a -> a
+    abs : ty -> ty
 
 Neg Integer where
     negate x = prim__subBigInt 0 x
@@ -306,9 +306,9 @@ MaxBound Bits64 where
 
 -- ------------------------------------------------------------- [ Fractionals ]
 
-interface Num a => Fractional a where
-  (/) : a -> a -> a
-  recip : a -> a
+interface Num ty => Fractional ty where
+  (/) : ty -> ty -> ty
+  recip : ty -> ty
 
   recip x = 1 / x
 
@@ -318,9 +318,9 @@ Fractional Double where
 -- --------------------------------------------------------------- [ Integrals ]
 %default partial
 
-interface Num a => Integral a where
-   div : a -> a -> a
-   mod : a -> a -> a
+interface Num ty => Integral ty where
+   div : ty -> ty -> ty
+   mod : ty -> ty -> ty
 
 -- ---------------------------------------------------------------- [ Integers ]
 divBigInt : Integer -> Integer -> Integer
