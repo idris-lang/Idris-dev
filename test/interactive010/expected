@@ -17,4 +17,4 @@ pat {ty504} : Type u. pat {__class505} : Prelude.Classes.Fractional {ty504}. Pre
     end of input
 ++<EOF> 
 ^       
-Can't resolve type class Fractional ty
+Can't find implementation for Fractional ty
