@@ -1,4 +1,4 @@
-.. _sect-classes:
+.. _sect-interfaces:
 
 **********
 Interfaces
