@@ -1045,7 +1045,7 @@ using natural numbers, the new value can be incremented using the
 .. code-block:: idris
 
     addStudent : Person -> SizedClass n -> SizedClass (S n)
-    addStudent p c = record { students = p :: students c } c
+    addStudent p c =  SizedClassInfo (p :: students c) (className c)
 
 .. _sect-more-expr:
 
