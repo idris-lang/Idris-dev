@@ -212,6 +212,9 @@ declarations as well, such as ``data``.
     Idris> :let x : String; x = "hello"
     Idris> x
     "hello" : String
+    Idris> :let y = 10
+    Idris> y
+    10 : Integer
     Idris> :let data Foo : Type where Bar : Foo
     Idris> Bar
     Bar : Foo
