@@ -246,6 +246,70 @@ are both available, or return ``Nothing`` if one or both are not ("fail fast"). 
     *ifaces> m_add (Just 20) Nothing
     Nothing : Maybe Int
 
+Pattern Matching Bind
+---------------------
+
+Sometimes we want to pattern match immediately on the result of a function
+in ``do`` notation. For example, let's say we have a function ``readNumber``
+which reads a number from the console, returning a value of the form
+``Just x`` if the number is valid, or ``Nothing`` otherwise:
+
+.. code-block:: idris
+
+    readNumber : IO (Maybe Nat)
+    readNumber = do
+      input <- getLine
+      if all isDigit (unpack input)
+         then pure (Just (cast input))
+         else pure Nothing
+
+If we then use it to write a function to read two numbers, returning
+``Nothing`` if neither are valid, then we would like to pattern match
+on the result of ``readNumber``:
+
+.. code-block:: idris
+
+    readNumbers : IO (Maybe (Nat, Nat))
+    readNumbers = 
+      do x <- readNumber
+         case x of
+              Nothing => pure Nothing
+              Just x_ok => do y <- readNumber
+                              case y of
+                                   Nothing => pure Nothing
+                                   Just y_ok => pure (Just (x_ok, y_ok))
+
+If there's a lot of error handling, this could get deeply nested very quickly!
+So instead, we can combine the bind and the pattern match in one line. For example,
+we could try pattern matching on values of the form ``Just x_ok``:
+
+.. code-block:: idris
+
+    readNumbers : IO (Maybe (Nat, Nat))
+    readNumbers = 
+      do Just x_ok <- readNumber
+         Just y_ok <- readNumber
+         pure (Just (x_ok, y_ok))
+
+There is still a problem, however, because we've now omitted the case for
+``Nothing`` so ``readNumbers`` is no longer total! We can add the ``Nothing``
+case back as follows:
+
+.. code-block:: idris
+
+    readNumbers : IO (Maybe (Nat, Nat))
+    readNumbers = 
+      do Just x_ok <- readNumber | Nothing => pure Nothing
+         Just y_ok <- readNumber | Nothing => pure Nothing
+         pure (Just (x_ok, y_ok))
+
+The effect of this version of ``readNumbers`` is identical to the first (in
+fact, it is syntactic sugar for it and directly translated back into that form).
+The first part of each statement (``Just x_ok <-`` and ``Just y_ok <-``) gives
+the preferred binding - if this matches, execution will continue with the rest
+of the ``do`` block. The second part gives the alternative bindings, of which
+there may be more than one.
+
 ``!``-notation
 --------------
 
