@@ -18,12 +18,12 @@ Description:    Idris is a general purpose language with full dependent types.
                 <http://www.idris-lang.org/documentation>.
                 Features include:
                 .
-                * Full dependent types with dependent pattern matching
+                * Full, first class, dependent types with dependent pattern matching
                 .
-                * where clauses, with rule, simple case expressions,
+                * where clauses, with rule, case expressions,
                   pattern matching let and lambda bindings
                 .
-                * Type classes, monad comprehensions
+                * Interfaces (similar to type classes), monad comprehensions
                 .
                 * do notation, idiom brackets, syntactic conveniences for lists,
                   tuples, dependent pairs
@@ -33,8 +33,6 @@ Description:    Idris is a general purpose language with full dependent types.
                 * Coinductive types
                 .
                 * Indentation significant syntax, extensible syntax
-                .
-                * Tactic based theorem proving (influenced by Coq)
                 .
                 * Cumulative universes
                 .
