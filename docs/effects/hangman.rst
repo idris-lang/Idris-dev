@@ -193,7 +193,7 @@ implementation for ``MysteryRules`` is surprisingly straightforward:
 
 .. code-block:: idris
 
-    instance Handler MysteryRules m where
+    Handler MysteryRules m where
         handle (MkG w g got []) Won k = k () (GameWon w)
         handle (MkG w Z got m) Lost k = k () (GameLost w)
 

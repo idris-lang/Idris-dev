@@ -19,9 +19,9 @@ in a module ``Effect.State``
     putM   : y ->        Eff () [STATE x] [STATE y]
     update : (x -> x) -> Eff () [STATE x]
 
-    instance Handler State m
+    Handler State m where { ... }
 
-The last line, ``instance Handler State m``, means that the ``STATE``
+The last line, ``Handler State m where { ... }``, means that the ``STATE``
 effect is usable in any computation context ``m``. That is, a program
 which uses this effect and returns something of type ``a`` can be
 evaluated to something of type ``m a`` using ``run``, for any
@@ -63,8 +63,8 @@ can perform (or at the very least simulate) console I/O:
     getStr   :           Eff String [STDIO]
     getChar  :           Eff Char [STDIO]
 
-    instance Handler StdIO IO
-    instance Handler StdIO (IOExcept a)
+    Handler StdIO IO where { ... }
+    Handler StdIO (IOExcept a) where { ... }
 
 Examples
 --------
@@ -148,11 +148,11 @@ generally:
 
     raise : a -> Eff b [EXCEPTION a]
 
-    instance           Handler (Exception a) Maybe
-    instance           Handler (Exception a) List
-    instance           Handler (Exception a) (Either a)
-    instance           Handler (Exception a) (IOExcept a)
-    instance Show a => Handler (Exception a) IO
+    Handler (Exception a) Maybe where { ... }
+    Handler (Exception a) List where { ... }
+    Handler (Exception a) (Either a) where { ... }
+    Handler (Exception a) (IOExcept a) where { ... }
+    Show a => Handler (Exception a) IO where { ... }
 
 Example
 -------
@@ -247,7 +247,7 @@ Random number generation is also implemented by the library, in module
     rndInt : Integer -> Integer -> Eff Integer [RND]
     rndFin : (k : Nat) ->          Eff (Fin (S k)) [RND]
 
-    instance Handler Random m
+    Handler Random m where { ... }
 
 Random number generation is considered side-effecting because its
 implementation generally relies on some external source of randomness.
@@ -333,8 +333,8 @@ succeeds:
 
     select : List a -> Eff a [SELECT]
 
-    instance Handler Selection Maybe
-    instance Handler Selection List
+    Handler Selection Maybe where { ... }
+    Handler Selection List where { ... }
 
 Example
 -------

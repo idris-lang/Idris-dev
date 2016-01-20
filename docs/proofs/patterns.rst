@@ -181,8 +181,8 @@ For ``plus_commutes_Z_rhs_2``, we now see:
     --------------------------------------
     plus_commutes_Z_rhs_2 : S k = S (plus k 0)
 
-Again, the ``fromInteger 0`` is merely due to ``Nat`` being an instance
-of the ``Num`` typeclass. So we know that ``k = plus k 0``, but how do
+Again, the ``fromInteger 0`` is merely due to ``Nat`` having an implementation
+of the ``Num`` interface. So we know that ``k = plus k 0``, but how do
 we use this to update the goal to ``S k = S k``?
 
 To achieve this, Idris provides a ``replace`` function as part of the

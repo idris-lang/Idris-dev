@@ -27,7 +27,7 @@ Core Language Features
 -  Heterogeneous equality
 -  ``do`` notation
 -  Idiom brackets
--  Type classes, supporting default methods and dependencies between
+-  Interfaces (like type classes), supporting default methods and dependencies between
    methods
 -  ``rewrite`` prf ``in`` expr
 -  Metavariables

@@ -183,7 +183,7 @@ to support random access files and better reporting of error conditions.
     writeLine : String -> Eff () [FILE_IO (OpenFile Write)]
     eof       : Eff Bool [FILE_IO (OpenFile Read)]
 
-    instance Handler FileIO IO
+    Handler FileIO IO where { ... }
 
 In particular, consider the type of ``open``:
 

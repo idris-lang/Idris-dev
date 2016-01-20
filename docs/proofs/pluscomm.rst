@@ -177,7 +177,7 @@ given above as Idris type declarations:
 
 Both of these properties (and many others) are proved for natural number
 addition in the Idris standard library, using ``(+)`` from the ``Num``
-type class rather than using ``plus`` directly. They have the names
+interface rather than using ``plus`` directly. They have the names
 ``plusCommutative`` and ``plusAssociative`` respectively.
 
 In the remainder of this tutorial, we will explore several different
