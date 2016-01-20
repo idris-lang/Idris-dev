@@ -930,7 +930,7 @@ instance_ kwopt syn
                              fc <- getFC
                              ist <- get
                              put ist { parserWarnings = 
-                                (fc, Msg "The 'instance' keyword is deprecated. Use 'implementation' instead.")
+                                (fc, Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
                                      : parserWarnings ist }
 
 
