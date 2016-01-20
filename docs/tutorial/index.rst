@@ -21,7 +21,7 @@ The is the Idris Tutorial. It will teach you about programming in the Idris Lang
    introduction
    starting
    typesfuns
-   classes
+   interfaces
    modules
    packages
    testing

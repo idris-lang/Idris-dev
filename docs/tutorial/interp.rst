@@ -285,15 +285,15 @@ program at the Idris interactive environment is:
 Aside: ``cast``
 ---------------
 
-The prelude defines a type class ``Cast`` which allows conversion
+The prelude defines an interface ``Cast`` which allows conversion
 between types:
 
 .. code-block:: idris
 
-    class Cast from to where
+    interface Cast from to where
         cast : from -> to
 
-It is a *multi-parameter* type class, defining the source type and
+It is a *multi-parameter* interface, defining the source type and
 object type of the cast. It must be possible for the type checker to
 infer *both* parameters at the point where the cast is applied. There
 are casts defined between all of the primitive types, as far as they

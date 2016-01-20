@@ -8,7 +8,7 @@ An Idris program consists of a collection of modules. Each module
 includes an optional ``module`` declaration giving the name of the
 module, a list of ``import`` statements giving the other modules which
 are to be imported, and a collection of declarations and definitions of
-types, classes and functions. For example, the listing below gives a
+types, interfaces and functions. For example, the listing below gives a
 module which defines a binary tree type ``BTree`` (in a file
 ``Btree.idr``):
 
@@ -78,19 +78,19 @@ Export Modifiers
 By default, all names defined in a module are exported for use by other
 modules. However, it is good practice only to export a minimal interface
 and keep internal details abstract. Idris allows functions, types,
-and classes to be marked as: ``public``, ``abstract`` or ``private``:
+and interfaces to be marked as: ``public``, ``abstract`` or ``private``:
 
 -  ``public`` means that both the name and definition are exported. For
    functions, this means that the implementation is exported (which
    means, for example, it can be used in a dependent type). For data
    types, this means that the type name and the constructors are
-   exported. For classes, this means that the class name and method
+   exported. For interfaces, this means that the interface name and method
    names are exported.
 
 -  ``abstract`` means that only the name is exported. For functions,
    this means that the implementation is not exported. For data types,
    this means that the type name is exported but not the constructors.
-   For classes, this means that the class name is exported but not the
+   For interfaces, this means that the interface name is exported but not the
    method names.
 
 -  ``private`` means that neither the name nor the definition is
