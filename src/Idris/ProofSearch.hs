@@ -478,8 +478,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
                                                      return (num + 1)
                         _ -> return 0
 
-    solven 0 = return ()
-    solven n = do solve; solven (n - 1)
+    solven n = replicateM_ n solve
 
     resolve n depth
        | depth == 0 = fail $ "Can't resolve type class"

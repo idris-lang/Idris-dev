@@ -393,6 +393,7 @@ data Command = Quit
              | DocStr (Either Name Const) HowMuchDocs
              | TotCheck Name
              | Reload
+             | Watch
              | Load FilePath (Maybe Int) -- up to maximum line number
              | ChangeDirectory FilePath
              | ModImport String

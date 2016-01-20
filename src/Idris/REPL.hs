@@ -94,6 +94,10 @@ import Data.Word (Word)
 import Data.Either (partitionEithers)
 import Control.DeepSeq
 
+import Control.Concurrent.Async (race)
+import System.FSNotify (withManager, watchDir)
+import System.FSNotify.Devel (allEvents, doAllEvents)
+
 import Numeric ( readHex )
 
 import Debug.Trace
@@ -126,10 +130,8 @@ repl orig mods efile
                 do ms <- H.catch (lift $ processInput input orig mods efile)
                                  (ctrlC (return (Just mods)))
                    case ms of
-                        Just mods -> let efile' = case mods of
-                                                       [] -> efile
-                                                       (e:_) -> e in
-                                         repl orig mods efile'
+                        Just mods -> let efile' = fromMaybe efile (listToMaybe mods)
+                                     in repl orig mods efile'
                         Nothing -> return ()
 --                             ctrlC)
 --       ctrlC
@@ -154,15 +156,13 @@ repl orig mods efile
 
 -- | Run the REPL server
 startServer :: PortID -> IState -> [FilePath] -> Idris ()
-startServer port orig fn_in = do tid <- runIO $ forkOS (serverLoop port)
+startServer port orig fn_in = do tid <- runIO $ forkIO (serverLoop port)
                                  return ()
   where serverLoop port = withSocketsDo $
                               do sock <- listenOnLocalhost port
                                  loop fn orig { idris_colourRepl = False } sock
 
-        fn = case fn_in of
-                  (f:_) -> f
-                  _ -> ""
+        fn = fromMaybe "" (listToMaybe fn_in)
 
         loop fn ist sock
             = do (h,_,_) <- accept sock
@@ -276,9 +276,7 @@ idemode h orig mods
              i <- getIState
              putIState $ i { idris_outputmode = (IdeMode id h) }
              idrisCatch -- to report correct id back!
-               (do let fn = case mods of
-                              (f:_) -> f
-                              _     -> ""
+               (do let fn = fromMaybe "" (listToMaybe mods)
                    case IdeMode.sexpToCommand sexp of
                      Just cmd -> runIdeModeCommand h id orig fn mods cmd
                      Nothing  -> iPrintError "did not understand" )
@@ -677,30 +675,54 @@ lit f = case splitExtension f of
             (_, ".lidr") -> True
             _ -> False
 
+reload :: IState -> [FilePath] -> Idris (Maybe [FilePath])
+reload orig inputs = do
+  i <- getIState
+  -- The $!! here prevents a space leak on reloading.
+  -- This isn't a solution - but it's a temporary stopgap.
+  -- See issue #2386
+  putIState $!! orig { idris_options = idris_options i
+    , idris_colourTheme = idris_colourTheme i
+    , imported = imported i
+  }
+  clearErr
+  fmap Just $ loadInputs inputs Nothing
+
+watch :: IState -> [FilePath] -> Idris (Maybe [FilePath])
+watch orig inputs = do
+  let inputSet = S.fromList inputs
+  let dirs = nub $ map takeDirectory inputs
+  resp <- runIO $ do
+    signal <- newEmptyMVar
+    withManager $ \mgr -> do
+      forM_ dirs $ \dir ->
+        watchDir mgr dir (allEvents $ flip S.member inputSet) (doAllEvents $ putMVar signal)
+      race getLine (takeMVar signal)
+  case resp of
+    Left _ -> return (Just inputs) -- canceled, so nop
+    Right _ -> reload orig inputs >> watch orig inputs
+
 processInput :: String ->
                 IState -> [FilePath] -> FilePath -> Idris (Maybe [FilePath])
 processInput cmd orig inputs efile
     = do i <- getIState
          let opts = idris_options i
          let quiet = opt_quiet opts
-         let fn = case inputs of
-                        (f:_) -> f
-                        _ -> ""
+         let fn = fromMaybe "" (listToMaybe inputs)
          c <- colourise
          case parseCmd i "(input)" cmd of
             Failure err ->   do iputStrLn $ show (fixColour c err)
                                 return (Just inputs)
             Success (Right Reload) ->
-                -- The $!! here prevents a space leak on reloading.
-                -- This isn't a solution - but it's a temporary stopgap.
-                -- See issue #2386
-                do putIState $!! orig { idris_options = idris_options i
-                                      , idris_colourTheme = idris_colourTheme i
-                                      , imported = imported i
-                                      }
-                   clearErr
-                   mods <- loadInputs inputs Nothing
-                   return (Just mods)
+                reload orig inputs
+            Success (Right Watch) ->
+                if null inputs then
+                  do iputStrLn "No loaded files to watch."
+                     return (Just inputs)
+                else
+                  do iputStrLn efile
+                     iputStrLn $ "Watching for .idr changes in " ++ show inputs ++ ", press enter to cancel."
+                     watch orig inputs
             Success (Right (Load f toline)) ->
                 -- The $!! here prevents a space leak on reloading.
                 -- This isn't a solution - but it's a temporary stopgap.
