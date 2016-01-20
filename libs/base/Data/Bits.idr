@@ -4,6 +4,7 @@ import Data.Fin
 
 %default total
 
+public
 nextPow2 : Nat -> Nat
 nextPow2 Z = Z
 nextPow2 (S x) = if (S x) == (2 `power` l2x)
@@ -12,9 +13,11 @@ nextPow2 (S x) = if (S x) == (2 `power` l2x)
     where
       l2x = log2NZ (S x) SIsNotZ
 
+public
 nextBytes : Nat -> Nat
 nextBytes bits = (nextPow2 (divCeilNZ bits 8 SIsNotZ))
 
+public
 machineTy : Nat -> Type
 machineTy Z = Bits8
 machineTy (S Z) = Bits16
