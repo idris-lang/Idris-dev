@@ -1,5 +1,5 @@
 New in 0.10:
-==============
+============
 
 * 'class' and 'instance' are now deprecated keywords. They have been
   replaced by 'interface' and 'implementation' respectively. This is to
