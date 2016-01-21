@@ -127,6 +127,16 @@ Stats terminate(VM* vm) {
     return stats;
 }
 
+CData cdata_allocate(size_t size, CDataFinalizer_t finalizer)
+{
+    return c_heap_allocate(size, finalizer);
+}
+
+void cdata_free(CData cd)
+{
+    c_heap_free(cd);
+}
+
 void idris_requireAlloc(size_t size) {
 #ifdef HAS_PTHREAD
     VM* vm = pthread_getspecific(vm_key);

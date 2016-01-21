@@ -114,6 +114,22 @@ struct VM_t {
 
 typedef struct VM_t VM;
 
+
+/* C data interface: allocation on the C heap.
+ *
+ * Although not enforced in code, CData is meant to be opaque
+ * and non-RTS code (such as libraries or C bindings) should
+ * access it only in the following three ways:
+ *
+ *   CData cd = cdata_allocate(...);
+ *   use(cd->data);
+ *   cdata_free(cd);  // optionally
+ *
+ */
+typedef CHeapItem * CData;
+CData cdata_allocate(size_t size, CDataFinalizer_t * finalizer);
+void cdata_free(CData cd);  // explicit freeing not required but available
+
 // Create a new VM
 VM* init_vm(int stack_size, size_t heap_size,
             int max_threads);
