@@ -5,6 +5,74 @@
 #include <stddef.h>
 #include <stdio.h>
 
+CHeapItem * c_heap_create_item(void * data, CDataFinalizer_t * finalizer)
+{
+    CHeapItem * item = (CHeapItem *) malloc(sizeof(CHeapItem));
+
+    item->data = data;
+    item->finalizer = finalizer;
+    item->is_inserted = false;
+    item->is_used = false;
+    item->next = NULL;
+
+    return item;
+}
+
+void c_heap_insert(CHeap * heap, CHeapItem * item)
+{
+    item->next = heap->first;
+    heap->first = item;
+}
+
+void c_heap_mark_item(CHeapItem * item)
+{
+    item->is_used = true;
+}
+
+static void c_heap_free_item(CHeapItem * item)
+{
+    item->finalizer(item->data);
+    free(item);
+}
+
+void c_heap_sweep(CHeap * heap)
+{
+    CHeapItem ** prev_next = &heap->first;
+    CHeapItem * p = heap->first;
+    while (p != NULL)
+    {
+        if (p->is_used)
+        {
+            p->is_used = false;
+            prev_next = &p->next;
+            p = p->next;
+        }
+        else
+        {
+            CHeapItem * unused_item = p;
+            p = p->next;
+
+            *prev_next = unused_item->next;
+            c_heap_free_item(unused_item);
+        }
+    }
+}
+
+void c_heap_init(CHeap * heap)
+{
+    heap->first = NULL;
+}
+
+void c_heap_free(CHeap * heap)
+{
+    CHeapItem * p = heap->first;
+    while (p != NULL)
+    {
+        CHeapItem * q = p;
+        p = p->next;
+        c_heap_free_item(q);
+    }
+}
 
 /* Used for initializing the heap. */
 void alloc_heap(Heap * h, size_t heap_size, size_t growth, char * old)

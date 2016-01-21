@@ -27,7 +27,7 @@
 typedef enum {
     CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
     BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    MANAGEDPTR, RAWDATA
+    MANAGEDPTR, RAWDATA, CDATA
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -67,6 +67,7 @@ typedef struct Closure {
         uint32_t bits32;
         uint64_t bits64;
         ManagedPtr* mptr;
+        CHeapItem* c_heap_item;
         size_t size;
     } info;
 } Closure;
@@ -90,6 +91,7 @@ struct VM_t {
     VAL* valstack_base;
     VAL* stack_max;
 
+    CHeap c_heap;
     Heap heap;
 #ifdef HAS_PTHREAD
     pthread_mutex_t inbox_lock;
@@ -207,6 +209,7 @@ VAL MKB8(VM* vm, uint8_t b);
 VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);
 VAL MKB64(VM* vm, uint64_t b);
+VAL MKCDATA(VM* vm, CHeapItem * item);
 
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
@@ -214,6 +217,7 @@ VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKMPTRc(VM* vm, void* ptr, size_t size);
+VAL MKCDATAc(VM* vm, CHeapItem * item);
 
 char* GETSTROFF(VAL stroff);
 

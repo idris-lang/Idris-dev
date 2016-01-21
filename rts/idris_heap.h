@@ -1,7 +1,31 @@
 #ifndef _IDRIS_HEAP_H
 #define _IDRIS_HEAP_H
 
+#include <stdbool.h>
 #include <stddef.h>
+
+typedef void CDataFinalizer_t(void *);
+
+typedef struct CHeapItem {
+    void * data;
+    CDataFinalizer_t * finalizer;  // responsible for freeing the passed pointer, too
+    bool is_used;
+    bool is_inserted;
+    struct CHeapItem * next;
+} CHeapItem;
+
+typedef struct CHeap {
+    CHeapItem * first;
+} CHeap;
+
+void c_heap_init(CHeap * c_heap);
+void c_heap_free(CHeap * c_heap);
+void c_heap_insert(CHeap * c_heap, CHeapItem * item);
+void c_heap_mark_item(CHeapItem * item);
+void c_heap_sweep(CHeap * c_heap);
+
+// this is the function to use in C binding code
+CHeapItem * c_heap_create_item(void * data, CDataFinalizer_t * finalizer);
 
 typedef struct {
     char*  next;   // Next allocated chunk. Should always (heap <= next < end).

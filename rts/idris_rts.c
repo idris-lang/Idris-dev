@@ -35,6 +35,8 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     alloc_heap(&(vm->heap), heap_size, heap_size, NULL);
 
+    c_heap_init(&vm->c_heap);
+
     vm->ret = NULL;
     vm->reg1 = NULL;
 #ifdef HAS_PTHREAD
@@ -108,6 +110,7 @@ Stats terminate(VM* vm) {
 #endif
     free(vm->valstack);
     free_heap(&(vm->heap));
+    c_heap_free(&(vm->c_heap));
 #ifdef HAS_PTHREAD
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
@@ -262,6 +265,26 @@ char* GETSTROFF(VAL stroff) {
     // Assume STROFF
     StrOffset* root = stroff->info.str_offset;
     return (root->str->info.str + root->offset);
+}
+
+VAL MKCDATA(VM* vm, CHeapItem * item) {
+    Closure* cl = allocate(sizeof(Closure), 0);
+    SETTY(cl, CDATA);
+    if (!item->is_inserted)
+    {
+        c_heap_insert(&vm->c_heap, item);
+    }
+    return cl;
+}
+
+VAL MKCDATAc(VM* vm, CHeapItem * item) {
+    Closure* cl = allocate(sizeof(Closure), 1);
+    SETTY(cl, CDATA);
+    if (!item->is_inserted)
+    {
+        c_heap_insert(&vm->c_heap, item);
+    }
+    return cl;
 }
 
 VAL MKPTR(VM* vm, void* ptr) {
