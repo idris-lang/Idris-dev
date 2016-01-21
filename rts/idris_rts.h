@@ -149,6 +149,7 @@ typedef void(*func)(VM*, VAL*);
 #define GETPTR(x) (((VAL)(x))->info.ptr)
 #define GETMPTR(x) (((VAL)(x))->info.mptr->data)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
+#define GETCDATA(x) (((VAL)(x))->info.c_heap_item)
 
 #define GETBITS8(x) (((VAL)(x))->info.bits8)
 #define GETBITS16(x) (((VAL)(x))->info.bits16)

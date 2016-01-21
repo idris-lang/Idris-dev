@@ -176,6 +176,7 @@ Float = Double
 
 abstract data Ptr : Type
 abstract data ManagedPtr : Type
+abstract data CData : Type
 
 %extern prim__readFile : prim__WorldType -> Ptr -> String
 %extern prim__writeFile : prim__WorldType -> Ptr -> String -> Int

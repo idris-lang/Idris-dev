@@ -99,6 +99,7 @@ data FType = FArith ArithTy
            | FUnit
            | FPtr
            | FManagedPtr
+           | FCData
            | FAny
   deriving (Show, Eq)
 

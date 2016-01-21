@@ -5,21 +5,48 @@
 #include <stddef.h>
 #include <stdio.h>
 
+void c_heap_free(CHeapItem * item)
+{
+    // fix links
+    if (item->next != NULL)
+    {
+        item->next->prev_next = item->prev_next;
+    }
+    *(item->prev_next) = item->next;
+
+    // free payload
+    item->finalizer(item->data);
+
+    // free item struct
+    free(item);
+}
+
+CHeapItem * c_heap_allocate(size_t size, CDataFinalizer_t * finalizer)
+{
+    void * data = (void *) malloc(size);
+    return c_heap_create_item(data, finalizer);
+}
+
 CHeapItem * c_heap_create_item(void * data, CDataFinalizer_t * finalizer)
 {
     CHeapItem * item = (CHeapItem *) malloc(sizeof(CHeapItem));
 
     item->data = data;
     item->finalizer = finalizer;
-    item->is_inserted = false;
     item->is_used = false;
     item->next = NULL;
+    item->prev_next = NULL;
 
     return item;
 }
 
-void c_heap_insert(CHeap * heap, CHeapItem * item)
+void c_heap_insert_if_needed(CHeap * heap, CHeapItem * item)
 {
+    if (item->prev_next != NULL) return;  // already inserted
+
+    heap->first->prev_next = &item->next;
+    item->prev_next = &heap->first;
+
     item->next = heap->first;
     heap->first = item;
 }
@@ -29,22 +56,14 @@ void c_heap_mark_item(CHeapItem * item)
     item->is_used = true;
 }
 
-static void c_heap_free_item(CHeapItem * item)
-{
-    item->finalizer(item->data);
-    free(item);
-}
-
 void c_heap_sweep(CHeap * heap)
 {
-    CHeapItem ** prev_next = &heap->first;
     CHeapItem * p = heap->first;
     while (p != NULL)
     {
         if (p->is_used)
         {
             p->is_used = false;
-            prev_next = &p->next;
             p = p->next;
         }
         else
@@ -52,8 +71,7 @@ void c_heap_sweep(CHeap * heap)
             CHeapItem * unused_item = p;
             p = p->next;
 
-            *prev_next = unused_item->next;
-            c_heap_free_item(unused_item);
+            c_heap_free(unused_item);
         }
     }
 }
@@ -63,14 +81,11 @@ void c_heap_init(CHeap * heap)
     heap->first = NULL;
 }
 
-void c_heap_free(CHeap * heap)
+void c_heap_destroy(CHeap * heap)
 {
-    CHeapItem * p = heap->first;
-    while (p != NULL)
+    while (heap->first != NULL)
     {
-        CHeapItem * q = p;
-        p = p->next;
-        c_heap_free_item(q);
+        c_heap_free(heap->first);  // will update heap->first via the backward link
     }
 }
 

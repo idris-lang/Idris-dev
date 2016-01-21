@@ -110,7 +110,7 @@ Stats terminate(VM* vm) {
 #endif
     free(vm->valstack);
     free_heap(&(vm->heap));
-    c_heap_free(&(vm->c_heap));
+    c_heap_destroy(&(vm->c_heap));
 #ifdef HAS_PTHREAD
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
@@ -270,20 +270,16 @@ char* GETSTROFF(VAL stroff) {
 VAL MKCDATA(VM* vm, CHeapItem * item) {
     Closure* cl = allocate(sizeof(Closure), 0);
     SETTY(cl, CDATA);
-    if (!item->is_inserted)
-    {
-        c_heap_insert(&vm->c_heap, item);
-    }
+    cl->info.c_heap_item = item;
+    c_heap_insert_if_needed(&vm->c_heap, item);
     return cl;
 }
 
 VAL MKCDATAc(VM* vm, CHeapItem * item) {
     Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, CDATA);
-    if (!item->is_inserted)
-    {
-        c_heap_insert(&vm->c_heap, item);
-    }
+    cl->info.c_heap_item = item;
+    c_heap_insert_if_needed(&vm->c_heap, item);
     return cl;
 }
 
