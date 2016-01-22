@@ -28,7 +28,7 @@ bitsUsed : Nat -> Nat
 bitsUsed n = 8 * (2 `power` n)
 
 %assert_total
-natToBits' : machineTy n -> Nat -> machineTy n
+natToBits' : [static] {n : Nat} -> machineTy n -> Nat -> machineTy n
 natToBits' a Z = a
 natToBits' {n=n} a x with (n)
  -- it seems I have to manually recover the value of n here, instead of being able to reference it
@@ -37,14 +37,14 @@ natToBits' {n=n} a x with (n)
  natToBits' a (S x') | S (S Z)     = natToBits' {n=2} (prim__addB32 a (prim__truncInt_B32 1)) x'
  natToBits' a (S x') | S (S (S _)) = natToBits' {n=3} (prim__addB64 a (prim__truncInt_B64 1)) x'
 
-natToBits : Nat -> machineTy n
+natToBits : [static] {n : Nat} -> Nat -> machineTy n
 natToBits {n=n} x with (n)
     | Z           = natToBits' {n=0} (prim__truncInt_B8  0) x
     | S Z         = natToBits' {n=1} (prim__truncInt_B16 0) x
     | S (S Z)     = natToBits' {n=2} (prim__truncInt_B32 0) x
     | S (S (S _)) = natToBits' {n=3} (prim__truncInt_B64 0) x
 
-getPad : Nat -> machineTy n
+getPad : [static] {n : Nat} -> Nat -> machineTy n
 getPad n = natToBits (minus (bitsUsed (nextBytes n)) n)
 
 public
@@ -92,7 +92,7 @@ pad64' n f x y = prim__lshrB64 (f (prim__shlB64 x pad) y) pad
     where
       pad = getPad {n=3} n
 
-shiftLeft' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+shiftLeft' : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 shiftLeft' {n=n} x c with (nextBytes n)
     | Z = pad8' n prim__shlB8 x c
     | S Z = pad16' n prim__shlB16 x c
@@ -100,10 +100,10 @@ shiftLeft' {n=n} x c with (nextBytes n)
     | S (S (S _)) = pad64' n prim__shlB64 x c
 
 public
-shiftLeft : Bits n -> Bits n -> Bits n
+shiftLeft : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftLeft (MkBits x) (MkBits y) = MkBits (shiftLeft' x y)
 
-shiftRightLogical' : machineTy n -> machineTy n -> machineTy n
+shiftRightLogical' : [static] {n : Nat} -> machineTy n -> machineTy n -> machineTy n
 shiftRightLogical' {n=n} x c with (n)
     | Z = prim__lshrB8 x c
     | S Z = prim__lshrB16 x c
@@ -111,11 +111,11 @@ shiftRightLogical' {n=n} x c with (n)
     | S (S (S _)) = prim__lshrB64 x c
 
 public
-shiftRightLogical : Bits n -> Bits n -> Bits n
+shiftRightLogical : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftRightLogical {n} (MkBits x) (MkBits y)
     = MkBits {n} (shiftRightLogical' {n=nextBytes n} x y)
 
-shiftRightArithmetic' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+shiftRightArithmetic' : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 shiftRightArithmetic' {n=n} x c with (nextBytes n)
     | Z = pad8' n prim__ashrB8 x c
     | S Z = pad16' n prim__ashrB16 x c
@@ -123,10 +123,10 @@ shiftRightArithmetic' {n=n} x c with (nextBytes n)
     | S (S (S _)) = pad64' n prim__ashrB64 x c
 
 public
-shiftRightArithmetic : Bits n -> Bits n -> Bits n
+shiftRightArithmetic : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftRightArithmetic (MkBits x) (MkBits y) = MkBits (shiftRightArithmetic' x y)
 
-and' : machineTy n -> machineTy n -> machineTy n
+and' : [static] {n : Nat} -> machineTy n -> machineTy n -> machineTy n
 and' {n=n} x y with (n)
     | Z = prim__andB8 x y
     | S Z = prim__andB16 x y
@@ -134,10 +134,10 @@ and' {n=n} x y with (n)
     | S (S (S _)) = prim__andB64 x y
 
 public
-and : Bits n -> Bits n -> Bits n
+and : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 and {n} (MkBits x) (MkBits y) = MkBits (and' {n=nextBytes n} x y)
 
-or' : machineTy n -> machineTy n -> machineTy n
+or' : [static] {n : Nat} -> machineTy n -> machineTy n -> machineTy n
 or' {n=n} x y with (n)
     | Z = prim__orB8 x y
     | S Z = prim__orB16 x y
@@ -145,10 +145,10 @@ or' {n=n} x y with (n)
     | S (S (S _)) = prim__orB64 x y
 
 public
-or : Bits n -> Bits n -> Bits n
+or : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 or {n} (MkBits x) (MkBits y) = MkBits (or' {n=nextBytes n} x y)
 
-xor' : machineTy n -> machineTy n -> machineTy n
+xor' : [static] {n : Nat} -> machineTy n -> machineTy n -> machineTy n
 xor' {n=n} x y with (n)
     | Z = prim__xorB8 x y
     | S Z = prim__xorB16 x y
@@ -156,7 +156,7 @@ xor' {n=n} x y with (n)
     | S (S (S _)) = prim__xorB64 x y
 
 public
-xor : Bits n -> Bits n -> Bits n
+xor : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 xor {n} (MkBits x) (MkBits y) = MkBits {n} (xor' {n=nextBytes n} x y)
 
 plus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
@@ -167,7 +167,7 @@ plus' {n=n} x y with (nextBytes n)
     | S (S (S _)) = pad64 n prim__addB64 x y
 
 public
-plus : Bits n -> Bits n -> Bits n
+plus : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 plus (MkBits x) (MkBits y) = MkBits (plus' x y)
 
 minus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
@@ -178,7 +178,7 @@ minus' {n=n} x y with (nextBytes n)
     | S (S (S _)) = pad64 n prim__subB64 x y
 
 public
-minus : Bits n -> Bits n -> Bits n
+minus : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 minus (MkBits x) (MkBits y) = MkBits (minus' x y)
 
 times' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
@@ -189,7 +189,7 @@ times' {n=n} x y with (nextBytes n)
     | S (S (S _)) = pad64 n prim__mulB64 x y
 
 public
-times : Bits n -> Bits n -> Bits n
+times : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 times (MkBits x) (MkBits y) = MkBits (times' x y)
 
 partial
@@ -201,7 +201,7 @@ sdiv' {n=n} x y with (nextBytes n)
     | S (S (S _)) = prim__sdivB64 x y
 
 public partial
-sdiv : Bits n -> Bits n -> Bits n
+sdiv : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 sdiv (MkBits x) (MkBits y) = MkBits (sdiv' x y)
 
 partial
@@ -213,11 +213,11 @@ udiv' {n=n} x y with (nextBytes n)
     | S (S (S _)) = prim__udivB64 x y
 
 public partial
-udiv : Bits n -> Bits n -> Bits n
+udiv : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 udiv (MkBits x) (MkBits y) = MkBits (udiv' x y)
 
 partial
-srem' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+srem' : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 srem' {n=n} x y with (nextBytes n)
     | Z = prim__sremB8 x y
     | S Z = prim__sremB16 x y
@@ -225,11 +225,11 @@ srem' {n=n} x y with (nextBytes n)
     | S (S (S _)) = prim__sremB64 x y
 
 public partial
-srem : Bits n -> Bits n -> Bits n
+srem : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 srem (MkBits x) (MkBits y) = MkBits (srem' x y)
 
 partial
-urem' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
+urem' : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 urem' {n=n} x y with (nextBytes n)
     | Z = prim__uremB8 x y
     | S Z = prim__uremB16 x y
@@ -237,39 +237,39 @@ urem' {n=n} x y with (nextBytes n)
     | S (S (S _)) = prim__uremB64 x y
 
 public partial
-urem : Bits n -> Bits n -> Bits n
+urem : [static] {n : Nat} -> Bits n -> Bits n -> Bits n
 urem (MkBits x) (MkBits y) = MkBits (urem' x y)
 
 -- TODO: Proofy comparisons via postulates
-lt : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+lt : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 lt {n=n} x y with (nextBytes n)
     | Z = prim__ltB8 x y
     | S Z = prim__ltB16 x y
     | S (S Z) = prim__ltB32 x y
     | S (S (S _)) = prim__ltB64 x y
 
-lte : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+lte : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 lte {n=n} x y with (nextBytes n)
     | Z = prim__lteB8 x y
     | S Z = prim__lteB16 x y
     | S (S Z) = prim__lteB32 x y
     | S (S (S _)) = prim__lteB64 x y
 
-eq : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+eq : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 eq {n=n} x y with (nextBytes n)
     | Z = prim__eqB8 x y
     | S Z = prim__eqB16 x y
     | S (S Z) = prim__eqB32 x y
     | S (S (S _)) = prim__eqB64 x y
 
-gte : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+gte : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 gte {n=n} x y with (nextBytes n)
     | Z = prim__gteB8 x y
     | S Z = prim__gteB16 x y
     | S (S Z) = prim__gteB32 x y
     | S (S (S _)) = prim__gteB64 x y
 
-gt : machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
+gt : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 gt {n=n} x y with (nextBytes n)
     | Z = prim__gtB8 x y
     | S Z = prim__gtB16 x y
@@ -291,7 +291,7 @@ implementation Ord (Bits n) where
              then EQ
              else GT
 
-complement' : machineTy (nextBytes n) -> machineTy (nextBytes n)
+complement' : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 complement' {n=n} x with (nextBytes n)
     | Z = let pad = getPad {n=0} n in
           prim__complB8 (x `prim__shlB8` pad) `prim__lshrB8` pad
@@ -303,12 +303,12 @@ complement' {n=n} x with (nextBytes n)
                     prim__complB64 (x `prim__shlB64` pad) `prim__lshrB64` pad
 
 public
-complement : Bits n -> Bits n
+complement : [static] {n : Nat} -> Bits n -> Bits n
 complement (MkBits x) = MkBits (complement' x)
 
 -- TODO: Prove
 %assert_total -- can't verify coverage of with block
-zext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
+zext' : [static] {n : Nat} -> [static] {m : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
 zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (Z, Z) = believe_me x
     | (Z, S Z) = believe_me (prim__zextB8_B16 (believe_me x))
@@ -322,11 +322,11 @@ zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (S (S (S _)), S (S (S _))) = believe_me x
 
 public
-zeroExtend : Bits n -> Bits (n+m)
+zeroExtend : [static] {n : Nat} -> [static] {m : Nat} -> Bits n -> Bits (n+m)
 zeroExtend (MkBits x) = MkBits (zext' x)
 
 %assert_total
-intToBits' : Integer -> machineTy (nextBytes n)
+intToBits' : [static] {n : Nat} -> Integer -> machineTy (nextBytes n)
 intToBits' {n=n} x with (nextBytes n)
     | Z = let pad = getPad {n=0} n in
           prim__lshrB8 (prim__shlB8 (prim__truncBigInt_B8 x) pad) pad
@@ -338,13 +338,13 @@ intToBits' {n=n} x with (nextBytes n)
                     prim__lshrB64 (prim__shlB64 (prim__truncBigInt_B64 x) pad) pad
 
 public
-intToBits : Integer -> Bits n
+intToBits : [static] {n : Nat} -> Integer -> Bits n
 intToBits n = MkBits (intToBits' n)
 
 implementation Cast Integer (Bits n) where
     cast = intToBits
 
-bitsToInt' : machineTy (nextBytes n) -> Integer
+bitsToInt' : [static] {n : Nat} -> machineTy (nextBytes n) -> Integer
 bitsToInt' {n=n} x with (nextBytes n)
     | Z = prim__zextB8_BigInt x
     | S Z = prim__zextB16_BigInt x
@@ -352,11 +352,11 @@ bitsToInt' {n=n} x with (nextBytes n)
     | S (S (S _)) = prim__zextB64_BigInt x
 
 public
-bitsToInt : Bits n -> Integer
+bitsToInt : [static] {n : Nat} -> Bits n -> Integer
 bitsToInt (MkBits x) = bitsToInt' x
 
 -- Zero out the high bits of a truncated bitstring
-zeroUnused : machineTy (nextBytes n) -> machineTy (nextBytes n)
+zeroUnused : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
 
 --implementation Cast Nat (Bits n) where
@@ -364,7 +364,7 @@ zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
 
 -- TODO: Prove
 %assert_total -- can't verify coverage of with block
-sext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
+sext' : [static] {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
 sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (Z, Z) = let pad = getPad {n=0} n in
                believe_me (prim__ashrB8 (prim__shlB8 (believe_me x) pad) pad)
@@ -399,7 +399,7 @@ sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
 
 -- TODO: Prove
 %assert_total -- can't verify coverage of with block
-trunc' : machineTy (nextBytes (m+n)) -> machineTy (nextBytes n)
+trunc' : [static] {m : Nat} -> [static] {n : Nat} -> machineTy (nextBytes (m+n)) -> machineTy (nextBytes n)
 trunc' {m=m} {n=n} x with (nextBytes n, nextBytes (m+n))
     | (Z, Z) = believe_me x
     | (Z, S Z) = believe_me (prim__truncB16_B8 (believe_me x))
@@ -413,30 +413,30 @@ trunc' {m=m} {n=n} x with (nextBytes n, nextBytes (m+n))
     | (S (S (S _)), S (S (S _))) = believe_me x
 
 public
-truncate : Bits (m+n) -> Bits n
+truncate : [static] {m : Nat} -> [static] {n : Nat} -> Bits (m+n) -> Bits n
 truncate (MkBits x) = MkBits (zeroUnused (trunc' x))
 
 public
-bitAt : Fin n -> Bits n
+bitAt : [static] {n : Nat} -> Fin n -> Bits n
 bitAt n = intToBits 1 `shiftLeft` intToBits (cast n)
 
 public
-getBit : Fin n -> Bits n -> Bool
+getBit : [static] {n : Nat} -> Fin n -> Bits n -> Bool
 getBit n x = (x `and` (bitAt n)) /= intToBits 0
 
 public
-setBit : Fin n -> Bits n -> Bits n
+setBit : [static] {n : Nat} -> Fin n -> Bits n -> Bits n
 setBit n x = x `or` (bitAt n)
 
 public
-unsetBit : Fin n -> Bits n -> Bits n
+unsetBit : [static] {n : Nat} -> Fin n -> Bits n -> Bits n
 unsetBit n x = x `and` complement (bitAt n)
 
-bitsToStr : Bits n -> String
+bitsToStr : [static] {n : Nat} -> Bits n -> String
 bitsToStr x = pack (helper last x)
     where
       %assert_total
-      helper : Fin (S n) -> Bits n -> List Char
+      helper : [static] {n : Nat} -> Fin (S n) -> Bits n -> List Char
       helper FZ _ = []
       helper (FS x) b = (if getBit x b then '1' else '0') :: helper (weaken x) b
 
