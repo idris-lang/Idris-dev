@@ -1491,14 +1491,23 @@ parseImports fname input
                                 [(FC, OutputAnnotation)], IState)
         imports = do whiteSpace
                      (mdoc, mname, annots) <- moduleHeader
-                     ps            <- many import_
+                     ps_exp        <- many import_
                      mrk           <- mark
                      isEof         <- lookAheadMatches eof
                      let mrk' = if isEof
                                    then Nothing
                                    else Just mrk
                      i     <- get
+                     -- add Builtins and Prelude, unless options say
+                     -- not to
+                     let ps = ps_exp -- imp "Builtins" : imp "Prelude" : ps_exp
                      return ((mdoc, mname, ps, mrk'), annots, i)
+
+        imp m = ImportInfo False (toPath m)
+                           Nothing [] NoFC NoFC
+        ns = Spl.splitOn "."
+        toPath = foldl1' (</>) . ns
+
         addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC, OutputAnnotation)]
         addPath [] _ = []
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =

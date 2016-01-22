@@ -96,6 +96,25 @@ addAutoImport fp = do i <- getIState
                       put (i { idris_options = opts { opt_autoImport =
                                                        fp : opt_autoImport opts } } )
 
+addTT :: Term -> Idris (Maybe Term)
+addTT t = do ist <- get
+             case M.lookup t (idris_ttstats ist) of
+                  Nothing -> do let tt' = M.insert t (1, t) (idris_ttstats ist)
+                                put $ ist { idris_ttstats = tt' }
+                                return Nothing
+                  Just (i, t') -> do let tt' = M.insert t' (i + 1, t') (idris_ttstats ist)
+                                     put $ ist { idris_ttstats = tt' }
+                                     return (Just t')
+
+dumpTT :: Idris ()
+dumpTT = do ist <- get
+            let sts = sortBy count (M.toList (idris_ttstats ist))
+            mapM_ dump sts
+            return ()
+  where
+    count (_,x) (_,y) = compare y x
+    dump (tm, val) = runIO $ putStrLn (show val ++ ": " ++ show tm)
+
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 

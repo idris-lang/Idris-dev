@@ -1733,7 +1733,6 @@ idrisMain opts =
        when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude"
                                                addAutoImport "Prelude"
                                                return ()
-
        when (runrepl && not idesl) initScript
 
        nobanner <- getNoBanner
@@ -1794,7 +1793,7 @@ idrisMain opts =
        when (runrepl && not idesl) $ do
 --          clearOrigPats
          startServer port orig mods
-         runInputT (replSettings (Just historyFile)) $ repl orig mods efile
+         runInputT (replSettings (Just historyFile)) $ repl (force orig) mods efile
        let idesock = IdemodeSocket `elem` opts
        when (idesl) $ idemodeStart idesock orig inputs
        ok <- noErrors

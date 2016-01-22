@@ -120,6 +120,7 @@ loadIBC reexport fp
                                           ++ "Please clean and rebuild it."
                         Right archive -> do process reexport archive fp
                                             addImported reexport fp
+--                                             dumpTT
 
 -- | Load an entire package from its index file
 loadPkgIndex :: String -> Idris ()
@@ -562,19 +563,28 @@ pDefs reexp ds
     updateAlt (DefaultCase t) = do t' <- updateSC t
                                    return (DefaultCase t')
 
-    update (P t n ty) = do n' <- getSymbol n
-                           return $ P t n' ty
-    update (App s f a) = liftM2 (App s) (update f) (update a)
-    update (Bind n b sc) = do b' <- updateB b
-                              sc' <- update sc
-                              return $ Bind n b' sc'
+    -- We get a lot of repetition in sub terms and can save a fair chunk
+    -- of memory if we make sure they're shared. addTT looks for a term
+    -- and returns it if it exists already, while also keeping stats of
+    -- how many times a subterm is repeated.
+    update t = do tm <- addTT t
+                  case tm of
+                       Nothing -> update' t
+                       Just t' -> return t'
+
+    update' (P t n ty) = do n' <- getSymbol n
+                            return $ P t n' ty
+    update' (App s f a) = liftM2 (App s) (update' f) (update' a)
+    update' (Bind n b sc) = do b' <- updateB b
+                               sc' <- update sc
+                               return $ Bind n b' sc'
       where
-        updateB (Let t v) = liftM2 Let (update t) (update v)
-        updateB b = do ty' <- update (binderTy b)
+        updateB (Let t v) = liftM2 Let (update' t) (update' v)
+        updateB b = do ty' <- update' (binderTy b)
                        return (b { binderTy = ty' })
-    update (Proj t i) = do t' <- update t
-                           return $ Proj t' i
-    update t = return t
+    update' (Proj t i) = do t' <- update' t
+                            return $ Proj t' i
+    update' t = return t
 
 pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris ()
 pDocs ds = mapM_ (\(n, a) -> addDocStr n (fst a) (snd a)) ds
