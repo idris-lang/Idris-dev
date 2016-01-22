@@ -17,7 +17,6 @@ my @idrOpts    = ();
 #  2. Stack
 #
 sub set_path {
-    my ($test_dir,) = @_;
     my $sandbox = "../.cabal-sandbox/bin";
 
     my $stack_bin_path = `stack path --dist-dir`;
@@ -50,7 +49,7 @@ sub runtest {
     chdir($test);
 
     my $startTime = time();
-    print "Running $test...\n";
+    print "Running $test...";
     my $got = `./run @idrOpts`;
     my $exp = `cat expected`;
 
@@ -88,19 +87,19 @@ sub runtest {
     }
 
     if ($got eq $exp) {
-    	print "Ran $test...success\n";
+        print "success\n";
         $statsref->{'succeeded'}++;
     }
     else {
         if ($update == 0) {
             $exitstatus = 1;
-            print "Ran $test...FAILURE\n";
+            print "FAILURE\n";
             system "diff output expected";
             push @$failedref, $test;
             $statsref->{'failed'}++;
         } else {
             system("cp output expected");
-            print "Ran $test...UPDATED\n";
+            print "UPDATED\n";
             $statsref->{'updated'}++;
         }
     }
