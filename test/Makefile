@@ -1,11 +1,15 @@
 .PHONY: test test_js time update diff distclean $(TESTS)
 
+TESTS = $(sort $(patsubst %/,%.test,$(wildcard */)))
 
-test:
+test: $(TESTS)
+
+
+info:
 	/usr/bin/env perl ./runtest.pl all
 
 %.test:
-	@perl ./runtest.pl $(patsubst %.test,%,$@)
+	@perl ./runtest.pl $(patsubst %.test,%,$@) -q
 
 test_js:
 	@perl ./runtest.pl without sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 basic007 basic011 ffi006 --codegen node

@@ -7,6 +7,7 @@ use Env;
 
 my $exitstatus = 0;
 my @idrOpts    = ();
+my $quiet = 0;
 
 
 # Sets the PATH if there's a sandbox or stack present
@@ -26,15 +27,15 @@ sub set_path {
 
     if ( -d $sandbox ) {
         my $sandbox_abs = abs_path($sandbox);
-        print "Using Cabal Sandbox\n";
-        printf("Sandbox located at: %s\n", $sandbox_abs);
+        print "Using Cabal Sandbox\n" unless $quiet;
+        printf("Sandbox located at: %s\n", $sandbox_abs) unless $quiet;
         $ENV{PATH} = $sandbox_abs . ":" . $path;
 
     } elsif ( -d $stack_work_dir ) {
 
         my $stack_work_abs = abs_path($stack_work_dir);
-        print "Using Stack Work\n";
-        printf("Stack work located at: %s\n", $stack_work_abs);
+        print "Using Stack Work\n" unless $quiet;
+        printf("Stack work located at: %s\n", $stack_work_abs) unless $quiet;
         $ENV{PATH} = $stack_work_abs . ":" . $path;
 
     }
@@ -49,7 +50,6 @@ sub runtest {
     chdir($test);
 
     my $startTime = time();
-    print "Running $test...";
     my $got = `./run @idrOpts`;
     my $exp = `cat expected`;
 
@@ -87,19 +87,19 @@ sub runtest {
     }
 
     if ($got eq $exp) {
-        print "success\n";
+        print "$test finished...success\n";
         $statsref->{'succeeded'}++;
     }
     else {
         if ($update == 0) {
             $exitstatus = 1;
-            print "FAILURE\n";
+            print "$test finished...FAILURE\n";
             system "diff output expected";
             push @$failedref, $test;
             $statsref->{'failed'}++;
         } else {
             system("cp output expected");
-            print "UPDATED\n";
+            print "$test finished...UPDATED\n";
             $statsref->{'updated'}++;
         }
     }
@@ -179,6 +179,7 @@ while (my $opt = shift @opts) {
     elsif ($opt eq "-d") { $diff = 1; }
     elsif ($opt eq "-s") { $show = 1; }
     elsif ($opt eq "-t") { $showTime = 1; }
+    elsif ($opt eq "-q") { $quiet = 1; }
     else { push(@idrOpts, $opt); }
 }
 
@@ -186,7 +187,7 @@ my $idris = $ENV{IDRIS};
 
 if (defined $ENV{IDRIS} && -e $idris ) {
     $ENV{IDRIS} = abs_path($idris);
-    print "Using $idris\n";
+    print "Using $idris\n" unless $quiet;
 } else {
     delete $ENV{IDRIS};
     set_path();
@@ -220,14 +221,16 @@ my $endTime = time();
 my $elapsedTime = $endTime - $startTime;
 
 
-print "----\n";
-printf("%d tests run: %d succeeded, %d failed, %d updated.\n\n",
-        $stats{'total'}, $stats{'succeeded'}, $stats{'failed'}, $stats{'updated'} );
+if(!$quiet) {
+    print "----\n";
+    printf("%d tests run: %d succeeded, %d failed, %d updated.\n\n",
+            $stats{'total'}, $stats{'succeeded'}, $stats{'failed'}, $stats{'updated'} );
 
-if (@failed) {
-    print "Failed tests:\n";
-    foreach my $failure (@failed) {
-        print "$failure\n";
+    if (@failed) {
+        print "Failed tests:\n";
+        foreach my $failure (@failed) {
+            print "$failure\n";
+        }
     }
 }
 
