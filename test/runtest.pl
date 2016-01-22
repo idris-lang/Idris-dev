@@ -9,39 +9,35 @@ my $exitstatus = 0;
 my @idrOpts    = ();
 
 
-# Determines how idris was built locally, returning a PATH modifier.
+# Sets the PATH if there's a sandbox or stack present
 #
 # Order of checking is:
 #
 #  1. Cabal Sandboxing
 #  2. Stack
-#  3. Pure cabal.
 #
-sub sandbox_path {
+sub set_path {
     my ($test_dir,) = @_;
-    my $sandbox = "$test_dir/../../.cabal-sandbox/bin";
+    my $sandbox = "../.cabal-sandbox/bin";
 
     my $stack_bin_path = `stack path --dist-dir`;
     $stack_bin_path =~ s/\n//g;
-    my $stack_work_dir = "$test_dir/../../$stack_bin_path/build/idris";
+    my $stack_work_dir = "../$stack_bin_path/build/idris";
+    my $path = $ENV{PATH};
 
     if ( -d $sandbox ) {
-
         my $sandbox_abs = abs_path($sandbox);
         print "Using Cabal Sandbox\n";
         printf("Sandbox located at: %s\n", $sandbox_abs);
-        return "PATH=\"$sandbox_abs:$PATH\"";
+        $ENV{PATH} = $sandbox_abs . ":" . $path;
 
     } elsif ( -d $stack_work_dir ) {
 
         my $stack_work_abs = abs_path($stack_work_dir);
         print "Using Stack Work\n";
         printf("Stack work located at: %s\n", $stack_work_abs);
-        return "PATH=\"$stack_work_abs:$PATH\"";
+        $ENV{PATH} = $stack_work_abs . ":" . $path;
 
-    } else {
-        print "Using Default Cabal.\n";
-        return "";
     }
 }
 
@@ -49,15 +45,13 @@ sub sandbox_path {
 # output and report results.
 #
 sub runtest {
-    my ($test, $update, $showTime) = @_;
-
-    my $sandbox = sandbox_path($test);
+    my ($test, $update, $showTime, $failedref, $statsref) = @_;
 
     chdir($test);
 
     my $startTime = time();
     print "Running $test...\n";
-    my $got = `$sandbox ./run @idrOpts`;
+    my $got = `./run @idrOpts`;
     my $exp = `cat expected`;
 
     my $endTime = time();
@@ -95,15 +89,19 @@ sub runtest {
 
     if ($got eq $exp) {
     	print "Ran $test...success\n";
+        $statsref->{'succeeded'}++;
     }
     else {
         if ($update == 0) {
             $exitstatus = 1;
             print "Ran $test...FAILURE\n";
             system "diff output expected";
+            push @$failedref, $test;
+            $statsref->{'failed'}++;
         } else {
             system("cp output expected");
             print "Ran $test...UPDATED\n";
+            $statsref->{'updated'}++;
         }
     }
     chdir "..";
@@ -169,6 +167,14 @@ my $show     = 0;
 my $usejava  = 0;
 my $showTime = 0;
 
+my @failed;
+my %stats = (
+    total => 0,
+    succeeded => 0,
+    failed => 0,
+    updated => 0
+);
+
 while (my $opt = shift @opts) {
     if    ($opt eq "-u") { $update = 1; }
     elsif ($opt eq "-d") { $diff = 1; }
@@ -177,15 +183,22 @@ while (my $opt = shift @opts) {
     else { push(@idrOpts, $opt); }
 }
 
-my $idris  = $ENV{IDRIS};
-my $path   = $ENV{PATH};
-$ENV{PATH} = cwd() . "/" . $idris . ":" . $path;
+my $idris = $ENV{IDRIS};
+
+if (defined $ENV{IDRIS} && -e $idris ) {
+    $ENV{IDRIS} = abs_path($idris);
+    print "Using $idris\n";
+} else {
+    delete $ENV{IDRIS};
+    set_path();
+}
 
 my $startTime = time();
 
 foreach my $test (@tests) {
     if ($diff == 0 && $show == 0) {
-	    runtest($test,$update,$showTime);
+        ++$stats{'total'};
+	    runtest($test,$update,$showTime, \@failed, \%stats);
     }
     else {
         chdir $test;
@@ -206,6 +219,19 @@ foreach my $test (@tests) {
 
 my $endTime = time();
 my $elapsedTime = $endTime - $startTime;
+
+
+print "----\n";
+printf("%d tests run: %d succeeded, %d failed, %d updated.\n\n",
+        $stats{'total'}, $stats{'succeeded'}, $stats{'failed'}, $stats{'updated'} );
+
+if (@failed) {
+    print "Failed tests:\n";
+    foreach my $failure (@failed) {
+        print "$failure\n";
+    }
+}
+
 
 if ($showTime == 1) {
   printf("Duration of Entire Test Suite was %d\n", $elapsedTime);

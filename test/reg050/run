@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-idris --nocolour --check $@ working.idr
-idris --nocolour --check $@ badbangop.idr
-idris --nocolour --check $@ baddoublebang.idr
+${IDRIS:-idris} --nocolour --check $@ working.idr
+${IDRIS:-idris} --nocolour --check $@ badbangop.idr
+${IDRIS:-idris} --nocolour --check $@ baddoublebang.idr
 rm -f *.ibc

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Tests that documentation properly is merged with existent.
-idris --mkdoc package_a.ipkg
+${IDRIS:-idris} --mkdoc package_a.ipkg
 [ -f test_merge_doc/IdrisDoc ] && echo "IdrisDoc file written"
-idris --mkdoc package_b.ipkg
+${IDRIS:-idris} --mkdoc package_b.ipkg
 ls -1p test_merge_doc/docs
 if grep -q "href\\=\"docs/A.fully.Qualified.NAME\\.html\"" test_merge_doc/index.html; then
   echo A.fully.Qualified.NAME is in the index
