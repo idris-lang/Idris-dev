@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 OPTS="--consolewidth infinite --nocolour"
-idris "$@" $OPTS --check TestLambdaImpossible
-idris "$@" $OPTS --check --warnpartial TestLambdaPossible
+${IDRIS:-idris} "$@" $OPTS --check TestLambdaImpossible
+${IDRIS:-idris} "$@" $OPTS --check --warnpartial TestLambdaPossible
 rm -f *.ibc

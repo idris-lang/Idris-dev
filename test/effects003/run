@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-idris $@ hangman.idr --consolewidth 80 --nocolour -p effects -o hangman
+${IDRIS:-idris} $@ hangman.idr --consolewidth 80 --nocolour -p effects -o hangman
 ./hangman < input
 rm -f hangman *.ibc

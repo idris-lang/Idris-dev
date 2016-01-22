@@ -9,39 +9,35 @@ my $exitstatus = 0;
 my @idrOpts    = ();
 
 
-# Determines how idris was built locally, returning a PATH modifier.
+# Sets the PATH if there's a sandbox or stack present
 #
 # Order of checking is:
 #
 #  1. Cabal Sandboxing
 #  2. Stack
-#  3. Pure cabal.
 #
-sub sandbox_path {
+sub set_path {
     my ($test_dir,) = @_;
-    my $sandbox = "$test_dir/../../.cabal-sandbox/bin";
+    my $sandbox = "../.cabal-sandbox/bin";
 
     my $stack_bin_path = `stack path --dist-dir`;
     $stack_bin_path =~ s/\n//g;
-    my $stack_work_dir = "$test_dir/../../$stack_bin_path/build/idris";
+    my $stack_work_dir = "../$stack_bin_path/build/idris";
+    my $path = $ENV{PATH};
 
     if ( -d $sandbox ) {
-
         my $sandbox_abs = abs_path($sandbox);
         print "Using Cabal Sandbox\n";
         printf("Sandbox located at: %s\n", $sandbox_abs);
-        return "PATH=\"$sandbox_abs:$PATH\"";
+        $ENV{PATH} = $sandbox_abs . ":" . $path;
 
     } elsif ( -d $stack_work_dir ) {
 
         my $stack_work_abs = abs_path($stack_work_dir);
         print "Using Stack Work\n";
         printf("Stack work located at: %s\n", $stack_work_abs);
-        return "PATH=\"$stack_work_abs:$PATH\"";
+        $ENV{PATH} = $stack_work_abs . ":" . $path;
 
-    } else {
-        print "Using Default Cabal.\n";
-        return "";
     }
 }
 
@@ -51,13 +47,12 @@ sub sandbox_path {
 sub runtest {
     my ($test, $update, $showTime) = @_;
 
-    my $sandbox = sandbox_path($test);
 
     chdir($test);
 
     my $startTime = time();
     print "Running $test...\n";
-    my $got = `$sandbox ./run @idrOpts`;
+    my $got = `./run @idrOpts`;
     my $exp = `cat expected`;
 
     my $endTime = time();
@@ -177,9 +172,15 @@ while (my $opt = shift @opts) {
     else { push(@idrOpts, $opt); }
 }
 
-my $idris  = $ENV{IDRIS};
-my $path   = $ENV{PATH};
-$ENV{PATH} = cwd() . "/" . $idris . ":" . $path;
+my $idris = $ENV{IDRIS};
+
+if (defined $ENV{IDRIS} && -e $idris ) {
+    $ENV{IDRIS} = abs_path($idris);
+    print "Using $idris\n";
+} else {
+    delete $ENV{IDRIS};
+    set_path();
+}
 
 my $startTime = time();
 

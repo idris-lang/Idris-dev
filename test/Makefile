@@ -1,8 +1,8 @@
-.PHONY: test test_java test_js time update diff distclean $(TESTS)
+.PHONY: test test_js time update diff distclean $(TESTS)
 
-TESTS = $(sort $(patsubst %/,%.test,$(wildcard */)))
 
-test: $(TESTS)
+test:
+	/usr/bin/env perl ./runtest.pl all
 
 %.test:
 	@perl ./runtest.pl $(patsubst %.test,%,$@)
