@@ -132,6 +132,11 @@ CData cdata_allocate(size_t size, CDataFinalizer_t finalizer)
     return c_heap_allocate(size, finalizer);
 }
 
+CData cdata_manage(void * data, CDataFinalizer_t finalizer)
+{
+    return c_heap_create_item(data, finalizer);
+}
+
 void cdata_free(CData cd)
 {
     c_heap_free(cd);

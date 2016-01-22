@@ -122,11 +122,16 @@ typedef struct VM_t VM;
  * access it only in the following three ways:
  *
  *   CData cd = cdata_allocate(...);
+ *     or
+ *   void * ptr = malloc(...);
+ *   CData cd = cdata_manage(ptr, ...);
+ *
  *   use(cd->data);
  *   cdata_free(cd);  // optionally
  *
  */
 typedef CHeapItem * CData;
+CData cdata_manage(void * data, CDataFinalizer_t * finalizer);
 CData cdata_allocate(size_t size, CDataFinalizer_t * finalizer);
 void cdata_free(CData cd);  // explicit freeing not required but available
 
