@@ -45,8 +45,7 @@ sub set_path {
 # output and report results.
 #
 sub runtest {
-    my ($test, $update, $showTime) = @_;
-
+    my ($test, $update, $showTime, $failedref, $statsref) = @_;
 
     chdir($test);
 
@@ -90,15 +89,19 @@ sub runtest {
 
     if ($got eq $exp) {
     	print "Ran $test...success\n";
+        $statsref->{'succeeded'}++;
     }
     else {
         if ($update == 0) {
             $exitstatus = 1;
             print "Ran $test...FAILURE\n";
             system "diff output expected";
+            push @$failedref, $test;
+            $statsref->{'failed'}++;
         } else {
             system("cp output expected");
             print "Ran $test...UPDATED\n";
+            $statsref->{'updated'}++;
         }
     }
     chdir "..";
@@ -164,6 +167,14 @@ my $show     = 0;
 my $usejava  = 0;
 my $showTime = 0;
 
+my @failed;
+my %stats = (
+    total => 0,
+    succeeded => 0,
+    failed => 0,
+    updated => 0
+);
+
 while (my $opt = shift @opts) {
     if    ($opt eq "-u") { $update = 1; }
     elsif ($opt eq "-d") { $diff = 1; }
@@ -186,7 +197,8 @@ my $startTime = time();
 
 foreach my $test (@tests) {
     if ($diff == 0 && $show == 0) {
-	    runtest($test,$update,$showTime);
+        ++$stats{'total'};
+	    runtest($test,$update,$showTime, \@failed, \%stats);
     }
     else {
         chdir $test;
@@ -207,6 +219,19 @@ foreach my $test (@tests) {
 
 my $endTime = time();
 my $elapsedTime = $endTime - $startTime;
+
+
+print "----\n";
+printf("%d tests run: %d succeeded, %d failed, %d updated.\n\n",
+        $stats{'total'}, $stats{'succeeded'}, $stats{'failed'}, $stats{'updated'} );
+
+if (@failed) {
+    print "Failed tests:\n";
+    foreach my $failure (@failed) {
+        print "$failure\n";
+    }
+}
+
 
 if ($showTime == 1) {
   printf("Duration of Entire Test Suite was %d\n", $elapsedTime);
