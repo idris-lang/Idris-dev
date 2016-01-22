@@ -44,10 +44,14 @@ void c_heap_insert_if_needed(CHeap * heap, CHeapItem * item)
 {
     if (item->prev_next != NULL) return;  // already inserted
 
-    heap->first->prev_next = &item->next;
-    item->prev_next = &heap->first;
+    if (heap->first != NULL)
+    {
+        heap->first->prev_next = &item->next;
+    }
 
+    item->prev_next = &heap->first;
     item->next = heap->first;
+
     heap->first = item;
 }
 
