@@ -1389,7 +1389,7 @@ Static ::=
 @
 -}
 static :: IdrisParser Static
-static =     do reserved "[static]"; return Static
+static =     do reserved "%static"; return Static
          <|> return Dynamic
          <?> "static modifier"
 

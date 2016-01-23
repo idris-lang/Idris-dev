@@ -46,7 +46,7 @@ Core Language Features
    using the ``UniqueType`` universe.
 -  `Partial
    evaluation <https://github.com/idris-lang/Idris-dev/wiki/Static-Arguments-and-Partial-Evaluation>`__
-   by ``[static]`` argument annotations.
+   by ``%static`` argument annotations.
 -  Error message reflection
 -  Eliminators
 -  Label types ``'name``
