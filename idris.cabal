@@ -788,6 +788,9 @@ Extra-source-files:
                        benchmarks/trivial/sortvec.idr
                        benchmarks/trivial/sortvec.ipkg
 
+                       icons/idris_icon.rc
+                       icons/idris.ico
+
 source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
