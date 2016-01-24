@@ -20,15 +20,10 @@ build: dist/setup-config
 test: doc test_c
 
 test_c:
-	$(MAKE) -C test IDRIS=../dist/build/idris/idris
+	$(MAKE) -C test IDRIS=../dist/build/idris/idris test
 
 test_js:
 	$(MAKE) -C test IDRIS=../dist/build/idris/idris test_js
-
-test_all:
-	$(MAKE) test
-	$(MAKE) test_llvm
-	$(MAKE) test_java
 
 test_timed:
 	$(MAKE) -C test IDRIS=../dist/build/idris/idris time
