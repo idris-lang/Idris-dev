@@ -170,10 +170,10 @@ Usage from C code
   about its particular value. However, keep in mind
   that it must not break Idris's referential transparency.
  
-* If you call cdata_allocate or cdata_manage, the resulting
-  ``CData`` object *must* be returned from your FFI function so
-  that it is inserted in the C heap. Otherwise the memory
-  will be leaked.
+* **WARNING!** If you call cdata_allocate or cdata_manage,
+  the resulting ``CData`` object *must* be returned from your
+  FFI function so that it is inserted in the C heap by the RTS.
+  Otherwise the memory will be leaked.
 
 .. code:: idris
 
