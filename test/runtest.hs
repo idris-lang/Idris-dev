@@ -19,7 +19,9 @@ import Text.Regex
 -- Install the setenv package on Windows.
 #if __GLASGOW_HASKELL__ < 708
 #ifndef mingw32_HOST_OS
-import System.Posix.Env(setEnv)
+import qualified System.Posix.Env as PE(setEnv)
+
+setEnv k v = PE.setEnv k v True
 #else
 import System.SetEnv(setEnv)
 #endif
