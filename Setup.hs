@@ -206,13 +206,12 @@ getVersion args flags = do
 
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
-        createDirectoryIfMissing True dir
+        createDirectoryIfMissingVerbose verbosity True dir
         windres verbosity ["icons/idris_icon.rc","-o", dir++"idris_icon.o"]
         return (Nothing, [("idris", emptyBuildInfo { ldOptions = [dir ++ "idris_icon.o"] })])
      where
         verbosity = S.fromFlag $ S.buildVerbosity flags
-        dir = dirPref
-        dirPref = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
+        dir = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
 #else
         return (Nothing, [])
 #endif
