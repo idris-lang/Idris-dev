@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Main where
 
 import Control.Monad
@@ -13,6 +14,16 @@ import System.Info
 import System.IO
 import System.Process
 import Text.Regex
+
+-- Because GHC earlier than 7.8 lacks setEnv
+-- Install the setenv package on Windows.
+#if __GLASGOW_HASKELL__ < 708
+#ifndef mingw32_HOST_OS
+import System.Posix.Env(setEnv)
+#else
+import System.SetEnv(setEnv)
+#endif
+#endif
 
 data Flag = Update | Diff | ShowOutput | Quiet | Time deriving (Eq, Show, Ord)
 
