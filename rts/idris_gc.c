@@ -137,11 +137,11 @@ void idris_gc(VM* vm) {
         vm->heap.size += vm->heap.growth;
     }
 
-    STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
-    HEAP_CHECK(vm)
-
     // finally, sweep the C heap
     c_heap_sweep(&vm->c_heap);
+
+    STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
+    HEAP_CHECK(vm)
 }
 
 void idris_gcInfo(VM* vm, int doGC) {

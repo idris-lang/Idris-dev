@@ -6,32 +6,56 @@
 
 /* *** C heap ***
  * Objects with finalizers. Mark&sweep-collected.
+ *
+ * The C heap is implemented as a doubly linked list
+ * of pointers coupled with their finalizers.
  */
 
-typedef void CDataFinalizer_t(void *);
+typedef void CDataFinalizer(void *);
 
 typedef struct CHeapItem {
+    /// Payload.
     void * data;
-    CDataFinalizer_t * finalizer;  // should free() the passed data pointer, too
+
+    /// Finalizer that will be called on the payload pointer.
+    /// Its job is to deallocate all associated resources,
+    /// including the memory pointed to by `data` (if any).
+    CDataFinalizer * finalizer;
+
+    /// The mark bit set by the FP heap traversal,
+    /// cleared by C heap sweep.
     bool is_used;
+
+    /// Next item in the C heap.
     struct CHeapItem * next;
+
+    /// Pointer to the previous next-pointer.
     struct CHeapItem ** prev_next;
 } CHeapItem;
 
 typedef struct CHeap {
+    /// The first item in the heap. NULL if the heap is empty.
     CHeapItem * first;
 } CHeap;
 
+/// Create a C heap.
 void c_heap_init(CHeap * c_heap);
-void c_heap_destroy(CHeap * c_heap);  // will call finalizers on everything
-void c_heap_insert_if_needed(CHeap * c_heap, CHeapItem * item);
-void c_heap_mark_item(CHeapItem * item);
-void c_heap_sweep(CHeap * c_heap);
-CHeapItem * c_heap_create_item(void * data, CDataFinalizer_t * finalizer);
 
-// this is the function to use in C binding code
-CHeapItem * c_heap_allocate(size_t size, CDataFinalizer_t * finalizer);
-void c_heap_free(CHeapItem * item);
+/// Destroy the given C heap. Will not deallocate the given pointer.
+/// Will call finalizers & deallocate all blocks in the heap.
+void c_heap_destroy(CHeap * c_heap);
+
+/// Insert the given item into the heap if it's not there yet.
+void c_heap_insert_if_needed(CHeap * c_heap, CHeapItem * item);
+
+/// Mark the given item as used.
+void c_heap_mark_item(CHeapItem * item);
+
+/// Sweep the C heap, finalizing and freeing unused blocks.
+void c_heap_sweep(CHeap * c_heap);
+
+/// Create a C heap item from its payload and finalizer.
+CHeapItem * c_heap_create_item(void * data, CDataFinalizer * finalizer);
 
 /* *** Idris heap **
  * Objects without finalizers. Cheney-collected.

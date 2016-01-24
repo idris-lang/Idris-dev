@@ -127,19 +127,15 @@ Stats terminate(VM* vm) {
     return stats;
 }
 
-CData cdata_allocate(size_t size, CDataFinalizer_t finalizer)
+CData cdata_allocate(size_t size, CDataFinalizer finalizer)
 {
-    return c_heap_allocate(size, finalizer);
+    void * data = (void *) malloc(size);
+    return cdata_manage(data, finalizer);
 }
 
-CData cdata_manage(void * data, CDataFinalizer_t finalizer)
+CData cdata_manage(void * data, CDataFinalizer finalizer)
 {
     return c_heap_create_item(data, finalizer);
-}
-
-void cdata_free(CData cd)
-{
-    c_heap_free(cd);
 }
 
 void idris_requireAlloc(size_t size) {

@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-void c_heap_free(CHeapItem * item)
+static void c_heap_free_item(CHeapItem * item)
 {
     // fix links
     if (item->next != NULL)
@@ -21,13 +21,7 @@ void c_heap_free(CHeapItem * item)
     free(item);
 }
 
-CHeapItem * c_heap_allocate(size_t size, CDataFinalizer_t * finalizer)
-{
-    void * data = (void *) malloc(size);
-    return c_heap_create_item(data, finalizer);
-}
-
-CHeapItem * c_heap_create_item(void * data, CDataFinalizer_t * finalizer)
+CHeapItem * c_heap_create_item(void * data, CDataFinalizer * finalizer)
 {
     CHeapItem * item = (CHeapItem *) malloc(sizeof(CHeapItem));
 
@@ -75,7 +69,7 @@ void c_heap_sweep(CHeap * heap)
             CHeapItem * unused_item = p;
             p = p->next;
 
-            c_heap_free(unused_item);
+            c_heap_free_item(unused_item);
         }
     }
 }
@@ -89,11 +83,11 @@ void c_heap_destroy(CHeap * heap)
 {
     while (heap->first != NULL)
     {
-        c_heap_free(heap->first);  // will update heap->first via the backward link
+        c_heap_free_item(heap->first);  // will update heap->first via the backward link
     }
 }
 
-/* Used for initializing the heap. */
+/* Used for initializing the FP heap. */
 void alloc_heap(Heap * h, size_t heap_size, size_t growth, char * old)
 {
     char * mem = malloc(heap_size);

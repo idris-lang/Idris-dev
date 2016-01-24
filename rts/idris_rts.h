@@ -119,21 +119,27 @@ typedef struct VM_t VM;
  *
  * Although not enforced in code, CData is meant to be opaque
  * and non-RTS code (such as libraries or C bindings) should
- * access it only in the following three ways:
+ * access only its (void *) field called "data".
  *
- *   CData cd = cdata_allocate(...);
- *     or
- *   void * ptr = malloc(...);
- *   CData cd = cdata_manage(ptr, ...);
+ * Feel free to mutate cd->data; the heap does not care
+ * about its particular value. However, keep in mind
+ * that it must not break Idris's referential transparency.
  *
- *   use(cd->data);
- *   cdata_free(cd);  // optionally
- *
+ * If you call cdata_allocate or cdata_manage, the resulting
+ * CData object *must* be returned from your FFI function so
+ * that it is inserted in the C heap. Otherwise the memory
+ * will be leaked.
  */
+
+/// C data block. Contains (void * data).
 typedef CHeapItem * CData;
-CData cdata_manage(void * data, CDataFinalizer_t * finalizer);
-CData cdata_allocate(size_t size, CDataFinalizer_t * finalizer);
-void cdata_free(CData cd);  // explicit freeing not required but available
+
+/// Allocate memory, returning the corresponding C data block.
+CData cdata_allocate(size_t size, CDataFinalizer * finalizer);
+
+/// Wrap a pointer as a C data block.
+CData cdata_manage(void * data, CDataFinalizer * finalizer);
+
 
 // Create a new VM
 VM* init_vm(int stack_size, size_t heap_size,
