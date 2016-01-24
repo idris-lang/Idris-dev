@@ -151,6 +151,7 @@ Extra-source-files:
 
                        test/Makefile
                        test/runtest.pl
+                       test/runtest.hs
                        test/reg001/run
                        test/reg001/*.idr
                        test/reg001/expected
@@ -964,6 +965,7 @@ Library
                 , parsers >= 0.9 && < 0.13
                 , pretty < 1.2
                 , process < 1.3
+                , regex-compat < 1.0
                 , split < 0.3
                 , text >=1.2.1.0 && < 1.3
                 , time >= 1.4 && < 1.6
