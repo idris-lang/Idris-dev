@@ -124,9 +124,9 @@ Idris has two heaps where objects can be allocated:
 | collecting garbage, modifying data,  |                                       |
 | registering managed pointers, etc.)  |                                       |
 +--------------------------------------+---------------------------------------+
-| Contains objects of various types.   | Contains items: ``(void *)`` pointers |
-|                                      | coupled with a finalizer -- a pointer |
-|                                      | to a routine that deallocates the     |
+| Contains objects of various types.   | Contains C heap items: ``(void *)``   |
+|                                      | pointers with finalizers. A finalizer |
+|                                      | is a routine that deallocates the     |
 |                                      | resources associated with the item.   |
 +--------------------------------------+---------------------------------------+
 | Fixed set of object types.           | The data pointer may point            |
@@ -138,8 +138,8 @@ Idris has two heaps where objects can be allocated:
 +--------------------------------------+---------------------------------------+
 | Values form a compact memory block.  | Items are kept in a linked list.      |
 +--------------------------------------+---------------------------------------+
-| Any Idris value, most notably        | In Idris, items represented by the    |
-| ``ManagedPtr``.                      | type ``CData``.                       |
+| Any Idris value, most notably        | Items represented by the              |
+| ``ManagedPtr``.                      | Idris type ``CData``.                 |
 +--------------------------------------+---------------------------------------+
 | Data of ``ManagedPtr`` allocated     | Data allocated in C, pointer copied   |
 | in C, buffer then copied into the FP | into the C heap.                      |
@@ -152,10 +152,10 @@ Idris has two heaps where objects can be allocated:
 +--------------------------------------+---------------------------------------+
 
 The FP heap is the primary heap. It may contain values of type ``CData``,
-which are references to items in the C heap. A C heap item *contains*
+which are references to items in the C heap. A C heap item contains
 a ``(void *)`` pointer and the corresponding finalizer. Once a C heap item
 is no longer referenced from the FP heap, it is marked as unused and
-the next GC sweep will finalize and deallocate it.
+the next GC sweep will call its finalizer and deallocate it.
 
 There is no Idris interface for ``CData`` other than its type and FFI.
 
@@ -164,13 +164,13 @@ Usage from C code
 
 * Although not enforced in code, ``CData`` is meant to be opaque
   and non-RTS code (such as libraries or C bindings) should
-  access only its ``(void *)`` field called "data".
+  access only its ``(void *)`` field called ``data``.
 
-* Feel free to mutate ``cd->data``; the heap does not care
-  about its particular value. However, keep in mind
-  that it must not break Idris's referential transparency.
+* Feel free to mutate both the pointer ``data`` (eg. after calling ``realloc``)
+  and the memory it points to. However, keep in mind
+  that this must not break Idris's referential transparency.
  
-* **WARNING!** If you call cdata_allocate or cdata_manage,
+* **WARNING!** If you call ``cdata_allocate`` or ``cdata_manage``,
   the resulting ``CData`` object *must* be returned from your
   FFI function so that it is inserted in the C heap by the RTS.
   Otherwise the memory will be leaked.
@@ -183,20 +183,20 @@ Usage from C code
     other_fun : CData -> Int -> IO Int
     other_fun cd i = foreign FFI_C "other_fun" (CData -> Int -> IO Int) cd i
 
-.. code:: c
+.. code:: cpp
     
     #include "idris_rts.h"
 
     static void finalizer(void * data)
     {
-        MyStruct * ptr = (MyStruct*) data;
+        MyStruct * ptr = (MyStruct *) data;
         free_something(ptr->something);
         free(ptr);
     }
 
     CData some_allocating_fun(int arg)
     {
-        void * data = (void*) malloc(...);
+        void * data = (void *) malloc(...);
         // ...
         return cdata_manage(data, finalizer);
     }
