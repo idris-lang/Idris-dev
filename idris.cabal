@@ -150,7 +150,6 @@ Extra-source-files:
                        libs/pruviloj/Pruviloj/Internals/*.idr
 
                        test/Makefile
-                       test/runtest.pl
                        test/runtest.hs
                        test/reg001/run
                        test/reg001/*.idr
