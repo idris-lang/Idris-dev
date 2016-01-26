@@ -1,28 +1,33 @@
 .PHONY: test test_js time update diff distclean $(TESTS)
 
+runtest:
+	@ghc --make runtest.hs
+	@rm runtest.o runtest.hi
+
 TESTS = $(sort $(patsubst %/,%.test,$(wildcard */)))
 
 test: $(TESTS)
 
 
-info:
-	/usr/bin/env perl ./runtest.pl all
+info: runtest
+	@./runtest all
 
-%.test:
-	@perl ./runtest.pl $(patsubst %.test,%,$@) -q
+%.test: runtest
+	@./runtest $(patsubst %.test,%,$@) -q
 
-test_js:
-	@perl ./runtest.pl without sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 basic007 basic011 ffi006 --codegen node
+test_js: runtest
+	@./runtest without sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 basic007 basic011 ffi006 opts --codegen node
 
-update:
-	/usr/bin/env perl ./runtest.pl all -u
+update: runtest
+	@./runtest all -u
 
-diff:
-	/usr/bin/env perl ./runtest.pl all -d
+diff: runtest
+	@./runtest all -d
 
-time:
-	/usr/bin/env perl ./runtest.pl all -t
+time: runtest
+	@./runtest all -t
 
 distclean:
-	rm -f *~
-	rm -f */output
+	@rm runtest
+	@rm -f *~
+	@rm -f */output
