@@ -2,7 +2,7 @@ module Prelude.Chars
 -- Functions operating over Chars
 
 import Prelude.Bool
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.List
 import Prelude.Cast
 import Builtins
@@ -74,5 +74,3 @@ isHexDigit x = elem (toUpper x) hexChars where
 ||| Returns true if the character is an octal digit.
 isOctDigit : Char -> Bool
 isOctDigit x = (x >= '0' && x <= '7')
-
-

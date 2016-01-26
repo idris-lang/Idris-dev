@@ -6,7 +6,7 @@ import public IO
 import public Prelude.Algebra
 import public Prelude.Basics
 import public Prelude.Bool
-import public Prelude.Classes
+import public Prelude.Interfaces
 import public Prelude.Cast
 import public Prelude.Nat
 import public Prelude.List
@@ -210,7 +210,7 @@ Enum Int where
 Enum Char where
   toNat c   = toNat (ord c)
   fromNat n = chr (fromNat n)
-  
+
   pred c = fromNat (pred (toNat c))
 
 syntax "[" [start] ".." [end] "]"
@@ -264,12 +264,12 @@ while t b = do v <- t
 ------- Some error rewriting
 
 %language ErrorReflection
-  
+
 private
 cast_part : TT -> ErrorReportPart
 cast_part (P Bound n t) = TextPart "unknown type"
 cast_part x = TermPart x
-  
+
 %error_handler
 cast_error : Err -> Maybe (List ErrorReportPart)
 cast_error (CantResolve `(Cast ~x ~y))
@@ -284,4 +284,3 @@ num_error : Err -> Maybe (List ErrorReportPart)
 num_error (CantResolve `(Num ~x))
      = Just [TermPart x, TextPart "is not a numeric type"]
 num_error _ = Nothing
-

@@ -5,7 +5,7 @@ import Builtins
 import Prelude.Algebra
 import Prelude.Basics
 import Prelude.Bool
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Foldable
 import Prelude.Functor
 import Prelude.Maybe
@@ -174,7 +174,7 @@ init' []      = Nothing
 init' (x::xs) =
   case xs of
     []    => Just []
-    y::ys => 
+    y::ys =>
       case init' $ y::ys of
         Nothing => Nothing
         Just j  => Just $ x :: j
@@ -305,7 +305,7 @@ zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 ||| @ z the third list
 zipWith3 : (f : a -> b -> c -> d) -> (x : List a) -> (y : List b) ->
            (z : List c) -> List d
-zipWith3 f _       []      (z::zs) = [] 
+zipWith3 f _       []      (z::zs) = []
 zipWith3 f _       (y::ys) []      = []
 zipWith3 f []      (y::ys) _       = []
 zipWith3 f (x::xs) []      _       = []
@@ -761,7 +761,7 @@ mergeBy : (a -> a -> Ordering) -> List a -> List a -> List a
 mergeBy order []      right   = right
 mergeBy order left    []      = left
 mergeBy order (x::xs) (y::ys) =
-  if order x y == LT 
+  if order x y == LT
      then x :: mergeBy order xs (y::ys)
      else y :: mergeBy order (x::xs) ys
 
@@ -888,4 +888,3 @@ foldlAsFoldr f z t = foldr (flip (.) . flip f) id t z
 foldlMatchesFoldr : (f : b -> a -> b) -> (q : b) -> (xs : List a) -> foldl f q xs = foldlAsFoldr f q xs
 foldlMatchesFoldr f q [] = Refl
 foldlMatchesFoldr f q (x :: xs) = foldlMatchesFoldr f (f q x) xs
-

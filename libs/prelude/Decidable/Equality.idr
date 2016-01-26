@@ -3,7 +3,7 @@ module Decidable.Equality
 import Builtins
 import Prelude.Basics
 import Prelude.Bool
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Either
 import Prelude.List
 import Prelude.Nat
@@ -141,7 +141,7 @@ implementation DecEq a => DecEq (List a) where
   decEq [] (x :: xs) = No (negEqSym lemma_val_not_nil)
   decEq (x :: xs) (y :: ys) with (decEq x y)
     decEq (x :: xs) (x :: ys) | Yes Refl with (decEq xs ys)
-      decEq (x :: xs) (x :: xs) | (Yes Refl) | (Yes Refl) = Yes Refl 
+      decEq (x :: xs) (x :: xs) | (Yes Refl) | (Yes Refl) = Yes Refl
       decEq (x :: xs) (x :: ys) | (Yes Refl) | (No p) = No (\eq => lemma_x_eq_xs_neq Refl p eq)
     decEq (x :: xs) (y :: ys) | No p with (decEq xs ys)
       decEq (x :: xs) (y :: xs) | (No p) | (Yes Refl) = No (\eq => lemma_x_neq_xs_eq p Refl eq)
@@ -211,6 +211,3 @@ implementation DecEq ManagedPtr where
        where primitiveEq : x = y
              primitiveEq = believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
-
-
-
