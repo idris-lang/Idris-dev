@@ -983,9 +983,6 @@ Library
                 , fsnotify < 2.2
                 , async < 2.1
 
-  -- regex-compat needed for the test/runtest.hs script, which isn't built by cabal
-  build-depends: regex-compat < 1.0
-
   -- zlib >= 0.6.1 is broken with GHC < 7.10.3
   if impl(ghc < 7.10.3)
      build-depends: zlib < 0.6.1

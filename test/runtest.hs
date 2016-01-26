@@ -2,6 +2,7 @@
 module Main where
 
 import Control.Monad
+import Data.Char
 import Data.List
 import Data.Maybe
 import qualified Data.Set as S
@@ -13,7 +14,6 @@ import System.Exit
 import System.Info
 import System.IO
 import System.Process
-import Text.Regex
 
 -- Because GHC earlier than 7.8 lacks setEnv
 -- Install the setenv package on Windows.
@@ -46,7 +46,7 @@ showDiff conf = Diff `S.member` (flags conf)
 doUpdate conf = Update  `S.member` (flags conf)
 
 checkTestName :: String -> Bool
-checkTestName d = (matchRegex (mkRegex "[0-9][0-9][0-9]") d /= Nothing)
+checkTestName d = (all isDigit $ take 3 $ reverse d)
                     && (not $ isInfixOf "disabled" d)
 
 enumTests :: IO [String]
