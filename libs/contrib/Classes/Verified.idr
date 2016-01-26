@@ -92,6 +92,11 @@ interface MeetSemilattice a => VerifiedMeetSemilattice a where
   total meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
   total meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
 
+{- FIXME: Some maintenance required here.
+   Algebra.top and Algebra.bottom don't exist!
+-}
+{-
+
 interface (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJoinSemilattice a where
   total boundedJoinSemilatticeBottomIsBottom : (e : a) -> join e Algebra.bottom = e
 
@@ -112,3 +117,5 @@ interface (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, V
 --  total moduleScalarMultDistributiveWRTModuleAddition : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
 
 --interface (VerifiedField a, VerifiedModule a b) => VerifiedVectorSpace a b where {}
+
+-}

@@ -1556,9 +1556,9 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv) (map getTm args)
     implNamesIn uv t = namesIn uv ist t
 
-    imps top env (PApp _ f as)
+    imps top env ty@(PApp _ f as)
        = do (decls, ns) <- get
-            let isn = concatMap (namesIn uvars ist) (map getTm as)
+            let isn = nub (implNamesIn uvars ty)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PPi (Imp l _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]
