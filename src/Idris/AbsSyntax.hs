@@ -232,6 +232,14 @@ addToCG n cg
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
 
+addCalls :: Name -> [Name] -> Idris ()
+addCalls n calls
+   = do i <- getIState
+        case lookupCtxtExact n (idris_callgraph i) of
+             Nothing -> addToCG n (CGInfo calls [] [])
+             Just (CGInfo cs scg used) -> 
+                addToCG n (CGInfo (nub (calls ++ cs)) scg used)
+
 addTyInferred :: Name -> Idris ()
 addTyInferred n
    = do i <- getIState
@@ -328,7 +336,7 @@ allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
 allNames ns n = do i <- getIState
                    case lookupCtxtExact n (idris_callgraph i) of
-                      Just ns' -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
+                      Just ns' -> do more <- mapM (allNames (n:ns)) (calls ns')
                                      return (nub (n : concat more))
                       _ -> return [n]
 
@@ -359,11 +367,6 @@ getNameHints i n =
         case lookupCtxt n (idris_namehints i) of
              [ns] -> ns
              _ -> []
-
--- Issue #1737 in the Issue Tracker.
---    https://github.com/idris-lang/Idris-dev/issues/1737
-addToCalledG :: Name -> [Name] -> Idris ()
-addToCalledG n ns = return () -- TODO
 
 addDeprecated :: Name -> String -> Idris ()
 addDeprecated n reason = do i <- getIState

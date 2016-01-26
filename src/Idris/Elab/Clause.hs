@@ -249,16 +249,12 @@ elabClauses info' fc opts n_in cs =
                       i <- getIState
                       case lookupDef n (tt_ctxt i) of
                           (CaseOp _ _ _ _ _ cd : _) ->
-                            let (scargs, sc) = cases_compiletime cd
-                                (scargs', sc') = cases_runtime cd in
-                              do let calls = findCalls sc' scargs'
-                                 let used = findUsedArgs sc' scargs'
+                            let (scargs, sc) = cases_compiletime cd in
+                              do let calls = map fst $ findCalls sc scargs
                                  -- let scg = buildSCG i sc scargs
                                  -- add SCG later, when checking totality
-                                 let cg = CGInfo scargs' calls [] used []  -- TODO: remove this, not needed anymore
-                                 logElab 2 $ "Called names: " ++ show cg
-                                 addToCG n cg
-                                 addToCalledG n (nub (map fst calls)) -- plus names in type!
+                                 logElab 2 $ "Called names: " ++ show calls
+                                 addCalls n calls
                                  addIBC (IBCCG n)
                           _ -> return ()
                       return ()

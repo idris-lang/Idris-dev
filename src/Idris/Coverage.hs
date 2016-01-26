@@ -313,7 +313,7 @@ checkAllCovering fc done top n | not (n `elem` done)
              [Partial _] ->
                 case lookupCtxt n (idris_callgraph i) of
                      [cg] -> mapM_ (checkAllCovering fc (n : done) top)
-                                   (map fst (calls cg))
+                                   (calls cg)
                      _ -> return ()
              x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()

@@ -40,10 +40,17 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 128
+ibcVersion = 129
+
+-- When IBC is being loaded - we'll load different things (and omit different
+-- structures/definitions) depending on which phase we're in
+data IBCPhase = IBC_Building -- ^ when building the module tree
+              | IBC_REPL -- ^ when loading modules for the REPL
+              | IBC_IDE -- ^ when running in IDE mode
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
+                         ibc_reachablenames :: ![Name],
                          ibc_imports :: ![(Bool, FilePath)],
                          ibc_importdirs :: ![FilePath],
                          ibc_implicits :: ![(Name, [PArg])],
@@ -95,7 +102,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -763,18 +770,14 @@ instance Binary SizeChange where
                    _ -> error "Corrupted binary data for SizeChange"
 
 instance Binary CGInfo where
-        put (CGInfo x1 x2 x3 x4 x5)
+        put (CGInfo x1 x2 x3)
           = do put x1
-               put x2
 --                put x3 -- Already used SCG info for totality check
-               put x4
-               put x5
+               put x3
         get
           = do x1 <- get
-               x2 <- get
-               x4 <- get
-               x5 <- get
-               return (CGInfo x1 x2 [] x4 x5)
+               x3 <- get
+               return (CGInfo x1 [] x3)
 
 instance Binary CaseType where
         put x = case x of

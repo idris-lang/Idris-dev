@@ -194,7 +194,6 @@ data IState = IState {
       -- ^ list of lhs/rhs, and a list of missing clauses
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
-    idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)]),
     idris_moduledocs :: Ctxt (Docstring DocTerm),
     -- ^ module documentation is saved in a special MN so the context
@@ -280,11 +279,10 @@ deriving instance NFData SizeChange
 type SCGEntry = (Name, [Maybe (Int, SizeChange)])
 type UsageReason = (Name, Int)  -- fn_name, its_arg_number
 
-data CGInfo = CGInfo { argsdef :: [Name],
-                       calls :: [(Name, [[Name]])],
+data CGInfo = CGInfo { calls :: [Name],
                        scg :: [SCGEntry],
-                       argsused :: [Name],
-                       usedpos :: [(Int, [UsageReason])] }
+                       usedpos :: [(Int, [UsageReason])] 
+                     }
     deriving Show
 {-!
 deriving instance Binary CGInfo
@@ -349,7 +347,7 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   emptyContext emptyContext
+                   emptyContext 
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty

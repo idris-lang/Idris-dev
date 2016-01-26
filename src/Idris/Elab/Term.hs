@@ -2549,13 +2549,9 @@ processTacticDecls info steps =
              -- we refer to, so that if they aren't total, the whole
              -- thing won't be.
              let (scargs, sc) = cases_compiletime cd
-                 (scargs', sc') = cases_runtime cd
-                 calls = findCalls sc' scargs
-                 used = findUsedArgs sc' scargs'
-                 cg = CGInfo scargs' calls [] used []
-             in do logElab 2 $ "Called names in reflected elab: " ++ show cg
-                   addToCG n cg
-                   addToCalledG n (nub (map fst calls))
+                 calls = map fst $ findCalls sc scargs
+             in do logElab 2 $ "Called names in reflected elab: " ++ show calls
+                   addCalls n calls
                    addIBC $ IBCCG n
            Just _ -> return () -- TODO throw internal error
            Nothing -> return ()

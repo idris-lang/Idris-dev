@@ -118,16 +118,13 @@ opt_detaggable = Field detaggable (\v opt -> opt{ detaggable = v })
 ist_callgraph :: Name -> Field IState CGInfo
 ist_callgraph n =
       maybe_default CGInfo
-        { argsdef = [], calls = [], scg = []
-        , argsused = [], usedpos = []
+        { calls = [], scg = [], usedpos = []
         }
     . ctxt_lookup n
     . Field idris_callgraph (\v ist -> ist{ idris_callgraph = v })
 
--- some fields of the CGInfo record
 cg_usedpos :: Field CGInfo [(Int, [UsageReason])]
 cg_usedpos = Field usedpos (\v cg -> cg{ usedpos = v })
-
 
 -- Commandline flags
 --------------------
