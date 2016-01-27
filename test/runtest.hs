@@ -51,8 +51,8 @@ checkTestName d = (all isDigit $ take 3 $ reverse d)
 
 enumTests :: IO [String]
 enumTests = do
-    cd <- getCurrentDirectory
-    dirs <- getDirectoryContents cd
+    cwd <- getCurrentDirectory
+    dirs <- getDirectoryContents cwd
     return $ sort $ filter checkTestName dirs
 
 parseFlag :: String -> Maybe Flag
@@ -197,6 +197,9 @@ setPath conf = do
 
 main = do
     hSetBuffering stdout LineBuffering
+    withCabal <- doesDirectoryExist "test"
+    when withCabal $ do
+      setCurrentDirectory "test"
     args <- getArgs
     conf <- parseArgs args
     setPath conf
