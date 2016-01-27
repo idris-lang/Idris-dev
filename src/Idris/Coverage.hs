@@ -474,6 +474,7 @@ buildSCG (_, n) = do
                   let newscg = buildSCG' ist (rights pats) args
                   logCoverage 5 $ "SCG is: " ++ show newscg
                   addToCG n ( cg { scg = newscg } )
+           _ -> return () -- CG comes from a type declaration only
        [] -> logCoverage 5 $ "Could not build SCG for " ++ show n ++ "\n"
        x -> error $ "buildSCG: " ++ show (n, x)
 

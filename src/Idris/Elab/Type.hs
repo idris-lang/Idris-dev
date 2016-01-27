@@ -102,6 +102,10 @@ buildType info syn fc opts n ty' = do
          logElab 3 ("Implicit " ++ show n ++ " " ++ show impls)
          addIBC (IBCImp n)
 
+         -- Add the names referenced to the call graph
+         addCalls n (freeNames cty)
+         addIBC (IBCCG n)
+
          when (Constructor `notElem` opts) $ do
              let pnames = getParamsInType i [] impls cty
              let fninfo = FnInfo (param_pos 0 pnames cty)
