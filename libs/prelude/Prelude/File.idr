@@ -9,7 +9,7 @@ import Prelude.Strings
 import Prelude.Cast
 import Prelude.Bool
 import Prelude.Basics
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Either
 import Prelude.Show
 import IO
@@ -39,7 +39,7 @@ strError err = unsafePerformIO -- yeah, yeah...
                   (foreign FFI_C "idris_showerror" (Int -> IO String) err)
 
 getFileError : IO FileError
-getFileError = do MkRaw err <- foreign FFI_C "idris_mkFileError" 
+getFileError = do MkRaw err <- foreign FFI_C "idris_mkFileError"
                                     (Ptr -> IO (Raw FileError)) prim__vm
                   return err
 
@@ -154,7 +154,7 @@ do_fwrite : Ptr -> String -> IO (Either FileError ())
 do_fwrite h s = do res <- prim_fwrite h s
                    if (res /= 0)
                       then do errno <- getErrno
-                              if errno == 0 
+                              if errno == 0
                                  then return (Left FileWriteError)
                                  else do err <- getFileError
                                          return (Left err)
@@ -193,7 +193,7 @@ fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
                        return (p > 0)
 
 ||| Read the contents of a file into a string
-partial -- might be reading something infinitely long like /dev/null ... 
+partial -- might be reading something infinitely long like /dev/null ...
 covering
 readFile : String -> IO (Either FileError String)
 readFile fn = do Right h <- openFile fn Read
@@ -212,7 +212,7 @@ readFile fn = do Right h <- openFile fn Read
                    else return (Right contents)
 
 ||| Write a string to a file
-writeFile : (filepath : String) -> (contents : String) -> 
+writeFile : (filepath : String) -> (contents : String) ->
             IO (Either FileError ())
 writeFile fn contents = do
      Right h <- openFile fn Write | Left err => return (Left err)

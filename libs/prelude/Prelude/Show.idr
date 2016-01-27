@@ -7,7 +7,7 @@ import Prelude.Bits
 import Prelude.Bool
 import Prelude.Cast
 import Prelude.Chars
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.List
 import Prelude.Maybe
 import Prelude.Either
@@ -192,4 +192,3 @@ Show a => Show (Maybe a) where
 
 (Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
     show (y ** prf) = "(" ++ show y ++ " ** " ++ show prf ++ ")"
-

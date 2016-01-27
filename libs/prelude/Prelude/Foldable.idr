@@ -3,7 +3,7 @@ module Prelude.Foldable
 import Builtins
 import Prelude.Bool
 import Prelude.Basics
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Algebra
 
 %access public
@@ -54,4 +54,3 @@ sum = foldr (+) 0
 ||| Multiply together all elements of a structure
 product : (Foldable t, Num a) => t a -> a
 product = foldr (*) 1
-

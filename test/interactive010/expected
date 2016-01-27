@@ -1,12 +1,12 @@
 Prelude.List.(++) : List a -> List a -> List a
 Prelude.Strings.(++) : String -> String -> String
-a is not an implicit argument of Prelude.Classes./
+a is not an implicit argument of Prelude.Interfaces./
 Usage is :doc <functionname>
 Usage is :wc <functionname>
 Usage is :printdef <functionname>
-pat {ty504} : Type u. pat {__class505} : Prelude.Classes.Fractional {ty504}. Prelude.Classes./ {ty504} {__class505}
+pat {ty504} : Type u. pat {__class505} : Prelude.Interfaces.Fractional {ty504}. Prelude.Interfaces./ {ty504} {__class505}
 
- : pty {ty504} : Type u. pty {__class505} : Prelude.Classes.Fractional {ty504}. {ty504} -> {ty504} -> {ty504}
+ : pty {ty504} : Type u. pty {__class505} : Prelude.Interfaces.Fractional {ty504}. {ty504} -> {ty504} -> {ty504}
 (input):1:1: error: expected: ":",
     dependent type signature,
     end of input

@@ -6,7 +6,7 @@ import Prelude.Basics
 import Prelude.Bool
 import Prelude.Cast
 import Prelude.Chars
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Foldable
 import Prelude.Nat
 import Prelude.List
