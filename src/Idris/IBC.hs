@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 129
+ibcVersion = 130
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
@@ -545,11 +545,9 @@ pDefs reexp ds
                                    return $ Right (l', r')
 
     updateCD (CaseDefs (ts, t) (cs, c) (is, i) (rs, r))
-        = do t' <- updateSC t
-             c' <- updateSC c
-             i' <- updateSC i
+        = do c' <- updateSC c
              r' <- updateSC r
-             return $ CaseDefs (ts, t') (cs, c') (is, i') (rs, r')
+             return $ CaseDefs (cs, c') (cs, c') (cs, c') (rs, r')
 
     updateSC (Case t n alts) = do alts' <- mapM updateAlt alts
                                   return (Case t n alts')
@@ -896,13 +894,13 @@ instance Binary Def where
                                    put x2
                 -- all primitives just get added at the start, don't write
                 Operator x1 x2 x3 -> do return ()
-                CaseOp x1 x2 x2a x3 x3a x4 -> do putWord8 3
-                                                 put x1
-                                                 put x2
-                                                 put x2a
-                                                 put x3
-                                                 -- no x3a
-                                                 put x4
+                -- no need to add/load original patterns, because they're not
+                -- used again after totality checking
+                CaseOp x1 x2 x3 _ _ x4 -> do putWord8 3
+                                             put x1
+                                             put x2
+                                             put x3
+                                             put x4
         get
           = do i <- getWord8
                case i of
@@ -916,10 +914,10 @@ instance Binary Def where
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           x4 <- get
+--                            x4 <- get
                            -- x3 <- get always []
                            x5 <- get
-                           return (CaseOp x1 x2 x3 x4 [] x5)
+                           return (CaseOp x1 x2 x3 [] [] x5)
                    _ -> error "Corrupted binary data for Def"
 
 instance Binary Accessibility where
