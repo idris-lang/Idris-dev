@@ -244,6 +244,7 @@ elabClauses info' fc opts n_in cs =
                                                    ctxt
                       setContext ctxt'
                       addIBC (IBCDef n)
+                      addDefinedName n
                       setTotality n tot
                       when (not reflect && PEGenerated `notElem` opts) $
                                            do totcheck (fc, n)

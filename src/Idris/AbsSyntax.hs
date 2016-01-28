@@ -96,14 +96,22 @@ addAutoImport fp = do i <- getIState
                       put (i { idris_options = opts { opt_autoImport =
                                                        fp : opt_autoImport opts } } )
 
+addDefinedName :: Name -> Idris ()
+addDefinedName n = do ist <- getIState
+                      putIState $ ist { idris_inmodule = S.insert n (idris_inmodule ist) }
+
+getDefinedNames :: Idris [Name]
+getDefinedNames = do ist <- getIState
+                     return (S.toList (idris_inmodule ist))
+
 addTT :: Term -> Idris (Maybe Term)
-addTT t = do ist <- get
+addTT t = do ist <- getIState
              case M.lookup t (idris_ttstats ist) of
                   Nothing -> do let tt' = M.insert t (1, t) (idris_ttstats ist)
-                                put $ ist { idris_ttstats = tt' }
+                                putIState $ ist { idris_ttstats = tt' }
                                 return Nothing
                   Just (i, t') -> do let tt' = M.insert t' (i + 1, t') (idris_ttstats ist)
-                                     put $ ist { idris_ttstats = tt' }
+                                     putIState $ ist { idris_ttstats = tt' }
                                      return (Just t')
 
 dumpTT :: Idris ()
@@ -461,7 +469,8 @@ addIBC ibc@(IBCDef n)
 addIBC ibc = do i <- getIState; putIState $ i { ibc_write = ibc : ibc_write i }
 
 clearIBC :: Idris ()
-clearIBC = do i <- getIState; putIState $ i { ibc_write = [] }
+clearIBC = do i <- getIState; putIState $ i { ibc_write = [],
+                                              idris_inmodule = S.empty }
 
 resetNameIdx :: Idris ()
 resetNameIdx = do i <- getIState

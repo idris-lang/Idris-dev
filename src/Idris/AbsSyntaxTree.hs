@@ -262,6 +262,7 @@ data IState = IState {
     idris_highlightedRegions :: [(FC, OutputAnnotation)], -- ^ Highlighting information to output
     idris_parserHighlights :: [(FC, OutputAnnotation)], -- ^ Highlighting information from the parser
     idris_deprecated :: Ctxt String, -- ^ Deprecated names and explanation
+    idris_inmodule :: S.Set Name, -- ^ Names defined in current module
     idris_ttstats :: M.Map Term (Int, Term)
    }
 
@@ -352,7 +353,7 @@ idrisInit = IState initContext S.empty []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
-                   emptyContext M.empty
+                   emptyContext S.empty M.empty
 
 
 -- | The monad for the main REPL - reading and processing files and updating
