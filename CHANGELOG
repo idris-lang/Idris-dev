@@ -1,3 +1,9 @@
+New in 0.10.1:
+==============
+* The '[static]' annotation is changed to '%static' to be consistent with the
+other annotations.
+
+
 New in 0.10:
 ============
 
