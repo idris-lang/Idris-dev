@@ -33,6 +33,10 @@ namespace Builtins
      ||| @b the right element of the pair
      MkUniquePair : {A, B : AnyType} -> (a : A) -> (b : B) -> UniquePair A B
 
+  -- Usage hints for erasure analysis
+  %used MkUniquePair a
+  %used MkUniquePair b
+
   UPair : (A : AnyType) -> (B : AnyType) -> AnyType
   UPair a b = UniquePair a b
   %deprecate UPair "This name is being deprecated in favour of `UniquePair`"
