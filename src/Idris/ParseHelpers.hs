@@ -7,7 +7,7 @@ module Idris.ParseHelpers where
 import Prelude hiding (pi)
 
 import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace)
+import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err)
 import Text.Parser.LookAhead
 import Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
@@ -104,6 +104,14 @@ reportParserWarnings = do ist <- getIState
                                          FC' fc == FC' fc' && err == err') $
                                  parserWarnings ist)
                           clearParserWarnings
+
+
+parserWarning :: FC -> Maybe Opt -> Err -> IdrisParser ()
+parserWarning fc warnOpt warnErr = do
+  ist <- get
+  let cmdline = opt_cmdline (idris_options ist)
+  unless (maybe False (`elem` cmdline) warnOpt) $
+    put ist { parserWarnings = (fc, warnErr) : parserWarnings ist }
 
 {- * Space, comments and literals (token/lexing like parsers) -}
 
@@ -666,10 +674,3 @@ collect (PInstance doc argDocs f s cs n nfc ps t en ds : ds')
     = PInstance doc argDocs f s cs n nfc ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []
-
-parserWarning :: FC -> Maybe Opt -> Err -> IdrisParser ()
-parserWarning fc warnOpt warnErr = do
-  is <- get
-  let cmdline = opt_cmdline (idris_options ist)
-  unless (maybe False (`elem` cmdline) warnOpt) $
-    put ist { parserWarnings = (fc, warnErr) : parserWarnings ist }
