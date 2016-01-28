@@ -1,6 +1,6 @@
 New in 0.10.1:
 ==============
-* The '[static]' annotation is changed to '%static' to be inline with the other annotations in the language.
+* The '[static]' annotation is changed to '%static' to be in line with the other annotations in the language.
 
 New in 0.10:
 ============
