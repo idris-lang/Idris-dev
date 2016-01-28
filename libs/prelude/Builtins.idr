@@ -33,6 +33,14 @@ namespace Builtins
      ||| @b the right element of the pair
      MkUniquePair : {A, B : AnyType} -> (a : A) -> (b : B) -> UniquePair A B
 
+  UPair : (A : AnyType) -> (B : AnyType) -> AnyType
+  UPair a b = UniquePair a b
+  %deprecate UPair "This name is being deprecated in favour of `UniquePair`"
+
+  MkUPair : {A, B : AnyType} -> (a : A) -> (b : B) -> UniquePair A B
+  MkUPair a b = MkUniquePair a b
+  %deprecate MkUPair "This name is being deprecated in favour of `MkUniquePair`"
+
   ||| Dependent pairs aid in the construction of dependent types by
   ||| providing evidence that some value resides in the type.
   |||
