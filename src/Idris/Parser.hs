@@ -878,10 +878,7 @@ class_ syn = do (doc, argDocs, acc)
     classKeyword = reservedHL "interface"
                <|> do reservedHL "class"
                       fc <- getFC
-                      ist <- get
-                      put ist { parserWarnings = 
-                         (fc, Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
-                              : parserWarnings ist }
+                      parserWarning fc Nothing (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
 
     carg :: IdrisParser (Name, FC, PTerm)
     carg = do lchar '('; (i, ifc) <- name; lchar ':'; ty <- expr syn; lchar ')'
@@ -928,11 +925,7 @@ instance_ kwopt syn
         instanceKeyword = reservedHL "implementation"
                       <|> do reservedHL "instance"
                              fc <- getFC
-                             ist <- get
-                             put ist { parserWarnings = 
-                                (fc, Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
-                                     : parserWarnings ist }
-
+                             parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
 
 -- | Parse a docstring
 docstring :: SyntaxInfo

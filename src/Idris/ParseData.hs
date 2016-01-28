@@ -167,11 +167,7 @@ dataOpts opts
   <|> return opts
   <?> "data options"
   where warnElim fc =
-          do ist <- get
-             let cmdline = opt_cmdline (idris_options ist)
-             unless (NoElimDeprecationWarnings `elem` cmdline) $
-               put ist { parserWarnings =
-                           (fc, Msg "Eliminator generation is deprecated. Use an eliminator generator in a library instead.") : parserWarnings ist }
+          parserWarning fc (Just NoElimDeprecationWarnings) (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
 
 {- | Parses a data type declaration
 Data ::= DocComment? Accessibility? DataI DefaultEliminator FnName TypeSig ExplicitTypeDataRest?
