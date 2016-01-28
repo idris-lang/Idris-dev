@@ -666,3 +666,10 @@ collect (PInstance doc argDocs f s cs n nfc ps t en ds : ds')
     = PInstance doc argDocs f s cs n nfc ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []
+
+parserWarning :: FC -> Maybe Opt -> Err -> IdrisParser ()
+parserWarning fc warnOpt warnErr = do
+  is <- get
+  let cmdline = opt_cmdline (idris_options ist)
+  unless (maybe False (`elem` cmdline) warnOpt) $
+    put ist { parserWarnings = (fc, warnErr) : parserWarnings ist }
