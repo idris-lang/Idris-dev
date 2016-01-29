@@ -333,11 +333,7 @@ caseOption syn = do lhs <- expr (syn { inPattern = True })
 
 warnTacticDeprecation :: FC -> IdrisParser ()
 warnTacticDeprecation fc =
-    do ist <- get
-       let cmdline = opt_cmdline (idris_options ist)
-       unless (NoOldTacticDeprecationWarnings `elem` cmdline) $
-         put ist { parserWarnings =
-                     (fc, Msg "This style of tactic proof is deprecated. See %runElab for the replacement.") : parserWarnings ist }
+ parserWarning fc (Just NoOldTacticDeprecationWarnings) (Msg "This style of tactic proof is deprecated. See %runElab for the replacement.")
 
 {- | Parses a proof block
 @
@@ -1389,7 +1385,11 @@ Static ::=
 @
 -}
 static :: IdrisParser Static
-static =     do reserved "[static]"; return Static
+static =     do reserved "%static"; return Static
+         <|> do reserved "[static]"
+                fc <- getFC
+                parserWarning fc Nothing (Msg "The use of [static] is deprecated, use %static instead.")
+                return Static
          <|> return Dynamic
          <?> "static modifier"
 

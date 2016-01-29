@@ -45,7 +45,7 @@ using (G : Vect n Ty)
       index_next = Pop
 
   total
-  interp : Env G -> [static] (e : Expr G t) -> interpTy t
+  interp : Env G -> %static (e : Expr G t) -> interpTy t
   interp env (Var i)     = lookup i env
   interp env (Val x)     = x
   interp env (Lam sc)    = \x => interp (x :: env) sc

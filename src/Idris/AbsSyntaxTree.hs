@@ -1740,7 +1740,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
 
         st =
           case s of
-            Static -> text "[static]" <> space
+            Static -> text "%static" <> space
             _      -> empty
     prettySe d p bnd (PPi (Imp l s _ fa) n _ ty sc)
       | ppopt_impl ppo =
@@ -1751,7 +1751,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       where
         st =
           case s of
-            Static -> text "[static]" <> space
+            Static -> text "%static" <> space
             _      -> empty
     prettySe d p bnd (PPi (Constraint _ _) n _ ty sc) =
       depth d . bracket p startPrec $
