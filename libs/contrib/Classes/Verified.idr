@@ -4,7 +4,7 @@ import Control.Algebra
 import Control.Algebra.Lattice
 import Control.Algebra.VectorSpace
 
-%access public
+%access public export
 
 -- Due to these being basically unused and difficult to implement,
 -- they're in contrib for a bit. Once a design is found that lets them

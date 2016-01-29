@@ -7,9 +7,9 @@ module Data.Heap
 
 
 %default total
-%access public
+%access public export
 
-abstract data MaxiphobicHeap : Type -> Type where
+export data MaxiphobicHeap : Type -> Type where
   Empty : MaxiphobicHeap a
   Node  : Nat -> MaxiphobicHeap a -> a -> MaxiphobicHeap a -> MaxiphobicHeap a
 

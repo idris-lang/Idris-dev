@@ -2,7 +2,7 @@ module Prelude.Functor
 
 import Prelude.Basics
 
-%access public
+%access public export
 
 ||| Functors allow a uniform action over a parameterised type.
 ||| @ f a parameterised type 

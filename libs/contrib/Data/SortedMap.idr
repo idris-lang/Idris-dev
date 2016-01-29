@@ -192,21 +192,21 @@ treeToList = treeToList' (:: [])
     treeToList' cont (Branch2 t1 _ t2) = treeToList' (:: treeToList' cont t2) t1
     treeToList' cont (Branch3 t1 _ t2 _ t3) = treeToList' (:: treeToList' (:: treeToList' cont t3) t2) t1
 
-abstract
+export
 data SortedMap : Type -> Type -> Type where
   Empty : Ord k => SortedMap k v
   M : (o : Ord k) => (n:Nat) -> Tree n k v o -> SortedMap k v
 
-public
+export
 empty : Ord k => SortedMap k v
 empty = Empty
 
-public
+export
 lookup : k -> SortedMap k v -> Maybe v
 lookup _ Empty = Nothing
 lookup k (M _ t) = treeLookup k t
 
-public
+export
 insert : k -> v -> SortedMap k v -> SortedMap k v
 insert k v Empty = M Z (Leaf k v)
 insert k v (M _ t) =
@@ -214,7 +214,7 @@ insert k v (M _ t) =
     Left t' => (M _ t')
     Right t' => (M _ t')
 
-public
+export
 delete : k -> SortedMap k v -> SortedMap k v
 delete _ Empty = Empty
 delete k (M Z t) =
@@ -226,16 +226,16 @@ delete k (M (S _) t) =
     Left t' => (M _ t')
     Right t' => (M _ t')
 
-public
+export
 fromList : Ord k => List (k, v) -> SortedMap k v
 fromList l = foldl (flip (uncurry insert)) empty l
 
-public
+export
 toList : SortedMap k v -> List (k, v)
 toList Empty = []
 toList (M _ t) = treeToList t
 
-public
+export
 treeMap : (a -> b) -> Tree n k a o -> Tree n k b o
 treeMap f (Leaf k v) = Leaf k (f v)
 treeMap f (Branch2 t1 k t2) = Branch2 (treeMap f t1) k (treeMap f t2)

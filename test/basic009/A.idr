@@ -1,5 +1,5 @@
 module A
 
-public
+public export
 num : Nat
 num = 0

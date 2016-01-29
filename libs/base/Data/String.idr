@@ -1,5 +1,5 @@
 module Data.String
-%access public
+%access public export
 
 private
 parseNumWithoutSign : List Char -> Integer -> Maybe Integer

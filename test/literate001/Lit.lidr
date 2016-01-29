@@ -2,12 +2,12 @@
 
 Test some string primitives while we're at it
 
-> abstract st : String
+> export st : String
 > st = "abcdefg"
 
 Literate main program
 
-> abstract main : IO ()
+> export main : IO ()
 > main = do { putStrLn (show (strHead st))
 >             putStrLn (show (strIndex st 3))
 >             putStrLn (strCons 'z' st)

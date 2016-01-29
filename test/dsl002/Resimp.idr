@@ -3,7 +3,7 @@ module Resimp
 import public Data.Vect
 import public Data.Fin
 
-%access public
+%access public export
 
 -- IO operations which read a resource
 data Reader : Type -> Type where

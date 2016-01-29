@@ -1,6 +1,6 @@
 module Parity
 
-%access public
+%access public export
 
 data Parity : Nat -> Type where
     Even : {n : Nat} -> Parity (n + n)

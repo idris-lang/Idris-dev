@@ -2,7 +2,7 @@ module Prelude.Basics
 
 import Builtins
 
-%access public
+%access public export
 
 Not : Type -> Type
 Not a = a -> Void

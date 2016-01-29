@@ -8,7 +8,7 @@ import Prelude.Cast
 import Prelude.Interfaces
 import Prelude.Foldable
 
-%access public
+%access public export
 %default total
 
 ||| An optional value. This can be used to represent the possibility of

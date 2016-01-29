@@ -1,5 +1,5 @@
 module TestTracing
 
-public
+public export
 test : Bool
 test = True

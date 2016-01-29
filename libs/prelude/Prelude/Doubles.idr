@@ -3,7 +3,7 @@ module Prelude.Doubles
 import Builtins
 import Prelude.Interfaces
 
-%access public
+%access public export
 %default total
 
 %include C "math.h"

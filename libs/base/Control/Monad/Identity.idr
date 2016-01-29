@@ -1,8 +1,8 @@
 module Control.Monad.Identity
 
-%access public
+%access public export
 
-public record Identity (a : Type) where
+public export record Identity (a : Type) where
   constructor Id
   runIdentity : a
 

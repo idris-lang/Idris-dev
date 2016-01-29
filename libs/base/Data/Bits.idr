@@ -4,7 +4,7 @@ import Data.Fin
 
 %default total
 
-public
+public export
 nextPow2 : Nat -> Nat
 nextPow2 Z = Z
 nextPow2 (S x) = if (S x) == (2 `power` l2x)
@@ -13,11 +13,11 @@ nextPow2 (S x) = if (S x) == (2 `power` l2x)
     where
       l2x = log2NZ (S x) SIsNotZ
 
-public
+public export
 nextBytes : Nat -> Nat
 nextBytes bits = (nextPow2 (divCeilNZ bits 8 SIsNotZ))
 
-public
+public export
 machineTy : Nat -> Type
 machineTy Z = Bits8
 machineTy (S Z) = Bits16
@@ -47,7 +47,7 @@ natToBits {n=n} x with (n)
 getPad : Nat -> machineTy n
 getPad n = natToBits (minus (bitsUsed (nextBytes n)) n)
 
-public
+public export
 data Bits : Nat -> Type where
     MkBits : machineTy (nextBytes n) -> Bits n
 
@@ -99,7 +99,7 @@ shiftLeft' {n=n} x c with (nextBytes n)
     | S (S Z) = pad32' n prim__shlB32 x c
     | S (S (S _)) = pad64' n prim__shlB64 x c
 
-public
+public export
 shiftLeft : Bits n -> Bits n -> Bits n
 shiftLeft (MkBits x) (MkBits y) = MkBits (shiftLeft' x y)
 
@@ -110,7 +110,7 @@ shiftRightLogical' {n=n} x c with (n)
     | S (S Z) = prim__lshrB32 x c
     | S (S (S _)) = prim__lshrB64 x c
 
-public
+public export
 shiftRightLogical : Bits n -> Bits n -> Bits n
 shiftRightLogical {n} (MkBits x) (MkBits y)
     = MkBits {n} (shiftRightLogical' {n=nextBytes n} x y)
@@ -122,7 +122,7 @@ shiftRightArithmetic' {n=n} x c with (nextBytes n)
     | S (S Z) = pad32' n prim__ashrB32 x c
     | S (S (S _)) = pad64' n prim__ashrB64 x c
 
-public
+public export
 shiftRightArithmetic : Bits n -> Bits n -> Bits n
 shiftRightArithmetic (MkBits x) (MkBits y) = MkBits (shiftRightArithmetic' x y)
 
@@ -133,7 +133,7 @@ and' {n=n} x y with (n)
     | S (S Z) = prim__andB32 x y
     | S (S (S _)) = prim__andB64 x y
 
-public
+public export
 and : Bits n -> Bits n -> Bits n
 and {n} (MkBits x) (MkBits y) = MkBits (and' {n=nextBytes n} x y)
 
@@ -144,7 +144,7 @@ or' {n=n} x y with (n)
     | S (S Z) = prim__orB32 x y
     | S (S (S _)) = prim__orB64 x y
 
-public
+public export
 or : Bits n -> Bits n -> Bits n
 or {n} (MkBits x) (MkBits y) = MkBits (or' {n=nextBytes n} x y)
 
@@ -155,7 +155,7 @@ xor' {n=n} x y with (n)
     | S (S Z) = prim__xorB32 x y
     | S (S (S _)) = prim__xorB64 x y
 
-public
+public export
 xor : Bits n -> Bits n -> Bits n
 xor {n} (MkBits x) (MkBits y) = MkBits {n} (xor' {n=nextBytes n} x y)
 
@@ -166,7 +166,7 @@ plus' {n=n} x y with (nextBytes n)
     | S (S Z) = pad32 n prim__addB32 x y
     | S (S (S _)) = pad64 n prim__addB64 x y
 
-public
+public export
 plus : Bits n -> Bits n -> Bits n
 plus (MkBits x) (MkBits y) = MkBits (plus' x y)
 
@@ -177,7 +177,7 @@ minus' {n=n} x y with (nextBytes n)
     | S (S Z) = pad32 n prim__subB32 x y
     | S (S (S _)) = pad64 n prim__subB64 x y
 
-public
+public export
 minus : Bits n -> Bits n -> Bits n
 minus (MkBits x) (MkBits y) = MkBits (minus' x y)
 
@@ -188,7 +188,7 @@ times' {n=n} x y with (nextBytes n)
     | S (S Z) = pad32 n prim__mulB32 x y
     | S (S (S _)) = pad64 n prim__mulB64 x y
 
-public
+public export
 times : Bits n -> Bits n -> Bits n
 times (MkBits x) (MkBits y) = MkBits (times' x y)
 
@@ -200,7 +200,7 @@ sdiv' {n=n} x y with (nextBytes n)
     | S (S Z) = prim__sdivB32 x y
     | S (S (S _)) = prim__sdivB64 x y
 
-public partial
+public export partial
 sdiv : Bits n -> Bits n -> Bits n
 sdiv (MkBits x) (MkBits y) = MkBits (sdiv' x y)
 
@@ -212,7 +212,7 @@ udiv' {n=n} x y with (nextBytes n)
     | S (S Z) = prim__udivB32 x y
     | S (S (S _)) = prim__udivB64 x y
 
-public partial
+public export partial
 udiv : Bits n -> Bits n -> Bits n
 udiv (MkBits x) (MkBits y) = MkBits (udiv' x y)
 
@@ -224,7 +224,7 @@ srem' {n=n} x y with (nextBytes n)
     | S (S Z) = prim__sremB32 x y
     | S (S (S _)) = prim__sremB64 x y
 
-public partial
+public export partial
 srem : Bits n -> Bits n -> Bits n
 srem (MkBits x) (MkBits y) = MkBits (srem' x y)
 
@@ -236,7 +236,7 @@ urem' {n=n} x y with (nextBytes n)
     | S (S Z) = prim__uremB32 x y
     | S (S (S _)) = prim__uremB64 x y
 
-public partial
+public export partial
 urem : Bits n -> Bits n -> Bits n
 urem (MkBits x) (MkBits y) = MkBits (urem' x y)
 
@@ -302,7 +302,7 @@ complement' {n=n} x with (nextBytes n)
     | S (S (S _)) = let pad = getPad {n=3} n in
                     prim__complB64 (x `prim__shlB64` pad) `prim__lshrB64` pad
 
-public
+public export
 complement : Bits n -> Bits n
 complement (MkBits x) = MkBits (complement' x)
 
@@ -321,7 +321,7 @@ zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (S (S Z), S (S (S _))) = believe_me (prim__zextB32_B64 (believe_me x))
     | (S (S (S _)), S (S (S _))) = believe_me x
 
-public
+public export
 zeroExtend : Bits n -> Bits (n+m)
 zeroExtend (MkBits x) = MkBits (zext' x)
 
@@ -337,7 +337,7 @@ intToBits' {n=n} x with (nextBytes n)
     | S (S (S _)) = let pad = getPad {n=3} n in
                     prim__lshrB64 (prim__shlB64 (prim__truncBigInt_B64 x) pad) pad
 
-public
+public export
 intToBits : Integer -> Bits n
 intToBits n = MkBits (intToBits' n)
 
@@ -351,7 +351,7 @@ bitsToInt' {n=n} x with (nextBytes n)
     | S (S Z) = prim__zextB32_BigInt x
     | S (S (S _)) = prim__zextB64_BigInt x
 
-public
+public export
 bitsToInt : Bits n -> Integer
 bitsToInt (MkBits x) = bitsToInt' x
 
@@ -393,7 +393,7 @@ sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (S (S (S _)), S (S (S _))) = let pad = getPad {n=3} n in
                                    believe_me (prim__ashrB64 (prim__shlB64 (believe_me x) pad) pad)
 
---public
+--public export
 --signExtend : Bits n -> Bits (n+m)
 --signExtend {m=m} (MkBits x) = MkBits (zeroUnused (sext' x))
 
@@ -412,23 +412,23 @@ trunc' {m=m} {n=n} x with (nextBytes n, nextBytes (m+n))
     | (S (S Z), S (S (S _))) = believe_me (prim__truncB64_B32 (believe_me x))
     | (S (S (S _)), S (S (S _))) = believe_me x
 
-public
+public export
 truncate : Bits (m+n) -> Bits n
 truncate (MkBits x) = MkBits (zeroUnused (trunc' x))
 
-public
+public export
 bitAt : Fin n -> Bits n
 bitAt n = intToBits 1 `shiftLeft` intToBits (cast n)
 
-public
+public export
 getBit : Fin n -> Bits n -> Bool
 getBit n x = (x `and` (bitAt n)) /= intToBits 0
 
-public
+public export
 setBit : Fin n -> Bits n -> Bits n
 setBit n x = x `or` (bitAt n)
 
-public
+public export
 unsetBit : Fin n -> Bits n -> Bits n
 unsetBit n x = x `and` complement (bitAt n)
 

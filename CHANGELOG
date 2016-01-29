@@ -1,12 +1,22 @@
 New in 0.11:
 ============
 
-* The export rules have been simplified. Now:
+Updated export rules
+--------------------
+
+* The export rules are:
   - 'private' means that the definition is not exported at all
   - 'export' means that the top level type is exported, but not the
     definition. In the case of 'data', this means the type constructor is
     exported but not the data constructors.
   - 'public export' means that the entire definition is exported.
+* Exported names can only refer to things with at least the same level of
+  visibility. That is:
+  - 'private' definitions can refer to anything
+  - 'export' definitions can refer to 'export' or 'public' definitions
+    in their types
+  - 'public export' definitions can refer only to other 'public export'
+    definitions in their types and definitions
 * By default, names are 'private'. This can be altered with an %access
   directive as before.
 

@@ -5,13 +5,13 @@ import Control.IOExcept
 import Data.Vect
 import public Data.So
 
-%access public
+%access public export
 
-abstract
+export
 data MemoryChunk : Nat -> Nat -> Type where
      CH : Ptr -> MemoryChunk size initialized
 
-abstract
+export
 data RawMemory : Effect where
      Allocate   : (n : Nat) ->
                   RawMemory () () (\v => MemoryChunk n 0)

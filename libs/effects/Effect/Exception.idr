@@ -4,7 +4,7 @@ import Effects
 import System
 import Control.IOExcept
 
-%access public
+%access public export
 
 data Exception : Type -> Effect where
      Raise : a -> sig (Exception a) b

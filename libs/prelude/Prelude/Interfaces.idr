@@ -4,7 +4,7 @@ import Builtins
 import Prelude.Basics
 import Prelude.Bool
 
-%access public
+%access public export
 
 -- Numerical Operator Precedence
 infixl 5 ==, /=

@@ -2,7 +2,7 @@ module Data.Vect.Quantifiers
 
 import Data.Vect
 
-%access public
+%access public export
 
 ||| A proof that some element of a vector satisfies some property
 |||

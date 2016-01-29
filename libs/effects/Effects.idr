@@ -7,7 +7,7 @@ import Data.Vect
 --- Effectful computations are described as algebraic data types that
 --- explain how an effect is interpreted in some underlying context.
 
-%access public
+%access public export
 -- ----------------------------------------------------------------- [ Effects ]
 ||| The Effect type describes effectful computations.
 |||

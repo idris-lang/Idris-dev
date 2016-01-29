@@ -33,7 +33,7 @@ import public Language.Reflection
 import public Language.Reflection.Elab
 import public Language.Reflection.Errors
 
-%access public
+%access public export
 %default total
 
 -- Things that can't be elsewhere for import cycle reasons

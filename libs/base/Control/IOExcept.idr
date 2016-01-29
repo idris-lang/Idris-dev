@@ -1,6 +1,6 @@
 module Control.IOExcept
 
-%access public
+%access public export
 
 -- An IO monad with exception handling
 

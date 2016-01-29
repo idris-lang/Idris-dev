@@ -9,7 +9,7 @@ import Prelude.Cast
 import Prelude.Interfaces
 import Prelude.Uninhabited
 
-%access public
+%access public export
 %default total
 
 ||| Natural numbers: unbounded, unsigned integers which can be pattern

@@ -5,7 +5,7 @@
 
 module Data.Complex
 
-%access public
+%access public export
 
 ------------------------------ Rectangular form
 

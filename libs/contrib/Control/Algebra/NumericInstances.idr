@@ -7,7 +7,7 @@ import Control.Algebra.VectorSpace
 import Data.Complex
 import Data.ZZ
 
-%access public
+%access public export
 
 Semigroup Integer where
   (<+>) = (+)

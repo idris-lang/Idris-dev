@@ -1,5 +1,5 @@
 > module A
 
-> public n : Nat
+> public export n : Nat
 > n = ?lala
 

@@ -2,7 +2,7 @@ module Data.List.Quantifiers
 
 import Data.List
 
-%access public
+%access public export
 
 ||| A proof that some element of a list satisfies some property
 |||

@@ -12,7 +12,7 @@ import Prelude.Nat
 import Prelude.List
 import Prelude.Strings
 
-%access public
+%access public export
 %default total
 
 b8ToString : Bits8 -> String

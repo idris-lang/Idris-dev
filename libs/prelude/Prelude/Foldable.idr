@@ -6,7 +6,7 @@ import Prelude.Basics
 import Prelude.Interfaces
 import Prelude.Algebra
 
-%access public
+%access public export
 %default total
 
 interface Foldable (t : Type -> Type) where

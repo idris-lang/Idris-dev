@@ -7,7 +7,7 @@ import Prelude.List
 import Prelude.Cast
 import Builtins
 
-%access public
+%access public export
 
 ||| Convert the number to its ASCII equivalent.
 chr : Int -> Char

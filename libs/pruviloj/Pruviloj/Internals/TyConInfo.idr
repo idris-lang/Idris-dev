@@ -6,7 +6,7 @@ import Pruviloj.Renamers
 
 import Language.Reflection.Utils
 
-%access public
+%access public export
 
 ||| A representation of a type constructor in which all argument names
 ||| are made unique and they are separated into params and then

@@ -3,7 +3,7 @@ module Effect.Random
 import Effects
 import Data.Vect
 
-%access public
+%access public export
 
 data Random : Effect where 
      GetRandom : sig Random Integer Integer

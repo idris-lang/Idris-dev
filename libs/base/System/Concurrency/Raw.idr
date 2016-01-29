@@ -6,7 +6,7 @@ module System.Concurrency.Raw
 
 import System
 
-%access abstract
+%access export
 
 ||| Send a message of any type to the thread with the given thread id
 ||| Returns 1 if the message was sent successfully, 0 otherwise

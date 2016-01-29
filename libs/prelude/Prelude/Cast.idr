@@ -3,7 +3,7 @@ module Prelude.Cast
 import Prelude.Bool
 import public Builtins
 
-%access public
+%access public export
 
 ||| Interface for transforming an instance of a data type to another type.
 interface Cast from to where

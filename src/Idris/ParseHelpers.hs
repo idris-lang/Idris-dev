@@ -248,7 +248,7 @@ idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved 
                                       "where", "with", "syntax", "proof", "postulate",
                                       "using", "namespace", "class", "instance", 
                                       "interface", "implementation", "parameters",
-                                      "public", "private", "abstract", "implicit",
+                                      "public", "private", "export", "abstract", "implicit",
                                       "quoteGoal", "constructor",
                                       "if", "then", "else"]
 
@@ -613,8 +613,25 @@ notOpenBraces = do ist <- get
 
 {- | Parses an accessibilty modifier (e.g. public, private) -}
 accessibility :: IdrisParser Accessibility
-accessibility = do reserved "public";   return Public
-            <|> do reserved "abstract"; return Frozen
+accessibility = do reserved "public";   
+                   gotexp <- optional (reserved "export")
+                   case gotexp of
+                        Just _ -> return ()
+                        Nothing -> do
+                           ist <- get
+                           fc <- getFC
+                           put ist { parserWarnings = 
+                              (fc, Msg "'public' is deprecated. Use 'public export' instead.")
+                                   : parserWarnings ist }
+                   return Public
+            <|> do reserved "abstract"; 
+                   ist <- get
+                   fc <- getFC
+                   put ist { parserWarnings = 
+                      (fc, Msg "The 'abstract' keyword is deprecated. Use 'export' instead.")
+                           : parserWarnings ist }
+                   return Frozen
+            <|> do reserved "export"; return Frozen
             <|> do reserved "private";  return Hidden
             <?> "accessibility modifier"
 

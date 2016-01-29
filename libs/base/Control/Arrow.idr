@@ -3,7 +3,7 @@ module Control.Arrow
 import Data.Morphisms
 import Control.Category
 
-%access public
+%access public export
 
 infixr 5 <++>
 infixr 3 ***

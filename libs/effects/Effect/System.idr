@@ -7,7 +7,7 @@ import Effects
 import System
 import Control.IOExcept
 
-%access public
+%access public export
 
 data System : Effect where
      Args : sig System (List String)

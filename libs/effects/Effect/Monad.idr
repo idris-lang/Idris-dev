@@ -2,7 +2,7 @@ module Effect.Monad
 
 import Effects
 
-%access public
+%access public export
 
 data MonadEffT : List EFFECT -> (Type -> Type) -> Type -> Type where
      MkMonadEffT : EffM m a xs (\v => xs) -> MonadEffT xs m a

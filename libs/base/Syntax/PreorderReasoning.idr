@@ -1,6 +1,6 @@
 module Syntax.PreorderReasoning
 
-%access public
+%access public export
 
 -- QED is first to get the precedence to work out. It's just Refl with an explicit argument.
 syntax [expr] "QED" = qed expr

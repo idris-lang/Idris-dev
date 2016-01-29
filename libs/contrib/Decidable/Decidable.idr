@@ -3,7 +3,7 @@ module Decidable.Decidable
 import Data.Rel
 import Data.Fun
 
-%access public
+%access public export
 
 --------------------------------------------------------------------------------
 -- Interface for decidable n-ary Relations

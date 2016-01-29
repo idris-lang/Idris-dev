@@ -4,7 +4,7 @@ import Decidable.Equality
 import Data.Sign
 
 %default total
-%access public
+%access public export
 
 
 ||| An integer is either a positive `Nat` or the negated successor of a `Nat`.

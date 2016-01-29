@@ -1,6 +1,6 @@
 module Data.CoList
 
-%access public
+%access public export
 %default total
 
 ||| Idris will know that it always can produce a new element in finite time

@@ -1,5 +1,5 @@
 module Visible
 
-public
+public export
 visible : ()
 visible = ()

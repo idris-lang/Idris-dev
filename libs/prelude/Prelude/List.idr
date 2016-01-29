@@ -12,7 +12,7 @@ import Prelude.Maybe
 import Prelude.Uninhabited
 import Prelude.Nat
 
-%access public
+%access public export
 %default total
 
 infix 5 \\

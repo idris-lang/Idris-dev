@@ -8,7 +8,7 @@ import Data.So
 import Control.WellFounded
 
 %default total
-%access public
+%access public export
 
 ||| A strict less-than relation on `Nat`.
 |||

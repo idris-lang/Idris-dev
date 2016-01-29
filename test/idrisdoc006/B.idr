@@ -1,6 +1,6 @@
 module B
 
 ||| Test function
-public
+public export
 test : ()
 test = ()

@@ -8,7 +8,7 @@ import Prelude.Interfaces
 import Prelude.Maybe
 import Prelude.List
 
-%access public
+%access public export
 
 ||| A sum type
 %elim data Either : (a, b : Type) -> Type where

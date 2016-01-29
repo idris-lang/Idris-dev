@@ -16,7 +16,7 @@ import Prelude.Monad
 import Prelude.Nat
 import Language.Reflection
 
-%access public
+%access public export
 
 data Fixity = Infixl Nat | Infixr Nat | Infix Nat | Prefix Nat
 
@@ -102,7 +102,7 @@ record Datatype where
   constructors : List (TTName, List CtorArg, Raw)
 
 ||| A reflected elaboration script.
-abstract
+export
 data Elab : Type -> Type where
   -- obligatory control stuff
   Prim__PureElab : a -> Elab a
@@ -166,7 +166,7 @@ data Elab : Type -> Type where
 -------------
 -- Public API
 -------------
-%access public
+%access public export
 namespace Tactics
   implementation Functor Elab where
     map f t = Prim__BindElab t (\x => Prim__PureElab (f x))

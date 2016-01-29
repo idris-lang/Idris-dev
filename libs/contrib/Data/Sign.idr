@@ -1,6 +1,6 @@
 module Data.Sign
 
-%access public
+%access public export
 
 ||| A representation of signs for signed datatypes such as `ZZ`
 data Sign = Plus | Zero | Minus

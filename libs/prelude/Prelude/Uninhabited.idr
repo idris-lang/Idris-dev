@@ -5,7 +5,7 @@ module Prelude.Uninhabited
 
 import Builtins
 
-%access public
+%access public export
 
 ||| A canonical proof that some type is empty
 interface Uninhabited t where

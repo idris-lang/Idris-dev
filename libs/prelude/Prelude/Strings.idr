@@ -17,7 +17,7 @@ import Prelude.Nat
 import Prelude.Monad
 import Decidable.Equality
 
-%access public
+%access public export
 
 partial
 foldr1 : (a -> a -> a) -> List a -> a

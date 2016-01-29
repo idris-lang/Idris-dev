@@ -8,7 +8,7 @@ import Prelude.Interfaces
 import Prelude.Foldable
 import Prelude.Functor
 
-%access public
+%access public export
 
 ---- Applicative functors/Idioms
 

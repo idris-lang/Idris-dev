@@ -2,7 +2,7 @@ module Reflect
 
 import Decidable.Equality
 
-%access public
+%access public export
 %default total
 
 using (xs : List a, ys : List a, G : List (List a))

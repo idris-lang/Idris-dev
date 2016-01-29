@@ -7,7 +7,7 @@ import Prelude.Applicative
 import Prelude.Foldable
 import Prelude.Functor
 
-%access public
+%access public export
 
 traverse_ : (Foldable t, Applicative f) => (a -> f b) -> t a -> f ()
 traverse_ f = foldr ((*>) . f) (pure ())

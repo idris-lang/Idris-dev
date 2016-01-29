@@ -9,7 +9,7 @@ import Prelude.List
 import Prelude.Nat
 import Prelude.Maybe
 
-%access public
+%access public export
 
 --------------------------------------------------------------------------------
 -- Utility lemmas

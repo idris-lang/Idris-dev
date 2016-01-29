@@ -8,7 +8,7 @@ import Prelude.Bool
 import Prelude.List
 import Prelude.Maybe
 
-%access public
+%access public export
 
 data Err = Msg String
          | InternalMsg String

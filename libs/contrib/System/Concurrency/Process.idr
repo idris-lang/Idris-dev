@@ -4,9 +4,9 @@ module System.Concurrency.Process
 
 import System.Concurrency.Raw
 
-%access public
+%access public export
 
-abstract
+export
 data ProcID msg = MkPID Ptr
 
 ||| Type safe message passing programs. Parameterised over the type of

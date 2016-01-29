@@ -2,7 +2,7 @@ module Control.Catchable
 
 import Control.IOExcept
 
-%access public
+%access public export
 
 interface Catchable (m : Type -> Type) t where
     throw : t -> m a

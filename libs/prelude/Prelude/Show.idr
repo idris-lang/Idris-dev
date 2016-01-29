@@ -14,7 +14,7 @@ import Prelude.Either
 import Prelude.Nat
 import Prelude.Strings
 
-%access public
+%access public export
 
 %default total
 

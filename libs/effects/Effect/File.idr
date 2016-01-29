@@ -4,7 +4,7 @@ module Effect.File
 import Effects
 import Control.IOExcept
 
-%access public
+%access public export
 
 ||| A Dependent type to describe File Handles. File handles are
 ||| parameterised with the current state of the file: Closed; Open for

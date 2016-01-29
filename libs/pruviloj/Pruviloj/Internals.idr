@@ -7,7 +7,7 @@ import Pruviloj.Renamers
 
 import Data.Vect
 
-%access public
+%access public export
 
 ||| Get the name of a reflected type constructor argument.
 tyConArgName : TyConArg -> TTName

@@ -2,7 +2,7 @@ module Effect.Default
 
 import Data.Vect
 
-%access public
+%access public export
 
 interface Default a where
     default : a

@@ -2,7 +2,7 @@ module Control.Algebra.VectorSpace
 
 import Control.Algebra
 
-%access public
+%access public export
 
 infixl 5 <#>
 infixr 2 <||>

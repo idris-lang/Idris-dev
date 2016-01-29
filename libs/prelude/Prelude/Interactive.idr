@@ -21,7 +21,7 @@ import Prelude.Either
 import Prelude.Monad
 import IO
 
-%access public
+%access public export
 
 ---- some basic io
 

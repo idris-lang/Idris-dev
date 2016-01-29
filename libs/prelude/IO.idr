@@ -3,21 +3,21 @@
 import Builtins
 import Prelude.List
 
-%access public
+%access public export
 
 ||| Idris's primitive IO, for building abstractions on top of
-abstract
+export
 data PrimIO : Type -> Type where
      Prim__IO : a -> PrimIO a
 
 ||| A token representing the world, for use in `IO`
-abstract data World = TheWorld prim__WorldType
+export data World = TheWorld prim__WorldType
 
 private
 world : World -> prim__WorldType
 world (TheWorld w) = w
 
-abstract WorldRes : Type -> Type
+export WorldRes : Type -> Type
 WorldRes x = x
 
 ||| An FFI specifier, which describes how a particular compiler
@@ -35,7 +35,7 @@ record FFI where
 
 ||| The IO type, parameterised over the FFI that is available within
 ||| it.
-abstract
+export
 data IO' : (lang : FFI) -> Type -> Type where
      MkIO : (World -> PrimIO (WorldRes a)) -> IO' lang a
 
@@ -91,25 +91,25 @@ foreign : (f : FFI) -> (fname : ffi_fn f) -> (ty : Type) ->
           {auto fty : FTy f [] ty} -> ty
 foreign ffi fname ty {fty} = foreign_prim ffi fname fty []
 
-abstract
+export
 prim_io_bind : PrimIO a -> (a -> PrimIO b) -> PrimIO b
 prim_io_bind (Prim__IO v) k = k v
 
 unsafePerformPrimIO : PrimIO a -> a
 -- compiled as primitive
 
-abstract
+export
 prim_io_return : a -> PrimIO a
 prim_io_return x = Prim__IO x
 
-abstract
+export
 io_bind : IO' l a -> (a -> IO' l b) -> IO' l b
 io_bind (MkIO fn) k
    = MkIO (\w => prim_io_bind (fn w)
                     (\ b => case k b of
                                  MkIO fkb => fkb w))
 
-abstract
+export
 io_return : a -> IO' l a
 io_return x = MkIO (\w => prim_io_return x)
 

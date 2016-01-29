@@ -23,7 +23,7 @@
 module Test
 import Data.Complex
 
-%access public
+%access public export
 
 myplus : Nat -> Nat -> Nat
 myplus Z j = j

@@ -7,7 +7,7 @@ import System
 |||
 ||| @ loc     The source location to display for the error
 ||| @ message The error to print
-partial abstract
+partial export
 error : {default (%runElab sourceLocation) loc : SourceLocation} ->
         (message : String) ->
         a

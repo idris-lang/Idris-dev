@@ -19,7 +19,7 @@ import Data.Maybe
 import Data.List
 import qualified Data.Text as T
 
--- TODO: Only include names with public/abstract accessibility
+-- TODO: Only include names with public/export accessibility
 --
 -- Issue #1573 on the Issue tracker.
 --    https://github.com/idris-lang/Idris-dev/issues/1573

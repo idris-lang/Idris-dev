@@ -14,10 +14,10 @@ import Prelude.Either
 import Prelude.Show
 import IO
 
-%access public
+%access public export
 
 ||| A file handle
-abstract
+export
 data File : Type where
   FHandle : (p : Ptr) -> File
 

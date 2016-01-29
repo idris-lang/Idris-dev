@@ -8,8 +8,6 @@ module IdrisNet.Socket
 %include C "sys/socket.h"
 %include C "netdb.h"
 
-%access public
-
 ByteLength : Type
 ByteLength = Int
 
@@ -120,18 +118,18 @@ record UDPAddrInfo where
   remote_port : Port
 
 ||| Frees a given pointer
-public
+export
 sock_free : BufPtr -> IO ()
 sock_free (BPtr ptr) = foreign FFI_C "idrnet_free" (Ptr -> IO ()) ptr
 
-public
+export
 sockaddr_free : SockaddrPtr -> IO ()
 sockaddr_free (SAPtr ptr) = foreign FFI_C "idrnet_free" (Ptr -> IO ()) ptr
 
 ||| Allocates an amount of memory given by the ByteLength parameter.
 |||
 ||| Used to allocate a mutable pointer to be given to the Recv functions.
-public
+export
 sock_alloc : ByteLength -> IO BufPtr
 sock_alloc bl = map BPtr $ foreign FFI_C "idrnet_malloc" (Int -> IO Ptr) bl
 
