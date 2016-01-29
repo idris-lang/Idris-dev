@@ -155,6 +155,7 @@ move' src_ptr dst_offset src_offset size dst_bounds src_bounds
 
 data MoveDescriptor = Dst | Src
 
+export
 move : {dst_size : Nat} ->
        {dst_init : Nat} ->
        {src_size : Nat} ->

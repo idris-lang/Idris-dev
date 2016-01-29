@@ -612,8 +612,9 @@ notOpenBraces = do ist <- get
         hasNothing = any isNothing
 
 {- | Parses an accessibilty modifier (e.g. public, private) -}
-accessibility :: IdrisParser Accessibility
-accessibility = do reserved "public";   
+accessibility' :: IdrisParser Accessibility
+accessibility' 
+              = do reserved "public";   
                    gotexp <- optional (reserved "export")
                    case gotexp of
                         Just _ -> return ()
@@ -635,16 +636,23 @@ accessibility = do reserved "public";
             <|> do reserved "private";  return Hidden
             <?> "accessibility modifier"
 
+accessibility :: IdrisParser Accessibility
+accessibility = do acc <- optional accessibility'
+                   case acc of
+                        Just a -> return a
+                        Nothing -> do ist <- get
+                                      return (default_access ist)
+
 -- | Adds accessibility option for function
-addAcc :: Name -> Maybe Accessibility -> IdrisParser ()
+addAcc :: Name -> Accessibility -> IdrisParser ()
 addAcc n a = do i <- get
-                put (i { hide_list = (n, a) : hide_list i })
+                put (i { hide_list = addDef n a (hide_list i) })
 
 {- | Add accessbility option for data declarations
  (works for classes too - 'abstract' means the data/class is visible but members not) -}
-accData :: Maybe Accessibility -> Name -> [Name] -> IdrisParser ()
-accData (Just Frozen) n ns = do addAcc n (Just Frozen)
-                                mapM_ (\n -> addAcc n (Just Hidden)) ns
+accData :: Accessibility -> Name -> [Name] -> IdrisParser ()
+accData Frozen n ns = do addAcc n Frozen
+                         mapM_ (\n -> addAcc n Hidden) ns
 accData a n ns = do addAcc n a
                     mapM_ (`addAcc` a) ns
 
@@ -679,7 +687,7 @@ collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns fc ps : ds) = PNamespace ns fc (collect ps) : collect ds
 collect (PClass doc f s cs n nfc ps pdocs fds ds cn cd : ds')
     = PClass doc f s cs n nfc ps pdocs fds (collect ds) cn cd : collect ds'
-collect (PInstance doc argDocs f s cs n nfc ps t en ds : ds')
-    = PInstance doc argDocs f s cs n nfc ps t en (collect ds) : collect ds'
+collect (PInstance doc argDocs f s cs acc n nfc ps t en ds : ds')
+    = PInstance doc argDocs f s cs acc n nfc ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []

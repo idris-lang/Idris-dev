@@ -234,7 +234,7 @@ data IState = IState {
     brace_stack :: [Maybe Int],
     lastTokenSpan :: Maybe FC, -- ^ What was the span of the latest token parsed?
     idris_parsedSpan :: Maybe FC,
-    hide_list :: [(Name, Maybe Accessibility)],
+    hide_list :: Ctxt Accessibility,
     default_access :: Accessibility,
     default_total :: Bool,
     ibc_write :: [IBCWrite],
@@ -350,7 +350,7 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext 
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
+                   [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
                    emptyContext S.empty M.empty
@@ -718,6 +718,7 @@ data PDecl' t
        [(Name, Docstring (Either Err t))] -- Parameter docs
        SyntaxInfo
        FC [(Name, t)] -- constraints
+       Accessibility
        Name -- class
        FC -- precise location of class
        [t] -- parameters
@@ -876,10 +877,10 @@ mapPDeclFC f g (PClass doc syn fc constrs n nfc params paramDocs det body ctor c
            (map (mapPDeclFC f g) body)
            (fmap (\(n, nfc) -> (n, g nfc)) ctor)
            ctorDoc
-mapPDeclFC f g (PInstance doc paramDocs syn fc constrs cn cnfc params instTy instN body) =
+mapPDeclFC f g (PInstance doc paramDocs syn fc constrs cn acc cnfc params instTy instN body) =
     PInstance doc paramDocs syn (f fc)
               (map (\(constrN, constrT) -> (constrN, mapPTermFC f g constrT)) constrs)
-              cn (g cnfc) (map (mapPTermFC f g) params)
+              cn acc (g cnfc) (map (mapPTermFC f g) params)
               (mapPTermFC f g instTy)
               instN
               (map (mapPDeclFC f g) body)
@@ -919,7 +920,7 @@ declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ _ ds) = concatMap declared ds
 declared (PRecord _ _ _ _ n  _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 declared (PClass _ _ _ _ n _ _ _ _ ms cn cd) = n : (map fst (maybeToList cn) ++ concatMap declared ms)
-declared (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
+declared (PInstance _ _ _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
 declared (PMutual _ ds) = concatMap declared ds
@@ -939,7 +940,7 @@ tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ _ ds) = concatMap tldeclared ds
 tldeclared (PClass _ _ _ _ n _ _ _ _ ms cn _) = n : (map fst (maybeToList cn) ++ concatMap tldeclared ms)
-tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
+tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
 defined :: PDecl -> [Name]
@@ -955,7 +956,7 @@ defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ _ ds) = concatMap defined ds
 defined (PRecord _ _ _ _ n _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 defined (PClass _ _ _ _ n _ _ _ _ ms cn _) = n : (map fst (maybeToList cn) ++ concatMap defined ms)
-defined (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
+defined (PInstance _ _ _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
 defined (PMutual _ ds) = concatMap defined ds
@@ -2110,7 +2111,7 @@ showDeclImp o (PNamespace n fc ps) = text "namespace" <+> text n <> braces (line
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
 showDeclImp o (PClass _ _ _ cs n _ ps _ _ ds _ _)
    = text "interface" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
-showDeclImp o (PInstance _ _ _ _ cs n _ _ t _ ds)
+showDeclImp o (PInstance _ _ _ _ cs acc n _ _ t _ ds)
    = text "implementation" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o

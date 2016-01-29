@@ -9,6 +9,7 @@ public export
 data Mod2 : Nat -> Type where
     MkMod2 : {n : Nat} -> Bits n -> Mod2 n
 
+public export
 modBin : (Bits n -> Bits n -> Bits n) -> Mod2 n -> Mod2 n -> Mod2 n
 modBin f (MkMod2 x) (MkMod2 y) = MkMod2 (f x y)
 

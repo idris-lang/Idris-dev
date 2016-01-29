@@ -110,7 +110,7 @@ implementation ReflConst Bits32 where
 implementation ReflConst Bits64 where
    toConst = B64
 
-implicit
+implicit export
 reflectConstant: (ReflConst a) => a -> Const
 reflectConstant = toConst
 

@@ -337,8 +337,8 @@ declExtension syn ns rules =
                   (map (updateNs ns) ds)
                   (updateRecCon ns cname)
                   cdocs
-    updateNs ns (PInstance docs pdocs s fc cs cn fc' ps ity ni ds)
-         = PInstance docs pdocs s fc cs (updateB ns cn) fc'
+    updateNs ns (PInstance docs pdocs s fc cs acc cn fc' ps ity ni ds)
+         = PInstance docs pdocs s fc cs acc (updateB ns cn) fc'
                      ps ity (fmap (updateB ns) ni)
                             (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
@@ -584,7 +584,7 @@ fnDecl' syn = checkFixity $
                                           then [TotalFn]
                                           else []
                         opts <- fnOpts initOpts
-                        acc <- optional accessibility
+                        acc <- accessibility
                         opts' <- fnOpts opts
                         (n_in, nfc) <- fnName
                         let n = expandNS syn n_in
@@ -698,7 +698,7 @@ postulate syn = do (doc, ext)
                                      then [TotalFn]
                                      else []
                    opts <- fnOpts initOpts
-                   acc <- optional accessibility
+                   acc <- accessibility
                    opts' <- fnOpts opts
                    (n_in, nfc) <- fnName
                    let n = expandNS syn n_in
@@ -856,7 +856,7 @@ Class ::=
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
 class_ syn = do (doc, argDocs, acc)
                   <- try (do (doc, argDocs) <- docstring syn
-                             acc <- optional accessibility
+                             acc <- accessibility
                              classKeyword
                              return (doc, argDocs, acc))
                 fc <- getFC
@@ -904,7 +904,8 @@ InstanceName ::= '[' Name ']';
 -}
 instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
 instance_ kwopt syn 
-              = do (doc, argDocs)
+              = do acc <- accessibility
+                   (doc, argDocs)
                      <- try (docstring syn <* if kwopt then optional instanceKeyword
                                                        else do instanceKeyword
                                                                return (Just ()))
@@ -917,7 +918,7 @@ instance_ kwopt syn
                    let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- instanceBlock syn
-                   return [PInstance doc argDocs syn fc cs' cn cnfc args t en ds]
+                   return [PInstance doc argDocs syn fc cs' acc cn cnfc args t en ds]
                  <?> "implementation declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
@@ -1321,7 +1322,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     return [PDirective (DHide n)]
              <|> do try (lchar '%' *> reserved "freeze"); n <- fst <$> iName []
                     return [PDirective (DFreeze n)]
-             <|> do try (lchar '%' *> reserved "access"); acc <- accessibility
+             <|> do try (lchar '%' *> reserved "access")
+                    acc <- accessibility
+                    ist <- get
+                    put ist { default_access = acc }
                     return [PDirective (DAccess acc)]
              <|> do try (lchar '%' *> reserved "default"); tot <- totality
                     i <- get
@@ -1769,7 +1773,7 @@ loadSource lidr f toline
                   clearHighlights
                   i <- getIState
                   putIState (i { default_total = def_total,
-                                 hide_list = [] })
+                                 hide_list = emptyContext })
                   return ()
   where
     namespaces :: [String] -> [PDecl] -> [PDecl]
@@ -1799,15 +1803,9 @@ loadSource lidr f toline
         parsedDocs ist = annotCode (tryFullExpr syn ist) docs
 
 {- | Adds names to hide list -}
-addHides :: [(Name, Maybe Accessibility)] -> Idris ()
+addHides :: Ctxt Accessibility -> Idris ()
 addHides xs = do i <- getIState
                  let defh = default_access i
-                 let (hs, as) = partition isNothing xs
-                 mapM_ doHide
-                     (map (\ (n, _) -> (n, defh)) hs ++
-                       map (\ (n, Just a) -> (n, a)) as)
-  where isNothing (_, Nothing) = True
-        isNothing _            = False
-
-        doHide (n, a) = do setAccessibility n a
+                 mapM_ doHide (toAlist xs)
+  where doHide (n, a) = do setAccessibility n a
                            addIBC (IBCAccess n a)

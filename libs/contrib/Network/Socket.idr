@@ -8,7 +8,7 @@ module IdrisNet.Socket
 %include C "sys/socket.h"
 %include C "netdb.h"
 
-ByteLength : Type
+public export ByteLength : Type
 ByteLength = Int
 
 interface ToCode a where
@@ -65,8 +65,9 @@ implementation ToCode SocketType where
 
 data RecvStructPtr = RSPtr Ptr
 data RecvfromStructPtr = RFPtr Ptr
-data BufPtr = BPtr Ptr
-data SockaddrPtr = SAPtr Ptr
+
+export data BufPtr = BPtr Ptr
+export data SockaddrPtr = SAPtr Ptr
 
 ||| Protocol Number.
 |||

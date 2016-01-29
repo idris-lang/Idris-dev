@@ -7,7 +7,7 @@ module Data.Heap
 
 
 %default total
-%access public export
+%access export
 
 export data MaxiphobicHeap : Type -> Type where
   Empty : MaxiphobicHeap a

@@ -207,6 +207,11 @@ setAccessibility n a
               let ctxt = setAccess n a (tt_ctxt i)
               putIState $ i { tt_ctxt = ctxt }
 
+-- | get the accessibility of a name outside this module
+getFromHideList :: Name -> Idris (Maybe Accessibility)
+getFromHideList n = do i <- getIState
+                       return $ lookupCtxtExact n (hide_list i)
+
 setTotality :: Name -> Totality -> Idris ()
 setTotality n a
          = do i <- getIState
@@ -1258,10 +1263,10 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds dec
            (map (expandParamsD rhs ist dec ps ns) decls)
            cn
            cd
-expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs n nfc params ty cn decls)
+expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs acc n nfc params ty cn decls)
    = PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
-           n
+           acc n
            nfc
            (map (expandParams dec ps ns []) params)
            (expandParams dec ps ns [] ty)

@@ -270,7 +270,7 @@ cast_part : TT -> ErrorReportPart
 cast_part (P Bound n t) = TextPart "unknown type"
 cast_part x = TermPart x
 
-%error_handler
+%error_handler export
 cast_error : Err -> Maybe (List ErrorReportPart)
 cast_error (CantResolve `(Cast ~x ~y))
      = Just [TextPart "Can't cast from",
@@ -280,6 +280,7 @@ cast_error (CantResolve `(Cast ~x ~y))
 cast_error _ = Nothing
 
 %error_handler
+export
 num_error : Err -> Maybe (List ErrorReportPart)
 num_error (CantResolve `(Num ~x))
      = Just [TermPart x, TextPart "is not a numeric type"]

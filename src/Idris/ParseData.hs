@@ -48,7 +48,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                       let doc' = annotCode (tryFullExpr syn ist) doc
                           paramDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
                                      | (n, d) <- paramDocs ]
-                      acc <- optional accessibility
+                      acc <- accessibility
                       opts <- dataOpts []
                       co <- recordI
                       return (doc', paramDocs', acc, opts ++ co))
@@ -192,7 +192,7 @@ data_ :: SyntaxInfo -> IdrisParser PDecl
 data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                     (doc, argDocs) <- option noDocs docComment
                     pushIndent
-                    acc <- optional accessibility
+                    acc <- accessibility
                     elim <- dataOpts []
                     co <- dataI
                     ist <- get

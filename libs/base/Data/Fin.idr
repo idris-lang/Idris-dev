@@ -149,7 +149,7 @@ mkFinIntegerErr lit finSize subErr
          , TermPart `(Fin ~(getNat finSize))
          , SubReport subErr
          ]
-total
+total export
 finFromIntegerErrors : Err -> Maybe (List ErrorReportPart)
 finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~(TConst c) ~m)) err xs y)
   = mkFinIntegerErr (TConst c) m

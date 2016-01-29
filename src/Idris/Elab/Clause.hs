@@ -259,6 +259,12 @@ elabClauses info' fc opts n_in cs =
                                  -- let scg = buildSCG i sc scargs
                                  -- add SCG later, when checking totality
                                  logElab 2 $ "Called names: " ++ show calls
+                                 -- if the definition is public, make sure
+                                 -- it only uses public names
+                                 nvis <- getFromHideList n
+                                 case nvis of
+                                      Just Public -> mapM_ (checkVisibility fc n Public Public) calls
+                                      _ -> return ()
                                  addCalls n calls
                                  addIBC (IBCCG n)
                           _ -> return ()

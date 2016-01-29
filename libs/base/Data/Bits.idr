@@ -92,6 +92,10 @@ pad64' n f x y = prim__lshrB64 (f (prim__shlB64 x pad) y) pad
     where
       pad = getPad {n=3} n
 
+-- TODO: This (and all the other functions along these lings) is public export
+-- because it is used by public export things. Do they really need to be
+-- public export, or is export good enough?
+public export
 shiftLeft' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 shiftLeft' {n=n} x c with (nextBytes n)
     | Z = pad8' n prim__shlB8 x c
@@ -103,6 +107,7 @@ public export
 shiftLeft : Bits n -> Bits n -> Bits n
 shiftLeft (MkBits x) (MkBits y) = MkBits (shiftLeft' x y)
 
+public export
 shiftRightLogical' : machineTy n -> machineTy n -> machineTy n
 shiftRightLogical' {n=n} x c with (n)
     | Z = prim__lshrB8 x c
@@ -115,6 +120,7 @@ shiftRightLogical : Bits n -> Bits n -> Bits n
 shiftRightLogical {n} (MkBits x) (MkBits y)
     = MkBits {n} (shiftRightLogical' {n=nextBytes n} x y)
 
+public export
 shiftRightArithmetic' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 shiftRightArithmetic' {n=n} x c with (nextBytes n)
     | Z = pad8' n prim__ashrB8 x c
@@ -126,6 +132,7 @@ public export
 shiftRightArithmetic : Bits n -> Bits n -> Bits n
 shiftRightArithmetic (MkBits x) (MkBits y) = MkBits (shiftRightArithmetic' x y)
 
+public export
 and' : machineTy n -> machineTy n -> machineTy n
 and' {n=n} x y with (n)
     | Z = prim__andB8 x y
@@ -137,6 +144,7 @@ public export
 and : Bits n -> Bits n -> Bits n
 and {n} (MkBits x) (MkBits y) = MkBits (and' {n=nextBytes n} x y)
 
+public export
 or' : machineTy n -> machineTy n -> machineTy n
 or' {n=n} x y with (n)
     | Z = prim__orB8 x y
@@ -148,6 +156,7 @@ public export
 or : Bits n -> Bits n -> Bits n
 or {n} (MkBits x) (MkBits y) = MkBits (or' {n=nextBytes n} x y)
 
+public export
 xor' : machineTy n -> machineTy n -> machineTy n
 xor' {n=n} x y with (n)
     | Z = prim__xorB8 x y
@@ -159,6 +168,7 @@ public export
 xor : Bits n -> Bits n -> Bits n
 xor {n} (MkBits x) (MkBits y) = MkBits {n} (xor' {n=nextBytes n} x y)
 
+public export
 plus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 plus' {n=n} x y with (nextBytes n)
     | Z = pad8 n prim__addB8 x y
@@ -170,6 +180,7 @@ public export
 plus : Bits n -> Bits n -> Bits n
 plus (MkBits x) (MkBits y) = MkBits (plus' x y)
 
+public export
 minus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 minus' {n=n} x y with (nextBytes n)
     | Z = pad8 n prim__subB8 x y
@@ -181,6 +192,7 @@ public export
 minus : Bits n -> Bits n -> Bits n
 minus (MkBits x) (MkBits y) = MkBits (minus' x y)
 
+public export
 times' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 times' {n=n} x y with (nextBytes n)
     | Z = pad8 n prim__mulB8 x y
@@ -193,6 +205,7 @@ times : Bits n -> Bits n -> Bits n
 times (MkBits x) (MkBits y) = MkBits (times' x y)
 
 partial
+public export
 sdiv' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 sdiv' {n=n} x y with (nextBytes n)
     | Z = prim__sdivB8 x y
@@ -205,6 +218,7 @@ sdiv : Bits n -> Bits n -> Bits n
 sdiv (MkBits x) (MkBits y) = MkBits (sdiv' x y)
 
 partial
+public export
 udiv' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 udiv' {n=n} x y with (nextBytes n)
     | Z = prim__udivB8 x y
@@ -216,7 +230,7 @@ public export partial
 udiv : Bits n -> Bits n -> Bits n
 udiv (MkBits x) (MkBits y) = MkBits (udiv' x y)
 
-partial
+public export partial
 srem' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 srem' {n=n} x y with (nextBytes n)
     | Z = prim__sremB8 x y
@@ -228,7 +242,7 @@ public export partial
 srem : Bits n -> Bits n -> Bits n
 srem (MkBits x) (MkBits y) = MkBits (srem' x y)
 
-partial
+public export partial
 urem' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 urem' {n=n} x y with (nextBytes n)
     | Z = prim__uremB8 x y
@@ -276,9 +290,11 @@ gt {n=n} x y with (nextBytes n)
     | S (S Z) = prim__gtB32 x y
     | S (S (S _)) = prim__gtB64 x y
 
+public export
 implementation Eq (Bits n) where
     (MkBits x) == (MkBits y) = boolOp eq x y
 
+public export
 implementation Ord (Bits n) where
     (MkBits x) < (MkBits y) = boolOp lt x y
     (MkBits x) <= (MkBits y) = boolOp lte x y
@@ -291,6 +307,7 @@ implementation Ord (Bits n) where
              then EQ
              else GT
 
+public export
 complement' : machineTy (nextBytes n) -> machineTy (nextBytes n)
 complement' {n=n} x with (nextBytes n)
     | Z = let pad = getPad {n=0} n in
@@ -307,7 +324,7 @@ complement : Bits n -> Bits n
 complement (MkBits x) = MkBits (complement' x)
 
 -- TODO: Prove
-%assert_total -- can't verify coverage of with block
+public export %assert_total -- can't verify coverage of with block
 zext' : machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
 zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (Z, Z) = believe_me x
@@ -325,7 +342,7 @@ public export
 zeroExtend : Bits n -> Bits (n+m)
 zeroExtend (MkBits x) = MkBits (zext' x)
 
-%assert_total
+public export %assert_total
 intToBits' : Integer -> machineTy (nextBytes n)
 intToBits' {n=n} x with (nextBytes n)
     | Z = let pad = getPad {n=0} n in
@@ -344,6 +361,7 @@ intToBits n = MkBits (intToBits' n)
 implementation Cast Integer (Bits n) where
     cast = intToBits
 
+public export
 bitsToInt' : machineTy (nextBytes n) -> Integer
 bitsToInt' {n=n} x with (nextBytes n)
     | Z = prim__zextB8_BigInt x
@@ -356,6 +374,7 @@ bitsToInt : Bits n -> Integer
 bitsToInt (MkBits x) = bitsToInt' x
 
 -- Zero out the high bits of a truncated bitstring
+public export
 zeroUnused : machineTy (nextBytes n) -> machineTy (nextBytes n)
 zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
 
@@ -398,7 +417,7 @@ sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
 --signExtend {m=m} (MkBits x) = MkBits (zeroUnused (sext' x))
 
 -- TODO: Prove
-%assert_total -- can't verify coverage of with block
+public export %assert_total -- can't verify coverage of with block
 trunc' : machineTy (nextBytes (m+n)) -> machineTy (nextBytes n)
 trunc' {m=m} {n=n} x with (nextBytes n, nextBytes (m+n))
     | (Z, Z) = believe_me x
