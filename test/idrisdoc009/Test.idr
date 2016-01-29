@@ -23,6 +23,8 @@
 module Test
 import Data.Complex
 
+%access public
+
 myplus : Nat -> Nat -> Nat
 myplus Z j = j
 myplus (S k) j = S (myplus k j)

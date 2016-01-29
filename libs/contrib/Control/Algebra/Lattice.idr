@@ -3,6 +3,7 @@ module Control.Algebra.Lattice
 import Control.Algebra
 import Data.Heap
 
+%access public
 
 ||| Sets equipped with a binary operation that is commutative, associative and
 ||| idempotent.  Must satisfy the following laws:

@@ -2,6 +2,8 @@ module Data.List.Quantifiers
 
 import Data.List
 
+%access public
+
 ||| A proof that some element of a list satisfies some property
 |||
 ||| @ P the property to be satsified

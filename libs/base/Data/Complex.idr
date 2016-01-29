@@ -5,6 +5,8 @@
 
 module Data.Complex
 
+%access public
+
 ------------------------------ Rectangular form
 
 infix 6 :+

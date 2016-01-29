@@ -8,6 +8,8 @@ import Prelude.Bool
 import Prelude.List
 import Prelude.Maybe
 
+%access public
+
 data Err = Msg String
          | InternalMsg String
          | CantUnify Bool TT TT Err (List (TTName, TT)) Int

@@ -5,6 +5,7 @@ module Data.Matrix.Numeric
 import public Data.Matrix
 
 %default total
+%access public
 
 infixr 2 <:>  -- vector inner product
 infixr 2 ><   -- vector outer product

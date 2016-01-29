@@ -5,6 +5,7 @@ module Data.Matrix
 import public Data.Vect
 
 %default total
+%access public
 
 ||| Matrix with n rows and m columns
 Matrix : Nat -> Nat -> Type -> Type

@@ -4,6 +4,8 @@ import Prelude.Functor
 import Prelude.Applicative
 import Prelude.Monad
 
+%access public
+
 ||| Type providers must build one of these in an IO computation.
 public
 data Provider : (a : Type) -> Type where

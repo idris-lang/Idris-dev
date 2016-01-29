@@ -14,6 +14,8 @@ import Prelude.Either
 import Prelude.Nat
 import Prelude.Strings
 
+%access public
+
 %default total
 
 ||| The precedence of an Idris operator or syntactic context.

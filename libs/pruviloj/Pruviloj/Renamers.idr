@@ -2,6 +2,8 @@ module Pruviloj.Renamers
 
 import Language.Reflection.Utils
 
+%access public
+
 ||| A renamer keeps track of names to be substituted
 Renamer : Type
 Renamer = TTName -> Maybe TTName

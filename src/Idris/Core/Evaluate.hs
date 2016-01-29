@@ -12,7 +12,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
-                mapDefCtxt,
+                mapDefCtxt, 
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
@@ -253,12 +253,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                            ev ntimes (n:stk) True env tm
                     [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
-                    [(Function _ tm, Hidden)] ->
-                           ev ntimes (n:stk) True env tm
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
                     [(CaseOp ci _ _ _ _ cd, acc)]
-                         | (acc /= Frozen || sUN "assert_total" `elem` stk) &&
+                         | (acc == Public || sUN "assert_total" `elem` stk) &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -376,7 +374,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  do let val = lookupDefAcc n (spec || atRepl) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
-                           | acc /= Frozen || sUN "assert_total" `elem` stk ->
+                           | acc == Public || sUN "assert_total" `elem` stk ->
                            -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk

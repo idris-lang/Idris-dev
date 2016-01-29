@@ -8,6 +8,8 @@ import Prelude.Interfaces
 import Prelude.Foldable
 import Prelude.Functor
 
+%access public
+
 ---- Applicative functors/Idioms
 
 infixl 2 <*>

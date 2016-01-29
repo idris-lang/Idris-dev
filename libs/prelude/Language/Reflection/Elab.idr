@@ -16,6 +16,8 @@ import Prelude.Monad
 import Prelude.Nat
 import Language.Reflection
 
+%access public
+
 data Fixity = Infixl Nat | Infixr Nat | Infix Nat | Prefix Nat
 
 ||| Erasure annotations reflect Idris's idea of what is intended to be

@@ -1,5 +1,7 @@
 module Syntax.PreorderReasoning
 
+%access public
+
 -- QED is first to get the precedence to work out. It's just Refl with an explicit argument.
 syntax [expr] "QED" = qed expr
 -- foo ={ prf }= bar ={ prf' }= fnord QED

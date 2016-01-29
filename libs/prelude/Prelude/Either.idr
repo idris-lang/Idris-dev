@@ -8,6 +8,8 @@ import Prelude.Interfaces
 import Prelude.Maybe
 import Prelude.List
 
+%access public
+
 ||| A sum type
 %elim data Either : (a, b : Type) -> Type where
   ||| One possibility of the sum, conventionally used to represent errors

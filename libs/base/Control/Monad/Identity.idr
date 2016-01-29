@@ -1,5 +1,7 @@
 module Control.Monad.Identity
 
+%access public
+
 public record Identity (a : Type) where
   constructor Id
   runIdentity : a

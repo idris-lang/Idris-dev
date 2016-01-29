@@ -7,6 +7,8 @@ import Prelude.List
 import Prelude.Cast
 import Builtins
 
+%access public
+
 ||| Convert the number to its ASCII equivalent.
 chr : Int -> Char
 chr x = if (x >= 0 && x < 0x110000)

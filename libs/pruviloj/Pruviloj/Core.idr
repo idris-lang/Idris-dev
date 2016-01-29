@@ -5,6 +5,8 @@ module Pruviloj.Core
 
 import Language.Reflection.Utils
 
+%access public
+
 ||| Run something for effects, throwing away the return value
 ignore : Functor f => f a -> f ()
 ignore x = map (const ()) x

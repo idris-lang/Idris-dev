@@ -3,6 +3,8 @@ module Resimp
 import public Data.Vect
 import public Data.Fin
 
+%access public
+
 -- IO operations which read a resource
 data Reader : Type -> Type where
     MkReader : IO a -> Reader a

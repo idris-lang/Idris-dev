@@ -3,6 +3,8 @@ module Effect.StdIO
 import Effects
 import Control.IOExcept
 
+%access public
+
 -------------------------------------------------------------
 -- IO effects internals
 -------------------------------------------------------------

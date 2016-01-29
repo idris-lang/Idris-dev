@@ -2,6 +2,8 @@ module Prelude.Functor
 
 import Prelude.Basics
 
+%access public
+
 ||| Functors allow a uniform action over a parameterised type.
 ||| @ f a parameterised type 
 interface Functor (f : Type -> Type) where

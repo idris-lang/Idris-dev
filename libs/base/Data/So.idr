@@ -1,6 +1,7 @@
 module Data.So
 
 %default total
+%access public
 
 ||| Ensure that some run-time Boolean test has been performed.
 |||

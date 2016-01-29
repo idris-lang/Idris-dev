@@ -2,6 +2,8 @@ module Effect.Default
 
 import Data.Vect
 
+%access public
+
 interface Default a where
     default : a
 

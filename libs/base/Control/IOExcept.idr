@@ -1,5 +1,7 @@
 module Control.IOExcept
 
+%access public
+
 -- An IO monad with exception handling
 
 record IOExcept' (f:FFI) err a where

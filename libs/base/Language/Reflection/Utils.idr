@@ -4,6 +4,8 @@ import Language.Reflection
 import Language.Reflection.Elab
 import Language.Reflection.Errors
 
+%access public
+
 --------------------------------------------------------
 -- Tactic construction conveniences
 --------------------------------------------------------

@@ -3,6 +3,8 @@ module Effect.Random
 import Effects
 import Data.Vect
 
+%access public
+
 data Random : Effect where 
      GetRandom : sig Random Integer Integer
      SetSeed   : Integer -> sig Random () Integer

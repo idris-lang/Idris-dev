@@ -2,6 +2,8 @@ module Data.Vect.Quantifiers
 
 import Data.Vect
 
+%access public
+
 ||| A proof that some element of a vector satisfies some property
 |||
 ||| @ P the property to be satsified

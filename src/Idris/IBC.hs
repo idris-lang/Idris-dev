@@ -3,7 +3,7 @@
 
 module Idris.IBC (loadIBC, loadPkgIndex,
                   writeIBC, writePkgIndex,
-                  hasValidIBCVersion) where
+                  hasValidIBCVersion, IBCPhase(..)) where
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -40,13 +40,14 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 130
+ibcVersion = 131
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
 data IBCPhase = IBC_Building -- ^ when building the module tree
-              | IBC_REPL -- ^ when loading modules for the REPL
-              | IBC_IDE -- ^ when running in IDE mode
+              | IBC_REPL Bool -- ^ when loading modules for the REPL
+                              -- Bool = True for top level module
+  deriving (Show, Eq)
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
@@ -69,13 +70,10 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_cgflags :: ![(Codegen, String)],
                          ibc_dynamic_libs :: ![String],
                          ibc_hdrs :: ![(Codegen, String)],
-                         ibc_access :: ![(Name, Accessibility)],
-                         ibc_total :: ![(Name, Totality)],
                          ibc_totcheckfail :: ![(FC, String)],
                          ibc_flags :: ![(Name, [FnOpt])],
                          ibc_fninfo :: ![(Name, FnInfo)],
                          ibc_cg :: ![(Name, CGInfo)],
-                         ibc_defs :: ![(Name, Def)],
                          ibc_docstrings :: ![(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))],
                          ibc_moduledocs :: ![(Name, Docstring D.DocTerm)],
                          ibc_transforms :: ![(Name, (Term, Term))],
@@ -94,7 +92,10 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_usage :: ![(Name, Int)],
                          ibc_exports :: ![Name],
                          ibc_autohints :: ![(Name, Name)],
-                         ibc_deprecated :: ![(Name, String)]
+                         ibc_deprecated :: ![(Name, String)],
+                         ibc_defs :: ![(Name, Def)],
+                         ibc_total :: ![(Name, Totality)],
+                         ibc_access :: ![(Name, Accessibility)]
                        }
    deriving Show
 {-!
@@ -102,7 +103,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -113,8 +114,9 @@ hasValidIBCVersion fp = do
                         return (ver == ibcVersion)
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private
+        -> IBCPhase
         -> FilePath -> Idris ()
-loadIBC reexport fp
+loadIBC reexport phase fp
            = do imps <- getImported
                 let redo = case lookup fp imps of
                                 Nothing -> True
@@ -125,7 +127,7 @@ loadIBC reexport fp
                      case toArchiveOrFail archiveFile of
                         Left _ -> ifail $ fp ++ " isn't loadable, it may have an old ibc format.\n"
                                           ++ "Please clean and rebuild it."
-                        Right archive -> do process reexport archive fp
+                        Right archive -> do process reexport phase archive fp
                                             addImported reexport fp
 --                                             dumpTT
 
@@ -134,7 +136,7 @@ loadPkgIndex :: String -> Idris ()
 loadPkgIndex pkg = do ddir <- runIO $ getIdrisLibDir
                       addImportDir (ddir </> pkg)
                       fp <- findPkgIndex pkg
-                      loadIBC True fp
+                      loadIBC True IBC_Building fp
 
 
 makeEntry :: (Binary b) => String -> [b] -> Maybe Entry
@@ -164,13 +166,10 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_cgflags"  (ibc_cgflags i),
                        makeEntry "ibc_dynamic_libs"  (ibc_dynamic_libs i),
                        makeEntry "ibc_hdrs"  (ibc_hdrs i),
-                       makeEntry "ibc_access"  (ibc_access i),
-                       makeEntry "ibc_total"  (ibc_total i),
                        makeEntry "ibc_totcheckfail"  (ibc_totcheckfail i),
                        makeEntry "ibc_flags"  (ibc_flags i),
                        makeEntry "ibc_fninfo"  (ibc_fninfo i),
                        makeEntry "ibc_cg"  (ibc_cg i),
-                       makeEntry "ibc_defs"  (ibc_defs i),
                        makeEntry "ibc_docstrings"  (ibc_docstrings i),
                        makeEntry "ibc_moduledocs"  (ibc_moduledocs i),
                        makeEntry "ibc_transforms"  (ibc_transforms i),
@@ -189,7 +188,10 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_usage"  (ibc_usage i),
                        makeEntry "ibc_exports"  (ibc_exports i),
                        makeEntry "ibc_autohints"  (ibc_autohints i),
-                       makeEntry "ibc_deprecated"  (ibc_deprecated i)]
+                       makeEntry "ibc_deprecated"  (ibc_deprecated i),
+                       makeEntry "ibc_defs"  (ibc_defs i),
+                       makeEntry "ibc_total"  (ibc_total i),
+                       makeEntry "ibc_access"  (ibc_access i)]
 
 writeArchive :: FilePath -> IBCFile -> Idris ()
 writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
@@ -323,8 +325,9 @@ getEntry alt f a = case findEntryByPath f a of
                 Just e -> return $! (force . decode . fromEntry) e
 
 process :: Bool -- ^ Reexporting
+           -> IBCPhase 
            -> Archive -> FilePath -> Idris ()
-process reexp i fn = do
+process reexp phase i fn = do
                 ver <- getEntry 0 "ver" i
                 when (ver /= ibcVersion) $ do
                                     logIBC 1 "ibc out of date"
@@ -336,7 +339,7 @@ process reexp i fn = do
                 srcok <- runIO $ doesFileExist source
                 when srcok $ timestampOlder source fn
                 pImportDirs =<< getEntry [] "ibc_importdirs" i
-                pImports reexp =<< getEntry [] "ibc_imports" i
+                pImports reexp phase =<< getEntry [] "ibc_imports" i
                 pImps =<< getEntry [] "ibc_implicits" i
                 pFixes =<< getEntry [] "ibc_fixes" i
                 pStatics =<< getEntry [] "ibc_statics" i
@@ -353,12 +356,9 @@ process reexp i fn = do
                 pCGFlags =<< getEntry [] "ibc_cgflags" i
                 pDyLibs =<< getEntry [] "ibc_dynamic_libs" i
                 pHdrs =<< getEntry [] "ibc_hdrs" i
-                pDefs reexp =<< getEntry [] "ibc_defs" i
                 pPatdefs =<< getEntry [] "ibc_patdefs" i
-                pAccess reexp =<< getEntry [] "ibc_access" i
                 pFlags =<< getEntry [] "ibc_flags" i
                 pFnInfo =<< getEntry [] "ibc_fninfo" i
-                pTotal =<< getEntry [] "ibc_total" i
                 pTotCheckErr =<< getEntry [] "ibc_totcheckfail" i
                 pCG =<< getEntry [] "ibc_cg" i
                 pDocs =<< getEntry [] "ibc_docstrings" i
@@ -379,6 +379,9 @@ process reexp i fn = do
                 pExports =<< getEntry [] "ibc_exports" i
                 pAutoHints =<< getEntry [] "ibc_autohints" i
                 pDeprecate =<< getEntry [] "ibc_deprecated" i
+                pDefs reexp =<< getEntry [] "ibc_defs" i
+                pTotal =<< getEntry [] "ibc_total" i
+                pAccess reexp phase =<< getEntry [] "ibc_access" i
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -412,8 +415,8 @@ pDeprecate ns = mapM_ (\(n,reason) -> addDeprecated n reason) ns
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs
 
-pImports :: Bool -> [(Bool, FilePath)] -> Idris ()
-pImports reexp fs
+pImports :: Bool -> IBCPhase -> [(Bool, FilePath)] -> Idris ()
+pImports reexp phase fs
   = do mapM_ (\(re, f) ->
                     do i <- getIState
                        ibcsd <- valIBCSubDir i
@@ -422,6 +425,9 @@ pImports reexp fs
 --                        if (f `elem` imported i)
 --                         then logLvl 1 $ "Already read " ++ f
                        putIState (i { imported = f : imported i })
+                       let phase' = case phase of
+                                         IBC_REPL _ -> IBC_REPL False
+                                         p -> p
                        case fp of
                             LIDR fn -> do
                               logIBC 1 $ "Failed at " ++ fn
@@ -429,7 +435,7 @@ pImports reexp fs
                             IDR fn -> do
                               logIBC 1 $ "Failed at " ++ fn
                               ifail "Must be an ibc"
-                            IBC fn src -> loadIBC (reexp && re) fn)
+                            IBC fn src -> loadIBC (reexp && re) phase' fn)
              fs
 
 pImps :: [(Name, [PArg])] -> Idris ()
@@ -528,10 +534,7 @@ pDefs reexp ds
                        _ -> do logIBC 1 $ "SOLVING " ++ show n
                                solveDeferred n
                   updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
---                   logLvl 1 $ "Added " ++ show (n, d')
-                  if (not reexp) then do logIBC 1 $ "Not exporting " ++ show n
-                                         setAccessibility n Hidden
-                                 else logIBC 1 $ "Exporting " ++ show n) ds
+            ) ds
   where
     updateDef (CaseOp c t args o s cd)
       = do o' <- mapM updateOrig o
@@ -599,12 +602,22 @@ pMDocs ds = mapM_  (\ (n, d) -> updateIState (\i ->
             i { idris_moduledocs = addDef n d (idris_moduledocs i) })) ds
 
 pAccess :: Bool -- ^ Reexporting?
+           -> IBCPhase
            -> [(Name, Accessibility)] -> Idris ()
-pAccess reexp ds
+pAccess reexp phase ds
         = mapM_ (\ (n, a_in) ->
                       do let a = if reexp then a_in else Hidden
                          logIBC 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
-                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })) ds
+                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })
+
+                         if (not reexp) then do logIBC 1 $ "Not exporting " ++ show n
+                                                setAccessibility n Hidden
+                                        else logIBC 1 $ "Exporting " ++ show n
+                         -- Everything should be available at the REPL from
+                         -- things imported publicly
+                         when (phase == IBC_REPL True) $ 
+                              setAccessibility n Public
+                ) ds
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
 pFlags ds = mapM_ (\ (n, a) -> setFlags n a) ds

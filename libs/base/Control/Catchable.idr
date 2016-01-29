@@ -2,6 +2,8 @@ module Control.Catchable
 
 import Control.IOExcept
 
+%access public
+
 interface Catchable (m : Type -> Type) t where
     throw : t -> m a
     catch : m a -> (t -> m a) -> m a

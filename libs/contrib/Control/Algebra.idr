@@ -3,6 +3,7 @@ module Control.Algebra
 infixl 6 <->
 infixl 7 <.>
 
+%access public
 
 ||| Sets equipped with a single binary operation that is associative, along with
 ||| a neutral element for that binary operation and inverses for all elements.

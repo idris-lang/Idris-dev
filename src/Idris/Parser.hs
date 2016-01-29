@@ -1565,17 +1565,17 @@ parseProg syn fname input mrk
                           return (ds, i')
 
 {- | Load idris module and show error if something wrong happens -}
-loadModule :: FilePath -> Idris (Maybe String)
-loadModule f
-   = idrisCatch (loadModule' f)
+loadModule :: FilePath -> IBCPhase -> Idris (Maybe String)
+loadModule f phase
+   = idrisCatch (loadModule' f phase)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           iWarn (getErrSpan e) $ pprintErr ist e
                           return Nothing)
 
 {- | Load idris module -}
-loadModule' :: FilePath -> Idris (Maybe String)
-loadModule' f
+loadModule' :: FilePath -> IBCPhase -> Idris (Maybe String)
+loadModule' f phase
    = do i <- getIState
         let file = takeWhile (/= ' ') f
         ibcsd <- valIBCSubDir i
@@ -1589,7 +1589,7 @@ loadModule' f
                     IDR fn  -> loadSource False fn Nothing
                     LIDR fn -> loadSource True  fn Nothing
                     IBC fn src ->
-                      idrisCatch (loadIBC True fn)
+                      idrisCatch (loadIBC True phase fn)
                                  (\c -> do logParser 1 $ fn ++ " failed " ++ pshow i c
                                            case src of
                                              IDR sfn -> loadSource False sfn Nothing
@@ -1597,18 +1597,18 @@ loadModule' f
                   return $ Just file
 
 {- | Load idris code from file -}
-loadFromIFile :: Bool -> IFileType -> Maybe Int -> Idris ()
-loadFromIFile reexp i@(IBC fn src) maxline
+loadFromIFile :: Bool -> IBCPhase -> IFileType -> Maybe Int -> Idris ()
+loadFromIFile reexp phase i@(IBC fn src) maxline
    = do logParser 1 $ "Skipping " ++ getSrcFile i
-        idrisCatch (loadIBC reexp fn)
+        idrisCatch (loadIBC reexp phase fn)
                 (\err -> ierror $ LoadingFailed fn err)
   where
     getSrcFile (IDR fn) = fn
     getSrcFile (LIDR fn) = fn
     getSrcFile (IBC f src) = getSrcFile src
 
-loadFromIFile _ (IDR fn) maxline = loadSource' False fn maxline
-loadFromIFile _ (LIDR fn) maxline = loadSource' True fn maxline
+loadFromIFile _ _ (IDR fn) maxline = loadSource' False fn maxline
+loadFromIFile _ _ (LIDR fn) maxline = loadSource' True fn maxline
 
 {-| Load idris source code and show error if something wrong happens -}
 loadSource' :: Bool -> FilePath -> Maybe Int -> Idris ()
@@ -1639,7 +1639,7 @@ loadSource lidr f toline
                                       LIDR fn -> ifail $ "No ibc for " ++ f
                                       IDR fn -> ifail $ "No ibc for " ++ f
                                       IBC fn src ->
-                                        do loadIBC True fn
+                                        do loadIBC True IBC_Building fn
                                            let srcFn = case src of
                                                          IDR fn -> Just fn
                                                          LIDR fn -> Just fn
@@ -1803,8 +1803,7 @@ addHides :: [(Name, Maybe Accessibility)] -> Idris ()
 addHides xs = do i <- getIState
                  let defh = default_access i
                  let (hs, as) = partition isNothing xs
-                 unless (null as) $
-                   mapM_ doHide
+                 mapM_ doHide
                      (map (\ (n, _) -> (n, defh)) hs ++
                        map (\ (n, Just a) -> (n, a)) as)
   where isNothing (_, Nothing) = True

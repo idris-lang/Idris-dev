@@ -4,6 +4,8 @@ import Builtins
 import Prelude.Basics
 import Prelude.Bool
 
+%access public
+
 -- Numerical Operator Precedence
 infixl 5 ==, /=
 infixl 6 <, <=, >, >=
