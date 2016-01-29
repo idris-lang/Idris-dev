@@ -59,8 +59,9 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                                                     syn_namespace syn }
                 params <- manyTill (recordParameter rsyn) (reservedHL "where")
                 (fields, cname, cdoc) <- indentedBlockS $ recordBody rsyn tyn
+                let fnames = map (expandNS rsyn) (mapMaybe getName fields)
                 case cname of
-                     Just cn' -> accData acc tyn [fst cn']
+                     Just cn' -> accData acc tyn (fst cn' : fnames)
                      Nothing -> return ()
                 return $ PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn
              <?> "record type declaration"
@@ -69,6 +70,9 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
     getRecNames syn (PPi _ n _ _ sc) = [expandNS syn n, expandNS syn (mkType n)]
                                          ++ getRecNames syn sc
     getRecNames _ _ = []
+
+    getName (Just (n, _), _, _, _) = Just n
+    getName _ = Nothing
 
     toFreeze :: Maybe Accessibility -> Maybe Accessibility
     toFreeze (Just Frozen) = Just Hidden
