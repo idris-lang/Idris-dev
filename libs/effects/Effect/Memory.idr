@@ -102,10 +102,12 @@ implementation Handler RawMemory (IOExcept String) where
 RAW_MEMORY : Type -> EFFECT
 RAW_MEMORY t = MkEff t RawMemory
 
+export
 allocate : (n : Nat) ->
            Eff () [RAW_MEMORY ()] (\v => [RAW_MEMORY (MemoryChunk n 0)])
 allocate size = call $ Allocate size
 
+export
 initialize : {i : Nat} ->
              {n : Nat} ->
              Bits8 ->
@@ -115,9 +117,11 @@ initialize : {i : Nat} ->
                        (\v => [RAW_MEMORY (MemoryChunk n (i + size))])
 initialize c size prf = call $ Initialize c size prf
 
+export
 free : Eff () [RAW_MEMORY (MemoryChunk n i)] (\v => [RAW_MEMORY ()])
 free = call Free
 
+export
 peek : {i : Nat} ->
        (offset : Nat) ->
        (size : Nat) ->
@@ -125,6 +129,7 @@ peek : {i : Nat} ->
        { [RAW_MEMORY (MemoryChunk n i)] } Eff (Vect size Bits8)
 peek offset size prf = call $ Peek offset size prf
 
+export
 poke : {n : Nat} ->
        {i : Nat} ->
        (offset : Nat) ->

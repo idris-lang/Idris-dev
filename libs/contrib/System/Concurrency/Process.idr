@@ -30,24 +30,29 @@ run : Process msg x -> IO x
 run (Lift prog) = prog
 
 ||| Get current process ID
+export
 myID : Process msg (ProcID msg)
 myID = Lift (return (MkPID prim__vm))
 
 ||| Send a message to another process
 ||| Returns whether the send was unsuccessful.
+export
 send : ProcID msg -> msg -> Process msg Bool
 send (MkPID p) m = Lift (do x <- sendToThread p (prim__vm, m)
                             return (x == 1))
 
 ||| Return whether a message is waiting in the queue
+export
 msgWaiting : Process msg Bool
 msgWaiting = Lift checkMsgs
 
 ||| Return whether a message is waiting in the queue from a specific sender
+export
 msgWaitingFrom : ProcID msg -> Process msg Bool
 msgWaitingFrom (MkPID p) = Lift (checkMsgsFrom p)
 
 ||| Receive a message - blocks if there is no message waiting
+export
 recv : Process msg msg
 recv {msg} = do (senderid, m) <- Lift get
                 return m
@@ -55,6 +60,7 @@ recv {msg} = do (senderid, m) <- Lift get
         get = getMsg
 
 ||| Receive a message from specific sender - blocks if there is no message waiting
+export
 recvFrom : ProcID msg -> Process msg msg
 recvFrom (MkPID p) {msg} = do (senderid, m) <- Lift get
                               return m
@@ -62,6 +68,7 @@ recvFrom (MkPID p) {msg} = do (senderid, m) <- Lift get
         get = getMsgFrom p
 
 ||| receive a message, and return with the sender's process ID.
+export
 recvWithSender : Process msg (ProcID msg, msg)
 recvWithSender {msg}
      = do (senderid, m) <- Lift get
@@ -69,6 +76,7 @@ recvWithSender {msg}
   where get : IO (Ptr, msg)
         get = getMsg
 
+export
 create : Process msg () -> Process msg (ProcID msg)
 create (Lift p) = do ptr <- Lift (fork p)
                      return (MkPID ptr)
