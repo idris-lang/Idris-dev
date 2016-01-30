@@ -5,6 +5,6 @@ Nat
 Vect (n + m) a
 Nat
 Nat
-S n
+(S n)
 String
 ()

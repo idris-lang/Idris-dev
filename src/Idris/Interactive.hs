@@ -238,7 +238,7 @@ doProofSearch fn updatefile rec l n hints (Just depth)
          let body t = PProof [Try (TSeq Intros (ProofSearch rec False depth t psnames hints))
                                   (ProofSearch rec False depth t psnames hints)]
          let def = PClause fc mn (PRef fc [] mn) [] (body top) []
-         newmv <- idrisCatch
+         newmv_pre <- idrisCatch
              (do elabDecl' EAll recinfo (PClauses fc [] mn [def])
                  (tm, ty) <- elabVal recinfo ERHS (PRef fc [] mn)
                  ctxt <- getContext
@@ -249,10 +249,11 @@ doProofSearch fn updatefile rec l n hints (Just depth)
                         (dropCtxt envlen
                            (delab i (fst (specialise ctxt [] [(mn, 1)] tm))))))
              (\e -> return ("?" ++ show n))
+         let newmv = guessBrackets False tyline (show n) newmv_pre
          if updatefile then
             do let fb = fn ++ "~"
                runIO $ writeSource fb (unlines before ++
-                                     updateMeta False tyline (show n) newmv ++ "\n"
+                                     updateMeta tyline (show n) newmv ++ "\n"
                                        ++ unlines later)
                runIO $ copyFile fb fn
             else iPrintResult newmv
@@ -270,18 +271,34 @@ doProofSearch fn updatefile rec l n hints (Just depth)
           nsroot (SN (WhereN _ _ n)) = nsroot n
           nsroot n = n
 
-updateMeta brack ('?':cs) n new
+updateMeta ('?':cs) n new
     | length cs >= length n
       = case splitAt (length n) cs of
              (mv, c:cs) ->
                   if ((isSpace c || c == ')' || c == '}') && mv == n)
-                     then addBracket brack new ++ (c : cs)
-                     else '?' : mv ++ c : updateMeta True cs n new
+                     then new ++ (c : cs)
+                     else '?' : mv ++ c : updateMeta cs n new
+             (mv, []) -> if (mv == n) then new else '?' : mv
+updateMeta ('=':'>':cs) n new = '=':'>':updateMeta cs n new
+updateMeta ('=':cs) n new = '=':updateMeta cs n new
+updateMeta (c:cs) n new 
+  = c : updateMeta cs n new
+updateMeta [] n new = ""
+
+guessBrackets brack ('?':cs) n new
+    | length cs >= length n
+      = case splitAt (length n) cs of
+             (mv, c:cs) ->
+                  if ((isSpace c || c == ')' || c == '}') && mv == n)
+                     then addBracket brack new
+                     else guessBrackets True cs n new
              (mv, []) -> if (mv == n) then addBracket brack new else '?' : mv
-updateMeta brack ('=':cs) n new = '=':updateMeta False cs n new
-updateMeta brack (c:cs) n new 
-  = c : updateMeta (brack || not (isSpace c)) cs n new
-updateMeta brack [] n new = ""
+guessBrackets brack ('=':'>':cs) n new = guessBrackets False cs n new
+guessBrackets brack ('-':'>':cs) n new = guessBrackets False cs n new
+guessBrackets brack ('=':cs) n new = guessBrackets False cs n new
+guessBrackets brack (c:cs) n new 
+  = guessBrackets (brack || not (isSpace c)) cs n new
+guessBrackets brack [] n new = ""
 
 checkProv line n = isProv' False line n
   where
@@ -326,7 +343,7 @@ makeLemma fn updatefile l n
                             constraints i classes mty ++
                             showTmOpts (defaultPPOption { ppopt_pinames = True })
                                        (stripMNBind skip margs (delab i mty))
-            let lem_app = show n ++ appArgs skip margs mty
+            let lem_app = guessBrackets False tyline (show n) (show n ++ appArgs skip margs mty)
 
             if updatefile then
                do let fb = fn ++ "~"
@@ -454,7 +471,7 @@ makeLemma fn updatefile l n
                        = case span (not . blank) (reverse before) of
                               (bef, []) -> (bef, "" : [])
                               x -> x
-                  mvline = updateMeta False tyline (show n) lem_app in
+                  mvline = updateMeta tyline (show n) lem_app in
                 unlines $ reverse bef_start ++
                           [blankline, lem, blankline] ++
                           reverse bef_end ++ mvline : later
