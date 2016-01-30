@@ -10,8 +10,8 @@ import Prelude.Algebra
 %default total
 
 interface Foldable (t : Type -> Type) where
-  foldr : (elt -> acc -> acc) -> acc -> t elt -> acc
-  foldl : (acc -> elt -> acc) -> acc -> t elt -> acc
+  foldr : (elem -> acc -> acc) -> acc -> t elem -> acc
+  foldl : (acc -> elem -> acc) -> acc -> t elem -> acc
   foldl f z t = foldr (flip (.) . flip f) id t z
 
 ||| Combine each element of a structure into a monoid
