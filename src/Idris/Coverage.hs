@@ -135,6 +135,7 @@ validCoverageCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
             = case (unApply topx, unApply topy) of
                    ((P _ x _, _), (P _ y _, _)) -> x == y
                    _ -> False
+validCoverageCase ctxt (InfiniteUnify _ _ _) = False
 validCoverageCase ctxt (CantConvert _ _ _) = False
 validCoverageCase ctxt (At _ e) = validCoverageCase ctxt e
 validCoverageCase ctxt (Elaborating _ _ _ e) = validCoverageCase ctxt e
