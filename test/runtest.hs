@@ -105,10 +105,6 @@ runTest conf test = do
     -- don't touch the current directory as we want to run these things
     -- in parallel in the future
     let inTest s = test ++ "/" ++ s
-    -- just pretend that backslashes are slashes for comparison
-    -- purposes to avoid path problems, so don't write any tests
-    -- that depend on that distinction in other contexts
-    let norm s = map (\c -> if c=='\\' then '/' else c) s
     t1 <- getCurrentTime
     (exitCode, output) <- runInShell test (idrOpts conf)
     t2 <- getCurrentTime
@@ -128,6 +124,15 @@ runTest conf test = do
         let dt = diffUTCTime t2 t1
         putStrLn $ "Duration of " ++ test ++ " was " ++ show dt
     return res
+  where 
+    -- just pretend that backslashes are slashes for comparison
+    -- purposes to avoid path problems, so don't write any tests
+    -- that depend on that distinction in other contexts.
+    -- Also rewrite newlines for consistency.
+       norm ('\r':'\n':xs) = '\n' : norm xs
+       norm ('\\':xs) = '/' : norm xs
+       norm (x : xs) = x : norm xs
+       norm [] = []
 
 printStats :: Config -> [Status] -> IO ()
 printStats conf stats = do
