@@ -147,6 +147,8 @@ implementation Show Const where
   showPrec d StrType    = "StrType"
   showPrec d VoidType   = "VoidType"
   showPrec d Forgot     = "Forgot"
+  showPrec d WorldType  = "WorldType"
+  showPrec d TheWorld   = "TheWorld"
 
 implementation Eq NativeTy where
   IT8  == IT8  = True

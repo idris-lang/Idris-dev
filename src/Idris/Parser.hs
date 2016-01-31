@@ -502,7 +502,9 @@ syntaxRule syn
                body' <- fixBind ((n,n'):rens) body
                return $ PLam fc n' nfc ty' body'
         fixBind rens (PPi plic n nfc argTy body)
-          | n `elem` userNames = liftM2 (PPi plic n nfc) (fixBind rens argTy) (fixBind rens body)
+          | n `elem` userNames = liftM2 (PPi plic n nfc)
+                                        (fixBind rens argTy)
+                                        (fixBind rens body)
           | otherwise =
             do ty' <- fixBind rens argTy
                n' <- gensym n
@@ -521,6 +523,10 @@ syntaxRule syn
                return $ PLet fc n' nfc ty' val' body'
         fixBind rens (PMatchApp fc n) | Just n' <- lookup n rens =
           return $ PMatchApp fc n'
+        -- Also rename resolved quotations, to allow syntax rules to
+        -- have quoted references to their own bindings.
+        fixBind rens (PQuoteName n True fc) | Just n' <- lookup n rens =
+          return $ PQuoteName n' True fc
         fixBind rens x = descendM (fixBind rens) x
 
         gensym :: Name -> IdrisParser Name
