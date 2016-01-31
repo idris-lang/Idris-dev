@@ -34,8 +34,7 @@ getMvn :: IO String
 getMvn = fromMaybe mvnCommand <$> environment "IDRIS_MVN"
 
 environment :: String -> IO (Maybe String)
-environment x = catchIO (Just <$> getEnv x)
-                        (\_ -> return Nothing)
+environment = lookupEnv
 
 getTargetDir :: IO String
 getTargetDir = environment "TARGET" >>= maybe getDataDir return

@@ -5,17 +5,10 @@ import IRTS.Simplified
 import IRTS.Defunctionalise
 import IRTS.Lang
 
-import Control.Exception
 import Data.Word
-import System.Environment
 
 data DbgLevel = NONE | DEBUG | TRACE deriving Eq
 data OutputType = Raw | Object | Executable | MavenProject deriving (Eq, Show)
-
-environment :: String -> IO (Maybe String)
-environment x = Control.Exception.catch (do e <- getEnv x
-                                            return (Just e))
-                          (\y-> do return (y::SomeException);  return Nothing)
 
 -- Everything which might be needed in a code generator - a CG can choose which
 -- level of Decls to generate code from (simplified, defunctionalised or merely
