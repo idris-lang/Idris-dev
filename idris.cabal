@@ -1046,6 +1046,24 @@ Executable idris
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
+Test-suite regression-and-sanity-tests
+  Type:           exitcode-stdio-1.0
+  Main-is:        runtest.hs
+  hs-source-dirs: test
+
+  Build-depends: idris
+               , base
+               , containers
+               , process
+               , time
+               , filepath
+               , directory
+               , haskeline >= 0.7
+               , transformers
+
+  ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+
 Executable idris-codegen-c
   Main-is:        Main.hs
   hs-source-dirs: codegen/idris-codegen-c
