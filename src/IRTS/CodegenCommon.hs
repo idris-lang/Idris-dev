@@ -3,9 +3,6 @@ module IRTS.CodegenCommon where
 import Idris.Core.TT
 import IRTS.Simplified
 import IRTS.Defunctionalise
-import IRTS.Lang
-
-import Data.Word
 
 data DbgLevel = NONE | DEBUG | TRACE deriving Eq
 data OutputType = Raw | Object | Executable | MavenProject deriving (Eq, Show)
