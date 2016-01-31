@@ -691,9 +691,9 @@ reload orig inputs = do
 
 watch :: IState -> [FilePath] -> Idris (Maybe [FilePath])
 watch orig inputs = do
-  let inputSet = S.fromList inputs
-  let dirs = nub $ map takeDirectory inputs
   resp <- runIO $ do
+    let dirs = nub $ map takeDirectory inputs
+    inputSet <- fmap S.fromList $ mapM canonicalizePath inputs
     signal <- newEmptyMVar
     withManager $ \mgr -> do
       forM_ dirs $ \dir ->
