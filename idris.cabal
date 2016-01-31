@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.9.20.2
+Version:        0.10
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -18,12 +18,12 @@ Description:    Idris is a general purpose language with full dependent types.
                 <http://www.idris-lang.org/documentation>.
                 Features include:
                 .
-                * Full dependent types with dependent pattern matching
+                * Full, first class, dependent types with dependent pattern matching
                 .
-                * where clauses, with rule, simple case expressions,
+                * where clauses, with rule, case expressions,
                   pattern matching let and lambda bindings
                 .
-                * Type classes, monad comprehensions
+                * Interfaces (similar to type classes), monad comprehensions
                 .
                 * do notation, idiom brackets, syntactic conveniences for lists,
                   tuples, dependent pairs
@@ -33,8 +33,6 @@ Description:    Idris is a general purpose language with full dependent types.
                 * Coinductive types
                 .
                 * Indentation significant syntax, extensible syntax
-                .
-                * Tactic based theorem proving (influenced by Coq)
                 .
                 * Cumulative universes
                 .
@@ -152,7 +150,7 @@ Extra-source-files:
                        libs/pruviloj/Pruviloj/Internals/*.idr
 
                        test/Makefile
-                       test/runtest.pl
+                       test/runtest.hs
                        test/reg001/run
                        test/reg001/*.idr
                        test/reg001/expected
@@ -165,6 +163,9 @@ Extra-source-files:
                        test/reg004/run
                        test/reg004/*.idr
                        test/reg004/expected
+                       test/reg005/run
+                       test/reg005/*.idr
+                       test/reg005/expected
                        test/reg006/run
                        test/reg006/*.idr
                        test/reg006/expected
@@ -790,6 +791,9 @@ Extra-source-files:
                        benchmarks/trivial/sortvec.idr
                        benchmarks/trivial/sortvec.ipkg
 
+                       icons/idris_icon.rc
+                       icons/idris.ico
+
 source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
@@ -962,7 +966,7 @@ Library
                 , haskeline >= 0.7 && < 0.8
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7
-                , optparse-applicative >= 0.11 && < 0.12
+                , optparse-applicative >= 0.11 && < 0.13
                 , parsers >= 0.9 && < 0.13
                 , pretty < 1.2
                 , process < 1.3
@@ -979,6 +983,9 @@ Library
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.2.4
                 , safe
+                , fsnotify < 2.2
+                , async < 2.1
+
   -- zlib >= 0.6.1 is broken with GHC < 7.10.3
   if impl(ghc < 7.10.3)
      build-depends: zlib < 0.6.1

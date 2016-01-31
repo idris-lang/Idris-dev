@@ -2476,8 +2476,10 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                        OK hs   -> return hs
 
                          -- Normalize error handler terms to produce the new messages
+                         -- Need to use 'normaliseAll' since we have to reduce private
+                         -- names in error handlers too
                          ctxt <- getContext
-                         let results = map (normalise ctxt []) (map fst handlers)
+                         let results = map (normaliseAll ctxt []) (map fst handlers)
                          logElab 3 $ "New error message info: " ++ concat (intersperse " and " (map show results))
 
                          -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
@@ -2549,13 +2551,9 @@ processTacticDecls info steps =
              -- we refer to, so that if they aren't total, the whole
              -- thing won't be.
              let (scargs, sc) = cases_compiletime cd
-                 (scargs', sc') = cases_runtime cd
-                 calls = findCalls sc' scargs
-                 used = findUsedArgs sc' scargs'
-                 cg = CGInfo scargs' calls [] used []
-             in do logElab 2 $ "Called names in reflected elab: " ++ show cg
-                   addToCG n cg
-                   addToCalledG n (nub (map fst calls))
+                 calls = map fst $ findCalls sc scargs
+             in do logElab 2 $ "Called names in reflected elab: " ++ show calls
+                   addCalls n calls
                    addIBC $ IBCCG n
            Just _ -> return () -- TODO throw internal error
            Nothing -> return ()

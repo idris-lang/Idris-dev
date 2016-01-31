@@ -4,30 +4,30 @@ import Data.SortedMap
 
 -- TODO: add intersection, union, difference
 
-abstract
+export
 data SortedSet k = SetWrapper (Data.SortedMap.SortedMap k ())
 
-public
+export
 empty : Ord k => SortedSet k
 empty = SetWrapper Data.SortedMap.empty
 
-public
+export
 insert : k -> SortedSet k -> SortedSet k
 insert k (SetWrapper m) = SetWrapper (Data.SortedMap.insert k () m)
 
-public
+export
 delete : k -> SortedSet k -> SortedSet k
 delete k (SetWrapper m) = SetWrapper (Data.SortedMap.delete k m)
 
-public
+export
 contains : k -> SortedSet k -> Bool
 contains k (SetWrapper m) = isJust (Data.SortedMap.lookup k m)
 
-public
+export
 fromList : Ord k => List k -> SortedSet k
 fromList l = SetWrapper (Data.SortedMap.fromList (map (\i => (i, ())) l))
 
-public
+export
 toList : SortedSet k -> List k
 toList (SetWrapper m) = map (\(i, _) => i) (Data.SortedMap.toList m)
 

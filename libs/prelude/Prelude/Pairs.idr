@@ -2,7 +2,7 @@ module Prelude.Pairs
 
 import Builtins
 
-%access public
+%access public export
 %default total
 
 swap : (a, b) -> (b, a)

@@ -3,7 +3,7 @@ module Data.Vect
 import public Data.Fin
 import Language.Reflection
 
-%access public
+%access public export
 %default total
 
 infixr 7 ::

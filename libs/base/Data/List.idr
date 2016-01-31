@@ -1,6 +1,6 @@
 module Data.List
 
-%access public
+%access public export
 
 ||| A proof that some element is found in a list.
 |||

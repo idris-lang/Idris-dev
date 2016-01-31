@@ -1,5 +1,7 @@
 module Parity
 
+%access public export
+
 data Parity : Nat -> Type where
     Even : {n : Nat} -> Parity (n + n)
     Odd  : {n : Nat} -> Parity (S (n + n))

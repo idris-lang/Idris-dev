@@ -20,28 +20,20 @@ endif
 MACHINE         := $(shell $(CC) -dumpmachine)
 ifneq (, $(findstring darwin, $(MACHINE)))
 	OS      :=darwin
-else
-ifneq (, $(findstring cygwin, $(MACHINE)))
+else ifneq (, $(findstring cygwin, $(MACHINE)))
 	OS      :=windows
-else
-ifneq (, $(findstring mingw, $(MACHINE)))
+else ifneq (, $(findstring mingw, $(MACHINE)))
 	OS      :=windows
-else
-ifneq (, $(findstring windows, $(MACHINE)))
+else ifneq (, $(findstring windows, $(MACHINE)))
 	OS      :=windows
 else
 	OS      :=unix
 endif
-endif
-endif
-endif
 
 ifeq ($(OS),darwin)
 	SHLIB_SUFFIX    :=.dylib
-else
-ifeq ($(OS),windows)
+else ifeq ($(OS),windows)
 	SHLIB_SUFFIX    :=.DLL
 else
 	SHLIB_SUFFIX    :=.so
-endif
 endif

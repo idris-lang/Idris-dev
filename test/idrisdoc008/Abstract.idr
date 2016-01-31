@@ -1,5 +1,5 @@
 module Abstract
 
-abstract
+export
 frozen : ()
 frozen = ()

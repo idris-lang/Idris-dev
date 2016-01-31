@@ -67,7 +67,7 @@ getDisjointness l r = exists <|> declare
 
 ||| Solve a goal of the form `(C1 x1 x2 ... xn = C2 x1 x2 ... xn) ->
 ||| Void` for disjoint constructors `C1` and `C2`.
-public covering
+public export covering
 disjoint : Elab ()
 disjoint =
   do compute

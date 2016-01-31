@@ -4,8 +4,10 @@ import Prelude.Functor
 import Prelude.Applicative
 import Prelude.Monad
 
+%access public export
+
 ||| Type providers must build one of these in an IO computation.
-public
+public export
 data Provider : (a : Type) -> Type where
   ||| Return a term to be spliced in
   ||| @ x the term to be spliced (i.e. the proof)

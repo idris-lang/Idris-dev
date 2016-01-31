@@ -15,7 +15,7 @@ module Effect.Logging.Default
 import Effects
 import public Effect.Logging.Level
 
-%access public
+%access public export
 
 -- ------------------------------------------------------------ [ The Resource ]
 

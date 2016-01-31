@@ -48,7 +48,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                       let doc' = annotCode (tryFullExpr syn ist) doc
                           paramDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
                                      | (n, d) <- paramDocs ]
-                      acc <- optional accessibility
+                      acc <- accessibility
                       opts <- dataOpts []
                       co <- recordI
                       return (doc', paramDocs', acc, opts ++ co))
@@ -59,8 +59,9 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                                                     syn_namespace syn }
                 params <- manyTill (recordParameter rsyn) (reservedHL "where")
                 (fields, cname, cdoc) <- indentedBlockS $ recordBody rsyn tyn
+                let fnames = map (expandNS rsyn) (mapMaybe getName fields)
                 case cname of
-                     Just cn' -> accData acc tyn [fst cn']
+                     Just cn' -> accData acc tyn (fst cn' : fnames)
                      Nothing -> return ()
                 return $ PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn
              <?> "record type declaration"
@@ -69,6 +70,9 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
     getRecNames syn (PPi _ n _ _ sc) = [expandNS syn n, expandNS syn (mkType n)]
                                          ++ getRecNames syn sc
     getRecNames _ _ = []
+
+    getName (Just (n, _), _, _, _) = Just n
+    getName _ = Nothing
 
     toFreeze :: Maybe Accessibility -> Maybe Accessibility
     toFreeze (Just Frozen) = Just Hidden
@@ -167,11 +171,7 @@ dataOpts opts
   <|> return opts
   <?> "data options"
   where warnElim fc =
-          do ist <- get
-             let cmdline = opt_cmdline (idris_options ist)
-             unless (NoElimDeprecationWarnings `elem` cmdline) $
-               put ist { parserWarnings =
-                           (fc, Msg "Eliminator generation is deprecated. Use an eliminator generator in a library instead.") : parserWarnings ist }
+          parserWarning fc (Just NoElimDeprecationWarnings) (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
 
 {- | Parses a data type declaration
 Data ::= DocComment? Accessibility? DataI DefaultEliminator FnName TypeSig ExplicitTypeDataRest?
@@ -192,7 +192,7 @@ data_ :: SyntaxInfo -> IdrisParser PDecl
 data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                     (doc, argDocs) <- option noDocs docComment
                     pushIndent
-                    acc <- optional accessibility
+                    acc <- accessibility
                     elim <- dataOpts []
                     co <- dataI
                     ist <- get

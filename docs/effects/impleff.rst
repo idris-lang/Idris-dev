@@ -93,16 +93,16 @@ Recall that to run an effectful program in ``Eff``, we use one of the
 ``run`` family of functions to run the program in a particular
 computation context ``m``. For each effect, therefore, we must explain
 how it is executed in a particular computation context for ``run`` to
-work in that context. This is achieved with the following type class:
+work in that context. This is achieved with the following interface:
 
 .. code-block:: idris
 
-    class Handler (e : Effect) (m : Type -> Type) where
+    interface Handler (e : Effect) (m : Type -> Type) where
           handle : resource -> (eff : e t resource resource') ->
                    ((x : t) -> resource' x -> m a) -> m a
 
-We have already seen some instance declarations in the effect
-summaries in Section :ref:`sect-simpleff`. An instance of ``Handler e
+We have already seen some implementation declarations in the effect
+summaries in Section :ref:`sect-simpleff`. An implementation of ``Handler e
 m`` means that the effect declared with signature ``e`` can be run in
 computation context ``m``. The ``handle`` function takes:
 
@@ -123,7 +123,7 @@ in the case of ``Get``, or passes on a new state, in the case of
 
 .. code-block:: idris
 
-    instance Handler State m where
+    Handler State m where
          handle st Get     k = k st st
          handle st (Put n) k = k () n
 
@@ -176,7 +176,7 @@ The following listing summarises what is required to define the
     STATE : Type -> EFFECT
     STATE t = MkEff t State
 
-    instance Handler State m where
+    Handler State m where
          handle st Get     k = k st st
          handle st (Put n) k = k () n
 
@@ -211,13 +211,13 @@ directly.
          PutCh : Char -> sig StdIO ()
          GetCh : sig StdIO Char
 
-    instance Handler StdIO IO where
+    Handler StdIO IO where
         handle () (PutStr s) k = do putStr s; k () ()
         handle () GetStr     k = do x <- getLine; k x ()
         handle () (PutCh c)  k = do putChar c; k () ()
         handle () GetCh      k = do x <- getChar; k x ()
 
-    instance Handler StdIO (IOExcept a) where
+    Handler StdIO (IOExcept a) where
         handle () (PutStr s) k = do ioe_lift $ putStr s; k () ()
         handle () GetStr     k = do x <- ioe_lift $ getLine; k x ()
         handle () (PutCh c)  k = do ioe_lift $ putChar c; k () ()
@@ -241,10 +241,10 @@ error.
     data Exception : Type -> Effect where
          Raise : a -> sig (Exception a) b
 
-    instance Handler (Exception a) Maybe where
+    Handler (Exception a) Maybe where
          handle _ (Raise e) k = Nothing
 
-    instance Handler (Exception a) List where
+    Handler (Exception a) List where
          handle _ (Raise e) k = []
 
     EXCEPTION : Type -> EFFECT
@@ -265,14 +265,14 @@ value.
     data Selection : Effect where
          Select : List a -> sig Selection a
 
-    instance Handler Selection Maybe where
+    Handler Selection Maybe where
          handle _ (Select xs) k = tryAll xs where
              tryAll [] = Nothing
              tryAll (x :: xs) = case k x () of
                                      Nothing => tryAll xs
                                      Just v => Just v
 
-    instance Handler Selection List where
+    Handler Selection List where
          handle r (Select xs) k = concatMap (\x => k x r) xs
 
     SELECT : EFFECT
@@ -308,7 +308,7 @@ the equivalent ``Eff`` programs.
          WriteLine : String -> sig FileIO ()     (OpenFile Write)
          EOF       :           sig FileIO Bool   (OpenFile Read)
 
-    instance Handler FileIO IO where
+    Handler FileIO IO where
         handle () (Open fname m) k = do h <- openFile fname m
                                         if !(validFile h)
                                                  then k True (FH h)

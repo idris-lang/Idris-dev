@@ -314,3 +314,19 @@ mkStaticTy ns (PPi p n fc ty sc)
     | n `elem` ns = PPi (p { pstatic = Static }) n fc ty (mkStaticTy ns sc)
     | otherwise = PPi p n fc ty (mkStaticTy ns sc)
 mkStaticTy ns t = t
+
+-- Check that a name has the minimum required accessibility
+checkVisibility :: FC -> Name -> Accessibility -> Accessibility -> Name -> Idris ()
+checkVisibility fc n minAcc acc ref 
+    = do nvis <- getFromHideList ref
+         case nvis of
+              Nothing -> return ()
+              Just acc' -> if acc' > minAcc 
+                              then tclift $ tfail (At fc 
+                                      (Msg $ show acc ++ " " ++ show n ++ 
+                                             " can't refer to " ++ 
+                                             show acc' ++ " " ++ show ref))
+                              else return ()
+
+
+

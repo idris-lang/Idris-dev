@@ -8,7 +8,7 @@ import Prelude.Applicative
 import Prelude.Basics
 import IO
 
-%access public
+%access public export
 
 infixl 5 >>=
 

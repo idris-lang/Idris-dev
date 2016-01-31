@@ -133,7 +133,7 @@ mkRhs fn fam k =
 ||| equality.
 |||
 ||| @ fn the name of the function whose type has been declared
-abstract partial -- because of mkRhs
+export partial -- because of mkRhs
 deriveDecEq : (fn : TTName) -> Elab ()
 deriveDecEq fn =
     do (_, Ref, sig') <- lookupTyExact fn

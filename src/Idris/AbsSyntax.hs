@@ -96,6 +96,33 @@ addAutoImport fp = do i <- getIState
                       put (i { idris_options = opts { opt_autoImport =
                                                        fp : opt_autoImport opts } } )
 
+addDefinedName :: Name -> Idris ()
+addDefinedName n = do ist <- getIState
+                      putIState $ ist { idris_inmodule = S.insert n (idris_inmodule ist) }
+
+getDefinedNames :: Idris [Name]
+getDefinedNames = do ist <- getIState
+                     return (S.toList (idris_inmodule ist))
+
+addTT :: Term -> Idris (Maybe Term)
+addTT t = do ist <- getIState
+             case M.lookup t (idris_ttstats ist) of
+                  Nothing -> do let tt' = M.insert t (1, t) (idris_ttstats ist)
+                                putIState $ ist { idris_ttstats = tt' }
+                                return Nothing
+                  Just (i, t') -> do let tt' = M.insert t' (i + 1, t') (idris_ttstats ist)
+                                     putIState $ ist { idris_ttstats = tt' }
+                                     return (Just t')
+
+dumpTT :: Idris ()
+dumpTT = do ist <- get
+            let sts = sortBy count (M.toList (idris_ttstats ist))
+            mapM_ dump sts
+            return ()
+  where
+    count (_,x) (_,y) = compare y x
+    dump (tm, val) = runIO $ putStrLn (show val ++ ": " ++ show tm)
+
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
 
@@ -180,6 +207,11 @@ setAccessibility n a
               let ctxt = setAccess n a (tt_ctxt i)
               putIState $ i { tt_ctxt = ctxt }
 
+-- | get the accessibility of a name outside this module
+getFromHideList :: Name -> Idris (Maybe Accessibility)
+getFromHideList n = do i <- getIState
+                       return $ lookupCtxtExact n (hide_list i)
+
 setTotality :: Name -> Totality -> Idris ()
 setTotality n a
          = do i <- getIState
@@ -212,6 +244,14 @@ addToCG :: Name -> CGInfo -> Idris ()
 addToCG n cg
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
+
+addCalls :: Name -> [Name] -> Idris ()
+addCalls n calls
+   = do i <- getIState
+        case lookupCtxtExact n (idris_callgraph i) of
+             Nothing -> addToCG n (CGInfo calls [] [])
+             Just (CGInfo cs scg used) -> 
+                addToCG n (CGInfo (nub (calls ++ cs)) scg used)
 
 addTyInferred :: Name -> Idris ()
 addTyInferred n
@@ -309,7 +349,7 @@ allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
 allNames ns n = do i <- getIState
                    case lookupCtxtExact n (idris_callgraph i) of
-                      Just ns' -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
+                      Just ns' -> do more <- mapM (allNames (n:ns)) (calls ns')
                                      return (nub (n : concat more))
                       _ -> return [n]
 
@@ -340,11 +380,6 @@ getNameHints i n =
         case lookupCtxt n (idris_namehints i) of
              [ns] -> ns
              _ -> []
-
--- Issue #1737 in the Issue Tracker.
---    https://github.com/idris-lang/Idris-dev/issues/1737
-addToCalledG :: Name -> [Name] -> Idris ()
-addToCalledG n ns = return () -- TODO
 
 addDeprecated :: Name -> String -> Idris ()
 addDeprecated n reason = do i <- getIState
@@ -439,7 +474,8 @@ addIBC ibc@(IBCDef n)
 addIBC ibc = do i <- getIState; putIState $ i { ibc_write = ibc : ibc_write i }
 
 clearIBC :: Idris ()
-clearIBC = do i <- getIState; putIState $ i { ibc_write = [] }
+clearIBC = do i <- getIState; putIState $ i { ibc_write = [],
+                                              idris_inmodule = S.empty }
 
 resetNameIdx :: Idris ()
 resetNameIdx = do i <- getIState
@@ -1227,10 +1263,10 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds dec
            (map (expandParamsD rhs ist dec ps ns) decls)
            cn
            cd
-expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs n nfc params ty cn decls)
+expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs acc n nfc params ty cn decls)
    = PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
-           n
+           acc n
            nfc
            (map (expandParams dec ps ns []) params)
            (expandParams dec ps ns [] ty)
@@ -1537,9 +1573,9 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv) (map getTm args)
     implNamesIn uv t = namesIn uv ist t
 
-    imps top env (PApp _ f as)
+    imps top env ty@(PApp _ f as)
        = do (decls, ns) <- get
-            let isn = concatMap (namesIn uvars ist) (map getTm as)
+            let isn = nub (implNamesIn uvars ty)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PPi (Imp l _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]

@@ -9,7 +9,7 @@ import Prelude.Monad
 import Prelude.Nat
 import Prelude.List
 
-%access public
+%access public export
 %default total
 
 ||| An infinite stream

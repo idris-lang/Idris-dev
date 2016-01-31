@@ -3,7 +3,7 @@ module Process
 import System.Concurrency.Raw
 import public Data.List -- public, to get proof search machinery
 
-%access public
+%access public export
 
 -- Process IDs are parameterised by their interface. A request of type
 -- 'iface t' will get a response of type 't'

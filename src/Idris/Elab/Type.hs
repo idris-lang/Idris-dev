@@ -102,6 +102,18 @@ buildType info syn fc opts n ty' = do
          logElab 3 ("Implicit " ++ show n ++ " " ++ show impls)
          addIBC (IBCImp n)
 
+         -- Add the names referenced to the call graph, and check we're not
+         -- referring to anything less visible
+         -- In particular, a public/export type can not refer to anything 
+         -- private, but can refer to any public/export
+         let refs = freeNames cty
+         nvis <- getFromHideList n
+         case nvis of
+              Nothing -> return ()
+              Just acc -> mapM_ (checkVisibility fc n (max Frozen acc) acc) refs
+         addCalls n refs
+         addIBC (IBCCG n)
+
          when (Constructor `notElem` opts) $ do
              let pnames = getParamsInType i [] impls cty
              let fninfo = FnInfo (param_pos 0 pnames cty)
@@ -163,6 +175,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          let usety = if norm then nty' else nty
          ds <- checkDef fc iderr [(n, (-1, Nothing, usety, []))]
          addIBC (IBCDef n)
+         addDefinedName n
          let ds' = map (\(n, (i, top, fam, ns)) -> (n, (i, top, fam, ns, True))) ds
          addDeferred ds'
          setFlags n opts'

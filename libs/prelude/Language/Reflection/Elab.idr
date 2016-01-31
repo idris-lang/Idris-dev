@@ -16,6 +16,8 @@ import Prelude.Monad
 import Prelude.Nat
 import Language.Reflection
 
+%access public export
+
 data Fixity = Infixl Nat | Infixr Nat | Infix Nat | Prefix Nat
 
 ||| Erasure annotations reflect Idris's idea of what is intended to be
@@ -100,7 +102,7 @@ record Datatype where
   constructors : List (TTName, List CtorArg, Raw)
 
 ||| A reflected elaboration script.
-abstract
+export
 data Elab : Type -> Type where
   -- obligatory control stuff
   Prim__PureElab : a -> Elab a
@@ -164,7 +166,7 @@ data Elab : Type -> Type where
 -------------
 -- Public API
 -------------
-%access public
+%access public export
 namespace Tactics
   implementation Functor Elab where
     map f t = Prim__BindElab t (\x => Prim__PureElab (f x))
@@ -186,31 +188,38 @@ namespace Tactics
     x >>= f = Prim__BindElab x f
 
   ||| Halt elaboration with an error
+  export
   fail : List ErrorReportPart -> Elab a
   fail err = Prim__Fail err
 
   ||| Look up the lexical binding at the focused hole. Fails if no holes are present.
+  export
   getEnv : Elab (List (TTName, Binder TT))
   getEnv = Prim__Env
 
   ||| Get the name and type of the focused hole. Fails if not holes are present.
+  export
   getGoal : Elab (TTName, TT)
   getGoal = Prim__Goal
 
   ||| Get the hole queue, in order.
+  export
   getHoles : Elab (List TTName)
   getHoles = Prim__Holes
 
   ||| If the current hole contains a guess, return it. Otherwise, fail.
+  export
   getGuess : Elab TT
   getGuess = Prim__Guess
 
   ||| Look up the types of every overloading of a name.
+  export
   lookupTy :  TTName -> Elab (List (TTName, NameType, TT))
   lookupTy n = Prim__LookupTy n
 
   ||| Get the type of a fully-qualified name. Fail if it doesn not
   ||| resolve uniquely.
+  export
   lookupTyExact : TTName -> Elab (TTName, NameType, TT)
   lookupTyExact n = case !(lookupTy n) of
                       [res] => return res
@@ -219,12 +228,14 @@ namespace Tactics
 
   ||| Find the reflected representation of all datatypes whose names
   ||| are overloadings of some name.
+  export
   lookupDatatype : TTName -> Elab (List Datatype)
   lookupDatatype n = Prim__LookupDatatype n
 
   ||| Find the reflected representation of a datatype, given its
   ||| fully-qualified name. Fail if the name does not uniquely resolve
   ||| to a datatype.
+  export
   lookupDatatypeExact : TTName -> Elab Datatype
   lookupDatatypeExact n = case !(lookupDatatype n) of
                             [res] => return res
@@ -233,12 +244,14 @@ namespace Tactics
 
   ||| Find the reflected function definition of all functions whose names
   ||| are overloadings of some name.
+  export
   lookupFunDefn : TTName -> Elab (List (FunDefn TT))
   lookupFunDefn n = Prim__LookupFunDefn n
 
   ||| Find the reflected function definition of a function, given its
   ||| fully-qualified name. Fail if the name does not uniquely resolve
   ||| to a function.
+  export
   lookupFunDefnExact : TTName -> Elab (FunDefn TT)
   lookupFunDefnExact n = case !(lookupFunDefn n) of
                            [res] => return res
@@ -246,11 +259,13 @@ namespace Tactics
                            xs    => fail [TextPart "More than one function named", NamePart n]
 
   ||| Get the argument specification for each overloading of a name.
+  export
   lookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
   lookupArgs n = Prim__LookupArgs n
 
   ||| Get the argument specification for a name. Fail if the name does
   ||| not uniquely resolve.
+  export
   lookupArgsExact : TTName -> Elab (TTName, List FunArg, Raw)
   lookupArgsExact n = case !(lookupArgs n) of
                         [res] => return res
@@ -261,6 +276,7 @@ namespace Tactics
   |||
   ||| @ env the environment within which to check the type
   ||| @ tm the term to check
+  export
   check : (env : List (TTName, Binder TT)) -> (tm : Raw) -> Elab (TT, TT)
   check env tm = Prim__Check env tm
 
@@ -269,15 +285,18 @@ namespace Tactics
   |||
   ||| **NB**: the generated name is unique _for this run of the
   ||| elaborator_. Do not assume that they are globally unique.
+  export
   gensym : (hint : String) -> Elab TTName
   gensym hint = Prim__Gensym hint
 
   ||| Substitute a guess into a hole.
+  export
   solve : Elab ()
   solve = Prim__Solve
 
   ||| Place a term into a hole, unifying its type. Fails if the focus
   ||| is not a hole.
+  export
   fill : Raw -> Elab ()
   fill tm = Prim__Fill tm
 
@@ -295,6 +314,7 @@ namespace Tactics
   ||| @ argSpec instructions for finding the arguments to the term,
   |||     where the Boolean states whether or not to attempt to solve
   |||     the argument by unification.
+  export
   apply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
   apply tm argSpec = map snd <$> Prim__Apply tm argSpec
 
@@ -313,6 +333,7 @@ namespace Tactics
   |||     where the Boolean states whether or not to attempt to solve
   |||     the argument by matching.
 
+  export
   matchApply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
   matchApply tm argSpec = map snd <$> Prim__Apply tm argSpec
 
@@ -320,11 +341,13 @@ namespace Tactics
   ||| exist.
   |||
   ||| @ hole the hole to focus on
+  export
   focus : (hole : TTName) -> Elab ()
   focus hole = Prim__Focus hole
 
   ||| Send the currently-focused hole to the end of the hole queue and
   ||| focus on the next hole.
+  export
   unfocus : TTName -> Elab ()
   unfocus hole = Prim__Unfocus hole
 
@@ -336,6 +359,7 @@ namespace Tactics
   ||| binding, or else the scopes of the generated terms won't make
   ||| sense. This tactic creates a new hole of the proper form, and
   ||| points the old hole at it.
+  export
   attack : Elab ()
   attack = Prim__Attack
 
@@ -344,6 +368,7 @@ namespace Tactics
   ||| The new hole will be focused, and the previously-focused hole
   ||| will be immediately after it in the hole queue. Because this
   ||| tactic introduces a new binding, you may need to `attack` first.
+  export
   claim : TTName -> Raw -> Elab ()
   claim n ty = Prim__Claim n ty
 
@@ -352,6 +377,7 @@ namespace Tactics
   ||| `attack`).
   |||
   ||| @ n the name to use for the argument
+  export
   intro : (n : TTName) -> Elab ()
   intro n = Prim__Intro (Just n)
 
@@ -361,6 +387,7 @@ namespace Tactics
   |||
   ||| Requires that the hole be immediately under its binder (use
   ||| `attack` if it might not be).
+  export
   intro' : Elab ()
   intro' = Prim__Intro Nothing
 
@@ -369,10 +396,12 @@ namespace Tactics
   |||
   ||| Requires that the hole be immediately under its binder (use
   ||| `attack` if it might not be).
+  export
   forall : TTName -> Raw -> Elab ()
   forall n ty = Prim__Forall n ty
 
   ||| Convert a hole into a pattern variable.
+  export
   patvar : TTName -> Elab ()
   patvar n = Prim__PatVar n
 
@@ -380,6 +409,7 @@ namespace Tactics
   |||
   ||| Requires that the hole be immediately under its binder (use
   ||| `attack` if it might not be).
+  export
   patbind : TTName -> Elab ()
   patbind n = Prim__PatBind n
 
@@ -391,10 +421,12 @@ namespace Tactics
   ||| @ n the name to let bind
   ||| @ ty the type of the term to be let-bound
   ||| @ tm the term to be bound
+  export
   letbind : (n : TTName) -> (ty, tm : Raw) -> Elab ()
   letbind n ty tm = Prim__LetBind n ty tm
 
   ||| Normalise the goal.
+  export
   compute : Elab ()
   compute = Prim__Compute
 
@@ -402,12 +434,14 @@ namespace Tactics
   |||
   ||| @ env the environment in which to compute (get one of these from `getEnv`)
   ||| @ term the term to normalise
+  export
   normalise : (env : List (TTName, Binder TT)) -> (term : TT) -> Elab TT
   normalise env term = Prim__Normalise env term
 
   ||| Reduce a closed term to weak-head normal form
   |||
   ||| @ term the term to reduce
+  export
   whnf : (term : TT) -> Elab TT
   whnf term = Prim__Whnf term
 
@@ -417,6 +451,7 @@ namespace Tactics
   ||| @ env a lexical environment to compare the terms in (see `getEnv`)
   ||| @ term1 the first term to convert
   ||| @ term2 the second term to convert
+  export
   convertsInEnv : (env : List (TTName, Binder TT)) -> (term1, term2 : TT) -> Elab ()
   convertsInEnv env term1 term2 = Prim__Converts env term1 term2
 
@@ -424,14 +459,17 @@ namespace Tactics
   |||
   ||| @ term1 the first term to convert
   ||| @ term2 the second term to convert
+  export
   converts : (term1, term2 : TT) -> Elab ()
   converts term1 term2 = convertsInEnv !getEnv term1 term2
 
   ||| Find the source context for the elaboration script
+  export
   getSourceLocation : Elab SourceLocation
   getSourceLocation = Prim__SourceLocation
 
   ||| Attempt to solve the current goal with the source code location
+  export
   sourceLocation : Elab ()
   sourceLocation = do loc <- getSourceLocation
                       fill (quote loc)
@@ -442,6 +480,7 @@ namespace Tactics
   |||
   ||| The namespace is represented as a reverse-order list of strings,
   ||| just as in the representation of names.
+  export
   currentNamespace : Elab (List String)
   currentNamespace = Prim__Namespace
 
@@ -455,16 +494,19 @@ namespace Tactics
   ||| Because this tactic internally introduces a `let` binding, it
   ||| requires that the hole be immediately under its binder (use
   ||| `attack` if it might not be).
+  export
   rewriteWith : Raw -> Elab ()
   rewriteWith rule = Prim__Rewrite rule
 
   ||| Add a type declaration to the global context.
+  export
   declareType : TyDecl -> Elab ()
   declareType decl = Prim__DeclareType decl
 
   ||| Define a function in the global context. The function must have
   ||| already been declared, either in ordinary Idris code or using
   ||| `declareType`.
+  export
   defineFunction : FunDefn Raw -> Elab ()
   defineFunction defun = Prim__DefineFunction defun
 
@@ -472,12 +514,14 @@ namespace Tactics
   |||
   ||| @ ifaceName the name of the interface for which an implementation is being registered
   ||| @ instName the name of the definition to use in implementation search
+  export
   addInstance : (ifaceName, instName : TTName) -> Elab ()
   addInstance ifaceName instName = Prim__AddInstance ifaceName instName
 
   ||| Determine whether a name denotes an interface.
   |||
   ||| @ name a name that might denote an interface.
+  export
   isTCName : (name : TTName) -> Elab Bool
   isTCName name = Prim__IsTCName name
 
@@ -485,10 +529,12 @@ namespace Tactics
   |||
   ||| @ fn the name of the definition being elaborated (to prevent Idris
   ||| from looping)
+  export
   resolveTC : (fn : TTName) -> Elab ()
   resolveTC fn = Prim__ResolveTC fn
 
   ||| Use Idris's internal proof search.
+  export
   search : Elab ()
   search = Prim__Search 100 []
 
@@ -496,6 +542,7 @@ namespace Tactics
   |||
   ||| @ depth the search depth
   ||| @ hints additional names to try
+  export
   search' : (depth : Int) -> (hints : List TTName) -> Elab ()
   search' depth hints = Prim__Search depth hints
 
@@ -505,6 +552,7 @@ namespace Tactics
   ||| if the string is not a valid operator.
   |||
   ||| @ operator the operator string to look up
+  export
   operatorFixity : (operator : String) -> Elab Fixity
   operatorFixity operator = Prim__Fixity operator
 
@@ -512,6 +560,7 @@ namespace Tactics
   |||
   ||| This is intended for elaboration script developers, not for
   ||| end-users. Use `fail` for final scripts.
+  export
   debug : Elab a
   debug = Prim__Debug []
 
@@ -522,18 +571,21 @@ namespace Tactics
   ||| end-users. Use `fail` for final scripts.
   |||
   ||| @ msg the message to display
+  export
   debugMessage : (msg : List ErrorReportPart) -> Elab a
   debugMessage msg = Prim__Debug msg
 
   ||| Create a new top-level metavariable to solve the current hole.
   |||
   ||| @ name the name for the top-level variable
+  export
   metavar : (name : TTName) -> Elab ()
   metavar name = Prim__Metavar name
 
   ||| Recursively invoke the reflected elaborator with some goal.
   |||
   ||| The result is the final term and its type.
+  export
   runElab : Raw -> Elab () -> Elab (TT, TT)
   runElab goal script = Prim__RecursiveElab goal script
 

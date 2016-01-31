@@ -1,2 +1,2 @@
 plus ?foo_rhs2 ?foo_rhs3
-append k m ?append_rhs2 ?append_rhs3
+(append k m ?append_rhs2 ?append_rhs3)

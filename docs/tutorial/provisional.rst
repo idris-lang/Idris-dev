@@ -266,12 +266,12 @@ the user and outputs it in binary.
               x <- getLine
               print (natToBin (fromInteger (cast x)))
 
-For this to work, of course, we need a ``Show`` instance for
+For this to work, of course, we need a ``Show`` implementation for
 ``Binary n``:
 
 .. code-block:: idris
 
-    instance Show (Binary n) where
+    Show (Binary n) where
         show (BO x) = show x ++ "0"
         show (BI x) = show x ++ "1"
         show BEnd = ""

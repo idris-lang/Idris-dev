@@ -22,11 +22,11 @@ EXCEPTION
 
     raise : a -> Eff b [EXCEPTION a]
 
-    instance           Handler (Exception a) Maybe
-    instance           Handler (Exception a) List
-    instance           Handler (Exception a) (Either a)
-    instance           Handler (Exception a) (IOExcept a)
-    instance Show a => Handler (Exception a) IO
+    Handler (Exception a) Maybe where { ... }
+    Handler (Exception a) List where { ... }
+    Handler (Exception a) (Either a) where { ... }
+    Handler (Exception a) (IOExcept a) where { ... }
+    Show a => Handler (Exception a) IO where { ... }
 
 FILE\_IO
 ========
@@ -54,7 +54,7 @@ FILE\_IO
     writeLine : String -> Eff () [FILE_IO (OpenFile Write)]
     eof       : Eff Bool [FILE_IO (OpenFile Read)]
 
-    instance Handler FileIO IO
+    Handler FileIO IO where { ... }
 
 RND
 ===
@@ -73,7 +73,7 @@ RND
     rndInt : Integer -> Integer -> Eff m Integer [RND]
     rndFin : (k : Nat) ->          Eff m (Fin (S k)) [RND]
 
-    instance Handler Random m
+    Handler Random m where { ... }
 
 SELECT
 ======
@@ -88,8 +88,8 @@ SELECT
 
     select : List a -> Eff m a [SELECT]
 
-    instance Handler Selection Maybe
-    instance Handler Selection List
+    Handler Selection Maybe where { ... }
+    Handler Selection List where { ... }
 
 STATE
 =====
@@ -107,7 +107,7 @@ STATE
     putM   : y ->        Eff m () [STATE x] [STATE y]
     update : (x -> x) -> Eff m () [STATE x]
 
-    instance Handler State m
+    Handler State m where { ... }
 
 STDIO
 =====
@@ -128,8 +128,8 @@ STDIO
     getStr   : Handler StdIO m =>           Eff m String [STDIO]
     getChar  : Handler StdIO m =>           Eff m Char [STDIO]
 
-    instance Handler StdIO IO
-    instance Handler StdIO (IOExcept a)
+    Handler StdIO IO where { ... }
+    Handler StdIO (IOExcept a) where { ... }
 
 SYSTEM
 ======
@@ -148,5 +148,5 @@ SYSTEM
     time    : Handler System e =>           Eff e Int [SYSTEM]
     getEnv  : Handler System e => String -> Eff e (Maybe String) [SYSTEM]
 
-    instance Handler System IO
-    instance Handler System (IOExcept a)
+    Handler System IO where { ... }
+    Handler System (IOExcept a) where { ... }

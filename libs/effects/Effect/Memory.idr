@@ -5,13 +5,13 @@ import Control.IOExcept
 import Data.Vect
 import public Data.So
 
-%access public
+%access public export
 
-abstract
+export
 data MemoryChunk : Nat -> Nat -> Type where
      CH : Ptr -> MemoryChunk size initialized
 
-abstract
+export
 data RawMemory : Effect where
      Allocate   : (n : Nat) ->
                   RawMemory () () (\v => MemoryChunk n 0)
@@ -102,10 +102,12 @@ implementation Handler RawMemory (IOExcept String) where
 RAW_MEMORY : Type -> EFFECT
 RAW_MEMORY t = MkEff t RawMemory
 
+export
 allocate : (n : Nat) ->
            Eff () [RAW_MEMORY ()] (\v => [RAW_MEMORY (MemoryChunk n 0)])
 allocate size = call $ Allocate size
 
+export
 initialize : {i : Nat} ->
              {n : Nat} ->
              Bits8 ->
@@ -115,9 +117,11 @@ initialize : {i : Nat} ->
                        (\v => [RAW_MEMORY (MemoryChunk n (i + size))])
 initialize c size prf = call $ Initialize c size prf
 
+export
 free : Eff () [RAW_MEMORY (MemoryChunk n i)] (\v => [RAW_MEMORY ()])
 free = call Free
 
+export
 peek : {i : Nat} ->
        (offset : Nat) ->
        (size : Nat) ->
@@ -125,6 +129,7 @@ peek : {i : Nat} ->
        { [RAW_MEMORY (MemoryChunk n i)] } Eff (Vect size Bits8)
 peek offset size prf = call $ Peek offset size prf
 
+export
 poke : {n : Nat} ->
        {i : Nat} ->
        (offset : Nat) ->
@@ -155,6 +160,7 @@ move' src_ptr dst_offset src_offset size dst_bounds src_bounds
 
 data MoveDescriptor = Dst | Src
 
+export
 move : {dst_size : Nat} ->
        {dst_init : Nat} ->
        {src_size : Nat} ->

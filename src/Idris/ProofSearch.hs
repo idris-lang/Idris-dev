@@ -48,13 +48,13 @@ trivialHoles psnames ok elab ist
                    then try' (elab (PRef (fileFC "prf") [] x))
                              (tryAll xs) True
                    else tryAll xs
-        
+
         holesOK hs ap@(App _ _ _)
            | (P _ n _, args) <- unApply ap
                 = holeArgsOK hs n 0 args
         holesOK hs (App _ f a) = holesOK hs f && holesOK hs a
         holesOK hs (P _ n _) = not (n `elem` hs)
-        holesOK hs (Bind n b sc) = holesOK hs (binderTy b) && 
+        holesOK hs (Bind n b sc) = holesOK hs (binderTy b) &&
                                    holesOK hs sc
         holesOK hs _ = True
 
@@ -85,8 +85,8 @@ trivialTCs ok elab ist
                    then try' (elab (PRef (fileFC "prf") [] x))
                              (tryAll xs) True
                    else tryAll xs
-       
-        tcArg env ty 
+
+        tcArg env ty
            | (P _ n _, args) <- unApply (getRetTy (normalise (tt_ctxt ist) env ty))
                  = case lookupCtxtExact n (idris_classes ist) of
                         Just _ -> True
@@ -98,7 +98,7 @@ trivialTCs ok elab ist
                 = holeArgsOK hs n 0 args
         holesOK hs (App _ f a) = holesOK hs f && holesOK hs a
         holesOK hs (P _ n _) = not (n `elem` hs)
-        holesOK hs (Bind n b sc) = holesOK hs (binderTy b) && 
+        holesOK hs (Bind n b sc) = holesOK hs (binderTy b) &&
                                    holesOK hs sc
         holesOK hs _ = True
 
@@ -111,16 +111,16 @@ cantSolveGoal :: ElabD a
 cantSolveGoal = do g <- goal
                    env <- get_env
                    lift $ tfail $
-                      CantSolveGoal g (map (\(n,b) -> (n, binderTy b)) env) 
+                      CantSolveGoal g (map (\(n,b) -> (n, binderTy b)) env)
 
-proofSearch :: Bool -> -- recursive search (False for 'refine') 
+proofSearch :: Bool -> -- recursive search (False for 'refine')
                Bool -> -- invoked from a tactic proof. If so, making
                        -- new metavariables is meaningless, and there shoudl
                        -- be an error reported instead.
                Bool -> -- ambiguity ok
                Bool -> -- defer on failure
                Int -> -- maximum depth
-               (PTerm -> ElabD ()) -> Maybe Name -> Name -> 
+               (PTerm -> ElabD ()) -> Maybe Name -> Name ->
                [Name] ->
                [Name] ->
                IState -> ElabD ()
@@ -131,7 +131,7 @@ proofSearch False fromProver ambigok deferonfail depth elab _ nroot psnames [fn]
             tryAllFns all_imps
   where
     -- if nothing worked, make a new metavariable
-    tryAllFns [] | fromProver = cantSolveGoal  
+    tryAllFns [] | fromProver = cantSolveGoal
     tryAllFns [] = do attack; defer [] nroot; solve
     tryAllFns (f : fs) = try' (tryFn f) (tryAllFns fs) True
 
@@ -142,20 +142,20 @@ proofSearch False fromProver ambigok deferonfail depth elab _ nroot psnames [fn]
                                                   (match_apply (Var f) imps) True
                          ps' <- get_probs
 --                          when (length ps < length ps') $ fail "Can't apply constructor"
-                         -- Make metavariables for new holes 
+                         -- Make metavariables for new holes
                          hs' <- get_holes
                          ptm <- get_term
                          if fromProver then cantSolveGoal
                            else do
                              mapM_ (\ h -> do focus h
-                                              attack; defer [] nroot; solve) 
+                                              attack; defer [] nroot; solve)
                                  (hs' \\ hs)
 --                                  (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                              solve
 
     isImp (PImp p _ _ _ _) = (True, p)
     isImp arg = (True, priority arg) -- try to get all of them by unification
-proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hints ist 
+proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hints ist
        = do compute
             ty <- goal
             hs <- get_holes
@@ -172,7 +172,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                                       (autoArg (sUN "auto"))
                else autoArg (sUN "auto") -- not enough info in the type yet
   where
-    findInferredTy (t : _) = elab (delab ist (toUN t)) 
+    findInferredTy (t : _) = elab (delab ist (toUN t))
 
     cantsolve (InternalMsg _) = True
     cantsolve (CantSolveGoal _ _) = True
@@ -185,12 +185,12 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
     conArgsOK ty
        = let (f, as) = unApply ty in
            case f of
-              P _ n _ -> 
+              P _ n _ ->
                 let autohints = case lookupCtxtExact n (idris_autohints ist) of
                                      Nothing -> []
                                      Just hs -> hs in
                     case lookupCtxtExact n (idris_datatypes ist) of
-                              Just t -> do rs <- mapM (conReady as) 
+                              Just t -> do rs <- mapM (conReady as)
                                                       (autohints ++ con_names t)
                                            return (and rs)
                               Nothing -> -- local variable, go for it
@@ -199,7 +199,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
               _ -> typeNotSearchable ty
 
     conReady :: [Term] -> Name -> ElabD Bool
-    conReady as n 
+    conReady as n
        = case lookupTyExact n (tt_ctxt ist) of
               Just ty -> do let (_, cs) = unApply (getRetTy ty)
                             -- if any metavariables in 'as' correspond to
@@ -223,7 +223,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
     inHS hs (P _ n _) = n `elem` hs
     isHS _ _ = False
 
-    toUN t@(P nt (MN i n) ty) 
+    toUN t@(P nt (MN i n) ty)
        | ('_':xs) <- str n = t
        | otherwise = P nt (UN n) ty
     toUN (App s f a) = App s (toUN f) (toUN a)
@@ -239,7 +239,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
     psRec :: Bool -> Int -> [Name] -> S.Set Type -> ElabD ()
     psRec _ 0 locs tys | fromProver = cantSolveGoal
     psRec rec 0 locs tys = do attack; defer [] nroot; solve --fail "Maximum depth reached"
-    psRec False d locs tys = tryCons d locs tys hints 
+    psRec False d locs tys = tryCons d locs tys hints
     psRec True d locs tys
                  = do compute
                       ty <- goal
@@ -248,11 +248,11 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                       try' (try' (trivialHoles psnames [] elab ist)
                                  (resolveTC False False 20 ty nroot elab ist)
                                  True)
-                           (try' (try' (resolveByCon (d - 1) locs tys') 
+                           (try' (try' (resolveByCon (d - 1) locs tys')
                                        (resolveByLocals (d - 1) locs tys')
                                  True)
              -- if all else fails, make a new metavariable
-                         (if fromProver 
+                         (if fromProver
                              then fail "cantSolveGoal"
                              else do attack; defer [] nroot; solve) True) True
 
@@ -269,7 +269,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
         = do t <- goal
              let (f, _) = unApply t
              case f of
-                P _ n _ -> 
+                P _ n _ ->
                    do let autohints = case lookupCtxtExact n (idris_autohints ist) of
                                            Nothing -> []
                                            Just hs -> hs
@@ -292,26 +292,26 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
              tryLocals d locs tys env
 
     tryLocals d locs tys [] = fail "Locals failed"
-    tryLocals d locs tys ((x, t) : xs) 
+    tryLocals d locs tys ((x, t) : xs)
        | x `elem` locs || x `notElem` psnames = tryLocals d locs tys xs
-       | otherwise = try' (tryLocal d (x : locs) tys x t) 
+       | otherwise = try' (tryLocal d (x : locs) tys x t)
                           (tryLocals d locs tys xs) True
 
     tryCons d locs tys [] = fail "Constructors failed"
-    tryCons d locs tys (c : cs) 
+    tryCons d locs tys (c : cs)
         = try' (tryCon d locs tys c) (tryCons d locs tys cs) True
 
-    tryLocal d locs tys n t 
+    tryLocal d locs tys n t
           = do let a = getPArity (delab ist (binderTy t))
                tryLocalArg d locs tys n a
 
     tryLocalArg d locs tys n 0 = elab (PRef (fileFC "prf") [] n)
-    tryLocalArg d locs tys n i 
+    tryLocalArg d locs tys n i
         = simple_app False (tryLocalArg d locs tys n (i - 1))
                 (psRec True d locs tys) "proof search local apply"
 
     -- Like type class resolution, but searching with constructors
-    tryCon d locs tys n = 
+    tryCon d locs tys n =
          do ty <- goal
             let imps = case lookupCtxtExact n (idris_implicits ist) of
                             Nothing -> []
@@ -341,7 +341,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
          (Bind _ (Pi _ _ _) _) -> [TextPart "In particular, function types are not supported."]
          _ -> []
 
--- In interactive mode, only search for things if there is some 
+-- In interactive mode, only search for things if there is some
 -- index to help pick a relevant constructor
 checkConstructor :: IState -> [Name] -> ElabD ()
 checkConstructor ist [] = return ()
@@ -397,7 +397,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
                               _ -> []
 
            traceWhen ulog ("Resolving class " ++ show g ++ "\nin" ++ show env ++ "\n" ++ show okholes) $
-            try' (trivialTCs okholes elab ist) 
+            try' (trivialTCs okholes elab ist)
                 (do addDefault t tc ttypes
                     let stk = map fst (filter snd $ elab_stack ist)
                     let insts = findInstances ist t
@@ -432,7 +432,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
     tcDetArgsOK _ _ _ [] = Just []
 
     isMeta :: [Name] -> Term -> Bool
-    isMeta ns (P _ n _) = n `elem` ns 
+    isMeta ns (P _ n _) = n `elem` ns
     isMeta _ _ = False
 
     notHole hs (P _ n _, c)
@@ -449,7 +449,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
     chaser (NS n _) = chaser n
     chaser _ = False
 
-    numclass = sNS (sUN "Num") ["Classes","Prelude"]
+    numclass = sNS (sUN "Num") ["Interfaces","Prelude"]
 
     addDefault t num@(P _ nc _) [P Bound a _] | nc == numclass && defaultOn
         = do focus a
@@ -478,8 +478,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
                                                      return (num + 1)
                         _ -> return 0
 
-    solven 0 = return ()
-    solven n = do solve; solven (n - 1)
+    solven n = replicateM_ n solve
 
     resolve n depth
        | depth == 0 = fail $ "Can't resolve type class"
@@ -531,5 +530,3 @@ findInstances ist t
   where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of
                             Just (_, Hidden) -> False
                             _ -> True
-
-

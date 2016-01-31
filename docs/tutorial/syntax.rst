@@ -168,7 +168,7 @@ declaring:
     pure : Expr G a -> Expr G a
     pure = id
 
-Note that there is no need for these to be part of an instance of
+Note that there is no need for these to be part of an implementation of
 ``Applicative``, since idiom bracket notation translates directly to
 the names ``<*>`` and ``pure``, and ad-hoc type-directed overloading
 is allowed. We can now say:
@@ -179,7 +179,7 @@ is allowed. We can now say:
     fact = expr (\x => If (Op (==) x (Val 0))
                           (Val 1) (Op (*) [| fact (Op (-) x (Val 1)) |] x))
 
-With some more ad-hoc overloading and type class instances, and a new
+With some more ad-hoc overloading and use of interfaces, and a new
 syntax rule, we can even go as far as:
 
 .. code-block:: idris

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-idris $@ --check four.idr 
+${IDRIS:-idris} $@ --check four.idr 
 rm -f *.ibc

@@ -581,7 +581,7 @@ createOtherDoc ist (FunDoc fd)                = createFunDoc ist fd
 
 createOtherDoc ist (ClassDoc n docstring fds _ _ _ _ c) = do
   H.dt ! (A.id $ toValue $ show n) $ do
-    H.span ! class_ "word" $ do "class"; nbsp
+    H.span ! class_ "word" $ do "interface"; nbsp
     H.span ! class_ "name type"
            ! title  (toValue $ show n)
            $ toHtml $ name $ nsroot n

@@ -194,7 +194,6 @@ data IState = IState {
       -- ^ list of lhs/rhs, and a list of missing clauses
     idris_flags :: Ctxt [FnOpt],
     idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
-    idris_calledgraph :: Ctxt [Name],
     idris_docstrings :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)]),
     idris_moduledocs :: Ctxt (Docstring DocTerm),
     -- ^ module documentation is saved in a special MN so the context
@@ -235,7 +234,7 @@ data IState = IState {
     brace_stack :: [Maybe Int],
     lastTokenSpan :: Maybe FC, -- ^ What was the span of the latest token parsed?
     idris_parsedSpan :: Maybe FC,
-    hide_list :: [(Name, Maybe Accessibility)],
+    hide_list :: Ctxt Accessibility,
     default_access :: Accessibility,
     default_total :: Bool,
     ibc_write :: [IBCWrite],
@@ -262,7 +261,9 @@ data IState = IState {
     idris_exports :: [Name], -- ^ Functions with ExportList
     idris_highlightedRegions :: [(FC, OutputAnnotation)], -- ^ Highlighting information to output
     idris_parserHighlights :: [(FC, OutputAnnotation)], -- ^ Highlighting information from the parser
-    idris_deprecated :: Ctxt String -- ^ Deprecated names and explanation
+    idris_deprecated :: Ctxt String, -- ^ Deprecated names and explanation
+    idris_inmodule :: S.Set Name, -- ^ Names defined in current module
+    idris_ttstats :: M.Map Term (Int, Term)
    }
 
 -- Required for parsers library, and therefore trifecta
@@ -279,11 +280,10 @@ deriving instance NFData SizeChange
 type SCGEntry = (Name, [Maybe (Int, SizeChange)])
 type UsageReason = (Name, Int)  -- fn_name, its_arg_number
 
-data CGInfo = CGInfo { argsdef :: [Name],
-                       calls :: [(Name, [[Name]])],
+data CGInfo = CGInfo { calls :: [Name],
                        scg :: [SCGEntry],
-                       argsused :: [Name],
-                       usedpos :: [(Int, [UsageReason])] }
+                       usedpos :: [(Int, [UsageReason])] 
+                     }
     deriving Show
 {-!
 deriving instance Binary CGInfo
@@ -348,12 +348,13 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
-                   emptyContext emptyContext
+                   emptyContext 
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing Nothing [] Hidden False [] Nothing [] []
+                   [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Hidden False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
-                   emptyContext
+                   emptyContext S.empty M.empty
+
 
 -- | The monad for the main REPL - reading and processing files and updating
 -- global state (hence the IO inner monad).
@@ -393,6 +394,7 @@ data Command = Quit
              | DocStr (Either Name Const) HowMuchDocs
              | TotCheck Name
              | Reload
+             | Watch
              | Load FilePath (Maybe Int) -- up to maximum line number
              | ChangeDirectory FilePath
              | ModImport String
@@ -716,6 +718,7 @@ data PDecl' t
        [(Name, Docstring (Either Err t))] -- Parameter docs
        SyntaxInfo
        FC [(Name, t)] -- constraints
+       Accessibility
        Name -- class
        FC -- precise location of class
        [t] -- parameters
@@ -874,10 +877,10 @@ mapPDeclFC f g (PClass doc syn fc constrs n nfc params paramDocs det body ctor c
            (map (mapPDeclFC f g) body)
            (fmap (\(n, nfc) -> (n, g nfc)) ctor)
            ctorDoc
-mapPDeclFC f g (PInstance doc paramDocs syn fc constrs cn cnfc params instTy instN body) =
+mapPDeclFC f g (PInstance doc paramDocs syn fc constrs cn acc cnfc params instTy instN body) =
     PInstance doc paramDocs syn (f fc)
               (map (\(constrN, constrT) -> (constrN, mapPTermFC f g constrT)) constrs)
-              cn (g cnfc) (map (mapPTermFC f g) params)
+              cn acc (g cnfc) (map (mapPTermFC f g) params)
               (mapPTermFC f g instTy)
               instN
               (map (mapPDeclFC f g) body)
@@ -917,7 +920,7 @@ declared (PParams _ _ ds) = concatMap declared ds
 declared (PNamespace _ _ ds) = concatMap declared ds
 declared (PRecord _ _ _ _ n  _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 declared (PClass _ _ _ _ n _ _ _ _ ms cn cd) = n : (map fst (maybeToList cn) ++ concatMap declared ms)
-declared (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
+declared (PInstance _ _ _ _ _ _ _ _ _ _ _ _) = []
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
 declared (PMutual _ ds) = concatMap declared ds
@@ -937,7 +940,7 @@ tldeclared (PParams _ _ ds) = []
 tldeclared (PMutual _ ds) = concatMap tldeclared ds
 tldeclared (PNamespace _ _ ds) = concatMap tldeclared ds
 tldeclared (PClass _ _ _ _ n _ _ _ _ ms cn _) = n : (map fst (maybeToList cn) ++ concatMap tldeclared ms)
-tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
+tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _ _) = []
 tldeclared _ = []
 
 defined :: PDecl -> [Name]
@@ -953,7 +956,7 @@ defined (PParams _ _ ds) = concatMap defined ds
 defined (PNamespace _ _ ds) = concatMap defined ds
 defined (PRecord _ _ _ _ n _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 defined (PClass _ _ _ _ n _ _ _ _ ms cn _) = n : (map fst (maybeToList cn) ++ concatMap defined ms)
-defined (PInstance _ _ _ _ _ _ _ _ _ _ _) = []
+defined (PInstance _ _ _ _ _ _ _ _ _ _ _ _) = []
 defined (PDSL n _) = [n]
 defined (PSyntax _ _) = []
 defined (PMutual _ ds) = concatMap defined ds
@@ -1737,7 +1740,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
 
         st =
           case s of
-            Static -> text "[static]" <> space
+            Static -> text "%static" <> space
             _      -> empty
     prettySe d p bnd (PPi (Imp l s _ fa) n _ ty sc)
       | ppopt_impl ppo =
@@ -1748,7 +1751,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       where
         st =
           case s of
-            Static -> text "[static]" <> space
+            Static -> text "%static" <> space
             _      -> empty
     prettySe d p bnd (PPi (Constraint _ _) n _ ty sc) =
       depth d . bracket p startPrec $
@@ -2108,7 +2111,7 @@ showDeclImp o (PNamespace n fc ps) = text "namespace" <+> text n <> braces (line
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
 showDeclImp o (PClass _ _ _ cs n _ ps _ _ ds _ _)
    = text "interface" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
-showDeclImp o (PInstance _ _ _ _ cs n _ _ t _ ds)
+showDeclImp o (PInstance _ _ _ _ cs acc n _ _ t _ ds)
    = text "implementation" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o

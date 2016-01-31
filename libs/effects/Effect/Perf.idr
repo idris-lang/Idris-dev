@@ -12,7 +12,7 @@ import System
 import Effects
 import Effect.Default
 
-%access public
+%access public export
 
 -- ---------------------------------------------------- [ Timer Data Structure ]
 

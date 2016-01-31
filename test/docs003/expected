@@ -5,7 +5,7 @@ Parameters:
     f   -- a parameterised type
 
 Methods:
-    map : Functor f => (m : a -> b) -> f a -> f b
+    map : Functor f => (func : a -> b) -> f a -> f b
         Apply a function across everything of type 'a' in a
         parameterised type
         

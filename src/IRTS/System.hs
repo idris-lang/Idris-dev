@@ -21,10 +21,7 @@ getCC :: IO String
 getCC = fromMaybe "gcc" <$> environment "IDRIS_CC"
 
 getEnvFlags :: IO [String]
-getEnvFlags = do flags <- environment "IDRIS_CFLAGS"
-                 case flags of
-                     Nothing -> return $ []
-                     Just s -> return $ splitOn " " s
+getEnvFlags = maybe [] (splitOn " ") <$> environment "IDRIS_CFLAGS"
 
 mvnCommand :: String
 #ifdef mingw32_HOST_OS
@@ -37,9 +34,8 @@ getMvn :: IO String
 getMvn = fromMaybe mvnCommand <$> environment "IDRIS_MVN"
 
 environment :: String -> IO (Maybe String)
-environment x = catchIO (do e <- getEnv x
-                            return (Just e))
-                      (\_ -> return Nothing)
+environment x = catchIO (Just <$> getEnv x)
+                        (\_ -> return Nothing)
 
 getTargetDir :: IO String
 getTargetDir = environment "TARGET" >>= maybe getDataDir return

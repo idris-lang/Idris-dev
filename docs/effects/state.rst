@@ -189,7 +189,7 @@ shown in Listing [introprog].
     data BTree a = Leaf
                  | Node (BTree a) a (BTree a)
 
-    instance Show a => Show (BTree a) where
+    Show a => Show (BTree a) where
         show Leaf = "[]"
         show (Node l x r) = "[" ++ show l ++ " "
                                 ++ show x ++ " "
@@ -231,19 +231,19 @@ here for illustrative purposes):
     run : Applicative m => {env : Env m xs} -> Eff a xs -> m a
 
 The ``env`` argument is implicit, and initialised automatically where
-possible using default values given by instances of the following type
-class:
+possible using default values given by implementations of the following 
+interface:
 
 .. code-block:: idris
 
-    class Default a where
+    interface Default a where
         default : a
 
-Instances of ``Default`` are defined for all primitive types, and many
+Implementations of ``Default`` are defined for all primitive types, and many
 library types such as ``List``, ``Vect``, ``Maybe``, pairs, etc.
 However, where no default value exists for a resource type (for
 example, you may want a ``STATE`` type for which there is no
-``Default`` instance) the resource environment can be given explicitly
+``Default`` implementation) the resource environment can be given explicitly
 using one of the following functions:
 
 .. code-block:: idris

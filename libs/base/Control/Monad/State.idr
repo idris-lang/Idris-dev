@@ -3,7 +3,7 @@ module Control.Monad.State
 import public Control.Monad.Identity
 import public Control.Monad.Trans
 
-%access public
+%access public export
 
 ||| A computation which runs in a context and produces an output
 interface Monad m => MonadState s (m : Type -> Type) | m where

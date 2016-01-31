@@ -1,6 +1,6 @@
 module Data.Morphisms
 
-%access public
+%access public export
 
 data Morphism : Type -> Type -> Type where
   Mor : (a -> b) -> Morphism a b

@@ -63,9 +63,9 @@ contribute.
 [Stack](https://github.com/commercialhaskell/stack) is a new
 cross-platform program for developing Haskell projects, that enhances
 the functionality provided by Cabal. There is experimental support for
-building Idris from source using with stack, that uses the LTS 3.16
-resolver.  This installation has been tested on Ubuntu 14.04.2 LTS,
-only.
+building Idris from source with stack.  
+This installation has been tested on Ubuntu 14.04.2 LTS, and the current 
+NixOS unstable.
 
 To build Idris with stack the following commands are recommended:
 
@@ -76,6 +76,11 @@ on Unix based systems and an appropriate place on Windows. If you
 haven't used stack before this will also setup the related
 infrastructure. For more information about Stack please visit the
 [Stack website](https://github.com/commercialhaskell/stack).
+
+On NixOS, please use the following command instead, to make sure
+the required libraries and header files are available:
+
+* `stack build --nix`
 
 ### System GHC
 

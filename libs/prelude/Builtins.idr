@@ -1,6 +1,6 @@
 %unqualified
 
-%access public
+%access public export
 %default total
 
 ||| The canonical single-element type, also known as the trivially
@@ -155,13 +155,13 @@ assert_total x = x
 
 ||| Subvert the type checker. This function is abstract, so it will not reduce in
 ||| the type checker. Use it with care - it can result in segfaults or worse!
-abstract %assert_total -- need to pretend
+export %assert_total -- need to pretend
 believe_me : a -> b
 believe_me x = prim__believe_me _ _ x
 
 ||| Subvert the type checker. This function *will*  reduce in the type checker.
 ||| Use it with extreme care - it can result in segfaults or worse!
-public %assert_total
+public export %assert_total
 really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
 
@@ -174,8 +174,8 @@ Float = Double
 -- Pointers as external primitive; there's no literals for these, so no
 -- need for them to be part of the compiler.
 
-abstract data Ptr : Type
-abstract data ManagedPtr : Type
+export data Ptr : Type
+export data ManagedPtr : Type
 
 %extern prim__readFile : prim__WorldType -> Ptr -> String
 %extern prim__writeFile : prim__WorldType -> Ptr -> String -> Int

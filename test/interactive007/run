@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-idris -p contrib --nobanner --nocolor < input
+${IDRIS:-idris} -p contrib --nobanner --nocolor < input

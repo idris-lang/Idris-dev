@@ -92,7 +92,7 @@ countBinders _ = Z
 |||
 ||| @ tm the equality to exploit injectivity on
 ||| @ n the name at which to bind the result
-covering public
+covering public export
 injective : (tm : Raw) -> (n : TTName) -> Elab ()
 injective tm n =
   do (_, ty) <- check !getEnv tm

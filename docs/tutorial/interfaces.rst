@@ -1,8 +1,8 @@
-.. _sect-classes:
+.. _sect-interfaces:
 
-************
-Type Classes
-************
+**********
+Interfaces
+**********
 
 We often want to define functions which work across several different
 data types. For example, we would like arithmetic operators to work on
@@ -10,34 +10,33 @@ data types. For example, we would like arithmetic operators to work on
 ``==`` to work on the majority of data types. We would like to be able
 to display different types in a uniform way.
 
-To achieve this, we use a feature which has proved to be effective in
-Haskell, namely *type classes*. To define a type class, we provide a
-collection of overloaded operations which describe the interface for
-*instances* of that class. A simple example is the ``Show`` type
-class, which is defined in the prelude and provides an interface for
+To achieve this, we use *interfaces*, which are similar to type classes in
+Haskell or traits in Rust.  To define an interface, we provide a collection of
+overloadable functions.  A simple example is the ``Show``
+interface, which is defined in the prelude and provides an interface for
 converting values to ``String``:
 
 .. code-block:: idris
 
-    class Show a where
+    interface Show a where
         show : a -> String
 
 This generates a function of the following type (which we call a
-*method* of the ``Show`` class):
+*method* of the ``Show`` interface):
 
 .. code-block:: idris
 
     show : Show a => a -> String
 
-We can read this as: “under the constraint that ``a`` is an instance
-of ``Show``, take an input ``a`` and return a ``String``.” An instance
-of a class is defined with an ``instance`` declaration, which provides
-implementations of the function for a specific type. For example, the
-``Show`` instance for ``Nat`` could be defined as:
+We can read this as: “under the constraint that ``a`` has an implementation
+of ``Show``, take an input ``a`` and return a ``String``.” An implementation
+of an interface is defined by giving definitions of the methods of the interface.
+For example, the
+``Show`` implementation for ``Nat`` could be defined as:
 
 .. code-block:: idris
 
-    instance Show Nat where
+    Show Nat where
         show Z = "Z"
         show (S k) = "s" ++ show k
 
@@ -46,18 +45,18 @@ implementations of the function for a specific type. For example, the
     Idris> show (S (S (S Z)))
     "sssZ" : String
 
-Only one instance of a class can be given for a type — instances may
-not overlap. Instance declarations can themselves have constraints.
-To help with resolution, the arguments of an instance must be
+Only one implementation of an interface can be given for a type — implementations may
+not overlap. Implementation declarations can themselves have constraints.
+To help with resolution, the arguments of an implementation must be
 constructors (either data or type constructors), variables or
-constants (i.e. you cannot give an instance for a function).  For
-example, to define a ``Show`` instance for vectors, we need to know
-that there is a ``Show`` instance for the element type, because we are
+constants (i.e. you cannot give an implementation for a function).  For
+example, to define a ``Show`` implementation for vectors, we need to know
+that there is a ``Show`` implementation for the element type, because we are
 going to use it to convert each element to a ``String``:
 
 .. code-block:: idris
 
-    instance Show a => Show (Vect n a) where
+    Show a => Show (Vect n a) where
         show xs = "[" ++ show' xs ++ "]" where
             show' : Vect n a -> String
             show' Nil        = ""
@@ -67,22 +66,22 @@ going to use it to convert each element to a ``String``:
 Default Definitions
 ===================
 
-The library defines an ``Eq`` class which provides an interface for
-comparing values for equality or inequality, with instances for all of
+The library defines an ``Eq`` interface which provides methods for
+comparing values for equality or inequality, with implementations for all of
 the built-in types:
 
 .. code-block:: idris
 
-    class Eq a where
+    interface Eq a where
         (==) : a -> a -> Bool
         (/=) : a -> a -> Bool
 
-To declare an instance of a type, we have to give definitions of all
-of the methods. For example, for an instance of ``Eq`` for ``Nat``:
+To declare an implementation for a type, we have to give definitions of all
+of the methods. For example, for an implementation of ``Eq`` for ``Nat``:
 
 .. code-block:: idris
 
-    instance Eq Nat where
+    Eq Nat where
         Z     == Z     = True
         (S x) == (S y) = x == y
         Z     == (S y) = False
@@ -93,28 +92,28 @@ of the methods. For example, for an instance of ``Eq`` for ``Nat``:
 It is hard to imagine many cases where the ``/=`` method will be
 anything other than the negation of the result of applying the ``==``
 method. It is therefore convenient to give a default definition for
-each method in the class declaration, in terms of the other method:
+each method in the interface declaration, in terms of the other method:
 
 .. code-block:: idris
 
-    class Eq a where
+    interface Eq a where
         (==) : a -> a -> Bool
         (/=) : a -> a -> Bool
 
         x /= y = not (x == y)
         x == y = not (x /= y)
 
-A minimal complete definition of an ``Eq`` instance requires either
+A minimal complete implementation of ``Eq`` requires either
 ``==`` or ``/=`` to be defined, but does not require both. If a method
 definition is missing, and there is a default definition for it, then
 the default is used instead.
 
-Extending Classes
-=================
+Extending Interfaces
+====================
 
-Classes can also be extended. A logical next step from an equality
+Interfaces can also be extended. A logical next step from an equality
 relation ``Eq`` is to define an ordering relation ``Ord``. We can
-define an ``Ord`` class which inherits methods from ``Eq`` as well as
+define an ``Ord`` interface which inherits methods from ``Eq`` as well as
 defining some of its own:
 
 .. code-block:: idris
@@ -123,7 +122,7 @@ defining some of its own:
 
 .. code-block:: idris
 
-    class Eq a => Ord a where
+    interface Eq a => Ord a where
         compare : a -> a -> Ordering
 
         (<) : a -> a -> Bool
@@ -133,11 +132,11 @@ defining some of its own:
         max : a -> a -> a
         min : a -> a -> a
 
-The ``Ord`` class allows us to compare two values and determine their
+The ``Ord`` interface allows us to compare two values and determine their
 ordering. Only the ``compare`` method is required; every other method
 has a default definition. Using this we can write functions such as
 ``sort``, a function which sorts a list into increasing order,
-provided that the element type of the list is in the ``Ord`` class. We
+provided that the element type of the list is in the ``Ord`` interface. We
 give the constraints on the type variables left of the fat arrow
 ``=>``, and the function type to the right of the fat arrow:
 
@@ -145,7 +144,7 @@ give the constraints on the type variables left of the fat arrow
 
     sort : Ord a => List a -> List a
 
-Functions, classes and instances can have multiple
+Functions, interfaces and implementations can have multiple
 constraints. Multiple constraints are written in brackets in a comma
 separated list, for example:
 
@@ -157,16 +156,16 @@ separated list, for example:
 Functors and Applicatives
 =========================
 
-So far, we have seen single parameter type classes, where the parameter
-is of type ``Type``. In general, there can be any number (greater than
-0) of parameters, and the parameters can have *any* type. If the type
+So far, we have seen single parameter interfaces, where the parameter
+is of type ``Type``. In general, there can be any number of parameters
+(even zero), and the parameters can have *any* type. If the type
 of the parameter is not ``Type``, we need to give an explicit type
-declaration. For example, the ``Functor`` class is defined in the
-library:
+declaration. For example, the ``Functor`` interface is defined in the
+prelude:
 
 .. code-block:: idris
 
-    class Functor (f : Type -> Type) where
+    interface Functor (f : Type -> Type) where
         map : (m : a -> b) -> f a -> f b
 
 A functor allows a function to be applied across a structure, for
@@ -174,7 +173,7 @@ example to apply a function to every element in a ``List``:
 
 .. code-block:: idris
 
-    instance Functor List where
+    Functor List where
       map f []      = []
       map f (x::xs) = f x :: map f xs
 
@@ -190,21 +189,21 @@ abstracts the notion of function application:
 
     infixl 2 <*>
 
-    class Functor f => Applicative (f : Type -> Type) where
+    interface Functor f => Applicative (f : Type -> Type) where
         pure  : a -> f a
         (<*>) : f (a -> b) -> f a -> f b
 
 Monads and ``do``-notation
 ==========================
 
-The ``Monad`` class allows us to encapsulate binding and computation,
+The ``Monad`` interface allows us to encapsulate binding and computation,
 and is the basis of ``do``-notation introduced in Section
 :ref:`sect-do`. It extends ``Applicative`` as defined above, and is
 defined as follows:
 
 .. code-block:: idris
 
-    class Applicative m => Monad (m : Type -> Type) where
+    interface Applicative m => Monad (m : Type -> Type) where
         (>>=)  : m a -> (a -> m b) -> m b
 
 Inside a ``do`` block, the following syntactic transformations are
@@ -216,12 +215,12 @@ applied:
 
 - ``let x = v; e`` becomes ``let x = v in e``
 
-``IO`` is an instance of ``Monad``, defined using primitive functions.
-We can also define an instance for ``Maybe``, as follows:
+``IO`` has an implementation of ``Monad``, defined using primitive functions.
+We can also define an implementation for ``Maybe``, as follows:
 
 .. code-block:: idris
 
-    instance Monad Maybe where
+    Monad Maybe where
         Nothing  >>= k = Nothing
         (Just x) >>= k = k x
 
@@ -242,10 +241,74 @@ are both available, or return ``Nothing`` if one or both are not ("fail fast"). 
 
 ::
 
-    *classes> m_add (Just 20) (Just 22)
+    *ifaces> m_add (Just 20) (Just 22)
     Just 42 : Maybe Int
-    *classes> m_add (Just 20) Nothing
+    *ifaces> m_add (Just 20) Nothing
     Nothing : Maybe Int
+
+Pattern Matching Bind
+---------------------
+
+Sometimes we want to pattern match immediately on the result of a function
+in ``do`` notation. For example, let's say we have a function ``readNumber``
+which reads a number from the console, returning a value of the form
+``Just x`` if the number is valid, or ``Nothing`` otherwise:
+
+.. code-block:: idris
+
+    readNumber : IO (Maybe Nat)
+    readNumber = do
+      input <- getLine
+      if all isDigit (unpack input)
+         then pure (Just (cast input))
+         else pure Nothing
+
+If we then use it to write a function to read two numbers, returning
+``Nothing`` if neither are valid, then we would like to pattern match
+on the result of ``readNumber``:
+
+.. code-block:: idris
+
+    readNumbers : IO (Maybe (Nat, Nat))
+    readNumbers = 
+      do x <- readNumber
+         case x of
+              Nothing => pure Nothing
+              Just x_ok => do y <- readNumber
+                              case y of
+                                   Nothing => pure Nothing
+                                   Just y_ok => pure (Just (x_ok, y_ok))
+
+If there's a lot of error handling, this could get deeply nested very quickly!
+So instead, we can combine the bind and the pattern match in one line. For example,
+we could try pattern matching on values of the form ``Just x_ok``:
+
+.. code-block:: idris
+
+    readNumbers : IO (Maybe (Nat, Nat))
+    readNumbers = 
+      do Just x_ok <- readNumber
+         Just y_ok <- readNumber
+         pure (Just (x_ok, y_ok))
+
+There is still a problem, however, because we've now omitted the case for
+``Nothing`` so ``readNumbers`` is no longer total! We can add the ``Nothing``
+case back as follows:
+
+.. code-block:: idris
+
+    readNumbers : IO (Maybe (Nat, Nat))
+    readNumbers = 
+      do Just x_ok <- readNumber | Nothing => pure Nothing
+         Just y_ok <- readNumber | Nothing => pure Nothing
+         pure (Just (x_ok, y_ok))
+
+The effect of this version of ``readNumbers`` is identical to the first (in
+fact, it is syntactic sugar for it and directly translated back into that form).
+The first part of each statement (``Just x_ok <-`` and ``Just y_ok <-``) gives
+the preferred binding - if this matches, execution will continue with the rest
+of the ``do`` block. The second part gives the alternative bindings, of which
+there may be more than one.
 
 ``!``-notation
 --------------
@@ -296,11 +359,11 @@ Monad comprehensions
 
 The list comprehension notation we saw in Section
 :ref:`sect-more-expr` is more general, and applies to anything which
-is an instance of both ``Monad`` and ``Alternative``:
+has an implementation of both ``Monad`` and ``Alternative``:
 
 .. code-block:: idris
 
-    class Applicative f => Alternative (f : Type -> Type) where
+    interface Applicative f => Alternative (f : Type -> Type) where
         empty : f a
         (<|>) : f a -> f a -> f a
 
@@ -364,19 +427,19 @@ alternative notion of function application, with explicit calls to
 
 Rather than having to insert ``m_app`` everywhere there is an
 application, we can use idiom brackets to do the job for us.
-To do this, we can make ``Maybe`` an instance of ``Applicative``
+To do this, we can give ``Maybe`` an implementation of ``Applicative``
 as follows, where ``<*>`` is defined in the same way as ``m_app``
 above (this is defined in the Idris library):
 
 .. code-block:: idris
 
-    instance Applicative Maybe where
+    Applicative Maybe where
         pure = Just
 
         (Just f) <*> (Just a) = Just (f a)
         _        <*> _        = Nothing
 
-Using ``<*>`` we can use this instance as follows, where a function
+Using ``<*>`` we can use this implementation as follows, where a function
 application ``[| f a1 …an |]`` is translated into ``pure f <*> a1 <*>
 … <*> an``:
 
@@ -407,8 +470,8 @@ We define a data type ``Eval`` to wrap an evaluator:
     data Eval : Type -> Type where
          MkEval : (List (String, Int) -> Maybe a) -> Eval a
 
-Wrapping the evaluator in a data type means we will be able to make it
-an instance of a type class later. We begin by defining a function to
+Wrapping the evaluator in a data type means we will be able to provide
+implementations of interfaces for it later. We begin by defining a function to
 retrieve values from the context during evaluation:
 
 .. code-block:: idris
@@ -421,18 +484,18 @@ retrieve values from the context during evaluation:
                                       then (Just val)
                                       else (fetchVal xs)
 
-When defining an evaluator for the language, we will be applying
-functions in the context of an ``Eval``, so it is natural to make
-``Eval`` an instance of ``Applicative``. Before ``Eval`` can be an
-instance of ``Applicative`` it is necessary to make ``Eval`` an
-instance of ``Functor``:
+When defining an evaluator for the language, we will be applying functions in
+the context of an ``Eval``, so it is natural to give ``Eval`` an implementation
+of ``Applicative``. Before ``Eval`` can have an implementation of
+``Applicative`` it is necessary for ``Eval`` to have an implementation of
+``Functor``:
 
 .. code-block:: idris
 
-    instance Functor Eval where
+    Functor Eval where
         map f (MkEval g) = MkEval (\e => map f (g e))
 
-    instance Applicative Eval where
+    Applicative Eval where
         pure x = MkEval (\e => Just x)
 
         (<*>) (MkEval f) (MkEval g) = MkEval (\x => app (f x) (g x)) where
@@ -454,24 +517,24 @@ to handle errors:
     runEval env e = case eval e of
         MkEval envFn => envFn env
 
-Named Instances
-===============
+Named Implementations
+=====================
 
-It can be desirable to have multiple instances of a type class, for
-example to provide alternative methods for sorting or printing values.
-To achieve this, instances can be *named* as follows:
+It can be desirable to have multiple implementations of an interface for the
+same type, for example to provide alternative methods for sorting or printing
+values.  To achieve this, implementations can be *named* as follows:
 
 .. code-block:: idris
 
-    instance [myord] Ord Nat where
+    [myord] Ord Nat where
        compare Z (S n)     = GT
        compare (S n) Z     = LT
        compare Z Z         = EQ
        compare (S x) (S y) = compare @{myord} x y
 
-This declares an instance as normal, but with an explicit name,
-``myord``. The syntax ``compare @{myord}`` gives an explicit instance to
-``compare``, otherwise it would use the default instance for ``Nat``. We
+This declares an implementation as normal, but with an explicit name,
+``myord``. The syntax ``compare @{myord}`` gives an explicit implementation to
+``compare``, otherwise it would use the default implementation for ``Nat``. We
 can use this, for example, to sort a list of ``Nat`` in reverse.
 Given the following list:
 
@@ -480,35 +543,34 @@ Given the following list:
     testList : List Nat
     testList = [3,4,1]
 
-We can sort it using the default ``Ord`` instance, then the named
-instance ``myord`` as follows, at the Idris prompt:
+We can sort it using the default ``Ord`` implementation, then the named
+implementation ``myord`` as follows, at the Idris prompt:
 
 ::
 
-    *named_instance> show (sort testList)
+    *named_impl> show (sort testList)
     "[sO, sssO, ssssO]" : String
-    *named_instance> show (sort @{myord} testList)
+    *named_impl> show (sort @{myord} testList)
     "[ssssO, sssO, sO]" : String
 
 
 Determining Parameters
 ======================
 
-When a class has more than one parameter, it can help resolution if
-the parameters used to resolve the type class are restricted. For
-example:
+When an interface has more than one parameter, it can help resolution if the
+parameters used to find an implementation are restricted. For example:
 
 .. code-block:: idris
 
-    class Monad m => MonadState s (m : Type -> Type) | m where
+    interface Monad m => MonadState s (m : Type -> Type) | m where
       get : m s
       put : s -> m ()
 
-In this class, only ``m`` needs to be known to resolve this class, and
-``s`` can then be determined from the instance. This is declared with
-the ``| m`` after the class declaration. We call ``m`` a *determining
-parameter* of the ``MonadState`` class, because it is the parameter
-used to resolve an instance.
+In this interface, only ``m`` needs to be known to find an implementation of
+this interface, and ``s`` can then be determined from the implementation. This
+is declared with the ``| m`` after the interface declaration. We call ``m`` a
+*determining parameter* of the ``MonadState`` interface, because it is the
+parameter used to find an implementation.
 
 
 .. [1] Conor McBride and Ross Paterson. 2008. Applicative programming

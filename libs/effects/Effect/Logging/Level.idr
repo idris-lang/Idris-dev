@@ -14,7 +14,7 @@
 ||| loggers.
 module Effect.Logging.Level
 
-%access public
+%access public export
 %default total
 
 -- ---------------------------------------------------- [ Log Level Definition ]

@@ -1,5 +1,29 @@
-New in 0.9.21:
-==============
+New in 0.11:
+============
+
+Updated export rules
+--------------------
+
+* The export rules are:
+  - 'private' means that the definition is not exported at all
+  - 'export' means that the top level type is exported, but not the
+    definition. In the case of 'data', this means the type constructor is
+    exported but not the data constructors.
+  - 'public export' means that the entire definition is exported.
+* By default, names are 'private'. This can be altered with an %access
+  directive as before.
+* Exported types can only refer to other exported names
+* Publicly exported definitions can only refer to publicly exported names
+
+Minor language changes
+----------------------
+
+* The '[static]' annotation is changed to '%static' to be consistent with the
+other annotations.
+
+
+New in 0.10:
+============
 
 * 'class' and 'instance' are now deprecated keywords. They have been
   replaced by 'interface' and 'implementation' respectively. This is to
