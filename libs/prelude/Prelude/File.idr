@@ -113,12 +113,14 @@ modeStr ReadAppend        = "a+"
 ||| Open a file
 ||| @ f the filename
 ||| @ m the mode; either Read, WriteTruncate, Append, ReadWrite, ReadWriteTruncate, or ReadAppend
+export
 openFile : (f : String) -> (m : Mode) -> IO (Either FileError File)
 openFile f m = fopen f (modeStr m)
 
 ||| Open a file using C11 extended modes.
 ||| @ f the filename
 ||| @ m the mode; either Read, WriteTruncate, Append, ReadWrite, ReadWriteTruncate, or ReadAppend
+export
 openFileX : (f : String) -> (m : Mode) -> IO (Either FileError File)
 openFileX f m = fopen f $ modeStr m ++ "x"
 
