@@ -171,17 +171,25 @@ runDiff conf = do
 whisper :: Config -> String -> IO ()
 whisper conf s = do unless (isQuiet conf) $ putStrLn s
 
+isWindows :: Bool
+isWindows = os `elem` ["win32", "mingw32", "cygwin32"]
+
 setPath :: Config -> IO ()
 setPath conf = do
     maybeEnv <- lookupEnv "IDRIS"
-    idrisEnv <- return $ fromMaybe "" maybeEnv
-    if (idrisEnv /= "")
+    idrisExists <- case maybeEnv of
+        Just idrisExe -> do
+            let exeExtension = if isWindows then ".exe" else ""
+            doesFileExist (idrisExe ++ exeExtension)
+        Nothing -> return False
+    if (idrisExists)
         then do
-            idrisAbs <- makeAbsolute idrisEnv
+            idrisAbs <- makeAbsolute $ fromMaybe "" maybeEnv
             setEnv "IDRIS" idrisAbs
             whisper conf $ "Using " ++ idrisAbs
         else do
             path <- getEnv "PATH"
+            setEnv "IDRIS" ""
             let sandbox = "../.cabal-sandbox/bin"
             hasBox <- doesDirectoryExist sandbox
             bindir <- if hasBox

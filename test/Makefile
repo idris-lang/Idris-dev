@@ -1,9 +1,5 @@
 .PHONY: test test_js time update diff distclean $(TESTS)
 
-runtest:
-	@ghc --make runtest.hs
-	@rm runtest.o runtest.hi
-
 TESTS = $(sort $(patsubst %/,%.test,$(wildcard */)))
 
 test: $(TESTS)
@@ -31,3 +27,8 @@ distclean:
 	@rm runtest
 	@rm -f *~
 	@rm -f */output
+
+
+runtest:
+	@ghc --make runtest.hs
+	@rm runtest.o runtest.hi
