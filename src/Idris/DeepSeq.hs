@@ -199,7 +199,8 @@ instance NFData IOption where
          opt_optimise
          opt_printdepth
          opt_evaltypes
-         opt_desugarnats) =
+         opt_desugarnats
+         opt_autoimpls) =
          rnf opt_logLevel
          `seq` rnf opt_typecase
          `seq` rnf opt_typeintype
@@ -224,6 +225,7 @@ instance NFData IOption where
          `seq` rnf opt_printdepth
          `seq` rnf opt_evaltypes
          `seq` rnf opt_desugarnats
+         `seq` rnf opt_autoimpls
          `seq` ()
 
 instance NFData LanguageExt where

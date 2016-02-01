@@ -1356,7 +1356,12 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     fn <- fst <$> fnName
                     arg <- fst <$> iName []
                     return [PDirective (DUsed fc fn arg)]
+             <|> do try (lchar '%' *> reserved "auto_implicits")
+                    b <- on_off
+                    return [PDirective (DAutoImplicits b)]
              <?> "directive"
+  where on_off = do reserved "on"; return True
+             <|> do reserved "off"; return False 
 
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)

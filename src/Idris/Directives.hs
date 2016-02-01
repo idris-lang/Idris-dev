@@ -68,6 +68,8 @@ directiveAction (DDeprecate n reason)
     = do n' <- disambiguate n
          addDeprecated n' reason
          addIBC (IBCDeprecate n' reason)
+directiveAction (DAutoImplicits b)
+    = setAutoImpls b
 directiveAction (DUsed fc fn arg) = addUsedName fc fn arg
 
 disambiguate :: Name -> Idris Name

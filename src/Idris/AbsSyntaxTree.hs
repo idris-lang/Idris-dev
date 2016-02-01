@@ -94,6 +94,7 @@ data IOption = IOption {
   , opt_printdepth   :: Maybe Int
   , opt_evaltypes    :: Bool           -- ^ normalise types in :t
   , opt_desugarnats  :: Bool
+  , opt_autoimpls    :: Bool
   } deriving (Show, Eq)
 
 defaultOpts = IOption { opt_logLevel   = 0
@@ -121,6 +122,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_printdepth = Just 5000
                       , opt_evaltypes  = True
                       , opt_desugarnats = False
+                      , opt_autoimpls  = True
                       }
 
 data PPOption = PPOption {
@@ -758,6 +760,7 @@ data Directive = DLib Codegen String |
                  DErrorHandlers Name FC Name FC [(Name, FC)] |
                  DLanguage LanguageExt |
                  DDeprecate Name String |
+                 DAutoImplicits Bool |
                  DUsed FC Name Name
 
 -- | A set of instructions for things that need to happen in IState

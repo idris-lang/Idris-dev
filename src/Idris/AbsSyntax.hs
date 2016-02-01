@@ -774,6 +774,16 @@ logLevel :: Idris Int
 logLevel = do i <- getIState
               return (opt_logLevel (idris_options i))
 
+setAutoImpls :: Bool -> Idris ()
+setAutoImpls b = do i <- getIState
+                    let opts = idris_options i
+                    let opt' = opts { opt_autoimpls = b }
+                    putIState $ i { idris_options = opt' }
+
+getAutoImpls :: Idris Bool
+getAutoImpls = do i <- getIState
+                  return (opt_autoimpls (idris_options i))
+
 setErrContext :: Bool -> Idris ()
 setErrContext t = do i <- getIState
                      let opts = idris_options i
@@ -1431,7 +1441,11 @@ addUsingConstraints syn fc t
 addUsingImpls :: SyntaxInfo -> Name -> FC -> PTerm -> Idris PTerm
 addUsingImpls syn n fc t
    = do ist <- getIState
-        let ns = implicitNamesIn (map iname uimpls) ist t
+        autoimpl <- getAutoImpls
+        let ns_in = implicitNamesIn (map iname uimpls) ist t
+        let ns = if autoimpl then ns_in
+                    else filter (\n -> n `elem` (map iname uimpls)) ns_in
+
         let badnames = filter (\n -> not (implicitable n) &&
                                      n `notElem` (map iname uimpls)) ns
         when (not (null badnames)) $
@@ -1517,15 +1531,19 @@ implicit info syn n ptm = implicit' info syn [] n ptm
 implicit' :: ElabInfo -> SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
 implicit' info syn ignore n ptm
     = do i <- getIState
-         let (tm', impdata) = implicitise syn ignore i ptm
-         defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
---          let (tm'', spos) = findStatics i tm'
-         putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
-         addIBC (IBCImp n)
-         logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
---          i <- get
---          putIState $ i { idris_statics = addDef n spos (idris_statics i) }
-         return tm'
+         auto <- getAutoImpls
+         if not auto 
+           then return ptm
+           else do
+             let (tm', impdata) = implicitise syn ignore i ptm
+             defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
+    --          let (tm'', spos) = findStatics i tm'
+             putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
+             addIBC (IBCImp n)
+             logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
+    --          i <- get
+    --          putIState $ i { idris_statics = addDef n spos (idris_statics i) }
+             return tm'
   where
     --  Detect unknown names in default arguments and throw error if found.
     defaultArgCheck :: [Name] -> [PArg] -> Idris ()

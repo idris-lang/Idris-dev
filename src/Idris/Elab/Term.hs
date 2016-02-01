@@ -236,6 +236,7 @@ elab ist info emode opts fn tm
     pattern = emode == ELHS
     intransform = emode == ETransLHS
     bindfree = emode == ETyDecl || emode == ELHS || emode == ETransLHS
+    autoimpls = opt_autoimpls (idris_options ist)
 
     get_delayed_elab est =
         let ds = delayed_elab est in
@@ -614,7 +615,8 @@ elab ist info emode opts fn tm
                                 [] -> False
                                 _ -> True
             bindable (NS _ _) = False
-            bindable n = implicitable n
+            bindable (MN _ _) = True
+            bindable n = implicitable n && autoimpls
     elab' ina _ f@(PInferRef fc hls n) = elab' ina (Just fc) (PApp NoFC f [])
     elab' ina fc' tm@(PRef fc hls n)
           | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
