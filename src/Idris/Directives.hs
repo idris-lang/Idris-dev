@@ -21,8 +21,10 @@ directiveAction (DLink cgn obj) = do dirs <- allImportDirs
                                      addIBC (IBCObj cgn obj) -- just name, search on loading ibc
                                      addObjectFile cgn o
 
-directiveAction (DFlag cgn flag) = do addIBC (IBCCGFlag cgn flag)
-                                      addFlag cgn flag
+directiveAction (DFlag cgn flag) = do
+                                      let flags = words flag
+                                      mapM_ (\f -> addIBC (IBCCGFlag cgn f)) flags
+                                      mapM_ (addFlag cgn) flags
 
 directiveAction (DInclude cgn hdr) = do addHdr cgn hdr
                                         addIBC (IBCHeader cgn hdr)

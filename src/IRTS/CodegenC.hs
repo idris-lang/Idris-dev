@@ -81,10 +81,10 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
                          "-I."] ++ objs ++ envFlags ++
                         (if (exec == Executable) then [] else ["-c"]) ++
                         [tmpn] ++
-                        (if not iface then concatMap words libFlags else []) ++
-                        concatMap words incFlags ++
-                        (if not iface then concatMap words libs else []) ++
-                        concatMap words flags ++
+                        (if not iface then libFlags else []) ++
+                        incFlags ++
+                        (if not iface then libs else []) ++
+                        flags ++
                         ["-o", out]
 --              putStrLn (show args)
              exit <- rawSystem comp args
