@@ -13,4 +13,4 @@ extra-deps:
 - libffi-0.1
 nix:
    enable: false
-   packages: [ libffi, zlib, ncurses, gmp, pkgconfig ]
+   shell-file: stack-shell.nix
