@@ -122,13 +122,13 @@ repl orig mods efile
                              (if colour && not isWindows
                                 then colourisePrompt theme str
                                 else str) ++ " "
-        x <- H.catch (getInputLine prompt)
-                     (ctrlC (return Nothing))
+        x <- H.catch (H.withInterrupt $ getInputLine prompt)
+                     (ctrlC (return $ Just ""))
         case x of
             Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
                           return ()
             Just input -> -- H.catch
-                do ms <- H.catch (lift $ processInput input orig mods efile)
+                do ms <- H.catch (H.withInterrupt $ lift $ processInput input orig mods efile)
                                  (ctrlC (return (Just mods)))
                    case ms of
                         Just mods -> let efile' = fromMaybe efile (listToMaybe mods)
