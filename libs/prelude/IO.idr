@@ -12,7 +12,6 @@ data PrimIO : Type -> Type where
 ||| A token representing the world, for use in `IO`
 data World = TheWorld prim__WorldType
 
-private
 world : World -> prim__WorldType
 world (TheWorld w) = w
 
@@ -47,16 +46,16 @@ namespace ForeignEnv
   data FEnv : FFI -> List Type -> Type where
        Nil : FEnv f []
        (::) : (ffi_types f t, t) -> FEnv f xs -> FEnv f (t :: xs)
-  
+
 ForeignPrimType : (xs : List Type) -> FEnv ffi xs -> Type -> Type
 ForeignPrimType {ffi} [] [] t = World -> ffi_fn ffi -> ffi_types ffi t -> PrimIO t
-ForeignPrimType {ffi} (x :: xs) ((a, _) :: env) t 
+ForeignPrimType {ffi} (x :: xs) ((a, _) :: env) t
      = (ffi_types ffi x, x) -> ForeignPrimType xs env t
 
 %inline
 private
-applyEnv : (env : FEnv ffi xs) -> 
-           ForeignPrimType xs env t -> 
+applyEnv : (env : FEnv ffi xs) ->
+           ForeignPrimType xs env t ->
            World -> ffi_fn ffi -> ffi_types ffi t -> PrimIO t
 applyEnv [] f = f
 applyEnv (x@(_, _) :: xs) f = applyEnv xs (f x)
@@ -68,7 +67,7 @@ mkForeignPrim : {xs : _} -> {ffi : _} -> {env : FEnv ffi xs} -> {t : Type} ->
 
 %inline
 private
-foreign_prim : (f : FFI) -> 
+foreign_prim : (f : FFI) ->
                (fname : ffi_fn f) -> FTy f xs ty -> FEnv f xs -> ty
 foreign_prim f fname (FRet y) env
         = MkIO (\w => applyEnv env mkForeignPrim w fname y)
@@ -129,14 +128,14 @@ prim_read : IO' l String
 prim_read = MkIO (\w => prim_io_return (prim__readString (world w)))
 
 prim_write : String -> IO' l Int
-prim_write s 
+prim_write s
    = MkIO (\w => prim_io_return (prim__writeString (world w) s))
 
 prim_fread : Ptr -> IO' l String
 prim_fread h = MkIO (\w => prim_io_return (prim__readFile (world w) h))
 
 prim_fwrite : Ptr -> String -> IO' l Int
-prim_fwrite h s 
+prim_fwrite h s
    = MkIO (\w => prim_io_return (prim__writeFile (world w) h s))
 
 --------- The C FFI
@@ -178,7 +177,7 @@ namespace FFI_C
   FFI_C = MkFFI C_Types String String
 
 ||| Interactive programs, describing I/O actions and returning a value.
-||| @res The result type of the program 
+||| @res The result type of the program
 %error_reverse
 public export
 IO : (res : Type) -> Type
@@ -285,9 +284,9 @@ namespace FFI_Export
 
   public export
   data FFI_Export : (f : FFI) -> String -> List (Type, ffi_data f) -> Type where
-       Data : (x : Type) -> (n : ffi_data f) -> 
+       Data : (x : Type) -> (n : ffi_data f) ->
               (es : FFI_Export f h ((x, n) :: xs)) -> FFI_Export f h xs
-       Fun : (fn : t) -> (n : ffi_fn f) -> {auto prf : FFI_Exportable f xs t} -> 
+       Fun : (fn : t) -> (n : ffi_fn f) -> {auto prf : FFI_Exportable f xs t} ->
              (es : FFI_Export f h xs) -> FFI_Export f h xs
        End : FFI_Export f h xs
 
@@ -299,3 +298,31 @@ namespace FFI_Export
 %used Fun es
 %used Fun prf
 
+-- Accessing memory
+prim_peek8 : Ptr -> Int -> IO Bits8
+prim_peek8 ptr offset = MkIO (\w => prim_io_return (prim__peek8 (world w) ptr offset))
+
+prim_poke8 : Ptr -> Int -> Bits8 -> IO Int
+prim_poke8 ptr offset val = MkIO (\w =>  prim_io_return (
+     prim__poke8 (world w) ptr offset val))
+
+prim_peek16 : Ptr -> Int -> IO Bits16
+prim_peek16 ptr offset = MkIO (\w => prim_io_return (prim__peek16 (world w) ptr offset))
+
+prim_poke16 : Ptr -> Int -> Bits16 -> IO Int
+prim_poke16 ptr offset val = MkIO (\w =>  prim_io_return (
+     prim__poke16 (world w) ptr offset val))
+
+prim_peek32 : Ptr -> Int -> IO Bits32
+prim_peek32 ptr offset = MkIO (\w => prim_io_return (prim__peek32 (world w) ptr offset))
+
+prim_poke32 : Ptr -> Int -> Bits32 -> IO Int
+prim_poke32 ptr offset val = MkIO (\w =>  prim_io_return (
+     prim__poke32 (world w) ptr offset val))
+
+prim_peek64 : Ptr -> Int -> IO Bits64
+prim_peek64 ptr offset = MkIO (\w => prim_io_return (prim__peek64 (world w) ptr offset))
+
+prim_poke64 : Ptr -> Int -> Bits64 -> IO Int
+prim_poke64 ptr offset val = MkIO (\w =>  prim_io_return (
+     prim__poke64 (world w) ptr offset val))

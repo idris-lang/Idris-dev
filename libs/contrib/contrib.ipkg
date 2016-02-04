@@ -9,7 +9,7 @@ modules = Control.Algebra,
           Control.WellFounded,
 
           Classes.Verified,
-          
+
           Data.Fun, Data.Rel,
           Data.Hash,
           Data.Matrix, Data.Matrix.Algebraic, Data.Matrix.Numeric,
@@ -18,7 +18,7 @@ modules = Control.Algebra,
           Data.BoundedList,
           Data.Heap,
           Data.SortedMap, Data.SortedSet,
-          Data.CoList,
+          Data.CoList, Data.Storable,
 
           Decidable.Decidable, Decidable.Order,
 

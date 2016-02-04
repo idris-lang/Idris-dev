@@ -51,9 +51,9 @@ namespace Builtins
 
 ||| The empty type, also known as the trivially false proposition.
 |||
-||| Use `void` or `absurd` to prove anything if you have a variable of type `Void` in scope. 
-%elim data Void : Type where    
-    
+||| Use `void` or `absurd` to prove anything if you have a variable of type `Void` in scope.
+%elim data Void : Type where
+
 ||| The eliminator for the `Void` type.
 void : Void -> a
 -- We can't define void yet. We can't define a function with no clauses without
@@ -190,4 +190,14 @@ export data ManagedPtr : Type
 %extern prim__eqManagedPtr : ManagedPtr -> ManagedPtr -> Int
 %extern prim__registerPtr : Ptr -> Int -> ManagedPtr
 
+-- primitives for accessing memory.
+%extern prim__asPtr : ManagedPtr -> Ptr
+%extern prim__peek8 : prim__WorldType -> Ptr -> Int -> Bits8
+%extern prim__peek16 : prim__WorldType -> Ptr -> Int -> Bits16
+%extern prim__peek32 : prim__WorldType -> Ptr -> Int -> Bits32
+%extern prim__peek64 : prim__WorldType -> Ptr -> Int -> Bits64
 
+%extern prim__poke8 : prim__WorldType -> Ptr -> Int -> Bits8 -> Int
+%extern prim__poke16 : prim__WorldType -> Ptr -> Int -> Bits16 -> Int
+%extern prim__poke32 : prim__WorldType -> Ptr -> Int -> Bits32 -> Int
+%extern prim__poke64 : prim__WorldType -> Ptr -> Int -> Bits64 -> Int
