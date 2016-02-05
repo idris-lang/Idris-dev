@@ -105,7 +105,16 @@ Meaning for Functions
   definition can be used after it is imported. In other words, the
   definition itself is considered part of the module's interface. The
   long name ``public export`` is intended to make you think twice
-  about doing this...
+  about doing this.
+
+.. note::
+
+   Type synonyms in Idris are created by writing a function. When
+   setting the visibility for a module, it might be a good idea to
+   ``public export`` all type synonyms if they are to be used outside
+   the module. Otherwise, Idris won't know what the synonym is a
+   synonym for.
+
 
 Meaning for Data Types
 ----------------------
@@ -126,6 +135,7 @@ For interfaces, the meanings are:
 - ``export`` the interface name is exported
 - ``public export`` the interface name, method names and default
   definitions are exported
+
 
 
 ``BTree`` Revisited
