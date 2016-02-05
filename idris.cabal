@@ -871,6 +871,7 @@ Library
                 , Idris.Elab.Transform
                 , Idris.Elab.Value
                 , Idris.Elab.Term
+                , Idris.Elab.Quasiquote
 
                 , Idris.REPL.Browse
 
@@ -891,7 +892,6 @@ Library
                 , Idris.Docs
                 , Idris.Docstrings
                 , Idris.ElabDecls
-                , Idris.ElabQuasiquote
                 , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse

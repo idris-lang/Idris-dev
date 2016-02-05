@@ -76,7 +76,7 @@ addClauseFrom fn updatefile l n = do
     getIndent i n xs | take 9 xs == "instance " = i
     getIndent i n xs | take (length n) xs == n = i
     getIndent i n (x : xs) = getIndent (i + 1) n xs
-          
+
     getAppName (PApp _ r _) = getAppName r
     getAppName (PRef _ _ r) = r
     getAppName (PTyped n _) = getAppName n
@@ -120,7 +120,7 @@ addMissing fn updatefile l n
         if updatefile
           then do let fb = fn ++ "~"
                   runIO $ writeSource fb (unlines (before ++ nonblank)
-                                        ++ extras ++ 
+                                        ++ extras ++
                                            (if null extras then ""
                                                     else "\n" ++ unlines rest))
                   runIO $ copyFile fb fn
@@ -193,7 +193,7 @@ makeCase fn updatefile l n
             case findSubstr ('?':n) line of
                  Just (before, pos, after) ->
                       [before ++ (if b then "(" else "") ++ "case _ of",
-                       take (pos + (if b then 6 else 5)) (repeat ' ') ++ 
+                       take (pos + (if b then 6 else 5)) (repeat ' ') ++
                              "case_val => ?" ++ n ++ (if b then ")" else "")
                              ++ after]
                  Nothing -> fail "No such metavariable"
@@ -208,7 +208,7 @@ makeCase fn updatefile l n
 
         findSubstr n xs = findSubstr' [] 0 n xs
 
-        findSubstr' acc i n xs | take (length n) xs == n 
+        findSubstr' acc i n xs | take (length n) xs == n
                 = Just (reverse acc, i, drop (length n) xs)
         findSubstr' acc i n [] = Nothing
         findSubstr' acc i n (x : xs) = findSubstr' (x : acc) (i + 1) n xs
@@ -217,7 +217,7 @@ makeCase fn updatefile l n
 
 
 
-doProofSearch :: FilePath -> Bool -> Bool -> 
+doProofSearch :: FilePath -> Bool -> Bool ->
                  Int -> Name -> [Name] -> Maybe Int -> Idris ()
 doProofSearch fn updatefile rec l n hints Nothing
     = doProofSearch fn updatefile rec l n hints (Just 20)
@@ -230,7 +230,7 @@ doProofSearch fn updatefile rec l n hints (Just depth)
                     [] -> return n
                     ns -> ierror (CantResolveAlts ns)
          i <- getIState
-         let (top, envlen, psnames, _) 
+         let (top, envlen, psnames, _)
               = case lookup mn (idris_metavars i) of
                      Just (t, e, ns, False) -> (t, e, ns, False)
                      _ -> (Nothing, 0, [], True)
@@ -281,7 +281,7 @@ updateMeta ('?':cs) n new
              (mv, []) -> if (mv == n) then new else '?' : mv
 updateMeta ('=':'>':cs) n new = '=':'>':updateMeta cs n new
 updateMeta ('=':cs) n new = '=':updateMeta cs n new
-updateMeta (c:cs) n new 
+updateMeta (c:cs) n new
   = c : updateMeta cs n new
 updateMeta [] n new = ""
 
@@ -296,7 +296,7 @@ guessBrackets brack ('?':cs) n new
 guessBrackets brack ('=':'>':cs) n new = guessBrackets False cs n new
 guessBrackets brack ('-':'>':cs) n new = guessBrackets False cs n new
 guessBrackets brack ('=':cs) n new = guessBrackets False cs n new
-guessBrackets brack (c:cs) n new 
+guessBrackets brack (c:cs) n new
   = guessBrackets (brack || not (isSpace c)) cs n new
 guessBrackets brack [] n new = ""
 
@@ -308,7 +308,7 @@ checkProv line n = isProv' False line n
     isProv' _ ('}':cs) n = isProv' True cs n
     isProv' p (_:cs) n = isProv' p cs n
     isProv' _ [] n = False
-    
+
 addBracket False new = new
 addBracket True new@('(':xs) | last xs == ')' = new
 addBracket True new | any isSpace new = '(' : new ++ ")"
@@ -322,7 +322,7 @@ makeLemma fn updatefile l n
 
         -- if the name is in braces, rather than preceded by a ?, treat it
         -- as a lemma in a provisional definition
-        
+
         let isProv = checkProv tyline (show n)
 
         ctxt <- getContext
@@ -339,7 +339,7 @@ makeLemma fn updatefile l n
             let skip = guessImps i (tt_ctxt i) mty
             let classes = guessClasses i (tt_ctxt i) mty
 
-            let lem = show n ++ " : " ++ 
+            let lem = show n ++ " : " ++
                             constraints i classes mty ++
                             showTmOpts (defaultPPOption { ppopt_pinames = True })
                                        (stripMNBind skip margs (delab i mty))
@@ -379,14 +379,14 @@ makeLemma fn updatefile l n
   where getIndent s = length (takeWhile isSpace s)
 
         appArgs skip 0 _ = ""
-        appArgs skip i (Bind n@(UN c) (Pi _ _ _) sc) 
+        appArgs skip i (Bind n@(UN c) (Pi _ _ _) sc)
            | (thead c /= '_' && n `notElem` skip)
                 = " " ++ show n ++ appArgs skip (i - 1) sc
         appArgs skip i (Bind _ (Pi _ _ _) sc) = appArgs skip (i - 1) sc
         appArgs skip i _ = ""
 
         stripMNBind _ args t | args <= 0 = t
-        stripMNBind skip args (PPi b n@(UN c) _ ty sc) 
+        stripMNBind skip args (PPi b n@(UN c) _ ty sc)
            | n `notElem` skip ||
                take 4 (str c) == "__pi" -- keep in type, but not in app
                 = PPi b n NoFC ty (stripMNBind skip (args - 1) sc)
@@ -399,7 +399,7 @@ makeLemma fn updatefile l n
         constraints i ns ty = "(" ++ showSep ", " (showConstraints i ns ty) ++ ") => "
 
         showConstraints i ns (Bind n (Pi _ ty _) sc)
-            | n `elem` ns = show (delab i ty) : 
+            | n `elem` ns = show (delab i ty) :
                               showConstraints i ns (substV (P Bound n Erased) sc)
             | otherwise = showConstraints i ns (substV (P Bound n Erased) sc)
         showConstraints _ _ _ = []
@@ -410,10 +410,10 @@ makeLemma fn updatefile l n
         -- Also, make type class instances implicit
         guessImps :: IState -> Context -> Term -> [Name]
         -- machine names aren't lifted
-        guessImps ist ctxt (Bind n@(MN _ _) (Pi _ ty _) sc) 
+        guessImps ist ctxt (Bind n@(MN _ _) (Pi _ ty _) sc)
            = n : guessImps ist ctxt sc
         guessImps ist ctxt (Bind n (Pi _ ty _) sc)
-           | guarded ctxt n (substV (P Bound n Erased) sc) 
+           | guarded ctxt n (substV (P Bound n Erased) sc)
                 = n : guessImps ist ctxt sc
            | isClass ist ty
                 = n : guessImps ist ctxt sc
@@ -421,11 +421,11 @@ makeLemma fn updatefile l n
            | ignoreName n = n : guessImps ist ctxt sc
            | otherwise = guessImps ist ctxt sc
         guessImps ist ctxt _ = []
-       
+
         paramty (TType _) = True
         paramty (Bind _ (Pi _ (TType _) _) sc) = paramty sc
         paramty _ = False
-        
+
         -- TMP HACK unusable name so don't lift
         ignoreName n = case show n of
                             "_aX" -> True
@@ -444,7 +444,7 @@ makeLemma fn updatefile l n
                        Just _ -> True
                        _ -> False
            | otherwise = False
-        
+
         isParamClass ist t
            | (P _ n _, args) <- unApply t
                 = case lookupCtxtExact n (idris_classes ist) of
@@ -460,14 +460,14 @@ makeLemma fn updatefile l n
               isConName f ctxt = any (guarded ctxt n) args
 --         guarded ctxt n (Bind (UN cn) (Pi t) sc) -- ignore shadows
 --             | thead cn /= '_' = guarded ctxt n t || guarded ctxt n sc
-        guarded ctxt n (Bind _ (Pi _ t _) sc) 
+        guarded ctxt n (Bind _ (Pi _ t _) sc)
             = guarded ctxt n t || guarded ctxt n sc
         guarded ctxt n _ = False
 
         blank = all isSpace
 
         addLem before tyline lem lem_app later
-            = let (bef_end, blankline : bef_start) 
+            = let (bef_end, blankline : bef_start)
                        = case span (not . blank) (reverse before) of
                               (bef, []) -> (bef, "" : [])
                               x -> x
@@ -481,6 +481,6 @@ makeLemma fn updatefile l n
                       = case span (not . blank) later of
                              (bef, []) -> (bef, "" : [])
                              x -> x in
-                  unlines $ before ++ tyline : 
+                  unlines $ before ++ tyline :
                             (later_bef ++ [blankline, lem_app, blankline] ++
                                       later_end)

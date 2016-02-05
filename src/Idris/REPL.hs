@@ -9,7 +9,6 @@ import Idris.AbsSyntax
 import Idris.ASTUtils
 import Idris.Apropos (apropos, aproposModules)
 import Idris.REPLParser
-import Idris.ElabDecls
 import Idris.Erasure
 import Idris.Error
 import Idris.IBC
@@ -39,6 +38,7 @@ import Idris.IBC (loadPkgIndex, writePkgIndex)
 
 import Idris.REPL.Browse (namesInNS, namespacesInNS)
 
+import Idris.ElabDecls
 import Idris.Elab.Type
 import Idris.Elab.Clause
 import Idris.Elab.Data
