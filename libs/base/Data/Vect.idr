@@ -573,7 +573,7 @@ implementation DecEq a => DecEq (Vect n a) where
 ||| A proof that some element is found in a vector
 data Elem : a -> Vect k a -> Type where
      Here : Elem x (x::xs)
-     There : (prf : Elem x xs) -> Elem x (y::xs)
+     There : (later : Elem x xs) -> Elem x (y::xs)
 
 ||| Nothing can be in an empty Vect
 noEmptyElem : {x : a} -> Elem x [] -> Void
