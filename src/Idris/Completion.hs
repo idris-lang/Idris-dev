@@ -12,7 +12,7 @@ import Idris.Colours
 import Idris.ParseHelpers(opChars)
 import qualified Idris.ParseExpr (constants, tactics)
 import Idris.ParseExpr (TacticArg (..))
-import Idris.REPLParser (allHelp, setOptions)
+import Idris.REPL.Parser (allHelp, setOptions)
 import Control.Monad.State.Strict
 
 import Data.List

@@ -1,5 +1,5 @@
 
-module Idris.REPLParser (parseCmd, help, allHelp, setOptions) where
+module Idris.REPL.Parser (parseCmd, help, allHelp, setOptions) where
 
 import System.FilePath ((</>))
 import System.Console.ANSI (Color(..))

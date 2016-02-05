@@ -8,7 +8,7 @@ module Idris.REPL(getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc,
 import Idris.AbsSyntax
 import Idris.ASTUtils
 import Idris.Apropos (apropos, aproposModules)
-import Idris.REPLParser
+import Idris.REPL.Parser
 import Idris.Erasure
 import Idris.Error
 import Idris.IBC

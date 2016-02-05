@@ -915,7 +915,7 @@ Library
                 , Idris.Providers
                 , Idris.Reflection
                 , Idris.REPL
-                , Idris.REPLParser
+                , Idris.REPL.Parser
                 , Idris.Transforms
                 , Idris.TypeSearch
                 , Idris.Unlit
