@@ -77,7 +77,7 @@ addDyLib libs = do i <- getIState
                                                      (\_ -> return Nothing)) $ libs
                        case msum handle of
                          Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
-                                                    concat (intersperse "," libs) ++ "\"")
+                                                    intercalate "," libs ++ "\"")
                          Just x -> do putIState $ i { idris_dynamic_libs = x:ls }
                                       return (Left x)
     where findDyLib :: [DynamicLib] -> String -> Maybe DynamicLib
@@ -235,8 +235,7 @@ getCoercionsTo i ty =
           findCoercions t (n : ns) =
              let ps = case lookupTy n (tt_ctxt i) of
                         [ty'] -> case unApply (getRetTy (normalise (tt_ctxt i) [] ty')) of
-                                   (t', _) ->
-                                      if t == t' then [n] else []
+                                   (t', _) -> [n | t == t']
                         _ -> [] in
                  ps ++ findCoercions t ns
 
@@ -250,7 +249,7 @@ addCalls n calls
    = do i <- getIState
         case lookupCtxtExact n (idris_callgraph i) of
              Nothing -> addToCG n (CGInfo calls [] [])
-             Just (CGInfo cs scg used) -> 
+             Just (CGInfo cs scg used) ->
                 addToCG n (CGInfo (nub (calls ++ cs)) scg used)
 
 addTyInferred :: Name -> Idris ()
@@ -268,7 +267,7 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
           findMVApps x y
              = do let (fx, argsx) = unApply x
                   let (fy, argsy) = unApply y
-                  if (not (fx == fy))
+                  if (fx /= fy)
                      then do
                        tryAddMV fx y
                        tryAddMV fy x
@@ -1070,7 +1069,7 @@ logLvlCats cs l str = do
             runIO . hPutStrLn h $ convSExp "log" good n
   where
     inCat :: [LogCat] -> [LogCat] -> Bool
-    inCat cs cats = or $ map (\x -> elem x cats) cs
+    inCat cs cats = any (`elem` cats) cs
 
 cmdOptType :: Opt -> Idris Bool
 cmdOptType x = do i <- getIState
@@ -1147,25 +1146,25 @@ expandParams dec ps ns infs tm = en 0 tm
         | n `nselem` ns = PQuote (Var (dec n))
     en 0 (PApp fc (PInferRef fc' hl n) as)
         | n `nselem` ns = PApp fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
     en 0 (PApp fc (PRef fc' hl n) as)
         | n `elem` infs = PApp fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
         | n `nselem` ns = PApp fc (PRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
     en 0 (PAppBind fc (PRef fc' hl n) as)
         | n `elem` infs = PAppBind fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
         | n `nselem` ns = PAppBind fc (PRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
     en 0 (PRef fc hl n)
         | n `elem` infs = PApp fc (PInferRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map ((pexp . (PRef fc hl)) . fst) ps)
         | n `nselem` ns = PApp fc (PRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map ((pexp . (PRef fc hl)) . fst) ps)
     en 0 (PInferRef fc hl n)
         | n `nselem` ns = PApp fc (PInferRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map ((pexp . (PRef fc hl)) . fst) ps)
     en 0 (PApp fc f as) = PApp fc (en 0 f) (map (fmap (en 0)) as)
     en 0 (PAppBind fc f as) = PAppBind fc (en 0 f) (map (fmap (en 0)) as)
     en 0 (PCase fc c os) = PCase fc (en 0 c) (map (pmap (en 0)) os)
@@ -1237,7 +1236,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     removeBound lhs ns = ns \\ nub (bnames lhs)
 
     bnames (PRef _ _ n) = [n]
-    bnames (PApp _ _ args) = concatMap bnames (map getTm args)
+    bnames (PApp _ _ args) = concatMap (bnames . getTm) args
     bnames (PPair _ _ _ l r) = bnames l ++ bnames r
     bnames (PDPair _ _ _ l Placeholder r) = bnames l ++ bnames r
     bnames _ = []
@@ -1304,9 +1303,9 @@ getPriority i tm = 1 -- pri tm
     pri (PPi _ _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _ _) = 0
     pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
-    pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
-    pri (PAppBind _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
-    pri (PCase _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.snd) as)))
+    pri (PApp _ f as) = max 1 (max (pri f) (foldr (max . pri . getTm) 0 as))
+    pri (PAppBind _ f as) = max 1 (max (pri f) (foldr (max . pri . getTm) 0 as))
+    pri (PCase _ f as) = max 1 (max (pri f) (foldr (max . pri . snd) 0 as))
     pri (PTyped l r) = pri l
     pri (PPair _ _ _ l r) = max 1 (max (pri l) (pri r))
     pri (PDPair _ _ _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
@@ -1323,11 +1322,11 @@ addStatics n tm ptm =
        let paramnames
               = nub $ case lookupCtxtExact n (idris_fninfo ist) of
                            Just p -> getNamesFrom 0 (fn_params p) tm ++
-                                     concatMap (getParamNames ist) (map snd statics)
-                           _ -> concatMap (getParamNames ist) (map snd statics)
+                                     concatMap (getParamNames ist . snd) statics
+                           _ -> concatMap (getParamNames ist . snd) statics
 
-       let stnames = nub $ concatMap freeArgNames (map snd statics)
-       let dnames = (nub $ concatMap freeArgNames (map snd dynamics))
+       let stnames = nub $ concatMap (freeArgNames . snd) statics
+       let dnames = (nub $ concatMap (freeArgNames . snd) dynamics)
                              \\ paramnames
        -- also get the arguments which are 'uniquely inferrable' from
        -- statics (see sec 4.2 of "Scrapping Your Inefficient Engine")
@@ -1336,7 +1335,7 @@ addStatics n tm ptm =
                               filter (\x -> not (elem x dnames)) stnames
        let stpos = staticList statics' tm
        i <- getIState
-       when (not (null statics)) $
+       unless (null statics) $
           logLvl 3 $ "Statics for " ++ show n ++ " " ++ show tm ++ "\n"
                         ++ showTmImpls ptm ++ "\n"
                         ++ show statics ++ "\n" ++ show dynamics
@@ -1422,7 +1421,7 @@ addUsingConstraints syn fc t
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc [] c)
-                           (map (\n -> PExp 0 [] (sMN 0 "carg") (PRef fc [] n)) args)
+                           (map (PExp 0 [] (sMN 0 "carg") . PRef fc []) args)
 
          getConstraints (PPi (Constraint _ _) _ _ c sc)
              = getcapp c ++ getConstraints sc
@@ -1448,7 +1447,7 @@ addUsingImpls syn n fc t
 
         let badnames = filter (\n -> not (implicitable n) &&
                                      n `notElem` (map iname uimpls)) ns
-        when (not (null badnames)) $
+        unless (null badnames) $
            throwError (At fc (Elaborating "type of " n Nothing
                          (NoSuchVariable (head badnames))))
         let cs = getArgnames t -- get already bound names
@@ -1532,7 +1531,7 @@ implicit' :: ElabInfo -> SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
 implicit' info syn ignore n ptm
     = do i <- getIState
          auto <- getAutoImpls
-         if not auto 
+         if not auto
            then return ptm
            else do
              let (tm', impdata) = implicitise syn ignore i ptm
@@ -1588,7 +1587,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     -- Find names in argument position in a type, suitable for implicit
     -- binding
     -- Not the function position, but do everything else...
-    implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv) (map getTm args)
+    implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv . getTm) args
     implNamesIn uv t = namesIn uv ist t
 
     imps top env ty@(PApp _ f as)
