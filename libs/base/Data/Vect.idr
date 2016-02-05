@@ -573,11 +573,14 @@ implementation DecEq a => DecEq (Vect n a) where
 ||| A proof that some element is found in a vector
 data Elem : a -> Vect k a -> Type where
      Here : Elem x (x::xs)
-     There : Elem x xs -> Elem x (y::xs)
+     There : (prf : Elem x xs) -> Elem x (y::xs)
 
 ||| Nothing can be in an empty Vect
 noEmptyElem : {x : a} -> Elem x [] -> Void
 noEmptyElem Here impossible
+
+Uninhabited (Elem x []) where
+  uninhabited = noEmptyElem 
 
 ||| An item not in the head and not in the tail is not in the Vect at all
 neitherHereNorThere : {x, y : a} -> {xs : Vect n a} -> Not (x = y) -> Not (Elem x xs) -> Not (Elem x (y :: xs))
