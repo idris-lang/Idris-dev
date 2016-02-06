@@ -48,7 +48,7 @@ codegenC' :: [(Name, SDecl)] ->
              [String] -> -- extra object files
              [String] -> -- extra compiler flags (libraries)
              [String] -> -- extra compiler flags (anything)
-             [ExportIFace] -> 
+             [ExportIFace] ->
              Bool -> -- interfaces too (so make a .o instead)
              DbgLevel ->
              IO ()
@@ -153,7 +153,7 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
                       headHex h (length bytes) : map toHex bytes
       where
         split acc 0 = acc
-        split acc x = let xbits = x .&. 0x3f 
+        split acc x = let xbits = x .&. 0x3f
                           xrest = shiftR x 6 in
                           split (xbits : acc) xrest
 
@@ -185,7 +185,7 @@ bcc i (ASSIGNCONST l c)
     -- if it's a type constant, we won't use it, but equally it shouldn't
     -- report an error. These might creep into generated for various reasons
     -- (especially if erasure is disabled).
-    mkConst c | isTypeConst c = "MKINT(42424242)" 
+    mkConst c | isTypeConst c = "MKINT(42424242)"
     mkConst c = error $ "mkConst of (" ++ show c ++ ") not implemented"
 
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
@@ -328,7 +328,7 @@ bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(st
 
 -- Deconstruct the Foreign type in the defunctionalised expression and build
 -- a foreign type description for c_irts and irts_c
-toAType (FCon i) 
+toAType (FCon i)
     | i == sUN "C_IntChar" = ATInt ITChar
     | i == sUN "C_IntNative" = ATInt ITNative
     | i == sUN "C_IntBits8" = ATInt (ITFixed IT8)
@@ -337,15 +337,15 @@ toAType (FCon i)
     | i == sUN "C_IntBits64" = ATInt (ITFixed IT64)
 toAType t = error (show t ++ " not defined in toAType")
 
-toFType (FCon c) 
+toFType (FCon c)
     | c == sUN "C_Str" = FString
     | c == sUN "C_Float" = FArith ATFloat
     | c == sUN "C_Ptr" = FPtr
     | c == sUN "C_MPtr" = FManagedPtr
     | c == sUN "C_Unit" = FUnit
-toFType (FApp c [_,ity]) 
+toFType (FApp c [_,ity])
     | c == sUN "C_IntT" = FArith (toAType ity)
-toFType (FApp c [_]) 
+toFType (FApp c [_])
     | c == sUN "C_Any" = FAny
 toFType t = FAny
 
@@ -551,7 +551,7 @@ doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v LReadStr [_] = v ++ "idris_readStr(vm, stdin)"
-doOp v LWriteStr [_,s] 
+doOp v LWriteStr [_,s]
              = v ++ "MKINT((i_int)(idris_writeStr(stdout"
                  ++ ",GETSTR("
                  ++ creg s ++ "))))"
@@ -577,10 +577,10 @@ doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)
 
 -- Pointer primitives (declared as %extern in Builtins.idr)
-doOp v (LExternal rf) [_,x] 
+doOp v (LExternal rf) [_,x]
    | rf == sUN "prim__readFile"
        = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
-doOp v (LExternal wf) [_,x,s] 
+doOp v (LExternal wf) [_,x,s]
    | wf == sUN "prim__writeFile"
        = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
                               ++ "),GETSTR("
@@ -591,14 +591,31 @@ doOp v (LExternal so) [] | so == sUN "prim__stdout" = v ++ "MKPTR(vm, stdout)"
 doOp v (LExternal se) [] | se == sUN "prim__stderr" = v ++ "MKPTR(vm, stderr)"
 
 doOp v (LExternal nul) [] | nul == sUN "prim__null" = v ++ "MKPTR(vm, NULL)"
-doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqPtr" 
+doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqPtr"
     = v ++ "MKINT((i_int)(GETPTR(" ++ creg x ++ ") == GETPTR(" ++ creg y ++ ")))"
-doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqManagedPtr" 
+doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqManagedPtr"
     = v ++ "MKINT((i_int)(GETMPTR(" ++ creg x ++ ") == GETMPTR(" ++ creg y ++ ")))"
 doOp v (LExternal rp) [p, i] | rp == sUN "prim__registerPtr"
     = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++ "), GETINT(" ++ creg i ++ "))"
-
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek8"
+    = v ++ "idris_peekB8(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke8"
+    = v ++ "idris_pokeB8(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek16"
+    = v ++ "idris_peekB16(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke16"
+    = v ++ "idris_pokeB16(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek32"
+    = v ++ "idris_peekB32(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke32"
+    = v ++ "idris_pokeB32(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek64"
+    = v ++ "idris_peekB64(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke64"
+    = v ++ "idris_pokeB64(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal mpt) [p] | mpt == sUN "prim__asPtr" = v ++ "MKPTR(vm, GETMPTR("++ creg p ++"))"
 doOp _ op args = error $ "doOp not implemented (" ++ show (op, args) ++ ")"
+
 
 flUnOp :: String -> String -> String
 flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"
@@ -610,7 +627,7 @@ flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"
 ifaceC :: Export -> String
 ifaceC (ExportData n) = "typedef VAL " ++ cdesc n ++ ";\n"
 ifaceC (ExportFun n cn ret args)
-   = ctype ret ++ " " ++ cdesc cn ++ 
+   = ctype ret ++ " " ++ cdesc cn ++
          "(VM* vm" ++ showArgs (zip argNames args) ++ ") {\n"
        ++ mkBody n (zip argNames args) ret ++ "}\n\n"
   where showArgs [] = ""
@@ -623,7 +640,7 @@ mkBody n as t = indent 1 ++ "INITFRAME;\n" ++
                 indent 1 ++ "RESERVE(" ++ show (max (length as) 3) ++ ");\n" ++
                 push 0 as ++ call n ++ retval t
   where push i [] = ""
-        push i ((n, t) : ts) = indent 1 ++ c_irts (toFType t) 
+        push i ((n, t) : ts) = indent 1 ++ c_irts (toFType t)
                                       ("TOP(" ++ show i ++ ") = ") n
                                    ++ ";\n" ++ push (i + 1) ts
 
@@ -689,13 +706,10 @@ hdr_guard x = "__" ++ map hchar x
 hdr_export :: Export -> String
 hdr_export (ExportData n) = "typedef VAL " ++ cdesc n ++ ";\n"
 hdr_export (ExportFun n cn ret args)
-   = ctype ret ++ " " ++ cdesc cn ++ 
+   = ctype ret ++ " " ++ cdesc cn ++
          "(VM* vm" ++ showArgs (zip argNames args) ++ ");\n"
   where showArgs [] = ""
         showArgs ((n, t) : ts) = ", " ++ ctype t ++ " " ++ n ++
                                  showArgs ts
 
         argNames = zipWith (++) (repeat "arg") (map show [0..])
-
-
-
