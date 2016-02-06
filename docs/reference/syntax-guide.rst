@@ -303,8 +303,8 @@ Visibility
 
 ::
 
-    public
-    abstract
+    public export
+    export
     private
 
 Totality
@@ -372,7 +372,7 @@ Comments
     -- Single Line
     {- Multiline -}
     ||| Docstring (goes before definition)
-    
+
 Multi line String literals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
