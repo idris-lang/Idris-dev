@@ -904,10 +904,10 @@ Library
                 , Idris.Interactive
                 , Idris.Output
                 , Idris.Parser
-                , Idris.ParseHelpers
-                , Idris.ParseOps
-                , Idris.ParseExpr
-                , Idris.ParseData
+                , Idris.Parser.Helpers
+                , Idris.Parser.Ops
+                , Idris.Parser.Expr
+                , Idris.Parser.Data
                 , Idris.PartialEval
                 , Idris.Primitives
                 , Idris.ProofSearch

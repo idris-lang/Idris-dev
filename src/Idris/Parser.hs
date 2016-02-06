@@ -1,10 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
-                    module Idris.ParseExpr,
-                    module Idris.ParseData,
-                    module Idris.ParseHelpers,
-                    module Idris.ParseOps) where
+                    module Idris.Parser.Expr,
+                    module Idris.Parser.Data,
+                    module Idris.Parser.Helpers,
+                    module Idris.Parser.Ops) where
 
 import Prelude hiding (pi)
 
@@ -35,10 +35,10 @@ import Idris.Unlit
 import Idris.Providers
 import Idris.Output
 
-import Idris.ParseHelpers
-import Idris.ParseOps
-import Idris.ParseExpr
-import Idris.ParseData
+import Idris.Parser.Helpers
+import Idris.Parser.Ops
+import Idris.Parser.Expr
+import Idris.Parser.Data
 
 import Idris.Docstrings hiding (Unchecked)
 

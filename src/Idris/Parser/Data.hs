@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
-module Idris.ParseData where
+module Idris.Parser.Data where
 
 import Prelude hiding (pi)
 
@@ -12,9 +12,9 @@ import qualified Text.Parser.Char as Chr
 import qualified Text.Parser.Token.Highlight as Hi
 
 import Idris.AbsSyntax
-import Idris.ParseHelpers
-import Idris.ParseOps
-import Idris.ParseExpr
+import Idris.Parser.Helpers
+import Idris.Parser.Ops
+import Idris.Parser.Expr
 import Idris.DSL
 
 import Idris.Core.TT
