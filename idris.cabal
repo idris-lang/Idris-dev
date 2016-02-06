@@ -468,6 +468,11 @@ Extra-source-files:
                        test/ffi006/*.c
                        test/ffi006/run
                        test/ffi006/expected
+                       test/ffi007/*.idr
+                       test/ffi007/*.c
+                       test/ffi007/*.h
+                       test/ffi007/run
+                       test/ffi007/expected
 
                        test/folding001/*.idr
                        test/folding001/run
