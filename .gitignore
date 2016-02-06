@@ -16,6 +16,7 @@ cabal.config
 *~
 .DS_Store
 .hpc
+*.orig
 *.tix
 .projectile
 .dir-locals.el
