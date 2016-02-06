@@ -115,6 +115,9 @@ typedef struct VM_t VM;
 // Create a new VM
 VM* init_vm(int stack_size, size_t heap_size,
             int max_threads);
+
+// Get the VM for the current thread
+VM* get_vm(void);
 // Initialise thread-local data for this VM
 void init_threaddata(VM *vm);
 // Clean up a VM once it's no longer needed

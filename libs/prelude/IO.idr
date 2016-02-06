@@ -145,12 +145,15 @@ namespace FFI_C
        -- code generated can assume it's compiled just as 't'
        MkRaw : (x : t) -> Raw t
 
-  -- Tell erasure analysis not to erase the argument
-  %used MkRaw x
-
-  ||| Supported C integer types
   public export
-  data C_IntTypes : Type -> Type where
+  data CFnPtr : Type -> Type where
+    MkCFnPtr : (x : t) -> CFnPtr t
+
+
+  mutual
+    ||| Supported C integer types
+    public export
+    data C_IntTypes : Type -> Type where
        C_IntChar   : C_IntTypes Char
        C_IntNative : C_IntTypes Int
        C_IntBits8  : C_IntTypes Bits8
@@ -158,30 +161,42 @@ namespace FFI_C
        C_IntBits32 : C_IntTypes Bits32
        C_IntBits64 : C_IntTypes Bits64
 
-  ||| Supported C foreign types
-  public export
-  data C_Types : Type -> Type where
+    public export
+    data C_FnTypes : Type -> Type where
+       C_Fn : C_Types s -> C_FnTypes t -> C_FnTypes (s -> t)
+       C_FnIO : C_Types t -> C_FnTypes (IO' FFI_C t)
+       C_FnBase : C_Types t -> C_FnTypes t
+
+    ||| Supported C foreign types
+    public export
+    data C_Types : Type -> Type where
        C_Str   : C_Types String
        C_Float : C_Types Double
        C_Ptr   : C_Types Ptr
        C_MPtr  : C_Types ManagedPtr
        C_Unit  : C_Types ()
        C_Any   : C_Types (Raw a)
+       C_FnT   : C_FnTypes t -> C_Types (CFnPtr t)
        C_IntT  : C_IntTypes i -> C_Types i
 
-  ||| A descriptor for the C FFI. See the constructors of `C_Types`
-  ||| and `C_IntTypes` for the concrete types that are available.
+    ||| A descriptor for the C FFI. See the constructors of `C_Types`
+    ||| and `C_IntTypes` for the concrete types that are available.
   %error_reverse
   public export
-  FFI_C : FFI
-  FFI_C = MkFFI C_Types String String
+    FFI_C : FFI
+    FFI_C = MkFFI C_Types String String
 
 ||| Interactive programs, describing I/O actions and returning a value.
 ||| @res The result type of the program
 %error_reverse
 public export
+
 IO : (res : Type) -> Type
 IO = IO' FFI_C
+
+ -- Tell erasure analysis not to erase the argument
+%used MkRaw x
+%used MkCFnPtr x
 
 -- Cannot be relaxed as is used by type providers and they expect IO a
 -- in the first argument.

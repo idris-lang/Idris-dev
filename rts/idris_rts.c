@@ -78,6 +78,14 @@ VM* idris_vm() {
     return vm;
 }
 
+VM* get_vm(void) {
+#ifdef HAS_PTHREAD
+    return pthread_getspecific(vm_key);
+#else
+    return global_vm;
+#endif
+}
+
 void close_vm(VM* vm) {
     terminate(vm);
 }
