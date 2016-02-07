@@ -96,17 +96,33 @@ validFile (FHandle h) = do x <- nullPtr h
                            return (not x)
 
 ||| Modes for opening files
-data Mode = Read | Write | ReadWrite
+data Mode = Read | WriteTruncate | Append | ReadWrite | ReadWriteTruncate | ReadAppend
+
+Write : Mode
+Write = WriteTruncate
+%deprecate Write "Please use WriteTruncate instead."
+
+modeStr : Mode -> String
+modeStr Read              = "r"
+modeStr WriteTruncate     = "w"
+modeStr Append            = "a"
+modeStr ReadWrite         = "r+"
+modeStr ReadWriteTruncate = "w+"
+modeStr ReadAppend        = "a+"
 
 ||| Open a file
 ||| @ f the filename
-||| @ m the mode; either Read, Write, or ReadWrite
+||| @ m the mode; either Read, WriteTruncate, Append, ReadWrite, ReadWriteTruncate, or ReadAppend
 export
 openFile : (f : String) -> (m : Mode) -> IO (Either FileError File)
-openFile f m = fopen f (modeStr m) where
-  modeStr Read  = "r"
-  modeStr Write = "w"
-  modeStr ReadWrite = "r+"
+openFile f m = fopen f (modeStr m)
+
+||| Open a file using C11 extended modes.
+||| @ f the filename
+||| @ m the mode; either Read, WriteTruncate, Append, ReadWrite, ReadWriteTruncate, or ReadAppend
+export
+openFileX : (f : String) -> (m : Mode) -> IO (Either FileError File)
+openFileX f m = fopen f $ modeStr m ++ "x"
 
 private
 do_fclose : Ptr -> IO ()
@@ -142,10 +158,6 @@ popen f m = do ptr <- do_popen f (modeStr m)
                   then do err <- getFileError
                           return (Left err)
                   else return (Right (FHandle ptr))
-  where
-    modeStr Read  = "r"
-    modeStr Write = "w"
-    modeStr ReadWrite = "r+"
 
 export
 pclose : File -> IO ()
