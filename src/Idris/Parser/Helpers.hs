@@ -2,7 +2,7 @@
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
 #endif
-module Idris.ParseHelpers where
+module Idris.Parser.Helpers where
 
 import Prelude hiding (pi)
 
@@ -254,7 +254,7 @@ idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved 
                                       "case", "of", "total", "partial", "mutual",
                                       "infix", "infixl", "infixr", "rewrite",
                                       "where", "with", "syntax", "proof", "postulate",
-                                      "using", "namespace", "class", "instance", 
+                                      "using", "namespace", "class", "instance",
                                       "interface", "implementation", "parameters",
                                       "public", "private", "export", "abstract", "implicit",
                                       "quoteGoal", "constructor",
@@ -621,22 +621,22 @@ notOpenBraces = do ist <- get
 
 {- | Parses an accessibilty modifier (e.g. public, private) -}
 accessibility' :: IdrisParser Accessibility
-accessibility' 
-              = do reserved "public";   
+accessibility'
+              = do reserved "public";
                    gotexp <- optional (reserved "export")
                    case gotexp of
                         Just _ -> return ()
                         Nothing -> do
                            ist <- get
                            fc <- getFC
-                           put ist { parserWarnings = 
+                           put ist { parserWarnings =
                               (fc, Msg "'public' is deprecated. Use 'public export' instead.")
                                    : parserWarnings ist }
                    return Public
-            <|> do reserved "abstract"; 
+            <|> do reserved "abstract";
                    ist <- get
                    fc <- getFC
-                   put ist { parserWarnings = 
+                   put ist { parserWarnings =
                       (fc, Msg "The 'abstract' keyword is deprecated. Use 'export' instead.")
                            : parserWarnings ist }
                    return Frozen

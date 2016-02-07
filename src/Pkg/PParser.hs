@@ -9,7 +9,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntaxTree
-import Idris.ParseHelpers hiding (stringLiteral)
+import Idris.Parser.Helpers hiding (stringLiteral)
 import Idris.CmdOptions
 
 import Control.Monad.State.Strict

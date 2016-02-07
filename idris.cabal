@@ -876,6 +876,7 @@ Library
                 , Idris.Elab.Transform
                 , Idris.Elab.Value
                 , Idris.Elab.Term
+                , Idris.Elab.Quasiquote
 
                 , Idris.REPL.Browse
 
@@ -896,7 +897,6 @@ Library
                 , Idris.Docs
                 , Idris.Docstrings
                 , Idris.ElabDecls
-                , Idris.ElabQuasiquote
                 , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse
@@ -909,10 +909,10 @@ Library
                 , Idris.Interactive
                 , Idris.Output
                 , Idris.Parser
-                , Idris.ParseHelpers
-                , Idris.ParseOps
-                , Idris.ParseExpr
-                , Idris.ParseData
+                , Idris.Parser.Helpers
+                , Idris.Parser.Ops
+                , Idris.Parser.Expr
+                , Idris.Parser.Data
                 , Idris.PartialEval
                 , Idris.Primitives
                 , Idris.ProofSearch
@@ -920,7 +920,7 @@ Library
                 , Idris.Providers
                 , Idris.Reflection
                 , Idris.REPL
-                , Idris.REPLParser
+                , Idris.REPL.Parser
                 , Idris.Transforms
                 , Idris.TypeSearch
                 , Idris.Unlit

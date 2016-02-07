@@ -10,7 +10,7 @@ import Idris.Core.TT (Name (..), sUN, SpecialName (..), OutputAnnotation (..),
 import Idris.Core.Evaluate (ctxtAlist, Def (..), lookupDefAcc,
                             Accessibility (..), isDConName, isFnName,
                             isTConName)
-import Idris.ParseHelpers (opChars)
+import Idris.Parser.Helpers (opChars)
 import Idris.AbsSyntax
 import Idris.Docs
 import Idris.Docstrings (nullDocstring)

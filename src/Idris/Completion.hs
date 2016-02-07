@@ -9,10 +9,10 @@ import Idris.AbsSyntaxTree
 import Idris.Help
 import Idris.Imports (installedPackages)
 import Idris.Colours
-import Idris.ParseHelpers(opChars)
-import qualified Idris.ParseExpr (constants, tactics)
-import Idris.ParseExpr (TacticArg (..))
-import Idris.REPLParser (allHelp, setOptions)
+import Idris.Parser.Helpers(opChars)
+import qualified Idris.Parser.Expr (constants, tactics)
+import Idris.Parser.Expr (TacticArg (..))
+import Idris.REPL.Parser (allHelp, setOptions)
 import Control.Monad.State.Strict
 
 import Data.List
@@ -26,7 +26,7 @@ import System.Console.ANSI (Color)
 commands = [ n | (names, _, _) <- allHelp ++ extraHelp, n <- names ]
 
 tacticArgs :: [(String, Maybe TacticArg)]
-tacticArgs = [ (name, args) | (names, args, _) <- Idris.ParseExpr.tactics
+tacticArgs = [ (name, args) | (names, args, _) <- Idris.Parser.Expr.tactics
                             , name <- names ]
 tactics = map fst tacticArgs
 
@@ -48,7 +48,7 @@ names = do i <- get
            let ctxt = tt_ctxt i
            return . nub $
              mapMaybe (nameString . fst) (ctxtAlist ctxt) ++
-             "Type" : map fst Idris.ParseExpr.constants
+             "Type" : map fst Idris.Parser.Expr.constants
 
 metavars :: Idris [String]
 metavars = do i <- get

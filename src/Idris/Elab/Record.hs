@@ -17,7 +17,7 @@ import Idris.DeepSeq
 import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
 import IRTS.Lang
 
-import Idris.ParseExpr (tryFullExpr)
+import Idris.Parser.Expr (tryFullExpr)
 
 import Idris.Elab.Type
 import Idris.Elab.Data

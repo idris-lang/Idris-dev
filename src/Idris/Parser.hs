@@ -1,10 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
-                    module Idris.ParseExpr,
-                    module Idris.ParseData,
-                    module Idris.ParseHelpers,
-                    module Idris.ParseOps) where
+                    module Idris.Parser.Expr,
+                    module Idris.Parser.Data,
+                    module Idris.Parser.Helpers,
+                    module Idris.Parser.Ops) where
 
 import Prelude hiding (pi)
 
@@ -35,10 +35,10 @@ import Idris.Unlit
 import Idris.Providers
 import Idris.Output
 
-import Idris.ParseHelpers
-import Idris.ParseOps
-import Idris.ParseExpr
-import Idris.ParseData
+import Idris.Parser.Helpers
+import Idris.Parser.Ops
+import Idris.Parser.Expr
+import Idris.Parser.Data
 
 import Idris.Docstrings hiding (Unchecked)
 
@@ -211,7 +211,7 @@ internalDecl syn
                              declBody continue)
                      <|> fail "End of readable input"
   where declBody :: Bool -> IdrisParser [PDecl]
-        declBody b = 
+        declBody b =
                    try (instance_ True syn)
                    <|> declBody' b
                    <|> using_ syn
@@ -879,7 +879,7 @@ class_ syn = do (doc, argDocs, acc)
   where
     fundeps :: IdrisParser [(Name, FC)]
     fundeps = do lchar '|'; sepBy name (lchar ',')
-                             
+
     classKeyword :: IdrisParser ()
     classKeyword = reservedHL "interface"
                <|> do reservedHL "class"
@@ -906,7 +906,7 @@ InstanceName ::= '[' Name ']';
 @
 -}
 instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
-instance_ kwopt syn 
+instance_ kwopt syn
               = do acc <- accessibility
                    (doc, argDocs)
                      <- try (docstring syn <* if kwopt then optional instanceKeyword
@@ -1361,7 +1361,7 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     return [PDirective (DAutoImplicits b)]
              <?> "directive"
   where on_off = do reserved "on"; return True
-             <|> do reserved "off"; return False 
+             <|> do reserved "off"; return False
 
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)
