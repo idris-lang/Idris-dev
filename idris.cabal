@@ -1010,7 +1010,6 @@ Library
                 , TemplateHaskell
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts
 
   if os(linux)
      cpp-options:   -DLINUX
