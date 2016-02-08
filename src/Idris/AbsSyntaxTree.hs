@@ -1567,8 +1567,8 @@ falseTy   = sUN "Void"
 pairTy    = sNS (sUN "Pair") ["Builtins"]
 pairCon   = sNS (sUN "MkPair") ["Builtins"]
 
-upairTy    = sNS (sUN "UniquePair") ["Builtins"]
-upairCon   = sNS (sUN "MkUniquePair") ["Builtins"]
+upairTy    = sNS (sUN "UPair") ["Builtins"]
+upairCon   = sNS (sUN "MkUPair") ["Builtins"]
 
 eqTy  = sUN "="
 eqCon = sUN "Refl"

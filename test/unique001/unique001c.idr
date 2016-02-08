@@ -11,7 +11,7 @@ data UTree : UniqueType where
      ULeaf : UTree
      UNode : UTree -> Int -> UTree -> UTree
 
-dup : UTree -> UniquePair UTree UTree
+dup : UTree -> UPair UTree UTree
 dup ULeaf = (ULeaf, ULeaf)
 dup (UNode l y r) = let (l1, l2) = dup l
                         (r1, r2) = dup r in
@@ -42,5 +42,5 @@ uconst x y = x
 data MPair : AnyType -> AnyType -> AnyType where
      MkMPair : {a, b : Type*} -> a -> b -> MPair a b
 
-ndup : {a : UniqueType} -> a -> UniquePair a a
-ndup {a} x = (\f : Int -> a => MkUniquePair (f 0) (f 1)) (uconst x)
+ndup : {a : UniqueType} -> a -> UPair a a
+ndup {a} x = (\f : Int -> a => MkUPair (f 0) (f 1)) (uconst x)

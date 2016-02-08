@@ -27,23 +27,15 @@ namespace Builtins
   ||| UniqueTypes.
   ||| @A the type of the left elements in the pair
   ||| @B the type of the left elements in the pair
-  data UniquePair : (A : AnyType) -> (B : AnyType) -> AnyType where
+  data UPair : (A : AnyType) -> (B : AnyType) -> AnyType where
      ||| A pair of elements
      ||| @a the left element of the pair
      ||| @b the right element of the pair
-     MkUniquePair : {A, B : AnyType} -> (a : A) -> (b : B) -> UniquePair A B
+     MkUPair : {A, B : AnyType} -> (a : A) -> (b : B) -> UPair A B
 
   -- Usage hints for erasure analysis
-  %used MkUniquePair a
-  %used MkUniquePair b
-
-  UPair : (A : AnyType) -> (B : AnyType) -> AnyType
-  UPair a b = UniquePair a b
-  %deprecate UPair "This name is being deprecated in favour of `UniquePair`"
-
-  MkUPair : {A, B : AnyType} -> (a : A) -> (b : B) -> UniquePair A B
-  MkUPair a b = MkUniquePair a b
-  %deprecate MkUPair "This name is being deprecated in favour of `MkUniquePair`"
+  %used MkUPair a
+  %used MkUPair b
 
   ||| Dependent pairs aid in the construction of dependent types by
   ||| providing evidence that some value resides in the type.
