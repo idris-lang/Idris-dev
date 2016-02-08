@@ -337,12 +337,13 @@ makeLemma fn updatefile l n
 
         if (not isProv) then do
             let skip = guessImps i (tt_ctxt i) mty
-            let classes = guessClasses i (tt_ctxt i) mty
+            let impty = stripMNBind skip margs (delab i mty)
+            let classes = guessClasses i (tt_ctxt i) [] (allNamesIn impty) mty
 
             let lem = show n ++ " : " ++
                             constraints i classes mty ++
                             showTmOpts (defaultPPOption { ppopt_pinames = True })
-                                       (stripMNBind skip margs (delab i mty))
+                                       impty
             let lem_app = guessBrackets False tyline (show n) (show n ++ appArgs skip margs mty)
 
             if updatefile then
@@ -385,13 +386,20 @@ makeLemma fn updatefile l n
         appArgs skip i (Bind _ (Pi _ _ _) sc) = appArgs skip (i - 1) sc
         appArgs skip i _ = ""
 
-        stripMNBind _ args t | args <= 0 = t
+        stripMNBind _ args t | args <= 0 = stripImp t
         stripMNBind skip args (PPi b n@(UN c) _ ty sc)
            | n `notElem` skip ||
                take 4 (str c) == "__pi" -- keep in type, but not in app
-                = PPi b n NoFC ty (stripMNBind skip (args - 1) sc)
+                = PPi b n NoFC (stripImp ty) (stripMNBind skip (args - 1) sc)
         stripMNBind skip args (PPi b _ _ ty sc) = stripMNBind skip (args - 1) sc
-        stripMNBind skip args t = t
+        stripMNBind skip args t = stripImp t
+
+        stripImp (PApp fc f as) = PApp fc (stripImp f) (map placeholderImp as)
+          where
+            placeholderImp tm@(PImp _ _ _ _ _) = tm { getTm = Placeholder }
+            placeholderImp tm = tm { getTm = stripImp (getTm tm) }
+        stripImp (PPi b n f ty sc) = PPi b n f (stripImp ty) (stripImp sc)
+        stripImp t = t
 
         constraints :: IState -> [Name] -> Type -> String
         constraints i [] ty = ""
@@ -431,12 +439,19 @@ makeLemma fn updatefile l n
                             "_aX" -> True
                             _ -> False
 
-        guessClasses :: IState -> Context -> Term -> [Name]
-        guessClasses ist ctxt (Bind n (Pi _ ty _) sc)
-           | isParamClass ist ty
-                = n : guessClasses ist ctxt sc
-           | otherwise = guessClasses ist ctxt sc
-        guessClasses ist ctxt _ = []
+        guessClasses :: IState -> Context -> [Name] -> [Name] -> Term -> [Name]
+        guessClasses ist ctxt binders usednames (Bind n (Pi _ ty _) sc)
+           | isParamClass ist ty && any (\x -> elem x usednames)
+                                        (paramNames binders ty)
+                = n : guessClasses ist ctxt (n : binders) usednames sc
+           | otherwise = guessClasses ist ctxt (n : binders) usednames sc
+        guessClasses ist ctxt _ _ _ = []
+
+        paramNames bs ty | (P _ _ _, args) <- unApply ty
+             = vnames args
+          where vnames [] = []
+                vnames (V i : xs) | i < length bs = bs !! i : vnames xs
+                vnames (_ : xs) = vnames xs
 
         isClass ist t
            | (P _ n _, args) <- unApply t
