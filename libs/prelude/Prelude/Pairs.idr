@@ -34,20 +34,20 @@ using (a : Type, P : a -> Type)
     getProof : (x : Subset a P) -> P (getWitness x)
     getProof (Element x pf) = pf
 
-  namespace DepPair
-    fst : DepPair a P -> a
+  namespace DPair
+    fst : DPair a P -> a
     fst (x ** pf) = x
 
-    snd : (x : DepPair a P) -> P (fst x)
+    snd : (x : DPair a P) -> P (fst x)
     snd (x ** pf) = pf
 
-    getWitness : DepPair a P -> a
+    getWitness : DPair a P -> a
     getWitness = fst
-    %deprecate DepPair.getWitness "This is being deprecated in favour of `fst`."
+    %deprecate DPair.getWitness "This is being deprecated in favour of `fst`."
 
-    getProof : (x : DepPair a P) -> P (fst x)
+    getProof : (x : DPair a P) -> P (fst x)
     getProof = snd
-    %deprecate DepPair.getProof "This is being deprecated in favour of `snd`."
+    %deprecate DPair.getProof "This is being deprecated in favour of `snd`."
 
   -- Polymorphic (class-based) projections have been removed
   -- because type-directed name disambiguation works better.

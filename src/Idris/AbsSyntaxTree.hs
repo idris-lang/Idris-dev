@@ -1615,8 +1615,8 @@ modDocName :: Name
 modDocName = sMN 0 "ModuleDocs"
 
 -- Defined in builtins.idr
-sigmaTy   = sNS (sUN "DepPair") ["Builtins"]
-sigmaCon = sNS (sUN "MkDepPair") ["Builtins"]
+sigmaTy   = sNS (sUN "DPair") ["Builtins"]
+sigmaCon = sNS (sUN "MkDPair") ["Builtins"]
 
 piBind :: [(Name, PTerm)] -> PTerm -> PTerm
 piBind = piBindp expl

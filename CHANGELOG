@@ -20,7 +20,7 @@ Minor language changes
 
 * The '[static]' annotation is changed to '%static' to be consistent with the
   other annotations.
-* `Sigma` has been renamed  to `DepPair`.
+* `Sigma` has been renamed  to `DPair`.
 * Accessor functions for dependent pairs have been renamed to bring them into
   line with standard accessor functions for pairs. The function `getWitness`
   is now `fst`, and `getProof` is `snd`.

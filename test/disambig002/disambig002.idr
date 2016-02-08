@@ -54,7 +54,7 @@ filterTag : {A : Type} ->
             {P : A -> Type} ->
             Dec1 P ->
             Vect n A ->
-            DepPair Nat (\ m => Vect m (DepPair A P))
+            DPair Nat (\ m => Vect m (DPair A P))
 filterTag d1P Nil = (_ ** Nil)
 filterTag d1P (a :: as) with (filterTag d1P as)
   | (_ ** tail) with (d1P a)
@@ -66,7 +66,7 @@ toVect : {A : Type} ->
          {P : A -> Type} ->
          Finite A ->
          Dec1 P ->
-         (n : Nat ** Vect n (DepPair A P))
+         (n : Nat ** Vect n (DPair A P))
 toVect fA d1P = filterTag d1P (toVect fA)
 
 sigmaUniqueLemma1 : {A   : Type} ->
@@ -74,7 +74,7 @@ sigmaUniqueLemma1 : {A   : Type} ->
                     Unique1 {t0 = A} P ->
                     (a : A) ->
                     (p : P a) ->
-                    (ss : Vect n (DepPair A P)) ->
+                    (ss : Vect n (DPair A P)) ->
                     Elem a (map fst ss) ->
                     Elem (a ** p) ss
 
@@ -83,5 +83,5 @@ toVectComplete : {A   : Type} ->
                  (fA  : Finite A) ->
                  (d1P : Dec1 P) ->
                  Unique1 {t0 = A} P ->
-                 (s   : DepPair A P) ->
+                 (s   : DPair A P) ->
                  Elem s (snd (toVect fA d1P))

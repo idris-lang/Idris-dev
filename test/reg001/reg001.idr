@@ -162,7 +162,7 @@ isSubsetOf {univ} a b = (c : univ) -> (member c a) -> (member c b)
 
 interface Set univ => HasPower univ where
   Powerset : (a : univ) ->
-             DepPair univ (\Pa => (c : univ) ->
+             DPair univ (\Pa => (c : univ) ->
                                  (isSubsetOf c a) -> member c Pa)
 
 powerset : HasPower univ => univ -> univ

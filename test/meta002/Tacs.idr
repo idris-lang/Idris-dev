@@ -208,7 +208,7 @@ namespace STLC
 
          -- Now we put this hole variable into our sigma constructor
          -- prior to elaboration, so it doesn't disappear too soon
-         fill `(MkDepPair ~(Var tH) ~(Var tmH) : DepPair Ty (Tm []))
+         fill `(MkDPair ~(Var tH) ~(Var tmH) : DPair Ty (Tm []))
          solve
          focus tmH
          mkTerm [] tm
@@ -287,14 +287,14 @@ namespace STLC
                                      apply `(UnitCon {env=~(Var envH)})
                                            []
                                      solve
-    testElab : DepPair Ty (Tm [])
+    testElab : DPair Ty (Tm [])
     testElab = %runElab (elaborateSTLC (App (Lam "x" UnitCon) UnitCon))
 
-    testElab2 : DepPair Ty (Tm [])
+    testElab2 : DPair Ty (Tm [])
     testElab2 = %runElab (elaborateSTLC (App (Lam "x" (Var 0)) UnitCon))
 
     -- Doesn't work! :-)
-    testElab3 : DepPair Ty (Tm [])
+    testElab3 : DPair Ty (Tm [])
     testElab3 = %runElab (elaborateSTLC (App (Lam "x" (App (Var 0) (Var 0)))
                                              (Lam "x" (App (Var 0) (Var 0)))))
     -- Error is:
