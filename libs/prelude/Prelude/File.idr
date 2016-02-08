@@ -255,7 +255,7 @@ export
 writeFile : (filepath : String) -> (contents : String) ->
             IO (Either FileError ())
 writeFile fn contents = do
-     Right h <- openFile fn Write | Left err => return (Left err)
-     Right () <- fPutStr h contents | Left err => return (Left err)
+     Right h  <- openFile fn WriteTruncate | Left err => return (Left err)
+     Right () <- fPutStr h contents        | Left err => return (Left err)
      closeFile h
      return (Right ())

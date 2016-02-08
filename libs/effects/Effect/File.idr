@@ -64,7 +64,7 @@ data FileIO : Effect where
   ||| Write a string to a file.
   |||
   ||| Only file that are open for writing can be written to.
-  WriteString : String -> sig FileIO () (OpenFile Write)
+  WriteString : String -> sig FileIO () (OpenFile WriteTruncate)
 
   ||| End of file?
   |||
@@ -138,11 +138,11 @@ readLine : Eff String [FILE_IO (OpenFile Read)]
 readLine = call $ ReadLine
 
 ||| Write a string to a file.
-writeString : String -> Eff () [FILE_IO (OpenFile Write)]
+writeString : String -> Eff () [FILE_IO (OpenFile WriteTruncate)]
 writeString str = call $ WriteString str
 
 ||| Write a line to a file.
-writeLine : String -> Eff () [FILE_IO (OpenFile Write)]
+writeLine : String -> Eff () [FILE_IO (OpenFile WriteTruncate)]
 writeLine str = call $ WriteString (str ++ "\n")
 
 ||| End of file?
@@ -176,7 +176,7 @@ writeFile : (errFunc : String -> e)
          -> (content : String)
          -> Eff (Either e ()) [FILE_IO ()]
 writeFile errFunc fname content = do
-    case !(open fname Write) of
+    case !(open fname WriteTruncate) of
       True => do
         writeString content
         close
