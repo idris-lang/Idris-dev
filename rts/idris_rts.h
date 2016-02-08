@@ -311,16 +311,8 @@ void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i
 uint8_t idris_peek(void* ptr, i_int offset);
 void idris_poke(void* ptr, i_int offset, uint8_t data);
 
-
-// memory access
-VAL idris_peekB8(VM* vm, VAL ptr, VAL offset);
-VAL idris_pokeB8(VAL ptr, VAL offset, VAL data);
-VAL idris_peekB16(VM* vm, VAL ptr, VAL offset);
-VAL idris_pokeB16(VAL ptr, VAL offset, VAL data);
-VAL idris_peekB32(VM* vm, VAL ptr, VAL offset);
-VAL idris_pokeB32(VAL ptr, VAL offset, VAL data);
-VAL idris_peekB64(VM* vm, VAL ptr, VAL offset);
-VAL idris_pokeB64(VAL ptr, VAL offset, VAL data);
+VAL idris_peekPtr(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokePtr(VAL ptr, VAL offset, VAL data);
 
 // String primitives
 VAL idris_concat(VM* vm, VAL l, VAL r);

@@ -200,6 +200,7 @@ export data ManagedPtr : Type
 
 -- primitives for accessing memory.
 %extern prim__asPtr : ManagedPtr -> Ptr
+%extern prim__sizeofPtr : Int
 %extern prim__peek8 : prim__WorldType -> Ptr -> Int -> Bits8
 %extern prim__peek16 : prim__WorldType -> Ptr -> Int -> Bits16
 %extern prim__peek32 : prim__WorldType -> Ptr -> Int -> Bits32
@@ -209,3 +210,6 @@ export data ManagedPtr : Type
 %extern prim__poke16 : prim__WorldType -> Ptr -> Int -> Bits16 -> Int
 %extern prim__poke32 : prim__WorldType -> Ptr -> Int -> Bits32 -> Int
 %extern prim__poke64 : prim__WorldType -> Ptr -> Int -> Bits64 -> Int
+
+%extern prim__peekPtr : prim__WorldType -> Ptr -> Int -> Ptr
+%extern prim__pokePtr : prim__WorldType -> Ptr -> Int -> Ptr -> Int

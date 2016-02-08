@@ -23,8 +23,16 @@ test3 : IO ()
 test3 = foreign FFI_C "test_ffi3" (CFnPtr (() -> ()) -> IO ()) (MkCFnPtr printIt)
 
 test4 : IO Ptr
-test4 = foreign FFI_C "_idris_get_wrapper" (CFnPtr (() -> ()) -> IO Ptr) (MkCFnPtr printIt)
+test4 = foreign FFI_C "%wrapper" (CFnPtr (() -> ()) -> IO Ptr) (MkCFnPtr printIt)
 
+test5 : IO Ptr
+test5 = foreign FFI_C "&testvar" (IO Ptr)
+
+test6 : IO Ptr
+test6 = foreign FFI_C "test_ffi6" (IO Ptr)
+
+test7 : Ptr -> Int -> IO Int
+test7 fnptr i = foreign FFI_C "%dynamic" (Ptr -> Int -> IO Int) fnptr i
 
 main : IO ()
 main = do
@@ -32,4 +40,10 @@ main = do
             test2
             test3
             ptr <- test4
+            tv <- test5
+            val <- prim_peek32 tv 0
+            printLn val
+            fptr <- test6
+            i <- test7 fptr 3
+            printLn i
             return ()
