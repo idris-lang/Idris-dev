@@ -15,6 +15,14 @@ Updated export rules
 * Exported types can only refer to other exported names
 * Publicly exported definitions can only refer to publicly exported names
 
+Improved C FFI
+--------------
+
+* Idris functions can now be passed as callbacks to C functions or wrapped
+in a C function pointer.
+* C function pointers can be called.
+* Idris can access pointers to C globals.
+
 Minor language changes
 ----------------------
 

@@ -319,25 +319,32 @@ prim_peek8 ptr offset = MkIO (\w => prim_io_return (prim__peek8 (world w) ptr of
 
 prim_poke8 : Ptr -> Int -> Bits8 -> IO Int
 prim_poke8 ptr offset val = MkIO (\w =>  prim_io_return (
-     prim__poke8 (world w) ptr offset val))
+    prim__poke8 (world w) ptr offset val))
 
 prim_peek16 : Ptr -> Int -> IO Bits16
 prim_peek16 ptr offset = MkIO (\w => prim_io_return (prim__peek16 (world w) ptr offset))
 
 prim_poke16 : Ptr -> Int -> Bits16 -> IO Int
 prim_poke16 ptr offset val = MkIO (\w =>  prim_io_return (
-     prim__poke16 (world w) ptr offset val))
+    prim__poke16 (world w) ptr offset val))
 
 prim_peek32 : Ptr -> Int -> IO Bits32
 prim_peek32 ptr offset = MkIO (\w => prim_io_return (prim__peek32 (world w) ptr offset))
 
 prim_poke32 : Ptr -> Int -> Bits32 -> IO Int
 prim_poke32 ptr offset val = MkIO (\w =>  prim_io_return (
-     prim__poke32 (world w) ptr offset val))
+    prim__poke32 (world w) ptr offset val))
 
 prim_peek64 : Ptr -> Int -> IO Bits64
 prim_peek64 ptr offset = MkIO (\w => prim_io_return (prim__peek64 (world w) ptr offset))
 
 prim_poke64 : Ptr -> Int -> Bits64 -> IO Int
 prim_poke64 ptr offset val = MkIO (\w =>  prim_io_return (
-     prim__poke64 (world w) ptr offset val))
+    prim__poke64 (world w) ptr offset val))
+
+prim_peekPtr : Ptr -> Int -> IO Ptr
+prim_peekPtr ptr offset = MkIO (\w => prim_io_return (prim__peekPtr (world w) ptr offset))
+
+prim_pokePtr : Ptr -> Int -> Ptr -> IO Int
+prim_pokePtr ptr offset val = MkIO (\w =>  prim_io_return (
+    prim__pokePtr (world w) ptr offset val))

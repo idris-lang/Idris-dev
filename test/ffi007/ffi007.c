@@ -19,3 +19,12 @@ void test_ffi3(void (*cb)(void))
     cb();
     printf("After calling callback\n");
 }
+
+int dynamic_fn(int i) {
+    printf("I'm dynamic %d\n", i);
+    return i*2;
+}
+
+callback test_ffi6(void) {
+    return &dynamic_fn;
+}

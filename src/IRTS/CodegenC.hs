@@ -318,19 +318,26 @@ bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
 bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
 bcc i STOREOLD = indent i ++ "STOREOLD;\n"
 bcc i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "_idris_get_wrapper"
+bcc i (FOREIGNCALL l rty (FStr fn@('&':name)) [])
+      = indent i ++
+        c_irts (toFType rty) (creg l ++ " = ") fn ++ ";\n"
+bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%wrapper"
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ")
-            (fn ++ "(" ++ creg (snd x) ++ ")") ++ ";\n"
+            ("_idris_get_wrapper(" ++ creg (snd x) ++ ")") ++ ";\n"
+bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%dynamic"
+      = indent i ++ c_irts (toFType rty) (creg l ++ " = ")
+            ("(*(" ++ cFnSig "" rty xs ++ ") GETPTR(" ++ creg (snd x) ++ "))" ++
+             "(" ++ showSep "," (map fcall xs) ++ ")") ++ ";\n"
 bcc i (FOREIGNCALL l rty (FStr fn) args)
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ")
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
-    where fcall (t, arg) = irts_c (toFType t) (creg arg)
 bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
 bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
 -- bcc i c = error (show c) -- indent i ++ "// not done yet\n"
 
+fcall (t, arg) = irts_c (toFType t) (creg arg)
 -- Deconstruct the Foreign type in the defunctionalised expression and build
 -- a foreign type description for c_irts and irts_c
 toAType (FCon i)
@@ -387,6 +394,10 @@ irts_c (FArith ATFloat) x = "GETFLOAT(" ++ x ++ ")"
 irts_c FAny x = x
 irts_c FFunctionIO x = wrapped x
 irts_c FFunction x = wrapped x
+
+cFnSig name rty [] = ctype rty ++ " (*" ++ name ++ ")(void) "
+cFnSig name rty args = ctype rty ++ " (*" ++ name ++ ")("
+        ++ showSep "," (map (ctype . fst) args) ++ ") "
 
 wrapped x = "_idris_get_wrapper(" ++ x ++ ")"
 
@@ -632,6 +643,12 @@ doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek64"
     = v ++ "idris_peekB64(vm," ++ creg p ++ "," ++ creg o ++")"
 doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke64"
     = v ++ "idris_pokeB64(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peekPtr"
+    = v ++ "idris_peekPtr(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__pokePtr"
+    = v ++ "idris_pokePtr(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [] | pk == sUN "prim__sizeofPtr"
+    = v ++ "MKINT(sizeof(void*))"
 doOp v (LExternal mpt) [p] | mpt == sUN "prim__asPtr" = v ++ "MKPTR(vm, GETMPTR("++ creg p ++"))"
 doOp _ op args = error $ "doOp not implemented (" ++ show (op, args) ++ ")"
 
@@ -786,8 +803,8 @@ genWrapper (desc, tag) =  ret ++ " " ++ wrapperName tag ++ "(" ++
                           indent 1 ++ "CALL(_idris__123_APPLY0_125_);\n" ++
                           if ret /= "void"
                             then indent 1 ++ "ret = " ++ irts_c (toFType ft) "RVAL" ++ ";\n"
-                                          ++ indent 1 ++ "return ret;\n}"
-                            else "}\n"
+                                          ++ indent 1 ++ "return ret;\n}\n\n"
+                            else "}\n\n"
                     where
                         (ret, ft) = rty desc
                         argList = zip (args desc) [0..]
