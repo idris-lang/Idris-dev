@@ -37,17 +37,25 @@ namespace Builtins
   %used MkUPair a
   %used MkUPair b
 
-  ||| Dependent pairs
+  ||| Dependent pairs aid in the construction of dependent types by
+  ||| providing evidence that some value resides in the type.
   |||
-  ||| Dependent pairs represent existential quantification - they consist of a
-  ||| witness for the existential claim and a proof that the property holds for
-  ||| it. Another way to see dependent pairs is as just data - for instance, the
-  ||| length of a vector paired with that vector.
+  ||| Formally, speaking, dependent pairs represent existential
+  ||| quantification - they consist of a witness for the existential
+  ||| claim and a proof that the property holds for it.
   |||
-  |||  @ a the type of the witness
-  |||  @ P the type of the proof
-  data Sigma : (a : Type) -> (P : a -> Type) -> Type where
-      MkSigma : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
+  |||  @a the value to place in the type.
+  |||  @P the dependent type that requires the value.
+  data DPair : (a : Type) -> (P : a -> Type) -> Type where
+      MkDPair : .{P : a -> Type} -> (x : a) -> (pf : P x) -> DPair a P
+
+  Sigma : (a : Type) -> (P : a -> Type) -> Type
+  Sigma wit prf = DPair wit prf
+  %deprecate Sigma "This name is being deprecated in favour of `DPair`."
+
+  MkSigma : .{P : a -> Type} -> (x : a) -> (prf : P x) -> DPair a P
+  MkSigma wit prf = MkDPair wit prf
+  %deprecate MkSigma "This constructor is being deprecated in favour of `MkDPair`."
 
 ||| The empty type, also known as the trivially false proposition.
 |||

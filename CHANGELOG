@@ -45,6 +45,10 @@ Minor language changes
 
     using (xs : Vect n a)
       bad : Elem x xs -> Elem x (y :: xs)
+* `Sigma` has been renamed  to `DPair`.
+* Accessor functions for dependent pairs have been renamed to bring them into
+  line with standard accessor functions for pairs. The function `getWitness`
+  is now `fst`, and `getProof` is `snd`.
 
 New in 0.10:
 ============

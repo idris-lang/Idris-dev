@@ -1,6 +1,6 @@
 Tacs.idr:298:15:
 When checking right hand side of testElab3 with expected type
-        Sigma Ty (Tm [])
+        DPair Ty (Tm [])
 
 Unifying ty and ARR ty t would lead to infinite value
 AgdaStyleReflection.idr:328:5:

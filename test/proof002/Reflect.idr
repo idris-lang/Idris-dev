@@ -44,7 +44,7 @@ using (xs : List a, ys : List a, G : List (List a))
                        let (yl ** (yr, yprf)) = expr_r ey in
                                appRExpr _ _ xr yr xprf yprf
     where
-      appRExpr : (xs', ys' : List a) -> 
+      appRExpr : (xs', ys' : List a) ->
                  {G : List (List a)} -> {xs, ys : List a} ->
                  RExpr G xs -> RExpr G ys -> (xs' = xs) -> (ys' = ys) ->
                  (ws' ** (RExpr G ws', xs' ++ ys' = ws'))
@@ -206,6 +206,4 @@ Reflect.bp1 = proof {
 -- prover.
 
 syntax AssocProof [ty] = quoteGoal x by reflectEq ty [] in
-                             getJust (prove (getProof x)) ItIsJust
-
-
+                             getJust (prove (snd x)) ItIsJust
