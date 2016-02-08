@@ -5,6 +5,8 @@ import Data.Vect
 
 import Solver
 
+%access public export
+
 ParseErr : Type
 ParseErr = String
 
