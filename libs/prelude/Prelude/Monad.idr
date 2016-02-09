@@ -16,12 +16,12 @@ interface Applicative m => Monad (m : Type -> Type) where
     ||| Also called `bind`.
     (>>=)  : m a -> ((result : a) -> m b) -> m b
 
-    ||| Also called `join` or mu
-    flatten : m (m a) -> m a
+    ||| Also called `flatten` or mu
+    join : m (m a) -> m a
 
     -- default implementations
-    (>>=) x f = flatten (f <$> x)
-    flatten x = x >>= (\y => y)
+    (>>=) x f = join (f <$> x)
+    join x = x >>= (\y => y)
 
 ||| For compatibility with Haskell. Note that monads are **not** free to
 ||| define `return` and `pure` differently!
