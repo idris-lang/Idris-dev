@@ -198,8 +198,12 @@ replicate (S k) x = x :: replicate k x
 -- Zips and unzips
 --------------------------------------------------------------------------------
 
-||| Combine two equal-length vectors pairwise with some function
-zipWith : (a -> b -> c) -> Vect n a -> Vect n b -> Vect n c
+||| Combine two equal-length vectors pairwise with some function.
+|||
+||| @ f the function to combine elements with
+||| @ xs the first vector of elements
+||| @ ys the second vector of elements
+zipWith : (f : a -> b -> c) -> (xs : Vect n a) -> (ys : Vect n b) -> Vect n c
 zipWith f []      []      = []
 zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
