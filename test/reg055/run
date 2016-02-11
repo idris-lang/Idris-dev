@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --nocolour --consolewidth 80 $@ reg055.idr --check
 ${IDRIS:-idris} --nocolour --consolewidth 80 $@ reg055a.idr --check
 rm -f *.ibc

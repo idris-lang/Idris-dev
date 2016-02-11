@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ bignum002.idr -o bignum002
 ./bignum002
 rm -f bignum002 *.ibc

@@ -1,2 +1,2 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --nobanner --nocolor < input

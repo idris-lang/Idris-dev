@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --consolewidth 80 $@ reg018a.idr --check
 ${IDRIS:-idris} --consolewidth 80 $@ reg018b.idr --check
 ${IDRIS:-idris} --consolewidth 80 $@ reg018c.idr --check

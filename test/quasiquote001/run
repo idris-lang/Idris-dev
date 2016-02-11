@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ QuasiquoteBasics.idr -o quasiquote001
 ./quasiquote001
 rm -f quasiquote001 *.ibc

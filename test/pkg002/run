@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ### Test: IPKG executable names can be any namespaced identifier.
 ${IDRIS:-idris} $@ --build test.ipkg
 rm -f *.ibc

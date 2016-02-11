@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ proof010.idr -o proof010
 ./proof010
 rm -f proof010 *.ibc

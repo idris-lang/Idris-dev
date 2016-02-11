@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ --nocolour --consolewidth 80 SourceLoc.idr -o sourceLocation001
 ./sourceLocation001
 rm -f sourceLocation001 *.ibc

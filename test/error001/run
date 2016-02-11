@@ -1,3 +1,3 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ test002.idr --check --noprelude --consolewidth 70
 rm -f *.ibc

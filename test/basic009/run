@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 ${IDRIS:-idris} --consolewidth 80 $@ Main.idr --nocolour --check && echo MAIN-PASS
 ${IDRIS:-idris} --consolewidth 80 $@ Faulty.idr --nocolour --check && echo FAULTY-PASS

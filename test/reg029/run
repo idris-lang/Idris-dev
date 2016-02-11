@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 ${IDRIS:-idris} $@ reg029.idr -o reg029
 unset IDRIS_REG029_NONEXISTENT_VAR

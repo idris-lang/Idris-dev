@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Tests that documentation is generated for both public and abstract members.
 ${IDRIS:-idris} --mkdoc visibility.ipkg
 [ -f visibility_doc/docs/Abstract.html ] && echo "Abstract members are documented"

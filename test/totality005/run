@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ totality005.idr --total --check
 ${IDRIS:-idris} $@ totality005.idr -o totality005
 ./totality005

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Tests that documentation is generated for functions
 ${IDRIS:-idris} --mkdoc test_functions.ipkg
 [ -d test_functions_doc ] && echo "Functions are documented"

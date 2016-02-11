@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ -p pruviloj --nocolour --check --consolewidth 70 Tacs.idr
 ${IDRIS:-idris} $@ -p pruviloj --nocolour --check --consolewidth 70 AgdaStyleReflection.idr
 # Disabled due to excess memory consumption

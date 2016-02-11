@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --nocolour --consolewidth 80 $@ unique001.idr -o unique001
 ./unique001
 ${IDRIS:-idris} --nocolour --consolewidth 80 $@ unique001a.idr --check

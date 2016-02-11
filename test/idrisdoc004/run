@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Tests that documentation is generated for typeclasses
 ${IDRIS:-idris} --mkdoc test_typeclasses.ipkg
 [ -d test_typeclasses_doc ] && echo "Typeclasses are documented"

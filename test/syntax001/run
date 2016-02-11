@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ Syntax.idr --nocolour --consolewidth 80 --check
 ${IDRIS:-idris} $@ SyntaxTest.idr --nocolour --consolewidth 80 --check
 rm -f *.ibc

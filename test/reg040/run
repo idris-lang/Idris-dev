@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 ${IDRIS:-idris} --warnreach reg040.idr -o reg040
 ./reg040

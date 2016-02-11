@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ test005.idr -o test005
 ./test005
 ${IDRIS:-idris} $@ substring.idr -o substring

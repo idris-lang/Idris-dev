@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ syntax002.idr -o syntax002
 ./syntax002
 rm -f syntax002 *.ibc

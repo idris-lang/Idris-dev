@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Tests that documentation only is written when safe
 mkdir do_not_delete_doc
 ${IDRIS:-idris} --mkdoc package.ipkg > nowhere

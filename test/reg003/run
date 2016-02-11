@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --consolewidth 80 --check reg003.idr
 ${IDRIS:-idris} --consolewidth 80 --check reg003a.idr
 rm -f *.ibc

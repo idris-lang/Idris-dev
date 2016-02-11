@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ GoalQQuote.idr -o quasiquote002
 ./quasiquote002
 rm -f quasiquote002 *.ibc

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ sugar004.idr -o sugar004
 ./sugar004
 ./sugar004 42
