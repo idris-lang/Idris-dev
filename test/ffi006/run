@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ ffi006.idr --interface -o ffi006.o
 ${CC:=cc} ffi006.c ffi006.o `idris --include` `idris --link` -o ffi006
 ./ffi006

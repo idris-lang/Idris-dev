@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --consolewidth 80 $@ test003a.lidr --check
 ${IDRIS:-idris} --consolewidth 80 $@ test003.lidr -o test003
 ./test003

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ test014.idr -o test014
 ./test014
 rm -f test014 Resimp.ibc test014.ibc

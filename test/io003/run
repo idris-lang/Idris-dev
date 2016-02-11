@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ test018.idr -p contrib -o test018
 ${IDRIS:-idris} $@ test018a.idr -p contrib -o test018a
 ./test018

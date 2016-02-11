@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ test036.idr -o test036
 ./test036
 rm -f test036 *.ibc

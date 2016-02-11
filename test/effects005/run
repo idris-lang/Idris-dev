@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ defaultLogger.idr -o default -p effects
 ./default
 ${IDRIS:-idris} $@ categoryLogger.idr -o category -p effects

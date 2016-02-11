@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --nocolour --quiet interactive005.idr --consolewidth 70 < input
 rm -f *.ibc
 rm -f hello.bytecode

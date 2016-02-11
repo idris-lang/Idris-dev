@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ --quiet ott.idr -e example
 ${IDRIS:-idris} $@ showu.idr -o reg040
 ./reg040

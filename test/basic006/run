@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 ${IDRIS:-idris} --consolewidth 80 $@ test020.idr -o test020
 ${IDRIS:-idris} --consolewidth 80 $@ test020a.idr --check --nocolor

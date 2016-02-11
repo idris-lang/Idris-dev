@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ Door0.idr --check
 ${IDRIS:-idris} $@ Door1.idr --check
 ${IDRIS:-idris} $@ Door2.idr --check

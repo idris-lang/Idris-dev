@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --nocolour --check $@ working.idr
 ${IDRIS:-idris} --nocolour --check $@ badbangop.idr
 ${IDRIS:-idris} --nocolour --check $@ baddoublebang.idr

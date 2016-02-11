@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ implicits.idr --check
 ${IDRIS:-idris} $@ implicits2.idr --check
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} --nocolour --consolewidth 80 $@ tutorial006a.idr --check
 ${IDRIS:-idris} --nocolour --consolewidth 80 $@ tutorial006b.idr --check
 ${IDRIS:-idris} --nocolour --consolewidth 80 $@ tutorial006c.idr -p effects --check

@@ -1,3 +1,3 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ --quiet --nocolour --consolewidth 70 ClassName.idr < input
 rm -f bounded001 *.ibc

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 ${IDRIS:-idris} $@ basic017.idr --check --nocolor --consolewidth 80
 ${IDRIS:-idris} $@ basic017a.idr --check --nocolor --consolewidth 80
 rm -f *.ibc

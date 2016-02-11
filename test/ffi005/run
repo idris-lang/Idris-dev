@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 ${IDRIS:-idris} $@ Postulate.idr -o postulate
 ./postulate

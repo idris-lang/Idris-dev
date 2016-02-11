@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Tests that documentation properly is merged with existent.
 ${IDRIS:-idris} --mkdoc package_a.ipkg
 [ -f test_merge_doc/IdrisDoc ] && echo "IdrisDoc file written"
