@@ -346,7 +346,13 @@ pprintErr' i (NotInjective p x y) =
   text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delabSugared i p)) <+>
   text " when unifying" <+> annTm x (pprintTerm i (delabSugared i x)) <+> text "and" <+>
   annTm y (pprintTerm i (delabSugared i y))
-pprintErr' i (CantResolve _ c) = text "Can't find implementation for" <+> pprintTerm i (delabSugared i c)
+pprintErr' i (CantResolve _ c e) 
+  = text "Can't find implementation for" <+> pprintTerm i (delabSugared i c)
+        <>
+    case e of
+      Msg "" -> empty
+      _ -> line <> line <> text "Possible cause:" <>
+           indented (pprintErr' i e)
 pprintErr' i (InvalidTCArg n t) 
    = annTm t (pprintTerm i (delabSugared i t)) <+> text " cannot be a parameter of "
         <> annName n <$>

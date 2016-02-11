@@ -1704,8 +1704,8 @@ solveAutos ist fn ambigok
 -- Return true if the given error suggests a type class failure is
 -- recoverable
 tcRecoverable :: ElabMode -> Err -> Bool
-tcRecoverable ERHS (CantResolve f g) = f
-tcRecoverable ETyDecl (CantResolve f g) = f
+tcRecoverable ERHS (CantResolve f g _) = f
+tcRecoverable ETyDecl (CantResolve f g _) = f
 tcRecoverable e (ElaboratingArg _ _ _ err) = tcRecoverable e err
 tcRecoverable e (At _ err) = tcRecoverable e err
 tcRecoverable _ _ = True

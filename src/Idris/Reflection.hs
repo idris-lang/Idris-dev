@@ -896,7 +896,8 @@ reflectErr (NotInjective t1 t2 t3) =
             , reflect t2
             , reflect t3
             ]
-reflectErr (CantResolve _ t) = raw_apply (Var $ reflErrName "CantResolve") [reflect t]
+reflectErr (CantResolve _ t more) 
+   = raw_apply (Var $ reflErrName "CantResolve") [reflect t, reflectErr more]
 reflectErr (InvalidTCArg n t) = raw_apply (Var $ reflErrName "InvalidTCArg") [reflectName n, reflect t]
 reflectErr (CantResolveAlts ss) =
   raw_apply (Var $ reflErrName "CantResolveAlts")

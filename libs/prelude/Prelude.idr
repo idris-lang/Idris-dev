@@ -272,7 +272,7 @@ cast_part x = TermPart x
 
 %error_handler export
 cast_error : Err -> Maybe (List ErrorReportPart)
-cast_error (CantResolve `(Cast ~x ~y))
+cast_error (CantResolve `(Cast ~x ~y) _)
      = Just [TextPart "Can't cast from",
              cast_part x,
              TextPart "to",
@@ -282,6 +282,6 @@ cast_error _ = Nothing
 %error_handler
 export
 num_error : Err -> Maybe (List ErrorReportPart)
-num_error (CantResolve `(Num ~x))
+num_error (CantResolve `(Num ~x) _)
      = Just [TermPart x, TextPart "is not a numeric type"]
 num_error _ = Nothing

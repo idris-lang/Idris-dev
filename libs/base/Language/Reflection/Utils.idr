@@ -303,7 +303,7 @@ implementation Show Err where
   showPrec d (CantMatch tm) = showCon d "CantMatch" $ showArg tm
   showPrec d (NoTypeDecl n) = showCon d "NoTypeDecl" $ showArg n
   showPrec d (NotInjective tm tm' x) = showCon d "NotInjective" $ showArg tm ++ showArg tm'
-  showPrec d (CantResolve tm) = showCon d "CantResolve" $ showArg tm
+  showPrec d (CantResolve tm e) = showCon d "CantResolve" $ showArg tm ++ showArg e
   showPrec d (InvalidTCArg n tm) = showCon d "InvalidTCName" $ showArg n ++ showArg tm
   showPrec d (CantResolveAlts xs) = showCon d "CantResolveAlts" $ showArg xs
   showPrec d (NoValidAlts xs) = showCon d "NoValidAlts" $ showArg xs

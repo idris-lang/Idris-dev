@@ -30,7 +30,7 @@ data Err = Msg String
          | CantMatch TT
          | NoTypeDecl TTName
          | NotInjective TT TT TT
-         | CantResolve TT
+         | CantResolve TT Err
          | InvalidTCArg TTName TT
          | CantResolveAlts (List TTName)
          | NoValidAlts (List TTName)

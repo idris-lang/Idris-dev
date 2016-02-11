@@ -383,8 +383,10 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
        let (argsok, okholePos) = case tcArgsOK g topholes of
                                     Nothing -> (False, [])
                                     Just hs -> (True, hs)
+       env <- get_env
+       probs <- get_probs
        if not argsok -- && not mvok)
-         then lift $ tfail $ CantResolve True topg
+         then lift $ tfail $ CantResolve True topg (probErr probs)
          else do
            ptm <- get_term
            ulog <- getUnifyLog
@@ -431,6 +433,9 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
                               _ -> Just rs
     tcDetArgsOK _ _ _ [] = Just []
 
+    probErr [] = Msg ""
+    probErr ((_,_,_,_,err,_,_) : _) = err
+
     isMeta :: [Name] -> Term -> Bool
     isMeta ns (P _ n _) = n `elem` ns
     isMeta _ _ = False
@@ -462,12 +467,13 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
     boundVar (P Bound _ _) = True
     boundVar _ = False
 
-    blunderbuss t d stk [] = lift $ tfail $ CantResolve False topg
+    blunderbuss t d stk [] = do ps <- get_probs
+                                lift $ tfail $ CantResolve False topg (probErr ps)
     blunderbuss t d stk (n:ns)
         | n /= fn -- && (n `elem` stk)
               = tryCatch (resolve n d)
                     (\e -> case e of
-                             CantResolve True _ -> lift $ tfail e
+                             CantResolve True _ _ -> lift $ tfail e
                              _ -> blunderbuss t d stk ns)
         | otherwise = blunderbuss t d stk ns
 
