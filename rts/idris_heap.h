@@ -13,7 +13,6 @@
 
 struct VM;
 
-#define C_HEAP_GC_TRIGGER_SIZE_INITIAL    4096
 #define C_HEAP_GC_TRIGGER_SIZE(heap_size) (2 * heap_size)
 
 typedef void CDataFinalizer(void *);

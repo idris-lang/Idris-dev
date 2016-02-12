@@ -94,7 +94,7 @@ void c_heap_init(CHeap * heap)
 {
     heap->first = NULL;
     heap->size = 0;
-    heap->gc_trigger_size = C_HEAP_GC_TRIGGER_SIZE_INITIAL;
+    heap->gc_trigger_size = C_HEAP_GC_TRIGGER_SIZE(heap->size);
 }
 
 void c_heap_destroy(CHeap * heap)
