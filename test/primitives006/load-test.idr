@@ -3,6 +3,7 @@ module Main
 import Data.Bytes as B
 import Data.ByteArray as BA
 
+-- %flag C "-g3 -ggdb -O0"
 %link C "array.o"
 
 initialBuf : Bytes
@@ -29,10 +30,10 @@ alloc x 0 = return x
 alloc x i = do
   -- allocate an array
   arr <- BA.allocate (64 * 1024 * 1024)
-  -- write "i" at offset 0
-  BA.pokeInt 0 i arr
-  -- read number from offset 0
-  j <- BA.peekInt 0 arr
+  -- write "i" at offset 63M
+  BA.pokeInt (63*1024*1024) i arr
+  -- read number from offset 63M
+  j <- BA.peekInt (63*1024*1024) arr
   -- count matches
   alloc (x + if i == j then 1 else 0) (i - 1)
 
