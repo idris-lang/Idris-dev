@@ -2,7 +2,7 @@ module Data.Bytes
 
 import Data.ByteArray as BA
 
-%access public
+%access public export
 %default total
 
 -- Structure of the allocated ByteArray
@@ -10,7 +10,7 @@ import Data.ByteArray as BA
 -- used_size is an int and it takes up BA.bytesPerInt bytes
 -- at the beginning of the array
 
-abstract
+export
 record Bytes where
   constructor B
   arr : ByteArray
@@ -32,15 +32,15 @@ allocate capacity = do
   BA.fill dataOfs capacity 0 arr  -- zero the array
   return $ B arr dataOfs dataOfs
 
-abstract
+export
 length : Bytes -> Int
 length (B arr ofs end) = end - ofs
 
-abstract
+export
 empty : Bytes
 empty = unsafePerformIO $ allocate minimalCapacity
 
-abstract
+export
 null : Bytes -> Bool
 null (B arr ofs end) = (ofs == end)
 
@@ -62,7 +62,7 @@ grow factor (B arr ofs end) = do
   return $ B arr' ofs' (ofs' + bytesUsed)
 
 %assert_total
-abstract
+export
 snoc : Bytes -> Byte -> Bytes
 snoc bs@(B arr ofs end) byte
     = if end >= BA.size arr
@@ -81,6 +81,7 @@ snoc bs@(B arr ofs end) byte
               return $ B arr ofs (end+1)
 
 infixl 7 |>
+export
 (|>) : Bytes -> Byte -> Bytes
 (|>) = snoc
 
@@ -89,7 +90,7 @@ namespace SnocView
     Nil : SnocView
     Snoc : (bs : Bytes) -> (b : Byte) -> SnocView
 
-  abstract
+  export
   snocView : Bytes -> SnocView
   snocView (B arr ofs end) =
     if end == ofs
@@ -103,7 +104,7 @@ namespace ConsView
     Nil : ConsView
     Cons : (b : Byte) -> (bs : Bytes) -> ConsView
 
-  abstract
+  export
   consView : Bytes -> ConsView
   consView (B arr ofs end) =
     if end == ofs
@@ -114,7 +115,7 @@ namespace ConsView
 
 infixr 7 ++
 %assert_total
-abstract
+export
 (++) : Bytes -> Bytes -> Bytes
 (++) bsL@(B arrL ofsL endL) bsR@(B arrR ofsR endR)
   = let countR = endR - ofsR in
@@ -133,12 +134,15 @@ abstract
               BA.copy (arrR, ofsR) (arrL, endL) countR
               return $ B arrL ofsL (endL + countR)
 
+export
 dropPrefix : Int -> Bytes -> Bytes
 dropPrefix n (B arr ofs end) = B arr (((ofs + n) `min` end) `max` dataOfs) end
 
+export
 takePrefix : Int -> Bytes -> Bytes
 takePrefix n (B arr ofs end) = B arr ofs (((ofs + n) `min` end) `max` dataOfs)
 
+export
 pack : List Byte -> Bytes
 pack = fromList empty
   where
@@ -146,11 +150,13 @@ pack = fromList empty
     fromList bs []        = bs
     fromList bs (x :: xs) = fromList (bs `snoc` x) xs
 
+export
 unpack : Bytes -> List Byte
 unpack bs with (consView bs)
   | Nil       = []
   | Cons x xs = x :: unpack (assert_smaller bs xs)
 
+export
 slice : Int -> Int -> Bytes -> Bytes
 slice ofs' end' (B arr ofs end)
   = B arr
@@ -164,6 +170,7 @@ data Result : Type -> Type where
   Stop : (result : a) -> Result a
   Cont : (acc : a) -> Result a
 
+export
 iterateR : (Byte -> a -> Result a) -> a -> Bytes -> a
 iterateR f acc bs with (snocView bs)
   | Nil       = acc
@@ -171,6 +178,7 @@ iterateR f acc bs with (snocView bs)
     | Stop result = result
     | Cont acc'   = iterateR f acc' (assert_smaller bs ys)
 
+export
 iterateL : (a -> Byte -> Result a) -> a -> Bytes -> a
 iterateL f acc bs with (consView bs)
   | Nil       = acc
@@ -183,12 +191,15 @@ private
 (.:) : (a -> b) -> (c -> d -> a) -> (c -> d -> b)
 (.:) g f x y = g (f x y)
 
+export
 foldr : (Byte -> a -> a) -> a -> Bytes -> a
 foldr f = iterateR (Cont .: f)
 
+export
 foldl : (a -> Byte -> a) -> a -> Bytes -> a
 foldl f = iterateL (Cont .: f)
 
+export
 spanLength : (Byte -> Bool) -> Bytes -> Int
 spanLength p = iterateL step 0
   where
@@ -200,25 +211,31 @@ spanLength p = iterateL step 0
 find : Byte -> Bytes -> Maybe Int
 find b (B arr ofs end) = unsafePerformIO $ BA.find b arr ofs end
 
+export
 splitAt : Int -> Bytes -> (Bytes, Bytes)
 splitAt n bs = (takePrefix n bs, dropPrefix n bs)
 
+export
 splitOn : Byte -> Bytes -> (Bytes, Bytes)
 splitOn b bs with (find b bs)
   | Nothing  = (bs, empty)
   | Just ofs = (takePrefix ofs bs, dropPrefix (ofs+1) bs)
 
+export
 splitsOn : Byte -> Bytes -> List Bytes
 splitsOn b bs with (find b bs)
   | Nothing  = [bs]
   | Just ofs = takePrefix ofs bs :: splitsOn b (assert_smaller bs $ dropPrefix (ofs+1) bs)
 
+export
 asciiLines : Bytes -> List Bytes
 asciiLines = splitsOn 0x0A
 
+export
 span : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
 span p bs = splitAt (spanLength p bs) bs
 
+export
 break : (Byte -> Bool) -> Bytes -> (Bytes, Bytes)
 break p bs = span (not . p) bs
 
@@ -244,9 +261,11 @@ implementation Eq Bytes where
 implementation Ord Bytes where
   compare = Bytes.cmp
 
+export
 toString : Bytes -> String
 toString = foldr (strCons . chr . toInt) ""
 
+export
 fromString : String -> Bytes
 fromString = foldl (\bs, c => bs |> fromInt (ord c)) empty . unpack
 
