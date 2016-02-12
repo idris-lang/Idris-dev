@@ -557,6 +557,8 @@ doOp v (LTrunc (ITFixed from) ITNative) [x]
     = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
 doOp v (LTrunc (ITFixed from) ITChar) [x]
     = doOp v (LTrunc (ITFixed from) ITNative) [x]
+doOp v (LTrunc ITBig (ITFixed IT64)) [x]
+    = v ++ "idris_b64const(vm, ISINT(" ++ creg x ++ ") ? GETINT(" ++ creg x ++ ") : idris_truncBigB64(GETMPZ(" ++ creg x ++ ")))"
 doOp v (LTrunc ITBig (ITFixed to)) [x]
     = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, ISINT(" ++ creg x ++ ") ? GETINT(" ++ creg x ++ ") : mpz_get_ui(GETMPZ(" ++ creg x ++ ")))"
 doOp v (LTrunc (ITFixed from) (ITFixed to)) [x]
