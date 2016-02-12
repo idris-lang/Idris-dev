@@ -1,5 +1,6 @@
 module Prelude.Providers
 
+import Prelude.Basics
 import Prelude.Functor
 import Prelude.Applicative
 import Prelude.Monad
