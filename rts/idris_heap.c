@@ -59,6 +59,7 @@ void c_heap_insert_if_needed(VM * vm, CHeap * heap, CHeapItem * item)
     heap->size += item->size;
     if (heap->size >= heap->gc_trigger_size)
     {
+        item->is_used = true;  // don't collect what we're inserting
         idris_gc(vm);
     }
 }
