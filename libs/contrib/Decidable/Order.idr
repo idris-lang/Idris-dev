@@ -6,7 +6,7 @@ import Data.Fin
 import Data.Fun
 import Data.Rel
 
-%access public
+%access public export
 
 --------------------------------------------------------------------------------
 -- Utility Lemmas

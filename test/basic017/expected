@@ -1,0 +1,3 @@
+basic017a.idr:11:8:When checking type of Main.append:
+When checking an application of Main.Vect:
+        No such variable n

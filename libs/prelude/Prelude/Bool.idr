@@ -4,6 +4,8 @@ import Builtins
 
 import Prelude.Uninhabited
 
+%access public export
+
 ||| Boolean Data Type
 %case data Bool = False | True
 

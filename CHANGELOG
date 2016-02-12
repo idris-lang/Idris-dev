@@ -1,3 +1,63 @@
+New in 0.11:
+============
+
+Updated export rules
+--------------------
+
+* The export rules are:
+  - 'private' means that the definition is not exported at all
+  - 'export' means that the top level type is exported, but not the
+    definition. In the case of 'data', this means the type constructor is
+    exported but not the data constructors.
+  - 'public export' means that the entire definition is exported.
+* By default, names are 'private'. This can be altered with an %access
+  directive as before.
+* Exported types can only refer to other exported names
+* Publicly exported definitions can only refer to publicly exported names
+
+Improved C FFI
+--------------
+
+* Idris functions can now be passed as callbacks to C functions or wrapped
+in a C function pointer.
+* C function pointers can be called.
+* Idris can access pointers to C globals.
+
+Minor language changes
+----------------------
+
+* The '[static]' annotation is changed to '%static' to be consistent with the
+  other annotations.
+* Added '%auto_implicits' directive. The default is '%auto_implicits on'.
+  Placing '%auto_implicits off' in a source file means that after that
+  point, any implicit arguments must be bound, e.g.:
+    append : {n,m,a:_} -> Vect n a -> Vect m a -> Vect (n + m) a
+
+  Only names which are used explicitly in the type need to be bound, e.g.:
+    Here  : {x, xs : _} -> Elem x (x :: xs)
+
+  In 'Here', there is no need to bind any of the variables in the type of
+  'xs' (it could be e.g. List a or Vect n a; 'a' and 'n' will still be
+  implicitly bound).
+
+  You can still implicitly bind with 'using':
+
+    using (xs : Vect _ _)
+      data Elem  : {a, n : _} -> a -> Vect n a -> Type where
+           Here  : {x : _} -> Elem x (x :: xs)
+           There : {x, y : _} -> Elem x xs -> Elem x (y :: xs)
+
+  However, note that *only* names which appear in *both* the using block
+  *and* the type being defined will be implicitly bound. The following will
+  therefore fail because 'n' isn't implicitly bound:
+
+    using (xs : Vect n a)
+      bad : Elem x xs -> Elem x (y :: xs)
+* `Sigma` has been renamed  to `DPair`.
+* Accessor functions for dependent pairs have been renamed to bring them into
+  line with standard accessor functions for pairs. The function `getWitness`
+  is now `fst`, and `getProof` is `snd`.
+
 New in 0.10:
 ============
 

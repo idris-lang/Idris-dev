@@ -4,7 +4,7 @@ import Builtins
 import Control.Monad.Identity
 import Control.Monad.Trans
 
-%access public
+%access public export
 
 ||| A monad representing a computation that produces a stream of output
 interface (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where

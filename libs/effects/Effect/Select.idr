@@ -2,6 +2,8 @@ module Effect.Select
 
 import Effects
 
+%access public export
+
 data Selection : Effect where
      Select : List a -> sig Selection a ()
 

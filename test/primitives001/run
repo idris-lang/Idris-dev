@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-idris $@ test005.idr -o test005
+${IDRIS:-idris} $@ test005.idr -o test005
 ./test005
-idris $@ substring.idr -o substring
+${IDRIS:-idris} $@ substring.idr -o substring
 ./substring < input
 rm -f test005 substring *.ibc

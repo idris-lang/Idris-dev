@@ -135,6 +135,7 @@ validCoverageCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
             = case (unApply topx, unApply topy) of
                    ((P _ x _, _), (P _ y _, _)) -> x == y
                    _ -> False
+validCoverageCase ctxt (InfiniteUnify _ _ _) = False
 validCoverageCase ctxt (CantConvert _ _ _) = False
 validCoverageCase ctxt (At _ e) = validCoverageCase ctxt e
 validCoverageCase ctxt (Elaborating _ _ _ e) = validCoverageCase ctxt e
@@ -313,7 +314,7 @@ checkAllCovering fc done top n | not (n `elem` done)
              [Partial _] ->
                 case lookupCtxt n (idris_callgraph i) of
                      [cg] -> mapM_ (checkAllCovering fc (n : done) top)
-                                   (map fst (calls cg))
+                                   (calls cg)
                      _ -> return ()
              x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()
@@ -474,6 +475,7 @@ buildSCG (_, n) = do
                   let newscg = buildSCG' ist (rights pats) args
                   logCoverage 5 $ "SCG is: " ++ show newscg
                   addToCG n ( cg { scg = newscg } )
+           _ -> return () -- CG comes from a type declaration only
        [] -> logCoverage 5 $ "Could not build SCG for " ++ show n ++ "\n"
        x -> error $ "buildSCG: " ++ show (n, x)
 

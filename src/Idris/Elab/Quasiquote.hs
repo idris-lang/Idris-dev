@@ -1,4 +1,4 @@
-module Idris.ElabQuasiquote (extractUnquotes) where
+module Idris.Elab.Quasiquote (extractUnquotes) where
 
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
@@ -171,5 +171,3 @@ extractUnquotes n (PRunElab fc tm ns)
 extractUnquotes n (PConstSugar fc tm)
   = extractUnquotes n tm
 extractUnquotes n x = return (x, []) -- no subterms!
-
-

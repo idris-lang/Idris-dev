@@ -248,7 +248,7 @@ getElimClauses info elimn ctors =
   in traverse (\(i, con) => getElimClause info elimn methodCount con i)
               (enumerate ctors)
 
-abstract
+export
 deriveElim : (tyn, elimn : TTName) -> Elab ()
 deriveElim tyn elimn =
   do -- Begin with some basic sanity checking: the type name uniquely

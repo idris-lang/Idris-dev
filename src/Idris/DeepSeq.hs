@@ -199,7 +199,8 @@ instance NFData IOption where
          opt_optimise
          opt_printdepth
          opt_evaltypes
-         opt_desugarnats) =
+         opt_desugarnats
+         opt_autoimpls) =
          rnf opt_logLevel
          `seq` rnf opt_typecase
          `seq` rnf opt_typeintype
@@ -224,6 +225,7 @@ instance NFData IOption where
          `seq` rnf opt_printdepth
          `seq` rnf opt_evaltypes
          `seq` rnf opt_desugarnats
+         `seq` rnf opt_autoimpls
          `seq` ()
 
 instance NFData LanguageExt where
@@ -365,9 +367,9 @@ instance NFData LogCat where
        rnf _ = ()
 
 instance NFData CGInfo where
-        rnf (CGInfo x1 x2 x3 x4 x5)
+        rnf (CGInfo x1 x2 x3)
           = rnf x1 `seq`
-              rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
+              rnf x2 `seq` rnf x3 `seq` ()
 
 instance NFData Fixity where
         rnf (Infixl x1) = rnf x1 `seq` ()
@@ -466,7 +468,7 @@ instance (NFData t) => NFData (PDecl' t) where
                             rnf x9 `seq`
                               rnf x10 `seq`
                                 rnf x11 `seq` rnf x12 `seq` ()
-        rnf (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+        rnf (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
           = rnf x1 `seq`
               rnf x2 `seq`
                 rnf x3 `seq`
@@ -475,7 +477,7 @@ instance (NFData t) => NFData (PDecl' t) where
                       rnf x6 `seq`
                         rnf x7 `seq`
                           rnf x8 `seq`
-                            rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` ()
+                            rnf x9 `seq` rnf x10 `seq` rnf x11 `seq` rnf x12 `seq` ()
         rnf (PDSL x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PSyntax x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (PMutual x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
@@ -696,8 +698,8 @@ instance NFData IState where
   rnf (IState x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20
               x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40
               x41 x42 x43 x44 x45 x46 x47 x48 x49 x50 x51 x52 x53 x54 x55 x56 x57 x58 x59 x60
-              x61 x62 x63 x64 x65 x66 x67 x68 x69 x70 x71 x72 x73 x74)
+              x61 x62 x63 x64 x65 x66 x67 x68 x69 x70 x71 x72 x73 x74 x75)
      = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` rnf x6 `seq` rnf x7 `seq` rnf x8 `seq` rnf x9 `seq` rnf x10 `seq` () `seq` rnf x11 `seq` rnf x12 `seq` rnf x13 `seq` rnf x14 `seq` rnf x15 `seq` rnf x16 `seq` rnf x17 `seq` rnf x18 `seq` rnf x19 `seq` rnf x20 `seq`
        rnf x21 `seq` rnf x22 `seq` rnf x23 `seq` rnf x24 `seq` rnf x25 `seq` rnf x26 `seq` rnf x27 `seq` rnf x28 `seq` rnf x29 `seq` rnf x30 `seq` rnf x31 `seq` rnf x32 `seq` rnf x33 `seq` rnf x34 `seq` rnf x35 `seq` rnf x36 `seq` rnf x37 `seq` rnf x38 `seq` rnf x39 `seq` rnf x40 `seq`
        rnf x41 `seq` rnf x42 `seq` rnf x43 `seq` rnf x44 `seq` rnf x45 `seq` rnf x46 `seq` rnf x47 `seq` rnf x48 `seq` rnf x49 `seq` rnf x50 `seq` rnf x51 `seq` rnf x52 `seq` rnf x53 `seq` rnf x54 `seq` rnf x55 `seq` rnf x56 `seq` rnf x57 `seq` rnf x58 `seq` rnf x59 `seq` rnf x60 `seq`
-       rnf x61 `seq` rnf x62 `seq` rnf x63 `seq` rnf x64 `seq` rnf x65 `seq` rnf x66 `seq` rnf x67 `seq` rnf x68 `seq` rnf x69 `seq` rnf x70 `seq` rnf x71 `seq` rnf x72 `seq` rnf x73 `seq` rnf x74 `seq` ()
+       rnf x61 `seq` rnf x62 `seq` rnf x63 `seq` rnf x64 `seq` rnf x65 `seq` rnf x66 `seq` rnf x67 `seq` rnf x68 `seq` rnf x69 `seq` rnf x70 `seq` rnf x71 `seq` rnf x72 `seq` rnf x73 `seq` rnf x74 `seq` rnf x75 `seq` ()

@@ -7,7 +7,7 @@ import Data.Vect
 --- Effectful computations are described as algebraic data types that
 --- explain how an effect is interpreted in some underlying context.
 
-%access public
+%access export
 -- ----------------------------------------------------------------- [ Effects ]
 ||| The Effect type describes effectful computations.
 |||
@@ -15,11 +15,13 @@ import Data.Vect
 ||| + The return type of the computation.
 ||| + The input resource.
 ||| + The computation to run on the resource given the return value.
+public export
 Effect : Type
 Effect = (x : Type) -> Type -> (x -> Type) -> Type
 
 ||| The `EFFECT` Data type describes how to promote the Effect
 ||| description into a concrete effect.
+public export
 %error_reverse
 data EFFECT : Type where
      MkEff : Type -> Effect -> EFFECT
@@ -30,24 +32,29 @@ data EFFECT : Type where
 -- or a dependent change. These are easily disambiguated by type.
 
 namespace NoResourceEffect
+  public export
   sig : Effect -> Type -> Type
   sig e r = e r () (\v => ())
 
 namespace NoUpdateEffect
+  public export
   sig : Effect -> (ret : Type) -> (resource : Type) -> Type
   sig e r e_in = e r e_in (\v => e_in)
 
 namespace UpdateEffect
+  public export
   sig : Effect -> (ret : Type) -> (res_in : Type) -> (res_out : Type) -> Type
   sig e r e_in e_out = e r e_in (\v => e_out)
 
 namespace DepUpdateEffect
+  public export
   sig : Effect ->
         (ret : Type) -> (res_in : Type) -> (res_out : ret -> Type) -> Type
   sig e r e_in e_out = e r e_in e_out
 
 ||| Handler interfaces describe how an effect `e` is translated to the
 ||| underlying computation context `m` for execution.
+public export
 interface Handler (e : Effect) (m : Type -> Type) where
   ||| How to handle the effect.
   |||
@@ -77,6 +84,7 @@ syntax "{" [inst] "==>" "{" {b} "}" [outst] "}" [eff]
 syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
 
 -- --------------------------------------- [ Properties and Proof Construction ]
+public export
 data SubList : List a -> List a -> Type where
      SubNil : SubList [] []
      Keep   : SubList xs ys -> SubList (x :: xs) (x :: ys)
@@ -88,21 +96,25 @@ subListId {xs = Nil} = SubNil
 subListId {xs = x :: xs} = Keep subListId
 
 namespace Env
+  public export
   data Env  : (m : Type -> Type) -> List EFFECT -> Type where
        Nil  : Env m Nil
        (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
 
+public export
 data EffElem : Effect -> Type ->
                List EFFECT -> Type where
      Here : EffElem x a (MkEff a x :: xs)
      There : EffElem x a xs -> EffElem x a (y :: xs)
 
 ||| make an environment corresponding to a sub-list
+private
 dropEnv : Env m ys -> SubList xs ys -> Env m xs
 dropEnv [] SubNil = []
 dropEnv (v :: vs) (Keep rest) = v :: dropEnv vs rest
 dropEnv (v :: vs) (Drop rest) = dropEnv vs rest
 
+public export
 updateWith : (ys' : List a) -> (xs : List a) ->
              SubList ys xs -> List a
 updateWith (y :: ys) (x :: xs) (Keep rest) = y :: updateWith ys xs rest
@@ -112,6 +124,7 @@ updateWith (y :: ys) []        SubNil      = y :: ys
 updateWith []        (x :: xs) (Keep rest) = []
 
 ||| Put things back, replacing old with new in the sub-environment
+private
 rebuildEnv : Env m ys' -> (prf : SubList ys xs) ->
              Env m xs -> Env m (updateWith ys' xs prf)
 rebuildEnv []        SubNil      env = env
@@ -123,6 +136,7 @@ rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
 
+public export
 updateResTy : (val : t) ->
               (xs : List EFFECT) -> EffElem e a xs -> e t a b ->
               List EFFECT
@@ -131,9 +145,11 @@ updateResTy     val (x :: xs)    (There p) n = x :: updateResTy val xs p n
 
 infix 5 :::, :-, :=
 
+public export
 data LRes : lbl -> Type -> Type where
      (:=) : (x : lbl) -> res -> LRes x res
 
+public export
 (:::) : lbl -> EFFECT -> EFFECT
 (:::) {lbl} x (MkEff r e) = MkEff (LRes x r) e
 
@@ -156,6 +172,7 @@ relabel {xs = (MkEff a e :: xs)} l (v :: vs) = (l := v) :: relabel l vs
 ||| @ x The return type of the result.
 ||| @ es The list of allowed side-effects.
 ||| @ ce Function to compute a new list of allowed side-effects.
+public export
 data EffM : (m : Type -> Type) -> (x : Type)
             -> (es : List EFFECT)
             -> (ce : x -> List EFFECT) -> Type where
@@ -182,27 +199,33 @@ data EffM : (m : Type -> Type) -> (x : Type)
 
 namespace SimpleEff
   -- Simple effects, no updates
+  public export
   Eff : (x : Type) -> (es : List EFFECT) -> Type
   Eff x es = {m : Type -> Type} -> EffM m x es (\v => es)
 
+  public export
   EffT : (m : Type -> Type) -> (x : Type) -> (es : List EFFECT) -> Type
   EffT m x es = EffM m x es (\v => es)
 
 namespace TransEff
   -- Dependent effects, updates not dependent on result
+  public export
   Eff : (x : Type) -> (es : List EFFECT) -> (ce : List EFFECT) -> Type
   Eff x es ce = {m : Type -> Type} -> EffM m x es (\_ => ce)
 
+  public export
   EffT : (m : Type -> Type) ->
          (x : Type) -> (es : List EFFECT) -> (ce : List EFFECT) -> Type
   EffT m x es ce = EffM m x es (\_ => ce)
 
 namespace DepEff
   -- Dependent effects, updates dependent on result
+  public export
   Eff : (x : Type) -> (es : List EFFECT)
         -> (ce : x -> List EFFECT) -> Type
   Eff x es ce = {m : Type -> Type} -> EffM m x es ce
 
+  public export
   EffT : (m : Type -> Type) -> (x : Type) -> (es : List EFFECT)
         -> (ce : x -> List EFFECT) -> Type
   EffT m x es ce = EffM m x es ce
@@ -271,6 +294,7 @@ execEff (val :: env) (There p) eff k
 -- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
 -- updates can be propagated even through failing computations?
 
+export
 eff : Env m xs -> EffM m a xs xs' -> ((x : a) -> Env m (xs' x) -> m b) -> m b
 eff env (Value x) k = k x env
 eff env (prog `EBind` c) k

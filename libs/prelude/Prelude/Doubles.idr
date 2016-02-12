@@ -1,16 +1,16 @@
-module Prelude.Doubles 
+module Prelude.Doubles
 
 import Builtins
-import Prelude.Classes
+import Prelude.Interfaces
 
-%access public
+%access public export
 %default total
 
 %include C "math.h"
 %lib C "m"
 
 pi : Double
-pi = 3.14159265358979323846 
+pi = 3.14159265358979323846
 
 euler : Double
 euler = 2.7182818284590452354
@@ -59,5 +59,3 @@ floor x = prim__floatFloor x
 
 ceiling : Double -> Double
 ceiling x = prim__floatCeil x
-
-

@@ -206,6 +206,14 @@ mergeSolutions env ns = merge [] ns
                    merge acc ns
           | otherwise = merge ((n, t): acc) ns
 
+dropSwaps :: [(Name, TT Name)] -> [(Name, TT Name)]
+dropSwaps [] = []
+dropSwaps (p@(x, P _ y _) : xs) | solvedIn y x xs = dropSwaps xs
+  where solvedIn _ _ [] = False
+        solvedIn y x ((y', P _ x' _) : xs) | y == y' && x == x' = True
+        solvedIn y x (_ : xs) = solvedIn y x xs
+dropSwaps (p : xs) = p : dropSwaps xs
+
 unify' :: Context -> Env -> 
           (TT Name, Maybe Provenance) -> 
           (TT Name, Maybe Provenance) ->
@@ -242,7 +250,8 @@ unify' ctxt env (topx, xfrom) (topy, yfrom) =
            -- problem for each.
            uns <- mergeSolutions env (u' ++ ns)
            ps <- get
-           let (ns', probs') = updateProblems ps uns (fails ++ problems ps)
+           let (ns_p, probs') = updateProblems ps uns (fails ++ problems ps)
+           let ns' = dropSwaps ns_p
            let (notu', probs_notu) = mergeNotunified env (holes ps) (notu ++ notunified ps)
            traceWhen (unifylog ps)
             ("Now solved: " ++ show ns' ++

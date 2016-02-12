@@ -2,7 +2,7 @@ module Effect.State
 
 import Effects
 
-%access public
+%access public export
 
 data State : Effect where
   Get :      sig State a  a

@@ -80,10 +80,11 @@ elabClauses info' fc opts n_in cs =
            let atys = map snd (getArgTys fty)
            cs_elab <- mapM (elabClause info opts)
                            (zip [0..] cs)
+           ctxt <- getContext
            -- pats_raw is the version we'll work with at compile time:
            -- no simplification or PE
            let (pats_in, cs_full) = unzip cs_elab
-           let pats_raw = map (simple_lhs (tt_ctxt ist)) pats_in
+           let pats_raw = map (simple_lhs ctxt) pats_in
            logElab 3 $ "Elaborated patterns:\n" ++ show pats_raw
 
            solveDeferred n
@@ -93,6 +94,7 @@ elabClauses info' fc opts n_in cs =
            addIBC (IBCOpt n)
 
            ist <- getIState
+           ctxt <- getContext
            -- Don't apply rules if this is a partial evaluation definition,
            -- or we'll make something that just runs itself!
            let tpats = case specNames opts of
@@ -103,7 +105,7 @@ elabClauses info' fc opts n_in cs =
            -- RHS
            pe_tm <- doPartialEval ist tpats
            let pats_pe = if petrans
-                            then map (simple_lhs (tt_ctxt ist)) pe_tm
+                            then map (simple_lhs ctxt) pe_tm
                             else pats_raw
 
            let tcase = opt_typecase (idris_options ist)
@@ -183,7 +185,8 @@ elabClauses info' fc opts n_in cs =
            -- pdef' is the version that gets compiled for run-time,
            -- so we start from the partially evaluated version
            pdef_in' <- applyOpts $ map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) pdef_pe
-           let pdef' = map (simple_rt (tt_ctxt ist)) pdef_in'
+           ctxt <- getContext
+           let pdef' = map (simple_rt ctxt) pdef_in'
 
            logElab 5 $ "After data structure transformations:\n" ++ show pdef'
 
@@ -241,24 +244,28 @@ elabClauses info' fc opts n_in cs =
                                                    ctxt
                       setContext ctxt'
                       addIBC (IBCDef n)
+                      addDefinedName n
                       setTotality n tot
                       when (not reflect && PEGenerated `notElem` opts) $
                                            do totcheck (fc, n)
                                               defer_totcheck (fc, n)
                       when (tot /= Unchecked) $ addIBC (IBCTotal n tot)
                       i <- getIState
-                      case lookupDef n (tt_ctxt i) of
+                      ctxt <- getContext
+                      case lookupDef n ctxt of
                           (CaseOp _ _ _ _ _ cd : _) ->
-                            let (scargs, sc) = cases_compiletime cd
-                                (scargs', sc') = cases_runtime cd in
-                              do let calls = findCalls sc' scargs'
-                                 let used = findUsedArgs sc' scargs'
+                            let (scargs, sc) = cases_compiletime cd in
+                              do let calls = map fst $ findCalls sc scargs
                                  -- let scg = buildSCG i sc scargs
                                  -- add SCG later, when checking totality
-                                 let cg = CGInfo scargs' calls [] used []  -- TODO: remove this, not needed anymore
-                                 logElab 2 $ "Called names: " ++ show cg
-                                 addToCG n cg
-                                 addToCalledG n (nub (map fst calls)) -- plus names in type!
+                                 logElab 2 $ "Called names: " ++ show calls
+                                 -- if the definition is public, make sure
+                                 -- it only uses public names
+                                 nvis <- getFromHideList n
+                                 case nvis of
+                                      Just Public -> mapM_ (checkVisibility fc n Public Public) calls
+                                      _ -> return ()
+                                 addCalls n calls
                                  addIBC (IBCCG n)
                           _ -> return ()
                       return ()
@@ -353,11 +360,12 @@ elabPE info fc caller r =
     mkSpecialised :: (Name, [(PEArgType, Term)]) -> Idris [(Term, Term)]
     mkSpecialised specapp_in = do
         ist <- getIState
+        ctxt <- getContext
         let (specTy, specapp) = getSpecTy ist specapp_in
         let (n, newnm, specdecl) = getSpecClause ist specapp
         let lhs = pe_app specdecl
         let rhs = pe_def specdecl
-        let undef = case lookupDefExact newnm (tt_ctxt ist) of
+        let undef = case lookupDefExact newnm ctxt of
                          Nothing -> True
                          _ -> False
         logElab 5 $ show (newnm, undef, map (concreteArg ist) (snd specapp))
@@ -370,7 +378,7 @@ elabPE info fc caller r =
                 let cgns' = filter (\x -> x /= n &&
                                           notStatic ist x) cgns
                 -- set small reduction limit on partial/productive things
-                let maxred = case lookupTotal n (tt_ctxt ist) of
+                let maxred = case lookupTotal n ctxt of
                                   [Total _] -> 65536
                                   [Productive] -> 16
                                   _ -> 1
@@ -485,7 +493,7 @@ checkPossible info fc tcgen fname lhs_in
                   processTacticDecls info newDecls
                   sendHighlighting highlights
                   let lhs_tm = orderPats (getInferTerm lhs')
-                  case recheck ctxt [] (forget lhs_tm) lhs_tm of
+                  case recheck ctxt' [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
                        err -> return False
             -- if it's a recoverable error, the case may become possible
@@ -558,7 +566,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                              (Msg "unexpected patterns outside of \"with\" block")))
 
         -- get the parameters first, to pass through to any where block
-        let fn_ty = case lookupTy fname (tt_ctxt i) of
+        let fn_ty = case lookupTy fname ctxt of
                          [t] -> t
                          _ -> error "Can't happen (elabClause function type)"
         let fn_is = case lookupCtxt fname (idris_implicits i) of
@@ -602,6 +610,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         -- If we're inferring metavariables in the type, don't recheck,
         -- because we're only doing this to try to work out those metavariables
+        ctxt <- getContext
         (clhs_c, clhsty) <- if not inf
                                then recheckC_borrowing False (PEGenerated `notElem` opts)
                                                        [] fc id [] lhs_tm
@@ -627,6 +636,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logElab 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
         -- Elaborate where block
         ist <- getIState
+        ctxt <- getContext
+
         windex <- getName
         let decls = nub (concatMap declared whereblock)
         let defs = nub (decls ++ concatMap defined whereblock)
@@ -635,7 +646,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         -- Unique arguments must be passed to the where block explicitly
         -- (since we can't control "usage" easlily otherwise). Remove them
         -- from newargs here
-        let uniqargs = findUnique (tt_ctxt ist) [] lhs_tm
+        let uniqargs = findUnique ctxt [] lhs_tm
         let newargs = filter (\(n,_) -> n `notElem` uniqargs) newargs_all
 
         let winfo = (pinfo info newargs defs windex) { elabFC = Just fc }
@@ -798,7 +809,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         -- pattern bindings
         i <- getIState
         -- get the parameters first, to pass through to any where block
-        let fn_ty = case lookupTy fname (tt_ctxt i) of
+        let fn_ty = case lookupTy fname ctxt of
                          [t] -> t
                          _ -> error "Can't happen (elabClause function type)"
         let fn_is = case lookupCtxt fname (idris_implicits i) of
@@ -819,6 +830,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         processTacticDecls info newDecls
         sendHighlighting highlights
 
+        ctxt <- getContext
         let lhs_tm = orderPats (getInferTerm lhs')
         let lhs_ty = getInferType lhs'
         let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
@@ -852,6 +864,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         logElab 5 ("Checked wval " ++ show wval')
+
+        ctxt <- getContext
         (cwval, cwvalty) <- recheckC fc id [] (getInferTerm wval')
         let cwvaltyN = explicitNames (normalise ctxt [] cwvalty)
         let cwvalN = explicitNames (normalise ctxt [] cwval)

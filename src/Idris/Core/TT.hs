@@ -588,7 +588,7 @@ tcname (SN (MethodN _)) = True
 tcname (SN (ParentN _ _)) = True
 tcname _ = False
 
-implicitable (NS n _) = implicitable n
+implicitable (NS n _) = False
 implicitable (UN xs) | T.null xs = False
                      | otherwise = isLower (T.head xs) || T.head xs == '_'
 implicitable (MN _ x) = not (tnull x) && thead x /= '_'

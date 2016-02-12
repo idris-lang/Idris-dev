@@ -77,7 +77,7 @@ addDyLib libs = do i <- getIState
                                                      (\_ -> return Nothing)) $ libs
                        case msum handle of
                          Nothing -> return (Right $ "Could not load dynamic alternatives \"" ++
-                                                    concat (intersperse "," libs) ++ "\"")
+                                                    intercalate "," libs ++ "\"")
                          Just x -> do putIState $ i { idris_dynamic_libs = x:ls }
                                       return (Left x)
     where findDyLib :: [DynamicLib] -> String -> Maybe DynamicLib
@@ -95,6 +95,33 @@ addAutoImport fp = do i <- getIState
                       let autoimps = opt_autoImport opts
                       put (i { idris_options = opts { opt_autoImport =
                                                        fp : opt_autoImport opts } } )
+
+addDefinedName :: Name -> Idris ()
+addDefinedName n = do ist <- getIState
+                      putIState $ ist { idris_inmodule = S.insert n (idris_inmodule ist) }
+
+getDefinedNames :: Idris [Name]
+getDefinedNames = do ist <- getIState
+                     return (S.toList (idris_inmodule ist))
+
+addTT :: Term -> Idris (Maybe Term)
+addTT t = do ist <- getIState
+             case M.lookup t (idris_ttstats ist) of
+                  Nothing -> do let tt' = M.insert t (1, t) (idris_ttstats ist)
+                                putIState $ ist { idris_ttstats = tt' }
+                                return Nothing
+                  Just (i, t') -> do let tt' = M.insert t' (i + 1, t') (idris_ttstats ist)
+                                     putIState $ ist { idris_ttstats = tt' }
+                                     return (Just t')
+
+dumpTT :: Idris ()
+dumpTT = do ist <- get
+            let sts = sortBy count (M.toList (idris_ttstats ist))
+            mapM_ dump sts
+            return ()
+  where
+    count (_,x) (_,y) = compare y x
+    dump (tm, val) = runIO $ putStrLn (show val ++ ": " ++ show tm)
 
 addHdr :: Codegen -> String -> Idris ()
 addHdr tgt f = do i <- getIState; putIState $ i { idris_hdrs = nub $ (tgt, f) : idris_hdrs i }
@@ -180,6 +207,11 @@ setAccessibility n a
               let ctxt = setAccess n a (tt_ctxt i)
               putIState $ i { tt_ctxt = ctxt }
 
+-- | get the accessibility of a name outside this module
+getFromHideList :: Name -> Idris (Maybe Accessibility)
+getFromHideList n = do i <- getIState
+                       return $ lookupCtxtExact n (hide_list i)
+
 setTotality :: Name -> Totality -> Idris ()
 setTotality n a
          = do i <- getIState
@@ -203,8 +235,7 @@ getCoercionsTo i ty =
           findCoercions t (n : ns) =
              let ps = case lookupTy n (tt_ctxt i) of
                         [ty'] -> case unApply (getRetTy (normalise (tt_ctxt i) [] ty')) of
-                                   (t', _) ->
-                                      if t == t' then [n] else []
+                                   (t', _) -> [n | t == t']
                         _ -> [] in
                  ps ++ findCoercions t ns
 
@@ -212,6 +243,14 @@ addToCG :: Name -> CGInfo -> Idris ()
 addToCG n cg
    = do i <- getIState
         putIState $ i { idris_callgraph = addDef n cg (idris_callgraph i) }
+
+addCalls :: Name -> [Name] -> Idris ()
+addCalls n calls
+   = do i <- getIState
+        case lookupCtxtExact n (idris_callgraph i) of
+             Nothing -> addToCG n (CGInfo calls [] [])
+             Just (CGInfo cs scg used) ->
+                addToCG n (CGInfo (nub (calls ++ cs)) scg used)
 
 addTyInferred :: Name -> Idris ()
 addTyInferred n
@@ -228,7 +267,7 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
           findMVApps x y
              = do let (fx, argsx) = unApply x
                   let (fy, argsy) = unApply y
-                  if (not (fx == fy))
+                  if (fx /= fy)
                      then do
                        tryAddMV fx y
                        tryAddMV fy x
@@ -309,7 +348,7 @@ allNames :: [Name] -> Name -> Idris [Name]
 allNames ns n | n `elem` ns = return []
 allNames ns n = do i <- getIState
                    case lookupCtxtExact n (idris_callgraph i) of
-                      Just ns' -> do more <- mapM (allNames (n:ns)) (map fst (calls ns'))
+                      Just ns' -> do more <- mapM (allNames (n:ns)) (calls ns')
                                      return (nub (n : concat more))
                       _ -> return [n]
 
@@ -340,11 +379,6 @@ getNameHints i n =
         case lookupCtxt n (idris_namehints i) of
              [ns] -> ns
              _ -> []
-
--- Issue #1737 in the Issue Tracker.
---    https://github.com/idris-lang/Idris-dev/issues/1737
-addToCalledG :: Name -> [Name] -> Idris ()
-addToCalledG n ns = return () -- TODO
 
 addDeprecated :: Name -> String -> Idris ()
 addDeprecated n reason = do i <- getIState
@@ -439,7 +473,8 @@ addIBC ibc@(IBCDef n)
 addIBC ibc = do i <- getIState; putIState $ i { ibc_write = ibc : ibc_write i }
 
 clearIBC :: Idris ()
-clearIBC = do i <- getIState; putIState $ i { ibc_write = [] }
+clearIBC = do i <- getIState; putIState $ i { ibc_write = [],
+                                              idris_inmodule = S.empty }
 
 resetNameIdx :: Idris ()
 resetNameIdx = do i <- getIState
@@ -738,6 +773,16 @@ logLevel :: Idris Int
 logLevel = do i <- getIState
               return (opt_logLevel (idris_options i))
 
+setAutoImpls :: Bool -> Idris ()
+setAutoImpls b = do i <- getIState
+                    let opts = idris_options i
+                    let opt' = opts { opt_autoimpls = b }
+                    putIState $ i { idris_options = opt' }
+
+getAutoImpls :: Idris Bool
+getAutoImpls = do i <- getIState
+                  return (opt_autoimpls (idris_options i))
+
 setErrContext :: Bool -> Idris ()
 setErrContext t = do i <- getIState
                      let opts = idris_options i
@@ -1024,7 +1069,7 @@ logLvlCats cs l str = do
             runIO . hPutStrLn h $ convSExp "log" good n
   where
     inCat :: [LogCat] -> [LogCat] -> Bool
-    inCat cs cats = or $ map (\x -> elem x cats) cs
+    inCat cs cats = any (`elem` cats) cs
 
 cmdOptType :: Opt -> Idris Bool
 cmdOptType x = do i <- getIState
@@ -1101,25 +1146,25 @@ expandParams dec ps ns infs tm = en 0 tm
         | n `nselem` ns = PQuote (Var (dec n))
     en 0 (PApp fc (PInferRef fc' hl n) as)
         | n `nselem` ns = PApp fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
     en 0 (PApp fc (PRef fc' hl n) as)
         | n `elem` infs = PApp fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
         | n `nselem` ns = PApp fc (PRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
     en 0 (PAppBind fc (PRef fc' hl n) as)
         | n `elem` infs = PAppBind fc (PInferRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
         | n `nselem` ns = PAppBind fc (PRef fc' hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps) ++ (map (fmap (en 0)) as))
+                           (map ((pexp . (PRef fc hl)) . fst) ps ++ (map (fmap (en 0)) as))
     en 0 (PRef fc hl n)
         | n `elem` infs = PApp fc (PInferRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map ((pexp . (PRef fc hl)) . fst) ps)
         | n `nselem` ns = PApp fc (PRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map ((pexp . (PRef fc hl)) . fst) ps)
     en 0 (PInferRef fc hl n)
         | n `nselem` ns = PApp fc (PInferRef fc hl (dec n))
-                           (map (pexp . (PRef fc hl)) (map fst ps))
+                           (map ((pexp . (PRef fc hl)) . fst) ps)
     en 0 (PApp fc f as) = PApp fc (en 0 f) (map (fmap (en 0)) as)
     en 0 (PAppBind fc f as) = PAppBind fc (en 0 f) (map (fmap (en 0)) as)
     en 0 (PCase fc c os) = PCase fc (en 0 c) (map (pmap (en 0)) os)
@@ -1191,7 +1236,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     removeBound lhs ns = ns \\ nub (bnames lhs)
 
     bnames (PRef _ _ n) = [n]
-    bnames (PApp _ _ args) = concatMap bnames (map getTm args)
+    bnames (PApp _ _ args) = concatMap (bnames . getTm) args
     bnames (PPair _ _ _ l r) = bnames l ++ bnames r
     bnames (PDPair _ _ _ l Placeholder r) = bnames l ++ bnames r
     bnames _ = []
@@ -1227,10 +1272,10 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds dec
            (map (expandParamsD rhs ist dec ps ns) decls)
            cn
            cd
-expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs n nfc params ty cn decls)
+expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs acc n nfc params ty cn decls)
    = PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
-           n
+           acc n
            nfc
            (map (expandParams dec ps ns []) params)
            (expandParams dec ps ns [] ty)
@@ -1258,9 +1303,9 @@ getPriority i tm = 1 -- pri tm
     pri (PPi _ _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _ _) = 0
     pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
-    pri (PApp _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
-    pri (PAppBind _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.getTm) as)))
-    pri (PCase _ f as) = max 1 (max (pri f) (foldr max 0 (map (pri.snd) as)))
+    pri (PApp _ f as) = max 1 (max (pri f) (foldr (max . pri . getTm) 0 as))
+    pri (PAppBind _ f as) = max 1 (max (pri f) (foldr (max . pri . getTm) 0 as))
+    pri (PCase _ f as) = max 1 (max (pri f) (foldr (max . pri . snd) 0 as))
     pri (PTyped l r) = pri l
     pri (PPair _ _ _ l r) = max 1 (max (pri l) (pri r))
     pri (PDPair _ _ _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
@@ -1277,11 +1322,11 @@ addStatics n tm ptm =
        let paramnames
               = nub $ case lookupCtxtExact n (idris_fninfo ist) of
                            Just p -> getNamesFrom 0 (fn_params p) tm ++
-                                     concatMap (getParamNames ist) (map snd statics)
-                           _ -> concatMap (getParamNames ist) (map snd statics)
+                                     concatMap (getParamNames ist . snd) statics
+                           _ -> concatMap (getParamNames ist . snd) statics
 
-       let stnames = nub $ concatMap freeArgNames (map snd statics)
-       let dnames = (nub $ concatMap freeArgNames (map snd dynamics))
+       let stnames = nub $ concatMap (freeArgNames . snd) statics
+       let dnames = (nub $ concatMap (freeArgNames . snd) dynamics)
                              \\ paramnames
        -- also get the arguments which are 'uniquely inferrable' from
        -- statics (see sec 4.2 of "Scrapping Your Inefficient Engine")
@@ -1290,7 +1335,7 @@ addStatics n tm ptm =
                               filter (\x -> not (elem x dnames)) stnames
        let stpos = staticList statics' tm
        i <- getIState
-       when (not (null statics)) $
+       unless (null statics) $
           logLvl 3 $ "Statics for " ++ show n ++ " " ++ show tm ++ "\n"
                         ++ showTmImpls ptm ++ "\n"
                         ++ show statics ++ "\n" ++ show dynamics
@@ -1376,7 +1421,7 @@ addUsingConstraints syn fc t
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc [] c)
-                           (map (\n -> PExp 0 [] (sMN 0 "carg") (PRef fc [] n)) args)
+                           (map (PExp 0 [] (sMN 0 "carg") . PRef fc []) args)
 
          getConstraints (PPi (Constraint _ _) _ _ c sc)
              = getcapp c ++ getConstraints sc
@@ -1395,10 +1440,14 @@ addUsingConstraints syn fc t
 addUsingImpls :: SyntaxInfo -> Name -> FC -> PTerm -> Idris PTerm
 addUsingImpls syn n fc t
    = do ist <- getIState
-        let ns = implicitNamesIn (map iname uimpls) ist t
+        autoimpl <- getAutoImpls
+        let ns_in = implicitNamesIn (map iname uimpls) ist t
+        let ns = if autoimpl then ns_in
+                    else filter (\n -> n `elem` (map iname uimpls)) ns_in
+
         let badnames = filter (\n -> not (implicitable n) &&
                                      n `notElem` (map iname uimpls)) ns
-        when (not (null badnames)) $
+        unless (null badnames) $
            throwError (At fc (Elaborating "type of " n Nothing
                          (NoSuchVariable (head badnames))))
         let cs = getArgnames t -- get already bound names
@@ -1481,15 +1530,19 @@ implicit info syn n ptm = implicit' info syn [] n ptm
 implicit' :: ElabInfo -> SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
 implicit' info syn ignore n ptm
     = do i <- getIState
-         let (tm', impdata) = implicitise syn ignore i ptm
-         defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
---          let (tm'', spos) = findStatics i tm'
-         putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
-         addIBC (IBCImp n)
-         logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
---          i <- get
---          putIState $ i { idris_statics = addDef n spos (idris_statics i) }
-         return tm'
+         auto <- getAutoImpls
+         if not auto
+           then return ptm
+           else do
+             let (tm', impdata) = implicitise syn ignore i ptm
+             defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
+    --          let (tm'', spos) = findStatics i tm'
+             putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
+             addIBC (IBCImp n)
+             logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
+    --          i <- get
+    --          putIState $ i { idris_statics = addDef n spos (idris_statics i) }
+             return tm'
   where
     --  Detect unknown names in default arguments and throw error if found.
     defaultArgCheck :: [Name] -> [PArg] -> Idris ()
@@ -1534,12 +1587,12 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     -- Find names in argument position in a type, suitable for implicit
     -- binding
     -- Not the function position, but do everything else...
-    implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv) (map getTm args)
+    implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv . getTm) args
     implNamesIn uv t = namesIn uv ist t
 
-    imps top env (PApp _ f as)
+    imps top env ty@(PApp _ f as)
        = do (decls, ns) <- get
-            let isn = concatMap (namesIn uvars ist) (map getTm as)
+            let isn = nub (implNamesIn uvars ty)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
     imps top env (PPi (Imp l _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]

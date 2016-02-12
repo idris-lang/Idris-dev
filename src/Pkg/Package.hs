@@ -142,7 +142,7 @@ documentPkg fp =
      setCurrentDirectory pkgDir
      let run l       = runExceptT . execStateT l
          load []     = return ()
-         load (f:fs) = do loadModule f; load fs
+         load (f:fs) = do loadModule f IBC_Building; load fs
          loader      = do idrisMain opts; addImportDir (sourcedir pkgdesc); load fs
      idrisInstance  <- run loader idrisInit
      setCurrentDirectory cd

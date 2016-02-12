@@ -9,7 +9,7 @@ import Prelude.Monad
 import Prelude.Nat
 import Prelude.List
 
-%access public
+%access public export
 %default total
 
 ||| An infinite stream
@@ -62,8 +62,12 @@ index : Nat -> Stream a -> a
 index Z     (x::xs) = x
 index (S k) (x::xs) = index k xs
 
-||| Combine two streams element-wise using a function
-zipWith : (a -> b -> c) -> Stream a -> Stream b -> Stream c
+||| Combine two streams element-wise using a function.
+|||
+||| @ f the function to combine elements with
+||| @ xs the first stream of elements
+||| @ ys the second stream of elements
+zipWith : (f : a -> b -> c) -> (xs : Stream a) -> (ys : Stream b) -> Stream c
 zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
 ||| Combine three streams by applying a function element-wise along them

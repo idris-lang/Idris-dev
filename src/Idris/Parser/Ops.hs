@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
-module Idris.ParseOps where
+module Idris.Parser.Ops where
 
 import Prelude hiding (pi)
 
@@ -12,7 +12,7 @@ import qualified Text.Parser.Char as Chr
 import qualified Text.Parser.Token.Highlight as Hi
 
 import Idris.AbsSyntax
-import Idris.ParseHelpers
+import Idris.Parser.Helpers
 
 import Idris.Core.TT
 
@@ -170,4 +170,3 @@ fixityType = do reserved "infixl"; return Infixl
          <|> do reserved "infix";  return InfixN
          <|> do reserved "prefix"; return PrefixN
          <?> "fixity type"
-

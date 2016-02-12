@@ -13,7 +13,7 @@ import Util.System
 import Numeric
 import Data.Char
 import Data.Bits
-import Data.List (intercalate)
+import Data.List (intercalate, nubBy)
 import System.Process
 import System.Exit
 import System.IO
@@ -48,19 +48,20 @@ codegenC' :: [(Name, SDecl)] ->
              [String] -> -- extra object files
              [String] -> -- extra compiler flags (libraries)
              [String] -> -- extra compiler flags (anything)
-             [ExportIFace] -> 
+             [ExportIFace] ->
              Bool -> -- interfaces too (so make a .o instead)
              DbgLevel ->
              IO ()
 codegenC' defs out exec incs objs libs flags exports iface dbg
     = do -- print defs
          let bc = map toBC defs
+         let wrappers = genWrappers bc
          let h = concatMap toDecl (map fst bc)
          let cc = concatMap (uncurry toC) bc
          let hi = concatMap ifaceC (concatMap getExp exports)
          d <- getDataDir
          mprog <- readFile (d </> "rts" </> "idris_main" <.> "c")
-         let cout = headers incs ++ debug dbg ++ h ++ cc ++
+         let cout = headers incs ++ debug dbg ++ h ++ wrappers ++ cc ++
                      (if (exec == Executable) then mprog else hi)
          case exec of
            MavenProject -> putStrLn ("FAILURE: output type not supported")
@@ -81,10 +82,10 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
                          "-I."] ++ objs ++ envFlags ++
                         (if (exec == Executable) then [] else ["-c"]) ++
                         [tmpn] ++
-                        (if not iface then concatMap words libFlags else []) ++
-                        concatMap words incFlags ++
-                        (if not iface then concatMap words libs else []) ++
-                        concatMap words flags ++
+                        (if not iface then libFlags else []) ++
+                        incFlags ++
+                        (if not iface then libs else []) ++
+                        flags ++
                         ["-o", out]
 --              putStrLn (show args)
              exit <- rawSystem comp args
@@ -153,7 +154,7 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
                       headHex h (length bytes) : map toHex bytes
       where
         split acc 0 = acc
-        split acc x = let xbits = x .&. 0x3f 
+        split acc x = let xbits = x .&. 0x3f
                           xrest = shiftR x 6 in
                           split (xbits : acc) xrest
 
@@ -185,7 +186,7 @@ bcc i (ASSIGNCONST l c)
     -- if it's a type constant, we won't use it, but equally it shouldn't
     -- report an error. These might creep into generated for various reasons
     -- (especially if erasure is disabled).
-    mkConst c | isTypeConst c = "MKINT(42424242)" 
+    mkConst c | isTypeConst c = "MKINT(42424242)"
     mkConst c = error $ "mkConst of (" ++ show c ++ ") not implemented"
 
 bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
@@ -317,18 +318,29 @@ bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
 bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
 bcc i STOREOLD = indent i ++ "STOREOLD;\n"
 bcc i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
+bcc i (FOREIGNCALL l rty (FStr fn@('&':name)) [])
+      = indent i ++
+        c_irts (toFType rty) (creg l ++ " = ") fn ++ ";\n"
+bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%wrapper"
+      = indent i ++
+        c_irts (toFType rty) (creg l ++ " = ")
+            ("_idris_get_wrapper(" ++ creg (snd x) ++ ")") ++ ";\n"
+bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%dynamic"
+      = indent i ++ c_irts (toFType rty) (creg l ++ " = ")
+            ("(*(" ++ cFnSig "" rty xs ++ ") GETPTR(" ++ creg (snd x) ++ "))" ++
+             "(" ++ showSep "," (map fcall xs) ++ ")") ++ ";\n"
 bcc i (FOREIGNCALL l rty (FStr fn) args)
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ")
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
-    where fcall (t, arg) = irts_c (toFType t) (creg arg)
 bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
 bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
 -- bcc i c = error (show c) -- indent i ++ "// not done yet\n"
 
+fcall (t, arg) = irts_c (toFType t) (creg arg)
 -- Deconstruct the Foreign type in the defunctionalised expression and build
 -- a foreign type description for c_irts and irts_c
-toAType (FCon i) 
+toAType (FCon i)
     | i == sUN "C_IntChar" = ATInt ITChar
     | i == sUN "C_IntNative" = ATInt ITNative
     | i == sUN "C_IntBits8" = ATInt (ITFixed IT8)
@@ -337,18 +349,26 @@ toAType (FCon i)
     | i == sUN "C_IntBits64" = ATInt (ITFixed IT64)
 toAType t = error (show t ++ " not defined in toAType")
 
-toFType (FCon c) 
+toFType (FCon c)
     | c == sUN "C_Str" = FString
     | c == sUN "C_Float" = FArith ATFloat
     | c == sUN "C_Ptr" = FPtr
     | c == sUN "C_MPtr" = FManagedPtr
     | c == sUN "C_CData" = FCData
     | c == sUN "C_Unit" = FUnit
-toFType (FApp c [_,ity]) 
+toFType (FApp c [_,ity])
     | c == sUN "C_IntT" = FArith (toAType ity)
-toFType (FApp c [_]) 
+    | c == sUN "C_FnT" = toFunType ity
+toFType (FApp c [_])
     | c == sUN "C_Any" = FAny
 toFType t = FAny
+
+toFunType (FApp c [_,ity])
+    | c == sUN "C_FnBase" = FFunction
+    | c == sUN "C_FnIO" = FFunctionIO
+toFunType (FApp c [_,_,_,ity])
+    | c == sUN "C_Fn" = toFunType ity
+toFunType _ = FAny
 
 c_irts (FArith (ATInt ITNative)) l x = l ++ "MKINT((i_int)(" ++ x ++ "))"
 c_irts (FArith (ATInt ITChar))  l x = c_irts (FArith (ATInt ITNative)) l x
@@ -361,6 +381,8 @@ c_irts FManagedPtr l x = l ++ "MKMPTR(vm, " ++ x ++ ")"
 c_irts (FArith ATFloat) l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
 c_irts FCData l x = l ++ "MKCDATA(vm, " ++ x ++ ")"
 c_irts FAny l x = l ++ x
+c_irts FFunction l x = error "Return of function from foreign call is not supported"
+c_irts FFunctionIO l x = error "Return of function from foreign call is not supported"
 
 irts_c (FArith (ATInt ITNative)) x = "GETINT(" ++ x ++ ")"
 irts_c (FArith (ATInt ITChar)) x = irts_c (FArith (ATInt ITNative)) x
@@ -373,6 +395,14 @@ irts_c FManagedPtr x = "GETMPTR(" ++ x ++ ")"
 irts_c (FArith ATFloat) x = "GETFLOAT(" ++ x ++ ")"
 irts_c FCData x = "GETCDATA(" ++ x ++ ")"
 irts_c FAny x = x
+irts_c FFunctionIO x = wrapped x
+irts_c FFunction x = wrapped x
+
+cFnSig name rty [] = ctype rty ++ " (*" ++ name ++ ")(void) "
+cFnSig name rty args = ctype rty ++ " (*" ++ name ++ ")("
+        ++ showSep "," (map (ctype . fst) args) ++ ") "
+
+wrapped x = "_idris_get_wrapper(" ++ x ++ ")"
 
 bitOp v op ty args = v ++ "idris_b" ++ show (nativeTyWidth ty) ++ op ++ "(vm, " ++ intercalate ", " (map creg args) ++ ")"
 
@@ -554,7 +584,7 @@ doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v LReadStr [_] = v ++ "idris_readStr(vm, stdin)"
-doOp v LWriteStr [_,s] 
+doOp v LWriteStr [_,s]
              = v ++ "MKINT((i_int)(idris_writeStr(stdout"
                  ++ ",GETSTR("
                  ++ creg s ++ "))))"
@@ -580,10 +610,10 @@ doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
 doOp v LNoOp args = v ++ creg (last args)
 
 -- Pointer primitives (declared as %extern in Builtins.idr)
-doOp v (LExternal rf) [_,x] 
+doOp v (LExternal rf) [_,x]
    | rf == sUN "prim__readFile"
        = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
-doOp v (LExternal wf) [_,x,s] 
+doOp v (LExternal wf) [_,x,s]
    | wf == sUN "prim__writeFile"
        = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
                               ++ "),GETSTR("
@@ -594,14 +624,37 @@ doOp v (LExternal so) [] | so == sUN "prim__stdout" = v ++ "MKPTR(vm, stdout)"
 doOp v (LExternal se) [] | se == sUN "prim__stderr" = v ++ "MKPTR(vm, stderr)"
 
 doOp v (LExternal nul) [] | nul == sUN "prim__null" = v ++ "MKPTR(vm, NULL)"
-doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqPtr" 
+doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqPtr"
     = v ++ "MKINT((i_int)(GETPTR(" ++ creg x ++ ") == GETPTR(" ++ creg y ++ ")))"
-doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqManagedPtr" 
+doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqManagedPtr"
     = v ++ "MKINT((i_int)(GETMPTR(" ++ creg x ++ ") == GETMPTR(" ++ creg y ++ ")))"
 doOp v (LExternal rp) [p, i] | rp == sUN "prim__registerPtr"
     = v ++ "MKMPTR(vm, GETPTR(" ++ creg p ++ "), GETINT(" ++ creg i ++ "))"
-
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek8"
+    = v ++ "idris_peekB8(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke8"
+    = v ++ "idris_pokeB8(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek16"
+    = v ++ "idris_peekB16(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke16"
+    = v ++ "idris_pokeB16(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek32"
+    = v ++ "idris_peekB32(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke32"
+    = v ++ "idris_pokeB32(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peek64"
+    = v ++ "idris_peekB64(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__poke64"
+    = v ++ "idris_pokeB64(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peekPtr"
+    = v ++ "idris_peekPtr(vm," ++ creg p ++ "," ++ creg o ++")"
+doOp v (LExternal pk) [_, p, o, x] | pk == sUN "prim__pokePtr"
+    = v ++ "idris_pokePtr(" ++ creg p ++ "," ++ creg o ++ "," ++ creg x ++ ")"
+doOp v (LExternal pk) [] | pk == sUN "prim__sizeofPtr"
+    = v ++ "MKINT(sizeof(void*))"
+doOp v (LExternal mpt) [p] | mpt == sUN "prim__asPtr" = v ++ "MKPTR(vm, GETMPTR("++ creg p ++"))"
 doOp _ op args = error $ "doOp not implemented (" ++ show (op, args) ++ ")"
+
 
 flUnOp :: String -> String -> String
 flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"
@@ -613,7 +666,7 @@ flUnOp name val = "MKFLOAT(vm, " ++ name ++ "(GETFLOAT(" ++ val ++ ")))"
 ifaceC :: Export -> String
 ifaceC (ExportData n) = "typedef VAL " ++ cdesc n ++ ";\n"
 ifaceC (ExportFun n cn ret args)
-   = ctype ret ++ " " ++ cdesc cn ++ 
+   = ctype ret ++ " " ++ cdesc cn ++
          "(VM* vm" ++ showArgs (zip argNames args) ++ ") {\n"
        ++ mkBody n (zip argNames args) ret ++ "}\n\n"
   where showArgs [] = ""
@@ -626,7 +679,7 @@ mkBody n as t = indent 1 ++ "INITFRAME;\n" ++
                 indent 1 ++ "RESERVE(" ++ show (max (length as) 3) ++ ");\n" ++
                 push 0 as ++ call n ++ retval t
   where push i [] = ""
-        push i ((n, t) : ts) = indent 1 ++ c_irts (toFType t) 
+        push i ((n, t) : ts) = indent 1 ++ c_irts (toFType t)
                                       ("TOP(" ++ show i ++ ") = ") n
                                    ++ ";\n" ++ push (i + 1) ts
 
@@ -692,7 +745,7 @@ hdr_guard x = "__" ++ map hchar x
 hdr_export :: Export -> String
 hdr_export (ExportData n) = "typedef VAL " ++ cdesc n ++ ";\n"
 hdr_export (ExportFun n cn ret args)
-   = ctype ret ++ " " ++ cdesc cn ++ 
+   = ctype ret ++ " " ++ cdesc cn ++
          "(VM* vm" ++ showArgs (zip argNames args) ++ ");\n"
   where showArgs [] = ""
         showArgs ((n, t) : ts) = ", " ++ ctype t ++ " " ++ n ++
@@ -700,5 +753,112 @@ hdr_export (ExportFun n cn ret args)
 
         argNames = zipWith (++) (repeat "arg") (map show [0..])
 
+------------------ Callback wrapper generation ----------------
+-- Generate callback wrappers and a function to select the
+-- correct wrapper function to pass.
+-- TODO: This is limited to functions that are specified in
+-- the foreign call. Otherwise we would have to generate wrappers for all
+-- functions with correct arity or do flow analysis
+-- to find all possible inputs to the foreign call.
+genWrappers :: [(Name, [BC])] -> String
+genWrappers bcs = let
+                    tags = nubBy (\x y -> snd x == snd y)  $ concatMap (getCallback . snd) bcs
+                  in
+                    case tags of
+                        [] -> ""
+                        t -> concatMap genWrapper t ++ genDispatcher t
 
+genDispatcher :: [(FDesc, Int)] -> String
+genDispatcher tags = "void* _idris_get_wrapper(VAL con)\n" ++
+                     "{\n" ++
+                     indent 1 ++ "switch(TAG(con)) {\n" ++
+                     concatMap makeSwitch tags ++
+                     indent 1 ++ "}\n" ++
+                     indent 1 ++ "fprintf(stderr, \"No wrapper for callback\");\n" ++
+                     indent 1 ++ "exit(-1);\n" ++
+                     "}\n\n"
+                        where
+                            makeSwitch (_, tag) =
+                                    indent 1 ++ "case " ++ show tag ++ ":\n" ++
+                                    indent 2 ++ "return (void*) &" ++ wrapperName tag ++ ";\n"
 
+genWrapper :: (FDesc, Int) -> String
+genWrapper (desc, tag) | (toFType desc) == FFunctionIO =
+    error $ "Cannot create C callbacks for IO functions, wrap them with unsafePerformIO.\n"
+genWrapper (desc, tag) =  ret ++ " " ++ wrapperName tag ++ "(" ++
+                          renderArgs argList ++")\n"  ++
+                          "{\n" ++
+                          (if ret /= "void" then indent 1 ++ ret ++ " ret;\n" else "") ++
+                          indent 1 ++ "VM* vm = get_vm();\n" ++
+                          indent 1 ++ "if (vm == NULL) {\n" ++
+                          indent 2 ++ "fprintf(stderr, \"No vm available in callback.\");\n" ++
+                          indent 2 ++ "exit(-1);\n" ++
+                          indent 1 ++ "}\n" ++
+                          indent 1 ++ "INITFRAME;\n" ++
+                          indent 1 ++ "RESERVE(" ++ show (len + 1) ++ ");\n" ++
+                          indent 1 ++ "allocCon(REG1, vm, " ++ show tag ++ ",0 , 0);\n" ++
+                          indent 1 ++ "TOP(0) = REG1;\n" ++
+
+                          push 1 argList ++
+                          indent 1 ++ "STOREOLD;\n" ++
+                          indent 1 ++ "BASETOP(0);\n" ++
+                          indent 1 ++ "ADDTOP(" ++ show (len + 1) ++ ");\n" ++
+                          indent 1 ++ "CALL(_idris__123_APPLY0_125_);\n" ++
+                          if ret /= "void"
+                            then indent 1 ++ "ret = " ++ irts_c (toFType ft) "RVAL" ++ ";\n"
+                                          ++ indent 1 ++ "return ret;\n}\n\n"
+                            else "}\n\n"
+                    where
+                        (ret, ft) = rty desc
+                        argList = zip (args desc) [0..]
+                        len = length argList
+                        renderArgs [] = "void"
+                        renderArgs [((s, _), n)] = s ++ " a" ++ (show n)
+                        renderArgs (((s, _), n):xs) = s ++ " a" ++ (show n) ++ ", " ++
+                                    renderArgs xs
+                        rty (FApp c [_,ty])
+                            | c == sUN "C_FnBase" = (ctype ty, ty)
+                            | c == sUN "C_FnIO" = (ctype ty, ty)
+                            | c == sUN "C_FnT" = rty ty
+                        rty (FApp c [_,_,ty,fn])
+                            | c == sUN "C_Fn" = rty fn
+                        rty x = ("", x)
+                        args (FApp c [_,ty])
+                            | c == sUN "C_FnBase" = []
+                            | c == sUN "C_FnIO" = []
+                            | c == sUN "C_FnT" = args ty
+                        args (FApp c [_,_,ty,fn])
+                            | toFType ty == FUnit = []
+                            | c == sUN "C_Fn" = (ctype ty, ty) : args fn
+                        args _ = []
+                        push i [] = ""
+                        push i (((c, t), n) : ts) = indent 1 ++ c_irts (toFType t)
+                                      ("TOP(" ++ show i ++ ") = ") ("a" ++ show n)
+                                   ++ ";\n" ++ push (i + 1) ts
+
+wrapperName :: Int -> String
+wrapperName tag = "_idris_wrapper_" ++ show tag
+
+getCallback :: [BC] -> [(FDesc, Int)]
+getCallback bc = getCallback' (reverse bc)
+    where
+        getCallback' (x:xs) = case hasCallback x of
+                                [] -> getCallback' xs
+                                cbs -> case findCons cbs xs of
+                                        [] -> error "Idris function couldn't be wrapped."
+                                        x -> x
+        getCallback' [] = []
+        findCons (c:cs) xs = findCon c xs ++ findCons cs xs
+        findCons [] _ = []
+        findCon c ((MKCON l loc tag args):xs) | snd c == l = [(fst c, tag)]
+        findCon c (_:xs) = findCon c xs
+        findCon c [] = []
+
+hasCallback :: BC -> [(FDesc, Reg)]
+hasCallback (FOREIGNCALL l rty (FStr fn) args) = filter isFn args
+    where
+        isFn (desc,_) = case toFType desc of
+                            FFunction -> True
+                            FFunctionIO -> True
+                            _ -> False
+hasCallback _ = []

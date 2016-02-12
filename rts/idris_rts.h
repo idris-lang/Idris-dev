@@ -144,6 +144,9 @@ CData cdata_manage(void * data, CDataFinalizer * finalizer);
 // Create a new VM
 VM* init_vm(int stack_size, size_t heap_size,
             int max_threads);
+
+// Get the VM for the current thread
+VM* get_vm(void);
 // Initialise thread-local data for this VM
 void init_threaddata(VM *vm);
 // Clean up a VM once it's no longer needed
@@ -336,9 +339,12 @@ VAL idris_castStrFloat(VM* vm, VAL i);
 
 // Raw memory manipulation
 void idris_memset(void* ptr, i_int offset, uint8_t c, i_int size);
+void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
 uint8_t idris_peek(void* ptr, i_int offset);
 void idris_poke(void* ptr, i_int offset, uint8_t data);
-void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
+
+VAL idris_peekPtr(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokePtr(VAL ptr, VAL offset, VAL data);
 
 // String primitives
 VAL idris_concat(VM* vm, VAL l, VAL r);

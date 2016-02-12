@@ -6,13 +6,13 @@ import Prelude.Basics
 import Prelude.Bool
 import Prelude.Cast
 import Prelude.Chars
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Foldable
 import Prelude.Nat
 import Prelude.List
 import Prelude.Strings
 
-%access public
+%access public export
 %default total
 
 b8ToString : Bits8 -> String

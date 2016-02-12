@@ -150,7 +150,7 @@ Extra-source-files:
                        libs/pruviloj/Pruviloj/Internals/*.idr
 
                        test/Makefile
-                       test/runtest.pl
+                       test/runtest.hs
                        test/reg001/run
                        test/reg001/*.idr
                        test/reg001/expected
@@ -163,6 +163,9 @@ Extra-source-files:
                        test/reg004/run
                        test/reg004/*.idr
                        test/reg004/expected
+                       test/reg005/run
+                       test/reg005/*.idr
+                       test/reg005/expected
                        test/reg006/run
                        test/reg006/*.idr
                        test/reg006/expected
@@ -361,6 +364,9 @@ Extra-source-files:
                        test/basic016/run
                        test/basic016/*.idr
                        test/basic016/expected
+                       test/basic017/run
+                       test/basic017/*.idr
+                       test/basic017/expected
 
                        test/bignum001/run
                        test/bignum001/*.idr
@@ -462,6 +468,11 @@ Extra-source-files:
                        test/ffi006/*.c
                        test/ffi006/run
                        test/ffi006/expected
+                       test/ffi007/*.idr
+                       test/ffi007/*.c
+                       test/ffi007/*.h
+                       test/ffi007/run
+                       test/ffi007/expected
 
                        test/folding001/*.idr
                        test/folding001/run
@@ -587,11 +598,13 @@ Extra-source-files:
                        test/primitives003/expected
                        test/primitives005/run
                        test/primitives005/*.idr
-                       test/primitives005/array.c
-                       test/primitives005/array.h
-                       test/primitives005/Data/Bytes.idr
-                       test/primitives005/Data/ByteArray.idr
                        test/primitives005/expected
+
+                       test/primitives006/array.c
+                       test/primitives006/array.h
+                       test/primitives006/Data/Bytes.idr
+                       test/primitives006/Data/ByteArray.idr
+                       test/primitives006/expected
 
                        test/pkg001/run
                        test/pkg001/test.ipkg
@@ -795,6 +808,9 @@ Extra-source-files:
                        benchmarks/trivial/sortvec.idr
                        benchmarks/trivial/sortvec.ipkg
 
+                       icons/idris_icon.rc
+                       icons/idris.ico
+
 source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
@@ -866,6 +882,7 @@ Library
                 , Idris.Elab.Transform
                 , Idris.Elab.Value
                 , Idris.Elab.Term
+                , Idris.Elab.Quasiquote
 
                 , Idris.REPL.Browse
 
@@ -886,7 +903,6 @@ Library
                 , Idris.Docs
                 , Idris.Docstrings
                 , Idris.ElabDecls
-                , Idris.ElabQuasiquote
                 , Idris.Erasure
                 , Idris.Error
                 , Idris.ErrReverse
@@ -899,10 +915,10 @@ Library
                 , Idris.Interactive
                 , Idris.Output
                 , Idris.Parser
-                , Idris.ParseHelpers
-                , Idris.ParseOps
-                , Idris.ParseExpr
-                , Idris.ParseData
+                , Idris.Parser.Helpers
+                , Idris.Parser.Ops
+                , Idris.Parser.Expr
+                , Idris.Parser.Data
                 , Idris.PartialEval
                 , Idris.Primitives
                 , Idris.ProofSearch
@@ -910,7 +926,7 @@ Library
                 , Idris.Providers
                 , Idris.Reflection
                 , Idris.REPL
-                , Idris.REPLParser
+                , Idris.REPL.Parser
                 , Idris.Transforms
                 , Idris.TypeSearch
                 , Idris.Unlit
@@ -985,7 +1001,8 @@ Library
                 , zip-archive > 0.2.3.5 && < 0.2.4
                 , safe
                 , fsnotify < 2.2
-                , async < 2.1
+                , async < 2.2
+
   -- zlib >= 0.6.1 is broken with GHC < 7.10.3
   if impl(ghc < 7.10.3)
      build-depends: zlib < 0.6.1
@@ -999,7 +1016,6 @@ Library
                 , TemplateHaskell
 
   ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts
 
   if os(linux)
      cpp-options:   -DLINUX
@@ -1042,6 +1058,24 @@ Executable idris
                 , directory
                 , haskeline >= 0.7
                 , transformers
+
+  ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -threaded -rtsopts -funbox-strict-fields
+
+Test-suite regression-and-sanity-tests
+  Type:           exitcode-stdio-1.0
+  Main-is:        runtest.hs
+  hs-source-dirs: test
+
+  Build-depends: idris
+               , base
+               , containers
+               , process
+               , time
+               , filepath
+               , directory
+               , haskeline >= 0.7
+               , transformers
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields

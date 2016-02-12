@@ -125,7 +125,7 @@ makeMotive info sub subjTy goal =
 
 ||| Perform induction on some expression to solve the current
 ||| goal. Return a list of new holes to be solved.
-public
+public export
 induction : Raw -> Elab (List TTName)
 induction subj =
     do g <- goalType

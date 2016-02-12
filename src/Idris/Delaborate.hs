@@ -317,7 +317,7 @@ pprintErr' i (CantConvert x_in y_in env) =
           flagUnique (Bind n b sc) = Bind n (fmap flagUnique b) (flagUnique sc)
           flagUnique t = t
 pprintErr' i (CantSolveGoal x env) =
-  text "Can't solve goal " <>
+  text "Can't find a value of type " <>
   indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delabSugared i x))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (UnifyScope n out tm env) =

@@ -12,7 +12,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
-                mapDefCtxt,
+                mapDefCtxt, 
                 lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
@@ -247,18 +247,16 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
               if u then
-               do let val = lookupDefAcc n (spec || atRepl) ctxt
+               do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                   case val of
                     [(Function _ tm, _)] | sUN "assert_total" `elem` stk ->
                            ev ntimes (n:stk) True env tm
                     [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
-                    [(Function _ tm, Hidden)] ->
-                           ev ntimes (n:stk) True env tm
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
                     [(CaseOp ci _ _ _ _ cd, acc)]
-                         | (acc /= Frozen || sUN "assert_total" `elem` stk) &&
+                         | (acc == Public || sUN "assert_total" `elem` stk) &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -319,7 +317,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  evApply ntimes' stk top env [l',t',arg'] d'
     -- Treat "assert_total" specially, as long as it's defined!
     ev ntimes stk top env (App _ (App _ (P _ n@(UN at) _) _) arg)
-       | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl) ctxt,
+       | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl || runtime) ctxt,
          at == txt "assert_total" && not simpl
             = ev ntimes (n : stk) top env arg
     ev ntimes stk top env (App _ f a)
@@ -347,7 +345,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
           = apply ntimes stk top env f args
 
     reapply ntimes stk top env f@(VP Ref n ty) args
-       = let val = lookupDefAcc n (spec || atRepl) ctxt in
+       = let val = lookupDefAcc n (spec || atRepl || runtime) ctxt in
          case val of
               [(CaseOp ci _ _ _ _ cd, acc)] ->
                  let (ns, tree) = getCases cd in
@@ -373,10 +371,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
               if u then
-                 do let val = lookupDefAcc n (spec || atRepl) ctxt
+                 do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
-                           | acc /= Frozen || sUN "assert_total" `elem` stk ->
+                           | acc == Public || sUN "assert_total" `elem` stk ->
                            -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -746,10 +744,15 @@ instance Show Def where
 -- Hidden => doesn't reduce and invisible to type checker
 
 data Accessibility = Public | Frozen | Hidden
-    deriving (Show, Eq)
+    deriving (Eq, Ord)
 {-!
 deriving instance NFData Accessibility
 !-}
+
+instance Show Accessibility where
+  show Public = "public export"
+  show Frozen = "export"
+  show Hidden = "private"
 
 -- | The result of totality checking
 data Totality = Total [Int] -- ^ well-founded arguments

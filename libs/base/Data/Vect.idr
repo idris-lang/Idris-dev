@@ -3,7 +3,7 @@ module Data.Vect
 import public Data.Fin
 import Language.Reflection
 
-%access public
+%access public export
 %default total
 
 infixr 7 ::
@@ -198,8 +198,12 @@ replicate (S k) x = x :: replicate k x
 -- Zips and unzips
 --------------------------------------------------------------------------------
 
-||| Combine two equal-length vectors pairwise with some function
-zipWith : (a -> b -> c) -> Vect n a -> Vect n b -> Vect n c
+||| Combine two equal-length vectors pairwise with some function.
+|||
+||| @ f the function to combine elements with
+||| @ xs the first vector of elements
+||| @ ys the second vector of elements
+zipWith : (f : a -> b -> c) -> (xs : Vect n a) -> (ys : Vect n b) -> Vect n c
 zipWith f []      []      = []
 zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
@@ -573,11 +577,14 @@ implementation DecEq a => DecEq (Vect n a) where
 ||| A proof that some element is found in a vector
 data Elem : a -> Vect k a -> Type where
      Here : Elem x (x::xs)
-     There : Elem x xs -> Elem x (y::xs)
+     There : (later : Elem x xs) -> Elem x (y::xs)
 
 ||| Nothing can be in an empty Vect
 noEmptyElem : {x : a} -> Elem x [] -> Void
 noEmptyElem Here impossible
+
+Uninhabited (Elem x []) where
+  uninhabited = noEmptyElem 
 
 ||| An item not in the head and not in the tail is not in the Vect at all
 neitherHereNorThere : {x, y : a} -> {xs : Vect n a} -> Not (x = y) -> Not (Elem x xs) -> Not (Elem x (y :: xs))

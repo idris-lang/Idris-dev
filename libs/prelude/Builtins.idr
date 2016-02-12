@@ -1,6 +1,6 @@
 %unqualified
 
-%access public
+%access public export
 %default total
 
 ||| The canonical single-element type, also known as the trivially
@@ -37,23 +37,31 @@ namespace Builtins
   %used MkUPair a
   %used MkUPair b
 
-  ||| Dependent pairs
+  ||| Dependent pairs aid in the construction of dependent types by
+  ||| providing evidence that some value resides in the type.
   |||
-  ||| Dependent pairs represent existential quantification - they consist of a
-  ||| witness for the existential claim and a proof that the property holds for
-  ||| it. Another way to see dependent pairs is as just data - for instance, the
-  ||| length of a vector paired with that vector.
+  ||| Formally, speaking, dependent pairs represent existential
+  ||| quantification - they consist of a witness for the existential
+  ||| claim and a proof that the property holds for it.
   |||
-  |||  @ a the type of the witness
-  |||  @ P the type of the proof
-  data Sigma : (a : Type) -> (P : a -> Type) -> Type where
-      MkSigma : .{P : a -> Type} -> (x : a) -> (pf : P x) -> Sigma a P
+  |||  @a the value to place in the type.
+  |||  @P the dependent type that requires the value.
+  data DPair : (a : Type) -> (P : a -> Type) -> Type where
+      MkDPair : .{P : a -> Type} -> (x : a) -> (pf : P x) -> DPair a P
+
+  Sigma : (a : Type) -> (P : a -> Type) -> Type
+  Sigma wit prf = DPair wit prf
+  %deprecate Sigma "This name is being deprecated in favour of `DPair`."
+
+  MkSigma : .{P : a -> Type} -> (x : a) -> (prf : P x) -> DPair a P
+  MkSigma wit prf = MkDPair wit prf
+  %deprecate MkSigma "This constructor is being deprecated in favour of `MkDPair`."
 
 ||| The empty type, also known as the trivially false proposition.
 |||
-||| Use `void` or `absurd` to prove anything if you have a variable of type `Void` in scope. 
-%elim data Void : Type where    
-    
+||| Use `void` or `absurd` to prove anything if you have a variable of type `Void` in scope.
+%elim data Void : Type where
+
 ||| The eliminator for the `Void` type.
 void : Void -> a
 -- We can't define void yet. We can't define a function with no clauses without
@@ -155,13 +163,13 @@ assert_total x = x
 
 ||| Subvert the type checker. This function is abstract, so it will not reduce in
 ||| the type checker. Use it with care - it can result in segfaults or worse!
-abstract %assert_total -- need to pretend
+export %assert_total -- need to pretend
 believe_me : a -> b
 believe_me x = prim__believe_me _ _ x
 
 ||| Subvert the type checker. This function *will*  reduce in the type checker.
 ||| Use it with extreme care - it can result in segfaults or worse!
-public %assert_total
+public export %assert_total
 really_believe_me : a -> b
 really_believe_me x = prim__believe_me _ _ x
 
@@ -174,9 +182,9 @@ Float = Double
 -- Pointers as external primitive; there's no literals for these, so no
 -- need for them to be part of the compiler.
 
-abstract data Ptr : Type
-abstract data ManagedPtr : Type
-abstract data CData : Type
+export data Ptr : Type
+export data ManagedPtr : Type
+export data CData : Type
 
 %extern prim__readFile : prim__WorldType -> Ptr -> String
 %extern prim__writeFile : prim__WorldType -> Ptr -> String -> Int
@@ -191,4 +199,18 @@ abstract data CData : Type
 %extern prim__eqManagedPtr : ManagedPtr -> ManagedPtr -> Int
 %extern prim__registerPtr : Ptr -> Int -> ManagedPtr
 
+-- primitives for accessing memory.
+%extern prim__asPtr : ManagedPtr -> Ptr
+%extern prim__sizeofPtr : Int
+%extern prim__peek8 : prim__WorldType -> Ptr -> Int -> Bits8
+%extern prim__peek16 : prim__WorldType -> Ptr -> Int -> Bits16
+%extern prim__peek32 : prim__WorldType -> Ptr -> Int -> Bits32
+%extern prim__peek64 : prim__WorldType -> Ptr -> Int -> Bits64
 
+%extern prim__poke8 : prim__WorldType -> Ptr -> Int -> Bits8 -> Int
+%extern prim__poke16 : prim__WorldType -> Ptr -> Int -> Bits16 -> Int
+%extern prim__poke32 : prim__WorldType -> Ptr -> Int -> Bits32 -> Int
+%extern prim__poke64 : prim__WorldType -> Ptr -> Int -> Bits64 -> Int
+
+%extern prim__peekPtr : prim__WorldType -> Ptr -> Int -> Ptr
+%extern prim__pokePtr : prim__WorldType -> Ptr -> Int -> Ptr -> Int

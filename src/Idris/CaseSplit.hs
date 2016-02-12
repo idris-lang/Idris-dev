@@ -77,7 +77,7 @@ split n t'
                    logElab 1 ("New patterns " ++ showSep ", "
                          (map showTmImpls splits))
                    let newPats_in = zipWith (replaceVar ctxt n) splits (repeat t)
-                   logElab 4 ("Working from " ++ show t)
+                   logElab 4 ("Working from " ++ showTmImpls t)
                    logElab 4 ("Trying " ++ showSep "\n"
                                (map (showTmImpls) newPats_in))
                    newPats_in <- mapM elabNewPat newPats_in
@@ -227,7 +227,8 @@ elabNewPat t = idrisCatch (do (tm, ty) <- elabVal recinfo ELHS t
                               i <- getIState
                               return (True, delab i tm))
                           (\e -> do i <- getIState
-                                    logElab 5 $ "Not a valid split:\n" ++ pshow i e
+                                    logElab 5 $ "Not a valid split:\n" ++ showTmImpls t ++ "\n" 
+                                                     ++ pshow i e
                                     return (False, t))
 
 findPats :: IState -> Type -> [PTerm]

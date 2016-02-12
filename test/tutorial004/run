@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-idris $@ tutorial004.idr --check --nocolour --consolewidth 80
+${IDRIS:-idris} $@ tutorial004.idr --check --nocolour --consolewidth 80
 rm -f *.ibc

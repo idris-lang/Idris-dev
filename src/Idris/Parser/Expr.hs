@@ -1,5 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, TupleSections #-}
-module Idris.ParseExpr where
+module Idris.Parser.Expr where
 
 import Prelude hiding (pi)
 
@@ -12,8 +12,8 @@ import qualified Text.Parser.Char as Chr
 import qualified Text.Parser.Token.Highlight as Hi
 
 import Idris.AbsSyntax
-import Idris.ParseHelpers
-import Idris.ParseOps
+import Idris.Parser.Helpers
+import Idris.Parser.Ops
 import Idris.DSL
 
 import Idris.Core.TT
@@ -161,7 +161,7 @@ extension syn ns rules =
     extensionSymbol (Symbol s)     = do fc <- symbolFC s
                                         highlightP fc AnnKeyword
                                         return Nothing
-    
+
     flatten :: PTerm -> PTerm -- flatten application
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
     flatten t = t
@@ -252,7 +252,7 @@ updateSynMatch = update
 
     updTacImp ns (TacImp o st scr)  = TacImp o st (update ns scr)
     updTacImp _  x                  = x
-    
+
     dropn :: Name -> [(Name, a)] -> [(Name, a)]
     dropn n [] = []
     dropn n ((x,t) : xs) | n == x = xs
@@ -333,11 +333,7 @@ caseOption syn = do lhs <- expr (syn { inPattern = True })
 
 warnTacticDeprecation :: FC -> IdrisParser ()
 warnTacticDeprecation fc =
-    do ist <- get
-       let cmdline = opt_cmdline (idris_options ist)
-       unless (NoOldTacticDeprecationWarnings `elem` cmdline) $
-         put ist { parserWarnings =
-                     (fc, Msg "This style of tactic proof is deprecated. See %runElab for the replacement.") : parserWarnings ist }
+ parserWarning fc (Just NoOldTacticDeprecationWarnings) (Msg "This style of tactic proof is deprecated. See %runElab for the replacement.")
 
 {- | Parses a proof block
 @
@@ -480,7 +476,7 @@ bracketed' open syn =
         <|> try (do l <- simpleExpr syn
                     op <- option Nothing (do o <- operator
                                              lchar ')'
-                                             return (Just o)) 
+                                             return (Just o))
                     fc0 <- getFC
                     case op of
                          Nothing -> bracketedExpr syn open l
@@ -588,7 +584,7 @@ runElab syn = do (FC fn (sl, sc) kwEnd) <- try (lchar '%' *> reservedFC "runElab
                  return $ PRunElab fc tm (syn_namespace syn)
               <?> "new-style tactics expression"
 
-{- | Parses a disambiguation expression 
+{- | Parses a disambiguation expression
 Disamb ::=
   '%' 'disamb' NameList Expr
   ;
@@ -1010,7 +1006,7 @@ Pi' ::=
 @
  -}
 
-bindsymbol opts st syn 
+bindsymbol opts st syn
      = do symbol "->"
           return (Exp opts st False)
 
@@ -1019,7 +1015,7 @@ explicitPi opts st syn
         binder <- bindsymbol opts st syn
         sc <- expr syn
         return (bindList (PPi binder) xt sc)
-       
+
 autoImplicit opts st syn
    = do kw <- reservedFC "auto"
         when (st == Static) $ fail "auto implicits can not be static"
@@ -1029,7 +1025,7 @@ autoImplicit opts st syn
         sc <- expr syn
         highlightP kw AnnKeyword
         return (bindList (PPi
-          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]))) xt sc) 
+          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]))) xt sc)
 
 defaultImplicit opts st syn = do
    kw <- reservedFC "default"
@@ -1055,7 +1051,7 @@ normalImplicit opts st syn = do
                       constraint)
                else (Imp opts st False (Just (Impl False False)),
                      Imp opts st False (Just (Impl True False)))
-   return (bindList (PPi im) xt 
+   return (bindList (PPi im) xt
            (bindList (PPi cl) cs sc))
 
 implicitPi opts st syn =
@@ -1389,7 +1385,11 @@ Static ::=
 @
 -}
 static :: IdrisParser Static
-static =     do reserved "[static]"; return Static
+static =     do reserved "%static"; return Static
+         <|> do reserved "[static]"
+                fc <- getFC
+                parserWarning fc Nothing (Msg "The use of [static] is deprecated, use %static instead.")
+                return Static
          <|> return Dynamic
          <?> "static modifier"
 
@@ -1443,7 +1443,7 @@ data TacticArg = NameTArg -- ^ Names: n1, n2, n3, ... n
 --     https://github.com/idris-lang/Idris-dev/issues/1766
 -- | A list of available tactics and their argument requirements
 tactics :: [([String], Maybe TacticArg, SyntaxInfo -> IdrisParser PTactic)]
-tactics = 
+tactics =
   [ (["intro"], Nothing, const $ -- FIXME syntax for intro (fresh name)
       do ns <- sepBy (spaced (fst <$> name)) (lchar ','); return $ Intro ns)
   , noArgs ["intros"] Intros
@@ -1527,7 +1527,7 @@ tactics =
   imp :: IdrisParser Bool
   imp = do lchar '?'; return False
     <|> do lchar '_'; return True
-  
+
 
 tactic :: SyntaxInfo -> IdrisParser PTactic
 tactic syn = choice [ do choice (map reserved names); parser syn
@@ -1550,4 +1550,3 @@ fullTactic :: SyntaxInfo -> IdrisParser PTactic
 fullTactic syn = do t <- tactic syn
                     eof
                     return t
-

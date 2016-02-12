@@ -20,24 +20,13 @@ build: dist/setup-config
 test: doc test_c
 
 test_c:
-	$(MAKE) -C test IDRIS=../dist/build/idris
-
-test_java:
-	$(MAKE) -C test IDRIS=../dist/build/idris test_java
-
-test_llvm:
-	$(MAKE) -C test IDRIS=../dist/build/idris test_llvm
+	$(MAKE) -C test IDRIS=../dist/build/idris/idris test
 
 test_js:
-	$(MAKE) -C test IDRIS=../dist/build/idris test_js
-
-test_all:
-	$(MAKE) test
-	$(MAKE) test_llvm
-	$(MAKE) test_java
+	$(MAKE) -C test IDRIS=../dist/build/idris/idris test_js
 
 test_timed:
-	$(MAKE) -C test IDRIS=../dist/build/idris time
+	$(MAKE) -C test IDRIS=../dist/build/idris/idris time
 
 lib_clean:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris RTS=../../dist/build/rts/libidris_rts clean

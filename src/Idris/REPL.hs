@@ -8,10 +8,10 @@ module Idris.REPL(getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc,
 import Idris.AbsSyntax
 import Idris.ASTUtils
 import Idris.Apropos (apropos, aproposModules)
-import Idris.REPLParser
-import Idris.ElabDecls
+import Idris.REPL.Parser
 import Idris.Erasure
 import Idris.Error
+import Idris.IBC
 import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Docstrings (Docstring, overview, renderDocstring, renderDocTerm)
@@ -38,6 +38,7 @@ import Idris.IBC (loadPkgIndex, writePkgIndex)
 
 import Idris.REPL.Browse (namesInNS, namespacesInNS)
 
+import Idris.ElabDecls
 import Idris.Elab.Type
 import Idris.Elab.Clause
 import Idris.Elab.Data
@@ -690,9 +691,9 @@ reload orig inputs = do
 
 watch :: IState -> [FilePath] -> Idris (Maybe [FilePath])
 watch orig inputs = do
-  let inputSet = S.fromList inputs
-  let dirs = nub $ map takeDirectory inputs
   resp <- runIO $ do
+    let dirs = nub $ map takeDirectory inputs
+    inputSet <- fmap S.fromList $ mapM canonicalizePath inputs
     signal <- newEmptyMVar
     withManager $ \mgr -> do
       forM_ dirs $ \dir ->
@@ -735,7 +736,7 @@ processInput cmd orig inputs efile
                    return (Just mod)
             Success (Right (ModImport f)) ->
                 do clearErr
-                   fmod <- loadModule f
+                   fmod <- loadModule f (IBC_REPL True)
                    return (Just (inputs ++ maybe [] (:[]) fmod))
             Success (Right Edit) -> do -- takeMVar stvar
                                edit efile orig
@@ -817,7 +818,7 @@ process fn Warranty = iPrintResult warranty
 process fn (ChangeDirectory f)
                  = do runIO $ setCurrentDirectory f
                       return ()
-process fn (ModImport f) = do fmod <- loadModule f
+process fn (ModImport f) = do fmod <- loadModule f (IBC_REPL True)
                               case fmod of
                                 Just pr -> isetPrompt pr
                                 Nothing -> iPrintError $ "Can't find import " ++ f
@@ -901,8 +902,8 @@ process fn (NewDefn decls) = do
   fixClauses :: PDecl' t -> PDecl' t
   fixClauses (PClauses fc opts _ css@(clause:cs)) =
     PClauses fc opts (getClauseName clause) css
-  fixClauses (PInstance doc argDocs syn fc constraints cls nfc parms ty instName decls) =
-    PInstance doc argDocs syn fc constraints cls nfc parms ty instName (map fixClauses decls)
+  fixClauses (PInstance doc argDocs syn fc constraints acc cls nfc parms ty instName decls) =
+    PInstance doc argDocs syn fc constraints acc cls nfc parms ty instName (map fixClauses decls)
   fixClauses decl = decl
 
 process fn (Undefine names) = undefine names
@@ -1089,7 +1090,7 @@ process fn (DebugInfo n)
         when (not (null di)) $ iputStrLn (show di)
         let imps = lookupCtxt n (idris_implicits i)
         when (not (null imps)) $ iputStrLn (show imps)
-        let d = lookupDef n (tt_ctxt i)
+        let d = lookupDefAcc n False (tt_ctxt i)
         when (not (null d)) $ iputStrLn $ "Definition: " ++ (show (head d))
         let cg = lookupCtxtName n (idris_callgraph i)
         i <- getIState
@@ -1238,12 +1239,15 @@ process fn (Compile codegen f)
           iPrintError $ "Invalid filename for compiler output \"" ++ f ++"\""
       | otherwise = do opts <- getCmdLine
                        let iface = Interface `elem` opts
+                       let mainname = sNS (sUN "main") ["Main"]
+
                        m <- if iface then return Nothing else
                             do (m', _) <- elabVal recinfo ERHS
                                             (PApp fc (PRef fc [] (sUN "run__IO"))
-                                            [pexp $ PRef fc [] (sNS (sUN "main") ["Main"])])
+                                            [pexp $ PRef fc [] mainname])
                                return (Just m')
                        ir <- compile codegen f m
+
                        i <- getIState
                        runIO $ generate codegen (fst (head (idris_imported i))) ir
   where fc = fileFC "main"
@@ -1559,7 +1563,7 @@ loadInputs inputs toline -- furthest line to read in input source files
                    logParser 1 ("MODULE TREE : " ++ show modTree)
                    logParser 1 ("RELOAD: " ++ show ifiles)
                    when (not (all ibc ifiles) || loadCode) $
-                        tryLoad False (filter (not . ibc) ifiles)
+                        tryLoad False IBC_Building (filter (not . ibc) ifiles)
                    -- return the files that need rechecking
                    return (input, ifiles))
                       ninputs
@@ -1570,7 +1574,8 @@ loadInputs inputs toline -- furthest line to read in input source files
               Nothing ->
                 do putIState $!! ist { idris_tyinfodata = tidata }
                    ibcfiles <- mapM findNewIBC (nub (concat (map snd ifiles)))
-                   tryLoad True (mapMaybe id ibcfiles)
+--                    logLvl 0 $ "Loading from " ++ show ibcfiles
+                   tryLoad True (IBC_REPL True) (mapMaybe id ibcfiles)
               _ -> return ()
            exports <- findExports
 
@@ -1590,9 +1595,9 @@ loadInputs inputs toline -- furthest line to read in input source files
                             iWarn emptyFC $ pprintErr i e
                   return [])
    where -- load all files, stop if any fail
-         tryLoad :: Bool -> [IFileType] -> Idris ()
-         tryLoad keepstate [] = warnTotality >> return ()
-         tryLoad keepstate (f : fs)
+         tryLoad :: Bool -> IBCPhase -> [IFileType] -> Idris ()
+         tryLoad keepstate phase [] = warnTotality >> return ()
+         tryLoad keepstate phase (f : fs)
                  = do ist <- getIState
                       let maxline
                             = case toline of
@@ -1605,7 +1610,7 @@ loadInputs inputs toline -- furthest line to read in input source files
                                                           then Just l
                                                           else Nothing
                                             _ -> Nothing
-                      loadFromIFile True f maxline
+                      loadFromIFile True phase f maxline
                       inew <- getIState
                       -- FIXME: Save these in IBC to avoid this hack! Need to
                       -- preserve it all from source inputs
@@ -1623,7 +1628,7 @@ loadInputs inputs toline -- furthest line to read in input source files
                            ist <- getIState
                            putIState $!! ist { idris_tyinfodata = tidata,
                                                idris_patdefs = patdefs }
-                           tryLoad keepstate fs
+                           tryLoad keepstate phase fs
 
          ibc (IBC _ _) = True
          ibc _ = False
@@ -1727,13 +1732,12 @@ idrisMain opts =
            addPkgDir "base"
        mapM_ addPkgDir pkgdirs
        elabPrims
-       when (not (NoBuiltins `elem` opts)) $ do x <- loadModule "Builtins"
+       when (not (NoBuiltins `elem` opts)) $ do x <- loadModule "Builtins" (IBC_REPL True)
                                                 addAutoImport "Builtins"
                                                 return ()
-       when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude"
+       when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude" (IBC_REPL True)
                                                addAutoImport "Prelude"
                                                return ()
-
        when (runrepl && not idesl) initScript
 
        nobanner <- getNoBanner
@@ -1794,7 +1798,7 @@ idrisMain opts =
        when (runrepl && not idesl) $ do
 --          clearOrigPats
          startServer port orig mods
-         runInputT (replSettings (Just historyFile)) $ repl orig mods efile
+         runInputT (replSettings (Just historyFile)) $ repl (force orig) mods efile
        let idesock = IdemodeSocket `elem` opts
        when (idesl) $ idemodeStart idesock orig inputs
        ok <- noErrors

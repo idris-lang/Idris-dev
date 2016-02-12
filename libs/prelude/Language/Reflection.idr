@@ -9,7 +9,7 @@ import Prelude.List
 import Prelude.Nat
 import Prelude.Traversable
 
-%access public
+%access public export
 
 ||| A source location in an Idris file
 record SourceLocation where
@@ -80,7 +80,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | WorldType | TheWorld
 %name Const c, c'
 
-abstract interface ReflConst (a : Type) where
+export interface ReflConst (a : Type) where
    toConst : a -> Const
 
 implementation ReflConst Int where
@@ -110,7 +110,7 @@ implementation ReflConst Bits32 where
 implementation ReflConst Bits64 where
    toConst = B64
 
-implicit
+implicit export
 reflectConstant: (ReflConst a) => a -> Const
 reflectConstant = toConst
 

@@ -1,8 +1,10 @@
-module Prelude.Classes
+module Prelude.Interfaces
 
 import Builtins
 import Prelude.Basics
 import Prelude.Bool
+
+%access public export
 
 -- Numerical Operator Precedence
 infixl 5 ==, /=
@@ -57,7 +59,7 @@ Eq Bool where
     True  == False = False
     False == True  = False
     False == False = True
-    
+
 (Eq a, Eq b) => Eq (a, b) where
   (==) (a, c) (b, d) = (a == b) && (c == d)
 
@@ -357,7 +359,7 @@ divB8 x y = case y == 0 of
 modB8 : Bits8 -> Bits8 -> Bits8
 modB8 x y = case y == 0 of
   False => prim__sremB8 x y
-  
+
 Integral Bits8 where
   div = divB8
   mod = modB8
@@ -372,8 +374,8 @@ modB16 x y = case y == 0 of
   False => prim__sremB16 x y
 
 Integral Bits16 where
-  div = divB16 
-  mod = modB16 
+  div = divB16
+  mod = modB16
 
 -- ------------------------------------------------------------------ [ Bits32 ]
 divB32 : Bits32 -> Bits32 -> Bits32
@@ -385,8 +387,8 @@ modB32 x y = case y == 0 of
   False => prim__sremB32 x y
 
 Integral Bits32 where
-  div = divB32 
-  mod = modB32 
+  div = divB32
+  mod = modB32
 
 -- ------------------------------------------------------------------ [ Bits64 ]
 divB64 : Bits64 -> Bits64 -> Bits64
@@ -398,7 +400,5 @@ modB64 x y = case y == 0 of
   False => prim__sremB64 x y
 
 Integral Bits64 where
-  div = divB64 
-  mod = modB64 
-
-
+  div = divB64
+  mod = modB64

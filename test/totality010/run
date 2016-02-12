@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-idris $@ totality010.idr --nocolour --consolewidth 80 --check
+${IDRIS:-idris} $@ totality010.idr --nocolour --consolewidth 80 --check
 rm -f *.ibc

@@ -10,6 +10,7 @@ import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
 import qualified Distribution.Simple.Program as P
 import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile)
+import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Text
 
@@ -45,6 +46,9 @@ mymake = "make"
 make verbosity =
    P.runProgramInvocation verbosity . P.simpleProgramInvocation mymake
 
+#ifdef mingw32_HOST_OS
+windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "windres"
+#endif
 -- -----------------------------------------------------------------------------
 -- Flags
 
@@ -198,6 +202,20 @@ getVersion args flags = do
       let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
       return (Just buildinfo, [])
 
+
+
+idrisPreBuild args flags = do
+#ifdef mingw32_HOST_OS
+        createDirectoryIfMissingVerbose verbosity True dir
+        windres verbosity ["icons/idris_icon.rc","-o", dir++"idris_icon.o"]
+        return (Nothing, [("idris", emptyBuildInfo { ldOptions = [dir ++ "idris_icon.o"] })])
+     where
+        verbosity = S.fromFlag $ S.buildVerbosity flags
+        dir = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
+#else
+        return (Nothing, [])
+#endif
+
 idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
       buildStdLib
       buildRTS
@@ -247,6 +265,7 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
 main = defaultMainWithHooks $ simpleUserHooks
    { postClean = idrisClean
    , postConf  = idrisConfigure
+   , preBuild = idrisPreBuild
    , postBuild = idrisBuild
    , postCopy = \_ flags pkg local ->
                   idrisInstall (S.fromFlag $ S.copyVerbosity flags)

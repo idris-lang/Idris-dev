@@ -1,10 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
-                    module Idris.ParseExpr,
-                    module Idris.ParseData,
-                    module Idris.ParseHelpers,
-                    module Idris.ParseOps) where
+                    module Idris.Parser.Expr,
+                    module Idris.Parser.Data,
+                    module Idris.Parser.Helpers,
+                    module Idris.Parser.Ops) where
 
 import Prelude hiding (pi)
 
@@ -35,10 +35,10 @@ import Idris.Unlit
 import Idris.Providers
 import Idris.Output
 
-import Idris.ParseHelpers
-import Idris.ParseOps
-import Idris.ParseExpr
-import Idris.ParseData
+import Idris.Parser.Helpers
+import Idris.Parser.Ops
+import Idris.Parser.Expr
+import Idris.Parser.Data
 
 import Idris.Docstrings hiding (Unchecked)
 
@@ -211,7 +211,7 @@ internalDecl syn
                              declBody continue)
                      <|> fail "End of readable input"
   where declBody :: Bool -> IdrisParser [PDecl]
-        declBody b = 
+        declBody b =
                    try (instance_ True syn)
                    <|> declBody' b
                    <|> using_ syn
@@ -337,8 +337,8 @@ declExtension syn ns rules =
                   (map (updateNs ns) ds)
                   (updateRecCon ns cname)
                   cdocs
-    updateNs ns (PInstance docs pdocs s fc cs cn fc' ps ity ni ds)
-         = PInstance docs pdocs s fc cs (updateB ns cn) fc'
+    updateNs ns (PInstance docs pdocs s fc cs acc cn fc' ps ity ni ds)
+         = PInstance docs pdocs s fc cs acc (updateB ns cn) fc'
                      ps ity (fmap (updateB ns) ni)
                             (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
@@ -502,7 +502,9 @@ syntaxRule syn
                body' <- fixBind ((n,n'):rens) body
                return $ PLam fc n' nfc ty' body'
         fixBind rens (PPi plic n nfc argTy body)
-          | n `elem` userNames = liftM2 (PPi plic n nfc) (fixBind rens argTy) (fixBind rens body)
+          | n `elem` userNames = liftM2 (PPi plic n nfc)
+                                        (fixBind rens argTy)
+                                        (fixBind rens body)
           | otherwise =
             do ty' <- fixBind rens argTy
                n' <- gensym n
@@ -521,6 +523,10 @@ syntaxRule syn
                return $ PLet fc n' nfc ty' val' body'
         fixBind rens (PMatchApp fc n) | Just n' <- lookup n rens =
           return $ PMatchApp fc n'
+        -- Also rename resolved quotations, to allow syntax rules to
+        -- have quoted references to their own bindings.
+        fixBind rens (PQuoteName n True fc) | Just n' <- lookup n rens =
+          return $ PQuoteName n' True fc
         fixBind rens x = descendM (fixBind rens) x
 
         gensym :: Name -> IdrisParser Name
@@ -584,7 +590,7 @@ fnDecl' syn = checkFixity $
                                           then [TotalFn]
                                           else []
                         opts <- fnOpts initOpts
-                        acc <- optional accessibility
+                        acc <- accessibility
                         opts' <- fnOpts opts
                         (n_in, nfc) <- fnName
                         let n = expandNS syn n_in
@@ -698,7 +704,7 @@ postulate syn = do (doc, ext)
                                      then [TotalFn]
                                      else []
                    opts <- fnOpts initOpts
-                   acc <- optional accessibility
+                   acc <- accessibility
                    opts' <- fnOpts opts
                    (n_in, nfc) <- fnName
                    let n = expandNS syn n_in
@@ -856,7 +862,7 @@ Class ::=
 class_ :: SyntaxInfo -> IdrisParser [PDecl]
 class_ syn = do (doc, argDocs, acc)
                   <- try (do (doc, argDocs) <- docstring syn
-                             acc <- optional accessibility
+                             acc <- accessibility
                              classKeyword
                              return (doc, argDocs, acc))
                 fc <- getFC
@@ -873,15 +879,12 @@ class_ syn = do (doc, argDocs, acc)
   where
     fundeps :: IdrisParser [(Name, FC)]
     fundeps = do lchar '|'; sepBy name (lchar ',')
-                             
+
     classKeyword :: IdrisParser ()
     classKeyword = reservedHL "interface"
                <|> do reservedHL "class"
                       fc <- getFC
-                      ist <- get
-                      put ist { parserWarnings = 
-                         (fc, Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
-                              : parserWarnings ist }
+                      parserWarning fc Nothing (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
 
     carg :: IdrisParser (Name, FC, PTerm)
     carg = do lchar '('; (i, ifc) <- name; lchar ':'; ty <- expr syn; lchar ')'
@@ -903,8 +906,9 @@ InstanceName ::= '[' Name ']';
 @
 -}
 instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
-instance_ kwopt syn 
-              = do (doc, argDocs)
+instance_ kwopt syn
+              = do acc <- accessibility
+                   (doc, argDocs)
                      <- try (docstring syn <* if kwopt then optional instanceKeyword
                                                        else do instanceKeyword
                                                                return (Just ()))
@@ -917,7 +921,7 @@ instance_ kwopt syn
                    let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- instanceBlock syn
-                   return [PInstance doc argDocs syn fc cs' cn cnfc args t en ds]
+                   return [PInstance doc argDocs syn fc cs' acc cn cnfc args t en ds]
                  <?> "implementation declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
@@ -928,11 +932,7 @@ instance_ kwopt syn
         instanceKeyword = reservedHL "implementation"
                       <|> do reservedHL "instance"
                              fc <- getFC
-                             ist <- get
-                             put ist { parserWarnings = 
-                                (fc, Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
-                                     : parserWarnings ist }
-
+                             parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
 
 -- | Parse a docstring
 docstring :: SyntaxInfo
@@ -1321,7 +1321,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     return [PDirective (DHide n)]
              <|> do try (lchar '%' *> reserved "freeze"); n <- fst <$> iName []
                     return [PDirective (DFreeze n)]
-             <|> do try (lchar '%' *> reserved "access"); acc <- accessibility
+             <|> do try (lchar '%' *> reserved "access")
+                    acc <- accessibility
+                    ist <- get
+                    put ist { default_access = acc }
                     return [PDirective (DAccess acc)]
              <|> do try (lchar '%' *> reserved "default"); tot <- totality
                     i <- get
@@ -1353,7 +1356,12 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     fn <- fst <$> fnName
                     arg <- fst <$> iName []
                     return [PDirective (DUsed fc fn arg)]
+             <|> do try (lchar '%' *> reserved "auto_implicits")
+                    b <- on_off
+                    return [PDirective (DAutoImplicits b)]
              <?> "directive"
+  where on_off = do reserved "on"; return True
+             <|> do reserved "off"; return False
 
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)
@@ -1491,14 +1499,23 @@ parseImports fname input
                                 [(FC, OutputAnnotation)], IState)
         imports = do whiteSpace
                      (mdoc, mname, annots) <- moduleHeader
-                     ps            <- many import_
+                     ps_exp        <- many import_
                      mrk           <- mark
                      isEof         <- lookAheadMatches eof
                      let mrk' = if isEof
                                    then Nothing
                                    else Just mrk
                      i     <- get
+                     -- add Builtins and Prelude, unless options say
+                     -- not to
+                     let ps = ps_exp -- imp "Builtins" : imp "Prelude" : ps_exp
                      return ((mdoc, mname, ps, mrk'), annots, i)
+
+        imp m = ImportInfo False (toPath m)
+                           Nothing [] NoFC NoFC
+        ns = Spl.splitOn "."
+        toPath = foldl1' (</>) . ns
+
         addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC, OutputAnnotation)]
         addPath [] _ = []
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =
@@ -1556,17 +1573,17 @@ parseProg syn fname input mrk
                           return (ds, i')
 
 {- | Load idris module and show error if something wrong happens -}
-loadModule :: FilePath -> Idris (Maybe String)
-loadModule f
-   = idrisCatch (loadModule' f)
+loadModule :: FilePath -> IBCPhase -> Idris (Maybe String)
+loadModule f phase
+   = idrisCatch (loadModule' f phase)
                 (\e -> do setErrSpan (getErrSpan e)
                           ist <- getIState
                           iWarn (getErrSpan e) $ pprintErr ist e
                           return Nothing)
 
 {- | Load idris module -}
-loadModule' :: FilePath -> Idris (Maybe String)
-loadModule' f
+loadModule' :: FilePath -> IBCPhase -> Idris (Maybe String)
+loadModule' f phase
    = do i <- getIState
         let file = takeWhile (/= ' ') f
         ibcsd <- valIBCSubDir i
@@ -1580,7 +1597,7 @@ loadModule' f
                     IDR fn  -> loadSource False fn Nothing
                     LIDR fn -> loadSource True  fn Nothing
                     IBC fn src ->
-                      idrisCatch (loadIBC True fn)
+                      idrisCatch (loadIBC True phase fn)
                                  (\c -> do logParser 1 $ fn ++ " failed " ++ pshow i c
                                            case src of
                                              IDR sfn -> loadSource False sfn Nothing
@@ -1588,18 +1605,18 @@ loadModule' f
                   return $ Just file
 
 {- | Load idris code from file -}
-loadFromIFile :: Bool -> IFileType -> Maybe Int -> Idris ()
-loadFromIFile reexp i@(IBC fn src) maxline
+loadFromIFile :: Bool -> IBCPhase -> IFileType -> Maybe Int -> Idris ()
+loadFromIFile reexp phase i@(IBC fn src) maxline
    = do logParser 1 $ "Skipping " ++ getSrcFile i
-        idrisCatch (loadIBC reexp fn)
+        idrisCatch (loadIBC reexp phase fn)
                 (\err -> ierror $ LoadingFailed fn err)
   where
     getSrcFile (IDR fn) = fn
     getSrcFile (LIDR fn) = fn
     getSrcFile (IBC f src) = getSrcFile src
 
-loadFromIFile _ (IDR fn) maxline = loadSource' False fn maxline
-loadFromIFile _ (LIDR fn) maxline = loadSource' True fn maxline
+loadFromIFile _ _ (IDR fn) maxline = loadSource' False fn maxline
+loadFromIFile _ _ (LIDR fn) maxline = loadSource' True fn maxline
 
 {-| Load idris source code and show error if something wrong happens -}
 loadSource' :: Bool -> FilePath -> Maybe Int -> Idris ()
@@ -1630,7 +1647,7 @@ loadSource lidr f toline
                                       LIDR fn -> ifail $ "No ibc for " ++ f
                                       IDR fn -> ifail $ "No ibc for " ++ f
                                       IBC fn src ->
-                                        do loadIBC True fn
+                                        do loadIBC True IBC_Building fn
                                            let srcFn = case src of
                                                          IDR fn -> Just fn
                                                          LIDR fn -> Just fn
@@ -1760,7 +1777,7 @@ loadSource lidr f toline
                   clearHighlights
                   i <- getIState
                   putIState (i { default_total = def_total,
-                                 hide_list = [] })
+                                 hide_list = emptyContext })
                   return ()
   where
     namespaces :: [String] -> [PDecl] -> [PDecl]
@@ -1790,16 +1807,9 @@ loadSource lidr f toline
         parsedDocs ist = annotCode (tryFullExpr syn ist) docs
 
 {- | Adds names to hide list -}
-addHides :: [(Name, Maybe Accessibility)] -> Idris ()
+addHides :: Ctxt Accessibility -> Idris ()
 addHides xs = do i <- getIState
                  let defh = default_access i
-                 let (hs, as) = partition isNothing xs
-                 unless (null as) $
-                   mapM_ doHide
-                     (map (\ (n, _) -> (n, defh)) hs ++
-                       map (\ (n, Just a) -> (n, a)) as)
-  where isNothing (_, Nothing) = True
-        isNothing _            = False
-
-        doHide (n, a) = do setAccessibility n a
+                 mapM_ doHide (toAlist xs)
+  where doHide (n, a) = do setAccessibility n a
                            addIBC (IBCAccess n a)

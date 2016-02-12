@@ -6,7 +6,7 @@
 module Control.WellFounded
 
 %default total
-
+%access public export
 
 ||| Accessibility: some element `x` is accessible if all `y` such that
 ||| `rel y x` are themselves accessible.

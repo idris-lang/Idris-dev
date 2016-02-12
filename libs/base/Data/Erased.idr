@@ -1,6 +1,6 @@
 module Data.Erased
 
-%access public
+%access public export
 %default total
 
 ||| The erasure monad.

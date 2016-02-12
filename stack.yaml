@@ -1,4 +1,4 @@
-resolver: lts-3.16
+resolver: lts-4.2
 packages:
 - '.'
 flags:
@@ -11,3 +11,6 @@ extra-deps:
 - cheapskate-0.1.0.4
 - hscurses-1.4.2.0
 - libffi-0.1
+nix:
+   enable: false
+   shell-file: stack-shell.nix

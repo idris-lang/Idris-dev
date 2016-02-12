@@ -2,7 +2,7 @@ module Data.HVect
 
 import public Data.Vect
 
-%access public
+%access public export
 %default total
 
 ||| Heterogeneous vectors where the type index gives, element-wise,

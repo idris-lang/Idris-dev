@@ -17,7 +17,7 @@ dumpFile fn = do { Right h <- openFile fn Read
                    closeFile h }
 
 main : IO ()
-main = do { Right h <- openFile "testfile" Write
+main = do { Right h <- openFile "testfile" WriteTruncate
             fPutStr h "Hello!\nWorld!\n...\n3\n4\nLast line\n"
             closeFile h
             putStrLn "Reading testfile"

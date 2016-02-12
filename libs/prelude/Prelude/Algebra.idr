@@ -4,7 +4,7 @@ import Builtins
 
 infixl 6 <+>
 
-%access public
+%access public export
 
 --------------------------------------------------------------------------------
 -- A modest interface hierarchy
