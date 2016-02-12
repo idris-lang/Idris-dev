@@ -488,3 +488,16 @@ VAL idris_castBigStr(VM* vm, VAL i) {
     return MKSTR(vm, str);
 }
 
+// Get 64 bits out of a big int with special handling
+// for systems that have 32-bit longs which needs two limbs to
+// fill that.
+uint64_t idris_truncBigB64(const mpz_t bi) {
+    if (sizeof(mp_limb_t) == 8) {
+        return mpz_get_ui(bi);
+    }
+    int64_t out = mpz_get_ui(bi);
+    if (bi->_mp_size > 1 ) {
+        out |= (uint64_t)bi->_mp_d[1] << 32;
+    }
+    return out;
+}
