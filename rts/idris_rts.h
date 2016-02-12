@@ -72,16 +72,16 @@ typedef struct Closure {
     } info;
 } Closure;
 
-struct VM_t;
+struct VM;
 
 struct Msg_t {
-    struct VM_t* sender;
+    struct VM* sender;
     VAL msg;
 };
 
 typedef struct Msg_t Msg;
 
-struct VM_t {
+struct VM {
     int active; // 0 if no longer running; keep for message passing
                 // TODO: If we're going to have lots of concurrent threads,
                 // we really need to be cleverer than this!
@@ -112,7 +112,7 @@ struct VM_t {
     VAL reg1;
 };
 
-typedef struct VM_t VM;
+typedef struct VM VM;
 
 
 /* C data interface: allocation on the C heap.
@@ -138,7 +138,10 @@ typedef CHeapItem * CData;
 CData cdata_allocate(size_t size, CDataFinalizer * finalizer);
 
 /// Wrap a pointer as a C data block.
-CData cdata_manage(void * data, CDataFinalizer * finalizer);
+/// The size should be an estimate of how much memory, in bytes,
+/// is associated with the pointer. This estimate need not be absolutely precise
+/// but it is necessary for GC to work effectively.
+CData cdata_manage(void * data, size_t size, CDataFinalizer * finalizer);
 
 
 // Create a new VM

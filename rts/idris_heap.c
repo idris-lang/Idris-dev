@@ -1,12 +1,17 @@
 #include "idris_heap.h"
 #include "idris_rts.h"
+#include "idris_gc.h"
 
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <assert.h>
 
-static void c_heap_free_item(CHeapItem * item)
+static void c_heap_free_item(CHeap * heap, CHeapItem * item)
 {
+    assert(item->size <= heap->size);
+    heap->size -= item->size;
+
     // fix links
     if (item->next != NULL)
     {
@@ -21,11 +26,12 @@ static void c_heap_free_item(CHeapItem * item)
     free(item);
 }
 
-CHeapItem * c_heap_create_item(void * data, CDataFinalizer * finalizer)
+CHeapItem * c_heap_create_item(void * data, size_t size, CDataFinalizer * finalizer)
 {
     CHeapItem * item = (CHeapItem *) malloc(sizeof(CHeapItem));
 
     item->data = data;
+    item->size = size;
     item->finalizer = finalizer;
     item->is_used = false;
     item->next = NULL;
@@ -34,7 +40,7 @@ CHeapItem * c_heap_create_item(void * data, CDataFinalizer * finalizer)
     return item;
 }
 
-void c_heap_insert_if_needed(CHeap * heap, CHeapItem * item)
+void c_heap_insert_if_needed(VM * vm, CHeap * heap, CHeapItem * item)
 {
     if (item->prev_next != NULL) return;  // already inserted
 
@@ -47,6 +53,14 @@ void c_heap_insert_if_needed(CHeap * heap, CHeapItem * item)
     item->next = heap->first;
 
     heap->first = item;
+
+    // at this point, links are done; let's calculate sizes
+    
+    heap->size += item->size;
+    if (heap->size >= heap->gc_trigger_size)
+    {
+        idris_gc(vm);
+    }
 }
 
 void c_heap_mark_item(CHeapItem * item)
@@ -69,21 +83,25 @@ void c_heap_sweep(CHeap * heap)
             CHeapItem * unused_item = p;
             p = p->next;
 
-            c_heap_free_item(unused_item);
+            c_heap_free_item(heap, unused_item);
         }
     }
+
+    heap->gc_trigger_size = C_HEAP_GC_TRIGGER_SIZE(heap->size);
 }
 
 void c_heap_init(CHeap * heap)
 {
     heap->first = NULL;
+    heap->size = 0;
+    heap->gc_trigger_size = C_HEAP_GC_TRIGGER_SIZE_INITIAL;
 }
 
 void c_heap_destroy(CHeap * heap)
 {
     while (heap->first != NULL)
     {
-        c_heap_free_item(heap->first);  // will update heap->first via the backward link
+        c_heap_free_item(heap, heap->first);  // will update heap->first via the backward link
     }
 }
 

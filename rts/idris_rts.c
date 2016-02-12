@@ -138,12 +138,12 @@ Stats terminate(VM* vm) {
 CData cdata_allocate(size_t size, CDataFinalizer finalizer)
 {
     void * data = (void *) malloc(size);
-    return cdata_manage(data, finalizer);
+    return cdata_manage(data, size, finalizer);
 }
 
-CData cdata_manage(void * data, CDataFinalizer finalizer)
+CData cdata_manage(void * data, size_t size, CDataFinalizer finalizer)
 {
-    return c_heap_create_item(data, finalizer);
+    return c_heap_create_item(data, size, finalizer);
 }
 
 void idris_requireAlloc(size_t size) {
@@ -290,7 +290,7 @@ VAL MKCDATA(VM* vm, CHeapItem * item) {
     Closure* cl = allocate(sizeof(Closure), 0);
     SETTY(cl, CDATA);
     cl->info.c_heap_item = item;
-    c_heap_insert_if_needed(&vm->c_heap, item);
+    c_heap_insert_if_needed(vm, &vm->c_heap, item);
     return cl;
 }
 
@@ -298,7 +298,7 @@ VAL MKCDATAc(VM* vm, CHeapItem * item) {
     Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, CDATA);
     cl->info.c_heap_item = item;
-    c_heap_insert_if_needed(&vm->c_heap, item);
+    c_heap_insert_if_needed(vm, &vm->c_heap, item);
     return cl;
 }
 
