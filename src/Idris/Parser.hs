@@ -1679,7 +1679,7 @@ loadSource lidr f toline
                     (n,fc):_ -> throwError . At fc . Msg $ "import alias not unique: " ++ show n
 
                   i <- getIState
-                  putIState (i { default_access = Hidden, module_aliases = modAliases })
+                  putIState (i { default_access = Private, module_aliases = modAliases })
                   clearIBC -- start a new .ibc file
                   -- record package info in .ibc
                   imps <- allImportDirs

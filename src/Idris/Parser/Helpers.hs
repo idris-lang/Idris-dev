@@ -641,7 +641,7 @@ accessibility'
                            : parserWarnings ist }
                    return Frozen
             <|> do reserved "export"; return Frozen
-            <|> do reserved "private";  return Hidden
+            <|> do reserved "private";  return Private
             <?> "accessibility modifier"
 
 accessibility :: IdrisParser Accessibility
@@ -660,7 +660,7 @@ addAcc n a = do i <- get
  (works for classes too - 'abstract' means the data/class is visible but members not) -}
 accData :: Accessibility -> Name -> [Name] -> IdrisParser ()
 accData Frozen n ns = do addAcc n Public -- so that it can be used in public definitions
-                         mapM_ (\n -> addAcc n Hidden) ns -- so that they are invisible
+                         mapM_ (\n -> addAcc n Private) ns -- so that they are invisible
 accData a n ns = do addAcc n a
                     mapM_ (`addAcc` a) ns
 

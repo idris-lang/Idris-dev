@@ -256,7 +256,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
                     [(CaseOp ci _ _ _ _ cd, acc)]
-                         | (acc == Public || sUN "assert_total" `elem` stk) &&
+                         | (acc == Public || acc == Hidden || sUN "assert_total" `elem` stk) &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -374,7 +374,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
-                           | acc == Public || sUN "assert_total" `elem` stk ->
+                           | acc == Public || acc == Hidden || sUN "assert_total" `elem` stk ->
                            -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -743,7 +743,7 @@ instance Show Def where
 -- Frozen => doesn't reduce
 -- Hidden => doesn't reduce and invisible to type checker
 
-data Accessibility = Public | Frozen | Hidden
+data Accessibility = Hidden | Public | Frozen | Private 
     deriving (Eq, Ord)
 {-!
 deriving instance NFData Accessibility
@@ -752,7 +752,8 @@ deriving instance NFData Accessibility
 instance Show Accessibility where
   show Public = "public export"
   show Frozen = "export"
-  show Hidden = "private"
+  show Private = "private"
+  show Hidden = "hidden"
 
 -- | The result of totality checking
 data Totality = Total [Int] -- ^ well-founded arguments
@@ -1042,6 +1043,7 @@ lookupP_all all exact n ctxt
           (Operator ty _ _, a, _, _)     -> return (P Ref n' ty, a)
         case snd p of
           Hidden -> if all then return (fst p) else []
+          Private -> if all then return (fst p) else []
           _      -> return (fst p)
   where
     names = let ns = lookupCtxtName n (definitions ctxt) in

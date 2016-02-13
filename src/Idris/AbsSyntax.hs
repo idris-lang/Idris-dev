@@ -1876,6 +1876,7 @@ aiFn topname inpat expat qq imp_meths ist fc f ffc ds as asexp
 
     notHidden n = case getAccessibility n of
                         Hidden -> False
+                        Private -> False
                         _ -> True
 
     getAccessibility n

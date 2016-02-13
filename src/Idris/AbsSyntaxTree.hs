@@ -352,7 +352,7 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Hidden False [] Nothing [] []
+                   [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Private False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
                    emptyContext S.empty M.empty
@@ -2320,6 +2320,7 @@ implicitNamesIn uvars ist tm
 
     notHidden (n, _) = case getAccessibility n of
                             Hidden  -> False
+                            Private -> False
                             _       -> True
 
     getAccessibility n

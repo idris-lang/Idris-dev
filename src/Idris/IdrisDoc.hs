@@ -182,7 +182,7 @@ filterName _          = False
 
 
 -- | Whether a NsItem should be included in the documentation.
---   It must not be Hidden and filterName must return True for the name.
+--   It must not be Hidden/Private and filterName must return True for the name.
 --   Also it must have Docs -- without Docs, nothing can be done.
 filterInclude :: NsItem -- ^ Accessibility to check
               -> Bool   -- ^ Predicate result
@@ -254,7 +254,7 @@ getAccess ist n =
   let res = lookupDefAcc n False (tt_ctxt ist)
   in case res of
      [(_, acc)] -> acc
-     _          -> Hidden
+     _          -> Private
 
 -- | Simple predicate for whether an NsItem has Docs
 hasDoc :: NsItem -- ^ The NsItem to test

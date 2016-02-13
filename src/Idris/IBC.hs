@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 133
+ibcVersion = 134
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
@@ -443,6 +443,7 @@ pImps imps = mapM_ (\ (n, imp) ->
                         do i <- getIState
                            case lookupDefAccExact n False (tt_ctxt i) of
                               Just (n, Hidden) -> return ()
+                              Just (n, Private) -> return ()
                               _ -> putIState (i { idris_implicits
                                             = addDef n imp (idris_implicits i) }))
                    imps
@@ -938,13 +939,15 @@ instance Binary Accessibility where
           = case x of
                 Public -> putWord8 0
                 Frozen -> putWord8 1
-                Hidden -> putWord8 2
+                Private -> putWord8 2
+                Hidden -> putWord8 3
         get
           = do i <- getWord8
                case i of
                    0 -> return Public
                    1 -> return Frozen
-                   2 -> return Hidden
+                   2 -> return Private
+                   3 -> return Hidden
                    _ -> error "Corrupted binary data for Accessibility"
 
 safeToEnum :: (Enum a, Bounded a, Integral int) => String -> int -> a

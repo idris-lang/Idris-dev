@@ -239,6 +239,7 @@ instance NFData Accessibility where
         rnf Public = ()
         rnf Frozen = ()
         rnf Hidden = ()
+        rnf Private = ()
 
  
 instance NFData Totality where

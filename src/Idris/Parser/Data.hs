@@ -75,7 +75,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
     getName _ = Nothing
 
     toFreeze :: Maybe Accessibility -> Maybe Accessibility
-    toFreeze (Just Frozen) = Just Hidden
+    toFreeze (Just Frozen) = Just Private
     toFreeze x = x
 
     recordBody :: SyntaxInfo -> Name -> IdrisParser ([((Maybe (Name, FC)), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))], Maybe (Name, FC), Docstring (Either Err PTerm))

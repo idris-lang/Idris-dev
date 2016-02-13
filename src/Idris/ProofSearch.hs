@@ -513,4 +513,5 @@ findInstances ist t
     | otherwise = []
   where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of
                             Just (_, Hidden) -> False
+                            Just (_, Private) -> False
                             _ -> True
