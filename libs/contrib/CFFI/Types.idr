@@ -3,7 +3,7 @@
 module CFFI.Types
 
 import Data.Vect
-import Data.HList
+import Data.HVect
 
 %access public export
 %default partial
@@ -12,6 +12,19 @@ import Data.HList
 data CType = I8 | I16 | I32 | I64 | FLOAT | DOUBLE | PTR
             | ARRAY Int CType | STRUCT (List CType) | UNION (List CType)
             | PACKEDSTRUCT (List CType)
+
+Show CType where
+    show I8 = "I8"
+    show I16 = "I16"
+    show I32 = "I32"
+    show I64 = "I64"
+    show FLOAT = "FLOAT"
+    show DOUBLE = "DOUBLE"
+    show PTR = "PTR"
+    show (ARRAY n t) = "ARRAY " ++ show n ++ " " ++ show t
+    show (STRUCT xs) = "STRUCT " ++ show xs
+    show (UNION xs) = "UNION " ++ show xs
+    show (PACKEDSTRUCT xs) = "PACKEDSTRUCT " ++ show xs
 
 translate : CType -> Type
 translate I8 = Bits8
@@ -22,9 +35,9 @@ translate FLOAT = Double
 translate DOUBLE = Double
 translate PTR = Ptr
 translate (ARRAY n t) = Vect (toNat n) (translate t)
-translate (STRUCT xs) = HList (map translate xs)
-translate (UNION xs) = HList (map translate xs)
-translate (PACKEDSTRUCT xs) = HList (map translate xs)
+translate (STRUCT xs) = HVect $ fromList (map translate xs)
+translate (UNION xs) = HVect $ fromList (map translate xs)
+translate (PACKEDSTRUCT xs) = HVect $ fromList (map translate xs)
 
 mutual
     sizeOf : CType -> Int

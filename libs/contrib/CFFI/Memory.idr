@@ -10,6 +10,12 @@ import CFFI.Types
 
 data CPtr = CPt Ptr Int CType
 
+implicit decayCPtr : CPtr -> Ptr
+decayCPtr (CPt p _ _) = p
+
+Show CPtr where
+    show (CPt _ os t) = "CPtr ptr " ++ show os ++ " " ++ show t
+
 malloc : Int -> IO Ptr
 malloc size = foreign FFI_C "malloc" (Int -> IO Ptr) size
 
@@ -34,10 +40,10 @@ get (CPt p o I64) = prim_peek64 p o
 get (CPt p o FLOAT) = prim_peekSingle p o
 get (CPt p o DOUBLE) = prim_peekDouble p o
 get (CPt p o PTR) = prim_peekPtr p o
-get (CPt p o (ARRAY n t)) = ?getArray
-get (CPt p o (UNION xs)) = ?getUnion
-get (CPt p o (STRUCT xs)) = ?getStruct
-get (CPt p o (PACKEDSTRUCT xs)) = ?getPacked
+-- get (CPt p o (ARRAY n t)) = ?getArray
+-- get (CPt p o (UNION xs)) = ?getUnion
+-- get (CPt p o (STRUCT xs)) = ?getStruct
+-- get (CPt p o (PACKEDSTRUCT xs)) = ?getPacked
 
 
 put : (p : CPtr) -> (translate (ctype p)) -> IO ()
@@ -55,10 +61,10 @@ put (CPt p o FLOAT) x = do _ <- prim_pokeSingle p o x
                            return ()
 put (CPt p o DOUBLE) x = do _ <- prim_pokeDouble p o x
                             return ()
-put (CPt p o (ARRAY n t)) x = ?putArray
-put (CPt p o (UNION xs)) x = ?putUnion
-put (CPt p o (STRUCT xs)) x = ?putStruct
-put (CPt p o (PACKEDSTRUCT xs)) x = ?putPacked
+-- put (CPt p o (ARRAY n t)) x = ?putArray
+-- put (CPt p o (UNION xs)) x = ?putUnion
+-- put (CPt p o (STRUCT xs)) x = ?putStruct
+-- put (CPt p o (PACKEDSTRUCT xs)) x = ?putPacked
 
 -- update : (p : CPtr) -> ((translate(ctype p)) -> (translate (ctype p)) -> IO ()
 -- TODO : Fix bounds checking
