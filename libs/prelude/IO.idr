@@ -349,3 +349,19 @@ prim_peekPtr ptr offset = MkIO (\w => prim_io_return (prim__peekPtr (world w) pt
 prim_pokePtr : Ptr -> Int -> Ptr -> IO Int
 prim_pokePtr ptr offset val = MkIO (\w =>  prim_io_return (
     prim__pokePtr (world w) ptr offset val))
+
+prim_peekDouble : Ptr -> Int -> IO Double
+prim_peekDouble ptr offset = MkIO (\w => prim_io_return (prim__peekDouble (world w) ptr offset))
+
+prim_pokeDouble : Ptr -> Int -> Double -> IO Int
+prim_pokeDouble ptr offset val = MkIO (\w =>  prim_io_return (
+    prim__pokeDouble (world w) ptr offset val))
+
+||| Single precision floats are marshalled to Doubles
+prim_peekSingle : Ptr -> Int -> IO Double
+prim_peekSingle ptr offset = MkIO (\w => prim_io_return (prim__peekSingle (world w) ptr offset))
+
+||| Single precision floats are marshalled to Doubles
+prim_pokeSingle : Ptr -> Int -> Double -> IO Int
+prim_pokeSingle ptr offset val = MkIO (\w =>  prim_io_return (
+    prim__pokeSingle (world w) ptr offset val))

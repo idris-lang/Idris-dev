@@ -30,8 +30,8 @@ get (CPt p o I8) = prim_peek8 p o
 get (CPt p o I16) = prim_peek16 p o
 get (CPt p o I32) = prim_peek32 p o
 get (CPt p o I64) = prim_peek64 p o
-get (CPt p o FLOAT) = prim_peek32 p o
-get (CPt p o DOUBLE) = cast $ prim_peek64 p o
+get (CPt p o FLOAT) = prim_peekSingle p o
+get (CPt p o DOUBLE) = prim_peekDouble p o
 get (CPt p o PTR) = prim_peekPtr p o
 
 
@@ -41,8 +41,8 @@ put _ _ = putStrLn "putting"
 -- update : (p : CPtr) -> ((translate(ctype p)) -> (translate (ctype p)) -> IO ()
 
 field : CPtr -> (i : Nat) -> CPtr
-field (Cpt p o arr@(ARRAY n t)) = CPt p (o + index i (offsets arr)) t
-field (Cpt p o (UNION xs)) = CPt p o (index i xs)
-field (Cpt p o st@(STRUCT xs)) = CPt p (o + index i (offsets st)) (index i xs)
-field (Cpt p o ps@(PACKEDSTRUCT xs)) = CPt p (o + index i (offsets st)) (index i xs)
+field (CPt p o arr@(ARRAY n t)) = CPt p (o + index i (offsets arr)) t
+field (CPt p o (UNION xs)) = CPt p o (index i xs)
+field (CPt p o st@(STRUCT xs)) = CPt p (o + index i (offsets st)) (index i xs)
+field (CPt p o ps@(PACKEDSTRUCT xs)) = CPt p (o + index i (offsets st)) (index i xs)
 field p Z = p

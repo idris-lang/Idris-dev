@@ -464,6 +464,24 @@ VAL idris_pokePtr(VAL ptr, VAL offset, VAL data) {
     return MKINT(0);
 }
 
+VAL idris_peekDouble(VM* vm, VAL ptr, VAL offset) {
+    return MKFLOAT(vm, *(double*)(GETPTR(ptr) + GETINT(offset)));
+}
+
+VAL idris_pokeDouble(VAL ptr, VAL offset, VAL data) {
+    *(double*)(GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
+    return MKINT(0);
+}
+
+VAL idris_peekSingle(VM* vm, VAL ptr, VAL offset) {
+    return MKFLOAT(vm, *(float*)(GETPTR(ptr) + GETINT(offset)));
+}
+
+VAL idris_pokeSingle(VAL ptr, VAL offset, VAL data) {
+    *(float*)(GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
+    return MKINT(0);
+}
+
 void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size) {
     memmove(dest + dest_offset, src + src_offset, size);
 }

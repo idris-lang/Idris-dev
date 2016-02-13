@@ -214,3 +214,8 @@ export data CData : Type
 
 %extern prim__peekPtr : prim__WorldType -> Ptr -> Int -> Ptr
 %extern prim__pokePtr : prim__WorldType -> Ptr -> Int -> Ptr -> Int
+
+%extern prim__peekDouble : prim__WorldType -> Ptr -> Int -> Double
+%extern prim__pokeDouble : prim__WorldType -> Ptr -> Int -> Double -> Int
+%extern prim__peekSingle : prim__WorldType -> Ptr -> Int -> Double
+%extern prim__pokeSingle : prim__WorldType -> Ptr -> Int -> Double -> Int
