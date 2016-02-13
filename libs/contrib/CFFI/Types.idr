@@ -88,9 +88,24 @@ offsetsPacked xs = offsets' xs [] 0
         offsets' [] acc _ = reverse acc
         offsets' (x::xs) acc pos = offsets' xs (pos::acc) (sizeOf x)
 
+-- TODO: Use index and fix upp proofs.
+offset : CType -> Nat -> Int
+offset (STRUCT xs) i = fromMaybe 0 $ index' i (offsetsStruct xs)
+offset (PACKEDSTRUCT xs) i = fromMaybe 0 $ index' i (offsetsPacked xs)
+offset (ARRAY _ t) i = sizeOf t * toIntNat i
+offset _ _ = 0
+
 offsets : CType -> List Int
 offsets (STRUCT xs) = offsetsStruct xs
 offsets (PACKEDSTRUCT xs) = offsetsPacked xs
 offsets (UNION xs) = replicate (length xs) 0
 offsets (ARRAY n t) = [ x*sizeOf t | x <- [0..n]]
 offsets _ = [0]
+
+-- TODO: handle out of bounds with proofs
+select : CType -> Nat -> CType
+select (STRUCT xs@(y::_)) i = fromMaybe y (index' i xs)
+select (PACKEDSTRUCT xs@(y::_)) i = fromMaybe y (index' i xs)
+select (UNION xs@(y::_)) i = fromMaybe y (index' i xs)
+select (ARRAY n t) _ = t
+select t _ = t

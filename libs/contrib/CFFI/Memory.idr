@@ -39,10 +39,15 @@ put : (p : CPtr) -> (translate (ctype p)) -> IO ()
 put _ _ = putStrLn "putting"
 
 -- update : (p : CPtr) -> ((translate(ctype p)) -> (translate (ctype p)) -> IO ()
-
-field : CPtr -> Nat -> CPtr
-field (CPt p o arr@(ARRAY n t)) i = CPt p (o + index i (offsets arr)) t
-field (CPt p o (UNION xs)) i = CPt p o (index i xs)
-field (CPt p o st@(STRUCT xs)) i = CPt p (o + index i (offsets st)) (index i xs)
-field (CPt p o ps@(PACKEDSTRUCT xs)) i = CPt p (o + index i (offsets st)) (index i xs)
+-- TODO : Fix bounds checking
+field : CPtr -> Nat ->  CPtr
+field (CPt p o arr@(ARRAY n t)) i = CPt p (o + offset arr i) t
+field (CPt p o un@(UNION xs)) i = CPt p o (select un i)
+field (CPt p o st@(STRUCT xs)) i = CPt p (o + offset st i) (select st i)
+field (CPt p o ps@(PACKEDSTRUCT xs)) i = CPt p (o + offset ps i) (select ps i)
 field p Z = p
+
+infixl 10 #
+
+(#) : CPtr -> Nat -> CPtr
+(#) = field
