@@ -1,4 +1,5 @@
 ||| Types for interfacing with C.
+||| This file should be kept free from IO.
 module CFFI.Types
 
 import Data.Vect
@@ -103,6 +104,7 @@ offsets (ARRAY n t) = [ x*sizeOf t | x <- [0..n]]
 offsets _ = [0]
 
 -- TODO: handle out of bounds with proofs
+-- Also choose a better name.
 select : CType -> Nat -> CType
 select (STRUCT xs@(y::_)) i = fromMaybe y (index' i xs)
 select (PACKEDSTRUCT xs@(y::_)) i = fromMaybe y (index' i xs)
