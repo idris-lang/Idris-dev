@@ -276,11 +276,6 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
                       case lookupCtxtExact n (idris_datatypes ist) of
                           Just t -> do
                              let others = hints ++ con_names t ++ autohints
-                             when (not fromProver && length (con_names t) > 1)
-                                   -- in interactive mode,
-                                   -- don't just guess (fine for 'auto',
-                                   -- since that's part of the point...)
-                                   $ checkConstructor ist others
                              tryCons d locs tys (others ++ getFn d fn)
                           Nothing -> typeNotSearchable t
                 _ -> typeNotSearchable t
@@ -340,23 +335,6 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
        case ty of
          (Bind _ (Pi _ _ _) _) -> [TextPart "In particular, function types are not supported."]
          _ -> []
-
--- In interactive mode, only search for things if there is some
--- index to help pick a relevant constructor
-checkConstructor :: IState -> [Name] -> ElabD ()
-checkConstructor ist [] = return ()
-checkConstructor ist (n : ns) =
-    case lookupTyExact n (tt_ctxt ist) of
-         Just t -> if not (conIndexed t)
-                      then fail "Overlapping constructor types"
-                      else checkConstructor ist ns
-  where
-    conIndexed t = let (_, args) = unApply (getRetTy t) in
-                       any conHead args
-    conHead t | (P _ n _, _) <- unApply t = case lookupDefExact n (tt_ctxt ist) of
-                                                 Just _ -> True
-                                                 _ -> False
-              | otherwise = False
 
 -- | Resolve type classes. This will only pick up 'normal' instances, never
 -- named instances (which is enforced by 'findInstances').
