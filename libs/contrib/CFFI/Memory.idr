@@ -40,9 +40,9 @@ put _ _ = putStrLn "putting"
 
 -- update : (p : CPtr) -> ((translate(ctype p)) -> (translate (ctype p)) -> IO ()
 
-field : CPtr -> (i : Nat) -> CPtr
-field (CPt p o arr@(ARRAY n t)) = CPt p (o + index i (offsets arr)) t
-field (CPt p o (UNION xs)) = CPt p o (index i xs)
-field (CPt p o st@(STRUCT xs)) = CPt p (o + index i (offsets st)) (index i xs)
-field (CPt p o ps@(PACKEDSTRUCT xs)) = CPt p (o + index i (offsets st)) (index i xs)
+field : CPtr -> Nat -> CPtr
+field (CPt p o arr@(ARRAY n t)) i = CPt p (o + index i (offsets arr)) t
+field (CPt p o (UNION xs)) i = CPt p o (index i xs)
+field (CPt p o st@(STRUCT xs)) i = CPt p (o + index i (offsets st)) (index i xs)
+field (CPt p o ps@(PACKEDSTRUCT xs)) i = CPt p (o + index i (offsets st)) (index i xs)
 field p Z = p
