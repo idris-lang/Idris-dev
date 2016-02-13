@@ -13,7 +13,7 @@ chdir($test);
 open(FOO,">run");
 
 print FOO "#!/usr/bin/env bash\n";
-print FOO "${IDRIS:-idris} \$@ $test.idr -o $test\n";
+print FOO "\${IDRIS:-idris} \$@ $test.idr -o $test\n";
 print FOO "./$test\n";print FOO "rm -f $test *.ibc\n";
 
 close(FOO);

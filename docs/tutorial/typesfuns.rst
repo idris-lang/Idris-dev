@@ -137,8 +137,9 @@ Unlike Haskell, there is no restriction on whether types and function
 names must begin with a capital letter or not. Function names
 (``plus`` and ``mult`` above), data constructors (``Z``, ``S``,
 ``Nil`` and ``::``) and type constructors (``Nat`` and ``List``) are
-all part of the same namespace. We can test these functions at the
-Idris prompt:
+all part of the same namespace. By convention, however, 
+data types and constructor names typically begin with a capital letter.
+We can test these functions at the Idris prompt:
 
 ::
 
