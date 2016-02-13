@@ -113,7 +113,7 @@ offsets : CType -> List Int
 offsets (STRUCT xs) = offsetsStruct xs
 offsets (PACKEDSTRUCT xs) = offsetsPacked xs
 offsets (UNION xs) = replicate (length xs) 0
-offsets (ARRAY n t) = [ x*sizeOf t | x <- [0..n]]
+offsets (ARRAY n t) = [ x*sizeOf t | x <- [0..n-1]]
 offsets _ = [0]
 
 -- TODO: handle out of bounds with proofs
