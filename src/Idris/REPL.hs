@@ -1620,15 +1620,16 @@ loadInputs inputs toline -- furthest line to read in input source files
                       let tidata = idris_tyinfodata inew
                       let patdefs = idris_patdefs inew
                       ok <- noErrors
-                      when ok $
-                        -- The $!! here prevents a space leak on reloading.
-                        -- This isn't a solution - but it's a temporary stopgap.
-                        -- See issue #2386
-                        do when (not keepstate) $ putIState $!! ist
-                           ist <- getIState
-                           putIState $!! ist { idris_tyinfodata = tidata,
-                                               idris_patdefs = patdefs }
-                           tryLoad keepstate phase fs
+                      if ok then
+                            -- The $!! here prevents a space leak on reloading.
+                            -- This isn't a solution - but it's a temporary stopgap.
+                            -- See issue #2386
+                            do when (not keepstate) $ putIState $!! ist
+                               ist <- getIState
+                               putIState $!! ist { idris_tyinfodata = tidata,
+                                                   idris_patdefs = patdefs }
+                               tryLoad keepstate phase fs
+                          else warnTotality
 
          ibc (IBC _ _) = True
          ibc _ = False

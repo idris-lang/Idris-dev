@@ -71,7 +71,7 @@ implementation Quotable Term Raw where
   quote Ty = `(Ty)
 
 
-implementation Show Term where
+partial implementation Show Term where
   showPrec d (Var k xs) = showCon d "Var" $ showArg k ++ showArg xs
   showPrec d (Ctor n xs) = showCon d "Ctor" $ showArg n ++ showArg xs
   showPrec d (TyCtor n xs) = showCon d "TyCtor" $ showArg n ++ showArg xs
@@ -330,3 +330,4 @@ baz = tactic trivial
 -- Local Variables:
 -- idris-load-packages: ("pruviloj")
 -- End:
+
