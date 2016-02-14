@@ -13,16 +13,24 @@ import IO
 infixl 5 >>=
 
 interface Applicative m => Monad (m : Type -> Type) where
+    ||| Also called `bind`.
     (>>=)  : m a -> ((result : a) -> m b) -> m b
 
-||| Also called `join` or mu
-flatten : Monad m => m (m a) -> m a
-flatten a = a >>= id
+    ||| Also called `flatten` or mu
+    join : m (m a) -> m a
+
+    -- default implementations
+    (>>=) x f = join (f <$> x)
+    join x = x >>= id
 
 ||| For compatibility with Haskell. Note that monads are **not** free to
 ||| define `return` and `pure` differently!
 return : Monad m => a -> m a
 return = pure
+
+flatten : Monad m => m (m a) -> m a
+flatten = join
+%deprecate flatten "Please use `join`, which is the standard name."
 
 -- Annoyingly, these need to be here, so that we can use them in other
 -- Prelude modules other than the top level.
