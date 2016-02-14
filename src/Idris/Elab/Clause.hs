@@ -165,9 +165,12 @@ elabClauses info' fc opts n_in cs =
            cov <- coverage
            pmissing <-
                    if cov && not (hasDefault pats_raw)
-                      then do missing <- genClauses fc n (map getLHS pdef) cs_full
+                      then do -- Generate clauses from the given possible cases
+                              missing <- genClauses fc n (map getLHS pdef) cs_full
                               -- missing <- genMissing n scargs sc
                               missing' <- filterM (checkPossible info fc True n) missing
+                              -- Filter out the ones which match one of the
+                              -- given cases (including impossible ones)
                               let clhs = map getLHS pdef
                               logElab 2 $ "Must be unreachable:\n" ++
                                           showSep "\n" (map showTmImpls missing') ++
@@ -311,7 +314,6 @@ elabClauses info' fc opts n_in cs =
                   , (pvs, tm) <- getPVs (explicitNames lhs)
                   , (f, args) <- unApply tm = all (isPatVar pvs) args
     hasDefault _ = False
-
 
     getLHS (_, l, _) = l
 

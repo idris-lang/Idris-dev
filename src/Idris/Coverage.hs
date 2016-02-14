@@ -59,10 +59,16 @@ genClauses fc n xs given
         let lhs_tms' = zipWith mergePlaceholders lhs_tms
                           (map (stripUnmatchable i) (map flattenArgs given))
         let lhss = map pUnApply lhs_tms'
+        nty <- case lookupTyExact n (tt_ctxt i) of
+                    Just t -> return (normalise (tt_ctxt i) [] t)
+                    _ -> fail "Can't happen - genClauses, lookupTyExact"
 
         let argss = transpose lhss
-        let all_args = map (genAll i) argss
+        let all_args = map (genAll i) (zip (genPH i nty) argss)
         logCoverage 5 $ "COVERAGE of " ++ show n
+        logCoverage 5 $ "using type " ++ show nty
+        logCoverage 5 $ "non-concrete args " ++ show (genPH i nty)
+
         logCoverage 5 $ show (lhs_tms, lhss)
         logCoverage 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logCoverage 10 $ show argss ++ "\n" ++ show all_args
@@ -88,6 +94,18 @@ genClauses fc n xs given
   where getLHS i term
             | (f, args) <- unApply term = map (\t -> delab' i t True True) args
             | otherwise = []
+
+        -- if an argument has a non-concrete type (i.e. it's a function
+        -- that calculates something from a previous argument) we'll also
+        -- need to generate a placeholder pattern for it since it could be
+        -- anything based on earlier values
+        genPH :: IState -> Type -> [Bool]
+        genPH ist (Bind n (Pi _ ty _) sc) = notConcrete ist ty : genPH ist sc
+        genPH ist ty = [] 
+
+        notConcrete ist t | (P _ n _, args) <- unApply t,
+                           not (isConName n (tt_ctxt ist)) = True
+        notConcrete _ _ = False
 
         pUnApply (PApp _ f args) = map getTm args
         pUnApply _ = []
@@ -172,16 +190,14 @@ recoverableCoverage ctxt (Elaborating _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (ElaboratingArg _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage _ _ = False
 
--- FIXME: Just look for which one is the deepest, then generate all
--- possibilities up to that depth.
--- This and below issues for this function are tracked as Issue #1741 on the issue tracker.
---     https://github.com/idris-lang/Idris-dev/issues/1741
-genAll :: IState -> [PTerm] -> [PTerm]
-genAll i args
+genAll :: IState -> (Bool, [PTerm]) -> [PTerm]
+genAll i (addPH, args)
    = case filter (/=Placeholder) $ fnub (concatMap otherPats (fnub args)) of
           [] -> [Placeholder]
-          xs -> inventConsts xs
+          xs -> ph $ inventConsts xs
   where
+    ph ts = if addPH then Placeholder : ts else ts
+
     -- if they're constants, invent a new one to make sure that
     -- constants which are not explicitly handled are covered
     inventConsts cs@(PConstant fc c : _) = map (PConstant NoFC) (ic' (mapMaybe getConst cs))
@@ -204,7 +220,6 @@ genAll i args
     ic' xs@(B64 _ : _) = firstMissing xs (lotsOfNums B64)
     ic' xs@(Ch _ : _) = firstMissing xs lotsOfChars
     ic' xs@(Str _ : _) = firstMissing xs lotsOfStrings
-    -- TODO: Bit vectors
     -- The rest are types with only one case
     ic' xs = xs
 
@@ -219,19 +234,19 @@ genAll i args
     nubMap f acc (x : xs) = nubMap f (fnub' acc (f x)) xs
 
     otherPats :: PTerm -> [PTerm]
-    otherPats o@(PRef fc hl n) = ops fc n [] o
-    otherPats o@(PApp _ (PRef fc hl n) xs) = ops fc n xs o
+    otherPats o@(PRef fc hl n) = ph $ ops fc n [] o
+    otherPats o@(PApp _ (PRef fc hl n) xs) = ph $ ops fc n xs o
     otherPats o@(PPair fc hls _ l r)
-        = ops fc pairCon
+        = ph $ ops fc pairCon
                 ([pimp (sUN "A") Placeholder True,
                   pimp (sUN "B") Placeholder True] ++
                  [pexp l, pexp r]) o
     otherPats o@(PDPair fc hls p t _ v)
-        = ops fc sigmaCon
+        = ph $ ops fc sigmaCon
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
                  [pexp t,pexp v]) o
-    otherPats o@(PConstant _ c) = inventConsts [o] -- return o
+    otherPats o@(PConstant _ c) = ph $ inventConsts [o] -- return o
     otherPats arg = return Placeholder
 
     ops fc n xs o

@@ -751,6 +751,9 @@ Extra-source-files:
                        test/totality010/run
                        test/totality010/*.idr
                        test/totality010/expected
+                       test/totality011/run
+                       test/totality011/*.lidr
+                       test/totality011/expected
 
                        test/tutorial001/run
                        test/tutorial001/*.idr
