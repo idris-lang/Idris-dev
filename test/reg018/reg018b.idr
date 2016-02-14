@@ -8,7 +8,7 @@ showB : B -> String
 showB (I x) = "I" ++ showB x
 showB (Z x) = "Z" ++ showB x
 
-implementation Show B where show = showB
+Show B where show = showB
 
 os : B
 os = Z os
