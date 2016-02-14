@@ -581,7 +581,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 --         let lhs = mkLHSapp $
 --                     propagateParams i params fn_ty (addImplPat i lhs_in)
         logElab 10 (show (params, fn_ty) ++ " " ++ showTmImpls (addImplPat i lhs_in))
-        logElab 5 ("LHS: " ++ show fc ++ " " ++ showTmImpls lhs)
+        logElab 5 ("LHS: " ++ show opts ++ "\n" ++ show fc ++ " " ++ showTmImpls lhs)
         logElab 4 ("Fixed parameters: " ++ show params ++ " from " ++ show lhs_in ++
                   "\n" ++ show (fn_ty, fn_is))
 

@@ -44,6 +44,8 @@ getFileError = do MkRaw err <- foreign FFI_C "idris_mkFileError"
                   return err
 
 Show FileError where
+  show FileReadError = "File Read Error"
+  show FileWriteError = "File Write Error"
   show FileNotFound = "File Not Found"
   show PermissionDenied = "Permission Denied"
   show (GenericFileError errno) = strError errno

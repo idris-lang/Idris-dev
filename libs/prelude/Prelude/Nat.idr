@@ -341,9 +341,12 @@ partial
 divCeil : Nat -> Nat -> Nat
 divCeil x (S y) = divCeilNZ x (S y) SIsNotZ
 
+-- TMP HACK until it's possible to set flags on instances
+%default partial
 Integral Nat where
   div = divNat
   mod = modNat
+%default total
 
 log2NZ : (x: Nat) -> Not (x = Z) -> Nat
 log2NZ Z         p = void (p Refl)

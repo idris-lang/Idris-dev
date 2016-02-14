@@ -63,24 +63,27 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
 elabInstance info syn doc argDocs what fc cs acc n nfc ps t expn ds = do
-    i <- getIState
-    (n, ci) <- case lookupCtxtName n (idris_classes i) of
+    ist <- getIState
+    (n, ci) <- case lookupCtxtName n (idris_classes ist) of
                   [c] -> return c
                   [] -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
                   cs -> tclift $ tfail $ At fc
                            (CantResolveAlts (map fst cs))
     let constraint = PApp fc (PRef fc [] n) (map pexp ps)
     let iname = mkiname n (namespace info) ps expn
-    putIState (i { hide_list = addDef iname acc (hide_list i) })
-    i <- getIState
+    putIState (ist { hide_list = addDef iname acc (hide_list ist) })
+    ist <- getIState
+
+    let totopts = if default_total ist then [TotalFn, Dictionary]
+                                       else [Dictionary]
 
     let emptyclass = null (class_methods ci)
     when (what /= EDefns) $ do
-         nty <- elabType' True info syn doc argDocs fc [] iname NoFC t
+         nty <- elabType' True info syn doc argDocs fc totopts iname NoFC t
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
-            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping i (class_determiners ci) (delab i nty))
+            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping ist (class_determiners ci) (delab ist nty))
                                 (map fst $ class_instances ci)
                           addInstance intInst True n iname
             Just _ -> addInstance intInst False n iname
@@ -99,7 +102,7 @@ elabInstance info syn doc argDocs what fc cs acc n nfc ps t expn ds = do
          let pnames = nub $ map pname (concat (nub wparams)) ++
                           concatMap (namesIn [] ist) ps
          let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
-         undefinedSuperclassInstances <- filterM (fmap not . isOverlapping i) superclassInstances
+         undefinedSuperclassInstances <- filterM (fmap not . isOverlapping ist) superclassInstances
          mapM_ (rec_elabDecl info EAll info) undefinedSuperclassInstances
          let all_meths = map (nsroot . fst) (class_methods ci)
          let mtys = map (\ (n, (op, t)) ->
@@ -112,7 +115,7 @@ elabInstance info syn doc argDocs what fc cs acc n nfc ps t expn ds = do
               (class_methods ci)
          logElab 3 (show (mtys, ips))
          logElab 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (class_methods ci)))
-         let ds_defs = insertDefaults i iname (class_defaults ci) ns ds
+         let ds_defs = insertDefaults ist iname (class_defaults ci) ns ds
          logElab 3 ("After defaults: " ++ show ds_defs ++ "\n")
          let ds' = reorderDefs (map fst (class_methods ci)) $ ds_defs
          logElab 1 ("Reordered: " ++ show ds' ++ "\n")
@@ -138,10 +141,10 @@ elabInstance info syn doc argDocs what fc cs acc n nfc ps t expn ds = do
          let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
                            (map (pexp . mkMethApp) mtys)
 
-         logElab 5 $ "Instance LHS " ++ show lhs ++ " " ++ show headVars
+         logElab 5 $ "Instance LHS " ++ show totopts ++ "\n" ++ show lhs ++ " " ++ show headVars
          logElab 5 $ "Instance RHS " ++ show rhs
 
-         let idecls = [PClauses fc [Dictionary] iname
+         let idecls = [PClauses fc totopts iname
                                  [PClause fc iname lhs [] rhs wb]]
          logElab 1 (show idecls)
          push_estack iname True
