@@ -10,8 +10,12 @@ import Data.HVect
 
 ||| An universe of C types.
 data CType = I8 | I16 | I32 | I64 | FLOAT | DOUBLE | PTR
-            | ARRAY Int CType | STRUCT (List CType) | UNION (List CType)
-            | PACKEDSTRUCT (List CType)
+
+data Composite = T CType | ARRAY Int Composite | STRUCT (List Composite) | UNION (List Composite)
+                | PACKEDSTRUCT (List Composite)
+
+implicit mkComposite : CType -> Composite
+mkComposite x = T x
 
 Show CType where
     show I8 = "I8"
@@ -21,6 +25,9 @@ Show CType where
     show FLOAT = "FLOAT"
     show DOUBLE = "DOUBLE"
     show PTR = "PTR"
+
+Show Composite where
+    show (T ct) = show ct
     show (ARRAY n t) = "ARRAY " ++ show n ++ " " ++ show t
     show (STRUCT xs) = "STRUCT " ++ show xs
     show (UNION xs) = "UNION " ++ show xs
@@ -34,10 +41,13 @@ translate I64 = Bits64
 translate FLOAT = Double
 translate DOUBLE = Double
 translate PTR = Ptr
-translate (ARRAY n t) = Vect (toNat n) (translate t)
-translate (STRUCT xs) = HVect $ fromList (map translate xs)
-translate (UNION xs) = HVect $ fromList (map translate xs)
-translate (PACKEDSTRUCT xs) = HVect $ fromList (map translate xs)
+
+translateComp : Composite -> Type
+translateComp (T ct) = translate ct
+translateComp  (ARRAY n t) = Vect (toNat n) (translateComp t)
+translateComp  (STRUCT xs) = HVect $ fromList (map translateComp xs)
+translateComp  (UNION xs) = HVect $ fromList (map translateComp xs)
+translateComp  (PACKEDSTRUCT xs) = HVect $ fromList (map translateComp xs)
 
 mutual
     sizeOf : CType -> Int
@@ -48,10 +58,13 @@ mutual
     sizeOf FLOAT = 4
     sizeOf DOUBLE = 8
     sizeOf PTR = prim__sizeofPtr
-    sizeOf (ARRAY n t) = n * sizeOf t
-    sizeOf (STRUCT xs) = sizeOfStruct xs
-    sizeOf (UNION xs) = foldl (\acc, x =>max acc $ sizeOf x) 0 xs
-    sizeOf (PACKEDSTRUCT xs) = foldl (\acc, x => acc + sizeOf x) 0 xs
+
+    sizeOfComp : Composite -> Int
+    sizeOfComp (T ct) = sizeOf ct
+    sizeOfComp (ARRAY n t) = n * sizeOfComp t
+    sizeOfComp (STRUCT xs) = sizeOfStruct xs
+    sizeOfComp (UNION xs) = foldl (\acc, x =>max acc $ sizeOfComp x) 0 xs
+    sizeOfComp (PACKEDSTRUCT xs) = foldl (\acc, x => acc + sizeOfComp x) 0 xs
 
     alignOf : CType -> Int
     alignOf I8 = 1
@@ -61,64 +74,67 @@ mutual
     alignOf FLOAT = 4
     alignOf DOUBLE = prim__sizeofPtr
     alignOf PTR = prim__sizeofPtr
-    alignOf (ARRAY n t) = alignOf t
-    alignOf (STRUCT xs) = foldl (\acc, x => max acc $ alignOf x) 0 xs
-    alignOf (UNION xs) = foldl (\acc, x => max acc $ alignOf x) 0 xs
-    alignOf (PACKEDSTRUCT xs) = 1
 
-    offsetsStruct : List CType -> List Int
+    alignOfComp : Composite -> Int
+    alignOfComp (T t) = alignOf t
+    alignOfComp (ARRAY n t) = alignOfComp t
+    alignOfComp (STRUCT xs) = foldl (\acc, x => max acc $ alignOfComp x) 0 xs
+    alignOfComp (UNION xs) = foldl (\acc, x => max acc $ alignOfComp x) 0 xs
+    alignOfComp (PACKEDSTRUCT xs) = 1
+
+    offsetsStruct : List Composite -> List Int
     offsetsStruct xs = offsets' xs [] 0
         where
-            offsets' : List CType -> List Int -> Int -> List Int
+            offsets' : List Composite -> List Int -> Int -> List Int
             offsets' [] acc _ = reverse acc
-            offsets' (x::xs) ys curr = let a = alignOf x
+            offsets' (x::xs) ys curr = let a = alignOfComp x
                                            padding = let c = curr `mod` a
                                                         in if c == 0 then 0 else a - c
                                            off = curr + padding
-                                       in offsets' xs (off::ys) (off + sizeOf x)
+                                       in offsets' xs (off::ys) (off + sizeOfComp x)
 
-    sizeOfStruct : List CType -> Int
+    sizeOfStruct : List Composite -> Int
     sizeOfStruct xs = case (reverse xs, reverse (offsetsStruct xs)) of
                         ([], _) => 0
-                        (x::_, y::_) => let end = y + sizeOf x
+                        (x::_, y::_) => let end = y + sizeOfComp x
                                             endPadding = let c = end `mod` align in
                                                 if c == 0 then 0 else align - c
                                         in end + endPadding
         where
             align : Int
-            align = foldl (\acc, x => max acc $ alignOf x) 1 xs
+            align = foldl (\acc, x => max acc $ alignOfComp x) 1 xs
 
-fields : CType -> Nat
+fields : Composite -> Nat
 fields (STRUCT xs) = length xs
 fields (PACKEDSTRUCT xs) = length xs
 fields (UNION xs) = length xs
 fields (ARRAY n _) = toNat n
 fields _ = 1
 
-offsetsPacked : List CType -> List Int
+offsetsPacked : List Composite -> List Int
 offsetsPacked xs = offsets' xs [] 0
     where
-        offsets' : List CType -> List Int -> Int -> List Int
+        offsets' : List Composite -> List Int -> Int -> List Int
         offsets' [] acc _ = reverse acc
-        offsets' (x::xs) acc pos = offsets' xs (pos::acc) (sizeOf x)
+        offsets' (x::xs) acc pos = offsets' xs (pos::acc) (sizeOfComp x)
 
 -- TODO: Use index and fix upp proofs.
-offset : CType -> Nat -> Int
+offset : Composite -> Nat -> Int
 offset (STRUCT xs) i = fromMaybe 0 $ index' i (offsetsStruct xs)
 offset (PACKEDSTRUCT xs) i = fromMaybe 0 $ index' i (offsetsPacked xs)
-offset (ARRAY _ t) i = sizeOf t * toIntNat i
+offset (ARRAY _ t) i = sizeOfComp t * toIntNat i
 offset _ _ = 0
 
-offsets : CType -> List Int
+offsets : Composite -> List Int
 offsets (STRUCT xs) = offsetsStruct xs
 offsets (PACKEDSTRUCT xs) = offsetsPacked xs
 offsets (UNION xs) = replicate (length xs) 0
-offsets (ARRAY n t) = [ x*sizeOf t | x <- [0..n-1]]
+offsets (ARRAY n t) = [ x*sizeOfComp t | x <- [0..n-1]]
 offsets _ = [0]
 
 -- TODO: handle out of bounds with proofs
 -- Also choose a better name.
-select : CType -> Nat -> CType
+select : Composite -> Nat -> Composite
 select (STRUCT xs@(y::_)) i = fromMaybe y (index' i xs)
 select (PACKEDSTRUCT xs@(y::_)) i = fromMaybe y (index' i xs)
 select (UNION xs@(y::_)) i = fromMaybe y (index' i xs)
