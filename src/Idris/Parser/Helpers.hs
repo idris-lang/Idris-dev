@@ -695,7 +695,7 @@ collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns fc ps : ds) = PNamespace ns fc (collect ps) : collect ds
 collect (PClass doc f s cs n nfc ps pdocs fds ds cn cd : ds')
     = PClass doc f s cs n nfc ps pdocs fds (collect ds) cn cd : collect ds'
-collect (PInstance doc argDocs f s cs acc n nfc ps t en ds : ds')
-    = PInstance doc argDocs f s cs acc n nfc ps t en (collect ds) : collect ds'
+collect (PInstance doc argDocs f s cs acc opts n nfc ps t en ds : ds')
+    = PInstance doc argDocs f s cs acc opts n nfc ps t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds
 collect [] = []

@@ -56,13 +56,14 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 ElabWhat -> -- phase
                 FC -> [(Name, PTerm)] -> -- constraints
                 Accessibility ->
+                FnOpts ->
                 Name -> -- the class
                 FC -> -- precise location of class name
                 [PTerm] -> -- class parameters (i.e. instance)
                 PTerm -> -- full instance type
                 Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
-elabInstance info syn doc argDocs what fc cs acc n nfc ps t expn ds = do
+elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
     ist <- getIState
     (n, ci) <- case lookupCtxtName n (idris_classes ist) of
                   [c] -> return c
@@ -74,8 +75,7 @@ elabInstance info syn doc argDocs what fc cs acc n nfc ps t expn ds = do
     putIState (ist { hide_list = addDef iname acc (hide_list ist) })
     ist <- getIState
 
-    let totopts = if default_total ist then [TotalFn, Dictionary]
-                                       else [Dictionary]
+    let totopts = Dictionary : opts
 
     let emptyclass = null (class_methods ci)
     when (what /= EDefns) $ do
@@ -166,10 +166,10 @@ elabInstance info syn doc argDocs what fc cs acc n nfc ps t expn ds = do
                           Just m -> sNS (SN (sInstanceN n' (map show ps'))) m
           Just nm -> nm
 
-    substInstance ips pnames (PInstance doc argDocs syn _ cs acc n nfc ps t expn ds)
-        = PInstance doc argDocs syn fc cs acc n nfc (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
+    substInstance ips pnames (PInstance doc argDocs syn _ cs acc opts n nfc ps t expn ds)
+        = PInstance doc argDocs syn fc cs acc opts n nfc (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
 
-    isOverlapping i (PInstance doc argDocs syn _ _ _ n nfc ps t expn _)
+    isOverlapping i (PInstance doc argDocs syn _ _ _ _ n nfc ps t expn _)
         = case lookupCtxtName n (idris_classes i) of
             [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of

@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 134
+ibcVersion = 135
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
@@ -1262,7 +1262,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x10
                                                put x11
                                                put x12
-                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 ->
+                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 ->
                   do putWord8 8
                      put x1
                      put x2
@@ -1276,6 +1276,7 @@ instance (Binary t) => Binary (PDecl' t) where
                      put x10
                      put x11
                      put x12
+                     put x13
                 PDSL x1 x2 -> do putWord8 9
                                  put x1
                                  put x2
@@ -1391,7 +1392,8 @@ instance (Binary t) => Binary (PDecl' t) where
                            x10 <- get
                            x11 <- get
                            x12 <- get
-                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
+                           x13 <- get
+                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13)
                    9 -> do x1 <- get
                            x2 <- get
                            return (PDSL x1 x2)

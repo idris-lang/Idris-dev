@@ -1272,10 +1272,10 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds dec
            (map (expandParamsD rhs ist dec ps ns) decls)
            cn
            cd
-expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs acc n nfc params ty cn decls)
+expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs acc opts n nfc params ty cn decls)
    = PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
-           acc n
+           acc opts n
            nfc
            (map (expandParams dec ps ns []) params)
            (expandParams dec ps ns [] ty)

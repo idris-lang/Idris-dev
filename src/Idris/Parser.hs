@@ -337,8 +337,8 @@ declExtension syn ns rules =
                   (map (updateNs ns) ds)
                   (updateRecCon ns cname)
                   cdocs
-    updateNs ns (PInstance docs pdocs s fc cs acc cn fc' ps ity ni ds)
-         = PInstance docs pdocs s fc cs acc (updateB ns cn) fc'
+    updateNs ns (PInstance docs pdocs s fc cs acc opts cn fc' ps ity ni ds)
+         = PInstance docs pdocs s fc cs acc opts (updateB ns cn) fc'
                      ps ity (fmap (updateB ns) ni)
                             (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
@@ -907,7 +907,14 @@ InstanceName ::= '[' Name ']';
 -}
 instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
 instance_ kwopt syn
-              = do acc <- accessibility
+              = do ist <- get
+                   let initOpts = if default_total ist
+                                          then [TotalFn]
+                                          else []
+                   opts <- fnOpts initOpts
+                   acc <- accessibility
+                   opts' <- fnOpts opts
+
                    (doc, argDocs)
                      <- try (docstring syn <* if kwopt then optional instanceKeyword
                                                        else do instanceKeyword
@@ -921,7 +928,7 @@ instance_ kwopt syn
                    let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- instanceBlock syn
-                   return [PInstance doc argDocs syn fc cs' acc cn cnfc args t en ds]
+                   return [PInstance doc argDocs syn fc cs' acc opts' cn cnfc args t en ds]
                  <?> "implementation declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
