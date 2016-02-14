@@ -740,8 +740,10 @@ instance Show Def where
 
 -------
 
--- Frozen => doesn't reduce
--- Hidden => doesn't reduce and invisible to type checker
+-- Hidden => Programs can't access the name at all
+-- Public => Programs can access the name and use at will
+-- Frozen => Programs can access the name, which doesn't reduce
+-- Private => Programs can't access the name, doesn't reduce internally 
 
 data Accessibility = Hidden | Public | Frozen | Private 
     deriving (Eq, Ord)
