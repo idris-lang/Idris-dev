@@ -10,5 +10,8 @@ struct test2 {
     int16_t b;
 };
 
+struct test2 mystruct;
+
 int size1(void);
 int size2(void);
+void print_mystruct();

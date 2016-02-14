@@ -30,20 +30,30 @@ alloc t = return $ CPt !(malloc (sizeOf t)) 0 t
 free : CPtr -> IO ()
 free (CPt p _ _) = mfree p
 
+withAlloc : CType -> (CPtr -> IO ()) -> IO ()
+withAlloc t f = do m <- alloc t
+                   f m
+                   free m
+
+infixl 1 ~~>
+
+(~~>) :  CType -> (CPtr -> IO ()) -> IO ()
+(~~>) = withAlloc
+
 ctype : CPtr -> CType
 ctype (CPt _ _ t) = t
 mutual
-    peekArray : (c : CPtr) -> IO (translate (ctype c))
-    peekArray (CPt p o a@(ARRAY n t)) = do
-        os <- return $ fromList (offsets a)
-        return $ map (\x => peek (CPt p x t)) os
+    -- peekArray : (c : CPtr) -> IO (translate (ctype c))
+    -- peekArray (CPt p o a@(ARRAY n t)) = do
+    --     os <- return $ fromList (offsets a)
+    --     map (\x => peek (CPt p x t)) os
 
-    pokeArray : (c : CPtr) -> translate (ctype c) -> IO ()
-    pokeArray (CPt p o a@(ARRAY n t)) x = do
-                os <- fromList $ offsets a
-                ox <- zip os x
-                map (\(x, y)=>poke (CPt p x t) y) ox
-                return ()
+    -- pokeArray : (c : CPtr) -> translate (ctype c) -> IO ()
+    -- pokeArray (CPt p o a@(ARRAY n t)) x = do
+    --            os <- fromList $ offsets a
+    --            ox <- zip os x
+    --            map (\(x, y)=>poke (CPt p x t) y) ox
+    --            return ()
 
     peek : (p : CPtr) -> IO (translate (ctype p))
     peek (CPt p o I8) = prim_peek8 p o
@@ -53,7 +63,7 @@ mutual
     peek (CPt p o FLOAT) = prim_peekSingle p o
     peek (CPt p o DOUBLE) = prim_peekDouble p o
     peek (CPt p o PTR) = prim_peekPtr p o
-    peek cp@(CPt p o (ARRAY n t)) = peekArray cp
+    -- peek cp@(CPt p o (ARRAY n t)) = peekArray cp
     -- peek (CPt p o (UNION xs)) = ?peekUnion
     -- peek (CPt p o (STRUCT xs)) = ?peekStruct
     -- peek (CPt p o (PACKEDSTRUCT xs)) = ?peekPacked
@@ -74,7 +84,7 @@ mutual
                                 return ()
     poke (CPt p o DOUBLE) x = do _ <- prim_pokeDouble p o x
                                  return ()
-    poke cp@(CPt p o (ARRAY n t)) x = pokeArray cp x
+    -- poke cp@(CPt p o (ARRAY n t)) x = pokeArray cp x
     -- poke (CPt p o (UNION xs)) x = ?pokeUnion
     -- poke (CPt p o (STRUCT xs)) x = ?pokeStruct
     -- poke (CPt p o (PACKEDSTRUCT xs)) x = ?pokePacked
