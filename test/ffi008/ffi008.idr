@@ -53,4 +53,4 @@ main : IO ()
 main = do
     printLn $ sizeOf test1 == !size1
     printLn $ sizeOf test2 == !size2
-    printMore
+--    printMore

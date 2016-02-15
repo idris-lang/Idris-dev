@@ -124,6 +124,8 @@ Extra-source-files:
 
                        libs/contrib/contrib.ipkg
                        libs/contrib/Makefile
+                       libs/contrib/*.idr
+                       libs/contrib/CFFI/*.idr
                        libs/contrib/Classes/*.idr
                        libs/contrib/Control/*.idr
                        libs/contrib/Control/Isomorphism/*.idr
@@ -482,6 +484,11 @@ Extra-source-files:
                        test/ffi007/*.h
                        test/ffi007/run
                        test/ffi007/expected
+                       test/ffi008/*.idr
+                       test/ffi008/*.c
+                       test/ffi008/*.h
+                       test/ffi008/run
+                       test/ffi008/expected
 
                        test/folding001/*.idr
                        test/folding001/run
