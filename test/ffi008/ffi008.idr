@@ -33,29 +33,24 @@ test4 = PACKEDSTRUCT [I8, I8, I8, I64]
 printMore : IO ()
 printMore = do
     p <- alloc test3
-    f3 <- return $ p # 1
-    a <- peek f3 DOUBLE
+    f3 <- return $ (test3 # 1) p
+    a <- peek DOUBLE f3
     printLn a
-    printLn p
-    printLn f3
     free p
-    ms <- mystruct
-    cms <- return $ CPt ms 0 (STRUCT [I32, I16])
-    f1 <- return $ cms # 0
-    printLn f1
-    poke f1 I32 122
-
+    fms <- return $ (test2#0) !mystruct
+    poke I32 fms 122
     print_mystruct
     printLn test4
     printLn !size1
     printLn !size2
     printLn $ fields test3
     printLn $ offsets (STRUCT [I8, I8, I8, I64, test3])
-    printLn $ sizeOfComp (ARRAY 67 I32)
-    printLn $ sizeOfComp test3
+    printLn $ sizeOf (ARRAY 67 I32)
+    printLn $ sizeOf test1
+    printLn $ sizeOf test2
 
 main : IO ()
 main = do
-    printLn $ sizeOfComp test1 == !size1
-    printLn $ sizeOfComp test2 == !size2
+    printLn $ sizeOf test1 == !size1
+    printLn $ sizeOf test2 == !size2
     printMore

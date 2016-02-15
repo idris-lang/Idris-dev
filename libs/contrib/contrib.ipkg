@@ -13,7 +13,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Classes.Verified,
 
           Data.Fun, Data.Rel,
-          Data.Hash, Data.HList,
+          Data.Hash,
           Data.Matrix, Data.Matrix.Algebraic, Data.Matrix.Numeric,
           Data.Nat.DivMod, Data.Nat.DivMod.IteratedSubtraction,
           Data.ZZ, Data.Sign,
