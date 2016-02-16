@@ -37,8 +37,8 @@ For example, the following script constructs the identity function at type ``Nat
 .. code-block:: idris
 
     idNat : Nat -> Nat
-    idNat = %runElab (do intro (Just (UN "x"))
-                         fill (Var (UN "x"))
+    idNat = %runElab (do intro `{{x}}
+                         fill (Var `{{x}})
                          solve)
 
 
@@ -57,8 +57,8 @@ We can generate identity functions at any concrete type using the same script:
 .. code-block:: idris
 
     mkId : Elab ()
-    mkId = do intro (Just (UN "x"))
-              fill (Var (UN "x"))
+    mkId = do intro `{{x}}
+              fill (Var `{{x}})
               solve
 
     idNat : Nat -> Nat
