@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} --consolewidth 80 $@ reg056.idr -o reg056
+${IDRIS:-idris} $@ reg056.idr -o reg056
 rm -f *.ibc

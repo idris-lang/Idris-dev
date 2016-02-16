@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} --consolewidth 80 $@ reg028.idr --check
-${IDRIS:-idris} --consolewidth 80 $@ reg028a.idr --check
+${IDRIS:-idris} $@ reg028.idr --check
+${IDRIS:-idris} $@ reg028a.idr --check
 rm -f *.ibc

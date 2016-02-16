@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} --consolewidth 80 $@ --check test010.idr
-${IDRIS:-idris} --consolewidth 80 $@ --check test010a.idr
-${IDRIS:-idris} --consolewidth 80 $@ --check test010b.idr
+${IDRIS:-idris} $@ --check test010.idr
+${IDRIS:-idris} $@ --check test010a.idr
+${IDRIS:-idris} $@ --check test010b.idr
 
 rm -f *.ibc
