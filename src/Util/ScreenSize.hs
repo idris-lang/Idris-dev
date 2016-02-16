@@ -1,8 +1,6 @@
 {-# LANGUAGE CPP #-}
 module Util.ScreenSize(getScreenWidth) where
 
-import Debug.Trace
-
 #ifndef CURSES
 
 getScreenWidth :: IO Int
