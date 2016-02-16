@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} --consolewidth 80 $@ totality004.idr -o totality004
+${IDRIS:-idris} $@ totality004.idr -o totality004
 ./totality004
-${IDRIS:-idris} --consolewidth 80 $@ --check totality004a.idr 
+${IDRIS:-idris} $@ --check totality004a.idr 
 rm -f totality004 *.ibc

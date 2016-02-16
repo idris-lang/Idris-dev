@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} --consolewidth 80 $@ FunErrTest.idr --nocolour --check
+${IDRIS:-idris} $@ FunErrTest.idr --nocolour --check
 rm -f *.ibc
