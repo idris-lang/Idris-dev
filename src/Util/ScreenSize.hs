@@ -9,11 +9,16 @@ getScreenWidth = return 80
 #else
 
 import UI.HSCurses.Curses
+import System.IO (hIsTerminalDevice, stdout)
 
 getScreenWidth :: IO Int
-getScreenWidth = do initScr
-                    refresh
-                    size <- scrSize
-                    endWin
-                    return (snd size)
+getScreenWidth = do term <- hIsTerminalDevice stdout
+                    if term
+                       then do
+                         initScr
+                         refresh
+                         size <- scrSize
+                         endWin
+                         return (snd size)
+                       else return 80
 #endif
