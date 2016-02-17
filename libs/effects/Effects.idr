@@ -256,7 +256,6 @@ return x = Value x
 -- ------------------------------------------------------ [ for idiom brackets ]
 
 infixl 2 <*>
-infixl 2 <$>
 
 pure : a -> EffM m a xs (\v => xs)
 pure = Value
