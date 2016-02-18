@@ -340,9 +340,9 @@ checkAllCovering _ _ _ _ = return ()
 
 checkPositive :: [Name] -> (Name, Type) -> Idris Totality
 checkPositive mut_ns (cn, ty')
-    = do let ty = delazy' True ty'
+    = do i <- getIState
+         let ty = delazy' True (normalise (tt_ctxt i) [] ty')
          let p = cp ty
-         i <- getIState
          let tot = if p then Total (args ty) else Partial NotPositive
          let ctxt' = setTotal cn tot (tt_ctxt i)
          putIState (i { tt_ctxt = ctxt' })
@@ -597,7 +597,7 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
       toJust (n, t) = Just t
 
       getType n = case lookupTy n (tt_ctxt ist) of
-                       [ty] -> delazy ty -- must exist
+                       [ty] -> delazy (normalise (tt_ctxt ist) [] ty) -- must exist
 
       isInductive (P _ nty _) (P _ nty' _) =
           let co = case lookupCtxt nty (idris_datatypes ist) of

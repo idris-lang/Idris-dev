@@ -244,7 +244,7 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
 
          logElab 5 $ show fc ++ ":Constructor " ++ show n ++ " elaborated : " ++ show t
          logElab 5 $ "Inaccessible args: " ++ show inacc
-         logElab 2 $ "---> " ++ show n ++ " : " ++ show cty'
+         logElab 2 $ "---> " ++ show n ++ " : " ++ show cty
 
          -- Add to the context (this is temporary, so that later constructors
          -- can be indexed by it)
@@ -259,7 +259,7 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
          addIBC (IBCDoc n)
          fputState (opt_inaccessible . ist_optimisation n) inacc
          addIBC (IBCOpt n)
-         return (n, cty')
+         return (n, cty)
   where
     tyIs con (Bind n b sc) = tyIs con (substV (P Bound n Erased) sc)
     tyIs con t | (P Bound n' _, _) <- unApply t

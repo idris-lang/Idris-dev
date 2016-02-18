@@ -18,7 +18,7 @@ When checking right hand side of with block in Main.parity with expected type
         Parity (S (S (j + j)))
 
 Type mismatch between
-        Parity (plus (S j) (S j)) (Type of Even)
+        Parity (S j + S j) (Type of Even)
 and
         Parity (S (S (plus j j))) (Expected type)
 
