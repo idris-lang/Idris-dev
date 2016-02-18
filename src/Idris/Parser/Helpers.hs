@@ -245,20 +245,20 @@ float = do f <- Tok.double
 
 -- | Idris Style for parsing identifiers/reserved keywords
 idrisStyle :: MonadicParsing m => IdentifierStyle m
-idrisStyle = IdentifierStyle _styleName _styleStart _styleLetter _styleReserved Hi.Identifier Hi.ReservedIdentifier
-  where _styleName = "Idris"
-        _styleStart = satisfy isAlpha <|> oneOf "_"
-        _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
-        _styleReserved = HS.fromList ["let", "in", "data", "codata", "record", "corecord", "Type",
-                                      "do", "dsl", "import", "impossible",
-                                      "case", "of", "total", "partial", "mutual",
-                                      "infix", "infixl", "infixr", "rewrite",
-                                      "where", "with", "syntax", "proof", "postulate",
-                                      "using", "namespace", "class", "instance",
-                                      "interface", "implementation", "parameters",
-                                      "public", "private", "export", "abstract", "implicit",
-                                      "quoteGoal", "constructor",
-                                      "if", "then", "else"]
+idrisStyle = IdentifierStyle {
+    _styleName = "Idris"
+  , _styleStart = satisfy isAlpha <|> oneOf "_"
+  , _styleLetter = satisfy isAlphaNum <|> oneOf "_'."
+  , _styleReserved = HS.fromList
+      ["let", "in", "data", "codata", "record", "corecord", "Type", "do", "dsl",
+      "import", "impossible", "case", "of", "total", "partial", "mutual",
+      "infix", "infixl", "infixr", "rewrite", "where", "with", "syntax",
+      "proof", "postulate", "using", "namespace", "class", "instance",
+      "interface", "implementation", "parameters", "public", "private",
+      "export", "abstract", "implicit", "quoteGoal", "constructor", "if",
+      "then", "else"]
+  , _styleHighlight = Hi.Identifier
+  , _styleReservedHighlight = Hi.ReservedIdentifier }
 
 char :: MonadicParsing m => Char -> m Char
 char = Chr.char
@@ -293,7 +293,7 @@ reserved = Tok.reserve idrisStyle
 -- reserved identifiers never contain line breaks.
 reservedFC :: MonadicParsing m => String -> m FC
 reservedFC str = do (FC file (l, c) _) <- getFC
-                    Tok.reserve idrisStyle str
+                    reserved str
                     return $ FC file (l, c) (l, c + length str)
 
 -- | Parse a reserved identfier, highlighting its span as a keyword
@@ -308,10 +308,9 @@ reservedOp name = token $ try $
      notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
 
 reservedOpFC :: MonadicParsing m => String -> m FC
-reservedOpFC name = token $ try $ do (FC f (l, c) _) <- getFC
-                                     string name
-                                     notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
-                                     return (FC f (l, c) (l, c + length name))
+reservedOpFC name = do (FC f (l, c) _) <- getFC
+                       reservedOp name
+                       return (FC f (l, c) (l, c + length name))
 
 -- | Parses an identifier as a token
 identifier :: (MonadicParsing m) => m (String, FC)
@@ -404,12 +403,9 @@ operator = do op <- token . some $ operatorLetter
 
 -- | Parses an operator
 operatorFC :: MonadicParsing m => m (String, FC)
-operatorFC = do (op, fc) <- token $ do (FC f (l, c) _) <- getFC
-                                       op <- some operatorLetter
-                                       return (op, FC f (l, c) (l, c + length op))
-                when (op `elem` (invalidOperators ++ commentMarkers)) $
-                     fail $ op ++ " is not a valid operator"
-                return (op, fc)
+operatorFC = do (FC f (l, c) _) <- getFC
+                op <- operator
+                return (op, FC f (l, c) (l, c + length op))
 
 {- * Position helpers -}
 {- | Get filename from position (returns "(interactive)" when no source file is given)  -}
