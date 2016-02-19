@@ -80,24 +80,40 @@ For C, this is:
 .. code-block:: idris
 
     ||| Supported C integer types
+    public export
     data C_IntTypes : Type -> Type where
-         C_IntChar   : C_IntTypes Char
-         C_IntNative : C_IntTypes Int
-         ... -- more integer types
+        C_IntChar   : C_IntTypes Char
+        C_IntNative : C_IntTypes Int
+        C_IntBits8  : C_IntTypes Bits8
+        C_IntBits16 : C_IntTypes Bits16
+        C_IntBits32 : C_IntTypes Bits32
+        C_IntBits64 : C_IntTypes Bits64
+
+    ||| Supported C function types
+    public export
+    data C_FnTypes : Type -> Type where
+        C_Fn : C_Types s -> C_FnTypes t -> C_FnTypes (s -> t)
+        C_FnIO : C_Types t -> C_FnTypes (IO' FFI_C t)
+        C_FnBase : C_Types t -> C_FnTypes t
 
     ||| Supported C foreign types
+    public export
     data C_Types : Type -> Type where
-         C_Str   : C_Types String
-         C_Float : C_Types Float
-         C_Ptr   : C_Types Ptr
-         C_MPtr  : C_Types ManagedPtr
-         C_Unit  : C_Types ()
-         C_Any   : C_Types (Raw a)
-         C_IntT  : C_IntTypes i -> C_Types i
+        C_Str   : C_Types String
+        C_Float : C_Types Double
+        C_Ptr   : C_Types Ptr
+        C_MPtr  : C_Types ManagedPtr
+        C_Unit  : C_Types ()
+        C_Any   : C_Types (Raw a)
+        C_FnT   : C_FnTypes t -> C_Types (CFnPtr t)
+        C_IntT  : C_IntTypes i -> C_Types i
 
+    ||| A descriptor for the C FFI. See the constructors of `C_Types`
+    ||| and `C_IntTypes` for the concrete types that are available.
+    %error_reverse
+    public export
     FFI_C : FFI
-    FFI_C = MkFFI C_Types
-                  String -- the name of the C function
+        FFI_C = MkFFI C_Types String String
 
 Foreign calls
 =============
@@ -134,6 +150,71 @@ example a shorthand for calling external JavaScript functions:
     jscall : (fname : String) -> (ty : Type) ->
               {auto fty : FTy FFI_JS [] ty} -> ty
     jscall fname ty = foreign FFI_JS fname ty
+
+C callbacks
+-----------
+It is possible to pass an Idris function to a C function taking a function
+pointer by using ``CFnPtr`` in the function type. The Idris function is passed
+to ``MkCFnPtr`` in the arguments. The example below shows declaring the C standard
+library function ``qsort`` which takes a pointer to a comparison function.
+
+.. code-block:: idris
+
+    myComparer : Ptr -> Ptr -> Int
+    myComparer = ...
+
+    qsort : Ptr -> Int -> Int -> IO ()
+    test2 data elems elsize = foreign FFI_C "qsort"
+                    (Ptr -> Int -> Int -> CFnPtr (Ptr -> Ptr -> Int) -> IO ())
+                    data elems elsize (MkCFnPtr myComparer)
+
+There are a few limitations to callbacks in the C FFI. The foreign function can't
+take the function to make a callback of as an argument. This will give a
+compilation error:
+
+.. code-block:: idris
+
+    -- This does not work
+    example : (Int -> ()) -> IO ()
+    example f = foreign FFI_C "callbacker" (CFnPtr (Int -> ()) -> IO ()) f
+
+The other big limitation is that it doesn't support IO functions. Use
+``unsafePerformIO`` to wrap them.
+
+There are two special function names:
+``%wrapper`` returns the function pointer that wraps an Idris function. This
+is useful if the function pointer isn't taken by a C function directly but
+should be inserted into a data structure. A foreign declaration using
+``%wrapper`` must return ``IO Ptr``.
+
+.. code-block:: idris
+
+    -- this returns the C function pointer to a qsort comparer
+    example_wrapper : IO Ptr
+    example_wrapper = foreign FFI_C "%wrapper" (CFnPtr (Ptr -> Ptr -> Int) -> IO Ptr)
+                            (MkCFnPtr myComparer)
+
+``%dynamic`` calls a C function pointer with some arguments. This is useful if
+a C function returns or data structure contains a C function pointer, for example
+structs of function pointers are common in object-oriented C such as in COM or the
+Linux kernel. The function type contains an extra ``Ptr`` at the start for the
+function pointer. ``%dynamic`` can be seen as a pseudo-function that calls the
+function in the first argument, passing the remaining arguments to it.
+
+.. code-block:: idris
+
+    -- we have a pointer to a function with the signature int f(int), call it
+    example_dynamic : Ptr -> Int -> IO Int
+    example_dynamic fn x = foreign FFI_C "%dynamic" (Ptr -> Int -> IO Int) fn x
+
+If the foreign name is prefixed by a ``&``, it is treated as a pointer to the
+global variable with the following name. The type must be just ``IO Ptr``.
+
+.. code-block:: idris
+
+    -- access the global variable errno
+    errno : IO Ptr
+    errno = foreign FFI_C "&errno" (IO Ptr)
 
 FFI implementation
 ------------------
