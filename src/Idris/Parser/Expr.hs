@@ -586,7 +586,7 @@ runElab syn = do (FC fn (sl, sc) kwEnd) <- try (lchar '%' *> reservedFC "runElab
 
 {- | Parses a disambiguation expression
 Disamb ::=
-  '%' 'disamb' NameList Expr
+  'with' NameList Expr
   ;
 -}
 disamb :: SyntaxInfo -> IdrisParser PTerm
