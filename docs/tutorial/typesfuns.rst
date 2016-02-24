@@ -137,7 +137,7 @@ Unlike Haskell, there is no restriction on whether types and function
 names must begin with a capital letter or not. Function names
 (``plus`` and ``mult`` above), data constructors (``Z``, ``S``,
 ``Nil`` and ``::``) and type constructors (``Nat`` and ``List``) are
-all part of the same namespace. By convention, however, 
+all part of the same namespace. By convention, however,
 data types and constructor names typically begin with a capital letter.
 We can test these functions at the Idris prompt:
 
@@ -583,7 +583,7 @@ example for reading and writing files, including:
 
     openFile : (f : String) -> (m : Mode) -> IO (Either FileError File)
     closeFile : File -> IO ()
-    
+
     fGetLine : (h : File) -> IO (Either FileError String)
     fPutStr : (h : File) -> (str : String) -> IO (Either FileError ())
     fEOF : File -> IO Bool
@@ -660,6 +660,93 @@ without any explicit use of ``Force`` or ``Delay``:
     ifThenElse : Bool -> Lazy a -> Lazy a -> a;
     ifThenElse True  t e = t;
     ifThenElse False t e = e;
+
+Codata Types
+============
+
+Codata types are like are like regular data types, except that they allow for us
+to define infinite data structures.  More precisely, for a type ``T``, each of
+its constructor arguments of type ``T`` are transformed into a coinductive
+parameter ``Inf T``. This makes each of the ``T`` arguments lazy, and allows
+infinite data structures of type ``T`` to be built. One example of a codata type
+is Stream, which is defined as follows.
+
+.. code-block:: idris
+
+    codata Stream : Type -> Type where
+      (::) : (e : a) -> Stream a -> Stream a
+
+This gets translated into the following by the compiler.
+
+.. code-block:: idris
+
+    codata Stream : Type -> Type where
+      (::) : (e : a) -> Inf (Stream a) -> Stream a
+
+The following is an example of how the codata type ``Stream`` can be used to
+form an infinite data structure. In this case we are creating an infinite stream
+of ones.
+
+.. code-block:: idris
+
+    ones :: Stream Nat
+    ones = 1 :: ones
+
+It is important to note that codata does not allow the creation of infinite
+mutually recursive data structures. For example the following will create an
+infinite loop and cause a stack overflow.
+
+.. code-block:: idris
+
+    mutual
+      codata Blue a = B a (Red a)
+      codata Red a = R a (Blue a)
+
+    mutual
+      blue : Blue Nat
+      blue = B 1 red
+
+      red : Red Nat
+      red = R 1 blue
+
+    mutual
+      findB : (a -> Bool) -> Blue a -> a
+      findB f (B x r) = if f x then x else findR f r
+
+      findR : (a -> Bool) -> Red a -> a
+      findR f (R x b) = if f x then x else findB f b
+
+    main : IO ()
+    main = do printLn $ findB (== 1) blue
+
+To fix this we must add explicit ``Inf`` declarations to the constructor
+parameter types. For example, the following outputs "1".
+
+.. code-block:: idris
+
+    mutual
+      data Blue : Type -> Type where
+       B : a -> Inf (Red a) -> Blue a
+
+      data Red : Type -> Type where
+       R : a -> Inf (Blue a) -> Red a
+
+    mutual
+      blue : Blue Nat
+      blue = B 1 red
+
+      red : Red Nat
+      red = R 1 blue
+
+    mutual
+      findB : (a -> Bool) -> Blue a -> a
+      findB f (B x r) = if f x then x else findR f r
+
+      findR : (a -> Bool) -> Red a -> a
+      findR f (R x b) = if f x then x else findB f b
+
+    main : IO ()
+    main = do printLn $ findB (== 1) blue
 
 Useful Data Types
 =================
