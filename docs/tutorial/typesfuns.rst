@@ -664,12 +664,12 @@ without any explicit use of ``Force`` or ``Delay``:
 Codata Types
 ============
 
-Codata types are like are like regular data types, except that they allow for us
-to define infinite data structures.  More precisely, for a type ``T``, each of
-its constructor arguments of type ``T`` are transformed into a coinductive
-parameter ``Inf T``. This makes each of the ``T`` arguments lazy, and allows
-infinite data structures of type ``T`` to be built. One example of a codata type
-is Stream, which is defined as follows.
+Codata types are like regular data types, except that they allow for us to
+define infinite data structures.  More precisely, for a type ``T``, each of its
+constructor arguments of type ``T`` are transformed into a coinductive parameter
+``Inf T``. This makes each of the ``T`` arguments lazy, and allows infinite data
+structures of type ``T`` to be built. One example of a codata type is Stream,
+which is defined as follows.
 
 .. code-block:: idris
 
