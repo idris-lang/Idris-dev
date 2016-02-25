@@ -87,7 +87,7 @@ elabClauses info' fc opts n_in cs =
            let pats_raw = map (simple_lhs ctxt) pats_in
            logElab 3 $ "Elaborated patterns:\n" ++ show pats_raw
 
-           solveDeferred n
+           solveDeferred fc n
 
            -- just ensure that the structure exists
            fmodifyState (ist_optimisation n) id
@@ -670,7 +670,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logElab 2 $ "RHS: " ++ show (map fst newargs_all) ++ " " ++ showTmImpls rhs
         ctxt <- getContext -- new context with where block added
         logElab 5 "STARTING CHECK"
-        ((rhs', defer, is, probs, ctxt', newDecls, highlights), _) <-
+        ((rhs', defer, holes, is, probs, ctxt', newDecls, highlights), _) <-
            tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "patRHS") clhsty initEState
                     (do pbinds ist lhs_tm
                         -- proof search can use explicitly written names
@@ -687,7 +687,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                         let (tm, ds) = runState (collectDeferred (Just fname)
                                                      (map fst $ case_decls aux) ctxt tt) []
                         probs <- get_probs
-                        return (tm, ds, is, probs, ctxt', newDecls, highlights))
+                        hs <- get_holes
+                        return (tm, ds, hs, is, probs, ctxt', newDecls, highlights))
         setContext ctxt'
         processTacticDecls info newDecls
         sendHighlighting highlights
@@ -698,9 +699,12 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logElab 4 $ "---> " ++ show rhs'
         when (not (null defer)) $ logElab 1 $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t,_)) -> (n, t)) defer)
-        def' <- checkDef fc (\n -> Elaborating "deferred type of " n Nothing) defer
-        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
+
+        -- If there's holes, set the metavariables as undefinable
+        def' <- checkDef fc (\n -> Elaborating "deferred type of " n Nothing) (null holes) defer
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, null holes))) def'
         addDeferred def''
+
         mapM_ (\(n, _) -> addIBC (IBCDef n)) def''
 
         when (not (null def')) $ do
@@ -716,11 +720,23 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logElab 5 $ "Rechecking"
         logElab 6 $ " ==> " ++ show (forget rhs')
 
-        (crhs, crhsty) <- if not inf
-                             then recheckC_borrowing True (PEGenerated `notElem` opts)
-                                                     borrowed fc id [] rhs'
-                             else return (rhs', clhsty)
+        (crhs, crhsty) -- if there's holes && deferred things, it's okay
+                       -- but we'll need to freeze the definition and not
+                       -- allow the deferred things to be definable
+                       -- (this is just to allow users to inspect intermediate
+                       -- things)
+             <- if (null holes || null def') && not inf 
+                   then recheckC_borrowing True (PEGenerated `notElem` opts)
+                                       borrowed fc id [] rhs'
+                   else return (rhs', clhsty)
+
         logElab 6 $ " ==> " ++ showEnvDbg [] crhsty ++ "   against   " ++ showEnvDbg [] clhsty
+
+        -- If there's holes, make sure this definition is frozen
+        when (not (null holes)) $ do
+           logElab 5 $ "Making " ++ show fname ++ " frozen due to " ++ show holes
+           setAccessibility fname Frozen
+
         ctxt <- getContext
         let constv = next_tvar ctxt
         case LState.runStateT (convertsC ctxt [] crhsty clhsty) (constv, []) of
@@ -861,7 +877,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         processTacticDecls info newDecls
         sendHighlighting highlights
 
-        def' <- checkDef fc iderr defer
+        def' <- checkDef fc iderr True defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
@@ -926,7 +942,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         addIBC (IBCImp wname)
         addIBC (IBCStatic wname)
 
-        def' <- checkDef fc iderr [(wname, (-1, Nothing, wtype, []))]
+        def' <- checkDef fc iderr True [(wname, (-1, Nothing, wtype, []))]
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
 
@@ -967,7 +983,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         processTacticDecls info newDecls
         sendHighlighting highlights
 
-        def' <- checkDef fc iderr defer
+        def' <- checkDef fc iderr True defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is

@@ -2508,7 +2508,7 @@ processTacticDecls info steps =
          updateIState $ \i -> i { idris_implicits =
                                     addDef n impls (idris_implicits i) }
          addIBC (IBCImp n)
-         ds <- checkDef fc (\_ e -> e) [(n, (-1, Nothing, ty, []))]
+         ds <- checkDef fc (\_ e -> e) True [(n, (-1, Nothing, ty, []))]
          addIBC (IBCDef n)
          ctxt <- getContext
          case lookupDef n ctxt of
@@ -2528,7 +2528,7 @@ processTacticDecls info steps =
          addIBC (IBCInstance False True className instName)
     RClausesInstrs n cs ->
       do logElab 3 $ "Pattern-matching definition from tactics: " ++ show n
-         solveDeferred n
+         solveDeferred emptyFC n
          let lhss = map (\(_, lhs, _) -> lhs) cs
          let fc = fileFC "elab_reflected"
          pmissing <-

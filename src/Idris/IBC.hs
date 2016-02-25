@@ -533,7 +533,7 @@ pDefs reexp ds
                   case d' of
                        TyDecl _ _ -> return ()
                        _ -> do logIBC 1 $ "SOLVING " ++ show n
-                               solveDeferred n
+                               solveDeferred emptyFC n
                   updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
             ) ds
   where

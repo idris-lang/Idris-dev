@@ -60,6 +60,9 @@ Minor language changes
 * File Modes expanded: Append, ReadWriteTruncate, and ReadAppend added,
   Write is deprecated and renamed to WriteTruncate.
 * C11 Extended Mode variations added to File Modes.
+* More flexible holes.
+  Holes can now depend on other holes in a term (such as implicit arguments
+  which may be inferred from the definition of the hole).
 
 New in 0.10:
 ============

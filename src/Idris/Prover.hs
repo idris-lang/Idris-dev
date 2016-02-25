@@ -124,7 +124,7 @@ prove mode opt ctxt lit n ty
                                 [([], P Ref n ty, ptm')] ty
                                 ctxt
          setContext ctxt'
-         solveDeferred n
+         solveDeferred emptyFC n
          case idris_outputmode i of
            IdeMode n h ->
              runIO . hPutStrLn h $ IdeMode.convSExp "return" (IdeMode.SymbolAtom "ok", "") n

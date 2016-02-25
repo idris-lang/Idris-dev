@@ -355,7 +355,7 @@ elabCaseFun ind paramPos n ty cons info = do
                     (ierror . Elaborating "type declaration of " elimDeclName Nothing)
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
-    [] -> State.lift $ solveDeferred elimDeclName -- Remove meta-variable for type
+    [] -> State.lift $ solveDeferred emptyFC elimDeclName -- Remove meta-variable for type
     _  -> State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorDef)
                     (ierror . Elaborating "clauses of " elimDeclName Nothing)
   where elimLog :: String -> EliminatorState ()

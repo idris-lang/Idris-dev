@@ -672,9 +672,13 @@ addDeferred' nt ns
                   Bind n' b $ tidyNames (S.insert n' used) sc
         tidyNames used b = b
 
-solveDeferred :: Name -> Idris ()
-solveDeferred n = do i <- getIState
-                     putIState $ i { idris_metavars =
+solveDeferred :: FC -> Name -> Idris ()
+solveDeferred fc n 
+    = do i <- getIState
+         case lookup n (idris_metavars i) of
+              Just (_, _, _, _, False) ->
+                   throwError $ At fc $ Msg ("Can't define hole " ++ show n ++ " as it depends on other holes")
+              _ -> putIState $ i { idris_metavars =
                                        filter (\(n', _) -> n/=n')
                                           (idris_metavars i),
                                      ibc_write =

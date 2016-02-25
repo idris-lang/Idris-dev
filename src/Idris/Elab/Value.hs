@@ -75,7 +75,7 @@ elabValBind info aspat norm tm_in
 
         let vtm = orderPats (getInferTerm tm')
 
-        def' <- checkDef (fileFC "(input)") iderr defer
+        def' <- checkDef (fileFC "(input)") iderr True defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, True, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info []) is
