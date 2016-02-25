@@ -2517,7 +2517,7 @@ processTacticDecls info steps =
              -- then it must be added as a metavariable. This needs guarding
              -- to prevent overwriting case defs with a metavar, if the case
              -- defs come after the type decl in the same script!
-             let ds' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, True))) ds
+             let ds' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, True, True))) ds
              in addDeferred ds'
            _ -> return ()
     RAddInstance className instName ->

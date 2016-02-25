@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 135
+ibcVersion = 136
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
@@ -84,7 +84,7 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_metainformation :: ![(Name, MetaInformation)],
                          ibc_errorhandlers :: ![Name],
                          ibc_function_errorhandlers :: ![(Name, Name, Name)], -- fn, arg, handler
-                         ibc_metavars :: ![(Name, (Maybe Name, Int, [Name], Bool))],
+                         ibc_metavars :: ![(Name, (Maybe Name, Int, [Name], Bool, Bool))],
                          ibc_patdefs :: ![(Name, ([([(Name, Term)], Term, Term)], [PTerm]))],
                          ibc_postulates :: ![Name],
                          ibc_externs :: ![(Name, Int)],
@@ -662,7 +662,7 @@ pFunctionErrorHandlers :: [(Name, Name, Name)] -> Idris ()
 pFunctionErrorHandlers ns =  mapM_ (\ (fn,arg,handler) ->
                                 addFunctionErrorHandlers fn arg [handler]) ns
 
-pMetavars :: [(Name, (Maybe Name, Int, [Name], Bool))] -> Idris ()
+pMetavars :: [(Name, (Maybe Name, Int, [Name], Bool, Bool))] -> Idris ()
 pMetavars ns = updateIState (\i -> i { idris_metavars = L.reverse ns ++ idris_metavars i })
 
 ----- For Cheapskate and docstrings

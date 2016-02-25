@@ -699,7 +699,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         when (not (null defer)) $ logElab 1 $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t,_)) -> (n, t)) defer)
         def' <- checkDef fc (\n -> Elaborating "deferred type of " n Nothing) defer
-        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
         mapM_ (\(n, _) -> addIBC (IBCDef n)) def''
 
@@ -862,7 +862,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         sendHighlighting highlights
 
         def' <- checkDef fc iderr defer
-        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         logElab 5 ("Checked wval " ++ show wval')
@@ -927,7 +927,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         addIBC (IBCStatic wname)
 
         def' <- checkDef fc iderr [(wname, (-1, Nothing, wtype, []))]
-        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
 
         -- in the subdecls, lhs becomes:
@@ -968,7 +968,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         sendHighlighting highlights
 
         def' <- checkDef fc iderr defer
-        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False))) def'
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         logElab 5 ("Checked RHS " ++ show rhs')

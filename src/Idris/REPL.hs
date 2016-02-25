@@ -959,8 +959,8 @@ process fn (Check (PRef _ _ n))
         case lookupNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
-                Just (_, i, _, _) -> iRenderResult . fmap (fancifyAnnots ist True) $
-                                     showMetavarInfo ppo ist n i
+                Just (_, i, _, _, _) -> iRenderResult . fmap (fancifyAnnots ist True) $
+                                        showMetavarInfo ppo ist n i
                 Nothing -> iPrintFunTypes [] n (map (\n -> (n, pprintDelabTy ist n)) ts)
           [] -> iPrintError $ "No such variable " ++ show n
   where
@@ -1139,7 +1139,7 @@ process fn (RmProof n')
                             insertMetavar n =
                               do i <- getIState
                                  let ms = idris_metavars i
-                                 putIState $ i { idris_metavars = (n, (Nothing, 0, [], False)) : ms }
+                                 putIState $ i { idris_metavars = (n, (Nothing, 0, [], False, False)) : ms }
 
 process fn' (AddProof prf)
   = do fn <- do
@@ -1192,8 +1192,9 @@ process fn (Prove mode n')
           let metavars = mapMaybe (\n -> do c <- lookup n (idris_metavars ist); return (n, c)) ns
           n <- case metavars of
               [] -> ierror (Msg $ "Cannot find metavariable " ++ show n')
-              [(n, (_,_,_,False))] -> return n
-              [(_, (_,_,_,True))]  -> ierror (Msg $ "Declarations not solvable using prover")
+              [(n, (_,_,_,False,_))] -> return n
+              [(_, (_,_,_,_,False))]  -> ierror (Msg $ "Can't prove this hole as it depends on other holes")
+              [(_, (_,_,_,True,_))]  -> ierror (Msg $ "Declarations not solvable using prover")
               ns -> ierror (CantResolveAlts (map fst ns))
           prover mode (lit fn) n
           -- recheck totality

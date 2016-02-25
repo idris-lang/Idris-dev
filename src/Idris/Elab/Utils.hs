@@ -68,7 +68,7 @@ checkAddDef add toplvl fc mkerr ((n, (i, top, t, psns)) : ns)
                = do ctxt <- getContext
                     logElab 5 $ "Rechecking deferred name " ++ show (n, t)
                     (t', _) <- recheckC fc (mkerr n) [] t
-                    when add $ do addDeferred [(n, (i, top, t, psns, toplvl))]
+                    when add $ do addDeferred [(n, (i, top, t, psns, toplvl, True))]
                                   addIBC (IBCDef n)
                     ns' <- checkAddDef add toplvl fc mkerr ns
                     return ((n, (i, top, t', psns)) : ns')

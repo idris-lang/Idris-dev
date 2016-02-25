@@ -176,7 +176,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          ds <- checkDef fc iderr [(n, (-1, Nothing, usety, []))]
          addIBC (IBCDef n)
          addDefinedName n
-         let ds' = map (\(n, (i, top, fam, ns)) -> (n, (i, top, fam, ns, True))) ds
+         let ds' = map (\(n, (i, top, fam, ns)) -> (n, (i, top, fam, ns, True, True))) ds
          addDeferred ds'
          setFlags n opts'
          checkDocs fc argDocs ty

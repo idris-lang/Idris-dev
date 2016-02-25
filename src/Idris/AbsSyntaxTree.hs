@@ -211,12 +211,14 @@ data IState = IState {
     idris_name :: Int,
     idris_lineapps :: [((FilePath, Int), PTerm)],
           -- ^ Full application LHS on source line
-    idris_metavars :: [(Name, (Maybe Name, Int, [Name], Bool))],
+    idris_metavars :: [(Name, (Maybe Name, Int, [Name], Bool, Bool))],
     -- ^ The currently defined but not proven metavariables. The Int
     -- is the number of vars to display as a context, the Maybe Name
     -- is its top-level function, the [Name] is the list of local variables
-    -- available for proof search and the Bool is whether :p is
-    -- allowed
+    -- available for proof search and the Bools are whether :p is
+    -- allowed, and whether the variable is definable at all
+    -- (Metavariables are not definable if they are applied in a term which
+    -- still has hole bindings)
     idris_coercions :: [Name],
     idris_errRev :: [(Term, Term)],
     syntax_rules :: SyntaxRules,
