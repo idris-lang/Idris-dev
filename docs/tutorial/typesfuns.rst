@@ -680,7 +680,7 @@ This gets translated into the following by the compiler.
 
 .. code-block:: idris
 
-    codata Stream : Type -> Type where
+    data Stream : Type -> Type where
       (::) : (e : a) -> Inf (Stream a) -> Stream a
 
 The following is an example of how the codata type ``Stream`` can be used to
