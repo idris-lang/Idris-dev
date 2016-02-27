@@ -1902,9 +1902,9 @@ aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
         case find n imps [] of
             Just (tm, imps') ->
               PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given imps'
-            Nothing -> let ph = if f `elem` imp_meths then PRef fc [] n else Placeholder in
-              PImp p True l n ph :
-                insImpAcc (M.insert n ph pnas) ps given imps
+            Nothing -> 
+              PImp p True l n Placeholder :
+                insImpAcc (M.insert n Placeholder pnas) ps given imps
     insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given imps =
       let sc = addImpl imp_meths ist (substMatches (M.toList pnas) sc') in
         case find n imps [] of
