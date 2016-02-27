@@ -911,14 +911,16 @@ instance_ kwopt syn
                    let initOpts = if default_total ist
                                           then [TotalFn]
                                           else []
+
+                   (doc, argDocs) <- docstring syn 
                    opts <- fnOpts initOpts
                    acc <- accessibility
                    opts' <- fnOpts opts
+         
+                   if kwopt then optional instanceKeyword
+                            else do instanceKeyword
+                                    return (Just ())
 
-                   (doc, argDocs)
-                     <- try (docstring syn <* if kwopt then optional instanceKeyword
-                                                       else do instanceKeyword
-                                                               return (Just ()))
                    fc <- getFC
                    en <- optional instanceName
                    cs <- constraintList syn
