@@ -1593,7 +1593,7 @@ implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     -- binding
     -- Not the function position, but do everything else...
     implNamesIn uv (PApp fc f args) = concatMap (implNamesIn uv . getTm) args
-    implNamesIn uv t = namesIn uv ist t
+    implNamesIn uv t = implicitNamesIn (map fst uv) ist t
 
     imps top env ty@(PApp _ f as)
        = do (decls, ns) <- get
