@@ -195,7 +195,7 @@ universes; ``Type : Type 1``, ``Type 1 : Type 2``, etc.
 Cumulativity means that if ``x : Type n`` and ``n <= m``, then
 ``x : Type m``. Universe levels are always inferred by Idris, and
 cannot be specified explicitly. The REPL command ``:type Type 1`` will
-result in an errror, as will attempting to specify the universe level
+result in an error, as will attempting to specify the universe level
 of any type.
 
 Why does Idris use ``Float`` and ``Double`` instead of ``Float32`` and ``Float64``?
