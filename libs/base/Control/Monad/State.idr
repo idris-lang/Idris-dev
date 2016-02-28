@@ -54,7 +54,7 @@ gets f = do s <- get
 
 ||| The State monad. See the MonadState interface
 State : Type -> Type -> Type
-State s a = StateT s Identity a
+State = \s, a => StateT s Identity a
 
 ||| Unwrap a State monad computation.
 runState : StateT s Identity a -> s -> (a, s)
