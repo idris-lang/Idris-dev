@@ -23,6 +23,16 @@ in a C function pointer.
 * C function pointers can be called.
 * Idris can access pointers to C globals.
 
+Elaborator reflection updates
+-----------------------------
+
+* Datatypes can now be defined from elaborator reflection:
+  - declareDatatype adds the type constructor declaration to the context
+  - defineDatatype adds the constructors to the datatype
+  - To declare an inductive-recursive family, declare the types of the
+    function and the type constructor before defining the pattern-match
+    cases and constructors.
+
 Minor language changes
 ----------------------
 

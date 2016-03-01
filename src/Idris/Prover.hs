@@ -85,7 +85,7 @@ assumptionNames e
 
 prove :: Bool -> Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
 prove mode opt ctxt lit n ty
-    = do ps <- fmap (\ist -> initElaborator n ctxt (idris_datatypes ist) ty) getIState
+    = do ps <- fmap (\ist -> initElaborator n ctxt (idris_datatypes ist) (idris_name ist) ty) getIState
          idemodePutSExp "start-proof-mode" n
          (tm, prf) <-
             if mode

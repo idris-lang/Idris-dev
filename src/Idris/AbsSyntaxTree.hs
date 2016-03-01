@@ -775,6 +775,9 @@ data Directive = DLib Codegen String |
 data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
                        | RClausesInstrs Name [([(Name, Term)], Term, Term)]
                        | RAddInstance Name Name
+                       | RDatatypeDeclInstrs Name [PArg]
+                       | RDatatypeDefnInstrs Name Type [(Name, [PArg], Type)]
+                         -- ^ Datatype, constructors
 
 -- | For elaborator state
 data EState = EState {

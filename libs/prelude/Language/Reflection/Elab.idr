@@ -57,11 +57,11 @@ data TyConArg =
   ||| Indices are not uniform
   TyConIndex FunArg
 
-||| A type declaration
+||| A type declaration for a function or datatype
 record TyDecl where
   constructor Declare
 
-  ||| The name of the function being declared.
+  ||| The fully-qualified name of the function or datatype being declared.
   name : TTName
 
   ||| Each argument is in the scope of the names of previous arguments.
@@ -81,6 +81,34 @@ record FunDefn a where
   constructor DefineFun
   name : TTName
   clauses : List (FunClause a)
+
+
+||| A constructor to be associated with a new datatype.
+record ConstructorDefn where
+  constructor Constructor
+
+  ||| The name of the constructor. The name must _not_ be qualified -
+  ||| that is, it should begin with the `UN` or `MN` constructors.
+  name : TTName
+
+  ||| The constructor arguments. Idris will infer which arguments are
+  ||| datatype parameters.
+  arguments : List FunArg
+
+  ||| The specific type constructed by the constructor.
+  returnType : Raw
+
+
+||| A definition of a datatype to be added during an elaboration script.
+record DataDefn where
+  constructor DefineDatatype
+  ||| The name of the datatype being defined. It must be
+  ||| fully-qualified, and it must have been previously declared as a
+  ||| datatype.
+  name : TTName
+
+  ||| A list of constructors for the datatype.
+  constructors : List ConstructorDefn
 
 
 data CtorArg = CtorParameter FunArg | CtorField FunArg
@@ -151,6 +179,8 @@ data Elab : Type -> Type where
 
   Prim__DeclareType : TyDecl -> Elab ()
   Prim__DefineFunction : FunDefn Raw -> Elab ()
+  Prim__DeclareDatatype : TyDecl -> Elab ()
+  Prim__DefineDatatype : DataDefn -> Elab ()
   Prim__AddInstance : TTName -> TTName -> Elab ()
   Prim__IsTCName : TTName -> Elab Bool
 
@@ -509,6 +539,17 @@ namespace Tactics
   export
   defineFunction : FunDefn Raw -> Elab ()
   defineFunction defun = Prim__DefineFunction defun
+
+  ||| Declare a datatype in the global context. This step only
+  ||| establishes the type constructor; use `defineDatatype` to give
+  ||| it constructors.
+  export
+  declareDatatype : TyDecl -> Elab ()
+  declareDatatype decl = Prim__DeclareDatatype decl
+
+  export
+  defineDatatype : DataDefn -> Elab ()
+  defineDatatype defn = Prim__DefineDatatype defn
 
   ||| Register a new implementation for interface resolution.
   |||
