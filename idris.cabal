@@ -609,6 +609,14 @@ Extra-source-files:
                        test/primitives005/*.idr
                        test/primitives005/expected
 
+                       test/primitives006/run
+                       test/primitives006/array.c
+                       test/primitives006/array.h
+                       test/primitives006/load-test.idr
+                       test/primitives006/Data/Bytes.idr
+                       test/primitives006/Data/ByteArray.idr
+                       test/primitives006/expected
+
                        test/pkg001/run
                        test/pkg001/test.ipkg
                        test/pkg001/*.idr

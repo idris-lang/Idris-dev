@@ -27,7 +27,7 @@
 typedef enum {
     CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
     BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    MANAGEDPTR, RAWDATA
+    MANAGEDPTR, RAWDATA, CDATA
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -67,20 +67,21 @@ typedef struct Closure {
         uint32_t bits32;
         uint64_t bits64;
         ManagedPtr* mptr;
+        CHeapItem* c_heap_item;
         size_t size;
     } info;
 } Closure;
 
-struct VM_t;
+struct VM;
 
 struct Msg_t {
-    struct VM_t* sender;
+    struct VM* sender;
     VAL msg;
 };
 
 typedef struct Msg_t Msg;
 
-struct VM_t {
+struct VM {
     int active; // 0 if no longer running; keep for message passing
                 // TODO: If we're going to have lots of concurrent threads,
                 // we really need to be cleverer than this!
@@ -90,6 +91,7 @@ struct VM_t {
     VAL* valstack_base;
     VAL* stack_max;
 
+    CHeap c_heap;
     Heap heap;
 #ifdef HAS_PTHREAD
     pthread_mutex_t inbox_lock;
@@ -110,7 +112,37 @@ struct VM_t {
     VAL reg1;
 };
 
-typedef struct VM_t VM;
+typedef struct VM VM;
+
+
+/* C data interface: allocation on the C heap.
+ *
+ * Although not enforced in code, CData is meant to be opaque
+ * and non-RTS code (such as libraries or C bindings) should
+ * access only its (void *) field called "data".
+ *
+ * Feel free to mutate cd->data; the heap does not care
+ * about its particular value. However, keep in mind
+ * that it must not break Idris's referential transparency.
+ *
+ * If you call cdata_allocate or cdata_manage, the resulting
+ * CData object *must* be returned from your FFI function so
+ * that it is inserted in the C heap. Otherwise the memory
+ * will be leaked.
+ */
+
+/// C data block. Contains (void * data).
+typedef CHeapItem * CData;
+
+/// Allocate memory, returning the corresponding C data block.
+CData cdata_allocate(size_t size, CDataFinalizer * finalizer);
+
+/// Wrap a pointer as a C data block.
+/// The size should be an estimate of how much memory, in bytes,
+/// is associated with the pointer. This estimate need not be absolutely precise
+/// but it is necessary for GC to work effectively.
+CData cdata_manage(void * data, size_t size, CDataFinalizer * finalizer);
+
 
 // Create a new VM
 VM* init_vm(int stack_size, size_t heap_size,
@@ -150,6 +182,7 @@ typedef void(*func)(VM*, VAL*);
 #define GETPTR(x) (((VAL)(x))->info.ptr)
 #define GETMPTR(x) (((VAL)(x))->info.mptr->data)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
+#define GETCDATA(x) (((VAL)(x))->info.c_heap_item)
 
 #define GETBITS8(x) (((VAL)(x))->info.bits8)
 #define GETBITS16(x) (((VAL)(x))->info.bits16)
@@ -210,6 +243,7 @@ VAL MKB8(VM* vm, uint8_t b);
 VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);
 VAL MKB64(VM* vm, uint64_t b);
+VAL MKCDATA(VM* vm, CHeapItem * item);
 
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
@@ -217,6 +251,7 @@ VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKMPTRc(VM* vm, void* ptr, size_t size);
+VAL MKCDATAc(VM* vm, CHeapItem * item);
 
 char* GETSTROFF(VAL stroff);
 

@@ -35,6 +35,8 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     alloc_heap(&(vm->heap), heap_size, heap_size, NULL);
 
+    c_heap_init(&vm->c_heap);
+
     vm->ret = NULL;
     vm->reg1 = NULL;
 #ifdef HAS_PTHREAD
@@ -116,6 +118,7 @@ Stats terminate(VM* vm) {
 #endif
     free(vm->valstack);
     free_heap(&(vm->heap));
+    c_heap_destroy(&(vm->c_heap));
 #ifdef HAS_PTHREAD
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
@@ -130,6 +133,17 @@ Stats terminate(VM* vm) {
 
     STATS_LEAVE_EXIT(stats)
     return stats;
+}
+
+CData cdata_allocate(size_t size, CDataFinalizer finalizer)
+{
+    void * data = (void *) malloc(size);
+    return cdata_manage(data, size, finalizer);
+}
+
+CData cdata_manage(void * data, size_t size, CDataFinalizer finalizer)
+{
+    return c_heap_create_item(data, size, finalizer);
 }
 
 void idris_requireAlloc(size_t size) {
@@ -270,6 +284,22 @@ char* GETSTROFF(VAL stroff) {
     // Assume STROFF
     StrOffset* root = stroff->info.str_offset;
     return (root->str->info.str + root->offset);
+}
+
+VAL MKCDATA(VM* vm, CHeapItem * item) {
+    c_heap_insert_if_needed(vm, &vm->c_heap, item);
+    Closure* cl = allocate(sizeof(Closure), 0);
+    SETTY(cl, CDATA);
+    cl->info.c_heap_item = item;
+    return cl;
+}
+
+VAL MKCDATAc(VM* vm, CHeapItem * item) {
+    c_heap_insert_if_needed(vm, &vm->c_heap, item);
+    Closure* cl = allocate(sizeof(Closure), 1);
+    SETTY(cl, CDATA);
+    cl->info.c_heap_item = item;
+    return cl;
 }
 
 VAL MKPTR(VM* vm, void* ptr) {

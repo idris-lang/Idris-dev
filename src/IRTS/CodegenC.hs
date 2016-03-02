@@ -354,6 +354,7 @@ toFType (FCon c)
     | c == sUN "C_Float" = FArith ATFloat
     | c == sUN "C_Ptr" = FPtr
     | c == sUN "C_MPtr" = FManagedPtr
+    | c == sUN "C_CData" = FCData
     | c == sUN "C_Unit" = FUnit
 toFType (FApp c [_,ity])
     | c == sUN "C_IntT" = FArith (toAType ity)
@@ -378,6 +379,7 @@ c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
 c_irts FManagedPtr l x = l ++ "MKMPTR(vm, " ++ x ++ ")"
 c_irts (FArith ATFloat) l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
+c_irts FCData l x = l ++ "MKCDATA(vm, " ++ x ++ ")"
 c_irts FAny l x = l ++ x
 c_irts FFunction l x = error "Return of function from foreign call is not supported"
 c_irts FFunctionIO l x = error "Return of function from foreign call is not supported"
@@ -391,6 +393,7 @@ irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
 irts_c FManagedPtr x = "GETMPTR(" ++ x ++ ")"
 irts_c (FArith ATFloat) x = "GETFLOAT(" ++ x ++ ")"
+irts_c FCData x = "GETCDATA(" ++ x ++ ")"
 irts_c FAny x = x
 irts_c FFunctionIO x = wrapped x
 irts_c FFunction x = wrapped x

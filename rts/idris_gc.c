@@ -60,6 +60,10 @@ VAL copy(VM* vm, VAL x) {
             memcpy(cl, x, size);
         }
         break;
+    case CDATA:
+        cl = MKCDATAc(vm, x->info.c_heap_item);
+        c_heap_mark_item(x->info.c_heap_item);
+        break;
     default:
         break;
     }
@@ -132,6 +136,9 @@ void idris_gc(VM* vm) {
     if ((vm->heap.next - vm->heap.heap) > vm->heap.size >> 1) {
         vm->heap.size += vm->heap.growth;
     }
+
+    // finally, sweep the C heap
+    c_heap_sweep(&vm->c_heap);
 
     STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
     HEAP_CHECK(vm)
