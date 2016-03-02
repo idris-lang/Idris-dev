@@ -287,18 +287,18 @@ char* GETSTROFF(VAL stroff) {
 }
 
 VAL MKCDATA(VM* vm, CHeapItem * item) {
+    c_heap_insert_if_needed(vm, &vm->c_heap, item);
     Closure* cl = allocate(sizeof(Closure), 0);
     SETTY(cl, CDATA);
     cl->info.c_heap_item = item;
-    c_heap_insert_if_needed(vm, &vm->c_heap, item);
     return cl;
 }
 
 VAL MKCDATAc(VM* vm, CHeapItem * item) {
+    c_heap_insert_if_needed(vm, &vm->c_heap, item);
     Closure* cl = allocate(sizeof(Closure), 1);
     SETTY(cl, CDATA);
     cl->info.c_heap_item = item;
-    c_heap_insert_if_needed(vm, &vm->c_heap, item);
     return cl;
 }
 
