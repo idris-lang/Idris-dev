@@ -39,8 +39,8 @@ alloc x i = do
 
 main : IO ()
 main = do
-    -- First allocate 4096 64M arrays to break the C heap if there's a bug
-    alloc 0 4096 >>= printLn
+    -- First allocate 1024 64M arrays to break the C heap if there's a bug
+    alloc 0 1024 >>= printLn
 
     -- Then, test Bytes
     traverse_ (unit n . prim__truncInt_B8) [1..n]
