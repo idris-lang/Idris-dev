@@ -75,6 +75,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
              libFlags <- getLibFlags
              incFlags <- getIncFlags
              envFlags <- getEnvFlags
+             let stackFlag = if isWindows then ["-Wl,--stack,16777216"] else []
              let args = [gccDbg dbg] ++
                         gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
@@ -85,7 +86,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
                         (if not iface then libFlags else []) ++
                         incFlags ++
                         (if not iface then libs else []) ++
-                        flags ++
+                        flags ++ stackFlag ++
                         ["-o", out]
 --              putStrLn (show args)
              exit <- rawSystem comp args
