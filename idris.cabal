@@ -839,11 +839,6 @@ Flag GMP
   Default:      False
   manual:       True
 
-Flag curses
-  Description:  Use Curses to get the screen width
-  Default:      False
-  manual:       True
-
 -- This flag determines whether to show Git hashes in version strings
 -- Defaults to True because Hackage is a source release
 Flag release
@@ -1002,6 +997,7 @@ Library
                 , pretty < 1.2
                 , process < 1.3
                 , split < 0.3
+                , terminal-size < 0.4
                 , text >=1.2.1.0 && < 1.3
                 , time >= 1.4 && < 1.6
                 , transformers < 0.5
@@ -1053,9 +1049,6 @@ Library
      build-depends: libffi < 0.2
      extra-libraries: gmp
      cpp-options:   -DIDRIS_GMP
-  if flag(curses)
-     build-depends: hscurses < 1.5
-     cpp-options:   -DCURSES
   if flag(freestanding)
      other-modules: Target_idris
      cpp-options:   -DFREESTANDING

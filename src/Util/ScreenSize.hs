@@ -1,24 +1,14 @@
-{-# LANGUAGE CPP #-}
 module Util.ScreenSize(getScreenWidth) where
 
-#ifndef CURSES
-
-getScreenWidth :: IO Int
-getScreenWidth = return 80
-
-#else
-
-import UI.HSCurses.Curses
+import System.Console.Terminal.Size (size, width)
 import System.IO (hIsTerminalDevice, stdout)
 
 getScreenWidth :: IO Int
 getScreenWidth = do term <- hIsTerminalDevice stdout
+                    sz <- size 
                     if term
-                       then do
-                         initScr
-                         refresh
-                         size <- scrSize
-                         endWin
-                         return (snd size)
-                       else return 80
-#endif
+                        then case sz of
+                                Just w  -> return $ width w
+                                Nothing -> return 80
+                        else return 80
+
