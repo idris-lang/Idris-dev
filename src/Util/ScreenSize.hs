@@ -5,10 +5,6 @@ import System.IO (hIsTerminalDevice, stdout)
 
 getScreenWidth :: IO Int
 getScreenWidth = do term <- hIsTerminalDevice stdout
-                    sz <- size 
                     if term
-                        then case sz of
-                                Just w  -> return $ width w
-                                Nothing -> return 80
-                        else return 80
-
+                      then fmap (maybe 80 width) size
+                      else return 80
