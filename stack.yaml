@@ -5,7 +5,6 @@ flags:
    idris:
      FFI: true
      GMP: True
-     curses: True
 extra-deps: 
 - annotated-wl-pprint-0.7.0
 - cheapskate-0.1.0.4
