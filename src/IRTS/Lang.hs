@@ -133,7 +133,7 @@ data LiftState = LS Name Int [(Name, LDecl)]
 
 lname (NS n x) i = NS (lname n i) x
 lname (UN n) i = MN i n
-lname x i = sMN i (show x ++ "_lam")
+lname x i = sMN i (showCG x ++ "_lam")
 
 liftAll :: [(Name, LDecl)] -> [(Name, LDecl)]
 liftAll xs = concatMap (\ (x, d) -> lambdaLift x d) xs
@@ -216,7 +216,7 @@ allocUnique defs (n, LFun opts fn args e)
     -- Keep track of 'updatable' names in the state, i.e. names whose heap
     -- entry may be reused, along with the arity which was there
     findUp :: LExp -> State [(Name, Int)] LExp
-    findUp (LApp t (LV (Glob n)) as) 
+    findUp (LApp t (LV (Glob n)) as)
        | Just (LConstructor _ i ar) <- lookupCtxtExact n defs,
          ar == length as
           = findUp (LCon Nothing i n as)
@@ -242,7 +242,7 @@ allocUnique defs (n, LFun opts fn args e)
     findUp (LOp o es) = LOp o <$> mapM findUp es
     findUp (LCase Updatable e@(LV (Glob n)) as)
            = LCase Updatable e <$> mapM (doUpAlt n) as
-    findUp (LCase t e as) 
+    findUp (LCase t e as)
            = LCase t <$> findUp e <*> mapM findUpAlt as
     findUp t = return t
 
@@ -253,7 +253,7 @@ allocUnique defs (n, LFun opts fn args e)
     findUpAlt (LConstCase i rhs) = LConstCase i <$> findUp rhs
     findUpAlt (LDefaultCase rhs) = LDefaultCase <$> findUp rhs
 
-    doUpAlt n (LConCase i t args rhs) 
+    doUpAlt n (LConCase i t args rhs)
            = do avail <- get
                 put ((n, length args) : avail)
                 rhs' <- findUp rhs
@@ -283,7 +283,7 @@ usedIn env (LLet n v e) = usedIn env v ++ usedIn (env \\ [n]) e
 usedIn env (LLam ns e) = usedIn (env \\ ns) e
 usedIn env (LCon v i n args) = let rest = concatMap (usedIn env) args in
                                    case v of
-                                      Nothing -> rest 
+                                      Nothing -> rest
                                       Just (Glob n) -> usedArg env n ++ rest
 usedIn env (LProj t i) = usedIn env t
 usedIn env (LCase up e alts) = usedIn env e ++ concatMap (usedInA env) alts
@@ -330,7 +330,7 @@ instance Show LExp where
                        Updatable -> "! "
          fmt [] = ""
          fmt [alt]
-            = "\t" ++ ind ++ "| " ++ showAlt env (ind ++ "    ") alt 
+            = "\t" ++ ind ++ "| " ++ showAlt env (ind ++ "    ") alt
          fmt (alt:as)
             = "\t" ++ ind ++ "| " ++ showAlt env (ind ++ ".   ") alt
                 ++ "\n" ++ fmt as
