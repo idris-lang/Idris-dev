@@ -30,27 +30,16 @@ test3 = STRUCT [DOUBLE, DOUBLE, I8, I64]
 test4 : Composite
 test4 = PACKEDSTRUCT [I8, I8, I8, I64]
 
-printMore : IO ()
-printMore = do
-    p <- alloc test3
-    f3 <- return $ (test3 # 1) p
-    a <- peek DOUBLE f3
-    printLn a
-    free p
-    fms <- return $ (test2#0) !mystruct
-    poke I32 fms 122
-    print_mystruct
-    printLn test4
-    printLn !size1
-    printLn !size2
-    printLn $ fields test3
-    printLn $ offsets (STRUCT [I8, I8, I8, I64, test3])
-    printLn $ sizeOf (ARRAY 67 I32)
-    printLn $ sizeOf test1
-    printLn $ sizeOf test2
-
 main : IO ()
 main = do
     printLn $ sizeOf test1 == !size1
     printLn $ sizeOf test2 == !size2
---    printMore
+    fms <- return $ (test2#0) !mystruct
+    poke I32 fms 122
+    print_mystruct
+    printLn $ fields test3
+    withAlloc test2 $ \p => do
+        f1 <- return $ (test2 # 0) p
+        poke I32 f1 8
+        update I32 f1 (* 2)
+        print !(peek I32 f1)
