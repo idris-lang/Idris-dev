@@ -15,6 +15,7 @@ data CType = I8 | I16 | I32 | I64 | FLOAT | DOUBLE | PTR
 data Composite = T CType | ARRAY Int Composite | STRUCT (List Composite) | UNION (List Composite)
                 | PACKEDSTRUCT (List Composite)
 
+||| Implicit conversion of primitive C types to composites
 implicit mkComposite : CType -> Composite
 mkComposite x = T x
 
@@ -34,6 +35,7 @@ Show Composite where
     show (UNION xs) = "UNION " ++ show xs
     show (PACKEDSTRUCT xs) = "PACKEDSTRUCT " ++ show xs
 
+||| What Idris type the C type is marshalled to
 translate : CType -> Type
 translate I8 = Bits8
 translate I16 = Bits16
@@ -44,6 +46,7 @@ translate DOUBLE = Double
 translate PTR = Ptr
 
 mutual
+    private
     sizeOfCT : CType -> Int
     sizeOfCT I8 = 1
     sizeOfCT I16 = 2
@@ -53,6 +56,8 @@ mutual
     sizeOfCT DOUBLE = 8
     sizeOfCT PTR = prim__sizeofPtr
 
+    ||| Size of value of the type in bytes
+    export
     sizeOf : Composite -> Int
     sizeOf (T ct) = sizeOfCT ct
     sizeOf (ARRAY n t) = n * sizeOf t
@@ -60,6 +65,7 @@ mutual
     sizeOf (UNION xs) = foldl (\acc, x =>max acc $ sizeOf x) 0 xs
     sizeOf (PACKEDSTRUCT xs) = foldl (\acc, x => acc + sizeOf x) 0 xs
 
+    private
     alignOfCT : CType -> Int
     alignOfCT I8 = 1
     alignOfCT I16 = 2
@@ -69,6 +75,8 @@ mutual
     alignOfCT DOUBLE = prim__sizeofPtr
     alignOfCT PTR = prim__sizeofPtr
 
+    ||| Alignment requirement of the type
+    export
     alignOf : Composite -> Int
     alignOf (T t) = alignOfCT t
     alignOf (ARRAY n t) = alignOf t
@@ -76,12 +84,15 @@ mutual
     alignOf (UNION xs) = foldl (\acc, x => max acc $ alignOf x) 0 xs
     alignOf (PACKEDSTRUCT xs) = 1
 
+    private
     pad : Int -> Int -> Int
     pad pos align = let c = pos `mod` align in if c == 0 then 0 else align - c
 
+    private
     nextOffset : Composite -> Int -> Int
     nextOffset ty pos = pos + pad pos (alignOf ty)
 
+    private
     offsetsStruct : List Composite -> List Int
     offsetsStruct xs = offsets' xs 0
         where
@@ -89,6 +100,7 @@ mutual
             offsets' [] _ = []
             offsets' (x::xs) pos = (nextOffset x pos)::(offsets' xs (nextOffset x pos + sizeOf x))
 
+    private
     sizeOfStruct : List Composite -> Int
     sizeOfStruct xs = sizeStruct' xs 0 1
         where
@@ -97,6 +109,8 @@ mutual
             sizeStruct' (x::xs) pos maxAlign = sizeStruct' xs (nextOffset x pos + sizeOf x)
                                                         (max maxAlign (alignOf x))
 
+||| Number of fields in a composite type
+export
 fields : Composite -> Nat
 fields (STRUCT xs) = length xs
 fields (PACKEDSTRUCT xs) = length xs
@@ -104,6 +118,7 @@ fields (UNION xs) = length xs
 fields (ARRAY n _) = toNat n
 fields (T _) = 1
 
+private
 offsetsPacked : List Composite -> List Int
 offsetsPacked xs = offsets' xs [] 0
     where
@@ -117,6 +132,7 @@ indexOrFail i xs = case index' i xs of
                         Just x => x
                         Nothing => error "Out of bounds access"
 
+||| The offset of a firld in a composite type
 export
 offset : Composite -> Nat -> Int
 offset (STRUCT xs) i = indexOrFail i (offsetsStruct xs)
@@ -124,6 +140,8 @@ offset (PACKEDSTRUCT xs) i = indexOrFail i (offsetsPacked xs)
 offset (ARRAY _ t) i = sizeOf t * toIntNat i
 offset (T _) _ = 0
 
+||| All offsets of a composite type
+export
 offsets : Composite -> List Int
 offsets (STRUCT xs) = offsetsStruct xs
 offsets (PACKEDSTRUCT xs) = offsetsPacked xs
@@ -131,7 +149,7 @@ offsets (UNION xs) = replicate (length xs) 0
 offsets (ARRAY n t) = [ x*sizeOf t | x <- [0..n-1]]
 offsets (T _) = [0]
 
-
+||| The type of a field in a composite type.
 export
 fieldType : Composite -> Nat -> Composite
 fieldType (STRUCT xs@(y::_)) i = indexOrFail i xs
