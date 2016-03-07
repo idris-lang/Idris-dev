@@ -348,6 +348,10 @@ void idris_poke(void* ptr, i_int offset, uint8_t data);
 
 VAL idris_peekPtr(VM* vm, VAL ptr, VAL offset);
 VAL idris_pokePtr(VAL ptr, VAL offset, VAL data);
+VAL idris_peekDouble(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokeDouble(VAL ptr, VAL offset, VAL data);
+VAL idris_peekSingle(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokeSingle(VAL ptr, VAL offset, VAL data);
 
 // String primitives
 VAL idris_concat(VM* vm, VAL l, VAL r);
