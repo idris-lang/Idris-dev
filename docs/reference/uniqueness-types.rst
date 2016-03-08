@@ -34,7 +34,7 @@ declare the type of unique lists as follows:
 
 .. code-block:: idris
 
-    data UList : Type -> UniqueType
+    data UList : Type -> UniqueType where
          Nil   : UList a
          (::)  : a -> UList a -> UList a
 
@@ -94,7 +94,7 @@ since it would embed a unique value in a possible non-unique value:
 
 .. code-block:: idris
 
-    data BadList : UniqueType -> Type
+    data BadList : UniqueType -> Type where
          Nil   : {a : UniqueType} -> BadList a
          (::)  : {a : UniqueType} -> a -> BadList a -> BadList a
 
