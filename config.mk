@@ -7,7 +7,6 @@ ifneq (, $(findstring MSYS, $(shell uname -a)))
 	endif
 endif
 
-AR              ?=ar
 RANLIB          ?=ranlib
 
 CABAL           :=cabal
