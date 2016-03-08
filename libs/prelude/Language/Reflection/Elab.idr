@@ -335,7 +335,7 @@ namespace Tactics
 
   export
   matchApply : (op : Raw) -> (argSpec : List Bool) -> Elab (List TTName)
-  matchApply tm argSpec = map snd <$> Prim__Apply tm argSpec
+  matchApply tm argSpec = map snd <$> Prim__MatchApply tm argSpec
 
   ||| Move the focus to the specified hole. Fails if the hole does not
   ||| exist.
