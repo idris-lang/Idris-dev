@@ -1,14 +1,13 @@
-resolver: lts-4.2
+resolver: lts-5.5
+
 packages:
-- '.'
+  - '.'
+
 flags:
-   idris:
-     FFI: true
-     GMP: True
-extra-deps: 
-- annotated-wl-pprint-0.7.0
-- cheapskate-0.1.0.4
-- libffi-0.1
+  idris:
+    FFI: true
+    GMP: true
+
 nix:
-   enable: false
-   shell-file: stack-shell.nix
+  enable: false
+  shell-file: stack-shell.nix
