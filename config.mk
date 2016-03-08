@@ -1,4 +1,12 @@
-CC              ?=cc
+ifneq (, $(findstring MSYS, $(shell uname -a)))
+	ifeq (cc,$(CC))
+		# In MSYS2, when using the mingw version of gcc, there is no cc -> gcc
+		# symlink. We can't use ?= here because CC is set implicitly to cc.
+		# Cross compiling users can set CC to their cross compiler.
+		CC		=gcc
+	endif
+endif
+
 AR              ?=ar
 RANLIB          ?=ranlib
 
