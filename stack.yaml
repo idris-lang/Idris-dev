@@ -8,6 +8,9 @@ flags:
     FFI: true
     GMP: true
 
+extra-deps:
+  - libffi-0.1
+
 nix:
   enable: false
   shell-file: stack-shell.nix
