@@ -13,7 +13,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt, 
-                lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
+                lookupTotal, lookupTotalExact, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
@@ -1082,6 +1082,10 @@ lookupDefAccExact n mkpublic ctxt
 
 lookupTotal :: Name -> Context -> [Totality]
 lookupTotal n ctxt = map mkt $ lookupCtxt n (definitions ctxt)
+  where mkt (d, a, t, m) = t
+
+lookupTotalExact :: Name -> Context -> Maybe Totality
+lookupTotalExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
   where mkt (d, a, t, m) = t
 
 lookupMetaInformation :: Name -> Context -> [MetaInformation]

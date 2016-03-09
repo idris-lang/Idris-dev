@@ -381,8 +381,8 @@ calcTotality fc n pats
             _ -> checkSizeChange n
   where
     checkLHS i (P _ fn _)
-        = case lookupTotal fn (tt_ctxt i) of
-               [Partial _] -> return (Partial (Other [fn]))
+        = case lookupTotalExact fn (tt_ctxt i) of
+               Just (Partial _) -> return (Partial (Other [fn]))
                _ -> Nothing
     checkLHS i (App _ f a) = mplus (checkLHS i f) (checkLHS i a)
     checkLHS _ _ = Nothing
@@ -596,8 +596,8 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
 
       toJust (n, t) = Just t
 
-      getType n = case lookupTy n (tt_ctxt ist) of
-                       [ty] -> delazy (normalise (tt_ctxt ist) [] ty) -- must exist
+      getType n = case lookupTyExact n (tt_ctxt ist) of
+                       Just ty -> delazy (normalise (tt_ctxt ist) [] ty) -- must exist
 
       isInductive (P _ nty _) (P _ nty' _) =
           let co = case lookupCtxt nty (idris_datatypes ist) of
