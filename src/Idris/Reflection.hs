@@ -48,6 +48,10 @@ data RCtorArg = RCtorParameter RFunArg | RCtorField RFunArg deriving Show
 
 data RDatatype = RDatatype Name [RTyConArg] Raw [(Name, [RCtorArg], Raw)] deriving Show
 
+data RConstructorDefn = RConstructor Name [RFunArg] Raw
+
+data RDataDefn = RDefineDatatype Name [RConstructorDefn]
+
 rArgOpts :: RErasure -> [ArgOpt]
 rArgOpts RErased = [InaccessibleArg]
 rArgOpts _ = []
@@ -963,7 +967,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "
     Right (TextPart msg)
 reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
-    case runElab initEState (reifyTTName ttn) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
+    case runElab initEState (reifyTTName ttn) (initElaborator (sMN 0 "hole") initContext emptyContext 0 Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
@@ -971,7 +975,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
-  case runElab initEState (reifyTT tm) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
+  case runElab initEState (reifyTT tm) (initElaborator (sMN 0 "hole") initContext emptyContext 0 Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
       show tm ++
@@ -979,7 +983,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
     OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "RawPart" =
-  case runElab initEState (reifyRaw tm) (initElaborator (sMN 0 "hole") initContext emptyContext Erased) of
+  case runElab initEState (reifyRaw tm) (initElaborator (sMN 0 "hole") initContext emptyContext 0 Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected raw term " ++
       show tm ++
@@ -1043,6 +1047,18 @@ reifyFunDefn (App _ (App _ (App _ (P _ n _) (P _ t _)) fnN) clauses)
           | n == tacN "MkImpossibleClause" && t == reflm "Raw" = fmap RMkImpossibleClause $ reifyRaw lhs
         reifyC tm = fail $ "Couldn't reify " ++ show tm ++ " as a clause."
 reifyFunDefn tm = fail $ "Couldn't reify " ++ show tm ++ " as a function declaration."
+
+reifyRConstructorDefn :: Term -> ElabD RConstructorDefn
+reifyRConstructorDefn (App _ (App _ (App _ (P _ n _) cn) args) retTy)
+  | n == tacN "Constructor", Just args' <- unList args
+  = RConstructor <$> reifyTTName cn <*> mapM reifyRFunArg args' <*> reifyRaw retTy
+reifyRConstructorDefn aTm = fail $ "Couldn't reify " ++ show aTm ++ " as an RConstructorDefn"
+
+reifyRDataDefn :: Term -> ElabD RDataDefn
+reifyRDataDefn (App _ (App _ (P _ n _) tyn) ctors)
+  | n == tacN "DefineDatatype", Just ctors' <- unList ctors
+  = RDefineDatatype <$> reifyTTName tyn <*> mapM reifyRConstructorDefn ctors'
+reifyRDataDefn aTm = fail $ "Couldn't reify " ++ show aTm ++ " as an RDataDefn"
 
 envTupleType :: Raw
 envTupleType

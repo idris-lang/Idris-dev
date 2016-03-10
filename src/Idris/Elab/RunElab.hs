@@ -32,18 +32,20 @@ elabRunElab info fc script' ns =
      mustBeElabScript scriptTy
      ist <- getIState
      ctxt <- getContext
-     (ElabResult tyT' defer is ctxt' newDecls highlights, log) <-
-        tclift $ elaborate ctxt (idris_datatypes ist) (sMN 0 "toplLevelElab") elabScriptTy initEState
+     (ElabResult tyT' defer is ctxt' newDecls highlights newGName, log) <-
+        tclift $ elaborate ctxt (idris_datatypes ist) (idris_name ist) (sMN 0 "toplLevelElab") elabScriptTy initEState
                  (transformErr RunningElabScript
                    (erun fc (do tm <- runElabAction ist fc [] script ns
                                 EState is _ impls highlights <- getAux
                                 ctxt <- get_context
                                 let ds = [] -- todo
                                 log <- getLog
-                                return (ElabResult tm ds (map snd is) ctxt impls highlights))))
+                                newGName <- get_global_nextname
+                                return (ElabResult tm ds (map snd is) ctxt impls highlights newGName))))
 
 
 
      setContext ctxt'
      processTacticDecls info newDecls
      sendHighlighting highlights
+     updateIState $ \i -> i { idris_name = newGName }

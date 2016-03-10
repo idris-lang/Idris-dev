@@ -90,7 +90,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
          ttag <- getName
          i <- getIState
          let as = map (const (Left (Msg ""))) (getArgTys cty)
-         let params = findParams  (map snd cons)
+         let params = findParams n (map snd cons)
          logElab 2 $ "Parameters : " ++ show params
          -- TI contains information about mutually declared types - this will
          -- be updated when the mutual block is complete
@@ -132,13 +132,6 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
                  (nfc, AnnName n Nothing Nothing Nothing))
                dcons
   where
-        setDetaggable :: Name -> Idris ()
-        setDetaggable n = do
-            ist <- getIState
-            let opt = idris_optimisation ist
-            case lookupCtxt n opt of
-                [oi] -> putIState ist{ idris_optimisation = addDef n oi{ detaggable = True } opt }
-                _    -> putIState ist{ idris_optimisation = addDef n (Optimise [] True) opt }
 
         checkDefinedAs fc n t i
             = let defined = tclift $ tfail (At fc (AlreadyDefined n))
@@ -152,62 +145,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
                                          _ -> defined
                            _ -> defined
                    _ -> defined
-        -- parameters are names which are unchanged across the structure,
-        -- which appear exactly once in the return type of a constructor
 
-        -- First, find all applications of the constructor, then check over
-        -- them for repeated arguments
-
-        findParams :: [Type] -> [Int]
-        findParams ts = let allapps = map getDataApp ts
-           -- do each constructor separately, then merge the results (names
-           -- may change between constructors)
-                            conParams = map paramPos allapps in
-                            inAll conParams
-
-        inAll :: [[Int]] -> [Int]
-        inAll [] = []
-        inAll (x : xs) = filter (\p -> all (\ps -> p `elem` ps) xs) x
-
-        paramPos [] = []
-        paramPos (args : rest)
-              = dropNothing $ keepSame (zip [0..] args) rest
-
-        dropNothing [] = []
-        dropNothing ((x, Nothing) : ts) = dropNothing ts
-        dropNothing ((x, _) : ts) = x : dropNothing ts
-
-        keepSame :: [(Int, Maybe Name)] -> [[Maybe Name]] ->
-                    [(Int, Maybe Name)]
-        keepSame as [] = as
-        keepSame as (args : rest) = keepSame (update as args) rest
-          where
-            update [] _ = []
-            update _ [] = []
-            update ((n, Just x) : as) (Just x' : args)
-                | x == x' = (n, Just x) : update as args
-            update ((n, _) : as) (_ : args) = (n, Nothing) : update as args
-
-        getDataApp :: Type -> [[Maybe Name]]
-        getDataApp f@(App _ _ _)
-            | (P _ d _, args) <- unApply f
-                   = if (d == n) then [mParam args args] else []
-        getDataApp (Bind n (Pi _ t _) sc)
-            = getDataApp t ++ getDataApp (instantiate (P Bound n t) sc)
-        getDataApp _ = []
-
-        -- keep the arguments which are single names, which don't appear
-        -- elsewhere
-
-        mParam args [] = []
-        mParam args (P Bound n _ : rest)
-               | count n args == 1
-                  = Just n : mParam args rest
-            where count n [] = 0
-                  count n (t : ts)
-                       | n `elem` freeNames t = 1 + count n ts
-                       | otherwise = count n ts
-        mParam args (_ : rest) = Nothing : mParam args rest
 
         cname (_, _, n, _, _, _, _) = n
 
@@ -263,7 +201,7 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
   where
     tyIs con (Bind n b sc) = tyIs con (substV (P Bound n Erased) sc)
     tyIs con t | (P Bound n' _, _) <- unApply t
-        = if n' /= tn then 
+        = if n' /= tn then
                tclift $ tfail (At fc (Elaborating "constructor " con Nothing 
                          (Msg ("Type level variable " ++ show n' ++ " is not " ++ show tn))))
              else return ()

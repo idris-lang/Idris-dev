@@ -186,12 +186,14 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
              ty' <- implicit info syn iname ty'
              let ty = addImpl [] i ty'
              ctxt <- getContext
-             (ElabResult tyT _ _ ctxt' newDecls highlights, _) <-
-                tclift $ elaborate ctxt (idris_datatypes i) iname (TType (UVal 0)) initEState
+             (ElabResult tyT _ _ ctxt' newDecls highlights newGName, _) <-
+                tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) iname (TType (UVal 0)) initEState
                          (errAt "type of " iname Nothing (erun fc (build i info ERHS [] iname ty)))
              setContext ctxt'
              processTacticDecls info newDecls
              sendHighlighting highlights
+             updateIState $ \i -> i { idris_name = newGName }
+
              ctxt <- getContext
              (cty, _) <- recheckC fc id [] tyT
              let nty = normalise ctxt [] cty

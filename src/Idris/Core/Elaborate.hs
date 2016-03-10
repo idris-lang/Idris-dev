@@ -139,13 +139,19 @@ runElab a e ps = runStateT e (ES (ps, a) "" Nothing)
 execElab :: aux -> Elab' aux a -> ProofState -> TC (ElabState aux)
 execElab a e ps = execStateT e (ES (ps, a) "" Nothing)
 
-initElaborator :: Name -> Context -> Ctxt TypeInfo -> Type -> ProofState
+initElaborator :: Name -- ^ the name of what's to be elaborated
+               -> Context -- ^ the current global context
+               -> Ctxt TypeInfo -- ^ the value of the idris_datatypes field of IState
+               -> Int -- ^ the value of the idris_name field of IState
+               -> Type -- ^ the goal type
+               -> ProofState
 initElaborator = newProof
 
-elaborate :: Context -> Ctxt TypeInfo -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
-elaborate ctxt datatypes n ty d elab = do let ps = initElaborator n ctxt datatypes ty
-                                          (a, ES ps' str _) <- runElab d elab ps
-                                          return $! (a, str)
+elaborate :: Context -> Ctxt TypeInfo -> Int -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
+elaborate ctxt datatypes globalNames n ty d elab =
+  do let ps = initElaborator n ctxt datatypes globalNames ty
+     (a, ES ps' str _) <- runElab d elab ps
+     return $! (a, str)
 
 -- | Modify the auxiliary state
 updateAux :: (aux -> aux) -> Elab' aux ()
@@ -209,6 +215,14 @@ get_datatypes = do ES p _ _ <- get
 set_datatypes :: Ctxt TypeInfo -> Elab' aux ()
 set_datatypes ds = do ES (p, a) logs prev <- get
                       put (ES (p { datatypes = ds }, a) logs prev)
+
+get_global_nextname :: Elab' aux Int
+get_global_nextname = do ES (ps, _) _ _ <- get
+                         return (global_nextname ps)
+
+set_global_nextname :: Int -> Elab' aux ()
+set_global_nextname i = do ES (ps, a) logs prev <- get
+                           put $ ES (ps { global_nextname = i}, a) logs prev
 
 -- | get the proof term
 get_term :: Elab' aux Term

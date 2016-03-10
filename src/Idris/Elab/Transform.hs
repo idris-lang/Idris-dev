@@ -54,13 +54,14 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          i <- getIState
          let lhs = addImplPat i lhs_in
          logElab 5 ("Transform LHS input: " ++ showTmImpls lhs)
-         (ElabResult lhs' dlhs [] ctxt' newDecls highlights, _) <-
-              tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "transLHS") infP initEState
+         (ElabResult lhs' dlhs [] ctxt' newDecls highlights newGName, _) <-
+              tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "transLHS") infP initEState
                        (erun fc (buildTC i info ETransLHS [] (sUN "transform")
                                    (allNamesIn lhs_in) (infTerm lhs)))
          setContext ctxt'
          processTacticDecls info newDecls
          sendHighlighting highlights
+         updateIState $ \i -> i { idris_name = newGName }
          let lhs_tm = orderPats (getInferTerm lhs')
          let lhs_ty = getInferType lhs'
          let newargs = pvars i lhs_tm
@@ -73,18 +74,21 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          let rhs = addImplBound i (map fst newargs) rhs_in
          logElab 5 ("Transform RHS input: " ++ showTmImpls rhs)
 
-         ((rhs', defer, ctxt', newDecls), _) <-
-              tclift $ elaborate ctxt (idris_datatypes i) (sMN 0 "transRHS") clhs_ty initEState
+         ((rhs', defer, ctxt', newDecls, newGName), _) <-
+              tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "transRHS") clhs_ty initEState
                        (do pbinds i lhs_tm
                            setNextName
-                           (ElabResult _ _ _ ctxt' newDecls highlights) <- erun fc (build i info ERHS [] (sUN "transform") rhs)
+                           (ElabResult _ _ _ ctxt' newDecls highlights newGName) <- erun fc (build i info ERHS [] (sUN "transform") rhs)
+                           set_global_nextname newGName
                            erun fc $ psolve lhs_tm
                            tt <- get_term
                            let (rhs', defer) = runState (collectDeferred Nothing [] ctxt tt) []
-                           return (rhs', defer, ctxt', newDecls))
+                           newGName <- get_global_nextname
+                           return (rhs', defer, ctxt', newDecls, newGName))
          setContext ctxt'
          processTacticDecls info newDecls
          sendHighlighting highlights
+         updateIState $ \i -> i { idris_name = newGName }
 
          (crhs_tm_in, crhs_ty) <- recheckC_borrowing False False [] fc id [] rhs'
          let crhs_tm = renamepats pnames crhs_tm_in

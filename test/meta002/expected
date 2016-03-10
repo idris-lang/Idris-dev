@@ -1,3 +1,6 @@
+DataDef.idr:72:1-9:
+While running an elaboration script, the following error occurred:
+Prelude.Either.Either is already defined as a datatype.
 Tacs.idr:298:15:
 When checking right hand side of testElab3 with expected type
         DPair Ty (Tm [])
