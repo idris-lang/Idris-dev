@@ -3,7 +3,7 @@ package prelude
 opts = "--nobuiltins --total --no-elim-deprecation-warnings"
 modules = Builtins, Prelude, IO,
 
-          Prelude.Algebra, Prelude.Basics, Prelude.Bool, Prelude.Cast,
+          Prelude.Algebra, Prelude.Basics, Prelude.Bool, Prelude.Cast, Prelude.Default,
           Prelude.Interfaces, Prelude.Nat, Prelude.List,
           Prelude.Maybe, Prelude.Monad, Prelude.Applicative, Prelude.Either,
           Prelude.Strings, Prelude.Chars, Prelude.Show, Prelude.Functor,
