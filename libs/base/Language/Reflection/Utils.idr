@@ -40,17 +40,30 @@ getUName (UN n)    = Just n
 getUName (NS n ns) = getUName n
 getUName _         = Nothing
 
-total
-unApply : TT -> (TT, List TT)
-unApply t = unA t []
-  where unA : TT -> List TT -> (TT, List TT)
-        unA (App fn arg) args = unA fn (arg::args)
-        unA tm           args = (tm, args)
+namespace TT
+  total
+  unApply : TT -> (TT, List TT)
+  unApply t = unA t []
+    where unA : TT -> List TT -> (TT, List TT)
+          unA (App fn arg) args = unA fn (arg::args)
+          unA tm           args = (tm, args)
 
-total
-mkApp : TT -> List TT -> TT
-mkApp tm []      = tm
-mkApp tm (a::as) = mkApp (App tm a) as
+  total
+  mkApp : Foldable f => TT -> f TT -> TT
+  mkApp f args = foldl App f args
+
+namespace Raw
+  total
+  unApply : Raw -> (Raw, List Raw)
+  unApply tm = unApply' tm []
+    where unApply' : Raw -> List Raw -> (Raw, List Raw)
+          unApply' (RApp f x) xs = unApply' f (x::xs)
+          unApply' notApp xs = (notApp, xs)
+
+  total
+  mkApp : Foldable f => Raw -> f Raw -> Raw
+  mkApp f args = foldl RApp f args
+
 
 total
 binderTy : Binder t -> t

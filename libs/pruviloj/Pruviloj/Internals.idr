@@ -26,16 +26,6 @@ updateTyConArgTy f (TyConParameter a) =
 updateTyConArgTy f (TyConIndex a) =
     TyConIndex (record {type = f (type a) } a)
 
-unApply : Raw -> (Raw, List Raw)
-unApply tm = unApply' tm []
-  where unApply' : Raw -> List Raw -> (Raw, List Raw)
-        unApply' (RApp f x) xs = unApply' f (x::xs)
-        unApply' notApp xs = (notApp, xs)
-
-mkApp : Raw -> List Raw -> Raw
-mkApp f [] = f
-mkApp f (x :: xs) = mkApp (RApp f x) xs
-
 ||| Grab the binders from around a term, alpha-converting to make
 ||| their names unique
 partial
