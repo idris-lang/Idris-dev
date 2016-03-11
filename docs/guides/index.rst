@@ -20,3 +20,4 @@ Tutorials submitted by community members.
 
    type-providers-ffi
    theorem-prover
+   visibility-modifiers
