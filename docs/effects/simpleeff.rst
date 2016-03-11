@@ -578,16 +578,17 @@ this simply by updating the type of ``eval`` to include ``STDIO``.
 
     eval : Expr -> Eff Integer [STDIO, EXCEPTION String, RND, STATE Env]
 
-Note that using ``STDIO`` will restrict the number of contexts in
-which ``eval`` can be ``run`` to those which support ``STDIO``, such
-as ``IO``. Once effect lists get longer, it can be a good idea instead
-to encapsulate sets of effects in a type synonym. This is achieved as
-follows, simply by defining a function which computes a type, since
-types are first class in Idris:
+.. note:: Using ``STDIO`` will restrict the number of contexts in
+          which ``eval`` can be ``run`` to those which support
+          ``STDIO``, such as ``IO``. Once effect lists get longer, it
+          can be a good idea instead to encapsulate sets of effects in
+          a type synonym. This is achieved as follows, simply by
+          defining a function which computes a type, since types are
+          first class in Idris:
 
-.. code-block:: idris
+          .. code-block:: idris
 
-    EvalEff : Type -> Type
-    EvalEff t = Eff t [STDIO, EXCEPTION String, RND, STATE Env]
+              EvalEff : Type -> Type
+              EvalEff t = Eff t [STDIO, EXCEPTION String, RND, STATE Env]
 
-    eval : Expr -> EvalEff Integer
+              eval : Expr -> EvalEff Integer
