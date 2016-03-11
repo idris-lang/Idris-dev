@@ -502,10 +502,11 @@ vector. For example:
 .. important:: Implicit Arguments and Scope
 
     Within the type signature the typechecker will treat all variables
-    that start with an lowercase letter as an implicit variable. To
-    get the above code example to compile you will need to provide a
-    qualified name for ``testVec``. In the example above, we have
-    assumed that the code lives within the ``Main`` module.
+    that start with an lowercase letter **and** are not applied to
+    something else as an implicit variable. To get the above code
+    example to compile you will need to provide a qualified name for
+    ``testVec``. In the example above, we have assumed that the code
+    lives within the ``Main`` module.
 
 
 If the same implicit arguments are being used a lot, it can make a
