@@ -202,6 +202,7 @@ export data CData : Type
 -- primitives for accessing memory.
 %extern prim__asPtr : ManagedPtr -> Ptr
 %extern prim__sizeofPtr : Int
+%extern prim__ptrOffset : Ptr -> Int -> Ptr
 %extern prim__peek8 : prim__WorldType -> Ptr -> Int -> Bits8
 %extern prim__peek16 : prim__WorldType -> Ptr -> Int -> Bits16
 %extern prim__peek32 : prim__WorldType -> Ptr -> Int -> Bits32

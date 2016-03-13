@@ -30,6 +30,7 @@ test3 = STRUCT [DOUBLE, DOUBLE, I8, I64]
 test4 : Composite
 test4 = PACKEDSTRUCT [I8, I8, I8, I64]
 
+
 main : IO ()
 main = do
     printLn $ sizeOf test1 == !size1
@@ -43,3 +44,5 @@ main = do
         poke I32 f1 8
         update I32 f1 (* 2)
         print !(peek I32 f1)
+    withAlloc PTR $ \p =>
+        poke PTR p fms

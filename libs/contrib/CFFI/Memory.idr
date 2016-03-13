@@ -15,6 +15,10 @@ data CPtr = CPt Ptr Int
 implicit toCPtr : Ptr -> CPtr
 toCPtr p = CPt p 0
 
+implicit toPtr : CPtr -> Ptr
+toPtr (CPt p 0) = p
+toPtr (CPt p o) = prim__ptrOffset p o
+
 ||| Import of malloc from the C standard library.
 malloc : Int -> IO Ptr
 malloc size = foreign FFI_C "malloc" (Int -> IO Ptr) size
@@ -77,10 +81,10 @@ update ty cp f = do val <- peek ty cp
 
 ||| Get a pointer to a field in a composite value
 field : Composite -> Nat ->  CPtr -> CPtr
-field arr@(ARRAY n t) i (CPt p o ) = CPt p (o + offset arr i)
-field un@(UNION xs) i (CPt p o ) = CPt p o
-field st@(STRUCT xs) i (CPt p o ) = CPt p (o + offset st i)
-field ps@(PACKEDSTRUCT xs) i (CPt p o ) = CPt p (o + offset ps i)
+field arr@(ARRAY n t) i (CPt p o) = CPt p (o + offset arr i)
+field un@(UNION xs) i (CPt p o) = CPt p o
+field st@(STRUCT xs) i (CPt p o) = CPt p (o + offset st i)
+field ps@(PACKEDSTRUCT xs) i (CPt p o) = CPt p (o + offset ps i)
 field (T t) Z p = p
 
 infixl 10 #
