@@ -663,7 +663,10 @@ doOp v (LExternal pk) [_, p, o] | pk == sUN "prim__peekSingle"
     = v ++ "idris_peekSingle(vm," ++ creg p ++ "," ++ creg o ++")"
 doOp v (LExternal pk) [] | pk == sUN "prim__sizeofPtr"
     = v ++ "MKINT(sizeof(void*))"
-doOp v (LExternal mpt) [p] | mpt == sUN "prim__asPtr" = v ++ "MKPTR(vm, GETMPTR("++ creg p ++"))"
+doOp v (LExternal mpt) [p] | mpt == sUN "prim__asPtr"
+    = v ++ "MKPTR(vm, GETMPTR("++ creg p ++"))"
+doOp v (LExternal offs) [p, n] | offs == sUN "prim__ptrOffset"
+    = v ++ "MKPTR(vm, GETPTR(" ++ creg p ++ ") + GETINT(" ++ creg n ++ "))"
 doOp _ op args = error $ "doOp not implemented (" ++ show (op, args) ++ ")"
 
 
