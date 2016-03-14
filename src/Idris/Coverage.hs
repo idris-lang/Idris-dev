@@ -334,11 +334,12 @@ checkAllCovering fc done top n | not (n `elem` done)
              x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()
 
--- Check if, in a given group of type declarations mut_ns,
+-- | Check if, in a given group of type declarations mut_ns,
 -- the constructor cn : ty is strictly positive,
 -- and update the context accordingly
-
-checkPositive :: [Name] -> (Name, Type) -> Idris Totality
+checkPositive :: [Name] -- ^ the group of type declarations
+              -> (Name, Type) -- ^ the constructor
+              -> Idris Totality
 checkPositive mut_ns (cn, ty')
     = do i <- getIState
          let ty = delazy' True (normalise (tt_ctxt i) [] ty')
