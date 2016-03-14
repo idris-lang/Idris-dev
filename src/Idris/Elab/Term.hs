@@ -18,7 +18,7 @@ import Idris.Core.Unify
 import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.Typecheck (check, recheck, converts, isType)
 import Idris.Core.WHNF (whnf)
-import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
+import Idris.Coverage (buildSCG, checkDeclTotality, checkPositive, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
 import Idris.Elab.Quasiquote (extractUnquotes)
 import Idris.Elab.Utils
@@ -2647,7 +2647,13 @@ processTacticDecls info steps =
            do updateIState $ \i -> i { idris_implicits = addDef cn impls (idris_implicits i) }
               addIBC (IBCImp cn)
 
-         for_ ctors $ \(cn, _, _) -> totcheck (NoFC, cn)
+         for_ ctors $ \(ctorN, _, _) ->
+           do totcheck (NoFC, ctorN)
+              ctxt <- tt_ctxt <$> getIState
+              case lookupTyExact ctorN ctxt of
+                Just cty -> do checkPositive (tyn : map cn ctors) (ctorN, cty)
+                               return ()
+                Nothing -> return ()
 
          case ctors of
             [ctor] -> do setDetaggable (cn ctor); setDetaggable tyn
