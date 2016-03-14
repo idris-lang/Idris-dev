@@ -492,10 +492,10 @@ vector. For example:
 
 .. code-block:: idris
 
-    testVec : Vect 4 Int
-    testVec = 3 :: 4 :: 5 :: 6 :: Nil
+    TestVec : Vect 4 Int
+    TestVec = 3 :: 4 :: 5 :: 6 :: Nil
 
-    inVect : IsElem 5 testVec
+    inVect : IsElem 5 TestVec
     inVect = There (There Here)
 
 If the same implicit arguments are being used a lot, it can make a
