@@ -12,7 +12,7 @@ partial
 auto : Elab ()
 auto = do compute
           attack
-          try $ repeatUntilFail intro'
+          try intros
           hs <- map fst <$> getEnv
           for_ hs $
             \ih => try (rewriteWith (Var ih))
@@ -23,10 +23,12 @@ auto = do compute
 partial
 mush : Elab ()
 mush =
-    do n <- gensym "j"
+    do attack
+       n <- gensym "j"
        intro n
        try intros
        ignore $ induction (Var n) `andThen` auto
+       solve
 
 plusAssoc : (j, k, l : Nat) -> plus (plus j k) l = plus j (plus k l)
 plusAssoc = %runElab mush
