@@ -95,6 +95,43 @@ data SubList : List a -> List a -> Type where
   SubNil : SubList [] xs
   InList : SubElem x ys -> SubList xs ys -> SubList (x :: xs) ys
 
+-- Some useful hints for proof construction in polymorphic programs
+%hint
+public export total
+dropFirst : SubList xs ys -> SubList xs (x :: ys)
+dropFirst SubNil = SubNil
+dropFirst (InList el sub) = InList (S el) (dropFirst sub)
+
+%hint
+public export total
+subListId : (xs : List a) -> SubList xs xs
+subListId [] = SubNil
+subListId (x :: xs) = InList Z (dropFirst (subListId xs))
+
+public export total
+inSuffix : SubElem x ys -> SubList xs ys -> SubElem x (zs ++ ys)
+inSuffix {zs = []} el sub = el
+inSuffix {zs = (x :: xs)} el sub = S (inSuffix el sub)
+
+%hint
+public export total
+dropPrefix : SubList xs ys -> SubList xs (zs ++ ys)
+dropPrefix SubNil = SubNil
+dropPrefix (InList el sub) = InList (inSuffix el sub) (dropPrefix sub)
+
+public export total
+inPrefix : SubElem x ys -> SubList xs ys -> SubElem x (ys ++ zs)
+inPrefix {zs = []} {ys} el sub
+    = rewrite appendNilRightNeutral ys in el
+inPrefix {zs = (x :: xs)} Z sub = Z
+inPrefix {zs = (x :: xs)} (S y) sub = S (inPrefix y SubNil)
+
+%hint
+public export total
+dropSuffix : SubList xs ys -> SubList xs (ys ++ zs)
+dropSuffix SubNil = SubNil
+dropSuffix (InList el sub) = InList (inPrefix el sub) (dropSuffix sub)
+
 namespace Env
   public export
   data Env  : (m : Type -> Type) -> List EFFECT -> Type where
