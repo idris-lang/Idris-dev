@@ -84,60 +84,78 @@ syntax "{" [inst] "==>" "{" {b} "}" [outst] "}" [eff]
 syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
 
 -- --------------------------------------- [ Properties and Proof Construction ]
+
+public export
+data SubElem : a -> List a -> Type where
+  Z : SubElem a (a :: as)
+  S : SubElem a as -> SubElem a (b :: as)
+  
 public export
 data SubList : List a -> List a -> Type where
-     SubNil : SubList [] []
-     Keep   : SubList xs ys -> SubList (x :: xs) (x :: ys)
-     Drop   : SubList xs ys -> SubList xs (x :: ys)
-
-%hint
-subListId : SubList xs xs
-subListId {xs = Nil} = SubNil
-subListId {xs = x :: xs} = Keep subListId
+  SubNil : SubList [] xs
+  InList : SubElem x ys -> SubList xs ys -> SubList (x :: xs) ys
 
 namespace Env
   public export
   data Env  : (m : Type -> Type) -> List EFFECT -> Type where
-       Nil  : Env m Nil
-       (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
+    Nil  : Env m Nil
+    (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
 
-public export
-data EffElem : Effect -> Type ->
-               List EFFECT -> Type where
-     Here : EffElem x a (MkEff a x :: xs)
-     There : EffElem x a xs -> EffElem x a (y :: xs)
+namespace EffElem
+  public export
+  data EffElem : Effect -> Type ->
+                 List EFFECT -> Type where
+    Here : EffElem x a (MkEff a x :: xs)
+    There : EffElem x a xs -> EffElem x a (y :: xs)
+    
+total envElem : SubElem x xs -> Env m xs -> Env m [x]
+envElem Z (x :: xs) = [x]
+envElem (S k) (x :: xs) = envElem k xs
 
 ||| make an environment corresponding to a sub-list
-private
-dropEnv : Env m ys -> SubList xs ys -> Env m xs
+%assert_total dropEnv : Env m ys -> SubList xs ys -> Env m xs
 dropEnv [] SubNil = []
-dropEnv (v :: vs) (Keep rest) = v :: dropEnv vs rest
-dropEnv (v :: vs) (Drop rest) = dropEnv vs rest
+-- dropEnv [] (InList y z) impossible
+dropEnv (y::ys) SubNil = []
+dropEnv e@(y::ys) (InList idx rest) = 
+  let [x] = envElem idx e
+  in x :: dropEnv e rest
 
 public export
-updateWith : (ys' : List a) -> (xs : List a) ->
-             SubList ys xs -> List a
-updateWith (y :: ys) (x :: xs) (Keep rest) = y :: updateWith ys xs rest
-updateWith ys        (x :: xs) (Drop rest) = x :: updateWith ys xs rest
-updateWith []        []        SubNil      = []
-updateWith (y :: ys) []        SubNil      = y :: ys
-updateWith []        (x :: xs) (Keep rest) = []
+total updateAt : (idx : SubElem x' xs) -> (a:Type) -> List EFFECT -> List EFFECT
+updateAt Z a [] = []
+updateAt Z a ((MkEff b eff) :: xs) = (MkEff a eff) :: xs
+updateAt (S k) a [] = []
+updateAt (S k) a (x :: xs) = x :: updateAt k a xs
+
+public export
+total updateWith : (ys' : List EFFECT) -> (xs : List EFFECT) ->
+             SubList ys xs -> List EFFECT
+updateWith [] xs sl = xs
+updateWith (y :: ys) xs SubNil = xs
+updateWith ((MkEff a f) :: ys) xs (InList idx rest) = updateAt idx a (updateWith ys xs rest)
+
+public export
+total replaceEnvAt : (x : a) -> (idx : SubElem x' xs) -> Env m ys ->
+               Env m (updateAt idx a ys)
+replaceEnvAt x Z [] = []
+replaceEnvAt x Z (y :: ys) = x :: ys
+replaceEnvAt x (S k) [] = []
+replaceEnvAt x (S k) (y :: ys) = y :: replaceEnvAt x k ys
 
 ||| Put things back, replacing old with new in the sub-environment
-private
-rebuildEnv : Env m ys' -> (prf : SubList ys xs) ->
+public export
+total rebuildEnv : {ys':List EFFECT} -> Env m ys' -> (prf : SubList ys xs) ->
              Env m xs -> Env m (updateWith ys' xs prf)
-rebuildEnv []        SubNil      env = env
-rebuildEnv (x :: xs) SubNil      env = x :: xs
-rebuildEnv []        (Keep rest) (y :: env) = []
-rebuildEnv (x :: xs) (Keep rest) (y :: env) = x :: rebuildEnv xs rest env
-rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
-
+rebuildEnv [] SubNil env = env
+rebuildEnv (x :: xs) SubNil env = env
+rebuildEnv [] (InList w s) env = env
+rebuildEnv (x :: xs) (InList idx rest) env = replaceEnvAt x idx (rebuildEnv xs rest env) 
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
 
 public export
-updateResTy : (val : t) ->
+total updateResTy : (val : t) ->
               (xs : List EFFECT) -> EffElem e a xs -> e t a b ->
               List EFFECT
 updateResTy {b} val (MkEff a e :: xs) Here n = (MkEff (b val) e) :: xs
