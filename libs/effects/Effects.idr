@@ -85,10 +85,12 @@ syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
 
 -- --------------------------------------- [ Properties and Proof Construction ]
 
+public export
 data SubElem : a -> List a -> Type where
   Z : SubElem a (a :: as)
   S : SubElem a as -> SubElem a (b :: as)
   
+public export
 data SubList : List a -> List a -> Type where
   SubNil : SubList [] xs
   InList : SubElem x ys -> SubList xs ys -> SubList (x :: xs) ys
@@ -100,6 +102,7 @@ namespace Env
     (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
 
 namespace EffElem
+  public export
   data EffElem : Effect -> Type ->
                  List EFFECT -> Type where
     Here : EffElem x a (MkEff a x :: xs)
@@ -118,18 +121,21 @@ dropEnv e@(y::ys) (InList idx rest) =
   let [x] = envElem idx e
   in x :: dropEnv e rest
 
+public export
 total updateAt : (idx : SubElem x' xs) -> (a:Type) -> List EFFECT -> List EFFECT
 updateAt Z a [] = []
 updateAt Z a ((MkEff b eff) :: xs) = (MkEff a eff) :: xs
 updateAt (S k) a [] = []
 updateAt (S k) a (x :: xs) = x :: updateAt k a xs
 
+public export
 total updateWith : (ys' : List EFFECT) -> (xs : List EFFECT) ->
              SubList ys xs -> List EFFECT
 updateWith [] xs sl = xs
 updateWith (y :: ys) xs SubNil = xs
 updateWith ((MkEff a f) :: ys) xs (InList idx rest) = updateAt idx a (updateWith ys xs rest)
 
+public export
 total replaceEnvAt : (x : a) -> (idx : SubElem x' xs) -> Env m ys ->
                Env m (updateAt idx a ys)
 replaceEnvAt x Z [] = []
@@ -138,6 +144,7 @@ replaceEnvAt x (S k) [] = []
 replaceEnvAt x (S k) (y :: ys) = y :: replaceEnvAt x k ys
 
 ||| Put things back, replacing old with new in the sub-environment
+public export
 total rebuildEnv : {ys':List EFFECT} -> Env m ys' -> (prf : SubList ys xs) ->
              Env m xs -> Env m (updateWith ys' xs prf)
 rebuildEnv [] SubNil env = env
