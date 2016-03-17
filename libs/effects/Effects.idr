@@ -95,6 +95,10 @@ data SubList : List a -> List a -> Type where
   SubNil : SubList [] xs
   InList : SubElem x ys -> SubList xs ys -> SubList (x :: xs) ys
 
+Uninhabited (SubElem x []) where
+  uninhabited Z impossible
+  uninhabited (S _) impossible
+
 -- Some useful hints for proof construction in polymorphic programs
 %hint
 public export total
@@ -150,9 +154,9 @@ envElem Z (x :: xs) = [x]
 envElem (S k) (x :: xs) = envElem k xs
 
 ||| make an environment corresponding to a sub-list
-%assert_total dropEnv : Env m ys -> SubList xs ys -> Env m xs
+total dropEnv : Env m ys -> SubList xs ys -> Env m xs
 dropEnv [] SubNil = []
--- dropEnv [] (InList y z) impossible
+dropEnv [] (InList idx rest) = absurd idx
 dropEnv (y::ys) SubNil = []
 dropEnv e@(y::ys) (InList idx rest) = 
   let [x] = envElem idx e
