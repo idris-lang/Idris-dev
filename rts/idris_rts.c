@@ -82,6 +82,7 @@ VM* idris_vm() {
 
 VM* get_vm(void) {
 #ifdef HAS_PTHREAD
+    init_threadkeys();
     return pthread_getspecific(vm_key);
 #else
     return global_vm;
@@ -92,9 +93,16 @@ void close_vm(VM* vm) {
     terminate(vm);
 }
 
+#ifdef HAS_PTHREAD
+void create_key() {
+    pthread_key_create(&vm_key, (void*)free_key);
+}
+#endif
+
 void init_threadkeys() {
 #ifdef HAS_PTHREAD
-    pthread_key_create(&vm_key, (void*)free_key);
+    static pthread_once_t key_once = PTHREAD_ONCE_INIT;
+    pthread_once(&key_once, create_key);
 #endif
 }
 
