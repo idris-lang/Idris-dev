@@ -23,6 +23,12 @@ in a C function pointer.
 * C function pointers can be called.
 * Idris can access pointers to C globals.
 
+Effects
+-------
+
+* Effects can now be given in any order in effect lists (there is no need
+for the ordering to be preserved in sub lists of effects)
+
 Elaborator reflection updates
 -----------------------------
 
