@@ -25,9 +25,9 @@
 
 // Closures
 typedef enum {
-    CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
-    BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    MANAGEDPTR, RAWDATA, CDATA
+    CT_CON, CT_INT, CT_BIGINT, CT_FLOAT, CT_STRING, CT_STROFFSET,
+    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_UNIT, CT_PTR, CT_FWD,
+    CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -189,10 +189,10 @@ typedef void(*func)(VM*, VAL*);
 #define GETBITS32(x) (((VAL)(x))->info.bits32)
 #define GETBITS64(x) (((VAL)(x))->info.bits64)
 
-#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
-#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
+#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
+#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
 
-// Already checked it's a CON
+// Already checked it's a CT_CON
 #define CTAG(x) (((x)->info.c.tag_arity) >> 8)
 #define CARITY(x) ((x)->info.c.tag_arity & 0x000000ff)
 
@@ -212,7 +212,7 @@ typedef intptr_t i_int;
 #define MKINT(x) ((void*)((x)<<1)+1)
 #define GETINT(x) ((i_int)(x)>>1)
 #define ISINT(x) ((((i_int)x)&1) == 1)
-#define ISSTR(x) (GETTY(x) == STRING)
+#define ISSTR(x) (GETTY(x) == CT_STRING)
 
 #define INTOP(op,x,y) MKINT((i_int)((((i_int)x)>>1) op (((i_int)y)>>1)))
 #define UINTOP(op,x,y) MKINT((i_int)((((uintptr_t)x)>>1) op (((uintptr_t)y)>>1)))
@@ -283,12 +283,12 @@ void idris_free(void* ptr, size_t size);
 
 #define allocCon(cl, vm, t, a, o) \
   cl = allocate(sizeof(Closure) + sizeof(VAL)*a, o); \
-  SETTY(cl, CON); \
+  SETTY(cl, CT_CON); \
   cl->info.c.tag_arity = ((t) << 8) | (a);
 
 #define updateCon(cl, old, t, a) \
   cl = old; \
-  SETTY(cl, CON); \
+  SETTY(cl, CT_CON); \
   cl->info.c.tag_arity = ((t) << 8) | (a);
 
 #define NULL_CON(x) nullary_cons[x]
