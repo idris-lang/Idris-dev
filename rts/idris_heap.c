@@ -186,7 +186,7 @@ void heap_check_pointers(Heap * heap) {
        VAL heap_item = (VAL)(scan + sizeof(size_t));
 
        switch(GETTY(heap_item)) {
-       case CON:
+       case CT_CON:
            {
              int ar = ARITY(heap_item);
              int i = 0;
@@ -207,7 +207,7 @@ void heap_check_pointers(Heap * heap) {
                      if (!(ptr < heap_item)) {
                          fprintf(stderr,
                                  "RTS ERROR: heap unidirectionality broken:" \
-                                 "<CON %p> <FIELD %p>\n",
+                                 "<CT_CON %p> <FIELD %p>\n",
                                  heap_item, ptr);
                          exit(EXIT_FAILURE);
                      }
@@ -216,9 +216,9 @@ void heap_check_pointers(Heap * heap) {
              }
              break;
            }
-       case FWD:
+       case CT_FWD:
            // Check for artifacts after cheney gc.
-           fprintf(stderr, "RTS ERROR: FWD in working heap.\n");
+           fprintf(stderr, "RTS ERROR: CT_FWD in working heap.\n");
            exit(EXIT_FAILURE);
            break;
        default:
