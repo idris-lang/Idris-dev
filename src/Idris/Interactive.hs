@@ -172,7 +172,7 @@ makeWith fn updatefile l n
                                         ++ with ++ "\n" ++
                                     unlines rest)
               runIO $ copyFile fb fn
-           else iPrintResult with
+           else iPrintResult (with ++ "\n")
   where getIndent s = length (takeWhile isSpace s)
 
 -- Replace the given metavariable on the given line with a 'case'
