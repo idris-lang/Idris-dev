@@ -805,8 +805,7 @@ genWrapper (desc, tag) =  ret ++ " " ++ wrapperName tag ++ "(" ++
                           (if ret /= "void" then indent 1 ++ ret ++ " ret;\n" else "") ++
                           indent 1 ++ "VM* vm = get_vm();\n" ++
                           indent 1 ++ "if (vm == NULL) {\n" ++
-                          indent 2 ++ "fprintf(stderr, \"No vm available in callback.\");\n" ++
-                          indent 2 ++ "exit(-1);\n" ++
+                          indent 2 ++ "vm = idris_vm();\n" ++
                           indent 1 ++ "}\n" ++
                           indent 1 ++ "INITFRAME;\n" ++
                           indent 1 ++ "RESERVE(" ++ show (len + 1) ++ ");\n" ++
