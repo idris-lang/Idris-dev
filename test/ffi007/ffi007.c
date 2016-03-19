@@ -28,3 +28,7 @@ int dynamic_fn(int i) {
 callback test_ffi6(void) {
     return &dynamic_fn;
 }
+
+void test_mulpar(void (*fn)(int, int)) {
+    fn(3,4);
+}

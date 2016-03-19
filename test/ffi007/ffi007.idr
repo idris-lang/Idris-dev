@@ -34,6 +34,14 @@ test6 = foreign FFI_C "test_ffi6" (IO Ptr)
 test7 : Ptr -> Int -> IO Int
 test7 fnptr i = foreign FFI_C "%dynamic" (Ptr -> Int -> IO Int) fnptr i
 
+adder : Int -> Int -> ()
+adder x y = unsafePerformIO $ do
+                printLn $ x + y
+
+test8 : IO ()
+test8 = foreign FFI_C "test_mulpar" (CFnPtr (Int -> Int -> ()) -> IO ())
+                                    (MkCFnPtr adder)
+
 main : IO ()
 main = do
             test
@@ -46,4 +54,5 @@ main = do
             fptr <- test6
             i <- test7 fptr 3
             printLn i
+            test8
             return ()
