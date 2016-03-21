@@ -93,7 +93,7 @@ replace : {a:_} -> {x:_} -> {y:_} -> {P : a -> Type} -> x = y -> P x -> P y
 replace Refl prf = prf
 
 ||| Symmetry of propositional equality
-sym : {l:a} -> {r:a} -> l = r -> r = l
+sym : {left:a} -> {right:a} -> left = right -> right = left
 sym Refl = Refl
 
 ||| Transitivity of propositional equality
