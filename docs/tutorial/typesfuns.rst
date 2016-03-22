@@ -973,6 +973,9 @@ updated):
 The syntax ``record { field = val, ... }`` generates a function which
 updates the given fields in a record.
 
+Each record is defined in its own namespace, which means that field names 
+can be reused in multiple records.
+
 Records, and fields within records, can have dependent types. Updates
 are allowed to change the type of a field, provided that the result is
 well-typed.
