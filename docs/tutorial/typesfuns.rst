@@ -469,6 +469,16 @@ It is a matter of taste whether you want to do this — sometimes it can
 help document a function by making the purpose of an argument more
 clear.
 
+Furthermore, ``{}`` can be used to pattern match on the left hand side, i.e. 
+``{var = pat}`` gets an implicit variable and attempts to pattern match on "pat";
+For example :
+
+.. code-block:: idris
+
+    isEmpty : Vect n a -> Bool
+    isEmpty {n = Z} _   = True
+    isEmpty {n = S k} _ = False
+
 “``using``” notation
 --------------------
 
