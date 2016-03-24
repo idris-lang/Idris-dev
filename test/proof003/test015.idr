@@ -44,11 +44,11 @@ natToBin (S w) (S k) with (parity k)
 testBin : Maybe (Binary 8 42)
 testBin = natToBin _ _
 
-pattern syntax bitpair [x] [y] = (_ ** (_ ** (x, y, _)))
-term    syntax bitpair [x] [y] = (_ ** (_ ** (x, y, Refl)))
+pattern syntax bitpair [x] [y] = (_ ** _ ** (x, y, _))
+term    syntax bitpair [x] [y] = (_ ** _ ** (x, y, Refl))
 
 addBit : Bit x -> Bit y -> Bit c ->
-          (bX ** (bY ** (Bit bX, Bit bY, c + x + y = bY + 2 * bX)))
+          (bX ** bY ** (Bit bX, Bit bY, c + x + y = bY + 2 * bX))
 addBit B0 B0 B0 = bitpair B0 B0
 addBit B0 B0 B1 = bitpair B0 B1
 addBit B0 B1 B0 = bitpair B0 B1
