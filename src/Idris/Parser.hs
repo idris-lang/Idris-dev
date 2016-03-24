@@ -487,47 +487,56 @@ syntaxRule syn
     -- Prevent syntax variable capture by making all binders under syntax unique
     -- (the ol' Common Lisp GENSYM approach)
     uniquifyBinders :: [Name] -> PTerm -> IdrisParser PTerm
-    uniquifyBinders userNames = fixBind []
+    uniquifyBinders userNames = fixBind 0 []
       where
-        fixBind :: [(Name, Name)] -> PTerm -> IdrisParser PTerm
-        fixBind rens (PRef fc hls n) | Just n' <- lookup n rens =
+        fixBind :: Int -> [(Name, Name)] -> PTerm -> IdrisParser PTerm
+        fixBind 0 rens (PRef fc hls n) | Just n' <- lookup n rens =
           return $ PRef fc hls n'
-        fixBind rens (PPatvar fc n) | Just n' <- lookup n rens =
+        fixBind 0 rens (PPatvar fc n) | Just n' <- lookup n rens =
           return $ PPatvar fc n'
-        fixBind rens (PLam fc n nfc ty body)
-          | n `elem` userNames = liftM2 (PLam fc n nfc) (fixBind rens ty) (fixBind rens body)
+        fixBind 0 rens (PLam fc n nfc ty body)
+          | n `elem` userNames = liftM2 (PLam fc n nfc)
+                                        (fixBind 0 rens ty)
+                                        (fixBind 0 rens body)
           | otherwise =
-            do ty' <- fixBind rens ty
+            do ty' <- fixBind 0 rens ty
                n' <- gensym n
-               body' <- fixBind ((n,n'):rens) body
+               body' <- fixBind 0 ((n,n'):rens) body
                return $ PLam fc n' nfc ty' body'
-        fixBind rens (PPi plic n nfc argTy body)
+        fixBind 0 rens (PPi plic n nfc argTy body)
           | n `elem` userNames = liftM2 (PPi plic n nfc)
-                                        (fixBind rens argTy)
-                                        (fixBind rens body)
+                                        (fixBind 0 rens argTy)
+                                        (fixBind 0 rens body)
           | otherwise =
-            do ty' <- fixBind rens argTy
+            do ty' <- fixBind 0 rens argTy
                n' <- gensym n
-               body' <- fixBind ((n,n'):rens) body
+               body' <- fixBind 0 ((n,n'):rens) body
                return $ (PPi plic n' nfc ty' body')
-        fixBind rens (PLet fc n nfc ty val body)
+        fixBind 0 rens (PLet fc n nfc ty val body)
           | n `elem` userNames = liftM3 (PLet fc n nfc)
-                                        (fixBind rens ty)
-                                        (fixBind rens val)
-                                        (fixBind rens body)
+                                        (fixBind 0 rens ty)
+                                        (fixBind 0 rens val)
+                                        (fixBind 0 rens body)
           | otherwise =
-            do ty' <- fixBind rens ty
-               val' <- fixBind rens val
+            do ty' <- fixBind 0 rens ty
+               val' <- fixBind 0 rens val
                n' <- gensym n
-               body' <- fixBind ((n,n'):rens) body
+               body' <- fixBind 0 ((n,n'):rens) body
                return $ PLet fc n' nfc ty' val' body'
-        fixBind rens (PMatchApp fc n) | Just n' <- lookup n rens =
+        fixBind 0 rens (PMatchApp fc n) | Just n' <- lookup n rens =
           return $ PMatchApp fc n'
         -- Also rename resolved quotations, to allow syntax rules to
         -- have quoted references to their own bindings.
-        fixBind rens (PQuoteName n True fc) | Just n' <- lookup n rens =
+        fixBind 0 rens (PQuoteName n True fc) | Just n' <- lookup n rens =
           return $ PQuoteName n' True fc
-        fixBind rens x = descendM (fixBind rens) x
+
+        -- Don't mess with quoted terms
+        fixBind q rens (PQuasiquote tm goal) =
+          flip PQuasiquote goal <$> fixBind (q + 1) rens tm
+        fixBind q rens (PUnquote tm) =
+          PUnquote <$> fixBind (q - 1) rens tm
+          
+        fixBind q rens x = descendM (fixBind q rens) x
 
         gensym :: Name -> IdrisParser Name
         gensym n = do ist <- get
