@@ -82,6 +82,11 @@ Minor language changes
 * Programs with holes can now be compiled.
   Attempting to evaluate an expression with a hole results in a run time error.
 
+External Dependencies
+---------------------
+
+* Curses has been removed as an external dependancy.
+
 New in 0.10:
 ============
 
