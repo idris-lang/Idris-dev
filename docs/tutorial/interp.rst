@@ -28,7 +28,7 @@ calculated just like any other value:
 .. code-block:: idris
 
     interpTy : Ty -> Type
-    interpTy TyInt       = Int
+    interpTy TyInt       = Integer
     interpTy TyBool      = Bool
     interpTy (TyFun A T) = interpTy A -> interpTy T
 
@@ -270,7 +270,7 @@ function on user input:
     main : IO ()
     main = do putStr "Enter a number: "
               x <- getLine
-              print (interp [] fact (cast x))
+              printLn (interp [] fact (cast x))
 
 Here, ``cast`` is an overloaded function which converts a value from
 one type to another if possible. Here, it converts a string to an
