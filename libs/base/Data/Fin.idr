@@ -1,7 +1,7 @@
 module Data.Fin
 
 %default total
-%access public
+%access public export
 
 ||| Numbers strictly less than some bound.  The name comes from "finite sets".
 |||
@@ -149,7 +149,7 @@ mkFinIntegerErr lit finSize subErr
          , TermPart `(Fin ~(getNat finSize))
          , SubReport subErr
          ]
-total
+total export
 finFromIntegerErrors : Err -> Maybe (List ErrorReportPart)
 finFromIntegerErrors (CantUnify x tm `(IsJust (integerToFin ~(TConst c) ~m)) err xs y)
   = mkFinIntegerErr (TConst c) m

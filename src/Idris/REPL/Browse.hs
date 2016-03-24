@@ -8,7 +8,7 @@ import Data.List (isSuffixOf, nub)
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T (unpack)
 
-import Idris.Core.Evaluate (ctxtAlist, Accessibility(Hidden), lookupDefAccExact)
+import Idris.Core.Evaluate (ctxtAlist, Accessibility(Private, Hidden), lookupDefAccExact)
 import Idris.Core.TT (Name(..))
 
 import Idris.AbsSyntaxTree (Idris)
@@ -41,4 +41,5 @@ namesInNS ns = do let revNS = reverse ns
         accessible n = do ctxt <- getContext
                           case lookupDefAccExact n False ctxt of
                             Just (_, Hidden ) -> return False
+                            Just (_, Private ) -> return False
                             _ -> return True

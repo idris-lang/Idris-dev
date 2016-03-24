@@ -268,7 +268,7 @@ data Err' t
           | NoTypeDecl Name
           | NotInjective t t t
           | CantResolve Bool -- True if postponed, False if fatal
-                        t
+                        t (Err' t) -- any further information
           | InvalidTCArg Name t
           | CantResolveAlts [Name]
           | NoValidAlts [Name]
@@ -354,7 +354,7 @@ instance Sized Err where
   size (NoSuchVariable name) = size name
   size (NoTypeDecl name) = size name
   size (NotInjective l c r) = size l + size c + size r
-  size (CantResolve _ trm) = size trm
+  size (CantResolve _ trm _) = size trm
   size (NoRewriting trm) = size trm
   size (CantResolveAlts _) = 1
   size (IncompleteTerm trm) = size trm
@@ -397,7 +397,7 @@ instance Show Err where
     show (WithFnType _) = "WithFnType"
     show (NoTypeDecl _) = "NoTypeDecl"
     show (NotInjective _ _ _) = "NotInjective"
-    show (CantResolve _ _) = "CantResolve"
+    show (CantResolve _ _ _) = "CantResolve"
     show (InvalidTCArg _ _) = "InvalidTCArg"
     show (CantResolveAlts _) = "CantResolveAlts"
     show (NoValidAlts _) = "NoValidAlts"
@@ -588,7 +588,7 @@ tcname (SN (MethodN _)) = True
 tcname (SN (ParentN _ _)) = True
 tcname _ = False
 
-implicitable (NS n _) = implicitable n
+implicitable (NS n _) = False
 implicitable (UN xs) | T.null xs = False
                      | otherwise = isLower (T.head xs) || T.head xs == '_'
 implicitable (MN _ x) = not (tnull x) && thead x /= '_'

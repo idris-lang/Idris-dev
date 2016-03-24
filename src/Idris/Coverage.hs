@@ -59,10 +59,16 @@ genClauses fc n xs given
         let lhs_tms' = zipWith mergePlaceholders lhs_tms
                           (map (stripUnmatchable i) (map flattenArgs given))
         let lhss = map pUnApply lhs_tms'
+        nty <- case lookupTyExact n (tt_ctxt i) of
+                    Just t -> return (normalise (tt_ctxt i) [] t)
+                    _ -> fail "Can't happen - genClauses, lookupTyExact"
 
         let argss = transpose lhss
-        let all_args = map (genAll i) argss
+        let all_args = map (genAll i) (zip (genPH i nty) argss)
         logCoverage 5 $ "COVERAGE of " ++ show n
+        logCoverage 5 $ "using type " ++ show nty
+        logCoverage 5 $ "non-concrete args " ++ show (genPH i nty)
+
         logCoverage 5 $ show (lhs_tms, lhss)
         logCoverage 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logCoverage 10 $ show argss ++ "\n" ++ show all_args
@@ -88,6 +94,18 @@ genClauses fc n xs given
   where getLHS i term
             | (f, args) <- unApply term = map (\t -> delab' i t True True) args
             | otherwise = []
+
+        -- if an argument has a non-concrete type (i.e. it's a function
+        -- that calculates something from a previous argument) we'll also
+        -- need to generate a placeholder pattern for it since it could be
+        -- anything based on earlier values
+        genPH :: IState -> Type -> [Bool]
+        genPH ist (Bind n (Pi _ ty _) sc) = notConcrete ist ty : genPH ist sc
+        genPH ist ty = [] 
+
+        notConcrete ist t | (P _ n _, args) <- unApply t,
+                           not (isConName n (tt_ctxt ist)) = True
+        notConcrete _ _ = False
 
         pUnApply (PApp _ f args) = map getTm args
         pUnApply _ = []
@@ -135,6 +153,7 @@ validCoverageCase ctxt (CantUnify _ (topx, _) (topy, _) e _ _)
             = case (unApply topx, unApply topy) of
                    ((P _ x _, _), (P _ y _, _)) -> x == y
                    _ -> False
+validCoverageCase ctxt (InfiniteUnify _ _ _) = False
 validCoverageCase ctxt (CantConvert _ _ _) = False
 validCoverageCase ctxt (At _ e) = validCoverageCase ctxt e
 validCoverageCase ctxt (Elaborating _ _ _ e) = validCoverageCase ctxt e
@@ -171,16 +190,14 @@ recoverableCoverage ctxt (Elaborating _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (ElaboratingArg _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage _ _ = False
 
--- FIXME: Just look for which one is the deepest, then generate all
--- possibilities up to that depth.
--- This and below issues for this function are tracked as Issue #1741 on the issue tracker.
---     https://github.com/idris-lang/Idris-dev/issues/1741
-genAll :: IState -> [PTerm] -> [PTerm]
-genAll i args
+genAll :: IState -> (Bool, [PTerm]) -> [PTerm]
+genAll i (addPH, args)
    = case filter (/=Placeholder) $ fnub (concatMap otherPats (fnub args)) of
           [] -> [Placeholder]
-          xs -> inventConsts xs
+          xs -> ph $ inventConsts xs
   where
+    ph ts = if addPH then Placeholder : ts else ts
+
     -- if they're constants, invent a new one to make sure that
     -- constants which are not explicitly handled are covered
     inventConsts cs@(PConstant fc c : _) = map (PConstant NoFC) (ic' (mapMaybe getConst cs))
@@ -203,7 +220,6 @@ genAll i args
     ic' xs@(B64 _ : _) = firstMissing xs (lotsOfNums B64)
     ic' xs@(Ch _ : _) = firstMissing xs lotsOfChars
     ic' xs@(Str _ : _) = firstMissing xs lotsOfStrings
-    -- TODO: Bit vectors
     -- The rest are types with only one case
     ic' xs = xs
 
@@ -218,19 +234,19 @@ genAll i args
     nubMap f acc (x : xs) = nubMap f (fnub' acc (f x)) xs
 
     otherPats :: PTerm -> [PTerm]
-    otherPats o@(PRef fc hl n) = ops fc n [] o
-    otherPats o@(PApp _ (PRef fc hl n) xs) = ops fc n xs o
+    otherPats o@(PRef fc hl n) = ph $ ops fc n [] o
+    otherPats o@(PApp _ (PRef fc hl n) xs) = ph $ ops fc n xs o
     otherPats o@(PPair fc hls _ l r)
-        = ops fc pairCon
+        = ph $ ops fc pairCon
                 ([pimp (sUN "A") Placeholder True,
                   pimp (sUN "B") Placeholder True] ++
                  [pexp l, pexp r]) o
     otherPats o@(PDPair fc hls p t _ v)
-        = ops fc sigmaCon
+        = ph $ ops fc sigmaCon
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
                  [pexp t,pexp v]) o
-    otherPats o@(PConstant _ c) = inventConsts [o] -- return o
+    otherPats o@(PConstant _ c) = ph $ inventConsts [o] -- return o
     otherPats arg = return Placeholder
 
     ops fc n xs o
@@ -313,20 +329,21 @@ checkAllCovering fc done top n | not (n `elem` done)
              [Partial _] ->
                 case lookupCtxt n (idris_callgraph i) of
                      [cg] -> mapM_ (checkAllCovering fc (n : done) top)
-                                   (map fst (calls cg))
+                                   (calls cg)
                      _ -> return ()
              x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()
 
--- Check if, in a given group of type declarations mut_ns,
+-- | Check if, in a given group of type declarations mut_ns,
 -- the constructor cn : ty is strictly positive,
 -- and update the context accordingly
-
-checkPositive :: [Name] -> (Name, Type) -> Idris Totality
+checkPositive :: [Name] -- ^ the group of type declarations
+              -> (Name, Type) -- ^ the constructor
+              -> Idris Totality
 checkPositive mut_ns (cn, ty')
-    = do let ty = delazy' True ty'
+    = do i <- getIState
+         let ty = delazy' True (normalise (tt_ctxt i) [] ty')
          let p = cp ty
-         i <- getIState
          let tot = if p then Total (args ty) else Partial NotPositive
          let ctxt' = setTotal cn tot (tt_ctxt i)
          putIState (i { tt_ctxt = ctxt' })
@@ -365,8 +382,8 @@ calcTotality fc n pats
             _ -> checkSizeChange n
   where
     checkLHS i (P _ fn _)
-        = case lookupTotal fn (tt_ctxt i) of
-               [Partial _] -> return (Partial (Other [fn]))
+        = case lookupTotalExact fn (tt_ctxt i) of
+               Just (Partial _) -> return (Partial (Other [fn]))
                _ -> Nothing
     checkLHS i (App _ f a) = mplus (checkLHS i f) (checkLHS i a)
     checkLHS _ _ = Nothing
@@ -441,12 +458,18 @@ checkDeclTotality (fc, n)
                               _ -> []
          when (CoveringFn `elem` opts) $ checkAllCovering fc [] n n
          t <- checkTotality [] fc n
+         let acc = case lookupDefAccExact n False (tt_ctxt i) of
+                        Just (n, a) -> a
+                        _ -> Public
          case t of
               -- if it's not total, it can't reduce, to keep
-              -- typechecking decidable
-              p@(Partial _) -> do setAccessibility n Frozen
-                                  addIBC (IBCAccess n Frozen)
-                                  logCoverage 5 $ "HIDDEN: "
+              -- typechecking decidable.
+              -- So if it's currently public export, set it as
+              -- export instead.
+              p@(Partial _) -> do let newacc = max Frozen acc
+                                  setAccessibility n newacc
+                                  addIBC (IBCAccess n newacc)
+                                  logCoverage 5 $ "Set to " ++ show newacc ++ ":"
                                                ++ show n ++ show p
               _ -> return ()
          return t
@@ -474,6 +497,7 @@ buildSCG (_, n) = do
                   let newscg = buildSCG' ist (rights pats) args
                   logCoverage 5 $ "SCG is: " ++ show newscg
                   addToCG n ( cg { scg = newscg } )
+           _ -> return () -- CG comes from a type declaration only
        [] -> logCoverage 5 $ "Could not build SCG for " ++ show n ++ "\n"
        x -> error $ "buildSCG: " ++ show (n, x)
 
@@ -573,8 +597,8 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
 
       toJust (n, t) = Just t
 
-      getType n = case lookupTy n (tt_ctxt ist) of
-                       [ty] -> delazy ty -- must exist
+      getType n = case lookupTyExact n (tt_ctxt ist) of
+                       Just ty -> delazy (normalise (tt_ctxt ist) [] ty) -- must exist
 
       isInductive (P _ nty _) (P _ nty' _) =
           let co = case lookupCtxt nty (idris_datatypes ist) of

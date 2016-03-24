@@ -4,7 +4,7 @@ import Builtins
 import Control.Monad.Identity
 import Control.Monad.Trans
 
-%access public
+%access public export
 
 ||| A monad representing a computation that runs in an immutable context
 interface Monad m => MonadReader r (m : Type -> Type) where

@@ -10,7 +10,7 @@ VAL copy(VM* vm, VAL x) {
         return x;
     }
     switch(GETTY(x)) {
-    case CON:
+    case CT_CON:
         ar = CARITY(x);
         if (ar == 0 && CTAG(x) < 256) {
             return x;
@@ -21,49 +21,53 @@ VAL copy(VM* vm, VAL x) {
             }
         }
         break;
-    case FLOAT:
+    case CT_FLOAT:
         cl = MKFLOATc(vm, x->info.f);
         break;
-    case STRING:
+    case CT_STRING:
         cl = MKSTRc(vm, x->info.str);
         break;
-    case STROFFSET:
+    case CT_STROFFSET:
         cl = MKSTROFFc(vm, x->info.str_offset);
         break;
-    case BIGINT:
+    case CT_BIGINT:
         cl = MKBIGMc(vm, x->info.ptr);
         break;
-    case PTR:
+    case CT_PTR:
         cl = MKPTRc(vm, x->info.ptr);
         break;
-    case MANAGEDPTR:
+    case CT_MANAGEDPTR:
         cl = MKMPTRc(vm, x->info.mptr->data, x->info.mptr->size);
         break;
-    case BITS8:
+    case CT_BITS8:
         cl = idris_b8CopyForGC(vm, x);
         break;
-    case BITS16:
+    case CT_BITS16:
         cl = idris_b16CopyForGC(vm, x);
         break;
-    case BITS32:
+    case CT_BITS32:
         cl = idris_b32CopyForGC(vm, x);
         break;
-    case BITS64:
+    case CT_BITS64:
         cl = idris_b64CopyForGC(vm, x);
         break;
-    case FWD:
+    case CT_FWD:
         return x->info.ptr;
-    case RAWDATA:
+    case CT_RAWDATA:
         {
             size_t size = x->info.size + sizeof(Closure);
             cl = allocate(size, 0);
             memcpy(cl, x, size);
         }
         break;
+    case CT_CDATA:
+        cl = MKCDATAc(vm, x->info.c_heap_item);
+        c_heap_mark_item(x->info.c_heap_item);
+        break;
     default:
         break;
     }
-    SETTY(x, FWD);
+    SETTY(x, CT_FWD);
     x->info.ptr = cl;
     return cl;
 }
@@ -76,16 +80,16 @@ void cheney(VM *vm) {
     while(scan < vm->heap.next) {
        size_t inc = *((size_t*)scan);
        VAL heap_item = (VAL)(scan+sizeof(size_t));
-       // If it's a CON or STROFFSET, copy its arguments
+       // If it's a CT_CON or CT_STROFFSET, copy its arguments
        switch(GETTY(heap_item)) {
-       case CON:
+       case CT_CON:
            ar = ARITY(heap_item);
            for(i = 0; i < ar; ++i) {
                VAL newptr = copy(vm, heap_item->info.c.args[i]);
                heap_item->info.c.args[i] = newptr;
            }
            break;
-       case STROFFSET:
+       case CT_STROFFSET:
            heap_item->info.str_offset->str
                = copy(vm, heap_item->info.str_offset->str);
            break;
@@ -132,6 +136,9 @@ void idris_gc(VM* vm) {
     if ((vm->heap.next - vm->heap.heap) > vm->heap.size >> 1) {
         vm->heap.size += vm->heap.growth;
     }
+
+    // finally, sweep the C heap
+    c_heap_sweep(&vm->c_heap);
 
     STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
     HEAP_CHECK(vm)

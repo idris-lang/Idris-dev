@@ -4,6 +4,8 @@ import Control.Algebra
 import Control.Algebra.Lattice
 import Control.Algebra.VectorSpace
 
+%access public export
+
 -- Due to these being basically unused and difficult to implement,
 -- they're in contrib for a bit. Once a design is found that lets them
 -- be implemented for a number of implementations, and we get those
@@ -12,7 +14,7 @@ import Control.Algebra.VectorSpace
 -- and Monoid).
 
 interface Functor f => VerifiedFunctor (f : Type -> Type) where
-  functorIdentity : {a : Type} -> (x : f a) -> map id x = id x
+  functorIdentity : {a : Type} -> (x : f a) -> map Basics.id x = Basics.id x
   functorComposition : {a : Type} -> {b : Type} -> (x : f a) ->
                        (g1 : a -> b) -> (g2 : b -> c) ->
                        map (g2 . g1) x = (map g2 . map g1) x
@@ -92,6 +94,11 @@ interface MeetSemilattice a => VerifiedMeetSemilattice a where
   total meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
   total meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
 
+{- FIXME: Some maintenance required here.
+   Algebra.top and Algebra.bottom don't exist!
+-}
+{-
+
 interface (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJoinSemilattice a where
   total boundedJoinSemilatticeBottomIsBottom : (e : a) -> join e Algebra.bottom = e
 
@@ -112,3 +119,5 @@ interface (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, V
 --  total moduleScalarMultDistributiveWRTModuleAddition : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
 
 --interface (VerifiedField a, VerifiedModule a b) => VerifiedVectorSpace a b where {}
+
+-}

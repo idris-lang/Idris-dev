@@ -85,7 +85,7 @@ assumptionNames e
 
 prove :: Bool -> Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
 prove mode opt ctxt lit n ty
-    = do ps <- fmap (\ist -> initElaborator n ctxt (idris_datatypes ist) ty) getIState
+    = do ps <- fmap (\ist -> initElaborator n ctxt (idris_datatypes ist) (idris_name ist) ty) getIState
          idemodePutSExp "start-proof-mode" n
          (tm, prf) <-
             if mode
@@ -124,7 +124,7 @@ prove mode opt ctxt lit n ty
                                 [([], P Ref n ty, ptm')] ty
                                 ctxt
          setContext ctxt'
-         solveDeferred n
+         solveDeferred emptyFC n
          case idris_outputmode i of
            IdeMode n h ->
              runIO . hPutStrLn h $ IdeMode.convSExp "return" (IdeMode.SymbolAtom "ok", "") n
@@ -271,6 +271,21 @@ undoElab prf env st [] = ifail "Nothing to undo"
 undoElab prf env st (h:hs) = do (prf', env', st') <- undoStep prf env st h
                                 return (prf', env', st', hs)
 
+runWithInterrupt
+  :: ElabState EState
+  -> Idris a -- ^ run with SIGINT handler
+  -> Idris b -- ^ run if mTry finished
+  -> Idris b -- ^ run if mTry was interrupted
+  -> Idris b
+runWithInterrupt elabState mTry mSuccess mFailure = do
+  ist <- getIState
+  case idris_outputmode ist of
+    RawOutput _ -> do
+      success <- runInputT (proverSettings elabState) $
+                   handleInterrupt (return False) $
+                   withInterrupt (lift mTry >> return True)
+      if success then mSuccess else mFailure
+    IdeMode _ _ -> mTry >> mSuccess
 
 elabloop :: Name -> Bool -> String -> [String] -> ElabState EState -> [ElabShellHistory] -> Maybe History -> [(Name, Type, Term)] -> Idris (Term, [String])
 elabloop fn d prompt prf e prev h env
@@ -283,7 +298,7 @@ elabloop fn d prompt prf e prev h env
                do case h of
                     Just history -> putHistory history
                     Nothing -> return ()
-                  l <- getInputLine (prompt ++ "> ")
+                  l <- handleInterrupt (return $ Just "") $ withInterrupt $ getInputLine (prompt ++ "> ")
                   h' <- getHistory
                   return (l, Just h')
            IdeMode _ handle ->
@@ -375,8 +390,9 @@ elabloop fn d prompt prf e prev h env
          Right ok ->
            if done then do (tm, _) <- elabStep st get_term
                            return (tm, prf')
-                   else do ok
-                           elabloop fn d prompt prf' st prev' h' env'
+                   else runWithInterrupt e ok
+                           (elabloop fn d prompt prf' st prev' h' env')
+                           (elabloop fn d prompt prf e prev h' env)
 
   where
     -- A bit of a hack: wrap the value up in a let binding, which will
@@ -401,7 +417,7 @@ ploop fn d prompt prf e h
                  do case h of
                       Just history -> putHistory history
                       Nothing -> return ()
-                    l <- getInputLine (prompt ++ "> ")
+                    l <- handleInterrupt (return $ Just "") $ withInterrupt $ getInputLine (prompt ++ "> ")
                     h' <- getHistory
                     return (l, Just h')
              IdeMode _ handle ->
@@ -445,8 +461,9 @@ ploop fn d prompt prf e h
            Right ok ->
              if done then do (tm, _) <- elabStep st get_term
                              return (tm, prf')
-                     else do ok
-                             ploop fn d prompt prf' st h'
+                     else runWithInterrupt e ok
+                             (ploop fn d prompt prf' st h')
+                             (ploop fn d prompt prf e h')
 
 
 envCtxt env ctxt = foldl (\c (n, b) -> addTyDecl n Bound (binderTy b) c) ctxt env

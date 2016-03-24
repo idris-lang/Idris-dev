@@ -3,7 +3,7 @@ module Control.Monad.State
 import public Control.Monad.Identity
 import public Control.Monad.Trans
 
-%access public
+%access public export
 
 ||| A computation which runs in a context and produces an output
 interface Monad m => MonadState s (m : Type -> Type) | m where
@@ -54,7 +54,7 @@ gets f = do s <- get
 
 ||| The State monad. See the MonadState interface
 State : Type -> Type -> Type
-State s a = StateT s Identity a
+State = \s, a => StateT s Identity a
 
 ||| Unwrap a State monad computation.
 runState : StateT s Identity a -> s -> (a, s)

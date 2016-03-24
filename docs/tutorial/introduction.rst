@@ -39,7 +39,7 @@ function, which concatenates vectors:
 This tutorial introduces Idris, a general purpose functional
 programming language with dependent types. The goal of the Idris
 project is to build a dependently typed language suitable for
-verifiable *systems* programming. To this end, Idris is a compiled
+verifiable general purpose programming. To this end, Idris is a compiled
 language which aims to generate efficient executable code. It also has
 a lightweight foreign function interface which allows easy interaction
 with external ``C`` libraries.

@@ -7,12 +7,14 @@ import Prelude.Bits
 import Prelude.Bool
 import Prelude.Cast
 import Prelude.Chars
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.List
 import Prelude.Maybe
 import Prelude.Either
 import Prelude.Nat
 import Prelude.Strings
+
+%access public export
 
 %default total
 
@@ -190,6 +192,5 @@ Show a => Show (Maybe a) where
   showPrec d (Left x)  = showCon d "Left" $ showArg x
   showPrec d (Right x) = showCon d "Right" $ showArg x
 
-(Show a, {y : a} -> Show (p y)) => Show (Sigma a p) where
+(Show a, {y : a} -> Show (p y)) => Show (DPair a p) where
     show (y ** prf) = "(" ++ show y ++ " ** " ++ show prf ++ ")"
-

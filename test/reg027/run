@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-idris --consolewidth 80 $@ reg027.idr -o reg027
+${IDRIS:-idris} $@ reg027.idr -o reg027
 ./reg027
-idris --consolewidth 80 $@ reg027a.idr --check
+${IDRIS:-idris} $@ reg027a.idr --check
 rm -f reg027 *.ibc

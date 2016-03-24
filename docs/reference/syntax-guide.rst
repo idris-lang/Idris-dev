@@ -287,7 +287,11 @@ return type. For example, consider
     zeros (S k) = 0 :: (zeros k)
 
 In this example, the return type is ``Vect n Int`` which is an
-expression which depends on the input parameter ``n``. ### Anonymous
+expression which depends on the input parameter ``n``.
+
+Anonymous
+~~~~~~~~~
+
 Arguments in anonymous functions are separated by comma.
 
 ::
@@ -303,8 +307,8 @@ Visibility
 
 ::
 
-    public
-    abstract
+    public export
+    export
     private
 
 Totality
@@ -372,7 +376,7 @@ Comments
     -- Single Line
     {- Multiline -}
     ||| Docstring (goes before definition)
-    
+
 Multi line String literals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

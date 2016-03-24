@@ -67,18 +67,19 @@ buildType info syn fc opts n ty' = do
          logElab 5 $ show "with methods " ++ show (imp_methods syn)
          logElab 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
-         (ElabResult tyT' defer is ctxt' newDecls highlights, log) <-
-            tclift $ elaborate ctxt (idris_datatypes i) n (TType (UVal 0)) initEState
+         (ElabResult tyT' defer is ctxt' newDecls highlights newGName, log) <-
+            tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) n (TType (UVal 0)) initEState
                      (errAt "type of " n Nothing (erun fc (build i info ETyDecl [] n ty)))
          setContext ctxt'
          processTacticDecls info newDecls
-         sendHighlighting highlights
+         sendHighlighting highlights 
+         updateIState $ \i -> i { idris_name = newGName }
 
          let tyT = patToImp tyT'
 
          logElab 3 $ show ty ++ "\nElaborated: " ++ show tyT'
 
-         ds <- checkAddDef True False fc iderr defer
+         ds <- checkAddDef True False fc iderr True defer
          -- if the type is not complete, note that we'll need to infer
          -- things later (for solving metavariables)
          when (length ds > length is) -- more deferred than case blocks
@@ -101,6 +102,18 @@ buildType info syn fc opts n ty' = do
          putIState $ i { idris_implicits = addDef n impls (idris_implicits i) }
          logElab 3 ("Implicit " ++ show n ++ " " ++ show impls)
          addIBC (IBCImp n)
+
+         -- Add the names referenced to the call graph, and check we're not
+         -- referring to anything less visible
+         -- In particular, a public/export type can not refer to anything 
+         -- private, but can refer to any public/export
+         let refs = freeNames cty
+         nvis <- getFromHideList n
+         case nvis of
+              Nothing -> return ()
+              Just acc -> mapM_ (checkVisibility fc n (max Frozen acc) acc) refs
+         addCalls n refs
+         addIBC (IBCCG n)
 
          when (Constructor `notElem` opts) $ do
              let pnames = getParamsInType i [] impls cty
@@ -161,9 +174,10 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          -- Productivity checking now via checking for guarded 'Delay'
          let opts' = opts -- if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
-         ds <- checkDef fc iderr [(n, (-1, Nothing, usety, []))]
+         ds <- checkDef fc iderr True [(n, (-1, Nothing, usety, []))]
          addIBC (IBCDef n)
-         let ds' = map (\(n, (i, top, fam, ns)) -> (n, (i, top, fam, ns, True))) ds
+         addDefinedName n
+         let ds' = map (\(n, (i, top, fam, ns)) -> (n, (i, top, fam, ns, True, True))) ds
          addDeferred ds'
          setFlags n opts'
          checkDocs fc argDocs ty
@@ -242,7 +256,7 @@ elabPostulate info syn doc fc nfc opts n ty = do
     sendHighlighting [(nfc, AnnName n (Just PostulateOutput) Nothing Nothing)]
 
     -- remove it from the deferred definitions list
-    solveDeferred n
+    solveDeferred fc n
 
 elabExtern :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
                  FC -> FC -> FnOpts -> Name -> PTerm -> Idris ()
@@ -255,4 +269,4 @@ elabExtern info syn doc fc nfc opts n ty = do
     addIBC (IBCExtern (n, arity))
 
     -- remove it from the deferred definitions list
-    solveDeferred n
+    solveDeferred fc n

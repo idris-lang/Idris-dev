@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-idris --consolewidth 80 $@ --check --nocolour WithPatsNoWith.idr
+${IDRIS:-idris} $@ --check --nocolour WithPatsNoWith.idr
 rm -f *.ibc

@@ -2,7 +2,7 @@ module Control.Category
 
 import Data.Morphisms
 
-%access public
+%access public export
 
 interface Category (cat : Type -> Type -> Type) where
   id  : cat a a

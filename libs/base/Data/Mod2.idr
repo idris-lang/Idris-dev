@@ -5,26 +5,27 @@ import Data.Bits
 %default total
 
 ||| Integers modulo 2^n
-public
+public export
 data Mod2 : Nat -> Type where
     MkMod2 : {n : Nat} -> Bits n -> Mod2 n
 
+public export
 modBin : (Bits n -> Bits n -> Bits n) -> Mod2 n -> Mod2 n -> Mod2 n
 modBin f (MkMod2 x) (MkMod2 y) = MkMod2 (f x y)
 
 modComp : (Bits n -> Bits n -> a) -> Mod2 n -> Mod2 n -> a
 modComp f (MkMod2 x) (MkMod2 y) = f x y
 
-public partial
+public export partial
 div : Mod2 n -> Mod2 n -> Mod2 n
 div = modBin udiv
 
-public partial
+public export partial
 rem : Mod2 n -> Mod2 n -> Mod2 n
 rem = modBin urem
 
 %assert_total
-public
+public export
 intToMod : {n : Nat} -> Integer -> Mod2 n
 intToMod {n=n} x = MkMod2 (intToBits x)
 

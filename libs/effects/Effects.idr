@@ -7,7 +7,7 @@ import Data.Vect
 --- Effectful computations are described as algebraic data types that
 --- explain how an effect is interpreted in some underlying context.
 
-%access public
+%access export
 -- ----------------------------------------------------------------- [ Effects ]
 ||| The Effect type describes effectful computations.
 |||
@@ -15,11 +15,13 @@ import Data.Vect
 ||| + The return type of the computation.
 ||| + The input resource.
 ||| + The computation to run on the resource given the return value.
+public export
 Effect : Type
 Effect = (x : Type) -> Type -> (x -> Type) -> Type
 
 ||| The `EFFECT` Data type describes how to promote the Effect
 ||| description into a concrete effect.
+public export
 %error_reverse
 data EFFECT : Type where
      MkEff : Type -> Effect -> EFFECT
@@ -30,24 +32,29 @@ data EFFECT : Type where
 -- or a dependent change. These are easily disambiguated by type.
 
 namespace NoResourceEffect
+  public export
   sig : Effect -> Type -> Type
   sig e r = e r () (\v => ())
 
 namespace NoUpdateEffect
+  public export
   sig : Effect -> (ret : Type) -> (resource : Type) -> Type
   sig e r e_in = e r e_in (\v => e_in)
 
 namespace UpdateEffect
+  public export
   sig : Effect -> (ret : Type) -> (res_in : Type) -> (res_out : Type) -> Type
   sig e r e_in e_out = e r e_in (\v => e_out)
 
 namespace DepUpdateEffect
+  public export
   sig : Effect ->
         (ret : Type) -> (res_in : Type) -> (res_out : ret -> Type) -> Type
   sig e r e_in e_out = e r e_in e_out
 
 ||| Handler interfaces describe how an effect `e` is translated to the
 ||| underlying computation context `m` for execution.
+public export
 interface Handler (e : Effect) (m : Type -> Type) where
   ||| How to handle the effect.
   |||
@@ -77,53 +84,119 @@ syntax "{" [inst] "==>" "{" {b} "}" [outst] "}" [eff]
 syntax "{" [inst] "==>" [outst] "}" [eff] = eff inst (\result => outst)
 
 -- --------------------------------------- [ Properties and Proof Construction ]
+
+public export
+data SubElem : a -> List a -> Type where
+  Z : SubElem a (a :: as)
+  S : SubElem a as -> SubElem a (b :: as)
+  
+public export
 data SubList : List a -> List a -> Type where
-     SubNil : SubList [] []
-     Keep   : SubList xs ys -> SubList (x :: xs) (x :: ys)
-     Drop   : SubList xs ys -> SubList xs (x :: ys)
+  SubNil : SubList [] xs
+  InList : SubElem x ys -> SubList xs ys -> SubList (x :: xs) ys
+
+Uninhabited (SubElem x []) where
+  uninhabited Z impossible
+  uninhabited (S _) impossible
+
+-- Some useful hints for proof construction in polymorphic programs
+%hint
+public export total
+dropFirst : SubList xs ys -> SubList xs (x :: ys)
+dropFirst SubNil = SubNil
+dropFirst (InList el sub) = InList (S el) (dropFirst sub)
 
 %hint
-subListId : SubList xs xs
-subListId {xs = Nil} = SubNil
-subListId {xs = x :: xs} = Keep subListId
+public export total
+subListId : (xs : List a) -> SubList xs xs
+subListId [] = SubNil
+subListId (x :: xs) = InList Z (dropFirst (subListId xs))
+
+public export total
+inSuffix : SubElem x ys -> SubList xs ys -> SubElem x (zs ++ ys)
+inSuffix {zs = []} el sub = el
+inSuffix {zs = (x :: xs)} el sub = S (inSuffix el sub)
+
+%hint
+public export total
+dropPrefix : SubList xs ys -> SubList xs (zs ++ ys)
+dropPrefix SubNil = SubNil
+dropPrefix (InList el sub) = InList (inSuffix el sub) (dropPrefix sub)
+
+public export total
+inPrefix : SubElem x ys -> SubList xs ys -> SubElem x (ys ++ zs)
+inPrefix {zs = []} {ys} el sub
+    = rewrite appendNilRightNeutral ys in el
+inPrefix {zs = (x :: xs)} Z sub = Z
+inPrefix {zs = (x :: xs)} (S y) sub = S (inPrefix y SubNil)
+
+%hint
+public export total
+dropSuffix : SubList xs ys -> SubList xs (ys ++ zs)
+dropSuffix SubNil = SubNil
+dropSuffix (InList el sub) = InList (inPrefix el sub) (dropSuffix sub)
 
 namespace Env
+  public export
   data Env  : (m : Type -> Type) -> List EFFECT -> Type where
-       Nil  : Env m Nil
-       (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
+    Nil  : Env m Nil
+    (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
 
-data EffElem : Effect -> Type ->
-               List EFFECT -> Type where
-     Here : EffElem x a (MkEff a x :: xs)
-     There : EffElem x a xs -> EffElem x a (y :: xs)
+namespace EffElem
+  public export
+  data EffElem : Effect -> Type ->
+                 List EFFECT -> Type where
+    Here : EffElem x a (MkEff a x :: xs)
+    There : EffElem x a xs -> EffElem x a (y :: xs)
+    
+total envElem : SubElem x xs -> Env m xs -> Env m [x]
+envElem Z (x :: xs) = [x]
+envElem (S k) (x :: xs) = envElem k xs
 
 ||| make an environment corresponding to a sub-list
-dropEnv : Env m ys -> SubList xs ys -> Env m xs
+total dropEnv : Env m ys -> SubList xs ys -> Env m xs
 dropEnv [] SubNil = []
-dropEnv (v :: vs) (Keep rest) = v :: dropEnv vs rest
-dropEnv (v :: vs) (Drop rest) = dropEnv vs rest
+dropEnv [] (InList idx rest) = absurd idx
+dropEnv (y::ys) SubNil = []
+dropEnv e@(y::ys) (InList idx rest) = 
+  let [x] = envElem idx e
+  in x :: dropEnv e rest
 
-updateWith : (ys' : List a) -> (xs : List a) ->
-             SubList ys xs -> List a
-updateWith (y :: ys) (x :: xs) (Keep rest) = y :: updateWith ys xs rest
-updateWith ys        (x :: xs) (Drop rest) = x :: updateWith ys xs rest
-updateWith []        []        SubNil      = []
-updateWith (y :: ys) []        SubNil      = y :: ys
-updateWith []        (x :: xs) (Keep rest) = []
+public export
+total updateAt : (idx : SubElem x' xs) -> (a:Type) -> List EFFECT -> List EFFECT
+updateAt Z a [] = []
+updateAt Z a ((MkEff b eff) :: xs) = (MkEff a eff) :: xs
+updateAt (S k) a [] = []
+updateAt (S k) a (x :: xs) = x :: updateAt k a xs
+
+public export
+total updateWith : (ys' : List EFFECT) -> (xs : List EFFECT) ->
+             SubList ys xs -> List EFFECT
+updateWith [] xs sl = xs
+updateWith (y :: ys) xs SubNil = xs
+updateWith ((MkEff a f) :: ys) xs (InList idx rest) = updateAt idx a (updateWith ys xs rest)
+
+public export
+total replaceEnvAt : (x : a) -> (idx : SubElem x' xs) -> Env m ys ->
+               Env m (updateAt idx a ys)
+replaceEnvAt x Z [] = []
+replaceEnvAt x Z (y :: ys) = x :: ys
+replaceEnvAt x (S k) [] = []
+replaceEnvAt x (S k) (y :: ys) = y :: replaceEnvAt x k ys
 
 ||| Put things back, replacing old with new in the sub-environment
-rebuildEnv : Env m ys' -> (prf : SubList ys xs) ->
+public export
+total rebuildEnv : {ys':List EFFECT} -> Env m ys' -> (prf : SubList ys xs) ->
              Env m xs -> Env m (updateWith ys' xs prf)
-rebuildEnv []        SubNil      env = env
-rebuildEnv (x :: xs) SubNil      env = x :: xs
-rebuildEnv []        (Keep rest) (y :: env) = []
-rebuildEnv (x :: xs) (Keep rest) (y :: env) = x :: rebuildEnv xs rest env
-rebuildEnv xs        (Drop rest) (y :: env) = y :: rebuildEnv xs rest env
-
+rebuildEnv [] SubNil env = env
+rebuildEnv (x :: xs) SubNil env = env
+rebuildEnv [] (InList w s) env = env
+rebuildEnv (x :: xs) (InList idx rest) env = replaceEnvAt x idx (rebuildEnv xs rest env) 
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
 
-updateResTy : (val : t) ->
+public export
+total updateResTy : (val : t) ->
               (xs : List EFFECT) -> EffElem e a xs -> e t a b ->
               List EFFECT
 updateResTy {b} val (MkEff a e :: xs) Here n = (MkEff (b val) e) :: xs
@@ -131,9 +204,11 @@ updateResTy     val (x :: xs)    (There p) n = x :: updateResTy val xs p n
 
 infix 5 :::, :-, :=
 
+public export
 data LRes : lbl -> Type -> Type where
      (:=) : (x : lbl) -> res -> LRes x res
 
+public export
 (:::) : lbl -> EFFECT -> EFFECT
 (:::) {lbl} x (MkEff r e) = MkEff (LRes x r) e
 
@@ -156,6 +231,7 @@ relabel {xs = (MkEff a e :: xs)} l (v :: vs) = (l := v) :: relabel l vs
 ||| @ x The return type of the result.
 ||| @ es The list of allowed side-effects.
 ||| @ ce Function to compute a new list of allowed side-effects.
+public export
 data EffM : (m : Type -> Type) -> (x : Type)
             -> (es : List EFFECT)
             -> (ce : x -> List EFFECT) -> Type where
@@ -182,27 +258,33 @@ data EffM : (m : Type -> Type) -> (x : Type)
 
 namespace SimpleEff
   -- Simple effects, no updates
+  public export
   Eff : (x : Type) -> (es : List EFFECT) -> Type
   Eff x es = {m : Type -> Type} -> EffM m x es (\v => es)
 
+  public export
   EffT : (m : Type -> Type) -> (x : Type) -> (es : List EFFECT) -> Type
   EffT m x es = EffM m x es (\v => es)
 
 namespace TransEff
   -- Dependent effects, updates not dependent on result
+  public export
   Eff : (x : Type) -> (es : List EFFECT) -> (ce : List EFFECT) -> Type
   Eff x es ce = {m : Type -> Type} -> EffM m x es (\_ => ce)
 
+  public export
   EffT : (m : Type -> Type) ->
          (x : Type) -> (es : List EFFECT) -> (ce : List EFFECT) -> Type
   EffT m x es ce = EffM m x es (\_ => ce)
 
 namespace DepEff
   -- Dependent effects, updates dependent on result
+  public export
   Eff : (x : Type) -> (es : List EFFECT)
         -> (ce : x -> List EFFECT) -> Type
   Eff x es ce = {m : Type -> Type} -> EffM m x es ce
 
+  public export
   EffT : (m : Type -> Type) -> (x : Type) -> (es : List EFFECT)
         -> (ce : x -> List EFFECT) -> Type
   EffT m x es ce = EffM m x es ce
@@ -271,6 +353,7 @@ execEff (val :: env) (There p) eff k
 -- Q: Instead of m b, implement as StateT (Env m xs') m b, so that state
 -- updates can be propagated even through failing computations?
 
+export
 eff : Env m xs -> EffM m a xs xs' -> ((x : a) -> Env m (xs' x) -> m b) -> m b
 eff env (Value x) k = k x env
 eff env (prog `EBind` c) k

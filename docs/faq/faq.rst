@@ -187,13 +187,16 @@ It’s not a priority, though not a bad idea in the long run. It would be a
 worthwhile effort in the short term to implement libraries to support
 self-hosting, such as a good parsing library.
 
-Does Idris have Universe Polymorphism? What is the type of ``Type``?
+Does Idris have universe polymorphism? What is the type of ``Type``?
 ====================================================================
 
-Rather than Universe polymorphism, Idris has a cumulative hierarchy of
+Rather than universe polymorphism, Idris has a cumulative hierarchy of
 universes; ``Type : Type 1``, ``Type 1 : Type 2``, etc.
-Cumulativity means that if ``x : Type n`` then also ``x : Type m``,
-provided that ``n <= m``.
+Cumulativity means that if ``x : Type n`` and ``n <= m``, then
+``x : Type m``. Universe levels are always inferred by Idris, and
+cannot be specified explicitly. The REPL command ``:type Type 1`` will
+result in an error, as will attempting to specify the universe level
+of any type.
 
 Why does Idris use ``Float`` and ``Double`` instead of ``Float32`` and ``Float64``?
 ===================================================================================

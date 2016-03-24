@@ -2,6 +2,7 @@
 module Data.Nat.DivMod
 
 %default total
+%access public export
 
 ||| The result of euclidean division of natural numbers
 |||

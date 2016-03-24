@@ -2,7 +2,7 @@ module Effect.Trans
 
 import Effects
 
-%access public
+%access public export
 
 data Trans : (Type -> Type) -> Effect where
   Lift : m a -> sig (Trans m) a

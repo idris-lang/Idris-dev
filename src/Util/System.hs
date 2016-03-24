@@ -2,7 +2,6 @@
 module Util.System(tempfile,withTempdir,rmFile,catchIO, isWindows,
                    writeSource, writeSourceText, readSource,
                    setupBundledCC, isATTY) where
-
 -- System helper functions.
 
 import Control.Exception as CE
@@ -31,9 +30,6 @@ import System.Environment (getEnv, setEnv, getExecutablePath)
 
 catchIO :: IO a -> (IOError -> IO a) -> IO a
 catchIO = CE.catch
-
-throwIO :: IOError -> IO a
-throwIO = CE.throw
 
 isWindows :: Bool
 isWindows = os `elem` ["win32", "mingw32", "cygwin32"]

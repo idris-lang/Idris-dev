@@ -2,6 +2,10 @@
 ||| Idris's reflected elaboration. Requires handling type class
 ||| resolution and implicit arguments - some of the same features as
 ||| the Idris elaborator itself.
+|||
+||| Since this test was put together, Agda has adopted an Idris-style
+||| elaborator reflection mechanism. The module name is preserved for
+||| historical interest.
 module AgdaStyleReflection
 
 
@@ -9,6 +13,7 @@ import Language.Reflection.Utils
 import Pruviloj
 
 %default total
+
 
 
 ||| Function arguments as provided at the application site
@@ -19,6 +24,10 @@ record Arg a where
 
 implementation Functor Arg where
   map f (MkArg plic x) = MkArg plic (f x)
+
+implementation Show a => Show (Arg a) where
+  showPrec d (MkArg plic x) = showCon d "MkArg" $ showArg plic ++ showArg x
+
 
 ||| Reflected terms, in the tradition of Agda's reflection library
 data Term
@@ -31,11 +40,39 @@ data Term
   | Constant Const
   | Ty
 
-unApply : Raw -> (Raw, List Raw)
-unApply tm = unApply' tm []
-  where unApply' : Raw -> List Raw -> (Raw, List Raw)
-        unApply' (RApp f x) xs = unApply' f (x::xs)
-        unApply' notApp xs = (notApp, xs)
+implementation Quotable Plicity Raw where
+  quotedTy = `(Plicity)
+  quote Explicit = `(Explicit)
+  quote Implicit = `(Implicit)
+  quote Constraint = `(Constraint)
+
+implementation (Quotable a Raw) => Quotable (Arg a) Raw where
+  quotedTy = `(Arg ~(quotedTy {a=a}))
+  quote (MkArg plicity argValue) =
+    `(MkArg {a=~(quotedTy {a=a})} ~(quote plicity) ~(quote argValue))
+
+
+implementation Quotable Term Raw where
+  quotedTy = `(Term)
+  quote (Var k xs) = `(AgdaStyleReflection.Var ~(quote k) ~(assert_total $ quote xs))
+  quote (Ctor n xs) = `(AgdaStyleReflection.Ctor ~(quote n) ~(assert_total $ quote xs))
+  quote (TyCtor n xs) = `(AgdaStyleReflection.TyCtor ~(quote n) ~(assert_total $ quote xs))
+  quote (Def n xs) = `(Def ~(quote n) ~(assert_total $ quote xs))
+  quote (Lam x) = `(AgdaStyleReflection.Lam ~(quote x))
+  quote (Pi x y) = `(AgdaStyleReflection.Pi ~(quote x) ~(quote y))
+  quote (Constant c) = `(Constant ~(quote c))
+  quote Ty = `(Ty)
+
+
+partial implementation Show Term where
+  showPrec d (Var k xs) = showCon d "Var" $ showArg k ++ showArg xs
+  showPrec d (Ctor n xs) = showCon d "Ctor" $ showArg n ++ showArg xs
+  showPrec d (TyCtor n xs) = showCon d "TyCtor" $ showArg n ++ showArg xs
+  showPrec d (Def n xs) = showCon d "Def" $ showArg n ++ showArg xs
+  showPrec d (Lam x) = showCon d "Lam" $ showArg x
+  showPrec d (Pi x y) = showCon d "Pi" $ showArg x ++ showArg y
+  showPrec d (Constant c) = showCon d "Constant" $ showArg c
+  showPrec d Ty = "Ty"
 
 ||| Quote a reflected Idris term to a Term in some induced local context
 covering
@@ -183,16 +220,39 @@ covering
 spliceTerm : Term -> Elab ()
 spliceTerm = spliceTerm' []
 
-||| Lift an Agda-style tactic into an Idris-style tactic
+syntax "splice" [tm] = %runElab (spliceTerm tm)
+
 covering
-quoteGoalImpl : (Term -> Term) -> Elab ()
-quoteGoalImpl f = do compute
-                     g <- goalType >>= quoteTerm
-                     spliceTerm (f g)
+quoteGoalImpl : TTName -> Elab ()
+quoteGoalImpl f =
+    do g <- goalType >>= quoteTerm
+       fill (RApp (Var f) (quote g))
+       solve
 
-syntax "quoteGoal" {x} "in" [expr] = %runElab (quoteGoalImpl (\x => expr))
+syntax "quoteGoal" {g} "in" [e] =
+  let f = \g : Term => e in %runElab (quoteGoalImpl `{f})
 
-syntax "tactic" [expr] = %runElab (quoteGoalImpl expr)
+
+-- Note: this definition would seem to be the right thing, but it's not:
+--   syntax "tactic" [tac] = quoteGoal g in splice tac g
+-- This is because it would make
+--   tactic foo
+-- expand to
+--   let f = \g : Term => %runElab (spliceTerm (tac g))
+--   in %runElab (quoteGoalImpl `{f})
+-- which confuses the meta-level at which the body of the lambda should be
+-- run. It must be sequenced into the same monadic action as quoting the goal,
+-- yielding the following implementation:
+
+covering
+tacticImpl : (tac : Term -> Term) -> Elab ()
+tacticImpl tac = do g <- goalType >>= quoteTerm
+                    AgdaStyleReflection.spliceTerm (tac g)
+
+syntax "tactic" [tacticCode] =
+    %runElab (tacticImpl tacticCode)
+
+
 
 
 
@@ -231,11 +291,29 @@ covering
 trivial : (goal : Term) -> Term
 trivial = perhaps . trivial'
 
-foo : (Nat, (), Nat, Either (() -> ()) Void)
-foo = quoteGoal x in trivial x
+-- DOESN'T WORK because reflection operations are not pure - they have
+-- side effects in the elaborator! Also due to metalevel confusion in
+-- underlying syntax
+--foo : (Nat, (), Either Void Nat, Nat -> ())
+--foo = quoteGoal g in splice (trivial g)
 
+
+-- WORKS because "tactic" takes care of the sequencing of operations
 bar : (Nat, (), Either Void Nat, Nat -> ())
 bar = tactic trivial
+
+someTerm : Term
+someTerm = quoteGoal g in g
+
+ok : AgdaStyleReflection.someTerm = TyCtor (NS (UN "Term") ["AgdaStyleReflection"]) []
+ok = Refl
+
+-- assert_total needed due to partial Show implementations
+stringly : String -> String
+stringly = quoteGoal g in \x => assert_total $ show g
+
+ok2 : stringly "fnord" = "Pi (Constant StrType) (Constant StrType)"
+ok2 = Refl
 
 --     When checking right hand side of baz:
 --     PROOF SEARCH FAILURE is not defined.
@@ -245,3 +323,4 @@ baz = tactic trivial
 -- Local Variables:
 -- idris-load-packages: ("pruviloj")
 -- End:
+

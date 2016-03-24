@@ -113,8 +113,9 @@ instance Binary a => Binary (Err' a) where
                                 put x
                                 put y
                                 put z
-  put (CantResolve _ t) = do putWord8 15
-                             put t
+  put (CantResolve _ t u) = do putWord8 15
+                               put t
+                               put u
   put (CantResolveAlts ns) = do putWord8 16
                                 put ns
   put (IncompleteTerm t) = do putWord8 17
@@ -218,7 +219,7 @@ instance Binary a => Binary (Err' a) where
              13 -> fmap NoTypeDecl get
              14 -> do x <- get ; y <- get ; z <- get
                       return $ NotInjective x y z
-             15 -> fmap (CantResolve False) get
+             15 -> CantResolve False <$> get <*> get
              16 -> fmap CantResolveAlts get
              17 -> fmap IncompleteTerm get
              18 -> UniverseError <$> get <*> get <*> get <*> get <*> get

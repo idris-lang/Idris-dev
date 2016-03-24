@@ -75,55 +75,100 @@ main module, with the ``main`` function, must be called
 Export Modifiers
 ================
 
-By default, all names defined in a module are exported for use by other
-modules. However, it is good practice only to export a minimal interface
-and keep internal details abstract. Idris allows functions, types,
-and interfaces to be marked as: ``public``, ``abstract`` or ``private``:
+Idris allows for fine-grained control over the visibility of a
+module's contents. By default, all names defined in a module are kept
+private.  This aides in specification of a minimal interface and for
+internal details to be left hidden.  Idris allows for functions,
+types, and interfaces to be marked as: ``private``, ``export``, or
+``public export``.  Their general meaning is as follows:
 
--  ``public`` means that both the name and definition are exported. For
-   functions, this means that the implementation is exported (which
-   means, for example, it can be used in a dependent type). For data
-   types, this means that the type name and the constructors are
-   exported. For interfaces, this means that the interface name and method
-   names are exported.
+- ``private`` meaning that it's not exported at all. This is the
+  default.
 
--  ``abstract`` means that only the name is exported. For functions,
-   this means that the implementation is not exported. For data types,
-   this means that the type name is exported but not the constructors.
-   For interfaces, this means that the interface name is exported but not the
-   method names.
+- ``export`` meaning that its top level type is exported.
 
--  ``private`` means that neither the name nor the definition is
-   exported.
+- ``public export`` meaning that the entire definition is exported.
+
+
+A further restriction in modifying the visibility is that definitions
+must not refer to anything within a lower level of visibility. For
+example, ``public export`` definitions cannot use private names, and
+``export`` types cannot use private names. This is to prevent private
+names leaking into a module's interface.
+
+Meaning for Functions
+---------------------
+
+- ``export`` the type is exported
+
+- ``public export`` the type and definition are exported, and the
+  definition can be used after it is imported. In other words, the
+  definition itself is considered part of the module's interface. The
+  long name ``public export`` is intended to make you think twice
+  about doing this.
 
 .. note::
-    If any definition is given an export modifier, then all names with no modifier are assumed to be ``private``.
 
-For our ``Btree`` module, it makes sense for the tree data type and the
-functions to be exported as ``abstract``, as we see below:
+   Type synonyms in Idris are created by writing a function. When
+   setting the visibility for a module, it might be a good idea to
+   ``public export`` all type synonyms if they are to be used outside
+   the module. Otherwise, Idris won't know what the synonym is a
+   synonym for.
+
+
+Meaning for Data Types
+----------------------
+
+For data types, the meanings are:
+
+- ``export``  the type constructor is exported
+
+- ``public export`` the type constructor and data constructors are
+  exported
+
+
+Meaning for Interfaces
+----------------------
+
+For interfaces, the meanings are:
+
+- ``export`` the interface name is exported
+- ``public export`` the interface name, method names and default
+  definitions are exported
+
+
+
+``BTree`` Revisited
++++++++++++++++++++
+
+For our ``BTree`` module, it makes sense for the tree data type and the
+functions to be exported as ``export``, as we see below:
 
 .. code-block:: idris
 
-    module Btree
+    module BTree
 
-    abstract data BTree a = Leaf
-                          | Node (BTree a) a (BTree a)
+    export data BTree a = Leaf
+                        | Node (BTree a) a (BTree a)
 
-    abstract
+    export
     insert : Ord a => a -> BTree a -> BTree a
     insert x Leaf = Node Leaf x Leaf
     insert x (Node l v r) = if (x < v) then (Node (insert x l) v r)
                                        else (Node l v (insert x r))
 
-    abstract
+    export
     toList : BTree a -> List a
     toList Leaf = []
     toList (Node l v r) = Btree.toList l ++ (v :: Btree.toList r)
 
-    abstract
+    export
     toTree : Ord a => List a -> BTree a
     toTree [] = Leaf
     toTree (x :: xs) = insert x (toTree xs)
+
+``%access`` Directive
+----------------------
 
 Finally, the default export mode can be changed with the ``%access``
 directive, for example:
@@ -132,7 +177,7 @@ directive, for example:
 
     module Btree
 
-    %access abstract
+    %access export
 
     data BTree a = Leaf
                           | Node (BTree a) a (BTree a)
@@ -151,7 +196,10 @@ directive, for example:
     toTree (x :: xs) = insert x (toTree xs)
 
 In this case, any function with no access modifier will be exported as
-``abstract``, rather than left ``private``.
+``export``, rather than left ``private``.
+
+Propagating Inner Module API's
+-------------------------------
 
 Additionally, a module can re-export a module it has imported, by using
 the ``public`` modifier on an ``import``. For example:

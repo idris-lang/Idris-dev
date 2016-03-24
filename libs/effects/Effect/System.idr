@@ -7,6 +7,8 @@ import Effects
 import System
 import Control.IOExcept
 
+%access public export
+
 data System : Effect where
      Args : sig System (List String)
      Time : sig System Integer

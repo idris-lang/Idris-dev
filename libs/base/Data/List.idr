@@ -1,6 +1,6 @@
 module Data.List
 
-%access public
+%access public export
 
 ||| A proof that some element is found in a list.
 |||
@@ -13,7 +13,7 @@ data Elem : a -> List a -> Type where
      ||| A proof that the element is after the front of the list
      |||
      ||| Example: `the (Elem "b" ["a", "b"]) (There Here)`
-     There : Elem x xs -> Elem x (y :: xs)
+     There : (later : Elem x xs) -> Elem x (y :: xs)
 
 implementation Uninhabited (Elem {a} x []) where
      uninhabited Here impossible

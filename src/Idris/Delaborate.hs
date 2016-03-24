@@ -106,7 +106,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
                        | Just n' <- lookup n env = PRef un [] n'
                        | otherwise
                             = case lookup n (idris_metavars ist) of
-                                  Just (Just _, mi, _, _) -> mkMVApp n []
+                                  Just (Just _, mi, _, _, _) -> mkMVApp n []
                                   _ -> PRef un [] n
     de env _ (Bind n (Lam ty) sc)
           = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
@@ -172,7 +172,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
               = PApp un (de env [] f) (map pexp (map (de env []) args))
     deFn env (P _ n _) args
          | not mvs = case lookup n (idris_metavars ist) of
-                        Just (Just _, mi, _, _) ->
+                        Just (Just _, mi, _, _, _) ->
                             mkMVApp n (drop mi (map (de env []) args))
                         _ -> mkPApp n (map (de env []) args)
          | otherwise = mkPApp n (map (de env []) args)
@@ -317,7 +317,7 @@ pprintErr' i (CantConvert x_in y_in env) =
           flagUnique (Bind n b sc) = Bind n (fmap flagUnique b) (flagUnique sc)
           flagUnique t = t
 pprintErr' i (CantSolveGoal x env) =
-  text "Can't solve goal " <>
+  text "Can't find a value of type " <>
   indented (annTm x (pprintTerm' i (map (\ (n, b) -> (n, False)) env) (delabSugared i x))) <>
   if (opt_errContext (idris_options i)) then line <> showSc i env else empty
 pprintErr' i (UnifyScope n out tm env) =
@@ -346,7 +346,13 @@ pprintErr' i (NotInjective p x y) =
   text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delabSugared i p)) <+>
   text " when unifying" <+> annTm x (pprintTerm i (delabSugared i x)) <+> text "and" <+>
   annTm y (pprintTerm i (delabSugared i y))
-pprintErr' i (CantResolve _ c) = text "Can't find implementation for" <+> pprintTerm i (delabSugared i c)
+pprintErr' i (CantResolve _ c e) 
+  = text "Can't find implementation for" <+> pprintTerm i (delabSugared i c)
+        <>
+    case e of
+      Msg "" -> empty
+      _ -> line <> line <> text "Possible cause:" <>
+           indented (pprintErr' i e)
 pprintErr' i (InvalidTCArg n t) 
    = annTm t (pprintTerm i (delabSugared i t)) <+> text " cannot be a parameter of "
         <> annName n <$>

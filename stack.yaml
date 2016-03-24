@@ -1,13 +1,16 @@
-resolver: lts-3.16
+resolver: lts-5.9
+
 packages:
-- '.'
+  - '.'
+
 flags:
-   idris:
-     FFI: true
-     GMP: True
-     curses: True
-extra-deps: 
-- annotated-wl-pprint-0.7.0
-- cheapskate-0.1.0.4
-- hscurses-1.4.2.0
-- libffi-0.1
+  idris:
+    FFI: true
+    GMP: true
+
+extra-deps:
+  - libffi-0.1
+
+nix:
+  enable: false
+  shell-file: stack-shell.nix

@@ -47,9 +47,9 @@ defaultTheme = ColourTheme { keywordColour = IdrisColour Nothing True False True
 mkSGR :: IdrisColour -> [SGR]
 mkSGR (IdrisColour c v u b i) =
     fg c ++
-    (if u then [SetUnderlining SingleUnderline] else []) ++
-    (if b then [SetConsoleIntensity BoldIntensity] else []) ++
-    (if i then [SetItalicized True] else [])
+    [SetUnderlining SingleUnderline | u] ++
+    [SetConsoleIntensity BoldIntensity | b] ++
+    [SetItalicized True | i]
   where
     fg Nothing = []
     fg (Just c) = [SetColor Foreground (if v then Vivid else Dull) c]
@@ -71,9 +71,9 @@ hEndColourise h _ = hSetSGR h [Reset]
 colouriseWithSTX :: IdrisColour -> String -> String
 colouriseWithSTX (IdrisColour c v u b i) str = setSGRCode sgr ++ "\STX" ++ str ++ setSGRCode [Reset] ++ "\STX"
     where sgr = fg c ++
-                (if u then [SetUnderlining SingleUnderline] else []) ++
-                (if b then [SetConsoleIntensity BoldIntensity] else []) ++
-                (if i then [SetItalicized True] else [])
+                [SetUnderlining SingleUnderline | u] ++
+                [SetConsoleIntensity BoldIntensity | b] ++
+                [SetItalicized True | i]
           fg Nothing = []
           fg (Just c) = [SetColor Foreground (if v then Vivid else Dull) c]
 

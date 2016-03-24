@@ -44,7 +44,3 @@ data MPair : AnyType -> AnyType -> AnyType where
 
 ndup : {a : UniqueType} -> a -> UPair a a
 ndup {a} x = (\f : Int -> a => MkUPair (f 0) (f 1)) (uconst x)
-
-
-
-

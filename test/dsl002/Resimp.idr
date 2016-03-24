@@ -3,6 +3,8 @@ module Resimp
 import public Data.Vect
 import public Data.Fin
 
+%access public export
+
 -- IO operations which read a resource
 data Reader : Type -> Type where
     MkReader : IO a -> Reader a
@@ -122,7 +124,7 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
   ioret : a -> IO a
   ioret = return
 
-  interp : Env gam -> [static] (e : Res gam gam' t) ->
+  interp : Env gam -> %static (e : Res gam gam' t) ->
            (Env gam' -> interpTy t -> IO u) -> IO u
 
   interp env (Let val scope) k

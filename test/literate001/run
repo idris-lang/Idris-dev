@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-idris --consolewidth 80 $@ test003a.lidr --check
-idris --consolewidth 80 $@ test003.lidr -o test003
+${IDRIS:-idris} $@ test003a.lidr --check
+${IDRIS:-idris} $@ test003.lidr -o test003
 ./test003
 rm -f test003 test003.ibc Lit.ibc

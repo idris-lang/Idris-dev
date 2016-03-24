@@ -2,6 +2,7 @@ module Data.Rel
 
 import Data.Fun
 
+%access public export
 
 ||| Build an n-ary relation type from a Vect of Types
 Rel : Vect n Type -> Type

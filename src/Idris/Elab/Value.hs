@@ -64,19 +64,20 @@ elabValBind info aspat norm tm_in
         --    * elaboration as a Type
         --    * elaboration as a function a -> b
 
-        (ElabResult tm' defer is ctxt' newDecls highlights, _) <-
-             tclift (elaborate ctxt (idris_datatypes i) (sMN 0 "val") infP initEState
+        (ElabResult tm' defer is ctxt' newDecls highlights newGName, _) <-
+             tclift (elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "val") infP initEState
                      (build i info aspat [Reflection] (sMN 0 "val") (infTerm tm)))
 
         -- Extend the context with new definitions created
         setContext ctxt'
         processTacticDecls info newDecls
         sendHighlighting highlights
+        updateIState $ \i -> i { idris_name = newGName }
 
         let vtm = orderPats (getInferTerm tm')
 
-        def' <- checkDef (fileFC "(input)") iderr defer
-        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, True))) def'
+        def' <- checkDef (fileFC "(input)") iderr True defer
+        let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, True, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info []) is
 

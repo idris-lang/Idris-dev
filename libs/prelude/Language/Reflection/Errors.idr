@@ -8,6 +8,8 @@ import Prelude.Bool
 import Prelude.List
 import Prelude.Maybe
 
+%access public export
+
 data Err = Msg String
          | InternalMsg String
          | CantUnify Bool TT TT Err (List (TTName, TT)) Int
@@ -28,7 +30,7 @@ data Err = Msg String
          | CantMatch TT
          | NoTypeDecl TTName
          | NotInjective TT TT TT
-         | CantResolve TT
+         | CantResolve TT Err
          | InvalidTCArg TTName TT
          | CantResolveAlts (List TTName)
          | NoValidAlts (List TTName)

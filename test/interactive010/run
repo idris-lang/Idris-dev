@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-idris --quiet --nobanner --nocolor  --consolewidth 80 < input
+${IDRIS:-idris} --quiet --nobanner --nocolor  < input

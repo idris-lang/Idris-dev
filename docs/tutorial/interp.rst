@@ -28,7 +28,7 @@ calculated just like any other value:
 .. code-block:: idris
 
     interpTy : Ty -> Type
-    interpTy TyInt       = Int
+    interpTy TyInt       = Integer
     interpTy TyBool      = Bool
     interpTy (TyFun A T) = interpTy A -> interpTy T
 
@@ -62,7 +62,7 @@ The full representation of expressions is:
 
     data Expr : Vect n Ty -> Ty -> Type where
         Var : HasType i G t -> Expr G t
-        Val : (x : Int) -> Expr G TyInt
+        Val : (x : Integer) -> Expr G TyInt
         Lam : Expr (a :: G) t -> Expr G (TyFun a t)
         App : Expr G (TyFun a t) -> Expr G a -> Expr G t
         Op  : (interpTy a -> interpTy b -> interpTy c) ->
@@ -115,7 +115,7 @@ A value carries a concrete representation of an integer:
 
 .. code-block:: idris
 
-    Val : (x : Int) -> Expr G TyInt
+    Val : (x : Integer) -> Expr G TyInt
 
 A lambda creates a function. In the scope of a function of type ``a ->
 t``, there is a new local variable of type ``a``, which is expressed
@@ -270,7 +270,7 @@ function on user input:
     main : IO ()
     main = do putStr "Enter a number: "
               x <- getLine
-              print (interp [] fact (cast x))
+              printLn (interp [] fact (cast x))
 
 Here, ``cast`` is an overloaded function which converts a value from
 one type to another if possible. Here, it converts a string to an

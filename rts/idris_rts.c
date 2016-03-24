@@ -35,6 +35,8 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     alloc_heap(&(vm->heap), heap_size, heap_size, NULL);
 
+    c_heap_init(&vm->c_heap);
+
     vm->ret = NULL;
     vm->reg1 = NULL;
 #ifdef HAS_PTHREAD
@@ -78,13 +80,29 @@ VM* idris_vm() {
     return vm;
 }
 
+VM* get_vm(void) {
+#ifdef HAS_PTHREAD
+    init_threadkeys();
+    return pthread_getspecific(vm_key);
+#else
+    return global_vm;
+#endif
+}
+
 void close_vm(VM* vm) {
     terminate(vm);
 }
 
+#ifdef HAS_PTHREAD
+void create_key() {
+    pthread_key_create(&vm_key, (void*)free_key);
+}
+#endif
+
 void init_threadkeys() {
 #ifdef HAS_PTHREAD
-    pthread_key_create(&vm_key, (void*)free_key);
+    static pthread_once_t key_once = PTHREAD_ONCE_INIT;
+    pthread_once(&key_once, create_key);
 #endif
 }
 
@@ -108,12 +126,13 @@ Stats terminate(VM* vm) {
 #endif
     free(vm->valstack);
     free_heap(&(vm->heap));
+    c_heap_destroy(&(vm->c_heap));
 #ifdef HAS_PTHREAD
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
     pthread_cond_destroy(&(vm -> inbox_waiting));
 #endif
-    // free(vm); 
+    // free(vm);
     // Set the VM as inactive, so that if any message gets sent to it
     // it will not get there, rather than crash the entire system.
     // (TODO: We really need to be cleverer than this if we're going to
@@ -122,6 +141,17 @@ Stats terminate(VM* vm) {
 
     STATS_LEAVE_EXIT(stats)
     return stats;
+}
+
+CData cdata_allocate(size_t size, CDataFinalizer finalizer)
+{
+    void * data = (void *) malloc(size);
+    return cdata_manage(data, size, finalizer);
+}
+
+CData cdata_manage(void * data, size_t size, CDataFinalizer finalizer)
+{
+    return c_heap_create_item(data, size, finalizer);
 }
 
 void idris_requireAlloc(size_t size) {
@@ -158,7 +188,7 @@ int space(VM* vm, size_t size) {
 
 void* idris_alloc(size_t size) {
     Closure* cl = (Closure*) allocate(sizeof(Closure)+size, 0);
-    SETTY(cl, RAWDATA);
+    SETTY(cl, CT_RAWDATA);
     cl->info.size = size;
     return (void*)cl+sizeof(Closure);
 }
@@ -223,7 +253,7 @@ void* allocate(size_t size, int outerlock) {
 void* allocCon(VM* vm, int arity, int outer) {
     Closure* cl = allocate(vm, sizeof(Closure) + sizeof(VAL)*arity,
                                outer);
-    SETTY(cl, CON);
+    SETTY(cl, CT_CON);
 
     cl -> info.c.arity = arity;
 //    cl -> info.c.tag = 42424242;
@@ -234,7 +264,7 @@ void* allocCon(VM* vm, int arity, int outer) {
 
 VAL MKFLOAT(VM* vm, double val) {
     Closure* cl = allocate(sizeof(Closure), 0);
-    SETTY(cl, FLOAT);
+    SETTY(cl, CT_FLOAT);
     cl -> info.f = val;
     return cl;
 }
@@ -248,7 +278,7 @@ VAL MKSTR(VM* vm, const char* str) {
     }
     Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
                            sizeof(char)*len, 0);
-    SETTY(cl, STRING);
+    SETTY(cl, CT_STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     if (str == NULL) {
         cl->info.str = NULL;
@@ -264,9 +294,25 @@ char* GETSTROFF(VAL stroff) {
     return (root->str->info.str + root->offset);
 }
 
+VAL MKCDATA(VM* vm, CHeapItem * item) {
+    c_heap_insert_if_needed(vm, &vm->c_heap, item);
+    Closure* cl = allocate(sizeof(Closure), 0);
+    SETTY(cl, CT_CDATA);
+    cl->info.c_heap_item = item;
+    return cl;
+}
+
+VAL MKCDATAc(VM* vm, CHeapItem * item) {
+    c_heap_insert_if_needed(vm, &vm->c_heap, item);
+    Closure* cl = allocate(sizeof(Closure), 1);
+    SETTY(cl, CT_CDATA);
+    cl->info.c_heap_item = item;
+    return cl;
+}
+
 VAL MKPTR(VM* vm, void* ptr) {
     Closure* cl = allocate(sizeof(Closure), 0);
-    SETTY(cl, PTR);
+    SETTY(cl, CT_PTR);
     cl -> info.ptr = ptr;
     return cl;
 }
@@ -274,7 +320,7 @@ VAL MKPTR(VM* vm, void* ptr) {
 VAL MKMPTR(VM* vm, void* ptr, size_t size) {
     Closure* cl = allocate(sizeof(Closure) +
                            sizeof(ManagedPtr) + size, 0);
-    SETTY(cl, MANAGEDPTR);
+    SETTY(cl, CT_MANAGEDPTR);
     cl->info.mptr = (ManagedPtr*)((char*)cl + sizeof(Closure));
     cl->info.mptr->data = (char*)cl + sizeof(Closure) + sizeof(ManagedPtr);
     memcpy(cl->info.mptr->data, ptr, size);
@@ -284,7 +330,7 @@ VAL MKMPTR(VM* vm, void* ptr, size_t size) {
 
 VAL MKFLOATc(VM* vm, double val) {
     Closure* cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, FLOAT);
+    SETTY(cl, CT_FLOAT);
     cl -> info.f = val;
     return cl;
 }
@@ -292,7 +338,7 @@ VAL MKFLOATc(VM* vm, double val) {
 VAL MKSTRc(VM* vm, char* str) {
     Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
                            sizeof(char)*strlen(str)+1, 1);
-    SETTY(cl, STRING);
+    SETTY(cl, CT_STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
 
     strcpy(cl -> info.str, str);
@@ -301,7 +347,7 @@ VAL MKSTRc(VM* vm, char* str) {
 
 VAL MKPTRc(VM* vm, void* ptr) {
     Closure* cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, PTR);
+    SETTY(cl, CT_PTR);
     cl -> info.ptr = ptr;
     return cl;
 }
@@ -309,7 +355,7 @@ VAL MKPTRc(VM* vm, void* ptr) {
 VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
     Closure* cl = allocate(sizeof(Closure) +
                            sizeof(ManagedPtr) + size, 1);
-    SETTY(cl, MANAGEDPTR);
+    SETTY(cl, CT_MANAGEDPTR);
     cl->info.mptr = (ManagedPtr*)((char*)cl + sizeof(Closure));
     cl->info.mptr->data = (char*)cl + sizeof(Closure) + sizeof(ManagedPtr);
     memcpy(cl->info.mptr->data, ptr, size);
@@ -319,28 +365,28 @@ VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
 
 VAL MKB8(VM* vm, uint8_t bits8) {
     Closure* cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, BITS8);
+    SETTY(cl, CT_BITS8);
     cl -> info.bits8 = bits8;
     return cl;
 }
 
 VAL MKB16(VM* vm, uint16_t bits16) {
     Closure* cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, BITS16);
+    SETTY(cl, CT_BITS16);
     cl -> info.bits16 = bits16;
     return cl;
 }
 
 VAL MKB32(VM* vm, uint32_t bits32) {
     Closure* cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, BITS32);
+    SETTY(cl, CT_BITS32);
     cl -> info.bits32 = bits32;
     return cl;
 }
 
 VAL MKB64(VM* vm, uint64_t bits64) {
     Closure* cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, BITS64);
+    SETTY(cl, CT_BITS64);
     cl -> info.bits64 = bits64;
     return cl;
 }
@@ -382,18 +428,18 @@ void dumpVal(VAL v) {
         return;
     }
     switch(GETTY(v)) {
-    case CON:
+    case CT_CON:
         printf("%d[", TAG(v));
         for(i = 0; i < ARITY(v); ++i) {
             dumpVal(v->info.c.args[i]);
         }
         printf("] ");
         break;
-    case STRING:
+    case CT_STRING:
         printf("STR[%s]", v->info.str);
         break;
-    case FWD:
-        printf("FWD ");
+    case CT_FWD:
+        printf("CT_FWD ");
         dumpVal((VAL)(v->info.ptr));
         break;
     default:
@@ -414,6 +460,36 @@ void idris_poke(void* ptr, i_int offset, uint8_t data) {
     *(((uint8_t*)ptr) + offset) = data;
 }
 
+
+VAL idris_peekPtr(VM* vm, VAL ptr, VAL offset) {
+    void** addr = GETPTR(ptr) + GETINT(offset);
+    return MKPTR(vm, *addr);
+}
+
+VAL idris_pokePtr(VAL ptr, VAL offset, VAL data) {
+    void** addr = GETPTR(ptr) + GETINT(offset);
+    *addr = GETPTR(data);
+    return MKINT(0);
+}
+
+VAL idris_peekDouble(VM* vm, VAL ptr, VAL offset) {
+    return MKFLOAT(vm, *(double*)(GETPTR(ptr) + GETINT(offset)));
+}
+
+VAL idris_pokeDouble(VAL ptr, VAL offset, VAL data) {
+    *(double*)(GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
+    return MKINT(0);
+}
+
+VAL idris_peekSingle(VM* vm, VAL ptr, VAL offset) {
+    return MKFLOAT(vm, *(float*)(GETPTR(ptr) + GETINT(offset)));
+}
+
+VAL idris_pokeSingle(VAL ptr, VAL offset, VAL data) {
+    *(float*)(GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
+    return MKINT(0);
+}
+
 void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size) {
     memmove(dest + dest_offset, src + src_offset, size);
 }
@@ -421,7 +497,7 @@ void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i
 VAL idris_castIntStr(VM* vm, VAL i) {
     int x = (int) GETINT(i);
     Closure* cl = allocate(sizeof(Closure) + sizeof(char)*16, 0);
-    SETTY(cl, STRING);
+    SETTY(cl, CT_STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     sprintf(cl -> info.str, "%d", x);
     return cl;
@@ -432,25 +508,25 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
     ClosureType ty = i->ty;
 
     switch (ty) {
-    case BITS8:
+    case CT_BITS8:
         // max length 8 bit unsigned int str 3 chars (256)
         cl = allocate(sizeof(Closure) + sizeof(char)*4, 0);
         cl->info.str = (char*)cl + sizeof(Closure);
         sprintf(cl->info.str, "%" PRIu8, (uint8_t)i->info.bits8);
         break;
-    case BITS16:
+    case CT_BITS16:
         // max length 16 bit unsigned int str 5 chars (65,535)
         cl = allocate(sizeof(Closure) + sizeof(char)*6, 0);
         cl->info.str = (char*)cl + sizeof(Closure);
         sprintf(cl->info.str, "%" PRIu16, (uint16_t)i->info.bits16);
         break;
-    case BITS32:
+    case CT_BITS32:
         // max length 32 bit unsigned int str 10 chars (4,294,967,295)
         cl = allocate(sizeof(Closure) + sizeof(char)*11, 0);
         cl->info.str = (char*)cl + sizeof(Closure);
         sprintf(cl->info.str, "%" PRIu32, (uint32_t)i->info.bits32);
         break;
-    case BITS64:
+    case CT_BITS64:
         // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
         cl = allocate(sizeof(Closure) + sizeof(char)*21, 0);
         cl->info.str = (char*)cl + sizeof(Closure);
@@ -461,7 +537,7 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
         exit(EXIT_FAILURE);
     }
 
-    SETTY(cl, STRING);
+    SETTY(cl, CT_STRING);
     return cl;
 }
 
@@ -476,7 +552,7 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
     Closure* cl = allocate(sizeof(Closure) + sizeof(char)*32, 0);
-    SETTY(cl, STRING);
+    SETTY(cl, CT_STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     snprintf(cl -> info.str, 32, "%.16g", GETFLOAT(i));
     return cl;
@@ -492,7 +568,7 @@ VAL idris_concat(VM* vm, VAL l, VAL r) {
     // dumpVal(l);
     // printf("\n");
     Closure* cl = allocate(sizeof(Closure) + strlen(ls) + strlen(rs) + 1, 0);
-    SETTY(cl, STRING);
+    SETTY(cl, CT_STRING);
     cl -> info.str = (char*)cl + sizeof(Closure);
     strcpy(cl -> info.str, ls);
     strcat(cl -> info.str, rs);
@@ -538,7 +614,7 @@ VAL idris_strHead(VM* vm, VAL str) {
 
 VAL MKSTROFFc(VM* vm, StrOffset* off) {
     Closure* cl = allocate(sizeof(Closure) + sizeof(StrOffset), 1);
-    SETTY(cl, STROFFSET);
+    SETTY(cl, CT_STROFFSET);
     cl->info.str_offset = (StrOffset*)((char*)cl + sizeof(Closure));
 
     cl->info.str_offset->str = off->str;
@@ -552,7 +628,7 @@ VAL idris_strTail(VM* vm, VAL str) {
     // gc moves str
     if (space(vm, sizeof(Closure) + sizeof(StrOffset))) {
         Closure* cl = allocate(sizeof(Closure) + sizeof(StrOffset), 0);
-        SETTY(cl, STROFFSET);
+        SETTY(cl, CT_STROFFSET);
         cl->info.str_offset = (StrOffset*)((char*)cl + sizeof(Closure));
 
         int offset = 0;
@@ -580,7 +656,7 @@ VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     if ((xval & 0x80) == 0) { // ASCII char
         Closure* cl = allocate(sizeof(Closure) +
                                strlen(xstr) + 2, 0);
-        SETTY(cl, STRING);
+        SETTY(cl, CT_STRING);
         cl -> info.str = (char*)cl + sizeof(Closure);
         cl -> info.str[0] = (char)(GETINT(x));
         strcpy(cl -> info.str+1, xstr);
@@ -588,7 +664,7 @@ VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     } else {
         char *init = idris_utf8_fromChar(xval);
         Closure* cl = allocate(sizeof(Closure) + strlen(init) + strlen(xstr) + 1, 0);
-        SETTY(cl, STRING);
+        SETTY(cl, CT_STRING);
         cl -> info.str = (char*)cl + sizeof(Closure);
         strcpy(cl -> info.str, init);
         strcat(cl -> info.str, xstr);
@@ -606,7 +682,7 @@ VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
     char *start = idris_utf8_advance(GETSTR(str), GETINT(offset));
     char *end = idris_utf8_advance(start, GETINT(length));
     Closure* newstr = allocate(sizeof(Closure) + (end - start) +1, 0);
-    SETTY(newstr, STRING);
+    SETTY(newstr, CT_STRING);
     newstr -> info.str = (char*)newstr + sizeof(Closure);
     memcpy(newstr -> info.str, start, end - start);
     *(newstr -> info.str + (end - start) + 1) = '\0';
@@ -617,7 +693,7 @@ VAL idris_strRev(VM* vm, VAL str) {
     char *xstr = GETSTR(str);
     Closure* cl = allocate(sizeof(Closure) +
                            strlen(xstr) + 1, 0);
-    SETTY(cl, STRING);
+    SETTY(cl, CT_STRING);
     cl->info.str = (char*)cl + sizeof(Closure);
     idris_utf8_rev(xstr, cl->info.str);
     return cl;
@@ -700,7 +776,7 @@ VAL doCopyTo(VM* vm, VAL x) {
         return x;
     }
     switch(GETTY(x)) {
-    case CON:
+    case CT_CON:
         ar = CARITY(x);
         if (ar == 0 && CTAG(x) < 256) { // globally allocated
             cl = x;
@@ -714,34 +790,34 @@ VAL doCopyTo(VM* vm, VAL x) {
             }
         }
         break;
-    case FLOAT:
+    case CT_FLOAT:
         cl = MKFLOATc(vm, x->info.f);
         break;
-    case STRING:
+    case CT_STRING:
         cl = MKSTRc(vm, x->info.str);
         break;
-    case BIGINT:
+    case CT_BIGINT:
         cl = MKBIGMc(vm, x->info.ptr);
         break;
-    case PTR:
+    case CT_PTR:
         cl = MKPTRc(vm, x->info.ptr);
         break;
-    case MANAGEDPTR:
+    case CT_MANAGEDPTR:
         cl = MKMPTRc(vm, x->info.mptr->data, x->info.mptr->size);
         break;
-    case BITS8:
+    case CT_BITS8:
         cl = idris_b8CopyForGC(vm, x);
         break;
-    case BITS16:
+    case CT_BITS16:
         cl = idris_b16CopyForGC(vm, x);
         break;
-    case BITS32:
+    case CT_BITS32:
         cl = idris_b32CopyForGC(vm, x);
         break;
-    case BITS64:
+    case CT_BITS64:
         cl = idris_b64CopyForGC(vm, x);
         break;
-    case RAWDATA:
+    case CT_RAWDATA:
         {
             size_t size = x->info.size + sizeof(Closure);
             cl = allocate(size, 0);
@@ -789,12 +865,12 @@ int idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     }
 
     pthread_mutex_lock(&(dest->inbox_lock));
-    
+
     if (dest->inbox_write >= dest->inbox_end) {
         // FIXME: This is obviously bad in the long run. This should
         // either block, make the inbox bigger, or return an error code,
         // or possibly make it user configurable
-        fprintf(stderr, "Inbox full"); 
+        fprintf(stderr, "Inbox full");
         exit(-1);
     }
 
@@ -820,7 +896,7 @@ VM* idris_checkMessages(VM* vm) {
 
 VM* idris_checkMessagesFrom(VM* vm, VM* sender) {
     Msg* msg;
-    
+
     for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
         if (sender == NULL || msg->sender == sender) {
             return msg->sender;
@@ -854,7 +930,7 @@ VM* idris_checkMessagesTimeout(VM* vm, int delay) {
 
 Msg* idris_getMessageFrom(VM* vm, VM* sender) {
     Msg* msg;
-    
+
     for (msg = vm->inbox; msg < vm->inbox_write; ++msg) {
         if (sender == NULL || msg->sender == sender) {
             return msg;
@@ -951,7 +1027,7 @@ void init_nullaries() {
     nullary_cons = malloc(256 * sizeof(VAL));
     for(i = 0; i < 256; ++i) {
         cl = malloc(sizeof(Closure));
-        SETTY(cl, CON);
+        SETTY(cl, CT_CON);
         cl->info.c.tag_arity = i << 8;
         nullary_cons[i] = cl;
     }

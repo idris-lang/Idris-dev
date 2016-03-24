@@ -126,4 +126,14 @@ VAL idris_b64T8(VM *vm, VAL a);
 VAL idris_b64T16(VM *vm, VAL a);
 VAL idris_b64T32(VM *vm, VAL a);
 
+// memory access
+VAL idris_peekB8(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokeB8(VAL ptr, VAL offset, VAL data);
+VAL idris_peekB16(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokeB16(VAL ptr, VAL offset, VAL data);
+VAL idris_peekB32(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokeB32(VAL ptr, VAL offset, VAL data);
+VAL idris_peekB64(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokeB64(VAL ptr, VAL offset, VAL data);
+
 #endif

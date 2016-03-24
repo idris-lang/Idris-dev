@@ -100,6 +100,113 @@ follows:
                       (x :: qsort (assert_smaller (x :: xs) (filter (>= x) xs))))
 
 
+C heap
+======
+
+Idris has two heaps where objects can be allocated:
+
++--------------------------------------+---------------------------------------+
+| FP heap                              | C heap                                |
++======================================+=======================================+
+| Cheney-collected                     | Mark-and-sweep-collected              |
++--------------------------------------+---------------------------------------+
+| Garbage collections touches only     | Garbage collection has to traverse    |
+| live objects.                        | all registered items.                 |
++--------------------------------------+---------------------------------------+
+| Ideal for FP-style rapid allocation  | Ideal for C-style allocation of a few |
+| of lots of small short-lived pieces  | big buffers.                          |
+| of memory, such as data constructors.|                                       |
++--------------------------------------+---------------------------------------+
+| Finalizers are impossible to support | Items have finalizers that are called |
+| reasonably.                          | on deallocation.                      |
++--------------------------------------+---------------------------------------+
+| Data is copied all the time (when    | Copying does not happen.              |
+| collecting garbage, modifying data,  |                                       |
+| registering managed pointers, etc.)  |                                       |
++--------------------------------------+---------------------------------------+
+| Contains objects of various types.   | Contains C heap items: ``(void *)``   |
+|                                      | pointers with finalizers. A finalizer |
+|                                      | is a routine that deallocates the     |
+|                                      | resources associated with the item.   |
++--------------------------------------+---------------------------------------+
+| Fixed set of object types.           | The data pointer may point            |
+|                                      | to anything, as long as the finalizer |
+|                                      | cleans up correctly.                  |
++--------------------------------------+---------------------------------------+
+| Not suitable for C resources and     | Suitable for C resources and arbitrary|
+| arbitrary pointers.                  | pointers.                             |
++--------------------------------------+---------------------------------------+
+| Values form a compact memory block.  | Items are kept in a linked list.      |
++--------------------------------------+---------------------------------------+
+| Any Idris value, most notably        | Items represented by the              |
+| ``ManagedPtr``.                      | Idris type ``CData``.                 |
++--------------------------------------+---------------------------------------+
+| Data of ``ManagedPtr`` allocated     | Data allocated in C, pointer copied   |
+| in C, buffer then copied into the FP | into the C heap.                      |
+| heap.                                |                                       |
++--------------------------------------+---------------------------------------+
+| Allocation and reallocation not      | Allocated and reallocate freely in C, |
+| possible from C code (without having | registering the allocated items       |
+| a reference to the VM). Everything   | in the FFI.                           |
+| is copied instead.                   |                                       |
++--------------------------------------+---------------------------------------+
+
+The FP heap is the primary heap. It may contain values of type ``CData``,
+which are references to items in the C heap. A C heap item contains
+a ``(void *)`` pointer and the corresponding finalizer. Once a C heap item
+is no longer referenced from the FP heap, it is marked as unused and
+the next GC sweep will call its finalizer and deallocate it.
+
+There is no Idris interface for ``CData`` other than its type and FFI.
+
+Usage from C code
+-----------------
+
+* Although not enforced in code, ``CData`` is meant to be opaque
+  and non-RTS code (such as libraries or C bindings) should
+  access only its ``(void *)`` field called ``data``.
+
+* Feel free to mutate both the pointer ``data`` (eg. after calling ``realloc``)
+  and the memory it points to. However, keep in mind
+  that this must not break Idris's referential transparency.
+ 
+* **WARNING!** If you call ``cdata_allocate`` or ``cdata_manage``,
+  the resulting ``CData`` object *must* be returned from your
+  FFI function so that it is inserted in the C heap by the RTS.
+  Otherwise the memory will be leaked.
+
+.. code:: idris
+
+    some_allocating_fun : Int -> IO CData
+    some_allocating_fun i = foreign FFI_C "some_allocating_fun" (Int -> IO CData) i
+
+    other_fun : CData -> Int -> IO Int
+    other_fun cd i = foreign FFI_C "other_fun" (CData -> Int -> IO Int) cd i
+
+.. code:: cpp
+    
+    #include "idris_rts.h"
+
+    static void finalizer(void * data)
+    {
+        MyStruct * ptr = (MyStruct *) data;
+        free_something(ptr->something);
+        free(ptr);
+    }
+
+    CData some_allocating_fun(int arg)
+    {
+        void * data = (void *) malloc(...);
+        // ...
+        return cdata_manage(data, finalizer);
+    }
+
+    int other_fun(CData cd, int arg)
+    {
+        int result = foo(cd->data);
+        return result;
+    }
+
 Preorder reasoning
 ==================
 
@@ -118,7 +225,7 @@ Here is an example:
       (a * b * c) ={ sym (multAssociative a b c) }=
       (a * (b * c)) ={ cong (multCommutative b c) }=
       (a * (c * b)) ={ multAssociative a c b }=
-      (a * c * b) ={ cong {f = (*b)} (multCommutative a c) }=
+      (a * c * b) ={ cong {f = (* b)} (multCommutative a c) }=
       (c * a * b) QED
 
 Note that the parentheses are required -- only a simple expression can

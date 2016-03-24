@@ -1,7 +1,9 @@
 module Prelude.Basics
 
 import Builtins
-       
+
+%access public export
+
 Not : Type -> Type
 Not a = a -> Void
 
@@ -51,9 +53,9 @@ data Dec : Type -> Type where
 
   ||| The case where the property holds
   ||| @ prf the proof
-  Yes : {A : Type} -> (prf : A) -> Dec A
+  Yes : (prf : prop) -> Dec prop
 
   ||| The case where the property holding would be a contradiction
-  ||| @ contra a demonstration that A would be a contradiction
-  No  : {A : Type} -> (contra : A -> Void) -> Dec A
+  ||| @ contra a demonstration that prop would be a contradiction
+  No  : (contra : prop -> Void) -> Dec prop
 

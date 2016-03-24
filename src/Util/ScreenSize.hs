@@ -1,21 +1,6 @@
-{-# LANGUAGE CPP #-}
 module Util.ScreenSize(getScreenWidth) where
 
-import Debug.Trace
-
-#ifndef CURSES
+import System.Console.Terminal.Size (size, width)
 
 getScreenWidth :: IO Int
-getScreenWidth = return 80
-
-#else
-
-import UI.HSCurses.Curses
-
-getScreenWidth :: IO Int
-getScreenWidth = do initScr
-                    refresh
-                    size <- scrSize
-                    endWin
-                    return (snd size)
-#endif
+getScreenWidth = maybe 80 width `fmap` size

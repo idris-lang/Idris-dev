@@ -6,6 +6,7 @@ import Data.Vect
 import Data.Vect.Quantifiers
 
 %default total
+%access public export
 
 Cell : Nat -> Type
 Cell n = Maybe (Fin n)
@@ -32,7 +33,7 @@ unlines (l::ls) = pack (foldl addLine (unpack l) (map unpack ls))
     addLine : List Char -> List Char -> List Char
     addLine w s = w ++ ('\n' :: s)
 
-instance Show (Board n) where
+Show (Board n) where
   show (MkBoard rs) = unlines (map showRow rs)
 
 updateAt : Fin n -> Vect n a -> (a -> a) -> Vect n a

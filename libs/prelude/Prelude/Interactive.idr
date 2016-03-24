@@ -1,5 +1,5 @@
 ||| Various helper functions for creating simple interactive systems.
-||| 
+|||
 ||| These are mostly intended for helping with teaching, in that they will allow
 ||| the easy creation of interactive programs without needing to teach IO
 ||| or Effects first, but they also capture some common patterns of interactive
@@ -10,7 +10,7 @@ import Builtins
 import Prelude.List
 import Prelude.File
 import Prelude.Bool
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Strings
 import Prelude.Chars
 import Prelude.Show
@@ -21,7 +21,7 @@ import Prelude.Either
 import Prelude.Monad
 import IO
 
-%access public
+%access public export
 
 ---- some basic io
 
@@ -115,19 +115,19 @@ getArgs = do n <- numArgs
 ||| @ onEOF the function to run on reaching end of file, returning a String
 ||| to output
 partial
-processHandle : File -> 
+processHandle : File ->
                 (state : a) ->
-                (onRead : a -> String -> (String, a)) -> 
-                (onEOF : a -> String) -> 
+                (onRead : a -> String -> (String, a)) ->
+                (onEOF : a -> String) ->
                 IO ()
-processHandle h acc onRead onEOF 
+processHandle h acc onRead onEOF
    = if !(fEOF h)
         then putStr (onEOF acc)
         else do Right x <- fGetLine h
                     | Left err => putStr (onEOF acc)
                 let (out, acc') = onRead acc x
                 putStr out
-                processHandle h acc' onRead onEOF    
+                processHandle h acc' onRead onEOF
 
 ||| Process input from the standard input stream, while maintaining a state.
 ||| @ state the input state
@@ -136,34 +136,33 @@ processHandle h acc onRead onEOF
 ||| @ onEOI the function to run on reaching end of input, returning a String
 ||| to output
 partial
-processStdin : (state : a) -> 
-               (onRead : a -> String -> (String, a)) -> 
+processStdin : (state : a) ->
+               (onRead : a -> String -> (String, a)) ->
                (onEOI : a -> String) -> IO ()
 processStdin = processHandle stdin
 
 ||| A basic read-eval-print loop, maintaining a state
 ||| @ state the input state
-||| @ prompt the prompt to show 
+||| @ prompt the prompt to show
 ||| @ onInput the function to run on reading input, returning a String to
 ||| output and a new state. Returns Nothing if the repl should exit
 partial
-replWith : (state : a) -> (prompt : String) -> 
+replWith : (state : a) -> (prompt : String) ->
            (onInput : a -> String -> Maybe (String, a)) -> IO ()
-replWith acc prompt fn 
+replWith acc prompt fn
    = do putStr prompt
         x <- getLine
         case fn acc x of
-             Just (out, acc') => do putStr out 
+             Just (out, acc') => do putStr out
                                     replWith acc' prompt fn
              Nothing => return ()
 
 ||| A basic read-eval-print loop
-||| @ prompt the prompt to show 
+||| @ prompt the prompt to show
 ||| @ onInput the function to run on reading input, returning a String to
-||| output 
+||| output
 partial
-repl : (prompt : String) -> 
+repl : (prompt : String) ->
        (onInput : String -> String) -> IO ()
-repl prompt fn 
+repl prompt fn
    = replWith () prompt (\x, s => Just (fn s, ()))
-

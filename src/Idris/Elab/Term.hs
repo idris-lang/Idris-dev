@@ -18,9 +18,9 @@ import Idris.Core.Unify
 import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.Typecheck (check, recheck, converts, isType)
 import Idris.Core.WHNF (whnf)
-import Idris.Coverage (buildSCG, checkDeclTotality, genClauses, recoverableCoverage, validCoverageCase)
+import Idris.Coverage (buildSCG, checkDeclTotality, checkPositive, genClauses, recoverableCoverage, validCoverageCase)
 import Idris.ErrReverse (errReverse)
-import Idris.ElabQuasiquote (extractUnquotes)
+import Idris.Elab.Quasiquote (extractUnquotes)
 import Idris.Elab.Utils
 import Idris.Reflection
 import qualified Util.Pretty as U
@@ -52,6 +52,9 @@ data ElabResult =
              , resultTyDecls :: [RDeclInstructions]
                -- ^ Meta-info about the new type declarations
              , resultHighlighting :: [(FC, OutputAnnotation)]
+               -- ^ Saved highlights from elaboration
+             , resultName :: Int
+               -- ^ The new global name counter
              }
 
 
@@ -122,9 +125,10 @@ build ist info emode opts fn tm
          ctxt <- get_context
          let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
          log <- getLog
+         g_nextname <- get_global_nextname
          if log /= ""
-            then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights)
-            else return (ElabResult tm ds (map snd is) ctxt impls highlights)
+            then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
+            else return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
   where pattern = emode == ELHS
         tydecl = emode == ETyDecl
 
@@ -166,9 +170,10 @@ buildTC ist info emode opts fn ns tm
          ctxt <- get_context
          let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
          log <- getLog
+         g_nextname <- get_global_nextname
          if (log /= "")
-            then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights)
-            else return (ElabResult tm ds (map snd is) ctxt impls highlights)
+            then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
+            else return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
   where pattern = emode == ELHS
 
 -- return whether arguments of the given constructor name can be
@@ -236,6 +241,7 @@ elab ist info emode opts fn tm
     pattern = emode == ELHS
     intransform = emode == ETransLHS
     bindfree = emode == ETyDecl || emode == ELHS || emode == ETransLHS
+    autoimpls = opt_autoimpls (idris_options ist)
 
     get_delayed_elab est =
         let ds = delayed_elab est in
@@ -614,7 +620,8 @@ elab ist info emode opts fn tm
                                 [] -> False
                                 _ -> True
             bindable (NS _ _) = False
-            bindable n = implicitable n
+            bindable (MN _ _) = True
+            bindable n = implicitable n && autoimpls
     elab' ina _ f@(PInferRef fc hls n) = elab' ina (Just fc) (PApp NoFC f [])
     elab' ina fc' tm@(PRef fc hls n)
           | pattern && not reflection && not (e_qq ina) && not (e_intype ina)
@@ -1156,9 +1163,10 @@ elab ist info emode opts fn tm
              -- capturing lexically available variables in the quoted term.
              ctxt <- get_context
              datatypes <- get_datatypes
+             g_nextname <- get_global_nextname
              saveState
              updatePS (const .
-                       newProof (sMN 0 "q") ctxt datatypes $
+                       newProof (sMN 0 "q") ctxt datatypes g_nextname $
                        P Ref (reflm "TT") Erased)
 
              -- Re-add the unquotes, letting Idris infer the (fictional)
@@ -1702,8 +1710,8 @@ solveAutos ist fn ambigok
 -- Return true if the given error suggests a type class failure is
 -- recoverable
 tcRecoverable :: ElabMode -> Err -> Bool
-tcRecoverable ERHS (CantResolve f g) = f
-tcRecoverable ETyDecl (CantResolve f g) = f
+tcRecoverable ERHS (CantResolve f g _) = f
+tcRecoverable ETyDecl (CantResolve f g _) = f
 tcRecoverable e (ElaboratingArg _ _ _ err) = tcRecoverable e err
 tcRecoverable e (At _ err) = tcRecoverable e err
 tcRecoverable _ _ = True
@@ -1837,10 +1845,73 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
          updateAux $ \e -> e { new_tyDecls = RClausesInstrs n clauses'' : new_tyDecls e}
          return ()
 
+
     checkClosed :: Raw -> Elab' aux (Term, Type)
     checkClosed tm = do ctxt <- get_context
                         (val, ty) <- lift $ check ctxt [] tm
                         return $! (finalise val, finalise ty)
+
+    -- | Add another argument to a Pi
+    mkPi :: RFunArg -> Raw -> Raw
+    mkPi arg rTy = RBind (argName arg) (Pi Nothing (argTy arg) (RUType AllTypes)) rTy
+
+    mustBeType ctxt tm ty =
+      case normaliseAll ctxt [] (finalise ty) of
+        UType _ -> return ()
+        TType _ -> return ()
+        ty'    -> lift . tfail . InternalMsg $
+                     show tm ++ " is not a type: it's " ++ show ty'
+
+    mustNotBeDefined ctxt n =
+      case lookupDefExact n ctxt of
+        Just _ -> lift . tfail . InternalMsg $
+                    show n ++ " is already defined."
+        Nothing -> return ()
+
+    -- | Prepare a constructor to be added to a datatype being defined here
+    prepareConstructor :: Name -> RConstructorDefn -> ElabD (Name, [PArg], Type)
+    prepareConstructor tyn (RConstructor cn args resTy) =
+      do ctxt <- get_context
+         -- ensure the constructor name is not qualified, and
+         -- construct a qualified one
+         notQualified cn
+         let qcn = qualify cn
+
+         -- ensure that the constructor name is not defined already
+         mustNotBeDefined ctxt qcn
+
+         -- construct the actual type for the constructor
+         let cty = foldr mkPi resTy args
+         (checkedTy, ctyTy) <- lift $ check ctxt [] cty
+         mustBeType ctxt checkedTy ctyTy
+
+         -- ensure that the constructor builds the right family
+         case unApply (getRetTy (normaliseAll ctxt [] (finalise checkedTy))) of
+           (P _ n _, _) | n == tyn -> return ()
+           t -> lift . tfail . Msg $ "The constructor " ++ show cn ++
+                                     " doesn't construct " ++ show tyn ++
+                                     " (return type is " ++ show t ++ ")"
+
+         -- add temporary type declaration for constructor (so it can
+         -- occur in later constructor types)
+         set_context (addTyDecl qcn (DCon 0 0 False) checkedTy ctxt)
+
+         -- Save the implicits for high-level Idris
+         let impls = map rFunArgToPArg args
+
+         return (qcn, impls, checkedTy)
+
+      where
+        notQualified (NS _ _) = lift . tfail . Msg $ "Constructor names may not be qualified"
+        notQualified _ = return ()
+
+        qualify n = case tyn of
+                      (NS _ ns) -> NS n ns
+                      _ -> n
+
+        getRetTy :: Type -> Type
+        getRetTy (Bind _ (Pi _ _ _) sc) = getRetTy sc
+        getRetTy ty = ty
 
     -- | Do a step in the reflected elaborator monad. The input is the
     -- step, the output is the (reflected) term returned.
@@ -2050,20 +2121,10 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       | n == tacN "Prim__DeclareType", [decl] <- args
       = do (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context
-           let mkPi arg res = RBind (argName arg)
-                                    (Pi Nothing (argTy arg) (RUType AllTypes))
-                                    res
-               rty = foldr mkPi res args
+           let rty = foldr mkPi res args
            (checked, ty') <- lift $ check ctxt [] rty
-           case normaliseAll ctxt [] (finalise ty') of
-             UType _ -> return ()
-             TType _ -> return ()
-             ty''    -> lift . tfail . InternalMsg $
-                          show checked ++ " is not a type: it's " ++ show ty''
-           case lookupDefExact n ctxt of
-             Just _ -> lift . tfail . InternalMsg $
-                         show n ++ " is already defined."
-             Nothing -> return ()
+           mustBeType ctxt checked ty'
+           mustNotBeDefined ctxt n
            let decl = TyDecl Ref checked
                ctxt' = addCtxtDef n decl ctxt
            set_context ctxt'
@@ -2074,11 +2135,46 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
       = do defn <- reifyFunDefn decl
            defineFunction defn
            returnUnit
+      | n == tacN "Prim__DeclareDatatype", [decl] <- args
+      = do RDeclare n args resTy <- reifyTyDecl decl
+           ctxt <- get_context
+           let tcTy = foldr mkPi resTy args
+           (checked, ty') <- lift $ check ctxt [] tcTy
+           mustBeType ctxt checked ty'
+           mustNotBeDefined ctxt n
+           let ctxt' = addTyDecl n (TCon 0 0) checked ctxt
+           set_context ctxt'
+           updateAux $ \e -> e { new_tyDecls = RDatatypeDeclInstrs n (map rFunArgToPArg args) : new_tyDecls e }
+           returnUnit
+      | n == tacN "Prim__DefineDatatype", [defn] <- args
+      = do RDefineDatatype n ctors <- reifyRDataDefn defn
+           ctxt <- get_context
+           tyconTy <- case lookupTyExact n ctxt of
+                        Just t -> return t
+                        Nothing -> lift . tfail . Msg $ "Type not previously declared"
+           datatypes <- get_datatypes
+           case lookupCtxtName n datatypes of
+             [] -> return ()
+             _  -> lift . tfail . Msg $ show n ++ " is already defined as a datatype."
+           -- Prepare the constructors
+           ctors' <- mapM (prepareConstructor n) ctors
+           ttag <- do ES (ps, aux) str prev <- get
+                      let i = global_nextname ps
+                      put $ ES (ps { global_nextname = global_nextname ps + 1 },
+                                aux)
+                               str
+                               prev
+                      return i
+           let ctxt' = addDatatype (Data n ttag tyconTy False (map (\(cn, _, cty) -> (cn, cty)) ctors')) ctxt
+           set_context ctxt'
+           -- the rest happens in a bit
+           updateAux $ \e -> e { new_tyDecls = RDatatypeDefnInstrs n tyconTy ctors' : new_tyDecls e }
+           returnUnit
       | n == tacN "Prim__AddInstance", [cls, inst] <- args
       = do className <- reifyTTName cls
            instName <- reifyTTName inst
            updateAux $ \e -> e { new_tyDecls = RAddInstance className instName :
-                                               new_tyDecls e}
+                                               new_tyDecls e }
            returnUnit
       | n == tacN "Prim__IsTCName", [n] <- args
       = do n' <- reifyTTName n
@@ -2113,6 +2209,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            aux <- getAux
            datatypes <- get_datatypes
            env <- get_env
+           g_next <- get_global_nextname
 
            (ctxt', ES (p, aux') _ _) <-
               do (ES (current_p, _) _ _) <- get
@@ -2120,13 +2217,15 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
                              (do runElabAction ist fc [] script ns
                                  ctxt' <- get_context
                                  return ctxt')
-                             ((newProof recH ctxt datatypes goalTT)
+                             ((newProof recH ctxt datatypes g_next goalTT)
                               { nextname = nextname current_p })
            set_context ctxt'
 
            let tm_out = getProofTerm (pterm p)
            do (ES (prf, _) s e) <- get
-              let p' = prf { nextname = nextname p }
+              let p' = prf { nextname = nextname p
+                           , global_nextname = global_nextname p
+                           }
               put (ES (p', aux') s e)
            env' <- get_env
            (tm, ty, _) <- lift $ recheck ctxt' env (forget tm_out) tm_out
@@ -2476,8 +2575,10 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                        OK hs   -> return hs
 
                          -- Normalize error handler terms to produce the new messages
+                         -- Need to use 'normaliseAll' since we have to reduce private
+                         -- names in error handlers too
                          ctxt <- getContext
-                         let results = map (normalise ctxt []) (map fst handlers)
+                         let results = map (normaliseAll ctxt []) (map fst handlers)
                          logElab 3 $ "New error message info: " ++ concat (intersperse " and " (map show results))
 
                          -- For each handler term output, either discard it if it is Nothing or reify it the Haskell equivalent
@@ -2504,7 +2605,7 @@ processTacticDecls info steps =
          updateIState $ \i -> i { idris_implicits =
                                     addDef n impls (idris_implicits i) }
          addIBC (IBCImp n)
-         ds <- checkDef fc (\_ e -> e) [(n, (-1, Nothing, ty, []))]
+         ds <- checkDef fc (\_ e -> e) True [(n, (-1, Nothing, ty, []))]
          addIBC (IBCDef n)
          ctxt <- getContext
          case lookupDef n ctxt of
@@ -2513,9 +2614,53 @@ processTacticDecls info steps =
              -- then it must be added as a metavariable. This needs guarding
              -- to prevent overwriting case defs with a metavar, if the case
              -- defs come after the type decl in the same script!
-             let ds' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, True))) ds
+             let ds' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, True, True))) ds
              in addDeferred ds'
            _ -> return ()
+    RDatatypeDeclInstrs n impls ->
+      do addIBC (IBCDef n)
+         updateIState $ \i -> i { idris_implicits = addDef n impls (idris_implicits i) }
+         addIBC (IBCImp n)
+
+    RDatatypeDefnInstrs tyn tyconTy ctors ->
+      do let cn (n, _, _) = n
+             cimpls (_, impls, _) = impls
+             cty (_, _, t) = t
+         addIBC (IBCDef tyn)
+         mapM_ (addIBC . IBCDef . cn) ctors
+         let params = findParams tyn (map cty ctors)
+         let typeInfo = TI (map cn ctors) False [] params []
+         -- implicit precondition to IBCData is that idris_datatypes on the IState is populated.
+         -- otherwise writing the IBC just fails silently!
+         updateIState $ \i -> i { idris_datatypes =
+                                    addDef tyn typeInfo (idris_datatypes i) }
+         addIBC (IBCData tyn)
+
+
+         ttag <- getName -- from AbsSyntax.hs, really returns a disambiguating Int
+
+         let metainf = DataMI params
+         addIBC (IBCMetaInformation tyn metainf)
+         updateContext (setMetaInformation tyn metainf)
+
+         for_ ctors $ \(cn, impls, _) ->
+           do updateIState $ \i -> i { idris_implicits = addDef cn impls (idris_implicits i) }
+              addIBC (IBCImp cn)
+
+         for_ ctors $ \(ctorN, _, _) ->
+           do totcheck (NoFC, ctorN)
+              ctxt <- tt_ctxt <$> getIState
+              case lookupTyExact ctorN ctxt of
+                Just cty -> do checkPositive (tyn : map cn ctors) (ctorN, cty)
+                               return ()
+                Nothing -> return ()
+
+         case ctors of
+            [ctor] -> do setDetaggable (cn ctor); setDetaggable tyn
+                         addIBC (IBCOpt (cn ctor)); addIBC (IBCOpt tyn)
+            _ -> return ()
+         -- TODO: inaccessible
+
     RAddInstance className instName ->
       do -- The type class resolution machinery relies on a special
          logElab 2 $ "Adding elab script instance " ++ show instName ++
@@ -2524,7 +2669,7 @@ processTacticDecls info steps =
          addIBC (IBCInstance False True className instName)
     RClausesInstrs n cs ->
       do logElab 3 $ "Pattern-matching definition from tactics: " ++ show n
-         solveDeferred n
+         solveDeferred emptyFC n
          let lhss = map (\(_, lhs, _) -> lhs) cs
          let fc = fileFC "elab_reflected"
          pmissing <-
@@ -2549,13 +2694,9 @@ processTacticDecls info steps =
              -- we refer to, so that if they aren't total, the whole
              -- thing won't be.
              let (scargs, sc) = cases_compiletime cd
-                 (scargs', sc') = cases_runtime cd
-                 calls = findCalls sc' scargs
-                 used = findUsedArgs sc' scargs'
-                 cg = CGInfo scargs' calls [] used []
-             in do logElab 2 $ "Called names in reflected elab: " ++ show cg
-                   addToCG n cg
-                   addToCalledG n (nub (map fst calls))
+                 calls = map fst $ findCalls sc scargs
+             in do logElab 2 $ "Called names in reflected elab: " ++ show calls
+                   addCalls n calls
                    addIBC $ IBCCG n
            Just _ -> return () -- TODO throw internal error
            Nothing -> return ()
@@ -2581,13 +2722,14 @@ processTacticDecls info steps =
           let lhs = addImplPat ist lhs_in
           let fc = fileFC "elab_reflected_totality"
           let tcgen = False -- TODO: later we may support dictionary generation
-          case elaborate ctxt (idris_datatypes ist) (sMN 0 "refPatLHS") infP initEState
+          case elaborate ctxt (idris_datatypes ist) (idris_name ist) (sMN 0 "refPatLHS") infP initEState
                 (erun fc (buildTC ist info ELHS [] fname (allNamesIn lhs_in)
                                                          (infTerm lhs))) of
-            OK (ElabResult lhs' _ _ _ _ _, _) ->
+            OK (ElabResult lhs' _ _ _ _ _ name', _) ->
               do -- not recursively calling here, because we don't
                  -- want to run infinitely many times
                  let lhs_tm = orderPats (getInferTerm lhs')
+                 updateIState $ \i -> i { idris_name = name' }
                  case recheck ctxt [] (forget lhs_tm) lhs_tm of
                       OK _ -> return True
                       err -> return False

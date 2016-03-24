@@ -1,12 +1,112 @@
 #include "idris_heap.h"
 #include "idris_rts.h"
+#include "idris_gc.h"
 
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <assert.h>
 
+static void c_heap_free_item(CHeap * heap, CHeapItem * item)
+{
+    assert(item->size <= heap->size);
+    heap->size -= item->size;
 
-/* Used for initializing the heap. */
+    // fix links
+    if (item->next != NULL)
+    {
+        item->next->prev_next = item->prev_next;
+    }
+    *(item->prev_next) = item->next;
+
+    // free payload
+    item->finalizer(item->data);
+
+    // free item struct
+    free(item);
+}
+
+CHeapItem * c_heap_create_item(void * data, size_t size, CDataFinalizer * finalizer)
+{
+    CHeapItem * item = (CHeapItem *) malloc(sizeof(CHeapItem));
+
+    item->data = data;
+    item->size = size;
+    item->finalizer = finalizer;
+    item->is_used = false;
+    item->next = NULL;
+    item->prev_next = NULL;
+
+    return item;
+}
+
+void c_heap_insert_if_needed(VM * vm, CHeap * heap, CHeapItem * item)
+{
+    if (item->prev_next != NULL) return;  // already inserted
+
+    if (heap->first != NULL)
+    {
+        heap->first->prev_next = &item->next;
+    }
+
+    item->prev_next = &heap->first;
+    item->next = heap->first;
+
+    heap->first = item;
+
+    // at this point, links are done; let's calculate sizes
+    
+    heap->size += item->size;
+    if (heap->size >= heap->gc_trigger_size)
+    {
+        item->is_used = true;  // don't collect what we're inserting
+        idris_gc(vm);
+    }
+}
+
+void c_heap_mark_item(CHeapItem * item)
+{
+    item->is_used = true;
+}
+
+void c_heap_sweep(CHeap * heap)
+{
+    CHeapItem * p = heap->first;
+    while (p != NULL)
+    {
+        if (p->is_used)
+        {
+            p->is_used = false;
+            p = p->next;
+        }
+        else
+        {
+            CHeapItem * unused_item = p;
+            p = p->next;
+
+            c_heap_free_item(heap, unused_item);
+        }
+    }
+
+    heap->gc_trigger_size = C_HEAP_GC_TRIGGER_SIZE(heap->size);
+}
+
+void c_heap_init(CHeap * heap)
+{
+    heap->first = NULL;
+    heap->size = 0;
+    heap->gc_trigger_size = C_HEAP_GC_TRIGGER_SIZE(heap->size);
+}
+
+void c_heap_destroy(CHeap * heap)
+{
+    while (heap->first != NULL)
+    {
+        c_heap_free_item(heap, heap->first);  // will update heap->first via the backward link
+    }
+}
+
+/* Used for initializing the FP heap. */
 void alloc_heap(Heap * h, size_t heap_size, size_t growth, char * old)
 {
     char * mem = malloc(heap_size);
@@ -86,7 +186,7 @@ void heap_check_pointers(Heap * heap) {
        VAL heap_item = (VAL)(scan + sizeof(size_t));
 
        switch(GETTY(heap_item)) {
-       case CON:
+       case CT_CON:
            {
              int ar = ARITY(heap_item);
              int i = 0;
@@ -107,7 +207,7 @@ void heap_check_pointers(Heap * heap) {
                      if (!(ptr < heap_item)) {
                          fprintf(stderr,
                                  "RTS ERROR: heap unidirectionality broken:" \
-                                 "<CON %p> <FIELD %p>\n",
+                                 "<CT_CON %p> <FIELD %p>\n",
                                  heap_item, ptr);
                          exit(EXIT_FAILURE);
                      }
@@ -116,9 +216,9 @@ void heap_check_pointers(Heap * heap) {
              }
              break;
            }
-       case FWD:
+       case CT_FWD:
            // Check for artifacts after cheney gc.
-           fprintf(stderr, "RTS ERROR: FWD in working heap.\n");
+           fprintf(stderr, "RTS ERROR: CT_FWD in working heap.\n");
            exit(EXIT_FAILURE);
            break;
        default:

@@ -8,7 +8,7 @@ import Prelude.Basics
 import Prelude.Bool
 import Prelude.Chars
 import Prelude.Cast
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Either
 import Prelude.Foldable
 import Prelude.Functor
@@ -16,6 +16,8 @@ import Prelude.List
 import Prelude.Nat
 import Prelude.Monad
 import Decidable.Equality
+
+%access public export
 
 partial
 foldr1 : (a -> a -> a) -> List a -> a
@@ -112,7 +114,7 @@ strTail' x p = assert_total $ prim__strTail x
 -- we need the 'believe_me' because the operations are primitives
 strM : (x : String) -> StrM x
 strM x with (decEq (not (x == "")) True)
-  strM x | (Yes p) = really_believe_me $ 
+  strM x | (Yes p) = really_believe_me $
                            StrCons (assert_total (strHead' x p))
                                    (assert_total (strTail' x p))
   strM x | (No p) = really_believe_me StrNil
@@ -364,4 +366,3 @@ partial
 nullStr : String -> IO Bool
 nullStr p = do ok <- foreign FFI_C "isNull" (String -> IO Int) p
                return (ok /= 0)
-

@@ -19,7 +19,7 @@ import Data.Maybe
 import Data.List
 import qualified Data.Text as T
 
--- TODO: Only include names with public/abstract accessibility
+-- TODO: Only include names with public/export accessibility
 --
 -- Issue #1573 on the Issue tracker.
 --    https://github.com/idris-lang/Idris-dev/issues/1573
@@ -319,8 +319,8 @@ docClass n ci
     namedInst n@(UN _)  = Just n
     namedInst _         = Nothing
     
-    getDInst (PInstance _ _ _ _ _ _ _ _ t _ _) = Just t
-    getDInst _                                 = Nothing
+    getDInst (PInstance _ _ _ _ _ _ _ _ _ _ t _ _) = Just t
+    getDInst _                                     = Nothing
 
     isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args'))
       = nm == n && map getTm args == map getTm args'

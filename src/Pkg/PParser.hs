@@ -5,11 +5,11 @@
 module Pkg.PParser where
 
 import Text.Trifecta hiding (span, charLiteral, natural, symbol, char, string, whiteSpace)
-
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Idris.Core.TT
 import Idris.REPL
 import Idris.AbsSyntaxTree
-import Idris.ParseHelpers hiding (stringLiteral)
+import Idris.Parser.Helpers hiding (stringLiteral)
 import Idris.CmdOptions
 
 import Control.Monad.State.Strict
@@ -51,7 +51,7 @@ parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do
     p <- readFile fp
     case runparser pPkg defaultPkg fp p of
-      Failure err -> fail (show err)
+      Failure err -> fail (show $ PP.plain err)
       Success x -> return x
 
 pPkg :: PParser PkgDesc

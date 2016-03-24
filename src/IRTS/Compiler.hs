@@ -18,6 +18,7 @@ import Idris.AbsSyntaxTree
 import Idris.ASTUtils
 import Idris.Erasure
 import Idris.Error
+import Idris.Output
 
 import Debug.Trace
 
@@ -112,7 +113,9 @@ compile codegen f mtm
   where checkMVs = do i <- getIState
                       case map fst (idris_metavars i) \\ primDefs of
                             [] -> return ()
-                            ms -> ifail $ "There are undefined holes: " ++ show ms
+                            ms -> do iputStrLn $ "WARNING: There are incomplete holes:\n " ++ show ms
+                                     iputStrLn "\nEvaluation of any of these will crash at run time."
+                                     return ()
         checkTotality = do i <- getIState
                            case idris_totcheckfail i of
                              [] -> return ()
@@ -227,6 +230,9 @@ irTerm :: Vars -> [Name] -> Term -> Idris LExp
 irTerm vs env tm@(App _ f a) = do
   ist <- getIState
   case unApply tm of
+    (P _ n _, args)
+        | n `elem` map fst (idris_metavars ist) \\ primDefs
+        -> return $ LError $ "ABORT: Attempt to evaluate hole " ++ show n
     (P _ (UN m) _, args)
         | m == txt "mkForeignPrim"
         -> doForeign vs env (reverse (drop 4 args)) -- drop implicits
@@ -462,7 +468,7 @@ doForeign vs env (ret : fname : world : args)
         = do let l' = toFDesc l
              r' <- irTerm vs env r
              return (l', r')
-    splitArg _ = ifail "Badly formed foreign function call"
+    splitArg _ = ifail $ "Badly formed foreign function call"
 
     toFDesc (Constant (Str str)) = FStr str
     toFDesc tm

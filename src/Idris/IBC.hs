@@ -3,7 +3,7 @@
 
 module Idris.IBC (loadIBC, loadPkgIndex,
                   writeIBC, writePkgIndex,
-                  hasValidIBCVersion) where
+                  hasValidIBCVersion, IBCPhase(..)) where
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -40,10 +40,18 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 128
+ibcVersion = 136
+
+-- When IBC is being loaded - we'll load different things (and omit different
+-- structures/definitions) depending on which phase we're in
+data IBCPhase = IBC_Building -- ^ when building the module tree
+              | IBC_REPL Bool -- ^ when loading modules for the REPL
+                              -- Bool = True for top level module
+  deriving (Show, Eq)
 
 data IBCFile = IBCFile { ver :: Word16,
                          sourcefile :: FilePath,
+                         ibc_reachablenames :: ![Name],
                          ibc_imports :: ![(Bool, FilePath)],
                          ibc_importdirs :: ![FilePath],
                          ibc_implicits :: ![(Name, [PArg])],
@@ -62,13 +70,10 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_cgflags :: ![(Codegen, String)],
                          ibc_dynamic_libs :: ![String],
                          ibc_hdrs :: ![(Codegen, String)],
-                         ibc_access :: ![(Name, Accessibility)],
-                         ibc_total :: ![(Name, Totality)],
                          ibc_totcheckfail :: ![(FC, String)],
                          ibc_flags :: ![(Name, [FnOpt])],
                          ibc_fninfo :: ![(Name, FnInfo)],
                          ibc_cg :: ![(Name, CGInfo)],
-                         ibc_defs :: ![(Name, Def)],
                          ibc_docstrings :: ![(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))],
                          ibc_moduledocs :: ![(Name, Docstring D.DocTerm)],
                          ibc_transforms :: ![(Name, (Term, Term))],
@@ -79,7 +84,7 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_metainformation :: ![(Name, MetaInformation)],
                          ibc_errorhandlers :: ![Name],
                          ibc_function_errorhandlers :: ![(Name, Name, Name)], -- fn, arg, handler
-                         ibc_metavars :: ![(Name, (Maybe Name, Int, [Name], Bool))],
+                         ibc_metavars :: ![(Name, (Maybe Name, Int, [Name], Bool, Bool))],
                          ibc_patdefs :: ![(Name, ([([(Name, Term)], Term, Term)], [PTerm]))],
                          ibc_postulates :: ![Name],
                          ibc_externs :: ![(Name, Int)],
@@ -87,7 +92,10 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_usage :: ![(Name, Int)],
                          ibc_exports :: ![Name],
                          ibc_autohints :: ![(Name, Name)],
-                         ibc_deprecated :: ![(Name, String)]
+                         ibc_deprecated :: ![(Name, String)],
+                         ibc_defs :: ![(Name, Def)],
+                         ibc_total :: ![(Name, Totality)],
+                         ibc_access :: ![(Name, Accessibility)]
                        }
    deriving Show
 {-!
@@ -95,7 +103,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -106,8 +114,9 @@ hasValidIBCVersion fp = do
                         return (ver == ibcVersion)
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private
+        -> IBCPhase
         -> FilePath -> Idris ()
-loadIBC reexport fp
+loadIBC reexport phase fp
            = do imps <- getImported
                 let redo = case lookup fp imps of
                                 Nothing -> True
@@ -118,15 +127,16 @@ loadIBC reexport fp
                      case toArchiveOrFail archiveFile of
                         Left _ -> ifail $ fp ++ " isn't loadable, it may have an old ibc format.\n"
                                           ++ "Please clean and rebuild it."
-                        Right archive -> do process reexport archive fp
+                        Right archive -> do process reexport phase archive fp
                                             addImported reexport fp
+--                                             dumpTT
 
 -- | Load an entire package from its index file
 loadPkgIndex :: String -> Idris ()
 loadPkgIndex pkg = do ddir <- runIO $ getIdrisLibDir
                       addImportDir (ddir </> pkg)
                       fp <- findPkgIndex pkg
-                      loadIBC True fp
+                      loadIBC True IBC_Building fp
 
 
 makeEntry :: (Binary b) => String -> [b] -> Maybe Entry
@@ -156,13 +166,10 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_cgflags"  (ibc_cgflags i),
                        makeEntry "ibc_dynamic_libs"  (ibc_dynamic_libs i),
                        makeEntry "ibc_hdrs"  (ibc_hdrs i),
-                       makeEntry "ibc_access"  (ibc_access i),
-                       makeEntry "ibc_total"  (ibc_total i),
                        makeEntry "ibc_totcheckfail"  (ibc_totcheckfail i),
                        makeEntry "ibc_flags"  (ibc_flags i),
                        makeEntry "ibc_fninfo"  (ibc_fninfo i),
                        makeEntry "ibc_cg"  (ibc_cg i),
-                       makeEntry "ibc_defs"  (ibc_defs i),
                        makeEntry "ibc_docstrings"  (ibc_docstrings i),
                        makeEntry "ibc_moduledocs"  (ibc_moduledocs i),
                        makeEntry "ibc_transforms"  (ibc_transforms i),
@@ -181,7 +188,10 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_usage"  (ibc_usage i),
                        makeEntry "ibc_exports"  (ibc_exports i),
                        makeEntry "ibc_autohints"  (ibc_autohints i),
-                       makeEntry "ibc_deprecated"  (ibc_deprecated i)]
+                       makeEntry "ibc_deprecated"  (ibc_deprecated i),
+                       makeEntry "ibc_defs"  (ibc_defs i),
+                       makeEntry "ibc_total"  (ibc_total i),
+                       makeEntry "ibc_access"  (ibc_access i)]
 
 writeArchive :: FilePath -> IBCFile -> Idris ()
 writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
@@ -315,8 +325,9 @@ getEntry alt f a = case findEntryByPath f a of
                 Just e -> return $! (force . decode . fromEntry) e
 
 process :: Bool -- ^ Reexporting
+           -> IBCPhase 
            -> Archive -> FilePath -> Idris ()
-process reexp i fn = do
+process reexp phase i fn = do
                 ver <- getEntry 0 "ver" i
                 when (ver /= ibcVersion) $ do
                                     logIBC 1 "ibc out of date"
@@ -328,7 +339,7 @@ process reexp i fn = do
                 srcok <- runIO $ doesFileExist source
                 when srcok $ timestampOlder source fn
                 pImportDirs =<< getEntry [] "ibc_importdirs" i
-                pImports reexp =<< getEntry [] "ibc_imports" i
+                pImports reexp phase =<< getEntry [] "ibc_imports" i
                 pImps =<< getEntry [] "ibc_implicits" i
                 pFixes =<< getEntry [] "ibc_fixes" i
                 pStatics =<< getEntry [] "ibc_statics" i
@@ -345,12 +356,9 @@ process reexp i fn = do
                 pCGFlags =<< getEntry [] "ibc_cgflags" i
                 pDyLibs =<< getEntry [] "ibc_dynamic_libs" i
                 pHdrs =<< getEntry [] "ibc_hdrs" i
-                pDefs reexp =<< getEntry [] "ibc_defs" i
                 pPatdefs =<< getEntry [] "ibc_patdefs" i
-                pAccess reexp =<< getEntry [] "ibc_access" i
                 pFlags =<< getEntry [] "ibc_flags" i
                 pFnInfo =<< getEntry [] "ibc_fninfo" i
-                pTotal =<< getEntry [] "ibc_total" i
                 pTotCheckErr =<< getEntry [] "ibc_totcheckfail" i
                 pCG =<< getEntry [] "ibc_cg" i
                 pDocs =<< getEntry [] "ibc_docstrings" i
@@ -371,6 +379,9 @@ process reexp i fn = do
                 pExports =<< getEntry [] "ibc_exports" i
                 pAutoHints =<< getEntry [] "ibc_autohints" i
                 pDeprecate =<< getEntry [] "ibc_deprecated" i
+                pDefs reexp =<< getEntry [] "ibc_defs" i
+                pTotal =<< getEntry [] "ibc_total" i
+                pAccess reexp phase =<< getEntry [] "ibc_access" i
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -404,8 +415,8 @@ pDeprecate ns = mapM_ (\(n,reason) -> addDeprecated n reason) ns
 pImportDirs :: [FilePath] -> Idris ()
 pImportDirs fs = mapM_ addImportDir fs
 
-pImports :: Bool -> [(Bool, FilePath)] -> Idris ()
-pImports reexp fs
+pImports :: Bool -> IBCPhase -> [(Bool, FilePath)] -> Idris ()
+pImports reexp phase fs
   = do mapM_ (\(re, f) ->
                     do i <- getIState
                        ibcsd <- valIBCSubDir i
@@ -414,6 +425,9 @@ pImports reexp fs
 --                        if (f `elem` imported i)
 --                         then logLvl 1 $ "Already read " ++ f
                        putIState (i { imported = f : imported i })
+                       let phase' = case phase of
+                                         IBC_REPL _ -> IBC_REPL False
+                                         p -> p
                        case fp of
                             LIDR fn -> do
                               logIBC 1 $ "Failed at " ++ fn
@@ -421,7 +435,7 @@ pImports reexp fs
                             IDR fn -> do
                               logIBC 1 $ "Failed at " ++ fn
                               ifail "Must be an ibc"
-                            IBC fn src -> loadIBC (reexp && re) fn)
+                            IBC fn src -> loadIBC (reexp && re) phase' fn)
              fs
 
 pImps :: [(Name, [PArg])] -> Idris ()
@@ -429,6 +443,7 @@ pImps imps = mapM_ (\ (n, imp) ->
                         do i <- getIState
                            case lookupDefAccExact n False (tt_ctxt i) of
                               Just (n, Hidden) -> return ()
+                              Just (n, Private) -> return ()
                               _ -> putIState (i { idris_implicits
                                             = addDef n imp (idris_implicits i) }))
                    imps
@@ -518,12 +533,9 @@ pDefs reexp ds
                   case d' of
                        TyDecl _ _ -> return ()
                        _ -> do logIBC 1 $ "SOLVING " ++ show n
-                               solveDeferred n
+                               solveDeferred emptyFC n
                   updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
---                   logLvl 1 $ "Added " ++ show (n, d')
-                  if (not reexp) then do logIBC 1 $ "Not exporting " ++ show n
-                                         setAccessibility n Hidden
-                                 else logIBC 1 $ "Exporting " ++ show n) ds
+            ) ds
   where
     updateDef (CaseOp c t args o s cd)
       = do o' <- mapM updateOrig o
@@ -537,11 +549,9 @@ pDefs reexp ds
                                    return $ Right (l', r')
 
     updateCD (CaseDefs (ts, t) (cs, c) (is, i) (rs, r))
-        = do t' <- updateSC t
-             c' <- updateSC c
-             i' <- updateSC i
+        = do c' <- updateSC c
              r' <- updateSC r
-             return $ CaseDefs (ts, t') (cs, c') (is, i') (rs, r')
+             return $ CaseDefs (cs, c') (cs, c') (cs, c') (rs, r')
 
     updateSC (Case t n alts) = do alts' <- mapM updateAlt alts
                                   return (Case t n alts')
@@ -562,19 +572,28 @@ pDefs reexp ds
     updateAlt (DefaultCase t) = do t' <- updateSC t
                                    return (DefaultCase t')
 
-    update (P t n ty) = do n' <- getSymbol n
-                           return $ P t n' ty
-    update (App s f a) = liftM2 (App s) (update f) (update a)
-    update (Bind n b sc) = do b' <- updateB b
-                              sc' <- update sc
-                              return $ Bind n b' sc'
+    -- We get a lot of repetition in sub terms and can save a fair chunk
+    -- of memory if we make sure they're shared. addTT looks for a term
+    -- and returns it if it exists already, while also keeping stats of
+    -- how many times a subterm is repeated.
+    update t = do tm <- addTT t
+                  case tm of
+                       Nothing -> update' t
+                       Just t' -> return t'
+
+    update' (P t n ty) = do n' <- getSymbol n
+                            return $ P t n' ty
+    update' (App s f a) = liftM2 (App s) (update' f) (update' a)
+    update' (Bind n b sc) = do b' <- updateB b
+                               sc' <- update sc
+                               return $ Bind n b' sc'
       where
-        updateB (Let t v) = liftM2 Let (update t) (update v)
-        updateB b = do ty' <- update (binderTy b)
+        updateB (Let t v) = liftM2 Let (update' t) (update' v)
+        updateB b = do ty' <- update' (binderTy b)
                        return (b { binderTy = ty' })
-    update (Proj t i) = do t' <- update t
-                           return $ Proj t' i
-    update t = return t
+    update' (Proj t i) = do t' <- update' t
+                            return $ Proj t' i
+    update' t = return t
 
 pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris ()
 pDocs ds = mapM_ (\(n, a) -> addDocStr n (fst a) (snd a)) ds
@@ -584,12 +603,22 @@ pMDocs ds = mapM_  (\ (n, d) -> updateIState (\i ->
             i { idris_moduledocs = addDef n d (idris_moduledocs i) })) ds
 
 pAccess :: Bool -- ^ Reexporting?
+           -> IBCPhase
            -> [(Name, Accessibility)] -> Idris ()
-pAccess reexp ds
+pAccess reexp phase ds
         = mapM_ (\ (n, a_in) ->
                       do let a = if reexp then a_in else Hidden
                          logIBC 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
-                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })) ds
+                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })
+
+                         if (not reexp) then do logIBC 1 $ "Not exporting " ++ show n
+                                                setAccessibility n Hidden
+                                        else logIBC 1 $ "Exporting " ++ show n
+                         -- Everything should be available at the REPL from
+                         -- things imported publicly
+                         when (phase == IBC_REPL True) $ 
+                              setAccessibility n Public
+                ) ds
 
 pFlags :: [(Name, [FnOpt])] -> Idris ()
 pFlags ds = mapM_ (\ (n, a) -> setFlags n a) ds
@@ -633,7 +662,7 @@ pFunctionErrorHandlers :: [(Name, Name, Name)] -> Idris ()
 pFunctionErrorHandlers ns =  mapM_ (\ (fn,arg,handler) ->
                                 addFunctionErrorHandlers fn arg [handler]) ns
 
-pMetavars :: [(Name, (Maybe Name, Int, [Name], Bool))] -> Idris ()
+pMetavars :: [(Name, (Maybe Name, Int, [Name], Bool, Bool))] -> Idris ()
 pMetavars ns = updateIState (\i -> i { idris_metavars = L.reverse ns ++ idris_metavars i })
 
 ----- For Cheapskate and docstrings
@@ -753,18 +782,14 @@ instance Binary SizeChange where
                    _ -> error "Corrupted binary data for SizeChange"
 
 instance Binary CGInfo where
-        put (CGInfo x1 x2 x3 x4 x5)
+        put (CGInfo x1 x2 x3)
           = do put x1
-               put x2
 --                put x3 -- Already used SCG info for totality check
-               put x4
-               put x5
+               put x3
         get
           = do x1 <- get
-               x2 <- get
-               x4 <- get
-               x5 <- get
-               return (CGInfo x1 x2 [] x4 x5)
+               x3 <- get
+               return (CGInfo x1 [] x3)
 
 instance Binary CaseType where
         put x = case x of
@@ -883,13 +908,13 @@ instance Binary Def where
                                    put x2
                 -- all primitives just get added at the start, don't write
                 Operator x1 x2 x3 -> do return ()
-                CaseOp x1 x2 x2a x3 x3a x4 -> do putWord8 3
-                                                 put x1
-                                                 put x2
-                                                 put x2a
-                                                 put x3
-                                                 -- no x3a
-                                                 put x4
+                -- no need to add/load original patterns, because they're not
+                -- used again after totality checking
+                CaseOp x1 x2 x3 _ _ x4 -> do putWord8 3
+                                             put x1
+                                             put x2
+                                             put x3
+                                             put x4
         get
           = do i <- getWord8
                case i of
@@ -903,10 +928,10 @@ instance Binary Def where
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           x4 <- get
+--                            x4 <- get
                            -- x3 <- get always []
                            x5 <- get
-                           return (CaseOp x1 x2 x3 x4 [] x5)
+                           return (CaseOp x1 x2 x3 [] [] x5)
                    _ -> error "Corrupted binary data for Def"
 
 instance Binary Accessibility where
@@ -914,13 +939,15 @@ instance Binary Accessibility where
           = case x of
                 Public -> putWord8 0
                 Frozen -> putWord8 1
-                Hidden -> putWord8 2
+                Private -> putWord8 2
+                Hidden -> putWord8 3
         get
           = do i <- getWord8
                case i of
                    0 -> return Public
                    1 -> return Frozen
-                   2 -> return Hidden
+                   2 -> return Private
+                   3 -> return Hidden
                    _ -> error "Corrupted binary data for Accessibility"
 
 safeToEnum :: (Enum a, Bounded a, Integral int) => String -> int -> a
@@ -1235,7 +1262,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x10
                                                put x11
                                                put x12
-                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 ->
+                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 ->
                   do putWord8 8
                      put x1
                      put x2
@@ -1248,6 +1275,8 @@ instance (Binary t) => Binary (PDecl' t) where
                      put x9
                      put x10
                      put x11
+                     put x12
+                     put x13
                 PDSL x1 x2 -> do putWord8 9
                                  put x1
                                  put x2
@@ -1362,7 +1391,9 @@ instance (Binary t) => Binary (PDecl' t) where
                            x9 <- get
                            x10 <- get
                            x11 <- get
-                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11)
+                           x12 <- get
+                           x13 <- get
+                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13)
                    9 -> do x1 <- get
                            x2 <- get
                            return (PDSL x1 x2)

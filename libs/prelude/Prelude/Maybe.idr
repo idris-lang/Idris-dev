@@ -5,10 +5,10 @@ import Prelude.Algebra
 import Prelude.Basics
 import Prelude.Bool
 import Prelude.Cast
-import Prelude.Classes
+import Prelude.Interfaces
 import Prelude.Foldable
 
-%access public
+%access public export
 %default total
 
 ||| An optional value. This can be used to represent the possibility of

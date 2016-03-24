@@ -25,9 +25,9 @@
 
 // Closures
 typedef enum {
-    CON, INT, BIGINT, FLOAT, STRING, STROFFSET,
-    BITS8, BITS16, BITS32, BITS64, UNIT, PTR, FWD,
-    MANAGEDPTR, RAWDATA
+    CT_CON, CT_INT, CT_BIGINT, CT_FLOAT, CT_STRING, CT_STROFFSET,
+    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_UNIT, CT_PTR, CT_FWD,
+    CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -67,20 +67,21 @@ typedef struct Closure {
         uint32_t bits32;
         uint64_t bits64;
         ManagedPtr* mptr;
+        CHeapItem* c_heap_item;
         size_t size;
     } info;
 } Closure;
 
-struct VM_t;
+struct VM;
 
 struct Msg_t {
-    struct VM_t* sender;
+    struct VM* sender;
     VAL msg;
 };
 
 typedef struct Msg_t Msg;
 
-struct VM_t {
+struct VM {
     int active; // 0 if no longer running; keep for message passing
                 // TODO: If we're going to have lots of concurrent threads,
                 // we really need to be cleverer than this!
@@ -90,6 +91,7 @@ struct VM_t {
     VAL* valstack_base;
     VAL* stack_max;
 
+    CHeap c_heap;
     Heap heap;
 #ifdef HAS_PTHREAD
     pthread_mutex_t inbox_lock;
@@ -110,11 +112,44 @@ struct VM_t {
     VAL reg1;
 };
 
-typedef struct VM_t VM;
+typedef struct VM VM;
+
+
+/* C data interface: allocation on the C heap.
+ *
+ * Although not enforced in code, CData is meant to be opaque
+ * and non-RTS code (such as libraries or C bindings) should
+ * access only its (void *) field called "data".
+ *
+ * Feel free to mutate cd->data; the heap does not care
+ * about its particular value. However, keep in mind
+ * that it must not break Idris's referential transparency.
+ *
+ * If you call cdata_allocate or cdata_manage, the resulting
+ * CData object *must* be returned from your FFI function so
+ * that it is inserted in the C heap. Otherwise the memory
+ * will be leaked.
+ */
+
+/// C data block. Contains (void * data).
+typedef CHeapItem * CData;
+
+/// Allocate memory, returning the corresponding C data block.
+CData cdata_allocate(size_t size, CDataFinalizer * finalizer);
+
+/// Wrap a pointer as a C data block.
+/// The size should be an estimate of how much memory, in bytes,
+/// is associated with the pointer. This estimate need not be absolutely precise
+/// but it is necessary for GC to work effectively.
+CData cdata_manage(void * data, size_t size, CDataFinalizer * finalizer);
+
 
 // Create a new VM
 VM* init_vm(int stack_size, size_t heap_size,
             int max_threads);
+
+// Get the VM for the current thread
+VM* get_vm(void);
 // Initialise thread-local data for this VM
 void init_threaddata(VM *vm);
 // Clean up a VM once it's no longer needed
@@ -147,16 +182,17 @@ typedef void(*func)(VM*, VAL*);
 #define GETPTR(x) (((VAL)(x))->info.ptr)
 #define GETMPTR(x) (((VAL)(x))->info.mptr->data)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
+#define GETCDATA(x) (((VAL)(x))->info.c_heap_item)
 
 #define GETBITS8(x) (((VAL)(x))->info.bits8)
 #define GETBITS16(x) (((VAL)(x))->info.bits16)
 #define GETBITS32(x) (((VAL)(x))->info.bits32)
 #define GETBITS64(x) (((VAL)(x))->info.bits64)
 
-#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
-#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
+#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
+#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
 
-// Already checked it's a CON
+// Already checked it's a CT_CON
 #define CTAG(x) (((x)->info.c.tag_arity) >> 8)
 #define CARITY(x) ((x)->info.c.tag_arity & 0x000000ff)
 
@@ -176,7 +212,7 @@ typedef intptr_t i_int;
 #define MKINT(x) ((void*)((x)<<1)+1)
 #define GETINT(x) ((i_int)(x)>>1)
 #define ISINT(x) ((((i_int)x)&1) == 1)
-#define ISSTR(x) (GETTY(x) == STRING)
+#define ISSTR(x) (GETTY(x) == CT_STRING)
 
 #define INTOP(op,x,y) MKINT((i_int)((((i_int)x)>>1) op (((i_int)y)>>1)))
 #define UINTOP(op,x,y) MKINT((i_int)((((uintptr_t)x)>>1) op (((uintptr_t)y)>>1)))
@@ -207,6 +243,7 @@ VAL MKB8(VM* vm, uint8_t b);
 VAL MKB16(VM* vm, uint16_t b);
 VAL MKB32(VM* vm, uint32_t b);
 VAL MKB64(VM* vm, uint64_t b);
+VAL MKCDATA(VM* vm, CHeapItem * item);
 
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
@@ -214,6 +251,7 @@ VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKMPTRc(VM* vm, void* ptr, size_t size);
+VAL MKCDATAc(VM* vm, CHeapItem * item);
 
 char* GETSTROFF(VAL stroff);
 
@@ -245,12 +283,12 @@ void idris_free(void* ptr, size_t size);
 
 #define allocCon(cl, vm, t, a, o) \
   cl = allocate(sizeof(Closure) + sizeof(VAL)*a, o); \
-  SETTY(cl, CON); \
+  SETTY(cl, CT_CON); \
   cl->info.c.tag_arity = ((t) << 8) | (a);
 
 #define updateCon(cl, old, t, a) \
   cl = old; \
-  SETTY(cl, CON); \
+  SETTY(cl, CT_CON); \
   cl->info.c.tag_arity = ((t) << 8) | (a);
 
 #define NULL_CON(x) nullary_cons[x]
@@ -304,9 +342,16 @@ VAL idris_castStrFloat(VM* vm, VAL i);
 
 // Raw memory manipulation
 void idris_memset(void* ptr, i_int offset, uint8_t c, i_int size);
+void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
 uint8_t idris_peek(void* ptr, i_int offset);
 void idris_poke(void* ptr, i_int offset, uint8_t data);
-void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size);
+
+VAL idris_peekPtr(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokePtr(VAL ptr, VAL offset, VAL data);
+VAL idris_peekDouble(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokeDouble(VAL ptr, VAL offset, VAL data);
+VAL idris_peekSingle(VM* vm, VAL ptr, VAL offset);
+VAL idris_pokeSingle(VAL ptr, VAL offset, VAL data);
 
 // String primitives
 VAL idris_concat(VM* vm, VAL l, VAL r);

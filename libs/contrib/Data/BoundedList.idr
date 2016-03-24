@@ -2,7 +2,7 @@ module Data.BoundedList
 
 import Data.Fin
 
-%access public
+%access public export
 %default total
 
 ||| A list with an upper bound on its length.

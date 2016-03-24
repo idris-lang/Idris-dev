@@ -2,7 +2,7 @@ Syntax.idr:6:7-9:1:
 When checking right hand side of foo with expected type
         Nat
 
-When checking an application of function Prelude.Classes.+:
+When checking an application of function Prelude.Interfaces.+:
         Type mismatch between
                 String (Type of "argh")
         and
@@ -11,7 +11,7 @@ SyntaxTest.idr:5:7-6:1:
 When checking right hand side of foo with expected type
         Nat
 
-When checking an application of function Prelude.Classes.+:
+When checking an application of function Prelude.Interfaces.+:
         Type mismatch between
                 String (Type of "argh")
         and

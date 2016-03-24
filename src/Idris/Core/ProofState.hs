@@ -25,7 +25,10 @@ import Util.Pretty hiding (fill)
 data ProofState = PS { thname   :: Name,
                        holes    :: [Name], -- ^ holes still to be solved
                        usedns   :: [Name], -- ^ used names, don't use again
-                       nextname :: Int,    -- ^ name supply
+                       nextname :: Int,    -- ^ name supply, for locally unique names
+                       global_nextname :: Int, -- ^ a mirror of the global name supply,
+                                               --   for generating things like type tags
+                                               --   in reflection
                        pterm    :: ProofTerm,   -- ^ current proof term
                        ptype    :: Type,   -- ^ original goal
                        dontunify :: [Name], -- ^ explicitly given by programmer, leave it
@@ -206,6 +209,14 @@ mergeSolutions env ns = merge [] ns
                    merge acc ns
           | otherwise = merge ((n, t): acc) ns
 
+dropSwaps :: [(Name, TT Name)] -> [(Name, TT Name)]
+dropSwaps [] = []
+dropSwaps (p@(x, P _ y _) : xs) | solvedIn y x xs = dropSwaps xs
+  where solvedIn _ _ [] = False
+        solvedIn y x ((y', P _ x' _) : xs) | y == y' && x == x' = True
+        solvedIn y x (_ : xs) = solvedIn y x xs
+dropSwaps (p : xs) = p : dropSwaps xs
+
 unify' :: Context -> Env -> 
           (TT Name, Maybe Provenance) -> 
           (TT Name, Maybe Provenance) ->
@@ -242,7 +253,8 @@ unify' ctxt env (topx, xfrom) (topy, yfrom) =
            -- problem for each.
            uns <- mergeSolutions env (u' ++ ns)
            ps <- get
-           let (ns', probs') = updateProblems ps uns (fails ++ problems ps)
+           let (ns_p, probs') = updateProblems ps uns (fails ++ problems ps)
+           let ns' = dropSwaps ns_p
            let (notu', probs_notu) = mergeNotunified env (holes ps) (notu ++ notunified ps)
            traceWhen (unifylog ps)
             ("Now solved: " ++ show ns' ++
@@ -296,11 +308,16 @@ query q = do ps <- get
 addLog :: Monad m => String -> StateT TState m ()
 addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 
-newProof :: Name -> Context -> Ctxt TypeInfo -> Type -> ProofState
-newProof n ctxt datatypes ty =
+newProof :: Name -- ^ the name of what's to be elaborated
+         -> Context -- ^ the current global context
+         -> Ctxt TypeInfo -- ^ the value of the idris_datatypes field of IState
+         -> Int -- ^ the value of the idris_name field of IState
+         -> Type -- ^ the goal type
+         -> ProofState
+newProof n ctxt datatypes globalNames ty =
   let h = holeName 0
       ty' = vToP ty
-  in PS n [h] [] 1 (mkProofTerm (Bind h (Hole ty')
+  in PS n [h] [] 1 globalNames (mkProofTerm (Bind h (Hole ty')
         (P Bound h ty'))) ty [] (h, []) [] []
         Nothing [] []
         [] [] [] []

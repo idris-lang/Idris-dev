@@ -28,6 +28,14 @@ collectAs (PApp fc t as)
     = do as_tm <- mapM collectAs (map getTm as)
          let as' = zipWith (\a tm -> a { getTm = tm }) as as_tm
          return (PApp fc t as') -- only valid on args
+-- only for 'ExactlyOne' since it means the alternatives will have the
+-- same form, so we can assume we only need to extract from the first one
+collectAs tm@(PAlternative ns (ExactlyOne d) (a : as)) 
+    = do a' <- collectAs a
+         pats <- get
+         as' <- mapM collectAs as -- just to drop the '@'
+         put pats -- discard later ones, since they're repeated
+         return (PAlternative ns (ExactlyOne d) (a' : as'))
 collectAs x = return x
 
 -- | Replace _-patterns under @-patterns with fresh names that can be

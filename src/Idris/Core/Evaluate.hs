@@ -12,8 +12,8 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
-                mapDefCtxt,
-                lookupTotal, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
+                mapDefCtxt, 
+                lookupTotal, lookupTotalExact, lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
@@ -247,18 +247,16 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
               if u then
-               do let val = lookupDefAcc n (spec || atRepl) ctxt
+               do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                   case val of
                     [(Function _ tm, _)] | sUN "assert_total" `elem` stk ->
                            ev ntimes (n:stk) True env tm
                     [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
-                    [(Function _ tm, Hidden)] ->
-                           ev ntimes (n:stk) True env tm
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
                     [(CaseOp ci _ _ _ _ cd, acc)]
-                         | (acc /= Frozen || sUN "assert_total" `elem` stk) &&
+                         | (acc == Public || acc == Hidden || sUN "assert_total" `elem` stk) &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -319,7 +317,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  evApply ntimes' stk top env [l',t',arg'] d'
     -- Treat "assert_total" specially, as long as it's defined!
     ev ntimes stk top env (App _ (App _ (P _ n@(UN at) _) _) arg)
-       | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl) ctxt,
+       | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl || runtime) ctxt,
          at == txt "assert_total" && not simpl
             = ev ntimes (n : stk) top env arg
     ev ntimes stk top env (App _ f a)
@@ -347,7 +345,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
           = apply ntimes stk top env f args
 
     reapply ntimes stk top env f@(VP Ref n ty) args
-       = let val = lookupDefAcc n (spec || atRepl) ctxt in
+       = let val = lookupDefAcc n (spec || atRepl || runtime) ctxt in
          case val of
               [(CaseOp ci _ _ _ _ cd, acc)] ->
                  let (ns, tree) = getCases cd in
@@ -373,10 +371,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
               if u then
-                 do let val = lookupDefAcc n (spec || atRepl) ctxt
+                 do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
-                           | acc /= Frozen || sUN "assert_total" `elem` stk ->
+                           | acc == Public || acc == Hidden || sUN "assert_total" `elem` stk ->
                            -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -742,14 +740,22 @@ instance Show Def where
 
 -------
 
--- Frozen => doesn't reduce
--- Hidden => doesn't reduce and invisible to type checker
+-- Hidden => Programs can't access the name at all
+-- Public => Programs can access the name and use at will
+-- Frozen => Programs can access the name, which doesn't reduce
+-- Private => Programs can't access the name, doesn't reduce internally 
 
-data Accessibility = Public | Frozen | Hidden
-    deriving (Show, Eq)
+data Accessibility = Hidden | Public | Frozen | Private 
+    deriving (Eq, Ord)
 {-!
 deriving instance NFData Accessibility
 !-}
+
+instance Show Accessibility where
+  show Public = "public export"
+  show Frozen = "export"
+  show Private = "private"
+  show Hidden = "hidden"
 
 -- | The result of totality checking
 data Totality = Total [Int] -- ^ well-founded arguments
@@ -1039,6 +1045,7 @@ lookupP_all all exact n ctxt
           (Operator ty _ _, a, _, _)     -> return (P Ref n' ty, a)
         case snd p of
           Hidden -> if all then return (fst p) else []
+          Private -> if all then return (fst p) else []
           _      -> return (fst p)
   where
     names = let ns = lookupCtxtName n (definitions ctxt) in
@@ -1075,6 +1082,10 @@ lookupDefAccExact n mkpublic ctxt
 
 lookupTotal :: Name -> Context -> [Totality]
 lookupTotal n ctxt = map mkt $ lookupCtxt n (definitions ctxt)
+  where mkt (d, a, t, m) = t
+
+lookupTotalExact :: Name -> Context -> Maybe Totality
+lookupTotalExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
   where mkt (d, a, t, m) = t
 
 lookupMetaInformation :: Name -> Context -> [MetaInformation]

@@ -4,6 +4,8 @@ import Language.Reflection
 import Language.Reflection.Elab
 import Language.Reflection.Errors
 
+%access public export
+
 --------------------------------------------------------
 -- Tactic construction conveniences
 --------------------------------------------------------
@@ -38,17 +40,30 @@ getUName (UN n)    = Just n
 getUName (NS n ns) = getUName n
 getUName _         = Nothing
 
-total
-unApply : TT -> (TT, List TT)
-unApply t = unA t []
-  where unA : TT -> List TT -> (TT, List TT)
-        unA (App fn arg) args = unA fn (arg::args)
-        unA tm           args = (tm, args)
+namespace TT
+  total
+  unApply : TT -> (TT, List TT)
+  unApply t = unA t []
+    where unA : TT -> List TT -> (TT, List TT)
+          unA (App fn arg) args = unA fn (arg::args)
+          unA tm           args = (tm, args)
 
-total
-mkApp : TT -> List TT -> TT
-mkApp tm []      = tm
-mkApp tm (a::as) = mkApp (App tm a) as
+  total
+  mkApp : Foldable f => TT -> f TT -> TT
+  mkApp f args = foldl App f args
+
+namespace Raw
+  total
+  unApply : Raw -> (Raw, List Raw)
+  unApply tm = unApply' tm []
+    where unApply' : Raw -> List Raw -> (Raw, List Raw)
+          unApply' (RApp f x) xs = unApply' f (x::xs)
+          unApply' notApp xs = (notApp, xs)
+
+  total
+  mkApp : Foldable f => Raw -> f Raw -> Raw
+  mkApp f args = foldl RApp f args
+
 
 total
 binderTy : Binder t -> t
@@ -145,6 +160,8 @@ implementation Show Const where
   showPrec d StrType    = "StrType"
   showPrec d VoidType   = "VoidType"
   showPrec d Forgot     = "Forgot"
+  showPrec d WorldType  = "WorldType"
+  showPrec d TheWorld   = "TheWorld"
 
 implementation Eq NativeTy where
   IT8  == IT8  = True
@@ -299,7 +316,7 @@ implementation Show Err where
   showPrec d (CantMatch tm) = showCon d "CantMatch" $ showArg tm
   showPrec d (NoTypeDecl n) = showCon d "NoTypeDecl" $ showArg n
   showPrec d (NotInjective tm tm' x) = showCon d "NotInjective" $ showArg tm ++ showArg tm'
-  showPrec d (CantResolve tm) = showCon d "CantResolve" $ showArg tm
+  showPrec d (CantResolve tm e) = showCon d "CantResolve" $ showArg tm ++ showArg e
   showPrec d (InvalidTCArg n tm) = showCon d "InvalidTCName" $ showArg n ++ showArg tm
   showPrec d (CantResolveAlts xs) = showCon d "CantResolveAlts" $ showArg xs
   showPrec d (NoValidAlts xs) = showCon d "NoValidAlts" $ showArg xs

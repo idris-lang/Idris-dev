@@ -152,10 +152,10 @@ findCalls sc topargs = nub $ nu' topargs sc where
     nua ps (SucCase _ sc) = nu' ps sc
     nua ps (DefaultCase sc) = nu' ps sc
 
-    nut ps (P Ref n _) | n `elem` ps = []
+    nut ps (P _ n _) | n `elem` ps = []
                      | otherwise = [(n, [])] -- tmp
     nut ps fn@(App _ f a)
-        | (P Ref n _, args) <- unApply fn
+        | (P _ n _, args) <- unApply fn
              = if n `elem` ps then nut ps f ++ nut ps a
                   else [(n, map argNames args)] ++ concatMap (nut ps) args
         | (P (TCon _ _) n _, _) <- unApply fn = []
