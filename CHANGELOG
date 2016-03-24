@@ -79,6 +79,8 @@ Minor language changes
 * More flexible holes.
   Holes can now depend on other holes in a term (such as implicit arguments
   which may be inferred from the definition of the hole).
+* Programs with holes can now be compiled.
+  Attempting to evaluate an expression with a hole results in a run time error.
 
 New in 0.10:
 ============
