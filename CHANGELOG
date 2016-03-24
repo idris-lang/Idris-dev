@@ -81,6 +81,9 @@ Minor language changes
   which may be inferred from the definition of the hole).
 * Programs with holes can now be compiled.
   Attempting to evaluate an expression with a hole results in a run time error.
+* Dependent pairs now can be specified using a telescope-style syntax, without
+  requirement of nesting, e.g. it is possible to now write the following:
+    (a : Type ** n : Nat ** Vect n a)
 
 External Dependencies
 ---------------------
@@ -101,9 +104,6 @@ New in 0.10:
   Where `CATS` is a whitespace separated list of categoriese. Default is for
   all categories to be logged.
 * New flag `--listlogcats` to list logging categories.`
-* Dependent pairs now can be specified using a telescope-style syntax, without
-  requirement of nesting, e.g. it is possible to now write the following:
-    (a : Type ** n : Nat ** Vect n a)
 
 New in 0.9.20:
 ==============
