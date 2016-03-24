@@ -1,6 +1,13 @@
-module Effect.Default
+module Prelude.Default
 
-import Data.Vect
+import Builtins
+
+import Prelude.Basics
+import Prelude.Bool
+import Prelude.Interfaces
+import Prelude.Nat
+import Prelude.Maybe
+import Prelude.List
 
 %access public export
 
@@ -39,9 +46,3 @@ implementation Default (Maybe a) where
 
 implementation Default (List a) where
     default = []
-
-implementation Default a => Default (Vect n a) where
-    default = mkDef _ where
-      mkDef : (n : Nat) -> Vect n a
-      mkDef Z = []
-      mkDef (S k) = default :: mkDef k

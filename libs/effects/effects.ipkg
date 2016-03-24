@@ -3,7 +3,6 @@ package effects
 opts    = "--nobasepkgs -i ../prelude -i ../base"
 
 modules = Effects
-        , Effect.Default
         , Effect.Monad
 
         , Effect.Exception

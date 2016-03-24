@@ -10,7 +10,6 @@ module Effect.Perf
 import System
 
 import Effects
-import Effect.Default
 
 %access public export
 

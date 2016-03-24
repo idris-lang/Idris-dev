@@ -1,7 +1,6 @@
 module Effects
 
 import Language.Reflection
-import public Effect.Default
 import Data.Vect
 
 --- Effectful computations are described as algebraic data types that
@@ -332,7 +331,7 @@ pureM = Value
        EffM m b xs (\v => xs) -> EffM m b xs (\v => xs)
 a *> b = do a
             b
-     
+
 new : Handler e' m => (e : EFFECT) -> resTy ->
       {auto prf : e = MkEff resTy e'} ->
       EffM m t (e :: es) (\v => e :: es) ->

@@ -37,4 +37,3 @@ locally newst prog = do st <- get
                         val <- prog
                         putM st
                         return val
-

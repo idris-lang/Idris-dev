@@ -527,6 +527,16 @@ implementation Show a => Show (Vect n a) where
     show = show . toList
 
 --------------------------------------------------------------------------------
+-- Default
+--------------------------------------------------------------------------------
+
+implementation Default a => Default (Vect n a) where
+    default = mkDef _ where
+      mkDef : (n : Nat) -> Vect n a
+      mkDef Z = []
+      mkDef (S k) = default :: mkDef k
+
+--------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
 
@@ -584,7 +594,7 @@ noEmptyElem : {x : a} -> Elem x [] -> Void
 noEmptyElem Here impossible
 
 Uninhabited (Elem x []) where
-  uninhabited = noEmptyElem 
+  uninhabited = noEmptyElem
 
 ||| An item not in the head and not in the tail is not in the Vect at all
 neitherHereNorThere : {x, y : a} -> {xs : Vect n a} -> Not (x = y) -> Not (Elem x xs) -> Not (Elem x (y :: xs))
@@ -619,7 +629,7 @@ mapElem (There e) = There (mapElem e)
 ||| length in its type, otherwise return Nothing
 ||| @len the required length
 ||| @xs the vector with the desired length
--- Needs to be Maybe rather than Dec, because if 'n' is unequal to m, we 
+-- Needs to be Maybe rather than Dec, because if 'n' is unequal to m, we
 -- only know we don't know how to make a Vect n a, not that one can't exist.
 exactLength : {m : Nat} -> -- expected at run-time
               (len : Nat) -> (xs : Vect m a) -> Maybe (Vect len a)
@@ -639,4 +649,3 @@ overLength {m} n xs with (cmp m n)
          = Just (0 ** xs)
   overLength {m = plus n (S x)} n xs | (CmpGT x)
          = Just (S x ** rewrite plusCommutative (S x) n in xs)
-
