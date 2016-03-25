@@ -608,7 +608,9 @@ fnDecl' syn = checkFixity $
                         return (doc, argDocs, fc, opts', n, nfc, acc))
                  ty <- typeExpr (allowImp syn)
                  terminator
-                 addAcc n acc
+                 -- If it's a top level function, note the accessibility
+                 -- rules
+                 when (syn_toplevel syn) $ addAcc n acc
                  return (PTy doc argDocs syn fc opts' n nfc ty)
             <|> postulate syn
             <|> caf syn
@@ -1125,7 +1127,7 @@ clause syn
                         Nothing -> fail "Invalid clause"
               (do r <- rhs syn n
                   let ctxt = tt_ctxt ist
-                  let wsyn = syn { syn_namespace = [] }
+                  let wsyn = syn { syn_namespace = [], syn_toplevel = False }
                   (wheres, nmap) <- choice [do x <- whereBlock n wsyn
                                                popIndent
                                                return x,

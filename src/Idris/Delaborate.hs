@@ -488,7 +488,7 @@ pprintErr' i (ReflectionError parts orig) =
     else empty
 pprintErr' i (ReflectionFailed msg err) =
   text "When attempting to perform error reflection, the following internal error occurred:" <>
-  indented (pprintErr' i err) <>
+  indented (pprintErr' i err) <+> text msg <+>
   text ("This is probably a bug. Please consider reporting it at " ++ bugaddr)
 pprintErr' i (ElabScriptDebug msg tm holes) =
   text "Elaboration halted." <>

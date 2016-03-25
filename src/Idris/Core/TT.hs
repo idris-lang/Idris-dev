@@ -645,8 +645,9 @@ deleteDefExact n = Map.adjust (Map.delete n) (nsroot n)
 
 updateDef :: Name -> (a -> a) -> Ctxt a -> Ctxt a
 updateDef n f ctxt
-  = let ds = lookupCtxtName n ctxt in
-        foldr (\ (n, t) c -> addDef n (f t) c) ctxt ds
+  = case lookupCtxtExact n ctxt of
+         Just t -> addDef n (f t) ctxt
+         Nothing -> ctxt
 
 toAlist :: Ctxt a -> [(Name, a)]
 toAlist ctxt = let allns = map snd (Map.toList ctxt) in

@@ -29,8 +29,10 @@ directiveAction (DFlag cgn flag) = do
 directiveAction (DInclude cgn hdr) = do addHdr cgn hdr
                                         addIBC (IBCHeader cgn hdr)
 
-directiveAction (DHide n) = do setAccessibility n Hidden
-                               addIBC (IBCAccess n Hidden)
+directiveAction (DHide n') = do i <- getIState
+                                ns <- allNamespaces n'
+                                mapM_ (\n -> do setAccessibility n Hidden
+                                                addIBC (IBCAccess n Hidden)) ns
 
 directiveAction (DFreeze n) = do setAccessibility n Frozen
                                  addIBC (IBCAccess n Frozen)
@@ -80,3 +82,10 @@ disambiguate n = do i <- getIState
                               [(n', _)] -> return n'
                               []        -> throwError (NoSuchVariable n)
                               more      -> throwError (CantResolveAlts (map fst more))
+
+allNamespaces :: Name -> Idris [Name]
+allNamespaces n = do i <- getIState
+                     case lookupCtxtName n (idris_implicits i) of
+                              [(n', _)] -> return [n']
+                              []        -> throwError (NoSuchVariable n)
+                              more      -> return (map fst more)
