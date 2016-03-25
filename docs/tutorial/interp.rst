@@ -140,7 +140,7 @@ informs what the types of the arguments must be:
     Op : (interpTy a -> interpTy b -> interpTy c) ->
          Expr G a -> Expr G b -> Expr G c
 
-Finally, if expressions make a choice given a boolean. Each branch
+Finally, ``If`` expressions make a choice given a boolean. Each branch
 must have the same type, and we will evaluate the branches lazily so
 that only the branch which is taken need be evaluated:
 
