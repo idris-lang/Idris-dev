@@ -732,7 +732,9 @@ apply_elab n args =
 checkPiGoal :: Name -> Elab' aux ()
 checkPiGoal n
             = do g <- goal
-                 case g of
+                 ctxt <- get_context
+                 env <- get_env
+                 case (normalise ctxt env g) of
                     Bind _ (Pi _ _ _) _ -> return ()
                     _ -> do a <- getNameFrom (sMN 0 "__pargTy")
                             b <- getNameFrom (sMN 0 "__pretTy")
