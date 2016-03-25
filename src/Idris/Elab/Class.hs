@@ -84,7 +84,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
          mapM_ (checkConstraintName (map (\(x, _, _) -> x) ps)) constraintNames
 
-         logElab 1 $ "Building methods " ++ show mnames
+         logElab 2 $ "Building methods " ++ show mnames
          ims <- mapM (tdecl mnames) mdecls
          defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint)
                       (filter clause ds)

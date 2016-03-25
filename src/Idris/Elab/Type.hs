@@ -64,7 +64,7 @@ buildType info syn fc opts n ty' = do
          let ty = addImpl (imp_methods syn) i ty'
 
          logElab 5 $ show n ++ " type pre-addimpl " ++ showTmImpls ty'
-         logElab 5 $ show "with methods " ++ show (imp_methods syn)
+         logElab 5 $ "with methods " ++ show (imp_methods syn)
          logElab 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
          (ElabResult tyT' defer is ctxt' newDecls highlights newGName, log) <-

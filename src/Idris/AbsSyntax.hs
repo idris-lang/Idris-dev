@@ -1536,18 +1536,15 @@ implicit' :: ElabInfo -> SyntaxInfo -> [Name] -> Name -> PTerm -> Idris PTerm
 implicit' info syn ignore n ptm
     = do i <- getIState
          auto <- getAutoImpls
-         if not auto
-           then return ptm
-           else do
-             let (tm', impdata) = implicitise syn ignore i ptm
-             defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
-    --          let (tm'', spos) = findStatics i tm'
-             putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
-             addIBC (IBCImp n)
-             logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
-    --          i <- get
-    --          putIState $ i { idris_statics = addDef n spos (idris_statics i) }
-             return tm'
+         let (tm', impdata) = implicitise auto syn ignore i ptm
+         defaultArgCheck (eInfoNames info ++ M.keys (idris_implicits i)) impdata
+--          let (tm'', spos) = findStatics i tm'
+         putIState $ i { idris_implicits = addDef n impdata (idris_implicits i) }
+         addIBC (IBCImp n)
+         logLvl 5 ("Implicit " ++ show n ++ " " ++ show impdata)
+--          i <- get
+--          putIState $ i { idris_statics = addDef n spos (idris_statics i) }
+         return tm'
   where
     --  Detect unknown names in default arguments and throw error if found.
     defaultArgCheck :: [Name] -> [PArg] -> Idris ()
@@ -1566,15 +1563,17 @@ implicit' info syn ignore n ptm
     notFound kns (SN (WhereN _ _ _) : ns) = notFound kns ns --  Known already
     notFound kns (n:ns) = if elem n kns then notFound kns ns else Just n
 
-implicitise :: SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])
-implicitise syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
+-- Even if auto_implicits is off, we need to call this so we record which
+-- arguments are implicit
+implicitise :: Bool -> SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])
+implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
       let (declimps, ns') = execState (imps True [] tm) ([], [])
-          ns = filter (\n -> implicitable n || elem n (map fst uvars)) $
+          ns = filter (\n -> auto && implicitable n || elem n (map fst uvars)) $
                   ns' \\ (map fst pvars ++ no_imp syn ++ ignore)
           nsOrder = filter (not . inUsing) ns ++ filter inUsing ns in
           if null ns
             then (tm, reverse declimps)
-            else implicitise syn ignore ist (pibind uvars nsOrder tm)
+            else implicitise auto syn ignore ist (pibind uvars nsOrder tm)
   where
     uvars = map ipair (filter uimplicit (using syn))
     pvars = syn_params syn
