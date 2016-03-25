@@ -232,11 +232,11 @@ elab ist info emode opts fn tm
          end_unify
          ptm <- get_term
          when (pattern || intransform) -- convert remaining holes to pattern vars
-              (do update_term orderPats
-                  unify_all
+              (do unify_all
                   matchProblems False -- only the ones we matched earlier
                   unifyProblems
-                  mkPat)
+                  mkPat
+                  update_term liftPats)
   where
     pattern = emode == ELHS
     intransform = emode == ETransLHS
