@@ -120,7 +120,7 @@ build ist info emode opts fn tm
          when tydecl (do mkPat
                          update_term liftPats
                          update_term orderPats)
-         EState is _ impls highlights <- getAux
+         EState is _ impls highlights _ _ <- getAux
          tt <- get_term
          ctxt <- get_context
          let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
@@ -165,7 +165,7 @@ buildTC ist info emode opts fn ns tm
          -- unification
          when (not (null dots)) $
             lift (Error (CantMatch (getInferTerm tm)))
-         EState is _ impls highlights <- getAux
+         EState is _ impls highlights _ _ <- getAux
          tt <- get_term
          ctxt <- get_context
          let (tm, ds) = runState (collectDeferred (Just fn) (map fst is) ctxt tt) []
@@ -412,16 +412,6 @@ elab ist info emode opts fn tm
                                                 [pimp (sUN "A") Placeholder False,
                                                  pimp (sUN "B") Placeholder False,
                                                  pexp l, pexp r])
---                         _ -> try' (elab' ina (Just fc) (PApp fc (PRef fc pairCon)
---                                                 [pimp (sUN "A") Placeholder False,
---                                                  pimp (sUN "B") Placeholder False,
---                                                  pexp l, pexp r]))
---                                   (elab' ina (Just fc) (PApp fc (PRef fc upairCon)
---                                                 [pimp (sUN "A") Placeholder False,
---                                                  pimp (sUN "B") Placeholder False,
---                                                  pexp l, pexp r]))
---                                   True
-
     elab' ina _ (PDPair fc hls p l@(PRef nfc hl n) t r)
             = case t of
                 Placeholder ->
@@ -589,7 +579,9 @@ elab ist info emode opts fn tm
       | pattern && not reflection && not (e_qq ec) && e_nomatching ec
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
       | (pattern || intransform || (bindfree && bindable n)) && not (inparamBlock n) && not (e_qq ec)
-        = do let ina = e_inarg ec
+        = do ty <- goal
+             testImplicitWarning fc n ty
+             let ina = e_inarg ec
                  guarded = e_guarded ec
                  inty = e_intype ec
              ctxt <- get_context
@@ -676,6 +668,7 @@ elab ist info emode opts fn tm
                highlightSource nfc (AnnBoundName n False)
     elab' ina fc (PPi p n nfc Placeholder sc)
           = do attack; arg n (is_scoped p) (sMN 0 "ty")
+               addAutoBind p n
                addPSname n -- okay for proof search
                elabE (ina { e_inarg = True, e_intype = True }) fc sc
                solve
@@ -687,6 +680,7 @@ elab ist info emode opts fn tm
                         MN _ _ -> unique_hole n
                         _ -> return n
                forall n' (is_scoped p) (Var tyn)
+               addAutoBind p n'
                addPSname n' -- okay for proof search
                focus tyn
                let ec' = ina { e_inarg = True, e_intype = True }
@@ -1207,7 +1201,7 @@ elab ist info emode opts fn tm
              -- We now have an elaborated term. Reflect it and solve the
              -- original goal in the original proof state, preserving highlighting
              env <- get_env
-             EState _ _ _ hs <- getAux
+             EState _ _ _ hs _ _ <- getAux
              loadState
              updateAux (\aux -> aux { highlighting = hs })
 
@@ -1403,8 +1397,8 @@ elab ist info emode opts fn tm
     -- case block functions that don't yet exist)
     fullyElaborated :: Term -> ElabD ()
     fullyElaborated (P _ n _) =
-      do EState cases _ _ _ <- getAux
-         case lookup n cases of
+      do estate <- getAux
+         case lookup n (case_decls estate) of
            Nothing -> return ()
            Just _  -> lift . tfail $ ElabScriptStaging n
     fullyElaborated (Bind n b body) = fullyElaborated body >> for_ b fullyElaborated
@@ -1548,6 +1542,31 @@ elab ist info emode opts fn tm
                  return result
     elabArgs _ _ _ _ _ _ (((arg, hole), _) : _) _ [] =
       fail $ "Can't elaborate these args: " ++ show arg ++ " " ++ show hole
+
+    addAutoBind :: Plicity -> Name -> ElabD ()
+    addAutoBind (Imp _ _ _ _ False) n
+         = updateAux (\est -> est { auto_binds = n : auto_binds est })
+    addAutoBind _ _ = return ()
+
+    testImplicitWarning :: FC -> Name -> Type -> ElabD ()
+    testImplicitWarning fc n goal 
+       | implicitable n && emode == ETyDecl
+           = do env <- get_env
+                est <- getAux
+                when (n `elem` auto_binds est) $ 
+                    tryUnify env (lookupTyName n (tt_ctxt ist))
+       | otherwise = return ()
+      where
+        tryUnify env [] = return ()
+        tryUnify env ((nm, ty) : ts)
+             = do inj <- get_inj
+                  hs <- get_holes
+                  case unify (tt_ctxt ist) env (ty, Nothing) (goal, Nothing)
+                          inj hs [] [] of
+                    OK _ -> 
+                       updateAux (\est -> est { implicit_warnings =
+                                          (fc, nm) : implicit_warnings est })
+                    _ -> tryUnify env ts
 
 -- For every alternative, look at the function at the head. Automatically resolve
 -- any nested alternatives where that function is also at the head

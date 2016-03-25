@@ -123,10 +123,10 @@ mutual
             ((x : a) -> Process b iface (hs' x) hs'' (p' x) p'') ->
             Process b iface hs hs'' p p''
 
-     Fork : Process () serveri [] (const []) (runningServer 1) (const doneServer) ->
+     Fork : Process () serveri [] (const []) (runningServer 1) (const Process.doneServer) ->
             Process (ProcID serveri) iface hs (const hs) p (\res => (newServer res p))
      Work : (worker : (pid : ProcID iface) -> Worker [pid] ()) ->
-            (waiter : Process t iface hs (const hs) (runningServer 1) (const doneServer)) ->
+            (waiter : Process t iface hs (const hs) (runningServer 1) (const Process.doneServer)) ->
             Process t iface hs (const hs) p (const p)
 
      Request : (r : ProcID serveri) -> (x : serveri ty) ->

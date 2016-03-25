@@ -36,7 +36,7 @@ elabRunElab info fc script' ns =
         tclift $ elaborate ctxt (idris_datatypes ist) (idris_name ist) (sMN 0 "toplLevelElab") elabScriptTy initEState
                  (transformErr RunningElabScript
                    (erun fc (do tm <- runElabAction ist fc [] script ns
-                                EState is _ impls highlights <- getAux
+                                EState is _ impls highlights _ _ <- getAux
                                 ctxt <- get_context
                                 let ds = [] -- todo
                                 log <- getLog

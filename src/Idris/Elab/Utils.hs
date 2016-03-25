@@ -395,3 +395,12 @@ setDetaggable n = do
     case lookupCtxt n opt of
         [oi] -> putIState ist { idris_optimisation = addDef n oi { detaggable = True } opt }
         _    -> putIState ist { idris_optimisation = addDef n (Optimise [] True) opt }
+
+displayWarnings :: EState -> Idris ()
+displayWarnings est 
+     = mapM_ displayImpWarning (implicit_warnings est)
+  where
+    displayImpWarning :: (FC, Name) -> Idris ()
+    displayImpWarning (fc, n) = 
+       iputStrLn $ show fc ++ ":WARNING: " ++ show (nsroot n) ++ " is bound as an implicit\n"
+                   ++ "\tDid you mean to refer to " ++ show n ++ "?"

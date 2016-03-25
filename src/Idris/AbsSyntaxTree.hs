@@ -615,7 +615,8 @@ deriving instance NFData Static
 data Plicity = Imp { pargopts :: [ArgOpt],
                      pstatic :: Static,
                      pparam :: Bool,
-                     pscoped :: Maybe ImplicitInfo -- Nothing, if top level
+                     pscoped :: Maybe ImplicitInfo, -- Nothing, if top level
+                     pinsource :: Bool -- Explicitly written in source
                    }
              | Exp { pargopts :: [ArgOpt],
                      pstatic :: Static,
@@ -633,13 +634,13 @@ deriving instance NFData Plicity
 !-}
 
 is_scoped :: Plicity -> Maybe ImplicitInfo
-is_scoped (Imp _ _ _ s) = s
+is_scoped (Imp _ _ _ s _) = s
 is_scoped _ = Nothing
 
-impl              = Imp [] Dynamic False (Just (Impl False True))
+impl              = Imp [] Dynamic False (Just (Impl False True)) False
 
-forall_imp        = Imp [] Dynamic False (Just (Impl False False))
-forall_constraint = Imp [] Dynamic False (Just (Impl True False))
+forall_imp        = Imp [] Dynamic False (Just (Impl False False)) False
+forall_constraint = Imp [] Dynamic False (Just (Impl True False)) False
 
 expl              = Exp [] Dynamic False
 expl_param        = Exp [] Dynamic True
@@ -784,11 +785,13 @@ data EState = EState {
                   case_decls :: [(Name, PDecl)],
                   delayed_elab :: [(Int, Elab' EState ())],
                   new_tyDecls :: [RDeclInstructions],
-                  highlighting :: [(FC, OutputAnnotation)]
+                  highlighting :: [(FC, OutputAnnotation)],
+                  auto_binds :: [Name], -- names bound as auto implicits
+                  implicit_warnings :: [(FC, Name)] -- Implicit warnings to report (location and global name)
               }
 
 initEState :: EState
-initEState = EState [] [] [] []
+initEState = EState [] [] [] [] [] []
 
 type ElabD a = Elab' EState a
 
@@ -1754,7 +1757,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
           case s of
             Static -> text "%static" <> space
             _      -> empty
-    prettySe d p bnd (PPi (Imp l s _ fa) n _ ty sc)
+    prettySe d p bnd (PPi (Imp l s _ fa _) n _ ty sc)
       | ppopt_impl ppo =
           depth d . bracket p startPrec $
           lbrace <> prettyBindingOf n True <+> colon <+> prettySe (decD d) startPrec bnd ty <> rbrace <+>

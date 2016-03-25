@@ -6,7 +6,7 @@ postulate trap : Z = Z
 dodgy : (a, b : ()) -> a = b -> Void
 dodgy n m Refl impossible
 
-nonk : (trap = Refl {x = Z}) -> Void
+nonk : (Main.trap = Refl {x = Z}) -> Void
 nonk Refl impossible
 
 false : Void

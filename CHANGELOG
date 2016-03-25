@@ -84,6 +84,8 @@ Minor language changes
 * Dependent pairs now can be specified using a telescope-style syntax, without
   requirement of nesting, e.g. it is possible to now write the following:
     (a : Type ** n : Nat ** Vect n a)
+* Idris will give a warning if an implicit is bound automatically, but would
+  otherwise be a valid expressio if the name was used as a global
 
 External Dependencies
 ---------------------

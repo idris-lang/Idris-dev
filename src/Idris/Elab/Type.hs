@@ -67,9 +67,12 @@ buildType info syn fc opts n ty' = do
          logElab 5 $ "with methods " ++ show (imp_methods syn)
          logElab 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
-         (ElabResult tyT' defer is ctxt' newDecls highlights newGName, log) <-
+         ((ElabResult tyT' defer is ctxt' newDecls highlights newGName, est), log) <-
             tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) n (TType (UVal 0)) initEState
-                     (errAt "type of " n Nothing (erun fc (build i info ETyDecl [] n ty)))
+                     (errAt "type of " n Nothing 
+                        (erunAux fc (build i info ETyDecl [] n ty)))
+
+         displayWarnings est
          setContext ctxt'
          processTacticDecls info newDecls
          sendHighlighting highlights 

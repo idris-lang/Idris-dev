@@ -112,14 +112,14 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
           = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
     de env (_ : is) (Bind n (Pi (Just impl) ty _) sc)
        | toplevel_imp impl -- information in 'imps' repeated
-          = PPi (Imp [] Dynamic False (Just impl)) n NoFC (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (Imp [] Dynamic False (Just impl) False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env is (Bind n (Pi (Just impl) ty _) sc)
        | tcinstance impl
           = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
        | otherwise
-          = PPi (Imp [] Dynamic False (Just impl)) n NoFC (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (Imp [] Dynamic False (Just impl) False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env ((PImp { argopts = opts }):is) (Bind n (Pi _ ty _) sc)
-          = PPi (Imp opts Dynamic False Nothing) n NoFC (de env [] ty) (de ((n,n):env) is sc)
+          = PPi (Imp opts Dynamic False Nothing False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env (PConstraint _ _ _ _:is) (Bind n (Pi _ ty _) sc)
           = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi _ ty _) sc)

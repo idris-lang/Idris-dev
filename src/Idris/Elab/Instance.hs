@@ -233,7 +233,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
     lamBind i (PPi _ n _ ty sc) sc'
           = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
     lamBind i _ sc = sc
-    methArgs i (PPi (Imp _ _ _ _) n _ ty sc)
+    methArgs i (PPi (Imp _ _ _ _ _) n _ ty sc)
         = PImp 0 True [] n (PRef fc [] (sMN i "meth")) : methArgs (i+1) sc
     methArgs i (PPi (Exp _ _ _) n _ ty sc)
         = PExp 0 [] (sMN 0 "marg") (PRef fc [] (sMN i "meth")) : methArgs (i+1) sc
@@ -266,7 +266,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
     conbind [] x = x
 
     coninsert :: [(Name, PTerm)] -> PTerm -> PTerm
-    coninsert cs (PPi p@(Imp _ _ _ _) n fc t sc) = PPi p n fc t (coninsert cs sc)
+    coninsert cs (PPi p@(Imp _ _ _ _ _) n fc t sc) = PPi p n fc t (coninsert cs sc)
     coninsert cs sc = conbind cs sc
 
     -- Reorder declarations to be in the same order as defined in the

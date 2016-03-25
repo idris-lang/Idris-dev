@@ -1154,7 +1154,7 @@ instance Binary Static where
 instance Binary Plicity where
         put x
           = case x of
-                Imp x1 x2 x3 x4 ->
+                Imp x1 x2 x3 x4 _ ->
                              do putWord8 0
                                 put x1
                                 put x2
@@ -1181,7 +1181,7 @@ instance Binary Plicity where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (Imp x1 x2 x3 x4)
+                           return (Imp x1 x2 x3 x4 False)
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get

@@ -176,7 +176,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                 logElab 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map (\(pn, _, _) -> pn) ps) Exp t')),
                          (n, (nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
-                                              (\ l s p -> Imp l s p Nothing) t'))),
+                                              (\ l s p -> Imp l s p Nothing True) t'))),
                          (n, (nfc, syn, o, t) ) )
     tdecl _ _ = ifail "Not allowed in a class declaration"
 
@@ -250,7 +250,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              return [PTy doc [] syn fc o m mfc ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
-    getMArgs (PPi (Imp _ _ _ _) n _ ty sc) = IA n : getMArgs sc
+    getMArgs (PPi (Imp _ _ _ _ _) n _ ty sc) = IA n : getMArgs sc
     getMArgs (PPi (Exp _ _ _) n _ ty sc) = EA n : getMArgs sc
     getMArgs (PPi (Constraint _ _) n _ ty sc) = CA : getMArgs sc
     getMArgs _ = []
@@ -270,7 +270,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     rhsArgs [] _ = []
 
     insertConstraint :: PTerm -> [Name] -> PTerm -> PTerm
-    insertConstraint c all (PPi p@(Imp _ _ _ _) n fc ty sc)
+    insertConstraint c all (PPi p@(Imp _ _ _ _ _) n fc ty sc)
                               = PPi p n fc ty (insertConstraint c all sc)
     insertConstraint c all sc = let dictN = sMN 0 "__class"
                                 in  PPi (constraint { pstatic = Static })
@@ -289,7 +289,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
        addC _ _ tm = tm
 
     -- make arguments explicit and don't bind class parameters
-    toExp ns e (PPi (Imp l s p _) n fc ty sc)
+    toExp ns e (PPi (Imp l s p _ _) n fc ty sc)
         | n `elem` ns = toExp ns e sc
         | otherwise = PPi (e l s p) n fc ty (toExp ns e sc)
     toExp ns e (PPi p n fc ty sc) = PPi p n fc ty (toExp ns e sc)

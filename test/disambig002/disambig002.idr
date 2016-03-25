@@ -75,7 +75,7 @@ sigmaUniqueLemma1 : {A   : Type} ->
                     (a : A) ->
                     (p : P a) ->
                     (ss : Vect n (DPair A P)) ->
-                    Elem a (map fst ss) ->
+                    Elem a (map DPair.fst ss) ->
                     Elem (a ** p) ss
 
 toVectComplete : {A   : Type} ->

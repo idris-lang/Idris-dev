@@ -123,15 +123,21 @@ errAt :: String -> Name -> Maybe Type -> Elab' aux a -> Elab' aux a
 errAt thing n ty = transformErr (Elaborating thing n ty)
 
 
+erunAux :: FC -> Elab' aux a -> Elab' aux (a, aux)
+erunAux f elab 
+    = do s <- get
+         case runStateT elab s of
+            OK (a, s')     -> do put s'
+                                 aux <- getAux
+                                 return $! (a, aux)
+            Error (ProofSearchFail (At f e))
+                           -> lift $ Error (ProofSearchFail (At f e))
+            Error (At f e) -> lift $ Error (At f e)
+            Error e        -> lift $ Error (At f e)
+
 erun :: FC -> Elab' aux a -> Elab' aux a
-erun f elab = do s <- get
-                 case runStateT elab s of
-                    OK (a, s')     -> do put s'
-                                         return $! a
-                    Error (ProofSearchFail (At f e))
-                                   -> lift $ Error (ProofSearchFail (At f e))
-                    Error (At f e) -> lift $ Error (At f e)
-                    Error e        -> lift $ Error (At f e)
+erun f e = do (x, _) <- erunAux f e
+              return x
 
 runElab :: aux -> Elab' aux a -> ProofState -> TC (a, ElabState aux)
 runElab a e ps = runStateT e (ES (ps, a) "" Nothing)

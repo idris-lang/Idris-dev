@@ -1471,7 +1471,7 @@ addUsingImpls syn n fc t
          -- if all of args in ns, then add it
          doAdd (UImplicit n ty : cs) ns t
              | elem n ns
-                   = PPi (Imp [] Dynamic False Nothing) n NoFC ty (doAdd cs ns t)
+                   = PPi (Imp [] Dynamic False Nothing False) n NoFC ty (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
          -- bind the free names which weren't in the using block
@@ -1479,7 +1479,7 @@ addUsingImpls syn n fc t
          bindFree (n:ns) tm
              | elem n (map iname uimpls) = bindFree ns tm
              | otherwise
-                    = PPi (Imp [InaccessibleArg] Dynamic False Nothing) n NoFC Placeholder (bindFree ns tm)
+                    = PPi (Imp [InaccessibleArg] Dynamic False Nothing False) n NoFC Placeholder (bindFree ns tm)
 
          getArgnames (PPi _ n _ c sc)
              = n : getArgnames sc
@@ -1502,9 +1502,9 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
         getImps (Bind n (Pi _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
-            argInfo n (Imp opt _ _ _) Placeholder
+            argInfo n (Imp opt _ _ _ _) Placeholder
                    = (True, PImp 0 True opt n Placeholder)
-            argInfo n (Imp opt _ _ _) t'
+            argInfo n (Imp opt _ _ _ _) t'
                    = (False, PImp (getPriority i t') True opt n t')
             argInfo n (Exp opt _ _) t'
                    = (InaccessibleArg `elem` opt,
@@ -1598,7 +1598,7 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
        = do (decls, ns) <- get
             let isn = nub (implNamesIn uvars ty)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi (Imp l _ _ _) n _ ty sc)
+    imps top env (PPi (Imp l _ _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]
              (decls , ns) <- get
              put (PImp (getPriority ist ty) True l n Placeholder : decls,
@@ -1664,9 +1664,9 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
     pibind using []     sc = sc
     pibind using (n:ns) sc
       = case lookup n using of
-            Just ty -> PPi (Imp [] Dynamic False (Just (Impl False True)))
+            Just ty -> PPi (Imp [] Dynamic False (Just (Impl False True)) False)
                            n NoFC ty (pibind using ns sc)
-            Nothing -> PPi (Imp [InaccessibleArg] Dynamic False (Just (Impl False True)))
+            Nothing -> PPi (Imp [InaccessibleArg] Dynamic False (Just (Impl False True)) False)
                            n NoFC Placeholder (pibind using ns sc)
 
 -- Add implicit arguments in function calls

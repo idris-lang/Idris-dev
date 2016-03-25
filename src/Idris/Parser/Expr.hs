@@ -1079,10 +1079,10 @@ normalImplicit opts st syn = do
    sc <- expr syn
    let (im,cl)
           = if implicitAllowed syn
-               then (Imp opts st False (Just (Impl False True)),
+               then (Imp opts st False (Just (Impl False True)) True,
                       constraint)
-               else (Imp opts st False (Just (Impl False False)),
-                     Imp opts st False (Just (Impl True False)))
+               else (Imp opts st False (Just (Impl False False)) True,
+                     Imp opts st False (Just (Impl True False)) True)
    return (bindList (PPi im) xt
            (bindList (PPi cl) cs sc))
 
