@@ -113,17 +113,17 @@ hasValidIBCVersion fp = do
     Right archive -> do ver <- getEntry 0 "ver" archive
                         return (ver == ibcVersion)
 
-data ImpAction = FullLoad | Unhide | NoAction deriving (Eq, Show)
 
 loadIBC :: Bool -- ^ True = reexport, False = make everything private
         -> IBCPhase
         -> FilePath -> Idris ()
 loadIBC reexport phase fp
            = do imps <- getImported
-                let action = case lookup fp imps of
-                                Nothing -> FullLoad
-                                Just p -> if (not p && reexport) then Unhide else NoAction
-                when (action /= NoAction) $ do
+                case lookup fp imps of
+                    Nothing -> load True
+                    Just p -> if (not p && reexport) then load False else return ()
+        where
+            load fullLoad = do
                     logIBC 1 $ "Loading ibc " ++ fp ++ " " ++ show reexport
                     archiveFile <- runIO $ B.readFile fp
                     case toArchiveOrFail archiveFile of
@@ -131,14 +131,10 @@ loadIBC reexport phase fp
                             ifail $ fp  ++ " isn't loadable, it may have an old ibc format.\n"
                                         ++ "Please clean and rebuild it."
                         Right archive -> do
-                            case action of
-                                FullLoad -> do
-                                    process reexport phase archive fp
-                                    addImported reexport fp
-                                Unhide -> do
-                                    unhide phase archive
-                                    addImported reexport fp
-                                _ -> return ()
+                            if fullLoad
+                                then process reexport phase archive fp
+                                else unhide phase archive
+                            addImported reexport fp
 
 -- | Load an entire package from its index file
 loadPkgIndex :: String -> Idris ()
