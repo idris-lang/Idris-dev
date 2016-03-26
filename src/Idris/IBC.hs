@@ -113,23 +113,32 @@ hasValidIBCVersion fp = do
     Right archive -> do ver <- getEntry 0 "ver" archive
                         return (ver == ibcVersion)
 
+data ImpAction = FullLoad | Unhide | NoAction deriving (Eq, Show)
+
 loadIBC :: Bool -- ^ True = reexport, False = make everything private
         -> IBCPhase
         -> FilePath -> Idris ()
 loadIBC reexport phase fp
            = do imps <- getImported
-                let redo = case lookup fp imps of
-                                Nothing -> True
-                                Just p -> not p && reexport
-                when redo $
-                  do logIBC 1 $ "Loading ibc " ++ fp ++ " " ++ show reexport
-                     archiveFile <- runIO $ B.readFile fp
-                     case toArchiveOrFail archiveFile of
-                        Left _ -> ifail $ fp ++ " isn't loadable, it may have an old ibc format.\n"
-                                          ++ "Please clean and rebuild it."
-                        Right archive -> do process reexport phase archive fp
-                                            addImported reexport fp
---                                             dumpTT
+                let action = case lookup fp imps of
+                                Nothing -> FullLoad
+                                Just p -> if (not p && reexport) then Unhide else NoAction
+                when (action /= NoAction) $ do
+                    logIBC 1 $ "Loading ibc " ++ fp ++ " " ++ show reexport
+                    archiveFile <- runIO $ B.readFile fp
+                    case toArchiveOrFail archiveFile of
+                        Left _ -> do
+                            ifail $ fp  ++ " isn't loadable, it may have an old ibc format.\n"
+                                        ++ "Please clean and rebuild it."
+                        Right archive -> do
+                            case action of
+                                FullLoad -> do
+                                    process reexport phase archive fp
+                                    addImported reexport fp
+                                Unhide -> do
+                                    unhide phase archive
+                                    addImported reexport fp
+                                _ -> return ()
 
 -- | Load an entire package from its index file
 loadPkgIndex :: String -> Idris ()
@@ -324,8 +333,13 @@ getEntry alt f a = case findEntryByPath f a of
                 Nothing -> return alt
                 Just e -> return $! (force . decode . fromEntry) e
 
+unhide :: IBCPhase -> Archive -> Idris ()
+unhide phase ar = do
+    pImports True phase =<< getEntry [] "ibc_imports" ar
+    pAccess True phase =<< getEntry [] "ibc_access" ar
+
 process :: Bool -- ^ Reexporting
-           -> IBCPhase 
+           -> IBCPhase
            -> Archive -> FilePath -> Idris ()
 process reexp phase i fn = do
                 ver <- getEntry 0 "ver" i
@@ -616,7 +630,7 @@ pAccess reexp phase ds
                                         else logIBC 1 $ "Exporting " ++ show n
                          -- Everything should be available at the REPL from
                          -- things imported publicly
-                         when (phase == IBC_REPL True) $ 
+                         when (phase == IBC_REPL True) $
                               setAccessibility n Public
                 ) ds
 
