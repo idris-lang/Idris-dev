@@ -1018,7 +1018,7 @@ Library
                 , utf8-string < 1.1
                 , vector < 0.12
                 , vector-binary-instances < 0.3
-                , zip-archive > 0.2.3.5 && < 0.2.4
+                , zip-archive > 0.2.3.5 && < 0.4
                 , safe
                 , fsnotify < 2.2
                 , async < 2.2
