@@ -1,13 +1,16 @@
 module Providers
 
+%access export
+
 %dynamic "./nativetypes.so"
 
 sizeOfSizeT : IO Int
 sizeOfSizeT = foreign FFI_C "sizeof_size_t" (IO Int)
 
+public export
 data NativeTypeSize = OneByte | TwoBytes | FourBytes | EightBytes
 
-instance Show NativeTypeSize where
+Show NativeTypeSize where
   show OneByte = "1 byte"
   show TwoBytes = "2 bytes"
   show FourBytes = "4 bytes"
