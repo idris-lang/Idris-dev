@@ -2,8 +2,7 @@
 Compilation and Logging
 ***********************
 
-
-This section provides highlights of the Idris compilation process, and
+This section provides information about the Idris compilation process, and
 provides details over how you can follow the process through logging.
 
 Compilation Process
@@ -78,3 +77,30 @@ logging level between: 1 to 10 using the command-line option: ``--log
 + Level 8:
 + Level 9:
 + Level 10: Further details elaboration.
+
+Environment Variables
+=====================
+
+Several paths set by default within the Idris compiler can be
+overridden through environment variables.  The provided variables are:
+
+* `IDRIS_CC` Change the `C` compiler used by the `C` backend.
+* `IDRIS_CFLAGS` Change the `C` flags passed to the `C` compiler.
+* `TARGET`   Change the target directory to generate files.
+* `IDRIS_LIBRARY_PATH` Change the location of where installed packages are found.
+
+Alternativly, and perhaps a cleaner approach is to configure these
+options using the CLI options.  Idris also supports options to augment
+the paths used, and pass options to the code generator backend.
+
+The option `--cg-opt <ARG>` can be used to pass options to the code
+generator. The format of `<ARG>` is dependent on the selected backend.
+
+Further, Idris does support multiple include paths.  The CLI option
+`-i <dir>` allows you to add a directory to the search path; this
+option can be used multiple times. This is a cleaner option when you
+wish to add single directories to the `IDRIS_LIBRARY_PATH` than
+ammending `IDRIS_LIBRARY_PATH` directly.
+
+Moreover, rather than using `TARGET` the CLI option `--ibcsubdir` can
+be used to direct where built IBC files are placed.
