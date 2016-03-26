@@ -244,7 +244,7 @@ simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
                                             _ -> True) cs)
           where
  sc' tc defcase phase fc []
-                 = return $ CaseDef [] (UnmatchedCase "No pattern clauses") []
+                 = return $ CaseDef [] (UnmatchedCase (show fc ++ ":No pattern clauses")) []
  sc' tc defcase phase fc cs
       = let proj       = phase == RunTime
             vnames     = fstT (head cs)
