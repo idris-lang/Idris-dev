@@ -1,3 +1,9 @@
+New in 0.12:
+============
+
+* Improved startup performance by reducing the processing of an already imported
+  module that has changed accessibility.
+
 New in 0.11:
 ============
 
