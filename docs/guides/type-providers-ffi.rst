@@ -115,75 +115,19 @@ So now we can get the size of ``size_t`` as long as we're in C code.
 We'd like to be able to use this from Idris. Can we do this? It turns
 out we can.
 
-``mkForeign``
+``foreign``
 -------------
 
-With mkForeign, we can turn a C function into an IO action. It works
+With foreign, we can turn a C function into an IO action. It works
 like this:
 
 .. code-block:: idris
 
     getSizeT : IO Int
-    getSizeT = mkForeign (FFun "sizeof_size_t" [] FInt)
+    getSizeT = foreign FFI_C "sizeof_size_t" (IO Int)
 
-Pretty simple. ``mkForeign`` takes a specification of what function it
-needs to call, and we construct this specification with ``FFun``. And
-``FFun`` just takes a name, a list of argument types (we have none),
-and a return type.
-
-One thing you might want to note: the return type we've specified is
-``FInt``, not ``Int``. That's because ``Int`` is an idris type and C
-functions don't return idris types. ``FInt`` is not an idris type, but
-is just the representation of the type of a C int. It tells the
-compiler "Treat the return value of this C function like it's a C int,
-and when you pass it back into Idris, convert it to an Idris int."
-
-Caveats of mkForeign
---------------------
-
-First and foremost: ``mkForeign`` is not actually a function. It is
-treated specially by the compiler, and there are certain rules you
-need to follow when using it.
-
-- Rule 1: the name string must be a literal or constant
-
-This does not work:
-
-.. code-block:: idris
-
-  intIntToInt : String -> Int -> Int -> IO Int
-  intIntToInt name = mkForeign (FFun name [FInt, FInt] FInt)
-
-You'll just have to bite the bullet and write out the whole
-``mkForeign`` and ``FFun`` expression each time.
-
-- Rule 2: the "call" to ``mkForeign`` must be fully applied
-
-This just means that every argument appearing in the list of argument
-types must be applied wherever you write ``mkForeign``. The arguments
-don't have to be literals or even known at compile time; they just
-have to be there. For example, if we have ``strlen : String -> IO
-Int``, then this is fine:
-
-.. code-block:: idris
-
-   strlen str = mkForeign (FFun "strlen" [FString] FInt) str
-
-but this is not fine:
-
-.. code-block:: idris
-
-   strlen = mkForeign (FFun "strlen" [FString] FInt)
-
-Note that this only applies to places where you literally typed
-``mkForeign``. Once you've defined it, ``strlen`` is just a normal
-function returning an IO action, and it doesn't need to be fully
-applied. This is okay:
-
-.. code-block:: idris
-
-   lengths : IO [Int]
-   lengths = mapM strlen listOfStrings
+Pretty simple. ``foreign`` takes a specification of what function it
+needs to call and that function's return type.
 
 Running foreign functions
 -------------------------
@@ -242,6 +186,8 @@ First, let's write a C file containing functions that we'll bind to.
 .. code-block:: c
 
     /* stattypes.c */
+    #include <sys/stat.h>
+
     int sizeof_dev_t() { return sizeof(dev_t); }
     int sizeof_ino_t() { return sizeof(ino_t); }
     /* lots more functions like this */
@@ -256,20 +202,30 @@ Next, an Idris file to define our providers:
     %dynamic "./stattypes.so"
 
     sizeOfDevT : IO Int
-    sizeOfDevT = mkForeign (FFun "sizeof_dev_t" [] FInt)
+    sizeOfDevT = foreign FFI_C "sizeof_dev_t" (IO Int)
     {- lots of similar functions -}
 
-    -- now we have an integer, but we want a Provider FTy
-    -- since our sizeOf* functions are ordinary IO actions, we
+    -- Indicates how many bits are used to represent various system
+    -- stat types.
+    data BitWidth = B8 | B16 | B32 | B64
+
+    instance Show BitWidth where
+      show B8 = "8 bits"
+      show B16 = "16 bits"
+      show B32 = "32 bits"
+      show B64 = "64 bits"
+
+    -- Now we have an integer, but we want a Provider BitWidth.
+    -- Since our sizeOf* functions are ordinary IO actions, we
     -- can just map over them.
-    bytesToType : Int -> Provider FTy
-    bytesToType 1 = Provide (FIntT IT8) -- "8 bit foreign integer"
-    bytesToType 2 = Provide (FIntT IT16)
-    bytesToType 4 = Provide (FIntT IT32)
-    bytesToType 8 = Provide (FIntT IT64)
+    bytesToType : Int -> Provider BitWidth
+    bytesToType 1 = Provide B8  -- "8 bit value"
+    bytesToType 2 = Provide B16
+    bytesToType 4 = Provide B32
+    bytesToType 8 = Provide B64
     bytesToType _ = Error "Unrecognised integral type."
 
-    getDevT : IO (Provider FTy)
+    getDevT : IO (Provider BitWidth)
     getDevT = map bytesToType sizeOfDevT
     {- lots of similar functions -}
 
@@ -282,10 +238,8 @@ providers:
     module Main
     import Providers
     %language TypeProviders
-    %provide (FDevT : FTy) with getDevT
+    %provide (DevTBitWidth : BitWidth) with getDevT
 
-    -- interpFTy translates a foreign type to the corresponding idris type
-    DevT : Type
-    DevT = interpFTy FDevT -- on most systems, DevT = Bits64
-
-    -- We can now use DevT in our program and FDevT in our FFun expressions!
+    -- We can now use DevTBitWidth in our program!
+    main : IO ()
+    main = putStrLn $ "size of dev_t: " ++ show DevTBitWidth
