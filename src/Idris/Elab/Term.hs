@@ -413,14 +413,15 @@ elab ist info emode opts fn tm
                                                  pimp (sUN "B") Placeholder False,
                                                  pexp l, pexp r])
     elab' ina _ (PDPair fc hls p l@(PRef nfc hl n) t r)
-            = case t of
-                Placeholder ->
+            = case p of
+                IsType -> asType
+                IsTerm -> asValue
+                TypeOrTerm ->
                    do hnf_compute
                       g <- goal
                       case g of
                          TType _ -> asType
                          _ -> asValue
-                _ -> asType
          where asType = elab' ina (Just fc) (PApp fc (PRef NoFC hls sigmaTy)
                                         [pexp t,
                                          pexp (PLam fc n nfc Placeholder r)])
