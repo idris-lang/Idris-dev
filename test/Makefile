@@ -12,7 +12,7 @@ info: runtest
 	@./runtest $(patsubst %.test,%,$@) -q
 
 test_js: runtest
-	@./runtest without sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 basic007 basic011 ffi006 ffi007 ffi008 primitives005 primitives006 opts --codegen node
+	@./runtest without tutorial007 sugar004 reg029 reg052 io001 dsl002 io003 effects001 effects002 basic007 basic011 ffi006 ffi007 ffi008 primitives005 primitives006 opts --codegen node
 
 update: runtest
 	@./runtest all -u
