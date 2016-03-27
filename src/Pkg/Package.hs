@@ -39,9 +39,14 @@ import IRTS.System
 -- * invoke idris on each module, with idris_opts
 -- * install everything into datadir/pname, if install flag is set
 
+--  --------------------------------------------------------- [ Build Packages ]
+
 -- | Run the package through the idris compiler.
-buildPkg :: Bool -> (Bool, FilePath) -> IO ()
-buildPkg warnonly (install, fp)
+buildPkg :: [Opt]            -- ^ Command line options
+         -> Bool             -- ^ Provide Warnings
+         -> (Bool, FilePath) -- ^ (Should we install, Location of iPKG file)
+         -> IO ()
+buildPkg copts warnonly (install, fp)
      = do pkgdesc <- parseDesc fp
           dir <- getCurrentDirectory
           let idx = PkgIndex (pkgIndex (pkgname pkgdesc))
@@ -65,15 +70,18 @@ buildPkg warnonly (install, fp)
                             _ -> return ()
                        when install $ installPkg pkgdesc
 
+--  --------------------------------------------------------- [ Check Packages ]
+
 -- | Type check packages only
 --
 -- This differs from build in that executables are not built, if the
 -- package contains an executable.
-checkPkg :: Bool         -- ^ Show Warnings
-            -> Bool      -- ^ quit on failure
-            -> FilePath  -- ^ Path to ipkg file.
-            -> IO ()
-checkPkg warnonly quit fpath
+checkPkg :: [Opt]     -- ^ Command line Options
+         -> Bool      -- ^ Show Warnings
+         -> Bool      -- ^ quit on failure
+         -> FilePath  -- ^ Path to ipkg file.
+         -> IO ()
+checkPkg copts warnonly quit fpath
   = do pkgdesc <- parseDesc fpath
        ok <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
        when (and ok) $
@@ -88,29 +96,40 @@ checkPkg warnonly quit fpath
                               Just _ -> exitWith (ExitFailure 1)
                               _ -> return ()
 
--- | Check a package and start a REPL
-replPkg :: FilePath -> Idris ()
-replPkg fp = do orig <- getIState
-                runIO $ checkPkg False False fp
-                pkgdesc <- runIO $ parseDesc fp -- bzzt, repetition!
-                let opts = idris_opts pkgdesc
-                let mod = idris_main pkgdesc
-                let f = toPath (showCG mod)
-                putIState orig
-                dir <- runIO $ getCurrentDirectory
-                runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
+--  ------------------------------------------------------------------- [ REPL ]
 
-                if (f /= "")
-                   then idrisMain ((Filename f) : opts)
-                   else iputStrLn "Can't start REPL: no main module given"
-                runIO $ setCurrentDirectory dir
+-- | Check a package and start a REPL.
+--
+-- This function only works with packages that have a main module.
+--
+replPkg :: [Opt]    -- ^ Command line Options
+        -> FilePath -- ^ Path to ipkg file.
+        -> Idris ()
+replPkg copts fp = do
+    orig <- getIState
+    runIO $ checkPkg copts False False fp
+    pkgdesc <- runIO $ parseDesc fp -- bzzt, repetition!
+    let opts = idris_opts pkgdesc
+    let mod = idris_main pkgdesc
+    let f = toPath (showCG mod)
+    putIState orig
+    dir <- runIO $ getCurrentDirectory
+    runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
 
-    where toPath n = foldl1' (</>) $ splitOn "." n
+    if (f /= "")
+      then idrisMain ((Filename f) : opts)
+      else iputStrLn "Can't start REPL: no main module given"
+    runIO $ setCurrentDirectory dir
+
+  where toPath n = foldl1' (</>) $ splitOn "." n
+
+--  --------------------------------------------------------------- [ Cleaning ]
 
 -- | Clean Package build files
-cleanPkg :: FilePath -- ^ Path to ipkg file.
+cleanPkg :: [Opt]    -- ^ Command line options.
+         -> FilePath -- ^ Path to ipkg file.
          -> IO ()
-cleanPkg fp
+cleanPkg copts fp
      = do pkgdesc <- parseDesc fp
           dir <- getCurrentDirectory
           inPkgDir pkgdesc $
@@ -121,15 +140,19 @@ cleanPkg fp
                     Nothing -> return ()
                     Just s -> rmExe $ dir </> s
 
+--  ------------------------------------------------------ [ Generate IdrisDoc ]
+
+
 -- | Generate IdrisDoc for package
 -- TODO: Handle case where module does not contain a matching namespace
 --       E.g. from prelude.ipkg: IO, Prelude.Chars, Builtins
 --
 -- Issue number #1572 on the issue tracker
 --       https://github.com/idris-lang/Idris-dev/issues/1572
-documentPkg :: FilePath -- ^ Path to .ipkg file.
+documentPkg :: [Opt]    -- ^ Command line options.
+            -> FilePath -- ^ Path to ipkg file.
             -> IO ()
-documentPkg fp =
+documentPkg copts fp =
   do pkgdesc        <- parseDesc fp
      cd             <- getCurrentDirectory
      let pkgDir      = cd </> takeDirectory fp
@@ -155,9 +178,13 @@ documentPkg fp =
                         Left msg -> do putStrLn msg
                                        exitWith (ExitFailure 1)
 
+--  ------------------------------------------------------------------- [ Test ]
+
 -- | Build a package with a sythesized main function that runs the tests
-testPkg :: FilePath -> IO ()
-testPkg fp
+testPkg :: [Opt]     -- ^ Command line options.
+        -> FilePath  -- ^ Path to ipkg file.
+        -> IO ()
+testPkg copts fp
      = do pkgdesc <- parseDesc fp
           ok <- mapM (testLib True (pkgname pkgdesc)) (libdeps pkgdesc)
           when (and ok) $
@@ -187,6 +214,8 @@ testPkg fp
                     case errSpan ist of
                       Just _ -> exitWith (ExitFailure 1)
                       _      -> return ()
+
+--  ----------------------------------------------------------- [ Installation ]
 
 -- | Install package
 installPkg :: PkgDesc -> IO ()
@@ -254,7 +283,7 @@ installIBC p m = do let f = toIBCFile m
 installIdx :: String -> IO ()
 installIdx p = do d <- getTargetDir
                   let f = pkgIndex p
-                  let destdir = d </> p 
+                  let destdir = d </> p
                   putStrLn $ "Installing " ++ f ++ " to " ++ destdir
                   createDirectoryIfMissing True destdir
                   copyFile f (destdir </> takeFileName f)

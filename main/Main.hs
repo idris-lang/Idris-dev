@@ -56,26 +56,26 @@ runIdris opts = do
                    runIO exitSuccess
     case opt getPkgCheck opts of
        [] -> return ()
-       fs -> do runIO $ mapM_ (checkPkg (WarnOnly `elem` opts) True) fs
+       fs -> do runIO $ mapM_ (checkPkg opts (WarnOnly `elem` opts) True) fs
                 runIO exitSuccess
     case opt getPkgClean opts of
        [] -> return ()
-       fs -> do runIO $ mapM_ cleanPkg fs
+       fs -> do runIO $ mapM_ (cleanPkg opts) fs
                 runIO exitSuccess
     case opt getPkgMkDoc opts of                -- IdrisDoc
        [] -> return ()
-       fs -> do runIO $ mapM_ documentPkg fs
+       fs -> do runIO $ mapM_ (documentPkg opts) fs
                 runIO exitSuccess
     case opt getPkgTest opts of
        [] -> return ()
-       fs -> do runIO $ mapM_ testPkg fs
+       fs -> do runIO $ mapM_ (testPkg opts) fs
                 runIO exitSuccess
     case opt getPkg opts of
        [] -> case opt getPkgREPL opts of
                   [] -> idrisMain opts
-                  [f] -> replPkg f
+                  [f] -> replPkg opts f
                   _ -> ifail "Too many packages"
-       fs -> runIO $ mapM_ (buildPkg (WarnOnly `elem` opts)) fs
+       fs -> runIO $ mapM_ (buildPkg opts (WarnOnly `elem` opts)) fs
 
 showver :: IO b
 showver = do putStrLn $ "Idris version " ++ ver
