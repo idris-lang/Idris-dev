@@ -4,6 +4,12 @@ New in 0.12:
 * Improved startup performance by reducing the processing of an already imported
   module that has changed accessibility.
 
+* A limited set of command line options can be used to override
+  package declared options. Overridable options are currently,
+  logging level and categories, default totality check, warn reach,
+  IBC output folder, and idris path.
+
+
 New in 0.11:
 ============
 

@@ -1,0 +1,19 @@
+Not all command line options can be used to override package options.
+
+The only changeable options are:
+	--log <lvl>, --total, --warnpartial, --warnreach
+	--ibcsubdir <path>, -i --idrispath <path>
+	--logging-categories <cats>
+
+The options need removing are:
+	 Quiet 
+
+
+
+Elaborating {__Infer0}
+builtin
+Elaborating =
+builtin
+Elaborating type decl Main.main[]
+Elaborating clause Main.main
+Rechecking for positivity []
