@@ -246,12 +246,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | not top && hnf = liftM (VP Ref n) (ev ntimes stk top env ty)
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
-              let red = u && (tcReducible n ctxt || spec || atRepl || runtime)
+              let red = u && (tcReducible n ctxt || spec || atRepl || runtime
+                                || sUN "assert_total" `elem` stk)
               if red then
                do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                   case val of
-                    [(Function _ tm, _)] | sUN "assert_total" `elem` stk ->
-                           ev ntimes (n:stk) True env tm
                     [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
@@ -371,12 +370,13 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                             _ -> return $ unload env f args
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
-              let red = u && (tcReducible n ctxt || spec || atRepl || runtime)
+              let red = u && (tcReducible n ctxt || spec || atRepl || runtime
+                                || sUN "assert_total" `elem` stk)
               if red then
                  do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
-                           | acc == Public || acc == Hidden || sUN "assert_total" `elem` stk ->
+                           | acc == Public || acc == Hidden ->
                            -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -1094,7 +1094,7 @@ lookupTotalExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
 -- are not reducible (so treated as a constant)
 tcReducible :: Name -> Context -> Bool
 tcReducible n ctxt = case lookupTotalExact n ctxt of
-                          Nothing -> False
+                          Nothing -> True
                           Just (Partial _) -> False
                           _ -> True
 

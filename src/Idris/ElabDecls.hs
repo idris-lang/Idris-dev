@@ -111,7 +111,9 @@ elabPrims = do mapM_ (elabDecl' EAll recinfo)
           elabBelieveMe
              = do let prim__believe_me = sUN "prim__believe_me"
                   updateContext (addOperator prim__believe_me believeTy 3 p_believeMe)
-                  setTotality prim__believe_me (Partial NotCovering)
+                  -- The point is that it is believed to be total, even 
+                  -- though it clearly isn't :)
+                  setTotality prim__believe_me (Total [])
                   i <- getIState
                   putIState i {
                       idris_scprims = (prim__believe_me, (3, LNoOp)) : idris_scprims i
