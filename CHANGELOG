@@ -9,6 +9,8 @@ New in 0.12:
   logging level and categories, default totality check, warn reach,
   IBC output folder, and idris path.
 
+* Remove deprecated options `--ideslave` and `--ideslave-socket`. These options
+  were replaced with `--ide-mode` and `--ide-mode-socket` in 0.9.17
 
 New in 0.11:
 ============

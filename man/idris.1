@@ -1,6 +1,6 @@
 .\" Manpage for Idris.
 .\" Contact <> to correct errors or typos.
-.TH man 1 "06 August 2014" "0.9.14.1" "Idris man page"
+.TH man 1 "25 March 2016" "0.11" "Idris man page"
 .SH NAME
 idris -\ a general purpose pure functional programming language with dependent types.
 .SH SYNOPSIS
@@ -45,19 +45,37 @@ should not necessarily be seen as production ready nor for industrial use.
 .SH OPTIONS
   --nobanner               Suppress the banner
   -q,--quiet               Quiet verbosity
+  --ide-mode               Run the Idris REPL with machine-readable syntax
+  --ide-mode-socket        Choose a socket for IDE mode to listen on
+  --ideslave               Deprecated version of --ide-mode
+  --ideslave-socket        Deprecated version of --ide-mode-socket
   --log LEVEL              Debugging log level
+  --logging-categories CATS
+                           Colon separated logging categories. Use --listlogcats
+                           to see list.
+  --nobasepkgs             Do not use the given base package
+  --noprelude              Do not use the given prelude
+  --nobuiltins             Do not use the builtin functions
+  --check                  Typecheck only, don't start the REPL
   -o,--output FILE         Specify output file
+  --interface              Generate interface files from ExportLists
+  --typeintype             Turn off Universe checking
   --total                  Require functions to be total by default
   --warnpartial            Warn about undeclared partial functions
   --warnreach              Warn about reachable but inaccessible arguments
+  --listlogcats            Display logging categories
   --link                   Display link flags
+  --listlibs               Display installed libraries
   --libdir                 Display library directory
   --include                Display the includes flags
   -V,--verbose             Loud verbosity
   --ibcsubdir FILE         Write IBC files into sub directory
   -i,--idrispath ARG       Add directory to the list of import paths
+  -p,--package ARG         Add package as a dependency
+  --port PORT              REPL TCP port
   --build IPKG             Build package
   --install IPKG           Install package
+  --repl IPKG              Launch REPL, only for executables
   --clean IPKG             Clean package
   --mkdoc IPKG             Generate IdrisDoc for package
   --checkpkg IPKG          Check package only
@@ -65,19 +83,31 @@ should not necessarily be seen as production ready nor for industrial use.
   -S,--codegenonly         Do no further compilation of code generator output
   -c,--compileonly         Compile to object files rather than an executable
   --mvn                    Create a maven project (for Java codegen)
-  --codegen TARGET         Select code generator: C, Java, bytecode
+  --codegen TARGET         Select code generator: C, Javascript, Node and
+                           bytecode are bundled with Idris
+  --cg-opt ARG             Arguments to pass to code generator
   -e,--eval EXPR           Evaluate an expression without loading the REPL
   --execute                Execute as idris
   --exec EXPR              Execute as idris
   -X,--extension EXT       Turn on language extension (TypeProviders or
                            ErrorReflection)
+  --no-partial-eval        Switch off partial evaluation, mainly for debugging
+                           purposes
   --target TRIPLE          Select target triple (for llvm codegen)
   --cpu CPU                Select target CPU e.g. corei7 or cortex-m3 (for LLVM
                            codegen)
   --color,--colour         Force coloured output
   --nocolor,--nocolour     Disable coloured output
+  --consolewidth WIDTH     Select console width: auto, infinite, nat
+  --highlight              Emit source code highlighting
+  --no-elim-deprecation-warnings
+                           Disable deprecation warnings for %elim
+  --no-tactic-deprecation-warnings
+                           Disable deprecation warnings for the old tactic
+                           sublanguage
   -v,--version             Print version information
   -h,--help                Show this help text
+
 .SH SEE ALSO
 
 + The IDRIS web site (http://idris-lang.org/
