@@ -246,7 +246,8 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
       | not top && hnf = liftM (VP Ref n) (ev ntimes stk top env ty)
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
-              if u then
+              let red = u && (tcReducible n ctxt || spec || atRepl || runtime)
+              if red then
                do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                   case val of
                     [(Function _ tm, _)] | sUN "assert_total" `elem` stk ->
@@ -370,7 +371,8 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                             _ -> return $ unload env f args
       | otherwise
          = do (u, ntimes) <- usable spec n ntimes_in
-              if u then
+              let red = u && (tcReducible n ctxt || spec || atRepl || runtime)
+              if red then
                  do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
@@ -1087,6 +1089,14 @@ lookupTotal n ctxt = map mkt $ lookupCtxt n (definitions ctxt)
 lookupTotalExact :: Name -> Context -> Maybe Totality
 lookupTotalExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
   where mkt (d, a, t, m) = t
+
+-- Check if a name is reducible in the type checker. Partial definitions
+-- are not reducible (so treated as a constant)
+tcReducible :: Name -> Context -> Bool
+tcReducible n ctxt = case lookupTotalExact n ctxt of
+                          Nothing -> False
+                          Just (Partial _) -> False
+                          _ -> True
 
 lookupMetaInformation :: Name -> Context -> [MetaInformation]
 lookupMetaInformation n ctxt = map mkm $ lookupCtxt n (definitions ctxt)

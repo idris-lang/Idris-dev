@@ -458,20 +458,6 @@ checkDeclTotality (fc, n)
                               _ -> []
          when (CoveringFn `elem` opts) $ checkAllCovering fc [] n n
          t <- checkTotality [] fc n
-         let acc = case lookupDefAccExact n False (tt_ctxt i) of
-                        Just (n, a) -> a
-                        _ -> Public
-         case t of
-              -- if it's not total, it can't reduce, to keep
-              -- typechecking decidable.
-              -- So if it's currently public export, set it as
-              -- export instead.
-              p@(Partial _) -> do let newacc = max Frozen acc
-                                  setAccessibility n newacc
-                                  addIBC (IBCAccess n newacc)
-                                  logCoverage 5 $ "Set to " ++ show newacc ++ ":"
-                                               ++ show n ++ show p
-              _ -> return ()
          return t
 
 
