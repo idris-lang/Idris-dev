@@ -1742,6 +1742,8 @@ addImpl' inpat env infns imp_meths ist ptm
       = let f' = ai inpat qq env ds f
             as' = map (fmap (ai inpat qq env ds)) as in
             mkPApp fc 1 f' as'
+    ai inpat qq env ds (PWithApp fc f a) 
+      = PWithApp fc (ai inpat qq env ds f) (ai inpat qq env ds a)
     ai inpat qq env ds (PCase fc c os)
       = let c' = ai inpat qq env ds c in
         -- leave os alone, because they get lifted into a new pattern match

@@ -67,6 +67,8 @@ expandSugar dsl (PPi p n fc ty tm)
 expandSugar dsl (PPi p n fc ty tm) = PPi p n fc (expandSugar dsl ty) (expandSugar dsl tm)
 expandSugar dsl (PApp fc t args) = PApp fc (expandSugar dsl t)
                                         (map (fmap (expandSugar dsl)) args)
+expandSugar dsl (PWithApp fc t arg) = PWithApp fc (expandSugar dsl t)
+                                                  (expandSugar dsl arg)
 expandSugar dsl (PAppBind fc t args) = PAppBind fc (expandSugar dsl t)
                                                 (map (fmap (expandSugar dsl)) args)
 expandSugar dsl (PCase fc s opts) = PCase fc (expandSugar dsl s)
@@ -140,6 +142,7 @@ var dsl n t i = v' i t where
         | otherwise = PPi p n fc (v' i ty) (v' (i+1) sc)
     v' i (PTyped l r)    = PTyped (v' i l) (v' i r)
     v' i (PApp f x as)   = PApp f (v' i x) (fmap (fmap (v' i)) as)
+    v' i (PWithApp f x a) = PWithApp f (v' i x) (v' i a)
     v' i (PCase f t as)  = PCase f (v' i t) (fmap (pmap (v' i)) as)
     v' i (PPair f hls p l r) = PPair f hls p (v' i l) (v' i r)
     v' i (PDPair f hls p l t r) = PDPair f hls p (v' i l) (v' i t) (v' i r)
@@ -191,6 +194,10 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
          = do t' <- db' t
               args' <- mapM dbArg args
               return (PApp fc t' args')
+    db' (PWithApp fc t arg)
+         = do t' <- db' t
+              arg' <- db' arg
+              return (PWithApp fc t' arg')
     db' (PLam fc n nfc ty sc) = return (PLam fc n nfc ty (debind b sc))
     db' (PLet fc n nfc ty v sc) = do v' <- db' v
                                      return (PLet fc n nfc ty v' (debind b sc))

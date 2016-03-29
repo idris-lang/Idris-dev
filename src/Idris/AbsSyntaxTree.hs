@@ -59,11 +59,15 @@ data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         liftname :: Name -> Name,
                         namespace :: Maybe [String],
                         elabFC :: Maybe FC,
+                        -- We may, recursively, collect transformations to
+                        -- do on the rhs, e.g. rewriting recursive calls to 
+                        -- functions defined by 'with'
+                        rhs_trans :: PTerm -> PTerm,
                         rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl ->
                                         Idris () }
 
 toplevel :: ElabInfo
-toplevel = EInfo [] emptyContext id Nothing Nothing (\_ _ _ -> fail "Not implemented")
+toplevel = EInfo [] emptyContext id Nothing Nothing id (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
@@ -1012,6 +1016,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PLet FC Name FC PTerm PTerm PTerm -- ^ A let binding (second FC is precise name location)
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
+           | PWithApp FC PTerm PTerm -- ^ Application plus a 'with' argument 
            | PAppImpl PTerm [ImplicitInfo] -- ^ Implicit argument application (introduced during elaboration only)
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
@@ -1067,6 +1072,7 @@ mapPTermFC f g (PPi plic n fc t1 t2)          = PPi plic n (g fc) (mapPTermFC f 
 mapPTermFC f g (PLet fc n fc' t1 t2 t3)       = PLet (f fc) n (g fc') (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
 mapPTermFC f g (PTyped t1 t2)                 = PTyped (mapPTermFC f g t1) (mapPTermFC f g t2)
 mapPTermFC f g (PApp fc t args)               = PApp (f fc) (mapPTermFC f g t) (map (fmap (mapPTermFC f g)) args)
+mapPTermFC f g (PWithApp fc t arg)            = PWithApp (f fc) (mapPTermFC f g t) (mapPTermFC f g arg)
 mapPTermFC f g (PAppImpl t1 impls)            = PAppImpl (mapPTermFC f g t1) impls
 mapPTermFC f g (PAppBind fc t args)           = PAppBind (f fc) (mapPTermFC f g t) (map (fmap (mapPTermFC f g)) args)
 mapPTermFC f g (PMatchApp fc n)               = PMatchApp (f fc) n
@@ -1121,6 +1127,7 @@ mapPT f t = f (mpt t) where
   mpt (PLet fc n nfc ty v s)  = PLet fc n nfc (mapPT f ty) (mapPT f v) (mapPT f s)
   mpt (PRewrite fc t s g)     = PRewrite fc (mapPT f t) (mapPT f s) (fmap (mapPT f) g)
   mpt (PApp fc t as)          = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
+  mpt (PWithApp fc t a)       = PWithApp fc (mapPT f t) (mapPT f a)
   mpt (PAppBind fc t as)      = PAppBind fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PCase fc c os)         = PCase fc (mapPT f c) (map (pmap (mapPT f)) os)
   mpt (PIfThenElse fc c t e)  = PIfThenElse fc (mapPT f c) (mapPT f t) (mapPT f e)
@@ -1515,14 +1522,15 @@ data SyntaxInfo = Syn { using :: [Using],
                         mut_nesting :: Int,
                         dsl_info :: DSL,
                         syn_in_quasiquote :: Int,
-                        syn_toplevel :: Bool }
+                        syn_toplevel :: Bool,
+                        withAppAllowed :: Bool }
     deriving Show
 {-!
 deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] [] id False False Nothing 0 initDSL 0 True
+defaultSyntax = Syn [] [] [] [] [] id False False Nothing 0 initDSL 0 True True
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n
@@ -1840,6 +1848,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
             if null shownArgs
               then fp
               else fp <+> align (vsep (map (prettyArgS d bnd) shownArgs))
+    prettySe d p bnd (PWithApp _ f a) = prettySe d p bnd f <+> text "|" <+> prettySe d p bnd a
     prettySe d p bnd (PCase _ scr cases) =
       align $ kwd "case" <+> prettySe (decD d) startPrec bnd scr <+> kwd "of" <$>
       depth d (indent 2 (vsep (map ppcase cases)))

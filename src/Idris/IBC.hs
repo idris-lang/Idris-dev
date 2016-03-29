@@ -1471,7 +1471,7 @@ instance Binary Using where
                     _ -> error "Corrupted binary data for Using"
 
 instance Binary SyntaxInfo where
-        put (Syn x1 x2 x3 x4 _ _ x5 x6 _ _ x7 _ _)
+        put (Syn x1 x2 x3 x4 _ _ x5 x6 _ _ x7 _ _ _)
           = do put x1
                put x2
                put x3
@@ -1487,7 +1487,7 @@ instance Binary SyntaxInfo where
                x5 <- get
                x6 <- get
                x7 <- get
-               return (Syn x1 x2 x3 x4 [] id x5 x6 Nothing 0 x7 0 True)
+               return (Syn x1 x2 x3 x4 [] id x5 x6 Nothing 0 x7 0 True True)
 
 instance (Binary t) => Binary (PClause' t) where
         put x
@@ -1736,6 +1736,10 @@ instance Binary PTerm where
                 PConstSugar x1 x2 -> do putWord8 46
                                         put x1
                                         put x2
+                PWithApp x1 x2 x3 -> do putWord8 47
+                                        put x1
+                                        put x2
+                                        put x3
 
         get
           = do i <- getWord8
@@ -1883,6 +1887,10 @@ instance Binary PTerm where
                    46 -> do x1 <- get
                             x2 <- get
                             return (PConstSugar x1 x2)
+                   47 -> do x1 <- get
+                            x2 <- get
+                            x3 <- get
+                            return (PWithApp x1 x2 x3)
                    _ -> error "Corrupted binary data for PTerm"
 
 instance Binary PAltType where

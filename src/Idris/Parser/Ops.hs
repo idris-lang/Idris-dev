@@ -36,7 +36,7 @@ import Debug.Trace
 table :: [FixDecl] -> OperatorTable IdrisParser PTerm
 table fixes
    = [[prefix "-" (\fc x -> PApp fc (PRef fc [fc] (sUN "negate")) [pexp x])]] ++
-     toTable (reverse fixes) ++
+      toTable (reverse fixes) ++
      [[backtick],
       [binary "$" (\fc x y -> flatten $ PApp fc x [pexp y]) AssocRight],
       [binary "="  (\fc x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]) AssocLeft],

@@ -667,7 +667,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- getIState -- new implicits from where block
         logElab 5 (showTmImpls (expandParams decorate newargs defs (defs \\ decls) rhs_in))
-        let rhs = addImplBoundInf i (map fst newargs_all) (defs \\ decls)
+        let rhs = rhs_trans info $
+                   addImplBoundInf i (map fst newargs_all) (defs \\ decls)
                                  (expandParams decorate newargs defs (defs \\ decls) rhs_in)
         logElab 2 $ "RHS: " ++ show (map fst newargs_all) ++ " " ++ showTmImpls rhs
         ctxt <- getContext -- new context with where block added
@@ -861,7 +862,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         (clhs, clhsty) <- recheckC fc id [] lhs_tm
         logElab 5 ("Checked " ++ show clhs)
         let bargs = getPBtys (explicitNames (normalise ctxt [] lhs_tm))
-        let wval = addImplBound i (map fst bargs) wval_in
+        let wval = rhs_trans info $ addImplBound i (map fst bargs) wval_in
         logElab 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
         ((wval', defer, is, ctxt', newDecls, highlights, newGName), _) <-
@@ -959,7 +960,10 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         logElab 3 ("with block " ++ show wb)
         -- propagate totality assertion to the new definitions
         when (AssertTotal `elem` opts) $ setFlags wname [AssertTotal]
-        mapM_ (rec_elabDecl info EAll info) wb
+        i <- getIState
+        let rhstrans' = updateWithTerm i mpn wname lhs (map fst bargs_pre) (map fst (bargs_post))
+                             . rhs_trans info
+        mapM_ (rec_elabDecl info EAll (info { rhs_trans = rhstrans' })) wb
 
         -- rhs becomes: fname' ps_pre wval ps_post Refl
         let rhs = PApp fc (PRef fc [] wname)
@@ -1001,9 +1005,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
     getImps _ = []
 
     mkAuxC pn wname lhs ns ns' (PClauses fc o n cs)
-        | True  = do cs' <- mapM (mkAux pn wname lhs ns ns') cs
+                = do cs' <- mapM (mkAux pn wname lhs ns ns') cs
                      return $ PClauses fc o wname cs'
-        | otherwise = ifail $ show fc ++ "with clause uses wrong function name " ++ show n
     mkAuxC pn wname lhs ns ns' d = return $ d
 
     mkAux pn wname toplhs ns ns' (PClause fc n tm_in (w:ws) rhs wheres)
@@ -1034,6 +1037,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
     addArg (PApp fc f args) w = PApp fc f (args ++ [pexp w])
     addArg (PRef fc hls f) w = PApp fc (PRef fc hls f) [pexp w]
 
+    -- ns, arguments which don't depend on the with argument
+    -- ns', arguments which do
     updateLHS n pn wname mvars ns_in ns_in' (PApp fc (PRef fc' hls' n') args) w
         = let ns = map (keepMvar (map fst mvars) fc') ns_in
               ns' = map (keepMvar (map fst mvars) fc') ns_in' in
@@ -1046,8 +1051,55 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
     updateLHS n pn wname mvars ns_in ns_in' tm w
         = updateLHS n pn wname mvars ns_in ns_in' (PApp fc tm []) w
 
+    -- Only keep a var as a pattern variable in the with block if it's
+    -- matched in the top level pattern
     keepMvar mvs fc v | v `elem` mvs = PRef fc [] v
                       | otherwise = Placeholder
+
+    updateWithTerm :: IState -> Maybe Name -> Name -> PTerm -> [Name] -> [Name] -> PTerm -> PTerm
+    updateWithTerm ist pn wname toplhs ns_in ns_in' tm 
+          = mapPT updateApp tm
+       where
+         arity (PApp _ _ as) = length as
+         arity _ = 0
+
+         lhs_arity = arity toplhs
+
+         updateApp wtm@(PWithApp fcw tm warg) = 
+              case matchClause ist toplhs tm of
+                Left _ -> PElabError (Msg (show fc ++ ":with application does not match top level"))
+                Right mvars -> 
+                   let ns = map (keepMvar (map fst mvars) fcw) ns_in
+                       ns' = map (keepMvar (map fst mvars) fcw) ns_in' 
+                       wty = lookupTyExact wname (tt_ctxt ist)
+                       res = substMatches mvars $
+                          PApp fcw (PRef fcw [] wname)
+                            (map pexp ns ++ pexp warg : (map pexp ns') ++
+                                case pn of
+                                     Nothing -> []
+                                     Just pnm -> [pexp (PRef fc [] pnm)]) in
+                          case wty of
+                               Nothing -> res -- can't happen!
+                               Just ty -> addResolves ty res
+         updateApp tm = tm
+
+         addResolves ty (PApp fc f args) = PApp fc f (addResolvesArgs fc ty args)
+         addResolves ty tm = tm
+
+         -- if an argument's type is a type class, and is otherwise to
+         -- be inferred, then resolve it with instance search
+         -- This is something of a hack, because matching on the top level
+         -- application won't find this information for us
+         addResolvesArgs :: FC -> Term -> [PArg] -> [PArg]
+         addResolvesArgs fc (Bind n (Pi _ ty _) sc) (a : args)
+             | (P _ cn _, _) <- unApply ty,
+               getTm a == Placeholder
+                 = case lookupCtxtExact cn (idris_classes ist) of
+                        Just _ -> a { getTm = PResolveTC fc } : addResolvesArgs fc sc args
+                        Nothing -> a : addResolvesArgs fc sc args
+         addResolvesArgs fc (Bind n (Pi _ ty _) sc) (a : args)
+                 = a : addResolvesArgs fc sc args
+         addResolvesArgs fc _ args = args
 
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
     fullApp x = x
@@ -1059,3 +1111,19 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
     split deps [] pre = (reverse pre, [])
 
     abstract wn wv wty (n, argty) = (n, substTerm wv (P Bound wn wty) argty)
+
+-- Apply a transformation to all RHSes and nested RHSs
+mapRHS :: (PTerm -> PTerm) -> PClause -> PClause
+mapRHS f (PClause fc n lhs args rhs ws) 
+    = PClause fc n lhs args (f rhs) (map (mapRHSdecl f) ws)
+mapRHS f (PWith fc n lhs args warg prf ws)
+    = PWith fc n lhs args (f warg) prf (map (mapRHSdecl f) ws)
+mapRHS f (PClauseR fc args rhs ws) 
+    = PClauseR fc args (f rhs) (map (mapRHSdecl f) ws)
+mapRHS f (PWithR fc args warg prf ws)
+    = PWithR fc args (f warg) prf (map (mapRHSdecl f) ws)
+
+mapRHSdecl :: (PTerm -> PTerm) -> PDecl -> PDecl
+mapRHSdecl f (PClauses fc opt n cs) 
+    = PClauses fc opt n (map (mapRHS f) cs)
+mapRHSdecl f t = t

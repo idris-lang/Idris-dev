@@ -97,6 +97,7 @@ warnDisamb ist (PLet _ _ _ x t b) = warnDisamb ist x >> warnDisamb ist t >> warn
 warnDisamb ist (PTyped x t) = warnDisamb ist x >> warnDisamb ist t
 warnDisamb ist (PApp _ t args) = warnDisamb ist t >>
                                  mapM_ (warnDisamb ist . getTm) args
+warnDisamb ist (PWithApp _ t a) = warnDisamb ist t >> warnDisamb ist a
 warnDisamb ist (PAppBind _ f args) = warnDisamb ist f >>
                                      mapM_ (warnDisamb ist . getTm) args
 warnDisamb ist (PMatchApp _ _) = return ()

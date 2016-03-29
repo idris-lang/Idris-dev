@@ -227,7 +227,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                                              let fix2 = s ++ ": " ++ ns ++ " -> Type where\n  ..."
                                              let fix3 = s ++ ": " ++ ss ++ " -> Type where\n  ..."
                                              fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
-                      cons <- sepBy1 (simpleConstructor syn) (reservedOp "|")
+                      cons <- sepBy1 (simpleConstructor (syn { withAppAllowed = False })) (reservedOp "|")
                       terminator
                       let conty = mkPApp fc (PRef fc [] tyn) (map (PRef fc []) args)
                       cons' <- mapM (\ (doc, argDocs, x, xfc, cargs, cfc, fs) ->

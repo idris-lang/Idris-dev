@@ -74,7 +74,8 @@ expr = pi
 -}
 opExpr :: SyntaxInfo -> IdrisParser PTerm
 opExpr syn = do i <- get
-                buildExpressionParser (table (idris_infixes i)) (expr' syn)
+                buildExpressionParser (table (idris_infixes i)) 
+                                      (expr' syn)
 
 {- | Parses either an internally defined expression or
     a user-defined one
@@ -439,7 +440,7 @@ Bracketed ::= '(' Bracketed'
 bracketed :: SyntaxInfo -> IdrisParser PTerm
 bracketed syn = do (FC fn (sl, sc) _) <- getFC
                    lchar '(' <?> "parenthesized expression"
-                   bracketed' (FC fn (sl, sc) (sl, sc+1)) syn
+                   bracketed' (FC fn (sl, sc) (sl, sc+1)) (syn { withAppAllowed = True })
 
 {- |Parses the rest of an expression in braces
 @
@@ -572,7 +573,7 @@ modifyConst syn fc x = x
 @
 -}
 alt :: SyntaxInfo -> IdrisParser PTerm
-alt syn = do symbol "(|"; alts <- sepBy1 (expr' syn) (lchar ','); symbol "|)"
+alt syn = do symbol "(|"; alts <- sepBy1 (expr' (syn { withAppAllowed = False })) (lchar ','); symbol "|)"
              return (PAlternative [] FirstSuccess alts)
 
 {- | Parses a possibly hidden simple expression
@@ -668,9 +669,12 @@ app syn = do f <- simpleExpr syn
              fc <- getFC
              i <- get
              args <- many (do notEndApp; arg syn)
+             wargs <- if withAppAllowed syn && not (inPattern syn)
+                         then many (do notEndApp; reservedOp "|"; expr' syn)
+                         else return []
              case args of
                [] -> return f
-               _  -> return (flattenFromInt fc f args))
+               _  -> return (withApp fc (flattenFromInt fc f args) wargs))
        <?> "function application"
    where
     -- bit of a hack to deal with the situation where we're applying a
@@ -681,6 +685,9 @@ app syn = do f <- simpleExpr syn
       | Just i <- getFromInt alts
            = PApp fc (PRef fc [] (sUN "fromInteger")) (i : args)
     flattenFromInt fc f args = PApp fc f args
+
+    withApp fc tm [] = tm
+    withApp fc tm (a : as) = withApp fc (PWithApp fc tm a) as
 
     getFromInt ((PApp _ (PRef _ _ n) [a]) : _) | n == sUN "fromInteger" = Just a
     getFromInt (_ : xs) = getFromInt xs
@@ -978,10 +985,12 @@ let_binding syn = do fc <- getFC;
                      pat <- expr' (syn { inPattern = True })
                      ty <- option Placeholder (do lchar ':'; expr' syn)
                      lchar '='
-                     v <- expr syn
+                     v <- expr (syn { withAppAllowed = isVar pat })
                      ts <- option [] (do lchar '|'
                                          sepBy1 (do_alt syn) (lchar '|'))
                      return (fc,pat,ty,v,ts)
+   where isVar (PRef _ _ _) = True
+         isVar _ = False
 
 {- | Parses a conditional expression
 @
@@ -1227,7 +1236,7 @@ listExpr syn = do (FC f (l, c) _) <- getFC
                   (try . token $ do (char ']' <?> "end of list expression")
                                     (FC _ _ (l', c')) <- getFC
                                     return (mkNil (FC f (l, c) (l', c'))))
-                   <|> (do x <- expr syn <?> "expression"
+                   <|> (do x <- expr (syn { withAppAllowed = False }) <?> "expression"
                            (do try (lchar '|') <?> "list comprehension"
                                qs <- sepBy1 (do_ syn) (lchar ',')
                                lchar ']'
@@ -1306,18 +1315,18 @@ do_ syn
    <|> try (do (i, ifc) <- name
                symbol "<-"
                fc <- getFC
-               e <- expr syn;
+               e <- expr (syn { withAppAllowed = False });
                option (DoBind fc i ifc e)
                       (do lchar '|'
-                          ts <- sepBy1 (do_alt syn) (lchar '|')
+                          ts <- sepBy1 (do_alt (syn { withAppAllowed = False })) (lchar '|')
                           return (DoBindP fc (PRef ifc [ifc] i) e ts)))
    <|> try (do i <- expr' syn
                symbol "<-"
                fc <- getFC
-               e <- expr syn;
+               e <- expr (syn { withAppAllowed = False });
                option (DoBindP fc i e [])
                       (do lchar '|'
-                          ts <- sepBy1 (do_alt syn) (lchar '|')
+                          ts <- sepBy1 (do_alt (syn { withAppAllowed = False })) (lchar '|')
                           return (DoBindP fc i e ts)))
    <|> do e <- expr syn
           fc <- getFC
@@ -1339,7 +1348,7 @@ idiom :: SyntaxInfo -> IdrisParser PTerm
 idiom syn
     = do symbol "[|"
          fc <- getFC
-         e <- expr syn
+         e <- expr (syn { withAppAllowed = False })
          symbol "|]"
          return (PIdiom fc e)
       <?> "expression in idiom brackets"
