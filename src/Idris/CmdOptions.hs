@@ -76,12 +76,15 @@ parser = runA $ proc () -> do
 
 parseFlags :: Parser [Opt]
 parseFlags = many $
-  flag' NoBanner (long "nobanner" <> help "Suppress the banner")
-  <|> flag' Quiet (short 'q' <> long "quiet" <> help "Quiet verbosity")
+      flag' NoBanner (long "nobanner" <> help "Suppress the banner")
+  <|> flag' Quiet    (short 'q' <> long "quiet" <> help "Quiet verbosity")
+
   -- IDE Mode Specific Flags
-  <|> flag' Idemode (long "ide-mode" <> help "Run the Idris REPL with machine-readable syntax")
+  <|> flag' Idemode       (long "ide-mode"        <> help "Run the Idris REPL with machine-readable syntax")
   <|> flag' IdemodeSocket (long "ide-mode-socket" <> help "Choose a socket for IDE mode to listen on")
+
   <|> (Client <$> strOption (long "client"))
+
   -- Logging Flags
   <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
   <|> (OLogCats <$> option (str >>= parseLogCats)
@@ -89,71 +92,101 @@ parseFlags = many $
                          <> metavar "CATS"
                          <> help "Colon separated logging categories. Use --listlogcats to see list."))
 
-  -- Turn off Certain libraries.
+  -- Turn off things
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
-  <|> flag' NoPrelude (long "noprelude" <> help "Do not use the given prelude")
+  <|> flag' NoPrelude  (long "noprelude"  <> help "Do not use the given prelude")
   <|> flag' NoBuiltins (long "nobuiltins" <> help "Do not use the builtin functions")
-  <|> flag' NoREPL (long "check" <> help "Typecheck only, don't start the REPL")
+
+  <|> flag' NoREPL     (long "check"      <> help "Typecheck only, don't start the REPL")
+
   <|> (Output <$> strOption (short 'o' <> long "output" <> metavar "FILE" <> help "Specify output file"))
+
   --   <|> flag' TypeCase (long "typecase")
-  <|> flag' Interface (long "interface" <> help "Generate interface files from ExportLists")
-  <|> flag' TypeInType (long "typeintype" <> help "Turn off Universe checking")
-  <|> flag' DefaultTotal (long "total" <> help "Require functions to be total by default")
+  <|> flag' Interface      (long "interface"   <> help "Generate interface files from ExportLists")
+  <|> flag' TypeInType     (long "typeintype"  <> help "Turn off Universe checking")
+  <|> flag' DefaultTotal   (long "total"       <> help "Require functions to be total by default")
   <|> flag' DefaultPartial (long "partial")
-  <|> flag' WarnPartial (long "warnpartial" <> help "Warn about undeclared partial functions")
-  <|> flag' WarnReach (long "warnreach" <> help "Warn about reachable but inaccessible arguments")
-  <|> flag' NoCoverage (long "nocoverage")
-  <|> flag' ErrContext (long "errorcontext")
+  <|> flag' WarnPartial    (long "warnpartial" <> help "Warn about undeclared partial functions")
+  <|> flag' WarnReach      (long "warnreach"   <> help "Warn about reachable but inaccessible arguments")
+  <|> flag' NoCoverage     (long "nocoverage")
+  <|> flag' ErrContext     (long "errorcontext")
+
   -- Show things
-  <|> flag' ShowLoggingCats (long "listlogcats"          <> help "Display logging categories")
-  <|> flag' ShowLibs        (long "link"                 <> help "Display link flags")
-  <|> flag' ShowPkgs        (long "listlibs"             <> help "Display installed libraries")
-  <|> flag' ShowLibdir      (long "libdir"               <> help "Display library directory")
-  <|> flag' ShowIncs        (long "include"              <> help "Display the includes flags")
-  <|> flag' Verbose         (short 'V' <> long "verbose" <> help "Loud verbosity")
+  <|> flag' ShowLoggingCats (long "listlogcats" <> help "Display logging categories")
+  <|> flag' ShowLibs        (long "link"        <> help "Display link flags")
+  <|> flag' ShowPkgs        (long "listlibs"    <> help "Display installed libraries")
+  <|> flag' ShowLibdir      (long "libdir"      <> help "Display library directory")
+  <|> flag' ShowIncs        (long "include"     <> help "Display the includes flags")
+
+  <|> flag' Verbose (short 'V' <> long "verbose" <> help "Loud verbosity")
+
   <|> (IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory"))
   <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))
+
   <|> flag' WarnOnly (long "warn")
-  <|> (Pkg <$> strOption (short 'p' <> long "package" <> help "Add package as a dependency"))
+
+  <|> (Pkg  <$> strOption (short 'p' <> long "package" <> help "Add package as a dependency"))
   <|> (Port <$> strOption (long "port" <> metavar "PORT" <> help "REPL TCP port"))
+
   -- Package commands
-  <|> (PkgBuild <$> strOption (long "build" <> metavar "IPKG" <> help "Build package"))
-  <|> (PkgInstall <$> strOption (long "install" <> metavar "IPKG" <> help "Install package"))
-  <|> (PkgREPL <$> strOption (long "repl" <> metavar "IPKG" <> help "Launch REPL, only for executables"))
-  <|> (PkgClean <$> strOption (long "clean" <> metavar "IPKG" <> help "Clean package"))
-  <|> (PkgMkDoc <$> strOption (long "mkdoc" <> metavar "IPKG" <> help "Generate IdrisDoc for package"))
-  <|> (PkgCheck <$> strOption (long "checkpkg" <> metavar "IPKG" <> help "Check package only"))
-  <|> (PkgTest <$> strOption (long "testpkg" <> metavar "IPKG" <> help "Run tests for package"))
+  <|> (PkgBuild   <$> strOption (long "build"    <> metavar "IPKG" <> help "Build package"))
+  <|> (PkgInstall <$> strOption (long "install"  <> metavar "IPKG" <> help "Install package"))
+  <|> (PkgREPL    <$> strOption (long "repl"     <> metavar "IPKG" <> help "Launch REPL, only for executables"))
+  <|> (PkgClean   <$> strOption (long "clean"    <> metavar "IPKG" <> help "Clean package"))
+  <|> (PkgMkDoc   <$> strOption (long "mkdoc"    <> metavar "IPKG" <> help "Generate IdrisDoc for package"))
+  <|> (PkgCheck   <$> strOption (long "checkpkg" <> metavar "IPKG" <> help "Check package only"))
+  <|> (PkgTest    <$> strOption (long "testpkg"  <> metavar "IPKG" <> help "Run tests for package"))
+
   -- Misc options
   <|> (BCAsm <$> strOption (long "bytecode"))
-  <|> flag' (OutputTy Raw) (short 'S' <> long "codegenonly" <> help "Do no further compilation of code generator output")
-  <|> flag' (OutputTy Object) (short 'c' <> long "compileonly" <> help "Compile to object files rather than an executable")
-  <|> flag' (OutputTy MavenProject) (long "mvn" <> help "Create a maven project (for Java codegen)")
+
+  <|> flag' (OutputTy Raw)          (short 'S' <> long "codegenonly" <> help "Do no further compilation of code generator output")
+  <|> flag' (OutputTy Object)       (short 'c' <> long "compileonly" <> help "Compile to object files rather than an executable")
+  <|> flag' (OutputTy MavenProject) (long "mvn"                      <> help "Create a maven project (for Java codegen)")
+
   <|> (DumpDefun <$> strOption (long "dumpdefuns"))
   <|> (DumpCases <$> strOption (long "dumpcases"))
-  <|> ((\s -> UseCodegen $ parseCodegen s) <$> strOption (long "codegen" <> metavar "TARGET" <> help "Select code generator: C, Javascript, Node and bytecode are bundled with Idris"))
-  <|> (CodegenArgs <$> strOption (long "cg-opt" <> metavar "ARG" <> help "Arguments to pass to code generator"))
+
+  <|> ((\s -> UseCodegen $ parseCodegen s) <$> strOption (long "codegen"
+                                                       <> metavar "TARGET"
+                                                       <> help "Select code generator: C, Javascript, Node and bytecode are bundled with Idris"))
+  <|> (CodegenArgs <$> strOption (long "cg-opt"
+                               <> metavar "ARG"
+                               <> help "Arguments to pass to code generator"))
+
   <|> (EvalExpr <$> strOption (long "eval" <> short 'e' <> metavar "EXPR" <> help "Evaluate an expression without loading the REPL"))
+
   <|> flag' (InterpretScript "Main.main") (long "execute" <> help "Execute as idris")
-  <|> (InterpretScript <$> strOption (long "exec" <> metavar "EXPR" <> help "Execute as idris"))
-  <|> ((\s -> Extension $ getExt s) <$> strOption (long "extension" <> short 'X' <> metavar "EXT" <> help "Turn on language extension (TypeProviders or ErrorReflection)"))
+  <|> (InterpretScript <$> strOption      (long "exec" <> metavar "EXPR" <> help "Execute as idris"))
+
+  <|> ((\s -> Extension $ getExt s) <$> strOption (long "extension"
+                                                <> short 'X'
+                                                <> metavar "EXT"
+                                                <> help "Turn on language extension (TypeProviders or ErrorReflection)"))
+
   -- Optimisation Levels
   <|> flag' (OptLevel 3) (long "O3")
   <|> flag' (OptLevel 2) (long "O2")
   <|> flag' (OptLevel 1) (long "O1")
   <|> flag' (OptLevel 0) (long "O0")
+
   <|> flag' (AddOpt PETransform) (long "partial-eval")
   <|> flag' (RemoveOpt PETransform) (long "no-partial-eval" <> help "Switch off partial evaluation, mainly for debugging purposes")
+
   <|> (OptLevel <$> option auto (short 'O' <> long "level"))
+
   <|> (TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "Select target triple (for llvm codegen)"))
-  <|> (TargetCPU <$> strOption (long "cpu" <> metavar "CPU" <> help "Select target CPU e.g. corei7 or cortex-m3 (for LLVM codegen)"))
+  <|> (TargetCPU    <$> strOption (long "cpu" <> metavar "CPU" <> help "Select target CPU e.g. corei7 or cortex-m3 (for LLVM codegen)"))
+
   -- Colour Options
-  <|> flag' (ColourREPL True) (long "colour" <> long "color" <> help "Force coloured output")
+  <|> flag' (ColourREPL True)  (long "colour"   <> long "color"   <> help "Force coloured output")
   <|> flag' (ColourREPL False) (long "nocolour" <> long "nocolor" <> help "Disable coloured output")
 
   <|> (UseConsoleWidth <$> option (str >>= parseConsoleWidth) (long "consolewidth" <> metavar "WIDTH" <> help "Select console width: auto, infinite, nat"))
+
   <|> flag' DumpHighlights (long "highlight" <> help "Emit source code highlighting")
-  <|> flag' NoElimDeprecationWarnings (long "no-elim-deprecation-warnings" <> help "Disable deprecation warnings for %elim")
+
+  <|> flag' NoElimDeprecationWarnings      (long "no-elim-deprecation-warnings"   <> help "Disable deprecation warnings for %elim")
   <|> flag' NoOldTacticDeprecationWarnings (long "no-tactic-deprecation-warnings" <> help "Disable deprecation warnings for the old tactic sublanguage")
 
   where
