@@ -28,7 +28,7 @@ runArgParser = do opts <- execParser $ info parser
                           )
                   return $ preProcOpts opts []
                where
-                 idrisHeader = PP.hsep [PP.text "Idris version", PP.text ver, PP.text ", (C) The Idris Community 2014"]
+                 idrisHeader = PP.hsep [PP.text "Idris version", PP.text ver, PP.text ", (C) The Idris Community 2016"]
                  idrisProgDesc = PP.vsep [PP.empty,
                                           PP.text "Idris is a general purpose pure functional programming language with dependent",
                                           PP.text "types. Dependent types allow types to be predicated on values, meaning that",
