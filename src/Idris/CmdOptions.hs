@@ -175,8 +175,8 @@ parseFlags = many $
 
   <|> (OptLevel <$> option auto (short 'O' <> long "level"))
 
-  <|> (TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "Select target triple (for llvm codegen)"))
-  <|> (TargetCPU    <$> strOption (long "cpu" <> metavar "CPU" <> help "Select target CPU e.g. corei7 or cortex-m3 (for LLVM codegen)"))
+  <|> (TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "If supported the codegen will target the named triple."))
+  <|> (TargetCPU    <$> strOption (long "cpu"    <> metavar "CPU"    <> help "If supported the codegen will target the named CPU e.g. corei7 or cortex-m3"))
 
   -- Colour Options
   <|> flag' (ColourREPL True)  (long "colour"   <> long "color"   <> help "Force coloured output")
