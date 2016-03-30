@@ -331,67 +331,67 @@ getEntry alt f a = case findEntryByPath f a of
 
 unhide :: IBCPhase -> Archive -> Idris ()
 unhide phase ar = do
-    pImports True phase =<< getEntry [] "ibc_imports" ar
-    pAccess True phase =<< getEntry [] "ibc_access" ar
+    processImports True phase ar
+    processAccess True phase ar
 
 process :: Bool -- ^ Reexporting
            -> IBCPhase
            -> Archive -> FilePath -> Idris ()
-process reexp phase i fn = do
-                ver <- getEntry 0 "ver" i
+process reexp phase archive fn = do
+                ver <- getEntry 0 "ver" archive
                 when (ver /= ibcVersion) $ do
                                     logIBC 1 "ibc out of date"
                                     let e = if ver < ibcVersion
                                             then " an earlier " else " a later "
                                     ifail $ "Incompatible ibc version.\nThis library was built with"
                                             ++ e ++ "version of Idris.\n" ++ "Please clean and rebuild."
-                source <- getEntry "" "sourcefile" i
+                source <- getEntry "" "sourcefile" archive
                 srcok <- runIO $ doesFileExist source
                 when srcok $ timestampOlder source fn
-                pImportDirs =<< getEntry [] "ibc_importdirs" i
-                pImports reexp phase =<< getEntry [] "ibc_imports" i
-                pImps =<< getEntry [] "ibc_implicits" i
-                pFixes =<< getEntry [] "ibc_fixes" i
-                pStatics =<< getEntry [] "ibc_statics" i
-                pClasses =<< getEntry [] "ibc_classes" i
-                pRecords =<< getEntry [] "ibc_records" i
-                pInstances =<< getEntry [] "ibc_instances" i
-                pDSLs =<< getEntry [] "ibc_dsls" i
-                pDatatypes =<< getEntry [] "ibc_datatypes" i
-                pOptimise =<< getEntry [] "ibc_optimise" i
-                pSyntax =<< getEntry [] "ibc_syntax" i
-                pKeywords =<< getEntry [] "ibc_keywords" i
-                pObjs =<< getEntry [] "ibc_objs" i
-                pLibs =<< getEntry [] "ibc_libs" i
-                pCGFlags =<< getEntry [] "ibc_cgflags" i
-                pDyLibs =<< getEntry [] "ibc_dynamic_libs" i
-                pHdrs =<< getEntry [] "ibc_hdrs" i
-                pPatdefs =<< getEntry [] "ibc_patdefs" i
-                pFlags =<< getEntry [] "ibc_flags" i
-                pFnInfo =<< getEntry [] "ibc_fninfo" i
-                pTotCheckErr =<< getEntry [] "ibc_totcheckfail" i
-                pCG =<< getEntry [] "ibc_cg" i
-                pDocs =<< getEntry [] "ibc_docstrings" i
-                pMDocs =<< getEntry [] "ibc_moduledocs" i
-                pCoercions =<< getEntry [] "ibc_coercions" i
-                pTrans =<< getEntry [] "ibc_transforms" i
-                pErrRev =<< getEntry [] "ibc_errRev" i
-                pLineApps =<< getEntry [] "ibc_lineapps" i
-                pNameHints =<< getEntry [] "ibc_namehints" i
-                pMetaInformation =<< getEntry [] "ibc_metainformation" i
-                pErrorHandlers =<< getEntry [] "ibc_errorhandlers" i
-                pFunctionErrorHandlers =<< getEntry [] "ibc_function_errorhandlers" i
-                pMetavars =<< getEntry [] "ibc_metavars" i
-                pPostulates =<< getEntry [] "ibc_postulates" i
-                pExterns =<< getEntry [] "ibc_externs" i
-                pParsedSpan =<< getEntry Nothing "ibc_parsedSpan" i
-                pUsage =<< getEntry [] "ibc_usage" i
-                pExports =<< getEntry [] "ibc_exports" i
-                pAutoHints =<< getEntry [] "ibc_autohints" i
-                pDeprecate =<< getEntry [] "ibc_deprecated" i
-                pDefs reexp =<< getEntry [] "ibc_defs" i
-                pTotal =<< getEntry [] "ibc_total" i
-                pAccess reexp phase =<< getEntry [] "ibc_access" i
+                processImportDirs archive
+                processImports reexp phase archive
+                processImplicits archive
+                processInfix archive
+                processStatics archive
+                processClasses archive
+                processRecords archive
+                processInstances archive
+                processDSLs archive
+                processDatatypes  archive
+                processOptimise  archive
+                processSyntax archive
+                processKeywords archive
+                processObjectFiles archive
+                processLibs archive
+                processCodegenFlags archive
+                processDynamicLibs archive
+                processHeaders archive
+                processPatternDefs archive
+                processFlags archive
+                processFnInfo archive
+                processTotalityCheckError archive
+                processCallgraph archive
+                processDocs archive
+                processModuleDocs archive
+                processCoercions archive
+                processTransforms archive
+                processErrRev archive
+                processLineApps archive
+                processNameHints archive
+                processMetaInformation archive
+                processErrorHandlers archive
+                processFunctionErrorHandlers archive
+                processMetaVars archive
+                processPostulates archive
+                processExterns archive
+                processParsedSpan archive
+                processUsage archive
+                processExports archive
+                processAutoHints archive
+                processDeprecate archive
+                processDefs archive
+                processTotal archive
+                processAccess reexp phase archive
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do srct <- runIO $ getModificationTime src
@@ -400,280 +400,364 @@ timestampOlder src ibc = do srct <- runIO $ getModificationTime src
                                then ifail $ "Needs reloading " ++ show (srct, ibct)
                                else return ()
 
-pPostulates :: [Name] -> Idris ()
-pPostulates ns = updateIState
-                    (\i -> i { idris_postulates = idris_postulates i `S.union` S.fromList ns })
+processPostulates :: Archive -> Idris ()
+processPostulates ar = do
+    ns <- getEntry [] "ibc_postulates" ar
+    updateIState (\i -> i { idris_postulates = idris_postulates i `S.union` S.fromList ns })
 
-pExterns :: [(Name, Int)] -> Idris ()
-pExterns ns = updateIState (\i -> i{ idris_externs = idris_externs i `S.union` S.fromList ns })
+processExterns :: Archive -> Idris ()
+processExterns ar = do
+    ns <-  getEntry [] "ibc_externs" ar
+    updateIState (\i -> i{ idris_externs = idris_externs i `S.union` S.fromList ns })
 
-pParsedSpan :: Maybe FC -> Idris ()
-pParsedSpan fc = updateIState (\i -> i { idris_parsedSpan = fc })
+processParsedSpan :: Archive -> Idris ()
+processParsedSpan ar = do
+    fc <- getEntry Nothing "ibc_parsedSpan" ar
+    updateIState (\i -> i { idris_parsedSpan = fc })
 
-pUsage :: [(Name, Int)] -> Idris ()
-pUsage ns = updateIState (\i -> i { idris_erasureUsed = ns ++ idris_erasureUsed i })
+processUsage :: Archive -> Idris ()
+processUsage ar = do
+    ns <- getEntry [] "ibc_usage" ar
+    updateIState (\i -> i { idris_erasureUsed = ns ++ idris_erasureUsed i })
 
-pExports :: [Name] -> Idris ()
-pExports ns = updateIState (\i -> i { idris_exports = ns ++ idris_exports i })
+processExports :: Archive -> Idris ()
+processExports ar = do
+    ns <- getEntry [] "ibc_exports" ar
+    updateIState (\i -> i { idris_exports = ns ++ idris_exports i })
 
-pAutoHints :: [(Name, Name)] -> Idris ()
-pAutoHints ns = mapM_ (\(n,h) -> addAutoHint n h) ns
+processAutoHints :: Archive -> Idris ()
+processAutoHints ar = do
+    ns <- getEntry [] "ibc_autohints" ar
+    mapM_ (\(n,h) -> addAutoHint n h) ns
 
-pDeprecate :: [(Name, String)] -> Idris ()
-pDeprecate ns = mapM_ (\(n,reason) -> addDeprecated n reason) ns
+processDeprecate :: Archive -> Idris ()
+processDeprecate ar = do
+    ns <-  getEntry [] "ibc_deprecated" ar
+    mapM_ (\(n,reason) -> addDeprecated n reason) ns
 
-pImportDirs :: [FilePath] -> Idris ()
-pImportDirs fs = mapM_ addImportDir fs
+processImportDirs :: Archive -> Idris ()
+processImportDirs ar = do
+    fs <- getEntry [] "ibc_importdirs" ar
+    mapM_ addImportDir fs
 
-pImports :: Bool -> IBCPhase -> [(Bool, FilePath)] -> Idris ()
-pImports reexp phase fs
-  = do mapM_ (\(re, f) ->
-                    do i <- getIState
-                       ibcsd <- valIBCSubDir i
-                       ids <- allImportDirs
-                       fp <- findImport ids ibcsd f
+processImports :: Bool -> IBCPhase -> Archive -> Idris ()
+processImports reexp phase ar = do
+    fs <- getEntry [] "ibc_imports" ar
+    mapM_ (\(re, f) -> do
+        i <- getIState
+        ibcsd <- valIBCSubDir i
+        ids <- allImportDirs
+        fp <- findImport ids ibcsd f
 --                        if (f `elem` imported i)
 --                         then logLvl 1 $ "Already read " ++ f
-                       putIState (i { imported = f : imported i })
-                       let phase' = case phase of
-                                         IBC_REPL _ -> IBC_REPL False
-                                         p -> p
-                       case fp of
-                            LIDR fn -> do
-                              logIBC 1 $ "Failed at " ++ fn
-                              ifail "Must be an ibc"
-                            IDR fn -> do
-                              logIBC 1 $ "Failed at " ++ fn
-                              ifail "Must be an ibc"
-                            IBC fn src -> loadIBC (reexp && re) phase' fn)
-             fs
+        putIState (i { imported = f : imported i })
+        let phase' = case phase of
+                         IBC_REPL _ -> IBC_REPL False
+                         p -> p
+        case fp of
+            LIDR fn -> do
+                logIBC 1 $ "Failed at " ++ fn
+                ifail "Must be an ibc"
+            IDR fn -> do
+                logIBC 1 $ "Failed at " ++ fn
+                ifail "Must be an ibc"
+            IBC fn src -> loadIBC (reexp && re) phase' fn) fs
 
-pImps :: [(Name, [PArg])] -> Idris ()
-pImps imps = mapM_ (\ (n, imp) ->
-                        do i <- getIState
-                           case lookupDefAccExact n False (tt_ctxt i) of
-                              Just (n, Hidden) -> return ()
-                              Just (n, Private) -> return ()
-                              _ -> putIState (i { idris_implicits
-                                            = addDef n imp (idris_implicits i) }))
-                   imps
+processImplicits :: Archive -> Idris ()
+processImplicits ar = do
+    imps <- getEntry [] "ibc_implicits" ar
+    mapM_ (\ (n, imp) -> do
+        i <- getIState
+        case lookupDefAccExact n False (tt_ctxt i) of
+            Just (n, Hidden) -> return ()
+            Just (n, Private) -> return ()
+            _ -> putIState (i { idris_implicits = addDef n imp (idris_implicits i) })) imps
 
-pFixes :: [FixDecl] -> Idris ()
-pFixes f = do i <- getIState
-              putIState (i { idris_infixes = sort $ f ++ idris_infixes i })
+processInfix :: Archive -> Idris ()
+processInfix ar = do
+    f <- getEntry [] "ibc_fixes" ar
+    updateIState (\i -> i { idris_infixes = sort $ f ++ idris_infixes i })
 
-pStatics :: [(Name, [Bool])] -> Idris ()
-pStatics ss = mapM_ (\ (n, s) ->
-                        do i <- getIState
-                           putIState (i { idris_statics
-                                           = addDef n s (idris_statics i) }))
-                    ss
+processStatics :: Archive -> Idris ()
+processStatics ar = do
+    ss <- getEntry [] "ibc_statics" ar
+    mapM_ (\ (n, s) ->
+        updateIState (\i -> i { idris_statics = addDef n s (idris_statics i) })) ss
 
-pClasses :: [(Name, ClassInfo)] -> Idris ()
-pClasses cs = mapM_ (\ (n, c) ->
-                        do i <- getIState
-                           -- Don't lose instances from previous IBCs, which
-                           -- could have loaded in any order
-                           let is = case lookupCtxtExact n (idris_classes i) of
-                                      Just (CI _ _ _ _ _ ins _) -> ins
-                                      _ -> []
-                           let c' = c { class_instances =
-                                          class_instances c ++ is }
-                           putIState (i { idris_classes
-                                           = addDef n c' (idris_classes i) }))
-                    cs
+processClasses :: Archive -> Idris ()
+processClasses ar = do
+    cs <- getEntry [] "ibc_classes" ar
+    mapM_ (\ (n, c) -> do
+        i <- getIState
+        -- Don't lose instances from previous IBCs, which
+        -- could have loaded in any order
+        let is = case lookupCtxtExact n (idris_classes i) of
+                    Just (CI _ _ _ _ _ ins _) -> ins
+                    _ -> []
+        let c' = c { class_instances = class_instances c ++ is }
+        putIState (i { idris_classes = addDef n c' (idris_classes i) })) cs
 
-pRecords :: [(Name, RecordInfo)] -> Idris ()
-pRecords rs = mapM_ (\ (n, r) ->
-                        do i <- getIState
-                           putIState (i { idris_records
-                                           = addDef n r (idris_records i) }))
-                    rs
+processRecords :: Archive -> Idris ()
+processRecords ar = do
+    rs <- getEntry [] "ibc_records" ar
+    mapM_ (\ (n, r) ->
+        updateIState (\i -> i { idris_records = addDef n r (idris_records i) })) rs
 
-pInstances :: [(Bool, Bool, Name, Name)] -> Idris ()
-pInstances cs = mapM_ (\ (i, res, n, ins) -> addInstance i res n ins) cs
+processInstances :: Archive -> Idris ()
+processInstances ar = do
+    cs <- getEntry [] "ibc_instances" ar
+    mapM_ (\ (i, res, n, ins) -> addInstance i res n ins) cs
 
-pDSLs :: [(Name, DSL)] -> Idris ()
-pDSLs cs = mapM_ (\ (n, c) -> updateIState (\i ->
+processDSLs :: Archive -> Idris ()
+processDSLs ar = do
+    cs <- getEntry [] "ibc_dsls" ar
+    mapM_ (\ (n, c) -> updateIState (\i ->
                         i { idris_dsls = addDef n c (idris_dsls i) })) cs
 
-pDatatypes :: [(Name, TypeInfo)] -> Idris ()
-pDatatypes cs = mapM_ (\ (n, c) -> updateIState (\i ->
+processDatatypes :: Archive -> Idris ()
+processDatatypes ar = do
+    cs <- getEntry [] "ibc_datatypes" ar
+    mapM_ (\ (n, c) -> updateIState (\i ->
                         i { idris_datatypes = addDef n c (idris_datatypes i) })) cs
 
-pOptimise :: [(Name, OptInfo)] -> Idris ()
-pOptimise cs = mapM_ (\ (n, c) -> updateIState (\i ->
+processOptimise :: Archive -> Idris ()
+processOptimise ar = do
+    cs <- getEntry [] "ibc_optimise" ar
+    mapM_ (\ (n, c) -> updateIState (\i ->
                         i { idris_optimisation = addDef n c (idris_optimisation i) })) cs
 
-pSyntax :: [Syntax] -> Idris ()
-pSyntax s = updateIState (\i -> i { syntax_rules = updateSyntaxRules s (syntax_rules i) })
+processSyntax :: Archive -> Idris ()
+processSyntax ar = do
+    s <- getEntry [] "ibc_syntax" ar
+    updateIState (\i -> i { syntax_rules = updateSyntaxRules s (syntax_rules i) })
 
-pKeywords :: [String] -> Idris ()
-pKeywords k = updateIState (\i -> i { syntax_keywords = k ++ syntax_keywords i })
+processKeywords :: Archive -> Idris ()
+processKeywords ar = do
+    k <- getEntry [] "ibc_keywords" ar
+    updateIState (\i -> i { syntax_keywords = k ++ syntax_keywords i })
 
-pObjs :: [(Codegen, FilePath)] -> Idris ()
-pObjs os = mapM_ (\ (cg, obj) -> do dirs <- allImportDirs
-                                    o <- runIO $ findInPath dirs obj
-                                    addObjectFile cg o) os
+processObjectFiles :: Archive -> Idris ()
+processObjectFiles ar = do
+    os <- getEntry [] "ibc_objs" ar
+    mapM_ (\ (cg, obj) -> do
+        dirs <- allImportDirs
+        o <- runIO $ findInPath dirs obj
+        addObjectFile cg o) os
 
-pLibs :: [(Codegen, String)] -> Idris ()
-pLibs ls = mapM_ (uncurry addLib) ls
+processLibs :: Archive -> Idris ()
+processLibs ar = do
+    ls <- getEntry [] "ibc_libs" ar
+    mapM_ (uncurry addLib) ls
 
-pCGFlags :: [(Codegen, String)] -> Idris ()
-pCGFlags ls = mapM_ (uncurry addFlag) ls
+processCodegenFlags :: Archive -> Idris ()
+processCodegenFlags ar = do
+    ls <- getEntry [] "ibc_cgflags" ar
+    mapM_ (uncurry addFlag) ls
 
-pDyLibs :: [String] -> Idris ()
-pDyLibs ls = do res <- mapM (addDyLib . return) ls
-                mapM_ checkLoad res
-                return ()
-    where checkLoad (Left _) = return ()
-          checkLoad (Right err) = ifail err
+processDynamicLibs :: Archive -> Idris ()
+processDynamicLibs ar = do
+        ls <- getEntry [] "ibc_dynamic_libs" ar
+        res <- mapM (addDyLib . return) ls
+        mapM_ checkLoad res
+    where
+        checkLoad (Left _) = return ()
+        checkLoad (Right err) = ifail err
 
-pHdrs :: [(Codegen, String)] -> Idris ()
-pHdrs hs = mapM_ (uncurry addHdr) hs
+processHeaders :: Archive -> Idris ()
+processHeaders ar = do
+    hs <- getEntry [] "ibc_hdrs" ar
+    mapM_ (uncurry addHdr) hs
 
-pPatdefs :: [(Name, ([([(Name, Term)], Term, Term)], [PTerm]))] -> Idris ()
-pPatdefs ds = mapM_ (\ (n, d) -> updateIState (\i ->
+processPatternDefs :: Archive -> Idris ()
+processPatternDefs ar = do
+    ds <- getEntry [] "ibc_patdefs" ar
+    mapM_ (\ (n, d) -> updateIState (\i ->
             i { idris_patdefs = addDef n (force d) (idris_patdefs i) })) ds
 
-pDefs :: Bool -> [(Name, Def)] -> Idris ()
-pDefs reexp ds
-   = mapM_ (\ (n, d) ->
-               do d' <- updateDef d
-                  case d' of
-                       TyDecl _ _ -> return ()
-                       _ -> do logIBC 1 $ "SOLVING " ++ show n
-                               solveDeferred emptyFC n
-                  updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })
-            ) ds
-  where
-    updateDef (CaseOp c t args o s cd)
-      = do o' <- mapM updateOrig o
-           cd' <- updateCD cd
-           return $ CaseOp c t args o' s cd'
-    updateDef t = return t
+processDefs :: Archive -> Idris ()
+processDefs ar = do
+        ds <- getEntry [] "ibc_defs" ar
+        mapM_ (\ (n, d) -> do
+            d' <- updateDef d
+            case d' of
+                TyDecl _ _ -> return ()
+                _ -> do
+                    logIBC 1 $ "SOLVING " ++ show n
+                    solveDeferred emptyFC n
+            updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })) ds
+    where
+        updateDef (CaseOp c t args o s cd) = do
+            o' <- mapM updateOrig o
+            cd' <- updateCD cd
+            return $ CaseOp c t args o' s cd'
+        updateDef t = return t
 
-    updateOrig (Left t) = liftM Left (update t)
-    updateOrig (Right (l, r)) = do l' <- update l
-                                   r' <- update r
-                                   return $ Right (l', r')
+        updateOrig (Left t) = liftM Left (update t)
+        updateOrig (Right (l, r)) = do
+            l' <- update l
+            r' <- update r
+            return $ Right (l', r')
 
-    updateCD (CaseDefs (ts, t) (cs, c) (is, i) (rs, r))
-        = do c' <- updateSC c
-             r' <- updateSC r
-             return $ CaseDefs (cs, c') (cs, c') (cs, c') (rs, r')
+        updateCD (CaseDefs (ts, t) (cs, c) (is, i) (rs, r)) = do
+            c' <- updateSC c
+            r' <- updateSC r
+            return $ CaseDefs (cs, c') (cs, c') (cs, c') (rs, r')
 
-    updateSC (Case t n alts) = do alts' <- mapM updateAlt alts
-                                  return (Case t n alts')
-    updateSC (ProjCase t alts) = do alts' <- mapM updateAlt alts
-                                    return (ProjCase t alts')
-    updateSC (STerm t) = do t' <- update t
-                            return (STerm t')
-    updateSC c = return c
+        updateSC (Case t n alts) = do
+            alts' <- mapM updateAlt alts
+            return (Case t n alts')
+        updateSC (ProjCase t alts) = do
+            alts' <- mapM updateAlt alts
+            return (ProjCase t alts')
+        updateSC (STerm t) = do
+            t' <- update t
+            return (STerm t')
+        updateSC c = return c
 
-    updateAlt (ConCase n i ns t) = do t' <- updateSC t
-                                      return (ConCase n i ns t')
-    updateAlt (FnCase n ns t) = do t' <- updateSC t
-                                   return (FnCase n ns t')
-    updateAlt (ConstCase c t) = do t' <- updateSC t
-                                   return (ConstCase c t')
-    updateAlt (SucCase n t) = do t' <- updateSC t
-                                 return (SucCase n t')
-    updateAlt (DefaultCase t) = do t' <- updateSC t
-                                   return (DefaultCase t')
+        updateAlt (ConCase n i ns t) = do
+            t' <- updateSC t
+            return (ConCase n i ns t')
+        updateAlt (FnCase n ns t) = do
+            t' <- updateSC t
+            return (FnCase n ns t')
+        updateAlt (ConstCase c t) = do
+            t' <- updateSC t
+            return (ConstCase c t')
+        updateAlt (SucCase n t) = do
+            t' <- updateSC t
+            return (SucCase n t')
+        updateAlt (DefaultCase t) = do
+            t' <- updateSC t
+            return (DefaultCase t')
 
-    -- We get a lot of repetition in sub terms and can save a fair chunk
-    -- of memory if we make sure they're shared. addTT looks for a term
-    -- and returns it if it exists already, while also keeping stats of
-    -- how many times a subterm is repeated.
-    update t = do tm <- addTT t
-                  case tm of
-                       Nothing -> update' t
-                       Just t' -> return t'
+        -- We get a lot of repetition in sub terms and can save a fair chunk
+        -- of memory if we make sure they're shared. addTT looks for a term
+        -- and returns it if it exists already, while also keeping stats of
+        -- how many times a subterm is repeated.
+        update t = do
+            tm <- addTT t
+            case tm of
+                Nothing -> update' t
+                Just t' -> return t'
 
-    update' (P t n ty) = do n' <- getSymbol n
-                            return $ P t n' ty
-    update' (App s f a) = liftM2 (App s) (update' f) (update' a)
-    update' (Bind n b sc) = do b' <- updateB b
-                               sc' <- update sc
-                               return $ Bind n b' sc'
-      where
-        updateB (Let t v) = liftM2 Let (update' t) (update' v)
-        updateB b = do ty' <- update' (binderTy b)
-                       return (b { binderTy = ty' })
-    update' (Proj t i) = do t' <- update' t
-                            return $ Proj t' i
-    update' t = return t
+        update' (P t n ty) = do
+            n' <- getSymbol n
+            return $ P t n' ty
+        update' (App s f a) = liftM2 (App s) (update' f) (update' a)
+        update' (Bind n b sc) = do
+            b' <- updateB b
+            sc' <- update sc
+            return $ Bind n b' sc'
+                where
+                    updateB (Let t v) = liftM2 Let (update' t) (update' v)
+                    updateB b = do
+                        ty' <- update' (binderTy b)
+                        return (b { binderTy = ty' })
+        update' (Proj t i) = do
+                  t' <- update' t
+                  return $ Proj t' i
+        update' t = return t
 
-pDocs :: [(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))] -> Idris ()
-pDocs ds = mapM_ (\(n, a) -> addDocStr n (fst a) (snd a)) ds
+processDocs :: Archive -> Idris ()
+processDocs ar = do
+    ds <- getEntry [] "ibc_docstrings" ar
+    mapM_ (\(n, a) -> addDocStr n (fst a) (snd a)) ds
 
-pMDocs :: [(Name, Docstring D.DocTerm)] -> Idris ()
-pMDocs ds = mapM_  (\ (n, d) -> updateIState (\i ->
+processModuleDocs :: Archive -> Idris ()
+processModuleDocs ar = do
+    ds <- getEntry [] "ibc_moduledocs" ar
+    mapM_  (\ (n, d) -> updateIState (\i ->
             i { idris_moduledocs = addDef n d (idris_moduledocs i) })) ds
 
-pAccess :: Bool -- ^ Reexporting?
+processAccess :: Bool -- ^ Reexporting?
            -> IBCPhase
-           -> [(Name, Accessibility)] -> Idris ()
-pAccess reexp phase ds
-        = mapM_ (\ (n, a_in) ->
-                      do let a = if reexp then a_in else Hidden
-                         logIBC 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
-                         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })
+           -> Archive -> Idris ()
+processAccess reexp phase ar = do
+    ds <- getEntry [] "ibc_access" ar
+    mapM_ (\ (n, a_in) -> do
+        let a = if reexp then a_in else Hidden
+        logIBC 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
+        updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })
 
-                         if (not reexp) then do logIBC 1 $ "Not exporting " ++ show n
-                                                setAccessibility n Hidden
-                                        else logIBC 1 $ "Exporting " ++ show n
-                         -- Everything should be available at the REPL from
-                         -- things imported publicly
-                         when (phase == IBC_REPL True) $
-                              setAccessibility n Public
-                ) ds
+        if (not reexp)
+            then do
+                logIBC 1 $ "Not exporting " ++ show n
+                setAccessibility n Hidden
+            else logIBC 1 $ "Exporting " ++ show n
+        -- Everything should be available at the REPL from
+        -- things imported publicly
+        when (phase == IBC_REPL True) $ setAccessibility n Public) ds
 
-pFlags :: [(Name, [FnOpt])] -> Idris ()
-pFlags ds = mapM_ (\ (n, a) -> setFlags n a) ds
+processFlags :: Archive -> Idris ()
+processFlags ar = do
+    ds <- getEntry [] "ibc_flags" ar
+    mapM_ (\ (n, a) -> setFlags n a) ds
 
-pFnInfo :: [(Name, FnInfo)] -> Idris ()
-pFnInfo ds = mapM_ (\ (n, a) -> setFnInfo n a) ds
+processFnInfo :: Archive -> Idris ()
+processFnInfo ar = do
+    ds <- getEntry [] "ibc_fninfo" ar
+    mapM_ (\ (n, a) -> setFnInfo n a) ds
 
-pTotal :: [(Name, Totality)] -> Idris ()
-pTotal ds = mapM_ (\ (n, a) -> updateIState (\i -> i { tt_ctxt = setTotal n a (tt_ctxt i) })) ds
+processTotal :: Archive -> Idris ()
+processTotal ar = do
+    ds <- getEntry [] "ibc_total" ar
+    mapM_ (\ (n, a) -> updateIState (\i -> i { tt_ctxt = setTotal n a (tt_ctxt i) })) ds
 
-pTotCheckErr :: [(FC, String)] -> Idris ()
-pTotCheckErr es = updateIState (\i -> i { idris_totcheckfail = idris_totcheckfail i ++ es })
+processTotalityCheckError :: Archive -> Idris ()
+processTotalityCheckError ar = do
+    es <- getEntry [] "ibc_totcheckfail" ar
+    updateIState (\i -> i { idris_totcheckfail = idris_totcheckfail i ++ es })
 
-pCG :: [(Name, CGInfo)] -> Idris ()
-pCG ds = mapM_ (\ (n, a) -> addToCG n a) ds
+processCallgraph :: Archive -> Idris ()
+processCallgraph ar = do
+    ds <- getEntry [] "ibc_cg" ar
+    mapM_ (\ (n, a) -> addToCG n a) ds
 
-pCoercions :: [Name] -> Idris ()
-pCoercions ns = mapM_ (\ n -> addCoercion n) ns
+processCoercions :: Archive -> Idris ()
+processCoercions ar = do
+    ns <- getEntry [] "ibc_coercions" ar
+    mapM_ (\ n -> addCoercion n) ns
 
-pTrans :: [(Name, (Term, Term))] -> Idris ()
-pTrans ts = mapM_ (\ (n, t) -> addTrans n t) ts
+processTransforms :: Archive -> Idris ()
+processTransforms ar = do
+    ts <- getEntry [] "ibc_transforms" ar
+    mapM_ (\ (n, t) -> addTrans n t) ts
 
-pErrRev :: [(Term, Term)] -> Idris ()
-pErrRev ts = mapM_ addErrRev ts
+processErrRev :: Archive -> Idris ()
+processErrRev ar = do
+    ts <- getEntry [] "ibc_errRev" ar
+    mapM_ addErrRev ts
 
-pLineApps :: [(FilePath, Int, PTerm)] -> Idris ()
-pLineApps ls = mapM_ (\ (f, i, t) -> addInternalApp f i t) ls
+processLineApps :: Archive -> Idris ()
+processLineApps ar = do
+    ls <- getEntry [] "ibc_lineapps" ar
+    mapM_ (\ (f, i, t) -> addInternalApp f i t) ls
 
-pNameHints :: [(Name, Name)] -> Idris ()
-pNameHints ns = mapM_ (\ (n, ty) -> addNameHint n ty) ns
+processNameHints :: Archive -> Idris ()
+processNameHints ar = do
+    ns <- getEntry [] "ibc_namehints" ar
+    mapM_ (\ (n, ty) -> addNameHint n ty) ns
 
-pMetaInformation :: [(Name, MetaInformation)] -> Idris ()
-pMetaInformation ds = mapM_ (\ (n, m) -> updateIState (\i ->
+processMetaInformation :: Archive -> Idris ()
+processMetaInformation ar = do
+    ds <- getEntry [] "ibc_metainformation" ar
+    mapM_ (\ (n, m) -> updateIState (\i ->
                                i { tt_ctxt = setMetaInformation n m (tt_ctxt i) })) ds
 
-pErrorHandlers :: [Name] -> Idris ()
-pErrorHandlers ns = updateIState (\i ->
-                        i { idris_errorhandlers = idris_errorhandlers i ++ ns })
+processErrorHandlers :: Archive -> Idris ()
+processErrorHandlers ar = do
+    ns <- getEntry [] "ibc_errorhandlers" ar
+    updateIState (\i -> i { idris_errorhandlers = idris_errorhandlers i ++ ns })
 
-pFunctionErrorHandlers :: [(Name, Name, Name)] -> Idris ()
-pFunctionErrorHandlers ns =  mapM_ (\ (fn,arg,handler) ->
-                                addFunctionErrorHandlers fn arg [handler]) ns
+processFunctionErrorHandlers :: Archive -> Idris ()
+processFunctionErrorHandlers ar = do
+    ns <- getEntry [] "ibc_function_errorhandlers" ar
+    mapM_ (\ (fn,arg,handler) -> addFunctionErrorHandlers fn arg [handler]) ns
 
-pMetavars :: [(Name, (Maybe Name, Int, [Name], Bool, Bool))] -> Idris ()
-pMetavars ns = updateIState (\i -> i { idris_metavars = L.reverse ns ++ idris_metavars i })
+processMetaVars :: Archive -> Idris ()
+processMetaVars ar = do
+    ns <- getEntry [] "ibc_metavars" ar
+    updateIState (\i -> i { idris_metavars = L.reverse ns ++ idris_metavars i })
 
 ----- For Cheapskate and docstrings
 
