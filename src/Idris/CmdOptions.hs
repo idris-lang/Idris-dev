@@ -140,9 +140,10 @@ parseFlags = many $
   -- Misc options
   <|> (BCAsm <$> strOption (long "bytecode"))
 
-  <|> flag' (OutputTy Raw)          (short 'S' <> long "codegenonly" <> help "Do no further compilation of code generator output")
-  <|> flag' (OutputTy Object)       (short 'c' <> long "compileonly" <> help "Compile to object files rather than an executable")
-  <|> flag' (OutputTy MavenProject) (long "mvn"                      <> help "Create a maven project (for Java codegen)")
+  <|> flag' (OutputTy Raw)     (short 'S' <> long "codegenonly" <> help "Do no further compilation of code generator output")
+  <|> flag' (OutputTy Object)  (short 'c' <> long "compileonly" <> help "Compile to object files rather than an executable")
+  <|> flag' (OutputTy Project)              (long "projectonly" <> help "Do no further compilation of code generator and create a project.")
+  <|> flag' (OutputTy Project) (long "mvn"                      <> help "Create a maven project (for Java codegen), To be deprecated in 0.12, use --projectonly instead.")
 
   <|> (DumpDefun <$> strOption (long "dumpdefuns"))
   <|> (DumpCases <$> strOption (long "dumpcases"))
