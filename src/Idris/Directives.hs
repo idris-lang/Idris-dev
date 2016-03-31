@@ -29,13 +29,12 @@ directiveAction (DFlag cgn flag) = do
 directiveAction (DInclude cgn hdr) = do addHdr cgn hdr
                                         addIBC (IBCHeader cgn hdr)
 
-directiveAction (DHide n') = do i <- getIState
-                                ns <- allNamespaces n'
+directiveAction (DHide n') = do ns <- allNamespaces n'
                                 mapM_ (\n -> do setAccessibility n Hidden
                                                 addIBC (IBCAccess n Hidden)) ns
-
-directiveAction (DFreeze n) = do setAccessibility n Frozen
-                                 addIBC (IBCAccess n Frozen)
+directiveAction (DFreeze n') = do ns <- allNamespaces n'
+                                  mapM_ (\n -> do setAccessibility n Frozen
+                                                  addIBC (IBCAccess n Frozen)) ns
 
 directiveAction (DAccess acc) = do updateIState (\i -> i { default_access = acc })
 
