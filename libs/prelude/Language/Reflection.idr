@@ -8,6 +8,8 @@ import Prelude.Functor
 import Prelude.List
 import Prelude.Nat
 import Prelude.Traversable
+import Prelude.Uninhabited
+import Decidable.Equality
 
 %access public export
 
@@ -24,7 +26,25 @@ record SourceLocation where
   ||| The line and column of the end of the source span
   end : (Int, Int)
 
-%name SourceLocation loc
+%name SourceLocation loc, loc'
+
+private
+fileLocInj : (FileLoc fn s e = FileLoc fn' s' e') -> (fn = fn', s = s', e = e')
+fileLocInj Refl = (Refl, Refl, Refl)
+
+implementation DecEq SourceLocation where
+  decEq (FileLoc f s e) (FileLoc f' s' e') with (decEq f f')
+    decEq (FileLoc f s e) (FileLoc f s' e')  | Yes Refl with (decEq s s')
+      decEq (FileLoc f s e) (FileLoc f s e')  | Yes Refl | Yes Refl with (decEq e e')
+        decEq (FileLoc f s e) (FileLoc f s e)  | Yes Refl | Yes Refl | Yes Refl =
+            Yes Refl
+        decEq (FileLoc f s e) (FileLoc f s e') | Yes Refl | Yes Refl | No contra =
+            No $ contra . snd . snd . fileLocInj
+      decEq (FileLoc f s e) (FileLoc f s' e') | Yes Refl | No contra =
+          No $ contra . fst . snd . fileLocInj
+    decEq (FileLoc f s e) (FileLoc f' s' e') | No contra =
+        No $ contra . fst . fileLocInj
+
 
 
 mutual
@@ -52,12 +72,504 @@ mutual
                    | ElimN TTName
                    | InstanceCtorN TTName
                    | MetaN TTName TTName
+  %name SpecialName sn, sn'
+
+-- Rather  than  implement  one-off  private functions,  we  make  the
+-- disjointness of  the constructors available to  all Idris programs,
+-- at the cost of a bit of scrolling here.
+
+implementation Uninhabited (UN _ = NS _ _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (UN _ = MN _ _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (UN _ = SN _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (NS _ _ = UN _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (NS _ _ = MN _ _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (NS _ _ = SN _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (MN _ _ = UN _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (MN _ _ = NS _ _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (MN _ _ = SN _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (SN _ = UN _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (SN _ = MN _ _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited (SN _ = NS _ _) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WhereN x n n') = (WithN y z)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WhereN x n n') = (InstanceN y xs)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WhereN x n n') = (ParentN y z)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WhereN x n n') = (MethodN y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WhereN x n n') = (CaseN loc y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WhereN x n n') = (ElimN y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WhereN x n n') = (InstanceCtorN y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WhereN x n n') = (MetaN y z)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WithN x n) = (WhereN y n' z)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WithN x n) = (InstanceN n' xs)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WithN x n) = (ParentN n' y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WithN x n) = (MethodN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WithN x n) = (CaseN loc n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WithN x n) = (ElimN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WithN x n) = (InstanceCtorN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((WithN x n) = (MetaN n' y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceN n xs) = (WhereN x n' y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceN n xs) = (WithN x n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceN n xs) = (ParentN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceN n xs) = (MethodN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceN n xs) = (CaseN loc n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceN n xs) = (ElimN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceN n xs) = (InstanceCtorN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceN n xs) = (MetaN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ParentN n x) = (WhereN y n' z)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ParentN n x) = (WithN y n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ParentN n x) = (InstanceN n' xs)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ParentN n x) = (MethodN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ParentN n x) = (CaseN loc n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ParentN n x) = (ElimN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ParentN n x) = (InstanceCtorN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ParentN n x) = (MetaN n' y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MethodN n) = (WhereN x n' y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MethodN n) = (WithN x n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MethodN n) = (InstanceN n' xs)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MethodN n) = (ParentN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MethodN n) = (CaseN loc n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MethodN n) = (ElimN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MethodN n) = (InstanceCtorN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MethodN n) = (MetaN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((CaseN loc n) = (WhereN x n' y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((CaseN loc n) = (WithN x n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((CaseN loc n) = (InstanceN n' xs)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((CaseN loc n) = (ParentN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((CaseN loc n) = (MethodN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((CaseN loc n) = (ElimN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((CaseN loc n) = (InstanceCtorN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((CaseN loc n) = (MetaN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ElimN n) = (WhereN x n' y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ElimN n) = (WithN x n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ElimN n) = (InstanceN n' xs)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ElimN n) = (ParentN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ElimN n) = (MethodN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ElimN n) = (CaseN loc n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ElimN n) = (InstanceCtorN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((ElimN n) = (MetaN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceCtorN n) = (WhereN x n' y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceCtorN n) = (WithN x n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceCtorN n) = (InstanceN n' xs)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceCtorN n) = (ParentN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceCtorN n) = (MethodN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceCtorN n) = (CaseN loc n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceCtorN n) = (ElimN n')) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((InstanceCtorN n) = (MetaN n' x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MetaN n n') = (WhereN x y z)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MetaN n n') = (WithN x y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MetaN n n') = (InstanceN x xs)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MetaN n n') = (ParentN x y)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MetaN n n') = (MethodN x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MetaN n n') = (CaseN loc x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MetaN n n') = (ElimN x)) where
+  uninhabited Refl impossible
+
+implementation Uninhabited ((MetaN n n') = (InstanceCtorN x)) where
+  uninhabited Refl impossible
+
+mutual
+  private
+  unInj : (UN x = UN y) -> x = y
+  unInj Refl = Refl
+
+  private
+  nsInj : (NS n ns = NS n' ns') -> (n = n', ns = ns')
+  nsInj Refl = (Refl, Refl)
+
+  private
+  mnInj : (MN i s = MN i' s') -> (i = i', s = s')
+  mnInj Refl = (Refl, Refl)
+
+  private
+  snInj : SN sn = SN sn' -> sn = sn'
+  snInj Refl = Refl
+
+  private
+  decTTNameEq : (n1, n2 : TTName) -> Dec (n1 = n2)
+  decTTNameEq (UN x) (UN y) with (decEq x y)
+    decTTNameEq (UN x) (UN y) | Yes prf =
+        Yes (cong prf)
+    decTTNameEq (UN x) (UN y) | No contra =
+        No $ contra . unInj
+  decTTNameEq (UN x) (NS n xs) = No absurd
+  decTTNameEq (UN x) (MN y z) = No absurd
+  decTTNameEq (UN x) (SN y) = No absurd
+  decTTNameEq (NS n xs) (UN x) = No absurd
+  decTTNameEq (NS n ns) (NS n' ns') with (decTTNameEq n n')
+    decTTNameEq (NS n ns) (NS n ns')  | Yes Refl with (decEq ns ns')
+      decTTNameEq (NS n ns) (NS n ns)   | Yes Refl | Yes Refl =
+          Yes Refl
+      decTTNameEq (NS n ns) (NS n ns')  | Yes Refl | No contra =
+          No $ contra . snd . nsInj
+    decTTNameEq (NS n ns) (NS n' ns') | No contra =
+        No $ contra . fst . nsInj
+  decTTNameEq (NS n xs) (MN x y) = No absurd
+  decTTNameEq (NS n xs) (SN x) = No absurd
+  decTTNameEq (MN x y) (UN z) = No absurd
+  decTTNameEq (MN x y) (NS n xs) = No absurd
+  decTTNameEq (MN x y) (MN z w) with (decEq x z)
+    decTTNameEq (MN x y) (MN x w) | Yes Refl with (decEq y w)
+      decTTNameEq (MN x y) (MN x y) | Yes Refl | Yes Refl =
+          Yes Refl
+      decTTNameEq (MN x y) (MN x w) | Yes Refl | No contra =
+          No $ contra . snd . mnInj
+    decTTNameEq (MN x y) (MN z w) | No contra =
+        No $ contra . fst . mnInj
+  decTTNameEq (MN x y) (SN z) = No absurd
+  decTTNameEq (SN x) (UN y) = No absurd
+  decTTNameEq (SN x) (NS n xs) = No absurd
+  decTTNameEq (SN x) (MN y z) = No absurd
+  decTTNameEq (SN x) (SN y) with (decSNEq x y)
+    decTTNameEq (SN x) (SN x) | Yes Refl = Yes Refl
+    decTTNameEq (SN x) (SN y) | (No contra) = No $ contra . snInj
 
 
+  private
+  whereNInj : (WhereN x n n' = WhereN y z w) -> (x = y, n = z, n' = w)
+  whereNInj Refl = (Refl, Refl, Refl)
 
-implicit
-userSuppliedName : String -> TTName
-userSuppliedName = UN
+  private
+  withNInj : (WithN x n = WithN y n') -> (x = y, n = n')
+  withNInj Refl = (Refl, Refl)
+
+  private
+  instanceNInj : (InstanceN n xs = InstanceN n' ys) -> (n = n', xs = ys)
+  instanceNInj Refl = (Refl, Refl)
+
+  private
+  parentNInj : (ParentN n x = ParentN n' y) -> (n = n', x = y)
+  parentNInj Refl = (Refl, Refl)
+
+  private
+  methodNInj : (MethodN n = MethodN n') -> n = n'
+  methodNInj Refl = Refl
+
+  private
+  caseNInj : (CaseN loc n = CaseN loc' n') -> (loc = loc', n = n')
+  caseNInj Refl = (Refl, Refl)
+
+  private
+  elimNInj : (ElimN n = ElimN n') -> n = n'
+  elimNInj Refl = Refl
+
+  private
+  instanceCtorNInj : (InstanceCtorN n = InstanceCtorN n') -> n = n'
+  instanceCtorNInj Refl = Refl
+
+  private
+  metaNInj : (MetaN n m = MetaN n' m') -> (n = n', m = m')
+  metaNInj Refl = (Refl, Refl)
+
+  private
+  decSNEq : (n1, n2 : SpecialName) -> Dec (n1 = n2)
+  decSNEq (WhereN x n n') (WhereN y z w) with (decEq x y)
+    decSNEq (WhereN x n n') (WhereN x z w) | Yes Refl with (assert_total $ decTTNameEq n z)
+      decSNEq (WhereN x n n') (WhereN x n w) | Yes Refl | Yes Refl with (assert_total $ decTTNameEq n' w)
+        decSNEq (WhereN x n n') (WhereN x n n') | Yes Refl | Yes Refl | Yes Refl =
+            Yes Refl
+        decSNEq (WhereN x n n') (WhereN x n w) | Yes Refl | Yes Refl | No contra =
+            No $ contra . snd . snd . whereNInj
+      decSNEq (WhereN x n n') (WhereN x z w) | Yes Refl | No contra =
+          No $ contra . fst . snd . whereNInj
+    decSNEq (WhereN x n n') (WhereN y z w) | No contra =
+        No $ contra . fst . whereNInj
+  decSNEq (WhereN x n n') (WithN y z) = No absurd
+  decSNEq (WhereN x n n') (InstanceN y xs) = No absurd
+  decSNEq (WhereN x n n') (ParentN y z) = No absurd
+  decSNEq (WhereN x n n') (MethodN y) = No absurd
+  decSNEq (WhereN x n n') (CaseN loc y) = No absurd
+  decSNEq (WhereN x n n') (ElimN y) = No absurd
+  decSNEq (WhereN x n n') (InstanceCtorN y) = No absurd
+  decSNEq (WhereN x n n') (MetaN y z) = No absurd
+  decSNEq (WithN x n) (WhereN y n' z) = No absurd
+  decSNEq (WithN x n) (WithN y n') with (decEq x y)
+    decSNEq (WithN x n) (WithN x n') | Yes Refl  with (assert_total $ decTTNameEq n n')
+      decSNEq (WithN x n) (WithN x n)  | Yes Refl  | Yes Refl =
+          Yes Refl
+      decSNEq (WithN x n) (WithN x n') | Yes Refl  | No contra =
+          No $ contra . snd . withNInj
+    decSNEq (WithN x n) (WithN y n') | No contra =
+        No $ contra . fst . withNInj
+  decSNEq (WithN x n) (InstanceN n' xs) = No absurd
+  decSNEq (WithN x n) (ParentN n' y) = No absurd
+  decSNEq (WithN x n) (MethodN n') = No absurd
+  decSNEq (WithN x n) (CaseN loc n') = No absurd
+  decSNEq (WithN x n) (ElimN n') = No absurd
+  decSNEq (WithN x n) (InstanceCtorN n') = No absurd
+  decSNEq (WithN x n) (MetaN n' y) = No absurd
+  decSNEq (InstanceN n xs) (WhereN x n' y) = No absurd
+  decSNEq (InstanceN n xs) (WithN x n') = No absurd
+  decSNEq (InstanceN n xs) (InstanceN n' ys) with (assert_total $ decTTNameEq n n')
+    decSNEq (InstanceN n xs) (InstanceN n ys)  | Yes Refl with (decEq xs ys)
+      decSNEq (InstanceN n xs) (InstanceN n xs)  | Yes Refl | Yes Refl =
+          Yes Refl
+      decSNEq (InstanceN n xs) (InstanceN n ys)  | Yes Refl | No contra =
+          No $ contra . snd . instanceNInj
+    decSNEq (InstanceN n xs) (InstanceN n' ys) | No contra =
+        No $ contra . fst . instanceNInj
+  decSNEq (InstanceN n xs) (ParentN n' x) = No absurd
+  decSNEq (InstanceN n xs) (MethodN n') = No absurd
+  decSNEq (InstanceN n xs) (CaseN loc n') = No absurd
+  decSNEq (InstanceN n xs) (ElimN n') = No absurd
+  decSNEq (InstanceN n xs) (InstanceCtorN n') = No absurd
+  decSNEq (InstanceN n xs) (MetaN n' x) = No absurd
+  decSNEq (ParentN n x) (WhereN y n' z) = No absurd
+  decSNEq (ParentN n x) (WithN y n') = No absurd
+  decSNEq (ParentN n x) (InstanceN n' xs) = No absurd
+  decSNEq (ParentN n x) (ParentN n' y) with (assert_total $ decTTNameEq n n')
+    decSNEq (ParentN n x) (ParentN n y)  | Yes Refl with (decEq x y)
+      decSNEq (ParentN n x) (ParentN n x) | Yes Refl | Yes Refl =
+          Yes Refl
+      decSNEq (ParentN n x) (ParentN n y) | Yes Refl | No contra =
+          No $ contra . snd . parentNInj
+    decSNEq (ParentN n x) (ParentN n' y) | No contra =
+        No $ contra . fst . parentNInj
+  decSNEq (ParentN n x) (MethodN n') = No absurd
+  decSNEq (ParentN n x) (CaseN loc n') = No absurd
+  decSNEq (ParentN n x) (ElimN n') = No absurd
+  decSNEq (ParentN n x) (InstanceCtorN n') = No absurd
+  decSNEq (ParentN n x) (MetaN n' y) = No absurd
+  decSNEq (MethodN n) (WhereN x n' y) = No absurd
+  decSNEq (MethodN n) (WithN x n') = No absurd
+  decSNEq (MethodN n) (InstanceN n' xs) = No absurd
+  decSNEq (MethodN n) (ParentN n' x) = No absurd
+  decSNEq (MethodN n) (MethodN n') with (assert_total $ decTTNameEq n n')
+    decSNEq (MethodN n) (MethodN n)  | Yes Refl =
+        Yes Refl
+    decSNEq (MethodN n) (MethodN n') | No contra =
+        No $ contra . methodNInj
+  decSNEq (MethodN n) (CaseN loc n') = No absurd
+  decSNEq (MethodN n) (ElimN n') = No absurd
+  decSNEq (MethodN n) (InstanceCtorN n') = No absurd
+  decSNEq (MethodN n) (MetaN n' x) = No absurd
+  decSNEq (CaseN loc n) (WhereN x n' y) = No absurd
+  decSNEq (CaseN loc n) (WithN x n') = No absurd
+  decSNEq (CaseN loc n) (InstanceN n' xs) = No absurd
+  decSNEq (CaseN loc n) (ParentN n' x) = No absurd
+  decSNEq (CaseN loc n) (MethodN n') = No absurd
+  decSNEq (CaseN loc n) (CaseN loc' n') with (decEq loc loc')
+    decSNEq (CaseN loc n) (CaseN loc n')  | Yes Refl with (assert_total $ decTTNameEq n n')
+      decSNEq (CaseN loc n) (CaseN loc n)  | Yes Refl | Yes Refl =
+          Yes Refl
+      decSNEq (CaseN loc n) (CaseN loc n') | Yes Refl | No contra =
+          No $ contra . snd . caseNInj
+    decSNEq (CaseN loc n) (CaseN loc' n') | No contra =
+        No $ contra . fst . caseNInj
+  decSNEq (CaseN loc n) (ElimN n') = No absurd
+  decSNEq (CaseN loc n) (InstanceCtorN n') = No absurd
+  decSNEq (CaseN loc n) (MetaN n' x) = No absurd
+  decSNEq (ElimN n) (WhereN x n' y) = No absurd
+  decSNEq (ElimN n) (WithN x n') = No absurd
+  decSNEq (ElimN n) (InstanceN n' xs) = No absurd
+  decSNEq (ElimN n) (ParentN n' x) = No absurd
+  decSNEq (ElimN n) (MethodN n') = No absurd
+  decSNEq (ElimN n) (CaseN loc n') = No absurd
+  decSNEq (ElimN n) (ElimN n') with (assert_total $ decTTNameEq n n')
+    decSNEq (ElimN n) (ElimN n)  | Yes Refl =
+        Yes Refl
+    decSNEq (ElimN n) (ElimN n') | No contra =
+        No $ contra . elimNInj
+  decSNEq (ElimN n) (InstanceCtorN n') = No absurd
+  decSNEq (ElimN n) (MetaN n' x) = No absurd
+  decSNEq (InstanceCtorN n) (WhereN x n' y) = No absurd
+  decSNEq (InstanceCtorN n) (WithN x n') = No absurd
+  decSNEq (InstanceCtorN n) (InstanceN n' xs) = No absurd
+  decSNEq (InstanceCtorN n) (ParentN n' x) = No absurd
+  decSNEq (InstanceCtorN n) (MethodN n') = No absurd
+  decSNEq (InstanceCtorN n) (CaseN loc n') = No absurd
+  decSNEq (InstanceCtorN n) (ElimN n') = No absurd
+  decSNEq (InstanceCtorN n) (InstanceCtorN n') with (assert_total $ decTTNameEq n n')
+    decSNEq (InstanceCtorN n) (InstanceCtorN n)  | Yes Refl =
+        Yes Refl
+    decSNEq (InstanceCtorN n) (InstanceCtorN n') | No contra =
+        No $ contra . instanceCtorNInj
+  decSNEq (InstanceCtorN n) (MetaN n' x) = No absurd
+  decSNEq (MetaN n n') (WhereN x y z) = No absurd
+  decSNEq (MetaN n n') (WithN x y) = No absurd
+  decSNEq (MetaN n n') (InstanceN x xs) = No absurd
+  decSNEq (MetaN n n') (ParentN x y) = No absurd
+  decSNEq (MetaN n n') (MethodN x) = No absurd
+  decSNEq (MetaN n n') (CaseN loc x) = No absurd
+  decSNEq (MetaN n n') (ElimN x) = No absurd
+  decSNEq (MetaN n n') (InstanceCtorN x) = No absurd
+  decSNEq (MetaN n n') (MetaN x y) with (assert_total $ decTTNameEq n x)
+    decSNEq (MetaN n n') (MetaN n y) | Yes Refl with (assert_total $ decTTNameEq n' y)
+      decSNEq (MetaN n n') (MetaN n n') | Yes Refl | Yes Refl =
+          Yes Refl
+      decSNEq (MetaN n n') (MetaN n y) | Yes Refl | No contra =
+          No $ contra . snd . metaNInj
+    decSNEq (MetaN n n') (MetaN x y) | No contra =
+        No $ contra . fst . metaNInj
+
+
+implementation DecEq TTName where
+  decEq = decTTNameEq
+
+implementation DecEq SpecialName where
+  decEq = decSNEq
 
 data TTUExp =
             ||| Universe variable
