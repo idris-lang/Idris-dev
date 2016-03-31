@@ -261,7 +261,7 @@ instance NFData OutputType where
     rnf Raw = ()
     rnf Object = ()
     rnf Executable = ()
-    rnf MavenProject = ()
+    rnf Project = ()
 
 instance NFData IBCWrite where
     rnf (IBCFix fixDecl) = rnf fixDecl `seq` ()

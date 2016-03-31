@@ -10,6 +10,13 @@
 * Remove deprecated options `--ideslave` and `--ideslave-socket`. These options
   were replaced with `--ide-mode` and `--ide-mode-socket` in 0.9.17
 
+* The code generator output type `MavenProject` was specific to the
+  Java codegen. This output type has been generalised to `Project`
+  such that if a codegen wants to output a 'project' it can do so. An
+  activation flag `--projectonly` has been added. The existing `--mvn`
+  flag still exists for backwards compatibility, and will be
+  deprecated in a future release.
+
 # New in 0.11
 
 ## Updated export rules
