@@ -56,8 +56,8 @@ mkOk1Clause fn size i (n, _, ty) =
 mkOk2Clause : TTName -> (size, i : Nat) -> (constr : (TTName, List CtorArg, Raw)) -> Elab (FunClause Raw)
 mkOk2Clause fn size i (n, [], Var ty) =
   return $ MkFunClause (RApp (Var fn) !(mkFin size i))
-                       [| (Var "Refl") `(Fin ~(quote size))
-                                       !(mkFin size i) |]
+                       [| (Var `{Refl}) `(Fin ~(quote size))
+                                        !(mkFin size i) |]
 mkOk2Clause fn size i (n, _, ty) =
   fail [TextPart "unsupported constructor", NamePart n]
 

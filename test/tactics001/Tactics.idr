@@ -18,15 +18,15 @@ refl t x = RApp (RApp (Var (UN "Refl")) t) x
 plusZeroRightNeutralNew : (n : Nat) -> plus n 0 = n
 plusZeroRightNeutralNew Z = Refl
 plusZeroRightNeutralNew (S k) =
-  %runElab (do rewriteWith `(sym $ plusZeroRightNeutralNew ~(Var "k"))
-               fill $ refl `(Nat : Type) `(S ~(Var (UN "k")))
+  %runElab (do rewriteWith `(sym $ plusZeroRightNeutralNew ~(Var `{k}))
+               fill $ refl `(Nat : Type) `(S ~(Var `{k}))
                solve)
 
 plusSuccRightSuccNew : (j, k : Nat) -> plus j (S k) = S (plus j k)
 plusSuccRightSuccNew Z k = Refl
 plusSuccRightSuccNew (S j) k =
-  %runElab (do rewriteWith `(sym $ plusSuccRightSuccNew ~(Var "j") ~(Var (UN "k")))
-               fill $ refl `(Nat : Type) `(S (S (plus ~(Var (UN "j")) ~(Var (UN "k")))))
+  %runElab (do rewriteWith `(sym $ plusSuccRightSuccNew ~(Var `{j}) ~(Var `{k}))
+               fill $ refl `(Nat : Type) `(S (S (plus ~(Var `{j}) ~(Var `{k}))))
                solve)
 
 -- Test that side effects in new tactics work
