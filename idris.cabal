@@ -75,7 +75,7 @@ Data-files:            idrisdoc/styles.css
                        rts/libtest.c
 
 Extra-doc-files:
-                       CHANGELOG
+                       CHANGELOG.md
                        CITATION.md
                        CONTRIBUTING.md
                        CONTRIBUTORS
