@@ -5,7 +5,7 @@ import IRTS.Simplified
 import IRTS.Defunctionalise
 
 data DbgLevel = NONE | DEBUG | TRACE deriving Eq
-data OutputType = Raw | Object | Executable | MavenProject deriving (Eq, Show)
+data OutputType = Raw | Object | Executable deriving (Eq, Show)
 
 -- Everything which might be needed in a code generator - a CG can choose which
 -- level of Decls to generate code from (simplified, defunctionalised or merely
@@ -26,6 +26,6 @@ data CodegenInfo = CodegenInfo { outputFile :: String,
                                  liftDecls :: [(Name, LDecl)],
                                  interfaces :: Bool,
                                  exportDecls :: [ExportIFace]
-                               } 
+                               }
 
 type CodeGenerator = CodegenInfo -> IO ()

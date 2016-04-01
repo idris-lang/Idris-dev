@@ -258,10 +258,9 @@ instance NFData IdrisColour where
   rnf (IdrisColour _ x2 x3 x4 x5) = rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` rnf x5 `seq` ()
 
 instance NFData OutputType where
-    rnf Raw = ()
-    rnf Object = ()
+    rnf Raw        = ()
+    rnf Object     = ()
     rnf Executable = ()
-    rnf MavenProject = ()
 
 instance NFData IBCWrite where
     rnf (IBCFix fixDecl) = rnf fixDecl `seq` ()
