@@ -142,7 +142,6 @@ parseFlags = many $
 
   <|> flag' (OutputTy Raw)          (short 'S' <> long "codegenonly" <> help "Do no further compilation of code generator output")
   <|> flag' (OutputTy Object)       (short 'c' <> long "compileonly" <> help "Compile to object files rather than an executable")
-  <|> flag' (OutputTy MavenProject) (long "mvn"                      <> help "Create a maven project (for Java codegen)")
 
   <|> (DumpDefun <$> strOption (long "dumpdefuns"))
   <|> (DumpCases <$> strOption (long "dumpcases"))

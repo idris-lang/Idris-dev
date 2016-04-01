@@ -12,7 +12,12 @@
 * Remove deprecated options `--ideslave` and `--ideslave-socket`. These options
   were replaced with `--ide-mode` and `--ide-mode-socket` in 0.9.17
 
+* The code generator output type `MavenProject` was specific to the
+  Java codegen and has now been deprecated, together with the
+  corresponding `--mvn` option.
+
 ## Reflection changes
+
 * The implicit coercion from String to TTName was removed.
 
 * Decidable equality for TTName is available.
