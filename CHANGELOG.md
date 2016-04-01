@@ -3,9 +3,11 @@
 * Improved startup performance by reducing the processing of an already imported
   module that has changed accessibility.
 
-* A limited set of command line options can be used to override package declared
-  options. Overridable options are currently, logging level and categories,
-  default totality check, warn reach, IBC output folder, and idris path.
+* A limited set of command line options can be used to override
+  package declared options. Overridable options are currently, logging
+  level and categories, default totality check, warn reach, IBC output
+  folder, and idris path. Note overriding IBC output folder, only
+  affects the installation of Idris packages.
 
 * Remove deprecated options `--ideslave` and `--ideslave-socket`. These options
   were replaced with `--ide-mode` and `--ide-mode-socket` in 0.9.17

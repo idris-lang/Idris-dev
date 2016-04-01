@@ -2,7 +2,8 @@
              PatternGuards, CPP #-}
 
 module Idris.REPL(getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc,
-                  getPkgREPL, getPkgTest, getPort, idris, idrisMain, loadInputs,
+                  getPkgREPL, getPkgTest, getPort, getIBCSubDir,
+                  idris, idrisMain, loadInputs,
                   opt, runClient, runMain, ver) where
 
 import Idris.AbsSyntax

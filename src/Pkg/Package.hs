@@ -17,8 +17,8 @@ import Control.Monad.Trans.Except (runExceptT)
 
 import Data.List
 import Data.List.Split(splitOn)
-
-import Data.Either
+import Data.Maybe(fromMaybe)
+import Data.Either(partitionEithers)
 
 import Idris.Core.TT
 import Idris.REPL
@@ -79,7 +79,7 @@ buildPkg copts warnonly (install, fp) = do
         case errSpan ist of
           Just _ -> exitWith (ExitFailure 1)
           _      -> return ()
-        when install $ installPkg pkgdesc
+        when install $ installPkg (opt getIBCSubDir copts) pkgdesc
 
 --  --------------------------------------------------------- [ Check Packages ]
 
@@ -254,14 +254,21 @@ testPkg copts fp = do
 --  ----------------------------------------------------------- [ Installation ]
 
 -- | Install package
-installPkg :: PkgDesc -> IO ()
-installPkg pkgdesc
-     = inPkgDir pkgdesc $
-         do case (execout pkgdesc) of
-              Nothing -> do mapM_ (installIBC (pkgname pkgdesc)) (modules pkgdesc)
-                            installIdx (pkgname pkgdesc)
-              Just o -> return () -- do nothing, keep executable locally, for noe
-            mapM_ (installObj (pkgname pkgdesc)) (objs pkgdesc)
+installPkg :: [String]  -- ^ Alternate install location
+           -> PkgDesc   -- ^ iPKG file.
+           -> IO ()
+installPkg altdests pkgdesc = inPkgDir pkgdesc $ do
+  d <- getTargetDir
+  let destdir = case altdests of
+                  []     -> d
+                  (d':_) -> d'
+  case (execout pkgdesc) of
+    Nothing -> do
+      mapM_ (installIBC destdir (pkgname pkgdesc)) (modules pkgdesc)
+      installIdx destdir (pkgname pkgdesc)
+    Just o -> return () -- do nothing, keep executable locally, for noe
+
+  mapM_ (installObj destdir (pkgname pkgdesc)) (objs pkgdesc)
 
 -- ---------------------------------------------------------- [ Helper Methods ]
 -- Methods for building, testing, installing, and removal of idris
@@ -305,33 +312,34 @@ rmExe p = do
 toIBCFile (UN n) = str n ++ ".ibc"
 toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : map str ns))
 
-installIBC :: String -> Name -> IO ()
-installIBC p m = do let f = toIBCFile m
-                    d <- getTargetDir
-                    let destdir = d </> p </> getDest m
-                    putStrLn $ "Installing " ++ f ++ " to " ++ destdir
-                    createDirectoryIfMissing True destdir
-                    copyFile f (destdir </> takeFileName f)
-                    return ()
-    where getDest (UN n) = ""
-          getDest (NS n ns) = foldl1' (</>) (reverse (getDest n : map str ns))
+installIBC :: String -> String -> Name -> IO ()
+installIBC dest p m = do
+    let f = toIBCFile m
+    let destdir = dest </> p </> getDest m
+    putStrLn $ "Installing " ++ f ++ " to " ++ destdir
+    createDirectoryIfMissing True destdir
+    copyFile f (destdir </> takeFileName f)
+    return ()
+  where
+    getDest (UN n) = ""
+    getDest (NS n ns) = foldl1' (</>) (reverse (getDest n : map str ns))
 
-installIdx :: String -> IO ()
-installIdx p = do d <- getTargetDir
-                  let f = pkgIndex p
-                  let destdir = d </> p
-                  putStrLn $ "Installing " ++ f ++ " to " ++ destdir
-                  createDirectoryIfMissing True destdir
-                  copyFile f (destdir </> takeFileName f)
-                  return ()
+installIdx :: String -> String -> IO ()
+installIdx dest p = do
+  let f = pkgIndex p
+  let destdir = dest </> p
+  putStrLn $ "Installing " ++ f ++ " to " ++ destdir
+  createDirectoryIfMissing True destdir
+  copyFile f (destdir </> takeFileName f)
+  return ()
 
-installObj :: String -> String -> IO ()
-installObj p o = do d <- getTargetDir
-                    let destdir = addTrailingPathSeparator (d </> p)
-                    putStrLn $ "Installing " ++ o ++ " to " ++ destdir
-                    createDirectoryIfMissing True destdir
-                    copyFile o (destdir </> takeFileName o)
-                    return ()
+installObj :: String -> String -> String -> IO ()
+installObj dest p o = do
+  let destdir = addTrailingPathSeparator (dest </> p)
+  putStrLn $ "Installing " ++ o ++ " to " ++ destdir
+  createDirectoryIfMissing True destdir
+  copyFile o (destdir </> takeFileName o)
+  return ()
 
 #ifdef mingw32_HOST_OS
 mkDirCmd = "mkdir "
