@@ -20,6 +20,7 @@ import IRTS.Lang
 
 import Idris.Elab.Type
 import Idris.Elab.Utils
+import Idris.Elab.Rewrite
 import Idris.Elab.Value
 
 import Idris.Core.TT
@@ -126,6 +127,9 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
          -- create a case function
          when (DefaultCaseFun `elem` opts) $
             evalStateT (elabCaseFun False params n t dcons info) Map.empty
+         -- create a rewriting lemma
+         when (n /= sUN "=") $
+            elabRewriteLemma info n cty
          -- Emit highlighting info
          sendHighlighting $ [(nfc, AnnName n Nothing Nothing Nothing)] ++
            map (\(_, _, n, nfc, _, _, _) ->

@@ -1,6 +1,6 @@
 {-# LANGUAGE PatternGuards, ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Elab.Rewrite(elabRewrite) where
+module Idris.Elab.Rewrite(elabRewrite, elabRewriteLemma) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -9,6 +9,7 @@ import Idris.Error
 import Idris.Core.TT
 import Idris.Core.Elaborate
 import Idris.Core.Evaluate
+import Idris.Docstrings
 
 import Control.Monad
 import Control.Monad.State.Strict
@@ -121,11 +122,134 @@ findSubstFn Nothing ist lt rt
      | lt == rt = return (sUN "rewrite__impl")
      -- TODO: Find correct rewriting lemma, if it exists, and tidy up this
      -- error
-     | otherwise = lift . tfail . 
+     | (P _ lcon _, _) <- unApply lt,
+       (P _ rcon _, _) <- unApply rt,
+       lcon == rcon
+         = case lookupTyExact (rewrite_name lcon) (tt_ctxt ist) of
+                Just _ -> return (rewrite_name lcon)
+                Nothing -> rewriteFail lt rt
+     | otherwise = rewriteFail lt rt
+  where rewriteFail lt rt = lift . tfail . 
                      Msg $ "Can't rewrite heterogeneous equality on types " ++ 
                            show (delab ist lt) ++ " and " ++ show (delab ist rt)
+
 findSubstFn (Just substfn_in) ist lt rt
     = case lookupTyName substfn_in (tt_ctxt ist) of
            [(n, t)] -> return n
            [] -> lift . tfail . NoSuchVariable $ substfn_in
            more -> lift . tfail . CantResolveAlts $ map fst more
+
+rewrite_name :: Name -> Name
+rewrite_name n = sMN 0 (show n ++ "_rewrite_lemma")
+
+data ParamInfo = Index 
+               | Param 
+               | ImplicitIndex
+               | ImplicitParam
+  deriving Show
+
+getParamInfo :: Type -> [PArg] -> Int -> [Int] -> [ParamInfo]
+-- Skip the top level implicits, we just need the explicit ones
+getParamInfo (Bind n (Pi _ _ _) sc) (PExp{} : is) i ps
+    | i `elem` ps = Param : getParamInfo sc is (i + 1) ps
+    | otherwise = Index : getParamInfo sc is (i + 1) ps
+getParamInfo (Bind n (Pi _ _ _) sc) (_ : is) i ps
+    | i `elem` ps = ImplicitParam : getParamInfo sc is (i + 1) ps
+    | otherwise = ImplicitIndex : getParamInfo sc is (i + 1) ps
+getParamInfo _ _ _ _ = []
+
+isParam Index = False
+isParam Param = True
+isParam ImplicitIndex = False
+isParam ImplicitParam = True
+
+-- Make a rewriting lemma for the given type constructor.
+-- If it fails, fail silently (it may well fail for some very complex types.
+-- We can fix this later, for now this gives us a lot more working rewrites...)
+elabRewriteLemma :: ElabInfo -> Name -> Type -> Idris ()
+elabRewriteLemma info n cty_in =
+    do ist <- getIState
+       let cty = normalise (tt_ctxt ist) [] cty_in
+       let rewrite_lem = rewrite_name n
+       case lookupCtxtExact n (idris_datatypes ist) of
+            Nothing -> fail $ "Can't happen, elabRewriteLemma for " ++ show n
+            Just ti -> do
+               let imps = case lookupCtxtExact n (idris_implicits ist) of
+                               Nothing -> repeat (pexp Placeholder)
+                               Just is -> is 
+               let pinfo = getParamInfo cty imps 0 (param_pos ti)
+               if all isParam pinfo
+                  then return () -- no need for a lemma, = will be homogeneous
+                  else idrisCatch (mkLemma info rewrite_lem n pinfo cty)
+                                  (\_ -> return ())
+
+mkLemma :: ElabInfo -> Name -> Name -> [ParamInfo] -> Type -> Idris ()
+mkLemma info lemma tcon ps ty =
+    do ist <- getIState
+       let leftty = mkTy tcon ps (namesFrom "p" 0) (namesFrom "left" 0)
+           rightty = mkTy tcon ps (namesFrom "p" 0) (namesFrom "right" 0)
+           predty = bindIdxs ist ps ty (namesFrom "pred" 0) $
+                        PPi expl (sMN 0 "rep") fc 
+                          (mkTy tcon ps (namesFrom "p" 0) (namesFrom "pred" 0))
+                          (PType fc)
+       let xarg = sMN 0 "x"
+       let yarg = sMN 0 "y"
+       let parg = sMN 0 "P"
+       let eq = sMN 0 "eq"
+       let prop = sMN 0 "prop"
+       let lemTy = PPi impl xarg fc leftty $
+                   PPi impl yarg fc rightty $
+                   PPi expl parg fc predty $
+                   PPi expl eq fc (PApp fc (PRef fc [] (sUN "="))
+                                       [pexp (PRef fc [] xarg),
+                                        pexp (PRef fc [] yarg)]) $
+                   PPi expl prop fc (PApp fc (PRef fc [] parg)
+                                       [pexp (PRef fc [] yarg)]) $
+                       PApp fc (PRef fc [] parg) [pexp (PRef fc [] xarg)]
+
+       let lemLHS = PApp fc (PRef fc [] lemma)
+                            [pexp (PRef fc [] parg),
+                             pexp (PRef fc [] (sUN "Refl")),
+                             pexp (PRef fc [] prop)]
+
+       let lemRHS = PRef fc [] prop
+
+       -- Elaborate the type of the lemma
+       rec_elabDecl info EAll info 
+            (PTy emptyDocstring [] defaultSyntax fc [] lemma fc lemTy) 
+       -- Elaborate the definition
+       rec_elabDecl info EAll info
+            (PClauses fc [] lemma [PClause fc lemma lemLHS [] lemRHS []])
+
+  where
+    fc = emptyFC
+
+    namesFrom x i = sMN i x : namesFrom x (i + 1) 
+              
+    mkTy fn pinfo ps is 
+         = PApp fc (PRef fc [] fn) (mkArgs pinfo ps is)
+
+    mkArgs [] ps is = []
+    mkArgs (Param : pinfo) (p : ps) is
+         = pexp (PRef fc [] p) : mkArgs pinfo ps is
+    mkArgs (Index : pinfo) ps (i : is)
+         = pexp (PRef fc [] i) : mkArgs pinfo ps is
+    mkArgs (ImplicitParam : pinfo) (p : ps) is
+         = mkArgs pinfo ps is
+    mkArgs (ImplicitIndex : pinfo) ps (i : is)
+         = mkArgs pinfo ps is
+    mkArgs _ _ _ = []
+
+    bindIdxs ist [] ty is tm = tm
+    bindIdxs ist (Param : pinfo) (Bind n (Pi _ ty _) sc) is tm 
+         = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
+    bindIdxs ist (Index : pinfo) (Bind n (Pi _ ty _) sc) (i : is) tm 
+        = PPi forall_imp i fc (delab ist ty) 
+               (bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm)
+    bindIdxs ist (ImplicitParam : pinfo) (Bind n (Pi _ ty _) sc) is tm 
+        = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
+    bindIdxs ist (ImplicitIndex : pinfo) (Bind n (Pi _ ty _) sc) (i : is) tm 
+        = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
+    bindIdxs _ _ _ _ tm = tm
+
+
