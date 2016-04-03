@@ -200,8 +200,8 @@ updateSynMatch = update
       = PIfThenElse fc (update ns c) (update ns t) (update ns f)
     update ns (PCase fc c opts)
       = PCase fc (update ns c) (map (pmap (update ns)) opts)
-    update ns (PRewrite fc eq tm mty)
-      = PRewrite fc (update ns eq) (update ns tm) (fmap (update ns) mty)
+    update ns (PRewrite fc by eq tm mty)
+      = PRewrite fc by (update ns eq) (update ns tm) (fmap (update ns) mty)
     update ns (PPair fc hls p l r) = PPair fc hls p (update ns l) (update ns r)
     update ns (PDPair fc hls p l t r)
       = PDPair fc hls p (update ns l) (update ns t) (update ns r)
@@ -949,12 +949,13 @@ rewriteTerm syn = do kw <- reservedFC "rewrite"
                      fc <- getFC
                      prf <- expr syn
                      giving <- optional (do symbol "==>"; expr' syn)
+                     using <- optional (do reserved "using" 
+                                           (n, _) <- name 
+                                           return n)
                      kw' <- reservedFC "in";  sc <- expr syn
                      highlightP kw AnnKeyword
                      highlightP kw' AnnKeyword
-                     return (PRewrite fc
-                             (PApp fc (PRef fc [] (sUN "sym")) [pexp prf]) sc
-                               giving)
+                     return (PRewrite fc using prf sc giving)
                   <?> "term rewrite expression"
 
 {- |Parses a let binding

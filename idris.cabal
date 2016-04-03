@@ -663,6 +663,9 @@ Extra-source-files:
                        test/proof010/run
                        test/proof010/*.idr
                        test/proof010/expected
+                       test/proof011/run
+                       test/proof011/*.idr
+                       test/proof011/expected
 
                        test/proofsearch001/run
                        test/proofsearch001/*.idr
@@ -906,6 +909,7 @@ Library
                 , Idris.Elab.Value
                 , Idris.Elab.Term
                 , Idris.Elab.Quasiquote
+                , Idris.Elab.Rewrite
 
                 , Idris.REPL.Browse
 

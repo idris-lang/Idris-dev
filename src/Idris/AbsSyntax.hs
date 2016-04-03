@@ -1134,7 +1134,7 @@ expandParams dec ps ns infs tm = en 0 tm
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
            = let n' = mkShadow n in
                  PDPair f hls p (PRef f' fcs n') (en 0 t) (en 0 (shadow n n' r))
-    en 0 (PRewrite f l r g) = PRewrite f (en 0 l) (en 0 r) (fmap (en 0) g)
+    en 0 (PRewrite f by l r g) = PRewrite f by (en 0 l) (en 0 r) (fmap (en 0) g)
     en 0 (PTyped l r) = PTyped (en 0 l) (en 0 r)
     en 0 (PPair f hls p l r) = PPair f hls p (en 0 l) (en 0 r)
     en 0 (PDPair f hls p l t r) = PDPair f hls p (en 0 l) (en 0 t) (en 0 r)
@@ -1307,7 +1307,7 @@ getPriority i tm = 1 -- pri tm
             [] -> 0 -- must be locally bound, if it's not an error...
     pri (PPi _ _ _ x y) = max 5 (max (pri x) (pri y))
     pri (PTrue _ _) = 0
-    pri (PRewrite _ l r _) = max 1 (max (pri l) (pri r))
+    pri (PRewrite _ _ l r _) = max 1 (max (pri l) (pri r))
     pri (PApp _ f as) = max 1 (max (pri f) (foldr (max . pri . getTm) 0 as))
     pri (PAppBind _ f as) = max 1 (max (pri f) (foldr (max . pri . getTm) 0 as))
     pri (PCase _ f as) = max 1 (max (pri f) (foldr (max . pri . snd) 0 as))
@@ -1628,7 +1628,7 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PTacImplicit 10 l n scr Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PRewrite _ l r _)
+    imps top env (PRewrite _ _ l r _)
         = do (decls, ns) <- get
              let isn = namesIn uvars ist l ++ namesIn uvars ist r
              put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
@@ -1704,11 +1704,11 @@ addImpl' inpat env infns imp_meths ist ptm
         | not (f `elem` map fst env) = handleErr $ aiFn topname inpat inpat qq imp_meths ist fc f fc ds [] 
     ai inpat qq env ds (PHidden (PRef fc hl f))
         | not (f `elem` map fst env) = PHidden (handleErr $ aiFn topname inpat False qq imp_meths ist fc f fc ds [])
-    ai inpat qq env ds (PRewrite fc l r g)
+    ai inpat qq env ds (PRewrite fc by l r g)
        = let l' = ai inpat qq env ds l
              r' = ai inpat qq env ds r
              g' = fmap (ai inpat qq env ds) g in
-         PRewrite fc l' r' g'
+         PRewrite fc by l' r' g'
     ai inpat qq env ds (PTyped l r)
       = let l' = ai inpat qq env ds l
             r' = ai inpat qq env ds r in
@@ -2127,7 +2127,7 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
         | not names && (not (isConName n (tt_ctxt i) ||
                              isFnName n (tt_ctxt i)) || tm == Placeholder)
             = return [(n, tm)]
-    match (PRewrite _ l r _) (PRewrite _ l' r' _)
+    match (PRewrite _ by l r _) (PRewrite _ by' l' r' _) | by == by'
                                     = do ml <- match' l l'
                                          mr <- match' r r'
                                          return (ml ++ mr)
@@ -2222,8 +2222,8 @@ substMatchShadow n shs tm t = sm shs t where
     sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
     sm xs (PIfThenElse fc c t f) = PIfThenElse fc (sm xs c) (sm xs t) (sm xs f)
-    sm xs (PRewrite f x y tm) = PRewrite f (sm xs x) (sm xs y)
-                                           (fmap (sm xs) tm)
+    sm xs (PRewrite f by x y tm) = PRewrite f by (sm xs x) (sm xs y)
+                                                 (fmap (sm xs) tm)
     sm xs (PTyped x y) = PTyped (sm xs x) (sm xs y)
     sm xs (PPair f hls p x y) = PPair f hls p (sm xs x) (sm xs y)
     sm xs (PDPair f hls p x t y) = PDPair f hls p (sm xs x) (sm xs t) (sm xs y)
@@ -2251,7 +2251,7 @@ shadow n n' t = sm 0 t where
     sm 0 (PAppBind f x as) = PAppBind f (sm 0 x) (map (fmap (sm 0)) as)
     sm 0 (PCase f x as) = PCase f (sm 0 x) (map (pmap (sm 0)) as)
     sm 0 (PIfThenElse fc c t f) = PIfThenElse fc (sm 0 c) (sm 0 t) (sm 0 f)
-    sm 0 (PRewrite f x y tm) = PRewrite f (sm 0 x) (sm 0 y) (fmap (sm 0) tm)
+    sm 0 (PRewrite f by x y tm) = PRewrite f by (sm 0 x) (sm 0 y) (fmap (sm 0) tm)
     sm 0 (PTyped x y) = PTyped (sm 0 x) (sm 0 y)
     sm 0 (PPair f hls p x y) = PPair f hls p (sm 0 x) (sm 0 y)
     sm 0 (PDPair f hls p x t y) = PDPair f hls p (sm 0 x) (sm 0 t) (sm 0 y)

@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 136
+ibcVersion = 137
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
@@ -1732,11 +1732,12 @@ instance Binary PTerm where
                                   put x2
                 PResolveTC x1 -> do putWord8 15
                                     put x1
-                PRewrite x1 x2 x3 x4 -> do putWord8 17
-                                           put x1
-                                           put x2
-                                           put x3
-                                           put x4
+                PRewrite x1 x2 x3 x4 x5 -> do putWord8 17
+                                              put x1
+                                              put x2
+                                              put x3
+                                              put x4
+                                              put x5
                 PPair x1 x2 x3 x4 x5 -> do putWord8 18
                                            put x1
                                            put x2
@@ -1887,7 +1888,8 @@ instance Binary PTerm where
                             x2 <- get
                             x3 <- get
                             x4 <- get
-                            return (PRewrite x1 x2 x3 x4)
+                            x5 <- get
+                            return (PRewrite x1 x2 x3 x4 x5)
                    18 -> do x1 <- get
                             x2 <- get
                             x3 <- get

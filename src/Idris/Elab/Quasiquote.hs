@@ -109,13 +109,13 @@ extractUnquotes n (PIfThenElse fc c t f)
        (t', ex2) <- extractUnquotes n t
        (f', ex3) <- extractUnquotes n f
        return (PIfThenElse fc c' t' f', ex1 ++ ex2 ++ ex3)
-extractUnquotes n (PRewrite fc x y z)
+extractUnquotes n (PRewrite fc by x y z)
   = do (x', ex1) <- extractUnquotes n x
        (y', ex2) <- extractUnquotes n y
        case z of
          Just zz -> do (z', ex3) <- extractUnquotes n zz
-                       return (PRewrite fc x' y' (Just z'), ex1 ++ ex2 ++ ex3)
-         Nothing -> return (PRewrite fc x' y' Nothing, ex1 ++ ex2)
+                       return (PRewrite fc by x' y' (Just z'), ex1 ++ ex2 ++ ex3)
+         Nothing -> return (PRewrite fc by x' y' Nothing, ex1 ++ ex2)
 extractUnquotes n (PPair fc hls info l r)
   = do (l', ex1) <- extractUnquotes n l
        (r', ex2) <- extractUnquotes n r

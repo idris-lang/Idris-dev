@@ -88,8 +88,8 @@ expandSugar dsl (PNoImplicits t) = PNoImplicits (expandSugar dsl t)
 expandSugar dsl (PUnifyLog t) = PUnifyLog (expandSugar dsl t)
 expandSugar dsl (PDisamb ns t) = PDisamb ns (expandSugar dsl t)
 expandSugar dsl (PReturn fc) = dsl_return dsl
-expandSugar dsl (PRewrite fc r t ty)
-    = PRewrite fc r (expandSugar dsl t) ty
+expandSugar dsl (PRewrite fc by r t ty)
+    = PRewrite fc by r (expandSugar dsl t) ty
 expandSugar dsl (PGoal fc r n sc)
     = PGoal fc (expandSugar dsl r) n (expandSugar dsl sc)
 expandSugar dsl (PDoBlock ds)

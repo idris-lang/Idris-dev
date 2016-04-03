@@ -22,6 +22,7 @@ import Idris.Coverage (buildSCG, checkDeclTotality, checkPositive, genClauses, r
 import Idris.ErrReverse (errReverse)
 import Idris.Elab.Quasiquote (extractUnquotes)
 import Idris.Elab.Utils
+import Idris.Elab.Rewrite
 import Idris.Reflection
 import qualified Util.Pretty as U
 
@@ -995,39 +996,8 @@ elab ist info emode opts fn tm
         | not pattern = do mapM_ (runTac False ist fc fn) ts
         | otherwise = elab' ina fc Placeholder
     elab' ina fc (PElabError e) = lift $ tfail e
-    elab' ina _ (PRewrite fc r sc newg)
-        = do attack
-             tyn <- getNameFrom (sMN 0 "rty")
-             claim tyn RType
-             valn <- getNameFrom (sMN 0 "rval")
-             claim valn (Var tyn)
-             letn <- getNameFrom (sMN 0 "_rewrite_rule")
-             letbind letn (Var tyn) (Var valn)
-             focus valn
-             elab' ina (Just fc) r
-             compute
-             g <- goal
-             rewrite (Var letn)
-             g' <- goal
-             when (g == g') $ lift $ tfail (NoRewriting g)
-             case newg of
-                 Nothing -> elab' ina (Just fc) sc
-                 Just t -> doEquiv t sc
-             solve
-        where doEquiv t sc =
-                do attack
-                   tyn <- getNameFrom (sMN 0 "ety")
-                   claim tyn RType
-                   valn <- getNameFrom (sMN 0 "eqval")
-                   claim valn (Var tyn)
-                   letn <- getNameFrom (sMN 0 "equiv_val")
-                   letbind letn (Var tyn) (Var valn)
-                   focus tyn
-                   elab' ina (Just fc) t
-                   focus valn
-                   elab' ina (Just fc) sc
-                   elab' ina (Just fc) (PRef fc [] letn)
-                   solve
+    elab' ina _ (PRewrite fc substfn rule sc newg)
+        = elabRewrite (elab' ina (Just fc)) ist fc substfn rule sc newg
     elab' ina _ c@(PCase fc scr opts)
         = do attack
 

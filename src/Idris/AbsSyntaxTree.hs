@@ -1024,7 +1024,9 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
            | PTrue FC PunInfo -- ^ Unit type..?
            | PResolveTC FC -- ^ Solve this dictionary by type class resolution
-           | PRewrite FC PTerm PTerm (Maybe PTerm) -- ^ "rewrite" syntax, with optional result type
+           | PRewrite FC (Maybe Name) PTerm PTerm (Maybe PTerm) 
+                  -- ^ "rewrite" syntax, with optional rewriting function
+                  -- and optional result type
            | PPair FC [FC] PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration). The list of FCs is its punctuation.
            | PDPair FC [FC] PunInfo PTerm PTerm PTerm -- ^ A dependent pair (tm : a ** b) and whether it's a sigma type or a pair that inhabits one (solved by elaboration). The [FC] is its punctuation.
            | PAs FC Name PTerm -- ^ @-pattern, valid LHS only
@@ -1080,7 +1082,7 @@ mapPTermFC f g (PIfThenElse fc t1 t2 t3)      = PIfThenElse (f fc) (mapPTermFC f
 mapPTermFC f g (PCase fc t cases)             = PCase (f fc) (mapPTermFC f g t) (map (\(l,r) -> (mapPTermFC f g l, mapPTermFC f g r)) cases)
 mapPTermFC f g (PTrue fc info)                = PTrue (f fc) info
 mapPTermFC f g (PResolveTC fc)                = PResolveTC (f fc)
-mapPTermFC f g (PRewrite fc t1 t2 t3)         = PRewrite (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (fmap (mapPTermFC f g) t3)
+mapPTermFC f g (PRewrite fc by t1 t2 t3)      = PRewrite (f fc) by (mapPTermFC f g t1) (mapPTermFC f g t2) (fmap (mapPTermFC f g) t3)
 mapPTermFC f g (PPair fc hls info t1 t2)      = PPair (f fc) (map g hls) info (mapPTermFC f g t1) (mapPTermFC f g t2)
 mapPTermFC f g (PDPair fc hls info t1 t2 t3)  = PDPair (f fc) (map g hls) info (mapPTermFC f g t1) (mapPTermFC f g t2) (mapPTermFC f g t3)
 mapPTermFC f g (PAs fc n t)                   = PAs (f fc) n (mapPTermFC f g t)
@@ -1125,7 +1127,7 @@ mapPT f t = f (mpt t) where
   mpt (PLam fc n nfc t s)     = PLam fc n nfc (mapPT f t) (mapPT f s)
   mpt (PPi p n nfc t s)       = PPi p n nfc (mapPT f t) (mapPT f s)
   mpt (PLet fc n nfc ty v s)  = PLet fc n nfc (mapPT f ty) (mapPT f v) (mapPT f s)
-  mpt (PRewrite fc t s g)     = PRewrite fc (mapPT f t) (mapPT f s) (fmap (mapPT f) g)
+  mpt (PRewrite fc by t s g)  = PRewrite fc by (mapPT f t) (mapPT f s) (fmap (mapPT f) g)
   mpt (PApp fc t as)          = PApp fc (mapPT f t) (map (fmap (mapPT f)) as)
   mpt (PWithApp fc t a)       = PWithApp fc (mapPT f t) (mapPT f a)
   mpt (PAppBind fc t as)      = PAppBind fc (mapPT f t) (map (fmap (mapPT f)) as)
@@ -1302,7 +1304,7 @@ highestFC (PCase fc _ _)          = Just fc
 highestFC (PIfThenElse fc _ _ _)  = Just fc
 highestFC (PTrue fc _)            = Just fc
 highestFC (PResolveTC fc)         = Just fc
-highestFC (PRewrite fc _ _ _)     = Just fc
+highestFC (PRewrite fc _ _ _ _)   = Just fc
 highestFC (PPair fc _ _ _ _)      = Just fc
 highestFC (PDPair fc _ _ _ _ _)   = Just fc
 highestFC (PAs fc _ _)            = Just fc
@@ -1882,9 +1884,14 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PTrue _ IsType)     = annName unitTy $ text "()"
     prettySe d p bnd (PTrue _ IsTerm)     = annName unitCon $ text "()"
     prettySe d p bnd (PTrue _ TypeOrTerm) = text "()"
-    prettySe d p bnd (PRewrite _ l r _)   =
+    prettySe d p bnd (PRewrite _ by l r _)   =
       depth d . bracket p startPrec $
-      text "rewrite" <+> prettySe (decD d) (startPrec + 1) bnd l <+> text "in" <+> prettySe (decD d) startPrec bnd r
+      text "rewrite" <+> prettySe (decD d) (startPrec + 1) bnd l 
+      <+> (case by of
+               Nothing -> empty
+               Just fn -> text "using" <+>
+                              prettyName True (ppopt_impl ppo) bnd fn) <+>
+          text "in" <+> prettySe (decD d) startPrec bnd r
     prettySe d p bnd (PTyped l r) =
       lparen <> prettySe (decD d) startPrec bnd l <+> colon <+> prettySe (decD d) startPrec bnd r <> rparen
     prettySe d p bnd pair@(PPair _ _ pun _ _) -- flatten tuples to the right, like parser
@@ -2247,7 +2254,7 @@ instance Sized PTerm where
   size (PIfThenElse fc c t f)         = 1 + sum (map size [c, t, f])
   size (PTrue fc _)                   = 1
   size (PResolveTC fc)                = 1
-  size (PRewrite fc left right _)     = 1 + size left + size right
+  size (PRewrite fc by left right _)  = 1 + size left + size right
   size (PPair fc _ _ left right)      = 1 + size left + size right
   size (PDPair fs _ _ left ty right)  = 1 + size left + size ty + size right
   size (PAlternative _ a alts)        = 1 + size alts
@@ -2288,7 +2295,7 @@ allNamesIn tm = nub $ ni 0 [] tm
     ni 0 env (PPi p n _ ty sc)        = niTacImp 0 env p ++ ni 0 env ty ++ ni 0 (n:env) sc
     ni 0 env (PLet _ n _ ty val sc)   = ni 0 env ty ++ ni 0 env val ++ ni 0 (n:env) sc
     ni 0 env (PHidden tm)             = ni 0 env tm
-    ni 0 env (PRewrite _ l r _)       = ni 0 env l ++ ni 0 env r
+    ni 0 env (PRewrite _ _ l r _)     = ni 0 env l ++ ni 0 env r
     ni 0 env (PTyped l r)             = ni 0 env l ++ ni 0 env r
     ni 0 env (PPair _ _ _ l r)        = ni 0 env l ++ ni 0 env r
     ni 0 env (PDPair _ _ _ (PRef _ _ n) Placeholder r) = n : ni 0 env r
@@ -2319,7 +2326,7 @@ boundNamesIn tm = S.toList (ni 0 S.empty tm)
     ni 0 set (PLam fc n _ ty sc)        = S.insert n $ ni 0 (ni 0 set ty) sc
     ni 0 set (PLet fc n nfc ty val sc)  = S.insert n $ ni 0 (ni 0 (ni 0 set ty) val) sc
     ni 0 set (PPi p n _ ty sc)          = niTacImp 0 (S.insert n $ ni 0 (ni 0 set ty) sc) p
-    ni 0 set (PRewrite _ l r _)         = ni 0 (ni 0 set l) r
+    ni 0 set (PRewrite _ _ l r _)       = ni 0 (ni 0 set l) r
     ni 0 set (PTyped l r)               = ni 0 (ni 0 set l) r
     ni 0 set (PPair _ _ _ l r)          = ni 0 (ni 0 set l) r
     ni 0 set (PDPair _ _ _ (PRef _ _ n) t r) = ni 0 (ni 0 set t) r
@@ -2395,7 +2402,7 @@ implicitNamesIn uvars ist tm
     ni 0 env (PIfThenElse _ c t f)            = mapM_ (ni 0 env) [c, t, f]
     ni 0 env (PLam fc n _ ty sc)              = do ni 0 env ty; ni 0 (n:env) sc
     ni 0 env (PPi p n _ ty sc)                = do ni 0 env ty; ni 0 (n:env) sc
-    ni 0 env (PRewrite _ l r _)               = do ni 0 env l; ni 0 env r
+    ni 0 env (PRewrite _ _ l r _)             = do ni 0 env l; ni 0 env r
     ni 0 env (PTyped l r)                     = do ni 0 env l; ni 0 env r
     ni 0 env (PPair _ _ _ l r)                = do ni 0 env l; ni 0 env r
     ni 0 env (PDPair _ _ _ (PRef _ _ n) t r)  = do ni 0 env t; ni 0 (n:env) r
@@ -2432,7 +2439,7 @@ namesIn uvars ist tm = nub $ ni 0 [] tm
     ni 0 env (PIfThenElse _ c t f)  = concatMap (ni 0 env) [c, t, f]
     ni 0 env (PLam fc n nfc ty sc)  = ni 0 env ty ++ ni 0 (n:env) sc
     ni 0 env (PPi p n _ ty sc)      = niTacImp 0 env p ++ ni 0 env ty ++ ni 0 (n:env) sc
-    ni 0 env (PRewrite _ l r _)     = ni 0 env l ++ ni 0 env r
+    ni 0 env (PRewrite _ _ l r _)   = ni 0 env l ++ ni 0 env r
     ni 0 env (PTyped l r)           = ni 0 env l ++ ni 0 env r
     ni 0 env (PPair _ _ _ l r)      = ni 0 env l ++ ni 0 env r
     ni 0 env (PDPair _ _ _ (PRef _ _ n) t r) = ni 0 env t ++ ni 0 (n:env) r
@@ -2467,7 +2474,7 @@ usedNamesIn vars ist tm = nub $ ni 0 [] tm
     ni 0 env (PIfThenElse _ c t f)  = concatMap (ni 0 env) [c, t, f]
     ni 0 env (PLam fc n _ ty sc)    = ni 0 env ty ++ ni 0 (n:env) sc
     ni 0 env (PPi p n _ ty sc)      = niTacImp 0 env p ++ ni 0 env ty ++ ni 0 (n:env) sc
-    ni 0 env (PRewrite _ l r _)     = ni 0 env l ++ ni 0 env r
+    ni 0 env (PRewrite _ _ l r _)   = ni 0 env l ++ ni 0 env r
     ni 0 env (PTyped l r)           = ni 0 env l ++ ni 0 env r
     ni 0 env (PPair _ _ _ l r)      = ni 0 env l ++ ni 0 env r
     ni 0 env (PDPair _ _ _ (PRef _ _ n) t r) = ni 0 env t ++ ni 0 (n:env) r
