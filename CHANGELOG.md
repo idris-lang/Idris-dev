@@ -1,5 +1,12 @@
 # New in 0.12:
 
+## Language updates
+
+* `rewrite` can now be given an optional rewriting lemma, with the syntax
+  `rewrite [rule] using [rewrite_lemma] in [scope]`. 
+
+## Miscellaneous updates
+
 * Improved startup performance by reducing the processing of an already imported
   module that has changed accessibility.
 

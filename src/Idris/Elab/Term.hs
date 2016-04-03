@@ -996,8 +996,8 @@ elab ist info emode opts fn tm
         | not pattern = do mapM_ (runTac False ist fc fn) ts
         | otherwise = elab' ina fc Placeholder
     elab' ina fc (PElabError e) = lift $ tfail e
-    elab' ina _ (PRewrite fc substfn rule sc newg)
-        = elabRewrite (elab' ina (Just fc)) ist fc substfn rule sc newg
+    elab' ina mfc (PRewrite fc substfn rule sc newg)
+        = elabRewrite (elab' ina mfc) ist fc substfn rule sc newg
     elab' ina _ c@(PCase fc scr opts)
         = do attack
 

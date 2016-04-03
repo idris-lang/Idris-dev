@@ -40,14 +40,8 @@ elabRewrite elab ist fc Nothing rule sc newg
                  Just t -> doEquiv elab fc t sc
              solve
              -}
-elabRewrite elab ist fc Nothing rule sc newg
-        = elabRewrite elab ist fc (Just (sUN "rewrite__impl")) rule sc newg
-elabRewrite elab ist fc (Just substfn_in) rule sc_in newg
-        = do substfn <- case lookupTyName substfn_in (tt_ctxt ist) of
-                             [(n, t)] -> return n
-                             [] -> lift . tfail . NoSuchVariable $ substfn_in
-                             more -> lift . tfail . CantResolveAlts $ map fst more
-             attack
+elabRewrite elab ist fc substfn_in rule sc_in newg
+        = do attack
              sc <- case newg of
                       Nothing -> return sc_in
                       Just t -> do
@@ -70,7 +64,8 @@ elabRewrite elab ist fc (Just substfn_in) rule sc_in newg
              rname <- unique_hole (sMN 0 "replaced")
              case unApply ttrule of
                   (P _ (UN q) _, [lt, rt, l, r]) | q == txt "=" ->
-                     do let pred_tt = mkP (P Bound rname rt) l r g
+                     do substfn <- findSubstFn substfn_in ist lt rt
+                        let pred_tt = mkP (P Bound rname rt) l r g
                         when (g == pred_tt) $ lift $ tfail (NoRewriting g)
                         let pred = PLam fc rname fc Placeholder
                                         (delab ist pred_tt)
@@ -120,4 +115,17 @@ elabRewrite elab ist fc (Just substfn_in) rule sc_in newg
           where removeImp tm@(PImp{}) = tm { getTm = Placeholder }
                 removeImp t = t
         phApps tm = tm
-        
+       
+findSubstFn :: Maybe Name -> IState -> Type -> Type -> ElabD Name
+findSubstFn Nothing ist lt rt
+     | lt == rt = return (sUN "rewrite__impl")
+     -- TODO: Find correct rewriting lemma, if it exists, and tidy up this
+     -- error
+     | otherwise = lift . tfail . 
+                     Msg $ "Can't rewrite heterogeneous equality on types " ++ 
+                           show (delab ist lt) ++ " and " ++ show (delab ist rt)
+findSubstFn (Just substfn_in) ist lt rt
+    = case lookupTyName substfn_in (tt_ctxt ist) of
+           [(n, t)] -> return n
+           [] -> lift . tfail . NoSuchVariable $ substfn_in
+           more -> lift . tfail . CantResolveAlts $ map fst more
