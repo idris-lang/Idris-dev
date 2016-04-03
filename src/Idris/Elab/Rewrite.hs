@@ -42,12 +42,18 @@ elabRewrite elab ist fc Nothing rule sc newg
              -}
 elabRewrite elab ist fc Nothing rule sc newg
         = elabRewrite elab ist fc (Just (sUN "rewrite__impl")) rule sc newg
-elabRewrite elab ist fc (Just substfn_in) rule sc newg
+elabRewrite elab ist fc (Just substfn_in) rule sc_in newg
         = do substfn <- case lookupTyName substfn_in (tt_ctxt ist) of
                              [(n, t)] -> return n
                              [] -> lift . tfail . NoSuchVariable $ substfn_in
                              more -> lift . tfail . CantResolveAlts $ map fst more
              attack
+             sc <- case newg of
+                      Nothing -> return sc_in
+                      Just t -> do
+                         letn <- getNameFrom (sMN 0 "rewrite_result")
+                         return $ PLet fc letn fc t sc_in 
+                                       (PRef fc [] letn)
              tyn <- getNameFrom (sMN 0 "rty")
              claim tyn RType
              valn <- getNameFrom (sMN 0 "rval")
@@ -115,19 +121,3 @@ elabRewrite elab ist fc (Just substfn_in) rule sc newg
                 removeImp t = t
         phApps tm = tm
         
-doEquiv elab fc t sc 
-    = do attack
-         tyn <- getNameFrom (sMN 0 "ety")
-         claim tyn RType
-         valn <- getNameFrom (sMN 0 "eqval")
-         claim valn (Var tyn)
-         letn <- getNameFrom (sMN 0 "equiv_val")
-         letbind letn (Var tyn) (Var valn)
-         focus tyn
-         elab t
-         focus valn
-         elab sc
-         elab (PRef fc [] letn)
-         solve
-
-
