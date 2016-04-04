@@ -730,7 +730,11 @@ ctype t = error "Can't happen: Not a valid interface type " ++ show t
 carith (FCon i)
   | i == sUN "C_IntChar" = "char"
   | i == sUN "C_IntNative" = "int"
-carith t = error "Can't happen: Not an exportable arithmetic type"
+  | i == sUN "C_Bits8" = "uint8_t"
+  | i == sUN "C_Bits16" = "uint16_t"
+  | i == sUN "C_Bits32" = "uint32_t"
+  | i == sUN "C_Bits64" = "uint64_t"
+carith t = error $ "Can't happen: Not an exportable arithmetic type " ++ show t
 
 cdesc (FStr s) = s
 cdesc s = error "Can't happen: Not a valid C name"
