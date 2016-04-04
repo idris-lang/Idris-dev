@@ -565,9 +565,9 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
           | otherwise = checkSize a ps (i + 1)
       checkSize a [] i = Nothing
 
-      -- the smaller thing we find must be the same type as <a>, and
-      -- not be coinductive - so carry the type of the constructor we've
-      -- gone under.
+      -- the smaller thing we find must be defined in the same group of mutally
+      -- defined types as <a>, and not be coinductive - so carry the type of
+      -- the constructor we've gone under.
 
       smaller (Just tyn) a (t, Just tyt)
          | a == t = isInductive (fst (unApply (getRetTy tyn)))
@@ -587,10 +587,10 @@ buildSCG' ist pats args = nub $ concatMap scgPat pats where
                        Just ty -> delazy (normalise (tt_ctxt ist) [] ty) -- must exist
 
       isInductive (P _ nty _) (P _ nty' _) =
-          let co = case lookupCtxt nty (idris_datatypes ist) of
-                        [TI _ x _ _ _] -> x
-                        _ -> False in
-              nty == nty' && not co
+          let (co, muts) = case lookupCtxt nty (idris_datatypes ist) of
+                                [TI _ x _ _ muts] -> (x, muts)
+                                _ -> (False, []) in
+              (nty == nty' || any (== nty') muts) && not co
       isInductive _ _ = False
 
   dePat (Bind x (PVar ty) sc) = dePat (instantiate (P Bound x ty) sc)
