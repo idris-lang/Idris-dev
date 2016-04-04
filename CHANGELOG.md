@@ -5,7 +5,7 @@
 * `rewrite` can now be used to rewrite equalities on functions over
   dependent types
 * `rewrite` can now be given an optional rewriting lemma, with the syntax
-  `rewrite [rule] using [rewrite_lemma] in [scope]`. 
+  `rewrite [rule] using [rewrite_lemma] in [scope]`.
 * Experimental extended `with` syntax, which allows calling functions defined
   in a with block directly. For example:
 
@@ -13,9 +13,9 @@
   data SnocList : List a -> Type where
        Empty : SnocList []
        Snoc : SnocList xs -> SnocList (xs ++ [x])
-    
+
   snocList : (xs : List a) -> SnocList a
-    
+
   my_reverse : List a -> List a
   my_reverse xs with (snocList xs)
     my_reverse [] | Empty = []
@@ -27,6 +27,8 @@
     recursion structure of `my_reverse`.
 
 ## Miscellaneous updates
+
+* The Idris man page is now installed as part of the cabal/stack build  process.
 
 * Improved startup performance by reducing the processing of an already imported
   module that has changed accessibility.

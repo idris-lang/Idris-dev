@@ -9,7 +9,7 @@ import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
 import qualified Distribution.Simple.Program as P
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile)
+import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile, notice, installOrdinaryFiles)
 import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Text
@@ -228,7 +228,7 @@ idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
          where
             makeBuild dir = make verbosity [ "-C", dir, "build" , "IDRIS=" ++ idrisCmd local]
 
-      buildRTS = make verbosity (["-C", "rts", "build"] ++ 
+      buildRTS = make verbosity (["-C", "rts", "build"] ++
                                    gmpflag (usesGMP (configFlags local)))
 
       gmpflag False = []
@@ -242,6 +242,7 @@ idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
 idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ do
       installStdLib
       installRTS
+      installManPage
    where
       target = datadir $ L.absoluteInstallDirs pkg local copy
 
@@ -253,6 +254,12 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
          let target' = target </> "rts"
          putStrLn $ "Installing run time system in " ++ target'
          makeInstall "rts" target'
+
+      installManPage = do
+         let mandest = (mandir $ L.absoluteInstallDirs pkg local copy) ++ "/man1"
+         notice verbosity $ unwords ["Copying man page to", mandest]
+         installOrdinaryFiles verbosity mandest [("man", "idris.1")]
+
 
       makeInstall src target =
          make verbosity [ "-C", src, "install" , "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]

@@ -81,7 +81,6 @@ Extra-doc-files:
                        CONTRIBUTORS
                        README.md
                        idris-tutorial.pdf
-                       man/idris.1
                        samples/effects/*.idr
                        samples/misc/*.idr
                        samples/misc/*.lidr
@@ -91,7 +90,8 @@ Extra-source-files:
                        Makefile
                        config.mk
                        stack.yaml
-
+                       man/idris.1
+		       
                        rts/*.c
                        rts/*.h
                        rts/arduino/*.c
