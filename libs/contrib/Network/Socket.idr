@@ -1,7 +1,7 @@
--- Time to do this properly.
--- Low-Level C Sockets bindings for Idris. Used by higher-level, cleverer things.
--- (C) SimonJF, MIT Licensed, 2014
-module IdrisNet.Socket
+||| Time to do this properly.
+||| Low-Level C Sockets bindings for Idris. Used by higher-level, cleverer things.
+||| (C) SimonJF, MIT Licensed, 2014
+module Network.Socket
 
 %include C "idris_net.h"
 %include C "sys/types.h"
@@ -140,7 +140,7 @@ record Socket where
   descriptor : SocketDescriptor
   family : SocketFamily
   socketType : SocketType
-  protocalNumber : ProtocolNumber
+  protocolNumber : ProtocolNumber
 
 ||| Creates a UNIX socket with the given family, socket type and protocol
 ||| number. Returns either a socket or an error.
