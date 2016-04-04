@@ -720,7 +720,9 @@ infinite loop and cause a stack overflow.
     main = do printLn $ findB (== 1) blue
 
 To fix this we must add explicit ``Inf`` declarations to the constructor
-parameter types. For example, the following outputs "1".
+parameter types, since codata will not add it to constructor parameters of a
+**different** type from the one being defined. For example, the following
+outputs "1".
 
 .. code-block:: idris
 
