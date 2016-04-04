@@ -80,6 +80,7 @@ Extra-doc-files:
                        CONTRIBUTING.md
                        CONTRIBUTORS
                        README.md
+                       RELEASE-CHECKS.md
                        idris-tutorial.pdf
                        samples/effects/*.idr
                        samples/misc/*.idr
