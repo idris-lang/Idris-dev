@@ -191,7 +191,7 @@ elabDecl' what info (PMutual f ps)
               _ -> do mapM_ (elabDecl ETypes info) ps
                       mapM_ (elabDecl EDefns info) ps
          -- record mutually defined data definitions
-         let datans = concatMap declared (filter isDataDecl ps)
+         let datans = concatMap declared (getDataDecls ps)
          mapM_ (setMutData datans) datans
          logElab 1 $ "Rechecking for positivity " ++ show datans
          mapM_ (\x -> do setTotality x Unchecked) datans
@@ -207,6 +207,13 @@ elabDecl' what info (PMutual f ps)
          clear_totcheck
   where isDataDecl (PData _ _ _ _ _ _) = True
         isDataDecl _ = False
+
+        getDataDecls (PNamespace _ _ ds : decls)
+           = getDataDecls ds ++ getDataDecls decls
+        getDataDecls (d : decls) 
+           | isDataDecl d = d : getDataDecls decls
+           | otherwise = getDataDecls decls
+        getDataDecls [] = []
 
         setMutData ns n
            = do i <- getIState
