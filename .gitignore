@@ -18,6 +18,7 @@ cabal.config
 .hpc
 *.orig
 *.tix
+*.dSYM
 .projectile
 .dir-locals.el
 custom.mk
