@@ -67,7 +67,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
     ist <- getIState
     (n, ci) <- case lookupCtxtName n (idris_classes ist) of
                   [c] -> return c
-                  [] -> ifail $ show fc ++ ":" ++ show n ++ " is not a type class"
+                  [] -> ifail $ show fc ++ ":" ++ show n ++ " is not an interface"
                   cs -> tclift $ tfail $ At fc
                            (CantResolveAlts (map fst cs))
     let constraint = PApp fc (PRef fc [] n) (map pexp ps)

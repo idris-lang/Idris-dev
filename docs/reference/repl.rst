@@ -245,7 +245,7 @@ You can also ask for basic information about typeclasses with ``:doc``:
 ::
 
     Idris> :doc Monad
-    Type class Monad
+    Interface Monad
 
     Parameters:
         m
@@ -302,7 +302,7 @@ Other documentation is also available from ``:doc``:
 ::
 
     Idris> :doc Monad
-    Type class Prelude.Monad.Monad
+    Interface Prelude.Monad.Monad
     Methods:
 
     Prelude.Monad.>>= : (m : Type -> Type) -> (a : Type) -> (b : Type) -> (Monad m) -> (m a) -> (a -> m b) -> m b
