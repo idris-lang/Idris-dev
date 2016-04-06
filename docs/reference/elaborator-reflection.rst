@@ -171,7 +171,7 @@ Changing the Global Context
 
 ``Elab`` scripts can modify the global context during execution.
 Just as the Idris elaborator produces auxiliary definitions to implement features such as ``where``-blocks and ``case`` expressions, user elaboration scripts may need to define functions.
-Furthermore, this allows ``Elab`` reflection to be used to implement features such as type class deriving.
+Furthermore, this allows ``Elab`` reflection to be used to implement features such as interface deriving.
 The operations ``declareType``, ``defineFunction``, and ``addInstance`` allow ``Elab`` scripts to modify the global context.
 
 Using Idris's Features
@@ -180,7 +180,7 @@ Using Idris's Features
 The Idris compiler has a number of ways to automate the construction of terms.
 On its own, the ``Elab`` state and its interactions with the unifier allow implicits to be solved using unification.
 Additional operations use further features of Idris.
-In particular, ``resolveTC`` solves the current goal using type class resolution, ``search`` invokes the proof search mechanism, and ``sourceLocation`` finds the context in the original file at which the elaboration script is invoked.
+In particular, ``resolveTC`` solves the current goal using interface resolution, ``search`` invokes the proof search mechanism, and ``sourceLocation`` finds the context in the original file at which the elaboration script is invoked.
 
 
 Recursive Elaboration

@@ -305,7 +305,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
         = simple_app False (tryLocalArg d locs tys n (i - 1))
                 (psRec True d locs tys) "proof search local apply"
 
-    -- Like type class resolution, but searching with constructors
+    -- Like interface resolution, but searching with constructors
     tryCon d locs tys n =
          do ty <- goal
             let imps = case lookupCtxtExact n (idris_implicits ist) of
@@ -336,8 +336,8 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
          (Bind _ (Pi _ _ _) _) -> [TextPart "In particular, function types are not supported."]
          _ -> []
 
--- | Resolve type classes. This will only pick up 'normal' instances, never
--- named instances (which is enforced by 'findInstances').
+-- | Resolve interfaces. This will only pick up 'normal' implementations, never
+-- named implementations (which is enforced by 'findInstances').
 resolveTC :: Bool -- ^ using default Int
           -> Bool -- ^ allow metavariables in the goal
           -> Int -- ^ depth
@@ -349,7 +349,7 @@ resolveTC def mvok depth top fn elab ist
    = do hs <- get_holes
         resTC' [] def hs depth top fn elab ist
 
-resTC' tcs def topholes 0 topg fn elab ist = fail $ "Can't resolve type class"
+resTC' tcs def topholes 0 topg fn elab ist = fail $ "Can't resolve interface"
 resTC' tcs def topholes 1 topg fn elab ist = try' (trivial elab ist) (resolveTC def False 0 topg fn elab ist) True
 resTC' tcs defaultOn topholes depth topg fn elab ist
   = do compute
@@ -465,7 +465,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
     solven n = replicateM_ n solve
 
     resolve n depth
-       | depth == 0 = fail $ "Can't resolve type class"
+       | depth == 0 = fail $ "Can't resolve interface"
        | otherwise
            = do lams <- introImps
                 t <- goal
@@ -483,7 +483,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
                 solven lams -- close any implicit lambdas we introduced
                 ps' <- get_probs
                 when (length ps < length ps' || unrecoverable ps') $
-                     fail "Can't apply type class"
+                     fail "Can't apply interface"
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal
@@ -501,8 +501,8 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
        where isImp (PImp p _ _ _ _) = (True, p)
              isImp arg = (False, priority arg)
 
--- | Find the names of instances that have been designeated for
--- searching (i.e. non-named instances or instances from Elab scripts)
+-- | Find the names of implementations that have been designeated for
+-- searching (i.e. non-named implementations or implementations from Elab scripts)
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply (getRetTy t)
