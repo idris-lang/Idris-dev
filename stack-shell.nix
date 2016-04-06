@@ -2,7 +2,7 @@ with (import <nixpkgs> {});
 
 let
   # MUST match resolver in stack.yaml
-  resolver = haskell.packages.lts-5_9.ghc;
+  resolver = haskell.packages.lts-5_11.ghc;
 
   native_libs = [
     libffi
