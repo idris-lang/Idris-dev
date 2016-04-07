@@ -4,7 +4,7 @@
 The Idris Tutorial
 ##################
 
-The is the Idris Tutorial. It will teach you about programming in the Idris Language.
+This is the Idris Tutorial. It will teach you about programming in the Idris Language.
 
 .. note::
    The documentation for Idris has been published under the Creative

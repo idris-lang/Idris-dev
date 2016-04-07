@@ -537,10 +537,11 @@ Note: Declaration Order and ``mutual`` blocks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In general, functions and data types must be defined before use, since
-dependent types allow functions to appear as part of types, and their
-reduction behaviour to affect type checking. However, this restriction
-can be relaxed by using a ``mutual`` block, which allows data types
-and functions to be defined simultaneously:
+dependent types allow functions to appear as part of types, and type
+checking can rely on how particular functions are defined (though this
+is only true of total functions; see Section :ref:`sect-totality`)).
+However, this restriction can be relaxed by using a ``mutual`` block,
+which allows data types and functions to be defined simultaneously:
 
 .. code-block:: idris
 
@@ -1182,3 +1183,81 @@ matching ``let`` and lambda bindings. It will *only* work if:
 - The type of the result is "known". i.e. the type of the expression
   can be determined *without* type checking the ``case``-expression
   itself.
+
+Totality
+========
+
+A *total* function is a function that terminates for all possible
+inputs, or one that is guaranteed to produce some output before making
+a recursive call. For example, Idris' ``head`` function is total for
+all lists:
+
+::
+
+    Idris> :t Prelude.List.head
+    head : (l : List a) -> {auto ok : NonEmpty l} -> a
+
+The ``{auto ok : NonEmpty l}`` tells us that Idris won't compile if we
+try to call ``head`` on an empty list. The implementation is as follows:
+
+.. code-block:: idris
+
+    ||| Get the first element of a non-empty list
+    ||| @ ok proof that the list is non-empty
+    head : (l : List a) -> {auto ok : NonEmpty l} -> a
+    head []      {ok=IsNonEmpty} impossible
+    head (x::xs) {ok=p}    = x
+
+(Note that this implementation is in contrast to Haskell's ``head``,
+which is  *not* total and will fail at runtime rather than compile time.)
+The following Idris code will compile:
+
+.. code-block:: idris
+
+    module Main
+
+    main : IO ()
+    main = do
+      let x = head [1, 2, 3]
+      print x
+
+And will print ``1``. However, the same code with ``head []`` won't compile:
+
+::
+
+    test.idr:5:6:When checking right hand side of main with expected type
+        IO ()
+
+    Can't infer argument letty to head,
+    Can't infer argument letty to [],
+    Can't infer argument ok to head,
+    Can't infer argument letty to print,
+    Can't infer argument constraint to print
+
+We can't bind and print ``x`` because ``head []`` doesn't type check.
+
+However, we might imagine a function, ``unsafeHead``, that is identical to
+Idris' ``head`` function except that it is *not* total: it will error out
+at runtime if called on an empty list. (This is similar to the behavior of
+Haskell's ``head`` function.) ``unsafeHead`` might look like this:
+
+.. code-block:: idris
+    -- Unsafe head example!
+    unsafeHead : List a -> a
+    unsafeHead (x::xs) = x
+
+And although it typechecks and compiles, it will not reduce (that is, evaluation
+of the function will cause its type to change):
+
+::
+
+    unsafe> unsafeHead [1, 2, 3]
+    1 : Integer
+    unsafe> unsafeHead []
+    (input):Can't infer argument iType to unsafeHead,
+            Can't infer argument iType to []
+
+Functions that are not total are known as *partial functions*. As
+mentioned in the note about ``mutual`` blocks, non-total definitions
+aren't reduced when type checking because they are not well-defined
+for all possible inputs.
