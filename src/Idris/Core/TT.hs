@@ -73,6 +73,8 @@ import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 import Foreign.Storable (sizeOf)
 
+import Numeric.IEEE (IEEE (identicalIEEE))
+
 import Util.Pretty hiding (Str)
 
 data Option = TTypeInTType
@@ -708,7 +710,30 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | AType ArithTy | StrType
            | WorldType | TheWorld
            | VoidType | Forgot
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Ord, Data, Typeable)
+
+-- We need to compare Double using bit-pattern identity rather than
+-- Haskell's Eq, which equates 0.0 and -0.0, leading to a
+-- contradiction in the type theory. Bit-pattern identity will also
+-- avoid similar problems for NaNs.
+instance Eq Const where
+  I i       == I j       = i == j
+  BI i      == BI j      = i == j
+  Fl i      == Fl j      = identicalIEEE i j
+  Ch i      == Ch j      = i == j
+  Str i     == Str j     = i == j
+  B8 i      == B8 j      = i == j
+  B16 i     == B16 j     = i == j
+  B32 i     == B32 j     = i == j
+  B64 i     == B64 j     = i == j
+  AType i   == AType j   = i == j
+  StrType   == StrType   = True
+  WorldType == WorldType = True
+  TheWorld  == TheWorld  = True
+  VoidType  == VoidType  = True
+  Forgot    == Forgot    = True
+  _         == _         = False
+
 {-!
 deriving instance Binary Const
 deriving instance NFData Const
