@@ -343,7 +343,11 @@ irTerm vs env tm@(App _ f a) = do
         case compare (length args) arity of
 
             -- overapplied
-            GT  -> ifail ("overapplied data constructor: " ++ show tm)
+            GT  -> ifail ("overapplied data constructor: " ++ show tm ++
+                          "\nDEBUG INFO:\n" ++ 
+                          "Arity: " ++ show arity ++ "\n" ++
+                          "Arguments: " ++ show args ++ "\n" ++
+                          "Pruned arguments: " ++ show argsPruned)
 
             -- exactly saturated
             EQ  | isNewtype
