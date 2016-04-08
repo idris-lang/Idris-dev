@@ -96,3 +96,22 @@ splitRec : (xs : List a) -> SplitRec xs
 splitRec [] = SplitRecNil
 splitRec (x :: xs) = accInd splitRecFix (x :: xs) (smallerAcc (x :: x :: xs) lteRefl)
 
+||| View for traversing a list backwards
+public export
+data SnocList : List a -> Type where
+     Empty : SnocList []
+     Snoc : SnocList xs -> SnocList (xs ++ [x])
+
+snocListHelp : SnocList xs -> (ys : List a) -> SnocList (xs ++ ys)
+snocListHelp {xs} x [] = rewrite appendNilRightNeutral xs in x
+snocListHelp {xs} x (y :: ys) 
+   = rewrite appendAssociative xs [y] ys in snocListHelp (Snoc x {x=y}) ys
+
+||| Covering function for the `SnocList` view
+export
+snocList : (xs : List a) -> SnocList xs
+snocList xs = snocListHelp Empty xs
+
+
+
+

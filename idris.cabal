@@ -812,6 +812,10 @@ Extra-source-files:
                        test/unique003/*.idr
                        test/unique003/expected
 
+                       test/views001/run
+                       test/views001/*.idr
+                       test/views001/expected
+
                        test/docs001/run
                        test/docs001/input
                        test/docs001/*.idr
