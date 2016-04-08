@@ -8,7 +8,6 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Control.Algebra.NumericInstances,
           Control.Isomorphism.Primitives,
           Control.Partial,
-          Control.WellFounded,
 
           Classes.Verified,
 

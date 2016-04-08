@@ -5,8 +5,6 @@ module Data.Nat.DivMod.IteratedSubtraction
 import Data.Fin
 import Data.So
 
-import Control.WellFounded
-
 %default total
 %access public export
 

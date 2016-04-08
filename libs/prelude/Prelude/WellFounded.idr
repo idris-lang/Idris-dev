@@ -3,7 +3,7 @@
 ||| This is to let us implement some functions that don't have trivial
 ||| recursion patterns over datatypes, but instead are using some
 ||| other metric of size.
-module Control.WellFounded
+module Prelude.WellFounded
 
 %default total
 %access public export
@@ -56,8 +56,8 @@ accRec step z (Access f) =
 accInd : {rel : a -> a -> Type} -> {P : a -> Type} ->
          (step : (x : a) -> ((y : a) -> rel y x -> P y) -> P x) ->
          (z : a) -> Accessible rel z -> P z
-accInd step z (Access f) =
-  step z $ \y, lt => accInd step y (f y lt)
+accInd {P} step z (Access f) =
+  step z $ \y, lt => accInd {P} step y (f y lt)
 
 
 ||| Use well-foundedness of a relation to write terminating operations.
