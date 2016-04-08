@@ -52,6 +52,12 @@
   Java codegen and has now been deprecated, together with the
   corresponding `--mvn` option.
 
+* Definitional equality on Double is now bit-pattern identity rather
+  than IEEE's comparison operator. This prevents a bug where programs
+  could distinguish between -0.0 and 0.0, but the type theory could
+  not, leading to a contradiction. The new fine-grained equality
+  prevents this.
+
 ## Reflection changes
 
 * The implicit coercion from String to TTName was removed.

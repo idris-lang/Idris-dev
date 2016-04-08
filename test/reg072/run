@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+${IDRIS:-idris} $@ DoubleEquality.idr --check
+rm -f *.ibc
