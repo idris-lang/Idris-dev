@@ -26,6 +26,12 @@
     be called directly, so the recursive structure of `SnocList` can direct the
     recursion structure of `my_reverse`.
 
+## Library updates
+
+* `Control.WellFounded` module removed, and added to the Prelude as
+  `Prelude.WellFounded`.
+* Added `Data.List.Views` with views on `List` and their covering functions.
+
 ## Miscellaneous updates
 
 * The Idris man page is now installed as part of the cabal/stack build  process.
