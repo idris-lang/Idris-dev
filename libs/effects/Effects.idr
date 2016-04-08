@@ -3,6 +3,7 @@ module Effects
 import Language.Reflection
 import public Effect.Default
 import Data.Vect
+import public Data.List
 
 --- Effectful computations are described as algebraic data types that
 --- explain how an effect is interpreted in some underlying context.
@@ -89,7 +90,7 @@ public export
 data SubElem : a -> List a -> Type where
   Z : SubElem a (a :: as)
   S : SubElem a as -> SubElem a (b :: as)
-  
+
 public export
 data SubList : List a -> List a -> Type where
   SubNil : SubList [] xs
@@ -142,13 +143,6 @@ namespace Env
     Nil  : Env m Nil
     (::) : Handler eff m => a -> Env m xs -> Env m (MkEff a eff :: xs)
 
-namespace EffElem
-  public export
-  data EffElem : Effect -> Type ->
-                 List EFFECT -> Type where
-    Here : EffElem x a (MkEff a x :: xs)
-    There : EffElem x a xs -> EffElem x a (y :: xs)
-    
 total envElem : SubElem x xs -> Env m xs -> Env m [x]
 envElem Z (x :: xs) = [x]
 envElem (S k) (x :: xs) = envElem k xs
@@ -158,7 +152,7 @@ total dropEnv : Env m ys -> SubList xs ys -> Env m xs
 dropEnv [] SubNil = []
 dropEnv [] (InList idx rest) = absurd idx
 dropEnv (y::ys) SubNil = []
-dropEnv e@(y::ys) (InList idx rest) = 
+dropEnv e@(y::ys) (InList idx rest) =
   let [x] = envElem idx e
   in x :: dropEnv e rest
 
@@ -191,13 +185,13 @@ total rebuildEnv : {ys':List EFFECT} -> Env m ys' -> (prf : SubList ys xs) ->
 rebuildEnv [] SubNil env = env
 rebuildEnv (x :: xs) SubNil env = env
 rebuildEnv [] (InList w s) env = env
-rebuildEnv (x :: xs) (InList idx rest) env = replaceEnvAt x idx (rebuildEnv xs rest env) 
+rebuildEnv (x :: xs) (InList idx rest) env = replaceEnvAt x idx (rebuildEnv xs rest env)
 
 -- -------------------------------------------------- [ The Effect EDSL itself ]
 
 public export
 total updateResTy : (val : t) ->
-              (xs : List EFFECT) -> EffElem e a xs -> e t a b ->
+              (xs : List EFFECT) -> with List Elem (MkEff a e) xs -> e t a b ->
               List EFFECT
 updateResTy {b} val (MkEff a e :: xs) Here n = (MkEff (b val) e) :: xs
 updateResTy     val (x :: xs)    (There p) n = x :: updateResTy val xs p n
@@ -238,7 +232,7 @@ data EffM : (m : Type -> Type) -> (x : Type)
      Value    : (val : a) -> EffM m a (xs val) xs
      EBind    : EffM m a xs xs' ->
                 ((val : a) -> EffM m b (xs' val) xs'') -> EffM m b xs xs''
-     CallP    : (prf : EffElem e a xs) ->
+     CallP    : (prf : with List Elem (MkEff a e) xs) ->
                 (eff : e t a b) ->
                 EffM m t xs (\v => updateResTy v xs prf eff)
 
@@ -327,7 +321,7 @@ pureM = Value
 (<*>) prog v = do fn <- prog
                   arg <- v
                   return (fn arg)
-                  
+
 (<$>) : (a -> b) ->
         EffM m a xs (\v => xs) -> EffM m b xs (\v => xs)
 (<$>) f v = pure f <*> v
@@ -336,7 +330,7 @@ pureM = Value
        EffM m b xs (\v => xs) -> EffM m b xs (\v => xs)
 a *> b = do a
             b
-     
+
 new : Handler e' m => (e : EFFECT) -> resTy ->
       {auto prf : e = MkEff resTy e'} ->
       EffM m t (e :: es) (\v => e :: es) ->
@@ -346,7 +340,7 @@ new = New
 -- ---------------------------------------------------------- [ an interpreter ]
 
 private
-execEff : Env m xs -> (p : EffElem e res xs) ->
+execEff : Env m xs -> (p : with List Elem (MkEff res e) xs) ->
           (eff : e a res resk) ->
           ((v : a) -> Env m (updateResTy v xs p eff) -> m t) -> m t
 execEff (val :: env) Here eff' k
@@ -387,7 +381,7 @@ syntax MkDefaultEnv = with Env
 %no_implicit
 call : {a, b: _} -> {e : Effect} ->
        (eff : e t a b) ->
-       {auto prf : EffElem e a xs} ->
+       {auto prf : with List Elem (MkEff a e) xs} ->
       EffM m t xs (\v => updateResTy v xs prf eff)
 call e {prf} = CallP prf e
 
