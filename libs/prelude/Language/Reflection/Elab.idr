@@ -630,3 +630,137 @@ namespace Tactics
   runElab : Raw -> Elab () -> Elab (TT, TT)
   runElab goal script = Prim__RecursiveElab goal script
 
+---------------------------
+-- Quotable Implementations
+---------------------------
+
+implementation Quotable Fixity TT where
+  quotedTy = `(Fixity)
+  quote (Infixl k) = `(Infixl ~(quote k))
+  quote (Infixr k) = `(Infixr ~(quote k))
+  quote (Infix  k) = `(Infix  ~(quote k))
+  quote (Prefix k) = `(Prefix ~(quote k))
+
+implementation Quotable Fixity Raw where
+  quotedTy = `(Fixity)
+  quote (Infixl k) = `(Infixl ~(quote k))
+  quote (Infixr k) = `(Infixr ~(quote k))
+  quote (Infix  k) = `(Infix  ~(quote k))
+  quote (Prefix k) = `(Prefix ~(quote k))
+
+implementation Quotable Erasure TT where
+  quotedTy = `(Erasure)
+  quote Erased    = `(Elab.Erased)
+  quote NotErased = `(NotErased)
+
+implementation Quotable Erasure Raw where
+  quotedTy = `(Erasure)
+  quote Erased    = `(Elab.Erased)
+  quote NotErased = `(NotErased)
+
+implementation Quotable Plicity TT where
+  quotedTy = `(Plicity)
+  quote Explicit   = `(Explicit)
+  quote Implicit   = `(Implicit)
+  quote Constraint = `(Constraint)
+
+implementation Quotable Plicity Raw where
+  quotedTy = `(Plicity)
+  quote Explicit   = `(Explicit)
+  quote Implicit   = `(Implicit)
+  quote Constraint = `(Constraint)
+
+implementation Quotable FunArg TT where
+  quotedTy = `(FunArg)
+  quote (MkFunArg name type plicity erasure) =
+    `(MkFunArg ~(quote name) ~(quote type) ~(quote plicity) ~(quote erasure))
+
+implementation Quotable FunArg Raw where
+  quotedTy = `(FunArg)
+  quote (MkFunArg name type plicity erasure) =
+    `(MkFunArg ~(quote name) ~(quote type) ~(quote plicity) ~(quote erasure))
+
+implementation Quotable TyConArg TT where
+  quotedTy = `(TyConArg)
+  quote (TyConParameter arg) = `(TyConParameter ~(quote arg))
+  quote (TyConIndex     arg) = `(TyConIndex     ~(quote arg))
+
+implementation Quotable TyConArg Raw where
+  quotedTy = `(TyConArg)
+  quote (TyConParameter arg) = `(TyConParameter ~(quote arg))
+  quote (TyConIndex     arg) = `(TyConIndex     ~(quote arg))
+
+implementation Quotable TyDecl TT where
+  quotedTy = `(TyDecl)
+  quote (Declare name arguments returnType) =
+    `(Declare ~(quote name) ~(quote arguments) ~(quote returnType))
+
+implementation Quotable TyDecl Raw where
+  quotedTy = `(TyDecl)
+  quote (Declare name arguments returnType) =
+    `(Declare ~(quote name) ~(quote arguments) ~(quote returnType))
+
+implementation (Quotable a TT) => Quotable (FunClause a) TT where
+  quotedTy = `(FunClause ~(quotedTy {a}))
+  quote (MkFunClause lhs rhs) =
+    `(MkFunClause {a = ~(quotedTy {a})} ~(quote lhs) ~(quote rhs))
+  quote (MkImpossibleClause lhs) =
+    `(MkImpossibleClause {a = ~(quotedTy {a})} ~(quote lhs))
+
+implementation (Quotable a Raw) => Quotable (FunClause a) Raw where
+  quotedTy = `(FunClause ~(quotedTy {a}))
+  quote (MkFunClause lhs rhs) =
+    `(MkFunClause {a = ~(quotedTy {a})} ~(quote lhs) ~(quote rhs))
+  quote (MkImpossibleClause lhs) =
+    `(MkImpossibleClause {a = ~(quotedTy {a})} ~(quote lhs))
+
+implementation (Quotable a TT) => Quotable (FunDefn a) TT where
+  quotedTy = `(FunDefn ~(quotedTy {a}))
+  quote (DefineFun name clauses) =
+    `(DefineFun {a = ~(quotedTy {a})} ~(quote name) ~(quote clauses))
+
+implementation (Quotable a Raw) => Quotable (FunDefn a) Raw where
+  quotedTy = `(FunDefn ~(quotedTy {a}))
+  quote (DefineFun name clauses) =
+    `(DefineFun {a = ~(quotedTy {a})} ~(quote name) ~(quote clauses))
+
+implementation Quotable ConstructorDefn TT where
+  quotedTy = `(ConstructorDefn)
+  quote (Constructor name arguments returnType) =
+    `(Constructor ~(quote name) ~(quote arguments) ~(quote returnType))
+
+implementation Quotable ConstructorDefn Raw where
+  quotedTy = `(ConstructorDefn)
+  quote (Constructor name arguments returnType) =
+    `(Constructor ~(quote name) ~(quote arguments) ~(quote returnType))
+
+implementation Quotable DataDefn TT where
+  quotedTy = `(DataDefn)
+  quote (DefineDatatype name constructors) =
+    `(DefineDatatype ~(quote name) ~(quote constructors))
+
+implementation Quotable DataDefn Raw where
+  quotedTy = `(DataDefn)
+  quote (DefineDatatype name constructors) =
+    `(DefineDatatype ~(quote name) ~(quote constructors))
+
+implementation Quotable CtorArg TT where
+  quotedTy = `(CtorArg)
+  quote (CtorParameter arg) = `(CtorParameter ~(quote arg))
+  quote (CtorField     arg) = `(CtorField     ~(quote arg))
+
+implementation Quotable CtorArg Raw where
+  quotedTy = `(CtorArg)
+  quote (CtorParameter arg) = `(CtorParameter ~(quote arg))
+  quote (CtorField     arg) = `(CtorField     ~(quote arg))
+
+implementation Quotable Datatype TT where
+  quotedTy = `(Datatype)
+  quote (MkDatatype name tyConArgs tyConRes constructors) =
+    `(MkDatatype ~(quote name) ~(quote tyConArgs) ~(quote tyConRes) ~(quote constructors))
+
+implementation Quotable Datatype Raw where
+  quotedTy = `(Datatype)
+  quote (MkDatatype name tyConArgs tyConRes constructors) =
+    `(MkDatatype ~(quote name) ~(quote tyConArgs) ~(quote tyConRes) ~(quote constructors))
+
