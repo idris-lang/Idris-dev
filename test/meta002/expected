@@ -6,7 +6,7 @@ When checking right hand side of testElab3 with expected type
         DPair Ty (Tm [])
 
 Unifying ty and ARR ty t would lead to infinite value
-AgdaStyleReflection.idr:321:5:
+AgdaStyleReflection.idr:315:5:
 When checking right hand side of baz with expected type
         (Nat, Void)
 

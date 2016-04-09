@@ -40,12 +40,6 @@ data Term
   | Constant Const
   | Ty
 
-implementation Quotable Plicity Raw where
-  quotedTy = `(Plicity)
-  quote Explicit = `(Explicit)
-  quote Implicit = `(Implicit)
-  quote Constraint = `(Constraint)
-
 implementation (Quotable a Raw) => Quotable (Arg a) Raw where
   quotedTy = `(Arg ~(quotedTy {a=a}))
   quote (MkArg plicity argValue) =
