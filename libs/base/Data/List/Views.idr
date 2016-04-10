@@ -70,8 +70,7 @@ splitRecFix xs srec with (split xs)
 ||| Covering function for the `SplitRec` view
 export total
 splitRec : (xs : List a) -> SplitRec xs
-splitRec [] = SplitRecNil
-splitRec (x :: xs) = accInd splitRecFix (x :: xs) (smallerAcc (x :: x :: xs) lteRefl)
+splitRec xs = accInd splitRecFix xs (smallerAcc xs)
 
 ||| View for traversing a list backwards
 public export

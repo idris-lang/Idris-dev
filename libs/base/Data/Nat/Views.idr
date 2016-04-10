@@ -1,9 +1,5 @@
 module Data.Nat.Views
 
-ltAcc : (m : Nat) -> LT n m -> Accessible LT n
-ltAcc Z x = absurd x 
-ltAcc (S k) (LTESucc x) = Access (\val, p => ltAcc k (lteTransitive p x))
-
 public export
 data Half : Nat -> Type where
      HalfOdd : Half (S (n + n))
@@ -34,5 +30,5 @@ halfRecFix (S k) hrec with (half k)
 
 export
 halfRec : (n : Nat) -> HalfRec n
-halfRec n = accInd halfRecFix n (ltAcc (S n) (LTESucc lteRefl))
+halfRec n = accInd halfRecFix n (ltAccessible n)
 
