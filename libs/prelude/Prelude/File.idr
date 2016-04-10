@@ -17,16 +17,11 @@ import IO
 %access public export
 
 ||| A file handle
-export
 data File : Type where
   FHandle : (p : Ptr) -> File
 
 -- Usage hints for erasure analysis
 %used FHandle p
-
-||| Pointer to a C FILE structure (for passing to C routines)
-to_C : File -> Ptr
-to_C (FHandle p) = p
 
 ||| An error from a file operation
 -- This is built in idris_mkFileError() in rts/idris_stdfgn.c. Make sure
