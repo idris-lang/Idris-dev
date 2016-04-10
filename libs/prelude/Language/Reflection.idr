@@ -942,20 +942,6 @@ implementation Quotable String Raw where
   quotedTy = `(String)
   quote x = RConstant (Str x)
 
-implementation Quotable NameType TT where
-  quotedTy = `(NameType)
-  quote Bound = `(Bound)
-  quote Ref = `(Ref)
-  quote (DCon x y) = `(DCon ~(quote x) ~(quote y))
-  quote (TCon x y) = `(TCon ~(quote x) ~(quote y))
-
-implementation Quotable NameType Raw where
-  quotedTy = `(NameType)
-  quote Bound = `(Bound)
-  quote Ref = `(Ref)
-  quote (DCon x y) = `(DCon ~(quote {t=Raw} x) ~(quote {t=Raw} y))
-  quote (TCon x y) = `(TCon ~(quote {t=Raw} x) ~(quote {t=Raw} y))
-
 implementation Quotable a TT => Quotable (List a) TT where
   quotedTy = `(List ~(quotedTy {a}))
   quote [] = `(List.Nil {elem=~(quotedTy {a})})
@@ -965,6 +951,22 @@ implementation Quotable a Raw => Quotable (List a) Raw where
   quotedTy = `(List ~(quotedTy {a}))
   quote [] = `(List.Nil {elem=~(quotedTy {a})})
   quote (x :: xs) = `(List.(::) {elem=~(quotedTy {a})} ~(quote x) ~(quote xs))
+
+implementation Quotable () TT where
+  quotedTy = `(Unit)
+  quote () = `(MkUnit)
+
+implementation Quotable () Raw where
+  quotedTy = `(Unit)
+  quote () = `(MkUnit)
+
+implementation (Quotable a TT, Quotable b TT) => Quotable (a, b) TT where
+  quotedTy = `(Pair ~(quotedTy {a=a}) ~(quotedTy {a=b}))
+  quote (x, y) = `(MkPair {A=~(quotedTy {a=a})} {B=~(quotedTy {a=b})} ~(quote x) ~(quote y))
+
+implementation (Quotable a Raw, Quotable b Raw) => Quotable (a, b) Raw where
+  quotedTy = `(Pair ~(quotedTy {a=a}) ~(quotedTy {a=b}))
+  quote (x, y) = `(MkPair {A=~(quotedTy {a=a})} {B=~(quotedTy {a=b})} ~(quote x) ~(quote y))
 
 implementation Quotable SourceLocation TT where
   quotedTy = `(SourceLocation)
@@ -1021,6 +1023,16 @@ mutual
     quote (InstanceCtorN n) = `(InstanceCtorN ~(quote n))
     quote (MetaN parent meta) = `(MetaN ~(quote parent) ~(quote meta))
 
+
+implementation Quotable TTUExp TT where
+  quotedTy = `(TTUExp)
+  quote (UVar x) = `(UVar ~(quote x))
+  quote (UVal x) = `(UVal ~(quote x))
+
+implementation Quotable TTUExp Raw where
+  quotedTy = `(TTUExp)
+  quote (UVar x) = `(UVar ~(quote {t=Raw} x))
+  quote (UVal x) = `(UVal ~(quote {t=Raw} x))
 
 implementation Quotable NativeTy TT where
     quotedTy = `(NativeTy)
@@ -1096,15 +1108,19 @@ implementation Quotable Const Raw where
   quote WorldType = `(WorldType)
   quote TheWorld = `(TheWorld)
 
-implementation Quotable TTUExp TT where
-  quotedTy = `(TTUExp)
-  quote (UVar x) = `(UVar ~(quote x))
-  quote (UVal x) = `(UVal ~(quote x))
+implementation Quotable NameType TT where
+  quotedTy = `(NameType)
+  quote Bound = `(Bound)
+  quote Ref = `(Ref)
+  quote (DCon x y) = `(DCon ~(quote x) ~(quote y))
+  quote (TCon x y) = `(TCon ~(quote x) ~(quote y))
 
-implementation Quotable TTUExp Raw where
-  quotedTy = `(TTUExp)
-  quote (UVar x) = `(UVar ~(quote {t=Raw} x))
-  quote (UVal x) = `(UVal ~(quote {t=Raw} x))
+implementation Quotable NameType Raw where
+  quotedTy = `(NameType)
+  quote Bound = `(Bound)
+  quote Ref = `(Ref)
+  quote (DCon x y) = `(DCon ~(quote {t=Raw} x) ~(quote {t=Raw} y))
+  quote (TCon x y) = `(TCon ~(quote {t=Raw} x) ~(quote {t=Raw} y))
 
 implementation Quotable Universe TT where
   quotedTy = `(Universe)
@@ -1143,6 +1159,38 @@ mutual
                                              ~(assert_total (quote y)))
     quote (PVar x) = `(PVar {a=TT} ~(assert_total (quote x)))
     quote (PVTy x) = `(PVTy {a=TT} ~(assert_total (quote x)))
+
+mutual
+  quoteTTRaw : TT -> Raw
+  quoteTTRaw (P nt n tm) = `(P ~(quote nt) ~(quote n) ~(quoteTTRaw tm))
+  quoteTTRaw (V x) = `(V ~(quote x))
+  quoteTTRaw (Bind n b tm) = `(Bind ~(quote n) ~(assert_total $ quoteTTBinderRaw b) ~(quoteTTRaw tm))
+  quoteTTRaw (App f x) = `(App ~(quoteTTRaw f) ~(quoteTTRaw x))
+  quoteTTRaw (TConst c) = `(TConst ~(quote c))
+  quoteTTRaw Erased = `(Erased)
+  quoteTTRaw (TType uexp) = `(TType ~(quote uexp))
+  quoteTTRaw (UType u) = `(UType ~(quote u))
+
+  quoteTTBinderRaw : Binder TT -> Raw
+  quoteTTBinderRaw (Lam x) = `(Lam {a=TT} ~(quoteTTRaw x))
+  quoteTTBinderRaw (Pi x k) = `(Pi {a=TT} ~(quoteTTRaw x)
+                                          ~(quoteTTRaw k))
+  quoteTTBinderRaw (Let x y) = `(Let {a=TT} ~(quoteTTRaw x)
+                                            ~(quoteTTRaw y))
+  quoteTTBinderRaw (Hole x) = `(Hole {a=TT} ~(quoteTTRaw x))
+  quoteTTBinderRaw (GHole x) = `(GHole {a=TT} ~(quoteTTRaw x))
+  quoteTTBinderRaw (Guess x y) = `(Guess {a=TT} ~(quoteTTRaw x)
+                                                ~(quoteTTRaw y))
+  quoteTTBinderRaw (PVar x) = `(PVar {a=TT} ~(quoteTTRaw x))
+  quoteTTBinderRaw (PVTy x) = `(PVTy {a=TT} ~(quoteTTRaw x))
+
+implementation Quotable TT Raw where
+  quotedTy = `(TT)
+  quote = quoteTTRaw
+
+implementation Quotable (Binder TT) Raw where
+  quotedTy = `(Binder TT)
+  quote = quoteTTBinderRaw
 
 mutual
   quoteRawTT : Raw -> TT
@@ -1206,7 +1254,45 @@ implementation Quotable ErrorReportPart TT where
   quote (RawPart tm) = `(RawPart ~(quote tm))
   quote (SubReport xs) = `(SubReport ~(assert_total $ quote xs))
 
+implementation Quotable ErrorReportPart Raw where
+  quotedTy = `(ErrorReportPart)
+  quote (TextPart x) = `(TextPart ~(quote x))
+  quote (NamePart n) = `(NamePart ~(quote n))
+  quote (TermPart tm) = `(TermPart ~(quote tm))
+  quote (RawPart tm) = `(RawPart ~(quote tm))
+  quote (SubReport xs) = `(SubReport ~(assert_total $ quote xs))
+
 implementation Quotable Tactic TT where
+  quotedTy = `(Tactic)
+  quote (Try tac tac') = `(Try ~(quote tac) ~(quote tac'))
+  quote (GoalType x tac) = `(GoalType ~(quote x) ~(quote tac))
+  quote (Refine n) = `(Refine ~(quote n))
+  quote (Claim n ty) = `(Claim ~(quote n) ~(quote ty))
+  quote Unfocus = `(Unfocus)
+  quote (Seq tac tac') = `(Seq ~(quote tac) ~(quote tac'))
+  quote Trivial = `(Trivial)
+  quote (Search x) = `(Search ~(quote x))
+  quote Instance = `(Instance)
+  quote Solve = `(Solve)
+  quote Intros = `(Intros)
+  quote (Intro n) = `(Intro ~(quote n))
+  quote (ApplyTactic tm) = `(ApplyTactic ~(quote tm))
+  quote (Reflect tm) = `(Reflect ~(quote tm))
+  quote (ByReflection tm) = `(ByReflection ~(quote tm))
+  quote (Fill tm) = `(Fill ~(quote tm))
+  quote (Exact tm) = `(Exact ~(quote tm))
+  quote (Focus n) = `(Focus ~(quote n))
+  quote (Rewrite tm) = `(Rewrite ~(quote tm))
+  quote (Induction tm) = `(Induction ~(quote tm))
+  quote (Case tm) = `(Case ~(quote tm))
+  quote (LetTac n tm) = `(LetTac ~(quote n) ~(quote tm))
+  quote (LetTacTy n tm tm') = `(LetTacTy ~(quote n) ~(quote tm) ~(quote tm'))
+  quote Compute = `(Compute)
+  quote Skip = `(Skip)
+  quote (Fail xs) = `(Fail ~(quote xs))
+  quote SourceFC = `(SourceFC)
+
+implementation Quotable Tactic Raw where
   quotedTy = `(Tactic)
   quote (Try tac tac') = `(Try ~(quote tac) ~(quote tac'))
   quote (GoalType x tac) = `(GoalType ~(quote x) ~(quote tac))
