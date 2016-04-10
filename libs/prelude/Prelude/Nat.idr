@@ -141,6 +141,19 @@ lteSuccRight : LTE n m -> LTE n (S m)
 lteSuccRight LTEZero     = LTEZero
 lteSuccRight (LTESucc x) = LTESucc (lteSuccRight x)
 
+||| n + 1 < m implies n < m 
+lteSuccLeft : LTE (S n) m -> LTE n m
+lteSuccLeft (LTESucc x) = lteSuccRight x
+
+||| `LTE` is transitive
+lteTransitive : LTE n m -> LTE m p -> LTE n p
+lteTransitive LTEZero y = LTEZero
+lteTransitive (LTESucc x) (LTESucc y) = LTESucc (lteTransitive x y)
+
+lteAddRight : (n : Nat) -> LTE n (plus n m)
+lteAddRight Z = LTEZero
+lteAddRight (S k) = LTESucc (lteAddRight k)
+
 
 ||| Boolean test than one Nat is less than or equal to another
 total lte : Nat -> Nat -> Bool

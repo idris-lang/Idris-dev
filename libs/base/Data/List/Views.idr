@@ -2,29 +2,6 @@ module Data.List.Views
 
 import Data.List
 
--- First list is smaller than the second
-smaller : List a -> List a -> Type
-smaller xs ys = LT (length xs) (length ys)
-
--- Some proofs to help us out with recursion later
-ltS : LTE (S x) y -> LTE x y
-ltS (LTESucc x) = lteSuccRight x
-
-total
-ltTrans : LTE n m -> LTE m p -> LTE n p
-ltTrans LTEZero y = LTEZero
-ltTrans (LTESucc x) (LTESucc y) = LTESucc (ltTrans x y)
-
-ltZimpossible : (x : smaller xs []) -> Accessible smaller xs
-ltZimpossible LTEZero impossible
-ltZimpossible (LTESucc _) impossible
-
-total
-smallerAcc : (ys : List a) -> smaller xs ys -> Accessible smaller xs
-smallerAcc [] x = ltZimpossible x
-smallerAcc (y :: ys) (LTESucc x) 
-     = Access (\val, p => smallerAcc ys (ltTrans p x))
-
 lengthSuc : (xs : List a) -> (y : a) -> (ys : List a) ->
             length (xs ++ (y :: ys)) = S (length (xs ++ ys))
 lengthSuc [] _ _ = Refl

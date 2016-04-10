@@ -5,6 +5,10 @@
 ||| other metric of size.
 module Prelude.WellFounded
 
+import Prelude.Nat
+import Prelude.List
+import Prelude.Uninhabited
+
 %default total
 %access public export
 
@@ -80,4 +84,22 @@ wfInd : WellFounded rel => {P : a -> Type} ->
         (step : (x : a) -> ((y : a) -> rel y x -> P y) -> P x) ->
         (x : a) -> P x
 wfInd {rel} step x = accInd step x (wellFounded {rel} x)
+
+-- Some basic useful relations
+
+||| LT is a well-founded relation on numbers
+ltAccessible : (m : Nat) -> LT n m -> Accessible LT n
+ltAccessible Z x = absurd x 
+ltAccessible (S k) (LTESucc x) 
+    = Access (\val, p => ltAccessible k (lteTransitive p x))
+
+-- First list is smaller than the second
+smaller : List a -> List a -> Type
+smaller xs ys = LT (length xs) (length ys)
+
+||| `smaller` is a well-founded relation on lists
+smallerAcc : (ys : List a) -> smaller xs ys -> Accessible smaller xs
+smallerAcc [] x = absurd x
+smallerAcc (y :: ys) (LTESucc x) 
+     = Access (\val, p => smallerAcc ys (lteTransitive p x))
 

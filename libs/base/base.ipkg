@@ -18,6 +18,7 @@ modules = System,
           Data.Complex,
           Data.Erased, Data.List, Data.List.Views,
           Data.List.Quantifiers,
+          Data.Nat.Views,
           Data.So, Data.String,
 
           Control.Isomorphism,
