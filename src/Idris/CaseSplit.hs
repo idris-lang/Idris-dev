@@ -157,13 +157,25 @@ mergeAllPats ist cv t (p : ps)
         patvars _ = []
 
 mergePat :: IState -> PTerm -> PTerm -> Maybe Name -> State MergeState PTerm
+mergePat ist orig new t =
+    do -- collect user names for name map, by matching user pattern against
+       -- the generated pattern
+       case matchClause ist orig new of
+            Left _ -> return ()
+            Right ns -> mapM_ addNameMap ns
+       mergePat' ist orig new t
+  where
+    addNameMap (n, PRef fc _ n') = do ms <- get
+                                      put (ms { namemap = ((n', n) : namemap ms) })
+    addNameMap _ = return ()
+
 -- If any names are unified, make sure they stay unified. Always prefer
 -- user provided name (first pattern)
-mergePat ist (PPatvar fc n) new t
-  = mergePat ist (PRef fc [] n) new t
-mergePat ist old (PPatvar fc n) t
-  = mergePat ist old (PRef fc [] n) t
-mergePat ist orig@(PRef fc _ n) new@(PRef _ _ n') t
+mergePat' ist (PPatvar fc n) new t
+  = mergePat' ist (PRef fc [] n) new t
+mergePat' ist old (PPatvar fc n) t
+  = mergePat' ist old (PRef fc [] n) t
+mergePat' ist orig@(PRef fc _ n) new@(PRef _ _ n') t
   | isDConName n' (tt_ctxt ist) = do addUpdate n new
                                      return new
   | otherwise
@@ -173,20 +185,20 @@ mergePat ist orig@(PRef fc _ n) new@(PRef _ _ n') t
                            return (PRef fc [] x)
               Nothing -> do put (ms { namemap = ((n', n) : namemap ms) })
                             return (PRef fc [] n)
-mergePat ist (PApp _ _ args) (PApp fc f args') t
+mergePat' ist (PApp _ _ args) (PApp fc f args') t
       = do newArgs <- zipWithM mergeArg args (zip args' (argTys ist f))
            return (PApp fc f newArgs)
    where mergeArg x (y, t)
-              = do tm' <- mergePat ist (getTm x) (getTm y) t
+              = do tm' <- mergePat' ist (getTm x) (getTm y) t
                    case x of
                         (PImp _ _ _ _ _) ->
                              return (y { machine_inf = machine_inf x,
                                          getTm = tm' })
                         _ -> return (y { getTm = tm' })
-mergePat ist (PRef fc _ n) tm ty = do tm <- tidy ist tm ty
-                                      addUpdate n tm
-                                      return tm
-mergePat ist x y t = return y
+mergePat' ist (PRef fc _ n) tm ty = do tm <- tidy ist tm ty
+                                       addUpdate n tm
+                                       return tm
+mergePat' ist x y t = return y
 
 mergeUserImpl :: PTerm -> PTerm -> PTerm
 mergeUserImpl x y = x

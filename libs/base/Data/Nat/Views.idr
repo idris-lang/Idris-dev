@@ -7,7 +7,7 @@ data Half : Nat -> Type where
 
 public export
 data HalfRec : Nat -> Type where
-     HalfRecZ : HalfRec 0
+     HalfRecZ : HalfRec Z
      HalfRecEven : Lazy (HalfRec n) -> HalfRec (n + n)
      HalfRecOdd : Lazy (HalfRec n) -> HalfRec (S (n + n))
 

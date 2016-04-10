@@ -7,7 +7,7 @@ f x :: map f xs
 isElem2 x (y :: ys) with (_)
   isElem2 x (y :: ys) | with_pat = ?isElem2_rhs
 
-  isElem3 x (x :: ys) | (Yes Refl) = ?isElem3_rhs_3
+  isElem3 y (y :: ys) | (Yes Refl) = ?isElem3_rhs_3
 
               [] => ?bar_1
               (x :: ys) => ?bar_2
