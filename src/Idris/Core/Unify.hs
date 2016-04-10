@@ -529,13 +529,19 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                 (do hf <- un' env True bnames fx fy
                     let ax' = hnormalise hf ctxt env (substNames hf ax)
                     let ay' = hnormalise hf ctxt env (substNames hf ay)
-                    ha <- un' env False bnames ax' ay'
+                    -- Don't normalise if we don't have to
+                    ha <- uplus (un' env False bnames (substNames hf ax) 
+                                                      (substNames hf ay))
+                                (un' env False bnames ax' ay')
                     sc 1
                     combine env bnames hf ha)
                 (do ha <- un' env False bnames ax ay
                     let fx' = hnormalise ha ctxt env (substNames ha fx)
                     let fy' = hnormalise ha ctxt env (substNames ha fy)
-                    hf <- un' env False bnames fx' fy'
+                    -- Don't normalise if we don't have to
+                    hf <- uplus (un' env False bnames (substNames ha fx)
+                                                      (substNames ha fy))
+                                (un' env False bnames fx' fy')
                     sc 1
                     combine env bnames hf ha)
        | otherwise = unifyTmpFail appx appy
@@ -550,14 +556,6 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
             checkHeads (P (TCon _ _) x _) (P (DCon _ _ _) y _)
                 = unifyFail appx appy
             checkHeads _ _ = return []
-
-            unArgs as [] [] = return as
-            unArgs as (x : xs) (y : ys)
-                = do let x' = hnormalise as ctxt env (substNames as x)
-                     let y' = hnormalise as ctxt env (substNames as y)
-                     as' <- un' env False bnames x' y'
-                     vs <- combine env bnames as as'
-                     unArgs vs xs ys
 
             numArgs tm = let (f, args) = unApply tm in length args
 

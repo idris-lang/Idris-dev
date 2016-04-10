@@ -589,6 +589,10 @@ Extra-source-files:
                        test/interactive012/input
                        test/interactive012/run
                        test/interactive012/*.idr
+                       test/interactive013/expected
+                       test/interactive013/input
+                       test/interactive013/run
+                       test/interactive013/*.idr
 
                        test/io001/run
                        test/io001/*.idr
