@@ -349,8 +349,8 @@ replaceSplits l ups impossible
     updatePat start n tm (c:rest) = c : updatePat (not ((isAlphaNum c) || c == '_')) n tm rest
 
     addBrackets tm | ' ' `elem` tm
-                   , not (isPrefixOf "(" tm)
-                   , not (isSuffixOf ")" tm) = "(" ++ tm ++ ")"
+                   , not (isPrefixOf "(" tm && isSuffixOf ")" tm) 
+                       = "(" ++ tm ++ ")"
                    | otherwise = tm
 
 
