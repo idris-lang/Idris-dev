@@ -88,6 +88,27 @@ export
 snocList : (xs : List a) -> SnocList xs
 snocList xs = snocListHelp Empty xs
 
+||| View for recursively filtering a list by a predicate, applied to the
+||| first item in each recursively filtered list
+public export
+data Filtered : (a -> a -> Bool) -> List a -> Type where
+     FNil : Filtered p []
+     FRec : Lazy (Filtered p (filter (\y => p y x) xs)) -> 
+            Lazy (Filtered p (filter (\y => not (p y x)) xs)) ->
+            Filtered p (x :: xs)
 
+filteredLOK : (p : a -> a -> Bool) -> (x : a) -> (xs : List a) -> smaller (filter (\y => p y x) xs) (x :: xs)
+filteredLOK p x xs = LTESucc (filterSmaller xs)
 
+filteredROK : (p : a -> a -> Bool) -> (x : a) -> (xs : List a) -> smaller (filter (\y => not (p y x)) xs) (x :: xs)
+filteredROK p x xs = LTESucc (filterSmaller xs)
+
+||| Covering function for the `Filtered` view
+export
+filtered : (p : a -> a -> Bool) -> (xs : List a) -> Filtered p xs
+filtered p inp with (smallerAcc inp)
+  filtered p [] | with_pat = FNil
+  filtered p (x :: xs) | (Access xsrec) 
+      =  FRec (Delay (filtered p (filter (\y => p y x) xs) | xsrec _ (filteredLOK p x xs)))
+              (Delay (filtered p (filter (\y => not (p y x)) xs) | xsrec _ (filteredROK p x xs)))
 

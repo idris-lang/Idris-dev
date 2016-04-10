@@ -536,6 +536,14 @@ filter p (x::xs) =
   else
     filter p xs
 
+||| A filtered list is no longer than its input
+filterSmaller : (xs : _) -> LTE (length (filter p xs)) (length xs)
+filterSmaller [] = LTEZero
+filterSmaller {p} (x :: xs) with (p x)
+  filterSmaller {p = p} (x :: xs) | False = lteSuccRight (filterSmaller xs)
+  filterSmaller {p = p} (x :: xs) | True = LTESucc (filterSmaller xs)
+
+
 ||| The nubBy function behaves just like nub, except it uses a user-supplied equality predicate instead of the overloaded == function.
 nubBy : (a -> a -> Bool) -> List a -> List a
 nubBy = nubBy' []
