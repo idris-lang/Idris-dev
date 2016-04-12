@@ -27,7 +27,8 @@ public export
 data Split : List a -> Type where
      SplitNil : Split []
      SplitOne : Split [x]
-     SplitPair : Split (x :: xs ++ y :: ys)
+     SplitPair : {x, y : a} -> {xs, ys : List a} -> -- Explicit, don't erae
+                 Split (x :: xs ++ y :: ys)
 
 splitHelp : (head : a) ->
             (xs : List a) -> 
@@ -53,8 +54,9 @@ split (x :: xs) = splitHelp x xs xs
 public export
 data SplitRec : List a -> Type where
      SplitRecNil : SplitRec []
-     SplitRecOne : SplitRec [x]
-     SplitRecPair : Lazy (SplitRec xs) -> Lazy (SplitRec ys) -> SplitRec (xs ++ ys)
+     SplitRecOne : {x : a} -> SplitRec [x]
+     SplitRecPair : {xs, ys : List a} -> -- Explicit, don't erase
+                    Lazy (SplitRec xs) -> Lazy (SplitRec ys) -> SplitRec (xs ++ ys)
 
 total
 splitRecFix : (xs : List a) -> ((ys : List a) -> smaller ys xs -> SplitRec ys) -> 
@@ -76,7 +78,8 @@ splitRec xs = accInd splitRecFix xs (smallerAcc xs)
 public export
 data SnocList : List a -> Type where
      Empty : SnocList []
-     Snoc : SnocList xs -> SnocList (xs ++ [x])
+     Snoc : {x : a} -> {xs : List a} -> -- Explicit, so don't erase
+            SnocList xs -> SnocList (xs ++ [x])
 
 snocListHelp : SnocList xs -> (ys : List a) -> SnocList (xs ++ ys)
 snocListHelp {xs} x [] = rewrite appendNilRightNeutral xs in x

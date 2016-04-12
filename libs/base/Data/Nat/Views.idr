@@ -2,14 +2,14 @@ module Data.Nat.Views
 
 public export
 data Half : Nat -> Type where
-     HalfOdd : Half (S (n + n))
-     HalfEven : Half (n + n)
+     HalfOdd : {n : Nat} -> Half (S (n + n))
+     HalfEven : {n : Nat} -> Half (n + n)
 
 public export
 data HalfRec : Nat -> Type where
      HalfRecZ : HalfRec Z
-     HalfRecEven : Lazy (HalfRec n) -> HalfRec (n + n)
-     HalfRecOdd : Lazy (HalfRec n) -> HalfRec (S (n + n))
+     HalfRecEven : {n : Nat} -> Lazy (HalfRec n) -> HalfRec (n + n)
+     HalfRecOdd : {n : Nat} -> Lazy (HalfRec n) -> HalfRec (S (n + n))
 
 export
 half : (n : Nat) -> Half n

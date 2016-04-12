@@ -22,8 +22,8 @@ data Accessible : (rel : a -> a -> Type) -> (x : a) -> Type where
   ||| Accessibility
   |||
   ||| @ x the accessible element
-  ||| @ acc' a demonstration that all smaller elements are also accessible
-  Access : (acc' : (y : a) -> rel y x -> Accessible rel y) ->
+  ||| @ rec a demonstration that all smaller elements are also accessible
+  Access : (rec : (y : a) -> rel y x -> Accessible rel y) ->
            Accessible rel x
 
 ||| A relation `rel` on `a` is well-founded if all elements of `a` are
