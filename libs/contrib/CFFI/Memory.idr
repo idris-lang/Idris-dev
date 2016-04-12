@@ -19,6 +19,10 @@ implicit toPtr : CPtr -> Ptr
 toPtr (CPt p 0) = p
 toPtr (CPt p o) = prim__ptrOffset p o
 
+||| Import of calloc from the C standard library.
+calloc : Int -> Int -> IO Ptr
+calloc nmemb size = foreign FFI_C "calloc" (Int -> Int -> IO Ptr) nmemb size
+
 ||| Import of malloc from the C standard library.
 malloc : Int -> IO Ptr
 malloc size = foreign FFI_C "malloc" (Int -> IO Ptr) size
@@ -29,7 +33,7 @@ mfree ptr = foreign FFI_C "free" (Ptr -> IO ()) ptr
 
 ||| Allocate enough memory to hold an instance of a C typr
 alloc : Composite -> IO CPtr
-alloc t = return $ CPt !(malloc (sizeOf t)) 0
+alloc t = return $ CPt !(calloc 1 (sizeOf t)) 0
 
 ||| Free memory allocated with alloc
 free : CPtr -> IO ()
