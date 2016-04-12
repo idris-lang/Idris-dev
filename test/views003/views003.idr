@@ -8,7 +8,7 @@ data Palindrome : List a -> Type where
 
 total
 palindrome : DecEq a => (xs : List a) -> Maybe (Palindrome xs)
-palindrome xs with (vlist xs)
+palindrome xs with (vList xs)
   palindrome [] | VNil = Just PNil
   palindrome [x] | VOne = Just POne
   palindrome (x :: (ys ++ [y])) | (VCons z) with (decEq x y)

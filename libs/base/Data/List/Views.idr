@@ -210,9 +210,9 @@ toVList [] (Snoc {xs} {x} _) prf
 ||| Covering function for `VList`
 ||| Constructs the view in linear time.
 export
-vlist : (xs : List a) -> VList xs
-vlist xs with (splitBalanced xs)
-  vlist (ys ++ zs) | (MkSplitBal prf) 
+vList : (xs : List a) -> VList xs
+vList xs with (splitBalanced xs)
+  vList (ys ++ zs) | (MkSplitBal prf) 
         = toVList ys (snocList zs) prf
 
 
