@@ -827,6 +827,9 @@ Extra-source-files:
                        test/views002/run
                        test/views002/*.idr
                        test/views002/expected
+                       test/views003/run
+                       test/views003/*.idr
+                       test/views003/expected
 
                        test/docs001/run
                        test/docs001/input
