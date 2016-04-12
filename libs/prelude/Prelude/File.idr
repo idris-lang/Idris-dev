@@ -17,7 +17,6 @@ import IO
 %access public export
 
 ||| A file handle
-export
 data File : Type where
   FHandle : (p : Ptr) -> File
 
