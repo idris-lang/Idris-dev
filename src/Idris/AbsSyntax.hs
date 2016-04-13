@@ -1746,10 +1746,27 @@ addImpl' inpat env infns imp_meths ist ptm
       = PWithApp fc (ai inpat qq env ds f) (ai inpat qq env ds a)
     ai inpat qq env ds (PCase fc c os)
       = let c' = ai inpat qq env ds c in
-        -- leave os alone, because they get lifted into a new pattern match
-        -- definition which is passed through addImpl agai inpatn with more scope
-        -- information
-            PCase fc c' os
+        -- leave lhs alone, because they get lifted into a new pattern match
+        -- definition which is passed through addImpl again
+            PCase fc c' (map aiCase os)
+     where
+       aiCase (lhs, rhs) 
+            = (lhs, ai inpat qq (env ++ patnames lhs) ds rhs)
+
+       -- Anything beginning with a lower case letter, not applied,
+       -- and no namespace is a pattern variable
+       patnames (PApp _ (PRef _ _ f) [])
+           | implicitable f = [(f, Nothing)]
+       patnames (PRef _ _ f)
+           | implicitable f = [(f, Nothing)]
+       patnames (PApp _ (PRef _ _ _) args)
+           = concatMap patnames (map getTm args)
+       patnames (PPair _ _ _ l r) = patnames l ++ patnames r
+       patnames (PDPair _ _ _ l t r) = patnames l ++ patnames t ++ patnames r
+       patnames (PAs _ _ t) = patnames t
+       patnames (PAlternative _ _ ts) = concatMap patnames ts
+       patnames _ = []
+
 
     ai inpat qq env ds (PIfThenElse fc c t f) = PIfThenElse fc (ai inpat qq env ds c)
                                                          (ai inpat qq env ds t)
