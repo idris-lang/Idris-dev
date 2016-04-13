@@ -35,6 +35,8 @@ matrix:
       compiler: ": #GHC 7.10.2"
     - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="test_c"
       compiler: ": #GHC 7.10.2"
+    - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="user_doc_test"
+      compiler: ": #GHC 7.10.2"
 
 cache:
   directories:
@@ -48,6 +50,7 @@ before_cache:
 before_install:
   - unset CC
   - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
+  - export PATH=$HOME/.local/bin:$PATH
   - env
 
 install:
@@ -88,6 +91,10 @@ install:
       mkdir $HOME/.cabsnap;
       cp -a $HOME/.ghc $HOME/.cabsnap/ghc;
       cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
+    fi
+  - if [[ "$TESTS" == "user_doc_test" ]];
+    then
+      pip install --user Sphinx sphinx-rtd-theme;
     fi
 
 before_script:
