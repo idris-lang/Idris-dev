@@ -394,11 +394,17 @@ process reexp phase archive fn = do
                 processAccess reexp phase archive
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
-timestampOlder src ibc = do srct <- runIO $ getModificationTime src
-                            ibct <- runIO $ getModificationTime ibc
-                            if (srct > ibct)
-                               then ifail $ "Needs reloading " ++ show (srct, ibct)
-                               else return ()
+timestampOlder src ibc = do
+  srct <- runIO $ getModificationTime src
+  ibct <- runIO $ getModificationTime ibc
+  if (srct > ibct)
+    then ifail $ unlines [ "Module needs reloading:"
+                         , unwords ["\tSRC :", show src]
+                         , unwords ["\tModified at:", show srct]
+                         , unwords ["\tIBC :", show src]
+                         , unwords ["\tModified at:", show srct]
+                         ]
+    else return ()
 
 processPostulates :: Archive -> Idris ()
 processPostulates ar = do
