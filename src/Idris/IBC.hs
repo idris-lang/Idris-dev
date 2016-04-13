@@ -401,8 +401,8 @@ timestampOlder src ibc = do
     then ifail $ unlines [ "Module needs reloading:"
                          , unwords ["\tSRC :", show src]
                          , unwords ["\tModified at:", show srct]
-                         , unwords ["\tIBC :", show src]
-                         , unwords ["\tModified at:", show srct]
+                         , unwords ["\tIBC :", show ibc]
+                         , unwords ["\tModified at:", show ibct]
                          ]
     else return ()
 
