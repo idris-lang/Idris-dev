@@ -246,6 +246,12 @@ irTerm vs env tm@(App _ f a) = do
         | r == txt "replace"
         -> irTerm vs env arg
 
+    -- 'void' doesn't have any pattern clauses and only gets called on
+    -- erased things in higher order contexts (also a TMP HACK...)
+    (P _ (UN r) _, _)
+        | r == txt "void"
+        -> return LNothing
+
     -- Laziness, the old way
     (P _ (UN l) _, [_, arg])
         | l == txt "lazy"
