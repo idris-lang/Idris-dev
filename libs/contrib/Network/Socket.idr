@@ -8,9 +8,11 @@ module Network.Socket
 %include C "sys/socket.h"
 %include C "netdb.h"
 
-public export ByteLength : Type
+public export
+ByteLength : Type
 ByteLength = Int
 
+export
 interface ToCode a where
   toCode : a -> Int
 
@@ -18,6 +20,7 @@ interface ToCode a where
 |||
 ||| The ones that people might actually use. We're not going to need US
 ||| Government proprietary ones.
+public export
 data SocketFamily =
   ||| Unspecified
   AF_UNSPEC |
@@ -26,11 +29,13 @@ data SocketFamily =
   |||  IP / UDP etc. IPv6
   AF_INET6
 
+export
 implementation Show SocketFamily where
   show AF_UNSPEC = "AF_UNSPEC"
   show AF_INET   = "AF_INET"
   show AF_INET6  = "AF_INET6"
 
+export
 implementation ToCode SocketFamily where
   toCode AF_UNSPEC = 0
   toCode AF_INET   = 2
@@ -40,6 +45,7 @@ getSocketFamily : Int -> Maybe SocketFamily
 getSocketFamily i = Prelude.List.lookup i [(0, AF_UNSPEC), (2, AF_INET), (10, AF_INET6)]
 
 ||| Socket Types.
+public export
 data SocketType =
   ||| Not a socket, used in certain operations
   NotASocket |
@@ -50,62 +56,74 @@ data SocketType =
   ||| Raw sockets
   RawSocket
 
+export
 implementation Show SocketType where
   show NotASocket = "Not a socket"
   show Stream     = "Stream"
   show Datagram   = "Datagram"
   show RawSocket  = "Raw"
 
+export
 implementation ToCode SocketType where
   toCode NotASocket = 0
   toCode Stream     = 1
   toCode Datagram   = 2
   toCode RawSocket  = 3
 
-
 data RecvStructPtr = RSPtr Ptr
 data RecvfromStructPtr = RFPtr Ptr
 
-export data BufPtr = BPtr Ptr
-export data SockaddrPtr = SAPtr Ptr
+export
+data BufPtr = BPtr Ptr
+export
+data SockaddrPtr = SAPtr Ptr
 
 ||| Protocol Number.
 |||
 ||| Generally good enough to just set it to 0.
+public export
 ProtocolNumber : Type
 ProtocolNumber = Int
 
 ||| SocketError: Error thrown by a socket operation
+public export
 SocketError : Type
 SocketError = Int
 
 ||| SocketDescriptor: Native C Socket Descriptor
+public export
 SocketDescriptor : Type
 SocketDescriptor = Int
 
+public export
 data SocketAddress = IPv4Addr Int Int Int Int
                    | IPv6Addr -- Not implemented (yet)
                    | Hostname String
                    | InvalidAddress -- Used when there's a parse error
 
+export
 implementation Show SocketAddress where
   show (IPv4Addr i1 i2 i3 i4) = concat $ Prelude.List.intersperse "." (map show [i1, i2, i3, i4])
   show IPv6Addr = "NOT IMPLEMENTED YET"
   show (Hostname host) = host
   show InvalidAddress = "Invalid"
 
+public export
 Port : Type
 Port = Int
 
 ||| Backlog used within listen() call -- number of incoming calls
+public export
 BACKLOG : Int
 BACKLOG = 20
 
 -- FIXME: This *must* be pulled in from C
-EAGAIN : Int 
+public export
+EAGAIN : Int
 EAGAIN = 11
 
 -- TODO: Expand to non-string payloads
+export
 record UDPRecvData where
   constructor MkUDPRecvData
   remote_addr : SocketAddress
@@ -113,6 +131,7 @@ record UDPRecvData where
   recv_data : String
   data_len : Int
 
+export
 record UDPAddrInfo where
   constructor MkUDPAddrInfo
   remote_addr : SocketAddress
@@ -135,6 +154,7 @@ sock_alloc : ByteLength -> IO BufPtr
 sock_alloc bl = map BPtr $ foreign FFI_C "idrnet_malloc" (Int -> IO Ptr) bl
 
 ||| The metadata about a socket
+export
 record Socket where
   constructor MkSocket
   descriptor : SocketDescriptor
@@ -144,6 +164,7 @@ record Socket where
 
 ||| Creates a UNIX socket with the given family, socket type and protocol
 ||| number. Returns either a socket or an error.
+export
 socket : SocketFamily -> SocketType -> ProtocolNumber -> IO (Either SocketError Socket)
 socket sf st pn = do
   socket_res <- foreign FFI_C "socket" (Int -> Int -> Int -> IO Int) (toCode sf) (toCode st) pn
@@ -153,6 +174,7 @@ socket sf st pn = do
     return $ Right (MkSocket socket_res sf st pn)
 
 ||| Close a socket
+export
 close : Socket -> IO ()
 close sock = foreign FFI_C "close" (Int -> IO ()) (descriptor sock)
 
@@ -163,11 +185,12 @@ saString Nothing = ""
 
 ||| Binds a socket to the given socket address and port.
 ||| Returns 0 on success, an error code otherwise.
+export
 bind : Socket -> (Maybe SocketAddress) -> Port -> IO Int
 bind sock addr port = do
-  bind_res <- foreign FFI_C "idrnet_bind" 
+  bind_res <- foreign FFI_C "idrnet_bind"
                   (Int -> Int -> Int -> String -> Int -> IO Int)
-                  (descriptor sock) (toCode $ family sock) 
+                  (descriptor sock) (toCode $ family sock)
                   (toCode $ socketType sock) (saString addr) port
   if bind_res == (-1) then -- error
     getErrno
@@ -175,6 +198,7 @@ bind sock addr port = do
 
 ||| Connects to a given address and port.
 ||| Returns 0 on success, and an error number on error.
+export
 connect : Socket -> SocketAddress -> Port -> IO Int
 connect sock addr port = do
   conn_res <- foreign FFI_C "idrnet_connect"
@@ -185,6 +209,7 @@ connect sock addr port = do
   else return 0
 
 ||| Listens on a bound socket.
+export
 listen : Socket -> IO Int
 listen sock = do
   listen_res <- foreign FFI_C "listen" (Int -> Int -> IO Int)
@@ -205,7 +230,6 @@ parseIPv4 str = case splitted of
         splitted : List Int
         splitted = map toInt (Prelude.Strings.split (\c => c == '.') str)
 
-
 ||| Retrieves a socket address from a sockaddr pointer
 getSockAddr : SockaddrPtr -> IO SocketAddress
 getSockAddr (SAPtr ptr) = do
@@ -219,6 +243,7 @@ getSockAddr (SAPtr ptr) = do
     Just AF_INET6 => return IPv6Addr
     Just AF_UNSPEC => return InvalidAddress)
 
+export
 accept : Socket -> IO (Either SocketError (Socket, SocketAddress))
 accept sock = do
   -- We need a pointer to a sockaddr structure. This is then passed into
@@ -233,6 +258,7 @@ accept sock = do
     sockaddr_free (SAPtr sockaddr_ptr)
     return $ Right ((MkSocket accept_res fam ty p_num), sockaddr)
 
+export
 send : Socket -> String -> IO (Either SocketError ByteLength)
 send sock dat = do
   send_res <- foreign FFI_C "idrnet_send" (Int -> String -> IO Int) (descriptor sock) dat
@@ -240,7 +266,6 @@ send sock dat = do
     map Left getErrno
   else
     return $ Right send_res
-
 
 freeRecvStruct : RecvStructPtr -> IO ()
 freeRecvStruct (RSPtr p) = foreign FFI_C "idrnet_free_recv_struct" (Ptr -> IO ()) p
@@ -258,7 +283,7 @@ recv sock len = do
     errno <- getErrno
     freeRecvStruct (RSPtr recv_struct_ptr)
     return $ Left errno
-  else 
+  else
     if recv_res == 0 then do
        freeRecvStruct (RSPtr recv_struct_ptr)
        return $ Left 0
@@ -266,7 +291,6 @@ recv sock len = do
        payload <- foreign FFI_C "idrnet_get_recv_payload" (Ptr -> IO String) recv_struct_ptr
        freeRecvStruct (RSPtr recv_struct_ptr)
        return $ Right (payload, recv_res)
-
 
 ||| Sends the data in a given memory location
 sendBuf : Socket -> BufPtr -> ByteLength -> IO (Either SocketError ByteLength)
@@ -287,35 +311,32 @@ recvBuf sock (BPtr ptr) len = do
 
 sendTo : Socket -> SocketAddress -> Port -> String -> IO (Either SocketError ByteLength)
 sendTo sock addr p dat = do
-  sendto_res <- foreign FFI_C "idrnet_sendto" 
-                   (Int -> String -> String -> Int -> Int -> IO Int) 
+  sendto_res <- foreign FFI_C "idrnet_sendto"
+                   (Int -> String -> String -> Int -> Int -> IO Int)
                    (descriptor sock) dat (show addr) p (toCode $ family sock)
   if sendto_res == (-1) then
     map Left getErrno
   else
     return $ Right sendto_res
 
-
 sendToBuf : Socket -> SocketAddress -> Port -> BufPtr -> ByteLength -> IO (Either SocketError ByteLength)
 sendToBuf sock addr p (BPtr dat) len = do
-  sendto_res <- foreign FFI_C "idrnet_sendto_buf" 
-                   (Int -> Ptr -> Int -> String -> Int -> Int -> IO Int) 
+  sendto_res <- foreign FFI_C "idrnet_sendto_buf"
+                   (Int -> Ptr -> Int -> String -> Int -> Int -> IO Int)
                    (descriptor sock) dat len (show addr) p (toCode $ family sock)
   if sendto_res == (-1) then
     map Left getErrno
   else
     return $ Right sendto_res
 
-
 foreignGetRecvfromPayload : RecvfromStructPtr -> IO String
-foreignGetRecvfromPayload (RFPtr p) 
+foreignGetRecvfromPayload (RFPtr p)
    = foreign FFI_C "idrnet_get_recvfrom_payload" (Ptr -> IO String) p
 
 foreignGetRecvfromAddr : RecvfromStructPtr -> IO SocketAddress
 foreignGetRecvfromAddr (RFPtr p) = do
   sockaddr_ptr <- map SAPtr $ foreign FFI_C "idrnet_get_recvfrom_sockaddr" (Ptr -> IO Ptr) p
   getSockAddr sockaddr_ptr
-
 
 foreignGetRecvfromPort : RecvfromStructPtr -> IO Port
 foreignGetRecvfromPort (RFPtr p) = do
@@ -325,7 +346,7 @@ foreignGetRecvfromPort (RFPtr p) = do
 
 recvFrom : Socket -> ByteLength -> IO (Either SocketError (UDPAddrInfo, String, ByteLength))
 recvFrom sock bl = do
-  recv_ptr <- foreign FFI_C "idrnet_recvfrom" (Int -> Int -> IO Ptr) 
+  recv_ptr <- foreign FFI_C "idrnet_recvfrom" (Int -> Int -> IO Ptr)
                 (descriptor sock) bl
   let recv_ptr' = RFPtr recv_ptr
   if !(nullPtr recv_ptr) then
@@ -341,7 +362,6 @@ recvFrom sock bl = do
       addr <- foreignGetRecvfromAddr recv_ptr'
       freeRecvfromStruct recv_ptr'
       return $ Right (MkUDPAddrInfo addr port, payload, result)
-
 
 recvFromBuf : Socket -> BufPtr -> ByteLength -> IO (Either SocketError (UDPAddrInfo, ByteLength))
 recvFromBuf sock (BPtr ptr) bl = do
@@ -359,5 +379,3 @@ recvFromBuf sock (BPtr ptr) bl = do
       addr <- foreignGetRecvfromAddr recv_ptr'
       freeRecvfromStruct recv_ptr'
       return $ Right (MkUDPAddrInfo addr port, result + 1)
-
-
