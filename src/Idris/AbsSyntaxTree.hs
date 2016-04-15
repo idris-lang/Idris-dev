@@ -760,23 +760,23 @@ deriving instance NFData PDecl'
 !-}
 
 -- | The set of source directives
-data Directive = DLib Codegen String |
-                 DLink Codegen String |
-                 DFlag Codegen String |
-                 DInclude Codegen String |
-                 DHide Name |
-                 DFreeze Name |
-                 DAccess Accessibility |
-                 DDefault Bool |
-                 DLogging Integer |
-                 DDynamicLibs [String] |
-                 DNameHint Name FC [(Name, FC)] |
-                 DErrorHandlers Name FC Name FC [(Name, FC)] |
-                 DLanguage LanguageExt |
-                 DDeprecate Name String |
-                 DFragile Name String |
-                 DAutoImplicits Bool |
-                 DUsed FC Name Name
+data Directive = DLib Codegen String
+               | DLink Codegen String
+               | DFlag Codegen String
+               | DInclude Codegen String
+               | DHide Name
+               | DFreeze Name
+               | DAccess Accessibility
+               | DDefault Bool
+               | DLogging Integer
+               | DDynamicLibs [String]
+               | DNameHint Name FC [(Name, FC)]
+               | DErrorHandlers Name FC Name FC [(Name, FC)]
+               | DLanguage LanguageExt
+               | DDeprecate Name String
+               | DFragile Name String
+               | DAutoImplicits Bool
+               | DUsed FC Name Name
 
 -- | A set of instructions for things that need to happen in IState
 -- after a term elaboration when there's been reflected elaboration.
