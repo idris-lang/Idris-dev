@@ -1640,6 +1640,9 @@ pruneByType env (P _ n _) goalty ist as
     -- Binders are a plausible match, so keep them
     matching (Bind n _ sc) _ = True
     matching _ (Bind n _ sc) = True
+    -- If we hit a function name, it's a plausible match
+    matching (App _ (P _ f _) _) _ | not (isConName f ctxt) = True
+    matching _ (App _ (P _ f _) _) | not (isConName f ctxt) = True
     -- Otherwise, match the rest of the structure
     matching (App _ f a) (App _ f' a') = matching f f' && matching a a'
     matching (TType _) (TType _) = True
