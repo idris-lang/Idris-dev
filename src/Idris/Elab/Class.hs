@@ -269,23 +269,27 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     rhsArgs (CA : xs) ns = pconst (PResolveTC fc) : rhsArgs xs ns
     rhsArgs [] _ = []
 
+    -- Add the top level constraint. Put it first - elaboration will resolve
+    -- the order of the implicits if there are dependencies.
+    -- Also ensure the dictionary is used for lookup of any methods that
+    -- are used in the type
     insertConstraint :: PTerm -> [Name] -> PTerm -> PTerm
-    insertConstraint c all (PPi p@(Imp _ _ _ _ _) n fc ty sc)
-                              = PPi p n fc ty (insertConstraint c all sc)
-    insertConstraint c all sc = let dictN = sMN 0 "__class"
-                                in  PPi (constraint { pstatic = Static })
-                                        dictN NoFC c
-                                        (constrainMeths (map basename all)
-                                                        dictN sc)
-      where
-        -- After we insert the constraint into the lookup, we need to
-        -- ensure that the same dictionary is used to resolve lookups
-        -- to the other methods in the class
+    insertConstraint c all sc 
+          = let dictN = sMN 0 "__class" in  
+                PPi (constraint { pstatic = Static })
+                    dictN NoFC c
+                    (constrainMeths (map basename all)
+                                    dictN sc)
+     where 
+       -- After we insert the constraint into the lookup, we need to
+       -- ensure that the same dictionary is used to resolve lookups
+       -- to the other methods in the class
        constrainMeths :: [Name] -> Name -> PTerm -> PTerm
        constrainMeths allM dictN tm = transform (addC allM dictN) tm
+ 
        addC allM dictN m@(PRef fc hls n)
-         | n `elem` allM = PApp NoFC m [pconst (PRef NoFC hls dictN)]
-         | otherwise = m
+          | n `elem` allM = PApp NoFC m [pconst (PRef NoFC hls dictN)]
+          | otherwise = m
        addC _ _ tm = tm
 
     -- make arguments explicit and don't bind class parameters
