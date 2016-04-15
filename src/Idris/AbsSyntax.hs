@@ -1691,7 +1691,7 @@ addImpl = addImpl' False [] []
 
 addImpl' :: Bool -> [Name] -> [Name] -> [Name] -> IState -> PTerm -> PTerm
 addImpl' inpat env infns imp_meths ist ptm
-   = mkUniqueNames env [] (ai inpat False (zip env (repeat Nothing)) [] ptm)
+   = ai inpat False (zip env (repeat Nothing)) [] (mkUniqueNames env [] ptm)
   where
     topname = case ptm of
                    PRef _ _ n -> n
@@ -2272,7 +2272,8 @@ shadow n n' t = sm 0 t where
     sm 0 (PTyped x y) = PTyped (sm 0 x) (sm 0 y)
     sm 0 (PPair f hls p x y) = PPair f hls p (sm 0 x) (sm 0 y)
     sm 0 (PDPair f hls p x t y) = PDPair f hls p (sm 0 x) (sm 0 t) (sm 0 y)
-    sm 0 (PAlternative ms a as) = PAlternative ms a (map (sm 0) as)
+    sm 0 (PAlternative ms a as) 
+          = PAlternative (map shadowAlt ms) a (map (sm 0) as)
     sm 0 (PTactics ts) = PTactics (map (fmap (sm 0)) ts)
     sm 0 (PProof ts) = PProof (map (fmap (sm 0)) ts)
     sm 0 (PHidden x) = PHidden (sm 0 x)
@@ -2282,6 +2283,10 @@ shadow n n' t = sm 0 t where
     sm ql (PQuasiquote tm ty) = PQuasiquote (sm (ql + 1) tm) (fmap (sm ql) ty)
     sm ql (PUnquote tm) = PUnquote (sm (ql - 1) tm)
     sm ql x = descend (sm ql) x
+
+    shadowAlt p@(x, oldn) = (update x, update oldn)
+    update oldn | n == oldn = n'
+                | otherwise = oldn
 
 -- | Rename any binders which are repeated (so that we don't have to mess
 -- about with shadowing anywhere else).
@@ -2384,7 +2389,7 @@ mkUniqueNames env shadows tm
   mkUniq 0 nmap (PAlternative ns b as)
          -- store the nmap and defer the rest until we've pruned the set
          -- during elaboration
-         = return $ PAlternative (M.toList nmap ++ ns) b as
+         = return $ PAlternative (ns ++ M.toList nmap) b as
   mkUniq 0 nmap (PHidden t) = liftM PHidden (mkUniq 0 nmap t)
   mkUniq 0 nmap (PUnifyLog t) = liftM PUnifyLog (mkUniq 0 nmap t)
   mkUniq 0 nmap (PDisamb n t) = liftM (PDisamb n) (mkUniq 0 nmap t)
