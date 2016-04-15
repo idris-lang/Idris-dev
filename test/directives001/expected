@@ -1,0 +1,14 @@
+directives001.idr:14:7:Use of deprecated name directives001.Foo
+To be replaced with `Bar`.
+directives001.idr:14:7:Use of deprecated name directives001.Foo
+To be replaced with `Bar`.
+directives001.idr:15:7:Use of deprecated name directives001.Foo
+To be replaced with `Bar`.
+directives001.idr:15:7:Use of deprecated name directives001.Foo
+To be replaced with `Bar`.
+directives001.idr:26:8:
+Use of a fragile construct directives001.mkBar
+How `Bar`s are to be created is still being discussed, `mkBar` is subject to change.
+directives001.idr:26:8:
+Use of a fragile construct directives001.mkBar
+How `Bar`s are to be created is still being discussed, `mkBar` is subject to change.

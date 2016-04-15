@@ -381,12 +381,25 @@ getNameHints i n =
              _ -> []
 
 addDeprecated :: Name -> String -> Idris ()
-addDeprecated n reason = do i <- getIState
-                            putIState $ i { idris_deprecated = addDef n reason (idris_deprecated i) }
+addDeprecated n reason = do
+  i <- getIState
+  putIState $ i { idris_deprecated = addDef n reason (idris_deprecated i) }
 
 getDeprecated :: Name -> Idris (Maybe String)
-getDeprecated n = do i <- getIState
-                     return $ lookupCtxtExact n (idris_deprecated i)
+getDeprecated n = do
+  i <- getIState
+  return $ lookupCtxtExact n (idris_deprecated i)
+
+
+addFragile :: Name -> String -> Idris ()
+addFragile n reason = do
+  i <- getIState
+  putIState $ i { idris_fragile = addDef n reason (idris_fragile i) }
+
+getFragile :: Name -> Idris (Maybe String)
+getFragile n = do
+  i <- getIState
+  return $ lookupCtxtExact n (idris_fragile i)
 
 push_estack :: Name -> Bool -> Idris ()
 push_estack n inst
@@ -658,7 +671,7 @@ addDeferred' nt ns
   = do mapM_ (\(n, (i, _, t, _, _, _)) -> updateContext (addTyDecl n nt (tidyNames S.empty t))) ns
        mapM_ (\(n, _) -> when (not (n `elem` primDefs)) $ addIBC (IBCMetavar n)) ns
        i <- getIState
-       putIState $ i { idris_metavars = map (\(n, (i, top, _, ns, isTopLevel, isDefinable)) -> 
+       putIState $ i { idris_metavars = map (\(n, (i, top, _, ns, isTopLevel, isDefinable)) ->
                                                   (n, (top, i, ns, isTopLevel, isDefinable))) ns ++
                                             idris_metavars i }
   where
@@ -673,7 +686,7 @@ addDeferred' nt ns
         tidyNames used b = b
 
 solveDeferred :: FC -> Name -> Idris ()
-solveDeferred fc n 
+solveDeferred fc n
     = do i <- getIState
          case lookup n (idris_metavars i) of
               Just (_, _, _, _, False) ->
@@ -1701,7 +1714,7 @@ addImpl' inpat env infns imp_meths ist ptm
     ai :: Bool -> Bool -> [(Name, Maybe PTerm)] -> [[T.Text]] -> PTerm -> PTerm
     ai inpat qq env ds (PRef fc fcs f)
         | f `elem` infns = PInferRef fc fcs f
-        | not (f `elem` map fst env) = handleErr $ aiFn topname inpat inpat qq imp_meths ist fc f fc ds [] 
+        | not (f `elem` map fst env) = handleErr $ aiFn topname inpat inpat qq imp_meths ist fc f fc ds []
     ai inpat qq env ds (PHidden (PRef fc hl f))
         | not (f `elem` map fst env) = PHidden (handleErr $ aiFn topname inpat False qq imp_meths ist fc f fc ds [])
     ai inpat qq env ds (PRewrite fc by l r g)
@@ -1742,7 +1755,7 @@ addImpl' inpat env infns imp_meths ist ptm
       = let f' = ai inpat qq env ds f
             as' = map (fmap (ai inpat qq env ds)) as in
             mkPApp fc 1 f' as'
-    ai inpat qq env ds (PWithApp fc f a) 
+    ai inpat qq env ds (PWithApp fc f a)
       = PWithApp fc (ai inpat qq env ds f) (ai inpat qq env ds a)
     ai inpat qq env ds (PCase fc c os)
       = let c' = ai inpat qq env ds c in
@@ -1750,7 +1763,7 @@ addImpl' inpat env infns imp_meths ist ptm
         -- definition which is passed through addImpl again
             PCase fc c' (map aiCase os)
      where
-       aiCase (lhs, rhs) 
+       aiCase (lhs, rhs)
             = (lhs, ai inpat qq (env ++ patnames lhs) ds rhs)
 
        -- Anything beginning with a lower case letter, not applied,
@@ -1854,9 +1867,9 @@ aiFn topname inpat True qq imp_meths ist fc f ffc ds []
           vname (UN n) = True -- non qualified
           vname _ = False
 
-aiFn topname inpat expat qq imp_meths ist fc f ffc ds as 
+aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
     | f `elem` primNames = Right $ PApp fc (PRef ffc [ffc] f) as
-aiFn topname inpat expat qq imp_meths ist fc f ffc ds as 
+aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
           -- This is where namespaces get resolved by adding PAlternative
      = do let ns = lookupCtxtName f (idris_implicits ist)
           let nh = filter (\(n, _) -> notHidden n) ns
@@ -1920,7 +1933,7 @@ aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
         case find n imps [] of
             Just (tm, imps') ->
               PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given imps'
-            Nothing -> 
+            Nothing ->
               PImp p True l n Placeholder :
                 insImpAcc (M.insert n Placeholder pnas) ps given imps
     insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given imps =

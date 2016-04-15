@@ -60,7 +60,7 @@ data ElabInfo = EInfo { params :: [(Name, PTerm)],
                         namespace :: Maybe [String],
                         elabFC :: Maybe FC,
                         -- We may, recursively, collect transformations to
-                        -- do on the rhs, e.g. rewriting recursive calls to 
+                        -- do on the rhs, e.g. rewriting recursive calls to
                         -- functions defined by 'with'
                         rhs_trans :: PTerm -> PTerm,
                         rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl ->
@@ -271,7 +271,8 @@ data IState = IState {
     idris_parserHighlights :: [(FC, OutputAnnotation)], -- ^ Highlighting information from the parser
     idris_deprecated :: Ctxt String, -- ^ Deprecated names and explanation
     idris_inmodule :: S.Set Name, -- ^ Names defined in current module
-    idris_ttstats :: M.Map Term (Int, Term)
+    idris_ttstats :: M.Map Term (Int, Term),
+    idris_fragile :: Ctxt String -- ^ Fragile names and explanation.
    }
 
 -- Required for parsers library, and therefore trifecta
@@ -347,6 +348,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCExport Name
               | IBCAutoHint Name Name
               | IBCDeprecate Name String
+              | IBCFragile Name String
   deriving Show
 
 -- | The initial state for the compiler
@@ -361,7 +363,7 @@ idrisInit = IState initContext S.empty []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Private False [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
-                   emptyContext S.empty M.empty
+                   emptyContext S.empty M.empty emptyContext
 
 
 -- | The monad for the main REPL - reading and processing files and updating
@@ -772,6 +774,7 @@ data Directive = DLib Codegen String |
                  DErrorHandlers Name FC Name FC [(Name, FC)] |
                  DLanguage LanguageExt |
                  DDeprecate Name String |
+                 DFragile Name String |
                  DAutoImplicits Bool |
                  DUsed FC Name Name
 
@@ -1016,7 +1019,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PLet FC Name FC PTerm PTerm PTerm -- ^ A let binding (second FC is precise name location)
            | PTyped PTerm PTerm -- ^ Term with explicit type
            | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
-           | PWithApp FC PTerm PTerm -- ^ Application plus a 'with' argument 
+           | PWithApp FC PTerm PTerm -- ^ Application plus a 'with' argument
            | PAppImpl PTerm [ImplicitInfo] -- ^ Implicit argument application (introduced during elaboration only)
            | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
            | PMatchApp FC Name -- ^ Make an application by type matching
@@ -1024,7 +1027,7 @@ data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level langua
            | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
            | PTrue FC PunInfo -- ^ Unit type..?
            | PResolveTC FC -- ^ Solve this dictionary by type class resolution
-           | PRewrite FC (Maybe Name) PTerm PTerm (Maybe PTerm) 
+           | PRewrite FC (Maybe Name) PTerm PTerm (Maybe PTerm)
                   -- ^ "rewrite" syntax, with optional rewriting function
                   -- and optional result type
            | PPair FC [FC] PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration). The list of FCs is its punctuation.
@@ -1886,7 +1889,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PTrue _ TypeOrTerm) = text "()"
     prettySe d p bnd (PRewrite _ by l r _)   =
       depth d . bracket p startPrec $
-      text "rewrite" <+> prettySe (decD d) (startPrec + 1) bnd l 
+      text "rewrite" <+> prettySe (decD d) (startPrec + 1) bnd l
       <+> (case by of
                Nothing -> empty
                Just fn -> text "using" <+>

@@ -59,8 +59,7 @@ directiveAction (DNameHint ty tyFC ns) = do
   ty' <- disambiguate ty
   mapM_ (addNameHint ty' . fst) ns
   mapM_ (\n -> addIBC (IBCNameHint (ty', fst n))) ns
-  sendHighlighting $
-  [(tyFC, AnnName ty' Nothing Nothing Nothing)] ++ map (\(n, fc) -> (fc, AnnBoundName n False)) ns
+  sendHighlighting $ [(tyFC, AnnName ty' Nothing Nothing Nothing)] ++ map (\(n, fc) -> (fc, AnnBoundName n False)) ns
 
 directiveAction (DErrorHandlers fn nfc arg afc ns) = do
   fn' <- disambiguate fn
@@ -80,6 +79,11 @@ directiveAction (DDeprecate n reason) = do
   n' <- disambiguate n
   addDeprecated n' reason
   addIBC (IBCDeprecate n' reason)
+
+directiveAction (DFragile n reason) = do
+  n' <- disambiguate n
+  addFragile n' reason
+  addIBC (IBCFragile n' reason)
 
 directiveAction (DAutoImplicits b) = setAutoImpls b
 directiveAction (DUsed fc fn arg)  = addUsedName fc fn arg
