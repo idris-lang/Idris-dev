@@ -476,7 +476,7 @@ elab ist info emode opts fn tm
                      ty <- goal
                      let (tc, _) = unApply (unDelay ty)
                      env <- get_env
-                     return $ pruneByType env tc ist as
+                     return $ pruneByType env tc (unDelay ty) ist as
 
               unDelay t | (P _ (UN l) _, [_, arg]) <- unApply t,
                           l == txt "Lazy'" = unDelay arg
@@ -1566,9 +1566,10 @@ pruneAlt xs = map prune xs
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
 pruneByType :: Env -> Term -> -- head of the goal
+               Type -> -- goal
                IState -> [PTerm] -> [PTerm]
 -- if an alternative has a locally bound name at the head, take it
-pruneByType env t c as
+pruneByType env t goalty c as
    | Just a <- locallyBound as = [a]
   where
     locallyBound [] = Nothing
@@ -1584,7 +1585,7 @@ pruneByType env t c as
     getName _ = Nothing
 
 -- 'n' is the name at the head of the goal type
-pruneByType env (P _ n _) ist as
+pruneByType env (P _ n _) goalty ist as
 -- if the goal type is polymorphic, keep everything
    | Nothing <- lookupTyExact n ctxt = as
 -- if the goal type is a ?metavariable, keep everything
@@ -1598,6 +1599,8 @@ pruneByType env (P _ n _) ist as
   where
     ctxt = tt_ctxt ist
 
+    -- Get the function at the head of the alternative and see if it's
+    -- a plausible match against the goal type. Keep if so.
     headIs var f (PRef _ _ f') = typeHead var f f'
     headIs var f (PApp _ (PRef _ _ (UN l)) [_, _, arg])
         | l == txt "Delay" = headIs var f (getTm arg)
@@ -1611,19 +1614,39 @@ pruneByType env (P _ n _) ist as
         = -- trace ("Trying " ++ show f' ++ " for " ++ show n) $
           case lookupTyExact f' ctxt of
                Just ty -> case unApply (getRetTy ty) of
-                            (P _ ctyn _, _) | isConName ctyn ctxt -> ctyn == f
+                            (P _ ctyn _, _) | isTConName ctyn ctxt && not (ctyn == f) 
+                                     -> False
                             _ -> let ty' = normalise ctxt [] ty in
+--                                    trace ("Trying " ++ show (getRetTy ty') ++ " for " ++ show goalty) $
                                      case unApply (getRetTy ty') of
-                                          (P _ ftyn _, _) -> ftyn == f
                                           (V _, _) ->
-                                            -- keep, variable
---                                             trace ("Keeping " ++ show (f', ty')
---                                                      ++ " for " ++ show n) $
                                               isPlausible ist var env n ty
-                                          _ -> False
+                                          _ -> matching (getRetTy ty') goalty 
+-- May be useful to keep for debugging purposes for a bit:
+--                                                let res = matching (getRetTy ty') goalty in
+--                                                   traceWhen (not res)
+--                                                     ("Rejecting " ++ show (getRetTy ty', goalty)) res
                _ -> False
 
-pruneByType _ t _ as = as
+    -- If the goal is a constructor, it must match the suggested function type
+    matching (P _ ctyn _) (P _ n' _) 
+         | isTConName n' ctxt = ctyn == n'
+         | otherwise = True
+    -- Variables match anything
+    matching (V _) _ = True 
+    matching _ (V _) = True 
+    matching _ (P _ n _) = not (isTConName n ctxt)
+    matching (P _ n _) _ = not (isTConName n ctxt)
+    -- Binders are a plausible match, so keep them
+    matching (Bind n _ sc) _ = True
+    matching _ (Bind n _ sc) = True
+    -- Otherwise, match the rest of the structure
+    matching (App _ f a) (App _ f' a') = matching f f' && matching a a'
+    matching (TType _) (TType _) = True
+    matching (UType _) (UType _) = True
+    matching l r = l == r
+
+pruneByType _ t _ _ as = as
 
 -- Could the name feasibly be the return type?
 -- If there is a type class constraint on the return type, and no instance

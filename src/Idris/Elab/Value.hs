@@ -139,4 +139,6 @@ elabREPL info aspat tm
   where
     catchAmbig (CantResolveAlts _)
        = elabVal info aspat (PDisamb [[txt "List"]] tm)
+    catchAmbig (NoValidAlts _)
+       = elabVal info aspat (PDisamb [[txt "List"]] tm)
     catchAmbig e = ierror e
