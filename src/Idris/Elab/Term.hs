@@ -499,8 +499,10 @@ elab ist info emode opts fn tm
               trySeq [] = fail "Nothing to try in sequence"
               trySeq' deferr [] = proofFail deferr
               trySeq' deferr (x : xs)
-                  = try' (do elab' ina fc x
-                             solveAutos ist fn False) (trySeq' deferr xs) True
+                  = try' (tryCatch (do elab' ina fc x
+                                       solveAutos ist fn False)
+                             (\_ -> deferr))
+                         (trySeq' deferr xs) True
     elab' ina fc (PAlternative ms TryImplicit (orig : alts)) = do
         env <- get_env
         compute
@@ -1377,15 +1379,22 @@ elab ist info emode opts fn tm
     fullyElaborated (Proj t _) = fullyElaborated t
     fullyElaborated _ = return ()
 
+    -- If the goal type is a "Lazy", then try elaborating via 'Delay'
+    -- first. We need to do this brute force approach, rather than anything
+    -- more precise, since there may be various other ambiguities to resolve
+    -- first.
     insertLazy :: PTerm -> ElabD PTerm
     insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = return t
     insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Force" = return t
     insertLazy (PCoerced t) = return t
+    -- Don't add a delay to pattern variables, since they can be forced
+    -- on the rhs
+    insertLazy t@(PPatvar _ _) | pattern = return t
     insertLazy t =
         do ty <- goal
            env <- get_env
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
-           let tries = if pattern then [t, mkDelay env t] else [mkDelay env t, t]
+           let tries = [mkDelay env t, t]
            case tyh of
                 P _ (UN l) _ | l == txt "Lazy'"
                     -> return (PAlternative [] FirstSuccess tries)
