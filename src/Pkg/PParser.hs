@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE CPP, ConstraintKinds #-}
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
@@ -51,7 +52,7 @@ parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do
     p <- readFile fp
     case runparser pPkg defaultPkg fp p of
-      Failure err -> fail (show $ PP.plain err)
+      Failure ErrInfo{..} -> fail (show $ PP.plain _errDoc)
       Success x -> return x
 
 pPkg :: PParser PkgDesc

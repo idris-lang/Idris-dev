@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 
 {-# LANGUAGE PatternGuards #-}
 module Idris.Prover (prover, showProof, showRunElab) where
@@ -33,7 +34,7 @@ import qualified Idris.IdeMode as IdeMode
 import Idris.Output
 import Idris.TypeSearch (searchByType)
 
-import Text.Trifecta.Result(Result(..))
+import Text.Trifecta.Result(Result(..), ErrInfo(..))
 
 import System.IO (Handle, stdin, stdout, hPutStrLn)
 import System.Console.Haskeline
@@ -317,8 +318,8 @@ elabloop fn d prompt prf e prev h env
        (d, prev', st, done, prf', env', res) <-
          idrisCatch
            (case cmd of
-              Failure err ->
-                return (False, prev, e, False, prf, env, Left . Msg . show . fixColour (idris_colourRepl ist) $ err)
+              Failure ErrInfo{..} ->
+                return (False, prev, e, False, prf, env, Left . Msg . show . fixColour (idris_colourRepl ist) $ _errDoc)
               Success (Left cmd') ->
                 case cmd' of
                   EQED -> do hs <- lifte e get_holes
@@ -432,7 +433,7 @@ ploop fn d prompt prf e h
             _ -> return ()
          (d, st, done, prf', res) <- idrisCatch
            (case cmd of
-              Failure err -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
+              Failure ErrInfo{..} -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ _errDoc)
               Success Undo -> do (_, st) <- elabStep e loadState
                                  return (True, st, False, init prf, Right $ iPrintResult "")
               Success ProofState -> return (True, e, False, prf, Right $ iPrintResult "")

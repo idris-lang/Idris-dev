@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              PatternGuards, CPP #-}
 
@@ -71,7 +72,7 @@ import Data.List.Split (splitOn)
 import Data.List (groupBy)
 import qualified Data.Text as T
 
-import Text.Trifecta.Result(Result(..))
+import Text.Trifecta.Result(Result(..), ErrInfo(..))
 
 import System.Console.Haskeline as H
 import System.FilePath
@@ -298,7 +299,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.Interpret cmd) =
   do c <- colourise
      i <- getIState
      case parseCmd i "(input)" cmd of
-       Failure err -> iPrintError $ show (fixColour False err)
+       Failure ErrInfo{..} -> iPrintError $ show (fixColour False _errDoc)
        Success (Right (Prove mode n')) ->
          idrisCatch
            (do process fn (Prove mode n')
@@ -713,8 +714,8 @@ processInput cmd orig inputs efile
          let fn = fromMaybe "" (listToMaybe inputs)
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Failure err ->   do iputStrLn $ show (fixColour c err)
-                                return (Just inputs)
+            Failure ErrInfo{..} ->   do iputStrLn $ show (fixColour c _errDoc)
+                                        return (Just inputs)
             Success (Right Reload) ->
                 reload orig inputs
             Success (Right Watch) ->
@@ -1774,8 +1775,8 @@ idrisMain opts =
                      mapM_ (\str -> do ist <- getIState
                                        c <- colourise
                                        case parseExpr ist str of
-                                         Failure err -> do iputStrLn $ show (fixColour c err)
-                                                           runIO $ exitWith (ExitFailure 1)
+                                         Failure ErrInfo{..} -> do iputStrLn $ show (fixColour c _errDoc)
+                                                                   runIO $ exitWith (ExitFailure 1)
                                          Success e -> process "" (Eval e))
                            exprs
                      runIO $ exitWith ExitSuccess
@@ -1830,8 +1831,8 @@ execScript :: String -> Idris ()
 execScript expr = do i <- getIState
                      c <- colourise
                      case parseExpr i expr of
-                          Failure err -> do iputStrLn $ show (fixColour c err)
-                                            runIO $ exitWith (ExitFailure 1)
+                          Failure ErrInfo{..} -> do iputStrLn $ show (fixColour c _errDoc)
+                                                    runIO $ exitWith (ExitFailure 1)
                           Success term -> do ctxt <- getContext
                                              (tm, _) <- elabVal recinfo ERHS term
                                              res <- execute tm
@@ -1866,7 +1867,7 @@ initScript = do script <- getInitScript
                            runInit h
           processLine i cmd input clr =
               case parseCmd i input cmd of
-                   Failure err -> runIO $ print (fixColour clr err)
+                   Failure ErrInfo{..} -> runIO $ print (fixColour clr _errDoc)
                    Success (Right Reload) -> iPrintError "Init scripts cannot reload the file"
                    Success (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
                    Success (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"
