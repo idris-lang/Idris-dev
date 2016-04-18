@@ -285,7 +285,8 @@ elab ist info emode opts fn tm
                               then solveAuto ist fn False (a, failc)
                               else return ()) as
 
-        itm <- if not pattern then insertImpLam ina t else return t
+        apt <- expandToArity t
+        itm <- if not pattern then insertImpLam ina apt else return apt
         ct <- insertCoerce ina itm
         t' <- insertLazy ct
         g <- goal
@@ -299,8 +300,8 @@ elab ist info emode opts fn tm
         --         ++ "\nproblems " ++ show ps
         --         ++ "\n-----------\n") $
         --trace ("ELAB " ++ show t') $
-        let fc = fileFC "Force"
         env <- get_env
+        let fc = fileFC "Force"
         handleError (forceErr t' env)
             (elab' ina fc' t')
             (elab' ina fc' (PApp fc (PRef fc [] (sUN "Force"))
@@ -497,11 +498,12 @@ elab ist info emode opts fn tm
               trySeq (x : xs) = let e1 = elab' ina fc x in
                                     try' e1 (trySeq' e1 xs) True
               trySeq [] = fail "Nothing to try in sequence"
-              trySeq' deferr [] = proofFail deferr
+              trySeq' deferr [] = do deferr; unifyProblems
               trySeq' deferr (x : xs)
                   = try' (tryCatch (do elab' ina fc x
-                                       solveAutos ist fn False)
-                             (\_ -> deferr))
+                                       solveAutos ist fn False
+                                       unifyProblems)
+                             (\_ -> trySeq' deferr []))
                          (trySeq' deferr xs) True
     elab' ina fc (PAlternative ms TryImplicit (orig : alts)) = do
         env <- get_env
@@ -1420,6 +1422,23 @@ elab ist info emode opts fn tm
     -- they can go in the branches separately.
     notImplicitable (PCase _ _ _) = True
     notImplicitable _ = False
+
+    -- Elaboration works more smoothly if we expand function applications
+    -- to their full arity and elaborate it all at once (better error messages
+    -- in particular)
+    expandToArity tm@(PApp fc f a) = do
+       env <- get_env
+       case fullApp tm of
+            -- if f is global, leave it alone because we've already
+            -- expanded it to the right arity
+            PApp fc ftm@(PRef _ _ f) args | Just aty <- lookup f env ->
+               do let a = length (getArgTys (normalise (tt_ctxt ist) env (binderTy aty)))
+                  return (mkPApp fc a ftm args)
+            _ -> return tm
+    expandToArity t = return t
+    
+    fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
+    fullApp x = x
 
     insertScopedImps fc (Bind n (Pi im@(Just i) _ _) sc) xs
       | tcinstance i && not (toplevel_imp i)

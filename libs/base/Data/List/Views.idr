@@ -117,8 +117,8 @@ filtered : (p : a -> a -> Bool) -> (xs : List a) -> Filtered p xs
 filtered p inp with (smallerAcc inp)
   filtered p [] | with_pat = FNil
   filtered p (x :: xs) | (Access xsrec) 
-      =  FRec (Delay (filtered p (filter (\y => p y x) xs) | xsrec _ (filteredLOK p x xs)))
-              (Delay (filtered p (filter (\y => not (p y x)) xs) | xsrec _ (filteredROK p x xs)))
+      =  FRec (filtered p (filter (\y => p y x) xs) | xsrec _ (filteredLOK p x xs))
+              (filtered p (filter (\y => not (p y x)) xs) | xsrec _ (filteredROK p x xs))
 
 lenImpossible : (n = Z) -> (n = ((S k) + right)) -> Void
 lenImpossible {n = Z} _ Refl impossible
