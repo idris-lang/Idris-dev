@@ -473,6 +473,9 @@ Extra-source-files:
                        test/error007/run
                        test/error007/*.idr
                        test/error007/expected
+                       test/error008/run
+                       test/error008/*.idr
+                       test/error008/expected
 
                        test/ffi001/run
                        test/ffi001/*.idr

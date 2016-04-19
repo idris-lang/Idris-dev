@@ -269,6 +269,8 @@ elab ist info emode opts fn tm
                   (h: hs) -> do patvar h; mkPat
                   [] -> return ()
 
+    elabRec = elabE initElabCtxt Nothing
+
     -- | elabE elaborates an expression, possibly wrapping implicit coercions
     -- and forces/delays.  If you make a recursive call in elab', it is
     -- normally correct to call elabE - the ones that don't are desugarings
@@ -369,7 +371,7 @@ elab ist info emode opts fn tm
             UType _ -> elab' ina (Just fc) (PRef fc [] unitTy)
             _ -> elab' ina (Just fc) (PRef fc [] unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC' False False 5 g fn ist
+       = do g <- goal; resolveTC False False 5 g fn elabRec ist
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "__class")
              instanceArg c
@@ -722,7 +724,7 @@ elab ist info emode opts fn tm
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
                                     then handleError (tcRecoverable emode)
-                                           (resolveTC' True False 10 g fn ist)
+                                           (resolveTC True False 10 g fn elabRec ist)
                                            (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
@@ -895,7 +897,7 @@ elab ist info emode opts fn tm
                                                     hs <- get_holes
                                                     if all (\n -> not (n `elem` hs)) (freeNames g)
                                                      then handleError (tcRecoverable emode)
-                                                              (resolveTC' False False 10 g fn ist)
+                                                              (resolveTC False False 10 g fn elabRec ist)
                                                               (movelast n)
                                                      else movelast n)
                                           (ivs' \\ ivs)
