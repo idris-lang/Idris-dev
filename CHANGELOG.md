@@ -31,6 +31,7 @@
 * `Control.WellFounded` module removed, and added to the Prelude as
   `Prelude.WellFounded`.
 * Added `Data.List.Views` with views on `List` and their covering functions.
+* Added `Data.Nat.Views` with views on `Nat` and their covering functions.
 
 ## Miscellaneous updates
 
