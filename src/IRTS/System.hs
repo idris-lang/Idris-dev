@@ -31,8 +31,10 @@ getTargetDir = overrideDataDirWith "TARGET"
 
 #if defined(FREEBSD) || defined(DRAGONFLY)
 extraLib = ["-L/usr/local/lib"]
+extraInclude = ["-I/usr/local/include"]
 #else
 extraLib = []
+extraInclude = []
 #endif
 
 #ifdef IDRIS_GMP
@@ -47,10 +49,5 @@ getLibFlags = do dir <- getDataDir
 
 getIdrisLibDir = addTrailingPathSeparator <$> overrideDataDirWith "IDRIS_LIBRARY_PATH"
 
-#if defined(FREEBSD) || defined(DRAGONFLY)
-extraInclude = ["-I/usr/local/include"]
-#else
-extraInclude = []
-#endif
 getIncFlags = do dir <- getDataDir
                  return $ ("-I" ++ dir </> "rts") : extraInclude
