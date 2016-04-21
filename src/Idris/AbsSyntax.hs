@@ -1772,17 +1772,16 @@ addImpl' inpat env infns imp_meths ist ptm
                                                          (ai inpat qq env ds t)
                                                          (ai inpat qq env ds f)
 
-    -- If the name in a lambda is a constructor name, do this as a 'case'
-    -- instead (it is harmless to do so, especially since the lambda will
-    -- be lifted anyway!)
+    -- If the name in a lambda is an unapplied data constructor name, do this
+    -- as a 'case' instead because we'll expect to match on it
     ai inpat qq env ds (PLam fc n nfc ty sc)
-      = case lookupDef n (tt_ctxt ist) of
-             [] -> let ty' = ai inpat qq env ds ty
-                       sc' = ai inpat qq ((n, Just ty):env) ds sc in
-                       PLam fc n nfc ty' sc'
-             _ -> ai inpat qq env ds (PLam fc (sMN 0 "lamp") NoFC ty
+      = if canBeDConName n (tt_ctxt ist)
+             then ai inpat qq env ds (PLam fc (sMN 0 "lamp") NoFC ty
                                      (PCase fc (PRef fc [] (sMN 0 "lamp") )
                                         [(PRef fc [] n, sc)]))
+             else let ty' = ai inpat qq env ds ty
+                      sc' = ai inpat qq ((n, Just ty):env) ds sc in
+                      PLam fc n nfc ty' sc'
     ai inpat qq env ds (PLet fc n nfc ty val sc)
       = case lookupDef n (tt_ctxt ist) of
              [] -> let ty' = ai inpat qq env ds ty
