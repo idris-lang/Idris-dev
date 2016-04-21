@@ -44,7 +44,7 @@ data IsJust : Maybe a -> Type where
 
 maybe : Lazy b -> Lazy (a -> b) -> Maybe a -> b
 maybe n j Nothing  = n
-maybe n j (Just x) = (Force j) x
+maybe n j (Just x) = j x
 
 ||| Convert a `Maybe a` value to an `a` value by providing a default `a` value
 ||| in the case that the `Maybe` value is `Nothing`.

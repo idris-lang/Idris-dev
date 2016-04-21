@@ -269,6 +269,8 @@ elab ist info emode opts fn tm
                   (h: hs) -> do patvar h; mkPat
                   [] -> return ()
 
+    elabRec = elabE initElabCtxt Nothing
+
     -- | elabE elaborates an expression, possibly wrapping implicit coercions
     -- and forces/delays.  If you make a recursive call in elab', it is
     -- normally correct to call elabE - the ones that don't are desugarings
@@ -285,7 +287,8 @@ elab ist info emode opts fn tm
                               then solveAuto ist fn False (a, failc)
                               else return ()) as
 
-        itm <- if not pattern then insertImpLam ina t else return t
+        apt <- expandToArity t
+        itm <- if not pattern then insertImpLam ina apt else return apt
         ct <- insertCoerce ina itm
         t' <- insertLazy ct
         g <- goal
@@ -299,8 +302,8 @@ elab ist info emode opts fn tm
         --         ++ "\nproblems " ++ show ps
         --         ++ "\n-----------\n") $
         --trace ("ELAB " ++ show t') $
-        let fc = fileFC "Force"
         env <- get_env
+        let fc = fileFC "Force"
         handleError (forceErr t' env)
             (elab' ina fc' t')
             (elab' ina fc' (PApp fc (PRef fc [] (sUN "Force"))
@@ -368,7 +371,7 @@ elab ist info emode opts fn tm
             UType _ -> elab' ina (Just fc) (PRef fc [] unitTy)
             _ -> elab' ina (Just fc) (PRef fc [] unitCon)
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent classes
-       = do g <- goal; resolveTC' False False 5 g fn ist
+       = do g <- goal; resolveTC False False 5 g fn elabRec ist
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "__class")
              instanceArg c
@@ -497,10 +500,13 @@ elab ist info emode opts fn tm
               trySeq (x : xs) = let e1 = elab' ina fc x in
                                     try' e1 (trySeq' e1 xs) True
               trySeq [] = fail "Nothing to try in sequence"
-              trySeq' deferr [] = proofFail deferr
+              trySeq' deferr [] = do deferr; unifyProblems
               trySeq' deferr (x : xs)
-                  = try' (do elab' ina fc x
-                             solveAutos ist fn False) (trySeq' deferr xs) True
+                  = try' (tryCatch (do elab' ina fc x
+                                       solveAutos ist fn False
+                                       unifyProblems)
+                             (\_ -> trySeq' deferr []))
+                         (trySeq' deferr xs) True
     elab' ina fc (PAlternative ms TryImplicit (orig : alts)) = do
         env <- get_env
         compute
@@ -718,7 +724,7 @@ elab ist info emode opts fn tm
                                    hs <- get_holes
                                    if all (\n -> n == tyn || not (n `elem` hs)) (freeNames g)
                                     then handleError (tcRecoverable emode)
-                                           (resolveTC' True False 10 g fn ist)
+                                           (resolveTC True False 10 g fn elabRec ist)
                                            (movelast n)
                                     else movelast n)
                          (ivs' \\ ivs)
@@ -891,7 +897,7 @@ elab ist info emode opts fn tm
                                                     hs <- get_holes
                                                     if all (\n -> not (n `elem` hs)) (freeNames g)
                                                      then handleError (tcRecoverable emode)
-                                                              (resolveTC' False False 10 g fn ist)
+                                                              (resolveTC False False 10 g fn elabRec ist)
                                                               (movelast n)
                                                      else movelast n)
                                           (ivs' \\ ivs)
@@ -1377,15 +1383,22 @@ elab ist info emode opts fn tm
     fullyElaborated (Proj t _) = fullyElaborated t
     fullyElaborated _ = return ()
 
+    -- If the goal type is a "Lazy", then try elaborating via 'Delay'
+    -- first. We need to do this brute force approach, rather than anything
+    -- more precise, since there may be various other ambiguities to resolve
+    -- first.
     insertLazy :: PTerm -> ElabD PTerm
     insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = return t
     insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Force" = return t
     insertLazy (PCoerced t) = return t
+    -- Don't add a delay to pattern variables, since they can be forced
+    -- on the rhs
+    insertLazy t@(PPatvar _ _) | pattern = return t
     insertLazy t =
         do ty <- goal
            env <- get_env
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
-           let tries = if pattern then [t, mkDelay env t] else [mkDelay env t, t]
+           let tries = [mkDelay env t, t]
            case tyh of
                 P _ (UN l) _ | l == txt "Lazy'"
                     -> return (PAlternative [] FirstSuccess tries)
@@ -1411,6 +1424,23 @@ elab ist info emode opts fn tm
     -- they can go in the branches separately.
     notImplicitable (PCase _ _ _) = True
     notImplicitable _ = False
+
+    -- Elaboration works more smoothly if we expand function applications
+    -- to their full arity and elaborate it all at once (better error messages
+    -- in particular)
+    expandToArity tm@(PApp fc f a) = do
+       env <- get_env
+       case fullApp tm of
+            -- if f is global, leave it alone because we've already
+            -- expanded it to the right arity
+            PApp fc ftm@(PRef _ _ f) args | Just aty <- lookup f env ->
+               do let a = length (getArgTys (normalise (tt_ctxt ist) env (binderTy aty)))
+                  return (mkPApp fc a ftm args)
+            _ -> return tm
+    expandToArity t = return t
+    
+    fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
+    fullApp x = x
 
     insertScopedImps fc (Bind n (Pi im@(Just i) _ _) sc) xs
       | tcinstance i && not (toplevel_imp i)

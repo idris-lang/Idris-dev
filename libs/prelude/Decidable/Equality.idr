@@ -158,9 +158,11 @@ implementation DecEq a => DecEq (List a) where
 --------------------------------------------------------------------------------
 
 implementation DecEq Int where
-    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+    decEq x y = case x == y of -- Blocks if x or y not concrete
+                     True => Yes primitiveEq 
+                     False => No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (Refl {x})
+             primitiveEq = really_believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
@@ -168,9 +170,11 @@ implementation DecEq Int where
 --------------------------------------------------------------------------------
 
 implementation DecEq Char where
-    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+    decEq x y = case x == y of -- Blocks if x or y not concrete
+                     True => Yes primitiveEq 
+                     False => No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (Refl {x})
+             primitiveEq = really_believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
@@ -178,20 +182,23 @@ implementation DecEq Char where
 --------------------------------------------------------------------------------
 
 implementation DecEq Integer where
-    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+    decEq x y = case x == y of -- Blocks if x or y not concrete
+                     True => Yes primitiveEq 
+                     False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
-
 
 --------------------------------------------------------------------------------
 -- String
 --------------------------------------------------------------------------------
 
 implementation DecEq String where
-    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+    decEq x y = case x == y of -- Blocks if x or y not concrete
+                     True => Yes primitiveEq 
+                     False => No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (Refl {x})
+             primitiveEq = really_believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
@@ -199,9 +206,11 @@ implementation DecEq String where
 --------------------------------------------------------------------------------
 
 implementation DecEq Ptr where
-    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+    decEq x y = case x == y of -- Blocks if x or y not concrete
+                     True => Yes primitiveEq 
+                     False => No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (Refl {x})
+             primitiveEq = really_believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
@@ -209,7 +218,9 @@ implementation DecEq Ptr where
 --------------------------------------------------------------------------------
 
 implementation DecEq ManagedPtr where
-    decEq x y = if x == y then Yes primitiveEq else No primitiveNotEq
+    decEq x y = case x == y of -- Blocks if x or y not concrete
+                     True => Yes primitiveEq 
+                     False => No primitiveNotEq
        where primitiveEq : x = y
-             primitiveEq = believe_me (Refl {x})
+             primitiveEq = really_believe_me (Refl {x})
              postulate primitiveNotEq : x = y -> Void

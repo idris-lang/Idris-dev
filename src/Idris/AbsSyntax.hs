@@ -2218,17 +2218,20 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
 substMatches :: [(Name, PTerm)] -> PTerm -> PTerm
 substMatches ms = substMatchesShadow ms []
 
-substMatchesShadow :: [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
-substMatchesShadow [] shs t = t
-substMatchesShadow ((n,tm):ns) shs t
-   = substMatchShadow n shs tm (substMatchesShadow ns shs t)
+-- substMatchesShadow :: [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
+-- substMatchesShadow [] shs t = t
+-- substMatchesShadow ((n,tm):ns) shs t
+--    = substMatchShadow n shs tm (substMatchesShadow ns shs t)
 
 substMatch :: Name -> PTerm -> PTerm -> PTerm
 substMatch n = substMatchShadow n []
 
 substMatchShadow :: Name -> [Name] -> PTerm -> PTerm -> PTerm
-substMatchShadow n shs tm t = sm shs t where
-    sm xs (PRef _ _ n') | n == n' = tm
+substMatchShadow n shs tm t = substMatchesShadow [(n, tm)] shs t
+
+substMatchesShadow :: [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
+substMatchesShadow nmap shs t = sm shs t where
+    sm xs (PRef _ _ n) | Just tm <- lookup n nmap = tm
     sm xs (PLam fc x xfc t sc) = PLam fc x xfc (sm xs t) (sm xs sc)
     sm xs (PPi p x fc t sc)
          | x `elem` xs

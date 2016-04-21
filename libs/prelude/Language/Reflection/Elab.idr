@@ -10,6 +10,7 @@ import Prelude.Applicative
 import Prelude.Basics
 import Prelude.Bool
 import Prelude.Functor
+import Prelude.Interfaces
 import Prelude.List
 import Prelude.Maybe
 import Prelude.Monad

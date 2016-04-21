@@ -1,0 +1,15 @@
+error007.idr:26:17:
+When checking right hand side of answer_to_connection with expected type
+        IO Int
+
+When checking argument code to function Main.send_page:
+        Type mismatch between
+                translate I32 (Type of code)
+        and
+                Int (Expected type)
+        
+        Specifically:
+                Type mismatch between
+                        Bits32
+                and
+                        Int

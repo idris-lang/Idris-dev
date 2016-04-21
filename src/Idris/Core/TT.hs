@@ -372,8 +372,11 @@ instance Show Err where
     show (Msg s) = s
     show (InternalMsg s) = "Internal error: " ++ show s
     show (CantUnify rcv l r e sc i) = "CantUnify " ++ show rcv ++ " " ++
-                                         show l ++ " " ++ show r ++ " " ++
+                                         show l ++ " and " ++ show r ++ " " ++
                                          show e ++ " in " ++ show sc ++ " " ++ show i
+    show (CantConvert l r sc) = "CantConvert " ++
+                                         show l ++ " and " ++ show r ++ " " ++
+                                         " in " ++ show sc
     show (CantSolveGoal g _) = "CantSolve " ++ show g
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show (UnknownImplicit n f) = show n ++ " is not an implicit argument of " ++ show f
@@ -395,7 +398,7 @@ instance Show Err where
     show (NotEquality _ _) = "NotEquality"
     show (TooManyArguments _) = "TooManyArguments"
     show (CantIntroduce _) = "CantIntroduce"
-    show (NoSuchVariable _) = "NoSuchVariable"
+    show (NoSuchVariable n) = "NoSuchVariable " ++ show n
     show (WithFnType _) = "WithFnType"
     show (NoTypeDecl _) = "NoTypeDecl"
     show (NotInjective _ _ _) = "NotInjective"
