@@ -668,9 +668,9 @@ checkMP ist i mp = if i > 0
     -- if we get to a constructor, it's fine as long as it's strictly positive
     tryPath desc path ((f, _) : es) arg
         | [TyDecl (DCon _ _ _) _] <- lookupDef f (tt_ctxt ist)
-            = case lookupTotal f (tt_ctxt ist) of
-                   [Total _] -> Unchecked -- okay so far
-                   [Partial _] -> Partial (Other [f])
+            = case lookupTotalExact f (tt_ctxt ist) of
+                   Just (Total _) -> Unchecked -- okay so far
+                   Just (Partial _) -> Partial (Other [f])
                    x -> error $ "CAN'T HAPPEN: " ++ show x ++ " for " ++ show f
         | [TyDecl (TCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = Total []
