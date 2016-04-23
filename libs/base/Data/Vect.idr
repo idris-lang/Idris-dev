@@ -194,6 +194,21 @@ replicate : (n : Nat) -> (x : a) -> Vect n a
 replicate Z     x = []
 replicate (S k) x = x :: replicate k x
 
+||| Merge two ordered vectors
+mergeBy : (a -> a -> Ordering) -> Vect n a -> Vect m a -> Vect (n + m) a
+mergeBy order [] [] = []
+mergeBy order [] (x :: xs) = x :: xs
+mergeBy {n = S k} order (x :: xs) [] = rewrite plusZeroRightNeutral (S k) in  
+                                               x :: xs
+mergeBy {n = S k} {m = S k'} order (x :: xs) (y :: ys) 
+     = if order x y == LT
+            then x :: mergeBy order xs (y :: ys)
+            else rewrite sym (plusSuccRightSucc k k') in 
+                             y :: mergeBy order (x :: xs) ys
+
+merge : Ord a => Vect n a -> Vect m a -> Vect (n + m) a
+merge = mergeBy compare
+
 --------------------------------------------------------------------------------
 -- Zips and unzips
 --------------------------------------------------------------------------------

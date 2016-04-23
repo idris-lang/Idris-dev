@@ -82,7 +82,7 @@ public export
 data SnocList : List a -> Type where
      Empty : SnocList []
      Snoc : {x : a} -> {xs : List a} -> -- Explicit, so don't erase
-            SnocList xs -> SnocList (xs ++ [x])
+            (rec : SnocList xs) -> SnocList (xs ++ [x])
 
 snocListHelp : SnocList xs -> (ys : List a) -> SnocList (xs ++ ys)
 snocListHelp {xs} x [] = rewrite appendNilRightNeutral xs in x
@@ -100,8 +100,8 @@ snocList xs = snocListHelp Empty xs
 public export
 data Filtered : (a -> a -> Bool) -> List a -> Type where
      FNil : Filtered p []
-     FRec : Lazy (Filtered p (filter (\y => p y x) xs)) -> 
-            Lazy (Filtered p (filter (\y => not (p y x)) xs)) ->
+     FRec : (lrec : Lazy (Filtered p (filter (\y => p y x) xs))) -> 
+            (rrec : Lazy (Filtered p (filter (\y => not (p y x)) xs))) ->
             Filtered p (x :: xs)
 
 filteredLOK : (p : a -> a -> Bool) -> (x : a) -> (xs : List a) -> smaller (filter (\y => p y x) xs) (x :: xs)
@@ -178,7 +178,7 @@ data VList : List a -> Type where
      VNil : VList []
      VOne : VList [x]
      VCons : {x : a} -> {y : a} -> {xs : List a} -> 
-             VList xs -> VList (x :: xs ++ [y])
+             (rec : VList xs) -> VList (x :: xs ++ [y])
 
 total
 balRec : (zs, xs : List a) ->

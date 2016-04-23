@@ -13,7 +13,7 @@ modules = System,
 
           Data.Morphisms,
           Data.Bits, Data.Mod2,
-          Data.Fin, Data.Vect,
+          Data.Fin, Data.Vect, Data.Vect.Views,
           Data.HVect, Data.Vect.Quantifiers,
           Data.Complex,
           Data.Erased, Data.List, Data.List.Views,
