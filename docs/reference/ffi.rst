@@ -179,7 +179,8 @@ compilation error:
     example f = foreign FFI_C "callbacker" (CFnPtr (Int -> ()) -> IO ()) f
 
 The other big limitation is that it doesn't support IO functions. Use
-``unsafePerformIO`` to wrap them.
+``unsafePerformIO`` to wrap them (i.e. to make an IO function usable as a callback, change the return type
+from IOr to r, and change the = do to = unsafePerformIO $ do).
 
 There are two special function names:
 ``%wrapper`` returns the function pointer that wraps an Idris function. This
@@ -215,6 +216,9 @@ global variable with the following name. The type must be just ``IO Ptr``.
     -- access the global variable errno
     errno : IO Ptr
     errno = foreign FFI_C "&errno" (IO Ptr)
+
+For more complicated interactions with C (such as reading and setting fields of a C struct), there is
+a module CFFI available in the contrib package.
 
 FFI implementation
 ------------------
