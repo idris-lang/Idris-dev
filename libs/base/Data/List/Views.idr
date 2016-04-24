@@ -138,12 +138,17 @@ lsplit (x :: xs) (S k) prf (S l) right prf1
            (x :: lsrec' ** rsrec' ** (eqSucc _ _ lprf, rprf, rewrite recprf in Refl))
 lsplit (_ :: _) Z Refl (S _) _ _ impossible
 
+||| Proof that two numbers differ by at most one
+public export
 data Balanced : Nat -> Nat -> Type where
      BalancedZ : Balanced Z Z
      BalancedL : Balanced (S Z) Z
      BalancedRec : Balanced n m -> Balanced (S n) (S m)
 
--- Question: worth exporting?
+||| View of a list split into two halves
+|||
+||| The lengths of the lists are guaranteed to differ by at most one
+public export
 data SplitBalanced : List a -> Type where
      MkSplitBal : {xs, ys : List a} ->
                   Balanced (length xs) (length ys) -> SplitBalanced (xs ++ ys)
@@ -168,6 +173,10 @@ splitBalancedLen xs n prf with (half n)
               lsplit xs (x + x) prf x x Refl in
               rewrite apprf in (MkSplitBal (mkBalanced lprf rprf))
 
+||| Covering function for the `SplitBalanced`
+|||
+||| Constructs the view in linear time
+export
 splitBalanced : (xs : List a) -> SplitBalanced xs
 splitBalanced xs = splitBalancedLen xs (length xs) Refl
   
