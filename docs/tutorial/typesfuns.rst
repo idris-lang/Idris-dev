@@ -860,7 +860,7 @@ Dependent Pairs
 
 Dependent pairs allow the type of the second element of a pair to depend
 on the value of the first element. Traditionally, these are referred to
-as “sigma types”, so in older code you might see Sigma rather than DPair:
+as “sigma types”:
 
 .. code-block:: idris
 
