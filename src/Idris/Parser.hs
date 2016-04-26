@@ -535,7 +535,7 @@ syntaxRule syn
           flip PQuasiquote goal <$> fixBind (q + 1) rens tm
         fixBind q rens (PUnquote tm) =
           PUnquote <$> fixBind (q - 1) rens tm
-          
+
         fixBind q rens x = descendM (fixBind q rens) x
 
         gensym :: Name -> IdrisParser Name
@@ -923,11 +923,11 @@ instance_ kwopt syn
                                           then [TotalFn]
                                           else []
 
-                   (doc, argDocs) <- docstring syn 
+                   (doc, argDocs) <- docstring syn
                    opts <- fnOpts initOpts
                    acc <- accessibility
                    opts' <- fnOpts opts
-         
+
                    if kwopt then optional instanceKeyword
                             else do instanceKeyword
                                     return (Just ())
@@ -1319,6 +1319,8 @@ Directive' ::= 'lib'            CodeGen String_t
            |   'error_handlers' Name NameList
            |   'language'       'TypeProviders'
            |   'language'       'ErrorReflection'
+           |   'deprecated' Name String
+           |   'fragile'    Name Reason
            ;
 @
 -}
@@ -1371,6 +1373,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     n <- fst <$> fnName
                     alt <- option "" (fst <$> stringLiteral)
                     return [PDirective (DDeprecate n alt)]
+             <|> do try (lchar '%' *> reserved "fragile")
+                    n <- fst <$> fnName
+                    alt <- option "" (fst <$> stringLiteral)
+                    return [PDirective (DFragile n alt)]
              <|> do fc <- getFC
                     try (lchar '%' *> reserved "used")
                     fn <- fst <$> fnName

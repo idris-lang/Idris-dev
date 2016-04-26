@@ -91,7 +91,7 @@ Extra-source-files:
                        config.mk
                        stack.yaml
                        man/idris.1
-		       
+
                        rts/*.c
                        rts/*.h
                        rts/arduino/*.c
@@ -408,6 +408,10 @@ Extra-source-files:
                        test/corecords002/*.idr
                        test/corecords002/run
                        test/corecords002/expected
+
+                       test/directives001/*.idr
+                       test/directives001/run
+                       test/directives001/expected
 
                        test/delab001/*.idr
                        test/delab001/run

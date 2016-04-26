@@ -26,6 +26,10 @@
     be called directly, so the recursive structure of `SnocList` can direct the
     recursion structure of `my_reverse`.
 
+* Added `%fragile` directive, which gives a warning and a message when a
+  fragile name is referenced. For use in detailing fragile APIs.
+
+
 ## Library updates
 
 * `Control.WellFounded` module removed, and added to the Prelude as
