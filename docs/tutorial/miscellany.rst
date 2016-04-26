@@ -276,7 +276,7 @@ type ``Int`` will be provided. Otherwise, it will provide the type
     strToType _ = Nat
 
     fromFile : String -> IO (Provider Type)
-    fromFile fname = do str <- readFile fname
+    fromFile fname = do Right str <- readFile fname
                         return (Provide (strToType (trim str)))
 
 We then use the ``%provide`` directive:

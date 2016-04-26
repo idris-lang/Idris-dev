@@ -860,12 +860,12 @@ Dependent Pairs
 
 Dependent pairs allow the type of the second element of a pair to depend
 on the value of the first element. Traditionally, these are referred to
-as “sigma types”:
+as “sigma types”, so in older code you might see Sigma rather than DPair:
 
 .. code-block:: idris
 
-    data Sigma : (a : Type) -> (P : a -> Type) -> Type where
-       MkSigma : {P : a -> Type} -> (x : a) -> P x -> Sigma a P
+    data DPair : (a : Type) -> (P : a -> Type) -> Type where
+       MkDPair : {P : a -> Type} -> (x : a) -> P x -> DPair a P
 
 Again, there is syntactic sugar for this. ``(a : A ** P)`` is the type
 of a pair of A and P, where the name ``a`` can occur inside ``P``.
@@ -882,8 +882,8 @@ equivalent.
 
 .. code-block:: idris
 
-    vec : Sigma Nat (\n => Vect n Int)
-    vec = MkSigma 2 [3, 4]
+    vec : DPair Nat (\n => Vect n Int)
+    vec = MkDPair 2 [3, 4]
 
 The type checker could of course infer the value of the first element
 from the length of the vector. We can write an underscore ``_`` in
