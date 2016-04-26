@@ -277,8 +277,8 @@ type ``Int`` will be provided. Otherwise, it will provide the type
 
     fromFile : String -> IO (Provider Type)
     fromFile fname = do Right str <- readFile fname
-		| Left err => pure (Provide Void)
-	pure (Provide (strToType (trim str)))
+		          | Left err => pure (Provide Void)
+		        pure (Provide (strToType (trim str)))
 
 We then use the ``%provide`` directive:
 
