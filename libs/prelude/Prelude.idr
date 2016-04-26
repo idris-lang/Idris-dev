@@ -214,6 +214,30 @@ Enum Char where
 
   pred c = fromNat (pred (toNat c))
 
+Enum Bits8 where
+  toNat b   = fromIntegerNat (prim__zextB8_BigInt b)
+  fromNat n = prim__truncBigInt_B8 (toIntegerNat n)
+  
+  pred b = fromNat (pred (toNat b))
+
+Enum Bits16 where
+  toNat b   = fromIntegerNat (prim__zextB16_BigInt b)
+  fromNat n = prim__truncBigInt_B16 (toIntegerNat n)
+  
+  pred b = fromNat (pred (toNat b))
+
+Enum Bits32 where
+  toNat b   = fromIntegerNat (prim__zextB32_BigInt b)
+  fromNat n = prim__truncBigInt_B32 (toIntegerNat n)
+  
+  pred b = fromNat (pred (toNat b))
+
+Enum Bits64 where
+  toNat b   = fromIntegerNat (prim__zextB64_BigInt b)
+  fromNat n = prim__truncBigInt_B64 (toIntegerNat n)
+
+  pred b = fromNat (pred (toNat b))
+  
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end
 syntax "[" [start] "," [next] ".." [end] "]"
