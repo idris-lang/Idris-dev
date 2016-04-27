@@ -216,25 +216,25 @@ Enum Char where
 
 Enum Bits8 where
   toNat b   = fromIntegerNat (prim__zextB8_BigInt b)
-  fromNat n = prim__truncBigInt_B8 (toIntegerNat n)
+  fromNat n = fromInteger (toIntegerNat n)
   
   pred b = fromNat (pred (toNat b))
 
 Enum Bits16 where
   toNat b   = fromIntegerNat (prim__zextB16_BigInt b)
-  fromNat n = prim__truncBigInt_B16 (toIntegerNat n)
+  fromNat n = fromInteger (toIntegerNat n)
   
   pred b = fromNat (pred (toNat b))
 
 Enum Bits32 where
   toNat b   = fromIntegerNat (prim__zextB32_BigInt b)
-  fromNat n = prim__truncBigInt_B32 (toIntegerNat n)
+  fromNat n = fromInteger (toIntegerNat n)
   
   pred b = fromNat (pred (toNat b))
 
 Enum Bits64 where
   toNat b   = fromIntegerNat (prim__zextB64_BigInt b)
-  fromNat n = prim__truncBigInt_B64 (toIntegerNat n)
+  fromNat n = fromInteger (toIntegerNat n)
 
   pred b = fromNat (pred (toNat b))
   
