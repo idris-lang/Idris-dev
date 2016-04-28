@@ -1,16 +1,19 @@
 module Data.Nat.Views
 
 public export
+||| View for dividing a Nat in half
 data Half : Nat -> Type where
      HalfOdd : {n : Nat} -> Half (S (n + n))
      HalfEven : {n : Nat} -> Half (n + n)
 
+||| View for dividing a Nat in half, recursively
 public export
 data HalfRec : Nat -> Type where
      HalfRecZ : HalfRec Z
-     HalfRecEven : {n : Nat} -> Lazy (HalfRec n) -> HalfRec (n + n)
-     HalfRecOdd : {n : Nat} -> Lazy (HalfRec n) -> HalfRec (S (n + n))
+     HalfRecEven : {n : Nat} -> (rec : Lazy (HalfRec n)) -> HalfRec (n + n)
+     HalfRecOdd : {n : Nat} -> (rec : Lazy (HalfRec n)) -> HalfRec (S (n + n))
 
+||| Covering function for the `Half` view
 export
 half : (n : Nat) -> Half n
 half Z = HalfEven {n=0}
@@ -28,6 +31,7 @@ halfRecFix (S k) hrec with (half k)
   halfRecFix (S (n + n)) hrec | HalfEven 
        = HalfRecOdd (hrec n (LTESucc (lteAddRight _)))
 
+||| Covering function for the `HalfRec` view
 export
 halfRec : (n : Nat) -> HalfRec n
 halfRec n = accInd halfRecFix n (ltAccessible n)

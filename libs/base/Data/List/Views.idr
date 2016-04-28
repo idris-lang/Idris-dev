@@ -57,8 +57,9 @@ public export
 data SplitRec : List a -> Type where
      SplitRecNil : SplitRec []
      SplitRecOne : {x : a} -> SplitRec [x]
-     SplitRecPair : {xs, ys : List a} -> -- Explicit, don't erase
-                    Lazy (SplitRec xs) -> Lazy (SplitRec ys) -> SplitRec (xs ++ ys)
+     SplitRecPair : {lefts, rights : List a} -> -- Explicit, don't erase
+                    (lrec : Lazy (SplitRec lefts)) -> 
+                    (rrec : Lazy (SplitRec rights)) -> SplitRec (lefts ++ rights)
 
 total
 splitRecFix : (xs : List a) -> ((ys : List a) -> smaller ys xs -> SplitRec ys) -> 
@@ -87,7 +88,7 @@ data SnocList : List a -> Type where
 snocListHelp : SnocList xs -> (ys : List a) -> SnocList (xs ++ ys)
 snocListHelp {xs} x [] = rewrite appendNilRightNeutral xs in x
 snocListHelp {xs} x (y :: ys) 
-   = rewrite appendAssociative xs [y] ys in snocListHelp (Snoc x {x=y}) ys
+   = rewrite appendAssociative xs [y] ys in snocListHelp (Snoc x) ys
 
 ||| Covering function for the `SnocList` view
 ||| Constructs the view in linear time
