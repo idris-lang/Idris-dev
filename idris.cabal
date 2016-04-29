@@ -117,6 +117,7 @@ Extra-source-files:
                        libs/base/Data/Nat/*.idr
                        libs/base/Data/List/*.idr
                        libs/base/Data/Vect/*.idr
+                       libs/base/Data/String/*.idr
                        libs/base/Debug/*.idr
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile

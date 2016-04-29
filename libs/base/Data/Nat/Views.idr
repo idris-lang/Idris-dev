@@ -1,7 +1,7 @@
 module Data.Nat.Views
 
-public export
 ||| View for dividing a Nat in half
+public export
 data Half : Nat -> Type where
      HalfOdd : {n : Nat} -> Half (S (n + n))
      HalfEven : {n : Nat} -> Half (n + n)

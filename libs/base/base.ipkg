@@ -19,6 +19,7 @@ modules = System,
           Data.Erased, Data.List, Data.List.Views,
           Data.List.Quantifiers,
           Data.Nat.Views,
+          Data.String.Views,
           Data.So, Data.String,
 
           Control.Isomorphism,
