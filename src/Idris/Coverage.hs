@@ -480,7 +480,7 @@ buildSCG (_, n) = do
              let (args, sc) = cases_totcheck cd in
                do logCoverage 2 $ "Building SCG for " ++ show n ++ " from\n"
                                 ++ show pats ++ "\n" ++ show sc
-                  let newscg = buildSCG' ist (rights pats) args
+                  let newscg = buildSCG' ist n (rights pats) args
                   logCoverage 5 $ "SCG is: " ++ show newscg
                   addToCG n ( cg { scg = newscg } )
            _ -> return () -- CG comes from a type declaration only
@@ -499,33 +499,46 @@ delazy' all (App s f a) = App s (delazy' all f) (delazy' all a)
 delazy' all (Bind n b sc) = Bind n (fmap (delazy' all) b) (delazy' all sc)
 delazy' all t = t
 
-data Guardedness = Toplevel | Unguarded | Guarded
+data Guardedness = Toplevel | Unguarded | Guarded | Delayed
   deriving Show
 
-buildSCG' :: IState -> [(Term, Term)] -> [Name] -> [SCGEntry]
-buildSCG' ist pats args = nub $ concatMap scgPat pats where
+buildSCG' :: IState -> Name -> [(Term, Term)] -> [Name] -> [SCGEntry]
+buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
   scgPat (lhs, rhs) = let lhs' = delazy lhs
                           rhs' = delazy rhs
                           (f, pargs) = unApply (dePat lhs') in
                             findCalls Toplevel (dePat rhs') (patvars lhs') pargs
 
+  findCalls Delayed ap@(P _ n _) pvs args
+     | n == topfn = []
   findCalls guarded ap@(App _ f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
      -- that it is total.
      | (P _ (UN at) _, [_, _]) <- unApply ap,
        at == txt "assert_total" = []
-     -- under a call to "Delay LazyCodata", don't do any checking of the
-     -- immediate call, as long as the call is guarded.
-     -- Then check its arguments
+     -- under a guarded call to "Delay LazyCodata", we are 'Delayed', so don't
+     -- check under guarded constructors.
      | (P _ (UN del) _, [_,_,arg]) <- unApply ap,
        Guarded <- guarded,
-       del == txt "Delay"
-           = let (capp, args) = unApply arg in
-                 concatMap (\x -> findCalls guarded x pvs pargs) args
+       del == txt "Delay" 
+           = findCalls Delayed arg pvs pargs
+     | (P _ n _, args) <- unApply ap,
+       Delayed <- guarded,
+       n == topfn -- Under a delayed recursive call to the top level function,
+                  -- just check the arguments
+           = concatMap (\x -> findCalls Unguarded x pvs pargs) args
+     | (P _ n _, args) <- unApply ap,
+       Delayed <- guarded,
+       isConName n (tt_ctxt ist)
+           = -- Still under a 'Delay' and constructor guarded, so check 
+             -- just the arguments to the constructor, remaining Delayed
+             concatMap (\x -> findCalls guarded x pvs pargs) args
      | (P _ n _, args) <- unApply ap
+        -- Ordinary call, not under a delay. 
+        -- If n is a constructor, set 'args' as Guarded
         = let nguarded = case guarded of
                               Unguarded -> Unguarded
-                              _ -> if isConName n (tt_ctxt ist)
+                              x -> if isConName n (tt_ctxt ist)
                                       then Guarded
                                       else Unguarded in
               mkChange n args pargs ++
