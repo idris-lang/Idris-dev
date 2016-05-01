@@ -115,8 +115,13 @@ elabCaseBlock info opts d@(PClauses f o n ps)
              logElab 5 $ "CASE BLOCK: " ++ show (n, d)
              let opts' = nub (o ++ opts)
              -- propagate totality assertion to the new definitions
-             when (AssertTotal `elem` opts) $ setFlags n [AssertTotal]
+             let opts' = filter propagatable opts
+             setFlags n opts'
              rec_elabDecl info EAll info (PClauses f opts' n ps )
+  where
+    propagatable AssertTotal = True
+    propagatable Inlinable = True
+    propagatable _ = False
 
 -- | Check that the result of type checking matches what the programmer wrote
 -- (i.e. - if we inferred any arguments that the user provided, make sure

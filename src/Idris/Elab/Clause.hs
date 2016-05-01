@@ -317,7 +317,9 @@ elabClauses info' fc opts n_in cs =
 
     getLHS (_, l, _) = l
 
-    simple_lhs ctxt (Right (x, y)) = Right (normalise ctxt [] x, y)
+    -- Simplify the left hand side of a definition, to remove any lets
+    -- that may have arisen during elaboration
+    simple_lhs ctxt (Right (x, y)) = Right (Idris.Core.Evaluate.simplify ctxt [] x, y)
     simple_lhs ctxt t = t
 
     simple_rt ctxt (p, x, y) = (p, x, force (uniqueBinders p
@@ -619,7 +621,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                                then recheckC_borrowing False (PEGenerated `notElem` opts)
                                                        [] fc id [] lhs_tm
                                else return (lhs_tm, lhs_ty)
-        let clhs = normalise ctxt [] clhs_c
+        let clhs = Idris.Core.Evaluate.simplify ctxt [] clhs_c
         let borrowed = borrowedNames [] clhs
 
         -- These are the names we're not allowed to use on the RHS, because
@@ -959,7 +961,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                        withblock
         logElab 3 ("with block " ++ show wb)
         -- propagate totality assertion to the new definitions
-        when (AssertTotal `elem` opts) $ setFlags wname [AssertTotal]
+        setFlags wname [Inlinable]
+        when (AssertTotal `elem` opts) $ setFlags wname [Inlinable, AssertTotal]
         i <- getIState
         let rhstrans' = updateWithTerm i mpn wname lhs (map fst bargs_pre) (map fst (bargs_post))
                              . rhs_trans info

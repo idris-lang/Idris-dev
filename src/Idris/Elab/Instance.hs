@@ -75,7 +75,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
     putIState (ist { hide_list = addDef iname acc (hide_list ist) })
     ist <- getIState
 
-    let totopts = Dictionary : opts
+    let totopts = Dictionary : Inlinable : opts
 
     let emptyclass = null (class_methods ci)
     when (what /= EDefns) $ do

@@ -22,4 +22,3 @@ countStream x = x :: countStream (x + 1)
 
 main : IO ()
 main = printLn (take 10 (process doubleInt (countStream 1)))
-

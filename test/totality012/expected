@@ -1,0 +1,4 @@
+totality012a.idr:9:1:
+Main.echo2 is possibly not total due to recursive path Main.echo2 --> Main.echo2
+totality012b.idr:11:1:
+Main.echo is possibly not total due to recursive path Main.echo

@@ -29,6 +29,9 @@
 * Added `%fragile` directive, which gives a warning and a message when a
   fragile name is referenced. For use in detailing fragile APIs.
 
+* The totality checker now looks under `case` blocks, rather than treating
+  them as mutually defined functions with their top level function, meaning
+  that it can spot more total functions.
 
 ## Library updates
 

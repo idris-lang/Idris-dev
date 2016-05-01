@@ -802,6 +802,12 @@ Extra-source-files:
                        test/totality011/run
                        test/totality011/*.lidr
                        test/totality011/expected
+                       test/totality012/run
+                       test/totality012/*.lidr
+                       test/totality012/expected
+                       test/totality013/run
+                       test/totality013/*.lidr
+                       test/totality013/expected
 
                        test/tutorial001/run
                        test/tutorial001/*.idr

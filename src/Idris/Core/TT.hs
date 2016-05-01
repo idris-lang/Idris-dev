@@ -28,7 +28,7 @@ module Idris.Core.TT(AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
                      TermSize(..), TextFormatting(..), TT(..),Type(..), TypeInfo(..),
                      UConstraint(..), UCs(..), UExp(..), Universe(..),
                      addAlist, addBinder, addDef, allTTNames, arity, bindAll,
-                     bindingOf, bindTyArgs, constDocs, constIsType, deleteDefExact,
+                     bindingOf, bindTyArgs, caseName, constDocs, constIsType, deleteDefExact,
                      discard, emptyContext, emptyFC, explicitNames, fc_end, fc_fname,
                      fc_start, fcIn, fileFC, finalise, fmapMB, forget, forgetEnv,
                      freeNames, getArgTys, getRetTy, implicitable, instantiate,
@@ -482,6 +482,11 @@ sNS n ss = NS n $!! (map txt ss)
 
 sMN :: Int -> String -> Name
 sMN i s = MN i (txt s)
+
+caseName (SN (CaseN _ _)) = True
+caseName (NS n _) = caseName n
+caseName _ = False
+
 
 {-!
 deriving instance Binary Name
@@ -1030,6 +1035,7 @@ instance TermSize a => TermSize [a] where
 instance TermSize (TT Name) where
     termsize n (P _ n' _)
        | n' == n = 1000000 -- recursive => really big
+       | caseName n' = 1000000 -- case, not safe to inline for termination check
        | otherwise = 1
     termsize n (V _) = 1
     -- for `Bind` terms, we can erroneously declare a term
