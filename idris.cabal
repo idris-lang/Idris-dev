@@ -1072,7 +1072,7 @@ Library
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.4
                 , safe
-                , fsnotify < 2.2
+                , fsnotify >= 0.2 && < 2.2
                 , async < 2.2
 
   -- zlib >= 0.6.1 is broken with GHC < 7.10.3
