@@ -4,7 +4,7 @@ import Builtins
 import Prelude.Interfaces
 
 %access public export
-%default total
+%totality total
 
 %include C "math.h"
 %lib C "m"

@@ -1,7 +1,7 @@
 module System
 
 %include C "unistd.h"
-%default partial
+%totality partial
 %access public export
 
 ||| Retrieves a value from the environment if the given key is present,

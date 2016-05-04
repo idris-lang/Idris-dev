@@ -2,7 +2,7 @@ module Quasiquote004
 
 import Language.Reflection
 
-%default total
+%totality total
 
 normPlus : List (TTName, Binder TT) -> TT -> Tactic
 normPlus ctxt `((=) {A = Nat} {B = Nat} ~x ~y) = normPlus ctxt x `Seq` normPlus ctxt y

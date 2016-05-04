@@ -7,7 +7,7 @@ import Data.Vect
 %include C "memory.h"
 
 %access public export
-%default partial
+%totality partial
 
 
 data CPtr = CPt Ptr Int

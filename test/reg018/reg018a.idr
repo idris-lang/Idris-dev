@@ -1,6 +1,6 @@
 module conat
 
-%default total
+%totality total
 
 codata CoNat = Z | S CoNat
 

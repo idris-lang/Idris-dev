@@ -262,7 +262,7 @@ Shortcomings
 ============
 
 You can't get warnings in libraries because usage analysis starts from
-``Main.main``. This will be solved by the planned ``%default_usage``
+``Main.main``. This will be solved by the planned ``%totality_usage``
 pragma.
 
 Usage warnings are quite bad and unhelpful at the moment. We should
@@ -308,7 +308,7 @@ Planned features
 - Improvements to the case-tree elaborator so that it properly avoids
    dotted fields of data constructors. Done.
 
-- Compiler pragma ``%default_usage used/unused`` and per-function
+- Compiler pragma ``%totality_usage used/unused`` and per-function
    overrides ``used`` and ``unused``, which allow the programmer to
    mark the return value of a function as used, even if the function
    is not used in ``main`` (which is the case when writing library

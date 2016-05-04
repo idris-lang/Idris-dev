@@ -7,7 +7,7 @@ import Pruviloj.Core
 import Pruviloj.Internals
 import Pruviloj.Renamers
 
-%default total
+%totality total
 %access private
 
 -------------------

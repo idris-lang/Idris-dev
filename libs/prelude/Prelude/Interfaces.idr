@@ -318,7 +318,7 @@ Fractional Double where
   (/) = prim__divFloat
 
 -- --------------------------------------------------------------- [ Integrals ]
-%default partial
+%totality partial
 
 interface Num ty => Integral ty where
    div : ty -> ty -> ty

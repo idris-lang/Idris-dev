@@ -1,7 +1,7 @@
 ||| Euclidean division using primitive recursion/induction.
 module Data.Nat.DivMod
 
-%default total
+%totality total
 %access public export
 
 ||| The result of euclidean division of natural numbers

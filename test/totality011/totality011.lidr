@@ -1,4 +1,4 @@
-> %default total
+> %totality total
 
 > X       :  Nat -> Type
 > Y       :  (t : Nat) -> X t -> Type

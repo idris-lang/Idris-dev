@@ -4,7 +4,7 @@ This is a test to make sure that #2130 doesn't re-break.
 > import Data.Vect
 > import Data.Fin
 
-> %default total 
+> %totality total 
 
 > idSuccPreservesLTE : (m : Nat) -> (n : Nat) -> m `LTE` n -> m `LTE` (S n)
 > idSuccPreservesLTE  Z     n    prf = LTEZero

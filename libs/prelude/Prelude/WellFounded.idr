@@ -9,7 +9,7 @@ import Prelude.Nat
 import Prelude.List
 import Prelude.Uninhabited
 
-%default total
+%totality total
 %access public export
 
 ||| Accessibility: some element `x` is accessible if all `y` such that

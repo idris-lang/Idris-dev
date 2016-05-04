@@ -1,7 +1,7 @@
 module CodataTest
 import Data.Vect
 
-%default total
+%totality total
 
 codata InfStream a = (::) a (InfStream a)
 --

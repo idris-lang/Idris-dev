@@ -5,7 +5,7 @@ import Control.Monad.State
 import Data.Vect
 import Data.Vect.Quantifiers
 
-%default total
+%totality total
 %access public export
 
 Cell : Nat -> Type

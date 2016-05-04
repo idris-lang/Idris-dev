@@ -1,7 +1,7 @@
 %unqualified
 
 %access public export
-%default total
+%totality total
 
 ||| The canonical single-element type, also known as the trivially
 ||| true proposition.

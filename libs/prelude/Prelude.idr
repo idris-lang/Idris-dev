@@ -35,7 +35,7 @@ import public Language.Reflection.Elab
 import public Language.Reflection.Errors
 
 %access public export
-%default total
+%totality total
 
 -- Things that can't be elsewhere for import cycle reasons
 -- See comment after declaration of void in Builtins.idr

@@ -2,7 +2,7 @@ module Data.Bits
 
 import Data.Fin
 
-%default total
+%totality total
 %access export
 
 public export

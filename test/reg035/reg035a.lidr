@@ -2,7 +2,7 @@
 
 > import Data.So
 
-> %default total
+> %totality total
 
 > postulate soAndIntro : (p : alpha -> Bool) ->
 >                        (q : beta -> Bool) -> 

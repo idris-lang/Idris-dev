@@ -2,7 +2,7 @@ module Main
 
 import Data.Vect
 
-%default total
+%totality total
 
 data CoNat
     = Co Nat

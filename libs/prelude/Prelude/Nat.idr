@@ -10,7 +10,7 @@ import Prelude.Interfaces
 import Prelude.Uninhabited
 
 %access public export
-%default total
+%totality total
 
 ||| Natural numbers: unbounded, unsigned integers which can be pattern
 ||| matched.

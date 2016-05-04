@@ -2,7 +2,7 @@ import Data.Vect
 
 data MyNat = MyO | MyS MyNat
 
-%default total
+%totality total
 
 data Bad = MkBad (Bad -> Int) Int
          | MkBad' Int

@@ -9,7 +9,7 @@ import Prelude.Interfaces
 import Prelude.Foldable
 
 %access public export
-%default total
+%totality total
 
 ||| An optional value. This can be used to represent the possibility of
 ||| failure, where a function may return a value, or not.

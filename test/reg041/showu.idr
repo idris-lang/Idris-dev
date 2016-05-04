@@ -1,6 +1,6 @@
 module Main
 
-%default total
+%totality total
 
 data U : Type where
   BOOL : U

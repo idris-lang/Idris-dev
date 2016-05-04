@@ -10,7 +10,7 @@ import public Control.Algebra.NumericInstances
 import public Data.Matrix
 
 %access public export
-%default total
+%totality total
 
 infixr 2 <:>  -- vector inner product
 infixr 2 ><   -- vector outer product

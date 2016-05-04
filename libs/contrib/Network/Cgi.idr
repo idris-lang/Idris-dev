@@ -2,7 +2,7 @@ module Network.Cgi
 
 import System
 
-%default total
+%totality total
 
 public export
 Vars : Type

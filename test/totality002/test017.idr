@@ -2,7 +2,7 @@ module scg
 
 import Data.Vect
 
-%default total
+%totality total
 
 data Ord = Zero | Suc Ord | Sup (Nat -> Ord)
 

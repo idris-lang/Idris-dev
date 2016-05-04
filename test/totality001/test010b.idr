@@ -1,6 +1,6 @@
 module main
 
-%default total
+%totality total
 
 data Bad = MkBad (Bad -> Int) Int
          | MkBad' Int

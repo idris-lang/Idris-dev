@@ -1,6 +1,6 @@
 module Main
 
-%default total
+%totality total
 
 data SP : Type -> Type -> Type where
   Get : (a -> SP a b) -> SP a b

@@ -3,7 +3,7 @@ module Control.Isomorphism.Primitives
 import Control.Isomorphism
 import Data.ZZ
 
-%default total
+%totality total
 %access public export
 
 -- This module contains isomorphisms between convenient inductive types and

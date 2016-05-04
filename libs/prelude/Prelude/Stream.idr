@@ -10,7 +10,7 @@ import Prelude.Nat
 import Prelude.List
 
 %access public export
-%default total
+%totality total
 
 ||| An infinite stream
 codata Stream : Type -> Type where

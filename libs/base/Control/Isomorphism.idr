@@ -3,7 +3,7 @@ module Control.Isomorphism
 import Syntax.PreorderReasoning
 import Data.Fin
 
-%default total
+%totality total
 %access public export
 
 ||| An isomorphism between two types
