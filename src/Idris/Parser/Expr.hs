@@ -1152,9 +1152,9 @@ constraintList1 syn = try (do lchar '('
                               return [(defname, NoFC, t)])
                   <?> "type constraint list"
   where nexpr = try (do (n, fc) <- name; lchar ':'
-                        e <- expr syn
+                        e <- expr (disallowImp syn)
                         return (n, fc, e))
-                <|> do e <- expr syn
+                <|> do e <- expr (disallowImp syn)
                        return (defname, NoFC, e)
         defname = sMN 0 "constraint"
 

@@ -228,10 +228,10 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     -- returns 'True' if the function should block
     -- normal evaluation should return false
     blockSimplify (CaseInfo inl always dict) n stk
-       | RunTT `elem` opts
+       | runtime
            = if always then False
                        else not (inl || dict) || elem n stk
-       | Simplify `elem` opts
+       | simpl
            = (not (inl || dict) || elem n stk)
              || (n == sUN "prim__syntactic_eq")
        | otherwise = False

@@ -130,13 +130,14 @@ elabExec fc tm = runtm (PAlternative [] FirstSuccess
   where
     runtm t = PApp fc (PRef fc [] (sUN "run__IO"))
                   [pimp (sUN "ffi") (PRef fc [] (sUN "FFI_C")) False, pexp t]
-    printtm t = PApp fc (PRef fc [] (sUN "printLn"))
-                  [pimp (sUN "ffi") (PRef fc [] (sUN "FFI_C")) False, pexp t]
+    printtm t = PApp fc (PRef fc [] (sUN "printLn")) [pexp t]
 
 elabREPL :: ElabInfo -> ElabMode -> PTerm -> Idris (Term, Type)
 elabREPL info aspat tm
     = idrisCatch (elabVal info aspat tm) catchAmbig
   where
     catchAmbig (CantResolveAlts _)
+       = elabVal info aspat (PDisamb [[txt "List"]] tm)
+    catchAmbig (NoValidAlts _)
        = elabVal info aspat (PDisamb [[txt "List"]] tm)
     catchAmbig e = ierror e

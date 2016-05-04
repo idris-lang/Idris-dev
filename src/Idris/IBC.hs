@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 137
+ibcVersion = 138
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
@@ -95,7 +95,8 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_deprecated :: ![(Name, String)],
                          ibc_defs :: ![(Name, Def)],
                          ibc_total :: ![(Name, Totality)],
-                         ibc_access :: ![(Name, Accessibility)]
+                         ibc_access :: ![(Name, Accessibility)],
+                         ibc_fragile :: ![(Name, String)]
                        }
    deriving Show
 {-!
@@ -103,7 +104,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -196,7 +197,8 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_deprecated"  (ibc_deprecated i),
                        makeEntry "ibc_defs"  (ibc_defs i),
                        makeEntry "ibc_total"  (ibc_total i),
-                       makeEntry "ibc_access"  (ibc_access i)]
+                       makeEntry "ibc_access"  (ibc_access i),
+                       makeEntry "ibc_fragile" (ibc_fragile i)]
 
 writeArchive :: FilePath -> IBCFile -> Idris ()
 writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
@@ -323,6 +325,7 @@ ibc i (IBCUsage n) f = return f { ibc_usage = n : ibc_usage f }
 ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f }
 ibc i (IBCDeprecate n r) f = return f { ibc_deprecated = (n, r) : ibc_deprecated f }
+ibc i (IBCFragile n r)   f = return f { ibc_fragile    = (n,r)  : ibc_fragile f }
 
 getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
 getEntry alt f a = case findEntryByPath f a of
@@ -392,13 +395,20 @@ process reexp phase archive fn = do
                 processDefs archive
                 processTotal archive
                 processAccess reexp phase archive
+                processFragile archive
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
-timestampOlder src ibc = do srct <- runIO $ getModificationTime src
-                            ibct <- runIO $ getModificationTime ibc
-                            if (srct > ibct)
-                               then ifail $ "Needs reloading " ++ show (srct, ibct)
-                               else return ()
+timestampOlder src ibc = do
+  srct <- runIO $ getModificationTime src
+  ibct <- runIO $ getModificationTime ibc
+  if (srct > ibct)
+    then ifail $ unlines [ "Module needs reloading:"
+                         , unwords ["\tSRC :", show src]
+                         , unwords ["\tModified at:", show srct]
+                         , unwords ["\tIBC :", show ibc]
+                         , unwords ["\tModified at:", show ibct]
+                         ]
+    else return ()
 
 processPostulates :: Archive -> Idris ()
 processPostulates ar = do
@@ -434,6 +444,11 @@ processDeprecate :: Archive -> Idris ()
 processDeprecate ar = do
     ns <-  getEntry [] "ibc_deprecated" ar
     mapM_ (\(n,reason) -> addDeprecated n reason) ns
+
+processFragile :: Archive -> Idris ()
+processFragile ar = do
+    ns <- getEntry [] "ibc_fragile" ar
+    mapM_ (\(n,reason) -> addFragile n reason) ns
 
 processImportDirs :: Archive -> Idris ()
 processImportDirs ar = do

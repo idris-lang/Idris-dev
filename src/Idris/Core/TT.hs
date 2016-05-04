@@ -28,7 +28,7 @@ module Idris.Core.TT(AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
                      TermSize(..), TextFormatting(..), TT(..),Type(..), TypeInfo(..),
                      UConstraint(..), UCs(..), UExp(..), Universe(..),
                      addAlist, addBinder, addDef, allTTNames, arity, bindAll,
-                     bindingOf, bindTyArgs, constDocs, constIsType, deleteDefExact,
+                     bindingOf, bindTyArgs, caseName, constDocs, constIsType, deleteDefExact,
                      discard, emptyContext, emptyFC, explicitNames, fc_end, fc_fname,
                      fc_start, fcIn, fileFC, finalise, fmapMB, forget, forgetEnv,
                      freeNames, getArgTys, getRetTy, implicitable, instantiate,
@@ -372,8 +372,11 @@ instance Show Err where
     show (Msg s) = s
     show (InternalMsg s) = "Internal error: " ++ show s
     show (CantUnify rcv l r e sc i) = "CantUnify " ++ show rcv ++ " " ++
-                                         show l ++ " " ++ show r ++ " " ++
+                                         show l ++ " and " ++ show r ++ " " ++
                                          show e ++ " in " ++ show sc ++ " " ++ show i
+    show (CantConvert l r sc) = "CantConvert " ++
+                                         show l ++ " and " ++ show r ++ " " ++
+                                         " in " ++ show sc
     show (CantSolveGoal g _) = "CantSolve " ++ show g
     show (Inaccessible n) = show n ++ " is not an accessible pattern variable"
     show (UnknownImplicit n f) = show n ++ " is not an implicit argument of " ++ show f
@@ -395,7 +398,7 @@ instance Show Err where
     show (NotEquality _ _) = "NotEquality"
     show (TooManyArguments _) = "TooManyArguments"
     show (CantIntroduce _) = "CantIntroduce"
-    show (NoSuchVariable _) = "NoSuchVariable"
+    show (NoSuchVariable n) = "NoSuchVariable " ++ show n
     show (WithFnType _) = "WithFnType"
     show (NoTypeDecl _) = "NoTypeDecl"
     show (NotInjective _ _ _) = "NotInjective"
@@ -479,6 +482,11 @@ sNS n ss = NS n $!! (map txt ss)
 
 sMN :: Int -> String -> Name
 sMN i s = MN i (txt s)
+
+caseName (SN (CaseN _ _)) = True
+caseName (NS n _) = caseName n
+caseName _ = False
+
 
 {-!
 deriving instance Binary Name
@@ -1027,6 +1035,7 @@ instance TermSize a => TermSize [a] where
 instance TermSize (TT Name) where
     termsize n (P _ n' _)
        | n' == n = 1000000 -- recursive => really big
+       | caseName n' = 1000000 -- case, not safe to inline for termination check
        | otherwise = 1
     termsize n (V _) = 1
     -- for `Bind` terms, we can erroneously declare a term

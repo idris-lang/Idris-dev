@@ -1,0 +1,4 @@
+error008.idr:3:4:When checking type of Main.s2:
+Can't disambiguate name: Prelude.List.Nil, Data.Vect.Nil
+error008a.idr:3:4:When checking type of Main.s1:
+Can't disambiguate name: Prelude.List.Nil, Data.Vect.Nil

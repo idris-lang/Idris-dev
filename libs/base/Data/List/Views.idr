@@ -57,8 +57,9 @@ public export
 data SplitRec : List a -> Type where
      SplitRecNil : SplitRec []
      SplitRecOne : {x : a} -> SplitRec [x]
-     SplitRecPair : {xs, ys : List a} -> -- Explicit, don't erase
-                    Lazy (SplitRec xs) -> Lazy (SplitRec ys) -> SplitRec (xs ++ ys)
+     SplitRecPair : {lefts, rights : List a} -> -- Explicit, don't erase
+                    (lrec : Lazy (SplitRec lefts)) -> 
+                    (rrec : Lazy (SplitRec rights)) -> SplitRec (lefts ++ rights)
 
 total
 splitRecFix : (xs : List a) -> ((ys : List a) -> smaller ys xs -> SplitRec ys) -> 
@@ -82,12 +83,12 @@ public export
 data SnocList : List a -> Type where
      Empty : SnocList []
      Snoc : {x : a} -> {xs : List a} -> -- Explicit, so don't erase
-            SnocList xs -> SnocList (xs ++ [x])
+            (rec : SnocList xs) -> SnocList (xs ++ [x])
 
 snocListHelp : SnocList xs -> (ys : List a) -> SnocList (xs ++ ys)
 snocListHelp {xs} x [] = rewrite appendNilRightNeutral xs in x
 snocListHelp {xs} x (y :: ys) 
-   = rewrite appendAssociative xs [y] ys in snocListHelp (Snoc x {x=y}) ys
+   = rewrite appendAssociative xs [y] ys in snocListHelp (Snoc x) ys
 
 ||| Covering function for the `SnocList` view
 ||| Constructs the view in linear time
@@ -100,8 +101,8 @@ snocList xs = snocListHelp Empty xs
 public export
 data Filtered : (a -> a -> Bool) -> List a -> Type where
      FNil : Filtered p []
-     FRec : Lazy (Filtered p (filter (\y => p y x) xs)) -> 
-            Lazy (Filtered p (filter (\y => not (p y x)) xs)) ->
+     FRec : (lrec : Lazy (Filtered p (filter (\y => p y x) xs))) -> 
+            (rrec : Lazy (Filtered p (filter (\y => not (p y x)) xs))) ->
             Filtered p (x :: xs)
 
 filteredLOK : (p : a -> a -> Bool) -> (x : a) -> (xs : List a) -> smaller (filter (\y => p y x) xs) (x :: xs)
@@ -117,8 +118,8 @@ filtered : (p : a -> a -> Bool) -> (xs : List a) -> Filtered p xs
 filtered p inp with (smallerAcc inp)
   filtered p [] | with_pat = FNil
   filtered p (x :: xs) | (Access xsrec) 
-      =  FRec (Delay (filtered p (filter (\y => p y x) xs) | xsrec _ (filteredLOK p x xs)))
-              (Delay (filtered p (filter (\y => not (p y x)) xs) | xsrec _ (filteredROK p x xs)))
+      =  FRec (filtered p (filter (\y => p y x) xs) | xsrec _ (filteredLOK p x xs))
+              (filtered p (filter (\y => not (p y x)) xs) | xsrec _ (filteredROK p x xs))
 
 lenImpossible : (n = Z) -> (n = ((S k) + right)) -> Void
 lenImpossible {n = Z} _ Refl impossible
@@ -138,12 +139,17 @@ lsplit (x :: xs) (S k) prf (S l) right prf1
            (x :: lsrec' ** rsrec' ** (eqSucc _ _ lprf, rprf, rewrite recprf in Refl))
 lsplit (_ :: _) Z Refl (S _) _ _ impossible
 
+||| Proof that two numbers differ by at most one
+public export
 data Balanced : Nat -> Nat -> Type where
      BalancedZ : Balanced Z Z
      BalancedL : Balanced (S Z) Z
      BalancedRec : Balanced n m -> Balanced (S n) (S m)
 
--- Question: worth exporting?
+||| View of a list split into two halves
+|||
+||| The lengths of the lists are guaranteed to differ by at most one
+public export
 data SplitBalanced : List a -> Type where
      MkSplitBal : {xs, ys : List a} ->
                   Balanced (length xs) (length ys) -> SplitBalanced (xs ++ ys)
@@ -168,6 +174,10 @@ splitBalancedLen xs n prf with (half n)
               lsplit xs (x + x) prf x x Refl in
               rewrite apprf in (MkSplitBal (mkBalanced lprf rprf))
 
+||| Covering function for the `SplitBalanced`
+|||
+||| Constructs the view in linear time
+export
 splitBalanced : (xs : List a) -> SplitBalanced xs
 splitBalanced xs = splitBalancedLen xs (length xs) Refl
   
@@ -178,7 +188,7 @@ data VList : List a -> Type where
      VNil : VList []
      VOne : VList [x]
      VCons : {x : a} -> {y : a} -> {xs : List a} -> 
-             VList xs -> VList (x :: xs ++ [y])
+             (rec : VList xs) -> VList (x :: xs ++ [y])
 
 total
 balRec : (zs, xs : List a) ->

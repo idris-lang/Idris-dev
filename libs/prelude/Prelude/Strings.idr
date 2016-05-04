@@ -327,8 +327,8 @@ substr i len subject = prim__strSubstr (cast i) (cast len) subject
 ||| ```
 toLower : String -> String
 toLower x with (strM x)
-  strToLower ""             | StrNil = ""
-  strToLower (strCons c cs) | (StrCons c cs) =
+  toLower ""             | StrNil = ""
+  toLower (strCons c cs) | (StrCons c cs) =
     strCons (toLower c) (toLower (assert_smaller (strCons c cs) cs))
 
 ||| Uppercases all characters in the string.
@@ -338,8 +338,8 @@ toLower x with (strM x)
 ||| ```
 toUpper : String -> String
 toUpper x with (strM x)
-  strToLower ""             | StrNil = ""
-  strToLower (strCons c cs) | (StrCons c cs) =
+  toUpper ""             | StrNil = ""
+  toUpper (strCons c cs) | (StrCons c cs) =
     strCons (toUpper c) (toUpper (assert_smaller (strCons c cs) cs ))
 
 --------------------------------------------------------------------------------

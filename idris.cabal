@@ -1,5 +1,5 @@
 Name:           idris
-Version:        0.11
+Version:        0.11.1
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -80,6 +80,7 @@ Extra-doc-files:
                        CONTRIBUTING.md
                        CONTRIBUTORS
                        README.md
+                       RELEASE-CHECKS.md
                        idris-tutorial.pdf
                        samples/effects/*.idr
                        samples/misc/*.idr
@@ -91,7 +92,7 @@ Extra-source-files:
                        config.mk
                        stack.yaml
                        man/idris.1
-		       
+
                        rts/*.c
                        rts/*.h
                        rts/arduino/*.c
@@ -116,6 +117,7 @@ Extra-source-files:
                        libs/base/Data/Nat/*.idr
                        libs/base/Data/List/*.idr
                        libs/base/Data/Vect/*.idr
+                       libs/base/Data/String/*.idr
                        libs/base/Debug/*.idr
                        libs/base/Language/Reflection/*.idr
                        libs/base/Makefile
@@ -409,6 +411,10 @@ Extra-source-files:
                        test/corecords002/run
                        test/corecords002/expected
 
+                       test/directives001/*.idr
+                       test/directives001/run
+                       test/directives001/expected
+
                        test/delab001/*.idr
                        test/delab001/run
                        test/delab001/expected
@@ -467,6 +473,15 @@ Extra-source-files:
                        test/error005/run
                        test/error005/*.idr
                        test/error005/expected
+                       test/error006/run
+                       test/error006/*.idr
+                       test/error006/expected
+                       test/error007/run
+                       test/error007/*.idr
+                       test/error007/expected
+                       test/error008/run
+                       test/error008/*.idr
+                       test/error008/expected
 
                        test/ffi001/run
                        test/ffi001/*.idr
@@ -787,6 +802,12 @@ Extra-source-files:
                        test/totality011/run
                        test/totality011/*.lidr
                        test/totality011/expected
+                       test/totality012/run
+                       test/totality012/*.idr
+                       test/totality012/expected
+                       test/totality013/run
+                       test/totality013/*.idr
+                       test/totality013/expected
 
                        test/tutorial001/run
                        test/tutorial001/*.idr
@@ -1051,7 +1072,7 @@ Library
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.4
                 , safe
-                , fsnotify < 2.2
+                , fsnotify >= 0.2 && < 2.2
                 , async < 2.2
 
   -- zlib >= 0.6.1 is broken with GHC < 7.10.3

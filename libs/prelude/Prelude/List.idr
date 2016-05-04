@@ -230,7 +230,7 @@ dropWhile p (x::xs) = if p x then dropWhile p xs else x::xs
 ||| @ xs the list to recurse over
 list : (nil : Lazy b) -> (cons : Lazy (a -> List a -> b)) -> (xs : List a) -> b
 list nil cons []      = nil
-list nil cons (x::xs) = (Force cons) x xs
+list nil cons (x::xs) = cons x xs
 
 --------------------------------------------------------------------------------
 -- Building (bigger) lists
@@ -769,9 +769,9 @@ mergeBy : (a -> a -> Ordering) -> List a -> List a -> List a
 mergeBy order []      right   = right
 mergeBy order left    []      = left
 mergeBy order (x::xs) (y::ys) =
-  if order x y == LT
-     then x :: mergeBy order xs (y::ys)
-     else y :: mergeBy order (x::xs) ys
+  case order x y of
+       LT => x :: mergeBy order xs (y::ys)
+       _  => y :: mergeBy order (x::xs) ys
 
 ||| Merge two sorted lists using the default ordering for the type of their elements.
 merge : Ord a => List a -> List a -> List a

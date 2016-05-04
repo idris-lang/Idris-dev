@@ -26,11 +26,19 @@
     be called directly, so the recursive structure of `SnocList` can direct the
     recursion structure of `my_reverse`.
 
+* Added `%fragile` directive, which gives a warning and a message when a
+  fragile name is referenced. For use in detailing fragile APIs.
+
+* The totality checker now looks under `case` blocks, rather than treating
+  them as mutually defined functions with their top level function, meaning
+  that it can spot more total functions.
+
 ## Library updates
 
 * `Control.WellFounded` module removed, and added to the Prelude as
   `Prelude.WellFounded`.
 * Added `Data.List.Views` with views on `List` and their covering functions.
+* Added `Data.Nat.Views` with views on `Nat` and their covering functions.
 
 ## Miscellaneous updates
 

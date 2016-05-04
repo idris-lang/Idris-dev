@@ -41,6 +41,9 @@ recheckC_borrowing uniq_check addConstrs bs fc mkerr env t
          when addConstrs $ addConstraints fc cs
          mapM_ (checkDeprecated fc) (allTTNames tm)
          mapM_ (checkDeprecated fc) (allTTNames ty)
+         mapM_ (checkFragile fc) (allTTNames tm)
+         mapM_ (checkFragile fc) (allTTNames ty)
+
          return (tm, ty)
 
 checkDeprecated :: FC -> Name -> Idris ()
@@ -52,6 +55,20 @@ checkDeprecated fc n
                                  <> case r of
                                          "" -> Util.Pretty.empty
                                          _ -> line <> text r
+
+
+checkFragile :: FC -> Name -> Idris ()
+checkFragile fc n = do
+  r <- getFragile n
+  case r of
+    Nothing -> return ()
+    Just r  -> do
+      iWarn fc $ text "Use of a fragile construct "
+                     <> annName n
+                     <> case r of
+                          "" -> Util.Pretty.empty
+                          _  -> line <> text r
+
 
 iderr :: Name -> Err -> Err
 iderr _ e = e
@@ -98,8 +115,13 @@ elabCaseBlock info opts d@(PClauses f o n ps)
              logElab 5 $ "CASE BLOCK: " ++ show (n, d)
              let opts' = nub (o ++ opts)
              -- propagate totality assertion to the new definitions
-             when (AssertTotal `elem` opts) $ setFlags n [AssertTotal]
+             let opts' = filter propagatable opts
+             setFlags n opts'
              rec_elabDecl info EAll info (PClauses f opts' n ps )
+  where
+    propagatable AssertTotal = True
+    propagatable Inlinable = True
+    propagatable _ = False
 
 -- | Check that the result of type checking matches what the programmer wrote
 -- (i.e. - if we inferred any arguments that the user provided, make sure
@@ -319,14 +341,14 @@ mkStaticTy ns t = t
 
 -- Check that a name has the minimum required accessibility
 checkVisibility :: FC -> Name -> Accessibility -> Accessibility -> Name -> Idris ()
-checkVisibility fc n minAcc acc ref 
+checkVisibility fc n minAcc acc ref
     = do nvis <- getFromHideList ref
          case nvis of
               Nothing -> return ()
-              Just acc' -> if acc' > minAcc 
-                              then tclift $ tfail (At fc 
-                                      (Msg $ show acc ++ " " ++ show n ++ 
-                                             " can't refer to " ++ 
+              Just acc' -> if acc' > minAcc
+                              then tclift $ tfail (At fc
+                                      (Msg $ show acc ++ " " ++ show n ++
+                                             " can't refer to " ++
                                              show acc' ++ " " ++ show ref))
                               else return ()
 
@@ -397,10 +419,10 @@ setDetaggable n = do
         _    -> putIState ist { idris_optimisation = addDef n (Optimise [] True) opt }
 
 displayWarnings :: EState -> Idris ()
-displayWarnings est 
+displayWarnings est
      = mapM_ displayImpWarning (implicit_warnings est)
   where
     displayImpWarning :: (FC, Name) -> Idris ()
-    displayImpWarning (fc, n) = 
+    displayImpWarning (fc, n) =
        iputStrLn $ show fc ++ ":WARNING: " ++ show (nsroot n) ++ " is bound as an implicit\n"
                    ++ "\tDid you mean to refer to " ++ show n ++ "?"

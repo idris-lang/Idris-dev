@@ -11,3 +11,4 @@ wrongPossible = (\Flase impossible)
 wrongPossible' : Nool True -> Bool
 wrongPossible' x = case x of
                         Flase impossible
+

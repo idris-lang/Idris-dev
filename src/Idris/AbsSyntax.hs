@@ -381,12 +381,25 @@ getNameHints i n =
              _ -> []
 
 addDeprecated :: Name -> String -> Idris ()
-addDeprecated n reason = do i <- getIState
-                            putIState $ i { idris_deprecated = addDef n reason (idris_deprecated i) }
+addDeprecated n reason = do
+  i <- getIState
+  putIState $ i { idris_deprecated = addDef n reason (idris_deprecated i) }
 
 getDeprecated :: Name -> Idris (Maybe String)
-getDeprecated n = do i <- getIState
-                     return $ lookupCtxtExact n (idris_deprecated i)
+getDeprecated n = do
+  i <- getIState
+  return $ lookupCtxtExact n (idris_deprecated i)
+
+
+addFragile :: Name -> String -> Idris ()
+addFragile n reason = do
+  i <- getIState
+  putIState $ i { idris_fragile = addDef n reason (idris_fragile i) }
+
+getFragile :: Name -> Idris (Maybe String)
+getFragile n = do
+  i <- getIState
+  return $ lookupCtxtExact n (idris_fragile i)
 
 push_estack :: Name -> Bool -> Idris ()
 push_estack n inst
@@ -658,7 +671,7 @@ addDeferred' nt ns
   = do mapM_ (\(n, (i, _, t, _, _, _)) -> updateContext (addTyDecl n nt (tidyNames S.empty t))) ns
        mapM_ (\(n, _) -> when (not (n `elem` primDefs)) $ addIBC (IBCMetavar n)) ns
        i <- getIState
-       putIState $ i { idris_metavars = map (\(n, (i, top, _, ns, isTopLevel, isDefinable)) -> 
+       putIState $ i { idris_metavars = map (\(n, (i, top, _, ns, isTopLevel, isDefinable)) ->
                                                   (n, (top, i, ns, isTopLevel, isDefinable))) ns ++
                                             idris_metavars i }
   where
@@ -673,7 +686,7 @@ addDeferred' nt ns
         tidyNames used b = b
 
 solveDeferred :: FC -> Name -> Idris ()
-solveDeferred fc n 
+solveDeferred fc n
     = do i <- getIState
          case lookup n (idris_metavars i) of
               Just (_, _, _, _, False) ->
@@ -1691,7 +1704,7 @@ addImpl = addImpl' False [] []
 
 addImpl' :: Bool -> [Name] -> [Name] -> [Name] -> IState -> PTerm -> PTerm
 addImpl' inpat env infns imp_meths ist ptm
-   = mkUniqueNames env [] (ai inpat False (zip env (repeat Nothing)) [] ptm)
+   = ai inpat False (zip env (repeat Nothing)) [] (mkUniqueNames env [] ptm)
   where
     topname = case ptm of
                    PRef _ _ n -> n
@@ -1701,7 +1714,7 @@ addImpl' inpat env infns imp_meths ist ptm
     ai :: Bool -> Bool -> [(Name, Maybe PTerm)] -> [[T.Text]] -> PTerm -> PTerm
     ai inpat qq env ds (PRef fc fcs f)
         | f `elem` infns = PInferRef fc fcs f
-        | not (f `elem` map fst env) = handleErr $ aiFn topname inpat inpat qq imp_meths ist fc f fc ds [] 
+        | not (f `elem` map fst env) = handleErr $ aiFn topname inpat inpat qq imp_meths ist fc f fc ds []
     ai inpat qq env ds (PHidden (PRef fc hl f))
         | not (f `elem` map fst env) = PHidden (handleErr $ aiFn topname inpat False qq imp_meths ist fc f fc ds [])
     ai inpat qq env ds (PRewrite fc by l r g)
@@ -1742,30 +1755,46 @@ addImpl' inpat env infns imp_meths ist ptm
       = let f' = ai inpat qq env ds f
             as' = map (fmap (ai inpat qq env ds)) as in
             mkPApp fc 1 f' as'
-    ai inpat qq env ds (PWithApp fc f a) 
+    ai inpat qq env ds (PWithApp fc f a)
       = PWithApp fc (ai inpat qq env ds f) (ai inpat qq env ds a)
     ai inpat qq env ds (PCase fc c os)
       = let c' = ai inpat qq env ds c in
-        -- leave os alone, because they get lifted into a new pattern match
-        -- definition which is passed through addImpl agai inpatn with more scope
-        -- information
-            PCase fc c' os
+        -- leave lhs alone, because they get lifted into a new pattern match
+        -- definition which is passed through addImpl again
+            PCase fc c' (map aiCase os)
+     where
+       aiCase (lhs, rhs)
+            = (lhs, ai inpat qq (env ++ patnames lhs) ds rhs)
+
+       -- Anything beginning with a lower case letter, not applied,
+       -- and no namespace is a pattern variable
+       patnames (PApp _ (PRef _ _ f) [])
+           | implicitable f = [(f, Nothing)]
+       patnames (PRef _ _ f)
+           | implicitable f = [(f, Nothing)]
+       patnames (PApp _ (PRef _ _ _) args)
+           = concatMap patnames (map getTm args)
+       patnames (PPair _ _ _ l r) = patnames l ++ patnames r
+       patnames (PDPair _ _ _ l t r) = patnames l ++ patnames t ++ patnames r
+       patnames (PAs _ _ t) = patnames t
+       patnames (PAlternative _ _ ts) = concatMap patnames ts
+       patnames _ = []
+
 
     ai inpat qq env ds (PIfThenElse fc c t f) = PIfThenElse fc (ai inpat qq env ds c)
                                                          (ai inpat qq env ds t)
                                                          (ai inpat qq env ds f)
 
-    -- If the name in a lambda is a constructor name, do this as a 'case'
-    -- instead (it is harmless to do so, especially since the lambda will
-    -- be lifted anyway!)
+    -- If the name in a lambda is an unapplied data constructor name, do this
+    -- as a 'case' instead because we'll expect to match on it
     ai inpat qq env ds (PLam fc n nfc ty sc)
-      = case lookupDef n (tt_ctxt ist) of
-             [] -> let ty' = ai inpat qq env ds ty
-                       sc' = ai inpat qq ((n, Just ty):env) ds sc in
-                       PLam fc n nfc ty' sc'
-             _ -> ai inpat qq env ds (PLam fc (sMN 0 "lamp") NoFC ty
+      = if canBeDConName n (tt_ctxt ist)
+             then ai inpat qq env ds (PLam fc (sMN 0 "lamp") NoFC ty
                                      (PCase fc (PRef fc [] (sMN 0 "lamp") )
                                         [(PRef fc [] n, sc)]))
+             else let ty' = ai inpat qq env ds ty
+                      sc' = ai inpat qq ((n, Just ty):env) ds sc in
+                      PLam fc n nfc ty' sc'
     ai inpat qq env ds (PLet fc n nfc ty val sc)
       = case lookupDef n (tt_ctxt ist) of
              [] -> let ty' = ai inpat qq env ds ty
@@ -1837,9 +1866,9 @@ aiFn topname inpat True qq imp_meths ist fc f ffc ds []
           vname (UN n) = True -- non qualified
           vname _ = False
 
-aiFn topname inpat expat qq imp_meths ist fc f ffc ds as 
+aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
     | f `elem` primNames = Right $ PApp fc (PRef ffc [ffc] f) as
-aiFn topname inpat expat qq imp_meths ist fc f ffc ds as 
+aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
           -- This is where namespaces get resolved by adding PAlternative
      = do let ns = lookupCtxtName f (idris_implicits ist)
           let nh = filter (\(n, _) -> notHidden n) ns
@@ -1903,7 +1932,7 @@ aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
         case find n imps [] of
             Just (tm, imps') ->
               PImp p False l n tm : insImpAcc (M.insert n tm pnas) ps given imps'
-            Nothing -> 
+            Nothing ->
               PImp p True l n Placeholder :
                 insImpAcc (M.insert n Placeholder pnas) ps given imps
     insImpAcc pnas (PTacImplicit p l n sc' ty : ps) given imps =
@@ -2201,17 +2230,20 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
 substMatches :: [(Name, PTerm)] -> PTerm -> PTerm
 substMatches ms = substMatchesShadow ms []
 
-substMatchesShadow :: [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
-substMatchesShadow [] shs t = t
-substMatchesShadow ((n,tm):ns) shs t
-   = substMatchShadow n shs tm (substMatchesShadow ns shs t)
+-- substMatchesShadow :: [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
+-- substMatchesShadow [] shs t = t
+-- substMatchesShadow ((n,tm):ns) shs t
+--    = substMatchShadow n shs tm (substMatchesShadow ns shs t)
 
 substMatch :: Name -> PTerm -> PTerm -> PTerm
 substMatch n = substMatchShadow n []
 
 substMatchShadow :: Name -> [Name] -> PTerm -> PTerm -> PTerm
-substMatchShadow n shs tm t = sm shs t where
-    sm xs (PRef _ _ n') | n == n' = tm
+substMatchShadow n shs tm t = substMatchesShadow [(n, tm)] shs t
+
+substMatchesShadow :: [(Name, PTerm)] -> [Name] -> PTerm -> PTerm
+substMatchesShadow nmap shs t = sm shs t where
+    sm xs (PRef _ _ n) | Just tm <- lookup n nmap = tm
     sm xs (PLam fc x xfc t sc) = PLam fc x xfc (sm xs t) (sm xs sc)
     sm xs (PPi p x fc t sc)
          | x `elem` xs
@@ -2255,7 +2287,8 @@ shadow n n' t = sm 0 t where
     sm 0 (PTyped x y) = PTyped (sm 0 x) (sm 0 y)
     sm 0 (PPair f hls p x y) = PPair f hls p (sm 0 x) (sm 0 y)
     sm 0 (PDPair f hls p x t y) = PDPair f hls p (sm 0 x) (sm 0 t) (sm 0 y)
-    sm 0 (PAlternative ms a as) = PAlternative ms a (map (sm 0) as)
+    sm 0 (PAlternative ms a as) 
+          = PAlternative (map shadowAlt ms) a (map (sm 0) as)
     sm 0 (PTactics ts) = PTactics (map (fmap (sm 0)) ts)
     sm 0 (PProof ts) = PProof (map (fmap (sm 0)) ts)
     sm 0 (PHidden x) = PHidden (sm 0 x)
@@ -2265,6 +2298,10 @@ shadow n n' t = sm 0 t where
     sm ql (PQuasiquote tm ty) = PQuasiquote (sm (ql + 1) tm) (fmap (sm ql) ty)
     sm ql (PUnquote tm) = PUnquote (sm (ql - 1) tm)
     sm ql x = descend (sm ql) x
+
+    shadowAlt p@(x, oldn) = (update x, update oldn)
+    update oldn | n == oldn = n'
+                | otherwise = oldn
 
 -- | Rename any binders which are repeated (so that we don't have to mess
 -- about with shadowing anywhere else).
@@ -2367,7 +2404,7 @@ mkUniqueNames env shadows tm
   mkUniq 0 nmap (PAlternative ns b as)
          -- store the nmap and defer the rest until we've pruned the set
          -- during elaboration
-         = return $ PAlternative (M.toList nmap ++ ns) b as
+         = return $ PAlternative (ns ++ M.toList nmap) b as
   mkUniq 0 nmap (PHidden t) = liftM PHidden (mkUniq 0 nmap t)
   mkUniq 0 nmap (PUnifyLog t) = liftM PUnifyLog (mkUniq 0 nmap t)
   mkUniq 0 nmap (PDisamb n t) = liftM (PDisamb n) (mkUniq 0 nmap t)

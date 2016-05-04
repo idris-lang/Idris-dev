@@ -23,10 +23,12 @@ parsePositive s = parsePosTrimmed (trim s)
   where
     parsePosTrimmed s with (strM s)
       parsePosTrimmed ""             | StrNil         = Nothing
+      parsePosTrimmed (strCons '+' xs) | (StrCons '+' xs) = 
+        map fromInteger (parseNumWithoutSign (unpack xs) 0)
       parsePosTrimmed (strCons x xs) | (StrCons x xs) = 
-        if (x == '+') 
-          then map fromInteger (parseNumWithoutSign (unpack xs) 0)
-          else map fromInteger (parseNumWithoutSign (unpack xs)  (cast (ord x - ord '0')))
+        if (x >= '0' && x <= '9') 
+        then  map fromInteger (parseNumWithoutSign (unpack xs)  (cast (ord x - ord '0')))
+        else Nothing
 
 
 ||| Convert a number string to a Num.
