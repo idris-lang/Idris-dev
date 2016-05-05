@@ -51,8 +51,9 @@ defunctionalise nexttag defs
            newacons = sortBy conord $ concatMap (toConsA anames') (getFn all)
            eval = mkEval newecons
            app = mkApply newacons
+           app2 = mkApply2 newacons
            condecls = declare nexttag (newecons ++ newacons) in
-           addAlist (eval : app : condecls ++ allD) emptyContext
+           addAlist (eval : app : app2 : condecls ++ allD) emptyContext
    where conord (n, _, _) (n', _, _) = compare n n'
 
 getFn :: [(Name, LDecl)] -> [(Name, Int)]
@@ -152,6 +153,8 @@ addApps defs (n, LFun _ _ args e)
              = return $ chainAPPLY (DApp False n (take ar args)) (drop ar args)
 
     chainAPPLY f [] = f
+--     chainAPPLY f (a : b : as) 
+--          = chainAPPLY (DApp False (sMN 0 "APPLY2") [f, a, b]) as
     chainAPPLY f (a : as) = chainAPPLY (DApp False (sMN 0 "APPLY") [f, a]) as
 
     -- if anything in the DExp is projected from, we'll need to evaluate it,
@@ -184,6 +187,7 @@ eEVAL x = DApp False (sMN 0 "EVAL") [x]
 
 data EvalApply a = EvalCase (Name -> a)
                  | ApplyCase a
+                 | Apply2Case a
 
 -- For a function name, generate a list of
 -- data constuctors, and whether to handle them in EVAL or APPLY
@@ -219,7 +223,15 @@ mkApplyCase fname n ar
                   (DApp False (mkUnderCon fname (ar - (n + 1)))
                        (map (DV . Glob) (take n (genArgs 0) ++
                          [sMN 0 "arg"])))))
-                            : mkApplyCase fname (n + 1) ar
+                            : 
+              if (ar - (n + 2) >=0 )
+                 then (nm, n, Apply2Case (DConCase (-1) nm (take n (genArgs 0))
+                      (DApp False (mkUnderCon fname (ar - (n + 2)))
+                       (map (DV . Glob) (take n (genArgs 0) ++
+                         [sMN 0 "arg0", sMN 0 "arg1"])))))
+                            :
+                            mkApplyCase fname (n + 1) ar
+                 else mkApplyCase fname (n + 1) ar
 
 mkEval :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
 mkEval xs = (sMN 0 "EVAL", DFun (sMN 0 "EVAL") [sMN 0 "arg"]
@@ -241,6 +253,25 @@ mkApply xs = (sMN 0 "APPLY", DFun (sMN 0 "APPLY") [sMN 0 "fn", sMN 0 "arg"]
                                     [DDefaultCase DNothing])))
   where
     applyCase (n, t, ApplyCase x) = Just x
+    applyCase _ = Nothing
+
+mkApply2 :: [(Name, Int, EvalApply DAlt)] -> (Name, DDecl)
+mkApply2 xs = (sMN 0 "APPLY2", DFun (sMN 0 "APPLY2") [sMN 0 "fn", sMN 0 "arg0", sMN 0 "arg1"]
+                             (case mapMaybe applyCase xs of
+                                [] -> DNothing
+                                cases ->
+                                    mkBigCase (sMN 0 "APPLY") 256
+                                               (DV (Glob (sMN 0 "fn")))
+                                              (cases ++
+                                    [DDefaultCase 
+                                       (DApp False (sMN 0 "APPLY")
+                                       [DApp False (sMN 0 "APPLY")
+                                              [DV (Glob (sMN 0 "fn")),
+                                               DV (Glob (sMN 0 "arg0"))],
+                                               DV (Glob (sMN 0 "arg1"))])
+                                               ])))
+  where
+    applyCase (n, t, Apply2Case x) = Just x
     applyCase _ = Nothing
 
 

@@ -1013,7 +1013,7 @@ usingDecl syn = try (do x <- fst <$> fnName
                         t <- typeExpr (disallowImp syn)
                         return (UImplicit x t))
             <|> do c <- fst <$> fnName
-                   xs <- some (fst <$> fnName)
+                   xs <- many (fst <$> fnName)
                    return (UConstraint c xs)
             <?> "using declaration"
 

@@ -259,8 +259,10 @@ char* GETSTROFF(VAL stroff);
 #define SETARG(x, i, a) ((x)->info.c.args)[i] = ((VAL)(a))
 #define GETARG(x, i) ((x)->info.c.args)[i]
 
-void PROJECT(VM* vm, VAL r, int loc, int arity);
-void SLIDE(VM* vm, int args);
+#define PROJECT(vm,r,loc,num) \
+    memcpy(&(LOC(loc)), &((r)->info.c.args), sizeof(VAL)*num)
+#define SLIDE(vm, args) \
+    memcpy(&(LOC(0)), &(TOP(0)), sizeof(VAL)*args)
 
 void* allocate(size_t size, int outerlock);
 // void* allocCon(VM* vm, int arity, int outerlock);

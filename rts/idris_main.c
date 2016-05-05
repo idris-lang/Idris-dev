@@ -4,7 +4,7 @@
 #include "idris_gmp.h"
 // The default options should give satisfactory results under many circumstances.
 RTSOpts opts = { 
-    .init_heap_size = 4096000,
+    .init_heap_size = 16384000,
     .max_stack_size = 4096000,
     .show_summary   = 0
 };

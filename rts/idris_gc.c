@@ -4,7 +4,7 @@
 #include <assert.h>
 
 VAL copy(VM* vm, VAL x) {
-    int i, ar;
+    int ar;
     Closure* cl = NULL;
     if (x==NULL || ISINT(x)) {
         return x;
@@ -16,9 +16,7 @@ VAL copy(VM* vm, VAL x) {
             return x;
         } else {
             allocCon(cl, vm, CTAG(x), ar, 1);
-            for(i = 0; i < ar; ++i) {
-                cl->info.c.args[i] = x->info.c.args[i];
-            }
+            memcpy(&(cl->info.c.args), &(x->info.c.args), sizeof(VAL)*ar);
         }
         break;
     case CT_FLOAT:

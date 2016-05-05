@@ -391,20 +391,6 @@ VAL MKB64(VM* vm, uint64_t bits64) {
     return cl;
 }
 
-void PROJECT(VM* vm, VAL r, int loc, int arity) {
-    int i;
-    for(i = 0; i < arity; ++i) {
-        LOC(i+loc) = r->info.c.args[i];
-    }
-}
-
-void SLIDE(VM* vm, int args) {
-    int i;
-    for(i = 0; i < args; ++i) {
-        LOC(i) = TOP(i);
-    }
-}
-
 void dumpStack(VM* vm) {
     int i = 0;
     VAL* root;
