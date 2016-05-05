@@ -405,16 +405,17 @@ mergeOptions copts popts =
     filtOpt _              = True
 
     chkOpt :: Opt -> Either String Opt
-    chkOpt o@(OLogging _)     = Right o
-    chkOpt o@(OLogCats _)     = Right o
-    chkOpt o@(DefaultTotal)   = Right o
-    chkOpt o@(DefaultPartial) = Right o
-    chkOpt o@(WarnPartial)    = Right o
-    chkOpt o@(WarnReach)      = Right o
-    chkOpt o@(IBCSubDir _)    = Right o
-    chkOpt o@(ImportDir _ )   = Right o
-    chkOpt o@(UseCodegen _)   = Right o
-    chkOpt o                  = Left (unwords ["\t", show o, "\n"])
+    chkOpt o@(OLogging _)      = Right o
+    chkOpt o@(OLogCats _)      = Right o
+    chkOpt o@(DefaultTotal)    = Right o
+    chkOpt o@(DefaultPartial)  = Right o
+    chkOpt o@(DefaultCovering) = Right o
+    chkOpt o@(WarnPartial)     = Right o
+    chkOpt o@(WarnReach)       = Right o
+    chkOpt o@(IBCSubDir _)     = Right o
+    chkOpt o@(ImportDir _ )    = Right o
+    chkOpt o@(UseCodegen _)    = Right o
+    chkOpt o                   = Left (unwords ["\t", show o, "\n"])
 
     genErrMsg :: [String] -> String
     genErrMsg es = unlines
