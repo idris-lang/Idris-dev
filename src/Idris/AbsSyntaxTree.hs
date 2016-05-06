@@ -527,6 +527,7 @@ data Opt = Filename String
          | TypeInType
          | DefaultTotal
          | DefaultPartial
+         | DefaultCovering
          | WarnPartial
          | WarnReach
          | EvalTypes

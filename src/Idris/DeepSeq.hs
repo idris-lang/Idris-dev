@@ -124,6 +124,7 @@ instance NFData Opt where
     rnf (TypeInType) = ()
     rnf (DefaultTotal) = ()
     rnf (DefaultPartial) = ()
+    rnf (DefaultCovering) = ()
     rnf (WarnPartial) = ()
     rnf (WarnReach) = ()
     rnf (EvalTypes) = ()

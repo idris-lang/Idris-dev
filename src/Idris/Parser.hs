@@ -1396,7 +1396,7 @@ pLangExt = (reserved "TypeProviders" >> return TypeProviders)
 {- | Parses a totality
 
 @
-Totality ::= 'partial' | 'total'
+Totality ::= 'partial' | 'total' | 'covering'
 @
 
 -}
@@ -1404,6 +1404,7 @@ totality :: IdrisParser Bool
 totality
         = do reservedHL "total";   return True
       <|> do reservedHL "partial"; return False
+      <|> do reservedHL "covering"; return False
 
 {- | Parses a type provider
 
