@@ -414,6 +414,9 @@ Extra-source-files:
                        test/directives001/*.idr
                        test/directives001/run
                        test/directives001/expected
+                       test/directives002/*.idr
+                       test/directives002/run
+                       test/directives002/expected
 
                        test/delab001/*.idr
                        test/delab001/run
