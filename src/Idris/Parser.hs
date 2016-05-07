@@ -337,9 +337,9 @@ declExtension syn ns rules =
                   (map (updateNs ns) ds)
                   (updateRecCon ns cname)
                   cdocs
-    updateNs ns (PInstance docs pdocs s fc cs acc opts cn fc' ps ity ni ds)
+    updateNs ns (PInstance docs pdocs s fc cs acc opts cn fc' ps pextra ity ni ds)
          = PInstance docs pdocs s fc cs acc opts (updateB ns cn) fc'
-                     ps ity (fmap (updateB ns) ni)
+                     ps pextra ity (fmap (updateB ns) ni)
                             (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
     updateNs ns (PProvider docs s fc fc' pw n)
@@ -941,7 +941,7 @@ instance_ kwopt syn
                    let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- instanceBlock syn
-                   return [PInstance doc argDocs syn fc cs' acc opts' cn cnfc args t en ds]
+                   return [PInstance doc argDocs syn fc cs' acc opts' cn cnfc args [] t en ds]
                  <?> "implementation declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'

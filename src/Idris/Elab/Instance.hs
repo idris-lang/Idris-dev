@@ -60,10 +60,11 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 Name -> -- the class
                 FC -> -- precise location of class name
                 [PTerm] -> -- class parameters (i.e. instance)
+                [(Name, PTerm)] -> -- Extra arguments in scope (e.g. instance in where block)
                 PTerm -> -- full instance type
                 Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
-elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
+elabInstance info syn doc argDocs what fc cs acc opts n nfc ps pextra t expn ds = do
     ist <- getIState
     (n, ci) <- case lookupCtxtName n (idris_classes ist) of
                   [c] -> return c
@@ -79,7 +80,8 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
 
     let emptyclass = null (class_methods ci)
     when (what /= EDefns) $ do
-         nty <- elabType' True info syn doc argDocs fc totopts iname NoFC t
+         nty <- elabType' True info syn doc argDocs fc totopts iname NoFC 
+                          (piBindp expl_param pextra t)
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
@@ -125,7 +127,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
                                       all_meths
                        t' = substMatchesShadow mnamemap pnames t_in in
                        (decorate ns iname n,
-                           op, coninsert cs t', t'))
+                           op, coninsert cs pextra t', t'))
               (class_methods ci)
          logElab 3 (show (mtys, ips))
          logElab 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (class_methods ci)))
@@ -136,8 +138,11 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
          mapM_ (warnMissing ds' ns iname) (map fst (class_methods ci))
          mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
          let wbTys = map mkTyDecl mtys
-         let wbVals = map (decorateid (decorate ns iname)) ds'
+         let wbVals_orig = map (decorateid (decorate ns iname)) ds'
+         ist <- getIState
+         let wbVals = map (expandParamsD False ist id pextra (map methName mtys)) wbVals_orig
          let wb = wbTys ++ wbVals
+
          logElab 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
          logElab 3 $ "Instance is " ++ show ps ++ " implicits " ++
                                       show (concat (nub wparams))
@@ -145,7 +150,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
 
          let lhsImps = map (\n -> pimp n (PRef fc [] n) True) headVars
 
-         let lhs = PApp fc (PRef fc [] iname) lhsImps
+         let lhs = PApp fc (PRef fc [] iname) (lhsImps ++ map (toExp .fst) pextra)
          let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
                            (map (pexp . (mkMethApp lhsImps)) mtys)
 
@@ -154,6 +159,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
 
          push_estack iname True
          logElab 3 ("Method types: " ++ show wbTys)
+         logElab 3 ("Method bodies (before params): " ++ show wbVals_orig)
          logElab 3 ("Method bodies: " ++ show wbVals)
 
          let idecls = [PClauses fc totopts iname
@@ -196,10 +202,13 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
                           Just m -> sNS (SN (sInstanceN n' (map show ps'))) m
           Just nm -> nm
 
-    substInstance ips pnames (PInstance doc argDocs syn _ cs acc opts n nfc ps t expn ds)
-        = PInstance doc argDocs syn fc cs acc opts n nfc (map (substMatchesShadow ips pnames) ps) (substMatchesShadow ips pnames t) expn ds
+    substInstance ips pnames (PInstance doc argDocs syn _ cs acc opts n nfc ps pextra t expn ds)
+        = PInstance doc argDocs syn fc cs acc opts n nfc 
+                     (map (substMatchesShadow ips pnames) ps) 
+                     pextra
+                     (substMatchesShadow ips pnames t) expn ds
 
-    isOverlapping i (PInstance doc argDocs syn _ _ _ _ n nfc ps t expn _)
+    isOverlapping i (PInstance doc argDocs syn _ _ _ _ n nfc ps pextra t expn _)
         = case lookupCtxtName n (idris_classes i) of
             [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of
@@ -256,11 +265,15 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
               map snd (filter (\(i, _) -> i `elem` dets) a')
     keepDets dets t = t
 
+    methName (n, _, _, _) = n
+    toExp n = pexp (PRef fc [] n) 
+
     mkMethApp ps (n, _, _, ty) 
               = lamBind 0 ty (papp fc (PRef fc [] n) 
-                     (ps ++ methArgs 0 ty))
+                     (ps ++ map (toExp . fst) pextra ++ methArgs 0 ty))
        where
           needed is p = pname p `elem` map pname is
+
     lamBind i (PPi (Constraint _ _) _ _ _ sc) sc'
           = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
     lamBind i (PPi _ n _ ty sc) sc'
@@ -287,10 +300,10 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
                 _ -> return ps'
     getWParams (_ : ps) = getWParams ps
 
-    decorate ns iname (UN nm)  
-         = NS (SN (WhereN 0 iname (SN (MethodN (UN nm))))) ns
     decorate ns iname (NS (UN nm) s)
          = NS (SN (WhereN 0 iname (SN (MethodN (UN nm))))) ns
+    decorate ns iname nm  
+         = NS (SN (WhereN 0 iname (SN (MethodN nm)))) ns
 
     mkTyDecl (n, op, t, _)
         = PTy emptyDocstring [] syn fc op n NoFC
@@ -300,9 +313,13 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
     conbind ((c,ty) : ns) x = PPi constraint c NoFC ty (conbind ns x)
     conbind [] x = x
 
-    coninsert :: [(Name, PTerm)] -> PTerm -> PTerm
-    coninsert cs (PPi p@(Imp _ _ _ _ _) n fc t sc) = PPi p n fc t (coninsert cs sc)
-    coninsert cs sc = conbind cs sc
+    extrabind :: [(Name, PTerm)] -> PTerm -> PTerm
+    extrabind ((c,ty) : ns) x = PPi expl c NoFC ty (extrabind ns x)
+    extrabind [] x = x
+
+    coninsert :: [(Name, PTerm)] -> [(Name, PTerm)] -> PTerm -> PTerm
+    coninsert cs ex (PPi p@(Imp _ _ _ _ _) n fc t sc) = PPi p n fc t (coninsert cs ex sc)
+    coninsert cs ex sc = conbind cs (extrabind ex sc)
 
     -- Reorder declarations to be in the same order as defined in the
     -- class declaration (important so that we insert default definitions

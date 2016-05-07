@@ -1249,7 +1249,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
-        | otherwise = (sMN i ('_' : show n ++ "_u"), t) : updateps yn nm as
+        | otherwise = (sMN i (show a ++ "_u"), t) : updateps yn nm as
 
     removeBound lhs ns = ns \\ nub (bnames lhs)
 
@@ -1290,18 +1290,27 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds dec
            (map (expandParamsD rhs ist dec ps ns) decls)
            cn
            cd
-expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs acc opts n nfc params ty cn decls)
-   = PInstance doc argDocs info f
+expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs acc opts n nfc params pextra ty cn decls)
+   = let cn' = case cn of
+                    Just n -> if n `elem` ns then Just (dec n) else Just n
+                    Nothing -> Nothing in
+     PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
            acc opts n
            nfc
            (map (expandParams dec ps ns []) params)
+           (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) pextra)
            (expandParams dec ps ns [] ty)
-           cn
-           (map (expandParamsD rhs ist dec ps ns) decls)
+           cn'
+           (map (expandParamsD True ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns d = d
 
 mapsnd f (x, t) = (x, f t)
+
+expandInstanceScope ist dec ps ns (PInstance doc argDocs info f cs acc opts n nfc params pextra ty cn decls)
+    = PInstance doc argDocs info f cs acc opts n nfc params (ps ++ pextra)
+                ty cn decls
+expandInstanceScope ist dec ps ns d = d
 
 -- Calculate a priority for a type, for deciding elaboration order
 -- * if it's just a type variable or concrete type, do it early (0)

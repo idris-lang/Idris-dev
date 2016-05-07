@@ -319,8 +319,8 @@ docClass n ci
     namedInst n@(UN _)  = Just n
     namedInst _         = Nothing
     
-    getDInst (PInstance _ _ _ _ _ _ _ _ _ _ t _ _) = Just t
-    getDInst _                                     = Nothing
+    getDInst (PInstance _ _ _ _ _ _ _ _ _ _ _ t _ _) = Just t
+    getDInst _                                       = Nothing
 
     isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args'))
       = nm == n && map getTm args == map getTm args'

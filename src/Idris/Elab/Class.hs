@@ -144,7 +144,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     -- TODO: probably should normalise
     checkDefaultSuperclassInstance :: PDecl -> Idris ()
-    checkDefaultSuperclassInstance (PInstance _ _ _ fc cs _ _ n _ ps _ _ _)
+    checkDefaultSuperclassInstance (PInstance _ _ _ fc cs _ _ n _ ps _ _ _ _)
         = do when (not $ null cs) . tclift
                 $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
              i <- getIState
@@ -198,7 +198,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     tydecl (PTy _ _ _ _ _ _ _ _) = True
     tydecl _ = False
-    instdecl (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _) = True
+    instdecl (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ _) = True
     instdecl _ = False
     clause (PClauses _ _ _ _) = True
     clause _ = False
