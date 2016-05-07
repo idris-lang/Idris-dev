@@ -105,10 +105,23 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
          let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
          undefinedSuperclassInstances <- filterM (fmap not . isOverlapping ist) superclassInstances
          mapM_ (rec_elabDecl info EAll info) undefinedSuperclassInstances
+         
+         ist <- getIState
+         -- Bring variables in instance head into scope when building the
+         -- dictionary
+         let headVars = nub $ concatMap getHeadVars ps
+         let (headVarTypes, ty)
+                = case lookupTyExact iname (tt_ctxt ist) of
+                              Just ty -> (map (\n -> (n, getTypeIn ist n ty)) headVars, ty)
+                              _ -> (zip headVars (repeat Placeholder), Erased)
+         logElab 3 $ "Head var types " ++ show headVarTypes ++ " from " ++ show ty
+         
          let all_meths = map (nsroot . fst) (class_methods ci)
          let mtys = map (\ (n, (op, t)) ->
                    let t_in = substMatchesShadow ips pnames t
-                       mnamemap = map (\n -> (n, PRef fc [] (decorate ns iname n)))
+                       mnamemap = 
+                          map (\n -> (n, PApp fc (PRef fc [] (decorate ns iname n))
+                                              (map (toImp fc) headVars)))
                                       all_meths
                        t' = substMatchesShadow mnamemap pnames t_in in
                        (decorate ns iname n,
@@ -129,10 +142,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
          logElab 3 $ "Instance is " ++ show ps ++ " implicits " ++
                                       show (concat (nub wparams))
 
-         -- Bring variables in instance head into scope when building the
-         -- dictionary
-         let headVars = nub $ concatMap getHeadVars ps
-         
+
          let lhsImps = map (\n -> pimp n (PRef fc [] n) True) headVars
 
          let lhs = PApp fc (PRef fc [] iname) lhsImps
@@ -149,7 +159,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
          let idecls = [PClauses fc totopts iname
                               [PClause fc iname lhs [] rhs []]]
 
-         mapM_ (rec_elabDecl info EAll info) (map (impBind headVars) wbTys)
+         mapM_ (rec_elabDecl info EAll info) (map (impBind headVarTypes) wbTys)
          mapM_ (rec_elabDecl info EAll info) idecls
 
          ctxt <- getContext
@@ -246,9 +256,11 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
               map snd (filter (\(i, _) -> i `elem` dets) a')
     keepDets dets t = t
 
-    mkMethApp ps (n, _, _, ty)
-          = lamBind 0 ty (papp fc (PRef fc [] n) 
-                 (ps ++ methArgs 0 ty))
+    mkMethApp ps (n, _, _, ty) 
+              = lamBind 0 ty (papp fc (PRef fc [] n) 
+                     (ps ++ methArgs 0 ty))
+       where
+          needed is p = pname p `elem` map pname is
     lamBind i (PPi (Constraint _ _) _ _ _ sc) sc'
           = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
     lamBind i (PPi _ n _ ty sc) sc'
@@ -346,19 +358,28 @@ getHeadVars (PDPair _ _ _ l t r) = getHeadVars l ++ getHeadVars t ++ getHeadVars
 getHeadVars _ = []
 
 -- Implicitly bind variables from the instance head in method types
-impBind :: [Name] -> PDecl -> PDecl
+impBind :: [(Name, PTerm)] -> PDecl -> PDecl
 impBind vs (PTy d ds syn fc opts n fc' t)
-     = PTy d ds syn fc opts n fc' (doImpBind (vs \\ boundIn t) t)
+     = PTy d ds syn fc opts n fc' 
+          (doImpBind (filter (\(n, ty) -> n `notElem` boundIn t) vs) t)
   where
     doImpBind [] ty = ty
-    doImpBind (n : ns) ty = PPi impl n NoFC Placeholder (doImpBind ns ty)
+    doImpBind ((n, argty) : ns) ty 
+       = PPi impl n NoFC argty (doImpBind ns ty)
 
     boundIn (PPi _ n _ _ sc) = n : boundIn sc
     boundIn _ = []
 
+getTypeIn :: IState -> Name -> Type -> PTerm
+getTypeIn ist n (Bind x b sc)
+    | n == x = delab ist (binderTy b)
+    | otherwise = getTypeIn ist n (substV (P Ref x Erased) sc)
+getTypeIn ist n tm = Placeholder
+
+toImp fc n = pimp n (PRef fc [] n) True
 
 -- Propagate class parameters to method bodies, if they're not already 
--- there
+-- there, and they are needed (i.e. appear in method's type)
 addParams :: [Name] -> PDecl -> PDecl
 addParams ps (PClauses fc opts n cs) = PClauses fc opts n (map addCParams cs)
   where
@@ -369,12 +390,11 @@ addParams ps (PClauses fc opts n cs) = PClauses fc opts n (map addCParams cs)
                       (map (addParams ps) ds)
     addCParams c = c
 
-    addTmParams ps (PRef fc hls n) = PApp fc (PRef fc hls n) (map toImp ps)
+    addTmParams ps (PRef fc hls n) 
+        = PApp fc (PRef fc hls n) (map (toImp fc) ps)
     addTmParams ps (PApp fc ap@(PRef fc' hls n) args)
-        = PApp fc ap (mergePs (map toImp ps) args)
+        = PApp fc ap (mergePs (map (toImp fc) ps) args)
     addTmParams ps tm = tm
-
-    toImp n = pimp n (PRef fc [] n) True
 
     mergePs [] args = args
     mergePs (p : ps) args
