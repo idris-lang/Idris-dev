@@ -1703,7 +1703,7 @@ idrisMain opts =
        let port = getPort opts
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
-                                            putIState (i { default_total = True })
+                                            putIState (i { default_total = DefaultCheckingTotal })
        tty <- runIO $ isATTY
        setColourise $ not quiet && last (tty : opt getColour opts)
 
