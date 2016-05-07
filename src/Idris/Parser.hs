@@ -595,9 +595,10 @@ fnDecl' syn = checkFixity $
                         pushIndent
                         (doc, argDocs) <- docstring syn
                         ist <- get
-                        let initOpts = if default_total ist
-                                          then [TotalFn]
-                                          else []
+                        let initOpts = case default_total ist of
+                                          DefaultCheckingTotal    -> [TotalFn]
+                                          DefaultCheckingCovering -> [CoveringFn]
+                                          _                       -> []
                         opts <- fnOpts initOpts
                         acc <- accessibility
                         opts' <- fnOpts opts
@@ -711,9 +712,10 @@ postulate syn = do (doc, ext)
                                    ext <- ppostDecl
                                    return (doc, ext)
                    ist <- get
-                   let initOpts = if default_total ist
-                                     then [TotalFn]
-                                     else []
+                   let initOpts = case default_total ist of
+                                    DefaultCheckingTotal    -> [TotalFn]
+                                    DefaultCheckingCovering -> [CoveringFn]
+                                    _                       -> []
                    opts <- fnOpts initOpts
                    acc <- accessibility
                    opts' <- fnOpts opts
@@ -919,9 +921,10 @@ InstanceName ::= '[' Name ']';
 instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
 instance_ kwopt syn
               = do ist <- get
-                   let initOpts = if default_total ist
-                                          then [TotalFn]
-                                          else []
+                   let initOpts = case default_total ist of
+                                    DefaultCheckingTotal    -> [TotalFn]
+                                    DefaultCheckingCovering -> [CoveringFn]
+                                    _                       -> []
 
                    (doc, argDocs) <- docstring syn
                    opts <- fnOpts initOpts
@@ -1396,14 +1399,15 @@ pLangExt = (reserved "TypeProviders" >> return TypeProviders)
 {- | Parses a totality
 
 @
-Totality ::= 'partial' | 'total'
+Totality ::= 'partial' | 'total' | 'covering'
 @
 
 -}
-totality :: IdrisParser Bool
+totality :: IdrisParser DefaultTotality
 totality
-        = do reservedHL "total";   return True
-      <|> do reservedHL "partial"; return False
+        = do reservedHL "total";   return DefaultCheckingTotal
+      <|> do reservedHL "partial"; return DefaultCheckingPartial
+      <|> do reservedHL "covering"; return DefaultCheckingCovering
 
 {- | Parses a type provider
 

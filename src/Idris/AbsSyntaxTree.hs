@@ -181,7 +181,12 @@ data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines sh
                   | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
    deriving (Show, Eq)
 
-
+-- | If a function has no totality annotation, what do we assume?
+data DefaultTotality = DefaultCheckingTotal    -- ^ Total
+                     | DefaultCheckingPartial  -- ^ Partial
+                     | DefaultCheckingCovering -- ^Total coverage, but may diverge
+  deriving (Show, Eq)
+  
 -- | The global state used in the Idris monad
 data IState = IState {
     tt_ctxt :: Context, -- ^ All the currently defined names and their terms
@@ -244,7 +249,7 @@ data IState = IState {
     idris_parsedSpan :: Maybe FC,
     hide_list :: Ctxt Accessibility,
     default_access :: Accessibility,
-    default_total :: Bool,
+    default_total :: DefaultTotality,
     ibc_write :: [IBCWrite],
     compiled_so :: Maybe String,
     idris_dynamic_libs :: [DynamicLib],
@@ -360,7 +365,7 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Private False [] Nothing [] []
+                   [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Private DefaultCheckingPartial [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
                    emptyContext S.empty M.empty emptyContext
@@ -767,7 +772,7 @@ data Directive = DLib Codegen String
                | DHide Name
                | DFreeze Name
                | DAccess Accessibility
-               | DDefault Bool
+               | DDefault DefaultTotality
                | DLogging Integer
                | DDynamicLibs [String]
                | DNameHint Name FC [(Name, FC)]
