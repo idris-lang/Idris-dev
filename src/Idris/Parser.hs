@@ -650,7 +650,7 @@ fnOpts = do
           case default_total ist of
             DefaultCheckingTotal    -> return (TotalFn:opts)
             DefaultCheckingCovering -> return (CoveringFn:opts)
-            DefaultCheckingPartial  -> return (PartialFn:opts)
+            DefaultCheckingPartial  -> return opts -- Don't add partial so that --warn-partial still reports warnings if necessary
         addDefaultTotality [tot] opts = return opts
         -- Should really be a semantics error instead of a parser error
         addDefaultTotality (tot1:tot2:tots) opts =
