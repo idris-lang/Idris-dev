@@ -518,6 +518,10 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
      -- that it is total.
      | (P _ (UN at) _, [_, _]) <- unApply ap,
        at == txt "assert_total" = []
+     -- don't go under calls to functions which are asserted total
+     | (P _ n _, _) <- unApply ap,
+       Just opts <- lookupCtxtExact n (idris_flags ist),
+       AssertTotal `elem` opts = []
      -- under a guarded call to "Delay LazyCodata", we are 'Delayed', so don't
      -- check under guarded constructors.
      | (P _ (UN del) _, [_,_,arg]) <- unApply ap,
@@ -745,8 +749,11 @@ checkMP ist topfn i mp = if i > 0
         | [TyDecl (TCon _ _) _] <- lookupDef f (tt_ctxt ist)
             = Total []
     tryPath desc path (e@(f, args) : es) arg
+        | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
         | e `elem` es && allNothing args = Partial (Mutual [f])
     tryPath desc path (e@(f, nextargs) : es) arg
+        | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
+        | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | Just d <- lookup (e, arg) path
             = if desc - d > 0 -- Now lower than when we were last here
                    then -- trace ("Descent " ++ show (desc - d) ++ " "
@@ -781,8 +788,6 @@ checkMP ist topfn i mp = if i > 0
 --                   trace (show (desc, argspos, path, es, pathres)) $
                    collapse pathres
 
-        | [Total a] <- lookupTotal f (tt_ctxt ist) = Total a
-        | [Partial _] <- lookupTotal f (tt_ctxt ist) = Partial (Other [f])
         | otherwise = Unchecked
 
 allNothing :: [Maybe a] -> Bool
@@ -808,3 +813,18 @@ collapse' def (Unchecked : xs) = collapse' def xs
 collapse' def (d : xs)         = collapse' d xs
 -- collapse' Unchecked []         = Total []
 collapse' def []               = def
+
+totalityCheckBlock :: Idris ()
+totalityCheckBlock = do
+         ist <- getIState
+         -- Do totality checking after entire mutual block
+         mapM_ (\n -> do logElab 5 $ "Simplifying " ++ show n
+                         ctxt' <- do ctxt <- getContext
+                                     tclift $ simplifyCasedef n (getErasureInfo ist) ctxt
+                         setContext ctxt')
+                 (map snd (idris_totcheck ist))
+         mapM_ buildSCG (idris_totcheck ist)
+         mapM_ checkDeclTotality (idris_totcheck ist)
+         clear_totcheck
+
+

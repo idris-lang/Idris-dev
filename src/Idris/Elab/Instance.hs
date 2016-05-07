@@ -101,6 +101,7 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
          ist <- getIState
          let pnames = nub $ map pname (concat (nub wparams)) ++
                           concatMap (namesIn [] ist) ps
+
          let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
          undefinedSuperclassInstances <- filterM (fmap not . isOverlapping ist) superclassInstances
          mapM_ (rec_elabDecl info EAll info) undefinedSuperclassInstances
@@ -128,29 +129,48 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
          logElab 3 $ "Instance is " ++ show ps ++ " implicits " ++
                                       show (concat (nub wparams))
 
-         -- Bring variables in instance head into scope
-         let headVars = nub $ mapMaybe (\p -> case p of
-                                               PRef _ _ n ->
-                                                  case lookupTy n (tt_ctxt ist) of
-                                                      [] -> Just n
-                                                      _ -> Nothing
-                                               _ -> Nothing) ps
---          let lhs = PRef fc iname
-         let lhs = PApp fc (PRef fc [] iname)
-                           (map (\n -> pimp n (PRef fc [] n) True) headVars)
-         let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
-                           (map (pexp . mkMethApp) mtys)
+         -- Bring variables in instance head into scope when building the
+         -- dictionary
+         let headVars = nub $ concatMap getHeadVars ps
+         
+         let lhsImps = map (\n -> pimp n (PRef fc [] n) True) headVars
 
-         logElab 5 $ "Instance LHS " ++ show totopts ++ "\n" ++ show lhs ++ " " ++ show headVars
+         let lhs = PApp fc (PRef fc [] iname) lhsImps
+         let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
+                           (map (pexp . (mkMethApp lhsImps)) mtys)
+
+         logElab 5 $ "Instance LHS " ++ show totopts ++ "\n" ++ showTmImpls lhs ++ " " ++ show headVars
          logElab 5 $ "Instance RHS " ++ show rhs
 
-         let idecls = [PClauses fc totopts iname
-                                 [PClause fc iname lhs [] rhs wb]]
-         logElab 1 (show idecls)
          push_estack iname True
+         logElab 3 ("Method types: " ++ show wbTys)
+         logElab 3 ("Method bodies: " ++ show wbVals)
+
+         let idecls = [PClauses fc totopts iname
+                              [PClause fc iname lhs [] rhs []]]
+
+         mapM_ (rec_elabDecl info EAll info) (map (impBind headVars) wbTys)
          mapM_ (rec_elabDecl info EAll info) idecls
+
+         ctxt <- getContext
+         let ifn_ty = case lookupTyExact iname ctxt of
+                           Just t -> t
+                           Nothing -> error "Can't happen (interface constructor)"
+         let ifn_is = case lookupCtxtExact iname (idris_implicits ist) of
+                           Just t -> t
+                           Nothing -> []
+         let prop_params = getParamsInType ist [] ifn_is ifn_ty
+
+         logElab 3 $ "Propagating parameters to methods: " 
+                           ++ show (iname, prop_params)
+
+         let wbVals' = map (addParams prop_params) wbVals
+
+         mapM_ (rec_elabDecl info EAll info) wbVals'
+
          pop_estack
-         ist <- getIState
+--          totalityCheckBlock
+
          checkInjectiveArgs fc n (class_determiners ci) (lookupTyExact iname (tt_ctxt ist))
          addIBC (IBCInstance intInst (isNothing expn) n iname)
 
@@ -226,8 +246,9 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
               map snd (filter (\(i, _) -> i `elem` dets) a')
     keepDets dets t = t
 
-    mkMethApp (n, _, _, ty)
-          = lamBind 0 ty (papp fc (PRef fc [] n) (methArgs 0 ty))
+    mkMethApp ps (n, _, _, ty)
+          = lamBind 0 ty (papp fc (PRef fc [] n) 
+                 (ps ++ methArgs 0 ty))
     lamBind i (PPi (Constraint _ _) _ _ _ sc) sc'
           = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')
     lamBind i (PPi _ n _ ty sc) sc'
@@ -254,8 +275,10 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
                 _ -> return ps'
     getWParams (_ : ps) = getWParams ps
 
-    decorate ns iname (UN n)        = NS (SN (MethodN (UN n))) ns
-    decorate ns iname (NS (UN n) s) = NS (SN (MethodN (UN n))) ns
+    decorate ns iname (UN nm)  
+         = NS (SN (WhereN 0 iname (SN (MethodN (UN nm))))) ns
+    decorate ns iname (NS (UN nm) s)
+         = NS (SN (WhereN 0 iname (SN (MethodN (UN nm))))) ns
 
     mkTyDecl (n, op, t, _)
         = PTy emptyDocstring [] syn fc op n NoFC
@@ -314,6 +337,61 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps t expn ds = do
     clauseFor m iname ns (PClauses _ _ m' _)
        = decorate ns iname m == decorate ns iname m'
     clauseFor m iname ns _ = False
+         
+getHeadVars :: PTerm -> [Name]
+getHeadVars (PRef _ _ n) | implicitable n = [n]
+getHeadVars (PApp _ _ args) = concatMap getHeadVars (map getTm args)
+getHeadVars (PPair _ _ _ l r) = getHeadVars l ++ getHeadVars r
+getHeadVars (PDPair _ _ _ l t r) = getHeadVars l ++ getHeadVars t ++ getHeadVars t
+getHeadVars _ = []
+
+-- Implicitly bind variables from the instance head in method types
+impBind :: [Name] -> PDecl -> PDecl
+impBind vs (PTy d ds syn fc opts n fc' t)
+     = PTy d ds syn fc opts n fc' (doImpBind (vs \\ boundIn t) t)
+  where
+    doImpBind [] ty = ty
+    doImpBind (n : ns) ty = PPi impl n NoFC Placeholder (doImpBind ns ty)
+
+    boundIn (PPi _ n _ _ sc) = n : boundIn sc
+    boundIn _ = []
+
+
+-- Propagate class parameters to method bodies, if they're not already 
+-- there
+addParams :: [Name] -> PDecl -> PDecl
+addParams ps (PClauses fc opts n cs) = PClauses fc opts n (map addCParams cs)
+  where
+    addCParams (PClause fc n lhs ws rhs wb)
+        = PClause fc n (addTmParams (dropPs (allNamesIn lhs) ps) lhs) ws rhs wb
+    addCParams (PWith fc n lhs ws sc pn ds)
+        = PWith fc n (addTmParams (dropPs (allNamesIn lhs) ps) lhs) ws sc pn 
+                      (map (addParams ps) ds)
+    addCParams c = c
+
+    addTmParams ps (PRef fc hls n) = PApp fc (PRef fc hls n) (map toImp ps)
+    addTmParams ps (PApp fc ap@(PRef fc' hls n) args)
+        = PApp fc ap (mergePs (map toImp ps) args)
+    addTmParams ps tm = tm
+
+    toImp n = pimp n (PRef fc [] n) True
+
+    mergePs [] args = args
+    mergePs (p : ps) args
+         | isImplicit p,
+           pname p `notElem` map pname args
+               = p : mergePs ps args
+       where
+         isImplicit (PExp{}) = False
+         isImplicit _ = True
+    mergePs (p : ps) args
+         = mergePs ps args
+
+    -- Don't propagate a parameter if the name is rebound explicitly
+    dropPs :: [Name] -> [Name] -> [Name]
+    dropPs ns = filter (\x -> x `notElem` ns)
+
+addParams ps d = d
 
 checkInjectiveArgs :: FC -> Name -> [Int] -> Maybe Type -> Idris ()
 checkInjectiveArgs fc n ds Nothing = return ()

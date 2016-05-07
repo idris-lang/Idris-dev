@@ -426,3 +426,27 @@ displayWarnings est
     displayImpWarning (fc, n) =
        iputStrLn $ show fc ++ ":WARNING: " ++ show (nsroot n) ++ " is bound as an implicit\n"
                    ++ "\tDid you mean to refer to " ++ show n ++ "?"
+
+propagateParams :: IState -> [Name] -> Type -> [Name] -> PTerm -> PTerm
+propagateParams i ps t bound tm@(PApp _ (PRef fc hls n) args)
+     = PApp fc (PRef fc hls n) (addP t args)
+   where addP (Bind n _ sc) (t : ts)
+              | Placeholder <- getTm t,
+                n `elem` ps,
+                not (n `elem` bound)
+                    = t { getTm = PPatvar NoFC n } : addP sc ts
+         addP (Bind n _ sc) (t : ts) = t : addP sc ts
+         addP _ ts = ts
+propagateParams i ps t bound (PApp fc ap args)
+     = PApp fc (propagateParams i ps t bound ap) args
+propagateParams i ps t bound (PRef fc hls n)
+     = case lookupCtxt n (idris_implicits i) of
+            [is] -> let ps' = filter (isImplicit is) ps in
+                        PApp fc (PRef fc hls n) (map (\x -> pimp x (PRef fc [] x) True) ps')
+            _ -> PRef fc hls n
+    where isImplicit [] n = False
+          isImplicit (PImp _ _ _ x _ : is) n | x == n = True
+          isImplicit (_ : is) n = isImplicit is n
+propagateParams i ps t bound x = x
+
+

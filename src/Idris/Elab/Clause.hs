@@ -194,17 +194,11 @@ elabClauses info' fc opts n_in cs =
            logElab 5 $ "After data structure transformations:\n" ++ show pdef'
 
            ist <- getIState
-  --          let wf = wellFounded ist n sc
-           let tot | pcover || AssertTotal `elem` opts = Unchecked -- finish later
+           let tot | pcover = Unchecked -- finish later
+                   | AssertTotal `elem` opts = Total []
                    | PEGenerated `elem` opts = Generated
                    | otherwise = Partial NotCovering -- already know it's not total
 
-  --          case lookupCtxt (namespace info) n (idris_flags ist) of
-  --             [fs] -> if TotalFn `elem` fs
-  --                       then case tot of
-  --                               Total _ -> return ()
-  --                               t -> tclift $ tfail (At fc (Msg (show n ++ " is " ++ show t)))
-  --             _ -> return ()
            case tree of
                CaseDef _ _ [] -> return ()
                CaseDef _ _ xs -> mapM_ (\x ->
@@ -506,29 +500,6 @@ checkPossible info fc tcgen fname lhs_in
                                   else return (validCoverageCase ctxt err ||
                                                  recoverableCoverage ctxt err)
 
-
-propagateParams :: IState -> [Name] -> Type -> [Name] -> PTerm -> PTerm
-propagateParams i ps t bound tm@(PApp _ (PRef fc hls n) args)
-     = PApp fc (PRef fc hls n) (addP t args)
-   where addP (Bind n _ sc) (t : ts)
-              | Placeholder <- getTm t,
-                n `elem` ps,
-                not (n `elem` bound)
-                    = t { getTm = PPatvar NoFC n } : addP sc ts
-         addP (Bind n _ sc) (t : ts) = t : addP sc ts
-         addP _ ts = ts
-propagateParams i ps t bound (PApp fc ap args)
-     = PApp fc (propagateParams i ps t bound ap) args
-propagateParams i ps t bound (PRef fc hls n)
-     = case lookupCtxt n (idris_implicits i) of
-            [is] -> let ps' = filter (isImplicit is) ps in
-                        PApp fc (PRef fc hls n) (map (\x -> pimp x (PRef fc [] x) True) ps')
-            _ -> PRef fc hls n
-    where isImplicit [] n = False
-          isImplicit (PImp _ _ _ x _ : is) n | x == n = True
-          isImplicit (_ : is) n = isImplicit is n
-propagateParams i ps t bound x = x
-
 findUnique :: Context -> Env -> Term -> [Name]
 findUnique ctxt env (Bind n b sc)
    = let rawTy = forgetEnv (map fst env) (binderTy b)
@@ -583,6 +554,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
                     propagateParams i params norm_ty (allNamesIn lhs_in) (addImplPat i lhs_in)
+        
 --         let lhs = mkLHSapp $
 --                     propagateParams i params fn_ty (addImplPat i lhs_in)
         logElab 10 (show (params, fn_ty) ++ " " ++ showTmImpls (addImplPat i lhs_in))
