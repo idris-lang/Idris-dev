@@ -34,6 +34,6 @@ testSum : Array n Int -> Int
 testSum = sumArray 
 
 main : IO ()
-main = printLn (testSum (upd 11 2 ?prf (create 4 10)))
+main = printLn (testSum (upd 11 1 (LTESucc (LTESucc LTEZero)) (create 4 10)))
 
 
