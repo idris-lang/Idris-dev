@@ -594,19 +594,12 @@ fnDecl' syn = checkFixity $
               do (doc, argDocs, fc, opts', n, nfc, acc) <- try (do
                         pushIndent
                         (doc, argDocs) <- docstring syn
-                        ist <- get
-                        let initOpts = case default_total ist of
-                                          DefaultCheckingTotal    -> [TotalFn]
-                                          DefaultCheckingCovering -> [CoveringFn]
-                                          _                       -> []
-                        opts <- fnOpts initOpts
-                        acc <- accessibility
-                        opts' <- fnOpts opts
+                        (opts, acc) <- fnOpts
                         (n_in, nfc) <- fnName
                         let n = expandNS syn n_in
                         fc <- getFC
                         lchar ':'
-                        return (doc, argDocs, fc, opts', n, nfc, acc))
+                        return (doc, argDocs, fc, opts, n, nfc, acc))
                  ty <- typeExpr (allowImp syn)
                  terminator
                  -- If it's a top level function, note the accessibility
@@ -634,10 +627,40 @@ fnDecl' syn = checkFixity $
                            | otherwise                 = return True
           fixityOK _        = return True
 
-{-| Parses function options given initial options
+{-| Parses a series of function and accessbility options
 
 @
-FnOpts ::= 'total'
+FnOpts ::= FnOpt* Accessibility FnOpt*
+@
+ -}
+fnOpts :: IdrisParser ([FnOpt], Accessibility)
+fnOpts = do
+    opts <- many fnOpt
+    acc <- accessibility
+    opts' <- many fnOpt
+    let allOpts = opts ++ opts'
+    let existingTotality = allOpts `intersect` [TotalFn, CoveringFn, PartialFn]
+    opts'' <- addDefaultTotality (nub existingTotality) allOpts
+    return (opts'', acc)
+  where prettyTot TotalFn = "total"
+        prettyTot PartialFn = "partial"
+        prettyTot CoveringFn = "covering"
+        addDefaultTotality [] opts = do
+          ist <- get
+          case default_total ist of
+            DefaultCheckingTotal    -> return (TotalFn:opts)
+            DefaultCheckingCovering -> return (CoveringFn:opts)
+            DefaultCheckingPartial  -> return (PartialFn:opts)
+        addDefaultTotality [tot] opts = return opts
+        -- Should really be a semantics error instead of a parser error
+        addDefaultTotality (tot1:tot2:tots) opts =
+          fail ("Conflicting totality modifiers specified " ++ prettyTot tot1 ++ " and " ++ prettyTot tot2)
+
+
+{-| Parses a function option
+
+@
+FnOpt ::= 'total'
   | 'partial'
   | 'covering'
   | 'implicit'
@@ -660,37 +683,31 @@ NameTimesList ::=
   ;
 @
 -}
--- FIXME: Check compatability for function options (i.e. partal/total)
---
--- Issue #1574 on the issue tracker.
---     https://github.com/idris-lang/Idris-dev/issues/1574
-fnOpts :: [FnOpt] -> IdrisParser [FnOpt]
-fnOpts opts
-        = do reservedHL "total"; fnOpts (TotalFn : opts)
-  <|> do reservedHL "partial"; fnOpts (PartialFn : (opts \\ [TotalFn]))
-  <|> do reservedHL "covering"; fnOpts (CoveringFn : (opts \\ [TotalFn]))
-  <|> do try (lchar '%' *> reserved "export"); c <- fmap fst stringLiteral;
-              fnOpts (CExport c : opts)
-  <|> do try (lchar '%' *> reserved "no_implicit");
-              fnOpts (NoImplicit : opts)
-  <|> do try (lchar '%' *> reserved "inline");
-              fnOpts (Inlinable : opts)
-  <|> do try (lchar '%' *> reserved "assert_total");
-              fnOpts (AssertTotal : opts)
-  <|> do try (lchar '%' *> reserved "error_handler");
-             fnOpts (ErrorHandler : opts)
-  <|> do try (lchar '%' *> reserved "error_reverse");
-             fnOpts (ErrorReverse : opts)
-  <|> do try (lchar '%' *> reserved "reflection");
-              fnOpts (Reflection : opts)
-  <|> do try (lchar '%' *> reserved "hint");
-              fnOpts (AutoHint : opts)
-  <|> do lchar '%'; reserved "specialise";
-         lchar '['; ns <- sepBy nameTimes (lchar ','); lchar ']'
-         fnOpts (Specialise ns : opts)
-  <|> do reservedHL "implicit"; fnOpts (Implicit : opts)
-  <|> return opts
-  <?> "function modifier"
+fnOpt :: IdrisParser FnOpt
+fnOpt = do reservedHL "total"; return TotalFn
+        <|> do reservedHL "partial"; return PartialFn
+        <|> do reservedHL "covering"; return CoveringFn
+        <|> do try (lchar '%' *> reserved "export"); c <- fmap fst stringLiteral;
+                    return $ CExport c
+        <|> do try (lchar '%' *> reserved "no_implicit");
+                    return NoImplicit
+        <|> do try (lchar '%' *> reserved "inline");
+                    return Inlinable
+        <|> do try (lchar '%' *> reserved "assert_total");
+                    return AssertTotal
+        <|> do try (lchar '%' *> reserved "error_handler");
+                    return ErrorHandler
+        <|> do try (lchar '%' *> reserved "error_reverse");
+                    return ErrorReverse
+        <|> do try (lchar '%' *> reserved "reflection");
+                    return Reflection
+        <|> do try (lchar '%' *> reserved "hint");
+                    return AutoHint
+        <|> do lchar '%'; reserved "specialise";
+               lchar '['; ns <- sepBy nameTimes (lchar ','); lchar ']';
+               return $ Specialise ns
+        <|> do reservedHL "implicit"; return Implicit
+        <?> "function modifier"
   where nameTimes :: IdrisParser (Name, Maybe Int)
         nameTimes = do n <- fst <$> fnName
                        t <- option Nothing (do reds <- fmap fst natural
@@ -712,13 +729,7 @@ postulate syn = do (doc, ext)
                                    ext <- ppostDecl
                                    return (doc, ext)
                    ist <- get
-                   let initOpts = case default_total ist of
-                                    DefaultCheckingTotal    -> [TotalFn]
-                                    DefaultCheckingCovering -> [CoveringFn]
-                                    _                       -> []
-                   opts <- fnOpts initOpts
-                   acc <- accessibility
-                   opts' <- fnOpts opts
+                   (opts, acc) <- fnOpts
                    (n_in, nfc) <- fnName
                    let n = expandNS syn n_in
                    lchar ':'
@@ -726,7 +737,7 @@ postulate syn = do (doc, ext)
                    fc <- getFC
                    terminator
                    addAcc n acc
-                   return (PPostulate ext doc syn fc nfc opts' n ty)
+                   return (PPostulate ext doc syn fc nfc opts n ty)
                  <?> "postulate"
    where ppostDecl = do fc <- reservedHL "postulate"; return False
                  <|> do lchar '%'; reserved "extern"; return True
@@ -921,16 +932,8 @@ InstanceName ::= '[' Name ']';
 instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
 instance_ kwopt syn
               = do ist <- get
-                   let initOpts = case default_total ist of
-                                    DefaultCheckingTotal    -> [TotalFn]
-                                    DefaultCheckingCovering -> [CoveringFn]
-                                    _                       -> []
-
                    (doc, argDocs) <- docstring syn
-                   opts <- fnOpts initOpts
-                   acc <- accessibility
-                   opts' <- fnOpts opts
-
+                   (opts, acc) <- fnOpts
                    if kwopt then optional instanceKeyword
                             else do instanceKeyword
                                     return (Just ())
@@ -944,7 +947,7 @@ instance_ kwopt syn
                    let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
                    ds <- instanceBlock syn
-                   return [PInstance doc argDocs syn fc cs' acc opts' cn cnfc args t en ds]
+                   return [PInstance doc argDocs syn fc cs' acc opts cn cnfc args t en ds]
                  <?> "implementation declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
