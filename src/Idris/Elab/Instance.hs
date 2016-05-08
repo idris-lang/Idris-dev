@@ -55,6 +55,7 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 [(Name, Docstring (Either Err PTerm))] ->
                 ElabWhat -> -- phase
                 FC -> [(Name, PTerm)] -> -- constraints
+                [Name] -> -- parent dictionary names (optionally)
                 Accessibility ->
                 FnOpts ->
                 Name -> -- the class
@@ -64,7 +65,7 @@ elabInstance :: ElabInfo -> SyntaxInfo ->
                 PTerm -> -- full instance type
                 Maybe Name -> -- explicit name
                 [PDecl] -> Idris ()
-elabInstance info syn doc argDocs what fc cs acc opts n nfc ps pextra t expn ds = do
+elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t expn ds = do
     ist <- getIState
     (n, ci) <- case lookupCtxtName n (idris_classes ist) of
                   [c] -> return c
@@ -90,6 +91,9 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps pextra t expn ds 
                           addInstance intInst True n iname
             Just _ -> addInstance intInst False n iname
     when (what /= ETypes && (not (null ds && not emptyclass))) $ do
+         -- Add the parent implementation names to the privileged set
+         oldOpen <- addOpenImpl parents
+
          let ips = zip (class_params ci) ps
          let ns = case n of
                     NS n ns' -> ns'
@@ -185,6 +189,8 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps pextra t expn ds 
          mapM_ (rec_elabDecl info EAll info) wbVals'
 
          pop_estack
+
+         setOpenImpl oldOpen
 --          totalityCheckBlock
 
          checkInjectiveArgs fc n (class_determiners ci) (lookupTyExact iname (tt_ctxt ist))
@@ -202,13 +208,13 @@ elabInstance info syn doc argDocs what fc cs acc opts n nfc ps pextra t expn ds 
                           Just m -> sNS (SN (sInstanceN n' (map show ps'))) m
           Just nm -> nm
 
-    substInstance ips pnames (PInstance doc argDocs syn _ cs acc opts n nfc ps pextra t expn ds)
-        = PInstance doc argDocs syn fc cs acc opts n nfc 
+    substInstance ips pnames (PInstance doc argDocs syn _ cs parents acc opts n nfc ps pextra t expn ds)
+        = PInstance doc argDocs syn fc cs parents acc opts n nfc 
                      (map (substMatchesShadow ips pnames) ps) 
                      pextra
                      (substMatchesShadow ips pnames t) expn ds
 
-    isOverlapping i (PInstance doc argDocs syn _ _ _ _ n nfc ps pextra t expn _)
+    isOverlapping i (PInstance doc argDocs syn _ _ _ _ _ n nfc ps pextra t expn _)
         = case lookupCtxtName n (idris_classes i) of
             [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of

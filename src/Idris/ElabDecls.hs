@@ -239,6 +239,11 @@ elabDecl' what info (PParams f ns ps)
     pblock i = map (expandParamsD False i id ns
                       (concatMap tldeclared ps)) ps
 
+elabDecl' what info (POpenInterfaces f ns ds)
+    = do open <- addOpenImpl ns
+         mapM_ (elabDecl' what info) ds
+         setOpenImpl open
+
 elabDecl' what info (PNamespace n nfc ps) =
   do mapM_ (elabDecl' what ninfo) ps
      let ns = reverse (map T.pack newNS)
@@ -251,9 +256,9 @@ elabDecl' what info (PClass doc s f cs n nfc ps pdocs fds ds cn cd)
   | what /= EDefns
     = do logElab 1 $ "Elaborating class " ++ show n
          elabClass info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
-elabDecl' what info (PInstance doc argDocs s f cs acc fnopts n nfc ps pextra t expn ds)
+elabDecl' what info (PInstance doc argDocs s f cs pnames acc fnopts n nfc ps pextra t expn ds)
     = do logElab 1 $ "Elaborating instance " ++ show n
-         elabInstance info s doc argDocs what f cs acc fnopts n nfc ps pextra t expn ds
+         elabInstance info s doc argDocs what f cs pnames acc fnopts n nfc ps pextra t expn ds
 elabDecl' what info (PRecord doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn)
     = do logElab 1 $ "Elaborating record " ++ show name
          elabRecord info what doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn

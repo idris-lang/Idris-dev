@@ -1,21 +1,22 @@
 interface NumMod where
     number : Bool -> Int
 
-implementation [five] NumMod where
+implementation [Five] NumMod where
     number b = 5
 
 foo : NumMod => Int
 foo = number True + number False
 
-increment : Int -> NumMod -> NumMod
-increment inc x = addOne
+Increment : Int -> NumMod -> NumMod
+Increment inc x = AddOne
    where
      foo : NumMod
      foo = x
 
-     implementation [addOne] NumMod where
+     implementation [AddOne] NumMod where
        number x = if x then number@{foo} x + inc else inc
 
-main : IO ()
-main = do printLn (foo @{five})
-          printLn (foo @{increment 2 five})
+using implementation Five
+  main : IO ()
+  main = do printLn foo 
+            printLn (foo @{Increment 2 Five})

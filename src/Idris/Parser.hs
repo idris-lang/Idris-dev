@@ -213,6 +213,7 @@ internalDecl syn
   where declBody :: Bool -> IdrisParser [PDecl]
         declBody b =
                    try (instance_ True syn)
+                   <|> try (openInterface syn)
                    <|> declBody' b
                    <|> using_ syn
                    <|> params syn
@@ -337,8 +338,8 @@ declExtension syn ns rules =
                   (map (updateNs ns) ds)
                   (updateRecCon ns cname)
                   cdocs
-    updateNs ns (PInstance docs pdocs s fc cs acc opts cn fc' ps pextra ity ni ds)
-         = PInstance docs pdocs s fc cs acc opts (updateB ns cn) fc'
+    updateNs ns (PInstance docs pdocs s fc cs pnames acc opts cn fc' ps pextra ity ni ds)
+         = PInstance docs pdocs s fc cs pnames acc opts (updateB ns cn) fc'
                      ps pextra ity (fmap (updateB ns) ni)
                             (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
@@ -767,6 +768,26 @@ params syn =
        return [PParams fc ns' (concat ds)]
     <?> "parameters declaration"
 
+{- | Parses an open block 
+
+-}
+
+openInterface :: SyntaxInfo -> IdrisParser [PDecl]
+openInterface syn =
+    do reservedHL "using"
+       reservedHL "implementation"
+       fc <- getFC
+       ns <- sepBy1 fnName (lchar ',') 
+
+       openBlock
+       ds <- many (decl syn)
+       closeBlock
+       return [POpenInterfaces fc (map fst ns) (concat ds)]
+    <?> "open interface declaration"
+
+
+       
+
 {- | Parses a mutual declaration (for mutually recursive functions)
 
 @
@@ -940,8 +961,9 @@ instance_ kwopt syn
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
+                   pnames <- instanceUsing
                    ds <- instanceBlock syn
-                   return [PInstance doc argDocs syn fc cs' acc opts' cn cnfc args [] t en ds]
+                   return [PInstance doc argDocs syn fc cs' pnames acc opts' cn cnfc args [] t en ds]
                  <?> "implementation declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
@@ -953,6 +975,12 @@ instance_ kwopt syn
                       <|> do reservedHL "instance"
                              fc <- getFC
                              parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
+
+        instanceUsing :: IdrisParser [Name]
+        instanceUsing = do reservedHL "using"
+                           ns <- sepBy1 fnName (lchar ',')
+                           return (map fst ns)
+                        <|> return []
 
 -- | Parse a docstring
 docstring :: SyntaxInfo

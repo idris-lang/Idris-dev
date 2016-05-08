@@ -6,6 +6,38 @@
   dependent types
 * `rewrite` can now be given an optional rewriting lemma, with the syntax
   `rewrite [rule] using [rewrite_lemma] in [scope]`.
+
+* Reorganised elaboration of `implementation`, so that interfaces with
+  dependencies between methods now work more smoothly
+
+* Allow naming of parent implementations when defining an implementation.
+  For example:
+
+  ```
+  [PlusNatSemi] Semigroup Nat where
+    (<+>) x y = x + y
+  
+  [MultNatSemi] Semigroup Nat where
+    (<+>) x y = x * y
+  
+  -- use PlusNatSemi as the parent implementation
+  [PlusNatMonoid] Monoid Nat using PlusNatSemi where
+    neutral = 0
+  
+  -- use MultNatSemi as the parent implementation
+  [MultNatMonoid] Monoid Nat using MultNatSemi where
+    neutral = 1
+  ```
+
+* Experimentally, allow named implementations to be available by default in a
+  block of declarations with `using` notation. For example:
+
+  ```
+  using implementation PlusNatMonoid
+    test : Nat -> Nat
+    test x = x <+> x <+> neutral
+  ```
+
 * Experimental extended `with` syntax, which allows calling functions defined
   in a with block directly. For example:
 

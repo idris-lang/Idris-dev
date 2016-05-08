@@ -903,8 +903,8 @@ process fn (NewDefn decls) = do
   fixClauses :: PDecl' t -> PDecl' t
   fixClauses (PClauses fc opts _ css@(clause:cs)) =
     PClauses fc opts (getClauseName clause) css
-  fixClauses (PInstance doc argDocs syn fc constraints acc opts cls nfc parms pextra ty instName decls) =
-    PInstance doc argDocs syn fc constraints acc opts cls nfc parms pextra ty instName (map fixClauses decls)
+  fixClauses (PInstance doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty instName decls) =
+    PInstance doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty instName (map fixClauses decls)
   fixClauses decl = decl
 
 process fn (Undefine names) = undefine names

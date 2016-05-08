@@ -339,25 +339,37 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
 -- | Resolve interfaces. This will only pick up 'normal' implementations, never
 -- named implementations (which is enforced by 'findInstances').
 resolveTC :: Bool -- ^ using default Int
-          -> Bool -- ^ allow metavariables in the goal
+          -> Bool -- ^ allow open implementations
           -> Int -- ^ depth
           -> Term -- ^ top level goal, for error messages
           -> Name -- ^ top level function name, to prevent loops
           -> (PTerm -> ElabD ()) -- ^ top level elaborator
           -> IState -> ElabD ()
-resolveTC def mvok depth top fn elab ist
-   = do hs <- get_holes
-        resTC' [] def hs depth top fn elab ist
+resolveTC def openOK depth top fn elab ist
+  = do hs <- get_holes
+       resTC' [] def openOK hs depth top fn elab ist
 
-resTC' tcs def topholes 0 topg fn elab ist = fail $ "Can't resolve interface"
-resTC' tcs def topholes 1 topg fn elab ist = try' (trivial elab ist) (resolveTC def False 0 topg fn elab ist) True
-resTC' tcs defaultOn topholes depth topg fn elab ist
+resTC' tcs def openOK topholes 0 topg fn elab ist = fail $ "Can't resolve interface"
+resTC' tcs def openOK topholes 1 topg fn elab ist = try' (trivial elab ist) (resolveTC def False 0 topg fn elab ist) True
+resTC' tcs defaultOn openOK topholes depth topg fn elab ist
   = do compute
-       g <- goal
+       if openOK
+          then try' (resolveOpen (idris_openimpls ist))
+                    resolveNormal
+                    True
+          else resolveNormal
+
+  where
+    -- try all the Open implementations first
+    resolveOpen open = do t <- goal
+                          blunderbuss t depth [] open
+
+    resolveNormal = do
        -- Resolution can proceed only if there is something concrete in the
        -- determining argument positions. Keep track of the holes in the
        -- non-determining position, because it's okay for 'trivial' to solve
        -- those holes and no others.
+       g <- goal
        let (argsok, okholePos) = case tcArgsOK g topholes of
                                     Nothing -> (False, [])
                                     Just hs -> (True, hs)
@@ -380,9 +392,9 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
             try' (trivialTCs okholes elab ist)
                 (do addDefault t tc ttypes
                     let stk = map fst (filter snd $ elab_stack ist)
-                    let insts = findInstances ist t
+                    let insts = findInstances ist t ++ idris_openimpls ist
                     blunderbuss t depth stk (stk ++ insts)) True
-  where
+
     -- returns Just hs if okay, where hs are holes which are okay in the
     -- goal, or Nothing if not okay to proceed
     tcArgsOK ty hs | (P _ nc _, as) <- unApply (getRetTy ty), nc == numclass && defaultOn
@@ -491,7 +503,7 @@ resTC' tcs defaultOn topholes depth topg fn elab ist
                                      let got = fst (unApply (getRetTy t))
                                      let depth' = if tc' `elem` tcs
                                                      then depth - 1 else depth
-                                     resTC' (got : tcs) defaultOn topholes depth' topg fn elab ist)
+                                     resTC' (got : tcs) defaultOn openOK topholes depth' topg fn elab ist)
                       (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                 -- if there's any arguments left, we've failed to resolve
                 hs <- get_holes
