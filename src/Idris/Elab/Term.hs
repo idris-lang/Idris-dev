@@ -85,7 +85,7 @@ build ist info emode opts fn tm
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
                                 g <- goal
-                                try (resolveTC' True False 10 g fn ist)
+                                try (resolveTC' True True 10 g fn ist)
                                     (movelast n)) ivs
          ivs <- get_instances
          hs <- get_holes

@@ -614,6 +614,12 @@ Extra-source-files:
                        test/interfaces002/*.idr
                        test/interfaces002/run
                        test/interfaces002/expected
+                       test/interfaces003/*.idr
+                       test/interfaces003/run
+                       test/interfaces003/expected
+                       test/interfaces004/*.idr
+                       test/interfaces004/run
+                       test/interfaces004/expected
 
                        test/io001/run
                        test/io001/*.idr

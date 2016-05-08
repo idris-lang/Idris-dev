@@ -196,6 +196,7 @@ data IState = IState {
     idris_implicits :: Ctxt [PArg],
     idris_statics :: Ctxt [Bool],
     idris_classes :: Ctxt ClassInfo,
+    idris_openimpls :: [Name], -- ^ Privileged implementations, will resolve immediately
     idris_records :: Ctxt RecordInfo,
     idris_dsls :: Ctxt DSL,
     idris_optimisation :: Ctxt OptInfo,
@@ -359,7 +360,7 @@ data IBCWrite = IBCFix FixDecl
 -- | The initial state for the compiler
 idrisInit :: IState
 idrisInit = IState initContext S.empty []
-                   emptyContext emptyContext emptyContext emptyContext
+                   emptyContext emptyContext emptyContext [] emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
@@ -708,6 +709,7 @@ data PDecl' t
    | PCAF     FC Name t -- ^ Top level constant
    | PData    (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
    | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
+   | POpenInterfaces FC [Name] [PDecl' t] -- ^ Open block/declaration
    | PNamespace String FC [PDecl' t]
      -- ^ New namespace, where FC is accurate location of the
      -- namespace in the file
@@ -738,11 +740,13 @@ data PDecl' t
        [(Name, Docstring (Either Err t))] -- Parameter docs
        SyntaxInfo
        FC [(Name, t)] -- constraints
+       [Name] -- parent dictionaries to search for constraints
        Accessibility
        FnOpts
        Name -- class
        FC -- precise location of class
        [t] -- parameters
+       [(Name, t)] -- Extra names in scope in the body
        t -- full instance type
        (Maybe Name) -- explicit name
        [PDecl' t]
@@ -885,6 +889,8 @@ mapPDeclFC f g (PParams fc params decls) =
     PParams (f fc)
             (map (\(n, ty) -> (n, mapPTermFC f g ty)) params)
             (map (mapPDeclFC f g) decls)
+mapPDeclFC f g (POpenInterfaces fc ifs decls) =
+    POpenInterfaces (f fc) ifs (map (mapPDeclFC f g) decls)
 mapPDeclFC f g (PNamespace ns fc decls) =
     PNamespace ns (f fc) (map (mapPDeclFC f g) decls)
 mapPDeclFC f g (PRecord doc syn fc opts n nfc params paramdocs fields ctor ctorDoc syn') =
@@ -905,10 +911,11 @@ mapPDeclFC f g (PClass doc syn fc constrs n nfc params paramDocs det body ctor c
            (map (mapPDeclFC f g) body)
            (fmap (\(n, nfc) -> (n, g nfc)) ctor)
            ctorDoc
-mapPDeclFC f g (PInstance doc paramDocs syn fc constrs cn acc opts cnfc params instTy instN body) =
+mapPDeclFC f g (PInstance doc paramDocs syn fc constrs pnames cn acc opts cnfc params pextra instTy instN body) =
     PInstance doc paramDocs syn (f fc)
               (map (\(constrN, constrT) -> (constrN, mapPTermFC f g constrT)) constrs)
-              cn acc opts (g cnfc) (map (mapPTermFC f g) params)
+              pnames cn acc opts (g cnfc) (map (mapPTermFC f g) params)
+              (map (\(en, et) -> (en, mapPTermFC f g et)) pextra)
               (mapPTermFC f g instTy)
               instN
               (map (mapPDeclFC f g) body)
@@ -945,10 +952,14 @@ declared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
    where fstt (_, _, a, _, _, _, _) = a
 declared (PData _ _ _ _ _ (PLaterdecl n _ _)) = [n]
 declared (PParams _ _ ds) = concatMap declared ds
+declared (POpenInterfaces _ _ ds) = concatMap declared ds
 declared (PNamespace _ _ ds) = concatMap declared ds
 declared (PRecord _ _ _ _ n  _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 declared (PClass _ _ _ _ n _ _ _ _ ms cn cd) = n : (map fst (maybeToList cn) ++ concatMap declared ms)
-declared (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _) = []
+declared (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
+    = case mn of
+           Nothing -> []
+           Just n -> [n]
 declared (PDSL n _) = [n]
 declared (PSyntax _ _) = []
 declared (PMutual _ ds) = concatMap declared ds
@@ -965,10 +976,14 @@ tldeclared (PRecord _ _ _ _ n _ _ _ _ cn _ _)     = n : map fst (maybeToList cn)
 tldeclared (PData _ _ _ _ _ (PDatadecl n _ _ ts)) = n : map fstt ts
    where fstt (_, _, a, _, _, _, _) = a
 tldeclared (PParams _ _ ds)                       = []
+tldeclared (POpenInterfaces _ _ ds)               = concatMap tldeclared ds
 tldeclared (PMutual _ ds)                         = concatMap tldeclared ds
 tldeclared (PNamespace _ _ ds)                    = concatMap tldeclared ds
 tldeclared (PClass _ _ _ _ n _ _ _ _ ms cn _)     = n : (map fst (maybeToList cn) ++ concatMap tldeclared ms)
-tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _)    = []
+tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
+    = case mn of
+           Nothing -> []
+           Just n -> [n]
 tldeclared _                                      = []
 
 defined :: PDecl -> [Name]
@@ -981,10 +996,14 @@ defined (PData _ _ _ _ _ (PDatadecl n _ _ ts))    = n : map fstt ts
    where fstt (_, _, a, _, _, _, _) = a
 defined (PData _ _ _ _ _ (PLaterdecl n _ _))      = []
 defined (PParams _ _ ds)                          = concatMap defined ds
+defined (POpenInterfaces _ _ ds)                  = concatMap defined ds
 defined (PNamespace _ _ ds)                       = concatMap defined ds
 defined (PRecord _ _ _ _ n _ _ _ _ cn _ _)        = n : map fst (maybeToList cn)
 defined (PClass _ _ _ _ n _ _ _ _ ms cn _)        = n : (map fst (maybeToList cn) ++ concatMap defined ms)
-defined (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _)     = []
+defined (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
+    = case mn of
+           Nothing -> []
+           Just n -> [n]
 defined (PDSL n _)                                = [n]
 defined (PSyntax _ _)                             = []
 defined (PMutual _ ds)                            = concatMap defined ds
@@ -2168,11 +2187,12 @@ showDeclImp o (PClauses _ _ n cs)   = text "pat" <+> text (showCG n) <+> text "\
                                       indent 2 (vsep (map (showCImp o) cs))
 showDeclImp o (PData _ _ _ _ _ d)   = showDImp o { ppopt_impl = True } d
 showDeclImp o (PParams _ ns ps)     = text "params" <+> braces (text (show ns) <> line <> showDecls o ps <> line)
+showDeclImp o (POpenInterfaces _ ns ps) = text "open" <+> braces (text (show ns) <> line <> showDecls o ps <> line)
 showDeclImp o (PNamespace n fc ps)  = text "namespace" <+> text n <> braces (line <> showDecls o ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
 showDeclImp o (PClass _ _ _ cs n _ ps _ _ ds _ _)
    = text "interface" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
-showDeclImp o (PInstance _ _ _ _ cs acc _ n _ _ t _ ds)
+showDeclImp o (PInstance _ _ _ _ cs _ acc _ n _ _ _ t _ ds)
    = text "implementation" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o

@@ -446,6 +446,33 @@ addInstance int res n i
         chaser (NS n _) = chaser n
         chaser _ = False
 
+-- Add a privileged implementation - one which instance search will happily
+-- resolve immediately if it is type correct
+-- This is used for naming parent implementations when defining an
+-- implementation with constraints.
+-- Returns the old list, so we can revert easily at the end of a block
+
+addOpenImpl :: [Name] -> Idris [Name]
+addOpenImpl ns = do ist <- getIState 
+                    ns' <- mapM (checkValid ist) ns
+                    let open = idris_openimpls ist
+                    putIState $ ist { idris_openimpls = nub (ns' ++ open) }
+                    return open
+  where
+    checkValid ist n 
+      = case lookupCtxtName n (idris_implicits ist) of
+             [(n', _)] -> return n'
+             []        -> throwError (NoSuchVariable n)
+             more      -> throwError (CantResolveAlts (map fst more))
+
+setOpenImpl :: [Name] -> Idris ()
+setOpenImpl ns = do ist <- getIState
+                    putIState $ ist { idris_openimpls = ns }
+
+getOpenImpl :: Idris [Name]
+getOpenImpl = do ist <- getIState
+                 return (idris_openimpls ist)
+
 addClass :: Name -> ClassInfo -> Idris ()
 addClass n i
    = do ist <- getIState
@@ -1249,7 +1276,7 @@ expandParamsD rhsonly ist dec ps ns (PClauses fc opts n cs)
     updateps yn nm [] = []
     updateps yn nm (((a, t), i):as)
         | (a `elem` nm) == yn = (a, t) : updateps yn nm as
-        | otherwise = (sMN i ('_' : show n ++ "_u"), t) : updateps yn nm as
+        | otherwise = (sMN i (show a ++ "_shadow"), t) : updateps yn nm as
 
     removeBound lhs ns = ns \\ nub (bnames lhs)
 
@@ -1290,18 +1317,27 @@ expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds dec
            (map (expandParamsD rhs ist dec ps ns) decls)
            cn
            cd
-expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs acc opts n nfc params ty cn decls)
-   = PInstance doc argDocs info f
+expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
+   = let cn' = case cn of
+                    Just n -> if n `elem` ns then Just (dec n) else Just n
+                    Nothing -> Nothing in
+     PInstance doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
-           acc opts n
+           pnames acc opts n
            nfc
            (map (expandParams dec ps ns []) params)
+           (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) pextra)
            (expandParams dec ps ns [] ty)
-           cn
-           (map (expandParamsD rhs ist dec ps ns) decls)
+           cn'
+           (map (expandParamsD True ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns d = d
 
 mapsnd f (x, t) = (x, f t)
+
+expandInstanceScope ist dec ps ns (PInstance doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
+    = PInstance doc argDocs info f cs pnames acc opts n nfc params (ps ++ pextra)
+                ty cn decls
+expandInstanceScope ist dec ps ns d = d
 
 -- Calculate a priority for a type, for deciding elaboration order
 -- * if it's just a type variable or concrete type, do it early (0)

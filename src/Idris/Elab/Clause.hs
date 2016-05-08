@@ -629,6 +629,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         let winfo = (pinfo info newargs defs windex) { elabFC = Just fc }
         let wb = map (mkStatic static_names) $
+                 map (expandInstanceScope ist decorate newargs defs) $
                  map (expandParamsD False ist decorate newargs defs) whereblock
 
         -- Split the where block into declarations with a type, and those
@@ -636,7 +637,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         -- Elaborate those with a type *before* RHS, those without *after*
         let (wbefore, wafter) = sepBlocks wb
 
-        logElab 2 $ "Where block:\n " ++ show wbefore ++ "\n" ++ show wafter
+        logElab 5 $ "Where block:\n " ++ show wbefore ++ "\n" ++ show wafter
         mapM_ (rec_elabDecl info EAll winfo) wbefore
         -- Now build the RHS, using the type of the LHS as the goal.
         i <- getIState -- new implicits from where block
