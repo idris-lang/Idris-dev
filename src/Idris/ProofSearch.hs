@@ -392,7 +392,7 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
             try' (trivialTCs okholes elab ist)
                 (do addDefault t tc ttypes
                     let stk = map fst (filter snd $ elab_stack ist)
-                    let insts = findInstances ist t ++ idris_openimpls ist
+                    let insts = idris_openimpls ist ++ findInstances ist t 
                     blunderbuss t depth stk (stk ++ insts)) True
 
     -- returns Just hs if okay, where hs are holes which are okay in the
