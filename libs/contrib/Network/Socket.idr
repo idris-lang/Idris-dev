@@ -273,6 +273,7 @@ freeRecvStruct (RSPtr p) = foreign FFI_C "idrnet_free_recv_struct" (Ptr -> IO ()
 freeRecvfromStruct : RecvfromStructPtr -> IO ()
 freeRecvfromStruct (RFPtr p) = foreign FFI_C "idrnet_free_recvfrom_struct" (Ptr -> IO ()) p
 
+export
 recv : Socket -> Int -> IO (Either SocketError (String, ByteLength))
 recv sock len = do
   -- Firstly make the request, get some kind of recv structure which
@@ -309,6 +310,7 @@ recvBuf sock (BPtr ptr) len = do
   else
     return $ Right recv_res
 
+export
 sendTo : Socket -> SocketAddress -> Port -> String -> IO (Either SocketError ByteLength)
 sendTo sock addr p dat = do
   sendto_res <- foreign FFI_C "idrnet_sendto"
@@ -344,6 +346,7 @@ foreignGetRecvfromPort (RFPtr p) = do
   port <- foreign FFI_C "idrnet_sockaddr_ipv4_port" (Ptr -> IO Int) sockaddr_ptr
   return port
 
+export
 recvFrom : Socket -> ByteLength -> IO (Either SocketError (UDPAddrInfo, String, ByteLength))
 recvFrom sock bl = do
   recv_ptr <- foreign FFI_C "idrnet_recvfrom" (Int -> Int -> IO Ptr)
