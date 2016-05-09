@@ -29,6 +29,11 @@
     neutral = 1
   ```
 
+* Interface definitions can now include data declarations (but not data
+  definitions). Any implementation of the interface must define the method
+  using a data type. The effect is to cause Idris to treat the method as
+  a data type (for unification and interface resolution purposes).
+
 * Experimentally, allow named implementations to be available by default in a
   block of declarations with `using` notation. For example:
 

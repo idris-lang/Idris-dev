@@ -75,6 +75,7 @@ do_whnf ctxt env tm = eval env [] tm
           = let wp = case nt of
                           DCon t a u -> WDCon t a u n (ty, env)
                           TCon t a -> WTCon t a n (ty, env)
+                          Ref -> WPRef n (ty, env)
                           _ -> WPRef n (ty, env)
                         in
             case lookupDefExact n ctxt of

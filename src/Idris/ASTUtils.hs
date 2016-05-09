@@ -138,7 +138,7 @@ opts_idrisCmdline =
 -------------
 -- This has a terrible name, but I'm not sure of a better one that isn't
 -- confusingly close to tt_ctxt
-known_terms :: Field IState (Ctxt (Def, Accessibility, Totality, MetaInformation))
+known_terms :: Field IState (Ctxt (Def, Injectivity, Accessibility, Totality, MetaInformation))
 known_terms = Field (definitions . tt_ctxt)
                     (\v state -> state {tt_ctxt = (tt_ctxt state) {definitions = v}})
 

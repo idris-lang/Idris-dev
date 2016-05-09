@@ -439,7 +439,7 @@ irTerm vs env tm@(App _ f a) = do
             | otherwise = n
 
         used = maybe [] (map fst . usedpos) $ lookupCtxtExact uName (idris_callgraph ist)
-        fst4 (x,_,_,_) = x
+        fst4 (x,_,_,_,_) = x
 
 irTerm vs env (P _ n _) = return $ LV (Glob n)
 irTerm vs env (V i)

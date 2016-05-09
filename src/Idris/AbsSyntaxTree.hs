@@ -333,6 +333,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCAccess Name Accessibility
               | IBCMetaInformation Name MetaInformation
               | IBCTotal Name Totality
+              | IBCInjective Name Injectivity
               | IBCFlags Name [FnOpt]
               | IBCFnInfo Name FnInfo
               | IBCTrans Name (Term, Term)
@@ -775,6 +776,7 @@ data Directive = DLib Codegen String
                | DInclude Codegen String
                | DHide Name
                | DFreeze Name
+               | DInjective Name
                | DAccess Accessibility
                | DDefault DefaultTotality
                | DLogging Integer
@@ -1377,7 +1379,7 @@ highestFC (PAppImpl t _)          = highestFC t
 -- Type class data
 
 data ClassInfo = CI { instanceCtorName :: Name,
-                      class_methods :: [(Name, (FnOpts, PTerm))],
+                      class_methods :: [(Name, (Bool, FnOpts, PTerm))], -- flag whether it's a "data" method
                       class_defaults :: [(Name, (Name, PDecl))], -- method name -> default impl
                       class_default_superclasses :: [PDecl],
                       class_params :: [Name],

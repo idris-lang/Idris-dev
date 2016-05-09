@@ -284,6 +284,7 @@ instance NFData IBCWrite where
     rnf (IBCAccess name accessibility) = rnf name `seq` rnf accessibility `seq` ()
     rnf (IBCMetaInformation name metaInformation) = rnf name `seq` rnf metaInformation `seq` ()
     rnf (IBCTotal name totality) = rnf name `seq` rnf totality `seq` ()
+    rnf (IBCInjective name inj) = rnf name `seq` rnf inj `seq` ()
     rnf (IBCFlags name fnOpts) = rnf name `seq` rnf fnOpts `seq` ()
     rnf (IBCFnInfo name fnInfo) = rnf name `seq` rnf fnInfo `seq` ()
     rnf (IBCTrans name terms) = rnf name `seq` rnf terms `seq` ()

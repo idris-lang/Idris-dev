@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 140
+ibcVersion = 141
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
@@ -95,6 +95,7 @@ data IBCFile = IBCFile { ver :: Word16,
                          ibc_deprecated :: ![(Name, String)],
                          ibc_defs :: ![(Name, Def)],
                          ibc_total :: ![(Name, Totality)],
+                         ibc_injective :: ![(Name, Injectivity)],
                          ibc_access :: ![(Name, Accessibility)],
                          ibc_fragile :: ![(Name, String)]
                        }
@@ -104,7 +105,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -197,6 +198,7 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_deprecated"  (ibc_deprecated i),
                        makeEntry "ibc_defs"  (ibc_defs i),
                        makeEntry "ibc_total"  (ibc_total i),
+                       makeEntry "ibc_injective"  (ibc_injective i),
                        makeEntry "ibc_access"  (ibc_access i),
                        makeEntry "ibc_fragile" (ibc_fragile i)]
 
@@ -300,6 +302,7 @@ ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
 ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
 ibc i (IBCFnInfo n a) f = return f { ibc_fninfo = (n,a) : ibc_fninfo f }
 ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
+ibc i (IBCInjective n a) f = return f { ibc_injective = (n,a) : ibc_injective f }
 ibc i (IBCTrans n t) f = return f { ibc_transforms = (n, t) : ibc_transforms f }
 ibc i (IBCErrRev t) f = return f { ibc_errRev = t : ibc_errRev f }
 ibc i (IBCLineApp fp l t) f
@@ -394,6 +397,7 @@ process reexp phase archive fn = do
                 processDeprecate archive
                 processDefs archive
                 processTotal archive
+                processInjective archive
                 processAccess reexp phase archive
                 processFragile archive
 
@@ -717,6 +721,11 @@ processTotal :: Archive -> Idris ()
 processTotal ar = do
     ds <- getEntry [] "ibc_total" ar
     mapM_ (\ (n, a) -> updateIState (\i -> i { tt_ctxt = setTotal n a (tt_ctxt i) })) ds
+
+processInjective :: Archive -> Idris ()
+processInjective ar = do
+    ds <- getEntry [] "ibc_injective" ar
+    mapM_ (\ (n, a) -> updateIState (\i -> i { tt_ctxt = setInjective n a (tt_ctxt i) })) ds
 
 processTotalityCheckError :: Archive -> Idris ()
 processTotalityCheckError ar = do

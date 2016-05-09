@@ -123,7 +123,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          logElab 3 $ "Head var types " ++ show headVarTypes ++ " from " ++ show ty
          
          let all_meths = map (nsroot . fst) (class_methods ci)
-         let mtys = map (\ (n, (op, t)) ->
+         let mtys = map (\ (n, (inj, op, t)) ->
                    let t_in = substMatchesShadow ips pnames t
                        mnamemap = 
                           map (\n -> (n, PApp fc (PRef fc [] (decorate ns iname n))
@@ -139,6 +139,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          logElab 3 ("After defaults: " ++ show ds_defs ++ "\n")
          let ds' = reorderDefs (map fst (class_methods ci)) $ ds_defs
          logElab 1 ("Reordered: " ++ show ds' ++ "\n")
+
          mapM_ (warnMissing ds' ns iname) (map fst (class_methods ci))
          mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
          let wbTys = map mkTyDecl mtys
@@ -187,6 +188,8 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          let wbVals' = map (addParams prop_params) wbVals
 
          mapM_ (rec_elabDecl info EAll info) wbVals'
+         
+         mapM_ (checkInjectiveDef fc (class_methods ci)) (zip ds' wbVals')
 
          pop_estack
 
@@ -435,6 +438,37 @@ addParams ps (PClauses fc opts n cs) = PClauses fc opts n (map addCParams cs)
     dropPs ns = filter (\x -> x `notElem` ns)
 
 addParams ps d = d
+
+-- Check a given method definition is injective, if the class info
+-- says it needs to be.
+-- Takes originally written decl and the one with name decoration, so
+-- we know which name to look up.
+checkInjectiveDef :: FC -> [(Name, (Bool, FnOpts, PTerm))] -> 
+                           (PDecl, PDecl) -> Idris ()
+checkInjectiveDef fc ns (PClauses _ _ n cs, PClauses _ _ elabn _)
+   | Just (True, _, _) <- clookup n ns
+          = do ist <- getIState
+               case lookupDefExact elabn (tt_ctxt ist) of
+                    Just (CaseOp _ _ _ _ _ cdefs) ->
+                       checkInjectiveCase ist (snd (cases_compiletime cdefs))
+  where
+    checkInjectiveCase ist (STerm tm) 
+         = checkInjectiveApp ist (fst (unApply tm))
+    checkInjectiveCase _ _ = notifail
+
+    checkInjectiveApp ist (P (TCon _ _) n _) = return ()
+    checkInjectiveApp ist (P (DCon _ _ _) n _) = return ()
+    checkInjectiveApp ist (P Ref n _) 
+        | Just True <- lookupInjectiveExact n (tt_ctxt ist) = return ()
+    checkInjectiveApp ist (P Ref n _) = notifail
+    checkInjectiveApp _ _ = notifail
+
+    notifail = ierror $ At fc (Msg (show n ++ " must be defined by a type or data constructor"))
+
+    clookup n [] = Nothing
+    clookup n ((n', d) : ds) | nsroot n == nsroot n' = Just d
+                             | otherwise = Nothing
+checkInjectiveDef fc ns _ = return()
 
 checkInjectiveArgs :: FC -> Name -> [Int] -> Maybe Type -> Idris ()
 checkInjectiveArgs fc n ds Nothing = return ()

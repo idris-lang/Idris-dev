@@ -292,6 +292,8 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 
     injective (P (DCon _ _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
+    injective (P Ref n _) 
+         | Just i <- lookupInjectiveExact n ctxt = i
     injective (App _ f a)        = injective f -- && injective a
     injective _                  = False
 
@@ -573,7 +575,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 
             rigid (P (DCon _ _ _) _ _) = True
             rigid (P (TCon _ _) _ _) = True
-            rigid t@(P Ref _ _)      = inenv t || globmetavar t
+            rigid t@(P Ref _ _)  = inenv t || globmetavar t
             rigid (Constant _)       = True
             rigid (App _ f a)        = rigid f && rigid a
             rigid t                  = not (metavar t) || globmetavar t

@@ -877,7 +877,10 @@ classBlock syn = do reservedHL "where"
                     ist <- get
                     let cd' = annotate syn ist cd
 
-                    ds <- many (notEndBlock >> try (instance_ True syn) <|> fnDecl syn)
+                    ds <- many (notEndBlock >> try (instance_ True syn) 
+                                               <|> do x <- data_ syn
+                                                      return [x]
+                                               <|> fnDecl syn)
                     closeBlock
                     return (cn, cd', concat ds)
                  <?> "class block"
@@ -1377,6 +1380,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     return [PDirective (DHide n)]
              <|> do try (lchar '%' *> reserved "freeze"); n <- fst <$> iName []
                     return [PDirective (DFreeze n)]
+             -- injectivity assertins are intended for debugging purposes
+             -- only, and won't be documented/could be removed at any point
+             <|> do try (lchar '%' *> reserved "assert_injective"); n <- fst <$> fnName
+                    return [PDirective (DInjective n)]
              <|> do try (lchar '%' *> reserved "access")
                     acc <- accessibility
                     ist <- get

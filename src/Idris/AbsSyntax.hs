@@ -218,6 +218,12 @@ setTotality n a
               let ctxt = setTotal n a (tt_ctxt i)
               putIState $ i { tt_ctxt = ctxt }
 
+setInjectivity :: Name -> Injectivity -> Idris ()
+setInjectivity n a
+         = do i <- getIState
+              let ctxt = setInjective n a (tt_ctxt i)
+              putIState $ i { tt_ctxt = ctxt }
+
 getTotality :: Name -> Idris Totality
 getTotality n
          = do i <- getIState

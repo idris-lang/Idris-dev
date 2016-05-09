@@ -204,18 +204,21 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                fc <- getFC
                (tyn_in, nfc) <- fnName
                (do try (lchar ':')
-                   popIndent
                    ty <- typeExpr (allowImp syn)
                    let tyn = expandNS syn tyn_in
-                   option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
+                   d <- option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
                      reservedHL "where"
                      cons <- indentedBlock (constructor syn)
                      accData acc tyn (map (\ (_, _, n, _, _, _, _) -> n) cons)
-                     return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn nfc ty cons))) <|> (do
-                    args <- many (fst <$> name)
+                     return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn nfc ty cons))
+                   terminator
+                   return d) <|> (do
+                    args <- many (do notEndApp
+                                     x <- fst <$> name
+                                     return x)
                     let ty = bindArgs (map (const (PType fc)) args) (PType fc)
                     let tyn = expandNS syn tyn_in
-                    option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
+                    d <- option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
                       try (lchar '=') <|> do reservedHL "where"
                                              let kw = (if DefaultEliminator `elem` dataOpts then "%elim" else "") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
                                              let n  = show tyn_in ++ " "
@@ -228,13 +231,14 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                                              let fix3 = s ++ ": " ++ ss ++ " -> Type where\n  ..."
                                              fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
                       cons <- sepBy1 (simpleConstructor (syn { withAppAllowed = False })) (reservedOp "|")
-                      terminator
                       let conty = mkPApp fc (PRef fc [] tyn) (map (PRef fc []) args)
                       cons' <- mapM (\ (doc, argDocs, x, xfc, cargs, cfc, fs) ->
                                    do let cty = bindArgs cargs conty
                                       return (doc, argDocs, x, xfc, cty, cfc, fs)) cons
                       accData acc tyn (map (\ (_, _, n, _, _, _, _) -> n) cons')
-                      return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn nfc ty cons')))
+                      return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn nfc ty cons'))
+                    terminator
+                    return d)
            <?> "data type declaration"
   where
     mkPApp :: FC -> PTerm -> [PTerm] -> PTerm

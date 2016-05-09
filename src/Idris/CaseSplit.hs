@@ -410,10 +410,10 @@ getClause l fn un fp
                                                           sUN "z"]) used
 
          -- write method declarations, indent with 4 spaces
-         mkClassBodies :: IState -> [(Name, (FnOpts, PTerm))] -> String
+         mkClassBodies :: IState -> [(Name, (Bool, FnOpts, PTerm))] -> String
          mkClassBodies i ns
              = showSep "\n"
-                  (zipWith (\(n, (_, ty)) m -> "    " ++
+                  (zipWith (\(n, (_, _, ty)) m -> "    " ++
                             def (show (nsroot n)) ++ " "
                                  ++ mkApp i ty []
                                  ++ "= ?"

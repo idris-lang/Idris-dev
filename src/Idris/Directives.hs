@@ -42,6 +42,11 @@ directiveAction (DFreeze n') = do
   mapM_ (\n -> do
             setAccessibility n Frozen
             addIBC (IBCAccess n Frozen)) ns
+directiveAction (DInjective n') = do
+  ns <- allNamespaces n'
+  mapM_ (\n -> do
+            setInjectivity n True
+            addIBC (IBCInjective n True)) ns
 
 directiveAction (DAccess acc) = do updateIState (\i -> i { default_access = acc })
 

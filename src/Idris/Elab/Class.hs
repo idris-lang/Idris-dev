@@ -119,6 +119,11 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          -- Elaborate the the top level methods
          mapM_ (rec_elabDecl info EAll info) (concat fns)
 
+         -- Flag all the top level data declarations as injective
+         mapM_ (\n -> do setInjectivity n True
+                         addIBC (IBCInjective n True))
+               (map fst (filter (\(_, (inj, _, _, _, _)) -> inj) imethods))
+
          -- add the default definitions
          mapM_ (rec_elabDecl info EAll info) (concat (map (snd.snd) defs))
          addIBC (IBCClass tn)
@@ -130,7 +135,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
            maybe [] (\(conN, conNFC) -> [(conNFC, AnnName conN Nothing Nothing Nothing)]) mcn
 
   where
-    nodoc (n, (_, _, o, t)) = (n, (o, t))
+    nodoc (n, (inj, _, _, o, t)) = (n, (inj, o, t))
 
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n NoFC ty (pibind ns (chkUniq ty x))
@@ -171,14 +176,26 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     conbind [] x = x
 
     getMName (PTy _ _ _ _ _ n nfc _) = nsroot n
+    getMName (PData _ _ _ _ _ (PLaterdecl n nfc _)) = nsroot n
+
     tdecl allmeths (PTy doc _ syn _ o n nfc t)
            = do t' <- implicit' info syn (map (\(n, _, _) -> n) ps ++ allmeths) n t
                 logElab 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map (\(pn, _, _) -> pn) ps) Exp t')),
-                         (n, (nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
+                         (n, (False, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
                                               (\ l s p -> Imp l s p Nothing True) t'))),
                          (n, (nfc, syn, o, t) ) )
-    tdecl _ _ = ifail "Not allowed in a class declaration"
+    tdecl allmeths (PData doc _ syn _ _ (PLaterdecl n nfc t)) 
+           = do let o = []
+                t' <- implicit' info syn (map (\(n, _, _) -> n) ps ++ allmeths) n t
+                logElab 2 $ "Data method " ++ show n ++ " : " ++ showTmImpls t'
+                return ( (n, (toExp (map (\(pn, _, _) -> pn) ps) Exp t')),
+                         (n, (True, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
+                                              (\ l s p -> Imp l s p Nothing True) t'))),
+                         (n, (nfc, syn, o, t) ) )
+    tdecl allmeths (PData doc _ syn _ _ _) 
+         = ierror $ At fc (Msg "Data definitions not allowed in a class declaration")
+    tdecl _ _ = ierror $ At fc (Msg "Not allowed in a class declaration")
 
     -- Create default definitions
     defdecl mtys c d@(PClauses fc opts n cs) =
@@ -190,13 +207,14 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                                PClauses fc (o ++ opts) n cs]
                  logElab 1 (show ds)
                  return (n, ((defaultdec n, ds!!1), ds))
-            _ -> ifail $ show n ++ " is not a method"
+            _ -> ierror $ At fc (Msg (show n ++ " is not a method"))
     defdecl _ _ _ = ifail "Can't happen (defdecl)"
 
     defaultdec (UN n) = sUN ("default#" ++ str n)
     defaultdec (NS n ns) = NS (defaultdec n) ns
 
     tydecl (PTy{}) = True
+    tydecl (PData _ _ _ _ _ _) = True
     tydecl _ = False
     instdecl (PInstance{}) = True
     instdecl _ = False
@@ -233,10 +251,10 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     tfun :: Name -- ^ The name of the class
          -> PTerm -- ^ A constraint for the class, to be inserted under the implicit bindings
          -> SyntaxInfo -> [Name] -- ^ All the method names
-         -> (Name, (FC, Docstring (Either Err PTerm), FnOpts, PTerm))
+         -> (Name, (Bool, FC, Docstring (Either Err PTerm), FnOpts, PTerm))
             -- ^ The present declaration
          -> Idris [PDecl]
-    tfun cn c syn all (m, (mfc, doc, o, ty))
+    tfun cn c syn all (m, (isdata, mfc, doc, o, ty))
         = do let ty' = expandMethNS syn (insertConstraint c all ty)
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
              let capp = PApp fc (PRef fc [] cn) (map (pexp . PRef fc []) mnames)
