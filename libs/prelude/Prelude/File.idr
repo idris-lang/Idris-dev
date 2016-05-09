@@ -233,7 +233,7 @@ fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
                        return (p > 0)
 
 ||| Read the contents of a file into a string
-partial -- might be reading something infinitely long like /dev/null ...
+-- might be reading something infinitely long like /dev/null ...
 covering export
 readFile : String -> IO (Either FileError String)
 readFile fn = do Right h <- openFile fn Read
@@ -242,7 +242,7 @@ readFile fn = do Right h <- openFile fn Read
                  closeFile h
                  return c
   where
-    partial
+    covering
     readFile' : File -> String -> IO (Either FileError String)
     readFile' h contents =
        do x <- fEOF h
