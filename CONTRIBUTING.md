@@ -157,9 +157,9 @@ To help increase the chance of your pull request being accepted:
 
 * [Idris Wiki](https://github.com/idris-lang/Idris-dev/wiki);
 * [Zen Of Idris](https://github.com/idris-lang/Idris-dev/wiki/The-Zen-of-Idris);
-* Idris FAQs: [Official](http://www.idris-lang.org/documentation/faq/); [Unofficial](https://github.com/idris-lang/Idris-dev/wiki/Unofficial-FAQ);
+* Idris FAQs: [Official](https://idris.readthedocs.io/en/latest/faq/faq.html); [Unofficial](https://github.com/idris-lang/Idris-dev/wiki/Unofficial-FAQ);
 * [Idris Manual](https://github.com/idris-lang/Idris-dev/wiki/Manual);
-* [Idris Tutorial](http://eb.host.cs.st-andrews.ac.uk/writings/idris-tutorial.pdf);
+* [Idris Tutorial](https://idris.readthedocs.io/en/latest/tutorial/index.html);
 * [Idris News](http://www.idris-lang.org/news/);
 * [other Idris docs](http://www.idris-lang.org/documentation/).
 * [Using Pull Requests](https://help.github.com/articles/using-pull-requests)
