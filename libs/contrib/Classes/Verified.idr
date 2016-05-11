@@ -28,7 +28,7 @@ interface (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type ->
   applicativeHomomorphism : (x : a) -> (g : a -> b) ->
                             (<*>) {f} (pure g) (pure x) = pure {f} (g x)
   applicativeInterchange : (x : a) -> (g : f (a -> b)) ->
-                           g <*> pure x = pure (\g' : a -> b => g' x) <*> g
+                           g <*> pure x = pure (\g' : (a -> b) => g' x) <*> g
 
 interface (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) where
   monadApplicative : (mf : m (a -> b)) -> (mx : m a) ->

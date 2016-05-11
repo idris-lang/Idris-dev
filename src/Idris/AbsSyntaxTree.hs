@@ -1549,6 +1549,7 @@ data SyntaxInfo = Syn { using :: [Using],
                         decoration :: Name -> Name,
                         inPattern :: Bool,
                         implicitAllowed :: Bool,
+                        constraintAllowed :: Bool,
                         maxline :: Maybe Int,
                         mut_nesting :: Int,
                         dsl_info :: DSL,
@@ -1561,7 +1562,7 @@ deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
-defaultSyntax = Syn [] [] [] [] [] id False False Nothing 0 initDSL 0 True True
+defaultSyntax = Syn [] [] [] [] [] id False False False Nothing 0 initDSL 0 True True
 
 expandNS :: SyntaxInfo -> Name -> Name
 expandNS syn n@(NS _ _) = n

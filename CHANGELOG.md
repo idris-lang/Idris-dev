@@ -43,6 +43,9 @@
     test x = x <+> x <+> neutral
   ```
 
+* Constraint arguments can now appear anywhere in function types, not just
+  at the top level or after an implicit argument binding.
+
 * Experimental extended `with` syntax, which allows calling functions defined
   in a with block directly. For example:
 

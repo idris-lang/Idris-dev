@@ -1238,13 +1238,12 @@ clause syn
                    return $ PWith fc n capp wargs wval pn withs)
        <|> do pushIndent
               (n_in, nfc) <- fnName; let n = expandNS syn n_in
-              cargs <- many (constraintArg syn)
               fc <- getFC
               args <- many (try (implicitArg (syn { inPattern = True } ))
+                            <|> try (constraintArg (syn { inPattern = True }))
                             <|> (fmap pexp (argExpr syn)))
               wargs <- many (wExpr syn)
-              let capp = PApp fc (PRef nfc [nfc] n)
-                           (cargs ++ args)
+              let capp = PApp fc (PRef nfc [nfc] n) args
               (do r <- rhs syn n
                   ist <- get
                   let ctxt = tt_ctxt ist

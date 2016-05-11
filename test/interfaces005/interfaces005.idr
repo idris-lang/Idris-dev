@@ -2,11 +2,14 @@ module Set
  
 public export
 interface SetSig a where
-  data Set : Type -> Type
+  data SetT : Type -> Type
 
-  new : Set a
-  insert : a -> Set a -> Set a
-  member : a -> Set a -> Bool
+  new : SetT a
+  insert : a -> SetT a -> SetT a
+  member : a -> SetT a -> Bool
+
+Set : (a : Type) -> SetSig a => Type
+Set (a) @{sig} = SetT @{sig} a
 
 data Tree a = Leaf | Node (Tree a) a (Tree a)
 
@@ -17,7 +20,7 @@ namespace TreeSet
   export
   [TreeSet] Ord a => SetSig a where
 
-    Set = Tree 
+    SetT = Tree 
 
     new = Leaf
 
@@ -35,7 +38,7 @@ namespace TreeSet
 
 using implementation TreeSet
 
-  test : Set @{TreeSet {a=Nat}} Nat
+  test : Set Nat
   test = insert 3 $ 
          insert 2 $ 
          insert 7 $ 

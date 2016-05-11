@@ -40,7 +40,7 @@ import System.Directory
 import Codec.Archive.Zip
 
 ibcVersion :: Word16
-ibcVersion = 141
+ibcVersion = 142
 
 -- When IBC is being loaded - we'll load different things (and omit different
 -- structures/definitions) depending on which phase we're in
@@ -1591,7 +1591,7 @@ instance Binary Using where
                     _ -> error "Corrupted binary data for Using"
 
 instance Binary SyntaxInfo where
-        put (Syn x1 x2 x3 x4 _ _ x5 x6 _ _ x7 _ _ _)
+        put (Syn x1 x2 x3 x4 _ _ x5 x6 x7 _ _ x8 _ _ _)
           = do put x1
                put x2
                put x3
@@ -1599,6 +1599,7 @@ instance Binary SyntaxInfo where
                put x5
                put x6
                put x7
+               put x8
         get
           = do x1 <- get
                x2 <- get
@@ -1607,7 +1608,8 @@ instance Binary SyntaxInfo where
                x5 <- get
                x6 <- get
                x7 <- get
-               return (Syn x1 x2 x3 x4 [] id x5 x6 Nothing 0 x7 0 True True)
+               x8 <- get
+               return (Syn x1 x2 x3 x4 [] id x5 x6 x7 Nothing 0 x8 0 True True)
 
 instance (Binary t) => Binary (PClause' t) where
         put x

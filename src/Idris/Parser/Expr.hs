@@ -36,11 +36,17 @@ import Debug.Trace
 
 -- | Allow implicit type declarations
 allowImp :: SyntaxInfo -> SyntaxInfo
-allowImp syn = syn { implicitAllowed = True }
+allowImp syn = syn { implicitAllowed = True,
+                     constraintAllowed = False }
 
 -- | Disallow implicit type declarations
 disallowImp :: SyntaxInfo -> SyntaxInfo
-disallowImp syn = syn { implicitAllowed = False }
+disallowImp syn = syn { implicitAllowed = False,
+                        constraintAllowed = False }
+
+-- | Allow scoped constraint arguments
+allowConstr :: SyntaxInfo -> SyntaxInfo
+allowConstr syn = syn { constraintAllowed = True }
 
 {-| Parses an expression as a whole
 @
@@ -327,7 +333,7 @@ CaseOption ::=
 @
 -}
 caseOption :: SyntaxInfo -> IdrisParser (PTerm, PTerm)
-caseOption syn = do lhs <- expr (syn { inPattern = True })
+caseOption syn = do lhs <- expr (disallowImp (syn { inPattern = True }))
                     r <- impossible <|> symbol "=>" *> expr syn
                     return (lhs, r)
                  <?> "case option"
@@ -432,7 +438,7 @@ simpleExpr syn =
         <|> do lchar '_'; return Placeholder
         <?> "expression"
 
-{- |Parses an expression in braces
+{- |Parses an expression in parentheses
 @
 Bracketed ::= '(' Bracketed'
 @
@@ -477,8 +483,8 @@ bracketed' open syn =
                          Just o -> return $ PLam fc0 (sMN 1000 "ARG") NoFC Placeholder
                              (PApp fc0 (PRef fc0 [] (sUN o)) [pexp l,
                                                               pexp (PRef fc0 [] (sMN 1000 "ARG"))]))
-        <|> do l <- expr syn
-               bracketedExpr syn open l
+        <|> do l <- expr (allowConstr syn)
+               bracketedExpr (allowConstr syn) open l
 
 
 
@@ -891,7 +897,7 @@ TypeExpr ::= ConstraintList? Expr;
  -}
 typeExpr :: SyntaxInfo -> IdrisParser PTerm
 typeExpr syn = do cs <- if implicitAllowed syn then constraintList syn else return []
-                  sc <- expr syn
+                  sc <- expr (allowConstr syn)
                   return (bindList (PPi constraint) cs sc)
                <?> "type signature"
 
@@ -916,13 +922,13 @@ LambdaTail ::=
 -}
 lambda :: SyntaxInfo -> IdrisParser PTerm
 lambda syn = do lchar '\\' <?> "lambda expression"
-                ((do xt <- try $ tyOptDeclList syn
+                ((do xt <- try $ tyOptDeclList (disallowImp syn)
                      fc <- getFC
                      sc <- lambdaTail
                      return (bindList (PLam fc) xt sc))
                  <|>
                  (do ps <- sepBy (do fc <- getFC
-                                     e <- simpleExpr (syn { inPattern = True })
+                                     e <- simpleExpr (disallowImp (syn { inPattern = True }))
                                      return (fc, e))
                                  (lchar ',')
                      sc <- lambdaTail
@@ -1055,7 +1061,7 @@ bindsymbol opts st syn
 explicitPi opts st syn
    = do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
         binder <- bindsymbol opts st syn
-        sc <- expr syn
+        sc <- expr (allowConstr syn)
         return (bindList (PPi binder) xt sc)
 
 autoImplicit opts st syn
@@ -1064,7 +1070,7 @@ autoImplicit opts st syn
         xt <- typeDeclList syn
         lchar '}'
         symbol "->"
-        sc <- expr syn
+        sc <- expr (allowConstr syn)
         highlightP kw AnnKeyword
         return (bindList (PPi
           (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]))) xt sc)
@@ -1078,7 +1084,7 @@ defaultImplicit opts st syn = do
    xt <- typeDeclList syn
    lchar '}'
    symbol "->"
-   sc <- expr syn
+   sc <- expr (allowConstr syn)
    highlightP kw AnnKeyword
    return (bindList (PPi (TacImp [] Dynamic script)) xt sc)
 
@@ -1095,6 +1101,14 @@ normalImplicit opts st syn = do
                      Imp opts st False (Just (Impl True False)) True)
    return (bindList (PPi im) xt
            (bindList (PPi cl) cs sc))
+
+constraintPi opts st syn =
+   do cs <- constraintList1 syn
+      sc <- expr syn
+      if implicitAllowed syn
+         then return (bindList (PPi constraint) cs sc)
+         else return (bindList (PPi (Imp opts st False (Just (Impl True False)) True))
+                               cs sc)
 
 implicitPi opts st syn =
       autoImplicit opts st syn
@@ -1114,7 +1128,10 @@ pi syn =
         st   <- static
         explicitPi opts st syn
          <|> try (do lchar '{'; implicitPi opts st syn)
-            <|> unboundPi opts st syn
+         <|> if constraintAllowed syn 
+                then try (constraintPi opts st syn)
+                         <|> unboundPi opts st syn
+                else unboundPi opts st syn
   <?> "dependent type signature"
 
 {- | Parses Possible Options for Pi Expressions
