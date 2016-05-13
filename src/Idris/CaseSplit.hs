@@ -12,6 +12,7 @@ import Idris.AbsSyntaxTree (Idris, IState, PTerm)
 import Idris.ElabDecls
 import Idris.Delaborate
 import Idris.Parser
+import Idris.Parser.Helpers
 import Idris.Error
 import Idris.Output
 
@@ -368,6 +369,20 @@ nameRoot acc nm =
              (before, ('_' : after)) -> nameRoot (acc ++ [before]) after
              _ -> showSep "_" (acc ++ [nm])
 
+-- Show a name for use in pattern definitions on the lhs
+showLHSName :: Name -> String
+showLHSName n = let fn = show n in 
+                    if any (flip elem opChars) fn
+                       then "(" ++ fn ++ ")"
+                       else fn
+
+-- Show a name for the purpose of generating a metavariable name on the rhs
+showRHSName :: Name -> String
+showRHSName n = let fn = show n in 
+                    if any (flip elem opChars) fn
+                       then "op"
+                       else fn
+
 getClause :: Int      -- ^ line number that the type is declared on
           -> Name     -- ^ Function name
           -> Name     -- ^ User given name
@@ -383,8 +398,8 @@ getClause l fn un fp
                                     x -> x
                       ist <- get
                       let ap = mkApp ist ty []
-                      return (show un ++ " " ++ ap ++ "= ?"
-                                      ++ show un ++ "_rhs")
+                      return (showLHSName un ++ " " ++ ap ++ "= ?"
+                                      ++ showRHSName un ++ "_rhs")
    where mkApp :: IState -> PTerm -> [Name] -> String
          mkApp i (PPi (Exp _ _ False) (MN _ _) _ ty sc) used
                = let n = getNameFrom i used ty in
@@ -417,7 +432,7 @@ getClause l fn un fp
                             def (show (nsroot n)) ++ " "
                                  ++ mkApp i ty []
                                  ++ "= ?"
-                                 ++ show un ++ "_rhs_" ++ show m) ns [1..])
+                                 ++ showRHSName un ++ "_rhs_" ++ show m) ns [1..])
 
          def n@(x:xs) | not (isAlphaNum x) = "(" ++ n ++ ")"
          def n = n
@@ -431,7 +446,7 @@ getProofClause l fn fp
                        let ty = case ty_in of
                                      PTyped n t -> t
                                      x -> x
-                       return (mkApp ty ++ " = ?" ++ show fn ++ "_rhs")
+                       return (mkApp ty ++ " = ?" ++ showRHSName fn ++ "_rhs")
    where mkApp (PPi _ _ _ _ sc) = mkApp sc
          mkApp rt = "(" ++ show rt ++ ") <== " ++ show fn
 
@@ -451,7 +466,7 @@ mkWith str n = let str' = replaceRHS str "with (_)"
          newpat ('>':patstr) = '>':newpat patstr
          newpat patstr =
            "  " ++
-           replaceRHS patstr "| with_pat = ?" ++ show n ++ "_rhs"
+           replaceRHS patstr "| with_pat = ?" ++ showRHSName n ++ "_rhs"
 
 -- Replace _ with names in missing clauses
 
