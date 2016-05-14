@@ -149,6 +149,7 @@ parseFlags = many $
   <|> ((\s -> UseCodegen $ parseCodegen s) <$> strOption (long "codegen"
                                                        <> metavar "TARGET"
                                                        <> help "Select code generator: C, Javascript, Node and bytecode are bundled with Idris"))
+  <|> flag' PortableCodegen (long "portable" <> help "Call codegen with json-formatted codegen info")
   <|> (CodegenArgs <$> strOption (long "cg-opt"
                                <> metavar "ARG"
                                <> help "Arguments to pass to code generator"))

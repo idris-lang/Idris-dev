@@ -85,6 +85,7 @@ data IOption = IOption {
   , opt_nobanner     :: Bool
   , opt_quiet        :: Bool
   , opt_codegen      :: Codegen
+  , opt_portableCG   :: Bool
   , opt_outputTy     :: OutputType
   , opt_ibcsubdir    :: FilePath
   , opt_importdirs   :: [FilePath]
@@ -113,6 +114,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_nobanner   = False
                       , opt_quiet      = False
                       , opt_codegen    = Via "c"
+                      , opt_portableCG = False
                       , opt_outputTy   = Executable
                       , opt_ibcsubdir  = ""
                       , opt_importdirs = []
@@ -186,7 +188,7 @@ data DefaultTotality = DefaultCheckingTotal    -- ^ Total
                      | DefaultCheckingPartial  -- ^ Partial
                      | DefaultCheckingCovering -- ^Total coverage, but may diverge
   deriving (Show, Eq)
-  
+
 -- | The global state used in the Idris monad
 data IState = IState {
     tt_ctxt :: Context, -- ^ All the currently defined names and their terms
@@ -558,6 +560,7 @@ data Opt = Filename String
          | DumpDefun String
          | DumpCases String
          | UseCodegen Codegen
+         | PortableCodegen
          | CodegenArgs String
          | OutputTy OutputType
          | Extension LanguageExt

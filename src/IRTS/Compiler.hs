@@ -12,6 +12,7 @@ import IRTS.DumpBC
 import IRTS.CodegenJavaScript
 import IRTS.Inliner
 import IRTS.Exports
+import IRTS.Portable
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -121,14 +122,22 @@ compile codegen f mtm
                              [] -> return ()
                              ((fc, msg):fs) -> ierror . At fc . Msg $ "Cannot compile:\n  " ++ msg
 
-generate :: Codegen -> FilePath -> CodegenInfo -> IO ()
-generate codegen mainmod ir
+generate :: Codegen -> FilePath -> Bool -> CodegenInfo -> IO ()
+generate codegen mainmod port ir
   = case codegen of
        -- Built-in code generators (FIXME: lift these out!)
        Via "c" -> codegenC ir
        -- Any external code generator
-       Via cg -> do let cmd = "idris-codegen-" ++ cg
-                        args = [mainmod, "-o", outputFile ir] ++ compilerFlags ir
+       Via cg -> do input <- if port
+                                then do
+                                    tempdir <- getTemporaryDirectory
+                                    (fn, h) <- openTempFile tempdir "idris-cg.json"
+                                    writePortable h ir
+                                    hClose h
+                                    return fn
+                                else return mainmod
+                    let cmd = "idris-codegen-" ++ cg
+                        args = [input, "-o", outputFile ir] ++ compilerFlags ir
                     exit <- rawSystem cmd args
                     when (exit /= ExitSuccess) $
                        putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
@@ -350,7 +359,7 @@ irTerm vs env tm@(App _ f a) = do
 
             -- overapplied
             GT  -> ifail ("overapplied data constructor: " ++ show tm ++
-                          "\nDEBUG INFO:\n" ++ 
+                          "\nDEBUG INFO:\n" ++
                           "Arity: " ++ show arity ++ "\n" ++
                           "Arguments: " ++ show args ++ "\n" ++
                           "Pruned arguments: " ++ show argsPruned)
