@@ -38,7 +38,7 @@ idrisCmd local = ".." </> ".." </>  buildDir local </>  "idris" </>  "idris"
 -- Make Commands
 
 -- use GNU make on FreeBSD
-#if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)
+#if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS) || defined(openbsd_HOST_OS)
 mymake = "gmake"
 #else
 mymake = "make"
