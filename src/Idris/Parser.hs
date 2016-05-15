@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
@@ -1616,14 +1617,14 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            Failure doc     -> do -- FIXME: Get error location from trifecta
+            Failure ErrInfo{..}     -> do -- FIXME: Get error location from trifecta
                                   -- this can't be the solution!
                                   -- Issue #1575 on the issue tracker.
                                   --    https://github.com/idris-lang/Idris-dev/issues/1575
-                                  let (fc, msg) = findFC doc
+                                  let (fc, msg) = findFC _errDoc
                                   i <- getIState
                                   case idris_outputmode i of
-                                    RawOutput h  -> iputStrLn (show $ fixColour (idris_colourRepl i) doc)
+                                    RawOutput h  -> iputStrLn (show $ fixColour (idris_colourRepl i) _errDoc)
                                     IdeMode n h -> iWarn fc (P.text msg)
                                   putIState (i { errSpan = Just fc })
                                   return []
