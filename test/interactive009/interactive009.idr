@@ -1,6 +1,6 @@
 import Data.Vect
 
-%default total
+%totality total
 
 data ElemBool : Eq t => t -> Vect n t -> Bool -> Type where
   ElemBoolNil : Eq t => ElemBool {t=t} a [] False

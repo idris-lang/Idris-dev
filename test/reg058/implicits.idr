@@ -1,4 +1,4 @@
-%default total
+%totality total
 
 InterpBool : () -> Type
 InterpBool () = {x : Type} -> x -> Nat

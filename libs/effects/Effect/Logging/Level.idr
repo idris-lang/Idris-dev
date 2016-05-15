@@ -15,7 +15,7 @@
 module Effect.Logging.Level
 
 %access public export
-%default total
+%totality total
 
 -- ---------------------------------------------------- [ Log Level Definition ]
 

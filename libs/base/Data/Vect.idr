@@ -4,7 +4,7 @@ import public Data.Fin
 import Language.Reflection
 
 %access public export
-%default total
+%totality total
 
 infixr 7 ::
 

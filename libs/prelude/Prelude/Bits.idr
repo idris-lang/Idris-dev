@@ -13,7 +13,7 @@ import Prelude.List
 import Prelude.Strings
 
 %access public export
-%default total
+%totality total
 
 b8ToString : Bits8 -> String
 b8ToString c = pack (with List [c1, c2])

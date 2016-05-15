@@ -3,7 +3,7 @@ module Data.Bytes
 import Data.ByteArray as BA
 
 %access public export
-%default total
+%totality total
 
 -- Structure of the allocated ByteArray
 --   [used_size][.....data.....]

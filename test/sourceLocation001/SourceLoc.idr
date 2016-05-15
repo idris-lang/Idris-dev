@@ -5,7 +5,7 @@ import Data.Fin
 import Language.Reflection
 import Language.Reflection.Utils
 
-%default total
+%totality total
 
 ||| A "function" that returns where it is called in the source
 getLoc : {default tactics { sourceLocation } x : SourceLocation} -> SourceLocation

@@ -1,4 +1,4 @@
-%default total
+%totality total
 
 interface C a (f : Bool -> Bool) | a where {}
 implementation C Int Bool.not where {}

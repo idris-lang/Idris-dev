@@ -6,7 +6,7 @@
 module Data.Heap
 
 
-%default total
+%totality total
 %access export
 
 export data MaxiphobicHeap : Type -> Type where

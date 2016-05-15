@@ -5,7 +5,7 @@ module Data.Nat.DivMod.IteratedSubtraction
 import Data.Fin
 import Data.So
 
-%default total
+%totality total
 %access public export
 
 ||| A strict less-than relation on `Nat`.

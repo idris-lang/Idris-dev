@@ -1,6 +1,6 @@
 module Main
 
-%default total
+%totality total
 
 -- An expensive function.
 qib : Nat -> Nat

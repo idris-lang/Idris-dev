@@ -5,7 +5,7 @@ import Language.Reflection.Elab
 import Data.Vect
 
 
-%default total
+%totality total
 
 -- Test that basic proofs with new-style tactics work
 

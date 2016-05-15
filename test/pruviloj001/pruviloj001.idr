@@ -4,7 +4,7 @@
 import Pruviloj
 import Pruviloj.Induction
 
-%default total
+%totality total
 
 ||| Try some simplification and rewriting heuristics, then attempt to
 ||| solve the goal

@@ -12,7 +12,7 @@ module AgdaStyleReflection
 import Language.Reflection.Utils
 import Pruviloj
 
-%default total
+%totality total
 
 
 

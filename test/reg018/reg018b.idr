@@ -1,6 +1,6 @@
 module A
 
-%default total
+%totality total
 
 codata B = Z B | I B
 

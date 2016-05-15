@@ -4,7 +4,7 @@ module Data.ByteArray
 %link C "array.o"
 
 %access public export
-%default total
+%totality total
 
 namespace Byte
   Byte : Type

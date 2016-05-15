@@ -3,7 +3,7 @@ module Data.Hash
 import Data.Vect
 
 %access public export
-%default total
+%totality total
 
 {- A general purpose Hashing library (not cryptographic)
 

@@ -1,6 +1,6 @@
 module Test_show
 
-%default total
+%totality total
 
 data Te = C1 | C2 | C3
 

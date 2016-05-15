@@ -1,6 +1,6 @@
-%default total
+%totality total
 
-%default total
+%totality total
 succNotLTE' : (LTE (S x) x) -> Void
 succNotLTE' {x = Z} prf = succNotLTEzero prf
 succNotLTE' {x = (S k)} (LTESucc prf) = succNotLTE' prf

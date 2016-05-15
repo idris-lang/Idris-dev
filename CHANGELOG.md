@@ -2,6 +2,7 @@
 
 ## Language updates
 
+* `%default` is now renamed to `%totality` and will give a deprecation warning if used
 * `rewrite` can now be used to rewrite equalities on functions over
   dependent types
 * `rewrite` can now be given an optional rewriting lemma, with the syntax

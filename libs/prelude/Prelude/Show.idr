@@ -16,7 +16,7 @@ import Prelude.Strings
 
 %access public export
 
-%default total
+%totality total
 
 ||| The precedence of an Idris operator or syntactic context.
 data Prec = Open | Eq | Dollar | Backtick | User Nat | PrefixMinus | App

@@ -4,7 +4,7 @@ module Data.Matrix.Numeric
 
 import public Data.Matrix
 
-%default total
+%totality total
 %access public export
 
 infixr 2 <:>  -- vector inner product

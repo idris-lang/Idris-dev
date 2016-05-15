@@ -204,12 +204,12 @@ finite time. It is possible to make total functions a requirement, either:
 
 -  By using the ``--total`` compiler flag.
 
--  By adding a ``%default total`` directive to a source file. All
+-  By adding a ``%totality total`` directive to a source file. All
    definitions after this will be required to be total, unless
    explicitly flagged as ``partial``.
 
-All functions *after* a ``%default total`` declaration are required to
-be total. Correspondingly, after a ``%default partial`` declaration, the
+All functions *after* a ``%totality total`` declaration are required to
+be total. Correspondingly, after a ``%totality partial`` declaration, the
 requirement is relaxed.
 
 Finally, the compiler flag ``--warnpartial`` causes to print a warning

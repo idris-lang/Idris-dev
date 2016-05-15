@@ -3,7 +3,7 @@ module Data.BoundedList
 import Data.Fin
 
 %access public export
-%default total
+%totality total
 
 ||| A list with an upper bound on its length.
 data BoundedList : Nat -> Type -> Type where

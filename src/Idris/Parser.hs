@@ -1349,6 +1349,7 @@ Directive' ::= 'lib'            CodeGen String_t
            |   'freeze'         Name
            |   'access'         Accessibility
            |   'default'        Totality
+           |   'totality'       Totality
            |   'logging'        Natural
            |   'dynamic'        StringList
            |   'name'           Name NameList
@@ -1389,6 +1390,12 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     put ist { default_access = acc }
                     return [PDirective (DAccess acc)]
              <|> do try (lchar '%' *> reserved "default"); tot <- totality
+                    i <- get
+                    fc <- getFC
+                    parserWarning fc Nothing (Msg "The '%default' keyword is deprecated. Use '%totality' instead.")
+                    put (i { default_total = tot } )
+                    return [PDirective (DDefault tot)]
+             <|> do try (lchar '%' *> reserved "totality"); tot <- totality
                     i <- get
                     put (i { default_total = tot } )
                     return [PDirective (DDefault tot)]

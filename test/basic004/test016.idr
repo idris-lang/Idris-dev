@@ -1,6 +1,6 @@
 module Main
 
-%default total
+%totality total
 
 codata Stream' a = Nil | (::) a (Stream' a)
 

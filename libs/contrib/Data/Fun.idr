@@ -2,7 +2,7 @@ module Data.Fun
 
 import public Data.Vect
 
-%default total
+%totality total
 %access public export
 
 ||| Build an n-ary function type from a Vect of Types and a result type

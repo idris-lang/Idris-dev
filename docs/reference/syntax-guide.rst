@@ -22,7 +22,7 @@ For example:
 
     import Data.Vect  -- an import
 
-    %default total    -- a directive
+    %totality total    -- a directive
 
     foo : Nat         -- a declaration
     foo = 5
@@ -400,7 +400,7 @@ Directives
     %hide <function>
     %freeze <name>
     %access <accessibility>
-    %default <totality>
+    %totality <totality>
     %logging <level 0--11>
     %dynamic <list of libs>
     %name <list of names>

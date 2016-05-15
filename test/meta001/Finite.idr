@@ -7,7 +7,7 @@ import Language.Reflection.Utils
 -- Test various features of reflected elaboration, including looking
 -- up datatypes, defining functions, and totality checking
 
-%default total
+%totality total
 
 ||| A bijection between some type and bounded numbers
 data Finite : Type -> Nat -> Type where

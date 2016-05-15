@@ -15,7 +15,7 @@ import Language.Reflection.Utils
 
 import Pruviloj.Core
 
-%default total
+%totality total
 
 -- Tactics can now query the elaborator and bind variables
 

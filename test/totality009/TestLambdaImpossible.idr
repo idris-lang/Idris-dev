@@ -1,6 +1,6 @@
 module TestLambdaImpossible
 
-%default total
+%totality total
 
 eqBool : (x, y : Bool) -> Dec (x = y)
 eqBool False False = Yes Refl

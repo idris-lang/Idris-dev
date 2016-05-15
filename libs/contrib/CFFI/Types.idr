@@ -6,7 +6,7 @@ import Data.Vect
 import Debug.Error
 
 %access public export
-%default partial
+%totality partial
 
 ||| An universe of C types.
 data CType = I8 | I16 | I32 | I64 | FLOAT | DOUBLE | PTR

@@ -7,7 +7,7 @@ import Prelude.Interfaces
 import Prelude.Algebra
 
 %access public export
-%default total
+%totality total
 
 interface Foldable (t : Type -> Type) where
   foldr : (elem -> acc -> acc) -> acc -> t elem -> acc

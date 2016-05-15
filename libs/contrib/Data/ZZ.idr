@@ -3,7 +3,7 @@ module Data.ZZ
 import Decidable.Equality
 import Data.Sign
 
-%default total
+%totality total
 %access public export
 
 

@@ -2,7 +2,7 @@ module Data.Mod2
 
 import Data.Bits
 
-%default total
+%totality total
 
 ||| Integers modulo 2^n
 public export

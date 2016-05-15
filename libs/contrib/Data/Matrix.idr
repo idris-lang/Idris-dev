@@ -4,7 +4,7 @@ module Data.Matrix
 
 import public Data.Vect
 
-%default total
+%totality total
 %access public export
 
 ||| Matrix with n rows and m columns

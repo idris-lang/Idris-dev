@@ -17,7 +17,7 @@ import Pruviloj.Disjoint
 import Pruviloj.Induction
 import Pruviloj.Injective
 
-%default total
+%totality total
 %access private
 
 
