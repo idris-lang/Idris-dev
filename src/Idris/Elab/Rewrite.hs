@@ -17,7 +17,7 @@ import Data.List
 
 import Debug.Trace
 
-elabRewrite :: (PTerm -> ElabD ()) -> IState -> 
+elabRewrite :: (PTerm -> ElabD ()) -> IState ->
                FC -> Maybe Name -> PTerm -> PTerm -> Maybe PTerm -> ElabD ()
 -- Old version, no rewrite rule given
 {-
@@ -47,7 +47,7 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
                       Nothing -> return sc_in
                       Just t -> do
                          letn <- getNameFrom (sMN 0 "rewrite_result")
-                         return $ PLet fc letn fc t sc_in 
+                         return $ PLet fc letn fc t sc_in
                                        (PRef fc [] letn)
              tyn <- getNameFrom (sMN 0 "rty")
              claim tyn RType
@@ -75,7 +75,7 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
                                               [pexp pred, pexp rule, pexp sc])
 --                         trace ("LHS: " ++ show l ++ "\n" ++
 --                                "RHS: " ++ show r ++ "\n" ++
---                                "REWRITE: " ++ show rewrite ++ "\n" ++ 
+--                                "REWRITE: " ++ show rewrite ++ "\n" ++
 --                                "GOAL: " ++ show (delab ist g)) $
                         elab rewrite
                         solve
@@ -84,7 +84,7 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
         mkP :: TT Name -> -- Left term, top level
                TT Name -> TT Name -> TT Name -> TT Name
         mkP lt l r ty | l == ty = lt
-        mkP lt l r (App s f a) 
+        mkP lt l r (App s f a)
             = let f' = if (r /= f) then mkP lt l r f else f
                   a' = if (r /= a) then mkP lt l r a else a in
                   App s f' a'
@@ -101,7 +101,7 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
         mkP lt l r x = x
 
         -- If we're rewriting a dependent type, the rewrite type the rewrite
-        -- may break the indices. 
+        -- may break the indices.
         -- So, for any function argument which can be determined by looking
         -- at the indices (i.e. any constructor guarded elsewhere in the type)
         -- replace it with a _. e.g. (++) a n m xs ys becomes (++) _ _ _ xs ys
@@ -116,7 +116,7 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
           where removeImp tm@(PImp{}) = tm { getTm = Placeholder }
                 removeImp t = t
         phApps tm = tm
-       
+
 findSubstFn :: Maybe Name -> IState -> Type -> Type -> ElabD Name
 findSubstFn Nothing ist lt rt
      | lt == rt = return (sUN "rewrite__impl")
@@ -129,8 +129,8 @@ findSubstFn Nothing ist lt rt
                 Just _ -> return (rewrite_name lcon)
                 Nothing -> rewriteFail lt rt
      | otherwise = rewriteFail lt rt
-  where rewriteFail lt rt = lift . tfail . 
-                     Msg $ "Can't rewrite heterogeneous equality on types " ++ 
+  where rewriteFail lt rt = lift . tfail .
+                     Msg $ "Can't rewrite heterogeneous equality on types " ++
                            show (delab ist lt) ++ " and " ++ show (delab ist rt)
 
 findSubstFn (Just substfn_in) ist lt rt
@@ -142,8 +142,8 @@ findSubstFn (Just substfn_in) ist lt rt
 rewrite_name :: Name -> Name
 rewrite_name n = sMN 0 (show n ++ "_rewrite_lemma")
 
-data ParamInfo = Index 
-               | Param 
+data ParamInfo = Index
+               | Param
                | ImplicitIndex
                | ImplicitParam
   deriving Show
@@ -163,9 +163,11 @@ isParam Param = True
 isParam ImplicitIndex = False
 isParam ImplicitParam = True
 
--- Make a rewriting lemma for the given type constructor.
--- If it fails, fail silently (it may well fail for some very complex types.
--- We can fix this later, for now this gives us a lot more working rewrites...)
+-- | Make a rewriting lemma for the given type constructor.
+--
+-- If it fails, fail silently (it may well fail for some very complex
+-- types.  We can fix this later, for now this gives us a lot more
+-- working rewrites...)
 elabRewriteLemma :: ElabInfo -> Name -> Type -> Idris ()
 elabRewriteLemma info n cty_in =
     do ist <- getIState
@@ -176,7 +178,7 @@ elabRewriteLemma info n cty_in =
             Just ti -> do
                let imps = case lookupCtxtExact n (idris_implicits ist) of
                                Nothing -> repeat (pexp Placeholder)
-                               Just is -> is 
+                               Just is -> is
                let pinfo = getParamInfo cty imps 0 (param_pos ti)
                if all isParam pinfo
                   then return () -- no need for a lemma, = will be homogeneous
@@ -189,7 +191,7 @@ mkLemma info lemma tcon ps ty =
        let leftty = mkTy tcon ps (namesFrom "p" 0) (namesFrom "left" 0)
            rightty = mkTy tcon ps (namesFrom "p" 0) (namesFrom "right" 0)
            predty = bindIdxs ist ps ty (namesFrom "pred" 0) $
-                        PPi expl (sMN 0 "rep") fc 
+                        PPi expl (sMN 0 "rep") fc
                           (mkTy tcon ps (namesFrom "p" 0) (namesFrom "pred" 0))
                           (PType fc)
        let xarg = sMN 0 "x"
@@ -215,8 +217,8 @@ mkLemma info lemma tcon ps ty =
        let lemRHS = PRef fc [] prop
 
        -- Elaborate the type of the lemma
-       rec_elabDecl info EAll info 
-            (PTy emptyDocstring [] defaultSyntax fc [] lemma fc lemTy) 
+       rec_elabDecl info EAll info
+            (PTy emptyDocstring [] defaultSyntax fc [] lemma fc lemTy)
        -- Elaborate the definition
        rec_elabDecl info EAll info
             (PClauses fc [] lemma [PClause fc lemma lemLHS [] lemRHS []])
@@ -224,9 +226,9 @@ mkLemma info lemma tcon ps ty =
   where
     fc = emptyFC
 
-    namesFrom x i = sMN i x : namesFrom x (i + 1) 
-              
-    mkTy fn pinfo ps is 
+    namesFrom x i = sMN i x : namesFrom x (i + 1)
+
+    mkTy fn pinfo ps is
          = PApp fc (PRef fc [] fn) (mkArgs pinfo ps is)
 
     mkArgs [] ps is = []
@@ -241,15 +243,13 @@ mkLemma info lemma tcon ps ty =
     mkArgs _ _ _ = []
 
     bindIdxs ist [] ty is tm = tm
-    bindIdxs ist (Param : pinfo) (Bind n (Pi _ ty _) sc) is tm 
+    bindIdxs ist (Param : pinfo) (Bind n (Pi _ ty _) sc) is tm
          = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
-    bindIdxs ist (Index : pinfo) (Bind n (Pi _ ty _) sc) (i : is) tm 
-        = PPi forall_imp i fc (delab ist ty) 
+    bindIdxs ist (Index : pinfo) (Bind n (Pi _ ty _) sc) (i : is) tm
+        = PPi forall_imp i fc (delab ist ty)
                (bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm)
-    bindIdxs ist (ImplicitParam : pinfo) (Bind n (Pi _ ty _) sc) is tm 
+    bindIdxs ist (ImplicitParam : pinfo) (Bind n (Pi _ ty _) sc) is tm
         = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
-    bindIdxs ist (ImplicitIndex : pinfo) (Bind n (Pi _ ty _) sc) (i : is) tm 
+    bindIdxs ist (ImplicitIndex : pinfo) (Bind n (Pi _ ty _) sc) (i : is) tm
         = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
     bindIdxs _ _ _ _ tm = tm
-
-

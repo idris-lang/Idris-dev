@@ -1,21 +1,21 @@
 module Idris.Help (CmdArg(..), extraHelp) where
 
-data CmdArg = ExprArg -- ^ The command takes an expression
-            | NameArg -- ^ The command takes a name
-            | FileArg -- ^ The command takes a file
-            | ModuleArg -- ^ The command takes a module name
-            | PkgArgs -- ^ The command takes a list of package names
-            | NumberArg -- ^ The command takes a number
-            | NamespaceArg -- ^ The command takes a namespace name
-            | OptionArg -- ^ The command takes an option
-            | MetaVarArg -- ^ The command takes a metavariable
-            | ColourArg  -- ^ The command is the colour-setting command
-            | NoArg -- ^ No completion (yet!?)
-            | SpecialHeaderArg -- ^ do not use
-            | ConsoleWidthArg -- ^ The width of the console
-            | DeclArg -- ^ An Idris declaration, as might be contained in a file
-            | ManyArgs CmdArg -- ^ Zero or more of one kind of argument
-            | OptionalArg CmdArg -- ^ Zero or one of one kind of argument
+data CmdArg = ExprArg               -- ^ The command takes an expression
+            | NameArg               -- ^ The command takes a name
+            | FileArg               -- ^ The command takes a file
+            | ModuleArg             -- ^ The command takes a module name
+            | PkgArgs               -- ^ The command takes a list of package names
+            | NumberArg             -- ^ The command takes a number
+            | NamespaceArg          -- ^ The command takes a namespace name
+            | OptionArg             -- ^ The command takes an option
+            | MetaVarArg            -- ^ The command takes a metavariable
+            | ColourArg             -- ^ The command is the colour-setting command
+            | NoArg                 -- ^ No completion (yet!?)
+            | SpecialHeaderArg      -- ^ do not use
+            | ConsoleWidthArg       -- ^ The width of the console
+            | DeclArg               -- ^ An Idris declaration, as might be contained in a file
+            | ManyArgs CmdArg       -- ^ Zero or more of one kind of argument
+            | OptionalArg CmdArg    -- ^ Zero or one of one kind of argument
             | SeqArgs CmdArg CmdArg -- ^ One kind of argument followed by another
 
 instance Show CmdArg where

@@ -52,8 +52,13 @@ import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
 
-buildType :: ElabInfo -> SyntaxInfo -> FC -> FnOpts -> Name -> PTerm ->
-             Idris (Type, Type, PTerm, [(Int, Name)])
+buildType :: ElabInfo
+          -> SyntaxInfo
+          -> FC
+          -> FnOpts
+          -> Name
+          -> PTerm
+          -> Idris (Type, Type, PTerm, [(Int, Name)])
 buildType info syn fc opts n ty' = do
          ctxt <- getContext
          i <- getIState
@@ -69,13 +74,13 @@ buildType info syn fc opts n ty' = do
 
          ((ElabResult tyT' defer is ctxt' newDecls highlights newGName, est), log) <-
             tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) n (TType (UVal 0)) initEState
-                     (errAt "type of " n Nothing 
+                     (errAt "type of " n Nothing
                         (erunAux fc (build i info ETyDecl [] n ty)))
 
          displayWarnings est
          setContext ctxt'
          processTacticDecls info newDecls
-         sendHighlighting highlights 
+         sendHighlighting highlights
          updateIState $ \i -> i { idris_name = newGName }
 
          let tyT = patToImp tyT'
@@ -108,7 +113,7 @@ buildType info syn fc opts n ty' = do
 
          -- Add the names referenced to the call graph, and check we're not
          -- referring to anything less visible
-         -- In particular, a public/export type can not refer to anything 
+         -- In particular, a public/export type can not refer to anything
          -- private, but can refer to any public/export
          let refs = freeNames cty
          nvis <- getFromHideList n
@@ -136,17 +141,29 @@ buildType info syn fc opts n ty' = do
     param_pos i ns t = []
 
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
-elabType :: ElabInfo -> SyntaxInfo
-         -> Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))]
-         -> FC -> FnOpts
-         -> Name -> FC -- ^ The precise location of the name
-         -> PTerm -> Idris Type
+elabType :: ElabInfo
+         -> SyntaxInfo
+         -> Docstring (Either Err PTerm)
+         -> [(Name, Docstring (Either Err PTerm))]
+         -> FC
+         -> FnOpts
+         -> Name
+         -> FC -- ^ The precise location of the name
+         -> PTerm
+         -> Idris Type
 elabType = elabType' False
 
-elabType' :: Bool -> -- normalise it
-             ElabInfo -> SyntaxInfo ->
-             Docstring (Either Err PTerm) -> [(Name, Docstring (Either Err PTerm))] ->
-             FC -> FnOpts -> Name -> FC -> PTerm -> Idris Type
+elabType' :: Bool  -- normalise it
+          -> ElabInfo
+          -> SyntaxInfo
+          -> Docstring (Either Err PTerm)
+          -> [(Name, Docstring (Either Err PTerm))]
+          -> FC
+          -> FnOpts
+          -> Name
+          -> FC
+          -> PTerm
+          -> Idris Type
 elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (params info) ty_in
                                                        n  = liftname info n_in in    -}
       do checkUndefined fc n

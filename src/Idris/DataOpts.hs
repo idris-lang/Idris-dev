@@ -87,7 +87,7 @@ instance Optimisable (TT Name) where
     applyOpts (Proj t i) = Proj <$> applyOpts t <*> pure i
     applyOpts t = return t
 
--- Need to saturate arguments first to ensure that optimisation happens uniformly
+-- | Need to saturate arguments first to ensure that optimisation happens uniformly
 applyDataOptRT :: Name -> Int -> Int -> Bool -> [Term] -> Term
 applyDataOptRT n tag arity uniq args
     | length args == arity = doOpts n args

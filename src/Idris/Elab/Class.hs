@@ -54,14 +54,20 @@ import Util.Pretty(pretty, text)
 
 data MArgTy = IA Name | EA Name | CA deriving Show
 
-elabClass :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
-             FC -> [(Name, PTerm)] ->
-             Name -> FC -> [(Name, FC, PTerm)] -> [(Name, Docstring (Either Err PTerm))] ->
-             [(Name, FC)] {- ^ determining params -} ->
-             [PDecl] {- ^ class body -} ->
-             Maybe (Name, FC) {- ^ instance ctor name and location -} ->
-             Docstring (Either Err PTerm) {- ^ instance ctor docs -} ->
-             Idris ()
+elabClass :: ElabInfo
+          -> SyntaxInfo
+          -> Docstring (Either Err PTerm)
+          -> FC
+          -> [(Name, PTerm)]
+          -> Name
+          -> FC
+          -> [(Name, FC, PTerm)]
+          -> [(Name, Docstring (Either Err PTerm))]
+          -> [(Name, FC)]                 -- ^ determining params
+          -> [PDecl]                      -- ^ class body
+          -> Maybe (Name, FC)             -- ^ instance ctor name and location
+          -> Docstring (Either Err PTerm) -- ^ instance ctor docs
+          -> Idris ()
 elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     = do let cn = fromMaybe (SN (InstanceCtorN tn)) (fst <$> mcn)
          let tty = pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
@@ -79,7 +85,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          mapM_ checkDefaultSuperclassInstance idecls
          let mnames = map getMName mdecls
          ist <- getIState
-         let constraintNames = nub $ 
+         let constraintNames = nub $
                  concatMap (namesIn [] ist) (map snd constraints)
 
          mapM_ (checkConstraintName (map (\(x, _, _) -> x) ps)) constraintNames
@@ -161,10 +167,10 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     checkConstraintName :: [Name] -> Name -> Idris ()
     checkConstraintName bound cname
-        | cname `notElem` bound 
-            = tclift $ tfail (At fc (Msg $ "Name " ++ show cname ++ 
+        | cname `notElem` bound
+            = tclift $ tfail (At fc (Msg $ "Name " ++ show cname ++
                          " is not bound in interface " ++ show tn
-                         ++ " " ++ showSep " " (map show bound))) 
+                         ++ " " ++ showSep " " (map show bound)))
         | otherwise = return ()
 
     impbind :: [(Name, PTerm)] -> PTerm -> PTerm
@@ -185,7 +191,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                          (n, (False, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
                                               (\ l s p -> Imp l s p Nothing True) t'))),
                          (n, (nfc, syn, o, t) ) )
-    tdecl allmeths (PData doc _ syn _ _ (PLaterdecl n nfc t)) 
+    tdecl allmeths (PData doc _ syn _ _ (PLaterdecl n nfc t))
            = do let o = []
                 t' <- implicit' info syn (map (\(n, _, _) -> n) ps ++ allmeths) n t
                 logElab 2 $ "Data method " ++ show n ++ " : " ++ showTmImpls t'
@@ -193,7 +199,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                          (n, (True, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
                                               (\ l s p -> Imp l s p Nothing True) t'))),
                          (n, (nfc, syn, o, t) ) )
-    tdecl allmeths (PData doc _ syn _ _ _) 
+    tdecl allmeths (PData doc _ syn _ _ _)
          = ierror $ At fc (Msg "Data definitions not allowed in a class declaration")
     tdecl _ _ = ierror $ At fc (Msg "Not allowed in a class declaration")
 
@@ -292,19 +298,19 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     -- Also ensure the dictionary is used for lookup of any methods that
     -- are used in the type
     insertConstraint :: PTerm -> [Name] -> PTerm -> PTerm
-    insertConstraint c all sc 
-          = let dictN = sMN 0 "__class" in  
+    insertConstraint c all sc
+          = let dictN = sMN 0 "__class" in
                 PPi (constraint { pstatic = Static })
                     dictN NoFC c
                     (constrainMeths (map basename all)
                                     dictN sc)
-     where 
+     where
        -- After we insert the constraint into the lookup, we need to
        -- ensure that the same dictionary is used to resolve lookups
        -- to the other methods in the class
        constrainMeths :: [Name] -> Name -> PTerm -> PTerm
        constrainMeths allM dictN tm = transform (addC allM dictN) tm
- 
+
        addC allM dictN m@(PRef fc hls n)
           | n `elem` allM = PApp NoFC m [pconst (PRef NoFC hls dictN)]
           | otherwise = m

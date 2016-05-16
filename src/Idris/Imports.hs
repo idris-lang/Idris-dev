@@ -103,11 +103,11 @@ installedPackages = do
   goodDir idir d = any (".ibc" `isSuffixOf`) <$> allFilesInDir idir d
 
 
--- Case sensitive file existence check for Mac OS X.
+-- | Case sensitive file existence check for Mac OS X.
 doesFileExist' :: FilePath -> IO Bool
 doesFileExist' = caseSensitive doesFileExist
 
--- Case sensitive directory existence check for Mac OS X.
+-- | Case sensitive directory existence check for Mac OS X.
 doesDirectoryExist' :: FilePath -> IO Bool
 doesDirectoryExist' = caseSensitive doesDirectoryExist
 

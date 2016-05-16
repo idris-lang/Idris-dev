@@ -28,10 +28,9 @@ latest :: UTCTime -> [ModuleTree] -> UTCTime
 latest tm [] = tm
 latest tm (m : ms) = latest (max tm (mod_time m)) (ms ++ mod_deps m)
 
--- Given a module tree, return the list of files to be loaded. If any
--- module has a descendent which needs reloading, return its source, otherwise
--- return the IBC
-
+-- | Given a module tree, return the list of files to be loaded. If
+-- any module has a descendent which needs reloading, return its
+-- source, otherwise return the IBC
 getModuleFiles :: [ModuleTree] -> [IFileType]
 getModuleFiles ts = nub $ execState (modList ts) [] where
    modList :: [ModuleTree] -> State [IFileType] ()
@@ -66,7 +65,7 @@ getModuleFiles ts = nub $ execState (modList ts) [] where
                                   then getSrc x : updateToSrc path xs
                                   else x : updateToSrc path xs
 
--- Strip quotes and the backslash escapes that Haskeline adds
+-- | Strip quotes and the backslash escapes that Haskeline adds
 extractFileName :: String -> String
 extractFileName ('"':xs) = takeWhile (/= '"') xs
 extractFileName ('\'':xs) = takeWhile (/= '\'') xs
@@ -80,10 +79,11 @@ getIModTime (IBC i _) = getModificationTime i
 getIModTime (IDR i) = getModificationTime i
 getIModTime (LIDR i) = getModificationTime i
 
-getImports :: [(FilePath, [ImportInfo])] -> [FilePath] -> 
-              Idris [(FilePath, [ImportInfo])]
+getImports :: [(FilePath, [ImportInfo])]
+           -> [FilePath]
+           -> Idris [(FilePath, [ImportInfo])]
 getImports acc [] = return acc
-getImports acc (f : fs) = do 
+getImports acc (f : fs) = do
    i <- getIState
    let file = extractFileName f
    ibcsd <- valIBCSubDir i
@@ -97,7 +97,7 @@ getImports acc (f : fs) = do
                exist <- runIO $ doesFileExist parsef
                if exist then do
                    src_in <- runIO $ readSource parsef
-                   src <- if lit fp then tclift $ unlit parsef src_in 
+                   src <- if lit fp then tclift $ unlit parsef src_in
                                     else return src_in
                    (_, _, modules, _) <- parseImports parsef src
                    clearParserWarnings
@@ -113,18 +113,19 @@ getImports acc (f : fs) = do
     fname (LIDR fn) = fn
     fname (IBC _ src) = fname src
 
-buildTree :: [FilePath] -> -- already guaranteed built
-             [(FilePath, [ImportInfo])] -> -- import lists (don't reparse)
-             FilePath -> Idris [ModuleTree]
+buildTree :: [FilePath]                 -- ^ already guaranteed built
+          -> [(FilePath, [ImportInfo])] -- ^ import lists (don't reparse)
+          -> FilePath
+          -> Idris [ModuleTree]
 buildTree built importlists fp = evalStateT (btree [] fp) []
  where
-  addFile :: FilePath -> [ModuleTree] -> 
+  addFile :: FilePath -> [ModuleTree] ->
              StateT [(FilePath, [ModuleTree])] Idris [ModuleTree]
   addFile f m = do fs <- get
                    put ((f, m) : fs)
                    return m
 
-  btree :: [FilePath] -> FilePath -> 
+  btree :: [FilePath] -> FilePath ->
            StateT [(FilePath, [ModuleTree])] Idris [ModuleTree]
   btree stk f =
     do i <- lift getIState
@@ -137,7 +138,7 @@ buildTree built importlists fp = evalStateT (btree [] fp) []
        mt <- lift $ runIO $ getIModTime fp
        if (file `elem` built)
           then return [MTree fp False mt []]
-               else if file `elem` stk then 
+               else if file `elem` stk then
                        do lift $ tclift $ tfail
                             (Msg $ "Cycle detected in imports: "
                                      ++ showSep " -> " (reverse (file : stk)))

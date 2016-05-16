@@ -113,17 +113,18 @@ cantSolveGoal = do g <- goal
                    lift $ tfail $
                       CantSolveGoal g (map (\(n,b) -> (n, binderTy b)) env)
 
-proofSearch :: Bool -> -- recursive search (False for 'refine')
-               Bool -> -- invoked from a tactic proof. If so, making
-                       -- new metavariables is meaningless, and there shoudl
-                       -- be an error reported instead.
-               Bool -> -- ambiguity ok
-               Bool -> -- defer on failure
-               Int -> -- maximum depth
-               (PTerm -> ElabD ()) -> Maybe Name -> Name ->
-               [Name] ->
-               [Name] ->
-               IState -> ElabD ()
+proofSearch :: Bool -- ^ recursive search (False for 'refine')
+            -> Bool -- ^ invoked from a tactic proof. If so, making new metavariables is meaningless, and there should be an error reported instead.
+            -> Bool -- ^ ambiguity ok
+            -> Bool -- ^ defer on failure
+            -> Int  -- ^ maximum depth
+            -> (PTerm -> ElabD ())
+            -> Maybe Name
+            -> Name
+            -> [Name]
+            -> [Name]
+            -> IState
+            -> ElabD ()
 proofSearch False fromProver ambigok deferonfail depth elab _ nroot psnames [fn] ist
        = do -- get all possible versions of the name, take the first one that
             -- works
@@ -336,13 +337,14 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
          (Bind _ (Pi _ _ _) _) -> [TextPart "In particular, function types are not supported."]
          _ -> []
 
--- | Resolve interfaces. This will only pick up 'normal' implementations, never
--- named implementations (which is enforced by 'findInstances').
-resolveTC :: Bool -- ^ using default Int
-          -> Bool -- ^ allow open implementations
-          -> Int -- ^ depth
-          -> Term -- ^ top level goal, for error messages
-          -> Name -- ^ top level function name, to prevent loops
+-- | Resolve interfaces. This will only pick up 'normal'
+-- implementations, never named implementations (which is enforced by
+-- 'findInstances').
+resolveTC :: Bool                -- ^ using default Int
+          -> Bool                -- ^ allow open implementations
+          -> Int                 -- ^ depth
+          -> Term                -- ^ top level goal, for error messages
+          -> Name                -- ^ top level function name, to prevent loops
           -> (PTerm -> ElabD ()) -- ^ top level elaborator
           -> IState -> ElabD ()
 resolveTC def openOK depth top fn elab ist
@@ -392,7 +394,7 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
             try' (trivialTCs okholes elab ist)
                 (do addDefault t tc ttypes
                     let stk = map fst (filter snd $ elab_stack ist)
-                    let insts = idris_openimpls ist ++ findInstances ist t 
+                    let insts = idris_openimpls ist ++ findInstances ist t
                     blunderbuss t depth stk (stk ++ insts)) True
 
     -- returns Just hs if okay, where hs are holes which are okay in the

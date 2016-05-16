@@ -42,64 +42,64 @@ import Codec.Archive.Zip
 ibcVersion :: Word16
 ibcVersion = 143
 
--- When IBC is being loaded - we'll load different things (and omit different
--- structures/definitions) depending on which phase we're in
-data IBCPhase = IBC_Building -- ^ when building the module tree
-              | IBC_REPL Bool -- ^ when loading modules for the REPL
-                              -- Bool = True for top level module
+-- | When IBC is being loaded - we'll load different things (and omit
+-- different structures/definitions) depending on which phase we're in.
+data IBCPhase = IBC_Building  -- ^ when building the module tree
+              | IBC_REPL Bool -- ^ when loading modules for the REPL Bool = True for top level module
   deriving (Show, Eq)
 
-data IBCFile = IBCFile { ver :: Word16,
-                         sourcefile :: FilePath,
-                         ibc_reachablenames :: ![Name],
-                         ibc_imports :: ![(Bool, FilePath)],
-                         ibc_importdirs :: ![FilePath],
-                         ibc_implicits :: ![(Name, [PArg])],
-                         ibc_fixes :: ![FixDecl],
-                         ibc_statics :: ![(Name, [Bool])],
-                         ibc_classes :: ![(Name, ClassInfo)],
-                         ibc_records :: ![(Name, RecordInfo)],
-                         ibc_instances :: ![(Bool, Bool, Name, Name)],
-                         ibc_dsls :: ![(Name, DSL)],
-                         ibc_datatypes :: ![(Name, TypeInfo)],
-                         ibc_optimise :: ![(Name, OptInfo)],
-                         ibc_syntax :: ![Syntax],
-                         ibc_keywords :: ![String],
-                         ibc_objs :: ![(Codegen, FilePath)],
-                         ibc_libs :: ![(Codegen, String)],
-                         ibc_cgflags :: ![(Codegen, String)],
-                         ibc_dynamic_libs :: ![String],
-                         ibc_hdrs :: ![(Codegen, String)],
-                         ibc_totcheckfail :: ![(FC, String)],
-                         ibc_flags :: ![(Name, [FnOpt])],
-                         ibc_fninfo :: ![(Name, FnInfo)],
-                         ibc_cg :: ![(Name, CGInfo)],
-                         ibc_docstrings :: ![(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))],
-                         ibc_moduledocs :: ![(Name, Docstring D.DocTerm)],
-                         ibc_transforms :: ![(Name, (Term, Term))],
-                         ibc_errRev :: ![(Term, Term)],
-                         ibc_coercions :: ![Name],
-                         ibc_lineapps :: ![(FilePath, Int, PTerm)],
-                         ibc_namehints :: ![(Name, Name)],
-                         ibc_metainformation :: ![(Name, MetaInformation)],
-                         ibc_errorhandlers :: ![Name],
-                         ibc_function_errorhandlers :: ![(Name, Name, Name)], -- fn, arg, handler
-                         ibc_metavars :: ![(Name, (Maybe Name, Int, [Name], Bool, Bool))],
-                         ibc_patdefs :: ![(Name, ([([(Name, Term)], Term, Term)], [PTerm]))],
-                         ibc_postulates :: ![Name],
-                         ibc_externs :: ![(Name, Int)],
-                         ibc_parsedSpan :: !(Maybe FC),
-                         ibc_usage :: ![(Name, Int)],
-                         ibc_exports :: ![Name],
-                         ibc_autohints :: ![(Name, Name)],
-                         ibc_deprecated :: ![(Name, String)],
-                         ibc_defs :: ![(Name, Def)],
-                         ibc_total :: ![(Name, Totality)],
-                         ibc_injective :: ![(Name, Injectivity)],
-                         ibc_access :: ![(Name, Accessibility)],
-                         ibc_fragile :: ![(Name, String)]
-                       }
-   deriving Show
+data IBCFile = IBCFile {
+    ver                        :: Word16
+  , sourcefile                 :: FilePath
+  , ibc_reachablenames         :: ![Name]
+  , ibc_imports                :: ![(Bool, FilePath)]
+  , ibc_importdirs             :: ![FilePath]
+  , ibc_implicits              :: ![(Name, [PArg])]
+  , ibc_fixes                  :: ![FixDecl]
+  , ibc_statics                :: ![(Name, [Bool])]
+  , ibc_classes                :: ![(Name, ClassInfo)]
+  , ibc_records                :: ![(Name, RecordInfo)]
+  , ibc_instances              :: ![(Bool, Bool, Name, Name)]
+  , ibc_dsls                   :: ![(Name, DSL)]
+  , ibc_datatypes              :: ![(Name, TypeInfo)]
+  , ibc_optimise               :: ![(Name, OptInfo)]
+  , ibc_syntax                 :: ![Syntax]
+  , ibc_keywords               :: ![String]
+  , ibc_objs                   :: ![(Codegen, FilePath)]
+  , ibc_libs                   :: ![(Codegen, String)]
+  , ibc_cgflags                :: ![(Codegen, String)]
+  , ibc_dynamic_libs           :: ![String]
+  , ibc_hdrs                   :: ![(Codegen, String)]
+  , ibc_totcheckfail           :: ![(FC, String)]
+  , ibc_flags                  :: ![(Name, [FnOpt])]
+  , ibc_fninfo                 :: ![(Name, FnInfo)]
+  , ibc_cg                     :: ![(Name, CGInfo)]
+  , ibc_docstrings             :: ![(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))]
+  , ibc_moduledocs             :: ![(Name, Docstring D.DocTerm)]
+  , ibc_transforms             :: ![(Name, (Term, Term))]
+  , ibc_errRev                 :: ![(Term, Term)]
+  , ibc_coercions              :: ![Name]
+  , ibc_lineapps               :: ![(FilePath, Int, PTerm)]
+  , ibc_namehints              :: ![(Name, Name)]
+  , ibc_metainformation        :: ![(Name, MetaInformation)]
+  , ibc_errorhandlers          :: ![Name]
+  , ibc_function_errorhandlers :: ![(Name, Name, Name)] -- fn, arg, handler
+  , ibc_metavars               :: ![(Name, (Maybe Name, Int, [Name], Bool, Bool))]
+  , ibc_patdefs                :: ![(Name, ([([(Name, Term)], Term, Term)], [PTerm]))]
+  , ibc_postulates             :: ![Name]
+  , ibc_externs                :: ![(Name, Int)]
+  , ibc_parsedSpan             :: !(Maybe FC)
+  , ibc_usage                  :: ![(Name, Int)]
+  , ibc_exports                :: ![Name]
+  , ibc_autohints              :: ![(Name, Name)]
+  , ibc_deprecated             :: ![(Name, String)]
+  , ibc_defs                   :: ![(Name, Def)]
+  , ibc_total                  :: ![(Name, Totality)]
+  , ibc_injective              :: ![(Name, Injectivity)]
+  , ibc_access                 :: ![(Name, Accessibility)]
+  , ibc_fragile                :: ![(Name, String)]
+  }
+  deriving Show
 {-!
 deriving instance Binary IBCFile
 !-}
@@ -221,8 +221,9 @@ writeIBC src f
             (\c -> do logIBC 1 $ "Failed " ++ pshow i c)
          return ()
 
--- Write a package index containing all the imports in the current IState
--- Used for ':search' of an entire package, to ensure everything is loaded.
+-- | Write a package index containing all the imports in the current
+-- IState Used for ':search' of an entire package, to ensure
+-- everything is loaded.
 writePkgIndex :: FilePath -> Idris ()
 writePkgIndex f
     = do i <- getIState

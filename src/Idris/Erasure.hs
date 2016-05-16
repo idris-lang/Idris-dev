@@ -32,7 +32,8 @@ import Data.IntMap (IntMap)
 import Data.Text (pack)
 import qualified Data.Text as T
 
--- UseMap maps names to the set of used (reachable) argument positions.
+-- | UseMap maps names to the set of used (reachable) argument
+-- positions.
 type UseMap = Map Name (IntMap (Set Reason))
 
 data Arg = Arg Int | Result deriving (Eq, Ord)
@@ -45,26 +46,26 @@ type Node = (Name, Arg)
 type Deps = Map Cond DepSet
 type Reason = (Name, Int)  -- function name, argument index
 
--- Nodes along with sets of reasons for every one.
+-- | Nodes along with sets of reasons for every one.
 type DepSet = Map Node (Set Reason)
 
--- "Condition" is the conjunction
--- of elementary assumptions along the path from the root.
--- Elementary assumption (f, i) means that "function f uses the argument i".
+-- | "Condition" is the conjunction of elementary assumptions along
+-- the path from the root.  Elementary assumption (f, i) means that
+-- "function f uses the argument i".
 type Cond = Set Node
 
--- Variables carry certain information with them.
+-- ^ Variables carry certain information with them.
 data VarInfo = VI
-    { viDeps   :: DepSet      -- dependencies drawn in by the variable
-    , viFunArg :: Maybe Int   -- which function argument this variable came from (defined only for patvars)
-    , viMethod :: Maybe Name  -- name of the metamethod represented by the var, if any
+    { viDeps   :: DepSet      -- ^ dependencies drawn in by the variable
+    , viFunArg :: Maybe Int   -- ^ which function argument this variable came from (defined only for patvars)
+    , viMethod :: Maybe Name  -- ^ name of the metamethod represented by the var, if any
     }
     deriving Show
 
 type Vars = Map Name VarInfo
 
--- Perform usage analysis, write the relevant information in the internal
--- structures, returning the list of reachable names.
+-- | Perform usage analysis, write the relevant information in the
+-- internal structures, returning the list of reachable names.
 performUsageAnalysis :: [Name] -> Idris [Name]
 performUsageAnalysis startNames = do
     ctx <- tt_ctxt <$> getIState
@@ -137,7 +138,7 @@ performUsageAnalysis startNames = do
         fmt n rs = show n ++ " from " ++ intercalate ", " [show rn ++ " arg# " ++ show ri | (rn,ri) <- rs]
         warn = logErasure 0
 
--- Find the minimal consistent usage by forward chaining.
+-- | Find the minimal consistent usage by forward chaining.
 minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
 minimalUsage = second gather . forwardChain
   where
@@ -160,8 +161,8 @@ forwardChain deps
     remove :: DepSet -> Deps -> Deps
     remove ds = M.mapKeysWith (M.unionWith S.union) (S.\\ M.keysSet ds)
 
--- Build the dependency graph,
--- starting the depth-first search from a list of Names.
+-- | Build the dependency graph, starting the depth-first search from
+-- a list of Names.
 buildDepMap :: Ctxt ClassInfo -> [(Name, Int)] -> [(Name, Int)] ->
                Context -> [Name] -> Deps
 buildDepMap ci used externs ctx startNames
@@ -508,6 +509,6 @@ buildDepMap ci used externs ctx startNames
     unionMap :: (a -> Deps) -> [a] -> Deps
     unionMap f = M.unionsWith (M.unionWith S.union) . map f
 
--- Make a field name out of a data constructor name and field number.
+-- | Make a field name out of a data constructor name and field number.
 mkFieldName :: Name -> Int -> Name
 mkFieldName ctorName fieldNo = SN (WhereN fieldNo ctorName $ sMN fieldNo "field")

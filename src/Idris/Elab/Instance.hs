@@ -50,21 +50,24 @@ import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
 
-elabInstance :: ElabInfo -> SyntaxInfo ->
-                Docstring (Either Err PTerm) ->
-                [(Name, Docstring (Either Err PTerm))] ->
-                ElabWhat -> -- phase
-                FC -> [(Name, PTerm)] -> -- constraints
-                [Name] -> -- parent dictionary names (optionally)
-                Accessibility ->
-                FnOpts ->
-                Name -> -- the class
-                FC -> -- precise location of class name
-                [PTerm] -> -- class parameters (i.e. instance)
-                [(Name, PTerm)] -> -- Extra arguments in scope (e.g. instance in where block)
-                PTerm -> -- full instance type
-                Maybe Name -> -- explicit name
-                [PDecl] -> Idris ()
+elabInstance :: ElabInfo
+             -> SyntaxInfo
+             -> Docstring (Either Err PTerm)
+             -> [(Name, Docstring (Either Err PTerm))]
+             -> ElabWhat        -- ^ phase
+             -> FC
+             -> [(Name, PTerm)] -- ^ constraints
+             -> [Name]          -- ^ parent dictionary names (optionally)
+             -> Accessibility
+             -> FnOpts
+             -> Name            -- ^ the class
+             -> FC              -- ^ precise location of class name
+             -> [PTerm]         -- ^ class parameters (i.e. instance)
+             -> [(Name, PTerm)] -- ^ Extra arguments in scope (e.g. instance in where block)
+             -> PTerm           -- ^ full instance type
+             -> Maybe Name      -- ^ explicit name
+             -> [PDecl]
+             -> Idris ()
 elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t expn ds = do
     ist <- getIState
     (n, ci) <- case lookupCtxtName n (idris_classes ist) of
@@ -81,7 +84,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
 
     let emptyclass = null (class_methods ci)
     when (what /= EDefns) $ do
-         nty <- elabType' True info syn doc argDocs fc totopts iname NoFC 
+         nty <- elabType' True info syn doc argDocs fc totopts iname NoFC
                           (piBindp expl_param pextra t)
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
@@ -111,7 +114,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
          undefinedSuperclassInstances <- filterM (fmap not . isOverlapping ist) superclassInstances
          mapM_ (rec_elabDecl info EAll info) undefinedSuperclassInstances
-         
+
          ist <- getIState
          -- Bring variables in instance head into scope when building the
          -- dictionary
@@ -121,11 +124,11 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
                               Just ty -> (map (\n -> (n, getTypeIn ist n ty)) headVars, ty)
                               _ -> (zip headVars (repeat Placeholder), Erased)
          logElab 3 $ "Head var types " ++ show headVarTypes ++ " from " ++ show ty
-         
+
          let all_meths = map (nsroot . fst) (class_methods ci)
          let mtys = map (\ (n, (inj, op, t)) ->
                    let t_in = substMatchesShadow ips pnames t
-                       mnamemap = 
+                       mnamemap =
                           map (\n -> (n, PApp fc (PRef fc [] (decorate ns iname n))
                                               (map (toImp fc) headVars)))
                                       all_meths
@@ -182,13 +185,13 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
                            Nothing -> []
          let prop_params = getParamsInType ist [] ifn_is ifn_ty
 
-         logElab 3 $ "Propagating parameters to methods: " 
+         logElab 3 $ "Propagating parameters to methods: "
                            ++ show (iname, prop_params)
 
          let wbVals' = map (addParams prop_params) wbVals
 
          mapM_ (rec_elabDecl info EAll info) wbVals'
-         
+
          mapM_ (checkInjectiveDef fc (class_methods ci)) (zip ds' wbVals')
 
          pop_estack
@@ -212,8 +215,8 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
           Just nm -> nm
 
     substInstance ips pnames (PInstance doc argDocs syn _ cs parents acc opts n nfc ps pextra t expn ds)
-        = PInstance doc argDocs syn fc cs parents acc opts n nfc 
-                     (map (substMatchesShadow ips pnames) ps) 
+        = PInstance doc argDocs syn fc cs parents acc opts n nfc
+                     (map (substMatchesShadow ips pnames) ps)
                      pextra
                      (substMatchesShadow ips pnames t) expn ds
 
@@ -275,10 +278,10 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
     keepDets dets t = t
 
     methName (n, _, _, _) = n
-    toExp n = pexp (PRef fc [] n) 
+    toExp n = pexp (PRef fc [] n)
 
-    mkMethApp ps (n, _, _, ty) 
-              = lamBind 0 ty (papp fc (PRef fc [] n) 
+    mkMethApp ps (n, _, _, ty)
+              = lamBind 0 ty (papp fc (PRef fc [] n)
                      (ps ++ map (toExp . fst) pextra ++ methArgs 0 ty))
        where
           needed is p = pname p `elem` map pname is
@@ -311,7 +314,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
 
     decorate ns iname (NS (UN nm) s)
          = NS (SN (WhereN 0 iname (SN (MethodN (UN nm))))) ns
-    decorate ns iname nm  
+    decorate ns iname nm
          = NS (SN (WhereN 0 iname (SN (MethodN nm)))) ns
 
     mkTyDecl (n, op, t, _)
@@ -375,7 +378,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
     clauseFor m iname ns (PClauses _ _ m' _)
        = decorate ns iname m == decorate ns iname m'
     clauseFor m iname ns _ = False
-         
+
 getHeadVars :: PTerm -> [Name]
 getHeadVars (PRef _ _ n) | implicitable n = [n]
 getHeadVars (PApp _ _ args) = concatMap getHeadVars (map getTm args)
@@ -383,14 +386,14 @@ getHeadVars (PPair _ _ _ l r) = getHeadVars l ++ getHeadVars r
 getHeadVars (PDPair _ _ _ l t r) = getHeadVars l ++ getHeadVars t ++ getHeadVars t
 getHeadVars _ = []
 
--- Implicitly bind variables from the instance head in method types
+-- | Implicitly bind variables from the instance head in method types
 impBind :: [(Name, PTerm)] -> PDecl -> PDecl
 impBind vs (PTy d ds syn fc opts n fc' t)
-     = PTy d ds syn fc opts n fc' 
+     = PTy d ds syn fc opts n fc'
           (doImpBind (filter (\(n, ty) -> n `notElem` boundIn t) vs) t)
   where
     doImpBind [] ty = ty
-    doImpBind ((n, argty) : ns) ty 
+    doImpBind ((n, argty) : ns) ty
        = PPi impl n NoFC argty (doImpBind ns ty)
 
     boundIn (PPi _ n _ _ sc) = n : boundIn sc
@@ -404,19 +407,19 @@ getTypeIn ist n tm = Placeholder
 
 toImp fc n = pimp n (PRef fc [] n) True
 
--- Propagate class parameters to method bodies, if they're not already 
--- there, and they are needed (i.e. appear in method's type)
+-- | Propagate class parameters to method bodies, if they're not
+-- already there, and they are needed (i.e. appear in method's type)
 addParams :: [Name] -> PDecl -> PDecl
 addParams ps (PClauses fc opts n cs) = PClauses fc opts n (map addCParams cs)
   where
     addCParams (PClause fc n lhs ws rhs wb)
         = PClause fc n (addTmParams (dropPs (allNamesIn lhs) ps) lhs) ws rhs wb
     addCParams (PWith fc n lhs ws sc pn ds)
-        = PWith fc n (addTmParams (dropPs (allNamesIn lhs) ps) lhs) ws sc pn 
+        = PWith fc n (addTmParams (dropPs (allNamesIn lhs) ps) lhs) ws sc pn
                       (map (addParams ps) ds)
     addCParams c = c
 
-    addTmParams ps (PRef fc hls n) 
+    addTmParams ps (PRef fc hls n)
         = PApp fc (PRef fc hls n) (map (toImp fc) ps)
     addTmParams ps (PApp fc ap@(PRef fc' hls n) args)
         = PApp fc ap (mergePs (map (toImp fc) ps) args)
@@ -439,11 +442,10 @@ addParams ps (PClauses fc opts n cs) = PClauses fc opts n (map addCParams cs)
 
 addParams ps d = d
 
--- Check a given method definition is injective, if the class info
--- says it needs to be.
--- Takes originally written decl and the one with name decoration, so
--- we know which name to look up.
-checkInjectiveDef :: FC -> [(Name, (Bool, FnOpts, PTerm))] -> 
+-- | Check a given method definition is injective, if the class info
+-- says it needs to be.  Takes originally written decl and the one
+-- with name decoration, so we know which name to look up.
+checkInjectiveDef :: FC -> [(Name, (Bool, FnOpts, PTerm))] ->
                            (PDecl, PDecl) -> Idris ()
 checkInjectiveDef fc ns (PClauses _ _ n cs, PClauses _ _ elabn _)
    | Just (True, _, _) <- clookup n ns
@@ -452,13 +454,13 @@ checkInjectiveDef fc ns (PClauses _ _ n cs, PClauses _ _ elabn _)
                     Just (CaseOp _ _ _ _ _ cdefs) ->
                        checkInjectiveCase ist (snd (cases_compiletime cdefs))
   where
-    checkInjectiveCase ist (STerm tm) 
+    checkInjectiveCase ist (STerm tm)
          = checkInjectiveApp ist (fst (unApply tm))
     checkInjectiveCase _ _ = notifail
 
     checkInjectiveApp ist (P (TCon _ _) n _) = return ()
     checkInjectiveApp ist (P (DCon _ _ _) n _) = return ()
-    checkInjectiveApp ist (P Ref n _) 
+    checkInjectiveApp ist (P Ref n _)
         | Just True <- lookupInjectiveExact n (tt_ctxt ist) = return ()
     checkInjectiveApp ist (P Ref n _) = notifail
     checkInjectiveApp _ _ = notifail
