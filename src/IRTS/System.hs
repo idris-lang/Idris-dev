@@ -29,7 +29,7 @@ getEnvFlags = maybe [] (splitOn " ") <$> lookupEnv "IDRIS_CFLAGS"
 getTargetDir :: IO String
 getTargetDir = overrideDataDirWith "TARGET"
 
-#if defined(FREEBSD) || defined(DRAGONFLY)
+#if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)
 extraLib = ["-L/usr/local/lib"]
 extraInclude = ["-I/usr/local/include"]
 #else
