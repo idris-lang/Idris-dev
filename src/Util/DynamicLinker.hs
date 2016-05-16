@@ -19,16 +19,14 @@ type DL = HMODULE
 #endif
 
 hostDynamicLibExt :: String
-#ifdef linux_HOST_OS
+#if defined(linux_HOST_OS) || defined(freebsd_HOST_OS) \
+    || defined(dragonfly_HOST_OS) || defined(openbsd_HOST_OS) \
+    || defined(netbsd_HOST_OS)
 hostDynamicLibExt = "so"
-#elif darwin_HOST_OS
+#elif defined(darwin_HOST_OS)
 hostDynamicLibExt = "dylib"
-#elif mingw32_HOST_OS
+#elif defined(mingw32_HOST_OS)
 hostDynamicLibExt = "dll"
-#elif freebsd_HOST_OS
-hostDynamicLibExt = "so"
-#elif dragonfly_HOST_OS
-hostDynamicLibExt = "so"
 #else
 hostDynamicLibExt = error $ unwords
   [ "Undefined file extension for dynamic libraries"
