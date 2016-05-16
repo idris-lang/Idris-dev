@@ -45,7 +45,11 @@ getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
 
 forCodegen :: Codegen -> [(Codegen, a)] -> [a]
-forCodegen tgt xs = [x | (tgt', x) <- xs, tgt == tgt']
+forCodegen tgt xs = [x | (tgt', x) <- xs, eqLang tgt tgt']
+    where
+        eqLang (Via _ x) (Via _ y) = x == y
+        eqLang Bytecode Bytecode = True
+        eqLang _ _ = False
 
 getObjectFiles :: Codegen -> Idris [FilePath]
 getObjectFiles tgt = do i <- getIState; return (forCodegen tgt $ idris_objs i)
@@ -946,16 +950,6 @@ codegen :: Idris Codegen
 codegen = do i <- getIState
              return (opt_codegen (idris_options i))
 
-setPortableCodegen :: Bool -> Idris ()
-setPortableCodegen p = do i <- getIState
-                          let opts = idris_options i
-                          let opt' = opts { opt_portableCG = p }
-                          putIState $ i { idris_options = opt' }
-
-getPortableCodegen :: Idris Bool
-getPortableCodegen = do i <- getIState
-                        let opts = idris_options i
-                        return (opt_portableCG opts)
 
 setOutputTy :: OutputType -> Idris ()
 setOutputTy t = do i <- getIState

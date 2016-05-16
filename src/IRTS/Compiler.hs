@@ -122,25 +122,25 @@ compile codegen f mtm
                              [] -> return ()
                              ((fc, msg):fs) -> ierror . At fc . Msg $ "Cannot compile:\n  " ++ msg
 
-generate :: Codegen -> FilePath -> Bool -> CodegenInfo -> IO ()
-generate codegen mainmod port ir
+generate :: Codegen -> FilePath -> CodegenInfo -> IO ()
+generate codegen mainmod ir
   = case codegen of
        -- Built-in code generators (FIXME: lift these out!)
-       Via "c" -> codegenC ir
+       Via _ "c" -> codegenC ir
        -- Any external code generator
-       Via cg -> do input <- if port
-                                then do
-                                    tempdir <- getTemporaryDirectory
-                                    (fn, h) <- openTempFile tempdir "idris-cg.json"
-                                    writePortable h ir
-                                    hClose h
-                                    return fn
-                                else return mainmod
-                    let cmd = "idris-codegen-" ++ cg
-                        args = [input, "-o", outputFile ir] ++ compilerFlags ir
-                    exit <- rawSystem cmd args
-                    when (exit /= ExitSuccess) $
-                       putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
+       Via fm cg -> do input <- case fm of
+                                    IBCFormat -> return mainmod
+                                    JSONFormat -> do
+                                        tempdir <- getTemporaryDirectory
+                                        (fn, h) <- openTempFile tempdir "idris-cg.json"
+                                        writePortable h ir
+                                        hClose h
+                                        return fn
+                       let cmd = "idris-codegen-" ++ cg
+                           args = [input, "-o", outputFile ir] ++ compilerFlags ir
+                       exit <- rawSystem cmd args
+                       when (exit /= ExitSuccess) $
+                            putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
        Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
 
 irMain :: TT Name -> Idris LDecl

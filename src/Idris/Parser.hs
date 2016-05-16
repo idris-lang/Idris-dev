@@ -781,7 +781,7 @@ params syn =
        return [PParams fc ns' (concat ds)]
     <?> "parameters declaration"
 
-{- | Parses an open block 
+{- | Parses an open block
 
 -}
 
@@ -790,7 +790,7 @@ openInterface syn =
     do reservedHL "using"
        reservedHL "implementation"
        fc <- getFC
-       ns <- sepBy1 fnName (lchar ',') 
+       ns <- sepBy1 fnName (lchar ',')
 
        openBlock
        ds <- many (decl syn)
@@ -799,7 +799,7 @@ openInterface syn =
     <?> "open interface declaration"
 
 
-       
+
 
 {- | Parses a mutual declaration (for mutually recursive functions)
 
@@ -877,7 +877,7 @@ classBlock syn = do reservedHL "where"
                     ist <- get
                     let cd' = annotate syn ist cd
 
-                    ds <- many (notEndBlock >> try (instance_ True syn) 
+                    ds <- many (notEndBlock >> try (instance_ True syn)
                                                <|> do x <- data_ syn
                                                       return [x]
                                                <|> fnDecl syn)
@@ -1324,7 +1324,7 @@ Codegen ::= 'C'
 -}
 codegen_ :: IdrisParser Codegen
 codegen_ = do n <- fst <$> identifier
-              return (Via (map toLower n))
+              return (Via IBCFormat (map toLower n))
        <|> do reserved "Bytecode"; return Bytecode
        <?> "code generation language"
 
@@ -1812,7 +1812,7 @@ loadSource lidr f toline
                   logLvl 2 $ "Totality checking " ++ show deftots
                   mapM_ (\x -> do tot <- getTotality x
                                   case tot of
-                                       Total _ -> 
+                                       Total _ ->
                                          do let opts = case lookupCtxtExact x (idris_flags i) of
                                                           Just os -> os
                                                           Nothing -> []

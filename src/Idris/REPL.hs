@@ -1228,8 +1228,7 @@ process fn (Execute tm)
                            -- gcc adds .exe when it builds windows programs
                            progName <- return $ if isWindows then tmpn ++ ".exe" else tmpn
                            ir <- compile t tmpn (Just m)
-                           port <- getPortableCodegen
-                           runIO $ generate t (fst (head (idris_imported ist))) port ir
+                           runIO $ generate t (fst (head (idris_imported ist))) ir
                            case idris_outputmode ist of
                              RawOutput h -> do runIO $ rawSystem progName []
                                                return ()
@@ -1250,9 +1249,8 @@ process fn (Compile codegen f)
                                             [pexp $ PRef fc [] mainname])
                                return (Just m')
                        ir <- compile codegen f m
-                       port <- getPortableCodegen
                        i <- getIState
-                       runIO $ generate codegen (fst (head (idris_imported i))) port ir
+                       runIO $ generate codegen (fst (head (idris_imported i))) ir
   where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
 process fn (LogCategory cs) = setLogCats cs
@@ -1689,9 +1687,8 @@ idrisMain opts =
                               Object else Executable
                      xs -> last xs
        let cgn = case opt getCodegen opts of
-                   [] -> Via "c"
+                   [] -> Via IBCFormat "c"
                    xs -> last xs
-       let portable = PortableCodegen `elem` opts
        let cgFlags = opt getCodegenArgs opts
 
        -- Now set/unset specifically chosen optimisations
@@ -1719,7 +1716,6 @@ idrisMain opts =
        setOutputTy outty
        setNoBanner nobanner
        setCodegen cgn
-       setPortableCodegen portable
        mapM_ (addFlag cgn) cgFlags
        mapM_ makeOption opts
        -- if we have the --bytecode flag, drop into the bytecode assembler

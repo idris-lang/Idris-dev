@@ -85,7 +85,6 @@ data IOption = IOption {
   , opt_nobanner     :: Bool
   , opt_quiet        :: Bool
   , opt_codegen      :: Codegen
-  , opt_portableCG   :: Bool
   , opt_outputTy     :: OutputType
   , opt_ibcsubdir    :: FilePath
   , opt_importdirs   :: [FilePath]
@@ -113,8 +112,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_verbose    = True
                       , opt_nobanner   = False
                       , opt_quiet      = False
-                      , opt_codegen    = Via "c"
-                      , opt_portableCG = False
+                      , opt_codegen    = Via IBCFormat "c"
                       , opt_outputTy   = Executable
                       , opt_ibcsubdir  = ""
                       , opt_importdirs = []
@@ -388,17 +386,14 @@ throwError = Trans.lift . throwE
 
 -- Commands in the REPL
 
-data Codegen = Via String
---              | ViaC
---              | ViaJava
---              | ViaNode
---              | ViaJavaScript
---              | ViaLLVM
+data Codegen = Via IRFormat String
              | Bytecode
     deriving (Show, Eq)
 {-!
 deriving instance NFData Codegen
 !-}
+
+data IRFormat = IBCFormat | JSONFormat deriving (Show, Eq)
 
 data HowMuchDocs = FullDocs | OverviewDocs
 
@@ -560,7 +555,6 @@ data Opt = Filename String
          | DumpDefun String
          | DumpCases String
          | UseCodegen Codegen
-         | PortableCodegen
          | CodegenArgs String
          | OutputTy OutputType
          | Extension LanguageExt

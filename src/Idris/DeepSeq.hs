@@ -149,7 +149,6 @@ instance NFData Opt where
     rnf (DumpDefun str) = rnf  str `seq` ()
     rnf (DumpCases str) = rnf  str `seq` ()
     rnf (UseCodegen cg) = rnf  cg `seq` ()
-    rnf (PortableCodegen) = ()
     rnf (CodegenArgs str) = rnf  str `seq` ()
     rnf (OutputTy ot) = rnf  ot `seq` ()
     rnf (Extension le) = rnf  le `seq` ()
@@ -188,7 +187,6 @@ instance NFData IOption where
          opt_nobanner
          opt_quiet
          opt_codegen
-         opt_portableCG
          opt_outputTy
          opt_ibcsubdir
          opt_importdirs
@@ -363,8 +361,11 @@ instance NFData FnInfo where
         rnf (FnInfo x1) = rnf x1 `seq` ()
 
 instance NFData Codegen where
-        rnf (Via x1) = rnf x1 `seq` ()
+        rnf (Via x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf Bytecode = ()
+
+instance NFData IRFormat where
+        rnf _ = ()
 
 instance NFData LogCat where
        rnf _ = ()
