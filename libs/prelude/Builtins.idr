@@ -106,38 +106,41 @@ sym Refl = Refl
 trans : {a:x} -> {b:y} -> {c:z} -> a = b -> b = c -> a = c
 trans Refl Refl = Refl
 
-||| There are two types of laziness: that arising from lazy functions, and that
-||| arising from codata. They differ in their totality condition.
-data LazyType = LazyCodata | LazyEval
+||| Two types of delayed computation: that arising from lazy functions, and that
+||| arising from infinite data. They differ in their totality condition.
+data DelayReason = Infinite | LazyValue
 
 ||| The underlying implementation of Lazy and Inf.
 %error_reverse
-data Lazy' : LazyType -> Type -> Type where
+data Delayed : DelayReason -> Type -> Type where
      ||| A delayed computation.
      |||
      ||| Delay is inserted automatically by the elaborator where necessary.
      |||
      ||| Note that compiled code gives `Delay` special semantics.
-     ||| @ t   whether this is laziness from codata or normal lazy evaluation
+     ||| @ t   whether this is laziness from an infinite structure or lazy evaluation
      ||| @ a   the type of the eventual value
      ||| @ val a computation that will produce a value
-     Delay : {t, a : _} -> (val : a) -> Lazy' t a
+     Delay : {t, a : _} -> (val : a) -> Delayed t a
 
 ||| Compute a value from a delayed computation.
 |||
 ||| Inserted by the elaborator where necessary.
-Force : {t, a : _} -> Lazy' t a -> a
+Force : {t, a : _} -> Delayed t a -> a
 Force (Delay x) = x
 
-||| Lazily evaluated values. This has special evaluation semantics.
+||| Lazily evaluated values. 
+||| At run time, the delayed value will only be computed when required by
+||| a case split.
 Lazy : Type -> Type
-Lazy t = Lazy' LazyEval t
+Lazy t = Delayed LazyValue t
 
-||| Recursive parameters to codata. Inserted automatically by the elaborator
-||| on a "codata" definition but is necessary by hand if mixing inductive and
-||| coinductive parameters.
+||| Possibly infinite data. 
+||| A value which may be infinite is accepted by the totality checker if
+||| it appears under a data constructor. At run time, the delayed value will
+||| only be computed when required by a case split.
 Inf : Type -> Type
-Inf t = Lazy' LazyCodata t
+Inf t = Delayed Infinite t
 
 namespace Ownership
   ||| A read-only version of a unique value

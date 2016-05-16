@@ -712,9 +712,9 @@ envPos x i ((y, _) : ys) | x == y = i
 -- Issue #1722 on the issue tracker https://github.com/idris-lang/Idris-dev/issues/1722
 --
 recoverable t@(App _ _ _) _
-    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
+    | (P _ (UN l) _, _) <- unApply t, l == txt "Delayed" = False
 recoverable _ t@(App _ _ _)
-    | (P _ (UN l) _, _) <- unApply t, l == txt "Lazy'" = False
+    | (P _ (UN l) _, _) <- unApply t, l == txt "Delayed" = False
 recoverable (P (DCon _ _ _) x _) (P (DCon _ _ _) y _) = x == y
 recoverable (P (TCon _ _) x _) (P (TCon _ _) y _) = x == y
 recoverable (TType _) (P (DCon _ _ _) y _) = False

@@ -216,8 +216,8 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
 
     mkLazy (PPi pl n nfc ty sc)
         = let ty' = if getTyName ty
-                       then PApp fc (PRef fc [] (sUN "Lazy'"))
-                            [pexp (PRef fc [] (sUN "LazyCodata")),
+                       then PApp fc (PRef fc [] (sUN "Delayed"))
+                            [pexp (PRef fc [] (sUN "Infinite")),
                              pexp ty]
                        else ty in
               PPi pl n nfc ty' (mkLazy sc)

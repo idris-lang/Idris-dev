@@ -101,10 +101,10 @@ typeFromDef (def, _, _, _, _) = get def where
   get (CaseOp _ ty _ _ _ _)  = Just ty
   get _ = Nothing
 
--- Replace all occurences of `Lazy' s t` with `t` in a type
+-- Replace all occurences of `Delayed s t` with `t` in a type
 unLazy :: Type -> Type
 unLazy typ = case typ of
-  App _ (App _ (P _ lazy _) _) ty | lazy == sUN "Lazy'" -> unLazy ty
+  App _ (App _ (P _ lazy _) _) ty | lazy == sUN "Delayed" -> unLazy ty
   Bind name binder ty -> Bind name (fmap unLazy binder) (unLazy ty)
   App s t1 t2 -> App s (unLazy t1) (unLazy t2)
   Proj ty i -> Proj (unLazy ty) i

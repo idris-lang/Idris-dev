@@ -493,9 +493,9 @@ delazy' all t@(App _ f a)
      | (P _ (UN l) _, [_, _, arg]) <- unApply t,
        l == txt "Force" = delazy' all arg
      | (P _ (UN l) _, [P _ (UN lty) _, _, arg]) <- unApply t,
-       l == txt "Delay" && (all || lty == txt "LazyEval") = delazy arg
+       l == txt "Delay" && (all || lty /= txt "Infinite") = delazy arg
      | (P _ (UN l) _, [P _ (UN lty) _, arg]) <- unApply t,
-       l == txt "Lazy'" && (all || lty == txt "LazyEval") = delazy' all arg
+       l == txt "Delayed" && (all || lty /= txt "Infinite") = delazy' all arg
 delazy' all (App s f a) = App s (delazy' all f) (delazy' all a)
 delazy' all (Bind n b sc) = Bind n (fmap (delazy' all) b) (delazy' all sc)
 delazy' all t = t

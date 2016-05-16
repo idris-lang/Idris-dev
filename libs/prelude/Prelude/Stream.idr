@@ -13,8 +13,8 @@ import Prelude.List
 %default total
 
 ||| An infinite stream
-codata Stream : Type -> Type where
-  (::) : (e : a) -> Stream a -> Stream a
+data Stream : Type -> Type where
+  (::) : (e : a) -> Inf (Stream a) -> Stream a
 
 -- Hints for interactive editing
 %name Stream xs,ys,zs,ws

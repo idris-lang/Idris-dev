@@ -313,13 +313,13 @@ elab ist info emode opts fn tm
 
     forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
-            ht == txt "Lazy'" = notDelay orig
+            ht == txt "Delayed" = notDelay orig
     forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
-            ht == txt "Lazy'" = notDelay orig
+            ht == txt "Delayed" = notDelay orig
     forceErr orig env (InfiniteUnify _ t _)
        | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
-            ht == txt "Lazy'" = notDelay orig
+            ht == txt "Delayed" = notDelay orig
     forceErr orig env (Elaborating _ _ _ t) = forceErr orig env t
     forceErr orig env (ElaboratingArg _ _ _ t) = forceErr orig env t
     forceErr orig env (At _ t) = forceErr orig env t
@@ -482,7 +482,7 @@ elab ist info emode opts fn tm
                      return $ pruneByType env tc (unDelay ty) ist as
 
               unDelay t | (P _ (UN l) _, [_, arg]) <- unApply t,
-                          l == txt "Lazy'" = unDelay arg
+                          l == txt "Delayed" = unDelay arg
                         | otherwise = t
 
               isAmbiguous (CantResolveAlts _) = delayok
@@ -1400,7 +1400,7 @@ elab ist info emode opts fn tm
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
            let tries = [mkDelay env t, t]
            case tyh of
-                P _ (UN l) _ | l == txt "Lazy'"
+                P _ (UN l) _ | l == txt "Delayed"
                     -> return (PAlternative [] FirstSuccess tries)
                 _ -> return t
       where
