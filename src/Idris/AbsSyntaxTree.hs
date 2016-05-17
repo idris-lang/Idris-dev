@@ -1816,6 +1816,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       depth d . bracket p startPrec $
       lbrace <> kwd "default" <+> prettySe (decD d) (funcAppPrec + 1) bnd s <+> pretty n <+> colon <+> prettySe (decD d) startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
+    prettySe d p bnd (PApp _ (PRef _ _ neg) [_, _, val])
+      | basename neg == sUN "negate" =
+         lparen <> text "-" <> prettySe d funcAppPrec bnd (getTm val) <> rparen
     -- This case preserves the behavior of the former constructor PEq.
     -- It should be removed if feasible when the pretty-printing of infix
     -- operators in general is improved.

@@ -285,10 +285,12 @@ splitOnLine l n fn = do
 
 replaceSplits :: String -> [[(Name, PTerm)]] -> Bool -> Idris [String]
 replaceSplits l ups impossible
-    = updateRHSs 1 (map (rep (expandBraces l)) ups)
+    = do ist <- getIState
+         updateRHSs 1 (map (rep ist (expandBraces l)) ups)
   where
-    rep str [] = str ++ "\n"
-    rep str ((n, tm) : ups) = rep (updatePat False (show n) (nshow tm) str) ups
+    rep ist str [] = str ++ "\n"
+    rep ist str ((n, tm) : ups) 
+        = rep ist (updatePat False (show n) (nshow (resugar ist tm)) str) ups
 
     updateRHSs i [] = return []
     updateRHSs i (x : xs)
