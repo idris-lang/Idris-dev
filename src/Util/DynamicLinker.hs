@@ -7,7 +7,7 @@ module Util.DynamicLinker (ForeignFun(..), DynamicLib(..), tryLoadLib, tryLoadFn
 import Foreign.LibFFI
 import Foreign.Ptr (Ptr(), nullPtr, FunPtr, nullFunPtr, castPtrToFunPtr)
 import System.Directory
-#ifndef WINDOWS
+#ifndef mingw32_HOST_OS
 import System.Posix.DynamicLinker
 import System.FilePath.Posix ((</>))
 #else
@@ -19,16 +19,14 @@ type DL = HMODULE
 #endif
 
 hostDynamicLibExt :: String
-#ifdef LINUX
+#if defined(linux_HOST_OS) || defined(freebsd_HOST_OS) \
+    || defined(dragonfly_HOST_OS) || defined(openbsd_HOST_OS) \
+    || defined(netbsd_HOST_OS)
 hostDynamicLibExt = "so"
-#elif MACOSX
+#elif defined(darwin_HOST_OS)
 hostDynamicLibExt = "dylib"
-#elif WINDOWS
+#elif defined(mingw32_HOST_OS)
 hostDynamicLibExt = "dll"
-#elif FREEBSD
-hostDynamicLibExt = "so"
-#elif DRAGONFLY
-hostDynamicLibExt = "so"
 #else
 hostDynamicLibExt = error $ unwords
   [ "Undefined file extension for dynamic libraries"
@@ -61,7 +59,7 @@ libFileName dirs lib = do let names = [lib, lib ++ "." ++ hostDynamicLibExt]
                                    map ("."</>) names ++ [d </> f | d <- cwd:dirs, f <- names]
                           return $ maybe (lib ++ "." ++ hostDynamicLibExt) id found
 
-#ifndef WINDOWS
+#ifndef mingw32_HOST_OS
 tryLoadLib :: [FilePath] -> String -> IO (Maybe DynamicLib)
 tryLoadLib dirs lib = do filename <- libFileName dirs lib
                          handle <- dlopen filename [RTLD_NOW, RTLD_GLOBAL]

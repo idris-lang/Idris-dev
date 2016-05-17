@@ -1108,19 +1108,14 @@ Library
   ghc-prof-options: -auto-all -caf-all
 
   if os(linux)
-     cpp-options:   -DLINUX
      build-depends: unix < 2.8
   if os(freebsd)
-     cpp-options:   -DFREEBSD
      build-depends: unix < 2.8
   if os(dragonfly)
-     cpp-options:   -DDRAGONFLY
      build-depends: unix < 2.8
   if os(darwin)
-     cpp-options:   -DMACOSX
      build-depends: unix < 2.8
   if os(windows)
-     cpp-options:   -DWINDOWS
      build-depends: Win32 < 2.4
   if flag(FFI)
      build-depends: libffi < 0.2
