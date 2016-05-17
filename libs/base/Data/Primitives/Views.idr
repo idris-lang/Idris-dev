@@ -24,6 +24,19 @@ namespace Integer
                believe_me (DivBy {d} {div = dividend} {rem = remainder}
                                  (believe_me (Refl {x = True})))
 
+  ||| View for recursion over Integers
+  data IntegerRec : Integer -> Type where
+       IntegerZ : IntegerRec 0
+       IntegerSucc : IntegerRec (n - 1) -> IntegerRec n
+       IntegerPred : IntegerRec ((-n) + 1) -> IntegerRec (-n)
+  
+  ||| Covering function for `IntegerRec`
+  integerRec : (x : Integer) -> IntegerRec x
+  integerRec 0 = IntegerZ
+  integerRec x = if x > 0 then IntegerSucc (assert_total (integerRec (x - 1)))
+                      else believe_me (IntegerPred {n=-x} 
+                                (assert_total (believe_me (integerRec (x + 1)))))
+
 namespace Int
   ||| View for expressing a number as a multiplication + a remainder
   public export
@@ -47,3 +60,16 @@ namespace Int
                believe_me (DivBy {d} {div = dividend} {rem = remainder}
                                  (believe_me (Refl {x = True})))
 
+  ||| View for recursion over Ints
+  data IntRec : Int -> Type where
+       IntZ : IntRec 0
+       IntSucc : IntRec (n - 1) -> IntRec n
+       IntPred : IntRec ((-n) + 1) -> IntRec (-n)
+  
+  ||| Covering function for `IntRec`
+  intRec : (x : Int) -> IntRec x
+  intRec 0 = IntZ
+  intRec x = if x > 0 then IntSucc (assert_total (intRec (x - 1)))
+                      else believe_me (IntPred {n=-x}
+                                (assert_total (believe_me (intRec (x + 1)))))
+  

@@ -1041,9 +1041,18 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
 
          lhs_arity = arity toplhs
 
-         updateApp wtm@(PWithApp fcw tm warg) = 
+         currentFn fname (PAlternative _ _ as)
+              | Just tm <- getApp as = tm
+            where getApp (tm@(PApp _ (PRef _ _ f) _) : as)
+                      | f == fname = Just tm
+                  getApp (_ : as) = getApp as
+                  getApp [] = Nothing
+         currentFn _ tm = tm
+
+         updateApp wtm@(PWithApp fcw tm_in warg) = 
+           let tm = currentFn fname tm_in in
               case matchClause ist toplhs tm of
-                Left _ -> PElabError (Msg (show fc ++ ":with application does not match top level"))
+                Left _ -> PElabError (Msg (show fc ++ ":with application does not match top level "))
                 Right mvars -> 
                    let ns = map (keepMvar (map fst mvars) fcw) ns_in
                        ns' = map (keepMvar (map fst mvars) fcw) ns_in' 
