@@ -361,8 +361,11 @@ instance NFData FnInfo where
         rnf (FnInfo x1) = rnf x1 `seq` ()
 
 instance NFData Codegen where
-        rnf (Via x1) = rnf x1 `seq` ()
+        rnf (Via x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf Bytecode = ()
+
+instance NFData IRFormat where
+        rnf _ = ()
 
 instance NFData LogCat where
        rnf _ = ()
@@ -700,7 +703,7 @@ instance NFData DefaultTotality where
   rnf DefaultCheckingTotal = ()
   rnf DefaultCheckingPartial = ()
   rnf DefaultCheckingCovering = ()
-  
+
 instance NFData IState where
   rnf (IState x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20
               x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 x31 x32 x33 x34 x35 x36 x37 x38 x39 x40

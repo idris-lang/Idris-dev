@@ -1249,7 +1249,6 @@ process fn (Compile codegen f)
                                             [pexp $ PRef fc [] mainname])
                                return (Just m')
                        ir <- compile codegen f m
-
                        i <- getIState
                        runIO $ generate codegen (fst (head (idris_imported i))) ir
   where fc = fileFC "main"
@@ -1688,7 +1687,7 @@ idrisMain opts =
                               Object else Executable
                      xs -> last xs
        let cgn = case opt getCodegen opts of
-                   [] -> Via "c"
+                   [] -> Via IBCFormat "c"
                    xs -> last xs
        let cgFlags = opt getCodegenArgs opts
 

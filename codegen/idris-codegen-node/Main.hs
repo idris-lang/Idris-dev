@@ -33,7 +33,7 @@ jsMain :: Opts -> Idris ()
 jsMain opts = do elabPrims
                  loadInputs (inputs opts) Nothing
                  mainProg <- elabMain
-                 ir <- compile (Via "node") (output opts) (Just mainProg)
+                 ir <- compile (Via IBCFormat "node") (output opts) (Just mainProg)
                  runIO $ codegenNode ir
 
 main :: IO ()

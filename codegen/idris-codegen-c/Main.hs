@@ -40,7 +40,7 @@ c_main opts = do runIO setupBundledCC
                  mainProg <- if interface opts
                                 then liftM Just elabMain
                                 else return Nothing
-                 ir <- compile (Via "c") (output opts) mainProg
+                 ir <- compile (Via IBCFormat "c") (output opts) mainProg
                  runIO $ codegenC ir
 
 main :: IO ()

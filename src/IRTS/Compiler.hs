@@ -12,6 +12,7 @@ import IRTS.DumpBC
 import IRTS.CodegenJavaScript
 import IRTS.Inliner
 import IRTS.Exports
+import IRTS.Portable
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -125,13 +126,21 @@ generate :: Codegen -> FilePath -> CodegenInfo -> IO ()
 generate codegen mainmod ir
   = case codegen of
        -- Built-in code generators (FIXME: lift these out!)
-       Via "c" -> codegenC ir
+       Via _ "c" -> codegenC ir
        -- Any external code generator
-       Via cg -> do let cmd = "idris-codegen-" ++ cg
-                        args = [mainmod, "-o", outputFile ir] ++ compilerFlags ir
-                    exit <- rawSystem cmd args
-                    when (exit /= ExitSuccess) $
-                       putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
+       Via fm cg -> do input <- case fm of
+                                    IBCFormat -> return mainmod
+                                    JSONFormat -> do
+                                        tempdir <- getTemporaryDirectory
+                                        (fn, h) <- openTempFile tempdir "idris-cg.json"
+                                        writePortable h ir
+                                        hClose h
+                                        return fn
+                       let cmd = "idris-codegen-" ++ cg
+                           args = [input, "-o", outputFile ir] ++ compilerFlags ir
+                       exit <- rawSystem cmd args
+                       when (exit /= ExitSuccess) $
+                            putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
        Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
 
 irMain :: TT Name -> Idris LDecl
@@ -350,7 +359,7 @@ irTerm vs env tm@(App _ f a) = do
 
             -- overapplied
             GT  -> ifail ("overapplied data constructor: " ++ show tm ++
-                          "\nDEBUG INFO:\n" ++ 
+                          "\nDEBUG INFO:\n" ++
                           "Arity: " ++ show arity ++ "\n" ++
                           "Arguments: " ++ show args ++ "\n" ++
                           "Pruned arguments: " ++ show argsPruned)

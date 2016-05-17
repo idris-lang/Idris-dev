@@ -45,7 +45,11 @@ getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
 
 forCodegen :: Codegen -> [(Codegen, a)] -> [a]
-forCodegen tgt xs = [x | (tgt', x) <- xs, tgt == tgt']
+forCodegen tgt xs = [x | (tgt', x) <- xs, eqLang tgt tgt']
+    where
+        eqLang (Via _ x) (Via _ y) = x == y
+        eqLang Bytecode Bytecode = True
+        eqLang _ _ = False
 
 getObjectFiles :: Codegen -> Idris [FilePath]
 getObjectFiles tgt = do i <- getIState; return (forCodegen tgt $ idris_objs i)
@@ -459,13 +463,13 @@ addInstance int res n i
 -- Returns the old list, so we can revert easily at the end of a block
 
 addOpenImpl :: [Name] -> Idris [Name]
-addOpenImpl ns = do ist <- getIState 
+addOpenImpl ns = do ist <- getIState
                     ns' <- mapM (checkValid ist) ns
                     let open = idris_openimpls ist
                     putIState $ ist { idris_openimpls = nub (ns' ++ open) }
                     return open
   where
-    checkValid ist n 
+    checkValid ist n
       = case lookupCtxtName n (idris_implicits ist) of
              [(n', _)] -> return n'
              []        -> throwError (NoSuchVariable n)
@@ -945,6 +949,7 @@ setCodegen t = do i <- getIState
 codegen :: Idris Codegen
 codegen = do i <- getIState
              return (opt_codegen (idris_options i))
+
 
 setOutputTy :: OutputType -> Idris ()
 setOutputTy t = do i <- getIState
@@ -2329,7 +2334,7 @@ shadow n n' t = sm 0 t where
     sm 0 (PTyped x y) = PTyped (sm 0 x) (sm 0 y)
     sm 0 (PPair f hls p x y) = PPair f hls p (sm 0 x) (sm 0 y)
     sm 0 (PDPair f hls p x t y) = PDPair f hls p (sm 0 x) (sm 0 t) (sm 0 y)
-    sm 0 (PAlternative ms a as) 
+    sm 0 (PAlternative ms a as)
           = PAlternative (map shadowAlt ms) a (map (sm 0) as)
     sm 0 (PTactics ts) = PTactics (map (fmap (sm 0)) ts)
     sm 0 (PProof ts) = PProof (map (fmap (sm 0)) ts)
