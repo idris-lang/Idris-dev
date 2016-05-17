@@ -127,6 +127,17 @@ fromInteger : (x : Integer) ->
 fromInteger {n} x {prf} with (integerToFin x n)
   fromInteger {n} x {prf = ItIsJust} | Just y = y
 
+||| Convert an Integer to a Fin in the required bounds/
+||| This is essentially a composition of `mod` and `fromInteger`
+export
+restrict : (n : Nat) -> Integer -> Fin (S n)
+restrict n val = let val' = assert_total (abs (mod val (cast (S n)))) in
+                     -- reasoning about primitives, so we need the
+                     -- 'believe_me'. It's fine because val' must be
+                     -- in the right range
+                     fromInteger val'
+                         {prf = believe_me {a=IsJust (Just val')} ItIsJust}
+
 %language ErrorReflection
 
 ||| Attempt to convert a reflected (fromInteger n) to a Nat
