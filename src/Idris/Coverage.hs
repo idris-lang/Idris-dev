@@ -342,7 +342,7 @@ checkPositive :: [Name]       -- ^ the group of type declarations
 checkPositive mut_ns (cn, ty')
     = do i <- getIState
          let ty = delazy' True (normalise (tt_ctxt i) [] ty')
-         let p = cp ty
+         let p = cp i ty
          let tot = if p then Total (args ty) else Partial NotPositive
          let ctxt' = setTotal cn tot (tt_ctxt i)
          putIState (i { tt_ctxt = ctxt' })
@@ -352,20 +352,29 @@ checkPositive mut_ns (cn, ty')
   where
     args t = [0..length (getArgTys t)-1]
 
-    cp (Bind n (Pi _ aty _) sc) = posArg aty && cp sc
-    cp t | (P _ n' _, args) <- unApply t,
-           n' `elem` mut_ns = all noRec args
-    cp _ = True
+    cp i (Bind n (Pi _ aty _) sc) 
+         = posArg i aty && cp i sc
+    cp i t | (P _ n' _ , args) <- unApply t,
+             n' `elem` mut_ns = all noRec args
+    cp i _ = True
 
-    posArg (Bind _ (Pi _ nty _) sc)
-        | (P _ n' _, args) <- unApply nty
-            = n' `notElem` mut_ns && all noRec args && posArg sc
-    posArg t | (P _ n' _, args) <- unApply t,
-               n' `elem` mut_ns = all noRec args
-    posArg _ = True
+    posArg ist (Bind _ (Pi _ nty _) sc) = noRec nty && posArg ist sc
+    posArg ist t = posParams ist t
 
     noRec arg = all (\x -> x `notElem` mut_ns) (allTTNames arg)
 
+    -- If the type appears recursively in a parameter argument, that's
+    -- fine, otherwise if it appears in an argument it's not fine.
+    posParams ist t | (P _ n _, args) <- unApply t
+       = case lookupCtxtExact n (idris_datatypes ist) of
+              Just ti -> checkParamsOK (param_pos ti) 0 args
+              Nothing -> and (map (posParams ist) args)
+    posParams ist t = noRec t
+
+    checkParamsOK ppos i [] = True
+    checkParamsOK ppos i (p : ps)
+          | i `elem` ppos = checkParamsOK ppos (i + 1) ps
+          | otherwise = noRec p && checkParamsOK ppos (i + 1) ps
 
 -- | Calculate the totality of a function from its patterns.  Either
 -- follow the size change graph (if inductive) or check for

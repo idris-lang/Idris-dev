@@ -1382,6 +1382,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
              -- only, and won't be documented/could be removed at any point
              <|> do try (lchar '%' *> reserved "assert_injective"); n <- fst <$> fnName
                     return [PDirective (DInjective n)]
+             -- Assert totality of something after definition. This is
+             -- here as a debugging aid, so commented out...
+--              <|> do try (lchar '%' *> reserved "assert_set_total"); n <- fst <$> fnName
+--                     return [PDirective (DSetTotal n)]
              <|> do try (lchar '%' *> reserved "access")
                     acc <- accessibility
                     ist <- get

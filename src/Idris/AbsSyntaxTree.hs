@@ -820,6 +820,7 @@ data Directive = DLib Codegen String
                | DHide Name
                | DFreeze Name
                | DInjective Name
+               | DSetTotal Name -- assert totality after checking
                | DAccess Accessibility
                | DDefault DefaultTotality
                | DLogging Integer

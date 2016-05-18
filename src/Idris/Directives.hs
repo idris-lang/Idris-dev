@@ -47,6 +47,11 @@ directiveAction (DInjective n') = do
   mapM_ (\n -> do
             setInjectivity n True
             addIBC (IBCInjective n True)) ns
+directiveAction (DSetTotal n') = do
+  ns <- allNamespaces n'
+  mapM_ (\n -> do
+            setTotality n (Total [])
+            addIBC (IBCTotal n (Total []))) ns
 
 directiveAction (DAccess acc) = do updateIState (\i -> i { default_access = acc })
 

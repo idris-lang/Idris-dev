@@ -1,0 +1,2 @@
+totality014.idr:6:1:
+Main.runCon2 is possibly not total due to: Main.MkCon2
