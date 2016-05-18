@@ -37,7 +37,7 @@ import qualified Data.ByteString.UTF8 as UTF8
 
 import Debug.Trace
 
-{- |Parses a record type declaration
+{- | Parses a record type declaration
 Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}

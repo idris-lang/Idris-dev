@@ -145,8 +145,8 @@ addLangExt ErrorReflection = do i <- getIState
                                   idris_language_extensions = ErrorReflection : idris_language_extensions i
                                 }
 
--- Transforms are organised by the function being applied on the lhs of the
--- transform, to make looking up appropriate transforms quicker
+-- | Transforms are organised by the function being applied on the lhs
+-- of the transform, to make looking up appropriate transforms quicker
 addTrans :: Name -> (Term, Term) -> Idris ()
 addTrans basefn t
            = do i <- getIState
@@ -331,8 +331,8 @@ isTyInferred n
              [TIPartial] -> return True
              _ -> return False
 
--- | Adds error handlers for a particular function and argument. If names are
--- ambiguous, all matching handlers are updated.
+-- | Adds error handlers for a particular function and argument. If
+-- names are ambiguous, all matching handlers are updated.
 addFunctionErrorHandlers :: Name -> Name -> [Name] -> Idris ()
 addFunctionErrorHandlers f arg hs =
  do i <- getIState
@@ -350,7 +350,7 @@ getFunctionErrorHandlers f arg = do i <- getIState
                                      undefined --lookup arg =<< lookupCtxtExact f (idris_function_errorhandlers i)
 
 
--- Trace all the names in a call graph starting at the given name
+-- | Trace all the names in a call graph starting at the given name
 getAllNames :: Name -> Idris [Name]
 getAllNames n = allNames [] n
 
@@ -456,12 +456,11 @@ addInstance int res n i
         chaser (NS n _) = chaser n
         chaser _ = False
 
--- Add a privileged implementation - one which instance search will happily
--- resolve immediately if it is type correct
--- This is used for naming parent implementations when defining an
--- implementation with constraints.
--- Returns the old list, so we can revert easily at the end of a block
-
+-- | Add a privileged implementation - one which instance search will
+-- happily resolve immediately if it is type correct This is used for
+-- naming parent implementations when defining an implementation with
+-- constraints.  Returns the old list, so we can revert easily at the
+-- end of a block
 addOpenImpl :: [Name] -> Idris [Name]
 addOpenImpl ns = do ist <- getIState
                     ns' <- mapM (checkValid ist) ns
@@ -530,7 +529,7 @@ resetNameIdx :: Idris ()
 resetNameIdx = do i <- getIState
                   put (i { idris_nameIdx = (0, emptyContext) })
 
--- Used to preserve sharing of names
+-- | Used to preserve sharing of names
 addNameIdx :: Name -> Idris (Int, Name)
 addNameIdx n = do i <- getIState
                   let (i', x) = addNameIdx' i n
@@ -597,7 +596,8 @@ withContext ctx name dflt action = do
 withContext_ :: (IState -> Ctxt a) -> Name -> (a -> Idris ()) -> Idris ()
 withContext_ ctx name action = withContext ctx name () action
 
--- | A version of liftIO that puts errors into the exception type of the Idris monad
+-- | A version of liftIO that puts errors into the exception type of
+-- the Idris monad
 runIO :: IO a -> Idris a
 runIO x = liftIO (tryIOError x) >>= either (throwError . Msg . show) return
 -- TODO: create specific Idris exceptions for specific IO errors such as "openFile: does not exist"
@@ -611,8 +611,10 @@ getName = do i <- getIState;
              putIState $ (i { idris_name = idx + 1 })
              return idx
 
--- InternalApp keeps track of the real function application for making case splits from, not the application the
--- programmer wrote, which doesn't have the whole context in any case other than top level definitions
+-- | InternalApp keeps track of the real function application for
+-- making case splits from, not the application the programmer wrote,
+-- which doesn't have the whole context in any case other than top
+-- level definitions
 addInternalApp :: FilePath -> Int -> PTerm -> Idris ()
 addInternalApp fp l t
     = do i <- getIState
@@ -637,16 +639,17 @@ getInternalApp fp l = do i <- getIState
                                      -- TODO: What if it's not there?
                            else return Placeholder
 
--- Pattern definitions are only used for coverage checking, so erase them
--- when we're done
+-- | Pattern definitions are only used for coverage checking, so erase
+-- them when we're done
 clearOrigPats :: Idris ()
 clearOrigPats = do i <- get
                    let ps = idris_patdefs i
                    let ps' = mapCtxt (\ (_,miss) -> ([], miss)) ps
                    put (i { idris_patdefs = ps' })
 
--- Erase types from Ps in the context (basically ending up with what's in
--- the .ibc, which is all we need after all the analysis is done)
+-- | Erase types from Ps in the context (basically ending up with
+-- what's in the .ibc, which is all we need after all the analysis is
+-- done)
 clearPTypes :: Idris ()
 clearPTypes = do i <- get
                  let ctxt = tt_ctxt i
@@ -866,8 +869,8 @@ removeOptimise :: Optimisation -> Idris ()
 removeOptimise opt = do opts <- getOptimise
                         setOptimise ((nub opts) \\ [opt])
 
--- Set appropriate optimisation set for the given level. We only have
--- one optimisation that is configurable at the moment, however!
+-- | Set appropriate optimisation set for the given level. We only
+-- have one optimisation that is configurable at the moment, however!
 setOptLevel :: Int -> Idris ()
 setOptLevel n | n <= 0 = setOptimise []
 setOptLevel 1          = setOptimise []
@@ -1350,12 +1353,11 @@ expandInstanceScope ist dec ps ns (PInstance doc argDocs info f cs pnames acc op
                 ty cn decls
 expandInstanceScope ist dec ps ns d = d
 
--- Calculate a priority for a type, for deciding elaboration order
+-- | Calculate a priority for a type, for deciding elaboration order
 -- * if it's just a type variable or concrete type, do it early (0)
 -- * if there's only type variables and injective constructors, do it next (1)
 -- * if there's a function type, next (2)
 -- * finally, everything else (3)
-
 getPriority :: IState -> PTerm -> Int
 getPriority i tm = 1 -- pri tm
   where
@@ -1501,7 +1503,7 @@ addUsingConstraints syn fc t
          getName (PExp _ _ _ (PRef _ _ n)) = return n
          getName _ = []
 
--- Add implicit bindings from using block, and bind any missing names
+-- | Add implicit bindings from using block, and bind any missing names
 addUsingImpls :: SyntaxInfo -> Name -> FC -> PTerm -> Idris PTerm
 addUsingImpls syn n fc t
    = do ist <- getIState
@@ -1623,8 +1625,8 @@ implicit' info syn ignore n ptm
     notFound kns (SN (WhereN _ _ _) : ns) = notFound kns ns --  Known already
     notFound kns (n:ns) = if elem n kns then notFound kns ns else Just n
 
--- Even if auto_implicits is off, we need to call this so we record which
--- arguments are implicit
+-- | Even if auto_implicits is off, we need to call this so we record
+-- which arguments are implicit
 implicitise :: Bool -> SyntaxInfo -> [Name] -> IState -> PTerm -> (PTerm, [PArg])
 implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
       let (declimps, ns') = execState (imps True [] tm) ([], [])
@@ -1729,7 +1731,7 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
             Nothing -> PPi (Imp [InaccessibleArg] Dynamic False (Just (Impl False True)) False)
                            n NoFC Placeholder (pibind using ns sc)
 
--- Add implicit arguments in function calls
+-- | Add implicit arguments in function calls
 addImplPat :: IState -> PTerm -> PTerm
 addImplPat = addImpl' True [] [] []
 
@@ -1739,10 +1741,10 @@ addImplBound ist ns = addImpl' False ns [] [] ist
 addImplBoundInf :: IState -> [Name] -> [Name] -> PTerm -> PTerm
 addImplBoundInf ist ns inf = addImpl' False ns inf [] ist
 
--- | Add the implicit arguments to applications in the term
--- [Name] gives the names to always expend, even when under a binder of
--- that name (this is to expand methods with implicit arguments in dependent
--- type classes).
+-- | Add the implicit arguments to applications in the term [Name]
+-- gives the names to always expend, even when under a binder of that
+-- name (this is to expand methods with implicit arguments in
+-- dependent type classes).
 addImpl :: [Name] -> IState -> PTerm -> PTerm
 addImpl = addImpl' False [] []
 
@@ -2006,8 +2008,8 @@ aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
          | n == n' = Just (t, reverse acc ++ gs)
     find n (g : gs) acc = find n gs (g : acc)
 
--- return True if the second argument is an implicit argument which is
--- expected in the implicits, or if it's not an implicit
+-- | return True if the second argument is an implicit argument which
+-- is expected in the implicits, or if it's not an implicit
 impIn :: [PArg] -> PArg -> Bool
 impIn ps (PExp _ _ _ _) = True
 impIn ps (PConstraint  _ _ _ _) = True
@@ -2115,11 +2117,12 @@ mkPApp fc a f as = let rest = drop a as in
     appRest fc f [] = f
     appRest fc f (a : as) = appRest fc (PApp fc f [a]) as
 
--- Find 'static' argument positions
+
+
+-- | Find 'static' argument positions
 -- (the declared ones, plus any names in argument position in the declared
 -- statics)
 -- FIXME: It's possible that this really has to happen after elaboration
-
 findStatics :: IState -> PTerm -> (PTerm, [Bool])
 findStatics ist tm = let (ns, ss) = fs tm
                      in runState (pos ns ss tm) []
@@ -2350,8 +2353,8 @@ shadow n n' t = sm 0 t where
     update oldn | n == oldn = n'
                 | otherwise = oldn
 
--- | Rename any binders which are repeated (so that we don't have to mess
--- about with shadowing anywhere else).
+-- | Rename any binders which are repeated (so that we don't have to
+-- mess about with shadowing anywhere else).
 mkUniqueNames :: [Name] -> [(Name, Name)] -> PTerm -> PTerm
 mkUniqueNames env shadows tm
       = evalState (mkUniq 0 initMap tm) (S.fromList env) where

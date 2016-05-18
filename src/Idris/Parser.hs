@@ -89,7 +89,7 @@ import System.IO
 
 {- * Main grammar -}
 
-{- | Parses module definition
+{-| Parses module definition
 
 @
       ModuleHeader ::= DocComment_t? 'module' Identifier_t ';'?;
@@ -122,7 +122,7 @@ data ImportInfo = ImportInfo { import_reexport :: Bool
                              , import_modname_location :: FC
                              }
 
-{- | Parses an import statement
+{-| Parses an import statement
 
 @
   Import ::= 'import' Identifier_t ';'?;
@@ -144,7 +144,7 @@ import_ = do fc <- getFC
   where ns = Spl.splitOn "."
         toPath = foldl1' (</>) . ns
 
-{- | Parses program source
+{-| Parses program source
 
 @
      Prog ::= Decl* EOF;
@@ -238,7 +238,7 @@ internalDecl syn
         continue False (PClauses _ _ _ _) = True
         continue c _ = c
 
-{- | Parses a top-level declaration with possible syntax sugar
+{-| Parses a top-level declaration with possible syntax sugar
 
 @
 Decl' ::=
@@ -387,7 +387,7 @@ declExtension syn ns rules =
                               highlightP fc AnnKeyword
                               return Nothing
 
-{- | Parses a syntax extension declaration (and adds the rule to parser state)
+{-| Parses a syntax extension declaration (and adds the rule to parser state)
 
 @
   SyntaxDecl ::= SyntaxRule;
@@ -418,7 +418,7 @@ addReplSyntax i s = i { syntax_rules = updateSyntaxRules [s] rs,
         ns = syntax_keywords i
         ks = map show (syntaxNames s)
 
-{- | Parses a syntax extension declaration
+{-| Parses a syntax extension declaration
 
 @
 SyntaxRuleOpts ::= 'term' | 'pattern';
@@ -545,7 +545,7 @@ syntaxRule syn
                       put ist { idris_name = idx + 1 }
                       return $ sMN idx (show n)
 
-{- | Parses a syntax symbol (either binding variable, keyword or expression)
+{-| Parses a syntax symbol (either binding variable, keyword or expression)
 
 @
 SyntaxSym ::=   '[' Name_t ']'
@@ -566,7 +566,7 @@ syntaxSym =    try (do lchar '['; n <- fst <$> name; lchar ']'
                    return (Symbol sym)
             <?> "syntax symbol"
 
-{- | Parses a function declaration with possible syntax sugar
+{-| Parses a function declaration with possible syntax sugar
 
 @
   FunDecl ::= FunDecl';
@@ -715,7 +715,7 @@ fnOpt = do reservedHL "total"; return TotalFn
                                                return (Just (fromInteger reds)))
                        return (n, t)
 
-{- | Parses a postulate
+{-| Parses a postulate
 
 @
 Postulate ::=
@@ -742,7 +742,8 @@ postulate syn = do (doc, ext)
                  <?> "postulate"
    where ppostDecl = do fc <- reservedHL "postulate"; return False
                  <|> do lchar '%'; reserved "extern"; return True
-{- | Parses a using declaration
+
+{-| Parses a using declaration
 
 @
 Using ::=
@@ -761,14 +762,14 @@ using_ syn =
        return (concat ds)
     <?> "using declaration"
 
-{- | Parses a parameters declaration
+{-| Parses a parameters declaration
 
 @
 Params ::=
   'parameters' '(' TypeDeclList ')' OpenBlock Decl* CloseBlock
   ;
 @
- -}
+-}
 params :: SyntaxInfo -> IdrisParser [PDecl]
 params syn =
     do reservedHL "parameters"; lchar '('; ns <- typeDeclList syn; lchar ')'
@@ -781,10 +782,7 @@ params syn =
        return [PParams fc ns' (concat ds)]
     <?> "parameters declaration"
 
-{- | Parses an open block
-
--}
-
+-- | Parses an open block
 openInterface :: SyntaxInfo -> IdrisParser [PDecl]
 openInterface syn =
     do reservedHL "using"
@@ -799,9 +797,10 @@ openInterface syn =
     <?> "open interface declaration"
 
 
+       
 
 
-{- | Parses a mutual declaration (for mutually recursive functions)
+{-| Parses a mutual declaration (for mutually recursive functions)
 
 @
 Mutual ::=
@@ -838,7 +837,7 @@ namespace syn =
        return [PNamespace n nfc (concat ds)]
      <?> "namespace declaration"
 
-{- | Parses a methods block (for instances)
+{-| Parses a methods block (for instances)
 
 @
   InstanceBlock ::= 'where' OpenBlock FnDecl* CloseBlock
@@ -852,7 +851,7 @@ instanceBlock syn = do reservedHL "where"
                        return (concat ds)
                     <?> "implementation block"
 
-{- | Parses a methods and instances block (for type classes)
+{-| Parses a methods and instances block (for type classes)
 
 @
 MethodOrInstance ::=
@@ -941,7 +940,7 @@ class_ syn = do (doc, argDocs, acc)
               fc <- getFC
               return (i, ifc, PType fc)
 
-{- | Parses a type class instance declaration
+{-| Parses a type class instance declaration
 
 @
   Instance ::=
@@ -1003,7 +1002,7 @@ docstring syn = do (doc, argDocs) <- option noDocs docComment
                    return (doc', argDocs')
 
 
-{- | Parses a using declaration list
+{-| Parses a using declaration list
 
 @
 UsingDeclList ::=
@@ -1035,7 +1034,7 @@ usingDeclList syn
                     return (map (\x -> UImplicit x t) ns)
              <?> "using declaration list"
 
-{- |Parses a using declaration
+{-| Parses a using declaration
 
 @
 UsingDecl ::=
@@ -1054,7 +1053,7 @@ usingDecl syn = try (do x <- fst <$> fnName
                    return (UConstraint c xs)
             <?> "using declaration"
 
-{- | Parse a clause with patterns
+{-| Parse a clause with patterns
 
 @
 Pattern ::= Clause;
@@ -1066,7 +1065,7 @@ pattern syn = do fc <- getFC
                  return (PClauses fc [] (sMN 2 "_") [clause]) -- collect together later
               <?> "pattern"
 
-{- | Parse a constant applicative form declaration
+{-| Parse a constant applicative form declaration
 
 @
 CAF ::= 'let' FnName '=' Expr Terminator;
@@ -1083,7 +1082,7 @@ caf syn = do reservedHL "let"
              return (PCAF fc n t)
            <?> "constant applicative form declaration"
 
-{- | Parse an argument expression
+{-| Parse an argument expression
 
 @
 ArgExpr ::= HSimpleExpr | {- In Pattern External (User-defined) Expression -};
@@ -1094,7 +1093,7 @@ argExpr syn = let syn' = syn { inPattern = True } in
                   try (hsimpleExpr syn') <|> simpleExternalExpr syn'
               <?> "argument expression"
 
-{- | Parse a right hand side of a function
+{-| Parse a right hand side of a function
 
 @
 RHS ::= '='            Expr
@@ -1130,7 +1129,7 @@ rhs syn n = do lchar '='; expr syn
           where addLetC (l, r) = (l, addLet fc nm r)
         addLet fc nm r = (PLet fc (sUN "value") NoFC Placeholder r (PMetavar NoFC nm))
 
-{- |Parses a function clause
+{-|Parses a function clause
 
 @
 RHSOrWithBlock ::= RHS WhereOrTerminator
@@ -1296,7 +1295,7 @@ wExpr syn = do lchar '|'
                expr' (syn { inPattern = True })
             <?> "with pattern"
 
-{- | Parses a where block
+{-| Parses a where block
 
 @
 WhereBlock ::= 'where' OpenBlock Decl+ CloseBlock;
@@ -1310,7 +1309,7 @@ whereBlock n syn
          return (concat ds, map (\x -> (x, decoration syn x)) dns)
       <?> "where block"
 
-{- |Parses a code generation target language name
+{-|Parses a code generation target language name
 
 @
 Codegen ::= 'C'
@@ -1328,7 +1327,7 @@ codegen_ = do n <- fst <$> identifier
        <|> do reserved "Bytecode"; return Bytecode
        <?> "code generation language"
 
-{- |Parses a compiler directive
+{-|Parses a compiler directive
 @
 StringList ::=
   String
@@ -1433,7 +1432,7 @@ pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)
        <|> (reserved "ErrorReflection" >> return ErrorReflection)
 
-{- | Parses a totality
+{-| Parses a totality
 
 @
 Totality ::= 'partial' | 'total' | 'covering'
@@ -1446,7 +1445,7 @@ totality
       <|> do reservedHL "partial"; return DefaultCheckingPartial
       <|> do reservedHL "covering"; return DefaultCheckingCovering
 
-{- | Parses a type provider
+{-| Parses a type provider
 
 @
 Provider ::= DocComment_t? '%' 'provide' Provider_What? '(' FnName TypeSig ')' 'with' Expr;
@@ -1476,7 +1475,7 @@ provider syn = do doc <- try (do (doc, _) <- docstring syn
              e <- expr syn <?> "provider expression"
              return [PProvider doc syn fc nfc (ProvPostulate e) n]
 
-{- | Parses a transform
+{-| Parses a transform
 
 @
 Transform ::= '%' 'transform' Expr '==>' Expr
@@ -1495,7 +1494,7 @@ transform syn = do try (lchar '%' *> reserved "transform")
                    return [PTransform fc False l r]
                 <?> "transform"
 
-{- | Parses a top-level reflected elaborator script
+{-| Parses a top-level reflected elaborator script
 
 @
 RunElabDecl ::= '%' 'runElab' Expr
@@ -1513,19 +1512,19 @@ runElabDecl syn =
   <?> "top-level elaborator script"
 
 {- * Loading and parsing -}
-{- | Parses an expression from input -}
+{-| Parses an expression from input -}
 parseExpr :: IState -> String -> Result PTerm
 parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
 
-{- | Parses a constant form input -}
+{-| Parses a constant form input -}
 parseConst :: IState -> String -> Result Const
 parseConst st = runparser (fmap fst constant) st "(input)"
 
-{- | Parses a tactic from input -}
+{-| Parses a tactic from input -}
 parseTactic :: IState -> String -> Result PTactic
 parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
 
-{- | Parses a do-step from input (used in the elab shell) -}
+{-| Parses a do-step from input (used in the elab shell) -}
 parseElabShellStep :: IState -> String -> Result (Either ElabShellCmd PDo)
 parseElabShellStep ist = runparser (fmap Right (do_ defaultSyntax) <|> fmap Left elabShellCmd) ist "(input)"
   where elabShellCmd = char ':' >>
@@ -1639,7 +1638,7 @@ parseProg syn fname input mrk
                           i' <- get
                           return (ds, i')
 
-{- | Load idris module and show error if something wrong happens -}
+{-| Load idris module and show error if something wrong happens -}
 loadModule :: FilePath -> IBCPhase -> Idris (Maybe String)
 loadModule f phase
    = idrisCatch (loadModule' f phase)
@@ -1648,7 +1647,7 @@ loadModule f phase
                           iWarn (getErrSpan e) $ pprintErr ist e
                           return Nothing)
 
-{- | Load idris module -}
+{-| Load idris module -}
 loadModule' :: FilePath -> IBCPhase -> Idris (Maybe String)
 loadModule' f phase
    = do i <- getIState
@@ -1671,7 +1670,7 @@ loadModule' f phase
                                              LIDR sfn -> loadSource True sfn Nothing)
                   return $ Just file
 
-{- | Load idris code from file -}
+{-| Load idris code from file -}
 loadFromIFile :: Bool -> IBCPhase -> IFileType -> Maybe Int -> Idris ()
 loadFromIFile reexp phase i@(IBC fn src) maxline
    = do logParser 1 $ "Skipping " ++ getSrcFile i
@@ -1695,7 +1694,7 @@ loadSource' lidr r maxline
                             At f e' -> iWarn f (pprintErr ist e')
                             _ -> iWarn (getErrSpan e) (pprintErr ist e))
 
-{- | Load Idris source code-}
+{-| Load Idris source code-}
 loadSource :: Bool -> FilePath -> Maybe Int -> Idris ()
 loadSource lidr f toline
              = do logParser 1 ("Reading " ++ f)
@@ -1878,7 +1877,7 @@ loadSource lidr f toline
         docName = NS modDocName (map T.pack (reverse mname))
         parsedDocs ist = annotCode (tryFullExpr syn ist) docs
 
-{- | Adds names to hide list -}
+{-| Adds names to hide list -}
 addHides :: Ctxt Accessibility -> Idris ()
 addHides xs = do i <- getIState
                  let defh = default_access i

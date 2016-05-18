@@ -62,7 +62,7 @@ import Data.List.Split (splitOn)
 import Util.Pretty(pretty, text)
 
 
--- Top level elaborator info, supporting recursive elaboration
+-- | Top level elaborator info, supporting recursive elaboration
 recinfo :: ElabInfo
 recinfo = EInfo [] emptyContext id Nothing Nothing id elabDecl'
 
@@ -111,7 +111,7 @@ elabPrims = do mapM_ (elabDecl' EAll recinfo)
           elabBelieveMe
              = do let prim__believe_me = sUN "prim__believe_me"
                   updateContext (addOperator prim__believe_me believeTy 3 p_believeMe)
-                  -- The point is that it is believed to be total, even 
+                  -- The point is that it is believed to be total, even
                   -- though it clearly isn't :)
                   setTotality prim__believe_me (Total [])
                   i <- getIState
@@ -210,7 +210,7 @@ elabDecl' what info (PMutual f ps)
 
         getDataDecls (PNamespace _ _ ds : decls)
            = getDataDecls ds ++ getDataDecls decls
-        getDataDecls (d : decls) 
+        getDataDecls (d : decls)
            | isDataDecl d = d : getDataDecls decls
            | otherwise = getDataDecls decls
         getDataDecls [] = []

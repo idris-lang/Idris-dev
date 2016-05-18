@@ -48,23 +48,24 @@ import Text.PrettyPrint.Annotated.Leijen
 data ElabWhat = ETypes | EDefns | EAll
   deriving (Show, Eq)
 
--- Data to pass to recursively called elaborators; e.g. for where blocks,
+-- | Data to pass to recursively called elaborators; e.g. for where blocks,
 -- paramaterised declarations, etc.
-
+--
 -- rec_elabDecl is used to pass the top level elaborator into other elaborators,
 -- so that we can have mutually recursive elaborators in separate modules without
 -- having to muck about with cyclic modules.
-data ElabInfo = EInfo { params :: [(Name, PTerm)],
-                        inblock :: Ctxt [Name], -- names in the block, and their params
-                        liftname :: Name -> Name,
-                        namespace :: Maybe [String],
-                        elabFC :: Maybe FC,
-                        -- We may, recursively, collect transformations to
-                        -- do on the rhs, e.g. rewriting recursive calls to
-                        -- functions defined by 'with'
-                        rhs_trans :: PTerm -> PTerm,
-                        rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl ->
-                                        Idris () }
+data ElabInfo = EInfo {
+    params    :: [(Name, PTerm)]
+  , inblock   :: Ctxt [Name]      -- ^ names in the block, and their params
+  , liftname  :: Name -> Name
+  , namespace :: Maybe [String]
+  , elabFC    :: Maybe FC
+
+  -- | We may, recursively, collect transformations to do on the rhs,
+  -- e.g. rewriting recursive calls to functions defined by 'with'
+  , rhs_trans :: PTerm -> PTerm
+  , rec_elabDecl :: ElabWhat -> ElabInfo -> PDecl -> Idris ()
+  }
 
 toplevel :: ElabInfo
 toplevel = EInfo [] emptyContext id Nothing Nothing id (\_ _ _ -> fail "Not implemented")
@@ -90,13 +91,13 @@ data IOption = IOption {
   , opt_importdirs   :: [FilePath]
   , opt_triple       :: String
   , opt_cpu          :: String
-  , opt_cmdline      :: [Opt]          -- remember whole command line
+  , opt_cmdline      :: [Opt]          -- ^ remember whole command line
   , opt_origerr      :: Bool
   , opt_autoSolve    :: Bool           -- ^ automatically apply "solve" tactic in prover
-  , opt_autoImport   :: [FilePath]     -- ^ e.g. Builtins+Prelude
+  , opt_autoImport   :: [FilePath]     -- ^ List of modules to auto import i.e. `Builtins+Prelude`
   , opt_optimise     :: [Optimisation]
   , opt_printdepth   :: Maybe Int
-  , opt_evaltypes    :: Bool           -- ^ normalise types in :t
+  , opt_evaltypes    :: Bool           -- ^ normalise types in `:t`
   , opt_desugarnats  :: Bool
   , opt_autoimpls    :: Bool
   } deriving (Show, Eq)
@@ -130,39 +131,43 @@ defaultOpts = IOption { opt_logLevel   = 0
                       }
 
 data PPOption = PPOption {
-    ppopt_impl :: Bool -- ^^ whether to show implicits
+    ppopt_impl        :: Bool -- ^ whether to show implicits
   , ppopt_desugarnats :: Bool
-  , ppopt_pinames :: Bool -- ^^ whether to show names in pi bindings
-  , ppopt_depth :: Maybe Int
-} deriving (Show)
+  , ppopt_pinames     :: Bool -- ^ whether to show names in pi bindings
+  , ppopt_depth       :: Maybe Int
+  } deriving (Show)
 
-data Optimisation = PETransform -- partial eval and associated transforms
+data Optimisation = PETransform -- ^ partial eval and associated transforms
   deriving (Show, Eq)
 
 defaultOptimise = [PETransform]
 
 -- | Pretty printing options with default verbosity.
 defaultPPOption :: PPOption
-defaultPPOption = PPOption { ppopt_impl = False,
-                             ppopt_desugarnats = False,
-                             ppopt_pinames = False,
-                             ppopt_depth = Just 200 }
+defaultPPOption = PPOption {
+    ppopt_impl = False
+  , ppopt_desugarnats = False
+  , ppopt_pinames = False
+  , ppopt_depth = Just 200
+  }
 
 -- | Pretty printing options with the most verbosity.
 verbosePPOption :: PPOption
-verbosePPOption = PPOption { ppopt_impl = True,
-                             ppopt_desugarnats = True,
-                             ppopt_pinames = True,
-                             ppopt_depth = Just 200 }
+verbosePPOption = PPOption {
+    ppopt_impl = True
+  , ppopt_desugarnats = True
+  , ppopt_pinames = True
+  , ppopt_depth = Just 200
+  }
 
 -- | Get pretty printing options from the big options record.
 ppOption :: IOption -> PPOption
 ppOption opt = PPOption {
-    ppopt_impl = opt_showimp opt,
-    ppopt_pinames = False,
-    ppopt_depth = opt_printdepth opt,
-    ppopt_desugarnats = opt_desugarnats opt
-}
+    ppopt_impl = opt_showimp opt
+  , ppopt_pinames = False
+  , ppopt_depth = opt_printdepth opt
+  , ppopt_desugarnats = opt_desugarnats opt
+  }
 
 -- | Get pretty printing options from an idris state record.
 ppOptionIst :: IState -> PPOption
@@ -171,13 +176,13 @@ ppOptionIst = ppOption . idris_options
 data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
 
 -- | The output mode in use
-data OutputMode = RawOutput Handle -- ^ Print user output directly to the handle
+data OutputMode = RawOutput Handle       -- ^ Print user output directly to the handle
                 | IdeMode Integer Handle -- ^ Send IDE output for some request ID to the handle
                 deriving Show
 
 -- | How wide is the console?
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
-                  | ColsWide Int -- ^ Manually specified - must be positive
+                  | ColsWide Int   -- ^ Manually specified - must be positive
                   | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
    deriving (Show, Eq)
 
@@ -189,97 +194,105 @@ data DefaultTotality = DefaultCheckingTotal    -- ^ Total
 
 -- | The global state used in the Idris monad
 data IState = IState {
-    tt_ctxt :: Context, -- ^ All the currently defined names and their terms
-    idris_constraints :: S.Set ConstraintFC,
-      -- ^ A list of universe constraints and their corresponding source locations
-    idris_infixes :: [FixDecl], -- ^ Currently defined infix operators
-    idris_implicits :: Ctxt [PArg],
-    idris_statics :: Ctxt [Bool],
-    idris_classes :: Ctxt ClassInfo,
-    idris_openimpls :: [Name], -- ^ Privileged implementations, will resolve immediately
-    idris_records :: Ctxt RecordInfo,
-    idris_dsls :: Ctxt DSL,
-    idris_optimisation :: Ctxt OptInfo,
-    idris_datatypes :: Ctxt TypeInfo,
-    idris_namehints :: Ctxt [Name],
-    idris_patdefs :: Ctxt ([([(Name, Term)], Term, Term)], [PTerm]), -- not exported
-      -- ^ list of lhs/rhs, and a list of missing clauses
-    idris_flags :: Ctxt [FnOpt],
-    idris_callgraph :: Ctxt CGInfo, -- name, args used in each pos
-    idris_docstrings :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)]),
-    idris_moduledocs :: Ctxt (Docstring DocTerm),
-    -- ^ module documentation is saved in a special MN so the context
-    -- mechanism can be used for disambiguation
-    idris_tyinfodata :: Ctxt TIData,
-    idris_fninfo :: Ctxt FnInfo,
-    idris_transforms :: Ctxt [(Term, Term)],
-    idris_autohints :: Ctxt [Name],
-    idris_totcheck :: [(FC, Name)], -- names to check totality on
-    idris_defertotcheck :: [(FC, Name)], -- names to check at the end
-    idris_totcheckfail :: [(FC, String)],
-    idris_options :: IOption,
-    idris_name :: Int,
-    idris_lineapps :: [((FilePath, Int), PTerm)],
-          -- ^ Full application LHS on source line
-    idris_metavars :: [(Name, (Maybe Name, Int, [Name], Bool, Bool))],
-    -- ^ The currently defined but not proven metavariables. The Int
-    -- is the number of vars to display as a context, the Maybe Name
-    -- is its top-level function, the [Name] is the list of local variables
-    -- available for proof search and the Bools are whether :p is
-    -- allowed, and whether the variable is definable at all
-    -- (Metavariables are not definable if they are applied in a term which
-    -- still has hole bindings)
-    idris_coercions :: [Name],
-    idris_errRev :: [(Term, Term)],
-    syntax_rules :: SyntaxRules,
-    syntax_keywords :: [String],
-    imported :: [FilePath], -- ^ The imported modules
-    idris_scprims :: [(Name, (Int, PrimFn))],
-    idris_objs :: [(Codegen, FilePath)],
-    idris_libs :: [(Codegen, String)],
-    idris_cgflags :: [(Codegen, String)],
-    idris_hdrs :: [(Codegen, String)],
-    idris_imported :: [(FilePath, Bool)], -- ^ Imported ibc file names, whether public
-    proof_list :: [(Name, (Bool, [String]))],
-    errSpan :: Maybe FC,
-    parserWarnings :: [(FC, Err)],
-    lastParse :: Maybe Name,
-    indent_stack :: [Int],
-    brace_stack :: [Maybe Int],
-    lastTokenSpan :: Maybe FC, -- ^ What was the span of the latest token parsed?
-    idris_parsedSpan :: Maybe FC,
-    hide_list :: Ctxt Accessibility,
-    default_access :: Accessibility,
-    default_total :: DefaultTotality,
-    ibc_write :: [IBCWrite],
-    compiled_so :: Maybe String,
-    idris_dynamic_libs :: [DynamicLib],
-    idris_language_extensions :: [LanguageExt],
-    idris_outputmode :: OutputMode,
-    idris_colourRepl :: Bool,
-    idris_colourTheme :: ColourTheme,
-    idris_errorhandlers :: [Name], -- ^ Global error handlers
-    idris_nameIdx :: (Int, Ctxt (Int, Name)),
-    idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)), -- ^ Specific error handlers
-    module_aliases :: M.Map [T.Text] [T.Text],
-    idris_consolewidth :: ConsoleWidth, -- ^ How many chars wide is the console?
-    idris_postulates :: S.Set Name,
-    idris_externs :: S.Set (Name, Int),
-    idris_erasureUsed :: [(Name, Int)], -- ^ Function/constructor name, argument position is used
-    idris_whocalls :: Maybe (M.Map Name [Name]),
-    idris_callswho :: Maybe (M.Map Name [Name]),
-    idris_repl_defs :: [Name], -- ^ List of names that were defined in the repl, and can be re-/un-defined
-    elab_stack :: [(Name, Bool)], -- ^ Stack of names currently being elaborated, Bool set if it's an instance
-                                  -- (instances appear twice; also as a funtion name)
-    idris_symbols :: M.Map Name Name, -- ^ Symbol table (preserves sharing of names)
-    idris_exports :: [Name], -- ^ Functions with ExportList
-    idris_highlightedRegions :: [(FC, OutputAnnotation)], -- ^ Highlighting information to output
-    idris_parserHighlights :: [(FC, OutputAnnotation)], -- ^ Highlighting information from the parser
-    idris_deprecated :: Ctxt String, -- ^ Deprecated names and explanation
-    idris_inmodule :: S.Set Name, -- ^ Names defined in current module
-    idris_ttstats :: M.Map Term (Int, Term),
-    idris_fragile :: Ctxt String -- ^ Fragile names and explanation.
-   }
+    tt_ctxt            :: Context            -- ^ All the currently defined names and their terms
+  , idris_constraints  :: S.Set ConstraintFC -- ^ A list of universe constraints and their corresponding source locations
+  , idris_infixes      :: [FixDecl]          -- ^ Currently defined infix operators
+  , idris_implicits    :: Ctxt [PArg]
+  , idris_statics      :: Ctxt [Bool]
+  , idris_classes      :: Ctxt ClassInfo
+  , idris_openimpls    :: [Name]             -- ^ Privileged implementations, will resolve immediately
+  , idris_records      :: Ctxt RecordInfo
+  , idris_dsls         :: Ctxt DSL
+  , idris_optimisation :: Ctxt OptInfo
+  , idris_datatypes    :: Ctxt TypeInfo
+  , idris_namehints    :: Ctxt [Name]
+
+  -- | list of lhs/rhs, and a list of missing clauses. These are not
+  -- exported.
+  , idris_patdefs       :: Ctxt ([([(Name, Term)], Term, Term)], [PTerm])
+  , idris_flags         :: Ctxt [FnOpt]
+  , idris_callgraph     :: Ctxt CGInfo  -- ^ name, args used in each pos
+  , idris_docstrings    :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)])
+
+  -- | module documentation is saved in a special MN so the context
+  -- mechanism can be used for disambiguation.
+  , idris_moduledocs    :: Ctxt (Docstring DocTerm)
+  , idris_tyinfodata    :: Ctxt TIData
+  , idris_fninfo        :: Ctxt FnInfo
+  , idris_transforms    :: Ctxt [(Term, Term)]
+  , idris_autohints     :: Ctxt [Name]
+  , idris_totcheck      :: [(FC, Name)] -- ^ names to check totality on
+  , idris_defertotcheck :: [(FC, Name)] -- ^ names to check at the end
+  , idris_totcheckfail  :: [(FC, String)]
+  , idris_options       :: IOption
+  , idris_name          :: Int
+  , idris_lineapps      :: [((FilePath, Int), PTerm)] -- ^ Full application LHS on source line
+
+  -- | The currently defined but not proven metavariables. The Int is
+  -- the number of vars to display as a context, the Maybe Name is its
+  -- top-level function, the [Name] is the list of local variables
+  -- available for proof search and the Bools are whether :p is
+  -- allowed, and whether the variable is definable at all
+  -- (Metavariables are not definable if they are applied in a term
+  -- which still has hole bindings)
+  , idris_metavars      :: [(Name, (Maybe Name, Int, [Name], Bool, Bool))]
+  , idris_coercions              :: [Name]
+  , idris_errRev                 :: [(Term, Term)]
+  , syntax_rules                 :: SyntaxRules
+  , syntax_keywords              :: [String]
+  , imported                     :: [FilePath]                    -- ^ The imported modules
+  , idris_scprims                :: [(Name, (Int, PrimFn))]
+  , idris_objs                   :: [(Codegen, FilePath)]
+  , idris_libs                   :: [(Codegen, String)]
+  , idris_cgflags                :: [(Codegen, String)]
+  , idris_hdrs                   :: [(Codegen, String)]
+  , idris_imported               :: [(FilePath, Bool)]            -- ^ Imported ibc file names, whether public
+  , proof_list                   :: [(Name, (Bool, [String]))]
+  , errSpan                      :: Maybe FC
+  , parserWarnings               :: [(FC, Err)]
+  , lastParse                    :: Maybe Name
+  , indent_stack                 :: [Int]
+  , brace_stack                  :: [Maybe Int]
+  , lastTokenSpan                :: Maybe FC                      -- ^ What was the span of the latest token parsed?
+  , idris_parsedSpan             :: Maybe FC
+  , hide_list                    :: Ctxt Accessibility
+  , default_access               :: Accessibility
+  , default_total                :: DefaultTotality
+  , ibc_write                    :: [IBCWrite]
+  , compiled_so                  :: Maybe String
+  , idris_dynamic_libs           :: [DynamicLib]
+  , idris_language_extensions    :: [LanguageExt]
+  , idris_outputmode             :: OutputMode
+  , idris_colourRepl             :: Bool
+  , idris_colourTheme            :: ColourTheme
+  , idris_errorhandlers          :: [Name]                         -- ^ Global error handlers
+  , idris_nameIdx                :: (Int, Ctxt (Int, Name))
+  , idris_function_errorhandlers :: Ctxt (M.Map Name (S.Set Name)) -- ^ Specific error handlers
+  , module_aliases               :: M.Map [T.Text] [T.Text]
+  , idris_consolewidth           :: ConsoleWidth                   -- ^ How many chars wide is the console?
+  , idris_postulates             :: S.Set Name
+  , idris_externs                :: S.Set (Name, Int)
+  , idris_erasureUsed            :: [(Name, Int)]                  -- ^ Function/constructor name, argument position is used
+  , idris_whocalls               :: Maybe (M.Map Name [Name])
+  , idris_callswho               :: Maybe (M.Map Name [Name])
+
+  -- | List of names that were defined in the repl, and can be re-/un-defined
+  , idris_repl_defs              :: [Name]
+
+  -- | Stack of names currently being elaborated, Bool set if it's an
+  -- instance (instances appear twice; also as a funtion name)
+  , elab_stack                   :: [(Name, Bool)]
+
+
+  , idris_symbols                :: M.Map Name Name           -- ^ Symbol table (preserves sharing of names)
+  , idris_exports                :: [Name]                    -- ^ Functions with ExportList
+  , idris_highlightedRegions     :: [(FC, OutputAnnotation)]  -- ^ Highlighting information to output
+  , idris_parserHighlights       :: [(FC, OutputAnnotation)]  -- ^ Highlighting information from the parser
+  , idris_deprecated             :: Ctxt String               -- ^ Deprecated names and explanation
+  , idris_inmodule               :: S.Set Name                -- ^ Names defined in current module
+  , idris_ttstats                :: M.Map Term (Int, Term)
+  , idris_fragile                :: Ctxt String               -- ^ Fragile names and explanation.
+  }
 
 -- Required for parsers library, and therefore trifecta
 instance Show IState where
@@ -295,20 +308,21 @@ deriving instance NFData SizeChange
 type SCGEntry = (Name, [Maybe (Int, SizeChange)])
 type UsageReason = (Name, Int)  -- fn_name, its_arg_number
 
-data CGInfo = CGInfo { calls :: [Name],
-                       scg :: [SCGEntry],
-                       usedpos :: [(Int, [UsageReason])]
-                     }
-    deriving Show
+data CGInfo = CGInfo {
+    calls   :: [Name]
+  , scg     :: [SCGEntry]
+  , usedpos :: [(Int, [UsageReason])]
+  } deriving Show
 {-!
 deriving instance Binary CGInfo
 deriving instance NFData CGInfo
 !-}
 
-primDefs = [sUN "unsafePerformPrimIO",
-            sUN "mkLazyForeignPrim",
-            sUN "mkForeignPrim",
-            sUN "void"]
+primDefs = [ sUN "unsafePerformPrimIO"
+           , sUN "mkLazyForeignPrim"
+           , sUN "mkForeignPrim"
+           , sUN "void"
+           ]
 
 -- information that needs writing for the current module's .ibc file
 data IBCWrite = IBCFix FixDecl
@@ -323,7 +337,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCMetavar Name
               | IBCSyntax Syntax
               | IBCKeyword String
-              | IBCImport (Bool, FilePath) -- True = import public
+              | IBCImport (Bool, FilePath) -- ^ True = import public
               | IBCImportDir FilePath
               | IBCObj Codegen FilePath
               | IBCLib Codegen String
@@ -341,7 +355,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCCG Name
               | IBCDoc Name
               | IBCCoercion Name
-              | IBCDef Name -- i.e. main context
+              | IBCDef Name -- ^ The main context.
               | IBCNameHint (Name, Name)
               | IBCLineApp FilePath Int PTerm
               | IBCErrorHandler Name
@@ -373,9 +387,13 @@ idrisInit = IState initContext S.empty []
                    emptyContext S.empty M.empty emptyContext
 
 
--- | The monad for the main REPL - reading and processing files and updating
--- global state (hence the IO inner monad).
---type Idris = WriterT [Either String (IO ())] (State IState a))
+-- | The monad for the main REPL - reading and processing files and
+-- updating global state (hence the IO inner monad).
+--
+-- @
+--     type Idris = WriterT [Either String (IO ())] (State IState a))
+-- @
+--
 type Idris = StateT IState (ExceptT Err IO)
 
 catchError :: Idris a -> (Err -> Idris a) -> Idris a
@@ -441,10 +459,10 @@ data Command = Quit
              | MakeWith Bool Int Name
              | MakeCase Bool Int Name
              | MakeLemma Bool Int Name
-             | DoProofSearch Bool -- update file
-                             Bool -- recursive search
-                             Int -- depth
-                             Name -- top level name
+             | DoProofSearch Bool   -- update file
+                             Bool   -- recursive search
+                             Int    -- depth
+                             Name   -- top level name
                              [Name] -- hints
              | SetOpt Opt
              | UnsetOpt Opt
@@ -459,7 +477,7 @@ data Command = Quit
              | WhoCalls Name
              | CallsWho Name
              | Browse [String]
-             | MakeDoc String                      -- IdrisDoc
+             | MakeDoc String -- IdrisDoc
              | Warranty
              | PrintDef Name
              | PPrint OutputFmt Int PTerm
@@ -538,7 +556,7 @@ data Opt = Filename String
          | ErrContext
          | ShowImpl
          | Verbose
-         | Port String         -- REPL TCP port
+         | Port String -- ^ REPL TCP port
          | IBCSubDir String
          | ImportDir String
          | PkgBuild String
@@ -546,7 +564,7 @@ data Opt = Filename String
          | PkgClean String
          | PkgCheck String
          | PkgREPL String
-         | PkgMkDoc String     -- IdrisDoc
+         | PkgMkDoc String -- IdrisDoc
          | PkgTest String
          | PkgIndex FilePath
          | WarnOnly
@@ -572,20 +590,26 @@ data Opt = Filename String
          | UseConsoleWidth ConsoleWidth
          | DumpHighlights
          | DesugarNats
-         | NoElimDeprecationWarnings -- ^ Don't show deprecation warnings for %elim
+         | NoElimDeprecationWarnings      -- ^ Don't show deprecation warnings for %elim
          | NoOldTacticDeprecationWarnings -- ^ Don't show deprecation warnings for old-style tactics
     deriving (Show, Eq)
 
-data ElabShellCmd = EQED | EAbandon | EUndo | EProofState | EProofTerm
-                  | EEval PTerm | ECheck PTerm | ESearch PTerm
+data ElabShellCmd = EQED
+                  | EAbandon
+                  | EUndo
+                  | EProofState
+                  | EProofTerm
+                  | EEval PTerm
+                  | ECheck PTerm
+                  | ESearch PTerm
                   | EDocStr (Either Name Const)
   deriving (Show, Eq)
 
 -- Parsed declarations
 
-data Fixity = Infixl { prec :: Int }
-            | Infixr { prec :: Int }
-            | InfixN { prec :: Int }
+data Fixity = Infixl  { prec :: Int }
+            | Infixr  { prec :: Int }
+            | InfixN  { prec :: Int }
             | PrefixN { prec :: Int }
     deriving Eq
 {-!
@@ -594,9 +618,9 @@ deriving instance NFData Fixity
 !-}
 
 instance Show Fixity where
-    show (Infixl i) = "infixl " ++ show i
-    show (Infixr i) = "infixr " ++ show i
-    show (InfixN i) = "infix " ++ show i
+    show (Infixl i)  = "infixl " ++ show i
+    show (Infixr i)  = "infixr " ++ show i
+    show (InfixN i)  = "infix "  ++ show i
     show (PrefixN i) = "prefix " ++ show i
 
 data FixDecl = Fix Fixity String
@@ -621,22 +645,25 @@ deriving instance Binary Static
 deriving instance NFData Static
 !-}
 
--- Mark bindings with their explicitness, and laziness
-data Plicity = Imp { pargopts :: [ArgOpt],
-                     pstatic :: Static,
-                     pparam :: Bool,
-                     pscoped :: Maybe ImplicitInfo, -- Nothing, if top level
-                     pinsource :: Bool -- Explicitly written in source
+-- ^ Mark bindings with their explicitness, and laziness
+data Plicity = Imp { pargopts  :: [ArgOpt]
+                   , pstatic   :: Static
+                   , pparam    :: Bool
+                   , pscoped   :: Maybe ImplicitInfo -- ^ Nothing, if top level
+                   , pinsource :: Bool               -- ^ Explicitly written in source
                    }
-             | Exp { pargopts :: [ArgOpt],
-                     pstatic :: Static,
-                     pparam :: Bool }   -- this is a param (rather than index)
-             | Constraint { pargopts :: [ArgOpt],
-                            pstatic :: Static }
-             | TacImp { pargopts :: [ArgOpt],
-                        pstatic :: Static,
-                        pscript :: PTerm }
-  deriving (Show, Eq, Data, Typeable)
+             | Exp { pargopts :: [ArgOpt]
+                   , pstatic  :: Static
+                   , pparam   :: Bool -- ^ this is a param (rather than index)
+                   }
+             | Constraint { pargopts :: [ArgOpt]
+                         ,  pstatic :: Static
+                         }
+             | TacImp { pargopts :: [ArgOpt]
+                      , pstatic  :: Static
+                      , pscript  :: PTerm
+                      }
+             deriving (Show, Eq, Data, Typeable)
 
 {-!
 deriving instance Binary Plicity
@@ -645,7 +672,7 @@ deriving instance NFData Plicity
 
 is_scoped :: Plicity -> Maybe ImplicitInfo
 is_scoped (Imp _ _ _ s _) = s
-is_scoped _ = Nothing
+is_scoped _               = Nothing
 
 impl              = Imp [] Dynamic False (Just (Impl False True)) False
 
@@ -659,21 +686,23 @@ constraint        = Constraint [] Static
 
 tacimpl t         = TacImp [] Dynamic t
 
-data FnOpt = Inlinable -- always evaluate when simplifying
+data FnOpt = Inlinable -- ^ always evaluate when simplifying
            | TotalFn | PartialFn | CoveringFn
            | Coinductive | AssertTotal
-           | Dictionary -- type class dictionary, eval only when
-                        -- a function argument, and further evaluation resutls
-           | Implicit -- implicit coercion
-           | NoImplicit -- do not apply implicit coercions
-           | CExport String    -- export, with a C name
-           | ErrorHandler     -- ^^ an error handler for use with the ErrorReflection extension
-           | ErrorReverse     -- ^^ attempt to reverse normalise before showing in error
-           | Reflection -- a reflecting function, compile-time only
-           | Specialise [(Name, Maybe Int)] -- specialise it, freeze these names
-           | Constructor -- Data constructor type
-           | AutoHint -- use in auto implicit search
-           | PEGenerated -- generated by partial evaluator
+
+           -- | type class dictionary, eval only when a function
+           -- argument, and further evaluation results.
+           | Dictionary
+           | Implicit                       -- ^ implicit coercion
+           | NoImplicit                     -- ^ do not apply implicit coercions
+           | CExport String                 -- ^ export, with a C name
+           | ErrorHandler                   -- ^ an error handler for use with the ErrorReflection extension
+           | ErrorReverse                   -- ^ attempt to reverse normalise before showing in error
+           | Reflection                     -- ^ a reflecting function, compile-time only
+           | Specialise [(Name, Maybe Int)] -- ^ specialise it, freeze these names
+           | Constructor -- ^ Data constructor type
+           | AutoHint    -- ^ use in auto implicit search
+           | PEGenerated -- ^ generated by partial evaluator
     deriving (Show, Eq)
 {-!
 deriving instance Binary FnOpt
@@ -699,67 +728,84 @@ type ProvideWhat = ProvideWhat' PTerm
 -- | Top-level declarations such as compiler directives, definitions,
 -- datatypes and typeclasses.
 data PDecl' t
-   = PFix     FC Fixity [String] -- ^ Fixity declaration
-   | PTy      (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC FnOpts Name FC t   -- ^ Type declaration (last FC is precise name location)
+   -- | Fixity declaration
+   = PFix FC Fixity [String]
+   -- | Type declaration (last FC is precise name location)
+   | PTy (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC FnOpts Name FC t
+   -- | Postulate, second FC is precise name location
    | PPostulate Bool -- external def if true
-          (Docstring (Either Err t)) SyntaxInfo FC FC FnOpts Name t -- ^ Postulate, second FC is precise name location
-   | PClauses FC FnOpts Name [PClause' t]   -- ^ Pattern clause
-   | PCAF     FC Name t -- ^ Top level constant
-   | PData    (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC DataOpts (PData' t)  -- ^ Data declaration.
-   | PParams  FC [(Name, t)] [PDecl' t] -- ^ Params block
-   | POpenInterfaces FC [Name] [PDecl' t] -- ^ Open block/declaration
+          (Docstring (Either Err t)) SyntaxInfo FC FC FnOpts Name t
+   -- | Pattern clause
+   | PClauses FC FnOpts Name [PClause' t]
+   -- | Top level constant
+   | PCAF FC Name t
+   -- | Data declaration.
+   | PData (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC DataOpts (PData' t)
+   -- | Params block
+   | PParams FC [(Name, t)] [PDecl' t]
+   -- | Open block/declaration
+   | POpenInterfaces FC [Name] [PDecl' t]
+   -- | New namespace, where FC is accurate location of the namespace
+   -- in the file
    | PNamespace String FC [PDecl' t]
-     -- ^ New namespace, where FC is accurate location of the
-     -- namespace in the file
-   | PRecord  (Docstring (Either Err t)) SyntaxInfo FC DataOpts
-              Name                 -- Record name
-              FC                   -- Record name precise location
-              [(Name, FC, Plicity, t)] -- Parameters, where FC is precise name span
-              [(Name, Docstring (Either Err t))] -- Param Docs
-              [(Maybe (Name, FC), Plicity, t, Maybe (Docstring (Either Err t)))] -- Fields
-              (Maybe (Name, FC)) -- Optional constructor name and location
-              (Docstring (Either Err t)) -- Constructor doc
-              SyntaxInfo -- Constructor SyntaxInfo
-              -- ^ Record declaration
-   | PClass   (Docstring (Either Err t)) SyntaxInfo FC
-              [(Name, t)] -- constraints
-              Name -- class name
-              FC -- accurate location of class name
-              [(Name, FC, t)] -- parameters and precise locations
-              [(Name, Docstring (Either Err t))] -- parameter docstrings
-              [(Name, FC)] -- determining parameters and precise locations
-              [PDecl' t] -- declarations
-              (Maybe (Name, FC)) -- instance constructor name and location
-              (Docstring (Either Err t)) -- instance constructor docs
-              -- ^ Type class: arguments are documentation, syntax info, source location, constraints,
-              -- class name, class name location, parameters, method declarations, optional constructor name
-   | PInstance
-       (Docstring (Either Err t)) -- Instance docs
-       [(Name, Docstring (Either Err t))] -- Parameter docs
-       SyntaxInfo
-       FC [(Name, t)] -- constraints
-       [Name] -- parent dictionaries to search for constraints
-       Accessibility
-       FnOpts
-       Name -- class
-       FC -- precise location of class
-       [t] -- parameters
-       [(Name, t)] -- Extra names in scope in the body
-       t -- full instance type
-       (Maybe Name) -- explicit name
-       [PDecl' t]
-       -- ^ Instance declaration: arguments are documentation, syntax info, source
-       -- location, constraints, class name, parameters, full instance
-       -- type, optional explicit name, and definitions
+   -- | Record name.
+   | PRecord (Docstring (Either Err t)) SyntaxInfo FC DataOpts
+             Name                 -- Record name
+             FC                   -- Record name precise location
+             [(Name, FC, Plicity, t)] -- Parameters, where FC is precise name span
+             [(Name, Docstring (Either Err t))] -- Param Docs
+             [(Maybe (Name, FC), Plicity, t, Maybe (Docstring (Either Err t)))] -- Fields
+             (Maybe (Name, FC)) -- Optional constructor name and location
+             (Docstring (Either Err t)) -- Constructor doc
+             SyntaxInfo -- Constructor SyntaxInfo
+
+   -- | Type class: arguments are documentation, syntax info, source
+   -- location, constraints, class name, class name location,
+   -- parameters, method declarations, optional constructor name
+   | PClass (Docstring (Either Err t)) SyntaxInfo FC
+            [(Name, t)]                        -- constraints
+            Name                               -- class name
+            FC                                 -- accurate location of class name
+            [(Name, FC, t)]                    -- parameters and precise locations
+            [(Name, Docstring (Either Err t))] -- parameter docstrings
+            [(Name, FC)]                       -- determining parameters and precise locations
+            [PDecl' t]                         -- declarations
+            (Maybe (Name, FC))                 -- instance constructor name and location
+            (Docstring (Either Err t))         -- instance constructor docs
+
+   -- | Instance declaration: arguments are documentation, syntax
+   -- info, source location, constraints, class name, parameters, full
+   -- instance type, optional explicit name, and definitions
+   | PInstance (Docstring (Either Err t))         -- Instance docs
+               [(Name, Docstring (Either Err t))] -- Parameter docs
+               SyntaxInfo
+               FC [(Name, t)]                     -- constraints
+               [Name]                             -- parent dictionaries to search for constraints
+               Accessibility
+               FnOpts
+               Name                               -- class
+               FC                                 -- precise location of class
+               [t]                                -- parameters
+               [(Name, t)]                        -- Extra names in scope in the body
+               t                                  -- full instance type
+               (Maybe Name)                       -- explicit name
+               [PDecl' t]
    | PDSL     Name (DSL' t) -- ^ DSL declaration
-   | PSyntax  FC Syntax -- ^ Syntax definition
+   | PSyntax  FC Syntax     -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
-   | PDirective Directive -- ^ Compiler directive.
-   | PProvider (Docstring (Either Err t)) SyntaxInfo FC FC (ProvideWhat' t) Name -- ^ Type provider. The first t is the type, the second is the term. The second FC is precise highlighting location.
-   | PTransform FC Bool t t -- ^ Source-to-source transformation rule. If
-                            -- bool is True, lhs and rhs must be convertible
-   | PRunElabDecl FC t [String] -- ^ FC is decl-level, for errors, and
-                                -- Strings represent the namespace
+   | PDirective Directive   -- ^ Compiler directive.
+
+   -- | Type provider. The first t is the type, the second is the
+   -- term. The second FC is precise highlighting location.
+   | PProvider (Docstring (Either Err t)) SyntaxInfo FC FC (ProvideWhat' t) Name
+
+   -- | Source-to-source transformation rule. If bool is True, lhs and
+   -- rhs must be convertible.
+   | PTransform FC Bool t t
+
+   -- | FC is decl-level, for errors, and Strings represent the
+   -- namespace
+   | PRunElabDecl FC t [String]
  deriving Functor
 {-!
 deriving instance Binary PDecl'
@@ -792,18 +838,19 @@ data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
                        | RClausesInstrs Name [([(Name, Term)], Term, Term)]
                        | RAddInstance Name Name
                        | RDatatypeDeclInstrs Name [PArg]
+                       -- | Datatype, constructors
                        | RDatatypeDefnInstrs Name Type [(Name, [PArg], Type)]
-                         -- ^ Datatype, constructors
+
 
 -- | For elaborator state
 data EState = EState {
-                  case_decls :: [(Name, PDecl)],
-                  delayed_elab :: [(Int, Elab' EState ())],
-                  new_tyDecls :: [RDeclInstructions],
-                  highlighting :: [(FC, OutputAnnotation)],
-                  auto_binds :: [Name], -- names bound as auto implicits
-                  implicit_warnings :: [(FC, Name)] -- Implicit warnings to report (location and global name)
-              }
+    case_decls        :: [(Name, PDecl)]
+  , delayed_elab      :: [(Int, Elab' EState ())]
+  , new_tyDecls       :: [RDeclInstructions]
+  , highlighting      :: [(FC, OutputAnnotation)]
+  , auto_binds        :: [Name]        -- ^  names bound as auto implicits
+  , implicit_warnings :: [(FC, Name)] -- ^ Implicit warnings to report (location and global name)
+  }
 
 initEState :: EState
 initEState = EState [] [] [] [] [] []
@@ -835,20 +882,23 @@ deriving instance NFData PClause'
 !-}
 
 -- | Data declaration
-data PData' t  = PDatadecl { d_name :: Name, -- ^ The name of the datatype
-                             d_name_fc :: FC, -- ^ The precise location of the type constructor name
-                             d_tcon :: t, -- ^ Type constructor
-                             d_cons :: [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, t, FC, [Name])] -- ^ Constructors
-                           }
-                 -- ^ Data declaration
-               | PLaterdecl { d_name :: Name, d_name_fc :: FC, d_tcon :: t }
-                 -- ^ "Placeholder" for data whose constructors are defined later
-    deriving Functor
+data PData' t  =
+    -- | Data declaration
+    PDatadecl { d_name    :: Name -- ^ The name of the datatype
+              , d_name_fc :: FC   -- ^ The precise location of the type constructor name
+              , d_tcon    :: t    -- ^ Type constructor
+              , d_cons    :: [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, t, FC, [Name])] -- ^ Constructors
+              }
+  -- | "Placeholder" for data whose constructors are defined later
+  | PLaterdecl { d_name    :: Name
+               , d_name_fc :: FC
+               , d_tcon    :: t
+  } deriving Functor
 
 -- | Transform the FCs in a PData and its associated terms. The first
--- function transforms the general-purpose FCs, and the second transforms
--- those that are used for semantic source highlighting, so they can be
--- treated specially.
+-- function transforms the general-purpose FCs, and the second
+-- transforms those that are used for semantic source highlighting, so
+-- they can be treated specially.
 mapPDataFC :: (FC -> FC) -> (FC -> FC) -> PData -> PData
 mapPDataFC f g (PDatadecl n nfc tycon ctors) =
   PDatadecl n (g nfc) (mapPTermFC f g tycon) (map ctorFC ctors)
@@ -1030,56 +1080,76 @@ updateNs ns t = mapPT updateRef t
 --                                      (map (updateDNs ns) ds)
 -- updateDNs ns c = c
 
-data PunInfo = IsType | IsTerm | TypeOrTerm deriving (Eq, Show, Data, Typeable)
+data PunInfo = IsType
+             | IsTerm
+             | TypeOrTerm
+             deriving (Eq, Show, Data, Typeable)
 
 -- | High level language terms
-data PTerm = PQuote Raw -- ^ Inclusion of a core term into the high-level language
-           | PRef FC [FC] Name -- ^ A reference to a variable. The FC is its precise source location for highlighting. The list of FCs is a collection of additional highlighting locations.
-           | PInferRef FC [FC] Name -- ^ A name to be defined later
-           | PPatvar FC Name -- ^ A pattern variable
-           | PLam FC Name FC PTerm PTerm -- ^ A lambda abstraction. Second FC is name span.
-           | PPi  Plicity Name FC PTerm PTerm -- ^ (n : t1) -> t2, where the FC is for the precise location of the variable
-           | PLet FC Name FC PTerm PTerm PTerm -- ^ A let binding (second FC is precise name location)
-           | PTyped PTerm PTerm -- ^ Term with explicit type
-           | PApp FC PTerm [PArg] -- ^ e.g. IO (), List Char, length x
-           | PWithApp FC PTerm PTerm -- ^ Application plus a 'with' argument
-           | PAppImpl PTerm [ImplicitInfo] -- ^ Implicit argument application (introduced during elaboration only)
-           | PAppBind FC PTerm [PArg] -- ^ implicitly bound application
-           | PMatchApp FC Name -- ^ Make an application by type matching
-           | PIfThenElse FC PTerm PTerm PTerm -- ^ Conditional expressions - elaborated to an overloading of ifThenElse
-           | PCase FC PTerm [(PTerm, PTerm)] -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
-           | PTrue FC PunInfo -- ^ Unit type..?
-           | PResolveTC FC -- ^ Solve this dictionary by type class resolution
+data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
+                                -- high-level language
+           | PRef FC [FC] Name
+             -- ^ A reference to a variable. The FC is its precise
+             -- source location for highlighting. The list of FCs is a
+             -- collection of additional highlighting locations.
+           | PInferRef FC [FC] Name              -- ^ A name to be defined later
+           | PPatvar FC Name                     -- ^ A pattern variable
+           | PLam FC Name FC PTerm PTerm         -- ^ A lambda abstraction. Second FC is name span.
+           | PPi  Plicity Name FC PTerm PTerm    -- ^ (n : t1) -> t2, where the FC is for the precise location of the variable
+           | PLet FC Name FC PTerm PTerm PTerm   -- ^ A let binding (second FC is precise name location)
+           | PTyped PTerm PTerm                  -- ^ Term with explicit type
+           | PApp FC PTerm [PArg]                -- ^ e.g. IO (), List Char, length x
+           | PWithApp FC PTerm PTerm             -- ^ Application plus a 'with' argument
+           | PAppImpl PTerm [ImplicitInfo]       -- ^ Implicit argument application (introduced during elaboration only)
+           | PAppBind FC PTerm [PArg]            -- ^ implicitly bound application
+           | PMatchApp FC Name                   -- ^ Make an application by type matching
+           | PIfThenElse FC PTerm PTerm PTerm    -- ^ Conditional expressions - elaborated to an overloading of ifThenElse
+           | PCase FC PTerm [(PTerm, PTerm)]     -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
+           | PTrue FC PunInfo                    -- ^ Unit type..?
+           | PResolveTC FC                       -- ^ Solve this dictionary by type class resolution
            | PRewrite FC (Maybe Name) PTerm PTerm (Maybe PTerm)
-                  -- ^ "rewrite" syntax, with optional rewriting function
-                  -- and optional result type
-           | PPair FC [FC] PunInfo PTerm PTerm -- ^ A pair (a, b) and whether it's a product type or a pair (solved by elaboration). The list of FCs is its punctuation.
-           | PDPair FC [FC] PunInfo PTerm PTerm PTerm -- ^ A dependent pair (tm : a ** b) and whether it's a sigma type or a pair that inhabits one (solved by elaboration). The [FC] is its punctuation.
-           | PAs FC Name PTerm -- ^ @-pattern, valid LHS only
+             -- ^ "rewrite" syntax, with optional rewriting function and
+             -- optional result type
+           | PPair FC [FC] PunInfo PTerm PTerm
+             -- ^ A pair (a, b) and whether it's a product type or a
+             -- pair (solved by elaboration). The list of FCs is its
+             -- punctuation.
+           | PDPair FC [FC] PunInfo PTerm PTerm PTerm
+             -- ^ A dependent pair (tm : a ** b) and whether it's a
+             -- sigma type or a pair that inhabits one (solved by
+             -- elaboration). The [FC] is its punctuation.
+           | PAs FC Name PTerm                            -- ^ @-pattern, valid LHS only
            | PAlternative [(Name, Name)] PAltType [PTerm] -- ^ (| A, B, C|). Includes unapplied unique name mappings for mkUniqueNames.
-           | PHidden PTerm -- ^ Irrelevant or hidden pattern
-           | PType FC -- ^ 'Type' type
-           | PUniverse Universe -- ^ Some universe
-           | PGoal FC PTerm Name PTerm -- ^ quoteGoal, used for %reflection functions
-           | PConstant FC Const -- ^ Builtin types
-           | Placeholder -- ^ Underscore
-           | PDoBlock [PDo] -- ^ Do notation
-           | PIdiom FC PTerm -- ^ Idiom brackets
+           | PHidden PTerm                                -- ^ Irrelevant or hidden pattern
+           | PType FC                                     -- ^ 'Type' type
+           | PUniverse Universe                           -- ^ Some universe
+           | PGoal FC PTerm Name PTerm                    -- ^ quoteGoal, used for %reflection functions
+           | PConstant FC Const                           -- ^ Builtin types
+           | Placeholder                                  -- ^ Underscore
+           | PDoBlock [PDo]                               -- ^ Do notation
+           | PIdiom FC PTerm                              -- ^ Idiom brackets
            | PReturn FC
-           | PMetavar FC Name -- ^ A metavariable, ?name, and its precise location
-           | PProof [PTactic] -- ^ Proof script
-           | PTactics [PTactic] -- ^ As PProof, but no auto solving
-           | PElabError Err -- ^ Error to report on elaboration
-           | PImpossible -- ^ Special case for declaring when an LHS can't typecheck
-           | PCoerced PTerm -- ^ To mark a coerced argument, so as not to coerce twice
-           | PDisamb [[T.Text]] PTerm -- ^ Preferences for explicit namespaces
-           | PUnifyLog PTerm -- ^ dump a trace of unifications when building term
-           | PNoImplicits PTerm -- ^ never run implicit converions on the term
-           | PQuasiquote PTerm (Maybe PTerm) -- ^ `(Term [: Term])
-           | PUnquote PTerm -- ^ ~Term
-           | PQuoteName Name Bool FC -- ^ `{n} where the FC is the precise highlighting for the name in particular. If the Bool is False, then it's `{{n}} and the name won't be resolved.
-           | PRunElab FC PTerm [String] -- ^ %runElab tm - New-style proof script. Args are location, script, enclosing namespace.
-           | PConstSugar FC PTerm -- ^ A desugared constant. The FC is a precise source location that will be used to highlight it later.
+           | PMetavar FC Name                             -- ^ A metavariable, ?name, and its precise location
+           | PProof [PTactic]                             -- ^ Proof script
+           | PTactics [PTactic]                           -- ^ As PProof, but no auto solving
+           | PElabError Err                               -- ^ Error to report on elaboration
+           | PImpossible                                  -- ^ Special case for declaring when an LHS can't typecheck
+           | PCoerced PTerm                               -- ^ To mark a coerced argument, so as not to coerce twice
+           | PDisamb [[T.Text]] PTerm                     -- ^ Preferences for explicit namespaces
+           | PUnifyLog PTerm                              -- ^ dump a trace of unifications when building term
+           | PNoImplicits PTerm                           -- ^ never run implicit converions on the term
+           | PQuasiquote PTerm (Maybe PTerm)              -- ^ `(Term [: Term])
+           | PUnquote PTerm                               -- ^ ~Term
+           | PQuoteName Name Bool FC
+             -- ^ `{n} where the FC is the precise highlighting for
+             -- the name in particular. If the Bool is False, then
+             -- it's `{{n}} and the name won't be resolved.
+           | PRunElab FC PTerm [String]
+             -- ^ %runElab tm - New-style proof script. Args are
+             -- location, script, enclosing namespace.
+           | PConstSugar FC PTerm
+             -- ^ A desugared constant. The FC is a precise source
+             -- location that will be used to highlight it later.
        deriving (Eq, Data, Typeable)
 
 data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
@@ -1249,9 +1319,9 @@ instance Sized a => Sized (PTactic' a) where
 type PTactic = PTactic' PTerm
 
 data PDo' t = DoExp  FC t
-            | DoBind FC Name FC t -- ^ second FC is precise name location
+            | DoBind FC Name FC t     -- ^ second FC is precise name location
             | DoBindP FC t t [(t,t)]
-            | DoLet  FC Name FC t t -- ^ second FC is precise name location
+            | DoLet  FC Name FC t t   -- ^ second FC is precise name location
             | DoLetP FC t t
     deriving (Eq, Functor, Data, Typeable)
 {-!
@@ -1262,9 +1332,9 @@ deriving instance NFData PDo'
 instance Sized a => Sized (PDo' a) where
   size (DoExp fc t)           = 1 + size fc + size t
   size (DoBind fc nm nfc t)   = 1 + size fc + size nm + size nfc + size t
-  size (DoBindP fc l r alts)  = 1 + size fc + size l + size r + size alts
-  size (DoLet fc nm nfc l r)  = 1 + size fc + size nm + size l + size r
-  size (DoLetP fc l r)        = 1 + size fc + size l + size r
+  size (DoBindP fc l r alts)  = 1 + size fc + size l  + size r   + size alts
+  size (DoLet fc nm nfc l r)  = 1 + size fc + size nm + size l   + size r
+  size (DoLetP fc l r)        = 1 + size fc + size l  + size r
 
 type PDo = PDo' PTerm
 
@@ -1272,33 +1342,40 @@ type PDo = PDo' PTerm
 -- things early which will help give a more concrete type to other
 -- variables, e.g. a before (interpTy a).
 
-data PArg' t = PImp { priority :: Int,
-                      machine_inf :: Bool, -- true if the machine inferred it
-                      argopts :: [ArgOpt],
-                      pname :: Name,
-                      getTm :: t }
-             | PExp { priority :: Int,
-                      argopts :: [ArgOpt],
-                      pname :: Name,
-                      getTm :: t }
-             | PConstraint { priority :: Int,
-                             argopts :: [ArgOpt],
-                             pname :: Name,
-                             getTm :: t }
-             | PTacImplicit { priority :: Int,
-                              argopts :: [ArgOpt],
-                              pname :: Name,
-                              getScript :: t,
-                              getTm :: t }
-    deriving (Show, Eq, Functor, Data, Typeable)
+data PArg' t = PImp { priority    :: Int
+                    , machine_inf :: Bool -- ^ true if the machine inferred it
+                    , argopts     :: [ArgOpt]
+                    , pname       :: Name
+                    , getTm       :: t
+                    }
+             | PExp { priority :: Int
+                    , argopts  :: [ArgOpt]
+                    , pname    :: Name
+                    , getTm    :: t
+                    }
+             | PConstraint { priority :: Int
+                           , argopts  :: [ArgOpt]
+                           , pname    :: Name
+                           , getTm    :: t
+                           }
+             | PTacImplicit { priority  :: Int
+                            , argopts   :: [ArgOpt]
+                            , pname     :: Name
+                            , getScript :: t
+                            , getTm     :: t
+                            }
+             deriving (Show, Eq, Functor, Data, Typeable)
 
-data ArgOpt = AlwaysShow | HideDisplay | InaccessibleArg | UnknownImp
-    deriving (Show, Eq, Data, Typeable)
+data ArgOpt = AlwaysShow
+            | HideDisplay
+            | InaccessibleArg
+            | UnknownImp
+            deriving (Show, Eq, Data, Typeable)
 
 instance Sized a => Sized (PArg' a) where
   size (PImp p _ l nm trm)            = 1 + size nm + size trm
   size (PExp p l nm trm)              = 1 + size nm + size trm
-  size (PConstraint p l nm trm)       = 1 + size nm +size nm +  size trm
+  size (PConstraint p l nm trm)       = 1 + size nm + size nm  +  size trm
   size (PTacImplicit p l nm scr trm)  = 1 + size nm + size scr + size trm
 
 {-!
@@ -1375,28 +1452,30 @@ highestFC (PAppImpl t _)          = highestFC t
 
 -- Type class data
 
-data ClassInfo = CI { instanceCtorName :: Name,
-                      class_methods :: [(Name, (Bool, FnOpts, PTerm))], -- flag whether it's a "data" method
-                      class_defaults :: [(Name, (Name, PDecl))], -- method name -> default impl
-                      class_default_superclasses :: [PDecl],
-                      class_params :: [Name],
-                      class_instances :: [(Name, Bool)], -- the Bool is whether to include in instance search, so named instances are excluded
-                      class_determiners :: [Int] }
-    deriving Show
+data ClassInfo = CI {
+    instanceCtorName           :: Name
+  , class_methods              :: [(Name, (Bool, FnOpts, PTerm))] -- ^ flag whether it's a "data" method
+  , class_defaults             :: [(Name, (Name, PDecl))]         -- ^ method name -> default impl
+  , class_default_superclasses :: [PDecl]
+  , class_params               :: [Name]
+  , class_instances            :: [(Name, Bool)] -- ^ the Bool is whether to include in instance search, so named instances are excluded
+  , class_determiners          :: [Int]
+  } deriving Show
 {-!
 deriving instance Binary ClassInfo
 deriving instance NFData ClassInfo
 !-}
 
 -- Record data
-data RecordInfo = RI { record_parameters :: [(Name,PTerm)],
-                       record_constructor :: Name,
-                       record_projections :: [Name] }
-    deriving Show
+data RecordInfo = RI {
+    record_parameters  :: [(Name,PTerm)]
+  , record_constructor :: Name
+  , record_projections :: [Name]
+  } deriving Show
 
 -- Type inference data
 
-data TIData = TIPartial -- ^ a function with a partially defined type
+data TIData = TIPartial         -- ^ a function with a partially defined type
             | TISolution [Term] -- ^ possible solutions to a metavariable in a type
     deriving Show
 
@@ -1408,27 +1487,28 @@ deriving instance Binary FnInfo
 deriving instance NFData FnInfo
 !-}
 
-data OptInfo = Optimise { inaccessible :: [(Int,Name)],  -- includes names for error reporting
-                          detaggable :: Bool }
-    deriving Show
+data OptInfo = Optimise {
+    inaccessible :: [(Int,Name)]  -- includes names for error reporting
+  , detaggable :: Bool
+  } deriving Show
 {-!
 deriving instance Binary OptInfo
 deriving instance NFData OptInfo
 !-}
 
 -- | Syntactic sugar info
-data DSL' t = DSL { dsl_bind    :: t,
-                    dsl_return  :: t,
-                    dsl_apply   :: t,
-                    dsl_pure    :: t,
-                    dsl_var     :: Maybe t,
-                    index_first :: Maybe t,
-                    index_next  :: Maybe t,
-                    dsl_lambda  :: Maybe t,
-                    dsl_let     :: Maybe t,
-                    dsl_pi      :: Maybe t
-                  }
-    deriving (Show, Functor)
+data DSL' t = DSL {
+    dsl_bind    :: t
+  , dsl_return  :: t
+  , dsl_apply   :: t
+  , dsl_pure    :: t
+  , dsl_var     :: Maybe t
+  , index_first :: Maybe t
+  , index_next  :: Maybe t
+  , dsl_lambda  :: Maybe t
+  , dsl_let     :: Maybe t
+  , dsl_pi      :: Maybe t
+  } deriving (Show, Functor)
 {-!
 deriving instance Binary DSL'
 deriving instance NFData DSL'
@@ -1436,7 +1516,9 @@ deriving instance NFData DSL'
 
 type DSL = DSL' PTerm
 
-data SynContext = PatternSyntax | TermSyntax | AnySyntax
+data SynContext = PatternSyntax
+                | TermSyntax
+                | AnySyntax
     deriving Show
 {-!
 deriving instance Binary SynContext
@@ -1536,24 +1618,25 @@ deriving instance Binary Using
 deriving instance NFData Using
 !-}
 
-data SyntaxInfo = Syn { using :: [Using],
-                        syn_params :: [(Name, PTerm)],
-                        syn_namespace :: [String],
-                        no_imp :: [Name],
-                        imp_methods :: [Name], -- class methods. When expanding
-                           -- implicits, these should be expanded even under
-                           -- binders
-                        decoration :: Name -> Name,
-                        inPattern :: Bool,
-                        implicitAllowed :: Bool,
-                        constraintAllowed :: Bool,
-                        maxline :: Maybe Int,
-                        mut_nesting :: Int,
-                        dsl_info :: DSL,
-                        syn_in_quasiquote :: Int,
-                        syn_toplevel :: Bool,
-                        withAppAllowed :: Bool }
-    deriving Show
+data SyntaxInfo = Syn {
+    using             :: [Using]
+  , syn_params        :: [(Name, PTerm)]
+  , syn_namespace     :: [String]
+  , no_imp            :: [Name]
+  , imp_methods       :: [Name]
+  -- ^ class methods. When expanding implicits, these should be
+  -- expanded even under binders
+  , decoration        :: Name -> Name
+  , inPattern         :: Bool
+  , implicitAllowed   :: Bool
+  , constraintAllowed :: Bool
+  , maxline           :: Maybe Int
+  , mut_nesting       :: Int
+  , dsl_info          :: DSL
+  , syn_in_quasiquote :: Int
+  , syn_toplevel      :: Bool
+  , withAppAllowed    :: Bool
+  } deriving Show
 {-!
 deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
@@ -1693,9 +1776,9 @@ instance Show PData where
 instance Pretty PTerm OutputAnnotation where
   pretty = prettyImp defaultPPOption
 
--- | Colourise annotations according to an Idris state. It ignores the names
--- in the annotation, as there's no good way to show extended information on a
--- terminal.
+-- | Colourise annotations according to an Idris state. It ignores the
+-- names in the annotation, as there's no good way to show extended
+-- information on a terminal.
 annotationColour :: IState -> OutputAnnotation -> Maybe IdrisColour
 annotationColour ist _ | not (idris_colourRepl ist) = Nothing
 annotationColour ist (AnnConst c) =
@@ -1724,8 +1807,8 @@ annotationColour ist (AnnTextFmt fmt) = Just (colour fmt)
 annotationColour ist _ = Nothing
 
 
--- | Colourise annotations according to an Idris state. It ignores the names
--- in the annotation, as there's no good way to show extended
+-- | Colourise annotations according to an Idris state. It ignores the
+-- names in the annotation, as there's no good way to show extended
 -- information on a terminal. Note that strings produced this way will
 -- not be coloured on Windows, so the use of the colour rendering
 -- functions in Idris.Output is to be preferred.
@@ -1735,9 +1818,10 @@ consoleDecorate ist ann = maybe id colourise (annotationColour ist ann)
 isPostulateName :: Name -> IState -> Bool
 isPostulateName n ist = S.member n (idris_postulates ist)
 
--- | Pretty-print a high-level closed Idris term with no information about precedence/associativity
-prettyImp :: PPOption -- ^^ pretty printing options
-          -> PTerm -- ^^ the term to pretty-print
+-- | Pretty-print a high-level closed Idris term with no information
+-- about precedence/associativity
+prettyImp :: PPOption -- ^ pretty printing options
+          -> PTerm    -- ^ the term to pretty-print
           -> Doc OutputAnnotation
 prettyImp impl = pprintPTerm impl [] [] []
 
@@ -1747,12 +1831,13 @@ prettyImp impl = pprintPTerm impl [] [] []
 prettyIst ::  IState -> PTerm -> Doc OutputAnnotation
 prettyIst ist = pprintPTerm (ppOptionIst ist) [] [] (idris_infixes ist)
 
--- | Pretty-print a high-level Idris term in some bindings context with infix info
-pprintPTerm :: PPOption -- ^^ pretty printing options
-            -> [(Name, Bool)] -- ^^ the currently-bound names and whether they are implicit
-            -> [Name] -- ^^ names to always show in pi, even if not used
-            -> [FixDecl] -- ^^ Fixity declarations
-            -> PTerm -- ^^ the term to pretty-print
+-- | Pretty-print a high-level Idris term in some bindings context
+-- with infix info.
+pprintPTerm :: PPOption       -- ^ pretty printing options
+            -> [(Name, Bool)] -- ^ the currently-bound names and whether they are implicit
+            -> [Name]         -- ^ names to always show in pi, even if not used
+            -> [FixDecl]      -- ^ Fixity declarations
+            -> PTerm          -- ^ the term to pretty-print
             -> Doc OutputAnnotation
 pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
   where
@@ -2125,8 +2210,8 @@ basename :: Name -> Name
 basename (NS n _) = basename n
 basename n        = n
 
--- | Determine whether a name was the one inserted for a hole or
--- guess by the delaborator
+-- | Determine whether a name was the one inserted for a hole or guess
+-- by the delaborator
 isHoleName :: Name -> Bool
 isHoleName (UN n) = n == T.pack "[__]"
 isHoleName _      = False
@@ -2136,12 +2221,11 @@ containsHole :: PTerm -> Bool
 containsHole pterm = or [isHoleName n | PRef _ _ n <- take 1000 $ universe pterm]
 
 -- | Pretty-printer helper for names that attaches the correct annotations
-prettyName
-  :: Bool -- ^^ whether the name should be parenthesised if it is an infix operator
-  -> Bool -- ^^ whether to show namespaces
-  -> [(Name, Bool)] -- ^^ the current bound variables and whether they are implicit
-  -> Name -- ^^ the name to pprint
-  -> Doc OutputAnnotation
+prettyName :: Bool           -- ^ whether the name should be parenthesised if it is an infix operator
+           -> Bool           -- ^ whether to show namespaces
+           -> [(Name, Bool)] -- ^ the current bound variables and whether they are implicit
+           -> Name           -- ^ the name to pprint
+           -> Doc OutputAnnotation
 prettyName infixParen showNS bnd n
     | (MN _ s)  <- n, isPrefixOf "_" $ T.unpack s = text "_"
     | (UN n')   <- n, T.unpack n' == "_" = text "_"
@@ -2228,11 +2312,11 @@ getAll = map getTm
 
 
 -- | Show Idris name
-showName :: Maybe IState   -- ^^ the Idris state, for information about names and colours
-         -> [(Name, Bool)] -- ^^ the bound variables and whether they're implicit
-         -> PPOption         -- ^^ pretty printing options
-         -> Bool           -- ^^ whether to colourise
-         -> Name           -- ^^ the term to show
+showName :: Maybe IState   -- ^ the Idris state, for information about names and colours
+         -> [(Name, Bool)] -- ^ the bound variables and whether they're implicit
+         -> PPOption       -- ^ pretty printing options
+         -> Bool           -- ^ whether to colourise
+         -> Name           -- ^ the term to show
          -> String
 showName ist bnd ppo colour n = case ist of
                                    Just i   -> if colour then colourise n (idris_colourTheme i) else showbasic n
@@ -2256,8 +2340,8 @@ showName ist bnd ppo colour n = case ist of
                                       -- (like error messages). Thus, unknown vars are colourised as implicits.
                                       | otherwise         -> colouriseImplicit t name
 
-showTm :: IState -- ^^ the Idris state, for information about identifiers and colours
-       -> PTerm  -- ^^ the term to show
+showTm :: IState -- ^ the Idris state, for information about identifiers and colours
+       -> PTerm  -- ^ the term to show
        -> String
 showTm ist = displayDecorated (consoleDecorate ist) .
              renderPretty 0.8 100000 .

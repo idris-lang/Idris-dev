@@ -1,6 +1,6 @@
 module Idris.ASTUtils(Field(), cg_usedpos, ctxt_lookup, fgetState, fmodifyState,
                       fputState, idris_fixities, ist_callgraph, ist_optimisation,
-                      known_classes, known_terms, opt_detaggable, opt_inaccessible, 
+                      known_classes, known_terms, opt_detaggable, opt_inaccessible,
                       opts_idrisCmdline, repl_definitions) where
 
 -- This implements just a few basic lens-like concepts to ease state updates.
@@ -65,8 +65,9 @@ fputState field x = fmodifyState field (const x)
 fmodifyState :: MonadState s m => Field s a -> (a -> a) -> m ()
 fmodifyState field f = modify $ fmodify field f
 
--- Exact-name context lookup; uses Nothing for deleted values (read+write!).
--- 
+-- | Exact-name context lookup; uses Nothing for deleted values
+-- (read+write!).
+--
 -- Reading a non-existing value yields Nothing,
 -- writing Nothing deletes the value (if it existed).
 ctxt_lookup :: Name -> Field (Ctxt a) (Maybe a)
@@ -93,7 +94,7 @@ maybe_default dflt = Field (fromMaybe dflt) (const . Just)
 -- OptInfo
 ----------
 
--- the optimisation record for the given (exact) name
+-- | the optimisation record for the given (exact) name
 ist_optimisation :: Name -> Field IState OptInfo
 ist_optimisation n =
       maybe_default Optimise
@@ -103,7 +104,7 @@ ist_optimisation n =
     . ctxt_lookup n
     . Field idris_optimisation (\v ist -> ist{ idris_optimisation = v })
 
--- two fields of the optimisation record
+-- | two fields of the optimisation record
 opt_inaccessible :: Field OptInfo [(Int, Name)]
 opt_inaccessible = Field inaccessible (\v opt -> opt{ inaccessible = v })
 
@@ -111,10 +112,7 @@ opt_detaggable :: Field OptInfo Bool
 opt_detaggable = Field detaggable (\v opt -> opt{ detaggable = v })
 
 
--- CGInfo
----------
-
--- callgraph record for the given (exact) name
+-- | callgraph record for the given (exact) name
 ist_callgraph :: Name -> Field IState CGInfo
 ist_callgraph n =
       maybe_default CGInfo
@@ -126,18 +124,16 @@ ist_callgraph n =
 cg_usedpos :: Field CGInfo [(Int, [UsageReason])]
 cg_usedpos = Field usedpos (\v cg -> cg{ usedpos = v })
 
--- Commandline flags
---------------------
-
+-- | Commandline flags
 opts_idrisCmdline :: Field IState [Opt]
 opts_idrisCmdline =
       Field opt_cmdline (\v opts -> opts{ opt_cmdline = v })
     . Field idris_options (\v ist -> ist{ idris_options = v })
 
--- TT Context
--------------
--- This has a terrible name, but I'm not sure of a better one that isn't
--- confusingly close to tt_ctxt
+-- | TT Context
+--
+-- This has a terrible name, but I'm not sure of a better one that
+-- isn't confusingly close to tt_ctxt
 known_terms :: Field IState (Ctxt (Def, Injectivity, Accessibility, Totality, MetaInformation))
 known_terms = Field (definitions . tt_ctxt)
                     (\v state -> state {tt_ctxt = (tt_ctxt state) {definitions = v}})
@@ -146,11 +142,10 @@ known_classes :: Field IState (Ctxt ClassInfo)
 known_classes = Field idris_classes (\v state -> state {idris_classes = idris_classes state})
 
 
--- Names defined at the repl
-----------------------------
+-- | Names defined at the repl
 repl_definitions :: Field IState [Name]
 repl_definitions = Field idris_repl_defs (\v state -> state {idris_repl_defs = v})
 
--- Fixity declarations in an IState
+-- | Fixity declarations in an IState
 idris_fixities :: Field IState [FixDecl]
 idris_fixities = Field idris_infixes (\v state -> state {idris_infixes = v})

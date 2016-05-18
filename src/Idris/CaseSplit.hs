@@ -50,11 +50,11 @@ Always take the "more specific" argument when there is a discrepancy, i.e.
 names over '_', patterns over names, etc.
 -}
 
--- Given a variable to split, and a term application, return a list of
--- variable updates, paired with a flag to say whether the given update
--- typechecks (False = impossible)
--- if the flag is 'False' the splits should be output with the 'impossible'
--- flag, otherwise they should be output as normal
+-- | Given a variable to split, and a term application, return a list
+-- of variable updates, paired with a flag to say whether the given
+-- update typechecks (False = impossible) if the flag is 'False' the
+-- splits should be output with the 'impossible' flag, otherwise they
+-- should be output as normal
 split :: Name -> PTerm -> Idris (Bool, [[(Name, PTerm)]])
 split n t'
    = do ist <- getIState
@@ -170,8 +170,8 @@ mergePat ist orig new t =
                                       put (ms { namemap = ((n', n) : namemap ms) })
     addNameMap _ = return ()
 
--- If any names are unified, make sure they stay unified. Always prefer
--- user provided name (first pattern)
+-- | If any names are unified, make sure they stay unified. Always
+-- prefer user provided name (first pattern)
 mergePat' ist (PPatvar fc n) new t
   = mergePat' ist (PRef fc [] n) new t
 mergePat' ist old (PPatvar fc n) t
@@ -240,7 +240,7 @@ elabNewPat t = idrisCatch (do (tm, ty) <- elabVal recinfo ELHS t
                               i <- getIState
                               return (True, delab i tm))
                           (\e -> do i <- getIState
-                                    logElab 5 $ "Not a valid split:\n" ++ showTmImpls t ++ "\n" 
+                                    logElab 5 $ "Not a valid split:\n" ++ showTmImpls t ++ "\n"
                                                      ++ pshow i e
                                     return (False, t))
 
@@ -352,7 +352,7 @@ replaceSplits l ups impossible
     updatePat start n tm (c:rest) = c : updatePat (not ((isAlphaNum c) || c == '_')) n tm rest
 
     addBrackets tm | ' ' `elem` tm
-                   , not (isPrefixOf "(" tm && isSuffixOf ")" tm) 
+                   , not (isPrefixOf "(" tm && isSuffixOf ")" tm)
                        = "(" ++ tm ++ ")"
                    | otherwise = tm
 
@@ -373,14 +373,14 @@ nameRoot acc nm =
 
 -- Show a name for use in pattern definitions on the lhs
 showLHSName :: Name -> String
-showLHSName n = let fn = show n in 
+showLHSName n = let fn = show n in
                     if any (flip elem opChars) fn
                        then "(" ++ fn ++ ")"
                        else fn
 
 -- Show a name for the purpose of generating a metavariable name on the rhs
 showRHSName :: Name -> String
-showRHSName n = let fn = show n in 
+showRHSName n = let fn = show n in
                     if any (flip elem opChars) fn
                        then "op"
                        else fn

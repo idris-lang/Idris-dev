@@ -9,9 +9,8 @@ import Util.Pretty
 import Data.List
 import Debug.Trace
 
--- For display purposes, apply any 'error reversal' transformations so that
--- errors will be more readable
-
+-- | For display purposes, apply any 'error reversal' transformations
+-- so that errors will be more readable
 errReverse :: IState -> Term -> Term
 errReverse ist t = rewrite 5 t -- (elideLambdas t)
   where
@@ -28,7 +27,7 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
     -- the rule as invalid and return t)
 
     applyNames ns t (Bind n (PVar ty) scl) (Bind n' (PVar ty') scr)
-       | n == n' = applyNames (n : ns) t (instantiate (P Ref n ty) scl) 
+       | n == n' = applyNames (n : ns) t (instantiate (P Ref n ty) scl)
                                          (instantiate (P Ref n' ty') scr)
        | otherwise = t
     applyNames ns t l r = matchTerm ns l r t
@@ -38,7 +37,7 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
     matchTerm ns l r (App s f a) = let f' = matchTerm ns l r f
                                        a' = matchTerm ns l r a in
                                        App s f' a'
-    matchTerm ns l r (Bind n b sc) = let b' = fmap (matchTerm ns l r) b 
+    matchTerm ns l r (Bind n b sc) = let b' = fmap (matchTerm ns l r) b
                                          sc' = matchTerm ns l r sc in
                                          Bind n b' sc'
     matchTerm ns l r t = t
@@ -48,7 +47,7 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
 
     -- If any duplicate mappings, it's a failure
     combine [] = Just []
-    combine ((x, t) : xs) 
+    combine ((x, t) : xs)
        | Just _ <- lookup x xs = Nothing
        | otherwise = do xs' <- combine xs
                         Just ((x, t) : xs')
@@ -64,9 +63,8 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
     -- it as it won't be very enlightening.
 
     elideLambdas (App s f a) = App s (elideLambdas f) (elideLambdas a)
-    elideLambdas (Bind n (Lam t) sc) 
+    elideLambdas (Bind n (Lam t) sc)
        | size sc > 200 = P Ref (sUN "...") Erased
     elideLambdas (Bind n b sc)
        = Bind n (fmap elideLambdas b) (elideLambdas sc)
     elideLambdas t = t
-

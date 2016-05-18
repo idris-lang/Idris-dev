@@ -101,7 +101,7 @@ genClauses fc n xs given
         -- anything based on earlier values
         genPH :: IState -> Type -> [Bool]
         genPH ist (Bind n (Pi _ ty _) sc) = notConcrete ist ty : genPH ist sc
-        genPH ist ty = [] 
+        genPH ist ty = []
 
         notConcrete ist t | (P _ n _, args) <- unApply t,
                            not (isConName n (tt_ctxt ist)) = True
@@ -315,9 +315,8 @@ genAll i (addPH, args)
 upd :: t -> PArg' t -> PArg' t
 upd p' p = p { getTm = p' }
 
--- Check whether function and all descendants cover all cases (partial is
--- okay, as long as it's due to recursion)
-
+-- | Check whether function and all descendants cover all cases
+-- (partial is okay, as long as it's due to recursion)
 checkAllCovering :: FC -> [Name] -> Name -> Name -> Idris ()
 checkAllCovering fc done top n | not (n `elem` done)
    = do i <- get
@@ -334,10 +333,10 @@ checkAllCovering fc done top n | not (n `elem` done)
              x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()
 
--- | Check if, in a given group of type declarations mut_ns,
--- the constructor cn : ty is strictly positive,
--- and update the context accordingly
-checkPositive :: [Name] -- ^ the group of type declarations
+-- | Check if, in a given group of type declarations mut_ns, the
+-- constructor cn : ty is strictly positive, and update the context
+-- accordingly
+checkPositive :: [Name]       -- ^ the group of type declarations
               -> (Name, Type) -- ^ the constructor
               -> Idris Totality
 checkPositive mut_ns (cn, ty')
@@ -368,8 +367,8 @@ checkPositive mut_ns (cn, ty')
     noRec arg = all (\x -> x `notElem` mut_ns) (allTTNames arg)
 
 
--- | Calculate the totality of a function from its patterns.
--- Either follow the size change graph (if inductive) or check for
+-- | Calculate the totality of a function from its patterns.  Either
+-- follow the size change graph (if inductive) or check for
 -- productivity (if coinductive)
 calcTotality :: FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcTotality fc n pats
@@ -508,7 +507,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
   scgPat (lhs, rhs) = let lhs' = delazy lhs
                           rhs' = delazy rhs
                           (f, pargs) = unApply (dePat lhs') in
-                            findCalls [] Toplevel (dePat rhs') (patvars lhs') 
+                            findCalls [] Toplevel (dePat rhs') (patvars lhs')
                                       (zip pargs [0..])
 
   findCalls cases Delayed ap@(P _ n _) pvs args
@@ -526,7 +525,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
      -- check under guarded constructors.
      | (P _ (UN del) _, [_,_,arg]) <- unApply ap,
        Guarded <- guarded,
-       del == txt "Delay" 
+       del == txt "Delay"
            = findCalls cases Delayed arg pvs pargs
      | (P _ n _, args) <- unApply ap,
        Delayed <- guarded,
@@ -536,7 +535,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
      | (P _ n _, args) <- unApply ap,
        Delayed <- guarded,
        isConName n (tt_ctxt ist)
-           = -- Still under a 'Delay' and constructor guarded, so check 
+           = -- Still under a 'Delay' and constructor guarded, so check
              -- just the arguments to the constructor, remaining Delayed
              concatMap (\x -> findCalls cases guarded x pvs pargs) args
      | (P _ n _, args) <- unApply ap,
@@ -551,7 +550,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
                 then findCallsCase (n : cases) guarded n args pvs pargs
                 else []
      | (P _ n _, args) <- unApply ap
-        -- Ordinary call, not under a delay. 
+        -- Ordinary call, not under a delay.
         -- If n is a constructor, set 'args' as Guarded
         = let nguarded = case guarded of
                               Unguarded -> Unguarded
@@ -579,20 +578,20 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
   -- are okay for building the size change
   findCallsCase cases guarded n args pvs pargs
       = case lookupDefExact n (tt_ctxt ist) of
-           Just (CaseOp _ _ _ pats _ cd) -> 
+           Just (CaseOp _ _ _ pats _ cd) ->
                 concatMap (fccPat cases pvs pargs args guarded) (rights pats)
            Nothing -> []
 
-  fccPat cases pvs pargs args g (lhs, rhs) 
+  fccPat cases pvs pargs args g (lhs, rhs)
       = let lhs' = delazy lhs
             rhs' = delazy rhs
-            (f, pargs_case) = unApply (dePat lhs') 
+            (f, pargs_case) = unApply (dePat lhs')
             -- pargs is a pair of a term, and the argument position that
             -- term appears in. If any of the arguments to the case block
             -- are also on the lhs, we also want those patterns to appear
             -- in the parg list so that we'll spot patterns which are
             -- smaller than then
-            newpargs = newPArg args pargs 
+            newpargs = newPArg args pargs
             -- Now need to update the rhs of the case with the names in the
             -- outer definition: In rhs', wherever we see what's in pargs_case,
             -- replace it with the corresponding thing in pargs
@@ -602,11 +601,11 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
                findCalls cases g newrhs pvs pargs'
     where
       doCaseSubs [] tm = tm
-      doCaseSubs ((x, x') : cs) tm 
+      doCaseSubs ((x, x') : cs) tm
            = doCaseSubs (subIn x x' cs) (substTerm x x' tm)
-      
+
       subIn x x' [] = []
-      subIn x x' ((l, r) : cs) 
+      subIn x x' ((l, r) : cs)
           = (substTerm x x' l, substTerm x x' r) : subIn x x' cs
 
   addPArg (Just (t, i) : ts) (t' : ts') = (t', i) : addPArg ts ts'
@@ -639,7 +638,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
             as == txt "assert_smaller" && arg == p
                   = Just (i, Smaller)
           | smaller Nothing a (p, Nothing) = Just (i, Smaller)
-          | otherwise = checkSize a ps 
+          | otherwise = checkSize a ps
       checkSize a [] = Nothing
 
       -- the smaller thing we find must be defined in the same group of mutally
@@ -692,7 +691,7 @@ checkSizeChange n = do
                   -- (Unchecked is okay as we'll spot problems here)
                   let tot = map (checkMP ist n (getArity ist n)) ms
                   logCoverage 4 $ "Generated " ++ show (length tot) ++ " paths"
-                  logCoverage 5 $ "Paths for " ++ show n ++ " yield " ++ 
+                  logCoverage 5 $ "Paths for " ++ show n ++ " yield " ++
                        (showSep "\n" (map show (zip ms tot)))
                   return (noPartial tot)
        [] -> do logCoverage 5 $ "No paths for " ++ show n
@@ -826,5 +825,3 @@ totalityCheckBlock = do
          mapM_ buildSCG (idris_totcheck ist)
          mapM_ checkDeclTotality (idris_totcheck ist)
          clear_totcheck
-
-

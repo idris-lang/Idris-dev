@@ -8,8 +8,8 @@ import Idris.AbsSyntax
 inlineDef :: IState -> [([Name], Term, Term)] -> [([Name], Term, Term)]
 inlineDef ist ds = map (\ (ns, lhs, rhs) -> (ns, lhs, inlineTerm ist rhs)) ds
 
--- Inlining is either top level (i.e. not in a function arg) or argument level
-
+-- | Inlining is either top level (i.e. not in a function arg) or argument level
+--
 -- For each application in a term:
 --    * Check if the function is inlinable
 --        (Dictionaries are inlinable in an argument, not otherwise)
@@ -17,7 +17,6 @@ inlineDef ist ds = map (\ (ns, lhs, rhs) -> (ns, lhs, inlineTerm ist rhs)) ds
 --        + If successful, then continue on the result (top level)
 --        + If not, reduce the arguments (argument level) and try again
 --      - If not, inline all the arguments (top level)
-
 inlineTerm :: IState -> Term -> Term
 inlineTerm ist tm = inl tm where
   inl orig@(P _ n _) = inlApp n [] orig
@@ -28,4 +27,3 @@ inlineTerm ist tm = inl tm where
   inl tm = tm
 
   inlApp fn args orig = orig
-

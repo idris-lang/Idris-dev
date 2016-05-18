@@ -353,12 +353,14 @@ checkVisibility fc n minAcc acc ref
                               else return ()
 
 
--- | Find the type constructor arguments that are parameters, given a list of constructor types.
---   Parameters are names which are unchanged across the structure,
---   which appear exactly once in the return type of a constructor
---   First, find all applications of the constructor, then check over
---   them for repeated arguments
-findParams :: Name -- ^ the name of the family that we are finding parameters for
+-- | Find the type constructor arguments that are parameters, given a
+-- list of constructor types.
+--
+-- Parameters are names which are unchanged across the structure,
+-- which appear exactly once in the return type of a constructor
+-- First, find all applications of the constructor, then check over
+-- them for repeated arguments
+findParams :: Name   -- ^ the name of the family that we are finding parameters for
            -> [Type] -- ^ the declared constructor types
            -> [Int]
 findParams tyn ts =
@@ -448,5 +450,3 @@ propagateParams i ps t bound (PRef fc hls n)
           isImplicit (PImp _ _ _ x _ : is) n | x == n = True
           isImplicit (_ : is) n = isImplicit is n
 propagateParams i ps t bound x = x
-
-

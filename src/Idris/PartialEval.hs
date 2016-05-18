@@ -27,11 +27,12 @@ data PEArgType = ImplicitS -- ^ Implicit static argument
 -- | A partially evaluated function. pe_app captures the lhs of the
 -- new definition, pe_def captures the rhs, and pe_clauses is the
 -- specialised implementation.
--- pe_simple is set if the result is always reducible, because in such a
--- case we'll also need to reduce the static argument
+--
+-- pe_simple is set if the result is always reducible, because in such
+-- a case we'll also need to reduce the static argument
 data PEDecl = PEDecl { pe_app :: PTerm, -- new application
                        pe_def :: PTerm, -- old application
-                       pe_clauses :: [(PTerm, PTerm)], -- clauses of new application 
+                       pe_clauses :: [(PTerm, PTerm)], -- clauses of new application
                        pe_simple :: Bool -- if just one reducible clause
                      }
 
@@ -42,14 +43,14 @@ data PEDecl = PEDecl { pe_app :: PTerm, -- new application
 -- must have reduced at least once.
 -- If we don't do this, we might end up making an infinite function after
 -- applying the transformation.
-partial_eval :: Context -> 
-                [(Name, Maybe Int)] ->
-                [Either Term (Term, Term)] ->
-                Maybe [Either Term (Term, Term)]
+partial_eval :: Context
+            -> [(Name, Maybe Int)]
+            -> [Either Term (Term, Term)]
+            -> Maybe [Either Term (Term, Term)]
 partial_eval ctxt ns_in tms = mapM peClause tms where
    ns = squash ns_in
-   squash ((n, Just x) : ns) 
-       | Just (Just y) <- lookup n ns 
+   squash ((n, Just x) : ns)
+       | Just (Just y) <- lookup n ns
                    = squash ((n, Just (x + y)) : drop n ns)
        | otherwise = (n, Just x) : squash ns
    squash (n : ns) = n : squash ns
@@ -58,7 +59,7 @@ partial_eval ctxt ns_in tms = mapM peClause tms where
    drop n ((m, _) : ns) | n == m = ns
    drop n (x : ns) = x : drop n ns
    drop n [] = []
-   
+
    -- If the term is not a clause, it is simply kept as is
    peClause (Left t) = Just $ Left t
    -- If the term is a clause, specialise the right hand side
@@ -68,7 +69,7 @@ partial_eval ctxt ns_in tms = mapM peClause tms where
                 return (Right (lhs, rhs'))
 
    -- TMP HACK until I do PE by WHNF rather than using main evaluator
-   toLimit (n, Nothing) | isTCDict n ctxt = (n, 2) 
+   toLimit (n, Nothing) | isTCDict n ctxt = (n, 2)
    toLimit (n, Nothing) = (n, 65536) -- somewhat arbitrary reduction limit
    toLimit (n, Just l) = (n, l)
 
@@ -103,7 +104,7 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
     unifyEq (imp@(ImplicitD, v) : xs) (Bind n (Pi i t k) sc)
          = do amap <- get
               case lookup imp amap of
-                   Just n' -> 
+                   Just n' ->
                         do put (amap ++ [((UnifiedD, Erased), n)])
                            sc' <- unifyEq xs (subst n (P Bound n' Erased) sc)
                            return (Bind n (Pi i t k) sc') -- erase later
@@ -119,12 +120,12 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
                       put (args ++ (zip xs (repeat (sUN "_"))))
                       return t
 
--- | Creates an Idris type declaration given current state and a 
+-- | Creates an Idris type declaration given current state and a
 -- specialised TT function application type.
 -- Can be used in combination with the output of 'specType'.
 --
 -- This should: specialise any static argument position, then generalise
--- over any function applications in the result. 
+-- over any function applications in the result.
 mkPE_TyDecl :: IState -> [(PEArgType, Term)] -> Type -> PTerm
 mkPE_TyDecl ist args ty = mkty args ty
   where
@@ -132,7 +133,7 @@ mkPE_TyDecl ist args ty = mkty args ty
        = PPi expl n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
     mkty ((ImplicitD, v) : xs) (Bind n (Pi _ t k) sc)
          | concreteClass ist t = mkty xs sc
-         | classConstraint ist t 
+         | classConstraint ist t
              = PPi constraint n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
          | otherwise = PPi impl n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
 
@@ -141,7 +142,7 @@ mkPE_TyDecl ist args ty = mkty args ty
     mkty [] t = delab ist t
 
     generaliseIn tm = evalState (gen tm) 0
-    
+
     gen tm | (P _ fn _, args) <- unApply tm,
              isFnName fn (tt_ctxt ist)
         = do nm <- get
@@ -166,26 +167,26 @@ concreteClass ist v
     | (P _ c _, args) <- unApply v = all concrete args
     | otherwise = False
   where concrete (Constant _) = True
-        concrete tm | (P _ n _, args) <- unApply tm 
+        concrete tm | (P _ n _, args) <- unApply tm
                          = case lookupTy n (tt_ctxt ist) of
                                  [_] -> all concrete args
                                  _ -> False
                     | otherwise = False
 
-mkNewPats :: IState ->
-             [(Term, Term)] -> -- definition to specialise
-             [(PEArgType, Term)] -> -- arguments to specialise with
-             Name -> -- New name
-             Name -> -- Specialised function name
-             PTerm -> -- Default lhs
-             PTerm -> -- Default rhs
-             PEDecl
+mkNewPats :: IState
+          -> [(Term, Term)]      -- ^ definition to specialise
+          -> [(PEArgType, Term)] -- ^ arguments to specialise with
+          -> Name                -- ^ New name
+          -> Name                -- ^ Specialised function name
+          -> PTerm               -- ^ Default lhs
+          -> PTerm               -- ^ Default rhs
+          -> PEDecl
 -- If all of the dynamic positions on the lhs are variables (rather than
 -- patterns or constants) then we can just make a simple definition
 -- directly applying the specialised function, since we know the
 -- definition isn't going to block on any of the dynamic arguments
 -- in this case
-mkNewPats ist d ns newname sname lhs rhs | all dynVar (map fst d) 
+mkNewPats ist d ns newname sname lhs rhs | all dynVar (map fst d)
      = PEDecl lhs rhs [(lhs, rhs)] True
   where dynVar ap = case unApply ap of
                          (_, args) -> dynArgs ns args
@@ -197,32 +198,32 @@ mkNewPats ist d ns newname sname lhs rhs | all dynVar (map fst d)
         -- do some more work
         dynArgs (_ : ns) (V _     : as) = dynArgs ns as
         dynArgs (_ : ns) (P _ _ _ : as) = dynArgs ns as
-        dynArgs _ _ = False -- and now we'll get stuck 
+        dynArgs _ _ = False -- and now we'll get stuck
 
 mkNewPats ist d ns newname sname lhs rhs =
     PEDecl lhs rhs (map mkClause d) False
-  where 
+  where
     mkClause :: (Term, Term) -> (PTerm, PTerm)
     mkClause (oldlhs, oldrhs)
-         = let (_, as) = unApply oldlhs 
+         = let (_, as) = unApply oldlhs
                lhsargs = mkLHSargs [] ns as
                lhs = PApp emptyFC (PRef emptyFC [] newname) lhsargs
-               rhs = PApp emptyFC (PRef emptyFC [] sname) 
+               rhs = PApp emptyFC (PRef emptyFC [] sname)
                                   (mkRHSargs ns lhsargs) in
                      (lhs, rhs)
 
     mkLHSargs _ [] _ = []
     -- dynamics don't appear if they're implicit
-    mkLHSargs sub ((ExplicitD, t) : ns) (a : as) 
+    mkLHSargs sub ((ExplicitD, t) : ns) (a : as)
          = pexp (delab ist (substNames sub a)) : mkLHSargs sub ns as
-    mkLHSargs sub ((ImplicitD, _) : ns) (a : as) 
+    mkLHSargs sub ((ImplicitD, _) : ns) (a : as)
          = mkLHSargs sub ns as
-    mkLHSargs sub ((UnifiedD, _) : ns) (a : as) 
+    mkLHSargs sub ((UnifiedD, _) : ns) (a : as)
          = mkLHSargs sub ns as
     -- statics get dropped in any case
-    mkLHSargs sub ((ImplicitS, t) : ns) (a : as) 
+    mkLHSargs sub ((ImplicitS, t) : ns) (a : as)
          = mkLHSargs (extend a t sub) ns as
-    mkLHSargs sub ((ExplicitS, t) : ns) (a : as) 
+    mkLHSargs sub ((ExplicitS, t) : ns) (a : as)
          = mkLHSargs (extend a t sub) ns as
     mkLHSargs sub _ [] = [] -- no more LHS
 
@@ -237,20 +238,23 @@ mkNewPats ist d ns newname sname lhs rhs =
     mkSubst :: (Term, Term) -> Maybe (Name, Term)
     mkSubst (P _ n _, t) = Just (n, t)
     mkSubst _ = Nothing
-        
+
 -- | Creates a new declaration for a specialised function application.
 -- Simple version at the moment: just create a version which is a direct
 -- application of the function to be specialised.
 -- More complex version to do: specialise the definition clause by clause
-mkPE_TermDecl :: IState -> Name -> Name ->
-                 [(PEArgType, Term)] -> PEDecl
-mkPE_TermDecl ist newname sname ns 
-    = let lhs = PApp emptyFC (PRef emptyFC [] newname) (map pexp (mkp ns)) 
-          rhs = eraseImps $ delab ist (mkApp (P Ref sname Erased) (map snd ns)) 
+mkPE_TermDecl :: IState
+              -> Name
+              -> Name
+              -> [(PEArgType, Term)]
+              -> PEDecl
+mkPE_TermDecl ist newname sname ns
+    = let lhs = PApp emptyFC (PRef emptyFC [] newname) (map pexp (mkp ns))
+          rhs = eraseImps $ delab ist (mkApp (P Ref sname Erased) (map snd ns))
           patdef = lookupCtxtExact sname (idris_patdefs ist)
           newpats = case patdef of
                          Nothing -> PEDecl lhs rhs [(lhs, rhs)] True
-                         Just d -> mkNewPats ist (getPats d) ns 
+                         Just d -> mkNewPats ist (getPats d) ns
                                              newname sname lhs rhs in
           newpats where
 
@@ -269,8 +273,10 @@ mkPE_TermDecl ist newname sname ns
   deImpArg a = a
 
 -- | Get specialised applications for a given function
-getSpecApps :: IState -> [Name] -> Term -> 
-               [(Name, [(PEArgType, Term)])]
+getSpecApps :: IState
+            -> [Name]
+            -> Term
+            -> [(Name, [(PEArgType, Term)])]
 getSpecApps ist env tm = ga env (explicitNames tm) where
 
 --     staticArg env True _ tm@(P _ n _) _ | n `elem` env = Just (True, tm)
@@ -326,7 +332,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
 
     -- There's an overlap if the case tree has a default case along with
     -- some other cases. It's fine if there's a default case on its own.
-    noOverlapAlts (ConCase _ _ _ sc : rest) 
+    noOverlapAlts (ConCase _ _ _ sc : rest)
         = noOverlapAlts rest && noOverlap sc
     noOverlapAlts (FnCase _ _ sc : rest) = noOverlapAlts rest
     noOverlapAlts (ConstCase _ sc : rest)
@@ -335,4 +341,3 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
         = noOverlapAlts rest && noOverlap sc
     noOverlapAlts (DefaultCase _ : _) = False
     noOverlapAlts _ = True
-

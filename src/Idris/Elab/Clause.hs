@@ -512,7 +512,7 @@ findUnique ctxt env (Bind n b sc)
                  else findUnique ctxt ((n, b) : env) sc
 findUnique _ _ _ = []
 
--- Return the elaborated LHS/RHS, and the original LHS with implicits added
+-- | Return the elaborated LHS/RHS, and the original LHS with implicits added
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
               Idris (Either Term (Term, Term), PTerm)
 elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
@@ -554,7 +554,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         let lhs = mkLHSapp $ stripLinear i $ stripUnmatchable i $
                     propagateParams i params norm_ty (allNamesIn lhs_in) (addImplPat i lhs_in)
-        
+
 --         let lhs = mkLHSapp $
 --                     propagateParams i params fn_ty (addImplPat i lhs_in)
         logElab 10 (show (params, fn_ty) ++ " " ++ showTmImpls (addImplPat i lhs_in))
@@ -704,7 +704,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                        -- allow the deferred things to be definable
                        -- (this is just to allow users to inspect intermediate
                        -- things)
-             <- if (null holes || null def') && not inf 
+             <- if (null holes || null def') && not inf
                    then recheckC_borrowing True (PEGenerated `notElem` opts)
                                        borrowed fc id [] rhs'
                    else return (rhs', clhsty)
@@ -1033,7 +1033,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                       | otherwise = Placeholder
 
     updateWithTerm :: IState -> Maybe Name -> Name -> PTerm -> [Name] -> [Name] -> PTerm -> PTerm
-    updateWithTerm ist pn wname toplhs ns_in ns_in' tm 
+    updateWithTerm ist pn wname toplhs ns_in ns_in' tm
           = mapPT updateApp tm
        where
          arity (PApp _ _ as) = length as
@@ -1097,18 +1097,18 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
 
     abstract wn wv wty (n, argty) = (n, substTerm wv (P Bound wn wty) argty)
 
--- Apply a transformation to all RHSes and nested RHSs
+-- | Apply a transformation to all RHSes and nested RHSs
 mapRHS :: (PTerm -> PTerm) -> PClause -> PClause
-mapRHS f (PClause fc n lhs args rhs ws) 
+mapRHS f (PClause fc n lhs args rhs ws)
     = PClause fc n lhs args (f rhs) (map (mapRHSdecl f) ws)
 mapRHS f (PWith fc n lhs args warg prf ws)
     = PWith fc n lhs args (f warg) prf (map (mapRHSdecl f) ws)
-mapRHS f (PClauseR fc args rhs ws) 
+mapRHS f (PClauseR fc args rhs ws)
     = PClauseR fc args (f rhs) (map (mapRHSdecl f) ws)
 mapRHS f (PWithR fc args warg prf ws)
     = PWithR fc args (f warg) prf (map (mapRHSdecl f) ws)
 
 mapRHSdecl :: (PTerm -> PTerm) -> PDecl -> PDecl
-mapRHSdecl f (PClauses fc opt n cs) 
+mapRHSdecl f (PClauses fc opt n cs)
     = PClauses fc opt n (map (mapRHS f) cs)
 mapRHSdecl f t = t
