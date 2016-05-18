@@ -1630,7 +1630,8 @@ pruneByType env (P _ n _) goalty ist as
     ctxt = tt_ctxt ist
 
     -- Get the function at the head of the alternative and see if it's
-    -- a plausible match against the goal type. Keep if so.
+    -- a plausible match against the goal type. Keep if so. Also keep if
+    -- there is a possible coercion to the goal type.
     headIs var f (PRef _ _ f') = typeHead var f f'
     headIs var f (PApp _ (PRef _ _ (UN l)) [_, _, arg])
         | l == txt "Delay" = headIs var f (getTm arg)
@@ -1652,6 +1653,7 @@ pruneByType env (P _ n _) goalty ist as
                                           (V _, _) ->
                                               isPlausible ist var env n ty
                                           _ -> matching (getRetTy ty') goalty 
+                                                 || isCoercion (getRetTy ty') goalty
 -- May be useful to keep for debugging purposes for a bit:
 --                                                let res = matching (getRetTy ty') goalty in
 --                                                   traceWhen (not res)
@@ -1678,6 +1680,30 @@ pruneByType env (P _ n _) goalty ist as
     matching (TType _) (TType _) = True
     matching (UType _) (UType _) = True
     matching l r = l == r
+
+    -- Return whether there is a possible coercion between the return type
+    -- of an alternative and the goal type
+    isCoercion rty gty | (P _ r _, _) <- unApply rty
+            = not (null (getCoercionsBetween r gty))
+    isCoercion _ _ = False
+ 
+    getCoercionsBetween :: Name -> Type -> [Name]
+    getCoercionsBetween r goal
+       = let cs = getCoercionsTo ist goal in
+             findCoercions r cs
+        where findCoercions t [] = []
+              findCoercions t (n : ns) =
+                 let ps = case lookupTy n (tt_ctxt ist) of
+                               [ty'] -> let as = map snd (getArgTys (normalise (tt_ctxt ist) [] ty')) in
+                                            [n | any useR as]
+                               _ -> [] in
+                     ps ++ findCoercions t ns
+
+              useR ty = 
+                  case unApply (getRetTy ty) of
+                       (P _ t _, _) -> t == r
+                       _ -> False
+
 
 pruneByType _ t _ _ as = as
 
