@@ -14,7 +14,8 @@ Package Descriptions
 
 A package description includes the following:
 
-+ A header, consisting of the keyword package followed by the package name.
++ A header, consisting of the keyword package followed by the package
+  name. Package names can be any valid Idris identifier.
 + Fields describing package contents, ``<field> = <value>``
 
 At least one field must be the modules field, where the value is a
@@ -39,7 +40,9 @@ Other common fields which may be present in an ``ipkg`` file are:
   directory.
 
 + ``executable = <output>``, which takes the name of the executable
-  file to generate.
+  file to generate. Executable names can be any valid Idris
+  identifier. the iPKG format also takes a quoted version that accepts
+  any valid filename.
 
 + ``main = <module>``, which takes the name of the main module, and
   must be present if the executable field is present.
