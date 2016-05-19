@@ -671,7 +671,7 @@ Extra-source-files:
                        test/primitives006/expected
 
                        test/pkg001/run
-                       test/pkg001/test.ipkg
+                       test/pkg001/test-pkg.ipkg
                        test/pkg001/*.idr
                        test/pkg001/expected
 

@@ -16,14 +16,14 @@
   ```
   [PlusNatSemi] Semigroup Nat where
     (<+>) x y = x + y
-  
+
   [MultNatSemi] Semigroup Nat where
     (<+>) x y = x * y
-  
+
   -- use PlusNatSemi as the parent implementation
   [PlusNatMonoid] Monoid Nat using PlusNatSemi where
     neutral = 0
-  
+
   -- use MultNatSemi as the parent implementation
   [MultNatMonoid] Monoid Nat using MultNatSemi where
     neutral = 1
@@ -106,6 +106,12 @@
   could distinguish between -0.0 and 0.0, but the type theory could
   not, leading to a contradiction. The new fine-grained equality
   prevents this.
+
+* Naming conventions for Idris packages in an iPKG file now follow the
+  same rules for executables.  Unquoted names must be valid namespaced
+  Idris identifiers e.g. ``package my.first.package``. Quoted package
+  names allow for packages to be given valid file names, for example,
+  ``package "my-first-package"``.
 
 ## Reflection changes
 
@@ -278,7 +284,7 @@
   package names that the idris project depends on. This reduces bloat in the
   `opts` option with multiple package declarations.
 * iPKG files now allow `executable = "your filename here"` in addition to the
-  existing `executable = yourFilenameHere` style. While the unquoted version is
+  Existing `Executable = yourFilenameHere` style. While the unquoted version is
   limited to filenames that look like namespaced Idris identifiers
   (`your.filename.here`), the quoted version accepts any valid filename.
 * Add definition command (`\d` in Vim, `Ctrl-Alt-A` in Atom, `C-c C-s` in Emacs)

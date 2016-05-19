@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} $@ --build test.ipkg
+${IDRIS:-idris} $@ --build test-pkg.ipkg
 rm -f  *.ibc
-${IDRIS:-idris} $@ --build test.ipkg --quiet
-${IDRIS:-idris} $@ --build test.ipkg --logging-categories "elab" --log 1
+${IDRIS:-idris} $@ --build test-pkg.ipkg --quiet
+${IDRIS:-idris} $@ --build test-pkg.ipkg --logging-categories "elab" --log 1

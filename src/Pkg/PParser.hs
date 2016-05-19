@@ -56,7 +56,8 @@ parseDesc fp = do
 
 pPkg :: PParser PkgDesc
 pPkg = do
-    reserved "package"; p <- fst <$> identifier
+    reserved "package"
+    p <- filename
     st <- get
     put (st { pkgname = p })
     some pClause
