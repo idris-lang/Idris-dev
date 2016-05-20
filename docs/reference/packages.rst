@@ -15,7 +15,8 @@ Package Descriptions
 A package description includes the following:
 
 + A header, consisting of the keyword package followed by the package
-  name. Package names can be any valid Idris identifier.
+  name. Package names can be any valid Idris identifier. The iPKG
+  format also takes a quoted version that accepts any valid filename.
 + Fields describing package contents, ``<field> = <value>``
 
 At least one field must be the modules field, where the value is a
