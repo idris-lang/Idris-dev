@@ -1,8 +1,13 @@
+{-|
+Module      : Idris.DataOpts
+Description : Optimisations for Idris code i.e. Forcing, detagging and collapsing.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.DataOpts(applyOpts) where
-
--- Forcing, detagging and collapsing
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree

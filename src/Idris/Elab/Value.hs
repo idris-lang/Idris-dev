@@ -1,7 +1,16 @@
+{-|
+Module      : Idris.Elab.Value
+Description : Code to elaborate values.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Elab.Value(elabVal, elabValBind, elabDocTerms,
-                        elabExec, elabREPL) where
+module Idris.Elab.Value(
+    elabVal, elabValBind, elabDocTerms
+  , elabExec, elabREPL
+  ) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils

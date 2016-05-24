@@ -1,4 +1,10 @@
-
+{-|
+Module      : Idris.Prover
+Description : Idris' theorem prover.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 module Idris.Prover (prover, showProof, showRunElab) where
 

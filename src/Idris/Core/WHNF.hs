@@ -1,13 +1,19 @@
+{-|
+Module      : Idris.Core.WHNF
+Description : Reduction to Weak Head Normal Form
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-
--- | Reduction to Weak Head Normal Form
 module Idris.Core.WHNF(whnf, WEnv) where
 
 import Idris.Core.TT
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate hiding (quote)
-import qualified Idris.Core.Evaluate as Evaluate 
+import qualified Idris.Core.Evaluate as Evaluate
 
 import Debug.Trace
 
@@ -15,7 +21,7 @@ import Debug.Trace
 -- evaluated in (i.e. it's a thunk)
 type StackEntry = (Term, WEnv)
 data WEnv = WEnv Int -- number of free variables
-                 [(Term, WEnv)] 
+                 [(Term, WEnv)]
   deriving Show
 
 type Stack = [StackEntry]
@@ -48,14 +54,14 @@ do_whnf :: Context -> WEnv -> Term -> WHNF
 do_whnf ctxt env tm = eval env [] tm
   where
     eval :: WEnv -> Stack -> Term -> WHNF
-    eval wenv@(WEnv d env) stk (V i) 
+    eval wenv@(WEnv d env) stk (V i)
          | i < length env = let (tm, env') = env !! i in
                                 eval env' stk tm
          | otherwise = error "Can't happen: WHNF scope error"
-    eval wenv@(WEnv d env) stk (Bind n (Let t v) sc) 
+    eval wenv@(WEnv d env) stk (Bind n (Let t v) sc)
          = eval (WEnv d ((v, wenv) : env)) stk sc
     eval (WEnv d env) [] (Bind n b sc) = WBind n b (sc, WEnv (d + 1) env)
-    eval (WEnv d env) ((tm, tenv) : stk) (Bind n b sc) 
+    eval (WEnv d env) ((tm, tenv) : stk) (Bind n b sc)
          = eval (WEnv d ((tm, tenv) : env)) stk sc
 
     eval env stk (P nt n ty) = apply env nt n ty stk
@@ -71,7 +77,7 @@ do_whnf ctxt env tm = eval env [] tm
     eval env stk (UType u) = unload (WUType u) stk
 
     apply :: WEnv -> NameType -> Name -> Type -> Stack -> WHNF
-    apply env nt n ty stk 
+    apply env nt n ty stk
           = let wp = case nt of
                           DCon t a u -> WDCon t a u n (ty, env)
                           TCon t a -> WTCon t a n (ty, env)
@@ -79,12 +85,12 @@ do_whnf ctxt env tm = eval env [] tm
                           _ -> WPRef n (ty, env)
                         in
             case lookupDefExact n ctxt of
-                 Just (CaseOp ci _ _ _ _ cd) -> 
+                 Just (CaseOp ci _ _ _ _ cd) ->
                       let (ns, tree) = cases_compiletime cd in
                           case evalCase env ns tree stk of
                                Just w -> w
                                Nothing -> unload wp stk
-                 Just (Operator _ i op) -> 
+                 Just (Operator _ i op) ->
                           if i <= length stk
                              then case runOp env op (take i stk) (drop i stk) of
                                   Just v -> v
@@ -97,7 +103,7 @@ do_whnf ctxt env tm = eval env [] tm
     unload f (a : as) = unload (WApp f a) as
 
     runOp :: WEnv -> ([Value] -> Maybe Value) -> Stack -> Stack -> Maybe WHNF
-    runOp env op stk rest 
+    runOp env op stk rest
         = do vals <- mapM tmtoValue stk
              case op vals of
                   Just (VConstant c) -> Just $ unload (WConstant c) rest
@@ -110,14 +116,14 @@ do_whnf ctxt env tm = eval env [] tm
                   _ -> Nothing
 
     tmtoValue :: (Term, WEnv) -> Maybe Value
-    tmtoValue (tm, tenv) 
+    tmtoValue (tm, tenv)
         = case eval tenv [] tm of
                WConstant c -> Just (VConstant c)
                _ -> let tm' = quoteEnv tenv tm in
                         Just (toValue ctxt [] tm')
 
     evalCase :: WEnv -> [Name] -> SC -> Stack -> Maybe WHNF
-    evalCase wenv@(WEnv d env) ns tree args 
+    evalCase wenv@(WEnv d env) ns tree args
         | length ns > length args = Nothing
         | otherwise = let args' = take (length ns) args
                           rest = drop (length ns) args in
@@ -125,25 +131,25 @@ do_whnf ctxt env tm = eval env [] tm
                              let wtm = pToVs (map fst amap) tm
                              Just $ eval (WEnv d (map snd amap)) rest wtm
 
-    evalTree :: WEnv -> [(Name, (Term, WEnv))] -> SC -> 
+    evalTree :: WEnv -> [(Name, (Term, WEnv))] -> SC ->
                 Maybe (Term, [(Name, (Term, WEnv))])
     evalTree env amap (STerm tm) = Just (tm, amap)
     evalTree env amap (Case _ n alts)
         = case lookup n amap of
-            Just (tm, tenv) -> findAlt env amap 
+            Just (tm, tenv) -> findAlt env amap
                                    (deconstruct (eval tenv [] tm) []) alts
             _ -> Nothing
     evalTree _ _ _ = Nothing
 
     deconstruct :: WHNF -> Stack -> (WHNF, Stack)
     deconstruct (WApp f arg) stk = deconstruct f (arg : stk)
-    deconstruct t stk = (t, stk) 
+    deconstruct t stk = (t, stk)
 
-    findAlt :: WEnv -> [(Name, (Term, WEnv))] -> (WHNF, Stack) -> 
+    findAlt :: WEnv -> [(Name, (Term, WEnv))] -> (WHNF, Stack) ->
                [CaseAlt] ->
                Maybe (Term, [(Name, (Term, WEnv))])
-    findAlt env amap (WDCon tag _ _ _ _, args) alts 
-        | Just (ns, sc) <- findTag tag alts 
+    findAlt env amap (WDCon tag _ _ _ _, args) alts
+        | Just (ns, sc) <- findTag tag alts
               = let amap' = updateAmap (zip ns args) amap in
                     evalTree env amap' sc
         | Just sc <- findDefault alts
@@ -159,7 +165,7 @@ do_whnf ctxt env tm = eval env [] tm
     findTag i [] = Nothing
     findTag i (ConCase n j ns sc : xs) | i == j = Just (ns, sc)
     findTag i (_ : xs) = findTag i xs
-   
+
     findDefault :: [CaseAlt] -> Maybe SC
     findDefault [] = Nothing
     findDefault (DefaultCase sc : xs) = Just sc
@@ -182,7 +188,7 @@ do_whnf ctxt env tm = eval env [] tm
 quote :: WHNF -> Term
 quote (WDCon t a u n (ty, env)) = P (DCon t a u) n (quoteEnv env ty)
 quote (WTCon t a n (ty, env)) = P (TCon t a) n (quoteEnv env ty)
-quote (WPRef n (ty, env)) = P Ref n (quoteEnv env ty) 
+quote (WPRef n (ty, env)) = P Ref n (quoteEnv env ty)
 quote (WBind n ty (sc, env)) = Bind n ty (quoteEnv env sc)
 quote (WApp f (a, env)) = App Complete (quote f) (quoteEnv env a)
 quote (WConstant c) = Constant c
@@ -195,7 +201,7 @@ quote WImpossible = Impossible
 quoteEnv :: WEnv -> Term -> Term
 quoteEnv (WEnv d ws) tm = qe' d ws tm
   where
-    qe' d ts (V i) 
+    qe' d ts (V i)
         | i < d = V i
         | otherwise = let (tm, env) = ts !! (i - d) in
                           quoteEnv env tm
@@ -206,4 +212,3 @@ quoteEnv (WEnv d ws) tm = qe' d ws tm
     qe' d ts (P nt n ty) = P nt n (qe' d ts ty)
     qe' d ts (Proj tm i) = Proj (qe' d ts tm) i
     qe' d ts tm = tm
-

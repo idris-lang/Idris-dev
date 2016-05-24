@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Rewrite
+Description : Code to elaborate rewrite rules.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards, ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Elab.Rewrite(elabRewrite, elabRewriteLemma) where

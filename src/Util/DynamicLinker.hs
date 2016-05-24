@@ -1,7 +1,16 @@
--- | Platform-specific dynamic linking support. Add new platforms to this file
--- through conditional compilation.
+{-|
+Module      : Util.DynamicLinker
+Description : Platform-specific dynamic linking support. Add new platforms to this file through conditional compilation.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE ExistentialQuantification, CPP #-}
-module Util.DynamicLinker (ForeignFun(..), DynamicLib(..), tryLoadLib, tryLoadFn) where
+module Util.DynamicLinker ( ForeignFun(..)
+                          , DynamicLib(..)
+                          , tryLoadLib
+                          , tryLoadFn
+                          ) where
 
 #ifdef IDRIS_FFI
 import Foreign.LibFFI
@@ -110,5 +119,3 @@ tryLoadFn :: String -> DynamicLib -> IO (Maybe ForeignFun)
 tryLoadFn fn lib = do putStrLn $ "WARNING: Cannot load '" ++ fn ++ "' at compile time because Idris was compiled without libffi support."
                       return Nothing
 #endif
-
-

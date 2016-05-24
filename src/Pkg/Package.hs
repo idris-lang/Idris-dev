@@ -1,3 +1,10 @@
+{-|
+Module      : Pkg.Package
+Description : Functionality for working with Idris packages.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE CPP #-}
 module Pkg.Package where
 

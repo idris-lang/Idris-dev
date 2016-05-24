@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.AbsSyntaxTree
+Description : Core data definitions used in Idris.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              DeriveDataTypeable, TypeSynonymInstances, PatternGuards #-}
 

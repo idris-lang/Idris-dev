@@ -1,7 +1,13 @@
--- | Check universe constraints.
+{-|
+Module      : Idris.Core.Constraints
+Description : Check universe constraints.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.Core.Constraints ( ucheck ) where
 
-import Idris.Core.TT ( TC(..), UExp(..), UConstraint(..), FC(..), 
+import Idris.Core.TT ( TC(..), UExp(..), UConstraint(..), FC(..),
                        ConstraintFC(..), Err'(..) )
 
 import Control.Applicative

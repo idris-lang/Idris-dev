@@ -1,3 +1,11 @@
+{-|
+Module      : Idris.Core.Execute
+Description : Execute Idris code and deal with FFI.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE PatternGuards, ExistentialQuantification, CPP #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.Execute (execute) where
@@ -112,7 +120,7 @@ toTT (EThunk ctxt env tm) = do env' <- mapM toBinder env
                                return $ normalise ctxt env' tm
   where toBinder (n, v) = do v' <- toTT v
                              return (n, Let Erased v')
-toTT (EHandle _) = execFail $ Msg "Can't convert handles back to TT after execution." 
+toTT (EHandle _) = execFail $ Msg "Can't convert handles back to TT after execution."
 toTT (EPtr ptr) = execFail $ Msg "Can't convert pointers back to TT after execution."
 
 unApplyV :: ExecVal -> (ExecVal, [ExecVal])
@@ -251,7 +259,7 @@ execApp env ctxt c@(EP (TCon _ arity) n _) args =
        let restArgs = drop arity args
        execApp env ctxt (mkEApp c args') restArgs
 
-execApp env ctxt f@(EP _ n _) args 
+execApp env ctxt f@(EP _ n _) args
     | Just (res, rest) <- getOp n args = do r <- res
                                             execApp env ctxt r rest
 execApp env ctxt f@(EP _ n _) args =
@@ -388,7 +396,7 @@ execForeign env ctxt arity ty fn xs onfail
 
 -- Right now, there's no way to send command-line arguments to the executor,
 -- so just return 0.
-execForeign env ctxt arity ty fn xs onfail 
+execForeign env ctxt arity ty fn xs onfail
     | Just (FFun "idris_numArgs" _ _) <- foreignFromTT arity ty fn xs
            = let res = ioWrap . EConstant . I $ 0
              in execApp env ctxt res (drop arity xs)
@@ -410,8 +418,8 @@ splitArg tm | (_, [_,_,l,r]) <- unApplyV tm -- pair, two implicits
     = Just (toFDesc l, r)
 splitArg _ = Nothing
 
-toFDesc tm 
-   | (EP _ n _, []) <- unApplyV tm = FCon (deNS n) 
+toFDesc tm
+   | (EP _ n _, []) <- unApplyV tm = FCon (deNS n)
    | (EP _ n _, as) <- unApplyV tm = FApp (deNS n) (map toFDesc as)
 toFDesc _ = FUnknown
 
@@ -432,7 +440,7 @@ upio = sUN "unsafePerformPrimIO"
 delay = sUN "Delay"
 force = sUN "Force"
 
--- | Look up primitive operations in the global table and transform 
+-- | Look up primitive operations in the global table and transform
 -- them into ExecVal functions
 getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal, [ExecVal])
 getOp fn (_ : _ : x : xs) | fn == pbm = Just (return x, xs)
@@ -463,14 +471,14 @@ getOp fn (_ : EHandle h : xs)
 getOp fn (_ : arg : xs)
     | fn == prf =
               Just $ (execFail (Msg "Can't use prim__readFile on a raw pointer in the executor."), xs)
-getOp n args = do (arity, prim) <- getPrim n primitives 
-                  if (length args >= arity) 
+getOp n args = do (arity, prim) <- getPrim n primitives
+                  if (length args >= arity)
                      then do res <- applyPrim prim (take arity args)
                              Just (res, drop arity args)
                      else Nothing
     where getPrim :: Name -> [Prim] -> Maybe (Int, [ExecVal] -> Maybe ExecVal)
           getPrim n [] = Nothing
-          getPrim n ((Prim pn _ arity def _ _) : prims) 
+          getPrim n ((Prim pn _ arity def _ _) : prims)
              | n == pn   = Just (arity, execPrim def)
              | otherwise = getPrim n prims
 
@@ -534,15 +542,15 @@ chooseAlt _ [] = Nothing
 data Foreign = FFun String [(FDesc, ExecVal)] FDesc deriving Show
 
 toFType :: FDesc -> FType
-toFType (FCon c) 
+toFType (FCon c)
     | c == sUN "C_Str" = FString
     | c == sUN "C_Float" = FArith ATFloat
     | c == sUN "C_Ptr" = FPtr
     | c == sUN "C_MPtr" = FManagedPtr
     | c == sUN "C_Unit" = FUnit
-toFType (FApp c [_,ity]) 
+toFType (FApp c [_,ity])
     | c == sUN "C_IntT" = FArith (toAType ity)
-  where toAType (FCon i) 
+  where toAType (FCon i)
           | i == sUN "C_IntChar" = ATInt ITChar
           | i == sUN "C_IntNative" = ATInt ITNative
           | i == sUN "C_IntBits8" = ATInt (ITFixed IT8)
@@ -551,14 +559,14 @@ toFType (FApp c [_,ity])
           | i == sUN "C_IntBits64" = ATInt (ITFixed IT64)
         toAType t = error (show t ++ " not defined in toAType")
 
-toFType (FApp c [_]) 
+toFType (FApp c [_])
     | c == sUN "C_Any" = FAny
 toFType t = error (show t ++ " not defined in toFType")
 
 call :: Foreign -> [ExecVal] -> Exec (Maybe ExecVal)
 call (FFun name argTypes retType) args =
     do fn <- findForeign name
-       maybe (return Nothing) 
+       maybe (return Nothing)
              (\f -> Just . ioWrap <$> call' f args (toFType retType)) fn
     where call' :: ForeignFun -> [ExecVal] -> FType -> Exec ExecVal
           call' (Fun _ h) args (FArith (ATInt ITNative)) = do

@@ -1,12 +1,22 @@
+{-|
+Module      : Idris.Core.ProofState
+Description : Proof state implementation.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+
+Implements a proof state, some primitive tactics for manipulating
+proofs, and some high level commands for introducing new theorems,
+evaluation/checking inside the proof system, etc.
+-}
+
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
-
-{- Implements a proof state, some primitive tactics for manipulating
-   proofs, and some high level commands for introducing new theorems,
-   evaluation/checking inside the proof system, etc. --}
-
-module Idris.Core.ProofState(ProofState(..), newProof, envAtFocus, goalAtFocus,
-                  Tactic(..), Goal(..), processTactic, nowElaboratingPS, doneElaboratingAppPS,
-                  doneElaboratingArgPS, dropGiven, keepGiven, getProvenance) where
+module Idris.Core.ProofState(
+    ProofState(..), newProof, envAtFocus, goalAtFocus
+  , Tactic(..), Goal(..), processTactic, nowElaboratingPS
+  , doneElaboratingAppPS, doneElaboratingArgPS, dropGiven
+  , keepGiven, getProvenance
+  ) where
 
 import Idris.Core.Typecheck
 import Idris.Core.Evaluate
@@ -134,7 +144,7 @@ instance Pretty ProofState OutputAnnotation where
     pretty (thname ps) <+> colon <+> text " no more goals."
   pretty ps | (h : hs) <- holes ps =
     let tm = pterm ps
-        OK g = goal (Just h) tm 
+        OK g = goal (Just h) tm
         nm = thname ps in
     let wkEnv = premises g in
       text "Other goals" <+> colon <+> pretty hs <+>
@@ -160,8 +170,8 @@ holeName i = sMN i "hole"
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, hs, env, _, _, t) -> (t, map fst env, x, y, hs)) fs)
 
-match_unify' :: Context -> Env -> 
-                (TT Name, Maybe Provenance) -> 
+match_unify' :: Context -> Env ->
+                (TT Name, Maybe Provenance) ->
                 (TT Name, Maybe Provenance) ->
                 StateT TState TC [(Name, TT Name)]
 match_unify' ctxt env (topx, xfrom) (topy, yfrom) =
@@ -184,7 +194,7 @@ match_unify' ctxt env (topx, xfrom) (topy, yfrom) =
                         return u
             Error e -> traceWhen (unifylog ps)
                          ("No match " ++ show e) $
-                        do put (ps { problems = (topx, topy, True, 
+                        do put (ps { problems = (topx, topy, True,
                                                  env, e, while, Match) :
                                                  problems ps })
                            return []
@@ -217,8 +227,8 @@ dropSwaps (p@(x, P _ y _) : xs) | solvedIn y x xs = dropSwaps xs
         solvedIn y x (_ : xs) = solvedIn y x xs
 dropSwaps (p : xs) = p : dropSwaps xs
 
-unify' :: Context -> Env -> 
-          (TT Name, Maybe Provenance) -> 
+unify' :: Context -> Env ->
+          (TT Name, Maybe Provenance) ->
           (TT Name, Maybe Provenance) ->
           StateT TState TC [(Name, TT Name)]
 unify' ctxt env (topx, xfrom) (topy, yfrom) =
@@ -539,7 +549,7 @@ match_fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
 --        let valtyn = normalise ctxt env valty
 --        let tyn = normalise ctxt env ty
-       ns <- match_unify' ctxt env (valty, Just $ SourceTerm val) 
+       ns <- match_unify' ctxt env (valty, Just $ SourceTerm val)
                                    (ty, Just ExpectedType)
        ps <- get
        let (uh, uns) = unified ps
@@ -558,7 +568,7 @@ complete_fill :: RunTactic
 complete_fill ctxt env (Bind x (Guess ty val) sc) =
     do let guess = forget val
        (val', valty) <- lift $ check ctxt env guess
-       ns <- unify' ctxt env (valty, Just $ SourceTerm val') 
+       ns <- unify' ctxt env (valty, Just $ SourceTerm val')
                              (ty, Just ExpectedType)
        ps <- get
        let (uh, uns) = unified ps
@@ -577,7 +587,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
         dropdots <-
              case lookup x (notunified ps) of
                 Just tm -> -- trace ("NEED MATCH: " ++ show (x, tm, val) ++ "\nIN " ++ show (pterm ps)) $
-                            do match_unify' ctxt env (tm, Just InferredVal) 
+                            do match_unify' ctxt env (tm, Just InferredVal)
                                                      (val, Just GivenVal)
                                return [x]
                 _ -> return []
@@ -608,12 +618,12 @@ solve ctxt env (Bind x (Guess ty val) sc)
         tryLock hs t@(P _ n _) = (t, not $ n `elem` hs)
         tryLock hs t@(Bind n (Hole _) sc) = (t, False)
         tryLock hs t@(Bind n (Guess _ _) sc) = (t, False)
-        tryLock hs t@(Bind n (Let ty val) sc) 
+        tryLock hs t@(Bind n (Let ty val) sc)
             = let (ty', tyl) = tryLock hs ty
                   (val', vall) = tryLock hs val
                   (sc', scl) = tryLock hs sc in
                   (Bind n (Let ty' val') sc', tyl && vall && scl)
-        tryLock hs t@(Bind n b sc) 
+        tryLock hs t@(Bind n b sc)
             = let (bt', btl) = tryLock hs (binderTy b)
                   (val', vall) = tryLock hs val
                   (sc', scl) = tryLock hs sc in
@@ -895,7 +905,7 @@ keepGiven du (u : us) hs = keepGiven du us hs
 
 updateEnv [] e = e
 updateEnv ns [] = []
-updateEnv ns ((n, b) : env) 
+updateEnv ns ((n, b) : env)
    = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns env
 
 updateProv ns (SourceTerm t) = SourceTerm $ updateSolvedTerm ns t
@@ -907,7 +917,7 @@ updateError ns (Elaborating s n ty e) = Elaborating s n ty (updateError ns e)
 updateError ns (ElaboratingArg f a env e)
  = ElaboratingArg f a env (updateError ns e)
 updateError ns (CantUnify b (l,lp) (r,rp) e xs sc)
- = CantUnify b (updateSolvedTerm ns l, fmap (updateProv ns) lp) 
+ = CantUnify b (updateSolvedTerm ns l, fmap (updateProv ns) lp)
                (updateSolvedTerm ns r, fmap (updateProv ns) rp) (updateError ns e) xs sc
 updateError ns e = e
 
@@ -940,7 +950,7 @@ getProvenance _ = (Nothing, Nothing)
 
 setReady (x, y, _, env, err, c, at) = (x, y, True, env, err, c, at)
 
-updateProblems :: ProofState -> [(Name, TT Name)] -> Fails 
+updateProblems :: ProofState -> [(Name, TT Name)] -> Fails
                     -> ([(Name, TT Name)], Fails)
 -- updateProblems ctxt [] ps inj holes = ([], ps)
 updateProblems ps updates probs = rec 10 updates probs
@@ -966,8 +976,8 @@ updateProblems ps updates probs = rec 10 updates probs
         (lp, rp) = getProvenance err
         err' = updateError ns err
         env' = updateEnv ns env in
-          if newx || newy || ready || 
-             any (\n -> n `elem` inj) (refsIn x ++ refsIn y) then 
+          if newx || newy || ready ||
+             any (\n -> n `elem` inj) (refsIn x ++ refsIn y) then
             case unify ctxt env' (x', lp) (y', rp) inj hs usupp while of
                  OK (v, []) -> traceWhen ulog ("DID " ++ show (x',y',ready,v,dont)) $
                                 let v' = filter (\(n, _) -> n `notElem` dont) v in
@@ -980,11 +990,11 @@ updateProblems ps updates probs = rec 10 updates probs
   updateNs ns (x, y, t, env, err, fc, fa)
        = let (x', newx) = updateSolvedTerm' ns x
              (y', newy) = updateSolvedTerm' ns y in
-             (x', y', newx || newy, 
+             (x', y', newx || newy,
                   updateEnv ns env, updateError ns err, fc, fa)
 
 -- attempt to solve remaining problems with match_unify
-matchProblems :: Bool -> ProofState -> [(Name, TT Name)] -> Fails 
+matchProblems :: Bool -> ProofState -> [(Name, TT Name)] -> Fails
                     -> ([(Name, TT Name)], Fails)
 matchProblems all ps updates probs = up updates probs where
   hs = holes ps
@@ -1085,7 +1095,7 @@ processTactic t ps
                      -- apply them here
                      let ns' = dropGiven (dontunify ps') ns_in (holes ps')
                      let pterm'' = updateSolved ns' (pterm ps')
-                     traceWhen (unifylog ps) 
+                     traceWhen (unifylog ps)
                                  ("Updated problems after solve " ++ qshow probs' ++ "\n" ++
                                   "(Toplevel) Dropping holes: " ++ show (map fst ns') ++ "\n" ++
                                   "Holes were: " ++ show (holes ps')) $
@@ -1139,4 +1149,3 @@ process t h = tactic (Just h) (mktac t)
          mktac (MoveLast n)      = movelast n
          mktac (UnifyGoal r)     = unifyGoal r
          mktac (UnifyTerms x y)  = unifyTerms x y
-

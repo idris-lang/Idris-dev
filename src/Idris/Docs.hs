@@ -1,6 +1,17 @@
+{-|
+Module      : Idris.Docs
+Description : Data structures and utilities to work with Idris Documentation.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE DeriveFunctor, PatternGuards, MultiWayIf #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Docs (pprintDocs, getDocs, pprintConstDocs, pprintTypeDoc, FunDoc, FunDoc'(..), Docs, Docs'(..)) where
+module Idris.Docs (
+    pprintDocs
+  , getDocs, pprintConstDocs, pprintTypeDoc
+  , FunDoc, FunDoc'(..), Docs, Docs'(..)
+  ) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
@@ -149,7 +160,7 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
                                      vsep (map dumpInstance superclasses)))
   where
     params' = zip pNames (repeat False)
-    
+
     (normalInstances, namedInstances) = partition (\(n, _, _) -> not $ isJust n)
                                                   instances
 
@@ -318,7 +329,7 @@ docClass n ci
     namedInst (NS n ns) = fmap (flip NS ns) (namedInst n)
     namedInst n@(UN _)  = Just n
     namedInst _         = Nothing
-    
+
     getDInst (PInstance _ _ _ _ _ _ _ _ _ _ _ _ t _ _) = Just t
     getDInst _                                         = Nothing
 
@@ -380,4 +391,4 @@ pprintConstDocs ist c str = text "Primitive" <+> text (if constIsType c then "ty
 
 pprintTypeDoc :: IState -> Doc OutputAnnotation
 pprintTypeDoc ist = prettyIst ist (PType emptyFC) <+> colon <+> type1Doc <+>
-                     nest 4 (line <> text typeDescription) 
+                     nest 4 (line <> text typeDescription)

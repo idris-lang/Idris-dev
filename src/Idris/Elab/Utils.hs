@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Utils
+Description : Elaborator utilities.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 module Idris.Elab.Utils where
 

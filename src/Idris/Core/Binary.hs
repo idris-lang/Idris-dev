@@ -1,6 +1,11 @@
+{-|
+Module      : Idris.Core.Binary
+Description : Binary instances for the core datatypes
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-
-{-| Binary instances for the core datatypes -}
 module Idris.Core.Binary where
 
 import Control.Applicative ((<*>), (<$>))
@@ -271,7 +276,7 @@ instance Binary a => Binary (Err' a) where
 
 instance Binary FC where
         put x =
-          case x of 
+          case x of
             (FC x1 (x2, x3) (x4, x5)) -> do putWord8 0
                                             put x1
                                             put (x2 * 65536 + x3)
@@ -589,7 +594,7 @@ instance Binary UExp where
     put x = case x of
                  UVar t -> do putWord8 0
                               put ((-1) :: Int) -- TMP HACK!
-                 UVal t -> do putWord8 1 
+                 UVal t -> do putWord8 1
                               put t
 
     get = do i <- getWord8
@@ -653,7 +658,7 @@ instance {- (Binary n) => -} Binary (TT Name) where
                            x2 <- getWord8
                            return (Proj x1 ((fromEnum x2)-1))
                    6 -> return Erased
-                   7 -> do x1 <- get 
+                   7 -> do x1 <- get
                            return (TType x1)
                    8 -> return Impossible
                    9 -> do x1 <- get
@@ -661,4 +666,3 @@ instance {- (Binary n) => -} Binary (TT Name) where
                    10 -> do x1 <- get
                             return (UType x1)
                    _ -> error "Corrupted binary data for TT"
-

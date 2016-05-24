@@ -1,6 +1,11 @@
-{-# LANGUAGE PatternGuards #-}
-{-| The coverage and totality checkers for Idris are in this module.
+{-|
+Module      : Idris.Coverage
+Description : The coverage and totality checkers for Idris are in this module.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
 -}
+{-# LANGUAGE PatternGuards #-}
 module Idris.Coverage where
 
 import Idris.Core.TT
@@ -352,7 +357,7 @@ checkPositive mut_ns (cn, ty')
   where
     args t = [0..length (getArgTys t)-1]
 
-    cp i (Bind n (Pi _ aty _) sc) 
+    cp i (Bind n (Pi _ aty _) sc)
          = posArg i aty && cp i sc
     cp i t | (P _ n' _ , args) <- unApply t,
              n' `elem` mut_ns = all noRec args

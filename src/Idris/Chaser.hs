@@ -1,4 +1,15 @@
-module Idris.Chaser(buildTree, getImports, getModuleFiles, ModuleTree(..)) where
+{-|
+Module      : Idris.Chaser
+Description : Module chaser to determine cycles and import modules.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+module Idris.Chaser(
+    buildTree, getImports
+  , getModuleFiles
+  , ModuleTree(..)
+  ) where
 
 import Idris.Core.TT
 import Idris.Parser

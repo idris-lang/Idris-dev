@@ -1,7 +1,11 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor, 
-             DeriveDataTypeable, PatternGuards #-}
-{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-{-| TT is the core language of Idris. The language has:
+{-|
+Module      : Idris.Core.TT
+Description : The core language of Idris, TT.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+
+TT is the core language of Idris. The language has:
 
    * Full dependent types
 
@@ -18,30 +22,34 @@
    * We have a simple collection of tactics which we use to elaborate source
      programs with implicit syntax into fully explicit terms.
 -}
-
-module Idris.Core.TT(AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..),
-                     ConstraintFC(..), DataOpt(..), DataOpts(..), Datatype(..),
-                     Env(..), EnvTT(..), Err(..), Err'(..), ErrorReportPart(..),
-                     FC(..), FC'(..), ImplicitInfo(..), IntTy(..), Name(..),
-                     NameOutput(..), NameType(..), NativeTy(..), OutputAnnotation(..),
-                     Provenance(..), Raw(..), SpecialName(..), TC(..), Term(..),
-                     TermSize(..), TextFormatting(..), TT(..),Type(..), TypeInfo(..),
-                     UConstraint(..), UCs(..), UExp(..), Universe(..),
-                     addAlist, addBinder, addDef, allTTNames, arity, bindAll,
-                     bindingOf, bindTyArgs, caseName, constDocs, constIsType, deleteDefExact,
-                     discard, emptyContext, emptyFC, explicitNames, fc_end, fc_fname,
-                     fc_start, fcIn, fileFC, finalise, fmapMB, forget, forgetEnv,
-                     freeNames, getArgTys, getRetTy, implicitable, instantiate,
-                     intTyName, isInjective, isTypeConst, liftPats, lookupCtxt,
-                     lookupCtxtExact, lookupCtxtName, mapCtxt, mkApp, nativeTyWidth,
-                     nextName, noOccurrence, nsroot, occurrences, orderPats,
-                     pEraseType, pmap, pprintRaw, pprintTT, prettyEnv, psubst, pToV,
-                     pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget,
-                     safeForgetEnv, showCG, showEnv, showEnvDbg, showSep,
-                     sInstanceN, sMN, sNS, spanFC, str, subst, substNames, substTerm,
-                     substV, sUN, tcname, termSmallerThan, tfail, thead, tnull,
-                     toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName,
-                     uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm) where
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor,
+             DeriveDataTypeable, PatternGuards #-}
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+module Idris.Core.TT(
+    AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
+  , ConstraintFC(..), DataOpt(..), DataOpts(..), Datatype(..)
+  , Env(..), EnvTT(..), Err(..), Err'(..), ErrorReportPart(..)
+  , FC(..), FC'(..), ImplicitInfo(..), IntTy(..), Name(..)
+  , NameOutput(..), NameType(..), NativeTy(..), OutputAnnotation(..)
+  , Provenance(..), Raw(..), SpecialName(..), TC(..), Term(..)
+  , TermSize(..), TextFormatting(..), TT(..),Type(..), TypeInfo(..)
+  , UConstraint(..), UCs(..), UExp(..), Universe(..)
+  , addAlist, addBinder, addDef, allTTNames, arity, bindAll
+  , bindingOf, bindTyArgs, caseName, constDocs, constIsType, deleteDefExact
+  , discard, emptyContext, emptyFC, explicitNames, fc_end, fc_fname
+  , fc_start, fcIn, fileFC, finalise, fmapMB, forget, forgetEnv
+  , freeNames, getArgTys, getRetTy, implicitable, instantiate
+  , intTyName, isInjective, isTypeConst, liftPats, lookupCtxt
+  , lookupCtxtExact, lookupCtxtName, mapCtxt, mkApp, nativeTyWidth
+  , nextName, noOccurrence, nsroot, occurrences, orderPats
+  , pEraseType, pmap, pprintRaw, pprintTT, prettyEnv, psubst, pToV
+  , pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget
+  , safeForgetEnv, showCG, showEnv, showEnvDbg, showSep
+  , sInstanceN, sMN, sNS, spanFC, str, subst, substNames, substTerm
+  , substV, sUN, tcname, termSmallerThan, tfail, thead, tnull
+  , toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName
+  , uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm
+  ) where
 
 -- Work around AMP without CPP
 import Prelude (Eq(..), Show(..), Ord(..), Functor(..), Monad(..), String, Int,
@@ -317,7 +325,7 @@ bindTC x k = case x of
 
 instance Monad TC where
     return x = OK x
-    x >>= k = bindTC x k 
+    x >>= k = bindTC x k
     fail e = Error (InternalMsg e)
 
 instance MonadPlus TC where
@@ -386,7 +394,7 @@ instance Show Err where
     show (At f e) = show f ++ ":" ++ show e
     show (ElaboratingArg f x prev e) = "Elaborating " ++ show f ++ " arg " ++
                                        show x ++ ": " ++ show e
-    show (Elaborating what n ty e) = "Elaborating " ++ what ++ show n ++ 
+    show (Elaborating what n ty e) = "Elaborating " ++ what ++ show n ++
                                      showType ty ++ ":" ++ show e
         where
           showType Nothing = ""
@@ -964,7 +972,7 @@ data ConstraintFC = ConstraintFC { uconstraint :: UConstraint,
   deriving (Show, Data, Typeable)
 
 instance Eq ConstraintFC where
-    x == y = uconstraint x == uconstraint y  
+    x == y = uconstraint x == uconstraint y
 
 instance Ord ConstraintFC where
     compare x y = compare (uconstraint x) (uconstraint y)

@@ -1,8 +1,17 @@
+{-|
+Module      : Idris.PartialEval
+Description : Implementation of a partial evaluator.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.PartialEval(partial_eval, getSpecApps, specType,
-                         mkPE_TyDecl, mkPE_TermDecl, PEArgType(..),
-                         pe_app, pe_def, pe_clauses, pe_simple) where
+module Idris.PartialEval(
+    partial_eval, getSpecApps, specType
+  , mkPE_TyDecl, mkPE_TermDecl, PEArgType(..)
+  , pe_app, pe_def, pe_clauses, pe_simple
+  ) where
 
 import Idris.AbsSyntax
 import Idris.Delaborate

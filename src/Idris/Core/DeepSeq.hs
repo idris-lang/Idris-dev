@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Core.DeepSeq
+Description : Marshalling information for TT.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE BangPatterns, ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
@@ -241,14 +248,14 @@ instance NFData Accessibility where
         rnf Hidden = ()
         rnf Private = ()
 
- 
+
 instance NFData Totality where
         rnf (Total x1) = rnf x1 `seq` ()
         rnf Productive = ()
         rnf (Partial x1) = rnf x1 `seq` ()
         rnf Unchecked = ()
         rnf Generated = ()
-        
+
 instance NFData PReason where
         rnf (Other x1) = rnf x1 `seq` ()
         rnf Itself = ()
@@ -274,7 +281,7 @@ instance NFData Def where
 
 instance NFData CaseInfo where
         rnf (CaseInfo x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
- 
+
 instance NFData CaseDefs where
         rnf (CaseDefs x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()

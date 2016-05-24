@@ -1,3 +1,11 @@
+{-|
+Module      : Idris.REPL.Browse
+Description : Browse the current namespace.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
 
 module Idris.REPL.Browse (namespacesInNS, namesInNS) where

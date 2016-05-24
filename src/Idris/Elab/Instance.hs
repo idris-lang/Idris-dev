@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Instance
+Description : Code to elaborate instances.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 module Idris.Elab.Instance(elabInstance) where
 

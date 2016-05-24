@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.RunElab
+Description : Code to run the elaborator process.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.Elab.RunElab (elabRunElab) where
 
 import Idris.Elab.Term

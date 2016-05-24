@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.CmdOptions
+Description : CLI for the Idris executable.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE Arrows #-}
 module Idris.CmdOptions where
 

@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Class
+Description : Code to elaborate interfaces.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-missing-signatures #-}
 module Idris.Elab.Class(elabClass) where

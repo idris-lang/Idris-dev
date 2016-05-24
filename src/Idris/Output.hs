@@ -1,3 +1,11 @@
+{-|
+Module      : Idris.Output
+Description : Utilities to display Idris' internals and other informtation to the user.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Output where
@@ -99,7 +107,7 @@ iPrintFunTypes bnd n overloads = do ist <- getIState
                                     let output = vsep (map (uncurry (ppOverload ppo infixes)) overloads)
                                     iRenderResult output
   where fullName ppo n | length overloads > 1 = prettyName True True bnd n
-                       | otherwise = prettyName True (ppopt_impl ppo) bnd n 
+                       | otherwise = prettyName True (ppopt_impl ppo) bnd n
         ppOverload ppo infixes n tm =
           fullName ppo n <+> colon <+> align tm
 

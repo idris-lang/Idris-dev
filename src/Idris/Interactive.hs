@@ -1,11 +1,18 @@
+{-|
+Module      : Idris.Interactive
+Description : Bits and pieces for editing source files interactively, called from the REPL
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Interactive(caseSplitAt, addClauseFrom, addProofClauseFrom,
-                         addMissing, makeWith, makeCase, doProofSearch,
-                         makeLemma) where
-
-{- Bits and pieces for editing source files interactively, called from
-   the REPL -}
+module Idris.Interactive(
+    caseSplitAt, addClauseFrom, addProofClauseFrom
+  , addMissing, makeWith, makeCase, doProofSearch
+  , makeLemma
+  ) where
 
 import Idris.Core.TT
 import Idris.Core.Evaluate

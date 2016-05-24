@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Provider
+Description : Code to elaborate type providers.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 module Idris.Elab.Provider(elabProvider) where
 

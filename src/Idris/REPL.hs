@@ -1,10 +1,19 @@
+{-|
+Module      : Idris.REPL
+Description : Entry Point for the Idris REPL and CLI.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              PatternGuards, CPP #-}
 
-module Idris.REPL(getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc,
-                  getPkgREPL, getPkgTest, getPort, getIBCSubDir,
-                  idris, idrisMain, loadInputs,
-                  opt, runClient, runMain, ver) where
+module Idris.REPL(
+    getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc
+  , getPkgREPL, getPkgTest, getPort, getIBCSubDir
+  , idris, idrisMain, loadInputs
+  , opt, runClient, runMain, ver
+  ) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -1457,7 +1466,7 @@ showTotalN :: IState -> Name -> Doc OutputAnnotation
 showTotalN ist n = case lookupTotal n (tt_ctxt ist) of
                         [t] -> showN n <> text ", which is" <+> showTotal t ist
                         _ -> empty
-    where 
+    where
        ppo = ppOptionIst ist
        showN n = annotate (AnnName n Nothing Nothing Nothing) . text $
                  showName (Just ist) [] ppo False n

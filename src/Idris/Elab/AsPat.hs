@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.AsPat
+Description : Code to elaborate pattern variables.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.Elab.AsPat(desugarAs) where
 
 import Idris.Core.TT
@@ -30,7 +37,7 @@ collectAs (PApp fc t as)
          return (PApp fc t as') -- only valid on args
 -- only for 'ExactlyOne' since it means the alternatives will have the
 -- same form, so we can assume we only need to extract from the first one
-collectAs tm@(PAlternative ns (ExactlyOne d) (a : as)) 
+collectAs tm@(PAlternative ns (ExactlyOne d) (a : as))
     = do a' <- collectAs a
          pats <- get
          as' <- mapM collectAs as -- just to drop the '@'

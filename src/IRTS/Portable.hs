@@ -1,5 +1,11 @@
+{-|
+Module      : IRTS.Portable
+Description : Serialise Idris' IR to JSON.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE OverloadedStrings #-}
-
 module IRTS.Portable (writePortable) where
 
 import Data.Aeson

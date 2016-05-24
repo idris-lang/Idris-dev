@@ -1,4 +1,12 @@
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, StandaloneDeriving #-}
+{-|
+Module      : Idris.Parser.Helpers
+Description : Utilities for Idris' parser.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, ConstraintKinds #-}
+{-# LANGUAGE PatternGuards, StandaloneDeriving                 #-}
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
 #endif

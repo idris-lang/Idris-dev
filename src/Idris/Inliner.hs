@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Inliner
+Description : Idris' Inliner.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.Inliner(inlineDef, inlineTerm) where

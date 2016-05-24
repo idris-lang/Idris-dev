@@ -1,8 +1,13 @@
+{-|
+Module      : Idris.IdrisDoc
+Description : Generation of HTML documentation for Idris code
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-
--- | Generation of HTML documentation for Idris code
 module Idris.IdrisDoc (generateDocs) where
 
 import Idris.Core.TT (Name (..), sUN, SpecialName (..), OutputAnnotation (..),

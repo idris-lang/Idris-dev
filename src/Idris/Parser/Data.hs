@@ -1,12 +1,21 @@
+{-|
+Module      : Idris.Parser.Data
+Description : Parse Data declarations.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 module Idris.Parser.Data where
 
 import Prelude hiding (pi)
 
 import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err)
-import Text.Parser.LookAhead
-import Text.Parser.Expression
+import Text.Trifecta hiding ( span, stringLiteral, charLiteral, natural
+                            , symbol, char, string, whiteSpace, Err)
+
+import           Text.Parser.LookAhead
+import           Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
 import qualified Text.Parser.Char as Chr
 import qualified Text.Parser.Token.Highlight as Hi
@@ -26,11 +35,11 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
 
-import Data.Maybe
+import           Data.Maybe
 import qualified Data.List.Split as Spl
-import Data.List
-import Data.Monoid
-import Data.Char
+import           Data.List
+import           Data.Monoid
+import           Data.Char
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8

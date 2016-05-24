@@ -1,3 +1,10 @@
+{-|
+Module      : Pkg.PParser
+Description : `iPKG` file parser and package description information.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE CPP, ConstraintKinds #-}
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}

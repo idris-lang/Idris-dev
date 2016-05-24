@@ -1,9 +1,19 @@
+{-|
+Module      : Idris.Transforms
+Description : A collection of transformations.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.Transforms(transformPats,
-                        transformPatsWith,
-                        applyTransRulesWith,
-                        applyTransRules) where
+module Idris.Transforms(
+    transformPats
+  , transformPatsWith
+  , applyTransRulesWith
+  , applyTransRules
+  ) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree

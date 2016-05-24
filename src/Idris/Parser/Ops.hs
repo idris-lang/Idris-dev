@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Parser.Ops
+Description : Parser for operators and fixity declarations.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 module Idris.Parser.Ops where
 

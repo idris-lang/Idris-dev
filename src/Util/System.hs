@@ -1,8 +1,22 @@
+{-|
+Module      : Util.System
+Description : Utilities for interacting with the system.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
-module Util.System(tempfile,withTempdir,rmFile,catchIO, isWindows,
-                   writeSource, writeSourceText, readSource,
-                   setupBundledCC, isATTY) where
--- System helper functions.
+module Util.System( tempfile
+                  , withTempdir
+                  , rmFile
+                  , catchIO
+                  , isWindows
+                  , writeSource
+                  , writeSourceText
+                  , readSource
+                  , setupBundledCC
+                  , isATTY
+                  ) where
 
 import Control.Exception as CE
 import Control.Monad (when)

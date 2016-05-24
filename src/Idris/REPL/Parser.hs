@@ -1,5 +1,16 @@
-
-module Idris.REPL.Parser (parseCmd, help, allHelp, setOptions) where
+{-|
+Module      : Idris.REPL.Parser
+Description : Parser for the REPL commands.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+module Idris.REPL.Parser (
+    parseCmd
+  , help
+  , allHelp
+  , setOptions
+  ) where
 
 import System.FilePath ((</>))
 import System.Console.ANSI (Color(..))

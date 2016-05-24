@@ -1,3 +1,10 @@
+{-|
+Module      : IRTS.Simplified
+Description : Simplified expressions, where functions/constructors can only be applied to variables.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module IRTS.Simplified(simplifyDefs, SDecl(..), SExp(..), SAlt(..)) where
 
 import IRTS.Defunctionalise
@@ -8,9 +15,6 @@ import Data.Maybe
 import Control.Monad.State
 
 import Debug.Trace
-
--- Simplified expressions, where functions/constructors can only be applied
--- to variables
 
 data SExp = SV LVar
           | SApp Bool Name [LVar]
@@ -231,4 +235,3 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
                                     return (SConstCase c e')
     scalt env (SDefaultCase e) = do e' <- sc env e
                                     return (SDefaultCase e')
-

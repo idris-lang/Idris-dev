@@ -1,3 +1,10 @@
+{-|
+Module      : IRTS.CodegenC
+Description : The default code generator for Idris, generating C code.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module IRTS.CodegenC (codegenC) where
 
 import Idris.AbsSyntax
@@ -41,17 +48,17 @@ codegenC ci = do codegenC' (simpleDecls ci)
   where mkLib l = "-l" ++ l
         incdir i = "-I" ++ i
 
-codegenC' :: [(Name, SDecl)] ->
-             String -> -- output file name
-             OutputType ->   -- generate executable if True, only .o if False
-             [FilePath] -> -- include files
-             [String] -> -- extra object files
-             [String] -> -- extra compiler flags (libraries)
-             [String] -> -- extra compiler flags (anything)
-             [ExportIFace] ->
-             Bool -> -- interfaces too (so make a .o instead)
-             DbgLevel ->
-             IO ()
+codegenC' :: [(Name, SDecl)]
+          -> String        -- ^ output file name
+          -> OutputType    -- ^ generate executable if True, only .o if False
+          -> [FilePath]    -- ^ include files
+          -> [String]      -- ^ extra object files
+          -> [String]      -- ^ extra compiler flags (libraries)
+          -> [String]      -- ^ extra compiler flags (anything)
+          -> [ExportIFace]
+          -> Bool          -- ^ interfaces too (so make a .o instead)
+          -> DbgLevel
+          -> IO ()
 codegenC' defs out exec incs objs libs flags exports iface dbg
     = do -- print defs
          let bc = map toBC defs

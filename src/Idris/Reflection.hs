@@ -1,6 +1,11 @@
-{-| Code related to Idris's reflection system. This module contains
-quoters and unquoters along with some supporting datatypes.
+{-|
+Module      : Idris.Reflection
+Description : Code related to Idris's reflection system. This module contains quoters and unquoters along with some supporting datatypes.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE PatternGuards, CPP #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
 module Idris.Reflection where
@@ -900,7 +905,7 @@ reflectErr (NotInjective t1 t2 t3) =
             , reflect t2
             , reflect t3
             ]
-reflectErr (CantResolve _ t more) 
+reflectErr (CantResolve _ t more)
    = raw_apply (Var $ reflErrName "CantResolve") [reflect t, reflectErr more]
 reflectErr (InvalidTCArg n t) = raw_apply (Var $ reflErrName "InvalidTCArg") [reflectName n, reflect t]
 reflectErr (CantResolveAlts ss) =

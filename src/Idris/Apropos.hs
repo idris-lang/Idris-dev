@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Apropos
+Description : Search loaded Idris code and named modules for things.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.Apropos (apropos, aproposModules) where
 
 import Idris.AbsSyntax

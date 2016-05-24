@@ -1,8 +1,16 @@
+{-|
+Module      : Util.Pretty
+Description : Utilities for Pretty Printing.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Util.Pretty (
-  module Text.PrettyPrint.Annotated.Leijen,
-  Sized(..), nestingSize,
-  Pretty(..)
-) where
+    module Text.PrettyPrint.Annotated.Leijen
+  , Sized(..)
+  , nestingSize
+  , Pretty(..)
+  ) where
 
 --import Text.PrettyPrint.HughesPJ
 import Text.PrettyPrint.Annotated.Leijen
@@ -22,5 +30,3 @@ nestingSize = 1
 
 class Pretty a ty where
   pretty :: a -> Doc ty
-
-
