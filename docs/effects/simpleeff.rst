@@ -165,9 +165,9 @@ parameterised by an error type:
 
 .. code-block:: idris
 
-    data Err = NotANumber | OutOfRange
+    data Error = NotANumber | OutOfRange
 
-    parseNumber : Int -> String -> Eff Int [EXCEPTION Err]
+    parseNumber : Int -> String -> Eff Int [EXCEPTION Error]
     parseNumber num str
        = if all isDigit (unpack str)
             then let x = cast str in
@@ -178,23 +178,23 @@ parameterised by an error type:
 
 Programs which support the ``EXCEPTION`` effect can be run in any
 context which has some way of throwing errors, for example, we can run
-``parseNumber`` in the ``Either Err`` context. It returns a value of
+``parseNumber`` in the ``Either Error`` context. It returns a value of
 the form ``Right x`` if successful:
 
 .. code-block:: idris
 
-    *Exception> the (Either Err Int) $ run (parseNumber 42 "20")
-    Right 20 : Either Err Int
+    *Exception> the (Either Error Int) $ run (parseNumber 42 "20")
+    Right 20 : Either Error Int
 
 Or ``Left e`` on failure, carrying the appropriate exception:
 
 .. code-block:: idris
 
-    *Exception> the (Either Err Int) $ run (parseNumber 42 "50")
-    Left OutOfRange : Either Err Int
+    *Exception> the (Either Error Int) $ run (parseNumber 42 "50")
+    Left OutOfRange : Either Error Int
 
-    *Exception> the (Either Err Int) $ run (parseNumber 42 "twenty")
-    Left NotANumber : Either Err Int
+    *Exception> the (Either Error Int) $ run (parseNumber 42 "twenty")
+    Left NotANumber : Either Error Int
 
 In fact, we can do a little bit better with ``parseNumber``, and have
 it return a *proof* that the integer is in the required range along
@@ -222,7 +222,7 @@ the boundedness proof:
 
 .. code-block:: idris
 
-    parseNumber : (x : Int) -> String -> Eff (Bounded x) [EXCEPTION Err]
+    parseNumber : (x : Int) -> String -> Eff (Bounded x) [EXCEPTION Error]
     parseNumber x str
        = if all isDigit (unpack str)
             then let num = cast str in
