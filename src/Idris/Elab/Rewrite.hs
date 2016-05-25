@@ -86,6 +86,7 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
 --                                "GOAL: " ++ show (delab ist g)) $
                         elab rewrite
                         solve
+                        compute
                   _ -> lift $ tfail (NotEquality tmv ttrule)
       where
         mkP :: TT Name -> -- Left term, top level
