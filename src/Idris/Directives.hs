@@ -1,4 +1,10 @@
-
+{-|
+Module      : Idris.Directives
+Description : Act upon Idris directives.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.Directives(directiveAction) where
 
 import Idris.AbsSyntax

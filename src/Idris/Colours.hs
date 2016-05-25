@@ -1,10 +1,18 @@
+{-|
+Module      : Idris.Colours
+Description : Support for colours within Idris.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.Colours (
-  IdrisColour(..),
-  ColourTheme(..),
-  defaultTheme,
-  colouriseKwd, colouriseBound, colouriseImplicit, colourisePostulate,
-  colouriseType, colouriseFun, colouriseData, colouriseKeyword,
-  colourisePrompt, colourise, ColourType(..), hStartColourise, hEndColourise) where
+    IdrisColour(..)
+  , ColourTheme(..)
+  , defaultTheme
+  , colouriseKwd, colouriseBound, colouriseImplicit, colourisePostulate
+  , colouriseType, colouriseFun, colouriseData, colouriseKeyword
+  , colourisePrompt, colourise, ColourType(..), hStartColourise, hEndColourise
+  ) where
 
 import System.Console.ANSI
 import System.IO (Handle)

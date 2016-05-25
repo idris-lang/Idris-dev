@@ -1,4 +1,10 @@
--- | Support for command-line completion at the REPL and in the prover
+{-|
+Module      : Idris.Completion
+Description : Support for command-line completion at the REPL and in the prover.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.Completion (replCompletion, proverCompletion) where
 
 import Idris.Core.Evaluate (ctxtAlist)

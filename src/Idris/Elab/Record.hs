@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Record
+Description : Code to elaborate records.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards, ViewPatterns #-}
 module Idris.Elab.Record(elabRecord) where
 

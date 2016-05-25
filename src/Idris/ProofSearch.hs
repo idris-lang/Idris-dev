@@ -1,6 +1,19 @@
+{-|
+Module      : Idris.ProofSearch
+Description : Searches current context for proofs'
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.ProofSearch(trivial, trivialHoles, proofSearch, resolveTC) where
+module Idris.ProofSearch(
+    trivial
+  , trivialHoles
+  , proofSearch
+  , resolveTC
+  ) where
 
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT

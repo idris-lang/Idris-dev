@@ -1,3 +1,10 @@
+{-|
+Module      : Util.Net
+Description : Utilities for Network IO.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort) where
 
 import Network hiding (socketPort)

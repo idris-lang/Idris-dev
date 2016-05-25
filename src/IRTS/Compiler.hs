@@ -1,3 +1,10 @@
+{-|
+Module      : IRTS.Compiler
+Description : Coordinates the compilation process.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards, TypeSynonymInstances, CPP #-}
 
 module IRTS.Compiler(compile, generate) where
@@ -32,13 +39,15 @@ import Prelude hiding (id, (.))
 
 import Control.Applicative
 import Control.Monad.State
-import Data.Maybe
-import Data.List
-import Data.Ord
-import Data.IntSet (IntSet)
-import qualified Data.IntSet as IS
-import qualified Data.Map as M
-import qualified Data.Set as S
+
+import           Data.Maybe
+import           Data.List
+import           Data.Ord
+import           Data.IntSet (IntSet)
+import qualified Data.IntSet          as IS
+import qualified Data.Map             as M
+import qualified Data.Set             as S
+
 import System.Process
 import System.IO
 import System.Exit

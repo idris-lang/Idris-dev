@@ -1,7 +1,28 @@
-{-# LANGUAGE PatternGuards #-}
+{-|
+Module      : IRTS.Defunctionalise
+Description : Defunctionalise Idris' IR.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
 
-module IRTS.Defunctionalise(module IRTS.Defunctionalise,
-                            module IRTS.Lang) where
+To defunctionalise:
+
+1. Create a data constructor for each function
+2. Create a data constructor for each underapplication of a function
+3. Convert underapplications to their corresponding constructors
+4. Create an EVAL function which calls the appropriate function for data constructors
+   created as part of step 1
+5. Create an APPLY function which adds an argument to each underapplication (or calls
+   APPLY again for an exact application)
+6. Wrap overapplications in chains of APPLY
+7. Wrap unknown applications (i.e. applications of local variables) in chains of APPLY
+8. Add explicit EVAL to case, primitives, and foreign calls
+
+-}
+{-# LANGUAGE PatternGuards #-}
+module IRTS.Defunctionalise(module IRTS.Defunctionalise
+                          , module IRTS.Lang
+                          ) where
 
 import IRTS.Lang
 import Idris.Core.TT
@@ -61,19 +82,6 @@ getFn xs = mapMaybe fnData xs
   where fnData (n, LFun _ _ args _) = Just (n, length args)
         fnData _ = Nothing
 
--- To defunctionalise:
---
--- 1 Create a data constructor for each function
--- 2 Create a data constructor for each underapplication of a function
--- 3 Convert underapplications to their corresponding constructors
--- 4 Create an EVAL function which calls the appropriate function for data constructors
---   created as part of step 1
--- 5 Create an APPLY function which adds an argument to each underapplication (or calls
---   APPLY again for an exact application)
--- 6 Wrap overapplications in chains of APPLY
--- 7 Wrap unknown applications (i.e. applications of local variables) in chains of APPLY
--- 8 Add explicit EVAL to case, primitives, and foreign calls
-
 addApps :: LDefs -> (Name, LDecl) -> State ([Name], [(Name, Int)]) (Name, DDecl)
 addApps defs o@(n, LConstructor _ t a)
     = return (n, DConstructor n t a)
@@ -111,7 +119,7 @@ addApps defs (n, LFun _ _ args e)
                                   alts' <- mapM (aaAlt env) alts
                                   return $ DCase up e' alts'
     aa env (LConst c) = return $ DConst c
-    aa env (LForeign t n args) 
+    aa env (LForeign t n args)
         = do args' <- mapM (aaF env) args
              return $ DForeign t n args'
     aa env (LOp LFork args) = liftM (DOp LFork) (mapM (aa env) args)
@@ -133,7 +141,7 @@ addApps defs (n, LFun _ _ args e)
              = return $ DApp tc n args
         | length args < ar
              = do (ens, ans) <- get
-                  let alln = map (\x -> (n, x)) [length args .. ar] 
+                  let alln = map (\x -> (n, x)) [length args .. ar]
                   put (ens, alln ++ ans)
                   return $ DApp tc (mkUnderCon n (ar - length args)) args
         | length args > ar
@@ -146,14 +154,14 @@ addApps defs (n, LFun _ _ args e)
                   return $ DApp False (mkFnCon n) args
         | length args < ar
              = do (ens, ans) <- get
-                  let alln = map (\x -> (n, x)) [length args .. ar] 
+                  let alln = map (\x -> (n, x)) [length args .. ar]
                   put (ens, alln ++ ans)
                   return $ DApp False (mkUnderCon n (ar - length args)) args
         | length args > ar
              = return $ chainAPPLY (DApp False n (take ar args)) (drop ar args)
 
     chainAPPLY f [] = f
---     chainAPPLY f (a : b : as) 
+--     chainAPPLY f (a : b : as)
 --          = chainAPPLY (DApp False (sMN 0 "APPLY2") [f, a, b]) as
     chainAPPLY f (a : as) = chainAPPLY (DApp False (sMN 0 "APPLY") [f, a]) as
 
@@ -223,7 +231,7 @@ mkApplyCase fname n ar
                   (DApp False (mkUnderCon fname (ar - (n + 1)))
                        (map (DV . Glob) (take n (genArgs 0) ++
                          [sMN 0 "arg"])))))
-                            : 
+                            :
               if (ar - (n + 2) >=0 )
                  then (nm, n, Apply2Case (DConCase (-1) nm (take n (genArgs 0))
                       (DApp False (mkUnderCon fname (ar - (n + 2)))
@@ -263,7 +271,7 @@ mkApply2 xs = (sMN 0 "APPLY2", DFun (sMN 0 "APPLY2") [sMN 0 "fn", sMN 0 "arg0", 
                                     mkBigCase (sMN 0 "APPLY") 256
                                                (DV (Glob (sMN 0 "fn")))
                                               (cases ++
-                                    [DDefaultCase 
+                                    [DDefaultCase
                                        (DApp False (sMN 0 "APPLY")
                                        [DApp False (sMN 0 "APPLY")
                                               [DV (Glob (sMN 0 "fn")),
@@ -320,9 +328,8 @@ instance Show DExp where
      showAlt env (DConstCase c e) = show c ++ " => " ++ show' env e
      showAlt env (DDefaultCase e) = "_ => " ++ show' env e
 
--- Divide up a large case expression so that each has a maximum of
+-- | Divide up a large case expression so that each has a maximum of
 -- 'max' branches
-
 mkBigCase cn max arg branches
    | length branches <= max = DChkCase arg branches
    | otherwise = -- DChkCase arg branches -- until I think of something...
@@ -368,5 +375,3 @@ dumpDefuns ds = showSep "\n" $ map showDef (toAlist ds)
             = show fn ++ "(" ++ showSep ", " (map show args) ++ ") = \n\t" ++
               show exp ++ "\n"
         showDef (x, DConstructor n t a) = "Constructor " ++ show n ++ " " ++ show t
-
-

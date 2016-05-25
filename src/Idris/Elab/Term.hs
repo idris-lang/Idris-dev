@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Term
+Description : Code to elaborate terms.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE LambdaCase, PatternGuards, ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Elab.Term where
@@ -1664,7 +1671,7 @@ pruneByType env (P _ n _) goalty ist as
                                      case unApply (getRetTy ty') of
                                           (V _, _) ->
                                               isPlausible ist var env n ty
-                                          _ -> matching (getRetTy ty') goalty 
+                                          _ -> matching (getRetTy ty') goalty
                                                  || isCoercion (getRetTy ty') goalty
 -- May be useful to keep for debugging purposes for a bit:
 --                                                let res = matching (getRetTy ty') goalty in
@@ -1698,7 +1705,7 @@ pruneByType env (P _ n _) goalty ist as
     isCoercion rty gty | (P _ r _, _) <- unApply rty
             = not (null (getCoercionsBetween r gty))
     isCoercion _ _ = False
- 
+
     getCoercionsBetween :: Name -> Type -> [Name]
     getCoercionsBetween r goal
        = let cs = getCoercionsTo ist goal in
@@ -1711,7 +1718,7 @@ pruneByType env (P _ n _) goalty ist as
                                _ -> [] in
                      ps ++ findCoercions t ns
 
-              useR ty = 
+              useR ty =
                   case unApply (getRetTy ty) of
                        (P _ t _, _) -> t == r
                        _ -> False

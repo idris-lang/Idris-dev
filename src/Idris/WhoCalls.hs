@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.WhoCalls
+Description : Find function callers and callees.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.WhoCalls (whoCalls, callsWho) where
 
 import Idris.AbsSyntax
@@ -77,7 +84,7 @@ findOccurs :: Name -> Idris [Name]
 findOccurs n = do ctxt <- getContext
                   -- A definition calls a function if the function is in the type or RHS of the definition
                   let defs = (map fst . filter (\(n', def) -> n /= n' && occursDef n def) . ctxtAlist) ctxt
-                  -- A datatype calls its 
+                  -- A datatype calls its
                   return defs
 
 whoCalls :: Name -> Idris [(Name, [Name])]

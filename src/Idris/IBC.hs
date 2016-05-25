@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.IBC
+Description : Core representations and code to generate IBC files.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 

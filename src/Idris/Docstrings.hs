@@ -1,10 +1,17 @@
+{-|
+Module      :  Idris.Docstrings
+Description : Wrapper around Markdown library.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-
--- | Wrapper around Markdown library
 module Idris.Docstrings (
-    Docstring(..), Block(..), Inline(..), parseDocstring, renderDocstring, emptyDocstring, nullDocstring, noDocs,
-    overview, containsText, renderHtml, annotCode, DocTerm(..), renderDocTerm, checkDocstring
+    Docstring(..), Block(..), Inline(..), parseDocstring, renderDocstring
+  , emptyDocstring, nullDocstring, noDocs, overview, containsText
+  , renderHtml, annotCode, DocTerm(..), renderDocTerm, checkDocstring
   ) where
 
 import qualified Cheapskate as C

@@ -1,6 +1,21 @@
+{-|
+Module      : IRTS.System
+Description : Utilities for interacting with the System.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE CPP #-}
-module IRTS.System(getDataFileName, getDataDir, getTargetDir,getCC,getLibFlags,getIdrisLibDir,
-                   getIncFlags, getEnvFlags, version) where
+module IRTS.System( getDataFileName
+                  , getDataDir
+                  , getTargetDir
+                  , getCC
+                  , getLibFlags
+                  , getIdrisLibDir
+                  , getIncFlags
+                  , getEnvFlags
+                  , version
+                  ) where
 
 import Data.List.Split
 

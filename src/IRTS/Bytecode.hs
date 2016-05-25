@@ -1,15 +1,11 @@
-module IRTS.Bytecode where
+{-|
+Module      : IRTS.Bytecode
+Description : Bytecode for a stack based VM (e.g. for generating C code with an accurate hand written GC)
 
--- Bytecode for a stack based VM (e.g. for generating C code with an accurate
--- hand written GC)
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
 
-import IRTS.Lang
-import IRTS.Simplified
-import IRTS.Defunctionalise
-import Idris.Core.TT
-import Data.Maybe
-
-{- We have:
 
 BASE: Current stack frame's base
 TOP:  Top of stack
@@ -22,27 +18,35 @@ RVal is a register in which computed values (essentially, what a function
 returns) are stored.
 
 -}
+module IRTS.Bytecode where
+
+
+import IRTS.Lang
+import IRTS.Simplified
+import IRTS.Defunctionalise
+import Idris.Core.TT
+import Data.Maybe
 
 data Reg = RVal | L Int | T Int | Tmp
    deriving (Show, Eq)
 
-data BC = 
-    -- reg1 = reg2
+data BC =
+    -- | reg1 = reg2
     ASSIGN Reg Reg
 
-    -- reg = const
+    -- | reg = const
   | ASSIGNCONST Reg Const
 
-    -- reg1 = reg2 (same as assign, it seems)
+    -- | reg1 = reg2 (same as assign, it seems)
   | UPDATE Reg Reg
 
-    -- reg = constructor, where constructor consists of a tag and
+    -- | reg = constructor, where constructor consists of a tag and
     -- values from registers, e.g. (cons tag args)
     -- the 'Maybe Reg', if set, is a register which can be overwritten
     -- (i.e. safe for mutable update), though this can be ignored
   | MKCON Reg (Maybe Reg) Int [Reg]
 
-    -- Matching on value of reg: usually (but not always) there are
+    -- | Matching on value of reg: usually (but not always) there are
     -- constructors, hence "Int" for patterns (that's a tag on which
     -- we should match), and the following [BC] is just a list of
     -- instructions for the corresponding case. The last argument is
@@ -53,57 +57,57 @@ data BC =
   | CASE Bool
     Reg [(Int, [BC])] (Maybe [BC])
 
-    -- get a value from register, which should be a constructor, and
+    -- | get a value from register, which should be a constructor, and
     -- put its arguments into the stack, starting from (base + int1)
     -- and onwards; second Int provides arity
   | PROJECT Reg Int Int
 
-    -- probably not used
+    -- | probably not used
   | PROJECTINTO Reg Reg Int -- project argument from one reg into another
 
-    -- same as CASE, but there's an exact value (not constructor) in reg
+    -- | same as CASE, but there's an exact value (not constructor) in reg
   | CONSTCASE Reg [(Const, [BC])] (Maybe [BC])
 
-    -- just call a function, passing MYOLDBASE (see below) to it
+    -- | just call a function, passing MYOLDBASE (see below) to it
   | CALL Name
 
-    -- same, perhaps exists just for TCO
+    -- | same, perhaps exists just for TCO
   | TAILCALL Name
 
-    -- set reg to (apply string args), 
+    -- | set reg to (apply string args),
   | FOREIGNCALL Reg FDesc FDesc [(FDesc, Reg)]
 
-    -- move this number of elements from TOP to BASE
+    -- | move this number of elements from TOP to BASE
   | SLIDE Int
 
-    -- set BASE = OLDBASE
+    -- | set BASE = OLDBASE
   | REBASE
 
-    -- reserve n more stack items (i.e. check there's space, grow if
+    -- | reserve n more stack items (i.e. check there's space, grow if
     -- necessary)
   | RESERVE Int
 
-    -- move the top of stack up
+    -- | move the top of stack up
   | ADDTOP Int
 
-    -- set TOP = BASE + n
+    -- | set TOP = BASE + n
   | TOPBASE Int
 
-    -- set BASE = TOP + n
+    -- | set BASE = TOP + n
   | BASETOP Int
 
-    -- set MYOLDBASE = BASE, where MYOLDBASE is a function-local
+    -- | set MYOLDBASE = BASE, where MYOLDBASE is a function-local
     -- variable, set to OLDBASE by default, and passed on function
     -- call to called functions as their OLDBASE
   | STOREOLD
 
-    -- reg = apply primitive_function args
+    -- | reg = apply primitive_function args
   | OP Reg PrimFn [Reg]
 
-    -- clear reg
+    -- | clear reg
   | NULL Reg
 
-    -- throw an error
+    -- | throw an error
   | ERROR String
   deriving Show
 
@@ -138,7 +142,7 @@ bc reg (SLet (Loc i) e sc) r = bc (L i) e False ++ bc reg sc r
 bc reg (SUpdate (Loc i) sc) r = bc reg sc False ++ [ASSIGN (L i) reg]
                                 ++ clean r
 -- bc reg (SUpdate x sc) r = bc reg sc r -- can't update, just do it
-bc reg (SCon atloc i _ vs) r 
+bc reg (SCon atloc i _ vs) r
   = MKCON reg (getAllocLoc atloc) i (map getL vs) : clean r
     where getL (Loc x) = L x
           getAllocLoc (Just (Loc x)) = Just (L x)
@@ -184,5 +188,3 @@ constAlt l reg r _ = Nothing
 defaultAlt reg [] r = Nothing
 defaultAlt reg (SDefaultCase e : _) r = Just (bc reg e r)
 defaultAlt reg (_ : xs) r = defaultAlt reg xs r
-
-

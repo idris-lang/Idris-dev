@@ -1,3 +1,10 @@
+{-|
+Module      : IRTS.Lang
+Description : Internal representation of Idris' constructs.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards, DeriveFunctor #-}
 
 module IRTS.Lang where
@@ -19,19 +26,19 @@ data LVar = Loc Int | Glob Name
 -- ASSUMPTION: All variable bindings have unique names here
 -- Constructors commented as lifted are not present in the LIR provided to the different backends.
 data LExp = LV LVar
-          | LApp Bool LExp [LExp] -- True = tail call
-          | LLazyApp Name [LExp] -- True = tail call
-          | LLazyExp LExp -- lifted out before compiling
-          | LForce LExp -- make sure Exp is evaluted
-          | LLet Name LExp LExp -- name just for pretty printing
-          | LLam [Name] LExp -- lambda, lifted out before compiling
-          | LProj LExp Int -- projection
-          | LCon (Maybe LVar) -- Location to reallocate, if available
+          | LApp Bool LExp [LExp]    -- True = tail call
+          | LLazyApp Name [LExp]     -- True = tail call
+          | LLazyExp LExp            -- lifted out before compiling
+          | LForce LExp              -- make sure Exp is evaluted
+          | LLet Name LExp LExp      -- name just for pretty printing
+          | LLam [Name] LExp         -- lambda, lifted out before compiling
+          | LProj LExp Int           -- projection
+          | LCon (Maybe LVar)        -- Location to reallocate, if available
                  Int Name [LExp]
           | LCase CaseType LExp [LAlt]
           | LConst Const
-          | LForeign FDesc -- Function descriptor (usually name as string)
-                     FDesc -- Return type descriptor
+          | LForeign FDesc           -- Function descriptor (usually name as string)
+                     FDesc           -- Return type descriptor
                      [(FDesc, LExp)] -- first LExp is the FFI type description
           | LOp PrimFn [LExp]
           | LNothing

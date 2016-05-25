@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Parser
+Description : Idris' parser.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
@@ -797,7 +804,7 @@ openInterface syn =
     <?> "open interface declaration"
 
 
-       
+
 
 
 {-| Parses a mutual declaration (for mutually recursive functions)

@@ -1,3 +1,10 @@
+{-|
+Module      : IRTS.JavaScript.AST
+Description : Data structures and functions used with the JavaScript codegen.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE OverloadedStrings #-}
 module IRTS.JavaScript.AST where

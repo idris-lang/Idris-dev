@@ -1,4 +1,12 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds, PatternGuards, TupleSections #-}
+{-|
+Module      : Idris.Parser.Expr
+Description : Parse Expressions.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds #-}
+{-# LANGUAGE PatternGuards, TupleSections                #-}
 module Idris.Parser.Expr where
 
 import Prelude hiding (pi)
@@ -80,7 +88,7 @@ expr = pi
 -}
 opExpr :: SyntaxInfo -> IdrisParser PTerm
 opExpr syn = do i <- get
-                buildExpressionParser (table (idris_infixes i)) 
+                buildExpressionParser (table (idris_infixes i))
                                       (expr' syn)
 
 {- | Parses either an internally defined expression or
@@ -955,8 +963,8 @@ rewriteTerm syn = do kw <- reservedFC "rewrite"
                      fc <- getFC
                      prf <- expr syn
                      giving <- optional (do symbol "==>"; expr' syn)
-                     using <- optional (do reserved "using" 
-                                           (n, _) <- name 
+                     using <- optional (do reserved "using"
+                                           (n, _) <- name
                                            return n)
                      kw' <- reservedFC "in";  sc <- expr syn
                      highlightP kw AnnKeyword
@@ -1128,7 +1136,7 @@ pi syn =
         st   <- static
         explicitPi opts st syn
          <|> try (do lchar '{'; implicitPi opts st syn)
-         <|> if constraintAllowed syn 
+         <|> if constraintAllowed syn
                 then try (constraintPi opts st syn)
                          <|> unboundPi opts st syn
                 else unboundPi opts st syn

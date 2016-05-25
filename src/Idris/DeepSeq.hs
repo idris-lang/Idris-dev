@@ -1,6 +1,16 @@
+{-|
+Module      : Idris.DeepSeq
+Description : Specify how to marshall Idris' IR.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.DeepSeq(module Idris.DeepSeq, module Idris.Core.DeepSeq) where
+module Idris.DeepSeq(
+    module Idris.DeepSeq
+  , module Idris.Core.DeepSeq
+  ) where
 
 import Idris.Core.DeepSeq
 import Idris.Docstrings

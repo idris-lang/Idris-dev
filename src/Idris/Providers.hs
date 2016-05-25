@@ -1,5 +1,16 @@
+{-|
+Module      : Idris.Providers
+Description : Idris' 'Type Provider' implementation.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards, DeriveFunctor #-}
-module Idris.Providers (providerTy, getProvided, Provided(..)) where
+module Idris.Providers (
+    providerTy
+  , getProvided
+  , Provided(..)
+  ) where
 
 import Idris.Core.TT
 import Idris.Core.Evaluate
@@ -39,4 +50,3 @@ getProvided fc tm | (P _ pioret _, [tp, result]) <- unApply tm
                   | otherwise = ifail $ "Internal type provider error: result was not " ++
                                         "IO (Provider a), or perhaps missing normalisation." ++
                                         "Term: " ++ take 1000 (show tm)
-

@@ -1,3 +1,10 @@
+{-|
+Module      : IRTS.Inliner
+Description : Inline expressions.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module IRTS.Inliner where
 
 import Idris.Core.TT
@@ -19,4 +26,3 @@ inl ds d = d
 evalD _ e = ev e
   where
     ev e = Just e
-

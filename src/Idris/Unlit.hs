@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Unlit
+Description : Turn literate programs into normal programs.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 module Idris.Unlit(unlit) where
 
 import Idris.Core.TT

@@ -1,6 +1,16 @@
+{-|
+Module      : IRTS.CodegenJavaScript
+Description : The JavaScript code generator.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE OverloadedStrings #-}
-module IRTS.CodegenJavaScript (codegenJavaScript, codegenNode, JSTarget(..)) where
+module IRTS.CodegenJavaScript (codegenJavaScript
+                             , codegenNode
+                             , JSTarget(..)
+                             ) where
 
 import IRTS.JavaScript.AST
 

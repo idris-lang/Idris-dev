@@ -1,3 +1,10 @@
+{-|
+Module      : IRTS.LangOpts
+Description : Transformations to apply to Idris' IR.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards, DeriveFunctor #-}
 
 module IRTS.LangOpts where
@@ -20,17 +27,19 @@ nextN = do i <- get
            put (i + 1)
            return $ sMN i "in"
 
--- Inline inside a declaration. Variables are still Name at this stage.
--- Need to preserve uniqueness of variable names in the resulting definition,
--- so invent a new name for every variable we encounter
+-- | Inline inside a declaration.
+--
+-- Variables are still Name at this stage.  Need to preserve
+-- uniqueness of variable names in the resulting definition, so invent
+-- a new name for every variable we encounter
 doInline :: LDefs -> LDecl -> LDecl
 doInline defs d@(LConstructor _ _ _) = d
-doInline defs (LFun opts topn args exp) 
+doInline defs (LFun opts topn args exp)
       = let res = evalState (inlineWith [topn] (map (\n -> (n, LV (Glob n))) args) exp) 0 in
             LFun opts topn args res
   where
     inlineWith :: [Name] -> [(Name, LExp)] -> LExp -> State Int LExp
-    inlineWith done env var@(LV (Glob n)) 
+    inlineWith done env var@(LV (Glob n))
                                      = case lookup n env of
                                             Just t -> return t
                                             Nothing -> return var
@@ -39,7 +48,7 @@ doInline defs (LFun opts topn args exp)
     inlineWith done env (LLazyExp e) = LLazyExp <$> inlineWith done env e
     -- Extend the environment for Let and Lam so that bound names aren't
     -- expanded with any top level argument definitions they shadow
-    inlineWith done env (LLet n val sc) 
+    inlineWith done env (LLet n val sc)
        = do n' <- nextN
             LLet n' <$> inlineWith done env val <*>
                         inlineWith done ((n, LV (Glob n')) : env) sc
@@ -51,7 +60,7 @@ doInline defs (LFun opts topn args exp)
     inlineWith done env (LProj exp i) = LProj <$> inlineWith done env exp <*> return i
     inlineWith done env (LCon loc i n es)
        = LCon loc i n <$> mapM (inlineWith done env) es
-    inlineWith done env (LCase ty e alts) 
+    inlineWith done env (LCase ty e alts)
        = LCase ty <$> inlineWith done env e <*> mapM (inlineWithAlt done env) alts
     inlineWith done env (LOp f es) = LOp f <$> mapM (inlineWith done env) es
     -- the interesting case!
@@ -72,8 +81,7 @@ doInline defs (LFun opts topn args exp)
     inlineWithAlt done env (LConCase i n es rhs)
        = do ns' <- mapM (\n -> do n' <- nextN
                                   return (n, n')) es
-            LConCase i n (map snd ns') <$> 
+            LConCase i n (map snd ns') <$>
               inlineWith done (map (\ (n,n') -> (n, LV (Glob n'))) ns' ++ env) rhs
     inlineWithAlt done env (LConstCase c e) = LConstCase c <$> inlineWith done env e
     inlineWithAlt done env (LDefaultCase e) = LDefaultCase <$> inlineWith done env e
-

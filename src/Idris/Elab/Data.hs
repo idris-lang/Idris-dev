@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Data
+Description : Code to elaborate data structures.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 module Idris.Elab.Data(elabData) where
 
@@ -206,7 +213,7 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
     tyIs con (Bind n b sc) = tyIs con (substV (P Bound n Erased) sc)
     tyIs con t | (P Bound n' _, _) <- unApply t
         = if n' /= tn then
-               tclift $ tfail (At fc (Elaborating "constructor " con Nothing 
+               tclift $ tfail (At fc (Elaborating "constructor " con Nothing
                          (Msg ("Type level variable " ++ show n' ++ " is not " ++ show tn))))
              else return ()
     tyIs con t | (P _ n' _, _) <- unApply t

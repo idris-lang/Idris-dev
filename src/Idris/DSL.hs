@@ -1,3 +1,11 @@
+{-|
+Module      : Idris.DSL
+Description : Code to deal with DSL blocks.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.DSL where
@@ -16,7 +24,7 @@ debindApp :: SyntaxInfo -> PTerm -> PTerm
 debindApp syn t = debind (dsl_bind (dsl_info syn)) t
 
 dslify :: SyntaxInfo -> IState -> PTerm -> PTerm
-dslify syn i = transform dslifyApp 
+dslify syn i = transform dslifyApp
   where
     dslifyApp (PApp fc (PRef _ _ f) [a])
         | [d] <- lookupCtxt f (idris_dsls i)
@@ -225,5 +233,3 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
     bindAll [] tm = tm
     bindAll ((n, fc, t) : bs) tm
        = PApp fc b [pexp t, pexp (PLam fc n NoFC Placeholder (bindAll bs tm))]
-
-

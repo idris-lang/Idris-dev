@@ -1,5 +1,14 @@
-module Idris.Imports(IFileType(..), findImport, findInPath, findPkgIndex,
-                     ibcPathNoFallback, installedPackages, pkgIndex) where
+{-|
+Module      : Idris.Imports
+Description : Code to handle import declarations.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+module Idris.Imports(
+    IFileType(..), findImport, findInPath, findPkgIndex
+  , ibcPathNoFallback, installedPackages, pkgIndex
+  ) where
 
 import Control.Applicative ((<$>))
 import Data.List (isSuffixOf)

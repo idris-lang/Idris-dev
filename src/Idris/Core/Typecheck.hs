@@ -1,3 +1,11 @@
+{-|
+Module      : Idris.Core.Typecheck
+Description : Idris' type checker.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              PatternGuards #-}
 
@@ -86,10 +94,10 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
       | Just (i, ty) <- lookupTyEnv n env = return (P Bound n ty, ty)
       -- If we're elaborating, we don't want the private names; if we're
       -- checking an already elaborated term, we do
-      | [P nt n' ty] <- lookupP_all (not holes) False n ctxt 
+      | [P nt n' ty] <- lookupP_all (not holes) False n ctxt
              = return (P nt n' ty, ty)
       -- If the names are ambiguous, require it to be fully qualified
-      | [P nt n' ty] <- lookupP_all (not holes) True n ctxt 
+      | [P nt n' ty] <- lookupP_all (not holes) True n ctxt
              = return (P nt n' ty, ty)
       | otherwise = do lift $ tfail $ NoSuchVariable n
   chk u env ap@(RApp f RType) | not holes
@@ -109,7 +117,7 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                                  (Bind x (Let (TType v') (TType (UVar v))) t)
                   return (App Complete fv (TType (UVar v)), apty)
              Bind x (Pi i s k) t ->
-                 do (av, aty) <- chk u env RType 
+                 do (av, aty) <- chk u env RType
                     convertsC ctxt env aty s
                     let apty = simplify initContext env
                                         (Bind x (Let aty av) t)
@@ -170,7 +178,7 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
            case (normalise ctxt env st, normalise ctxt env tt) of
                 (TType su, TType tu) -> do
                     when (not holes) $ do (v, cs) <- get
-                                          put (v, ULE su maxu : 
+                                          put (v, ULE su maxu :
                                                   ULE tu maxu : cs)
                     let k' = TType (UVar v) `smaller` st `smaller` kv `smaller` u
                     return (Bind n (Pi i (uniqueBinders (map fst env) sv) k')

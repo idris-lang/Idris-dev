@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Elab.Clause
+Description : Code to elaborate clauses.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 module Idris.Elab.Clause where
 
@@ -1049,13 +1056,13 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                   getApp [] = Nothing
          currentFn _ tm = tm
 
-         updateApp wtm@(PWithApp fcw tm_in warg) = 
+         updateApp wtm@(PWithApp fcw tm_in warg) =
            let tm = currentFn fname tm_in in
               case matchClause ist toplhs tm of
                 Left _ -> PElabError (Msg (show fc ++ ":with application does not match top level "))
-                Right mvars -> 
+                Right mvars ->
                    let ns = map (keepMvar (map fst mvars) fcw) ns_in
-                       ns' = map (keepMvar (map fst mvars) fcw) ns_in' 
+                       ns' = map (keepMvar (map fst mvars) fcw) ns_in'
                        wty = lookupTyExact wname (tt_ctxt ist)
                        res = substMatches mvars $
                           PApp fcw (PRef fcw [] wname)

@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.IdeMode
+Description : Idris' IDE Mode
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 {-# LANGUAGE FlexibleInstances, IncoherentInstances, PatternGuards #-}

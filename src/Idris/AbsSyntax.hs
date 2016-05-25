@@ -1,7 +1,17 @@
+{-|
+Module      : Idris.AbsSyntax
+Description : Provides Idris' core data definitions and utility code.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              TypeSynonymInstances, PatternGuards #-}
 
-module Idris.AbsSyntax(module Idris.AbsSyntax, module Idris.AbsSyntaxTree) where
+module Idris.AbsSyntax(
+    module Idris.AbsSyntax
+  , module Idris.AbsSyntaxTree
+  ) where
 
 import Idris.Core.TT
 import Idris.Core.Evaluate

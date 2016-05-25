@@ -1,8 +1,15 @@
+{-|
+Module      : Idris.Core.Evaluate
+Description : Evaluate Idris expressions.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, BangPatterns,
              PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC, 
+module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 normaliseAll, normaliseBlocking, toValue, quoteTerm,
                 rt_simplify, simplify, specialise, hnf, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
@@ -12,7 +19,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
-                mapDefCtxt, 
+                mapDefCtxt,
                 lookupTotal, lookupTotalExact, lookupInjectiveExact,
                 lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
@@ -103,7 +110,7 @@ normaliseTrace tr ctxt env t
                    quote 0 val) initEval
 
 toValue :: Context -> Env -> TT Name -> Value
-toValue ctxt env t 
+toValue ctxt env t
   = evalState (eval False ctxt [] (map finalEntry env) t []) initEval
 
 quoteTerm :: Value -> TT Name
@@ -596,9 +603,9 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         | x `elem` holes || y `elem` holes = return True
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
-    ceq ps x (Bind n (Lam t) (App _ y (V 0))) 
+    ceq ps x (Bind n (Lam t) (App _ y (V 0)))
           = ceq ps x (substV (P Bound n t) y)
-    ceq ps (Bind n (Lam t) (App _ x (V 0))) y 
+    ceq ps (Bind n (Lam t) (App _ x (V 0))) y
           = ceq ps (substV (P Bound n t) x) y
     ceq ps x (Bind n (Lam t) (App _ y (P Bound n' _)))
         | n == n' = ceq ps x y
@@ -746,9 +753,9 @@ instance Show Def where
 -- Hidden => Programs can't access the name at all
 -- Public => Programs can access the name and use at will
 -- Frozen => Programs can access the name, which doesn't reduce
--- Private => Programs can't access the name, doesn't reduce internally 
+-- Private => Programs can't access the name, doesn't reduce internally
 
-data Accessibility = Hidden | Public | Frozen | Private 
+data Accessibility = Hidden | Public | Frozen | Private
     deriving (Eq, Ord)
 {-!
 deriving instance NFData Accessibility
@@ -993,7 +1000,7 @@ lookupTyName n ctxt = do
 
 -- | Get the pair of a fully-qualified name and its type, if there is a unique one matching the name used as a key.
 lookupTyNameExact :: Name -> Context -> Maybe (Name, Type)
-lookupTyNameExact n ctxt = listToMaybe [ (nm, v) | (nm, v) <- lookupTyName n ctxt, nm == n ] 
+lookupTyNameExact n ctxt = listToMaybe [ (nm, v) | (nm, v) <- lookupTyName n ctxt, nm == n ]
 
 -- | Get the types that match some name
 lookupTy :: Name -> Context -> [Type]
@@ -1048,7 +1055,7 @@ lookupP = lookupP_all False False
 
 lookupP_all :: Bool -> Bool -> Name -> Context -> [Term]
 lookupP_all all exact n ctxt
-   = do (n', def) <- names 
+   = do (n', def) <- names
         p <- case def of
           (Function ty tm, inj, a, _, _)      -> return (P Ref n' ty, a)
           (TyDecl nt ty, _, a, _, _)        -> return (P nt n' ty, a)
@@ -1060,7 +1067,7 @@ lookupP_all all exact n ctxt
           _      -> return (fst p)
   where
     names = let ns = lookupCtxtName n (definitions ctxt) in
-                if exact 
+                if exact
                    then filter (\ (n', d) -> n' == n) ns
                    else ns
 

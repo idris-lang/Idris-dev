@@ -1,9 +1,17 @@
+{-|
+Module      : Idris.Delaborate
+Description : Convert core TT back into high level syntax, primarily for display purposes.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Delaborate (annName, bugaddr, delab, delab', delabMV, delabSugared, delabTy, delabTy', fancifyAnnots, pprintDelab, pprintNoDelab, pprintDelabTy, pprintErr, resugar) where
-
--- Convert core TT back into high level syntax, primarily for display
--- purposes.
+module Idris.Delaborate (
+    annName, bugaddr, delab, delab', delabMV, delabSugared
+  , delabTy, delabTy', fancifyAnnots, pprintDelab, pprintNoDelab
+  , pprintDelabTy, pprintErr, resugar
+  ) where
 
 import Util.Pretty
 
@@ -253,12 +261,12 @@ pprintProv :: IState -> [(Name, Term)] -> Provenance -> Doc OutputAnnotation
 pprintProv i e ExpectedType = text "Expected type"
 pprintProv i e InferredVal = text "Inferred value"
 pprintProv i e GivenVal = text "Given value"
-pprintProv i e (SourceTerm tm) 
-  = text "Type of " <> 
+pprintProv i e (SourceTerm tm)
+  = text "Type of " <>
     annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
              (pprintTerm' i (zip (map fst e) (repeat False)) (delabSugared i tm))
-pprintProv i e (TooManyArgs tm) 
-  = text "Is " <> 
+pprintProv i e (TooManyArgs tm)
+  = text "Is " <>
       annotate (AnnTerm (zip (map fst e) (repeat False)) tm)
                (pprintTerm' i (zip (map fst e) (repeat False)) (delabSugared i tm))
        <> text " applied to too many arguments?"
@@ -277,14 +285,14 @@ pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
       (x, y) = addImplicitDiffs (delabSugared i x_ns) (delabSugared i y_ns) in
     text "Type mismatch between" <> indented (annTm x_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
-                                        ++ zip nms (repeat False)) x)) 
+                                        ++ zip nms (repeat False)) x))
         <> case xprov of
                 Nothing -> empty
                 Just t -> text " (" <> pprintProv i sc t <> text ")"
         <$>
     text "and" <> indented (annTm y_ns
                       (pprintTerm' i (map (\ (n, b) -> (n, False)) sc
-                                        ++ zip nms (repeat False)) y)) 
+                                        ++ zip nms (repeat False)) y))
         <> case yprov of
                 Nothing -> empty
                 Just t -> text " (" <> pprintProv i sc t <> text ")"
@@ -301,7 +309,7 @@ pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
              else empty
 pprintErr' i (CantConvert x_in y_in env) =
  let (x_ns, y_ns, nms) = renameMNs x_in y_in
-     (x, y) = addImplicitDiffs (delabSugared i (flagUnique x_ns)) 
+     (x, y) = addImplicitDiffs (delabSugared i (flagUnique x_ns))
                                (delabSugared i (flagUnique y_ns)) in
   text "Type mismatch between" <>
   indented (annTm x_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
@@ -346,14 +354,14 @@ pprintErr' i (NotInjective p x y) =
   text "Can't verify injectivity of" <+> annTm p (pprintTerm i (delabSugared i p)) <+>
   text " when unifying" <+> annTm x (pprintTerm i (delabSugared i x)) <+> text "and" <+>
   annTm y (pprintTerm i (delabSugared i y))
-pprintErr' i (CantResolve _ c e) 
+pprintErr' i (CantResolve _ c e)
   = text "Can't find implementation for" <+> pprintTerm i (delabSugared i c)
         <>
     case e of
       Msg "" -> empty
       _ -> line <> line <> text "Possible cause:" <>
            indented (pprintErr' i e)
-pprintErr' i (InvalidTCArg n t) 
+pprintErr' i (InvalidTCArg n t)
    = annTm t (pprintTerm i (delabSugared i t)) <+> text " cannot be a parameter of "
         <> annName n <$>
         text "(Implementation arguments must be injective)"
@@ -367,13 +375,13 @@ pprintErr' i (WithFnType ty) =
   text "Can't match on a function: type is" <+> annTm ty (pprintTerm i (delabSugared i ty))
 pprintErr' i (CantMatch t) =
   text "Can't match on" <+> annTm t (pprintTerm i (delabSugared i t))
-pprintErr' i (IncompleteTerm t) 
+pprintErr' i (IncompleteTerm t)
     = let missing = getMissing [] [] t in
           case missing of
             [] -> text "Incomplete term" <+> annTm t (pprintTerm i (delabSugared i t))
-            _ -> align (cat (punctuate (comma <> space) 
+            _ -> align (cat (punctuate (comma <> space)
                        (map pprintIncomplete (nub $ getMissing [] [] t))))
- where 
+ where
    pprintIncomplete (tm, arg)
     | expname arg
       = text "Can't infer explicit argument to" <+>
@@ -396,7 +404,7 @@ pprintErr' i (IncompleteTerm t)
    getMissing hs env (Bind n (Guess _ _) sc)
        = getMissing (n : hs) (n : env) sc
    getMissing hs env (Bind n (Let t v) sc)
-       = getMissing hs env t ++ 
+       = getMissing hs env t ++
          getMissing hs env v ++
          getMissing hs (n : env) sc
    getMissing hs env (Bind n b sc)
@@ -408,7 +416,7 @@ pprintErr' i (IncompleteTerm t)
        getMissingArgs n [] = []
        getMissingArgs n (V i : as)
           | env!!i `elem` hs = (n, env!!i) : getMissingArgs n as
-       getMissingArgs n (P _ a _ : as) 
+       getMissingArgs n (P _ a _ : as)
           | a `elem` hs = (n, a) : getMissingArgs n as
        getMissingArgs n (a : as) = getMissing hs env a ++ getMissingArgs n as
    getMissing hs env (App _ f a)
@@ -447,11 +455,11 @@ pprintErr' i (ProofSearchFail e) = pprintErr' i e
 pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delabSugared i tm))
 pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
 pprintErr' i (Elaborating s n ty e) = text "When checking" <+> text s <>
-                                      annName' n (showqual i n) <> 
+                                      annName' n (showqual i n) <>
                                       pprintTy ty <$>
                                       pprintErr' i e
     where pprintTy Nothing = colon
-          pprintTy (Just ty) = text " with expected type" <> 
+          pprintTy (Just ty) = text " with expected type" <>
                                indented (annTm ty (pprintTerm i (delabSugared i ty)))
                                <> line
 pprintErr' i (ElaboratingArg f x _ e)
@@ -540,12 +548,12 @@ renameMNs x y = let ns = nub $ allTTNames x ++ allTTNames y
   where
     getRenames :: [(Name, Name)] -> [Name] -> State Int [(Name, Name)]
     getRenames acc [] = return acc
-    getRenames acc (n@(MN i x) : xs) | rpt x xs 
+    getRenames acc (n@(MN i x) : xs) | rpt x xs
          = do idx <- get
               put (idx + 1)
               let x' = sUN (str x ++ show idx)
               getRenames ((n, x') : acc) xs
-    getRenames acc (n@(UN x) : xs) | rpt x xs 
+    getRenames acc (n@(UN x) : xs) | rpt x xs
          = do idx <- get
               put (idx + 1)
               let x' = sUN (str x ++ show idx)
@@ -697,4 +705,3 @@ showbasic (MN _ s) = str s
 showbasic (NS n s) = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
 showbasic (SN s) = show s
 showbasic n = show n
-

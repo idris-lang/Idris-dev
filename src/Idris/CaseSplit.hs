@@ -1,11 +1,31 @@
+{-|
+Module      : Idris.CaseSplit
+Description : Module to provide case split functionality.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+
+Given a pattern clause and a variable 'n', elaborate the clause and find the
+type of 'n'.
+
+Make new pattern clauses by replacing 'n' with all the possibly constructors
+applied to '_', and replacing all other variables with '_' in order to
+resolve other dependencies.
+
+Finally, merge the generated patterns with the original, by matching.
+Always take the "more specific" argument when there is a discrepancy, i.e.
+names over '_', patterns over names, etc.
+
+-}
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.CaseSplit(splitOnLine, replaceSplits,
-                       getClause, getProofClause,
-                       mkWith,
-                       nameMissing,
-                       getUniq, nameRoot) where
--- splitting a variable in a pattern clause
+module Idris.CaseSplit(
+    splitOnLine, replaceSplits
+  , getClause, getProofClause
+  , mkWith
+  , nameMissing
+  , getUniq, nameRoot
+  ) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree (Idris, IState, PTerm)
@@ -35,20 +55,6 @@ import Text.Trifecta(Result(..), parseString)
 import Text.Trifecta.Delta
 
 import Debug.Trace
-
-{-
-
-Given a pattern clause and a variable 'n', elaborate the clause and find the
-type of 'n'.
-
-Make new pattern clauses by replacing 'n' with all the possibly constructors
-applied to '_', and replacing all other variables with '_' in order to
-resolve other dependencies.
-
-Finally, merge the generated patterns with the original, by matching.
-Always take the "more specific" argument when there is a discrepancy, i.e.
-names over '_', patterns over names, etc.
--}
 
 -- | Given a variable to split, and a term application, return a list
 -- of variable updates, paired with a flag to say whether the given
@@ -289,7 +295,7 @@ replaceSplits l ups impossible
          updateRHSs 1 (map (rep ist (expandBraces l)) ups)
   where
     rep ist str [] = str ++ "\n"
-    rep ist str ((n, tm) : ups) 
+    rep ist str ((n, tm) : ups)
         = rep ist (updatePat False (show n) (nshow (resugar ist tm)) str) ups
 
     updateRHSs i [] = return []

@@ -1,16 +1,20 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
-
-{- | Implements a proof state, some primitive tactics for manipulating
-proofs, and some high level commands for introducing new theorems,
-evaluation/checking inside the proof system, etc.
+{-|
+Module      : Idris.Core.ProofTerm
+Description : Proof term. implementation and utilities.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
 -}
 
-module Idris.Core.ProofTerm(ProofTerm, Goal(..), mkProofTerm, getProofTerm,
-                            resetProofTerm,
-                            updateSolved, updateSolvedTerm, updateSolvedTerm',
-                            bound_in, bound_in_term, refocus, updsubst,
-                            Hole, RunTactic',
-                            goal, atHole) where
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
+module Idris.Core.ProofTerm(
+    ProofTerm, Goal(..), mkProofTerm, getProofTerm
+  , resetProofTerm
+  , updateSolved, updateSolvedTerm, updateSolvedTerm'
+  , bound_in, bound_in_term, refocus, updsubst
+  , Hole, RunTactic'
+  , goal, atHole
+  ) where
 
 import Idris.Core.Typecheck
 import Idris.Core.Evaluate
@@ -72,7 +76,7 @@ rebuildBinder tm (GuessV v p) = Guess v (rebuildTerm tm p)
 -- are crossed, and the actual binding term.
 findHole :: Name -> Env -> Term -> Maybe (TermPath, Env, Term)
 findHole n env t = fh' env Top t where
-  fh' env path tm@(Bind x h sc) 
+  fh' env path tm@(Bind x h sc)
       | hole h && n == x = Just (path, env, tm)
   fh' env path (App Complete _ _) = Nothing
   fh' env path (App s f a)
@@ -114,7 +118,7 @@ refocus' (Just n) pt@(PT path env tm ups)
       -- First look for the hole in the proof term as-is
       | Just (p', env', tm') <- findHole n env tm
              = PT (replaceTop p' path) env' tm' ups
-      -- If it's not there, rebuild and look from the top 
+      -- If it's not there, rebuild and look from the top
       | Just (p', env', tm') <- findHole n [] (rebuildTerm tm (updateSolvedPath ups path))
              = PT p' env' tm' []
       | otherwise = pt
@@ -128,7 +132,7 @@ mkProofTerm :: Term -> ProofTerm
 mkProofTerm tm = PT Top [] tm []
 
 getProofTerm :: ProofTerm -> Term
-getProofTerm (PT path _ sub ups) = rebuildTerm sub (updateSolvedPath ups path) 
+getProofTerm (PT path _ sub ups) = rebuildTerm sub (updateSolvedPath ups path)
 
 resetProofTerm :: ProofTerm -> ProofTerm
 resetProofTerm = mkProofTerm . getProofTerm
@@ -183,11 +187,11 @@ updateSolvedTerm' xs x = updateSolved' xs x where
               if ut then (P nt n ty', True) else (t, False)
     updateSolved' xs t = (t, False)
 
-    updateSolvedB' xs b@(Let t v) = let (t', ut) = updateSolved' xs t 
+    updateSolvedB' xs b@(Let t v) = let (t', ut) = updateSolved' xs t
                                         (v', uv) = updateSolved' xs v in
                                         if ut || uv then (Let t' v', True)
                                                     else (b, False)
-    updateSolvedB' xs b@(Guess t v) = let (t', ut) = updateSolved' xs t 
+    updateSolvedB' xs b@(Guess t v) = let (t', ut) = updateSolved' xs t
                                           (v', uv) = updateSolved' xs v in
                                           if ut || uv then (Guess t' v', True)
                                                       else (b, False)
@@ -261,7 +265,7 @@ updateSolvedPath ns t@(AppL Complete _ _) = t
 updateSolvedPath ns t@(AppR Complete _ _) = t
 updateSolvedPath ns (AppL s p r) = AppL s (updateSolvedPath ns p) (updateSolvedTerm ns r)
 updateSolvedPath ns (AppR s l p) = AppR s (updateSolvedTerm ns l) (updateSolvedPath ns p)
-updateSolvedPath ns (InBind n b sc) 
+updateSolvedPath ns (InBind n b sc)
     = InBind n (updateSolvedPathB b) (updateSolvedTerm ns sc)
   where
     updateSolvedPathB (Binder b) = Binder (fmap (updateSolvedPath ns) b)
@@ -277,18 +281,18 @@ updateSolvedPath ns (InScope n (Hole ty) t)
 updateSolvedPath ns (InScope n b sc)
     = InScope n (fmap (updateSolvedTerm ns) b) (updateSolvedPath ns sc)
 
-updateSolved :: [(Name, Term)] -> ProofTerm -> ProofTerm 
-updateSolved xs pt@(PT path env sub ups) 
-     = PT path -- (updateSolvedPath xs path) 
-          (updateEnv xs (filter (\(n, t) -> n `notElem` map fst xs) env)) 
-          (updateSolvedTerm xs sub) 
+updateSolved :: [(Name, Term)] -> ProofTerm -> ProofTerm
+updateSolved xs pt@(PT path env sub ups)
+     = PT path -- (updateSolvedPath xs path)
+          (updateEnv xs (filter (\(n, t) -> n `notElem` map fst xs) env))
+          (updateSolvedTerm xs sub)
           (ups ++ xs)
 
 goal :: Hole -> ProofTerm -> TC Goal
-goal h pt@(PT path env sub ups) 
+goal h pt@(PT path env sub ups)
 --      | OK ginf <- g env sub = return ginf
      | otherwise = g [] (rebuildTerm sub (updateSolvedPath ups path))
-  where 
+  where
     g :: Env -> Term -> TC Goal
     g env (Bind n b@(Guess _ _) sc)
                         | same h n = return $ GD env b
@@ -297,7 +301,7 @@ goal h pt@(PT path env sub ups)
     g env (Bind n b sc) | hole b && same h n = return $ GD env b
                         | otherwise
                            = g ((n, b):env) sc `mplus` gb env b
-    g env (App Complete f a) = fail "Can't find hole" 
+    g env (App Complete f a) = fail "Can't find hole"
     g env (App _ f a) = g env a `mplus` g env f
     g env t           = fail "Can't find hole"
 
@@ -305,9 +309,9 @@ goal h pt@(PT path env sub ups)
     gb env (Guess t v) = g env v `mplus` g env t
     gb env t = g env (binderTy t)
 
-atHole :: Hole -> RunTactic' a -> Context -> Env -> ProofTerm -> 
+atHole :: Hole -> RunTactic' a -> Context -> Env -> ProofTerm ->
           StateT a TC (ProofTerm, Bool)
-atHole h f c e pt -- @(PT path env sub) 
+atHole h f c e pt -- @(PT path env sub)
      = do let PT path env sub ups = refocus h pt
           (tm, u) <- atH f c env sub
           return (PT path env tm ups, u)
@@ -362,4 +366,3 @@ bound_in_term (Bind n b sc) = n : bi b ++ bound_in_term sc
     bi b = bound_in_term (binderTy b)
 bound_in_term (App _ f a) = bound_in_term f ++ bound_in_term a
 bound_in_term _ = []
-

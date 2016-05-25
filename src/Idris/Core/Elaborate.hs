@@ -1,15 +1,20 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
+{-|
+Module      : Idris.Core.Elaborate
+Description : A high level language of tactic composition, for building elaborators from a high level language into the core theory.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
 
-{- A high level language of tactic composition, for building
-   elaborators from a high level language into the core theory.
-
-   This is our interface to proof construction, rather than
-   ProofState, because this gives us a language to build derived
-   tactics out of the primitives.
+This is our interface to proof construction, rather than ProofState,
+because this gives us a language to build derived tactics out of the
+primitives.
 -}
 
-module Idris.Core.Elaborate(module Idris.Core.Elaborate,
-                            module Idris.Core.ProofState) where
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
+module Idris.Core.Elaborate (
+    module Idris.Core.Elaborate
+  , module Idris.Core.ProofState
+  ) where
 
 import Idris.Core.ProofState
 import Idris.Core.ProofTerm(bound_in, getProofTerm, mkProofTerm, bound_in_term,
@@ -51,7 +56,7 @@ explicit n = do ES (p, a) s m <- get
                 let p' = p { dontunify = n : dontunify p }
                 put (ES (p', a) s m)
 
--- Add a name that's okay to use in proof search (typically either because 
+-- Add a name that's okay to use in proof search (typically either because
 -- it was given explicitly on the lhs, or intrduced as an explicit lambda
 -- or let binding)
 addPSname :: Name -> Elab' aux ()
@@ -78,11 +83,11 @@ loadState = do (ES p s e) <- get
 getNameFrom :: Name -> Elab' aux Name
 getNameFrom n = do (ES (p, a) s e) <- get
                    let next = nextname p
-                   let p' = p { nextname = next + 1 } 
+                   let p' = p { nextname = next + 1 }
                    put (ES (p', a) s e)
                    let n' = case n of
                         UN x -> MN (next+100) x
-                        MN i x -> if i == 99999 
+                        MN i x -> if i == 99999
                                      then MN (next+500) x
                                      else MN (next+100) x
                         NS (UN x) s -> MN (next+100) x
@@ -97,7 +102,7 @@ setNextName = do env <- get_env
 
 initNextNameFrom :: [Name] -> Elab' aux ()
 initNextNameFrom ns = do ES (p, a) s e <- get
-                         let n' = maxName (nextname p) ns 
+                         let n' = maxName (nextname p) ns
                          put (ES (p { nextname = n' }, a) s e)
   where
     maxName m ((MN i _) : xs) = maxName (max m i) xs
@@ -124,7 +129,7 @@ errAt thing n ty = transformErr (Elaborating thing n ty)
 
 
 erunAux :: FC -> Elab' aux a -> Elab' aux (a, aux)
-erunAux f elab 
+erunAux f elab
     = do s <- get
          case runStateT elab s of
             OK (a, s')     -> do put s'
@@ -489,16 +494,16 @@ dotterm = do ES (p, a) s m <- get
              tm <- get_term
              case holes p of
                   [] -> return ()
-                  (h : hs) -> 
+                  (h : hs) ->
                      do let outer = findOuter h [] tm
                         let p' = p { dotted = (h, outer) : dotted p }
---                         trace ("DOTTING " ++ show (h, outer) ++ "\n" ++ 
+--                         trace ("DOTTING " ++ show (h, outer) ++ "\n" ++
 --                                show tm) $
                         put $ ES (p', a) s m
  where
   findOuter h env (P _ n _) | h == n = env
   findOuter h env (Bind n b sc)
-      = union (foB b) 
+      = union (foB b)
               (findOuter h env (instantiate (P Bound n (binderTy b)) sc))
      where foB (Guess t v) = union (findOuter h env t) (findOuter h (n:env) v)
            foB (Let t v) = union (findOuter h env t) (findOuter h env v)
@@ -506,7 +511,7 @@ dotterm = do ES (p, a) s m <- get
   findOuter h env (App _ f a)
       = union (findOuter h env f) (findOuter h env a)
   findOuter h env _ = []
-  
+
 
 get_dotterm :: Elab' aux [(Name, [Name])]
 get_dotterm = do ES (p, a) s m <- get
@@ -566,8 +571,8 @@ prepare_apply fn imps =
        env <- get_env
        -- let claims = getArgs ty imps
        -- claims <- mkClaims (normalise ctxt env ty) imps []
-       claims <- -- trace (show (fn, imps, ty, map fst env, normalise ctxt env (finalise ty))) $ 
-                 mkClaims (finalise ty) 
+       claims <- -- trace (show (fn, imps, ty, map fst env, normalise ctxt env (finalise ty))) $
+                 mkClaims (finalise ty)
                           (normalise ctxt env (finalise ty))
                           imps [] (map fst env)
        ES (p, a) s prev <- get
@@ -583,7 +588,7 @@ prepare_apply fn imps =
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi _ t_in _) sc) (Bind _ _ scn) (i : is) claims hs = 
+    mkClaims (Bind n' (Pi _ t_in _) sc) (Bind _ _ scn) (i : is) claims hs =
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
@@ -657,7 +662,7 @@ apply' fillt fn imps =
 
         getNonUnify acc []     _      = acc
         getNonUnify acc _      []     = acc
-        getNonUnify acc ((i,_):is) ((a, t):as) 
+        getNonUnify acc ((i,_):is) ((a, t):as)
            | i = getNonUnify acc is as
            | otherwise = getNonUnify (t : acc) is as
 
@@ -787,7 +792,7 @@ infer_app infer fun arg str =
        end_unify
 
 dep_app :: Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
-dep_app fun arg str = 
+dep_app fun arg str =
     do a <- getNameFrom (sMN 0 "__argTy")
        b <- getNameFrom (sMN 0 "__retTy")
        fty <- getNameFrom (sMN 0 "__fnTy")
@@ -800,13 +805,13 @@ dep_app fun arg str =
        g <- goal
        start_unify s
        claim s (Var a)
-       
+
        prep_fill f [s]
        focus f; attack; fun
        end_unify
        fty <- goal
        solve
-       focus s; attack; 
+       focus s; attack;
        ctxt <- get_context
        env <- get_env
        case normalise ctxt env fty of
@@ -856,7 +861,7 @@ no_errors tac err
                     ((x, y, _, env, inerr, while, _) : _) ->
                        let (xp, yp) = getProvenance inerr
                            env' = map (\(x, b) -> (x, binderTy b)) env in
-                                  lift $ tfail $ 
+                                  lift $ tfail $
                                          case err of
                                               Nothing -> CantUnify False (x, xp) (y, yp) inerr env' 0
                                               Just e -> e
@@ -867,7 +872,7 @@ try :: Elab' aux a -> Elab' aux a -> Elab' aux a
 try t1 t2 = try' t1 t2 False
 
 handleError :: (Err -> Bool) -> Elab' aux a -> Elab' aux a -> Elab' aux a
-handleError p t1 t2 
+handleError p t1 t2
           = do s <- get
                ps <- get_probs
                case runStateT t1 s of
@@ -907,7 +912,7 @@ try' t1 t2 proofSearch
         recoverableErr _ = True
 
 tryCatch :: Elab' aux a -> (Err -> Elab' aux a) -> Elab' aux a
-tryCatch t1 t2 
+tryCatch t1 t2
   = do s <- get
        ps <- get_probs
        ulog <- getUnifyLog
@@ -953,7 +958,7 @@ tryAll' constrok xs = doAll [] 999999 xs
             ivs <- get_instances
             case prunStateT pmax True ps (if constrok then Nothing
                                                       else Just ivs) x s of
-                OK ((v, newps, probs), s') -> 
+                OK ((v, newps, probs), s') ->
                       do let cs' = if (newps < pmax)
                                       then [do put s'; return $! v]
                                       else (do put s'; return $! v) : cs
@@ -980,7 +985,7 @@ prunStateT pmax zok ps ivs x s
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
                             ((_,_,_,_,e,_,_):_) -> Error e
-                    else if ibad 
+                    else if ibad
                             then Error (InternalMsg "Constraint introduced in disambiguation")
                             else OK ((v, newpmax, problems p), s')
              Error e -> Error e

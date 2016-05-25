@@ -1,3 +1,10 @@
+{-|
+Module      : IRTS.Exports
+Description : Deal with external things.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 module IRTS.Exports(findExports, getExpNames) where
 

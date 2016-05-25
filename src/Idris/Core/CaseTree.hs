@@ -1,9 +1,31 @@
+{-|
+Module      : Idris.Core.CaseTree
+Description : Module to define and interact with case trees.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+
+Note: The case-tree elaborator only produces (Case n alts)-cases;
+in other words, it never inspects anything else than variables.
+
+ProjCase is a special powerful case construct that allows inspection
+of compound terms. Occurrences of ProjCase arise no earlier than
+in the function `prune` as a means of optimisation
+of already built case trees.
+
+While the intermediate representation (follows in the pipeline, named LExp)
+allows casing on arbitrary terms, here we choose to maintain the distinction
+in order to allow for better optimisation opportunities.
+
+-}
 {-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances #-}
 
-module Idris.Core.CaseTree(CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo,
-                     Phase(..), CaseTree, CaseType(..),
-                     simpleCase, small, namesUsed, findCalls, findUsedArgs,
-                     substSC, substAlt, mkForce) where
+module Idris.Core.CaseTree (
+    CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo
+  , Phase(..), CaseTree, CaseType(..)
+  , simpleCase, small, namesUsed, findCalls, findUsedArgs
+  , substSC, substAlt, mkForce
+  ) where
 
 import Idris.Core.TT
 
@@ -18,18 +40,6 @@ import Debug.Trace
 data CaseDef = CaseDef [Name] !SC [Term]
     deriving Show
 
--- Note: The case-tree elaborator only produces (Case n alts)-cases;
--- in other words, it never inspects anything else than variables.
---
--- ProjCase is a special powerful case construct that allows inspection
--- of compound terms. Occurrences of ProjCase arise no earlier than
--- in the function `prune` as a means of optimisation
--- of already built case trees.
---
--- While the intermediate representation (follows in the pipeline, named LExp)
--- allows casing on arbitrary terms, here we choose to maintain the distinction
--- in order to allow for better optimisation opportunities.
---
 data SC' t = Case CaseType Name [CaseAlt' t]  -- ^ invariant: lowest tags first
            | ProjCase t [CaseAlt' t] -- ^ special case for projections/thunk-forcing before inspection
            | STerm !t

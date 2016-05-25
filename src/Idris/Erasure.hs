@@ -1,3 +1,10 @@
+{-|
+Module      : Idris.Erasure
+Description : Utilities to erase irrelevant stuff.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.Erasure (performUsageAnalysis, mkFieldName) where
@@ -54,7 +61,7 @@ type DepSet = Map Node (Set Reason)
 -- "function f uses the argument i".
 type Cond = Set Node
 
--- ^ Variables carry certain information with them.
+-- | Variables carry certain information with them.
 data VarInfo = VI
     { viDeps   :: DepSet      -- ^ dependencies drawn in by the variable
     , viFunArg :: Maybe Int   -- ^ which function argument this variable came from (defined only for patvars)
