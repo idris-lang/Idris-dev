@@ -38,8 +38,8 @@ myID = Lift (return (MkPID prim__vm))
 ||| Returns whether the send was unsuccessful.
 export
 send : ProcID msg -> msg -> Process msg Bool
-send (MkPID p) m = Lift (do x <- sendToThread p (prim__vm, m)
-                            return (x == 1))
+send (MkPID p) m = Lift (do x <- sendToThread p 0 (prim__vm, m)
+                            return (x /= 0))
 
 ||| Return whether a message is waiting in the queue
 export
@@ -49,7 +49,7 @@ msgWaiting = Lift checkMsgs
 ||| Return whether a message is waiting in the queue from a specific sender
 export
 msgWaitingFrom : ProcID msg -> Process msg Bool
-msgWaitingFrom (MkPID p) = Lift (checkMsgsFrom p)
+msgWaitingFrom (MkPID p) = Lift (checkMsgsFrom p 0)
 
 ||| Receive a message - blocks if there is no message waiting
 export
@@ -60,12 +60,14 @@ recv {msg} = do (senderid, m) <- Lift get
         get = getMsg
 
 ||| Receive a message from specific sender - blocks if there is no message waiting
+||| Fails if the sender is no longer running
 export
-recvFrom : ProcID msg -> Process msg msg
-recvFrom (MkPID p) {msg} = do (senderid, m) <- Lift get
-                              return m
-  where get : IO (Ptr, msg)
-        get = getMsgFrom p
+recvFrom : ProcID msg -> Process msg (Maybe msg)
+recvFrom (MkPID p) {msg} = do Just (senderid, m) <- Lift get
+                                 | pure Nothing
+                              pure (Just m)
+  where get : IO (Maybe (Ptr, msg))
+        get = getMsgFrom p 0
 
 ||| receive a message, and return with the sender's process ID.
 export

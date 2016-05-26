@@ -44,6 +44,7 @@ VM* init_vm(int stack_size, size_t heap_size,
     memset(vm->inbox, 0, 1024*sizeof(VAL));
     vm->inbox_end = vm->inbox + 1024;
     vm->inbox_write = vm->inbox;
+    vm->inbox_nextid = 1;
 
     // The allocation lock must be reentrant. The lock exists to ensure that
     // no memory is allocated during the message sending process, but we also
@@ -825,7 +826,7 @@ VAL copyTo(VM* vm, VAL x) {
 }
 
 // Add a message to another VM's message queue
-int idris_sendMessage(VM* sender, VM* dest, VAL msg) {
+int idris_sendMessage(VM* sender, int channel_id, VM* dest, VAL msg) {
     // FIXME: If GC kicks in in the middle of the copy, we're in trouble.
     // Probably best check there is enough room in advance. (How?)
 
@@ -861,6 +862,14 @@ int idris_sendMessage(VM* sender, VM* dest, VAL msg) {
     }
 
     dest->inbox_write->msg = dmsg;
+    if (channel_id == 0) {
+        // Set lowest bit to indicate this message is initiating a channel
+        channel_id = 1 + ((dest->inbox_nextid++) << 1);
+    } else {
+        channel_id = channel_id << 1;
+    }
+    dest->inbox_write->channel_id = channel_id;
+
     dest->inbox_write->sender = sender;
     dest->inbox_write++;
 
@@ -873,26 +882,39 @@ int idris_sendMessage(VM* sender, VM* dest, VAL msg) {
 
     pthread_mutex_unlock(&(dest->inbox_lock));
 //    printf("Sending [unlock]...\n");
-    return 1;
+    return channel_id >> 1;
 }
 
 VM* idris_checkMessages(VM* vm) {
-    return idris_checkMessagesFrom(vm, NULL);
+    return idris_checkMessagesFrom(vm, 0, NULL);
 }
 
-VM* idris_checkMessagesFrom(VM* vm, VM* sender) {
+Msg* idris_checkInitMessages(VM* vm) {
+    Msg* msg;
+
+    for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
+        if (msg->channel_id && 1 == 1) { // init bit set
+            return msg;
+        }
+    }
+    return 0;
+}
+
+VM* idris_checkMessagesFrom(VM* vm, int channel_id, VM* sender) {
     Msg* msg;
 
     for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
         if (sender == NULL || msg->sender == sender) {
-            return msg->sender;
+            if (channel_id == 0 || channel_id == msg->channel_id >> 1) {
+                return msg->sender;
+            }
         }
     }
     return 0;
 }
 
 VM* idris_checkMessagesTimeout(VM* vm, int delay) {
-    VM* sender = idris_checkMessagesFrom(vm, NULL);
+    VM* sender = idris_checkMessagesFrom(vm, 0, NULL);
     if (sender != NULL) {
         return sender;
     }
@@ -910,16 +932,18 @@ VM* idris_checkMessagesTimeout(VM* vm, int delay) {
     (void)(status); //don't emit 'unused' warning
     pthread_mutex_unlock(&vm->inbox_block);
 
-    return idris_checkMessagesFrom(vm, NULL);
+    return idris_checkMessagesFrom(vm, 0, NULL);
 }
 
 
-Msg* idris_getMessageFrom(VM* vm, VM* sender) {
+Msg* idris_getMessageFrom(VM* vm, int channel_id, VM* sender) {
     Msg* msg;
 
     for (msg = vm->inbox; msg < vm->inbox_write; ++msg) {
         if (sender == NULL || msg->sender == sender) {
-            return msg;
+            if (channel_id == 0 || channel_id == msg->channel_id >> 1) {
+                return msg;
+            }
         }
     }
     return NULL;
@@ -927,18 +951,20 @@ Msg* idris_getMessageFrom(VM* vm, VM* sender) {
 
 // block until there is a message in the queue
 Msg* idris_recvMessage(VM* vm) {
-    return idris_recvMessageFrom(vm, NULL);
+    return idris_recvMessageFrom(vm, 0, NULL);
 }
 
-Msg* idris_recvMessageFrom(VM* vm, VM* sender) {
+Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     Msg* msg;
     Msg* ret = malloc(sizeof(Msg));
 
     struct timespec timeout;
     int status;
+    
+    if (sender && sender->active == 0) { return NULL; } // No VM to receive from
 
     pthread_mutex_lock(&vm->inbox_block);
-    msg = idris_getMessageFrom(vm, sender);
+    msg = idris_getMessageFrom(vm, channel_id, sender);
 
     while (msg == NULL) {
 //        printf("No message yet\n");
@@ -949,7 +975,7 @@ Msg* idris_recvMessageFrom(VM* vm, VM* sender) {
                                &timeout);
         (void)(status); //don't emit 'unused' warning
 //        printf("Waiting [unlock]... %d\n", status);
-        msg = idris_getMessageFrom(vm, sender);
+        msg = idris_getMessageFrom(vm, channel_id, sender);
     }
     pthread_mutex_unlock(&vm->inbox_block);
 
@@ -991,6 +1017,10 @@ VAL idris_getMsg(Msg* msg) {
 
 VM* idris_getSender(Msg* msg) {
     return msg->sender;
+}
+
+int idris_getChannel(Msg* msg) {
+    return msg->channel_id >> 1;
 }
 
 void idris_freeMsg(Msg* msg) {

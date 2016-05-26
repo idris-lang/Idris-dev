@@ -9,11 +9,14 @@ import System
 %access export
 
 ||| Send a message of any type to the thread with the given thread id
-||| Returns 1 if the message was sent successfully, 0 otherwise
-sendToThread : (thread_id : Ptr) -> a -> IO Int
-sendToThread {a} dest val
-   = foreign FFI_C "idris_sendMessage" (Ptr -> Ptr -> Raw a -> IO Int)
-                prim__vm dest (MkRaw val)
+||| Returns channel ID if the message was sent successfully, 0 otherwise
+||| 
+||| @channel an ID of a specific channel to send the message on. If 0,
+|||          the receiver will create a new channel ID
+sendToThread : (thread_id : Ptr) -> (channel : Int) -> a -> IO Int
+sendToThread {a} dest channel val
+   = foreign FFI_C "idris_sendMessage" (Ptr -> Int -> Ptr -> Raw a -> IO Int)
+                prim__vm channel dest (MkRaw val)
 
 ||| Check for messages in the process inbox
 checkMsgs : IO Bool
@@ -31,21 +34,32 @@ checkMsgsTimeout timeout
                null <- nullPtr msgs
                return (not null)
 
-||| Check for messages in the process inbox.
-||| Returns either 'Nothing', if none, or 'Just pid' as pid of sender.
-listenMsgs : IO (Maybe Ptr)
-listenMsgs = do sender <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Ptr)
-                             prim__vm
-                null <- nullPtr sender
-                return (if null
-                           then Nothing
-                           else Just sender)
+private
+sender : Ptr -> IO Ptr
+sender msg = foreign FFI_C "idris_getSender" (Ptr -> IO Ptr) msg
 
-||| Check for messages from a specific sender in the process inbox
-checkMsgsFrom : Ptr -> IO Bool
-checkMsgsFrom sender
-  = do msgs <- foreign FFI_C "idris_checkMessagesFrom" (Ptr -> Ptr -> IO Ptr)
-                             prim__vm sender
+private
+channel_id : Ptr -> IO Int
+channel_id msg = foreign FFI_C "idris_getChannel" (Ptr -> IO Int) msg
+
+||| Check for messages initiating a conversation in the process inbox.
+||| Returns either 'Nothing', if none, or 'Just (pid, channel)' as pid 
+||| of sender and new channel id.
+listenMsgs : IO (Maybe (Ptr, Int))
+listenMsgs = do msg <- foreign FFI_C "idris_checkInitMessages" (Ptr -> IO Ptr)
+                             prim__vm
+                null <- nullPtr msg
+                if null then pure Nothing
+                        else do s_id <- sender msg
+                                c_id <- channel_id msg
+                                pure (Just (s_id, c_id))
+
+||| Check for messages from a specific sender/channel in the process inbox
+||| If channel is '0', accept on any channel.
+checkMsgsFrom : Ptr -> (channel : Int) -> IO Bool
+checkMsgsFrom sender channel 
+  = do msgs <- foreign FFI_C "idris_checkMessagesFrom" (Ptr -> Int -> Ptr -> IO Ptr)
+                             prim__vm channel sender
        null <- nullPtr msgs
        return (not null)
 
@@ -60,23 +74,31 @@ getMsg {a} = do m <- foreign FFI_C "idris_recvMessage"
                 return x
 
 ||| Check inbox for messages. If there are none, blocks until a message
-||| arrives. Return pair of sender's ID and the message.
+||| arrives. Return triple of sender's ID, channel ID, and the message.
 ||| Note that this is not at all type safe! It is intended to be used in
 ||| a type safe wrapper.
-getMsgWithSender : IO (Ptr, a)
+getMsgWithSender : IO (Ptr, Int, a)
 getMsgWithSender {a} 
            = do m <- foreign FFI_C "idris_recvMessage" 
                              (Ptr -> IO Ptr) prim__vm
                 MkRaw x <- foreign FFI_C "idris_getMsg" (Ptr -> IO (Raw a)) m
-                vm <- foreign FFI_C "idris_getSender" (Ptr -> IO Ptr) m
+                vm <- sender m
+                chan <- channel_id m
                 foreign FFI_C "idris_freeMsg" (Ptr -> IO ()) m
-                return (vm, x)
+                return (vm, chan, x)
 
-getMsgFrom : Ptr -> IO a
-getMsgFrom {a} sender 
+||| Check inbox for messages on a particular channel. If there are none,
+||| blocks until a message arrives. Returns `Nothing` if the sender isn't
+||| alive
+getMsgFrom : Ptr -> (channel : Int) -> IO (Maybe a)
+getMsgFrom {a} sender channel 
   = do m <- foreign FFI_C "idris_recvMessageFrom"
-                    (Ptr -> Ptr -> IO Ptr) prim__vm sender
-       MkRaw x <- foreign FFI_C "idris_getMsg" (Ptr -> IO (Raw a)) m
-       foreign FFI_C "idris_freeMsg" (Ptr -> IO ()) m
-       return x
+                    (Ptr -> Int -> Ptr -> IO Ptr) prim__vm channel sender
+       null <- nullPtr m
+       if null 
+          then pure Nothing
+          else do
+             MkRaw x <- foreign FFI_C "idris_getMsg" (Ptr -> IO (Raw a)) m
+             foreign FFI_C "idris_freeMsg" (Ptr -> IO ()) m
+             pure (Just x)
 
