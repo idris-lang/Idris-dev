@@ -80,6 +80,8 @@
 * Added `Data.List.Views` with views on `List` and their covering functions.
 * Added `Data.Nat.Views` with views on `Nat` and their covering functions.
 * Added `Data.Primitives.Views` with views on various primitive types and their covering functions.
+* Added `System.Concurrency.Sessions` for simple management of conversations 
+  between processes
 
 ## Miscellaneous updates
 

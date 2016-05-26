@@ -31,5 +31,5 @@ modules = System,
           Control.Category, Control.Arrow,
           Control.Catchable, Control.IOExcept,
 
-          System.Concurrency.Raw, System.Concurrency.Channels
+          System.Concurrency.Raw, System.Concurrency.Sessions
 

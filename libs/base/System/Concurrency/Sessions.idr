@@ -1,14 +1,14 @@
-module System.Concurrency.Channels
+module System.Concurrency.Sessions
 
 import System.Concurrency.Raw
 
-||| A Channel is a connection between two processes. Channels can be created
+||| A Session is a connection between two processes. Sessions can be created
 ||| either using 'listen' to wait for an incoming connection, or 'connect'
 ||| which initiates a connection to another process.
-||| Channels cannot be passed between processes.
+||| Sessions cannot be passed between processes.
 export
-data Channel : Type where
-     MkConc : (pid : Ptr) -> (ch_id : Int) -> Channel
+data Session : Type where
+     MkConc : (pid : Ptr) -> (ch_id : Int) -> Session
 
 ||| A PID is a process identifier, as returned by `spawn`
 export
@@ -23,7 +23,7 @@ spawn proc = do pid <- fork proc
 
 ||| Create a channel which connects this process to another process
 export
-connect : (proc : PID) -> IO (Maybe Channel)
+connect : (proc : PID) -> IO (Maybe Session)
 connect (MkPID pid) = do ch_id <- sendToThread pid 0 ()
                          if (ch_id /= 0)
                             then pure (Just (MkConc pid ch_id))
@@ -32,7 +32,7 @@ connect (MkPID pid) = do ch_id <- sendToThread pid 0 ()
 ||| Listen for incoming connections. If another process has initiated a
 ||| communication with this process, returns a channel 
 export
-listen : (timeout : Int) -> IO (Maybe Channel)
+listen : (timeout : Int) -> IO (Maybe Session)
 listen timeout = do checkMsgsTimeout timeout
                     Just (client, ch_id) <- listenMsgs
                        | Nothing => pure Nothing
@@ -46,7 +46,7 @@ listen timeout = do checkMsgsTimeout timeout
 ||| a protocol (externally checked) which ensures that the message send
 ||| is of type expected by the receiver.
 export
-unsafeSend : Channel -> (val : a) -> IO Bool
+unsafeSend : Session -> (val : a) -> IO Bool
 unsafeSend (MkConc pid ch_id) val
      = do ok <- sendToThread pid ch_id val
           pure (ok /= 0)
@@ -58,6 +58,6 @@ unsafeSend (MkConc pid ch_id) val
 ||| a protocol (externally checked) which ensures that the message received
 ||| is of the type given by the sender.
 export
-unsafeRecv : (a : Type) -> Channel -> IO (Maybe a)
+unsafeRecv : (a : Type) -> Session -> IO (Maybe a)
 unsafeRecv a (MkConc pid ch_id) = getMsgFrom {a} pid ch_id
 
