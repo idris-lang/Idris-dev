@@ -180,7 +180,6 @@ removeOrphans list =
 -- | Whether a Name names something which should be documented
 filterName :: Name -- ^ Name to check
            -> Bool -- ^ Predicate result
-filterName (UN n)     | '@':'@':_ <- str n = False
 filterName (UN _)     = True
 filterName (NS n _)   = filterName n
 filterName _          = False

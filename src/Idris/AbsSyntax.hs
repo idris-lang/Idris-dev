@@ -439,7 +439,7 @@ pop_estack = do i <- getIState
 -- Dodgy hack 1: Put integer instances first in the list so they are
 -- resolved by default.
 --
--- Dodgy hack 2: put constraint chasers (@@) last
+-- Dodgy hack 2: put constraint chasers (ParentN) last
 addInstance :: Bool -- ^ whether the name is an Integer instance
             -> Bool -- ^ whether to include the instance in instance search
             -> Name -- ^ the name of the class
@@ -461,8 +461,7 @@ addInstance int res n i
         insI i (n : ns) | chaser (fst n) = (i, res) : n : ns
                         | otherwise = n : insI i ns
 
-        chaser (UN nm)
-             | ('@':'@':_) <- str nm = True
+        chaser (SN (ParentN _ _)) = True
         chaser (NS n _) = chaser n
         chaser _ = False
 

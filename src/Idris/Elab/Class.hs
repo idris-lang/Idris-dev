@@ -237,8 +237,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     -- Generate a function for chasing a dictionary constraint
     cfun :: Name -> PTerm -> SyntaxInfo -> [a] -> (Name, PTerm) -> Idris [PDecl' PTerm]
     cfun cn c syn all (cnm, con)
-        = do let cfn = sUN ('@':'@':show cn ++ "#" ++ show con)
-                       -- SN (ParentN cn (show con))
+        = do let cfn = SN (ParentN cn (txt (show con)))
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
              let capp = PApp fc (PRef fc [] cn) (map (pexp . PRef fc []) mnames)
              let lhs = PApp fc (PRef fc [] cfn) [pconst capp]
