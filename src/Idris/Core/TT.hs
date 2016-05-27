@@ -1302,10 +1302,24 @@ substTerm :: Eq n => TT n {-^ Old term -} ->
              TT n {-^ template term -}
              -> TT n
 substTerm old new = st where
-  st t | t == old = new
+  st t | eqAlpha [] t old = new
   st (App s f a) = App s (st f) (st a)
   st (Bind x b sc) = Bind x (fmap st b) (st sc)
   st t = t
+
+  eqAlpha as (P _ x _) (P _ y _) 
+       = x == y || (x, y) `elem` as || (y, x) `elem` as
+  eqAlpha as (V x) (V y) = x == y
+  eqAlpha as (Bind x xb xs) (Bind y yb ys)
+       = eqAlphaB as xb yb && eqAlpha ((x, y) : as) xs ys
+  eqAlpha as (App _ fx ax) (App _ fy ay) = eqAlpha as fx fy && eqAlpha as ax ay
+  eqAlpha as x y = x == y
+
+  eqAlphaB as (Let xt xv) (Let yt yv)
+       = eqAlpha as xt yt && eqAlpha as xv yv
+  eqAlphaB as (Guess xt xv) (Guess yt yv)
+       = eqAlpha as xt yt && eqAlpha as xv yv
+  eqAlphaB as bx by = eqAlpha as (binderTy bx) (binderTy by) 
 
 -- | Return number of occurrences of V 0 or bound name i the term
 occurrences :: Eq n => n -> TT n -> Int
