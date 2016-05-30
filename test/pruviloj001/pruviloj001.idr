@@ -68,4 +68,3 @@ appendNilRightId = %runElab mush
 -- Local Variables:
 -- idris-load-packages: ("pruviloj")
 -- End:
- 

@@ -96,10 +96,15 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
                         rt -> tclift $ tfail (At fc (Elaborating "type constructor " n Nothing (Msg "Not a valid type constructor")))
          cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty) ckind) dcons
          ttag <- getName
-         i <- getIState
          let as = map (const (Left (Msg ""))) (getArgTys cty)
-         let params = findParams n (map snd cons)
+
+         ctxt <- getContext
+         let params = findParams n (normalise ctxt [] cty) (map snd cons)
+
          logElab 2 $ "Parameters : " ++ show params
+         addParamConstraints fc params cty cons
+
+         i <- getIState
          -- TI contains information about mutually declared types - this will
          -- be updated when the mutual block is complete
          putIState (i { idris_datatypes =
@@ -143,7 +148,6 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
                  (nfc, AnnName n Nothing Nothing Nothing))
                dcons
   where
-
         checkDefinedAs fc n t i
             = let defined = tclift $ tfail (At fc (AlreadyDefined n))
                   ctxt = tt_ctxt i in
@@ -186,7 +190,6 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
          ctxt <- getContext
          let cty' = normalise ctxt [] cty
          checkUniqueKind ckind expkind
-         addDataConstraint ckind dkind
 
          -- Check that the constructor type is, in fact, a part of the family being defined
          tyIs n cty'
@@ -255,13 +258,37 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
     checkUniqueKind (UType AllTypes) _
         = tclift $ tfail (At fc (UniqueKindError AllTypes n))
     checkUniqueKind _ _ = return ()
+        
+addParamConstraints :: FC -> [Int] -> Type -> [(Name, Type)] -> Idris ()
+addParamConstraints fc ps cty cons
+   = case getRetTy cty of
+          TType cvar -> mapM_ (addConConstraint ps cvar) 
+                              (map getParamNames cons)
+          _ -> return ()
+  where
+    getParamNames (n, ty) = (ty, getPs ty)
 
-    -- Constructor's kind must be <= expected kind
-    addDataConstraint (TType con) (TType exp)
-       = do ctxt <- getContext
-            let v = next_tvar ctxt
-            addConstraints fc (v, [ULT con exp])
-    addDataConstraint _ _ = return ()
+    getPs (Bind n (Pi _ _ _) sc)
+       = getPs (substV (P Ref n Erased) sc)
+    getPs t | (f, args) <- unApply t
+       = paramArgs 0 args
+
+    paramArgs i (P _ n _ : args) | i `elem` ps = n : paramArgs (i + 1) args
+    paramArgs i (_ : args) = paramArgs (i + 1) args
+    paramArgs i [] = []
+
+    addConConstraint ps cvar (ty, pnames) = constraintTy ty 
+      where
+        constraintTy (Bind n (Pi _ ty _) sc)
+           = case getRetTy ty of
+                  TType avar -> do ctxt <- getContext
+                                   let tv = next_tvar ctxt
+                                   let con = if n `elem` pnames
+                                                then ULE avar cvar
+                                                else ULT avar cvar
+                                   addConstraints fc (tv, [con])
+                  _ -> return ()
+        constraintTy t = return ()
 
 type EliminatorState = StateT (Map.Map String Int) Idris
 

@@ -2719,7 +2719,7 @@ processTacticDecls info steps =
              cty (_, _, t) = t
          addIBC (IBCDef tyn)
          mapM_ (addIBC . IBCDef . cn) ctors
-         let params = findParams tyn (map cty ctors)
+         let params = findParams tyn tyconTy (map cty ctors)
          let typeInfo = TI (map cn ctors) False [] params []
          -- implicit precondition to IBCData is that idris_datatypes on the IState is populated.
          -- otherwise writing the IBC just fails silently!

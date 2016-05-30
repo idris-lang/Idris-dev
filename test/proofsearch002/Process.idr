@@ -440,4 +440,3 @@ eval st (Loop x) k = eval st x k
 
 run : Program a iface -> IO a
 run p = eval (MkEvalState [] [] 0 0) p (\res, t => pure res)
-

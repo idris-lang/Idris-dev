@@ -873,6 +873,13 @@ Extra-source-files:
                        test/views003/run
                        test/views003/*.idr
                        test/views003/expected
+                       
+                       test/universes001/run
+                       test/universes001/*.idr
+                       test/universes001/expected
+                       test/universes002/run
+                       test/universes002/*.idr
+                       test/universes002/expected
 
                        test/docs001/run
                        test/docs001/input

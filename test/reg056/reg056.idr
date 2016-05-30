@@ -12,4 +12,3 @@ nonk Refl impossible
 false : Void
 false = nonk (k Nat Z Z trap Refl)
 
-

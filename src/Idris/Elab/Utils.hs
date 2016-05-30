@@ -363,14 +363,15 @@ checkVisibility fc n minAcc acc ref
 -- | Find the type constructor arguments that are parameters, given a
 -- list of constructor types.
 --
--- Parameters are names which are unchanged across the structure,
--- which appear exactly once in the return type of a constructor
--- First, find all applications of the constructor, then check over
--- them for repeated arguments
+-- Parameters are names which are unchanged across the structure.
+-- They appear at least once in every constructor type, always appear
+-- in the same argument position(s), and nothing else ever appears in those
+-- argument positions.
 findParams :: Name   -- ^ the name of the family that we are finding parameters for
+           -> Type   -- ^ the type of the type constructor (normalised already)
            -> [Type] -- ^ the declared constructor types
            -> [Int]
-findParams tyn ts =
+findParams tyn famty ts =
     let allapps = map getDataApp ts
         -- do each constructor separately, then merge the results (names
         -- may change between constructors)
@@ -385,9 +386,11 @@ findParams tyn ts =
     paramPos [] = []
     paramPos (args : rest)
           = dropNothing $ keepSame (zip [0..] args) rest
+
     dropNothing [] = []
     dropNothing ((x, Nothing) : ts) = dropNothing ts
     dropNothing ((x, _) : ts) = x : dropNothing ts
+
     keepSame :: [(Int, Maybe Name)] -> [[Maybe Name]] ->
                 [(Int, Maybe Name)]
     keepSame as [] = as
@@ -398,6 +401,7 @@ findParams tyn ts =
         update ((n, Just x) : as) (Just x' : args)
             | x == x' = (n, Just x) : update as args
         update ((n, _) : as) (_ : args) = (n, Nothing) : update as args
+
     getDataApp :: Type -> [[Maybe Name]]
     getDataApp f@(App _ _ _)
         | (P _ d _, args) <- unApply f
@@ -405,16 +409,24 @@ findParams tyn ts =
     getDataApp (Bind n (Pi _ t _) sc)
         = getDataApp t ++ getDataApp (instantiate (P Bound n t) sc)
     getDataApp _ = []
-    -- keep the arguments which are single names, which don't appear
-    -- elsewhere
+
+    -- keep the arguments which are single names, which appear
+    -- in the return type, counting only the first time they appear in
+    -- the return type as the parameter position
     mParam args [] = []
     mParam args (P Bound n _ : rest)
-           | count n args == 1
-              = Just n : mParam args rest
-        where count n [] = 0
-              count n (t : ts)
-                   | n `elem` freeNames t = 1 + count n ts
-                   | otherwise = count n ts
+           | paramIn False n args = Just n : mParam (filter (noN n) args) rest
+        where paramIn ok n [] = ok
+              paramIn ok n (P _ t _ : ts)
+                   = paramIn (ok || n == t) n ts
+              paramIn ok n (t : ts)
+                   | n `elem` freeNames t = False -- not a single name
+                   | otherwise = paramIn ok n ts
+
+              -- If the name appears again later, don't count that appearance
+              -- as a parameter position
+              noN n (P _ t _) = n /= t
+              noN n _ = False
     mParam args (_ : rest) = Nothing : mParam args rest
 
 -- | Mark a name as detaggable in the global state (should be called

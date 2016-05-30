@@ -58,6 +58,14 @@ isType ctxt env tm = isType' (normalise ctxt env tm)
     where isType' tm | isUniverse tm = return ()
                      | otherwise = fail (showEnv env tm ++ " is not a Type")
 
+convType :: Context -> Env -> Term -> StateT UCs TC ()
+convType ctxt env tm =
+    do (v, cs) <- get
+       put (v + 1, cs)
+       case normalise ctxt env tm of
+            UType _ -> return ()
+            _ -> convertsC ctxt env tm (TType (UVar v))
+
 recheck :: Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
 recheck = recheck_borrowing False []
 
@@ -175,6 +183,13 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
            put (v+1, cs)
            let maxu = UVar v
            (tv, tt) <- chk st ((n, Pi i sv kv) : env) t
+
+--            convertsC ctxt env st (TType maxu)
+--            convertsC ctxt env tt (TType maxu)
+--            when holes $ put (v, cs)
+--            return (Bind n (Pi i (uniqueBinders (map fst env) sv) (TType maxu))
+--                      (pToV n tv), TType maxu)
+
            case (normalise ctxt env st, normalise ctxt env tt) of
                 (TType su, TType tu) -> do
                     when (not holes) $ do (v, cs) <- get
@@ -210,63 +225,55 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
     where checkBinder (Lam t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
-                 let tt' = normalise ctxt env tt
-                 lift $ isType ctxt env tt'
-                 return (Lam tv, tt')
+                 convType ctxt env tt
+                 return (Lam tv, tt)
           checkBinder (Let t v)
             = do (tv, tt) <- chk u env t
                  (vv, vt) <- chk u env v
                  let tv' = normalise ctxt env tv
-                 let tt' = normalise ctxt env tt
                  convertsC ctxt env vt tv
-                 lift $ isType ctxt env tt'
-                 return (Let tv vv, tt')
+                 convType ctxt env tt
+                 return (Let tv vv, tt)
           checkBinder (NLet t v)
             = do (tv, tt) <- chk u env t
                  (vv, vt) <- chk u env v
                  let tv' = normalise ctxt env tv
-                 let tt' = normalise ctxt env tt
                  convertsC ctxt env vt tv
-                 lift $ isType ctxt env tt'
-                 return (NLet tv vv, tt')
+                 convType ctxt env tt
+                 return (NLet tv vv, tt)
           checkBinder (Hole t)
             | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
                    = do (tv, tt) <- chk u env t
                         let tv' = normalise ctxt env tv
-                        let tt' = normalise ctxt env tt
-                        lift $ isType ctxt env tt'
-                        return (Hole tv, tt')
+                        convType ctxt env tt
+                        return (Hole tv, tt)
           checkBinder (GHole i ns t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
-                 let tt' = normalise ctxt env tt
-                 lift $ isType ctxt env tt'
-                 return (GHole i ns tv, tt')
+                 convType ctxt env tt
+                 return (GHole i ns tv, tt)
           checkBinder (Guess t v)
             | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
                    = do (tv, tt) <- chk u env t
                         (vv, vt) <- chk u env v
                         let tv' = normalise ctxt env tv
-                        let tt' = normalise ctxt env tt
                         convertsC ctxt env vt tv
-                        lift $ isType ctxt env tt'
-                        return (Guess tv vv, tt')
+                        convType ctxt env tt
+                        return (Guess tv vv, tt)
           checkBinder (PVar t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
-                 let tt' = normalise ctxt env tt
-                 lift $ isType ctxt env tt'
+                 convType ctxt env tt
                  -- Normalised version, for erasure purposes (it's easier
                  -- to tell if it's a collapsible variable)
-                 return (PVar tv, tt')
+                 return (PVar tv, tt)
           checkBinder (PVTy t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
-                 let tt' = normalise ctxt env tt
-                 lift $ isType ctxt env tt'
-                 return (PVTy tv, tt')
+                 convType ctxt env tt
+                 return (PVTy tv, tt)
 
           discharge n (Lam t) bt scv sct
             = return (Bind n (Lam t) scv, Bind n (Pi Nothing t bt) sct)
