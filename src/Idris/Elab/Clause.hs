@@ -539,6 +539,8 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
             True -> tclift $ tfail (At fc
                                 (Msg $ show lhs_in ++ " is a valid case"))
             False -> do ptm <- mkPatTm lhs_in
+                        logElab 5 $ "Elaborated impossible case " ++ showTmImpls lhs ++
+                                    "\n" ++ show ptm
                         return (Left ptm, lhs)
 elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock)
    = do let tcgen = Dictionary `elem` opts

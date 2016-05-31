@@ -40,6 +40,12 @@ mkPatTm t = do i <- getIState
     toTT (PApp _ t args) = do t' <- toTT t
                               args' <- mapM (toTT . getTm) args
                               return $ mkApp t' args'
+    toTT (PDPair _ _ _ l _ r) = do l' <- toTT l
+                                   r' <- toTT r
+                                   return $ mkApp (P Ref sigmaCon Erased) [Erased, Erased, l', r']
+    toTT (PPair _ _ _ l r) = do l' <- toTT l
+                                r' <- toTT r
+                                return $ mkApp (P Ref pairCon Erased) [Erased, Erased, l', r']
     -- For alternatives, pick the first and drop the namespaces. It doesn't
     -- really matter which is taken since matching will ignore the namespace.
     toTT (PAlternative _ _ (a : as)) = toTT a
@@ -78,7 +84,7 @@ genClauses fc n xs given
         logCoverage 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
         logCoverage 10 $ show argss ++ "\n" ++ show all_args
         logCoverage 3 $ "Original: \n" ++
-             showSep "\n" (map (\t -> showTm i (delab' i t True True)) xs)
+             showSep "\n" (map (\t -> showTmImpls (delab' i t True True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
         -- cases for (the return type may be variadic, or function type, so
         -- there may be more case splitting that the idris_implicits record
