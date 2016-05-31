@@ -348,6 +348,13 @@ elabClauses info' fc opts n_in cs =
 -- | Find 'static' applications in a term and partially evaluate them.
 -- Return any new transformation rules
 elabPE :: ElabInfo -> FC -> Name -> Term -> Idris [(Term, Term)]
+-- Don't go deeper than 5 nested partially evaluated definitions in one go
+-- (make this configurable? It's a good limit for most cases, certainly for
+-- interfaces and polymorphic definitions, but maybe not for DSLs and
+-- interpreters in complicated cases.
+-- Possibly only worry about the limit if we've specialised the same function
+-- a number of times in one go.)
+elabPE info fc caller r | pe_depth info > 5 = return []
 elabPE info fc caller r =
   do ist <- getIState
      let sa = filter (\ap -> fst ap /= caller) $ getSpecApps ist [] r
@@ -399,7 +406,7 @@ elabPE info fc caller r =
                 logElab 3 $ "New name: " ++ show newnm
                 logElab 3 $ "PE definition type : " ++ (show specTy)
                             ++ "\n" ++ show opts
-                logElab 3 $ "PE definition " ++ show newnm ++ ":\n" ++
+                logElab 5 $ "PE definition " ++ show newnm ++ ":\n" ++
                              showSep "\n"
                                 (map (\ (lhs, rhs) ->
                                   (showTmImpls lhs ++ " = " ++
@@ -414,7 +421,8 @@ elabPE info fc caller r =
                                   PClause fc newnm lhs' [] rhs [])
                               (pe_clauses specdecl)
                 trans <- elabTransform info fc False rhs lhs
-                elabClauses info fc (PEGenerated:opts) newnm def
+                elabClauses (info {pe_depth = pe_depth info + 1}) fc 
+                            (PEGenerated:opts) newnm def
                 return [trans]
              else return [])
           -- if it doesn't work, just don't specialise. Could happen for lots

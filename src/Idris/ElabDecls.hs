@@ -72,7 +72,7 @@ import Util.Pretty(pretty, text)
 
 -- | Top level elaborator info, supporting recursive elaboration
 recinfo :: ElabInfo
-recinfo = EInfo [] emptyContext id Nothing Nothing id elabDecl'
+recinfo = EInfo [] emptyContext id Nothing Nothing 0 id elabDecl'
 
 -- | Return the elaborated term which calls 'main'
 elabMain :: Idris Term

@@ -67,6 +67,7 @@ data ElabInfo = EInfo {
   , liftname  :: Name -> Name
   , namespace :: Maybe [String]
   , elabFC    :: Maybe FC
+  , pe_depth  :: Int
 
   -- | We may, recursively, collect transformations to do on the rhs,
   -- e.g. rewriting recursive calls to functions defined by 'with'
@@ -75,7 +76,7 @@ data ElabInfo = EInfo {
   }
 
 toplevel :: ElabInfo
-toplevel = EInfo [] emptyContext id Nothing Nothing id (\_ _ _ -> fail "Not implemented")
+toplevel = EInfo [] emptyContext id Nothing Nothing 0 id (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
