@@ -791,12 +791,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
     mkLHSapp t = t
 
     decorate (NS x ns)
-       = NS (SN (WhereN cnum fname x)) ns -- ++ [show cnum])
---        = NS (UN ('#':show x)) (ns ++ [show cnum, show fname])
+       = NS (SN (WhereN cnum fname x)) ns
     decorate x
        = SN (WhereN cnum fname x)
---        = NS (SN (WhereN cnum fname x)) [show cnum]
---        = NS (UN ('#':show x)) [show cnum, show fname]
 
     sepBlocks bs = sepBlocks' [] bs where
       sepBlocks' ns (d@(PTy _ _ _ _ _ n _ t) : bs)
