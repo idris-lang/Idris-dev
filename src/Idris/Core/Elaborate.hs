@@ -763,7 +763,7 @@ infer_app infer fun arg str =
     do a <- getNameFrom (sMN 0 "__argTy")
        b <- getNameFrom (sMN 0 "__retTy")
        f <- getNameFrom (sMN 0 "f")
-       s <- getNameFrom (sMN 0 "s")
+       s <- getNameFrom (sMN 0 "is")
        claim a RType
        claim b RType
        claim f (RBind (sMN 0 "_aX") (Pi Nothing (Var a) RType) (Var b))
@@ -797,7 +797,7 @@ dep_app fun arg str =
        b <- getNameFrom (sMN 0 "__retTy")
        fty <- getNameFrom (sMN 0 "__fnTy")
        f <- getNameFrom (sMN 0 "f")
-       s <- getNameFrom (sMN 0 "s")
+       s <- getNameFrom (sMN 0 "ds")
        claim a RType
        claim fty RType
        claim f (Var fty)

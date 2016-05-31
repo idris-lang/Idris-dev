@@ -340,7 +340,7 @@ envAtFocus :: ProofState -> TC Env
 envAtFocus ps
     | not $ null (holes ps) = do g <- goal (Just (head (holes ps))) (pterm ps)
                                  return (premises g)
-    | otherwise = fail "No holes"
+    | otherwise = fail $ "No holes in " ++ show (getProofTerm (pterm ps))
 
 goalAtFocus :: ProofState -> TC (Binder Type)
 goalAtFocus ps
@@ -1083,7 +1083,8 @@ processTactic t ps
         [] -> case t of
                    Focus _ -> return (ps, "") -- harmless to refocus when done, since
                                               -- 'focus' doesn't fail
-                   _ -> fail $ "Nothing to fill in."
+                   _ -> fail $ "Proof done, nothing to run tactic on: " ++ show t ++
+                              "\n" ++ show (getProofTerm (pterm ps))
         (h:_)  -> do ps' <- execStateT (process t h) ps
                      let (ns_in, probs')
                                 = case solved ps' of

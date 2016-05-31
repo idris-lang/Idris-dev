@@ -1259,9 +1259,11 @@ elab ist info emode opts fn tm
              -- Delay dotted things to the end, then when we elaborate them
              -- we can check the result against what was inferred
              movelast h
-             delayElab 10 $ do focus h
-                               dotterm
-                               elab' ina fc t
+             delayElab 10 $ do hs <- get_holes
+                               when (h `elem` hs) $ do
+                                   focus h
+                                   dotterm
+                                   elab' ina fc t
     elab' ina fc (PRunElab fc' tm ns) =
       do attack
          n <- getNameFrom (sMN 0 "tacticScript")
