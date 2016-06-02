@@ -1,0 +1,6 @@
+data Foo : Bar m BMODEL -> Model ty -> FTy -> Type where
+  FElem : (name : String) -> Foo p (MElem name) FELEM
+  FLink : Foo p x FELEM ->
+          (c : Common) ->
+          (f : Bar g BELEM) ->
+          {auto prf : isValid f p = Yes prf'} -> Foo p (MLink c x g) FLINK

@@ -25,9 +25,9 @@ mkString3_rhs_2 : String
 append_rhs_1 : Vect m a
   a : Type
   x : a
-  k : Nat
-  xs : Vect k a
   m : Nat
   ys : Vect m a
+  k : Nat
+  xs : Vect k a
 --------------------------------------
 append_rhs_2 : Vect (S (plus k m)) a

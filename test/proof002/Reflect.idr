@@ -176,7 +176,7 @@ Reflect.appRExpr1 = proof {
   rewrite sym xprf;
   rewrite sym yprf;
   rewrite prf;
-  rewrite sym (appendAssociative xs1 xs2 ys1);
+  rewrite sym (appendAssociative xs2 xs3 ys1);
   trivial;
 }
 

@@ -39,9 +39,9 @@ module Idris.Core.TT(
   , discard, emptyContext, emptyFC, explicitNames, fc_end, fc_fname
   , fc_start, fcIn, fileFC, finalise, fmapMB, forget, forgetEnv
   , freeNames, getArgTys, getRetTy, implicitable, instantiate
-  , intTyName, isInjective, isTypeConst, liftPats, lookupCtxt
+  , intTyName, isInjective, isTypeConst, lookupCtxt
   , lookupCtxtExact, lookupCtxtName, mapCtxt, mkApp, nativeTyWidth
-  , nextName, noOccurrence, nsroot, occurrences, orderPats
+  , nextName, noOccurrence, nsroot, occurrences
   , pEraseType, pmap, pprintRaw, pprintTT, prettyEnv, psubst, pToV
   , pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget
   , safeForgetEnv, showCG, showEnv, showEnvDbg, showSep
@@ -853,7 +853,8 @@ deriving instance Binary Raw
 deriving instance NFData Raw
 !-}
 
-data ImplicitInfo = Impl { tcinstance :: Bool, toplevel_imp :: Bool }
+data ImplicitInfo = Impl { tcinstance :: Bool, toplevel_imp :: Bool,
+                           machine_gen :: Bool }
   deriving (Show, Eq, Ord, Data, Typeable)
 
 {-!
@@ -1698,30 +1699,6 @@ weakenEnv env = wk (length env - 1) env
 weakenTmEnv :: Int -> EnvTT n -> EnvTT n
 weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
 
--- | Gather up all the outer 'PVar's and 'Hole's in an expression and reintroduce
--- them in a canonical order
-orderPats :: Term -> Term
-orderPats tm = op [] tm
-  where
-    op [] (App s f a) = App s f (op [] a) -- for Infer terms
-
-    op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
-    op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
-    op ps (Bind n (Pi i t k) sc) = op ((n, Pi i t k) : ps) sc
-    op ps sc = bindAll (sortP ps) sc
-
-    sortP ps = pick [] (reverse ps)
-
-    pick acc [] = reverse acc
-    pick acc ((n, t) : ps) = pick (insert n t acc) ps
-
-    insert n t [] = [(n, t)]
-    insert n t ((n',t') : ps)
-        | n `elem` (refsIn (binderTy t') ++
-                      concatMap refsIn (map (binderTy . snd) ps))
-            = (n', t') : insert n t ps
-        | otherwise = (n,t):(n',t'):ps
-
 refsIn :: TT Name -> [Name]
 refsIn (P _ n _) = [n]
 refsIn (Bind n b t) = nub $ nb b ++ refsIn t
@@ -1730,45 +1707,6 @@ refsIn (Bind n b t) = nub $ nb b ++ refsIn t
         nb t = refsIn (binderTy t)
 refsIn (App s f a) = nub (refsIn f ++ refsIn a)
 refsIn _ = []
-
--- Make sure all the pattern bindings are as far out as possible
-liftPats :: Term -> Term
-liftPats tm = let (tm', ps) = runState (getPats tm) [] in
-                  orderPats $ bindPats (reverse ps) tm'
-  where
-    bindPats []          tm = tm
-    bindPats ((n, t):ps) tm
-         | n `notElem` map fst ps = Bind n (PVar t) (bindPats ps tm)
-         | otherwise = bindPats ps tm
-
-    getPats :: Term -> State [(Name, Type)] Term
-    getPats (Bind n (PVar t) sc) = do ps <- get
-                                      put ((n, t) : ps)
-                                      getPats sc
-    getPats (Bind n (Guess t v) sc) = do t' <- getPats t
-                                         v' <- getPats v
-                                         sc' <- getPats sc
-                                         return (Bind n (Guess t' v') sc')
-    getPats (Bind n (Let t v) sc) = do t' <- getPats t
-                                       v' <- getPats v
-                                       sc' <- getPats sc
-                                       return (Bind n (Let t' v') sc')
-    getPats (Bind n (Pi i t k) sc) = do t' <- getPats t
-                                        k' <- getPats k
-                                        sc' <- getPats sc
-                                        return (Bind n (Pi i t' k') sc')
-    getPats (Bind n (Lam t) sc) = do t' <- getPats t
-                                     sc' <- getPats sc
-                                     return (Bind n (Lam t') sc')
-    getPats (Bind n (Hole t) sc) = do t' <- getPats t
-                                      sc' <- getPats sc
-                                      return (Bind n (Hole t') sc')
-
-
-    getPats (App s f a) = do f' <- getPats f
-                             a' <- getPats a
-                             return (App s f' a')
-    getPats t = return t
 
 allTTNames :: Eq n => TT n -> [n]
 allTTNames = nub . allNamesIn

@@ -490,11 +490,11 @@ instance Binary Raw where
 instance Binary ImplicitInfo where
         put x
           = case x of
-                Impl x1 x2 -> do put x1; put x2
+                Impl x1 x2 x3 -> do put x1; put x2
         get
           = do x1 <- get
                x2 <- get
-               return (Impl x1 x2)
+               return (Impl x1 x2 False)
 
 instance (Binary b) => Binary (Binder b) where
         put x

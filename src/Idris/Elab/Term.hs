@@ -67,6 +67,7 @@ data ElabResult = ElabResult {
   }
 
 
+
 -- | Using the elaborator, convert a term in raw syntax to a fully
 -- elaborated, typechecked term.
 --

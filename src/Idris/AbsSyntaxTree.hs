@@ -682,10 +682,14 @@ is_scoped :: Plicity -> Maybe ImplicitInfo
 is_scoped (Imp _ _ _ s _) = s
 is_scoped _               = Nothing
 
-impl              = Imp [] Dynamic False (Just (Impl False True)) False
+-- Top level implicit
+impl              = Imp [] Dynamic False (Just (Impl False True False)) False
+-- Machine generated top level implicit
+impl_gen          = Imp [] Dynamic False (Just (Impl False True True)) False
 
-forall_imp        = Imp [] Dynamic False (Just (Impl False False)) False
-forall_constraint = Imp [] Dynamic False (Just (Impl True False)) False
+-- Scoped implicits
+forall_imp        = Imp [] Dynamic False (Just (Impl False False True)) False
+forall_constraint = Imp [] Dynamic False (Just (Impl True False True)) False
 
 expl              = Exp [] Dynamic False
 expl_param        = Exp [] Dynamic True

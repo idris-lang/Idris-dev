@@ -469,3 +469,76 @@ propagateParams i ps t bound (PRef fc hls n)
           isImplicit (PImp _ _ _ x _ : is) n | x == n = True
           isImplicit (_ : is) n = isImplicit is n
 propagateParams i ps t bound x = x
+
+-- | Gather up all the outer 'PVar's and 'Hole's in an expression and reintroduce
+-- them in a canonical order
+orderPats :: Term -> Term
+orderPats tm = op [] tm
+  where
+    op [] (App s f a) = App s f (op [] a) -- for Infer terms
+
+    op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
+    op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
+    op ps (Bind n (Pi i t k) sc) = op ((n, Pi i t k) : ps) sc
+    op ps sc = bindAll (sortP ps) sc
+
+    -- Keep explicit Pi in the same order, insert others as necessary,
+    -- Pi as early as possible, Hole as late as possible
+    sortP ps = let (exps, imps) = partition isExp ps in
+               pick (reverse exps) imps
+
+    isExp (_, Pi Nothing _ _) = True
+    isExp (_, Pi (Just i) _ _) = toplevel_imp i && not (machine_gen i)
+    isExp _ = False
+
+    pick acc [] = acc
+    pick acc ((n, t) : ps) = pick (insert n t acc) ps
+
+    insert n t [] = [(n, t)]
+    -- if 't' uses any of the names which appear later, insert it later
+    insert n t rest@((n', t') : ps)
+        | any (\x -> x `elem` refsIn (binderTy t)) (n' : map fst ps)
+              = (n', t') : insert n t ps
+        -- otherwise it's fine where it is (preserve ordering)
+        | otherwise = (n, t) : rest
+
+-- Make sure all the pattern bindings are as far out as possible
+liftPats :: Term -> Term
+liftPats tm = let (tm', ps) = runState (getPats tm) [] in
+                  orderPats $ bindPats (reverse ps) tm'
+  where
+    bindPats []          tm = tm
+    bindPats ((n, t):ps) tm
+         | n `notElem` map fst ps = Bind n (PVar t) (bindPats ps tm)
+         | otherwise = bindPats ps tm
+
+    getPats :: Term -> State [(Name, Type)] Term
+    getPats (Bind n (PVar t) sc) = do ps <- get
+                                      put ((n, t) : ps)
+                                      getPats sc
+    getPats (Bind n (Guess t v) sc) = do t' <- getPats t
+                                         v' <- getPats v
+                                         sc' <- getPats sc
+                                         return (Bind n (Guess t' v') sc')
+    getPats (Bind n (Let t v) sc) = do t' <- getPats t
+                                       v' <- getPats v
+                                       sc' <- getPats sc
+                                       return (Bind n (Let t' v') sc')
+    getPats (Bind n (Pi i t k) sc) = do t' <- getPats t
+                                        k' <- getPats k
+                                        sc' <- getPats sc
+                                        return (Bind n (Pi i t' k') sc')
+    getPats (Bind n (Lam t) sc) = do t' <- getPats t
+                                     sc' <- getPats sc
+                                     return (Bind n (Lam t') sc')
+    getPats (Bind n (Hole t) sc) = do t' <- getPats t
+                                      sc' <- getPats sc
+                                      return (Bind n (Hole t') sc')
+
+
+    getPats (App s f a) = do f' <- getPats f
+                             a' <- getPats a
+                             return (App s f' a')
+    getPats t = return t
+
+
