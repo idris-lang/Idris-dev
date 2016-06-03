@@ -451,14 +451,6 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
        | Constant _ <- c = not (n `elem` hs)
     notHole _ _ = True
 
-    -- HACK! Rather than giving a special name, better to have some kind
-    -- of flag in ClassInfo structure
-    chaser (UN nm)
-        | ('@':'@':_) <- str nm = True -- old way
-    chaser (SN (ParentN _ _)) = True
-    chaser (NS n _) = chaser n
-    chaser _ = False
-
     numclass = sNS (sUN "Num") ["Interfaces","Prelude"]
 
     addDefault t num@(P _ nc _) [P Bound a _] | nc == numclass && defaultOn

@@ -258,7 +258,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
              return $ any (isJust . findOverlapping i (class_determiners ci) (delab i nty)) (map fst $ class_instances ci)
 
     findOverlapping i dets t n
-     | take 2 (show n) == "@@" = Nothing
+     | SN (ParentN _ _) <- n = Nothing
      | otherwise
         = case lookupTy n (tt_ctxt i) of
             [t'] -> let tret = getRetType t
