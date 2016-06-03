@@ -28,6 +28,7 @@ Tests are categorised as follows:
 + *quasiquote*:     Quasiquotations
 + *records*:        Records
 + *reg*:            Regression tests, covering previous bug fixes
++ *regression*:     Regression tests, covering previous bug fixes
 + *sourceLocation*: Interaction with files from Idris
 + *sugar*:          Syntactic sugar, syntax extensions
 + *tactics*:        Testing for tactics
