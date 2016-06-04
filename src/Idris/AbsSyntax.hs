@@ -1854,13 +1854,12 @@ addImpl' inpat env infns imp_meths ist ptm
                       sc' = ai inpat qq ((n, Just ty):env) ds sc in
                       PLam fc n nfc ty' sc'
     ai inpat qq env ds (PLet fc n nfc ty val sc)
-      = case lookupDef n (tt_ctxt ist) of
-             [] -> let ty' = ai inpat qq env ds ty
-                       val' = ai inpat qq env ds val
-                       sc' = ai inpat qq ((n, Just ty):env) ds sc in
-                       PLet fc n nfc ty' val' sc'
-             defs ->
-               ai inpat qq env ds (PCase fc val [(PRef fc [] n, sc)])
+      = if canBeDConName n (tt_ctxt ist)
+           then ai inpat qq env ds (PCase fc val [(PRef fc [] n, sc)])
+           else let ty' = ai inpat qq env ds ty
+                    val' = ai inpat qq env ds val
+                    sc' = ai inpat qq ((n, Just ty):env) ds sc in
+                    PLet fc n nfc ty' val' sc'
     ai inpat qq env ds (PPi p n nfc ty sc)
       = let ty' = ai inpat qq env ds ty
             env' = if n `elem` imp_meths then env
