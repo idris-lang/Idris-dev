@@ -175,8 +175,8 @@ elabRecordFunctions :: ElabInfo
 elabRecordFunctions info rsyn fc tyn params fields dconName target
   = do logElab 1 $ "Elaborating helper functions for record " ++ show tyn
 
-       logElab 1 $ "Fields: " ++ show fieldNames
-       logElab 1 $ "Params: " ++ show paramNames
+       logElab 3 $ "Fields: " ++ show fieldNames
+       logElab 3 $ "Params: " ++ show paramNames
        -- The elaborated constructor type for the data declaration
        i <- getIState
        ttConsTy <-
@@ -186,8 +186,8 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
 
        -- The arguments to the constructor
        let constructorArgs = getArgTys ttConsTy
-       logElab 1 $ "Cons args: " ++ show constructorArgs
-       logElab 1 $ "Free fields: " ++ show (filter (not . isFieldOrParam') constructorArgs)
+       logElab 3 $ "Cons args: " ++ show constructorArgs
+       logElab 3 $ "Free fields: " ++ show (filter (not . isFieldOrParam') constructorArgs)
        -- If elaborating the constructor has resulted in some new implicit fields we make projection functions for them.
        let freeFieldsForElab = map (freeField i) (filter (not . isFieldOrParam') constructorArgs)
 
@@ -201,16 +201,16 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
        -- All things we need to elaborate projection functions for, together with a number denoting their position in the constructor.
        let projectors = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (freeFieldsForElab ++ paramsForElab ++ userFieldsForElab) [0..]]
        -- Build and elaborate projection functions
-       elabProj dconName projectors
+       elabProj dconName paramNames projectors
 
-       logElab 1 $ "Dependencies: " ++ show fieldDependencies
+       logElab 3 $ "Dependencies: " ++ show fieldDependencies
 
-       logElab 1 $ "Depended on: " ++ show dependedOn
+       logElab 3 $ "Depended on: " ++ show dependedOn
 
        -- All things we need to elaborate update functions for, together with a number denoting their position in the constructor.
        let updaters = [(n, n', p, t, d, i) | ((n, n', p, t, d), i) <- zip (paramsForElab ++ userFieldsForElab) [0..]]
        -- Build and elaborate update functions
-       elabUp dconName updaters
+       elabUp dconName paramNames updaters
   where
     -- | Creates a PArg from a plicity and a name where the term is a Placeholder.
     placeholderArg :: Plicity -> Name -> PArg
@@ -270,20 +270,22 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     paramName n = n
 
     -- | Elaborate the projection functions.
-    elabProj :: Name -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
-    elabProj cn fs = let phArgs = map (uncurry placeholderArg) [(p, n) | (n, _, p, _, _, _) <- fs]
+    elabProj :: Name -> [Name] -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
+    elabProj cn paramnames fs 
+                   = let phArgs = map (uncurry placeholderArg) [(p, n) | (n, _, p, _, _, _) <- fs]
                          elab = \(n, n', p, t, doc, i) ->
                               -- Use projections in types
                            do let t' = projectInType [(m, m') | (m, m', _, _, _, _) <- fs
                                                               -- Parameters are already in scope, so just use them
                                                               , not (m `elem` paramNames)] t
-                              elabProjection info n n' p t' doc rsyn fc target cn phArgs fieldNames i
+                              elabProjection info n paramnames n' p t' doc rsyn fc target cn phArgs fieldNames i
                      in mapM_ elab fs
 
     -- | Elaborate the update functions.
-    elabUp :: Name -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
-    elabUp cn fs = let args = map (uncurry asPRefArg) [(p, n) | (n, _, p, _, _, _) <- fs]
-                       elab = \(n, n', p, t, doc, i) -> elabUpdate info n n' p t doc rsyn fc target cn args fieldNames i (optionalSetter n)
+    elabUp :: Name -> [Name] -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
+    elabUp cn paramnames fs 
+                 = let args = map (uncurry asPRefArg) [(p, n) | (n, _, p, _, _, _) <- fs]
+                       elab = \(n, n', p, t, doc, i) -> elabUpdate info n paramnames n' p t doc rsyn fc target cn args fieldNames i (optionalSetter n)
                    in mapM_ elab fs
 
     -- | Decides whether a setter should be generated for a field or not.
@@ -313,6 +315,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
 -- | Creates and elaborates a projection function.
 elabProjection :: ElabInfo
                -> Name                           -- ^ Name of the argument in the constructor
+               -> [Name]                         -- ^ Parameter names
                -> Name                           -- ^ Projection Name
                -> Plicity                        -- ^ Projection Plicity
                -> PTerm                          -- ^ Projection Type
@@ -324,7 +327,7 @@ elabProjection :: ElabInfo
                -> [Name]                         -- ^ All Field Names
                -> Int                            -- ^ Argument Index
                -> Idris ()
-elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs fnames index
+elabProjection info cname paramnames pname plicity projTy pdoc psyn fc targetTy cn phArgs fnames index
   = do logElab 1 $ "Generating Projection for " ++ show pname
 
        let ty = generateTy
@@ -343,7 +346,11 @@ elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs f
     -- | The type of the projection function.
     generateTy :: PDecl
     generateTy = PTy pdoc [] psyn fc [] pname NoFC $
-                   PPi expl recName NoFC targetTy projTy
+                   bindParams paramnames $
+                     PPi expl recName NoFC targetTy projTy
+
+    bindParams [] t = t
+    bindParams (n : ns) ty = PPi impl n NoFC Placeholder (bindParams ns ty)
 
     -- | The left hand side of the projection function.
     generateLhs :: PTerm
@@ -370,6 +377,7 @@ elabProjection info cname pname plicity projTy pdoc psyn fc targetTy cn phArgs f
 -- If 'optional' is true, we will not fail if we can't elaborate the update function.
 elabUpdate :: ElabInfo
            -> Name                           -- ^ Name of the argument in the constructor
+           -> [Name]                         -- ^ Parameter names
            -> Name                           -- ^ Field Name
            -> Plicity                        -- ^ Field Plicity
            -> PTerm                          -- ^ Field Type
@@ -382,7 +390,7 @@ elabUpdate :: ElabInfo
            -> Int                            -- ^ Argument Index
            -> Bool                           -- ^ Optional
            -> Idris ()
-elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i optional
+elabUpdate info cname paramnames pname plicity pty pdoc psyn fc sty cn args fnames i optional
   = do logElab 1 $ "Generating Update for " ++ show pname
 
        let ty = generateTy
@@ -406,9 +414,13 @@ elabUpdate info cname pname plicity pty pdoc psyn fc sty cn args fnames i option
     -- | The type of the update function.
     generateTy :: PDecl
     generateTy = PTy pdoc [] psyn fc [] set_pname NoFC $
-                   PPi expl (nsroot pname) NoFC pty $
-                     PPi expl recName NoFC sty (substInput sty)
+                   bindParams paramnames $
+                     PPi expl (nsroot pname) NoFC pty $
+                       PPi expl recName NoFC sty (substInput sty)
       where substInput = substMatches [(cname, PRef fc [] (nsroot pname))]
+
+    bindParams [] t = t
+    bindParams (n : ns) ty = PPi impl n NoFC Placeholder (bindParams ns ty)
 
     -- | The "_set" name.
     set_pname :: Name
