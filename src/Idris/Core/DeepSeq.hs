@@ -154,7 +154,7 @@ instance NFData Err where
         rnf (NonCollapsiblePostulate x1) = rnf x1 `seq` ()
         rnf (AlreadyDefined x1) = rnf x1 `seq` ()
         rnf (ProofSearchFail x1) = rnf x1 `seq` ()
-        rnf (NoRewriting x1) = rnf x1 `seq` ()
+        rnf (NoRewriting x1 x2 x3) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` ()
         rnf (At x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (Elaborating x1 x2 x3 x4)
           = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()

@@ -43,7 +43,7 @@ data Err = Msg String
          | NonCollapsiblePostulate TTName
          | AlreadyDefined TTName
          | ProofSearchFail Err
-         | NoRewriting TT
+         | NoRewriting TT TT TT
          | ProviderError String
          | LoadingFailed String Err
 

@@ -2,11 +2,13 @@ proof011.idr:19:9:
 When checking right hand side of vassoc' with expected type
         (x :: xs) ++ ys ++ zs = ((x :: xs) ++ ys) ++ zs
 
-rewrite did not change type x :: xs ++ ys ++ zs =
-                            x :: (xs ++ ys) ++ zs
+rewriting xs ++ ys ++ xs to (xs ++ ys) ++
+                            xs did not change type x :: xs ++ ys ++ zs =
+                                                   x :: (xs ++ ys) ++ zs
 proof011a.idr:13:9:
 When checking right hand side of vassoc' with expected type
         (x :: xs) ++ ys ++ zs = ((x :: xs) ++ ys) ++ zs
 
-rewrite did not change type x :: xs ++ ys ++ zs =
-                            x :: (xs ++ ys) ++ zs
+rewriting xs ++ ys ++ xs to (xs ++ ys) ++
+                            xs did not change type x :: xs ++ ys ++ zs =
+                                                   x :: (xs ++ ys) ++ zs

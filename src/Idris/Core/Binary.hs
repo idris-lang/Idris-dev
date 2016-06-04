@@ -146,8 +146,10 @@ instance Binary a => Binary (Err' a) where
                               put n
   put (ProofSearchFail e) = do putWord8 25
                                put e
-  put (NoRewriting t) = do putWord8 26
-                           put t
+  put (NoRewriting l r t) = do putWord8 26
+                               put l
+                               put r
+                               put t
   put (At fc e) = do putWord8 27
                      put fc
                      put e
@@ -237,7 +239,8 @@ instance Binary a => Binary (Err' a) where
              23 -> fmap NonCollapsiblePostulate get
              24 -> fmap AlreadyDefined get
              25 -> fmap ProofSearchFail get
-             26 -> fmap NoRewriting get
+             26 -> do l <- get; r <- get; t <- get
+                      return $ NoRewriting l r t
              27 -> do x <- get ; y <- get
                       return $ At x y
              28 -> do w <- get; x <- get ; y <- get ; z <- get
