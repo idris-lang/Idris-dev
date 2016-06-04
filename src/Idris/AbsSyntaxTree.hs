@@ -831,6 +831,7 @@ data Directive = DLib Codegen String
                | DInclude Codegen String
                | DHide Name
                | DFreeze Name
+               | DThaw Name
                | DInjective Name
                | DSetTotal Name -- assert totality after checking
                | DAccess Accessibility

@@ -1353,6 +1353,7 @@ Directive' ::= 'lib'            CodeGen String_t
            |   'include'        CodeGen String_t
            |   'hide'           Name
            |   'freeze'         Name
+           |   'thaw'           Name
            |   'access'         Accessibility
            |   'default'        Totality
            |   'logging'        Natural
@@ -1385,6 +1386,8 @@ directive syn = do try (lchar '%' *> reserved "lib")
                     return [PDirective (DHide n)]
              <|> do try (lchar '%' *> reserved "freeze"); n <- fst <$> iName []
                     return [PDirective (DFreeze n)]
+             <|> do try (lchar '%' *> reserved "thaw"); n <- fst <$> iName []
+                    return [PDirective (DThaw n)]
              -- injectivity assertins are intended for debugging purposes
              -- only, and won't be documented/could be removed at any point
              <|> do try (lchar '%' *> reserved "assert_injective"); n <- fst <$> fnName

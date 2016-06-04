@@ -48,6 +48,14 @@ directiveAction (DFreeze n') = do
   mapM_ (\n -> do
             setAccessibility n Frozen
             addIBC (IBCAccess n Frozen)) ns
+directiveAction (DThaw n') = do
+  ns <- allNamespaces n'
+  mapM_ (\n -> do
+            ctxt <- getContext
+            case lookupDefAccExact n False ctxt of
+                 Just (_, Frozen) -> do setAccessibility n Public
+                                        addIBC (IBCAccess n Public) 
+                 _ -> throwError (Msg (show n ++ " is not frozen"))) ns
 directiveAction (DInjective n') = do
   ns <- allNamespaces n'
   mapM_ (\n -> do
