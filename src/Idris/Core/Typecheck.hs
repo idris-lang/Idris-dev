@@ -58,22 +58,22 @@ isType ctxt env tm = isType' (normalise ctxt env tm)
     where isType' tm | isUniverse tm = return ()
                      | otherwise = fail (showEnv env tm ++ " is not a Type")
 
-convType :: Context -> Env -> Term -> StateT UCs TC ()
-convType ctxt env tm =
+convType :: String -> Context -> Env -> Term -> StateT UCs TC ()
+convType tcns ctxt env tm =
     do (v, cs) <- get
        put (v + 1, cs)
        case normalise ctxt env tm of
             UType _ -> return ()
-            _ -> convertsC ctxt env tm (TType (UVar v))
+            _ -> convertsC ctxt env tm (TType (UVar tcns v))
 
-recheck :: Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
+recheck :: String -> Context -> Env -> Raw -> Term -> TC (Term, Type, UCs)
 recheck = recheck_borrowing False []
 
-recheck_borrowing :: Bool -> [Name] -> Context -> Env -> Raw -> Term ->
+recheck_borrowing :: Bool -> [Name] -> String -> Context -> Env -> Raw -> Term ->
                      TC (Term, Type, UCs)
-recheck_borrowing uniq_check bs ctxt env tm orig
+recheck_borrowing uniq_check bs tcns ctxt env tm orig
    = let v = next_tvar ctxt in
-       case runStateT (check' False ctxt env tm) (v, []) of -- holes banned
+       case runStateT (check' False tcns ctxt env tm) (v, []) of -- holes banned
           Error (IncompleteTerm _) -> Error $ IncompleteTerm orig
           Error e -> Error e
           OK ((tm, ty), constraints) ->
@@ -82,10 +82,11 @@ recheck_borrowing uniq_check bs ctxt env tm orig
 
 check :: Context -> Env -> Raw -> TC (Term, Type)
 check ctxt env tm
-     = evalStateT (check' True ctxt env tm) (0, []) -- Holes allowed
+     -- Holes allowed, so constraint namespace doesn't matter
+     = evalStateT (check' True [] ctxt env tm) (0, []) 
 
-check' :: Bool -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
-check' holes ctxt env top = chk (TType (UVar (-5))) env top where
+check' :: Bool -> String -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
+check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) env top where
 
   smaller (UType NullType) _ = UType NullType
   smaller _ (UType NullType) = UType NullType
@@ -120,10 +121,10 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
            case fty' of
              Bind x (Pi i (TType v') k) t ->
                do (v, cs) <- get
-                  put (v+1, ULT (UVar v) v' : cs)
+                  put (v+1, ULT (UVar tcns v) v' : cs)
                   let apty = simplify initContext env
-                                 (Bind x (Let (TType v') (TType (UVar v))) t)
-                  return (App Complete fv (TType (UVar v)), apty)
+                                 (Bind x (Let (TType v') (TType (UVar tcns v))) t)
+                  return (App Complete fv (TType (UVar tcns v)), apty)
              Bind x (Pi i s k) t ->
                  do (av, aty) <- chk u env RType
                     convertsC ctxt env aty s
@@ -150,9 +151,9 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
   chk u env RType
     | holes = return (TType (UVal 0), TType (UVal 0))
     | otherwise = do (v, cs) <- get
-                     let c = ULT (UVar v) (UVar (v+1))
+                     let c = ULT (UVar tcns v) (UVar tcns (v+1))
                      put (v+2, (c:cs))
-                     return (TType (UVar v), TType (UVar (v+1)))
+                     return (TType (UVar tcns v), TType (UVar tcns (v+1)))
   chk u env (RUType un)
     | holes = return (UType un, TType (UVal 0))
     | otherwise = do -- TODO! Issue #1715 on the issue tracker.
@@ -181,7 +182,7 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
            (v, cs) <- get
            (kv, kt) <- chk u env k -- no need to validate these constraints, they are independent
            put (v+1, cs)
-           let maxu = UVar v
+           let maxu = UVar tcns v
            (tv, tt) <- chk st ((n, Pi i sv kv) : env) t
 
 --            convertsC ctxt env st (TType maxu)
@@ -195,7 +196,7 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                     when (not holes) $ do (v, cs) <- get
                                           put (v, ULE su maxu :
                                                   ULE tu maxu : cs)
-                    let k' = TType (UVar v) `smaller` st `smaller` kv `smaller` u
+                    let k' = TType (UVar tcns v) `smaller` st `smaller` kv `smaller` u
                     return (Bind n (Pi i (uniqueBinders (map fst env) sv) k')
                               (pToV n tv), k')
                 (un, un') ->
@@ -225,33 +226,33 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
     where checkBinder (Lam t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
-                 convType ctxt env tt
+                 convType tcns ctxt env tt
                  return (Lam tv, tt)
           checkBinder (Let t v)
             = do (tv, tt) <- chk u env t
                  (vv, vt) <- chk u env v
                  let tv' = normalise ctxt env tv
                  convertsC ctxt env vt tv
-                 convType ctxt env tt
+                 convType tcns ctxt env tt
                  return (Let tv vv, tt)
           checkBinder (NLet t v)
             = do (tv, tt) <- chk u env t
                  (vv, vt) <- chk u env v
                  let tv' = normalise ctxt env tv
                  convertsC ctxt env vt tv
-                 convType ctxt env tt
+                 convType tcns ctxt env tt
                  return (NLet tv vv, tt)
           checkBinder (Hole t)
             | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
                    = do (tv, tt) <- chk u env t
                         let tv' = normalise ctxt env tv
-                        convType ctxt env tt
+                        convType tcns ctxt env tt
                         return (Hole tv, tt)
           checkBinder (GHole i ns t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
-                 convType ctxt env tt
+                 convType tcns ctxt env tt
                  return (GHole i ns tv, tt)
           checkBinder (Guess t v)
             | not holes = lift $ tfail (IncompleteTerm undefined)
@@ -260,19 +261,19 @@ check' holes ctxt env top = chk (TType (UVar (-5))) env top where
                         (vv, vt) <- chk u env v
                         let tv' = normalise ctxt env tv
                         convertsC ctxt env vt tv
-                        convType ctxt env tt
+                        convType tcns ctxt env tt
                         return (Guess tv vv, tt)
           checkBinder (PVar t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
-                 convType ctxt env tt
+                 convType tcns ctxt env tt
                  -- Normalised version, for erasure purposes (it's easier
                  -- to tell if it's a collapsible variable)
                  return (PVar tv, tt)
           checkBinder (PVTy t)
             = do (tv, tt) <- chk u env t
                  let tv' = normalise ctxt env tv
-                 convType ctxt env tt
+                 convType tcns ctxt env tt
                  return (PVTy tv, tt)
 
           discharge n (Lam t) bt scv sct
@@ -339,9 +340,7 @@ checkUnique borrowed ctxt env tm
                      StateT [(Name, (UniqueUse, Universe))] TC ()
     chkBinderName env n b
        = do let rawty = forgetEnv (map fst env) (binderTy b)
-            (_, kind) <- lift $ check ctxt env rawty -- FIXME: Cache in binder?
-                                                     -- Issue #1714 on the issue tracker
-                                                     -- https://github.com/idris-lang/Idris-dev/issues/1714
+            (_, kind) <- lift $ check ctxt env rawty 
             case kind of
                  UType UniqueType -> do ns <- get
                                         if n `elem` borrowed

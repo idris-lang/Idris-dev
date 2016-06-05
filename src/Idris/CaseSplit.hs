@@ -68,7 +68,7 @@ split n t'
         mapM_ (\n -> setAccessibility n Public) (allNamesIn t')
         -- ETyDecl rather then ELHS because there'll be explicit type
         -- matching
-        (tm, ty, pats) <- elabValBind recinfo ETyDecl True (addImplPat ist t')
+        (tm, ty, pats) <- elabValBind (recinfo (fileFC "casesplit")) ETyDecl True (addImplPat ist t')
         -- ASSUMPTION: tm is in normal form after elabValBind, so we don't
         -- need to do anything special to find out what family each argument
         -- is in
@@ -242,7 +242,7 @@ tidy ist tm ty = return tm
 --         tidyVar t = t
 
 elabNewPat :: PTerm -> Idris (Bool, PTerm)
-elabNewPat t = idrisCatch (do (tm, ty) <- elabVal recinfo ELHS t
+elabNewPat t = idrisCatch (do (tm, ty) <- elabVal (recinfo (fileFC "casesplit")) ELHS t
                               i <- getIState
                               return (True, delab i tm))
                           (\e -> do i <- getIState

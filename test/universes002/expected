@@ -1,9 +1,9 @@
 universes002.idr:45:9:Universe inconsistency.
-        Working on: c7
+        Working on: ./universes002.idr.c7
         Old domain: (5,5)
         New domain: (5,4)
         Involved constraints: 
-                ConstraintFC {uconstraint = c7 <= d1, ufc = universes002.idr:45:9}
-                ConstraintFC {uconstraint = c7 < d7, ufc = universes002.idr:15:6}
-                ConstraintFC {uconstraint = e7 < c7, ufc = universes002.idr:15:6}
-                ConstraintFC {uconstraint = c7 <= d1, ufc = universes002.idr:45:9}
+                ConstraintFC {uconstraint = ./universes002.idr.c7 <= ./universes002.idr.d1, ufc = universes002.idr:45:9}
+                ConstraintFC {uconstraint = ./universes002.idr.c7 < ./universes002.idr.d7, ufc = universes002.idr:15:6}
+                ConstraintFC {uconstraint = ./universes002.idr.e7 < ./universes002.idr.c7, ufc = universes002.idr:15:6}
+                ConstraintFC {uconstraint = ./universes002.idr.c7 <= ./universes002.idr.d1, ufc = universes002.idr:45:9}

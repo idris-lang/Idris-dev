@@ -16,17 +16,16 @@ import Data.List ( partition )
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 
-
 -- | Check that a list of universe constraints can be satisfied.
 ucheck :: S.Set ConstraintFC -> TC ()
 ucheck = void . solve 10 . S.filter (not . ignore)
     where
         -- TODO: remove the first ignore clause once Idris.Core.Binary:598 is dealt with
-        ignore (ConstraintFC c _) | any (== Var (-1)) (varsIn c) = True
+        ignore (ConstraintFC c _) | any (== Var [] (-1)) (varsIn c) = True
         ignore (ConstraintFC (ULE a b) _) = a == b
         ignore _ = False
 
-newtype Var = Var Int
+data Var = Var String Int
     deriving (Eq, Ord, Show)
 
 data Domain = Domain Int Int
@@ -72,12 +71,12 @@ solve maxUniverseLevel ucs =
                     , cons_rhs = constraintsRHS
                     }
 
-        lhs (ULT (UVar x) _) = Just (Var x)
-        lhs (ULE (UVar x) _) = Just (Var x)
+        lhs (ULT (UVar ns x) _) = Just (Var ns x)
+        lhs (ULE (UVar ns x) _) = Just (Var ns x)
         lhs _ = Nothing
 
-        rhs (ULT _ (UVar x)) = Just (Var x)
-        rhs (ULE _ (UVar x)) = Just (Var x)
+        rhs (ULT _ (UVar ns x)) = Just (Var ns x)
+        rhs (ULE _ (UVar ns x)) = Just (Var ns x)
         rhs _ = Nothing
 
         -- | a map from variables to the list of constraints the variable occurs in. (in the LHS of a constraint)
@@ -148,38 +147,38 @@ solve maxUniverseLevel ucs =
         -- | look up the domain of a variable from the state.
         --   for convenience, this function also accepts UVal's and returns a singleton domain for them.
         domainOf :: MonadState SolverState m => UExp -> m Domain
-        domainOf (UVar var) = gets (fst . (M.! Var var) . domainStore)
+        domainOf (UVar ns var) = gets (fst . (M.! Var ns var) . domainStore)
         domainOf (UVal val) = return (Domain val val)
 
         asPair :: Domain -> (Int, Int)
         asPair (Domain x y) = (x, y)
 
         updateUpperBoundOf :: ConstraintFC -> UExp -> Int -> StateT SolverState TC ()
-        updateUpperBoundOf suspect (UVar var) upper = do
+        updateUpperBoundOf suspect (UVar ns var) upper = do
             doms <- gets domainStore
-            let (oldDom@(Domain lower _), suspects) = doms M.! Var var
+            let (oldDom@(Domain lower _), suspects) = doms M.! Var ns var
             let newDom = Domain lower upper
             when (wipeOut newDom) $
               lift $ Error $
-                UniverseError (ufc suspect) (UVar var)
+                UniverseError (ufc suspect) (UVar ns var)
                               (asPair oldDom) (asPair newDom)
                               (suspect : S.toList suspects)
-            modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
-            addToQueueRHS (uconstraint suspect) (Var var)
+            modify $ \ st -> st { domainStore = M.insert (Var ns var) (newDom, S.insert suspect suspects) doms }
+            addToQueueRHS (uconstraint suspect) (Var ns var)
         updateUpperBoundOf _ UVal{} _ = return ()
 
         updateLowerBoundOf :: ConstraintFC -> UExp -> Int -> StateT SolverState TC ()
-        updateLowerBoundOf suspect (UVar var) lower = do
+        updateLowerBoundOf suspect (UVar ns var) lower = do
             doms <- gets domainStore
-            let (oldDom@(Domain _ upper), suspects) = doms M.! Var var
+            let (oldDom@(Domain _ upper), suspects) = doms M.! Var ns var
             let newDom = Domain lower upper
             when (wipeOut newDom) $
               lift $ Error $
-                UniverseError (ufc suspect) (UVar var)
+                UniverseError (ufc suspect) (UVar ns var)
                               (asPair oldDom) (asPair newDom)
                               (suspect : S.toList suspects)
-            modify $ \ st -> st { domainStore = M.insert (Var var) (newDom, S.insert suspect suspects) doms }
-            addToQueueLHS (uconstraint suspect) (Var var)
+            modify $ \ st -> st { domainStore = M.insert (Var ns var) (newDom, S.insert suspect suspects) doms }
+            addToQueueLHS (uconstraint suspect) (Var ns var)
         updateLowerBoundOf _ UVal{} _ = return ()
 
         -- | add all constraints (with the given var on the lhs) to the queue
@@ -224,5 +223,5 @@ ordNub = S.toList . S.fromList
 
 -- | variables in a constraint
 varsIn :: UConstraint -> [Var]
-varsIn (ULT a b) = [ Var v | UVar v <- [a,b] ]
-varsIn (ULE a b) = [ Var v | UVar v <- [a,b] ]
+varsIn (ULT a b) = [ Var ns v | UVar ns v <- [a,b] ]
+varsIn (ULE a b) = [ Var ns v | UVar ns v <- [a,b] ]

@@ -46,8 +46,10 @@ import System.FilePath
 import System.Directory
 import Codec.Archive.Zip
 
+import Debug.Trace
+
 ibcVersion :: Word16
-ibcVersion = 143
+ibcVersion = 144
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -105,6 +107,7 @@ data IBCFile = IBCFile {
   , ibc_injective              :: ![(Name, Injectivity)]
   , ibc_access                 :: ![(Name, Accessibility)]
   , ibc_fragile                :: ![(Name, String)]
+  , ibc_constraints            :: ![(FC, UConstraint)]
   }
   deriving Show
 {-!
@@ -112,7 +115,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -208,6 +211,8 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_injective"  (ibc_injective i),
                        makeEntry "ibc_access"  (ibc_access i),
                        makeEntry "ibc_fragile" (ibc_fragile i)]
+-- TODO: Put this back in shortly after minimising/pruning constraints
+--                        makeEntry "ibc_constraints" (ibc_constraints i)]
 
 writeArchive :: FilePath -> IBCFile -> Idris ()
 writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArchive (entries i)
@@ -337,6 +342,7 @@ ibc i (IBCExport n) f = return f { ibc_exports = n : ibc_exports f }
 ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f }
 ibc i (IBCDeprecate n r) f = return f { ibc_deprecated = (n, r) : ibc_deprecated f }
 ibc i (IBCFragile n r)   f = return f { ibc_fragile    = (n,r)  : ibc_fragile f }
+ibc i (IBCConstraint fc u)  f = return f { ibc_constraints = (fc, u) : ibc_constraints f }
 
 getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
 getEntry alt f a = case findEntryByPath f a of
@@ -408,6 +414,7 @@ process reexp phase archive fn = do
                 processInjective archive
                 processAccess reexp phase archive
                 processFragile archive
+                processConstraints archive
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do
@@ -461,6 +468,11 @@ processFragile :: Archive -> Idris ()
 processFragile ar = do
     ns <- getEntry [] "ibc_fragile" ar
     mapM_ (\(n,reason) -> addFragile n reason) ns
+
+processConstraints :: Archive -> Idris ()
+processConstraints ar = do
+    cs <- getEntry [] "ibc_constraints" ar
+    mapM_ (\ (fc, c) -> addConstraints fc (0, [c])) cs
 
 processImportDirs :: Archive -> Idris ()
 processImportDirs ar = do

@@ -494,14 +494,14 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     un' env fn bnames (App _ f x) (Bind n (Pi i t k) y)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' env False bnames x y
-             uf <- un' env False bnames f (Bind (sMN 0 "uv") (Lam (TType (UVar 0)))
+             uf <- un' env False bnames f (Bind (sMN 0 "uv") (Lam (TType (UVar [] 0)))
                                       (Bind n (Pi i t k) (V 1)))
              combine env bnames ux uf
 
     un' env fn bnames (Bind n (Pi i t k) y) (App _ f x)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' env False bnames y x
-             uf <- un' env False bnames (Bind (sMN 0 "uv") (Lam (TType (UVar 0)))
+             uf <- un' env False bnames (Bind (sMN 0 "uv") (Lam (TType (UVar [] 0)))
                                     (Bind n (Pi i t k) (V 1))) f
              combine env bnames ux uf
 

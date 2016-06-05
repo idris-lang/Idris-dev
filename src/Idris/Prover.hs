@@ -51,13 +51,13 @@ import Util.Pretty
 import Debug.Trace
 
 -- | Launch the proof shell
-prover :: Bool -> Bool -> Name -> Idris ()
-prover mode lit x =
+prover :: ElabInfo -> Bool -> Bool -> Name -> Idris ()
+prover info mode lit x =
            do ctxt <- getContext
               i <- getIState
               case lookupTy x ctxt of
                   [t] -> if elem x (map fst (idris_metavars i))
-                               then prove mode (idris_optimisation i) ctxt lit x t
+                               then prove mode info (idris_optimisation i) ctxt lit x t
                                else ifail $ show x ++ " is not a hole"
                   _ -> fail "No such hole"
 
@@ -89,13 +89,13 @@ assumptionNames e
         names ((MN _ _, _) : bs) = names bs
         names ((n, _) : bs) = show n : names bs
 
-prove :: Bool -> Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
-prove mode opt ctxt lit n ty
-    = do ps <- fmap (\ist -> initElaborator n ctxt (idris_datatypes ist) (idris_name ist) ty) getIState
+prove :: Bool -> ElabInfo -> Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
+prove mode info opt ctxt lit n ty
+    = do ps <- fmap (\ist -> initElaborator n (constraintNS info) ctxt (idris_datatypes ist) (idris_name ist) ty) getIState
          idemodePutSExp "start-proof-mode" n
          (tm, prf) <-
             if mode
-              then elabloop n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) [] Nothing []
+              then elabloop info n True ("-" ++ show n) [] (ES (ps, initEState) "" Nothing) [] Nothing []
               else do iputStrLn $ "Warning: this interactive prover is deprecated and will be removed " ++
                                   "in a future release. Please see :elab for a similar feature that "++
                                   "will replace it."
@@ -112,7 +112,7 @@ prove mode opt ctxt lit n ty
          putIState (i { proof_list = (n, (mode, prf)) : proofs })
          let tree = simpleCase False (STerm Erased) False CompileTime (fileFC "proof") [] [] [([], P Ref n ty, tm)]
          logLvl 3 (show tree)
-         (ptm, pty) <- recheckC (fileFC "proof") id [] tm
+         (ptm, pty) <- recheckC (constraintNS info) (fileFC "proof") id [] tm
          logLvl 5 ("Proof type: " ++ show pty ++ "\n" ++
                    "Expected type:" ++ show ty)
          case converts ctxt [] ty pty of
@@ -277,6 +277,8 @@ undoElab prf env st [] = ifail "Nothing to undo"
 undoElab prf env st (h:hs) = do (prf', env', st') <- undoStep prf env st h
                                 return (prf', env', st', hs)
 
+proverfc = fileFC "prover"
+
 runWithInterrupt
   :: ElabState EState
   -> Idris a -- ^ run with SIGINT handler
@@ -293,8 +295,8 @@ runWithInterrupt elabState mTry mSuccess mFailure = do
       if success then mSuccess else mFailure
     IdeMode _ _ -> mTry >> mSuccess
 
-elabloop :: Name -> Bool -> String -> [String] -> ElabState EState -> [ElabShellHistory] -> Maybe History -> [(Name, Type, Term)] -> Idris (Term, [String])
-elabloop fn d prompt prf e prev h env
+elabloop :: ElabInfo -> Name -> Bool -> String -> [String] -> ElabState EState -> [ElabShellHistory] -> Maybe History -> [(Name, Type, Term)] -> Idris (Term, [String])
+elabloop info fn d prompt prf e prev h env
   = do ist <- getIState
        when d $ dumpState ist True env (proof e)
        (x, h') <-
@@ -355,13 +357,13 @@ elabloop fn d prompt prf e prev h env
                   DoLetP  {} -> ifail "Pattern-matching let not supported here"
                   DoBindP {} -> ifail "Pattern-matching <- not supported here"
                   DoLet fc i ifc Placeholder expr ->
-                    do (tm, ty) <- elabVal recinfo ERHS (inLets ist env expr)
+                    do (tm, ty) <- elabVal (recinfo proverfc) ERHS (inLets ist env expr)
                        ctxt <- getContext
                        let tm' = normaliseAll ctxt [] tm
                            ty' = normaliseAll ctxt [] ty
                        return (True, LetStep:prev, e, False, prf ++ [step], (i, ty', tm' ) : env, Right (iPrintResult ""))
                   DoLet fc i ifc ty expr ->
-                    do (tm, ty) <- elabVal recinfo ERHS
+                    do (tm, ty) <- elabVal (recinfo proverfc) ERHS
                                      (PApp NoFC (PRef NoFC [] (sUN "the"))
                                                 [ pexp (inLets ist env ty)
                                                 , pexp (inLets ist env expr)
@@ -371,34 +373,34 @@ elabloop fn d prompt prf e prev h env
                            ty' = normaliseAll ctxt [] ty
                        return (True, LetStep:prev, e, False, prf ++ [step], (i, ty', tm' ) : env, Right (iPrintResult ""))
                   DoBind fc i ifc expr ->
-                    do (tm, ty) <- elabVal recinfo ERHS (inLets ist env expr)
+                    do (tm, ty) <- elabVal (recinfo proverfc) ERHS (inLets ist env expr)
                        (_, e') <- elabStep e saveState -- enable :undo
                        (res, e'') <- elabStep e' $
-                                       runElabAction ist NoFC [] tm ["Shell"]
+                                       runElabAction info ist NoFC [] tm ["Shell"]
                        ctxt <- getContext
                        (v, vty) <- tclift $ check ctxt [] (forget res)
                        let v'   = normaliseAll ctxt [] v
                            vty' = normaliseAll ctxt [] vty
                        return (True, BothStep:prev, e'', False, prf ++ [step], (i, vty', v') : env, Right (iPrintResult ""))
                   DoExp fc expr ->
-                    do (tm, ty) <- elabVal recinfo ERHS (inLets ist env expr)
+                    do (tm, ty) <- elabVal (recinfo proverfc) ERHS (inLets ist env expr)
                        -- TODO: call elaborator with Elab () as goal here
                        (_, e') <- elabStep e saveState -- enable :undo
                        (_, e'') <- elabStep e' $
-                                     runElabAction ist NoFC [] tm ["Shell"]
+                                     runElabAction info ist NoFC [] tm ["Shell"]
                        return (True, ElabStep:prev, e'', False, prf ++ [step], env, Right (iPrintResult "")))
            (\err -> return (False, prev, e, False, prf, env, Left err))
        idemodePutSExp "write-proof-state" (prf', length prf')
        case res of
          Left err -> do ist <- getIState
                         iRenderError $ pprintErr ist err
-                        elabloop fn d prompt prf' st prev' h' env'
+                        elabloop info fn d prompt prf' st prev' h' env'
          Right ok ->
            if done then do (tm, _) <- elabStep st get_term
                            return (tm, prf')
                    else runWithInterrupt e ok
-                           (elabloop fn d prompt prf' st prev' h' env')
-                           (elabloop fn d prompt prf e prev h' env)
+                           (elabloop info fn d prompt prf' st prev' h' env')
+                           (elabloop info fn d prompt prf e prev h' env)
 
   where
     -- A bit of a hack: wrap the value up in a let binding, which will
@@ -502,7 +504,7 @@ checkType e prf t = do
         let OK env = envAtFocus (proof e)
             ctxt'  = envCtxt env ctxt
         putIState ist { tt_ctxt = ctxt' }
-        (tm, ty) <- elabVal recinfo ERHS t
+        (tm, ty) <- elabVal (recinfo proverfc) ERHS t
         let ppo = ppOptionIst ist
             ty'     = normaliseC ctxt [] ty
             infixes = idris_infixes ist
@@ -528,7 +530,7 @@ evalTerm e prf t = withErrorReflection $
              ist'   = ist { tt_ctxt = ctxt' }
              bnd    = map (\x -> (fst x, False)) env
          putIState ist'
-         (tm, ty) <- elabVal recinfo ERHS t
+         (tm, ty) <- elabVal (recinfo proverfc) ERHS t
          let tm'     = force (normaliseAll ctxt' env tm)
              ty'     = force (normaliseAll ctxt' env ty)
              ppo     = ppOption (idris_options ist')

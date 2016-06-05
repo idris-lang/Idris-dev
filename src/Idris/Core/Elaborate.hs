@@ -151,6 +151,7 @@ execElab :: aux -> Elab' aux a -> ProofState -> TC (ElabState aux)
 execElab a e ps = execStateT e (ES (ps, a) "" Nothing)
 
 initElaborator :: Name -- ^ the name of what's to be elaborated
+               -> String -- ^ the current source file
                -> Context -- ^ the current global context
                -> Ctxt TypeInfo -- ^ the value of the idris_datatypes field of IState
                -> Int -- ^ the value of the idris_name field of IState
@@ -158,9 +159,9 @@ initElaborator :: Name -- ^ the name of what's to be elaborated
                -> ProofState
 initElaborator = newProof
 
-elaborate :: Context -> Ctxt TypeInfo -> Int -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
-elaborate ctxt datatypes globalNames n ty d elab =
-  do let ps = initElaborator n ctxt datatypes globalNames ty
+elaborate :: String -> Context -> Ctxt TypeInfo -> Int -> Name -> Type -> aux -> Elab' aux a -> TC (a, String)
+elaborate tcns ctxt datatypes globalNames n ty d elab =
+  do let ps = initElaborator n tcns ctxt datatypes globalNames ty
      (a, ES ps' str _) <- runElab d elab ps
      return $! (a, str)
 

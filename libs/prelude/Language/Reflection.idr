@@ -573,7 +573,7 @@ implementation DecEq SpecialName where
 
 data TTUExp =
             ||| Universe variable
-            UVar Int |
+            UVar String Int |
             ||| Explicit universe level
             UVal Int
 %name TTUExp uexp
@@ -1026,12 +1026,12 @@ mutual
 
 implementation Quotable TTUExp TT where
   quotedTy = `(TTUExp)
-  quote (UVar x) = `(UVar ~(quote x))
+  quote (UVar ns x) = `(UVar ~(quote ns) ~(quote x))
   quote (UVal x) = `(UVal ~(quote x))
 
 implementation Quotable TTUExp Raw where
   quotedTy = `(TTUExp)
-  quote (UVar x) = `(UVar ~(quote {t=Raw} x))
+  quote (UVar ns x) = `(UVar ~(quote ns) ~(quote {t=Raw} x))
   quote (UVal x) = `(UVal ~(quote {t=Raw} x))
 
 implementation Quotable NativeTy TT where

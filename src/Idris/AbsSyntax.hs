@@ -700,6 +700,8 @@ addConstraints fc (v, cs)
          putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
   where
     insertAll [] c = c
+    insertAll ((ULE (UVal 0) _, fc) : cs) ics = insertAll cs ics
+    insertAll ((ULE x y, fc) : cs) ics | x == y = insertAll cs ics
     insertAll ((c, fc) : cs) ics
        = insertAll cs $ S.insert (ConstraintFC c fc) ics
 

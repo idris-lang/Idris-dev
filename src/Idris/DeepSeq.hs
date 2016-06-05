@@ -318,6 +318,7 @@ instance NFData IBCWrite where
     rnf (IBCDeprecate n1 n2) = rnf n1 `seq` rnf n2 `seq` ()
     rnf (IBCRecord x) = rnf x `seq` ()
     rnf (IBCFragile n1 n2) = rnf n1 `seq` rnf n2 `seq` ()
+    rnf (IBCConstraint n1 n2) = rnf n1 `seq` rnf n2 `seq` ()
 
 
 instance NFData a => NFData (D.Block a) where

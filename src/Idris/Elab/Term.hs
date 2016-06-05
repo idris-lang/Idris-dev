@@ -815,8 +815,8 @@ elab ist info emode opts fn tm
              mkN n@(NS _ _) = n
              mkN n@(SN _) = n
              mkN n = case namespace info of
-                        Just xs@(_:_) -> sNS n xs
-                        _ -> n
+                          xs@(_:_) -> sNS n xs
+                          _ -> n
 
     elab' ina _ (PMatchApp fc fn)
        = do (fn', imps) <- case lookupCtxtName fn (idris_implicits ist) of
@@ -1089,7 +1089,7 @@ elab ist info emode opts fn tm
 --               mkCaseName (MN i x) = MN i (x ++ "_case")
               mkN n@(NS _ _) = n
               mkN n = case namespace info of
-                        Just xs@(_:_) -> sNS n xs
+                        xs@(_:_) -> sNS n xs
                         _ -> n
 
               getScrType [] = Nothing
@@ -1157,7 +1157,7 @@ elab ist info emode opts fn tm
              g_nextname <- get_global_nextname
              saveState
              updatePS (const .
-                       newProof (sMN 0 "q") ctxt datatypes g_nextname $
+                       newProof (sMN 0 "q") (constraintNS info) ctxt datatypes g_nextname $
                        P Ref (reflm "TT") Erased)
 
              -- Re-add the unquotes, letting Idris infer the (fictional)
@@ -1208,7 +1208,7 @@ elab ist info emode opts fn tm
                            _ -> False
              case quoted of
                Just q -> do ctxt <- get_context
-                            (q', _, _) <- lift $ recheck ctxt [(uq, Lam Erased) | uq <- unquoteNames] (forget q) q
+                            (q', _, _) <- lift $ recheck (constraintNS info) ctxt [(uq, Lam Erased) | uq <- unquoteNames] (forget q) q
                             if pattern
                               then if isRaw
                                       then reflectRawQuotePattern unquoteNames (forget q')
@@ -1279,7 +1279,7 @@ elab ist info emode opts fn tm
          fullyElaborated script
          solve -- eliminate the hole. Becuase there are no references, the script is only in the binding
          env <- get_env
-         runElabAction ist (maybe fc' id fc) env script ns
+         runElabAction info ist (maybe fc' id fc) env script ns
          solve
     elab' ina fc (PConstSugar constFC tm) =
       -- Here we elaborate the contained term, then calculate
@@ -1862,14 +1862,14 @@ case_ ind autoSolve ist fn tm = do
   when autoSolve solveAll
 
 -- | Compute the appropriate name for a top-level metavariable
-metavarName :: Maybe [String] -> Name -> Name
-metavarName _                 n@(NS _ _) = n
-metavarName (Just (ns@(_:_))) n          = sNS n ns
-metavarName _                 n          = n
+metavarName :: [String] -> Name -> Name
+metavarName _          n@(NS _ _) = n
+metavarName (ns@(_:_)) n          = sNS n ns
+metavarName _          n          = n
 
-runElabAction :: IState -> FC -> Env -> Term -> [String] -> ElabD Term
-runElabAction ist fc env tm ns = do tm' <- eval tm
-                                    runTacTm tm'
+runElabAction :: ElabInfo -> IState -> FC -> Env -> Term -> [String] -> ElabD Term
+runElabAction info ist fc env tm ns = do tm' <- eval tm
+                                         runTacTm tm'
 
   where
     eval tm = do ctxt <- get_context
@@ -1899,7 +1899,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
         _ -> P Ref n Erased
     fakeTT (RBind n b body) = Bind n (fmap fakeTT b) (fakeTT body)
     fakeTT (RApp f a) = App Complete (fakeTT f) (fakeTT a)
-    fakeTT RType = TType (UVar (-1))
+    fakeTT RType = TType (UVar [] (-1))
     fakeTT (RUType u) = UType u
     fakeTT (RConstant c) = Constant c
 
@@ -2308,10 +2308,10 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            (ctxt', ES (p, aux') _ _) <-
               do (ES (current_p, _) _ _) <- get
                  lift $ runElab aux
-                             (do runElabAction ist fc [] script ns
+                             (do runElabAction info ist fc [] script ns
                                  ctxt' <- get_context
                                  return ctxt')
-                             ((newProof recH ctxt datatypes g_next goalTT)
+                             ((newProof recH (constraintNS info) ctxt datatypes g_next goalTT)
                               { nextname = nextname current_p })
            set_context ctxt'
 
@@ -2322,7 +2322,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
                            }
               put (ES (p', aux') s e)
            env' <- get_env
-           (tm, ty, _) <- lift $ recheck ctxt' env (forget tm_out) tm_out
+           (tm, ty, _) <- lift $ recheck (constraintNS info) ctxt' env (forget tm_out) tm_out
            let (tm', ty') = (reflect tm, reflect ty)
            fmap fst . checkClosed $
              rawPair (Var $ reflm "TT", Var $ reflm "TT")
@@ -2333,7 +2333,7 @@ runElabAction ist fc env tm ns = do tm' <- eval tm
            ptm <- get_term
            -- See documentation above in the elab case for PMetavar
            let unique_used = getUniqueUsed ctxt ptm
-           let mvn = metavarName (Just ns) n'
+           let mvn = metavarName ns n'
            attack
            defer unique_used mvn
            solve
@@ -2699,7 +2699,7 @@ processTacticDecls info steps =
          updateIState $ \i -> i { idris_implicits =
                                     addDef n impls (idris_implicits i) }
          addIBC (IBCImp n)
-         ds <- checkDef fc (\_ e -> e) True [(n, (-1, Nothing, ty, []))]
+         ds <- checkDef info fc (\_ e -> e) True [(n, (-1, Nothing, ty, []))]
          addIBC (IBCDef n)
          ctxt <- getContext
          case lookupDef n ctxt of
@@ -2817,7 +2817,7 @@ processTacticDecls info steps =
           let lhs = addImplPat ist lhs_in
           let fc = fileFC "elab_reflected_totality"
           let tcgen = False -- TODO: later we may support dictionary generation
-          case elaborate ctxt (idris_datatypes ist) (idris_name ist) (sMN 0 "refPatLHS") infP initEState
+          case elaborate (constraintNS info) ctxt (idris_datatypes ist) (idris_name ist) (sMN 0 "refPatLHS") infP initEState
                 (erun fc (buildTC ist info ELHS [] fname (allNamesIn lhs_in)
                                                          (infTerm lhs))) of
             OK (ElabResult lhs' _ _ _ _ _ name', _) ->
@@ -2825,7 +2825,7 @@ processTacticDecls info steps =
                  -- want to run infinitely many times
                  let lhs_tm = orderPats (getInferTerm lhs')
                  updateIState $ \i -> i { idris_name = name' }
-                 case recheck ctxt [] (forget lhs_tm) lhs_tm of
+                 case recheck (constraintNS info) ctxt [] (forget lhs_tm) lhs_tm of
                       OK _ -> return True
                       err -> return False
             -- if it's a recoverable error, the case may become possible

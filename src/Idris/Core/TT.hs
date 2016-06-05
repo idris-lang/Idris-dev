@@ -38,7 +38,7 @@ module Idris.Core.TT(
   , bindingOf, bindTyArgs, caseName, constDocs, constIsType, deleteDefExact
   , discard, emptyContext, emptyFC, explicitNames, fc_end, fc_fname
   , fc_start, fcIn, fileFC, finalise, fmapMB, forget, forgetEnv
-  , freeNames, getArgTys, getRetTy, implicitable, instantiate
+  , freeNames, getArgTys, getRetTy, implicitable, instantiate, internalNS
   , intTyName, isInjective, isTypeConst, lookupCtxt
   , lookupCtxtExact, lookupCtxtName, mapCtxt, mkApp, nativeTyWidth
   , nextName, noOccurrence, nsroot, occurrences
@@ -945,8 +945,11 @@ raw_unapply t = ua [] t where
 
 -- WELL TYPED TERMS ---------------------------------------------------------
 
+internalNS :: String
+internalNS = "(internal)"
+
 -- | Universe expressions for universe checking
-data UExp = UVar Int -- ^ universe variable
+data UExp = UVar String Int -- ^ universe variable, with source file to disambiguate
           | UVal Int -- ^ explicit universe level
   deriving (Eq, Ord, Data, Typeable)
 {-!
@@ -957,8 +960,9 @@ instance Sized UExp where
   size _ = 1
 
 instance Show UExp where
-    show (UVar x) | x < 26 = [toEnum (x + fromEnum 'a')]
-                  | otherwise = toEnum ((x `mod` 26) + fromEnum 'a') : show (x `div` 26)
+    show (UVar ns x) 
+       | x < 26 = ns ++ "." ++ [toEnum (x + fromEnum 'a')]
+       | otherwise = ns ++ "." ++ toEnum ((x `mod` 26) + fromEnum 'a') : show (x `div` 26)
     show (UVal x) = show x
 --     show (UMax l r) = "max(" ++ show l ++ ", " ++ show r ++")"
 

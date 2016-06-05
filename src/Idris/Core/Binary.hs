@@ -592,15 +592,17 @@ instance Binary NameType where
 -- record concrete levels only, for now
 instance Binary UExp where
     put x = case x of
-                 UVar t -> do putWord8 0
-                              put ((-1) :: Int) -- TMP HACK!
+                 UVar ns t -> do putWord8 0
+                                 put ns
+                                 put t
                  UVal t -> do putWord8 1
                               put t
 
     get = do i <- getWord8
              case i of
                  0 -> do x1 <- get
-                         return (UVar x1)
+                         x2 <- get
+                         return (UVar x1 x2)
                  1 -> do x1 <- get
                          return (UVal x1)
                  _ -> error "Corrupted binary data for UExp"

@@ -1,9 +1,9 @@
 totality014.idr:6:9:Universe inconsistency.
-        Working on: u
+        Working on: ./totality014.idr.u
         Old domain: (5,5)
         New domain: (5,4)
         Involved constraints: 
-                ConstraintFC {uconstraint = u <= w, ufc = totality014.idr:6:9}
-                ConstraintFC {uconstraint = u < v, ufc = totality014.idr:1:6}
-                ConstraintFC {uconstraint = w < u, ufc = totality014.idr:1:6}
-                ConstraintFC {uconstraint = u <= w, ufc = totality014.idr:6:9}
+                ConstraintFC {uconstraint = ./totality014.idr.u <= ./totality014.idr.w, ufc = totality014.idr:6:9}
+                ConstraintFC {uconstraint = ./totality014.idr.u < ./totality014.idr.v, ufc = totality014.idr:1:6}
+                ConstraintFC {uconstraint = ./totality014.idr.w < ./totality014.idr.u, ufc = totality014.idr:1:6}
+                ConstraintFC {uconstraint = ./totality014.idr.u <= ./totality014.idr.w, ufc = totality014.idr:6:9}

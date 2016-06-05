@@ -1804,7 +1804,7 @@ loadSource lidr f toline
                   -- we totality check after every Mutual block, so if
                   -- anything is a single definition, wrap it in a
                   -- mutual block on its own
-                  elabDecls toplevel (map toMutual ds)
+                  elabDecls (toplevelWith f) (map toMutual ds)
                   i <- getIState
                   -- simplify every definition do give the totality checker
                   -- a better chance
@@ -1883,7 +1883,7 @@ loadSource lidr f toline
     addModDoc :: SyntaxInfo -> [String] -> Docstring () -> Idris ()
     addModDoc syn mname docs =
       do ist <- getIState
-         docs' <- elabDocTerms recinfo (parsedDocs ist)
+         docs' <- elabDocTerms (toplevelWith f) (parsedDocs ist)
          let modDocs' = addDef docName docs' (idris_moduledocs ist)
          putIState ist { idris_moduledocs = modDocs' }
          addIBC (IBCModDocs docName)

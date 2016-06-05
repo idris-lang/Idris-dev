@@ -28,6 +28,7 @@ import System.IO.Error(isUserError, ioeGetErrorString)
 import Data.Char
 import Data.List (intercalate, isPrefixOf)
 import qualified Data.Text as T
+import qualified Data.Set as S
 import Data.Typeable
 import qualified Data.Traversable as Traversable
 import qualified Data.Foldable as Foldable
@@ -36,7 +37,7 @@ iucheck :: Idris ()
 iucheck = do tit <- typeInType
              ist <- getIState
              let cs = idris_constraints ist
-             logLvl 7 $ "ALL CONSTRAINTS: " ++ show cs
+             logLvl 7 $ "ALL CONSTRAINTS: " ++ show (length (S.toList cs))
              when (not tit) $
                    (tclift $ ucheck (idris_constraints ist)) `idrisCatch`
                               (\e -> do let fc = getErrSpan e

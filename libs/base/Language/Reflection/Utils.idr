@@ -122,13 +122,13 @@ mutual
     _                   == _                     = False
 
 implementation Show TTUExp where
-  showPrec d (UVar i) = showCon d "UVar" $ showArg i
+  showPrec d (UVar ns i) = showCon d "UVar" $ showArg ns ++ showArg i
   showPrec d (UVal i) = showCon d "UVal" $ showArg i
 
 implementation Eq TTUExp where
-  (UVar i) == (UVar j) = i == j
-  (UVal i) == (UVal j) = i == j
-  x        == y        = False
+  (UVar nsi i) == (UVar nsj j) = nsi == nsj && i == j
+  (UVal i)     == (UVal j)     = i == j
+  x            == y            = False
 
 implementation Show NativeTy where
   show IT8  = "IT8"

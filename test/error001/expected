@@ -1,8 +1,8 @@
 test002.idr:1:6:Universe inconsistency.
-        Working on: z
+        Working on: ./test002.idr.z
         Old domain: (6,6)
         New domain: (6,5)
         Involved constraints: 
-                ConstraintFC {uconstraint = z <= a1, ufc = test002.idr:1:6}
-                ConstraintFC {uconstraint = y < z, ufc = test002.idr:1:6}
-                ConstraintFC {uconstraint = z <= a1, ufc = test002.idr:1:6}
+                ConstraintFC {uconstraint = ./test002.idr.z <= ./test002.idr.a1, ufc = test002.idr:1:6}
+                ConstraintFC {uconstraint = ./test002.idr.y < ./test002.idr.z, ufc = test002.idr:1:6}
+                ConstraintFC {uconstraint = ./test002.idr.z <= ./test002.idr.a1, ufc = test002.idr:1:6}

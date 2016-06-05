@@ -35,17 +35,19 @@ import qualified Data.Map as Map
 
 recheckC = recheckC_borrowing False True []
 
-recheckC_borrowing uniq_check addConstrs bs fc mkerr env t
+recheckC_borrowing uniq_check addConstrs bs tcns fc mkerr env t
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
+         
          ctxt <- getContext
          t' <- case safeForget t of
                     Just ft -> return ft
                     Nothing -> tclift $ tfail $ mkerr (At fc (IncompleteTerm t))
-         (tm, ty, cs) <- tclift $ case recheck_borrowing uniq_check bs ctxt env t' t of
+         (tm, ty, cs) <- tclift $ case recheck_borrowing uniq_check bs tcns ctxt env t' t of
                                    Error e -> tfail (At fc (mkerr e))
                                    OK x -> return x
          logElab 6 $ "CONSTRAINTS ADDED: " ++ show (tm, ty, cs)
-         when addConstrs $ addConstraints fc cs
+         when addConstrs $ do addConstraints fc cs
+                              mapM_ (\c -> addIBC (IBCConstraint fc c)) (snd cs)
          mapM_ (checkDeprecated fc) (allTTNames tm)
          mapM_ (checkDeprecated fc) (allTTNames ty)
          mapM_ (checkFragile fc) (allTTNames tm)
@@ -80,23 +82,23 @@ checkFragile fc n = do
 iderr :: Name -> Err -> Err
 iderr _ e = e
 
-checkDef :: FC -> (Name -> Err -> Err) -> Bool ->
+checkDef :: ElabInfo -> FC -> (Name -> Err -> Err) -> Bool ->
             [(Name, (Int, Maybe Name, Type, [Name]))] ->
             Idris [(Name, (Int, Maybe Name, Type, [Name]))]
-checkDef fc mkerr definable ns
-   = checkAddDef False True fc mkerr definable ns
+checkDef info fc mkerr definable ns
+   = checkAddDef False True info fc mkerr definable ns
 
-checkAddDef :: Bool -> Bool -> FC -> (Name -> Err -> Err) -> Bool
+checkAddDef :: Bool -> Bool -> ElabInfo -> FC -> (Name -> Err -> Err) -> Bool
             -> [(Name, (Int, Maybe Name, Type, [Name]))]
             -> Idris [(Name, (Int, Maybe Name, Type, [Name]))]
-checkAddDef add toplvl fc mkerr def [] = return []
-checkAddDef add toplvl fc mkerr definable ((n, (i, top, t, psns)) : ns)
+checkAddDef add toplvl info fc mkerr def [] = return []
+checkAddDef add toplvl info fc mkerr definable ((n, (i, top, t, psns)) : ns)
                = do ctxt <- getContext
                     logElab 5 $ "Rechecking deferred name " ++ show (n, t, definable)
-                    (t', _) <- recheckC fc (mkerr n) [] t
+                    (t', _) <- recheckC (constraintNS info) fc (mkerr n) [] t
                     when add $ do addDeferred [(n, (i, top, t, psns, toplvl, definable))]
                                   addIBC (IBCDef n)
-                    ns' <- checkAddDef add toplvl fc mkerr definable ns
+                    ns' <- checkAddDef add toplvl info fc mkerr definable ns
                     return ((n, (i, top, t', psns)) : ns')
 
 -- | Get the list of (index, name) of inaccessible arguments from an elaborated

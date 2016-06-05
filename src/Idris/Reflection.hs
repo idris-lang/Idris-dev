@@ -389,8 +389,10 @@ reifyIntTy tm = fail $ "The term " ++ show tm ++ " is not a reflected IntTy"
 reifyTTUExp :: Term -> ElabD UExp
 reifyTTUExp t@(App _ _ _)
   = case unApply t of
-      (P _ f _, [Constant (I i)]) | f == reflm "UVar" -> return $ UVar i
-      (P _ f _, [Constant (I i)]) | f == reflm "UVal" -> return $ UVal i
+      (P _ f _, [Constant (Str str), Constant (I i)]) 
+           | f == reflm "UVar" -> return $ UVar str i
+      (P _ f _, [Constant (I i)]) 
+           | f == reflm "UVal" -> return $ UVal i
       _ -> fail ("Unknown reflection type universe expression: " ++ show t)
 reifyTTUExp t = fail ("Unknown reflection type universe expression: " ++ show t)
 
@@ -792,7 +794,7 @@ reflectConstant WorldType = Var (reflm "WorldType")
 reflectConstant TheWorld = Var (reflm "TheWorld")
 
 reflectUExp :: UExp -> Raw
-reflectUExp (UVar i) = reflCall "UVar" [RConstant (I i)]
+reflectUExp (UVar ns i) = reflCall "UVar" [RConstant (Str ns), RConstant (I i)]
 reflectUExp (UVal i) = reflCall "UVal" [RConstant (I i)]
 
 -- | Reflect the environment of a proof into a List (TTName, Binder TT)
@@ -972,7 +974,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) (Constant (Str msg))) | n == reflm "
     Right (TextPart msg)
 reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
   | n == reflm "NamePart" =
-    case runElab initEState (reifyTTName ttn) (initElaborator (sMN 0 "hole") initContext emptyContext 0 Erased) of
+    case runElab initEState (reifyTTName ttn) (initElaborator (sMN 0 "hole") internalNS initContext emptyContext 0 Erased) of
       Error e -> Left . InternalMsg $
        "could not reify name term " ++
        show ttn ++
@@ -980,7 +982,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) ttn)
       OK (n', _)-> Right $ NamePart n'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "TermPart" =
-  case runElab initEState (reifyTT tm) (initElaborator (sMN 0 "hole") initContext emptyContext 0 Erased) of
+  case runElab initEState (reifyTT tm) (initElaborator (sMN 0 "hole") internalNS initContext emptyContext 0 Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected term " ++
       show tm ++
@@ -988,7 +990,7 @@ reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
     OK (tm', _) -> Right $ TermPart tm'
 reifyReportPart (App _ (P (DCon _ _ _) n _) tm)
   | n == reflm "RawPart" =
-  case runElab initEState (reifyRaw tm) (initElaborator (sMN 0 "hole") initContext emptyContext 0 Erased) of
+  case runElab initEState (reifyRaw tm) (initElaborator (sMN 0 "hole") internalNS initContext emptyContext 0 Erased) of
     Error e -> Left . InternalMsg $
       "could not reify reflected raw term " ++
       show tm ++

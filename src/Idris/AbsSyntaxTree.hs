@@ -65,8 +65,9 @@ data ElabInfo = EInfo {
     params    :: [(Name, PTerm)]
   , inblock   :: Ctxt [Name]      -- ^ names in the block, and their params
   , liftname  :: Name -> Name
-  , namespace :: Maybe [String]
+  , namespace :: [String]
   , elabFC    :: Maybe FC
+  , constraintNS :: String        -- ^ filename for adding to constraint variables
   , pe_depth  :: Int
 
   -- | We may, recursively, collect transformations to do on the rhs,
@@ -76,7 +77,10 @@ data ElabInfo = EInfo {
   }
 
 toplevel :: ElabInfo
-toplevel = EInfo [] emptyContext id Nothing Nothing 0 id (\_ _ _ -> fail "Not implemented")
+toplevel = EInfo [] emptyContext id [] Nothing "(toplevel)" 0 id (\_ _ _ -> fail "Not implemented")
+
+toplevelWith :: String -> ElabInfo
+toplevelWith ns = EInfo [] emptyContext id [] Nothing ns 0 id (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)
@@ -378,6 +382,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCAutoHint Name Name
               | IBCDeprecate Name String
               | IBCFragile Name String
+              | IBCConstraint FC UConstraint
   deriving Show
 
 -- | The initial state for the compiler
@@ -1668,13 +1673,14 @@ expandNS syn n = case syn_namespace syn of
 -- For inferring types of things
 
 bi = fileFC "builtin"
+primfc = fileFC "(primitive)"
 
 inferTy   = sMN 0 "__Infer"
 inferCon  = sMN 0 "__infer"
-inferDecl = PDatadecl inferTy NoFC
+inferDecl = PDatadecl inferTy primfc
                       (PType bi)
-                      [(emptyDocstring, [], inferCon, NoFC, PPi impl (sMN 0 "iType") NoFC (PType bi) (
-                                                   PPi expl (sMN 0 "ival") NoFC (PRef bi [] (sMN 0 "iType"))
+                      [(emptyDocstring, [], inferCon, primfc, PPi impl (sMN 0 "iType") primfc (PType bi) (
+                                                   PPi expl (sMN 0 "ival") primfc (PRef bi [] (sMN 0 "iType"))
                                                    (PRef bi [] inferTy)), bi, [])]
 inferOpts = []
 
@@ -1687,7 +1693,7 @@ getInferTerm (App _ (App _ _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc)  = Bind n (toTy b) $ getInferType sc
-  where toTy (Lam t)        = Pi Nothing t (TType (UVar 0))
+  where toTy (Lam t)        = Pi Nothing t (TType (UVar [] 0))
         toTy (PVar t)       = PVTy t
         toTy b              = b
 getInferType (App _ (App _ _ ty) _) = ty
@@ -1728,12 +1734,12 @@ eqDoc = fmap (const (Left $ Msg "")) . parseDocstring . T.pack $
           "\n\n" ++
           "You may need to use `(~=~)` to explicitly request heterogeneous equality."
 
-eqDecl = PDatadecl eqTy NoFC (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
+eqDecl = PDatadecl eqTy primfc (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
                                       (piBind [(n "x", PRef bi [] (n "A")), (n "y", PRef bi [] (n "B"))]
                                       (PType bi)))
                 [(reflDoc, reflParamDoc,
-                  eqCon, NoFC, PPi impl (n "A") NoFC (PType bi) (
-                                        PPi impl (n "x") NoFC (PRef bi [] (n "A"))
+                  eqCon, primfc, PPi impl (n "A") primfc (PType bi) (
+                                        PPi impl (n "x") primfc (PRef bi [] (n "A"))
                                             (PApp bi (PRef bi [] eqTy) [pimp (n "A") Placeholder False,
                                                                      pimp (n "B") Placeholder False,
                                                                      pexp (PRef bi [] (n "x")),

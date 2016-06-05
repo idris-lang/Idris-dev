@@ -497,7 +497,7 @@ checkPossible info fc tcgen fname lhs_in
         i <- getIState
         let lhs = addImplPat i lhs_in
         -- if the LHS type checks, it is possible
-        case elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
+        case elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
                             (erun fc (buildTC i info ELHS [] fname
                                                 (allNamesIn lhs_in)
                                                 (infTerm lhs))) of
@@ -507,7 +507,7 @@ checkPossible info fc tcgen fname lhs_in
                   sendHighlighting highlights
                   updateIState $ \i -> i { idris_name = newGName }
                   let lhs_tm = orderPats (getInferTerm lhs')
-                  case recheck ctxt' [] (forget lhs_tm) lhs_tm of
+                  case recheck (constraintNS info) ctxt' [] (forget lhs_tm) lhs_tm of
                        OK _ -> return True
                        err -> return False
             -- if it's a recoverable error, the case may become possible
@@ -580,7 +580,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                   "\n" ++ show (fn_ty, fn_is))
 
         ((ElabResult lhs' dlhs [] ctxt' newDecls highlights newGName, probs, inj), _) <-
-           tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
+           tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
                     (do res <- errAt "left hand side of " fname Nothing
                                  (erun fc (buildTC i info ELHS opts fname
                                           (allNamesIn lhs_in)
@@ -608,7 +608,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ctxt <- getContext
         (clhs_c, clhsty) <- if not inf
                                then recheckC_borrowing False (PEGenerated `notElem` opts)
-                                                       [] fc id [] lhs_tm
+                                                       [] (constraintNS info) fc id [] lhs_tm
                                else return (lhs_tm, lhs_ty)
         let clhs = Idris.Core.Evaluate.simplify ctxt [] clhs_c
         let borrowed = borrowedNames [] clhs
@@ -666,7 +666,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ctxt <- getContext -- new context with where block added
         logElab 5 "STARTING CHECK"
         ((rhs', defer, holes, is, probs, ctxt', newDecls, highlights, newGName), _) <-
-           tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patRHS") clhsty initEState
+           tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patRHS") clhsty initEState
                     (do pbinds ist lhs_tm
                         -- proof search can use explicitly written names
                         mapM_ addPSname (allNamesIn lhs_in)
@@ -697,7 +697,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                     show (map (\ (n, (_,_,t,_)) -> (n, t)) defer)
 
         -- If there's holes, set the metavariables as undefinable
-        def' <- checkDef fc (\n -> Elaborating "deferred type of " n Nothing) (null holes) defer
+        def' <- checkDef info fc (\n -> Elaborating "deferred type of " n Nothing) (null holes) defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, null holes))) def'
         addDeferred def''
 
@@ -723,7 +723,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                        -- things)
              <- if (null holes || null def') && not inf
                    then recheckC_borrowing True (PEGenerated `notElem` opts)
-                                       borrowed fc id [] rhs'
+                                       borrowed (constraintNS info) fc id [] rhs'
                    else return (rhs', clhsty)
 
         logElab 6 $ " ==> " ++ showEnvDbg [] crhsty ++ "   against   " ++ showEnvDbg [] clhsty
@@ -738,6 +738,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         case LState.runStateT (convertsC ctxt [] crhsty clhsty) (constv, []) of
             OK (_, cs) -> when (PEGenerated `notElem` opts) $ do
                              addConstraints fc cs
+                             mapM_ (\c -> addIBC (IBCConstraint fc c)) (snd cs)
                              logElab 6 $ "CONSTRAINTS ADDED: " ++ show cs ++ "\n" ++ show (clhsty, crhsty)
                              return ()
             Error e -> ierror (At fc (CantUnify False (clhsty, Nothing) (crhsty, Nothing) e [] 0))
@@ -832,7 +833,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                     (addImplPat i lhs_in)
         logElab 2 ("LHS: " ++ show lhs)
         (ElabResult lhs' dlhs [] ctxt' newDecls highlights newGName, _) <-
-            tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
+            tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
               (errAt "left hand side of with in " fname Nothing
                 (erun fc (buildTC i info ELHS opts fname
                                   (allNamesIn lhs_in)
@@ -848,14 +849,14 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
         let static_names = getStaticNames i lhs_tm
         logElab 5 (show lhs_tm ++ "\n" ++ show static_names)
-        (clhs, clhsty) <- recheckC fc id [] lhs_tm
+        (clhs, clhsty) <- recheckC (constraintNS info) fc id [] lhs_tm
         logElab 5 ("Checked " ++ show clhs)
         let bargs = getPBtys (explicitNames (normalise ctxt [] lhs_tm))
         let wval = rhs_trans info $ addImplBound i (map fst bargs) wval_in
         logElab 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
         ((wval', defer, is, ctxt', newDecls, highlights, newGName), _) <-
-            tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "withRHS")
+            tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "withRHS")
                         (bindTyArgs PVTy bargs infP) initEState
                         (do pbinds i lhs_tm
                             -- proof search can use explicitly written names
@@ -872,14 +873,14 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         sendHighlighting highlights
         updateIState $ \i -> i { idris_name = newGName }
 
-        def' <- checkDef fc iderr True defer
+        def' <- checkDef info fc iderr True defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         logElab 5 ("Checked wval " ++ show wval')
 
         ctxt <- getContext
-        (cwval, cwvalty) <- recheckC fc id [] (getInferTerm wval')
+        (cwval, cwvalty) <- recheckC (constraintNS info) fc id [] (getInferTerm wval')
         let cwvaltyN = explicitNames (normalise ctxt [] cwvalty)
         let cwvalN = explicitNames (normalise ctxt [] cwval)
         logElab 3 ("With type " ++ show cwvalty ++ "\nRet type " ++ show ret_ty)
@@ -914,7 +915,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let wargname = sMN windex "warg"
 
         logElab 5 ("Abstract over " ++ show wargval ++ " in " ++ show wargtype)
-        let wtype = bindTyArgs (flip (Pi Nothing) (TType (UVar 0))) (bargs_pre ++
+        let wtype = bindTyArgs (flip (Pi Nothing) (TType (UVar [] 0))) (bargs_pre ++
                      (wargname, wargtype) :
                      map (abstract wargname wargval wargtype) bargs_post ++
                      case mpn of
@@ -937,7 +938,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         addIBC (IBCImp wname)
         addIBC (IBCStatic wname)
 
-        def' <- checkDef fc iderr True [(wname, (-1, Nothing, wtype, []))]
+        def' <- checkDef info fc iderr True [(wname, (-1, Nothing, wtype, []))]
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
 
@@ -970,7 +971,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         ctxt <- getContext -- New context with block added
         i <- getIState
         ((rhs', defer, is, ctxt', newDecls, highlights, newGName), _) <-
-           tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "wpatRHS") clhsty initEState
+           tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "wpatRHS") clhsty initEState
                     (do pbinds i lhs_tm
                         setNextName
                         (ElabResult _ d is ctxt' newDecls highlights newGName) <-
@@ -983,12 +984,12 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         sendHighlighting highlights
         updateIState $ \i -> i { idris_name = newGName }
 
-        def' <- checkDef fc iderr True defer
+        def' <- checkDef info fc iderr True defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
         logElab 5 ("Checked RHS " ++ show rhs')
-        (crhs, crhsty) <- recheckC fc id [] rhs'
+        (crhs, crhsty) <- recheckC (constraintNS info) fc id [] rhs'
         return $ (Right (clhs, crhs), lhs)
   where
     getImps (Bind n (Pi _ _ _) t) = pexp Placeholder : getImps t

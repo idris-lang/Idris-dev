@@ -836,7 +836,7 @@ process fn (Eval t)
                  = withErrorReflection $
                    do logParser 5 $ show t
                       getIState >>= flip warnDisamb t
-                      (tm, ty) <- elabREPL recinfo ERHS t
+                      (tm, ty) <- elabREPL (recinfo (fileFC "toplevel")) ERHS t
                       ctxt <- getContext
                       let tm' = perhapsForce $ normaliseBlocking ctxt []
                                                   [sUN "foreign",
@@ -871,12 +871,12 @@ process fn (NewDefn decls) = do
   getClauseName (PWith fc name whole with rhs pn whereBlock) = name
   defineName :: [PDecl] -> Idris ()
   defineName (tyDecl@(PTy docs argdocs syn fc opts name _ ty) : decls) = do
-    elabDecl EAll recinfo tyDecl
-    elabClauses recinfo fc opts name (concatMap getClauses decls)
+    elabDecl EAll info tyDecl
+    elabClauses info fc opts name (concatMap getClauses decls)
     setReplDefined (Just name)
   defineName [PClauses fc opts _ [clause]] = do
     let pterm = getRHS clause
-    (tm,ty) <- elabVal recinfo ERHS pterm
+    (tm,ty) <- elabVal info ERHS pterm
     ctxt <- getContext
     let tm' = force (normaliseAll ctxt [] tm)
     let ty' = force (normaliseAll ctxt [] ty)
@@ -891,7 +891,7 @@ process fn (NewDefn decls) = do
     i <- get
     put (addReplSyntax i syntax)
   defineName decls = do
-    elabDecls toplevel (map fixClauses decls)
+    elabDecls (toplevelWith fn) (map fixClauses decls)
     setReplDefined (getName (head decls))
   getClauses (PClauses fc opts name clauses) = clauses
   getClauses _ = []
@@ -915,6 +915,8 @@ process fn (NewDefn decls) = do
   fixClauses (PInstance doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty instName decls) =
     PInstance doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty instName (map fixClauses decls)
   fixClauses decl = decl
+    
+  info = recinfo (fileFC "toplevel")
 
 process fn (Undefine names) = undefine names
   where
@@ -954,7 +956,7 @@ process fn (Undefine names) = undefine names
 process fn (ExecVal t)
                   = do ctxt <- getContext
                        ist <- getIState
-                       (tm, ty) <- elabVal recinfo ERHS t
+                       (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ERHS t
 --                       let tm' = normaliseAll ctxt [] tm
                        let ty' = normaliseAll ctxt [] ty
                        res <- execute tm
@@ -1001,7 +1003,7 @@ process fn (Check (PRef _ _ n))
 
 
 process fn (Check t)
-   = do (tm, ty) <- elabREPL recinfo ERHS t
+   = do (tm, ty) <- elabREPL (recinfo (fileFC "toplevel")) ERHS t
         ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
@@ -1015,7 +1017,7 @@ process fn (Check t)
                                    (pprintDelab ist ty')
 
 process fn (Core t)
-   = do (tm, ty) <- elabREPL recinfo ERHS t
+   = do (tm, ty) <- elabREPL (recinfo (fileFC "toplevel")) ERHS t
         iPrintTermWithType (pprintTT [] tm) (pprintTT [] ty)
 
 process fn (DocStr (Left n) w)
@@ -1083,8 +1085,8 @@ process fn (TotCheck n)
                       ts
 
 process fn (DebugUnify l r)
-   = do (ltm, _) <- elabVal recinfo ERHS l
-        (rtm, _) <- elabVal recinfo ERHS r
+   = do (ltm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS l
+        (rtm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS r
         ctxt <- getContext
         case unify ctxt [] (ltm, Nothing) (rtm, Nothing) [] [] [] [] of
              OK ans -> iputStrLn (show ans)
@@ -1129,7 +1131,7 @@ process fn (MakeLemma updatefile l n)
 process fn (DoProofSearch updatefile rec l n hints)
     = doProofSearch fn updatefile rec l n hints Nothing
 process fn (Spec t)
-                    = do (tm, ty) <- elabVal recinfo ERHS t
+                    = do (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ERHS t
                          ctxt <- getContext
                          ist <- getIState
                          let tm' = simplify ctxt [] {- (idris_statics ist) -} tm
@@ -1206,22 +1208,21 @@ process fn (Prove mode n')
               [(_, (_,_,_,_,False))]  -> ierror (Msg $ "Can't prove this hole as it depends on other holes")
               [(_, (_,_,_,True,_))]  -> ierror (Msg $ "Declarations not solvable using prover")
               ns -> ierror (CantResolveAlts (map fst ns))
-          prover mode (lit fn) n
+          prover (toplevelWith fn) mode (lit fn) n
           -- recheck totality
           i <- getIState
           totcheck (fileFC "(input)", n)
           mapM_ (\ (f,n) -> setTotality n Unchecked) (idris_totcheck i)
           mapM_ checkDeclTotality (idris_totcheck i)
           warnTotality
-
 process fn (WHNF t)
-                    = do (tm, ty) <- elabVal recinfo ERHS t
+                    = do (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ERHS t
                          ctxt <- getContext
                          ist <- getIState
                          let tm' = whnf ctxt tm
                          iPrintResult (show (delab ist tm'))
 process fn (TestInline t)
-                           = do (tm, ty) <- elabVal recinfo ERHS t
+                           = do (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ERHS t
                                 ctxt <- getContext
                                 ist <- getIState
                                 let tm' = inlineTerm ist tm
@@ -1230,7 +1231,7 @@ process fn (TestInline t)
 process fn (Execute tm)
                    = idrisCatch
                        (do ist <- getIState
-                           (m, _) <- elabVal recinfo ERHS (elabExec fc tm)
+                           (m, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS (elabExec fc tm)
                            (tmpn, tmph) <- runIO $ tempfile ""
                            runIO $ hClose tmph
                            t <- codegen
@@ -1253,7 +1254,7 @@ process fn (Compile codegen f)
                        let mainname = sNS (sUN "main") ["Main"]
 
                        m <- if iface then return Nothing else
-                            do (m', _) <- elabVal recinfo ERHS
+                            do (m', _) <- elabVal (recinfo (fileFC "compiler")) ERHS
                                             (PApp fc (PRef fc [] (sUN "run__IO"))
                                             [pexp $ PRef fc [] mainname])
                                return (Just m')
@@ -1265,7 +1266,7 @@ process fn (LogLvl i) = setLogLevel i
 process fn (LogCategory cs) = setLogCats cs
 -- Elaborate as if LHS of a pattern (debug command)
 process fn (Pattelab t)
-     = do (tm, ty) <- elabVal recinfo ELHS t
+     = do (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ELHS t
           iPrintResult $ show tm ++ "\n\n : " ++ show ty
 
 process fn (Missing n)
@@ -1442,7 +1443,7 @@ process fn (PPrint fmt width (PRef _ _ n))
 
 
 process fn (PPrint fmt width t)
-   = do (tm, ty) <- elabVal recinfo ERHS t
+   = do (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ERHS t
         ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
@@ -1845,7 +1846,7 @@ execScript expr = do i <- getIState
                           Failure err -> do iputStrLn $ show (fixColour c err)
                                             runIO $ exitWith (ExitFailure 1)
                           Success term -> do ctxt <- getContext
-                                             (tm, _) <- elabVal recinfo ERHS term
+                                             (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
                                              res <- execute tm
                                              runIO $ exitWith ExitSuccess
 

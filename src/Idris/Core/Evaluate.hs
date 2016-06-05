@@ -633,9 +633,11 @@ convEq ctxt holes topx topy = ceq [] topx topy where
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
     ceq ps (App _ fx ax) (App _ fy ay) = liftM2 (&&) (ceq ps fx fy) (ceq ps ax ay)
     ceq ps (Constant x) (Constant y) = return (x == y)
-    ceq ps (TType x) (TType y)           = do (v, cs) <- get
-                                              put (v, ULE x y : cs)
-                                              return True
+    ceq ps (TType x) (TType y) | x == y = return True
+    ceq ps (TType (UVal 0)) (TType y) = return True
+    ceq ps (TType x) (TType y) = do (v, cs) <- get
+                                    put (v, ULE x y : cs)
+                                    return True
     ceq ps (UType AllTypes) x = return (isUsableUniverse x)
     ceq ps x (UType AllTypes) = return (isUsableUniverse x)
     ceq ps (UType u) (UType v) = return (u == v)

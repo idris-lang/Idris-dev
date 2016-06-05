@@ -287,6 +287,7 @@ addParamConstraints fc ps cty cons
                                                 then ULE avar cvar
                                                 else ULT avar cvar
                                    addConstraints fc (tv, [con])
+                                   addIBC (IBCConstraint fc con) 
                   _ -> return ()
         constraintTy t = return ()
 
@@ -318,30 +319,30 @@ elabCaseFun ind paramPos n ty cons info = do
   let motiveConstr = [(motiveName, expl, motive)]
   let scrutinee = (scrutineeName, expl, applyCons n (interlievePos paramPos generalParams scrutineeIdxs 0))
   let eliminatorTy = piConstr (generalParams ++ motiveConstr ++ consTerms ++ scrutineeIdxs ++ [scrutinee]) (applyMotive (map (\(n,_,_) -> PRef elimFC [] n) scrutineeIdxs) (PRef elimFC [] scrutineeName))
-  let eliminatorTyDecl = PTy (fmap (const (Left $ Msg "")) . parseDocstring . T.pack $ show n) [] defaultSyntax elimFC [TotalFn] elimDeclName NoFC eliminatorTy
+  let eliminatorTyDecl = PTy (fmap (const (Left $ Msg "")) . parseDocstring . T.pack $ show n) [] defaultSyntax elimFC [TotalFn] elimDeclName elimFC eliminatorTy
   let clauseConsElimArgs = map getPiName consTerms
   let clauseGeneralArgs' = map getPiName generalParams ++ [motiveName] ++ clauseConsElimArgs
   let clauseGeneralArgs  = map (\arg -> pexp (PRef elimFC [] arg)) clauseGeneralArgs'
   let elimSig = "-- case function signature: " ++ showTmImpls eliminatorTy
   elimLog elimSig
   eliminatorClauses <- mapM (\(cns, cnsElim) -> generateEliminatorClauses cns cnsElim clauseGeneralArgs generalParams) (zip cons clauseConsElimArgs)
-  let eliminatorDef = PClauses emptyFC [TotalFn] elimDeclName eliminatorClauses
+  let eliminatorDef = PClauses elimFC [TotalFn] elimDeclName eliminatorClauses
   elimLog $ "-- case function definition: " ++ (show . showDeclImp verbosePPOption) eliminatorDef
   State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorTyDecl)
                     (ierror . Elaborating "type declaration of " elimDeclName Nothing)
   -- Do not elaborate clauses if there aren't any
   case eliminatorClauses of
-    [] -> State.lift $ solveDeferred emptyFC elimDeclName -- Remove meta-variable for type
+    [] -> State.lift $ solveDeferred elimFC elimDeclName -- Remove meta-variable for type
     _  -> State.lift $ idrisCatch (rec_elabDecl info EAll info eliminatorDef)
                     (ierror . Elaborating "clauses of " elimDeclName Nothing)
   where elimLog :: String -> EliminatorState ()
         elimLog s = State.lift (logElab 2 s)
 
         elimFC :: FC
-        elimFC = fileFC "(casefun)"
+        elimFC = fileFC $ "(casefun " ++ show n ++ ")"
 
         elimDeclName :: Name
-        elimDeclName = if ind then SN . ElimN $ n else SN . CaseN (FC' emptyFC) $ n
+        elimDeclName = if ind then SN . ElimN $ n else SN . CaseN (FC' elimFC) $ n
 
         applyNS :: Name -> [String] -> Name
         applyNS n []  = n
@@ -415,7 +416,7 @@ elabCaseFun ind paramPos n ty cons info = do
 
         piConstr :: [(Name, Plicity, PTerm)] -> PTerm -> PTerm
         piConstr [] ty = ty
-        piConstr ((n, pl, tyb):tyr) ty = PPi pl n NoFC tyb (piConstr tyr ty)
+        piConstr ((n, pl, tyb):tyr) ty = PPi pl n elimFC tyb (piConstr tyr ty)
 
         interlievePos :: [Int] -> [a] -> [a] -> Int -> [a]
         interlievePos idxs []     l2     i = l2

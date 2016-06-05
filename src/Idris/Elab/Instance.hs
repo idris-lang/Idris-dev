@@ -217,8 +217,8 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
     mkiname n' ns ps' expn' =
         case expn' of
           Nothing -> case ns of
-                          Nothing -> SN (sInstanceN n' (map show ps'))
-                          Just m -> sNS (SN (sInstanceN n' (map show ps'))) m
+                          [] -> SN (sInstanceN n' (map show ps'))
+                          m -> sNS (SN (sInstanceN n' (map show ps'))) m
           Just nm -> nm
 
     substInstance ips pnames (PInstance doc argDocs syn _ cs parents acc opts n nfc ps pextra t expn ds)
@@ -245,7 +245,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
              let ty = addImpl [] i ty'
              ctxt <- getContext
              (ElabResult tyT _ _ ctxt' newDecls highlights newGName, _) <-
-                tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) iname (TType (UVal 0)) initEState
+                tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) iname (TType (UVal 0)) initEState
                          (errAt "type of " iname Nothing (erun fc (build i info ERHS [] iname ty)))
              setContext ctxt'
              processTacticDecls info newDecls
@@ -253,7 +253,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
              updateIState $ \i -> i { idris_name = newGName }
 
              ctxt <- getContext
-             (cty, _) <- recheckC fc id [] tyT
+             (cty, _) <- recheckC (constraintNS info) fc id [] tyT
              let nty = normalise ctxt [] cty
              return $ any (isJust . findOverlapping i (class_determiners ci) (delab i nty)) (map fst $ class_instances ci)
 

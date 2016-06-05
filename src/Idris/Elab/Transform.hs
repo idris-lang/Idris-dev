@@ -62,7 +62,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          let lhs = addImplPat i lhs_in
          logElab 5 ("Transform LHS input: " ++ showTmImpls lhs)
          (ElabResult lhs' dlhs [] ctxt' newDecls highlights newGName, _) <-
-              tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "transLHS") infP initEState
+              tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "transLHS") infP initEState
                        (erun fc (buildTC i info ETransLHS [] (sUN "transform")
                                    (allNamesIn lhs_in) (infTerm lhs)))
          setContext ctxt'
@@ -73,7 +73,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          let lhs_ty = getInferType lhs'
          let newargs = pvars i lhs_tm
 
-         (clhs_tm_in, clhs_ty) <- recheckC_borrowing False False [] fc id [] lhs_tm
+         (clhs_tm_in, clhs_ty) <- recheckC_borrowing False False [] (constraintNS info) fc id [] lhs_tm
          let clhs_tm = renamepats pnames clhs_tm_in
          logElab 3 ("Transform LHS " ++ show clhs_tm)
          logElab 3 ("Transform type " ++ show clhs_ty)
@@ -82,7 +82,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          logElab 5 ("Transform RHS input: " ++ showTmImpls rhs)
 
          ((rhs', defer, ctxt', newDecls, newGName), _) <-
-              tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) (sMN 0 "transRHS") clhs_ty initEState
+              tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "transRHS") clhs_ty initEState
                        (do pbinds i lhs_tm
                            setNextName
                            (ElabResult _ _ _ ctxt' newDecls highlights newGName) <- erun fc (build i info ERHS [] (sUN "transform") rhs)
@@ -97,7 +97,7 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          sendHighlighting highlights
          updateIState $ \i -> i { idris_name = newGName }
 
-         (crhs_tm_in, crhs_ty) <- recheckC_borrowing False False [] fc id [] rhs'
+         (crhs_tm_in, crhs_ty) <- recheckC_borrowing False False [] (constraintNS info) fc id [] rhs'
          let crhs_tm = renamepats pnames crhs_tm_in
          logElab 3 ("Transform RHS " ++ show crhs_tm)
 

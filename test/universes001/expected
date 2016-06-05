@@ -1,9 +1,9 @@
 universes001.idr:7:5:Universe inconsistency.
-        Working on: x
+        Working on: ./universes001.idr.x
         Old domain: (5,5)
         New domain: (5,4)
         Involved constraints: 
-                ConstraintFC {uconstraint = x <= z, ufc = universes001.idr:7:5}
-                ConstraintFC {uconstraint = x < y, ufc = universes001.idr:1:6}
-                ConstraintFC {uconstraint = z < x, ufc = universes001.idr:1:6}
-                ConstraintFC {uconstraint = x <= z, ufc = universes001.idr:7:5}
+                ConstraintFC {uconstraint = ./universes001.idr.x <= ./universes001.idr.z, ufc = universes001.idr:7:5}
+                ConstraintFC {uconstraint = ./universes001.idr.x < ./universes001.idr.y, ufc = universes001.idr:1:6}
+                ConstraintFC {uconstraint = ./universes001.idr.z < ./universes001.idr.x, ufc = universes001.idr:1:6}
+                ConstraintFC {uconstraint = ./universes001.idr.x <= ./universes001.idr.z, ufc = universes001.idr:7:5}

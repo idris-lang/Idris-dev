@@ -60,7 +60,8 @@ data ProofState = PS { thname   :: Name,
                        unifylog :: Bool,
                        done     :: Bool,
                        recents  :: [Name],
-                       while_elaborating :: [FailContext]
+                       while_elaborating :: [FailContext],
+                       constraint_ns :: String
                      }
 
 data Tactic = Attack
@@ -319,19 +320,20 @@ addLog :: Monad m => String -> StateT TState m ()
 addLog str = action (\ps -> ps { plog = plog ps ++ str ++ "\n" })
 
 newProof :: Name -- ^ the name of what's to be elaborated
+         -> String -- ^ current source file
          -> Context -- ^ the current global context
          -> Ctxt TypeInfo -- ^ the value of the idris_datatypes field of IState
          -> Int -- ^ the value of the idris_name field of IState
          -> Type -- ^ the goal type
          -> ProofState
-newProof n ctxt datatypes globalNames ty =
+newProof n tcns ctxt datatypes globalNames ty =
   let h = holeName 0
       ty' = vToP ty
   in PS n [h] [] 1 globalNames (mkProofTerm (Bind h (Hole ty')
         (P Bound h ty'))) ty [] (h, []) [] []
         Nothing [] []
         [] [] [] []
-        Nothing ctxt datatypes "" False False [] []
+        Nothing ctxt datatypes "" False False [] [] tcns
 
 type TState = ProofState -- [TacticAction])
 type RunTactic = RunTactic' TState
@@ -468,7 +470,7 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
   where
     mkTy []           t = t
-    mkTy ((n,b) : bs) t = Bind n (Pi Nothing (binderTy b) (TType (UVar 0))) (mkTy bs t)
+    mkTy ((n,b) : bs) t = Bind n (Pi Nothing (binderTy b) (TType (UVar [] 0))) (mkTy bs t)
 
     getP (n, b) = P Bound n (binderTy b)
 defer dropped n ctxt env _ = fail "Can't defer a non-hole focus."
@@ -683,9 +685,9 @@ intro n ctxt env _ = fail "Can't introduce here."
 forall :: Name -> Maybe ImplicitInfo -> Raw -> RunTactic
 forall n impl ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
-       unify' ctxt env (tyt, Nothing) (TType (UVar 0), Nothing)
-       unify' ctxt env (t, Nothing) (TType (UVar 0), Nothing)
-       return $ Bind n (Pi impl tyv (TType (UVar 0))) (Bind x (Hole t) (P Bound x t))
+       unify' ctxt env (tyt, Nothing) (TType (UVar [] 0), Nothing)
+       unify' ctxt env (t, Nothing) (TType (UVar [] 0), Nothing)
+       return $ Bind n (Pi impl tyv (TType (UVar [] 0))) (Bind x (Hole t) (P Bound x t))
 forall n impl ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
@@ -1020,7 +1022,7 @@ matchProblems all ps updates probs = up updates probs where
 processTactic :: Tactic -> ProofState -> TC (ProofState, String)
 processTactic QED ps = case holes ps of
                            [] -> do let tm = {- normalise (context ps) [] -} getProofTerm (pterm ps)
-                                    (tm', ty', _) <- recheck (context ps) [] (forget tm) tm
+                                    (tm', ty', _) <- recheck (constraint_ns ps) (context ps) [] (forget tm) tm
                                     return (ps { done = True, pterm = mkProofTerm tm' },
                                             "Proof complete: " ++ showEnv [] tm')
                            _  -> fail "Still holes to fill."

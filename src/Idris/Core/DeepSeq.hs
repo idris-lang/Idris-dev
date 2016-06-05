@@ -188,7 +188,7 @@ instance (NFData b) => NFData (Binder b) where
         rnf (PVTy x1) = rnf x1 `seq` ()
 
 instance NFData UExp where
-        rnf (UVar x1) = rnf x1 `seq` ()
+        rnf (UVar x1 x2) = rnf x1 `seq` rnf x2 `seq` ()
         rnf (UVal x1) = rnf x1 `seq` ()
 
 instance NFData NameType where

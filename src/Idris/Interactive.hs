@@ -246,8 +246,8 @@ doProofSearch fn updatefile rec l n hints (Just depth)
                                   (ProofSearch rec False depth t psnames hints)]
          let def = PClause fc mn (PRef fc [] mn) [] (body top) []
          newmv_pre <- idrisCatch
-             (do elabDecl' EAll recinfo (PClauses fc [] mn [def])
-                 (tm, ty) <- elabVal recinfo ERHS (PRef fc [] mn)
+             (do elabDecl' EAll (recinfo (fileFC "proofsearch")) (PClauses fc [] mn [def])
+                 (tm, ty) <- elabVal (recinfo (fileFC "proofsearch")) ERHS (PRef fc [] mn)
                  ctxt <- getContext
                  i <- getIState
                  return . flip displayS "" . renderPretty 1.0 80 $

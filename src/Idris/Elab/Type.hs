@@ -82,7 +82,7 @@ buildType info syn fc opts n ty' = do
          logElab 2 $ show n ++ " type " ++ show (using syn) ++ "\n" ++ showTmImpls ty
 
          ((ElabResult tyT' defer is ctxt' newDecls highlights newGName, est), log) <-
-            tclift $ elaborate ctxt (idris_datatypes i) (idris_name i) n (TType (UVal 0)) initEState
+            tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) n (TType (UVal 0)) initEState
                      (errAt "type of " n Nothing
                         (erunAux fc (build i info ETyDecl [] n ty)))
 
@@ -96,7 +96,7 @@ buildType info syn fc opts n ty' = do
 
          logElab 3 $ show ty ++ "\nElaborated: " ++ show tyT'
 
-         ds <- checkAddDef True False fc iderr True defer
+         ds <- checkAddDef True False info fc iderr True defer
          -- if the type is not complete, note that we'll need to infer
          -- things later (for solving metavariables)
          when (length ds > length is) -- more deferred than case blocks
@@ -107,7 +107,7 @@ buildType info syn fc opts n ty' = do
          logElab 5 $ "Rechecking"
          logElab 6 $ show tyT
          logElab 10 $ "Elaborated to " ++ showEnvDbg [] tyT
-         (cty, ckind)   <- recheckC fc id [] tyT
+         (cty, ckind)   <- recheckC (constraintNS info) fc id [] tyT
 
          -- record the implicit and inaccessible arguments
          i <- getIState
@@ -140,7 +140,7 @@ buildType info syn fc opts n ty' = do
 
          return (cty, ckind, ty, inacc)
   where
-    patToImp (Bind n (PVar t) sc) = Bind n (Pi Nothing t (TType (UVar 0))) (patToImp sc)
+    patToImp (Bind n (PVar t) sc) = Bind n (Pi Nothing t (TType (UVar [] 0))) (patToImp sc)
     patToImp (Bind n b sc) = Bind n b (patToImp sc)
     patToImp t = t
 
@@ -203,7 +203,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          -- Productivity checking now via checking for guarded 'Delay'
          let opts' = opts -- if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
-         ds <- checkDef fc iderr True [(n, (-1, Nothing, usety, []))]
+         ds <- checkDef info fc iderr True [(n, (-1, Nothing, usety, []))]
          addIBC (IBCDef n)
          addDefinedName n
          let ds' = map (\(n, (i, top, fam, ns)) -> (n, (i, top, fam, ns, True, True))) ds
