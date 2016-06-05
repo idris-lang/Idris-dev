@@ -452,7 +452,7 @@ pprintErr' i (NonCollapsiblePostulate n) = text "The return type of postulate" <
 pprintErr' i (AlreadyDefined n) = annName n<+>
                                   text "is already defined"
 pprintErr' i (ProofSearchFail e) = pprintErr' i e
-pprintErr' i (NoRewriting tm) = text "rewrite did not change type" <+> annTm tm (pprintTerm i (delabSugared i tm))
+pprintErr' i (NoRewriting l r tm) = text "rewriting" <+> annTm l (pprintTerm i (delabSugared i l)) <+> text "to" <+> annTm r (pprintTerm i (delabSugared i r)) <+> text "did not change type" <+> annTm tm (pprintTerm i (delabSugared i tm))
 pprintErr' i (At f e) = annotate (AnnFC f) (text (show f)) <> colon <> pprintErr' i e
 pprintErr' i (Elaborating s n ty e) = text "When checking" <+> text s <>
                                       annName' n (showqual i n) <>
