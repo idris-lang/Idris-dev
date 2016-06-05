@@ -926,7 +926,7 @@ reflectErr (UnknownImplicit n f) = raw_apply (Var $ reflErrName "UnknownImplicit
 reflectErr (NonCollapsiblePostulate n) = raw_apply (Var $ reflErrName "NonCollabsiblePostulate") [reflectName n]
 reflectErr (AlreadyDefined n) = raw_apply (Var $ reflErrName "AlreadyDefined") [reflectName n]
 reflectErr (ProofSearchFail e) = raw_apply (Var $ reflErrName "ProofSearchFail") [reflectErr e]
-reflectErr (NoRewriting tm) = raw_apply (Var $ reflErrName "NoRewriting") [reflect tm]
+reflectErr (NoRewriting l r tm) = raw_apply (Var $ reflErrName "NoRewriting") [reflect l, reflect r, reflect tm]
 reflectErr (ProviderError str) =
   raw_apply (Var $ reflErrName "ProviderError") [RConstant (Str str)]
 reflectErr (LoadingFailed str err) =

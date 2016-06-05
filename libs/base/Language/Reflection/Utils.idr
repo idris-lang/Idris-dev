@@ -329,7 +329,7 @@ implementation Show Err where
   showPrec d (NonCollapsiblePostulate n) = showCon d "NonCollapsiblePostulate" $ showArg n
   showPrec d (AlreadyDefined n) = showCon d "AlreadyDefined" $ showArg n
   showPrec d (ProofSearchFail err) = showCon d "ProofSearchFail" $ showArg err
-  showPrec d (NoRewriting tm) = showCon d "NoRewriting" $ showArg tm
+  showPrec d (NoRewriting ltm rtm typ) = showCon d "NoRewriting" $ showArg ltm ++ showArg rtm ++ showArg typ
   showPrec d (ProviderError x) = showCon d "ProviderError" $ showArg x
   showPrec d (LoadingFailed x err) = showCon d "LoadingFailed" $ showArg x ++ showArg err
 

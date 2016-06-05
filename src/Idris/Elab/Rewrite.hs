@@ -74,7 +74,7 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
                   (P _ (UN q) _, [lt, rt, l, r]) | q == txt "=" ->
                      do substfn <- findSubstFn substfn_in ist lt rt
                         let pred_tt = mkP (P Bound rname rt) l r g
-                        when (g == pred_tt) $ lift $ tfail (NoRewriting g)
+                        when (g == pred_tt) $ lift $ tfail (NoRewriting l r g)
                         let pred = PLam fc rname fc Placeholder
                                         (delab ist pred_tt)
                         let rewrite = stripImpls $

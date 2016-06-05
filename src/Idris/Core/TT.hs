@@ -295,7 +295,7 @@ data Err' t
           | NonCollapsiblePostulate Name
           | AlreadyDefined Name
           | ProofSearchFail (Err' t)
-          | NoRewriting t
+          | NoRewriting t t t
           | At FC (Err' t)
           | Elaborating String Name (Maybe t) (Err' t)
           | ElaboratingArg Name Name [(Name, Name)] (Err' t)
@@ -365,7 +365,7 @@ instance Sized Err where
   size (NoTypeDecl name) = size name
   size (NotInjective l c r) = size l + size c + size r
   size (CantResolve _ trm _) = size trm
-  size (NoRewriting trm) = size trm
+  size (NoRewriting l r t) = size l + size r + size t
   size (CantResolveAlts _) = 1
   size (IncompleteTerm trm) = size trm
   size ProgramLineComment = 1
