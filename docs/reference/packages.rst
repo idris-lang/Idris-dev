@@ -31,6 +31,35 @@ written as follows::
 Other examples of package files can be found in the ``libs`` directory
 of the main Idris repository, and in `third-party libraries <https://github.com/idris-lang/Idris-dev/wiki/Libraries>`_.
 
+Metadata
+--------
+
+From Idris `v0.12` the `iPKG` format supports additional metadata
+associated with the package.
+The added fields are:
+
++ ``brief = "<text>"``, a string literal containing a brief description
+  of the package.
+
++ ``version = <text>``, a version string to associate with the package.
+
++ ``readme = <file>``, location of the README file.
+
++ ``license = <text>``, a string description of the licensing
+  information.
+
++ ``author = <text>``, the author information.
+
++ ``maintainer = <text>``, Maintainer information.
+
++ ``homepage = <url>``, the website associated with the package.
+
++ ``sourceloc = <url>``, the location of the DVCS where the source
+  can be found.
+
++ ``bugtracker = <url>``, the location of the project's bug tracker.
+
+
 Common Fields
 -------------
 

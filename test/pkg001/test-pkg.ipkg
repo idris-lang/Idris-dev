@@ -5,3 +5,13 @@ pkgs = effects
 opts = "--warnpartial --warnreach --nocolour --quiet --consolewidth 80"
 
 modules = Main
+
+author = Anne Author
+maintainer = Anne Maintainer
+license = BSD3 but see LICENSE for more information
+brief = "This is a test package."
+readme = README.md
+version = 1234
+homepage = http://www.idris-lang.org
+sourceloc = http://ww.github.com/idris-lang/Idris-Dev
+bugtracker = http://ww.github.com/idris-lang/Idris-Dev/issues
