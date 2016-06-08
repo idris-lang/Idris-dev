@@ -80,8 +80,24 @@
 * Added `Data.List.Views` with views on `List` and their covering functions.
 * Added `Data.Nat.Views` with views on `Nat` and their covering functions.
 * Added `Data.Primitives.Views` with views on various primitive types and their covering functions.
-* Added `System.Concurrency.Sessions` for simple management of conversations 
+* Added `System.Concurrency.Sessions` for simple management of conversations
   between processes
+
+## iPKG Updates
+
+* Taking cues from cabal, the `iPKG` format has been extended to
+  include more package metadata information.  The following fields
+  have been added:
+
+  + `brief`: Brief description of the package.
+  + `version`: Version string to associate with the package.
+  + `readme`: Location of the README file.
+  + `license`: Description of the licensing information.
+  + `author`: Author information.
+  + `maintainer`: Maintainer information.
+  + `homepage`: Website associated with the package.
+  + `sourcepage`: Location of the DVCS where the source can be found.
+
 
 ## Miscellaneous updates
 
