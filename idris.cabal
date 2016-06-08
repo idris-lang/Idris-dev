@@ -1080,6 +1080,12 @@ Library
      build-depends: unix < 2.8
   if os(darwin)
      build-depends: unix < 2.8
+     if flag(GMP)
+        include-dirs: /usr/local/opt/gmp/include/gmp
+        extra-lib-dirs: /usr/local/opt/gmp/lib
+     if flag(FFI)
+        pkgconfig-depends: libffi
+      -- /usr/local/opt/libffi/lib/pkgconfig
   if os(windows)
      build-depends: Win32 < 2.4
   if flag(FFI)

@@ -8,12 +8,6 @@ flags:
     FFI: true
     GMP: true
 
-extra-include-dirs:
-  - /usr/local/opt/gmp/include/gmp
-
-extra-lib-dirs:
-  - /usr/local/opt/gmp/lib
-
 extra-deps:
   - libffi-0.1
 
