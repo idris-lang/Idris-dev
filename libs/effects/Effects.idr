@@ -448,19 +448,19 @@ runEnv env prog = eff env prog (\r, env => pure (r ** env))
 
 -- ----------------------------------------------- [ some higher order things ]
 
-mapE : (a -> {xs} EffM m b) -> List a -> {xs} EffM m (List b)
+mapE : (a -> EffM m b xs (\_ => xs)) -> List a -> EffM m (List b) xs (\_ => xs)
 mapE f []        = pure []
 mapE f (x :: xs) = [| f x :: mapE f xs |]
 
 
-mapVE : (a -> {xs} EffM m b) ->
+mapVE : (a -> EffM m b xs (\_ => xs)) ->
         Vect n a ->
-        {xs} EffM m (Vect n b)
+        EffM m (Vect n b) xs (\_ => xs)
 mapVE f []        = pure []
 mapVE f (x :: xs) = [| f x :: mapVE f xs |]
 
 
-when : Bool -> Lazy ({xs} EffM m ()) -> {xs} EffM m ()
+when : Bool -> Lazy (EffM m () xs (\_ => xs)) -> EffM m () xs (\_ => xs)
 when True  e = Force e
 when False e = pure ()
 

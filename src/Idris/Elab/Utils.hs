@@ -46,7 +46,9 @@ recheckC_borrowing uniq_check addConstrs bs tcns fc mkerr env t
                                    Error e -> tfail (At fc (mkerr e))
                                    OK x -> return x
          logElab 6 $ "CONSTRAINTS ADDED: " ++ show (tm, ty, cs)
-         when addConstrs $ do addConstraints fc cs
+         tit <- typeInType
+         when (not tit && addConstrs) $ 
+                           do addConstraints fc cs
                               mapM_ (\c -> addIBC (IBCConstraint fc c)) (snd cs)
          mapM_ (checkDeprecated fc) (allTTNames tm)
          mapM_ (checkDeprecated fc) (allTTNames ty)

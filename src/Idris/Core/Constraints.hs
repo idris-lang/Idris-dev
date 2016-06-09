@@ -15,15 +15,45 @@ import Control.Monad.State.Strict
 import Data.List ( partition )
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Debug.Trace
 
 -- | Check that a list of universe constraints can be satisfied.
 ucheck :: S.Set ConstraintFC -> TC ()
-ucheck = void . solve 10 . S.filter (not . ignore)
+ucheck = void . solve 10 . S.filter (not . ignore) . dropUnused
     where
         -- TODO: remove the first ignore clause once Idris.Core.Binary:598 is dealt with
         ignore (ConstraintFC c _) | any (== Var [] (-1)) (varsIn c) = True
         ignore (ConstraintFC (ULE a b) _) = a == b
         ignore _ = False
+
+dropUnused :: S.Set ConstraintFC -> S.Set ConstraintFC
+dropUnused xs = let cs = S.toList xs
+                    onlhs = countLHS M.empty cs in
+                    addIfUsed S.empty onlhs cs
+  where
+    -- Count the number of times a variable occurs on the LHS of a constraint
+    countLHS ms [] = ms
+    countLHS ms (c : cs) = let lhvar = getLHS (uconstraint c)
+                               num = case M.lookup lhvar ms of
+                                          Nothing -> 1
+                                          Just v -> v + 1 in
+                               countLHS (M.insert lhvar num ms) cs
+
+    -- Only keep a constraint if the variable on the RHS is used elsewhere
+    -- on the LHS of a constraint
+    addIfUsed cs' lhs [] = cs'
+    addIfUsed cs' lhs (c : cs)
+         = let rhvar = getRHS (uconstraint c) in
+               case M.lookup rhvar lhs of
+                    Nothing -> addIfUsed cs' lhs cs
+                    Just v -> addIfUsed (S.insert c cs') lhs cs
+
+    getLHS (ULT x _) = x
+    getLHS (ULE x _) = x
+
+    getRHS (ULT _ x) = x
+    getRHS (ULE _ x) = x
+
 
 data Var = Var String Int
     deriving (Eq, Ord, Show)

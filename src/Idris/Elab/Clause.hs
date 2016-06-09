@@ -735,8 +735,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         ctxt <- getContext
         let constv = next_tvar ctxt
+        tit <- typeInType
         case LState.runStateT (convertsC ctxt [] crhsty clhsty) (constv, []) of
-            OK (_, cs) -> when (PEGenerated `notElem` opts) $ do
+            OK (_, cs) -> when (PEGenerated `notElem` opts && not tit) $ do
                              addConstraints fc cs
                              mapM_ (\c -> addIBC (IBCConstraint fc c)) (snd cs)
                              logElab 6 $ "CONSTRAINTS ADDED: " ++ show cs ++ "\n" ++ show (clhsty, crhsty)

@@ -281,13 +281,15 @@ addParamConstraints fc ps cty cons
       where
         constraintTy (Bind n (Pi _ ty _) sc)
            = case getRetTy ty of
-                  TType avar -> do ctxt <- getContext
-                                   let tv = next_tvar ctxt
-                                   let con = if n `elem` pnames
-                                                then ULE avar cvar
-                                                else ULT avar cvar
-                                   addConstraints fc (tv, [con])
-                                   addIBC (IBCConstraint fc con) 
+                  TType avar -> do tit <- typeInType
+                                   when (not tit) $ do
+                                       ctxt <- getContext
+                                       let tv = next_tvar ctxt
+                                       let con = if n `elem` pnames
+                                                    then ULE avar cvar
+                                                    else ULT avar cvar
+                                       addConstraints fc (tv, [con])
+                                       addIBC (IBCConstraint fc con) 
                   _ -> return ()
         constraintTy t = return ()
 

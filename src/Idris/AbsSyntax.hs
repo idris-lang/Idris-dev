@@ -693,11 +693,13 @@ updateContext f = do i <- getIState; putIState $ (i { tt_ctxt = f (tt_ctxt i) } 
 
 addConstraints :: FC -> (Int, [UConstraint]) -> Idris ()
 addConstraints fc (v, cs)
-    = do i <- getIState
-         let ctxt = tt_ctxt i
-         let ctxt' = ctxt { next_tvar = v }
-         let ics = insertAll (zip cs (repeat fc)) (idris_constraints i)
-         putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
+    = do tit <- typeInType
+         when (not tit) $ do
+             i <- getIState
+             let ctxt = tt_ctxt i
+             let ctxt' = ctxt { next_tvar = v }
+             let ics = insertAll (zip cs (repeat fc)) (idris_constraints i)
+             putIState $ i { tt_ctxt = ctxt', idris_constraints = ics }
   where
     insertAll [] c = c
     insertAll ((ULE (UVal 0) _, fc) : cs) ics = insertAll cs ics

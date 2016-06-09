@@ -1047,7 +1047,7 @@ process fn Universes
                           let cs = idris_constraints i
                           let cslist = S.toAscList cs
 --                        iputStrLn $ showSep "\n" (map show cs)
-                          iputStrLn $ show (map uconstraint cslist)
+                          iputStrLn $ showSep "\n" (map show cslist)
                           let n = length cslist
                           iputStrLn $ "(" ++ show n ++ " constraints)"
                           case ucheck cs of
