@@ -279,6 +279,6 @@ main = defaultMainWithHooks $ simpleUserHooks
    , postInst = \_ flags pkg local ->
                   idrisInstall (S.fromFlag $ S.installVerbosity flags)
                                NoCopyDest pkg local
-   , preSDist = idrisPreSDist --do { putStrLn (show args) ; putStrLn (show flags) ; return emptyHookedBuildInfo }
+   , preSDist = idrisPreSDist
    , postSDist = idrisPostSDist
    }
