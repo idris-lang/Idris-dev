@@ -91,6 +91,7 @@ Extra-source-files:
                        Makefile
                        config.mk
                        stack.yaml
+                       HLint.hs
                        man/idris.1
 
                        rts/*.c
