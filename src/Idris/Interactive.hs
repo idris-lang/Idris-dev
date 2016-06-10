@@ -380,7 +380,7 @@ makeLemma fn updatefile l n
                   runIO $ writeSource fb (addProv before tyline lem_app later)
                   runIO $ copyFile fb fn
                else case idris_outputmode i of
-                      RawOutput _  -> iPrintResult $ lem_app
+                      RawOutput _  -> iPrintResult lem_app
                       IdeMode n h ->
                         let good = SexpList [SymbolAtom "ok",
                                              SexpList [SymbolAtom "provisional-definition-lemma",
@@ -495,7 +495,7 @@ makeLemma fn updatefile l n
         addLem before tyline lem lem_app later
             = let (bef_end, blankline : bef_start)
                        = case span (not . blank) (reverse before) of
-                              (bef, []) -> (bef, "" : [])
+                              (bef, []) -> (bef, [""])
                               x -> x
                   mvline = updateMeta tyline (show n) lem_app in
                 unlines $ reverse bef_start ++
@@ -505,7 +505,7 @@ makeLemma fn updatefile l n
         addProv before tyline lem_app later
             = let (later_bef, blankline : later_end)
                       = case span (not . blank) later of
-                             (bef, []) -> (bef, "" : [])
+                             (bef, []) -> (bef, [""])
                              x -> x in
                   unlines $ before ++ tyline :
                             (later_bef ++ [blankline, lem_app, blankline] ++

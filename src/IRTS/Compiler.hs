@@ -483,11 +483,11 @@ irTerm top vs env (Proj t (-1)) = do
                  [t', LConst (BI 1)]
 
 irTerm top vs env (Proj t i)   = LProj <$> irTerm top vs env t <*> pure i
-irTerm top vs env (Constant TheWorld) = return $ LNothing
-irTerm top vs env (Constant c) = return $ LConst c
-irTerm top vs env (TType _)    = return $ LNothing
-irTerm top vs env Erased       = return $ LNothing
-irTerm top vs env Impossible   = return $ LNothing
+irTerm top vs env (Constant TheWorld) = return LNothing
+irTerm top vs env (Constant c)        = return (LConst c)
+irTerm top vs env (TType _)           = return LNothing
+irTerm top vs env Erased              = return LNothing
+irTerm top vs env Impossible          = return LNothing
 
 doForeign :: Vars -> [Name] -> [Term] -> Idris LExp
 doForeign vs env (ret : fname : world : args)
@@ -500,7 +500,7 @@ doForeign vs env (ret : fname : world : args)
         = do let l' = toFDesc l
              r' <- irTerm (sMN 0 "__foreignCall") vs env r
              return (l', r')
-    splitArg _ = ifail $ "Badly formed foreign function call"
+    splitArg _ = ifail "Badly formed foreign function call"
 
     toFDesc (Constant (Str str)) = FStr str
     toFDesc tm

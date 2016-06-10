@@ -758,8 +758,7 @@ type MultiPath = [SCGEntry]
 
 mkMultiPaths :: IState -> MultiPath -> [SCGEntry] -> [MultiPath]
 mkMultiPaths ist path [] = [reverse path]
-mkMultiPaths ist path cg
-    = concat (map extend cg)
+mkMultiPaths ist path cg = concatMap extend cg
   where extend (nextf, args)
            | (nextf, args) `elem` path = [ reverse ((nextf, args) : path) ]
            | [Unchecked] <- lookupTotal nextf (tt_ctxt ist)

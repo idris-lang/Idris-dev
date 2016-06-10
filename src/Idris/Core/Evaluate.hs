@@ -182,7 +182,7 @@ bindEnv ((n, b):bs)       tm = Bind n b (bindEnv bs tm)
 unbindEnv :: EnvTT n -> TT n -> TT n
 unbindEnv [] tm = tm
 unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
-unbindEnv env tm = error $ "Impossible case occurred: couldn't unbind env."
+unbindEnv env tm = error "Impossible case occurred: couldn't unbind env."
 
 usable :: Bool -- specialising
           -> Int -- Reduction depth limit (when simplifying/at REPL)
@@ -558,8 +558,8 @@ class Quote a where
     quote :: Int -> a -> Eval (TT Name)
 
 instance Quote Value where
-    quote i (VP nt n v)    = liftM (P nt n) (quote i v)
-    quote i (VV x)         = return $ V x
+    quote i (VP nt n v)      = liftM (P nt n) (quote i v)
+    quote i (VV x)           = return $ V x
     quote i (VBind _ n b sc) = do sc' <- sc (VTmp i)
                                   b' <- quoteB b
                                   liftM (Bind n b') (quote (i+1) sc')
@@ -571,10 +571,10 @@ instance Quote Value where
                                 let sc'' = pToV (sMN vd "vlet") (addBinder sc')
                                 return (Bind n (Let t' v') sc'')
     quote i (VApp f a)     = liftM2 (App MaybeHoles) (quote i f) (quote i a)
-    quote i (VType u)       = return $ TType u
-    quote i (VUType u)      = return $ UType u
-    quote i VErased        = return $ Erased
-    quote i VImpossible    = return $ Impossible
+    quote i (VType u)      = return (TType u)
+    quote i (VUType u)     = return (UType u)
+    quote i VErased        = return Erased
+    quote i VImpossible    = return Impossible
     quote i (VProj v j)    = do v' <- quote i v
                                 return (Proj v' j)
     quote i (VConstant c)  = return $ Constant c

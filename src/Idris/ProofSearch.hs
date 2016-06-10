@@ -364,7 +364,7 @@ resolveTC def openOK depth top fn elab ist
   = do hs <- get_holes
        resTC' [] def openOK hs depth top fn elab ist
 
-resTC' tcs def openOK topholes 0 topg fn elab ist = fail $ "Can't resolve interface"
+resTC' tcs def openOK topholes 0 topg fn elab ist = fail "Can't resolve interface"
 resTC' tcs def openOK topholes 1 topg fn elab ist = try' (trivial elab ist) (resolveTC def False 0 topg fn elab ist) True
 resTC' tcs defaultOn openOK topholes depth topg fn elab ist
   = do compute
@@ -484,7 +484,7 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
     solven n = replicateM_ n solve
 
     resolve n depth
-       | depth == 0 = fail $ "Can't resolve interface"
+       | depth == 0 = fail "Can't resolve interface"
        | otherwise
            = do lams <- introImps
                 t <- goal

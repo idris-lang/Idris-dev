@@ -139,7 +139,7 @@ replPkg copts fp = do
         let mod = idris_main pkgdesc
         let f = toPath (showCG mod)
         putIState orig
-        dir <- runIO $ getCurrentDirectory
+        dir <- runIO getCurrentDirectory
         runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
 
         if (f /= "")

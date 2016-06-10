@@ -148,7 +148,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
           completeArg (OptionalArg a) = completeArg a
           completeArg (SeqArgs a b) = completeArg a
           completeArg _ = noCompletion (prev, next)
-          completeCmdName = return $ ("", completeWith commands cmd)
+          completeCmdName = return ("", completeWith commands cmd)
 
 -- | Complete REPL commands and defined identifiers
 replCompletion :: CompletionFunc Idris
@@ -168,7 +168,7 @@ completePkg = completeWord Nothing " \t()" completeP
 completeTactic :: [String] -> String -> CompletionFunc Idris
 completeTactic as tac (prev, next) = fromMaybe completeTacName . fmap completeArg $
                                      lookup tac tacticArgs
-    where completeTacName = return $ ("", completeWith tactics tac)
+    where completeTacName = return ("", completeWith tactics tac)
           completeArg Nothing              = noCompletion (prev, next)
           completeArg (Just NameTArg)      = noCompletion (prev, next) -- this is for binding new names!
           completeArg (Just ExprTArg)      = completeExpr as (prev, next)

@@ -765,8 +765,8 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
         case lookupTy (SN (tacn tnm)) ctxt of
           [elimTy] -> do
              param_pos <- case lookupMetaInformation tnm ctxt of
-                               [DataMI param_pos] -> return param_pos
-                               m | length tyargs > 0 -> fail $ "Invalid meta information for " ++ show tnm ++ " where the metainformation is " ++ show m ++ " and definition is" ++ show (lookupDef tnm ctxt)
+                               [DataMI param_pos]    -> return param_pos
+                               m | not (null tyargs) -> fail $ "Invalid meta information for " ++ show tnm ++ " where the metainformation is " ++ show m ++ " and definition is" ++ show (lookupDef tnm ctxt)
                                _ -> return []
              let (params, indicies) = splitTyArgs param_pos tyargs
              let args     = getArgTys elimTy
@@ -774,8 +774,8 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              let args'    = drop (length params) args
              let propTy   = head args'
              let restargs = init $ tail args'
-             let consargs = take (length restargs - length indicies) $ restargs
-             let indxargs = drop (length restargs - length indicies) $ restargs
+             let consargs = take (length restargs - length indicies) restargs
+             let indxargs = drop (length restargs - length indicies) restargs
              let scr      = last $ tail args'
              let indxnames = makeIndexNames indicies
              currentNames <- query $ allTTNames . getProofTerm . pterm
@@ -790,7 +790,7 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
              action (\ps -> ps {holes = holes ps \\ [x],
                                 recents = x : recents ps })
              mapM_ addConsHole (reverse consargs')
-             let res' = forget $ res
+             let res' = forget res
              (scv, sct) <- lift $ check ctxt env res'
              let (scv', _) = specialise ctxt env [] scv
              return scv'

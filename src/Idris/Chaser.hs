@@ -143,8 +143,8 @@ buildTree built importlists fp = evalStateT (btree [] fp) []
        let file = extractFileName f
        lift $ logLvl 1 $ "CHASING " ++ show file ++ " (" ++ show fp ++ ")"
        ibcsd <- lift $ valIBCSubDir i
-       ids <- lift $ allImportDirs
-       fp <- lift $ findImport ids ibcsd file
+       ids   <- lift allImportDirs
+       fp   <- lift $ findImport ids ibcsd file
        lift $ logLvl 1 $ "Found " ++ show fp
        mt <- lift $ runIO $ getIModTime fp
        if (file `elem` built)

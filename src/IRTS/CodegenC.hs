@@ -808,7 +808,7 @@ genDispatcher tags = "void* _idris_get_wrapper(VAL con)\n" ++
 
 genWrapper :: (FDesc, Int) -> String
 genWrapper (desc, tag) | (toFType desc) == FFunctionIO =
-    error $ "Cannot create C callbacks for IO functions, wrap them with unsafePerformIO.\n"
+    error "Cannot create C callbacks for IO functions, wrap them with unsafePerformIO.\n"
 genWrapper (desc, tag) =  ret ++ " " ++ wrapperName tag ++ "(" ++
                           renderArgs argList ++")\n"  ++
                           "{\n" ++

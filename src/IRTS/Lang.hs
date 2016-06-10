@@ -213,7 +213,7 @@ lift env (LForeign t s args) = do args' <- mapM (liftF env) args
 lift env (LOp f args) = do args' <- mapM (lift env) args
                            return (LOp f args')
 lift env (LError str) = return $ LError str
-lift env LNothing = return $ LNothing
+lift env LNothing = return LNothing
 
 allocUnique :: LDefs -> (Name, LDecl) -> (Name, LDecl)
 allocUnique defs p@(n, LConstructor _ _ _) = p

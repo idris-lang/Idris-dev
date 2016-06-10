@@ -104,8 +104,8 @@ buildType info syn fc opts n ty' = do
 
          mapM_ (elabCaseBlock info opts) is
          ctxt <- getContext
-         logElab 5 $ "Rechecking"
-         logElab 6 $ show tyT
+         logElab 5 "Rechecking"
+         logElab 6 (show tyT)
          logElab 10 $ "Elaborated to " ++ showEnvDbg [] tyT
          (cty, ckind)   <- recheckC (constraintNS info) fc id [] tyT
 
@@ -224,7 +224,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
              case fam of
                 P _ tyn _ -> do addAutoHint tyn n
                                 addIBC (IBCAutoHint tyn n)
-                t -> ifail $ "Hints must return a data or record type"
+                t -> ifail "Hints must return a data or record type"
 
          -- If the function is declared as an error handler and the language
          -- extension is enabled, then add it to the list of error handlers.

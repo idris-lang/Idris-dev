@@ -258,11 +258,11 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
     checkUniqueKind (UType AllTypes) _
         = tclift $ tfail (At fc (UniqueKindError AllTypes n))
     checkUniqueKind _ _ = return ()
-        
+
 addParamConstraints :: FC -> [Int] -> Type -> [(Name, Type)] -> Idris ()
 addParamConstraints fc ps cty cons
    = case getRetTy cty of
-          TType cvar -> mapM_ (addConConstraint ps cvar) 
+          TType cvar -> mapM_ (addConConstraint ps cvar)
                               (map getParamNames cons)
           _ -> return ()
   where
@@ -277,7 +277,7 @@ addParamConstraints fc ps cty cons
     paramArgs i (_ : args) = paramArgs (i + 1) args
     paramArgs i [] = []
 
-    addConConstraint ps cvar (ty, pnames) = constraintTy ty 
+    addConConstraint ps cvar (ty, pnames) = constraintTy ty
       where
         constraintTy (Bind n (Pi _ ty _) sc)
            = case getRetTy ty of
@@ -305,7 +305,7 @@ elabCaseFun :: Bool -> [Int] -> Name -> PTerm ->
                   [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name])] ->
                   ElabInfo -> EliminatorState ()
 elabCaseFun ind paramPos n ty cons info = do
-  elimLog $ "Elaborating case function"
+  elimLog "Elaborating case function"
   put (Map.fromList $ zip (concatMap (\(_, p, _, _, ty, _, _) -> (map show $ boundNamesIn ty) ++ map (show . fst) p) cons ++ (map show $ boundNamesIn ty)) (repeat 0))
   let (cnstrs, _) = splitPi ty
   let (splittedTy@(pms, idxs)) = splitPms cnstrs

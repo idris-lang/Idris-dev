@@ -583,7 +583,7 @@ getSO = do i <- getIState
 
 setSO :: Maybe String -> Idris ()
 setSO s = do i <- getIState
-             putIState $ (i { compiled_so = s })
+             putIState (i { compiled_so = s })
 
 getIState :: Idris IState
 getIState = get
@@ -617,7 +617,7 @@ runIO x = liftIO (tryIOError x) >>= either (throwError . Msg . show) return
 getName :: Idris Int
 getName = do i <- getIState;
              let idx = idris_name i;
-             putIState $ (i { idris_name = idx + 1 })
+             putIState (i { idris_name = idx + 1 })
              return idx
 
 -- | InternalApp keeps track of the real function application for
@@ -686,10 +686,10 @@ isUndefined fc n
              _ -> return True
 
 setContext :: Context -> Idris ()
-setContext ctxt = do i <- getIState; putIState $ (i { tt_ctxt = ctxt } )
+setContext ctxt = do i <- getIState; putIState (i { tt_ctxt = ctxt } )
 
 updateContext :: (Context -> Context) -> Idris ()
-updateContext f = do i <- getIState; putIState $ (i { tt_ctxt = f (tt_ctxt i) } )
+updateContext f = do i <- getIState; putIState (i { tt_ctxt = f (tt_ctxt i) } )
 
 addConstraints :: FC -> (Int, [UConstraint]) -> Idris ()
 addConstraints fc (v, cs)
@@ -1741,7 +1741,7 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
       = case lookup n using of
             Just ty -> PPi impl_gen
                            n NoFC ty (pibind using ns sc)
-            Nothing -> PPi (impl_gen { pargopts = [InaccessibleArg] }) 
+            Nothing -> PPi (impl_gen { pargopts = [InaccessibleArg] })
                            n NoFC Placeholder (pibind using ns sc)
 
 -- | Add implicit arguments in function calls

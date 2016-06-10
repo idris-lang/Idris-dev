@@ -423,7 +423,7 @@ createIndex :: S.Set NsName -- ^ Set of namespace names to
 createIndex nss out =
   do (path, h) <- openTempFile out "index.html"
      BS2.hPut h $ renderHtml $ wrapper Nothing $ do
-       H.h1 $ "Namespaces"
+       H.h1 "Namespaces"
        H.ul ! class_ "names" $ do
          let path ns  = "docs" ++ "/" ++ genRelNsPath ns "html"
              item ns  = do let n    = toHtml $ nsName2Str ns
@@ -523,7 +523,7 @@ genTypeHeader ist (FD n _ args ftype _) = do
         docExtractor (_, _, _, Nothing) = Nothing
         docExtractor (n, _, _, Just d)  = Just (n, doc2Str d)
                          -- TODO: Remove <p> tags more robustly
-        doc2Str d      = let dirty = renderMarkup $ contents $ Docstrings.renderHtml $ d
+        doc2Str d      = let dirty = renderMarkup $ contents $ Docstrings.renderHtml d
                          in  take (length dirty - 8) $ drop 3 dirty
 
         name (NS n ns) = show (NS (sUN $ name n) ns)

@@ -138,7 +138,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                (map fst (filter (\(_, (inj, _, _, _, _)) -> inj) imethods))
 
          -- add the default definitions
-         mapM_ (rec_elabDecl info EAll info) (concat (map (snd.snd) defs))
+         mapM_ (rec_elabDecl info EAll info) (concatMap (snd.snd) defs)
          addIBC (IBCClass tn)
 
          sendHighlighting $
@@ -164,12 +164,12 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     checkDefaultSuperclassInstance :: PDecl -> Idris ()
     checkDefaultSuperclassInstance (PInstance _ _ _ fc cs _ _ _ n _ ps _ _ _ _)
         = do when (not $ null cs) . tclift
-                $ tfail (At fc (Msg $ "Default superclass instances can't have constraints."))
+                $ tfail (At fc (Msg "Default superclass instances can't have constraints."))
              i <- getIState
              let t = PApp fc (PRef fc [] n) (map pexp ps)
              let isConstrained = any (== t) (map snd constraints)
              when (not isConstrained) . tclift
-                $ tfail (At fc (Msg $ "Default instances must be for a superclass constraint on the containing class."))
+                $ tfail (At fc (Msg "Default instances must be for a superclass constraint on the containing class."))
              return ()
 
     checkConstraintName :: [Name] -> Name -> Idris ()

@@ -232,7 +232,7 @@ data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
                                              let kw = (if DefaultEliminator `elem` dataOpts then "%elim" else "") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
                                              let n  = show tyn_in ++ " "
                                              let s  = kw ++ n
-                                             let as = concat (intersperse " " $ map show args) ++ " "
+                                             let as = unwords (map show args) ++ " "
                                              let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : Type)") . show) args)
                                              let ss = concat (intersperse " -> " $ map (const "Type") args)
                                              let fix1 = s ++ as ++ " = ..."

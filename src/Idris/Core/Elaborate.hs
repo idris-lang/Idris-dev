@@ -654,8 +654,9 @@ apply' fillt fn imps =
        fillt (raw_apply fn (map (Var . snd) args))
        ulog <- getUnifyLog
        g <- goal
-       traceWhen ulog ("Goal " ++ show g ++ " -- when elaborating " ++ show fn) $
-        end_unify
+       traceWhen ulog
+                 ("Goal " ++ show g ++ " -- when elaborating " ++ show fn)
+                 end_unify
        return $! (map (\(argName, argHole) -> (argName, updateUnify unify argHole)) args)
   where updateUnify us n = case lookup n us of
                                 Just (P _ t _) -> t

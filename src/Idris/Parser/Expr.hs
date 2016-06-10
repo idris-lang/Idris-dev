@@ -499,7 +499,7 @@ bracketed' open syn =
 {-| Parses the rest of a dependent pair after '(' or '(Expr **' -}
 dependentPair :: PunInfo -> [(PTerm, Maybe (FC, PTerm), FC)] -> FC -> SyntaxInfo -> IdrisParser PTerm
 dependentPair pun prev openFC syn =
-  if prev == [] then
+  if null prev then
       nametypePart <|> namePart
   else
     case pun of
