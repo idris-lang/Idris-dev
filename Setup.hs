@@ -83,13 +83,11 @@ isFreestanding flags =
 -- -----------------------------------------------------------------------------
 -- Clean
 
-idrisClean _ flags _ _ = do
-      cleanStdLib
+idrisClean _ flags _ _ = cleanStdLib
    where
       verbosity = S.fromFlag $ S.cleanVerbosity flags
 
-      cleanStdLib = do
-         makeClean "libs"
+      cleanStdLib = makeClean "libs"
 
       makeClean dir = make verbosity [ "-C", dir, "clean", "IDRIS=idris" ]
 
@@ -108,7 +106,7 @@ generateVersionModule verbosity dir release = do
     hash <- gitHash
     let versionModulePath = dir </> "Version_idris" Px.<.> "hs"
     putStrLn $ "Generating " ++ versionModulePath ++
-             if release then " for release" else (" for prerelease " ++ hash)
+             if release then " for release" else " for prerelease " ++ hash
     createDirectoryIfMissingVerbose verbosity True dir
     rewriteFile versionModulePath (versionModuleContents hash)
 
@@ -120,7 +118,7 @@ generateVersionModule verbosity dir release = do
 
 -- Generate a module that contains the lib path for a freestanding Idris
 generateTargetModule verbosity dir targetDir = do
-    absPath <- return $ isAbsolute targetDir
+    let absPath = isAbsolute targetDir
     let targetModulePath = dir </> "Target_idris" Px.<.> "hs"
     putStrLn $ "Generating " ++ targetModulePath
     createDirectoryIfMissingVerbose verbosity True dir
@@ -155,15 +153,15 @@ generateToolchainModule verbosity srcDir toolDir = do
 idrisConfigure _ flags _ local = do
     configureRTS
     generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
-    if (isFreestanding $ configFlags local)
-        then (do
+    if isFreestanding $ configFlags local
+        then do
                 toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
                 generateToolchainModule verbosity (autogenModulesDir local) toolDir
                 targetDir <- lookupEnv "IDRIS_LIB_DIR"
                 case targetDir of
                      Just d -> generateTargetModule verbosity (autogenModulesDir local) d
                      Nothing -> error $ "Trying to build freestanding without a target directory."
-                                  ++ " Set it by defining IDRIS_LIB_DIR.")
+                                  ++ " Set it by defining IDRIS_LIB_DIR."
         else
                 generateToolchainModule verbosity (autogenModulesDir local) Nothing
     where
@@ -179,7 +177,7 @@ idrisConfigure _ flags _ local = do
 idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
   let verb = S.fromFlag (S.sDistVerbosity flags)
-  generateVersionModule verb ("src") True
+  generateVersionModule verb "src" True
   generateTargetModule verb "src" "./libs"
   generateToolchainModule verb "src" Nothing
   preSDist simpleUserHooks args flags
@@ -257,7 +255,7 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
          makeInstall "rts" target'
 
       installManPage = do
-         let mandest = (mandir $ L.absoluteInstallDirs pkg local copy) ++ "/man1"
+         let mandest = mandir (L.absoluteInstallDirs pkg local copy) ++ "/man1"
          notice verbosity $ unwords ["Copying man page to", mandest]
          installOrdinaryFiles verbosity mandest [("man", "idris.1")]
 
@@ -281,6 +279,6 @@ main = defaultMainWithHooks $ simpleUserHooks
    , postInst = \_ flags pkg local ->
                   idrisInstall (S.fromFlag $ S.installVerbosity flags)
                                NoCopyDest pkg local
-   , preSDist = idrisPreSDist --do { putStrLn (show args) ; putStrLn (show flags) ; return emptyHookedBuildInfo }
+   , preSDist = idrisPreSDist
    , postSDist = idrisPostSDist
    }
