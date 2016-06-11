@@ -213,10 +213,13 @@ mergeUserImpl x y = x
 argTys :: IState -> PTerm -> [Maybe Name]
 argTys ist (PRef fc hls n)
     = case lookupTy n (tt_ctxt ist) of
-           [ty] -> map (tyName . snd) (getArgTys ty) ++ repeat Nothing
+           [ty] -> let ty' = normalise (tt_ctxt ist) [] ty in
+                       map (tyName . snd) (getArgTys ty') ++ repeat Nothing
            _ -> repeat Nothing
   where tyName (Bind _ (Pi _ _ _) _) = Just (sUN "->")
-        tyName t | (P _ n _, _) <- unApply t = Just n
+        tyName t | (P _ d _, [_, ty]) <- unApply t,
+                   d == sUN "Delayed" = tyName ty
+                 | (P _ n _, _) <- unApply t = Just n
                  | otherwise = Nothing
 argTys _ _ = repeat Nothing
 
