@@ -132,6 +132,7 @@ Force (Delay x) = x
 ||| Lazily evaluated values. 
 ||| At run time, the delayed value will only be computed when required by
 ||| a case split.
+%error_reverse
 Lazy : Type -> Type
 Lazy t = Delayed LazyValue t
 
@@ -139,6 +140,7 @@ Lazy t = Delayed LazyValue t
 ||| A value which may be infinite is accepted by the totality checker if
 ||| it appears under a data constructor. At run time, the delayed value will
 ||| only be computed when required by a case split.
+%error_reverse
 Inf : Type -> Type
 Inf t = Delayed Infinite t
 

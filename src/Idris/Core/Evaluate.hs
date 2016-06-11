@@ -199,7 +199,7 @@ usable False n ns
   = case lookup n ns of
          Just 0 -> return (False, ns)
          Just i -> return $ (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
-         _ -> return $ (True, (n, 100) : filter (\ (n', _) -> n/=n') ns)
+         _ -> return $ (True, (n, 1000000) : filter (\ (n', _) -> n/=n') ns)
 
 
 fnCount :: Int -> Name -> Eval ()
@@ -311,7 +311,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     -- block reduction immediately under codata (and not forced)
     ev ntimes stk top env
               (App _ (App _ (App _ d@(P _ (UN dly) _) l@(P _ (UN lco) _)) t) arg)
-       | dly == txt "Delay" && lco == txt "LazyCodata" && not (simpl || atRepl)
+       | dly == txt "Delay" && lco == txt "Infinite" && not simpl
             = do let (f, _) = unApply arg
                  let ntimes' = case f of
                                     P _ fn _ -> (fn, 0) : ntimes

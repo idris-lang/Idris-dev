@@ -541,7 +541,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
      | (P _ n _, _) <- unApply ap,
        Just opts <- lookupCtxtExact n (idris_flags ist),
        AssertTotal `elem` opts = []
-     -- under a guarded call to "Delay LazyCodata", we are 'Delayed', so don't
+     -- under a guarded call to "Delay Infinite", we are 'Delayed', so don't
      -- check under guarded constructors.
      | (P _ (UN del) _, [_,_,arg]) <- unApply ap,
        Guarded <- guarded,
