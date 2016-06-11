@@ -185,21 +185,22 @@ unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 unbindEnv env tm = error $ "Impossible case occurred: couldn't unbind env."
 
 usable :: Bool -- specialising
+          -> Int -- Reduction depth limit (when simplifying/at REPL)
           -> Name -> [(Name, Int)] -> Eval (Bool, [(Name, Int)])
 -- usable _ _ ns@((MN 0 "STOP", _) : _) = return (False, ns)
-usable False n [] = return (True, [])
-usable True n ns
+usable False depthlimit n [] = return (True, [])
+usable True depthlimit n ns
   = do ES ls num b <- get
        if b then return (False, ns)
             else case lookup n ls of
                     Just 0 -> return (False, ns)
                     Just i -> return (True, ns)
                     _ -> return (False, ns)
-usable False n ns
+usable False depthlimit n ns
   = case lookup n ns of
          Just 0 -> return (False, ns)
          Just i -> return $ (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
-         _ -> return $ (True, (n, 1000000) : filter (\ (n', _) -> n/=n') ns)
+         _ -> return $ (True, (n, depthlimit) : filter (\ (n', _) -> n/=n') ns)
 
 
 fnCount :: Int -> Name -> Eval ()
@@ -253,7 +254,8 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes_in stk top env (P Ref n ty)
       | not top && hnf = liftM (VP Ref n) (ev ntimes stk top env ty)
       | otherwise
-         = do (u, ntimes) <- usable spec n ntimes_in
+         = do let limit = if simpl then 100 else 10000
+              (u, ntimes) <- usable spec limit n ntimes_in
               let red = u && (tcReducible n ctxt || spec || atRepl || runtime
                                 || sUN "assert_total" `elem` stk)
               if red then
@@ -377,7 +379,8 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                             [] -> return f
                             _ -> return $ unload env f args
       | otherwise
-         = do (u, ntimes) <- usable spec n ntimes_in
+         = do let limit = if simpl then 100 else 10000
+              (u, ntimes) <- usable spec limit n ntimes_in
               let red = u && (tcReducible n ctxt || spec || atRepl || runtime
                                 || sUN "assert_total" `elem` stk)
               if red then
