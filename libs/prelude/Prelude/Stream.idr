@@ -14,13 +14,13 @@ import Prelude.List
 
 ||| An infinite stream
 data Stream : Type -> Type where
-  (::) : (e : a) -> Inf (Stream a) -> Stream a
+  (::) : (value : elem) -> Inf (Stream elem) -> Stream elem
 
 -- Hints for interactive editing
 %name Stream xs,ys,zs,ws
 
 -- Usage hints for erasure analysis
-%used Stream.(::) e
+%used Stream.(::) value
 
 Functor Stream where
     map f (x::xs) = f x :: map f xs
@@ -42,7 +42,6 @@ take (S n) (x :: xs) = x :: (take n xs)
 
 ||| Drop the first n elements from the stream
 ||| @ n how many elements to drop
-%assert_total
 drop : (n : Nat) -> Stream a -> Stream a
 drop Z     xs = xs
 drop (S k) (x::xs) = drop k xs
