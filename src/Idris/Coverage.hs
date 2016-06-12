@@ -569,6 +569,13 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
              if n `notElem` cases
                 then findCallsCase (n : cases) guarded n args pvs pargs
                 else []
+     | (P _ ifthenelse _, [_, _, t, e]) <- unApply ap,
+       ifthenelse == sNS (sUN "ifThenElse") ["Bool", "Prelude"]
+       -- Continue look inside if...then...else blocks
+       -- TODO: Consider whether we should do this for user defined ifThenElse
+       -- rather than just the one in the Prelude as a special case
+       = findCalls cases guarded t pvs pargs ++
+         findCalls cases guarded e pvs pargs
      | (P _ n _, args) <- unApply ap
         -- Ordinary call, not under a delay.
         -- If n is a constructor, set 'args' as Guarded

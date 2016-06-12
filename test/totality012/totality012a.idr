@@ -6,8 +6,7 @@ data InfIO : Type -> Type where
      (>>=) : InfIO a -> (a -> Inf (InfIO b)) -> InfIO b
 
 echo2 : String -> InfIO ()
-echo2 x = case (x == "quit") of
-               True => PutStr "Bye!\n"
-               False => echo2 x
+echo2 x = if (x == "quit") then PutStr "Bye!\n"
+               else echo2 x
 
 
