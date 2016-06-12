@@ -130,6 +130,13 @@ pow : (Num a) => a -> Nat -> a
 pow x Z = 1
 pow x (S n) = x * (pow x n)
 
+-- XXX these should probably also go somewhere else (in an interface somewhere?)
+shiftR : Int -> Int -> Int
+shiftR = prim__ashrInt
+
+shiftL : Int -> Int -> Int
+shiftL = prim__shlInt
+
 ---- Ranges
 
 natRange : Nat -> List Nat
