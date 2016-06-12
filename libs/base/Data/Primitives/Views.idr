@@ -20,7 +20,7 @@ namespace Integer
   divides val d
          = let dividend = if d < 0 then -(val `div` abs d)
                                    else val `div` d
-               remainder = val `mod` d in
+               remainder = abs (val - dividend * d) in
                believe_me (DivBy {d} {div = dividend} {rem = remainder}
                                  (believe_me (Refl {x = True})))
 
@@ -56,7 +56,7 @@ namespace Int
   divides val d
          = let dividend = if d < 0 then -(val `div` abs d)
                                    else val `div` d
-               remainder = val `mod` d in
+               remainder = abs (val - dividend * d) in
                believe_me (DivBy {d} {div = dividend} {rem = remainder}
                                  (believe_me (Refl {x = True})))
 
