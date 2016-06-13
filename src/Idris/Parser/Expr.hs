@@ -1130,6 +1130,17 @@ unboundPi opts st syn = do
            return (PPi binder (sUN "__pi_arg") NoFC x sc))
               <|> return x
 
+-- This is used when we need to disambiguate from a constraint list
+unboundPiNoConstraint opts st syn = do
+       x <- opExpr syn
+       (do binder <- bindsymbol opts st syn
+           sc <- expr syn
+           notFollowedBy $ reservedOp "=>"
+           return (PPi binder (sUN "__pi_arg") NoFC x sc))
+              <|> do notFollowedBy $ reservedOp "=>"
+                     return x
+
+
 pi :: SyntaxInfo -> IdrisParser PTerm
 pi syn =
      do opts <- piOpts syn
@@ -1137,8 +1148,8 @@ pi syn =
         explicitPi opts st syn
          <|> try (do lchar '{'; implicitPi opts st syn)
          <|> if constraintAllowed syn
-                then try (constraintPi opts st syn)
-                         <|> unboundPi opts st syn
+                then try (unboundPiNoConstraint opts st syn)
+                         <|> constraintPi opts st syn
                 else unboundPi opts st syn
   <?> "dependent type signature"
 
