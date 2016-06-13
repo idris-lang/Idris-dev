@@ -8,27 +8,41 @@ import Control.IOExcept
 
 data Count : Type where
 
-FileIO : Type -> Type -> Type
-FileIO st t = Eff t [FILE_IO st, STDIO, Count ::: STATE Int]
 
-readFile : FileIO (OpenFile Read) (List String)
-readFile = readAcc [] where
-    readAcc : List String -> FileIO (OpenFile Read) (List String)
-    readAcc acc = do e <- eof
-                     if (not e)
-                        then do str <- readLine
-                                Count :- put (!(Count :- get) + 1)
-                                readAcc (str :: acc)
-                        else return (reverse acc)
+TestFileIO : Type -> Type -> Type
+TestFileIO st t = Eff t [FILE st, STDIO, Count ::: STATE Int]
 
-testFile : FileIO () ()
-testFile = do True <- open "testFile" Read  | False => putStrLn "Error!"
-              fcontents <- readFile
-              putStrLn (show fcontents)
-              close
-              putStrLn (show !(Count :- get))
+readFileCount : Eff (FileOpResult (List String)) [FILE R, STDIO, Count ::: STATE Int]
+readFileCount = readAcc []
+  where
+    readAcc : List String
+           -> Eff (FileOpResult (List String)) [FILE R, STDIO, Count ::: STATE Int]
+    readAcc acc = do
+      e <- eof
+      if (not e)
+         then do
+           (Result str) <- readLine
+                         | (FError err) => pure (FError err)
+           Count :- put (!(Count :- get) + 1)
+           readAcc (str :: acc)
+         else do
+           let res = reverse acc
+           pure $ Result res
+
+testFile : TestFileIO () ()
+testFile = do
+    Success <- open "testFile" Read
+             | (FError err) => do
+                 putStrLn "Error!"
+                 pure ()
+    (Result fcontents) <- readFileCount
+                        | (FError err) => do
+                            close
+                            putStrLn "Error!"
+                            pure ()
+    putStrLn (show fcontents)
+    close
+    putStrLn (show !(Count :- get))
 
 main : IO ()
-main = run testFile 
-
-
+main = run testFile
