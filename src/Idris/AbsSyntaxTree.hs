@@ -6,7 +6,8 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             DeriveDataTypeable, TypeSynonymInstances, PatternGuards #-}
+             DeriveDataTypeable, DeriveGeneric, TypeSynonymInstances,
+             PatternGuards #-}
 
 module Idris.AbsSyntaxTree where
 
@@ -47,6 +48,7 @@ import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Traversable (Traversable)
 import Data.Typeable
 import Data.Foldable (Foldable)
+import GHC.Generics (Generic)
 
 import Debug.Trace
 
@@ -112,7 +114,7 @@ data IOption = IOption {
   , opt_evaltypes    :: Bool           -- ^ normalise types in `:t`
   , opt_desugarnats  :: Bool
   , opt_autoimpls    :: Bool
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Generic)
 
 defaultOpts = IOption { opt_logLevel   = 0
                       , opt_logcats    = []
@@ -150,7 +152,7 @@ data PPOption = PPOption {
   } deriving (Show)
 
 data Optimisation = PETransform -- ^ partial eval and associated transforms
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 defaultOptimise = [PETransform]
 
@@ -185,7 +187,8 @@ ppOption opt = PPOption {
 ppOptionIst :: IState -> PPOption
 ppOptionIst = ppOption . idris_options
 
-data LanguageExt = TypeProviders | ErrorReflection deriving (Show, Eq, Read, Ord)
+data LanguageExt = TypeProviders | ErrorReflection
+  deriving (Show, Eq, Read, Ord, Generic)
 
 -- | The output mode in use
 data OutputMode = RawOutput Handle       -- ^ Print user output directly to the handle
@@ -196,13 +199,13 @@ data OutputMode = RawOutput Handle       -- ^ Print user output directly to the 
 data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
                   | ColsWide Int   -- ^ Manually specified - must be positive
                   | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
-   deriving (Show, Eq)
+   deriving (Show, Eq, Generic)
 
 -- | If a function has no totality annotation, what do we assume?
 data DefaultTotality = DefaultCheckingTotal    -- ^ Total
                      | DefaultCheckingPartial  -- ^ Partial
                      | DefaultCheckingCovering -- ^Total coverage, but may diverge
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 -- | The global state used in the Idris monad
 data IState = IState {
@@ -305,13 +308,14 @@ data IState = IState {
   , idris_ttstats                :: M.Map Term (Int, Term)
   , idris_fragile                :: Ctxt String               -- ^ Fragile names and explanation.
   }
+  deriving Generic
 
 -- Required for parsers library, and therefore trifecta
 instance Show IState where
   show = const "{internal state}"
 
 data SizeChange = Smaller | Same | Bigger | Unknown
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic)
 {-!
 deriving instance Binary SizeChange
 deriving instance NFData SizeChange
@@ -324,7 +328,7 @@ data CGInfo = CGInfo {
     calls   :: [Name]
   , scg     :: [SCGEntry]
   , usedpos :: [(Int, [UsageReason])]
-  } deriving Show
+  } deriving (Show, Generic)
 {-!
 deriving instance Binary CGInfo
 deriving instance NFData CGInfo
@@ -384,7 +388,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCDeprecate Name String
               | IBCFragile Name String
               | IBCConstraint FC UConstraint
-  deriving Show
+  deriving (Show, Generic)
 
 -- | The initial state for the compiler
 idrisInit :: IState
@@ -420,12 +424,12 @@ throwError = Trans.lift . throwE
 
 data Codegen = Via IRFormat String
              | Bytecode
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic)
 {-!
 deriving instance NFData Codegen
 !-}
 
-data IRFormat = IBCFormat | JSONFormat deriving (Show, Eq)
+data IRFormat = IBCFormat | JSONFormat deriving (Show, Eq, Generic)
 
 data HowMuchDocs = FullDocs | OverviewDocs
 
@@ -511,7 +515,7 @@ data LogCat = IParse
             | IErasure
             | ICoverage
             | IIBC
-            deriving (Show, Eq, Ord)
+            deriving (Show, Eq, Ord, Generic)
 
 strLogCat :: LogCat -> String
 strLogCat IParse    = "parser"
@@ -606,7 +610,7 @@ data Opt = Filename String
          | DesugarNats
          | NoElimDeprecationWarnings      -- ^ Don't show deprecation warnings for %elim
          | NoOldTacticDeprecationWarnings -- ^ Don't show deprecation warnings for old-style tactics
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic)
 
 data ElabShellCmd = EQED
                   | EAbandon
@@ -625,7 +629,7 @@ data Fixity = Infixl  { prec :: Int }
             | Infixr  { prec :: Int }
             | InfixN  { prec :: Int }
             | PrefixN { prec :: Int }
-    deriving Eq
+    deriving (Eq, Generic)
 {-!
 deriving instance Binary Fixity
 deriving instance NFData Fixity
@@ -638,7 +642,7 @@ instance Show Fixity where
     show (PrefixN i) = "prefix " ++ show i
 
 data FixDecl = Fix Fixity String
-    deriving Eq
+    deriving (Eq, Generic)
 
 instance Show FixDecl where
   show (Fix f s) = show f ++ " " ++ s
@@ -653,7 +657,7 @@ instance Ord FixDecl where
 
 
 data Static = Static | Dynamic
-  deriving (Show, Eq, Data, Typeable)
+  deriving (Show, Eq, Data, Generic, Typeable)
 {-!
 deriving instance Binary Static
 deriving instance NFData Static
@@ -677,7 +681,7 @@ data Plicity = Imp { pargopts  :: [ArgOpt]
                       , pstatic  :: Static
                       , pscript  :: PTerm
                       }
-             deriving (Show, Eq, Data, Typeable)
+             deriving (Show, Eq, Data, Generic, Typeable)
 
 {-!
 deriving instance Binary Plicity
@@ -721,7 +725,7 @@ data FnOpt = Inlinable -- ^ always evaluate when simplifying
            | Constructor -- ^ Data constructor type
            | AutoHint    -- ^ use in auto implicit search
            | PEGenerated -- ^ generated by partial evaluator
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic)
 {-!
 deriving instance Binary FnOpt
 deriving instance NFData FnOpt
@@ -739,7 +743,7 @@ dictionary = elem Dictionary
 -- | Type provider - what to provide
 data ProvideWhat' t = ProvTerm t t     -- ^ the first is the goal type, the second is the term
                     | ProvPostulate t  -- ^ goal type must be Type, so only term
-    deriving (Show, Eq, Functor)
+    deriving (Show, Eq, Functor, Generic)
 
 type ProvideWhat = ProvideWhat' PTerm
 
@@ -824,7 +828,7 @@ data PDecl' t
    -- | FC is decl-level, for errors, and Strings represent the
    -- namespace
    | PRunElabDecl FC t [String]
- deriving Functor
+ deriving (Functor, Generic)
 {-!
 deriving instance Binary PDecl'
 deriving instance NFData PDecl'
@@ -851,6 +855,7 @@ data Directive = DLib Codegen String
                | DFragile Name String
                | DAutoImplicits Bool
                | DUsed FC Name Name
+  deriving Generic
 
 -- | A set of instructions for things that need to happen in IState
 -- after a term elaboration when there's been reflected elaboration.
@@ -895,7 +900,7 @@ data PClause' t = PClause  FC Name t [t] t                    [PDecl' t] -- ^ A 
                 | PWith    FC Name t [t] t (Maybe (Name, FC)) [PDecl' t]
                 | PClauseR FC        [t] t                    [PDecl' t]
                 | PWithR   FC        [t] t (Maybe (Name, FC)) [PDecl' t]
-    deriving Functor
+    deriving (Functor, Generic)
 {-!
 deriving instance Binary PClause'
 deriving instance NFData PClause'
@@ -913,7 +918,7 @@ data PData' t  =
   | PLaterdecl { d_name    :: Name
                , d_name_fc :: FC
                , d_tcon    :: t
-  } deriving Functor
+  } deriving (Functor, Generic)
 
 -- | Transform the FCs in a PData and its associated terms. The first
 -- function transforms the general-purpose FCs, and the second
@@ -1103,7 +1108,7 @@ updateNs ns t = mapPT updateRef t
 data PunInfo = IsType
              | IsTerm
              | TypeOrTerm
-             deriving (Eq, Show, Data, Typeable)
+             deriving (Eq, Show, Data, Typeable, Generic)
 
 -- | High level language terms
 data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
@@ -1170,12 +1175,12 @@ data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
            | PConstSugar FC PTerm
              -- ^ A desugared constant. The FC is a precise source
              -- location that will be used to highlight it later.
-       deriving (Eq, Data, Typeable)
+       deriving (Eq, Data, Typeable, Generic)
 
 data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
               | FirstSuccess
               | TryImplicit
-       deriving (Eq, Data, Typeable)
+       deriving (Eq, Data, Generic, Typeable)
 
 -- | Transform the FCs in a PTerm. The first function transforms the
 -- general-purpose FCs, and the second transforms those that are used
@@ -1296,7 +1301,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | TFail [ErrorReportPart]
                 | Qed | Abandon
                 | SourceFC
-    deriving (Show, Eq, Functor, Foldable, Traversable, Data, Typeable)
+    deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, Typeable)
 {-!
 deriving instance Binary PTactic'
 deriving instance NFData PTactic'
@@ -1343,7 +1348,7 @@ data PDo' t = DoExp  FC t
             | DoBindP FC t t [(t,t)]
             | DoLet  FC Name FC t t   -- ^ second FC is precise name location
             | DoLetP FC t t
-    deriving (Eq, Functor, Data, Typeable)
+    deriving (Eq, Functor, Data, Generic, Typeable)
 {-!
 deriving instance Binary PDo'
 deriving instance NFData PDo'
@@ -1384,13 +1389,13 @@ data PArg' t = PImp { priority    :: Int
                             , getScript :: t
                             , getTm     :: t
                             }
-             deriving (Show, Eq, Functor, Data, Typeable)
+             deriving (Show, Eq, Functor, Data, Generic, Typeable)
 
 data ArgOpt = AlwaysShow
             | HideDisplay
             | InaccessibleArg
             | UnknownImp
-            deriving (Show, Eq, Data, Typeable)
+            deriving (Show, Eq, Data, Generic, Typeable)
 
 instance Sized a => Sized (PArg' a) where
   size (PImp p _ l nm trm)            = 1 + size nm + size trm
@@ -1480,7 +1485,7 @@ data ClassInfo = CI {
   , class_params               :: [Name]
   , class_instances            :: [(Name, Bool)] -- ^ the Bool is whether to include in instance search, so named instances are excluded
   , class_determiners          :: [Int]
-  } deriving Show
+  } deriving (Show, Generic)
 {-!
 deriving instance Binary ClassInfo
 deriving instance NFData ClassInfo
@@ -1491,17 +1496,17 @@ data RecordInfo = RI {
     record_parameters  :: [(Name,PTerm)]
   , record_constructor :: Name
   , record_projections :: [Name]
-  } deriving Show
+  } deriving (Show, Generic)
 
 -- Type inference data
 
 data TIData = TIPartial         -- ^ a function with a partially defined type
             | TISolution [Term] -- ^ possible solutions to a metavariable in a type
-    deriving Show
+    deriving (Show, Generic)
 
 -- | Miscellaneous information about functions
 data FnInfo = FnInfo { fn_params :: [Int] }
-    deriving Show
+    deriving (Show, Generic)
 {-!
 deriving instance Binary FnInfo
 deriving instance NFData FnInfo
@@ -1510,7 +1515,7 @@ deriving instance NFData FnInfo
 data OptInfo = Optimise {
     inaccessible :: [(Int,Name)]  -- includes names for error reporting
   , detaggable :: Bool
-  } deriving Show
+  } deriving (Show, Generic)
 {-!
 deriving instance Binary OptInfo
 deriving instance NFData OptInfo
@@ -1528,7 +1533,7 @@ data DSL' t = DSL {
   , dsl_lambda  :: Maybe t
   , dsl_let     :: Maybe t
   , dsl_pi      :: Maybe t
-  } deriving (Show, Functor)
+  } deriving (Show, Functor, Generic)
 {-!
 deriving instance Binary DSL'
 deriving instance NFData DSL'
@@ -1539,7 +1544,7 @@ type DSL = DSL' PTerm
 data SynContext = PatternSyntax
                 | TermSyntax
                 | AnySyntax
-    deriving Show
+    deriving (Show, Generic)
 {-!
 deriving instance Binary SynContext
 deriving instance NFData SynContext
@@ -1547,7 +1552,7 @@ deriving instance NFData SynContext
 
 data Syntax = Rule [SSymbol] PTerm SynContext
             | DeclRule [SSymbol] [PDecl]
-    deriving Show
+    deriving (Show, Generic)
 
 syntaxNames :: Syntax -> [Name]
 syntaxNames (Rule syms _ _) = mapMaybe ename syms
@@ -1570,7 +1575,7 @@ data SSymbol = Keyword Name
              | Binding Name
              | Expr Name
              | SimpleExpr Name
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic)
 
 
 {-!
@@ -1579,6 +1584,7 @@ deriving instance NFData SSymbol
 !-}
 
 newtype SyntaxRules = SyntaxRules { syntaxRulesList :: [Syntax] }
+  deriving Generic
 
 emptySyntaxRules :: SyntaxRules
 emptySyntaxRules = SyntaxRules []
@@ -1632,7 +1638,7 @@ initDSL = DSL (PRef f [] (sUN ">>="))
 
 data Using = UImplicit Name PTerm
            | UConstraint Name [Name]
-    deriving (Show, Eq, Data, Typeable)
+    deriving (Show, Eq, Data, Generic, Typeable)
 {-!
 deriving instance Binary Using
 deriving instance NFData Using
@@ -1656,7 +1662,7 @@ data SyntaxInfo = Syn {
   , syn_in_quasiquote :: Int
   , syn_toplevel      :: Bool
   , withAppAllowed    :: Bool
-  } deriving Show
+  } deriving (Show, Generic)
 {-!
 deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo

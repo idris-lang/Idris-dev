@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-|
 Module      : IRTS.CodegenCommon
 Description : Common data structures required for all code generators.
@@ -7,12 +8,14 @@ Maintainer  : The Idris Community.
 -}
 module IRTS.CodegenCommon where
 
+import GHC.Generics (Generic)
+
 import Idris.Core.TT
 import IRTS.Simplified
 import IRTS.Defunctionalise
 
 data DbgLevel = NONE | DEBUG | TRACE deriving Eq
-data OutputType = Raw | Object | Executable deriving (Eq, Show)
+data OutputType = Raw | Object | Executable deriving (Eq, Show, Generic)
 
 -- | Everything which might be needed in a code generator.
 --

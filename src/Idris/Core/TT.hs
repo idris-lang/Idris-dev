@@ -23,7 +23,7 @@ TT is the core language of Idris. The language has:
      programs with implicit syntax into fully explicit terms.
 -}
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor,
-             DeriveDataTypeable, PatternGuards #-}
+             DeriveDataTypeable, DeriveGeneric, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.TT(
     AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
@@ -80,6 +80,7 @@ import qualified Data.Vector.Unboxed as V
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 import Foreign.Storable (sizeOf)
+import GHC.Generics (Generic)
 
 import Numeric.IEEE (IEEE (identicalIEEE))
 
@@ -96,7 +97,7 @@ data FC = FC { _fc_fname :: String, -- ^ Filename
              }
         | NoFC -- ^ Locations for machine-generated terms
         | FileFC { _fc_fname :: String } -- ^ Locations with file only
-  deriving (Data, Typeable, Ord)
+  deriving (Data, Generic, Typeable, Ord)
 
 -- TODO: find uses and destroy them, doing this case analysis at call sites
 -- | Give a notion of filename associated with an FC
@@ -159,7 +160,7 @@ instance Eq FC where
   _ == _ = True
 
 -- | FC with equality
-newtype FC' = FC' { unwrapFC :: FC } deriving (Data, Typeable, Ord)
+newtype FC' = FC' { unwrapFC :: FC } deriving (Data, Generic, Typeable, Ord)
 
 instance Eq FC' where
   FC' fc == FC' fc' = fcEq fc fc'
@@ -198,10 +199,10 @@ instance Show FC where
     show (FileFC f) = f
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving (Show, Eq)
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving (Show, Eq, Generic)
 
 -- | Text formatting output
-data TextFormatting = BoldText | ItalicText | UnderlineText deriving (Show, Eq)
+data TextFormatting = BoldText | ItalicText | UnderlineText deriving (Show, Eq, Generic)
 
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe String)
@@ -227,7 +228,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                         -- from that file.
                       | AnnQuasiquote
                       | AnnAntiquote
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String
@@ -235,7 +236,7 @@ data ErrorReportPart = TextPart String
                      | TermPart Term
                      | RawPart Raw
                      | SubReport [ErrorReportPart]
-                       deriving (Show, Eq, Data, Typeable)
+                       deriving (Show, Eq, Data, Generic, Typeable)
 
 
 data Provenance = ExpectedType
@@ -243,7 +244,7 @@ data Provenance = ExpectedType
                 | InferredVal
                 | GivenVal
                 | SourceTerm Term
-  deriving (Show, Eq, Data, Typeable)
+  deriving (Show, Eq, Data, Generic, Typeable)
 {-!
 deriving instance NFData Err
 deriving instance Binary Err
@@ -309,7 +310,7 @@ data Err' t
           | RunningElabScript (Err' t) -- ^ The error occurred during a top-level elaboration script
           | ElabScriptStaging Name
           | FancyMsg [ErrorReportPart]
-  deriving (Eq, Functor, Data, Typeable)
+  deriving (Eq, Functor, Data, Generic, Typeable)
 
 type Err = Err' Term
 
@@ -467,7 +468,7 @@ data Name = UN !T.Text -- ^ User-provided name
           | MN !Int !T.Text -- ^ Machine chosen names
           | SN !SpecialName -- ^ Decorated function names
           | SymRef Int -- ^ Reference to IBC file symbol table (used during serialisation)
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Generic, Typeable)
 
 txt :: String -> T.Text
 txt = T.pack
@@ -510,7 +511,7 @@ data SpecialName = WhereN !Int !Name !Name
                  | ElimN !Name
                  | InstanceCtorN !Name
                  | MetaN !Name !Name
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Generic, Typeable)
 {-!
 deriving instance Binary SpecialName
 deriving instance NFData SpecialName
@@ -675,7 +676,7 @@ addAlist [] ctxt = ctxt
 addAlist ((n, tm) : ds) ctxt = addDef n tm (addAlist ds ctxt)
 
 data NativeTy = IT8 | IT16 | IT32 | IT64
-    deriving (Show, Eq, Ord, Enum, Data, Typeable)
+    deriving (Show, Eq, Ord, Enum, Data, Generic, Typeable)
 
 instance Pretty NativeTy OutputAnnotation where
     pretty IT8  = text "Bits8"
@@ -684,7 +685,7 @@ instance Pretty NativeTy OutputAnnotation where
     pretty IT64 = text "Bits64"
 
 data IntTy = ITFixed NativeTy | ITNative | ITBig | ITChar
-    deriving (Show, Eq, Ord, Data, Typeable)
+    deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
 intTyName :: IntTy -> String
 intTyName ITNative = "Int"
@@ -693,7 +694,7 @@ intTyName (ITFixed sized) = "B" ++ show (nativeTyWidth sized)
 intTyName (ITChar) = "Char"
 
 data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors https://github.com/idris-lang/Idris-dev/issues/1723
-    deriving (Show, Eq, Ord, Data, Typeable)
+    deriving (Show, Eq, Ord, Data, Generic, Typeable)
 {-!
 deriving instance NFData IntTy
 deriving instance NFData NativeTy
@@ -725,7 +726,7 @@ data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | AType ArithTy | StrType
            | WorldType | TheWorld
            | VoidType | Forgot
-  deriving (Ord, Data, Typeable)
+  deriving (Ord, Data, Generic, Typeable)
 
 -- We need to compare Double using bit-pattern identity rather than
 -- Haskell's Eq, which equates 0.0 and -0.0, leading to a
@@ -821,7 +822,7 @@ constDocs (B64 w)                          = "The sixty-four-bit value 0x" ++
 constDocs prim                             = "Undocumented"
 
 data Universe = NullType | UniqueType | AllTypes
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Generic, Typeable)
 
 instance Show Universe where
     show UniqueType = "UniqueType"
@@ -834,7 +835,7 @@ data Raw = Var Name
          | RType
          | RUType Universe
          | RConstant Const
-  deriving (Show, Eq, Data, Typeable)
+  deriving (Show, Eq, Data, Generic, Typeable)
 
 instance Sized Raw where
   size (Var name) = 1
@@ -854,7 +855,7 @@ deriving instance NFData Raw
 
 data ImplicitInfo = Impl { tcinstance :: Bool, toplevel_imp :: Bool,
                            machine_gen :: Bool }
-  deriving (Show, Eq, Ord, Data, Typeable)
+  deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
 {-!
 deriving instance Binary ImplicitInfo
@@ -906,7 +907,7 @@ data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}
                 -- that make up pattern-match clauses)
               | PVTy  { binderTy  :: !b }
                 -- ^ The type of a pattern binding
-  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Data, Typeable)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Data, Generic, Typeable)
 {-!
 deriving instance Binary Binder
 deriving instance NFData Binder
@@ -951,7 +952,7 @@ internalNS = "(internal)"
 -- | Universe expressions for universe checking
 data UExp = UVar String Int -- ^ universe variable, with source file to disambiguate
           | UVal Int -- ^ explicit universe level
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Generic, Typeable)
 {-!
 deriving instance NFData UExp
 !-}
@@ -969,11 +970,11 @@ instance Show UExp where
 -- | Universe constraints
 data UConstraint = ULT UExp UExp -- ^ Strictly less than
                  | ULE UExp UExp -- ^ Less than or equal to
-  deriving (Eq, Ord, Data, Typeable)
+  deriving (Eq, Ord, Data, Generic, Typeable)
 
 data ConstraintFC = ConstraintFC { uconstraint :: UConstraint,
                                    ufc :: FC }
-  deriving (Show, Data, Typeable)
+  deriving (Show, Data, Generic, Typeable)
 
 instance Eq ConstraintFC where
     x == y = uconstraint x == uconstraint y
@@ -991,7 +992,7 @@ data NameType = Bound
               | Ref
               | DCon {nt_tag :: Int, nt_arity :: Int, nt_unique :: Bool} -- ^ Data constructor
               | TCon {nt_tag :: Int, nt_arity :: Int} -- ^ Type constructor
-  deriving (Show, Ord, Data, Typeable)
+  deriving (Show, Ord, Data, Generic, Typeable)
 {-!
 deriving instance Binary NameType
 deriving instance NFData NameType
@@ -1013,7 +1014,7 @@ instance Eq NameType where
 data AppStatus n = Complete
                  | MaybeHoles
                  | Holes [n]
-    deriving (Eq, Ord, Functor, Data, Typeable, Show)
+    deriving (Eq, Ord, Functor, Data, Generic, Typeable, Show)
 
 -- | Terms in the core language. The type parameter is the type of
 -- identifiers used for bindings and explicit named references;
@@ -1031,7 +1032,7 @@ data TT n = P NameType n (TT n) -- ^ named references with type
           | Impossible -- ^ special case for totality checking
           | TType UExp -- ^ the type of types at some level
           | UType Universe -- ^ Uniqueness type universe (disjoint from TType)
-  deriving (Ord, Functor, Data, Typeable)
+  deriving (Ord, Functor, Data, Generic, Typeable)
 {-!
 deriving instance Binary TT
 deriving instance NFData TT
@@ -1096,7 +1097,7 @@ data DataOpt = Codata -- ^ Set if the the data-type is coinductive
              | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
              | DefaultCaseFun -- ^ Set if a case function should be generated for data type
              | DataErrRev
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic)
 
 type DataOpts = [DataOpt]
 
@@ -1105,7 +1106,7 @@ data TypeInfo = TI { con_names :: [Name],
                      data_opts :: DataOpts,
                      param_pos :: [Int],
                      mutual_types :: [Name] }
-    deriving Show
+    deriving (Show, Generic)
 {-!
 deriving instance Binary TypeInfo
 deriving instance NFData TypeInfo

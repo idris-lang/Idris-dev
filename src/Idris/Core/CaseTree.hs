@@ -18,7 +18,8 @@ allows casing on arbitrary terms, here we choose to maintain the distinction
 in order to allow for better optimisation opportunities.
 
 -}
-{-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances #-}
+{-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances,
+    DeriveGeneric #-}
 
 module Idris.Core.CaseTree (
     CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo
@@ -36,6 +37,7 @@ import Data.Maybe
 import Data.List hiding (partition)
 import qualified Data.List(partition)
 import Debug.Trace
+import GHC.Generics (Generic)
 
 data CaseDef = CaseDef [Name] !SC [Term]
     deriving Show
@@ -45,14 +47,14 @@ data SC' t = Case CaseType Name [CaseAlt' t]  -- ^ invariant: lowest tags first
            | STerm !t
            | UnmatchedCase String -- ^ error message
            | ImpossibleCase -- ^ already checked to be impossible
-    deriving (Eq, Ord, Functor)
+    deriving (Eq, Ord, Functor, Generic)
 {-!
 deriving instance Binary SC'
 deriving instance NFData SC'
 !-}
 
 data CaseType = Updatable | Shared
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord, Show, Generic)
 
 type SC = SC' Term
 
@@ -61,7 +63,7 @@ data CaseAlt' t = ConCase Name Int [Name] !(SC' t)
                 | ConstCase Const         !(SC' t)
                 | SucCase Name            !(SC' t)
                 | DefaultCase             !(SC' t)
-    deriving (Show, Eq, Ord, Functor)
+    deriving (Show, Eq, Ord, Functor, Generic)
 {-!
 deriving instance Binary CaseAlt'
 deriving instance NFData CaseAlt'
