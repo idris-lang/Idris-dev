@@ -364,7 +364,7 @@ pprintErr' i (CantResolve _ c e)
 pprintErr' i (InvalidTCArg n t)
    = annTm t (pprintTerm i (delabSugared i t)) <+> text " cannot be a parameter of "
         <> annName n <$>
-        text "(Implementation arguments must be injective)"
+        text "(Implementation arguments must be type or data constructors)"
 pprintErr' i (CantResolveAlts as) = text "Can't disambiguate name:" <+>
                                     align (cat (punctuate (comma <> space) (map (fmap (fancifyAnnots i True) . annName) as)))
 pprintErr' i (NoValidAlts as) = text "Can't disambiguate since no name has a suitable type:" <+>
