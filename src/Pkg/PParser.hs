@@ -59,6 +59,20 @@ defaultPkg = PkgDesc "" Nothing Nothing Nothing Nothing
 instance HasLastTokenSpan PParser where
   getLastTokenSpan = return Nothing
 
+#if MIN_VERSION_base(4,9,0)
+instance {-# OVERLAPPING #-} DeltaParsing PParser where
+  line = lift line
+  {-# INLINE line #-}
+  position = lift position
+  {-# INLINE position #-}
+  slicedWith f (StateT m) = StateT $ \s -> slicedWith (\(a,s') b -> (f a b, s')) $ m s
+  {-# INLINE slicedWith #-}
+  rend = lift rend
+  {-# INLINE rend #-}
+  restOfLine = lift restOfLine
+  {-# INLINE restOfLine #-}
+#endif
+
 #if MIN_VERSION_base(4,8,0)
 instance {-# OVERLAPPING #-} TokenParsing PParser where
 #else
@@ -71,7 +85,7 @@ parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do
     p <- readFile fp
     case runparser pPkg defaultPkg fp p of
-      Failure err -> fail (show $ PP.plain err)
+      Failure (ErrInfo err _) -> fail (show $ PP.plain err)
       Success x -> return x
 
 pPkg :: PParser PkgDesc

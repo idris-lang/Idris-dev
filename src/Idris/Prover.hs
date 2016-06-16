@@ -39,7 +39,7 @@ import qualified Idris.IdeMode as IdeMode
 import Idris.Output
 import Idris.TypeSearch (searchByType)
 
-import Text.Trifecta.Result(Result(..))
+import Text.Trifecta.Result(Result(..), ErrInfo(..))
 
 import System.IO (Handle, stdin, stdout, hPutStrLn)
 import System.Console.Haskeline
@@ -325,7 +325,7 @@ elabloop info fn d prompt prf e prev h env
        (d, prev', st, done, prf', env', res) <-
          idrisCatch
            (case cmd of
-              Failure err ->
+              Failure (ErrInfo err _) ->
                 return (False, prev, e, False, prf, env, Left . Msg . show . fixColour (idris_colourRepl ist) $ err)
               Success (Left cmd') ->
                 case cmd' of
@@ -440,7 +440,7 @@ ploop fn d prompt prf e h
             _ -> return ()
          (d, st, done, prf', res) <- idrisCatch
            (case cmd of
-              Failure err -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
+              Failure (ErrInfo err _) -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
               Success Undo -> do (_, st) <- elabStep e loadState
                                  return (True, st, False, init prf, Right $ iPrintResult "")
               Success ProofState -> return (True, e, False, prf, Right $ iPrintResult "")

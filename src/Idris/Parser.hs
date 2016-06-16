@@ -1569,7 +1569,7 @@ parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [Im
 parseImports fname input
     = do i <- getIState
          case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
-              Failure err -> fail (show err)
+              Failure (ErrInfo err _) -> fail (show err)
               Success (x, annots, i) ->
                 do putIState i
                    fname' <- runIO $ Dir.makeAbsolute fname
@@ -1631,7 +1631,7 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            Failure doc     -> do -- FIXME: Get error location from trifecta
+            Failure (ErrInfo doc _)     -> do -- FIXME: Get error location from trifecta
                                   -- this can't be the solution!
                                   -- Issue #1575 on the issue tracker.
                                   --    https://github.com/idris-lang/Idris-dev/issues/1575
