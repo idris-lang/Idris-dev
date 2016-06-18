@@ -1821,6 +1821,7 @@ loadSource lidr f toline
                   i <- getIState
                   mapM_ buildSCG (idris_totcheck i)
                   mapM_ checkDeclTotality (idris_totcheck i)
+                  mapM_ verifyTotality (idris_totcheck i)
 
                   -- Redo totality check for deferred names
                   let deftots = idris_defertotcheck i

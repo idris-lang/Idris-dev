@@ -470,16 +470,43 @@ checkTotality path fc n
 checkDeclTotality :: (FC, Name) -> Idris Totality
 checkDeclTotality (fc, n)
     = do logCoverage 2 $ "Checking " ++ show n ++ " for totality"
---          buildSCG (fc, n)
---          logCoverage 2 $ "Built SCG"
          i <- getIState
-         let opts = case lookupCtxt n (idris_flags i) of
-                              [fs] -> fs
+         let opts = case lookupCtxtExact n (idris_flags i) of
+                              Just fs -> fs
                               _ -> []
          when (CoveringFn `elem` opts) $ checkAllCovering fc [] n n
          t <- checkTotality [] fc n
          return t
 
+-- If the name calls something which is partial, set it as partial
+verifyTotality :: (FC, Name) -> Idris ()
+verifyTotality (fc, n)
+    = do logCoverage 2 $ "Checking " ++ show n ++ "'s descendents are total"
+         ist <- getIState
+         case lookupTotalExact n (tt_ctxt ist) of
+              Just (Total _) -> do
+                 let ns = getNames (tt_ctxt ist)
+
+                 case getPartial ist [] ns of
+                      Nothing -> return ()
+                      Just bad -> do let t' = Partial (Other bad) 
+                                     logCoverage 2 $ "Set to " ++ show t'
+                                     setTotality n t'
+                                     addIBC (IBCTotal n t')
+              _ -> return ()
+  where
+    getNames ctxt = case lookupDefExact n ctxt of
+                         Just (CaseOp  _ _ _ _ _ defs)
+                           -> let (top, def) = cases_compiletime defs in
+                                  map fst (findCalls' True def top)
+                         _ -> []
+
+    getPartial ist [] [] = Nothing
+    getPartial ist bad [] = Just bad
+    getPartial ist bad (n : ns) 
+        = case lookupTotalExact n (tt_ctxt ist) of
+               Just (Partial _) -> getPartial ist (n : bad) ns
+               _ -> getPartial ist bad ns
 
 -- | Calculate the size change graph for this definition
 --
@@ -549,15 +576,17 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
            = findCalls cases Delayed arg pvs pargs
      | (P _ n _, args) <- unApply ap,
        Delayed <- guarded,
-       n == topfn -- Under a delayed recursive call to the top level function,
-                  -- just check the arguments
-           = concatMap (\x -> findCalls cases Unguarded x pvs pargs) args
-     | (P _ n _, args) <- unApply ap,
-       Delayed <- guarded,
        isConName n (tt_ctxt ist)
            = -- Still under a 'Delay' and constructor guarded, so check
              -- just the arguments to the constructor, remaining Delayed
              concatMap (\x -> findCalls cases guarded x pvs pargs) args
+     | (P _ ifthenelse _, [_, _, t, e]) <- unApply ap,
+       ifthenelse == sNS (sUN "ifThenElse") ["Bool", "Prelude"]
+       -- Continue look inside if...then...else blocks
+       -- TODO: Consider whether we should do this for user defined ifThenElse
+       -- rather than just the one in the Prelude as a special case
+       = findCalls cases guarded t pvs pargs ++
+         findCalls cases guarded e pvs pargs
      | (P _ n _, args) <- unApply ap,
        caseName n && n /= topfn,
        notPartial (lookupTotalExact n (tt_ctxt ist))
@@ -569,13 +598,10 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
              if n `notElem` cases
                 then findCallsCase (n : cases) guarded n args pvs pargs
                 else []
-     | (P _ ifthenelse _, [_, _, t, e]) <- unApply ap,
-       ifthenelse == sNS (sUN "ifThenElse") ["Bool", "Prelude"]
-       -- Continue look inside if...then...else blocks
-       -- TODO: Consider whether we should do this for user defined ifThenElse
-       -- rather than just the one in the Prelude as a special case
-       = findCalls cases guarded t pvs pargs ++
-         findCalls cases guarded e pvs pargs
+     | (P _ n _, args) <- unApply ap,
+       Delayed <- guarded
+       -- Under a delayed recursive call just check the arguments
+           = concatMap (\x -> findCalls cases Unguarded x pvs pargs) args
      | (P _ n _, args) <- unApply ap
         -- Ordinary call, not under a delay.
         -- If n is a constructor, set 'args' as Guarded
