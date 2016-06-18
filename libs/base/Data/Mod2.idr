@@ -24,7 +24,6 @@ public export partial
 rem : Mod2 n -> Mod2 n -> Mod2 n
 rem = modBin urem
 
-%assert_total
 public export
 intToMod : {n : Nat} -> Integer -> Mod2 n
 intToMod {n=n} x = MkMod2 (intToBits x)
@@ -53,10 +52,10 @@ implementation Cast (Bits n) (Mod2 n) where
 modToStr : Mod2 n -> String
 modToStr x = pack (reverse (helper x))
     where
-      %assert_total
       helper : Mod2 n -> List Char
-      helper x = strIndex "0123456789" (prim__truncBigInt_Int (bitsToInt (cast (x `rem` 10))))
-                 :: (if x < 10 then [] else helper (x `div` 10))
+      helper x = assert_total $ 
+                  strIndex "0123456789" (prim__truncBigInt_Int (bitsToInt (cast (x `rem` 10))))
+                    :: (if x < 10 then [] else helper (x `div` 10))
 
 
 implementation Show (Mod2 n) where

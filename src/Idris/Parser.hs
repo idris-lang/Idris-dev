@@ -702,7 +702,9 @@ fnOpt = do reservedHL "total"; return TotalFn
         <|> do try (lchar '%' *> reserved "inline");
                     return Inlinable
         <|> do try (lchar '%' *> reserved "assert_total");
-                    return AssertTotal
+               fc <- getFC
+               parserWarning fc Nothing (Msg "%assert_total is deprecated. Use the 'assert_total' function instead.")
+               return AssertTotal
         <|> do try (lchar '%' *> reserved "error_handler");
                     return ErrorHandler
         <|> do try (lchar '%' *> reserved "error_reverse");

@@ -172,17 +172,22 @@ assert_smaller x y = y
 assert_total : a -> a
 assert_total x = x
 
+||| Assert to the totality checker that the case using this expression
+||| is unreachable
+assert_unreachable : a
+-- compiled as primitive
+
 ||| Subvert the type checker. This function is abstract, so it will not reduce in
 ||| the type checker. Use it with care - it can result in segfaults or worse!
-export %assert_total -- need to pretend
+export 
 believe_me : a -> b
-believe_me x = prim__believe_me _ _ x
+believe_me x = assert_total (prim__believe_me _ _ x)
 
 ||| Subvert the type checker. This function *will*  reduce in the type checker.
 ||| Use it with extreme care - it can result in segfaults or worse!
-public export %assert_total
+public export 
 really_believe_me : a -> b
-really_believe_me x = prim__believe_me _ _ x
+really_believe_me x = assert_total (prim__believe_me _ _ x)
 
 ||| Deprecated alias for `Double`, for the purpose of backwards
 ||| compatibility. Idris does not support 32 bit floats at present.

@@ -23,7 +23,7 @@ in order to allow for better optimisation opportunities.
 module Idris.Core.CaseTree (
     CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo
   , Phase(..), CaseTree, CaseType(..)
-  , simpleCase, small, namesUsed, findCalls, findUsedArgs
+  , simpleCase, small, namesUsed, findCalls, findCalls', findUsedArgs
   , substSC, substAlt, mkForce
   ) where
 
@@ -150,7 +150,10 @@ namesUsed sc = nub $ nu' [] sc where
 -- in each argument position for the call, in order to help reduce
 -- compilation time, and trace all unused arguments
 findCalls :: SC -> [Name] -> [(Name, [[Name]])]
-findCalls sc topargs = nub $ nu' topargs sc where
+findCalls = findCalls' False
+
+findCalls' :: Bool -> SC -> [Name] -> [(Name, [[Name]])]
+findCalls' ignoreasserts sc topargs = nub $ nu' topargs sc where
     nu' ps (Case _ n alts) = nub (concatMap (nua (n : ps)) alts)
     nu' ps (ProjCase t alts) = nub $ nut ps t ++ concatMap (nua ps) alts
     nu' ps (STerm t)     = nub $ nut ps t
@@ -166,8 +169,11 @@ findCalls sc topargs = nub $ nu' topargs sc where
                      | otherwise = [(n, [])] -- tmp
     nut ps fn@(App _ f a)
         | (P _ n _, args) <- unApply fn
-             = if n `elem` ps then nut ps f ++ nut ps a
-                  else [(n, map argNames args)] ++ concatMap (nut ps) args
+             = if ignoreasserts && n == sUN "assert_total" 
+                  then []
+                  else if n `elem` ps 
+                          then nut ps f ++ nut ps a
+                          else [(n, map argNames args)] ++ concatMap (nut ps) args
         | (P (TCon _ _) n _, _) <- unApply fn = []
         | otherwise = nut ps f ++ nut ps a
     nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc

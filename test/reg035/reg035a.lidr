@@ -15,13 +15,12 @@
 > hasNoDuplicates : (Eq alpha) => List alpha -> Bool
 > hasNoDuplicates as = as == nub as
 
-> %assert_total
 > setEq : (Eq alpha) => List alpha -> List alpha -> Bool
 > setEq Nil Nil = True
 > setEq Nil (y :: ys) = False
 > setEq (x :: xs) Nil = False
 > setEq {alpha} (x :: xs) (y :: ys) =
->   (x == y && setEq xs ys) 
+>   assert_total $ (x == y && setEq xs ys) 
 >   ||
 >   (elem x ys && elem y xs && 
 >    setEq (filter (/= y) xs) (filter (/= x) ys)

@@ -73,6 +73,14 @@
   them as mutually defined functions with their top level function, meaning
   that it can spot more total functions.
 
+* The totality checker now looks under `if...then...else` blocks when checking
+  for productivity.
+
+* The `%assert_total` directive is now deprecated. Instead, you can
+  use one of the functions `assert_total`, `assert_smaller` or
+  `assert_unreachable` to describe more precisely where a totality assertion
+  is needed.
+
 ## Library updates
 
 * `Control.WellFounded` module removed, and added to the Prelude as

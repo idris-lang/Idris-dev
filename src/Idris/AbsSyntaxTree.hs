@@ -334,6 +334,7 @@ primDefs = [ sUN "unsafePerformPrimIO"
            , sUN "mkLazyForeignPrim"
            , sUN "mkForeignPrim"
            , sUN "void"
+           , sUN "assert_unreachable"
            ]
 
 -- information that needs writing for the current module's .ibc file
