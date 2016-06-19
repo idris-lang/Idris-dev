@@ -12,6 +12,9 @@ void* fileOpen(char* f, char* mode);
 void fileClose(void* h);
 int fileEOF(void* h);
 int fileError(void* h);
+// Returns a negative number if not a file (e.g. directory or device)
+int fileSize(void* h);
+
 // return 0 on success
 int idris_writeStr(void*h, char* str);
 // construct a file error structure (see Prelude.File) from errno
@@ -19,6 +22,7 @@ VAL idris_mkFileError(VM* vm);
 
 void* do_popen(const char* cmd, const char* mode);
 int fpoll(void* h);
+
 
 int idris_eqPtr(void* x, void* y);
 int isNull(void* ptr);

@@ -376,6 +376,15 @@ execForeign env ctxt arity ty fn xs onfail
                       "The argument to fileClose should be a file handle, but it was " ++
                       show handle ++
                       ". Are all cases covered?"
+    | Just (FFun "fileSize" [(_,handle)] _) <- foreignFromTT arity ty fn xs
+           = case handle of
+               EHandle h -> do size <- execIO $ hFileSize h
+                               let res = ioWrap (EConstant (I (fromInteger size)))
+                               execApp env ctxt res (drop arity xs)
+               _ -> execFail . Msg $
+                      "The argument to fileSize should be a file handle, but it was " ++
+                      show handle ++
+                      ". Are all cases covered?"
 
     | Just (FFun "isNull" [(_, ptr)] _) <- foreignFromTT arity ty fn xs
            = case ptr of
