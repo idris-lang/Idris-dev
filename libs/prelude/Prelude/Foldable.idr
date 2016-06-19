@@ -9,9 +9,30 @@ import Prelude.Algebra
 %access public export
 %default total
 
+||| The `Foldable` interface describes how you can iterate over the
+||| elements in a parameterised type and combine the elements
+||| together, using a provided function, into a single result.
+|||
+||| @t The type of the 'Foldable' parameterised type.
 interface Foldable (t : Type -> Type) where
-  foldr : (elem -> acc -> acc) -> acc -> t elem -> acc
-  foldl : (acc -> elem -> acc) -> acc -> t elem -> acc
+
+  ||| Successivly combine the elements in a parameterised type using
+  ||| the provided function, starting with the element that is in the
+  ||| final position i.e. the right-most position.
+  |||
+  ||| @func  The function used to 'fold' an element into the accumulated result.
+  ||| @input The parameterised type.
+  ||| @init  The starting value the results are being combined into.
+  foldr : (func : elem -> acc -> acc) -> (init : acc) -> (input : t elem) -> acc
+
+  ||| The same as `foldr` but begins the folding from the element at
+  ||| the initial position in the data structure i.e. the left-most
+  ||| position.
+  |||
+  ||| @func  The function used to 'fold' an element into the accumulated result.
+  ||| @input The parameterised type.
+  ||| @init  The starting value the results are being combined into.
+  foldl : (func : acc -> elem -> acc) -> (init : acc) -> (input : t elem) -> acc
   foldl f z t = foldr (flip (.) . flip f) id t z
 
 ||| Combine each element of a structure into a monoid
