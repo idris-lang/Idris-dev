@@ -61,11 +61,11 @@ grow factor (B arr ofs end) = do
   BA.copy (arr, ofs) (arr', ofs') bytesUsed
   return $ B arr' ofs' (ofs' + bytesUsed)
 
-%assert_total
 export
 snoc : Bytes -> Byte -> Bytes
 snoc bs@(B arr ofs end) byte
-    = if end >= BA.size arr
+    = assert_total $
+       if end >= BA.size arr
         then unsafePerformIO $ do  -- need more space
           grown <- grow 2 bs
           return $ snoc grown byte
@@ -114,11 +114,10 @@ namespace ConsView
         return $ ConsView.Cons first (B arr (ofs+1) end)
 
 infixr 7 ++
-%assert_total
 export
 (++) : Bytes -> Bytes -> Bytes
 (++) bsL@(B arrL ofsL endL) bsR@(B arrR ofsR endR)
-  = let countR = endR - ofsR in
+  = assert_total $ let countR = endR - ofsR in
       if endL + countR > BA.size arrL
         then unsafePerformIO $ do  -- need more space
           grown <- grow 2 bsL

@@ -411,11 +411,10 @@ intercalate sep xss = concat $ intersperse sep xss
 |||     transpose (transpose [[], [1, 2]]) = [[1, 2]]
 |||
 ||| TODO: Solution which satisfies the totality checker?
-%assert_total
 transpose : List (List a) -> List (List a)
 transpose [] = []
 transpose ([] :: xss) = transpose xss
-transpose ((x::xs) :: xss) = (x :: (mapMaybe head' xss)) :: (transpose (xs :: (map (drop 1) xss)))
+transpose ((x::xs) :: xss) = assert_total $ (x :: (mapMaybe head' xss)) :: (transpose (xs :: (map (drop 1) xss)))
 
 --------------------------------------------------------------------------------
 -- Membership tests

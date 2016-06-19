@@ -219,6 +219,10 @@ elabDecl' what info (PMutual f ps)
                  (map snd (idris_totcheck i))
          mapM_ buildSCG (idris_totcheck i)
          mapM_ checkDeclTotality (idris_totcheck i)
+         -- We've only checked that things are total independently. Given
+         -- the ordering, something we think is total might have called
+         -- something we hadn't checked yet
+         mapM_ verifyTotality (idris_totcheck i)
          clear_totcheck
   where isDataDecl (PData _ _ _ _ _ _) = True
         isDataDecl _ = False

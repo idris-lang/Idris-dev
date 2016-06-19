@@ -235,32 +235,34 @@ implementation (Eq a) => Eq (Binder a) where
 
 implementation Show TT where
   showPrec = my_show
-    where %assert_total my_show : Prec -> TT -> String
-          my_show d (P nt n t) = showCon d "P" $ showArg nt ++ showArg n ++ showArg t
-          my_show d (V i) = showCon d "V" $ showArg i
-          my_show d (Bind n b t) = showCon d "Bind" $ showArg n ++ showArg b ++ showArg t
-          my_show d (App t1 t2) = showCon d "App" $ showArg t1 ++ showArg t2
-          my_show d (TConst c) = showCon d "TConst" $ showArg c
+    where my_show : Prec -> TT -> String
+          my_show d (P nt n t) = assert_total $ showCon d "P" $ showArg nt ++ showArg n ++ showArg t
+          my_show d (V i) = assert_total $ showCon d "V" $ showArg i
+          my_show d (Bind n b t) = assert_total $ showCon d "Bind" $ showArg n ++ showArg b ++ showArg t
+          my_show d (App t1 t2) = assert_total $ showCon d "App" $ showArg t1 ++ showArg t2
+          my_show d (TConst c) = assert_total $ showCon d "TConst" $ showArg c
           my_show d Erased = "Erased"
-          my_show d (TType u) = showCon d "TType" $ showArg u
-
-implementation Eq TT where
-  a == b = equalp a b
-    where %assert_total equalp : TT -> TT -> Bool
-          equalp (P nt n t)   (P nt' n' t')    = nt == nt' && n == n' && t == t'
-          equalp (V i)        (V i')           = i == i'
-          equalp (Bind n b t) (Bind n' b' t')  = n == n' && b == b' && t == t'
-          equalp (App t1 t2)  (App t1' t2')    = t1 == t1' && t2 == t2'
-          equalp (TConst c)   (TConst c')      = c == c'
-          equalp Erased       Erased           = True
-          equalp (TType u)    (TType u')       = u == u'
-          equalp x            y                = False
+          my_show d (TType u) = assert_total $ showCon d "TType" $ showArg u
+          my_show d (UType u) = "UType"
 
 implementation Eq Universe where
   Reflection.NullType   == Reflection.NullType   = True
   Reflection.UniqueType == Reflection.UniqueType = True
   Reflection.AllTypes   == Reflection.AllTypes   = True
   _                     == _                     = False
+
+implementation Eq TT where
+  a == b = equalp a b
+    where equalp : TT -> TT -> Bool
+          equalp (P nt n t)   (P nt' n' t')    = assert_total $ nt == nt' && n == n' && t == t'
+          equalp (V i)        (V i')           = assert_total $ i == i'
+          equalp (Bind n b t) (Bind n' b' t')  = assert_total $ n == n' && b == b' && t == t'
+          equalp (App t1 t2)  (App t1' t2')    = assert_total $ t1 == t1' && t2 == t2'
+          equalp (TConst c)   (TConst c')      = c == c'
+          equalp Erased       Erased           = True
+          equalp (TType u)    (TType u')       = u == u'
+          equalp (UType u)    (UType u')       = u == u'
+          equalp x            y                = False
 
 total
 forget : TT -> Maybe Raw
@@ -288,12 +290,13 @@ forget tm = fe [] tm
 
 implementation Show Raw where
   showPrec = my_show
-    where %assert_total my_show : Prec -> Raw -> String
-          my_show d (Var n) = showCon d "Var" $ showArg n
-          my_show d (RBind n b tm) = showCon d "RBind" $ showArg n ++ showArg b ++ " " ++ my_show App tm
-          my_show d (RApp tm tm') = showCon d "RApp" $ " " ++ my_show App tm ++ " " ++ my_show App tm'
+    where my_show : Prec -> Raw -> String
+          my_show d (Var n) = assert_total $ showCon d "Var" $ showArg n
+          my_show d (RBind n b tm) = assert_total $ showCon d "RBind" $ showArg n ++ showArg b ++ " " ++ my_show App tm
+          my_show d (RApp tm tm') = assert_total $ showCon d "RApp" $ " " ++ my_show App tm ++ " " ++ my_show App tm'
           my_show d RType = "RType"
-          my_show d (RConstant c) = showCon d "RConstant" $ showArg c
+          my_show d (RConstant c) = assert_total $ showCon d "RConstant" $ showArg c
+          my_show d (RUType u) = "RUType" 
 
 
 implementation Show Err where

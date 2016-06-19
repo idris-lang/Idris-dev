@@ -18,11 +18,12 @@ namespace Integer
   divides : (val : Integer) -> (d : Integer) -> Divides val d
   divides val 0 = DivByZero
   divides val d
-         = let dividend = if d < 0 then -(val `div` abs d)
-                                   else val `div` d
-               remainder = abs (val - dividend * d) in
-               believe_me (DivBy {d} {div = dividend} {rem = remainder}
-                                 (believe_me (Refl {x = True})))
+         = assert_total $
+             let dividend = if d < 0 then -(val `div` abs d)
+                                     else val `div` d
+                 remainder = abs (val - dividend * d) in
+                 believe_me (DivBy {d} {div = dividend} {rem = remainder}
+                                   (believe_me (Refl {x = True})))
 
   ||| View for recursion over Integers
   data IntegerRec : Integer -> Type where
@@ -54,11 +55,12 @@ namespace Int
   divides : (val : Int) -> (d : Int) -> Divides val d
   divides val 0 = DivByZero
   divides val d
-         = let dividend = if d < 0 then -(val `div` abs d)
-                                   else val `div` d
-               remainder = abs (val - dividend * d) in
-               believe_me (DivBy {d} {div = dividend} {rem = remainder}
-                                 (believe_me (Refl {x = True})))
+         = assert_total $
+             let dividend = if d < 0 then -(val `div` abs d)
+                                     else val `div` d
+                 remainder = abs (val - dividend * d) in
+                 believe_me (DivBy {d} {div = dividend} {rem = remainder}
+                                   (believe_me (Refl {x = True})))
 
   ||| View for recursion over Ints
   data IntRec : Int -> Type where

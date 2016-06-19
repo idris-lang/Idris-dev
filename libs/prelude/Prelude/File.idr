@@ -6,6 +6,7 @@ import Prelude.Maybe
 import Prelude.Monad
 import Prelude.Chars
 import Prelude.Strings
+import Prelude.Nat
 import Prelude.Cast
 import Prelude.Bool
 import Prelude.Basics
@@ -26,11 +27,12 @@ data File : Type where
 ||| An error from a file operation
 -- This is built in idris_mkFileError() in rts/idris_stdfgn.c. Make sure
 -- the values correspond!
-data FileError = FileReadError
+               
+data FileError = GenericFileError Int -- errno
+               | FileReadError
                | FileWriteError
                | FileNotFound
                | PermissionDenied
-               | GenericFileError Int -- errno
 
 private
 strError : Int -> String
@@ -134,6 +136,22 @@ closeFile : File -> IO ()
 closeFile (FHandle h) = do_fclose h
 
 private
+do_getFileSize : Ptr -> IO Int
+do_getFileSize h = foreign FFI_C "fileSize" (Ptr -> IO Int) h
+
+||| Return the size of a File
+||| Returns an error if the File is not an ordinary file (e.g. a directory)
+||| Also note that this currently returns an Int, which may overflow if the 
+||| file is very big
+export
+fileSize : File -> IO (Either FileError Int)
+fileSize (FHandle h) = do s <- do_getFileSize h
+                          if (s < 0) 
+                             then do err <- getFileError
+                                     return (Left err)
+                             else return (Right s) 
+
+private
 do_fread : Ptr -> IO' l String
 do_fread h = prim_fread h
 
@@ -233,22 +251,28 @@ fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
                        return (p > 0)
 
 ||| Read the contents of a file into a string
--- might be reading something infinitely long like /dev/null ...
-covering export
-readFile : String -> IO (Either FileError String)
+||| This checks the size of the file before beginning to read, and only
+||| reads that many bytes, to ensure that it remains a total function if
+||| the file is appended to while being read.
+||| Returns an error if filepath is not a normal file.
+export
+readFile : (filepath : String) -> IO (Either FileError String)
 readFile fn = do Right h <- openFile fn Read
                     | Left err => return (Left err)
-                 c <- readFile' h ""
+                 Right max <- fileSize h
+                    | Left err => return (Left err)
+                 c <- readFile' h max ""
                  closeFile h
                  return c
   where
-    covering
-    readFile' : File -> String -> IO (Either FileError String)
-    readFile' h contents =
+    readFile' : File -> Int -> String -> IO (Either FileError String)
+    readFile' h max contents =
        do x <- fEOF h
-          if not x then do Right l <- fGetLine h
+          if not x && max > 0
+                   then do Right l <- fGetLine h
                                | Left err => return (Left err)
-                           readFile' h (contents ++ l)
+                           assert_total $
+                             readFile' h (max - cast (length l)) (contents ++ l)
                    else return (Right contents)
 
 ||| Write a string to a file

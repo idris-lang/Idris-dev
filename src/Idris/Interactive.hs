@@ -20,6 +20,7 @@ import Idris.CaseSplit
 import Idris.AbsSyntax
 import Idris.ElabDecls
 import Idris.Error
+import Idris.ErrReverse
 import Idris.Delaborate
 import Idris.Output
 import Idris.IdeMode hiding (IdeModeCommand(..))
@@ -333,11 +334,14 @@ makeLemma fn updatefile l n
         let isProv = checkProv tyline (show n)
 
         ctxt <- getContext
-        (fname, mty) <- case lookupTyName n ctxt of
-                          [t] -> return t
-                          [] -> ierror (NoSuchVariable n)
-                          ns -> ierror (CantResolveAlts (map fst ns))
+        (fname, mty_full) <- case lookupTyName n ctxt of
+                                  [t] -> return t
+                                  [] -> ierror (NoSuchVariable n)
+                                  ns -> ierror (CantResolveAlts (map fst ns))
+
         i <- getIState
+        let mty = errReverse i mty_full
+
         margs <- case lookup fname (idris_metavars i) of
                       Just (_, arity, _, _, _) -> return arity
                       _ -> return (-1)

@@ -1,0 +1,6 @@
+totality015a.idr:52:3:
+Main.quiz is possibly not total due to recursive path Main.quiz --> Main.quiz
+totality015a.idr:42:3:
+Main.correct is possibly not total due to: Main.quiz
+totality015a.idr:47:3:
+Main.wrong is possibly not total due to: Main.quiz

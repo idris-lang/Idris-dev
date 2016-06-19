@@ -154,7 +154,7 @@ generate codegen mainmod ir
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do
-    i <- irTerm M.empty [] tm
+    i <- irTerm (sMN 0 "runMain") M.empty [] tm
     return $ LFun [] (sMN 0 "runMain") [] (LForce i)
 
 mkDecls :: [Name] -> Idris [(Name, LDecl)]
@@ -218,10 +218,10 @@ declArgs args inl n (LLam xs x) = declArgs (args ++ xs) inl n x
 declArgs args inl n x = LFun (if inl then [Inline] else []) n args x
 
 mkLDecl n (Function tm _)
-    = declArgs [] True n <$> irTerm M.empty [] tm
+    = declArgs [] True n <$> irTerm n M.empty [] tm
 
 mkLDecl n (CaseOp ci _ _ _ pats cd)
-    = declArgs [] (case_inlinable ci || caseName n) n <$> irTree args sc
+    = declArgs [] (case_inlinable ci || caseName n) n <$> irTree n args sc
   where
     (args, sc) = cases_runtime cd
 
@@ -244,8 +244,8 @@ data VarInfo = VI
 
 type Vars = M.Map Name VarInfo
 
-irTerm :: Vars -> [Name] -> Term -> Idris LExp
-irTerm vs env tm@(App _ f a) = do
+irTerm :: Name -> Vars -> [Name] -> Term -> Idris LExp
+irTerm top vs env tm@(App _ f a) = do
   ist <- getIState
   case unApply tm of
     (P _ n _, args)
@@ -257,12 +257,16 @@ irTerm vs env tm@(App _ f a) = do
 
     (P _ (UN u) _, [_, arg])
         | u == txt "unsafePerformPrimIO"
-        -> irTerm vs env arg
+        -> irTerm top vs env arg
+
+    (P _ (UN u) _, _)
+        | u == txt "assert_unreachable"
+        -> return $ LError $ "ABORT: Reached an unreachable case in " ++ show top
 
     -- TMP HACK - until we get inlining.
     (P _ (UN r) _, [_, _, _, _, _, arg])
         | r == txt "replace"
-        -> irTerm vs env arg
+        -> irTerm top vs env arg
 
     -- 'void' doesn't have any pattern clauses and only gets called on
     -- erased things in higher order contexts (also a TMP HACK...)
@@ -277,42 +281,42 @@ irTerm vs env tm@(App _ f a) = do
 
     (P _ (UN l) _, [_, arg])
         | l == txt "force"
-        -> LForce <$> irTerm vs env arg
+        -> LForce <$> irTerm top vs env arg
 
     -- Laziness, the new way
     (P _ (UN l) _, [_, _, arg])
         | l == txt "Delay"
-        -> LLazyExp <$> irTerm vs env arg
+        -> LLazyExp <$> irTerm top vs env arg
 
     (P _ (UN l) _, [_, _, arg])
         | l == txt "Force"
-        -> LForce <$> irTerm vs env arg
+        -> LForce <$> irTerm top vs env arg
 
     (P _ (UN a) _, [_, _, _, arg])
         | a == txt "assert_smaller"
-        -> irTerm vs env arg
+        -> irTerm top vs env arg
 
     (P _ (UN a) _, [_, arg])
         | a == txt "assert_total"
-        -> irTerm vs env arg
+        -> irTerm top vs env arg
 
     (P _ (UN p) _, [_, arg])
         | p == txt "par"
-        -> do arg' <- irTerm vs env arg
+        -> do arg' <- irTerm top vs env arg
               return $ LOp LPar [LLazyExp arg']
 
     (P _ (UN pf) _, [arg])
         | pf == txt "prim_fork"
-        -> do arg' <- irTerm vs env arg
+        -> do arg' <- irTerm top vs env arg
               return $ LOp LFork [LLazyExp arg']
 
     (P _ (UN m) _, [_,size,t])
         | m == txt "malloc"
-        -> irTerm vs env t
+        -> irTerm top vs env t
 
     (P _ (UN tm) _, [_,t])
         | tm == txt "trace_malloc"
-        -> irTerm vs env t -- TODO
+        -> irTerm top vs env t -- TODO
 
     -- This case is here until we get more general inlining. It's just
     -- a really common case, and the laziness hurts...
@@ -324,9 +328,9 @@ irTerm vs env tm@(App _ f a) = do
         , b  == txt "Bool"
         , p  == txt "Prelude"
         -> do
-            x' <- irTerm vs env x
-            t' <- irTerm vs env t
-            e' <- irTerm vs env e
+            x' <- irTerm top vs env x
+            t' <- irTerm top vs env t
+            e' <- irTerm top vs env e
             return (LCase Shared x'
                              [LConCase 0 (sNS (sUN "False") ["Bool","Prelude"]) [] e'
                              ,LConCase 1 (sNS (sUN "True" ) ["Bool","Prelude"]) [] t'
@@ -375,7 +379,7 @@ irTerm vs env tm@(App _ f a) = do
 
             -- exactly saturated
             EQ  | isNewtype
-                -> irTerm vs env (head argsPruned)
+                -> irTerm top vs env (head argsPruned)
 
                 | otherwise  -- not newtype, plain data ctor
                 -> buildApp (LV $ Glob n) argsPruned
@@ -384,7 +388,7 @@ irTerm vs env tm@(App _ f a) = do
             LT  | isNewtype               -- newtype
                 , length argsPruned == 1  -- and we already have the value
                 -> padLams . (\tm [] -> tm)  -- the [] asserts there are no unerased args
-                    <$> irTerm vs env (head argsPruned)
+                    <$> irTerm top vs env (head argsPruned)
 
                 | isNewtype  -- newtype but the value is not among args yet
                 -> return . padLams $ \[vn] -> LApp False (LV $ Glob n) [LV $ Glob vn]
@@ -398,7 +402,7 @@ irTerm vs env tm@(App _ f a) = do
 
     -- an external name applied to arguments
     (P _ n _, args) | S.member (n, length args) (idris_externs ist) -> do
-        LOp (LExternal n) <$> mapM (irTerm vs env) args
+        LOp (LExternal n) <$> mapM (irTerm top vs env) args
 
     -- a name applied to arguments
     (P _ n _, args) -> do
@@ -406,23 +410,23 @@ irTerm vs env tm@(App _ f a) = do
             -- if it's a primitive that is already saturated,
             -- compile to the corresponding op here already to save work
             Just (arity, op) | length args == arity
-                -> LOp op <$> mapM (irTerm vs env) args
+                -> LOp op <$> mapM (irTerm top vs env) args
 
             -- otherwise, just apply the name
             _   -> applyName n ist args
 
     -- turn de bruijn vars into regular named references and try again
-    (V i, args) -> irTerm vs env $ mkApp (P Bound (env !! i) Erased) args
+    (V i, args) -> irTerm top vs env $ mkApp (P Bound (env !! i) Erased) args
 
     (f, args)
         -> LApp False
-            <$> irTerm vs env f
-            <*> mapM (irTerm vs env) args
+            <$> irTerm top vs env f
+            <*> mapM (irTerm top vs env) args
 
   where
     buildApp :: LExp -> [Term] -> Idris LExp
     buildApp e [] = return e
-    buildApp e xs = LApp False e <$> mapM (irTerm vs env) xs
+    buildApp e xs = LApp False e <$> mapM (irTerm top vs env) xs
 
     applyToNames :: LExp -> [Name] -> LExp
     applyToNames tm [] = tm
@@ -437,7 +441,7 @@ irTerm vs env tm@(App _ f a) = do
 
     applyName :: Name -> IState -> [Term] -> Idris LExp
     applyName n ist args =
-        LApp False (LV $ Glob n) <$> mapM (irTerm vs env . erase) (zip [0..] args)
+        LApp False (LV $ Glob n) <$> mapM (irTerm top vs env . erase) (zip [0..] args)
       where
         erase (i, x)
             | i >= arity || i `elem` used = x
@@ -459,31 +463,31 @@ irTerm vs env tm@(App _ f a) = do
         used = maybe [] (map fst . usedpos) $ lookupCtxtExact uName (idris_callgraph ist)
         fst4 (x,_,_,_,_) = x
 
-irTerm vs env (P _ n _) = return $ LV (Glob n)
-irTerm vs env (V i)
+irTerm top vs env (P _ n _) = return $ LV (Glob n)
+irTerm top vs env (V i)
     | i >= 0 && i < length env = return $ LV (Glob (env!!i))
     | otherwise = ifail $ "bad de bruijn index: " ++ show i
 
-irTerm vs env (Bind n (Lam _) sc) = LLam [n'] <$> irTerm vs (n':env) sc
+irTerm top vs env (Bind n (Lam _) sc) = LLam [n'] <$> irTerm top vs (n':env) sc
   where
     n' = uniqueName n env
 
-irTerm vs env (Bind n (Let _ v) sc)
-    = LLet n <$> irTerm vs env v <*> irTerm vs (n : env) sc
+irTerm top vs env (Bind n (Let _ v) sc)
+    = LLet n <$> irTerm top vs env v <*> irTerm top vs (n : env) sc
 
-irTerm vs env (Bind _ _ _) = return $ LNothing
+irTerm top vs env (Bind _ _ _) = return $ LNothing
 
-irTerm vs env (Proj t (-1)) = do
-    t' <- irTerm vs env t
+irTerm top vs env (Proj t (-1)) = do
+    t' <- irTerm top vs env t
     return $ LOp (LMinus (ATInt ITBig))
                  [t', LConst (BI 1)]
 
-irTerm vs env (Proj t i)   = LProj <$> irTerm vs env t <*> pure i
-irTerm vs env (Constant TheWorld) = return $ LNothing
-irTerm vs env (Constant c) = return $ LConst c
-irTerm vs env (TType _)    = return $ LNothing
-irTerm vs env Erased       = return $ LNothing
-irTerm vs env Impossible   = return $ LNothing
+irTerm top vs env (Proj t i)   = LProj <$> irTerm top vs env t <*> pure i
+irTerm top vs env (Constant TheWorld) = return $ LNothing
+irTerm top vs env (Constant c) = return $ LConst c
+irTerm top vs env (TType _)    = return $ LNothing
+irTerm top vs env Erased       = return $ LNothing
+irTerm top vs env Impossible   = return $ LNothing
 
 doForeign :: Vars -> [Name] -> [Term] -> Idris LExp
 doForeign vs env (ret : fname : world : args)
@@ -494,7 +498,7 @@ doForeign vs env (ret : fname : world : args)
   where
     splitArg tm | (_, [_,_,l,r]) <- unApply tm -- pair, two implicits
         = do let l' = toFDesc l
-             r' <- irTerm vs env r
+             r' <- irTerm (sMN 0 "__foreignCall") vs env r
              return (l', r')
     splitArg _ = ifail $ "Badly formed foreign function call"
 
@@ -508,24 +512,24 @@ doForeign vs env (ret : fname : world : args)
     deNS n = n
 doForeign vs env xs = ifail "Badly formed foreign function call"
 
-irTree :: [Name] -> SC -> Idris LExp
-irTree args tree = do
+irTree :: Name -> [Name] -> SC -> Idris LExp
+irTree top args tree = do
     logCodeGen 3 $ "Compiling " ++ show args ++ "\n" ++ show tree
-    LLam args <$> irSC M.empty tree
+    LLam args <$> irSC top M.empty tree
 
-irSC :: Vars -> SC -> Idris LExp
-irSC vs (STerm t) = irTerm vs [] t
-irSC vs (UnmatchedCase str) = return $ LError str
+irSC :: Name -> Vars -> SC -> Idris LExp
+irSC top vs (STerm t) = irTerm top vs [] t
+irSC top vs (UnmatchedCase str) = return $ LError str
 
-irSC vs (ProjCase tm alts) = do
-    tm'   <- irTerm vs [] tm
-    alts' <- mapM (irAlt vs tm') alts
+irSC top vs (ProjCase tm alts) = do
+    tm'   <- irTerm top vs [] tm
+    alts' <- mapM (irAlt top vs tm') alts
     return $ LCase Shared tm' alts'
 
 -- Transform matching on Delay to applications of Force.
-irSC vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
+irSC top vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
     | delay == txt "Delay"
-    = do sc' <- irSC vs $ mkForce n' n sc
+    = do sc' <- irSC top vs $ mkForce n' n sc
          return $ LLet n' (LForce (LV (Glob n))) sc'
 
 -- There are two transformations in this case:
@@ -550,7 +554,7 @@ irSC vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
 -- Hence, we check whether the variables are used at all
 -- and erase the casesplit if they are not.
 --
-irSC vs (Case up n [alt]) = do
+irSC top vs (Case up n [alt]) = do
     replacement <- case alt of
         ConCase cn a ns sc -> do
             detag <- fgetState (opt_detaggable . ist_optimisation cn)
@@ -561,9 +565,9 @@ irSC vs (Case up n [alt]) = do
         _ -> return Nothing
 
     case replacement of
-        Just sc -> irSC vs sc
+        Just sc -> irSC top vs sc
         _ -> do
-            alt' <- irAlt vs (LV (Glob n)) alt
+            alt' <- irAlt top vs (LV (Glob n)) alt
             return $ case namesBoundIn alt' `usedIn` subexpr alt' of
                 [] -> subexpr alt'  -- strip the unused top-most case
                 _  -> LCase up (LV (Glob n)) [alt']
@@ -594,13 +598,13 @@ irSC vs (Case up n [alt]) = do
 -- This work-around is not entirely optimal; the best approach would be
 -- to ensure that such case trees don't arise in the first place.
 --
-irSC vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
+irSC top vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
     detag <- fgetState (opt_detaggable . ist_optimisation cn)
     if detag
-        then irSC vs (Case up n [ConCase cn a ns sc])
-        else LCase up (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+        then irSC top vs (Case up n [ConCase cn a ns sc])
+        else LCase up (LV (Glob n)) <$> mapM (irAlt top vs (LV (Glob n))) alts
 
-irSC vs sc@(Case up n alts) = do
+irSC top vs sc@(Case up n alts) = do
     -- check that neither alternative needs the newtype optimisation,
     -- see comment above
     goneWrong <- or <$> mapM isDetaggable alts
@@ -608,20 +612,20 @@ irSC vs sc@(Case up n alts) = do
         $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
 
     -- everything okay
-    LCase up (LV (Glob n)) <$> mapM (irAlt vs (LV (Glob n))) alts
+    LCase up (LV (Glob n)) <$> mapM (irAlt top vs (LV (Glob n))) alts
   where
     isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
     isDetaggable  _                 = return False
 
-irSC vs ImpossibleCase = return LNothing
+irSC top vs ImpossibleCase = return LNothing
 
-irAlt :: Vars -> LExp -> CaseAlt -> Idris LAlt
+irAlt :: Name -> Vars -> LExp -> CaseAlt -> Idris LAlt
 
 -- this leaves out all unused arguments of the constructor
-irAlt vs _ (ConCase n t args sc) = do
+irAlt top vs _ (ConCase n t args sc) = do
     used <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
     let usedArgs = [a | (i,a) <- zip [0..] args, i `elem` used]
-    LConCase (-1) n usedArgs <$> irSC (methodVars `M.union` vs) sc
+    LConCase (-1) n usedArgs <$> irSC top (methodVars `M.union` vs) sc
   where
     methodVars = case n of
         SN (InstanceCtorN className)
@@ -631,9 +635,9 @@ irAlt vs _ (ConCase n t args sc) = do
         _
             -> M.empty -- not an instance constructor
 
-irAlt vs _ (ConstCase x rhs)
-    | matchable   x = LConstCase x <$> irSC vs rhs
-    | matchableTy x = LDefaultCase <$> irSC vs rhs
+irAlt top vs _ (ConstCase x rhs)
+    | matchable   x = LConstCase x <$> irSC top vs rhs
+    | matchableTy x = LDefaultCase <$> irSC top vs rhs
   where
     matchable (I _) = True
     matchable (BI _) = True
@@ -657,14 +661,14 @@ irAlt vs _ (ConstCase x rhs)
 
     matchableTy _ = False
 
-irAlt vs tm (SucCase n rhs) = do
-    rhs' <- irSC vs rhs
+irAlt top vs tm (SucCase n rhs) = do
+    rhs' <- irSC top vs rhs
     return $ LDefaultCase (LLet n (LOp (LMinus (ATInt ITBig))
                                             [tm,
                                             LConst (BI 1)]) rhs')
 
-irAlt vs _ (ConstCase c rhs)
+irAlt top vs _ (ConstCase c rhs)
     = ifail $ "Can't match on (" ++ show c ++ ")"
 
-irAlt vs _ (DefaultCase rhs)
-    = LDefaultCase <$> irSC vs rhs
+irAlt top vs _ (DefaultCase rhs)
+    = LDefaultCase <$> irSC top vs rhs

@@ -70,9 +70,8 @@ parseDouble = mkDouble . wfe . trim
                                 Just $ (w * ex + f * ex)
     mkDouble Nothing = Nothing
     
-    %assert_total
     intPow : Integer -> Integer -> Double
-    intPow base exp = if exp > 0 then (num base exp) else 1 / (num base exp)
+    intPow base exp = assert_total $ if exp > 0 then (num base exp) else 1 / (num base exp)
       where
         num base 0 = 1
         num base e = if e < 0 

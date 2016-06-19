@@ -2,7 +2,8 @@ module Data.Bits
 
 import Data.Fin
 
-%default total
+%default total -- This file is full of totality assertions though. Let's try
+               -- to improve it! (EB)
 %access export
 
 public export
@@ -28,7 +29,6 @@ machineTy (S (S (S _))) = Bits64
 bitsUsed : Nat -> Nat
 bitsUsed n = 8 * (2 `power` n)
 
-%assert_total
 natToBits' : %static {n : Nat} -> machineTy n -> Nat -> machineTy n
 natToBits' a Z = a
 natToBits' {n=n} a x with (n)
@@ -37,6 +37,7 @@ natToBits' {n=n} a x with (n)
  natToBits' a (S x') | S Z         = natToBits' {n=1} (prim__addB16 a (prim__truncInt_B16 1)) x'
  natToBits' a (S x') | S (S Z)     = natToBits' {n=2} (prim__addB32 a (prim__truncInt_B32 1)) x'
  natToBits' a (S x') | S (S (S _)) = natToBits' {n=3} (prim__addB64 a (prim__truncInt_B64 1)) x'
+ natToBits' a _      | _           = assert_unreachable
 
 natToBits : %static {n : Nat} -> Nat -> machineTy n
 natToBits {n=n} x with (n)
@@ -44,9 +45,10 @@ natToBits {n=n} x with (n)
     | S Z         = natToBits' {n=1} (prim__truncInt_B16 0) x
     | S (S Z)     = natToBits' {n=2} (prim__truncInt_B32 0) x
     | S (S (S _)) = natToBits' {n=3} (prim__truncInt_B64 0) x
+    | _           = assert_unreachable
 
 getPad : %static {n : Nat} -> Nat -> machineTy n
-getPad n = natToBits (minus (bitsUsed (nextBytes n)) n)
+getPad n = assert_total $ natToBits (minus (bitsUsed (nextBytes n)) n)
 
 public export
 data Bits : Nat -> Type where
@@ -101,6 +103,7 @@ shiftLeft' {n=n} x c with (nextBytes n)
     | S Z = pad16' n prim__shlB16 x c
     | S (S Z) = pad32' n prim__shlB32 x c
     | S (S (S _)) = pad64' n prim__shlB64 x c
+    | _ = assert_unreachable
 
 shiftLeft : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftLeft (MkBits x) (MkBits y) = MkBits (shiftLeft' x y)
@@ -111,6 +114,7 @@ shiftRightLogical' {n=n} x c with (n)
     | S Z = prim__lshrB16 x c
     | S (S Z) = prim__lshrB32 x c
     | S (S (S _)) = prim__lshrB64 x c
+    | _ = assert_unreachable
 
 shiftRightLogical : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftRightLogical {n} (MkBits x) (MkBits y)
@@ -122,6 +126,7 @@ shiftRightArithmetic' {n=n} x c with (nextBytes n)
     | S Z = pad16' n prim__ashrB16 x c
     | S (S Z) = pad32' n prim__ashrB32 x c
     | S (S (S _)) = pad64' n prim__ashrB64 x c
+    | _ = assert_unreachable
 
 shiftRightArithmetic : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftRightArithmetic (MkBits x) (MkBits y) = MkBits (shiftRightArithmetic' x y)
@@ -132,6 +137,7 @@ and' {n=n} x y with (n)
     | S Z = prim__andB16 x y
     | S (S Z) = prim__andB32 x y
     | S (S (S _)) = prim__andB64 x y
+    | _ = assert_unreachable
 
 and : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 and {n} (MkBits x) (MkBits y) = MkBits (and' {n=nextBytes n} x y)
@@ -142,6 +148,7 @@ or' {n=n} x y with (n)
     | S Z = prim__orB16 x y
     | S (S Z) = prim__orB32 x y
     | S (S (S _)) = prim__orB64 x y
+    | _ = assert_unreachable
 
 or : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 or {n} (MkBits x) (MkBits y) = MkBits (or' {n=nextBytes n} x y)
@@ -152,6 +159,7 @@ xor' {n=n} x y with (n)
     | S Z = prim__xorB16 x y
     | S (S Z) = prim__xorB32 x y
     | S (S (S _)) = prim__xorB64 x y
+    | _ = assert_unreachable
 
 xor : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 xor {n} (MkBits x) (MkBits y) = MkBits {n} (xor' {n=nextBytes n} x y)
@@ -162,6 +170,7 @@ plus' {n=n} x y with (nextBytes n)
     | S Z = pad16 n prim__addB16 x y
     | S (S Z) = pad32 n prim__addB32 x y
     | S (S (S _)) = pad64 n prim__addB64 x y
+    | _ = assert_unreachable
 
 plus : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 plus (MkBits x) (MkBits y) = MkBits (plus' x y)
@@ -172,6 +181,7 @@ minus' {n=n} x y with (nextBytes n)
     | S Z = pad16 n prim__subB16 x y
     | S (S Z) = pad32 n prim__subB32 x y
     | S (S (S _)) = pad64 n prim__subB64 x y
+    | _ = assert_unreachable
 
 minus : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 minus (MkBits x) (MkBits y) = MkBits (minus' x y)
@@ -182,6 +192,7 @@ times' {n=n} x y with (nextBytes n)
     | S Z = pad16 n prim__mulB16 x y
     | S (S Z) = pad32 n prim__mulB32 x y
     | S (S (S _)) = pad64 n prim__mulB64 x y
+    | _ = assert_unreachable
 
 times : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 times (MkBits x) (MkBits y) = MkBits (times' x y)
@@ -193,6 +204,7 @@ sdiv' {n=n} x y with (nextBytes n)
     | S Z = prim__sdivB16 x y
     | S (S Z) = prim__sdivB32 x y
     | S (S (S _)) = prim__sdivB64 x y
+    | _ = assert_unreachable
 
 partial
 sdiv : %static {n : Nat} -> Bits n -> Bits n -> Bits n
@@ -205,6 +217,7 @@ udiv' {n=n} x y with (nextBytes n)
     | S Z = prim__udivB16 x y
     | S (S Z) = prim__udivB32 x y
     | S (S (S _)) = prim__udivB64 x y
+    | _ = assert_unreachable
 
 partial
 udiv : %static {n : Nat} -> Bits n -> Bits n -> Bits n
@@ -217,6 +230,7 @@ srem' {n=n} x y with (nextBytes n)
     | S Z = prim__sremB16 x y
     | S (S Z) = prim__sremB32 x y
     | S (S (S _)) = prim__sremB64 x y
+    | _ = assert_unreachable
 
 partial
 srem : %static {n : Nat} -> Bits n -> Bits n -> Bits n
@@ -229,6 +243,7 @@ urem' {n=n} x y with (nextBytes n)
     | S Z = prim__uremB16 x y
     | S (S Z) = prim__uremB32 x y
     | S (S (S _)) = prim__uremB64 x y
+    | _ = assert_unreachable
 
 partial
 urem : %static {n : Nat} -> Bits n -> Bits n -> Bits n
@@ -241,6 +256,7 @@ lt {n=n} x y with (nextBytes n)
     | S Z = prim__ltB16 x y
     | S (S Z) = prim__ltB32 x y
     | S (S (S _)) = prim__ltB64 x y
+    | _ = assert_unreachable
 
 lte : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 lte {n=n} x y with (nextBytes n)
@@ -248,6 +264,7 @@ lte {n=n} x y with (nextBytes n)
     | S Z = prim__lteB16 x y
     | S (S Z) = prim__lteB32 x y
     | S (S (S _)) = prim__lteB64 x y
+    | _ = assert_unreachable
 
 eq : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 eq {n=n} x y with (nextBytes n)
@@ -255,6 +272,7 @@ eq {n=n} x y with (nextBytes n)
     | S Z = prim__eqB16 x y
     | S (S Z) = prim__eqB32 x y
     | S (S (S _)) = prim__eqB64 x y
+    | _ = assert_unreachable
 
 gte : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 gte {n=n} x y with (nextBytes n)
@@ -262,6 +280,7 @@ gte {n=n} x y with (nextBytes n)
     | S Z = prim__gteB16 x y
     | S (S Z) = prim__gteB32 x y
     | S (S (S _)) = prim__gteB64 x y
+    | _ = assert_unreachable
 
 gt : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> Int
 gt {n=n} x y with (nextBytes n)
@@ -269,6 +288,7 @@ gt {n=n} x y with (nextBytes n)
     | S Z = prim__gtB16 x y
     | S (S Z) = prim__gtB32 x y
     | S (S (S _)) = prim__gtB64 x y
+    | _ = assert_unreachable
 
 implementation Eq (Bits n) where
     (MkBits x) == (MkBits y) = boolOp eq x y
@@ -295,12 +315,12 @@ complement' {n=n} x with (nextBytes n)
                 prim__complB32 (x `prim__shlB32` pad) `prim__lshrB32` pad
     | S (S (S _)) = let pad = getPad {n=3} n in
                     prim__complB64 (x `prim__shlB64` pad) `prim__lshrB64` pad
+    | _ = assert_unreachable
 
 complement : %static {n : Nat} -> Bits n -> Bits n
 complement (MkBits x) = MkBits (complement' x)
 
 -- TODO: Prove
-%assert_total -- can't verify coverage of with block
 zext' : %static {n : Nat} -> %static {m : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
 zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (Z, Z) = believe_me x
@@ -313,11 +333,11 @@ zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (S (S Z), S (S Z)) = believe_me x
     | (S (S Z), S (S (S _))) = believe_me (prim__zextB32_B64 (believe_me x))
     | (S (S (S _)), S (S (S _))) = believe_me x
+    | _ = assert_unreachable
 
 zeroExtend : %static {n : Nat} -> %static {m : Nat} -> Bits n -> Bits (n+m)
 zeroExtend (MkBits x) = MkBits (zext' x)
 
-%assert_total
 intToBits' : %static {n : Nat} -> Integer -> machineTy (nextBytes n)
 intToBits' {n=n} x with (nextBytes n)
     | Z = let pad = getPad {n=0} n in
@@ -328,6 +348,7 @@ intToBits' {n=n} x with (nextBytes n)
                 prim__lshrB32 (prim__shlB32 (prim__truncBigInt_B32 x) pad) pad
     | S (S (S _)) = let pad = getPad {n=3} n in
                     prim__lshrB64 (prim__shlB64 (prim__truncBigInt_B64 x) pad) pad
+    | _ = assert_unreachable
 
 intToBits : %static {n : Nat} -> Integer -> Bits n
 intToBits n = MkBits (intToBits' n)
@@ -341,6 +362,7 @@ bitsToInt' {n=n} x with (nextBytes n)
     | S Z = prim__zextB16_BigInt x
     | S (S Z) = prim__zextB32_BigInt x
     | S (S (S _)) = prim__zextB64_BigInt x
+    | _ = assert_unreachable
 
 bitsToInt : %static {n : Nat} -> Bits n -> Integer
 bitsToInt (MkBits x) = bitsToInt' x
@@ -353,7 +375,6 @@ zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
 --    cast x = MkBits (zeroUnused (natToBits n))
 
 -- TODO: Prove
-%assert_total -- can't verify coverage of with block
 sext' : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes (n+m))
 sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (Z, Z) = let pad = getPad {n=0} n in
@@ -382,12 +403,12 @@ sext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
                                                          (prim__zextB32_B64 pad))
     | (S (S (S _)), S (S (S _))) = let pad = getPad {n=3} n in
                                    believe_me (prim__ashrB64 (prim__shlB64 (believe_me x) pad) pad)
+    | _ = assert_unreachable
 
 ----signExtend : Bits n -> Bits (n+m)
 --signExtend {m=m} (MkBits x) = MkBits (zeroUnused (sext' x))
 
 -- TODO: Prove
-%assert_total -- can't verify coverage of with block
 trunc' : %static {m : Nat} -> %static {n : Nat} -> machineTy (nextBytes (m+n)) -> machineTy (nextBytes n)
 trunc' {m=m} {n=n} x with (nextBytes n, nextBytes (m+n))
     | (Z, Z) = believe_me x
@@ -400,6 +421,7 @@ trunc' {m=m} {n=n} x with (nextBytes n, nextBytes (m+n))
     | (S (S Z), S (S Z)) = believe_me x
     | (S (S Z), S (S (S _))) = believe_me (prim__truncB64_B32 (believe_me x))
     | (S (S (S _)), S (S (S _))) = believe_me x
+    | _ = assert_unreachable
 
 truncate : %static {m : Nat} -> %static {n : Nat} -> Bits (m+n) -> Bits n
 truncate (MkBits x) = MkBits (zeroUnused (trunc' x))
@@ -419,10 +441,9 @@ unsetBit n x = x `and` complement (bitAt n)
 bitsToStr : %static {n : Nat} -> Bits n -> String
 bitsToStr x = pack (helper last x)
     where
-      %assert_total
       helper : %static {n : Nat} -> Fin (S n) -> Bits n -> List Char
       helper FZ _ = []
-      helper (FS x) b = (if getBit x b then '1' else '0') :: helper (weaken x) b
+      helper (FS x) b = assert_total $ (if getBit x b then '1' else '0') :: helper (weaken x) b
 
 implementation Show (Bits n) where
     show = bitsToStr
