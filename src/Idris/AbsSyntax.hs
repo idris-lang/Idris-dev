@@ -1939,9 +1939,9 @@ aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
           case ns' of
             [(f',ns)] -> Right $ mkPApp fc (length ns) (PRef ffc [ffc] (isImpName f f'))
                                      (insertImpl ns as)
-            [] -> if f `elem` (map fst (idris_metavars ist))
-                    then Right $ PApp fc (PRef ffc [ffc] f) as
-                    else Right $ mkPApp fc (length as) (PRef ffc [ffc] f) as
+            [] -> case metaVar f (map fst (idris_metavars ist)) of
+                    Just f' -> Right $ PApp fc (PRef ffc [ffc] f') as
+                    Nothing -> Right $ mkPApp fc (length as) (PRef ffc [ffc] f) as
             alts -> Right $
                          PAlternative [] (ExactlyOne True) $
                            map (\(f', ns) -> mkPApp fc (length ns) (PRef ffc [ffc] (isImpName f f'))
@@ -1951,6 +1951,12 @@ aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
     -- name rather than the global one after expanding implicits
     isImpName f f' | f `elem` imp_meths = f
                    | otherwise = f'
+
+    -- If it's a metavariable name, try to qualify it from the list of
+    -- unsolved metavariables
+    metaVar f (mvn : ns) | f == nsroot mvn = Just mvn
+    metaVar f (_ : ns) = metaVar f ns
+    metaVar f [] = Nothing
 
     trimAlts [] alts = alts
     trimAlts ns alts

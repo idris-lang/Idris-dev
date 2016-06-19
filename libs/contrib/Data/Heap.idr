@@ -61,11 +61,10 @@ orderBySize left centre right =
     largest : Nat
     largest = maximum (size left) $ maximum (size centre) (size right)
 
-%assert_total -- relies on orderBySize doing the right thing
 merge : Ord a => MaxiphobicHeap a -> MaxiphobicHeap a -> MaxiphobicHeap a
 merge Empty               right             = right
 merge left                Empty             = left
-merge (Node ls ll le lr) (Node rs rl re rr) =
+merge (Node ls ll le lr) (Node rs rl re rr) = assert_total $ -- relies on orderBySize doing the right thing
   if le < re then
     let (largest, b, c) = orderBySize ll lr (Node rs rl re rr) in
       Node mergedSize largest le (merge b c)
@@ -99,9 +98,9 @@ toList : Ord a => MaxiphobicHeap a -> List a
 toList Empty          = []
 toList (Node s l e r) = toList' (Node s l e r) Refl
   where
-    %assert_total -- relies on deleteMinimum making heap smaller
     toList' : Ord a => (h : MaxiphobicHeap a) -> (isEmpty h = False) -> List a
-    toList' heap p = findMinimum heap p :: (Heap.toList (deleteMinimum heap p))
+    toList' heap p = assert_total $ -- relies on deleteMinimum making heap smaller
+          findMinimum heap p :: (Heap.toList (deleteMinimum heap p))
 
 fromList : Ord a => List a -> MaxiphobicHeap a
 fromList = foldr insert empty
