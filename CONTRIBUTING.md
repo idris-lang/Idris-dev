@@ -49,7 +49,7 @@ Major changes to the library, or Idris itself, should be discussed first through
 
 1. The mailing List.
 1. On our IRC Channel `#idris` on freenode, or
-1. As a [Dragon Egg](https://github.com/idris-lang/Idris-dev/wiki/Feature-proposals).
+1. As an RFC in the issue tracker
 
 Developers then seeking to add content to Idris's prelude and default library, should do so through a PR where more discussions and refinements can be made.
 
