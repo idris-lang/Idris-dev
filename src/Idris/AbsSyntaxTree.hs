@@ -1870,7 +1870,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
         text "![" <> pretty r <> text "]"
     prettySe d p bnd (PPatvar fc n) = pretty n
     prettySe d p bnd e
-      | Just str <- slist d p bnd e = depth d $ str
+      | Just str <- slist d p bnd e = depth d str
       | Just n <- snat ppo d p e = depth d $ annotate (AnnData "Nat" "") (text (show n))
     prettySe d p bnd (PRef fc _ n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe d p bnd (PLam fc n nfc ty sc) =

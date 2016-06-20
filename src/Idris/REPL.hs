@@ -782,7 +782,7 @@ edit :: FilePath -> IState -> Idris ()
 edit "" orig = iputStrLn "Nothing to edit"
 edit f orig
     = do i <- getIState
-         env <- runIO $ getEnvironment
+         env <- runIO getEnvironment
          let editor = getEditor env
          let line = case errSpan i of
                         Just l -> ['+' : show (fst (fc_start l))]
@@ -915,7 +915,7 @@ process fn (NewDefn decls) = do
   fixClauses (PInstance doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty instName decls) =
     PInstance doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty instName (map fixClauses decls)
   fixClauses decl = decl
-    
+
   info = recinfo (fileFC "toplevel")
 
 process fn (Undefine names) = undefine names
@@ -1205,8 +1205,8 @@ process fn (Prove mode n')
           n <- case metavars of
               [] -> ierror (Msg $ "Cannot find metavariable " ++ show n')
               [(n, (_,_,_,False,_))] -> return n
-              [(_, (_,_,_,_,False))]  -> ierror (Msg $ "Can't prove this hole as it depends on other holes")
-              [(_, (_,_,_,True,_))]  -> ierror (Msg $ "Declarations not solvable using prover")
+              [(_, (_,_,_,_,False))]  -> ierror (Msg "Can't prove this hole as it depends on other holes")
+              [(_, (_,_,_,True,_))]  -> ierror (Msg "Declarations not solvable using prover")
               ns -> ierror (CantResolveAlts (map fst ns))
           prover (toplevelWith fn) mode (lit fn) n
           -- recheck totality
@@ -1280,7 +1280,7 @@ process fn (Missing n)
                                                    []
                                                    (idris_infixes i))
                                       tms))
-           _ -> iPrintError $ "Ambiguous name"
+           _ -> iPrintError "Ambiguous name"
 process fn (DynamicLink l)
                            = do i <- getIState
                                 let importdirs = opt_importdirs (idris_options i)
@@ -1404,7 +1404,7 @@ process fn (MakeDoc s) =
              parse n    | Success x <- runparser (fmap fst name) istate fn n = Right x
              parse n    = Left n
              (bad, nss) = partitionEithers $ map parse names
-         cd            <- runIO $ getCurrentDirectory
+         cd            <- runIO getCurrentDirectory
          let outputDir  = cd </> "doc"
          result        <- if null bad then runIO $ generateDocs istate nss outputDir
                                       else return . Left $ "Illegal name: " ++ head bad
@@ -1588,7 +1588,7 @@ loadInputs inputs toline -- furthest line to read in input source files
            case errSpan inew of
               Nothing ->
                 do putIState $!! ist { idris_tyinfodata = tidata }
-                   ibcfiles <- mapM findNewIBC (nub (concat (map snd ifiles)))
+                   ibcfiles <- mapM findNewIBC (nub (concatMap snd ifiles))
 --                    logLvl 0 $ "Loading from " ++ show ibcfiles
                    tryLoad True (IBC_REPL True) (mapMaybe id ibcfiles)
               _ -> return ()
@@ -1717,7 +1717,7 @@ idrisMain opts =
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = DefaultCheckingTotal })
-       tty <- runIO $ isATTY
+       tty <- runIO isATTY
        setColourise $ not quiet && last (tty : opt getColour opts)
 
 
@@ -1791,7 +1791,7 @@ idrisMain opts =
                                                            runIO $ exitWith (ExitFailure 1)
                                          Success e -> process "" (Eval e))
                            exprs
-                     runIO $ exitWith ExitSuccess
+                     runIO exitSuccess
 
 
        case script of
@@ -1829,7 +1829,7 @@ idrisMain opts =
     makeOption _             = return ()
 
     addPkgDir :: String -> Idris ()
-    addPkgDir p = do ddir <- runIO $ getIdrisLibDir
+    addPkgDir p = do ddir <- runIO getIdrisLibDir
                      addImportDir (ddir </> p)
                      addIBC (IBCImportDir (ddir </> p))
 
@@ -1848,7 +1848,7 @@ execScript expr = do i <- getIState
                           Success term -> do ctxt <- getContext
                                              (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
                                              res <- execute tm
-                                             runIO $ exitWith ExitSuccess
+                                             runIO $ exitSuccess
 
 -- | Get the platform-specific, user-specific Idris dir
 getIdrisUserDataDir :: Idris FilePath

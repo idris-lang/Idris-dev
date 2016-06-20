@@ -226,7 +226,7 @@ parseLogCats :: Monad m => String -> m [LogCat]
 parseLogCats s =
     case lastMay (readP_to_S (doParse) s) of
       Just (xs, _) -> return xs
-      _            -> fail $ "Incorrect categories specified"
+      _            -> fail "Incorrect categories specified"
   where
     doParse :: ReadP [LogCat]
     doParse = do

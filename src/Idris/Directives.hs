@@ -54,7 +54,7 @@ directiveAction (DThaw n') = do
             ctxt <- getContext
             case lookupDefAccExact n False ctxt of
                  Just (_, Frozen) -> do setAccessibility n Public
-                                        addIBC (IBCAccess n Public) 
+                                        addIBC (IBCAccess n Public)
                  _ -> throwError (Msg (show n ++ " is not frozen"))) ns
 directiveAction (DInjective n') = do
   ns <- allNamespaces n'
@@ -77,7 +77,7 @@ directiveAction (DDynamicLibs libs) = do
   added <- addDyLib libs
   case added of
     Left lib  -> addIBC (IBCDyLib (lib_name lib))
-    Right msg -> fail $ msg
+    Right msg -> fail msg
 
 directiveAction (DNameHint ty tyFC ns) = do
   ty' <- disambiguate ty

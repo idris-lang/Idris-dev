@@ -421,7 +421,7 @@ elabPE info fc caller r =
                                   PClause fc newnm lhs' [] rhs [])
                               (pe_clauses specdecl)
                 trans <- elabTransform info fc False rhs lhs
-                elabClauses (info {pe_depth = pe_depth info + 1}) fc 
+                elabClauses (info {pe_depth = pe_depth info + 1}) fc
                             (PEGenerated:opts) newnm def
                 return [trans]
              else return [])
@@ -555,8 +555,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         -- Check if we have "with" patterns outside of "with" block
         when (isOutsideWith lhs_in && (not $ null withs)) $
-            ierror $ (At fc (Elaborating "left hand side of " fname Nothing
-                             (Msg "unexpected patterns outside of \"with\" block")))
+            ierror (At fc (Elaborating "left hand side of " fname Nothing
+                          (Msg "unexpected patterns outside of \"with\" block")))
 
         -- get the parameters first, to pass through to any where block
         let fn_ty = case lookupTy fname ctxt of
@@ -713,7 +713,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         mapM_ (elabCaseBlock winfo opts) is
 
         ctxt <- getContext
-        logElab 5 $ "Rechecking"
+        logElab 5 "Rechecking"
         logElab 6 $ " ==> " ++ show (forget rhs')
 
         (crhs, crhsty) -- if there's holes && deferred things, it's okay
@@ -760,7 +760,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
            addIBC (IBCErrRev (crhs, clhs))
            addErrRev (crhs, clhs)
         pop_estack
-        return $ (Right (clhs, crhs), lhs)
+        return (Right (clhs, crhs), lhs)
   where
     pinfo :: ElabInfo -> [(Name, PTerm)] -> [Name] -> Int -> ElabInfo
     pinfo info ns ds i
@@ -903,7 +903,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                        Just (n, nfc) -> Just (uniqueName n (map fst bargs))
 
         -- Highlight explicit proofs
-        sendHighlighting $ [(fc, AnnBoundName n False) | (n, fc) <- maybeToList pn_in]
+        sendHighlighting [(fc, AnnBoundName n False) | (n, fc) <- maybeToList pn_in]
 
         logElab 10 ("With type " ++ show (getRetTy cwvaltyN) ++
                   " depends on " ++ show pdeps ++ " from " ++ show pvars)
@@ -991,7 +991,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         mapM_ (elabCaseBlock info opts) is
         logElab 5 ("Checked RHS " ++ show rhs')
         (crhs, crhsty) <- recheckC (constraintNS info) fc id [] rhs'
-        return $ (Right (clhs, crhs), lhs)
+        return (Right (clhs, crhs), lhs)
   where
     getImps (Bind n (Pi _ _ _) t) = pexp Placeholder : getImps t
     getImps _ = []
@@ -999,7 +999,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
     mkAuxC pn wname lhs ns ns' (PClauses fc o n cs)
                 = do cs' <- mapM (mkAux pn wname lhs ns ns') cs
                      return $ PClauses fc o wname cs'
-    mkAuxC pn wname lhs ns ns' d = return $ d
+    mkAuxC pn wname lhs ns ns' d = return d
 
     mkAux pn wname toplhs ns ns' (PClause fc n tm_in (w:ws) rhs wheres)
         = do i <- getIState

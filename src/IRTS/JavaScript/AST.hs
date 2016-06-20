@@ -99,7 +99,7 @@ ffi code args = let parsed = ffiParse code in
   where
     ffiParse :: String -> [FFI]
     ffiParse ""           = []
-    ffiParse ['%']        = [FFIError $ "FFI - Invalid positional argument"]
+    ffiParse ['%']        = [FFIError "FFI - Invalid positional argument"]
     ffiParse ('%':'%':ss) = FFICode '%' : ffiParse ss
     ffiParse ('%':s:ss)
       | isDigit s =

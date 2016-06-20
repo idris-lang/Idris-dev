@@ -258,18 +258,18 @@ data IdeModeCommand = REPLCompletions String
                     | GetIdrisVersion
 
 sexpToCommand :: SExp -> Maybe IdeModeCommand
-sexpToCommand (SexpList (x:[]))                                                         = sexpToCommand x
-sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])                       = Just (Interpret cmd)
-sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix])             = Just (REPLCompletions prefix)
-sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename, IntegerAtom line])                  = Just (LoadFile filename (Just (fromInteger line)))
-sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                  = Just (LoadFile filename Nothing)
-sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])                        = Just (TypeOf name)
-sexpToCommand (SexpList [SymbolAtom "case-split", IntegerAtom line, StringAtom name])   = Just (CaseSplit (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom name])   = Just (AddClause (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "add-proof-clause", IntegerAtom line, StringAtom name])   = Just (AddProofClause (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "add-missing", IntegerAtom line, StringAtom name])  = Just (AddMissing (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom name])    = Just (MakeWithBlock (fromInteger line) name)
-sexpToCommand (SexpList [SymbolAtom "make-case", IntegerAtom line, StringAtom name])    = Just (MakeCaseBlock (fromInteger line) name)
+sexpToCommand (SexpList ([x]))                                                              = sexpToCommand x
+sexpToCommand (SexpList [SymbolAtom "interpret", StringAtom cmd])                           = Just (Interpret cmd)
+sexpToCommand (SexpList [SymbolAtom "repl-completions", StringAtom prefix])                 = Just (REPLCompletions prefix)
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename, IntegerAtom line])    = Just (LoadFile filename (Just (fromInteger line)))
+sexpToCommand (SexpList [SymbolAtom "load-file", StringAtom filename])                      = Just (LoadFile filename Nothing)
+sexpToCommand (SexpList [SymbolAtom "type-of", StringAtom name])                            = Just (TypeOf name)
+sexpToCommand (SexpList [SymbolAtom "case-split", IntegerAtom line, StringAtom name])       = Just (CaseSplit (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "add-clause", IntegerAtom line, StringAtom name])       = Just (AddClause (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "add-proof-clause", IntegerAtom line, StringAtom name]) = Just (AddProofClause (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "add-missing", IntegerAtom line, StringAtom name])      = Just (AddMissing (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "make-with", IntegerAtom line, StringAtom name])        = Just (MakeWithBlock (fromInteger line) name)
+sexpToCommand (SexpList [SymbolAtom "make-case", IntegerAtom line, StringAtom name])        = Just (MakeCaseBlock (fromInteger line) name)
 -- The Boolean in ProofSearch means "search recursively"
 -- If it's False, that means "refine", i.e. apply the name and fill in any
 -- arguments which can be done by unification.

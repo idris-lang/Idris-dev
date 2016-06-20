@@ -214,7 +214,7 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
               Just i -> do lvar i; return (Loc i)
               Nothing -> case lookupCtxtExact n ctxt of
                               Just (DConstructor _ i ar) ->
-                                  failsc $ "can't pass constructor here"
+                                  failsc "can't pass constructor here"
                               Just _ -> return (Glob n)
                               Nothing -> failsc $ "No such variable " ++ show n ++
                                                " in " ++ show tm ++ " " ++ show envTop

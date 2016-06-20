@@ -147,7 +147,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          logElab 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (class_methods ci)))
          let ds_defs = insertDefaults ist iname (class_defaults ci) ns ds
          logElab 3 ("After defaults: " ++ show ds_defs ++ "\n")
-         let ds' = reorderDefs (map fst (class_methods ci)) $ ds_defs
+         let ds' = reorderDefs (map fst (class_methods ci)) ds_defs
          logElab 1 ("Reordered: " ++ show ds' ++ "\n")
 
          mapM_ (warnMissing ds' ns iname) (map fst (class_methods ci))
