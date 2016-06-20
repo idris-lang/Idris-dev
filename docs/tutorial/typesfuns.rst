@@ -1218,21 +1218,19 @@ The following Idris code will compile:
 
     main : IO ()
     main = do
-      let x = head [1, 2, 3]
+      let x : Integer = head [1,2,3]
       print x
 
 And will print ``1``. However, the same code with ``head []`` won't compile:
 
 ::
 
-    test.idr:5:6:When checking right hand side of main with expected type
+    test.idr:5:26:When checking right hand side of main with expected type
         IO ()
 
-    Can't infer argument letty to head,
-    Can't infer argument letty to [],
-    Can't infer argument ok to head,
-    Can't infer argument letty to print,
-    Can't infer argument constraint to print
+    When checking argument ok to function Prelude.List.head:
+          Can't find a value of type
+                  NonEmpty []
 
 We can't bind and print ``x`` because ``head []`` doesn't type check.
 
@@ -1247,15 +1245,14 @@ Haskell's ``head`` function.) ``unsafeHead`` might look like this:
     unsafeHead (x::xs) = x
 
 And although it typechecks and compiles, it will not reduce (that is, evaluation
-of the function will cause its type to change):
+of the function will cause it to change):
 
 ::
 
-    unsafe> unsafeHead [1, 2, 3]
+    unsafe> the Integer $ unsafeHead [1, 2, 3]
     1 : Integer
-    unsafe> unsafeHead []
-    (input):Can't infer argument iType to unsafeHead,
-            Can't infer argument iType to []
+    unsafe> the Integer $ unsafeHead []
+    unsafeHead [] : Integer
 
 Functions that are not total are known as *partial functions*. As
 mentioned in the note about ``mutual`` blocks, non-total definitions
