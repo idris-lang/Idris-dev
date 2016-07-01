@@ -1,3 +1,8 @@
+# New in 0.13:
+
+* The File Effect has been updated to take into account changes in
+  `Prelude.File` and to provide a 'better' API.
+
 # New in 0.12:
 
 ## Language updates
