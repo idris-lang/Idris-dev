@@ -2022,7 +2022,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
     runTacTm :: Term -> ElabD Term
     runTacTm tac@(unApply -> (P _ n _, args))
       | n == tacN "Prim__Solve"
-      = do ~[] <- tacTmArgs 0 tac args
+      = do ~[] <- tacTmArgs 0 tac args -- patterns are irrefutable because `tacTmArgs` returns lists of exactly the size given to it as first argument
            solve
            returnUnit
       | n == tacN "Prim__Goal"
