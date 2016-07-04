@@ -2007,15 +2007,27 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
         getRetTy (Bind _ (Pi _ _ _) sc) = getRetTy sc
         getRetTy ty = ty
 
+    elabScriptStuck :: Term -> ElabD a
+    elabScriptStuck x = lift . tfail $ ElabScriptStuck x
+
+
+    -- Should be dependent
+    tacTmArgs :: Int -> Term -> [Term] -> ElabD [Term]
+    tacTmArgs l t args | length args == l = return args
+                       | otherwise        = elabScriptStuck t -- Probably should be an argument size mismatch internal error
+
+
     -- | Do a step in the reflected elaborator monad. The input is the
     -- step, the output is the (reflected) term returned.
     runTacTm :: Term -> ElabD Term
-    runTacTm (unApply -> tac@(P _ n _, args))
-      | n == tacN "Prim__Solve", [] <- args
-      = do solve
+    runTacTm tac@(unApply -> (P _ n _, args))
+      | n == tacN "Prim__Solve"
+      = do ~[] <- tacTmArgs 0 tac args -- patterns are irrefutable because `tacTmArgs` returns lists of exactly the size given to it as first argument
+           solve
            returnUnit
-      | n == tacN "Prim__Goal", [] <- args
-      = do hs <- get_holes
+      | n == tacN "Prim__Goal"
+      = do ~[] <- tacTmArgs 0 tac args
+           hs <- get_holes
            case hs of
              (h : _) -> do t <- goal
                            fmap fst . checkClosed $
@@ -2024,15 +2036,18 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
              [] -> lift . tfail . Msg $
                      "Elaboration is complete. There are no goals."
 
-      | n == tacN "Prim__Holes", [] <- args
-      = do hs <- get_holes
+      | n == tacN "Prim__Holes"
+      = do ~[] <- tacTmArgs 0 tac args
+           hs <- get_holes
            fmap fst . checkClosed $
              mkList (Var $ reflm "TTName") (map reflectName hs)
-      | n == tacN "Prim__Guess", [] <- args
-      = do g <- get_guess
+      | n == tacN "Prim__Guess"
+      = do ~[] <- tacTmArgs 0 tac args
+           g <- get_guess
            fmap fst . checkClosed $ reflect g
-      | n == tacN "Prim__LookupTy", [n] <- args
-      = do n' <- reifyTTName n
+      | n == tacN "Prim__LookupTy"
+      = do ~[name] <- tacTmArgs 1 tac args
+           n' <- reifyTTName name
            ctxt <- get_context
            let getNameTypeAndType = \case Function ty _       -> (Ref, ty)
                                           TyDecl nt ty        -> (nt, ty)
@@ -2053,20 +2068,23 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
                                              , raw_apply (Var pairTy) [ Var (reflm "NameType")
                                                                        , Var (reflm "TT")]])
                      defs
-      | n == tacN "Prim__LookupDatatype", [name] <- args
-      = do n' <- reifyTTName name
+      | n == tacN "Prim__LookupDatatype"
+      = do ~[name] <- tacTmArgs 1 tac args
+           n' <- reifyTTName name
            datatypes <- get_datatypes
            ctxt <- get_context
            fmap fst . checkClosed $
              rawList (Var (tacN "Datatype"))
                      (map reflectDatatype (buildDatatypes ist n'))
-      | n == tacN "Prim__LookupFunDefn", [name] <- args
-      = do n' <- reifyTTName name
+      | n == tacN "Prim__LookupFunDefn"
+      = do ~[name] <- tacTmArgs 1 tac args
+           n' <- reifyTTName name
            fmap fst . checkClosed $
              rawList (RApp (Var $ tacN "FunDefn") (Var $ reflm "TT"))
                (map reflectFunDefn (buildFunDefns ist n'))
-      | n == tacN "Prim__LookupArgs", [name] <- args
-      = do n' <- reifyTTName name
+      | n == tacN "Prim__LookupArgs"
+      = do ~[name] <- tacTmArgs 1 tac args
+           n' <- reifyTTName name
            let listTy = Var (sNS (sUN "List") ["List", "Prelude"])
                listFunArg = RApp listTy (Var (tacN "FunArg"))
             -- Idris tuples nest to the right
@@ -2089,37 +2107,45 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
                                                                              (Var (tacN "FunArg"))
                                                                       , Var (reflm "Raw")]])
                      out
-      | n == tacN "Prim__SourceLocation", [] <- args
-      = fmap fst . checkClosed $
-          reflectFC fc
-      | n == tacN "Prim__Namespace", [] <- args
-      = fmap fst . checkClosed $
-          rawList (RConstant StrType) (map (RConstant . Str) ns)
-      | n == tacN "Prim__Env", [] <- args
-      = do env <- get_env
+      | n == tacN "Prim__SourceLocation"
+      = do ~[] <- tacTmArgs 0 tac args
+           fmap fst . checkClosed $
+             reflectFC fc
+      | n == tacN "Prim__Namespace"
+      = do ~[] <- tacTmArgs 0 tac args
+           fmap fst . checkClosed $
+             rawList (RConstant StrType) (map (RConstant . Str) ns)
+      | n == tacN "Prim__Env"
+      = do ~[] <- tacTmArgs 0 tac args
+           env <- get_env
            fmap fst . checkClosed $ reflectEnv env
-      | n == tacN "Prim__Fail", [_a, errs] <- args
-      = do errs' <- eval errs
+      | n == tacN "Prim__Fail"
+      = do ~[_a, errs] <- tacTmArgs 2 tac args
+           errs' <- eval errs
            parts <- reifyReportParts errs'
            lift . tfail $ ReflectionError [parts] (Msg "")
-      | n == tacN "Prim__PureElab", [_a, tm] <- args
-      = return tm
-      | n == tacN "Prim__BindElab", [_a, _b, first, andThen] <- args
-      = do first' <- eval first
+      | n == tacN "Prim__PureElab"
+      = do ~[_a, tm] <- tacTmArgs 2 tac args
+           return tm
+      | n == tacN "Prim__BindElab"
+      = do ~[_a, _b, first, andThen] <- tacTmArgs 4 tac args
+           first' <- eval first
            res <- eval =<< runTacTm first'
            next <- eval (App Complete andThen res)
            runTacTm next
-      | n == tacN "Prim__Try", [_a, first, alt] <- args
-      = do first' <- eval first
+      | n == tacN "Prim__Try"
+      = do ~[_a, first, alt] <- tacTmArgs 3 tac args
+           first' <- eval first
            alt' <- eval alt
            try' (runTacTm first') (runTacTm alt') True
-      | n == tacN "Prim__Fill", [raw] <- args
-      = do raw' <- reifyRaw =<< eval raw
+      | n == tacN "Prim__Fill"
+      = do ~[raw] <- tacTmArgs 1 tac args
+           raw' <- reifyRaw =<< eval raw
            apply raw' []
            returnUnit
       | n == tacN "Prim__Apply" || n == tacN "Prim__MatchApply"
-      , [raw, argSpec] <- args
-      = do raw' <- reifyRaw =<< eval raw
+      = do ~[raw, argSpec] <- tacTmArgs 2 tac args
+           raw' <- reifyRaw =<< eval raw
            argSpec' <- map (\b -> (b, 0)) <$> reifyList reifyBool argSpec
            let op = if n == tacN "Prim__Apply"
                        then apply
@@ -2131,89 +2157,105 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
                                (reflectName n1, reflectName n2)
                      | (n1, n2) <- ns
                      ]
-      | n == tacN "Prim__Gensym", [hint] <- args
-      = do hintStr <- eval hint
+      | n == tacN "Prim__Gensym"
+      = do ~[hint] <- tacTmArgs 1 tac args
+           hintStr <- eval hint
            case hintStr of
              Constant (Str h) -> do
                n <- getNameFrom (sMN 0 h)
                fmap fst $ get_type_val (reflectName n)
              _ -> fail "no hint"
-      | n == tacN "Prim__Claim", [n, ty] <- args
-      = do n' <- reifyTTName n
+      | n == tacN "Prim__Claim"
+      = do ~[n, ty] <- tacTmArgs 2 tac args
+           n' <- reifyTTName n
            ty' <- reifyRaw ty
            claim n' ty'
            returnUnit
-      | n == tacN "Prim__Check", [env', raw] <- args
-      = do env <- reifyEnv env'
+      | n == tacN "Prim__Check"
+      = do ~[env', raw] <- tacTmArgs 2 tac args
+           env <- reifyEnv env'
            raw' <- reifyRaw =<< eval raw
            ctxt <- get_context
            (tm, ty) <- lift $ check ctxt env raw'
            fmap fst . checkClosed $
              rawPair (Var (reflm "TT"), Var (reflm "TT"))
                      (reflect tm,       reflect ty)
-      | n == tacN "Prim__Attack", [] <- args
-      = do attack
+      | n == tacN "Prim__Attack"
+      = do ~[] <- tacTmArgs 0 tac args
+           attack
            returnUnit
-      | n == tacN "Prim__Rewrite", [rule] <- args
-      = do r <- reifyRaw rule
+      | n == tacN "Prim__Rewrite"
+      = do ~[rule] <- tacTmArgs 1 tac args
+           r <- reifyRaw rule
            rewrite r
            returnUnit
-      | n == tacN "Prim__Focus", [what] <- args
-      = do n' <- reifyTTName what
+      | n == tacN "Prim__Focus"
+      = do ~[what] <- tacTmArgs 1 tac args
+           n' <- reifyTTName what
            hs <- get_holes
            if elem n' hs
               then focus n' >> returnUnit
               else lift . tfail . Msg $ "The name " ++ show n' ++ " does not denote a hole"
-      | n == tacN "Prim__Unfocus", [what] <- args
-      = do n' <- reifyTTName what
+      | n == tacN "Prim__Unfocus"
+      = do ~[what] <- tacTmArgs 1 tac args
+           n' <- reifyTTName what
            movelast n'
            returnUnit
-      | n == tacN "Prim__Intro", [mn] <- args
-      = do n <- case fromTTMaybe mn of
+      | n == tacN "Prim__Intro"
+      = do ~[mn] <- tacTmArgs 1 tac args
+           n <- case fromTTMaybe mn of
                   Nothing -> return Nothing
                   Just name -> fmap Just $ reifyTTName name
            intro n
            returnUnit
-      | n == tacN "Prim__Forall", [n, ty] <- args
-      = do n' <- reifyTTName n
+      | n == tacN "Prim__Forall"
+      = do ~[n, ty] <- tacTmArgs 2 tac args
+           n' <- reifyTTName n
            ty' <- reifyRaw ty
            forall n' Nothing ty'
            returnUnit
-      | n == tacN "Prim__PatVar", [n] <- args
-      = do n' <- reifyTTName n
+      | n == tacN "Prim__PatVar"
+      = do ~[n] <- tacTmArgs 1 tac args
+           n' <- reifyTTName n
            patvar' n'
            returnUnit
-      | n == tacN "Prim__PatBind", [n] <- args
-      = do n' <- reifyTTName n
+      | n == tacN "Prim__PatBind"
+      = do ~[n] <- tacTmArgs 1 tac args
+           n' <- reifyTTName n
            patbind n'
            returnUnit
-      | n == tacN "Prim__LetBind", [n, ty, tm] <- args
-      = do n' <- reifyTTName n
+      | n == tacN "Prim__LetBind"
+      = do ~[n, ty, tm] <- tacTmArgs 3 tac args
+           n' <- reifyTTName n
            ty' <- reifyRaw ty
            tm' <- reifyRaw tm
            letbind n' ty' tm'
            returnUnit
-      | n == tacN "Prim__Compute", [] <- args
-      = do compute ; returnUnit
-      | n == tacN "Prim__Normalise", [env, tm] <- args
-      = do env' <- reifyEnv env
+      | n == tacN "Prim__Compute"
+      = do ~[] <- tacTmArgs 0 tac args; compute ; returnUnit
+      | n == tacN "Prim__Normalise"
+      = do ~[env, tm] <- tacTmArgs 2 tac args
+           env' <- reifyEnv env
            tm' <- reifyTT tm
            ctxt <- get_context
            let out = normaliseAll ctxt env' (finalise tm')
            fmap fst . checkClosed $ reflect out
-      | n == tacN "Prim__Whnf", [tm] <- args
-      = do tm' <- reifyTT tm
+      | n == tacN "Prim__Whnf"
+      = do ~[tm] <- tacTmArgs 1 tac args
+           tm' <- reifyTT tm
            ctxt <- get_context
            fmap fst . checkClosed . reflect $ whnf ctxt tm'
-      | n == tacN "Prim__Converts", [env, tm1, tm2] <- args
-      = do env' <- reifyEnv env
+      | n == tacN "Prim__Converts"
+      = do ~[env, tm1, tm2] <- tacTmArgs 3 tac args
+           env' <- reifyEnv env
            tm1' <- reifyTT tm1
            tm2' <- reifyTT tm2
            ctxt <- get_context
            lift $ converts ctxt env' tm1' tm2'
            returnUnit
-      | n == tacN "Prim__DeclareType", [decl] <- args
-      = do (RDeclare n args res) <- reifyTyDecl decl
+      | n == tacN "Prim__DeclareType"
+      = do ~[decl] <- tacTmArgs 1 tac args
+           (RDeclare n args res) <- reifyTyDecl decl
            ctxt <- get_context
            let rty = foldr mkPi res args
            (checked, ty') <- lift $ check ctxt [] rty
@@ -2225,12 +2267,14 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            updateAux $ \e -> e { new_tyDecls = (RTyDeclInstrs n fc (map rFunArgToPArg args) checked) :
                                                new_tyDecls e }
            returnUnit
-      | n == tacN "Prim__DefineFunction", [decl] <- args
-      = do defn <- reifyFunDefn decl
+      | n == tacN "Prim__DefineFunction"
+      = do ~[decl] <- tacTmArgs 1 tac args
+           defn <- reifyFunDefn decl
            defineFunction defn
            returnUnit
-      | n == tacN "Prim__DeclareDatatype", [decl] <- args
-      = do RDeclare n args resTy <- reifyTyDecl decl
+      | n == tacN "Prim__DeclareDatatype"
+      = do ~[decl] <- tacTmArgs 1 tac args
+           RDeclare n args resTy <- reifyTyDecl decl
            ctxt <- get_context
            let tcTy = foldr mkPi resTy args
            (checked, ty') <- lift $ check ctxt [] tcTy
@@ -2240,8 +2284,9 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            set_context ctxt'
            updateAux $ \e -> e { new_tyDecls = RDatatypeDeclInstrs n (map rFunArgToPArg args) : new_tyDecls e }
            returnUnit
-      | n == tacN "Prim__DefineDatatype", [defn] <- args
-      = do RDefineDatatype n ctors <- reifyRDataDefn defn
+      | n == tacN "Prim__DefineDatatype"
+      = do ~[defn] <- tacTmArgs 1 tac args
+           RDefineDatatype n ctors <- reifyRDataDefn defn
            ctxt <- get_context
            tyconTy <- case lookupTyExact n ctxt of
                         Just t -> return t
@@ -2264,24 +2309,28 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            -- the rest happens in a bit
            updateAux $ \e -> e { new_tyDecls = RDatatypeDefnInstrs n tyconTy ctors' : new_tyDecls e }
            returnUnit
-      | n == tacN "Prim__AddInstance", [cls, inst] <- args
-      = do className <- reifyTTName cls
+      | n == tacN "Prim__AddInstance"
+      = do ~[cls, inst] <- tacTmArgs 2 tac args
+           className <- reifyTTName cls
            instName <- reifyTTName inst
            updateAux $ \e -> e { new_tyDecls = RAddInstance className instName :
                                                new_tyDecls e }
            returnUnit
-      | n == tacN "Prim__IsTCName", [n] <- args
-      = do n' <- reifyTTName n
+      | n == tacN "Prim__IsTCName"
+      = do ~[n] <- tacTmArgs 1 tac args
+           n' <- reifyTTName n
            case lookupCtxtExact n' (idris_classes ist) of
              Just _ -> fmap fst . checkClosed $ Var (sNS (sUN "True") ["Bool", "Prelude"])
              Nothing -> fmap fst . checkClosed $ Var (sNS (sUN "False") ["Bool", "Prelude"])
-      | n == tacN "Prim__ResolveTC", [fn] <- args
-      = do g <- goal
+      | n == tacN "Prim__ResolveTC"
+      = do ~[fn] <- tacTmArgs 1 tac args
+           g <- goal
            fn <- reifyTTName fn
            resolveTC' False True 100 g fn ist
            returnUnit
-      | n == tacN "Prim__Search", [depth, hints] <- args
-      = do d <- eval depth
+      | n == tacN "Prim__Search"
+      = do ~[depth, hints] <- tacTmArgs 2 tac args
+           d <- eval depth
            hints' <- eval hints
            case (d, unList hints') of
              (Constant (I i), Just hs) ->
@@ -2293,8 +2342,9 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
              (Constant (I _), Nothing ) ->
                lift . tfail . InternalMsg $ "Not a list: " ++ show hints'
              (_, _) -> lift . tfail . InternalMsg $ "Can't reify int " ++ show d
-      | n == tacN "Prim__RecursiveElab", [goal, script] <- args
-      = do goal' <- reifyRaw goal
+      | n == tacN "Prim__RecursiveElab"
+      = do ~[goal, script] <- tacTmArgs 2 tac args
+           goal' <- reifyRaw goal
            ctxt <- get_context
            script <- eval script
            (goalTT, goalTy) <- lift $ check ctxt [] goal'
@@ -2327,8 +2377,9 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            fmap fst . checkClosed $
              rawPair (Var $ reflm "TT", Var $ reflm "TT")
                      (tm', ty')
-      | n == tacN "Prim__Metavar", [n] <- args
-      = do n' <- reifyTTName n
+      | n == tacN "Prim__Metavar"
+      = do ~[n] <- tacTmArgs 1 tac args
+           n' <- reifyTTName n
            ctxt <- get_context
            ptm <- get_term
            -- See documentation above in the elab case for PMetavar
@@ -2338,8 +2389,9 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            defer unique_used mvn
            solve
            returnUnit
-      | n == tacN "Prim__Fixity", [op'] <- args
-      = do opTm <- eval op'
+      | n == tacN "Prim__Fixity"
+      = do ~[op'] <- tacTmArgs 1 tac args
+           opTm <- eval op'
            case opTm of
              Constant (Str op) ->
                let opChars = ":!#$%&*+./<=>?@\\^|-~"
@@ -2352,11 +2404,12 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
                             [f]  -> fmap fst . checkClosed $ reflectFixity f
                             many -> lift . tfail . InternalMsg $ "Ambiguous fixity for '" ++ op ++ "'!  Found " ++ show many
              _ -> lift . tfail . Msg $ "Not a constant string for an operator name: " ++ show opTm
-      | n == tacN "Prim__Debug", [ty, msg] <- args
-      = do msg' <- eval msg
+      | n == tacN "Prim__Debug"
+      = do ~[ty, msg] <- tacTmArgs 2 tac args
+           msg' <- eval msg
            parts <- reifyReportParts msg
            debugElaborator parts
-    runTacTm x = lift . tfail $ ElabScriptStuck x
+    runTacTm x = elabScriptStuck x
 
 -- Running tactics directly
 -- if a tactic adds unification problems, return an error

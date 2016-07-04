@@ -130,6 +130,7 @@ runTest conf test = do
     -- that depend on that distinction in other contexts.
     -- Also rewrite newlines for consistency.
        norm ('\r':'\n':xs) = '\n' : norm xs
+       norm ('\\':'\\':xs) = '/' : norm xs
        norm ('\\':xs) = '/' : norm xs
        norm (x : xs) = x : norm xs
        norm [] = []
