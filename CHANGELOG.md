@@ -1,3 +1,26 @@
+# New in 0.13:
+
+## Language updates
+
+* `record` syntax now allows updating fields, including nested fields,
+  by applying a function using the `$=` operator.  For example:
+
+  ```
+  record Score where
+         constructor MkScore
+         correct : Nat
+         attempted : Nat
+
+  record GameState where
+         constructor MkGameState
+         score : Score
+         difficulty : Nat
+
+  correct : GameState -> GameState
+  correct st = record { score->correct $= (+1),
+                        score->attempted $= (+1) } st
+  ```
+
 # New in 0.12:
 
 ## Language updates

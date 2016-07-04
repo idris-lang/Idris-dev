@@ -708,6 +708,12 @@ Extra-source-files:
                        test/records003/run
                        test/records003/*.idr
                        test/records003/expected
+                       test/records004/run
+                       test/records004/*.idr
+                       test/records004/expected
+                       test/records005/run
+                       test/records005/*.idr
+                       test/records005/expected
 
                        test/sourceLocation001/run
                        test/sourceLocation001/*.idr
