@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor, ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor, DeriveGeneric, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Docstrings (
     Docstring(..), Block(..), Inline(..), parseDocstring, renderDocstring
@@ -30,7 +30,7 @@ import Data.Foldable (Foldable)
 import Data.Traversable (Traversable)
 import qualified Data.Sequence as S
 
-import Control.DeepSeq (NFData(..))
+import GHC.Generics (Generic)
 
 import Text.Blaze.Html (Html)
 
@@ -39,7 +39,7 @@ data DocTerm = Unchecked
              | Checked Term
              | Example Term
              | Failing Err
-  deriving Show
+  deriving (Show, Generic)
 
 -- | Render a term in the documentation
 renderDocTerm :: (Term -> Doc OutputAnnotation) -> (Term -> Term) -> DocTerm -> String -> Doc OutputAnnotation
@@ -53,7 +53,7 @@ renderDocTerm pp norm (Failing err) src = annotate (AnnErr err) $ text src
 -- | Representation of Idris's inline documentation. The type paramter
 -- represents the type of terms that are associated with code blocks.
 data Docstring a = DocString CT.Options (Blocks a)
-  deriving (Show, Functor, Foldable, Traversable)
+  deriving (Show, Functor, Foldable, Traversable, Generic)
 
 type Blocks a = S.Seq (Block a)
 
@@ -65,7 +65,7 @@ data Block a = Para (Inlines a)
              | CodeBlock CT.CodeAttr T.Text a
              | HtmlBlock T.Text
              | HRule
-             deriving (Show, Functor, Foldable, Traversable)
+             deriving (Show, Functor, Foldable, Traversable, Generic)
 
 data Inline a = Str T.Text
               | Space
@@ -78,7 +78,7 @@ data Inline a = Str T.Text
               | Image (Inlines a) T.Text T.Text
               | Entity T.Text
               | RawHtml T.Text
-              deriving (Show, Functor, Foldable, Traversable)
+              deriving (Show, Functor, Foldable, Traversable, Generic)
 
 type Inlines a = S.Seq (Inline a)
 

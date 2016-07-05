@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, BangPatterns,
-             PatternGuards #-}
+             PatternGuards, DeriveGeneric #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
@@ -31,6 +31,7 @@ import Control.Monad.State -- not Strict!
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 import Data.Maybe (listToMaybe)
+import GHC.Generics (Generic)
 
 import Idris.Core.TT
 import Idris.Core.CaseTree
@@ -700,6 +701,7 @@ data Def = Function !Type !Term
                   ![Either Term (Term, Term)] -- original definition
                   ![([Name], Term, Term)] -- simplified for totality check definition
                   !CaseDefs
+  deriving Generic
 --                   [Name] SC -- Compile time case definition
 --                   [Name] SC -- Run time cae definitions
 
@@ -709,12 +711,14 @@ data CaseDefs = CaseDefs {
                   cases_inlined :: !([Name], SC),
                   cases_runtime :: !([Name], SC)
                 }
+  deriving Generic
 
 data CaseInfo = CaseInfo {
                   case_inlinable :: Bool, -- decided by machine
                   case_alwaysinline :: Bool, -- decided by %inline flag
                   tc_dictionary :: Bool
                 }
+  deriving Generic
 
 {-!
 deriving instance Binary Def
@@ -761,7 +765,7 @@ instance Show Def where
 -- Private => Programs can't access the name, doesn't reduce internally
 
 data Accessibility = Hidden | Public | Frozen | Private
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Generic)
 {-!
 deriving instance NFData Accessibility
 !-}
@@ -780,7 +784,7 @@ data Totality = Total [Int] -- ^ well-founded arguments
               | Partial PReason
               | Unchecked
               | Generated
-    deriving Eq
+    deriving (Eq, Generic)
 {-!
 deriving instance NFData Totality
 !-}
@@ -788,7 +792,7 @@ deriving instance NFData Totality
 -- | Reasons why a function may not be total
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
              | ExternalIO | BelieveMe | Mutual [Name] | NotProductive
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic)
 {-!
 deriving instance NFData PReason
 !-}
@@ -825,14 +829,14 @@ deriving instance Binary PReason
 data MetaInformation =
       EmptyMI -- ^ No meta-information
     | DataMI [Int] -- ^ Meta information for a data declaration with position of parameters
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 -- | Contexts used for global definitions and for proof state. They contain
 -- universe constraints and existing definitions.
 data Context = MkContext {
                   next_tvar       :: Int,
                   definitions     :: Ctxt (Def, Injectivity, Accessibility, Totality, MetaInformation)
-                } deriving Show
+                } deriving (Show, Generic)
 
 
 -- | The initial empty context

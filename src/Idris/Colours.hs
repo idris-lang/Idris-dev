@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-|
 Module      : Idris.Colours
 Description : Support for colours within Idris.
@@ -14,6 +15,7 @@ module Idris.Colours (
   , colourisePrompt, colourise, ColourType(..), hStartColourise, hEndColourise
   ) where
 
+import GHC.Generics (Generic)
 import System.Console.ANSI
 import System.IO (Handle)
 
@@ -37,7 +39,7 @@ data ColourTheme = ColourTheme { keywordColour   :: IdrisColour
                                , promptColour    :: IdrisColour
                                , postulateColour :: IdrisColour
                                }
-                   deriving (Eq, Show)
+                   deriving (Eq, Show, Generic)
 
 -- | Idris's default console colour theme
 defaultTheme :: ColourTheme

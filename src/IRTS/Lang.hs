@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards, DeriveFunctor #-}
+{-# LANGUAGE PatternGuards, DeriveFunctor, DeriveGeneric #-}
 
 module IRTS.Lang where
 
@@ -17,6 +17,7 @@ import Idris.Core.CaseTree
 
 import Data.List
 import Debug.Trace
+import GHC.Generics (Generic)
 
 data Endianness = Native | BE | LE deriving (Show, Eq)
 
@@ -93,7 +94,7 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
                    -- core or another machine. 'id' is a valid implementation
             | LExternal Name
             | LNoOp
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 -- Supported target languages for foreign calls
 
