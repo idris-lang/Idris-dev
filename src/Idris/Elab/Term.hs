@@ -873,7 +873,8 @@ elab ist info emode opts fn tm
                     ns <- apply (Var f) (map isph args)
 --                    trace ("ns is " ++ show ns) $ return ()
                     -- mark any type class arguments as injective
-                    when (not pattern) $ mapM_ checkIfInjective (map snd ns)
+--                     when (not pattern) $ 
+                    mapM_ checkIfInjective (map snd ns)
                     unifyProblems -- try again with the new information,
                                   -- to help with disambiguation
                     ulog <- getUnifyLog
@@ -962,7 +963,9 @@ elab ist info emode opts fn tm
                                         -- maybe we can solve more things now...
                                            ulog <- getUnifyLog
                                            probs <- get_probs
-                                           traceWhen ulog ("Injective now " ++ show args ++ "\n" ++ qshow probs) $
+                                           inj <- get_inj
+                                           traceWhen ulog ("Injective now " ++ show args ++ "\nAll: " ++ show inj 
+                                                            ++ "\nProblems: " ++ qshow probs) $
                                              unifyProblems
                                            probs <- get_probs
                                            traceWhen ulog (qshow probs) $ return ()

@@ -670,7 +670,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                     (do pbinds ist lhs_tm
                         -- proof search can use explicitly written names
                         mapM_ addPSname (allNamesIn lhs_in)
-                        mapM_ setinj (nub (tcparams ++ inj))
+                        ulog <- getUnifyLog
+                        traceWhen ulog ("Setting injective: " ++ show (nub (tcparams ++ inj))) $
+                          mapM_ setinj (nub (tcparams ++ inj))
                         setNextName
                         (ElabResult _ _ is ctxt' newDecls highlights newGName) <-
                           errAt "right hand side of " fname (Just clhsty)

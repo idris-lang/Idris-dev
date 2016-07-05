@@ -1058,7 +1058,7 @@ processTactic (ComputeLet n) ps
                                          (getProofTerm (pterm ps)) }, "")
 processTactic UnifyProblems ps
     = do let (ns', probs') = updateProblems ps [] (map setReady (problems ps))
-             pterm' = updateSolved ns' (pterm ps)
+             pterm' = orderUpdateSolved ns' (pterm ps)
          traceWhen (unifylog ps) ("(UnifyProblems) Dropping holes: " ++ show (map fst ns')) $
           return (ps { pterm = pterm', solved = Nothing, problems = probs',
                        previous = Just ps, plog = "",
@@ -1067,6 +1067,8 @@ processTactic UnifyProblems ps
                        dotted = filter (notIn ns') (dotted ps),
                        holes = holes ps \\ (map fst ns') }, plog ps)
    where notIn ns (h, _) = h `notElem` map fst ns
+         orderUpdateSolved [] t = t
+         orderUpdateSolved (n : ns) t = orderUpdateSolved ns (updateSolved [n] t)
 processTactic (MatchProblems all) ps
     = do let (ns', probs') = matchProblems all ps [] (map setReady (problems ps))
              (ns'', probs'') = matchProblems all ps ns' probs'

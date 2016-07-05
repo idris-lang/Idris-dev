@@ -20,6 +20,9 @@
   correct st = record { score->correct $= (+1),
                         score->attempted $= (+1) } st
   ```
+
+## Library updates
+
 * The File Effect has been updated to take into account changes in
   `Prelude.File` and to provide a 'better' API.
 
