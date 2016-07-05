@@ -58,6 +58,21 @@ newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: Parser a }
 
 deriving instance Parsing IdrisInnerParser
 
+#if MIN_VERSION_base(4,9,0)
+instance {-# OVERLAPPING #-} DeltaParsing IdrisParser where
+  line = lift line
+  {-# INLINE line #-}
+  position = lift position
+  {-# INLINE position #-}
+  slicedWith f (StateT m) = StateT $ \s -> slicedWith (\(a,s') b -> (f a b, s')) $ m s
+  {-# INLINE slicedWith #-}
+  rend = lift rend
+  {-# INLINE rend #-}
+  restOfLine = lift restOfLine
+  {-# INLINE restOfLine #-}
+
+#endif
+
 #if MIN_VERSION_base(4,8,0)
 instance {-# OVERLAPPING #-} TokenParsing IdrisParser where
 #else

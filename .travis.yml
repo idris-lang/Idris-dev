@@ -10,8 +10,10 @@ addons:
       - ghc-7.6.3
       - ghc-7.8.4
       - ghc-7.10.2
+      - ghc-8.0.1
       - cabal-install-1.20
       - cabal-install-1.22
+      - cabal-install-1.24
       # test dependencies
       - expect
       - cppcheck
@@ -35,6 +37,12 @@ matrix:
       compiler: ": #GHC 7.10.2"
     - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="test_c"
       compiler: ": #GHC 7.10.2"
+    - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="lib_doc doc"
+      compiler: ": #GHC 8.0.1"
+    - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_js"
+      compiler: ": #GHC 8.0.1"
+    - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
+      compiler: ": #GHC 8.0.1"
 
 cache:
   directories:
