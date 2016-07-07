@@ -557,8 +557,9 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
                             findCalls [] Toplevel (dePat rhs') (patvars lhs')
                                       (zip pargs [0..])
 
-  findCalls cases Delayed ap@(P _ n _) pvs args
-     | n == topfn = []
+  -- Under a delay, calls are excluded from the graph - if it's a call to a
+  -- non-total function we'll find that in the final totality check
+  findCalls cases Delayed ap@(P _ n _) pvs args = []
   findCalls cases guarded ap@(App _ f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
      -- that it is total.
