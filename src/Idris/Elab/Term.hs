@@ -1926,11 +1926,13 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
                                                 in (ns, lhs', Impossible))
                             clauses'
          let clauses''' = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) clauses''
+         let argtys = map (\x -> (x, isCanonical x ctxt))
+                          (map snd (getArgTys (normalise ctxt [] ty)))
          ctxt'<- lift $
                   addCasedef n (const [])
                              info False (STerm Erased)
                              True False -- TODO what are these?
-                             (map snd $ getArgTys ty) [] -- TODO inaccessible types
+                             argtys [] -- TODO inaccessible types
                              clauses'
                              clauses'''
                              clauses'''

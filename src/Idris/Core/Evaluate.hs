@@ -21,7 +21,8 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupTotalExact, lookupInjectiveExact,
-                lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
+                lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, 
+                isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
@@ -697,7 +698,7 @@ data Def = Function !Type !Term
          | Operator Type Int ([Value] -> Maybe Value)
          | CaseOp CaseInfo
                   !Type
-                  ![Type] -- argument types
+                  ![(Type, Bool)] -- argument types, whether canonical
                   ![Either Term (Term, Term)] -- original definition
                   ![([Name], Term, Term)] -- simplified for totality check definition
                   !CaseDefs
@@ -915,7 +916,7 @@ addDatatype (Data n tag ty unique cons) uctxt
 addCasedef :: Name -> ErasureInfo -> CaseInfo ->
               Bool -> SC -> -- default case
               Bool -> Bool ->
-              [Type] -> -- argument types
+              [(Type, Bool)] -> -- argument types, whether canonical
               [Int] ->  -- inaccessible arguments
               [Either Term (Term, Term)] ->
               [([Name], Term, Term)] -> -- totality
@@ -1018,6 +1019,15 @@ lookupTy n ctxt = map snd (lookupTyName n ctxt)
 -- | Get the single type that matches some name precisely
 lookupTyExact :: Name -> Context -> Maybe Type
 lookupTyExact n ctxt = fmap snd (lookupTyNameExact n ctxt)
+
+-- | Return true if the given type is a concrete type familyor primitive
+-- False it it's a function to compute a type or a variable
+isCanonical :: Type -> Context -> Bool
+isCanonical t ctxt
+     = case unApply t of
+            (P _ n _, _) -> isConName n ctxt
+            (Constant _, _) -> True
+            _ -> False
 
 isConName :: Name -> Context -> Bool
 isConName n ctxt = isTConName n ctxt || isDConName n ctxt

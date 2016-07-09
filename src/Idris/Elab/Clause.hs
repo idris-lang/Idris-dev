@@ -84,7 +84,8 @@ elabClauses info' fc opts n_in cs =
                     -- question: CAFs in where blocks?
                     tclift $ tfail $ At fc (NoTypeDecl n)
               [ty] -> return ty
-           let atys = map snd (getArgTys fty)
+           let atys_in = map snd (getArgTys (normalise ctxt [] fty))
+           let atys = map (\x -> (x, isCanonical x ctxt)) atys_in
            cs_elab <- mapM (elabClause info opts)
                            (zip [0..] cs)
            ctxt <- getContext
