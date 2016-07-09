@@ -252,7 +252,7 @@ data Phase = CompileTime | RunTime
 
 simpleCase :: Bool -> SC -> Bool ->
               Phase -> FC -> [Int] -> 
-              [(Type, Bool)] -> -- ^ (Argument type, whether it's canonical)
+              [(Type, Bool)] -> -- ^ (Argument type, whether it\'s canonical)
               [([Name], Term, Term)] ->
               ErasureInfo ->
               TC CaseDef
