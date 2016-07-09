@@ -17,7 +17,7 @@ import Foreign.LibFFI
 import Foreign.Ptr (Ptr(), nullPtr, FunPtr, nullFunPtr, castPtrToFunPtr)
 import System.Directory
 #ifndef mingw32_HOST_OS
-import Control.Exception (try, IOException)
+import Control.Exception (try, IOException, throwIO)
 import Data.Array (Array, inRange, bounds, (!))
 import Data.Functor ((<$>))
 import Data.Maybe (catMaybes)
