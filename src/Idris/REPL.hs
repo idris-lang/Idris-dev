@@ -786,10 +786,10 @@ edit f orig
          env <- runIO getEnvironment
          let editor = getEditor env
          let line = case errSpan i of
-                        Just l -> ['+' : show (fst (fc_start l))]
-                        Nothing -> []
-         let args = line ++ [fixName f]
-         runIO $ rawSystem editor args
+                        Just l -> '+' : show (fst (fc_start l))
+                        Nothing -> ""
+         let cmdLine = intercalate " " [editor, line, fixName f]
+         runIO $ system cmdLine
          clearErr
   -- The $!! here prevents a space leak on reloading.
   -- This isn't a solution - but it's a temporary stopgap.
@@ -804,8 +804,11 @@ edit f orig
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
                        | Just ed <- lookup "VISUAL" env = ed
                        | otherwise = "vi"
-         fixName file | map toLower (takeExtension file) `elem` [".lidr", ".idr"] = file
-                      | otherwise = addExtension file "idr"
+         fixName file | map toLower (takeExtension file) `elem` [".lidr", ".idr"] = quote file
+                      | otherwise = quote $ addExtension file "idr"
+            where
+                quoteChar = if isWindows then '"' else '\''
+                quote s = [quoteChar] ++ s ++ [quoteChar]
 
 
 

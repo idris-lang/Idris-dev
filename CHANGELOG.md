@@ -39,6 +39,11 @@
 * The test suite now uses [tasty-golden](https://hackage.haskell.org/package/tasty-golden). New tests must be registered in `test/TestData.hs`, as explained in the relevant `README.md`.
 * Added OSX and Windows continous integration with Travis and Appveyor.
 
+## UI Changes
+
+* The :e command can now handle an $EDITOR with arguments in it, like "emacs -nw" 
+
+
 # New in 0.12:
 
 ## Language updates
