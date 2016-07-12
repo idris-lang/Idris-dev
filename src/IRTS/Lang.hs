@@ -303,6 +303,30 @@ usedIn env (LForeign _ _ args) = concatMap (usedIn env) (map snd args)
 usedIn env (LOp f args) = concatMap (usedIn env) args
 usedIn env _ = []
 
+lsubst :: Name -> LExp -> LExp -> LExp
+lsubst n new (LV (Glob x)) | n == x = new
+lsubst n new (LApp t e args) = let e' = lsubst n new e
+                                   args' = map (lsubst n new) args in
+                                   LApp t e' args'
+lsubst n new (LLazyApp fn args) = let args' = map (lsubst n new) args in
+                                      LLazyApp fn args'
+lsubst n new (LLazyExp e) = LLazyExp (lsubst n new e)
+lsubst n new (LForce e) = LForce (lsubst n new e)
+lsubst n new (LLet v val sc) = LLet v (lsubst n new val) (lsubst n new sc)
+lsubst n new (LLam ns sc) = LLam ns (lsubst n new sc)
+lsubst n new (LProj e i) = LProj (lsubst n new e) i
+lsubst n new (LCon lv t cn args) = let args' = map (lsubst n new) args in
+                                       LCon lv t cn args'
+lsubst n new (LOp op args) = let args' = map (lsubst n new) args in
+                                 LOp op args'
+lsubst n new (LForeign fd rd args) 
+     = let args' = map (\(d, a) -> (d, lsubst n new a)) args in
+           LForeign fd rd args'
+lsubst n new (LCase t e alts) = let e' = lsubst n new e
+                                    alts' = map (fmap (lsubst n new)) alts in
+                                    LCase t e' alts'
+lsubst n new tm = tm
+
 instance Show LExp where
    show e = show' [] "" e where
      show' env ind (LV (Loc i)) = env!!i

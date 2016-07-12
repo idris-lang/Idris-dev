@@ -310,7 +310,7 @@ elab ist info emode opts fn tm
         apt <- expandToArity t
         itm <- if not pattern then insertImpLam ina apt else return apt
         ct <- insertCoerce ina itm
-        t' <- insertLazy ct
+        t' <- insertLazy ina ct
         g <- goal
         tm <- get_term
         ps <- get_probs
@@ -624,7 +624,7 @@ elab ist info emode opts fn tm
                       do patvar n
                          update_term liftPats
                          highlightSource fc (AnnBoundName n False)
-               else if (defined && not guarded)
+               else if defined
                        then do apply (Var n) []
                                annot <- findHighlight n
                                solve
@@ -834,6 +834,7 @@ elab ist info emode opts fn tm
             ty <- goal
             fty <- get_type (Var f)
             ctxt <- get_context
+            let dataCon = isDConName f ctxt
             annot <- findHighlight f
             mapM_ checkKnownImplicit args_in
             let args = insertScopedImps fc (normalise ctxt env fty) args_in
@@ -849,7 +850,8 @@ elab ist info emode opts fn tm
                then -- simple app, as below
                     do simple_app False
                                   (elabE (ina { e_isfn = True }) (Just fc) (PRef ffc hls f))
-                                  (elabE (ina { e_inarg = True }) (Just fc) (getTm (head args)))
+                                  (elabE (ina { e_inarg = True,
+                                                e_guarded = dataCon }) (Just fc) (getTm (head args)))
                                   (show tm)
                        solve
                        mapM (uncurry highlightSource) $
@@ -883,7 +885,8 @@ elab ist info emode opts fn tm
                     mapM (uncurry highlightSource) $
                       (ffc, annot) : map (\f -> (f, annot)) hls
 
-                    elabArgs ist (ina { e_inarg = e_inarg ina || not isinf })
+                    elabArgs ist (ina { e_inarg = e_inarg ina || not isinf,
+                                        e_guarded = dataCon })
                            [] fc False f
                              (zip ns (unmatchableArgs ++ repeat False))
                              (f == sUN "Force")
@@ -910,8 +913,7 @@ elab ist info emode opts fn tm
                                  ivs' <- get_instances
                                  -- Attempt to resolve any type classes which have 'complete' types,
                                  -- i.e. no holes in them
-                                 when (not pattern || (e_inarg ina && not tcgen &&
-                                                      not (e_guarded ina))) $
+                                 when (not pattern || (e_inarg ina && not tcgen)) $ 
                                     mapM_ (\n -> do focus n
                                                     g <- goal
                                                     env <- get_env
@@ -1412,14 +1414,14 @@ elab ist info emode opts fn tm
     -- first. We need to do this brute force approach, rather than anything
     -- more precise, since there may be various other ambiguities to resolve
     -- first.
-    insertLazy :: PTerm -> ElabD PTerm
-    insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = return t
-    insertLazy t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Force" = return t
-    insertLazy (PCoerced t) = return t
-    -- Don't add a delay to pattern variables, since they can be forced
-    -- on the rhs
-    insertLazy t@(PPatvar _ _) | pattern = return t
-    insertLazy t =
+    insertLazy :: ElabCtxt -> PTerm -> ElabD PTerm
+    insertLazy ina t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = return t
+    insertLazy ina t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Force" = return t
+    insertLazy ina (PCoerced t) = return t
+    -- Don't add a delay to top level pattern variables, since they 
+    -- can be forced on the rhs if needed
+    insertLazy ina t@(PPatvar _ _) | pattern && not (e_guarded ina) = return t
+    insertLazy ina t =
         do ty <- goal
            env <- get_env
            let (tyh, _) = unApply (normalise (tt_ctxt ist) env ty)
