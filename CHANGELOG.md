@@ -26,6 +26,11 @@
 * The File Effect has been updated to take into account changes in
   `Prelude.File` and to provide a 'better' API.
 
+## Tool updates
+
+* Idris' documentation system now displays the documentation for auto
+  implicits in the output of `:doc`. This is tested for in `docs005`.
+
 # New in 0.12:
 
 ## Language updates
