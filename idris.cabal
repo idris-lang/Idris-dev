@@ -858,6 +858,15 @@ Extra-source-files:
                        test/docs003/input
                        test/docs003/*.idr
                        test/docs003/expected
+                       test/docs004/run
+                       test/docs004/input
+                       test/docs004/*.idr
+                       test/docs004/expected
+                       test/docs005/run
+                       test/docs005/input
+                       test/docs005/*.idr
+                       test/docs005/expected
+
 
                        benchmarks/ALL
                        benchmarks/*.pl
