@@ -21,6 +21,8 @@ cabal.config
 *.dSYM
 .projectile
 .dir-locals.el
+.vscode
+.idea
 custom.mk
 libs/base/base_doc/
 libs/effects/effects_doc/
