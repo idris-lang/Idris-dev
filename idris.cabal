@@ -146,7 +146,7 @@ Extra-source-files:
                        libs/effects/Makefile
                        libs/effects/effects.ipkg
                        libs/effects/Effect/*.idr
-		               libs/effects/Effect/Logging/*.idr
+                       libs/effects/Effect/Logging/*.idr
                        libs/effects/*.idr
 
                        libs/pruviloj/Makefile
@@ -355,6 +355,10 @@ Extra-source-files:
                        test/bignum002/run
                        test/bignum002/*.idr
                        test/bignum002/expected
+
+                       test/bounded001/run
+                       test/bounded001/*.idr
+                       test/bounded001/expected
 
                        test/corecords001/*.idr
                        test/corecords001/run
@@ -604,6 +608,9 @@ Extra-source-files:
                        test/meta002/run
                        test/meta002/*.idr
                        test/meta002/expected
+                       test/meta003/run
+                       test/meta003/*.idr
+                       test/meta003/expected
                        test/meta004/run
                        test/meta004/*.idr
                        test/meta004/expected
@@ -630,9 +637,21 @@ Extra-source-files:
                        test/primitives006/expected
 
                        test/pkg001/run
-                       test/pkg001/test-pkg.ipkg
                        test/pkg001/*.idr
                        test/pkg001/expected
+                       test/pkg001/*.ipkg
+                       test/pkg002/run
+                       test/pkg002/*.idr
+                       test/pkg002/expected
+                       test/pkg002/*.ipkg
+                       test/pkg003/run
+                       test/pkg003/*.idr
+                       test/pkg003/expected
+                       test/pkg003/*.ipkg
+                       test/pkg004/run
+                       test/pkg004/*.idr
+                       test/pkg004/expected
+                       test/pkg004/*.ipkg
 
                        test/proof001/run
                        test/proof001/*.idr
