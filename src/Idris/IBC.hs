@@ -139,9 +139,8 @@ loadIBC reexport phase fp
                     logIBC 1 $ "Loading ibc " ++ fp ++ " " ++ show reexport
                     archiveFile <- runIO $ B.readFile fp
                     case toArchiveOrFail archiveFile of
-                        Left _ -> do
-                            ifail $ fp  ++ " isn't loadable, it may have an old ibc format.\n"
-                                        ++ "Please clean and rebuild it."
+                        Left _ -> ifail $ fp  ++ " isn't loadable, it may have an old ibc format.\n"
+                                              ++ "Please clean and rebuild it."
                         Right archive -> do
                             if fullLoad
                                 then process reexport phase archive fp
@@ -230,7 +229,7 @@ writeIBC src f
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
                         logIBC 1 "Written")
-            (\c -> do logIBC 1 $ "Failed " ++ pshow i c)
+                    (\c -> logIBC 1 $ "Failed " ++ pshow i c)
          return ()
 
 -- | Write a package index containing all the imports in the current
@@ -247,7 +246,7 @@ writePkgIndex f
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
                         logIBC 1 "Written")
-            (\c -> do logIBC 1 $ "Failed " ++ pshow i c)
+                    (\c -> logIBC 1 $ "Failed " ++ pshow i c)
          return ()
 
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
@@ -953,7 +952,7 @@ instance Binary SC where
                                put x1
                 UnmatchedCase x1 -> do putWord8 3
                                        put x1
-                ImpossibleCase -> do putWord8 4
+                ImpossibleCase -> putWord8 4
         get
           = do i <- getWord8
                case i of
@@ -1045,7 +1044,7 @@ instance Binary Def where
                                    put x1
                                    put x2
                 -- all primitives just get added at the start, don't write
-                Operator x1 x2 x3 -> do return ()
+                Operator x1 x2 x3 -> return ()
                 -- no need to add/load original patterns, because they're not
                 -- used again after totality checking
                 CaseOp x1 x2 x3 _ _ x4 -> do putWord8 3
@@ -1137,9 +1136,9 @@ instance Binary Totality where
                                put x1
                 Partial x1 -> do putWord8 1
                                  put x1
-                Unchecked -> do putWord8 2
-                Productive -> do putWord8 3
-                Generated -> do putWord8 4
+                Unchecked  -> putWord8 2
+                Productive -> putWord8 3
+                Generated  -> putWord8 4
         get
           = do i <- getWord8
                case i of
@@ -1155,7 +1154,7 @@ instance Binary Totality where
 instance Binary MetaInformation where
   put x
     = case x of
-      EmptyMI   -> do putWord8 0
+      EmptyMI   -> putWord8 0
       DataMI x1 -> do putWord8 1
                       put x1
   get = do i <- getWord8
@@ -1562,7 +1561,7 @@ instance (Binary t) => Binary (PDecl' t) where
                    13 -> do x1 <- get
                             x2 <- get
                             return (PSyntax x1 x2)
-                   14 -> do error "Cannot deserialize PDirective"
+                   14 -> error "Cannot deserialize PDirective"
                    15 -> do x1 <- get
                             x2 <- get
                             x3 <- get

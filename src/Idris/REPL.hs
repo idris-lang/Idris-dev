@@ -291,8 +291,8 @@ idemode h orig mods
                    case IdeMode.sexpToCommand sexp of
                      Just cmd -> runIdeModeCommand h id orig fn mods cmd
                      Nothing  -> iPrintError "did not understand" )
-               (\e -> do iPrintError $ show e))
-         (\e -> do iPrintError $ show e)
+               (\e -> iPrintError $ show e))
+         (\e -> iPrintError $ show e)
        idemode h orig mods
 
 -- | Run IDEMode commands

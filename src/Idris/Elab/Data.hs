@@ -289,7 +289,7 @@ addParamConstraints fc ps cty cons
                                                     then ULE avar cvar
                                                     else ULT avar cvar
                                        addConstraints fc (tv, [con])
-                                       addIBC (IBCConstraint fc con) 
+                                       addIBC (IBCConstraint fc con)
                   _ -> return ()
         constraintTy t = return ()
 
@@ -371,7 +371,7 @@ elabCaseFun ind paramPos n ty cons info = do
                                  return $ map (\(n, pl, ty) -> (n, pl, removeParamPis oldNames params ty)) params
 
         mkPiName :: Bool -> (Name, Plicity, PTerm) -> EliminatorState (Name, (Name, Plicity, PTerm))
-        mkPiName keepOld (n, pl, piarg) | not (isMachineGenerated n) && keepOld = do return (n, (n, pl, piarg))
+        mkPiName keepOld (n, pl, piarg) | not (isMachineGenerated n) && keepOld = return (n, (n, pl, piarg))
         mkPiName _ (oldName, pl, piarg) =  do name <- freshName $ keyOf piarg
                                               return (oldName, (name, pl, piarg))
           where keyOf :: PTerm -> String
@@ -477,9 +477,9 @@ elabCaseFun ind paramPos n ty cons info = do
         implicitIndexes (cns@(doc, cnm, ty, fc, fs)) = do
           i <-  State.lift getIState
           implargs' <- case lookupCtxt cnm (idris_implicits i) of
-            [] -> do fail $ "Error while showing implicits for " ++ show cnm
+            [] -> fail $ "Error while showing implicits for " ++ show cnm
             [args] -> do return args
-            _ -> do fail $ "Ambigous name for " ++ show cnm
+            _ -> fail $ "Ambigous name for " ++ show cnm
           let implargs = mapMaybe convertImplPi implargs'
           let (_, cnsResTy) = splitPi ty
           case cnsResTy of

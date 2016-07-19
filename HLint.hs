@@ -18,6 +18,7 @@ suggest "Use null"
 suggest "Redundant $"
 suggest "Use list literal pattern"
 suggest "Use list literal"
+suggest "Redundant do"
 
 --  ------------------------------------------------------------------- [ Warn ]
 -- Styling that we think a programmer should be warned about using.

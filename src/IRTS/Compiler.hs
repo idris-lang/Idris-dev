@@ -115,10 +115,10 @@ compile codegen f mtm
         cpu <- Idris.AbsSyntax.targetCPU
         logCodeGen 1 "Building output"
         case checked of
-            OK c -> do return $ CodegenInfo f outty triple cpu
-                                            hdrs impdirs objs libs flags
-                                            NONE c (toAlist defuns)
-                                            tagged iface exports
+            OK c -> return $ CodegenInfo f outty triple cpu
+                                         hdrs impdirs objs libs flags
+                                         NONE c (toAlist defuns)
+                                         tagged iface exports
             Error e -> ierror e
   where checkMVs = do i <- getIState
                       case map fst (idris_metavars i) \\ primDefs of

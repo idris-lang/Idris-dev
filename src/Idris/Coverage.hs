@@ -457,15 +457,10 @@ checkTotality path fc n
                          putIState i { idris_totcheckfail = (fc, msg) : idris_totcheckfail i}
                          addIBC (IBCTotCheckErr fc msg)
 
-    warnPartial n t
-       = do i <- getIState
-            case lookupDef n (tt_ctxt i) of
-               [x] -> do
-                  iWarn fc . pprintErr i . Msg $ "Warning - " ++ show n ++ " is " ++ show t
---                                ++ "\n" ++ show x
---                   let cg = lookupCtxtName Nothing n (idris_callgraph i)
---                   iputStrLn (show cg)
-
+    warnPartial n t = do
+        i <- getIState
+        case lookupDef n (tt_ctxt i) of
+          [x] -> iWarn fc . pprintErr i . Msg $ "Warning - " ++ show n ++ " is " ++ show t
 
 checkDeclTotality :: (FC, Name) -> Idris Totality
 checkDeclTotality (fc, n)
@@ -489,7 +484,7 @@ verifyTotality (fc, n)
 
                  case getPartial ist [] ns of
                       Nothing -> return ()
-                      Just bad -> do let t' = Partial (Other bad) 
+                      Just bad -> do let t' = Partial (Other bad)
                                      logCoverage 2 $ "Set to " ++ show t'
                                      setTotality n t'
                                      addIBC (IBCTotal n t')
@@ -503,7 +498,7 @@ verifyTotality (fc, n)
 
     getPartial ist [] [] = Nothing
     getPartial ist bad [] = Just bad
-    getPartial ist bad (n : ns) 
+    getPartial ist bad (n : ns)
         = case lookupTotalExact n (tt_ctxt ist) of
                Just (Partial _) -> getPartial ist (n : bad) ns
                _ -> getPartial ist bad ns
