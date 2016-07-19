@@ -789,8 +789,8 @@ infer_app infer fun arg str =
        -- just for checking f, so move them to the end. If they never end up
        -- getting solved, we'll get an 'Incomplete term' error.
        hs <- get_holes
-       when (a `elem` hs) $ do movelast a
-       when (b `elem` hs) $ do movelast b
+       when (a `elem` hs) $ movelast a
+       when (b `elem` hs) $ movelast b
        end_unify
 
 dep_app :: Elab' aux () -> Elab' aux () -> String -> Elab' aux ()
@@ -832,8 +832,8 @@ dep_app fun arg str =
        -- just for checking f, so move them to the end. If they never end up
        -- getting solved, we'll get an 'Incomplete term' error.
        hs <- get_holes
-       when (a `elem` hs) $ do movelast a
-       when (b `elem` hs) $ do movelast b
+       when (a `elem` hs) $ movelast a
+       when (b `elem` hs) $ movelast b
        end_unify
 
 -- Abstract over an argument of unknown type, giving a name for the hole
@@ -858,15 +858,15 @@ no_errors tac err
                                            return a
             unifyProblems
             ps' <- get_probs
-            if (length ps' > length ps) then
-               case reverse ps' of
-                    ((x, y, _, env, inerr, while, _) : _) ->
-                       let (xp, yp) = getProvenance inerr
-                           env' = map (\(x, b) -> (x, binderTy b)) env in
-                                  lift $ tfail $
-                                         case err of
-                                              Nothing -> CantUnify False (x, xp) (y, yp) inerr env' 0
-                                              Just e -> e
+            if (length ps' > length ps)
+               then case reverse ps' of
+                      ((x, y, _, env, inerr, while, _) : _) ->
+                         let (xp, yp) = getProvenance inerr
+                             env' = map (\(x, b) -> (x, binderTy b)) env in
+                                    lift $ tfail $
+                                           case err of
+                                                Nothing -> CantUnify False (x, xp) (y, yp) inerr env' 0
+                                                Just e -> e
                else return $! ()
 
 -- Try a tactic, if it fails, try another
@@ -880,11 +880,12 @@ handleError p t1 t2
                case runStateT t1 s of
                     OK (v, s') -> do put s'
                                      return $! v
-                    Error e1 -> if p e1 then
-                                   do case runStateT t2 s of
-                                         OK (v, s') -> do put s'; return $! v
-                                         Error e2 -> lift (tfail e2)
-                                   else lift (tfail e1)
+                    Error e1 -> if p e1
+                                  then do
+                                    case runStateT t2 s of
+                                      OK (v, s') -> do put s'; return $! v
+                                      Error e2 -> lift (tfail e2)
+                                  else lift (tfail e1)
 
 try' :: Elab' aux a -> Elab' aux a -> Bool -> Elab' aux a
 try' t1 t2 proofSearch
@@ -896,10 +897,11 @@ try' t1 t2 proofSearch
             OK ((v, _, _), s') -> do put s'
                                      return $! v
             Error e1 -> traceWhen ulog ("try failed " ++ show e1) $
-                         if recoverableErr e1 then
-                            do case runStateT t2 s of
-                                 OK (v, s') -> do put s'; return $! v
-                                 Error e2 -> lift (tfail e2)
+                         if recoverableErr e1
+                           then do
+                             case runStateT t2 s of
+                               OK (v, s') -> do put s'; return $! v
+                               Error e2 -> lift (tfail e2)
                            else lift (tfail e1)
   where recoverableErr err@(CantUnify r x y _ _ _)
              = -- traceWhen r (show err) $

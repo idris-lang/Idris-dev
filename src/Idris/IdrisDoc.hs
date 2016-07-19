@@ -509,12 +509,12 @@ genTypeHeader ist (FD n _ args ftype _) = do
         decorator _ str = str
 
         htmlSpan :: String -> String -> String -> String
-        htmlSpan t cs str = do
+        htmlSpan t cs str =
           R.renderHtml $ H.span ! class_ (toValue cs)
                                 ! title (toValue t)
                                 $ toHtml str
         htmlLink :: String -> String -> String -> String -> String
-        htmlLink t cs a str = do
+        htmlLink t cs a str =
           R.renderHtml $ H.a ! class_ (toValue cs)
                        ! title (toValue t) ! href (toValue a)
                        $ toHtml str
@@ -645,8 +645,7 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
 
 createOtherDoc ist (NamedInstanceDoc _ fd) = createFunDoc ist fd
 
-createOtherDoc ist (ModDoc _  docstring) = do
-  Docstrings.renderHtml docstring
+createOtherDoc ist (ModDoc _  docstring) = Docstrings.renderHtml docstring
 
 -- | Generates everything but the actual content of the page
 wrapper :: Maybe NsName -- ^ Namespace name, unless it is the index

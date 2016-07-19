@@ -149,15 +149,17 @@ buildTree built importlists fp = evalStateT (btree [] fp) []
        mt <- lift $ runIO $ getIModTime fp
        if (file `elem` built)
           then return [MTree fp False mt []]
-               else if file `elem` stk then
-                       do lift $ tclift $ tfail
-                            (Msg $ "Cycle detected in imports: "
-                                     ++ showSep " -> " (reverse (file : stk)))
-                 else do donetree <- get
-                         case lookup file donetree of
-                            Just t -> return t
-                            _ -> do ms <- mkChildren file fp
-                                    addFile file ms
+          else if file `elem` stk
+                then lift $ tclift $ tfail
+                         (Msg $ "Cycle detected in imports: "
+                                 ++ showSep " -> " (reverse (file : stk)))
+                else do
+                  donetree <- get
+                  case lookup file donetree of
+                    Just t -> return t
+                    _ -> do
+                      ms <- mkChildren file fp
+                      addFile file ms
 
     where mkChildren file (LIDR fn) = do ms <- children True fn (file : stk)
                                          mt <- lift $ runIO $ getModificationTime fn

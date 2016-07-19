@@ -190,8 +190,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          -- the name unambiguously)
          i <- getIState
          rep <- useREPL
-         when rep $ do
-           addInternalApp (fc_fname fc) (fst . fc_start $ fc) (PTyped (PRef fc [] n) ty') -- (mergeTy ty' (delab i nty')) -- TODO: Should use span instead of line and filename?
+         when rep $ addInternalApp (fc_fname fc) (fst . fc_start $ fc) (PTyped (PRef fc [] n) ty') -- (mergeTy ty' (delab i nty')) -- TODO: Should use span instead of line and filename?
          addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) (PTyped (PRef fc [] n) ty')) -- (mergeTy ty' (delab i nty')))
 
          let (fam, _) = unApply (getRetTy nty')

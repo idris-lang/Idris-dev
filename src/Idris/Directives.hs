@@ -67,9 +67,9 @@ directiveAction (DSetTotal n') = do
             setTotality n (Total [])
             addIBC (IBCTotal n (Total []))) ns
 
-directiveAction (DAccess acc) = do updateIState (\i -> i { default_access = acc })
+directiveAction (DAccess acc) = updateIState (\i -> i { default_access = acc })
 
-directiveAction (DDefault tot) =  do updateIState (\i -> i { default_total = tot })
+directiveAction (DDefault tot) = updateIState (\i -> i { default_total = tot })
 
 directiveAction (DLogging lvl) = setLogLevel (fromInteger lvl)
 

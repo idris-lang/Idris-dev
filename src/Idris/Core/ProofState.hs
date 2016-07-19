@@ -834,20 +834,20 @@ patbind n ctxt env _ = fail "Can't pattern bind here"
 
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
-    do return $ Bind x (Hole (normalise ctxt env ty)) sc
+    return $ Bind x (Hole (normalise ctxt env ty)) sc
 compute ctxt env t = return t
 
 hnf_compute :: RunTactic
-hnf_compute ctxt env (Bind x (Hole ty) sc) =
-    do let ty' = hnf ctxt env ty in
+hnf_compute ctxt env (Bind x (Hole ty) sc) = do
+    let ty' = hnf ctxt env ty
 --          trace ("HNF " ++ show (ty, ty')) $
-           return $ Bind x (Hole ty') sc
+    return $ Bind x (Hole ty') sc
 hnf_compute ctxt env t = return t
 
 -- reduce let bindings only
 simplify :: RunTactic
 simplify ctxt env (Bind x (Hole ty) sc) =
-    do return $ Bind x (Hole (fst (specialise ctxt env [] ty))) sc
+  return $ Bind x (Hole (fst (specialise ctxt env [] ty))) sc
 simplify ctxt env t = return t
 
 check_in :: Raw -> RunTactic
@@ -870,8 +870,7 @@ eval_in t ctxt env tm =
        return tm
 
 start_unify :: Name -> RunTactic
-start_unify n ctxt env tm = do -- action (\ps -> ps { unified = (n, []) })
-                               return tm
+start_unify n ctxt env tm = return tm
 
 tmap f (a, b, c) = (f a, b, c)
 

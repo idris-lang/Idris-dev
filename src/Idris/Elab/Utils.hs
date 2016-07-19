@@ -37,7 +37,7 @@ recheckC = recheckC_borrowing False True []
 
 recheckC_borrowing uniq_check addConstrs bs tcns fc mkerr env t
     = do -- t' <- applyOpts (forget t) (doesn't work, or speed things up...)
-         
+
          ctxt <- getContext
          t' <- case safeForget t of
                     Just ft -> return ft
@@ -47,7 +47,7 @@ recheckC_borrowing uniq_check addConstrs bs tcns fc mkerr env t
                                    OK x -> return x
          logElab 6 $ "CONSTRAINTS ADDED: " ++ show (tm, ty, cs)
          tit <- typeInType
-         when (not tit && addConstrs) $ 
+         when (not tit && addConstrs) $
                            do addConstraints fc cs
                               mapM_ (\c -> addIBC (IBCConstraint fc c)) (snd cs)
          mapM_ (checkDeprecated fc) (allTTNames tm)
@@ -62,10 +62,11 @@ checkDeprecated fc n
     = do r <- getDeprecated n
          case r of
               Nothing -> return ()
-              Just r -> do iWarn fc $ text "Use of deprecated name " <> annName n
+              Just r -> iWarn fc $ text "Use of deprecated name "
+                                 <> annName n
                                  <> case r of
                                          "" -> Util.Pretty.empty
-                                         _ -> line <> text r
+                                         _  -> line <> text r
 
 
 checkFragile :: FC -> Name -> Idris ()
@@ -73,8 +74,7 @@ checkFragile fc n = do
   r <- getFragile n
   case r of
     Nothing -> return ()
-    Just r  -> do
-      iWarn fc $ text "Use of a fragile construct "
+    Just r  -> iWarn fc $ text "Use of a fragile construct "
                      <> annName n
                      <> case r of
                           "" -> Util.Pretty.empty
@@ -544,5 +544,3 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
                              a' <- getPats a
                              return (App s f' a')
     getPats t = return t
-
-

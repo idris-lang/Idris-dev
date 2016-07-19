@@ -83,7 +83,7 @@ recheck_borrowing uniq_check bs tcns ctxt env tm orig
 check :: Context -> Env -> Raw -> TC (Term, Type)
 check ctxt env tm
      -- Holes allowed, so constraint namespace doesn't matter
-     = evalStateT (check' True [] ctxt env tm) (0, []) 
+     = evalStateT (check' True [] ctxt env tm) (0, [])
 
 check' :: Bool -> String -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
 check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top where
@@ -109,7 +109,7 @@ check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top wh
       -- If the names are ambiguous, require it to be fully qualified
       | [P nt n' ty] <- lookupP_all (not holes) True n ctxt
              = return (P nt n' ty, ty)
-      | otherwise = do lift $ tfail $ NoSuchVariable n
+      | otherwise = lift $ tfail $ NoSuchVariable n
   chk u lvl env ap@(RApp f RType) | not holes
     -- special case to reduce constraintss
       = do (fv, fty) <- chk u Nothing env f
@@ -343,7 +343,7 @@ checkUnique borrowed ctxt env tm
                      StateT [(Name, (UniqueUse, Universe))] TC ()
     chkBinderName env n b
        = do let rawty = forgetEnv (map fst env) (binderTy b)
-            (_, kind) <- lift $ check ctxt env rawty 
+            (_, kind) <- lift $ check ctxt env rawty
             case kind of
                  UType UniqueType -> do ns <- get
                                         if n `elem` borrowed

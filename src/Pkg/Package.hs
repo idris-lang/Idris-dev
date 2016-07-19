@@ -66,7 +66,7 @@ buildPkg copts warnonly (install, fp) = do
 
       make (makefile pkgdesc)
       case (execout pkgdesc) of
-        Nothing -> do
+        Nothing ->
           case mergeOptions copts (idx : NoREPL : Verbose : idris_opts pkgdesc) of
             Left emsg -> do
               putStrLn emsg
@@ -110,11 +110,10 @@ checkPkg copts warnonly quit fpath = do
         Left emsg -> do
           putStrLn emsg
           exitWith (ExitFailure 1)
-        Right opts -> do
-          buildMods opts (modules pkgdesc)
+        Right opts -> buildMods opts (modules pkgdesc)
     when quit $ case res of
                   Nothing -> exitWith (ExitFailure 1)
-                  Just res' -> do
+                  Just res' ->
                     case errSpan res' of
                       Just _ -> exitWith (ExitFailure 1)
                       _      -> return ()
@@ -252,7 +251,7 @@ testPkg copts fp = do
           return m_ist
     case m_ist of
       Nothing  -> exitWith (ExitFailure 1)
-      Just ist -> do
+      Just ist ->
         -- Quit with error code if problem building
         case errSpan ist of
           Just _ -> exitWith (ExitFailure 1)
@@ -287,20 +286,24 @@ buildMods opts ns = do let f = map (toPath . showCG) ns
     where toPath n = foldl1' (</>) $ splitOn "." n
 
 testLib :: Bool -> String -> String -> IO Bool
-testLib warn p f
-    = do d <- getDataDir
-         gcc <- getCC
-         (tmpf, tmph) <- tempfile ""
-         hClose tmph
-         let libtest = d </> "rts" </> "libtest.c"
-         e <- rawSystem gcc [libtest, "-l" ++ f, "-o", tmpf]
-         case e of
-            ExitSuccess -> return True
-            _ -> do if warn
-                       then do putStrLn $ "Not building " ++ p ++
-                                          " due to missing library " ++ f
-                               return False
-                       else fail $ "Missing library " ++ f
+testLib warn p f = do
+    d <- getDataDir
+    gcc <- getCC
+    (tmpf, tmph) <- tempfile ""
+    hClose tmph
+    let libtest = d </> "rts" </> "libtest.c"
+    e <- rawSystem gcc [libtest, "-l" ++ f, "-o", tmpf]
+    case e of
+       ExitSuccess -> return True
+       _ -> if warn
+              then do
+                putStrLn $ unwords ["Not building"
+                                   , p
+                                   , "due to missing library"
+                                   , f
+                                   ]
+                return False
+              else fail $ unwords ["Missing library", f]
 
 rmIBC :: Name -> IO ()
 rmIBC m = rmFile $ toIBCFile m

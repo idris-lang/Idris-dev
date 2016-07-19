@@ -162,8 +162,7 @@ elabClauses info' fc opts n_in cs =
            numArgs <- tclift $ sameLength pdef
 
            case specNames opts of
-                Just _ ->
-                   do logElab 3 $ "Partially evaluated:\n" ++ show pats_pe
+                Just _ -> logElab 3 $ "Partially evaluated:\n" ++ show pats_pe
                 _ -> return ()
            logElab 3 $ "Transformed:\n" ++ show pats_transformed
 
@@ -625,8 +624,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logElab 3 ("Normalised LHS: " ++ showTmImpls (delabMV i clhs))
 
         rep <- useREPL
-        when rep $ do
-          addInternalApp (fc_fname fc) (fst . fc_start $ fc) (delabMV i clhs) -- TODO: Should use span instead of line and filename?
+        when rep $ addInternalApp (fc_fname fc) (fst . fc_start $ fc) (delabMV i clhs) -- TODO: Should use span instead of line and filename?
         addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) (delabMV i clhs))
 
         logElab 5 ("Checked " ++ show clhs ++ "\n" ++ show clhsty)
@@ -706,8 +704,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         mapM_ (\(n, _) -> addIBC (IBCDef n)) def''
 
-        when (not (null def')) $ do
-           mapM_ defer_totcheck (map (\x -> (fc, fst x)) def'')
+        when (not (null def')) $ mapM_ defer_totcheck (map (\x -> (fc, fst x)) def'')
 
         -- Now the remaining deferred (i.e. no type declarations) clauses
         -- from the where block

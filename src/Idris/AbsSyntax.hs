@@ -1134,8 +1134,7 @@ logLvlCats cs l str = do
     when (lvl >= l) $
       when (inCat cs cats || null cats) $
         case idris_outputmode i of
-          RawOutput h -> do
-            runIO $ hPutStrLn h str
+          RawOutput h -> runIO $ hPutStrLn h str
           IdeMode n h -> do
             let good = SexpList [IntegerAtom (toInteger l), toSExp str]
             runIO . hPutStrLn h $ convSExp "log" good n

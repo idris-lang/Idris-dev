@@ -21,7 +21,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupTotalExact, lookupInjectiveExact,
-                lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, 
+                lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict,
                 isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
@@ -206,12 +206,12 @@ usable False depthlimit n ns
 
 
 fnCount :: Int -> Name -> Eval ()
-fnCount inc n
-         = do ES ls num b <- get
-              case lookup n ls of
-                  Just i -> do put $ ES ((n, (i - inc)) :
-                                           filter (\ (n', _) -> n/=n') ls) num b
-                  _ -> return ()
+fnCount inc n = do
+  ES ls num b <- get
+  case lookup n ls of
+    Just i -> do
+      put $ ES ((n, (i - inc)) : filter (\ (n', _) -> n/=n') ls) num b
+    _ -> return ()
 
 setBlock :: Bool -> Eval ()
 setBlock b = do ES ls num _ <- get
