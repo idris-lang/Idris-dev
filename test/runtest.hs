@@ -142,7 +142,7 @@ printStats conf stats = do
     let failures = length $ filter (== Failure) stats
     let updates = length $ filter (== Updated) stats
     putStrLn "\n----"
-    putStrLn $ show total ++ " tests run: " ++ show successful ++ " succesful, "
+    putStrLn $ show total ++ " tests run: " ++ show successful ++ " successful, "
                 ++ show failures ++ " failed, " ++ show updates ++ " updated."
     let failed = map fst $ filter ((== Failure) . snd) $ zip (tests conf) stats
     when (failed /= []) $ do
