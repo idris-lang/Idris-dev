@@ -23,5 +23,3 @@ raw status = 32512
 exit status = 127
 True
 
-Removed: 00base001-idx.ibc
-Removed: /Users/steshaw/Projects/steshaw/idris/test/base001/base001

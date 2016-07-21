@@ -3,5 +3,5 @@
 #gcc -Wall -c sys.c
 ${IDRIS:-idris} $@ --build base001.ipkg
 ./base001
-${IDRIS:-idris} $@ --clean base001.ipkg
-rm *.ibc
+make clean
+rm -f *.ibc base001
