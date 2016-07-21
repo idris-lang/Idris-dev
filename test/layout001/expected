@@ -1,6 +1,24 @@
 Checking layout001a.idr
+./layout001a.idr:5:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+y 
+^ 
 Checking layout001b.idr
+./layout001b.idr:5:3: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+= y 
+  ^ 
 Checking layout001c.idr
+./layout001c.idr:3:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+2 
+^ 
 Checking layout001d.idr
 Checking layout001e.idr
 ./layout001e.idr:6:1: error: Wrong
@@ -45,6 +63,13 @@ Checking layout001j.idr
     3 
     ^ 
 Checking layout001k.idr
+Checking layout001l.idr
+./layout001l.idr:6:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+y 
+^ 
 Checking mplus1.idr
 mplus1.idr:13:31:
 When checking right hand side of term with expected type
@@ -65,4 +90,3 @@ Checking mplus2.idr
                                     ^              
 Checking mplus3.idr
 mplus3.idr:11:1:warning - Unreachable case: term
-Checking passesButShouldNot.idr

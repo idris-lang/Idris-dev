@@ -1116,7 +1116,9 @@ RHSName ::= '{' FnName '}';
 @
 -}
 rhs :: SyntaxInfo -> Name -> IdrisParser PTerm
-rhs syn n = do lchar '='; expr syn
+rhs syn n = do lchar '='
+               indentPropHolds gtProp
+               expr syn
         <|> do symbol "?=";
                fc <- getFC
                name <- option n' (do symbol "{"; n <- fst <$> fnName; symbol "}";
