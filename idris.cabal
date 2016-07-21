@@ -598,6 +598,10 @@ Extra-source-files:
                        test/io003/*.idr
                        test/io003/expected
 
+                       test/layout001/expected
+                       test/layout001/*.idr
+                       test/layout001/run
+
                        test/literate001/run
                        test/literate001/*.lidr
                        test/literate001/expected
