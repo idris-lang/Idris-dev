@@ -7,7 +7,7 @@ import Control.Monad.Trans
 %access public export
 
 ||| A monad representing a computation that produces a stream of output
-interface (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) where
+interface (Monoid w, Monad m) => MonadWriter w (m : Type -> Type) | m where
     ||| tell w produces the output w
     tell   : w -> m ()
     ||| Execute an action and add it's output to the value of the computation

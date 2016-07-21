@@ -8,7 +8,7 @@ import Control.Monad.Reader
 %access public export
 
 ||| A combination of the Reader, Writer, and State monads
-interface (Monoid w, MonadReader r m, MonadWriter w m, MonadState s m) => MonadRWS r w s (m : Type -> Type) where {}
+interface (Monoid w, MonadReader r m, MonadWriter w m, MonadState s m) => MonadRWS r w s (m : Type -> Type) | m where {}
 
 ||| The transformer on which the RWS monad is based
 record RWST (r : Type) (w : Type) (s : Type) (m : Type -> Type) (a : Type) where
