@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} $@ base001.idr -o base001
+#gcc -Wall -o exit1 exit1.c
+#gcc -Wall -c sys.c
+${IDRIS:-idris} $@ --build base001.ipkg
 ./base001
-rm -f base001 *.ibc
+${IDRIS:-idris} $@ --clean base001.ipkg
+rm *.ibc
