@@ -293,6 +293,15 @@ Extra-source-files:
                        test/reg075/*.idr
                        test/reg075/expected
 
+                       test/base001/Makefile
+                       test/base001/base001.idr
+                       test/base001/base001.ipkg
+                       test/base001/exit1.c
+                       test/base001/expected
+                       test/base001/run
+                       test/base001/sys.c
+                       test/base001/sys.h
+
                        test/basic001/run
                        test/basic001/*.idr
                        test/basic001/expected
