@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} --check $@ layout001.idr
+
+for file in *.idr; do
+  echo Checking ${file}
+  ${IDRIS:-idris} --check $@ ${file}
+done
+
 rm -f *.ibc
