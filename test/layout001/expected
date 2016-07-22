@@ -1,3 +1,4 @@
+Checking NonLayout.idr
 Checking layout001a.idr
 ./layout001a.idr:5:1: error: Wrong
     indention: should be greater
