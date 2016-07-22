@@ -184,7 +184,7 @@ pClause = do reserved "executable"; lchar '=';
       <|> do reserved "objs"; lchar '=';
              ls <- sepBy1 (fst <$> identifier) (lchar ',')
              st <- get
-             put (st { objs = libdeps st ++ ls })
+             put (st { objs = objs st ++ ls })
 
       <|> do reserved "makefile"; lchar '=';
              mk <- fst <$> iName []
