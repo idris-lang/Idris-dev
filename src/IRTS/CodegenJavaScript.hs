@@ -17,6 +17,7 @@ import IRTS.JavaScript.AST
 import Idris.AbsSyntax hiding (TypeCase)
 import IRTS.Bytecode
 import IRTS.Lang
+import IRTS.Exports
 import IRTS.Simplified
 import IRTS.Defunctionalise
 import IRTS.CodegenCommon
@@ -103,12 +104,12 @@ data JSTarget = Node | JavaScript deriving Eq
 codegenJavaScript :: CodeGenerator
 codegenJavaScript ci =
   codegenJS_all JavaScript (simpleDecls ci)
-    (includes ci) [] (outputFile ci) (outputType ci)
+    (includes ci) [] (outputFile ci) (exportDecls ci) (outputType ci)
 
 codegenNode :: CodeGenerator
 codegenNode ci =
   codegenJS_all Node (simpleDecls ci)
-    (includes ci) (compileLibs ci) (outputFile ci) (outputType ci)
+    (includes ci) (compileLibs ci) (outputFile ci) (exportDecls ci) (outputType ci)
 
 codegenJS_all
   :: JSTarget
@@ -116,14 +117,16 @@ codegenJS_all
   -> [FilePath]
   -> [String]
   -> FilePath
+  -> [ExportIFace]
   -> OutputType
   -> IO ()
-codegenJS_all target definitions includes libs filename outputType = do
+codegenJS_all target definitions includes libs filename exports outputType = do
   let bytecode = map toBC definitions
   let info = initCompileInfo bytecode
   let js = concatMap (translateDecl info) bytecode
   let full = concatMap processFunction js
-  let code = deadCodeElim full
+  let exportedNames = map translateName ((getExpNames exports) ++ [sUN "call__IO"])
+  let code = deadCodeElim exportedNames full
   let ext = takeExtension filename
   let isHtml = target == JavaScript && ext == ".html"
   let htmlPrologue = T.pack "<!doctype html><html><head><script>\n"
@@ -150,6 +153,7 @@ codegenJS_all target definitions includes libs filename outputType = do
   let jsSource = T.pack runtime
                  `T.append` T.concat (map compileJS opt)
                  `T.append` T.concat (map compileJS cons)
+                 `T.append` T.concat (map compileJS (map genInterface (concatMap getExps exports)))
                  `T.append` main
                  `T.append` invokeMain
   let source = if isHtml
@@ -161,14 +165,17 @@ codegenJS_all target definitions includes libs filename outputType = do
                                             , writable   = True
                                             })
     where
-      deadCodeElim :: [JS] -> [JS]
-      deadCodeElim js = concatMap collectFunctions js
+      deadCodeElim :: [String] -> [JS] -> [JS]
+      deadCodeElim exports js = concatMap (collectFunctions exports) js
         where
-          collectFunctions :: JS -> [JS]
-          collectFunctions fun@(JSAlloc name _)
+          collectFunctions :: [String] -> JS -> [JS]
+          collectFunctions _ fun@(JSAlloc name _)
             | name == translateName (sMN 0 "runMain") = [fun]
 
-          collectFunctions fun@(JSAlloc name (Just (JSFunction _ body))) =
+          collectFunctions exports fun@(JSAlloc name _)
+            | name `elem` exports = [fun]
+
+          collectFunctions _ fun@(JSAlloc name (Just (JSFunction _ body))) =
             let invokations = sum $ map (
                     \x -> execState (countInvokations name x) 0
                   ) js
@@ -273,6 +280,7 @@ codegenJS_all target definitions includes libs filename outputType = do
 
       invokeMain :: T.Text
       invokeMain = compileJS $ JSApp (JSIdent "main") []
+      getExps (Export _ _ exp) = exp
 
 optimizeConstructors :: [JS] -> ([JS], [JS])
 optimizeConstructors js =
@@ -1236,6 +1244,33 @@ jsPUSH args = JSApp (JSProj jsCALLSTACK "push") args
 
 jsPOP :: JS
 jsPOP = JSApp (JSProj jsCALLSTACK "pop") []
+
+genInterface :: Export -> JS
+genInterface (ExportData name) = JSNoop
+genInterface (ExportFun name (FStr jsName) ret args) = JSAlloc jsName
+        (Just (JSFunction [] (JSSeq  $
+            jsFUNPRELUDE ++
+            pushArgs nargs ++
+            [jsSTOREOLD d,
+             jsBASETOP d 0,
+             jsADDTOP d nargs,
+             jsCALL d name] ++
+            retval ret)))
+    where
+        nargs = length args
+        d = CompileInfo [] [] False
+        pushArg n = JSAssign (jsTOP n) (JSIndex (JSIdent "arguments") (JSNum (JSInt n)))
+        pushArgs 0 = []
+        pushArgs n = (pushArg (n-1)):pushArgs (n-1)
+        retval (FIO t) = [JSApp (JSIdent "i$RUN") [],
+                          JSAssign (jsTOP 0) JSNull,
+                          JSAssign (jsTOP 1) JSNull,
+                          JSAssign (jsTOP 2) (translateReg RVal),
+                          jsSTOREOLD d,
+                          jsBASETOP d 0,
+                          jsADDTOP d 3,
+                          jsCALL d (sUN "call__IO")] ++ retval t
+        retval t = [JSApp (JSIdent "i$RUN") [], JSReturn (translateReg RVal)]
 
 translateBC :: CompileInfo -> BC -> JS
 translateBC info bc
