@@ -48,7 +48,7 @@ for T in "${TESTS[@]}"
 do
     echo ${T%% *} ${T##*#}
     generate_testfile "tmptest.idr" "${T%%#*}"
-    idris "$@" --quiet tmptest.idr -o tmptest || echo "missing primitive in ${CG}"
+    ${IDRIS:-idris} $@ --quiet tmptest.idr -o tmptest || echo "missing primitive in ${CG}"
     ./tmptest <<<"${T##*#}"
     rm tmptest.idr tmptest.ibc tmptest
 done

@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} --nocolour reg044.idr --check
+${IDRIS:-idris} $@ --nocolour reg044.idr --check
 rm -f *.ibc

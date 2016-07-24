@@ -7,7 +7,7 @@ do
     extraargs=("${extraargs[@]}" "'$arg'")
 done
 if (which timeout&>/dev/null); then
-   timeout 60 idris $@ --nocolour reg039.idr --exec go
+  timeout 60 ${IDRIS:-idris} $@ --nocolour reg039.idr --exec go
 else
     # From http://unix.stackexchange.com/questions/43340/how-to-introduce-timeout-for-shell-scripting
     # Executes command with a timeout
@@ -30,6 +30,6 @@ else
         fi
 
     }
-    timeout 60 "idris ${extraargs[*]} --nocolour reg039.idr --exec go"
+    timeout 60 "${IDRIS:-idris} ${extraargs[*]} --nocolour reg039.idr --exec go"
     fi
     rm -f reg039 *.ibc
