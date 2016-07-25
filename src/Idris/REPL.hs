@@ -435,9 +435,9 @@ runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
         splitPi :: IState -> Type -> ([(Name, Type, PTerm)], Type, PTerm)
         splitPi ist (Bind n (Pi _ t _) rest) =
           let (hs, c, pc) = splitPi ist rest in
-            ((n, t, delabTy' ist [] t False False):hs,
-             c, delabTy' ist [] c False False)
-        splitPi ist tm = ([], tm, delabTy' ist [] tm False False)
+            ((n, t, delabTy' ist [] t False False True):hs,
+             c, delabTy' ist [] c False False True)
+        splitPi ist tm = ([], tm, delabTy' ist [] tm False False True)
 
         -- | Get the types of a list of metavariable names
         mvTys :: IState -> [Name] -> [(Name, Type)]

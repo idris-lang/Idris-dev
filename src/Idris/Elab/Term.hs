@@ -2600,7 +2600,7 @@ runTac autoSolve ist perhapsFC fn tac
              focus script
              ptm <- get_term
              elab ist toplevel ERHS [] (sMN 0 "tac")
-                  (PApp emptyFC tm [pexp (delabTy' ist [] tgoal True True)])
+                  (PApp emptyFC tm [pexp (delabTy' ist [] tgoal True True True)])
              (script', _) <- get_type_val (Var scriptvar)
              -- now that we have the script apply
              -- it to the reflected goal

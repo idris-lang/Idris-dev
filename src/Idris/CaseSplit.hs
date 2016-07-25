@@ -75,7 +75,7 @@ split n t'
         logElab 4 ("Elaborated:\n" ++ show tm ++ " : " ++ show ty ++ "\n" ++ show pats)
 --         iputStrLn (show (delab ist tm) ++ " : " ++ show (delab ist ty))
 --         iputStrLn (show pats)
-        let t = mergeUserImpl (addImplPat ist t') (delab ist tm)
+        let t = mergeUserImpl (addImplPat ist t') (delabDirect ist tm)
         let ctxt = tt_ctxt ist
         case lookup n pats of
              Nothing -> ifail $ show n ++ " is not a pattern variable"
@@ -247,7 +247,7 @@ tidy ist tm ty = return tm
 elabNewPat :: PTerm -> Idris (Bool, PTerm)
 elabNewPat t = idrisCatch (do (tm, ty) <- elabVal (recinfo (fileFC "casesplit")) ELHS t
                               i <- getIState
-                              return (True, delab i tm))
+                              return (True, delabDirect i tm))
                           (\e -> do i <- getIState
                                     logElab 5 $ "Not a valid split:\n" ++ showTmImpls t ++ "\n"
                                                      ++ pshow i e
