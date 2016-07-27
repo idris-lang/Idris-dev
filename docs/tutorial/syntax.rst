@@ -73,7 +73,7 @@ bound is below the upper bound using ``so``:
 .. code-block:: idris
 
     data Interval : Type where
-       MkInterval : (lower : Float) -> (upper : Float) ->
+       MkInterval : (lower : Double) -> (upper : Double) ->
                     so (lower < upper) -> Interval
 
 We can define a syntax which, in patterns, always matches ``oh`` for

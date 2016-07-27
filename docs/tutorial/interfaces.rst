@@ -6,7 +6,7 @@ Interfaces
 
 We often want to define functions which work across several different
 data types. For example, we would like arithmetic operators to work on
-``Int``, ``Integer`` and ``Float`` at the very least. We would like
+``Int``, ``Integer`` and ``Double`` at the very least. We would like
 ``==`` to work on the majority of data types. We would like to be able
 to display different types in a uniform way.
 

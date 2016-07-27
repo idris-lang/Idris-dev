@@ -151,7 +151,7 @@ function:
 
     interpFTy : FTy -> Type
     interpFTy FInt    = Int
-    interpFTy FFloat  = Float
+    interpFTy FFloat  = Double
     interpFTy FChar   = Char
     interpFTy FString = String
     interpFTy FPtr    = Ptr
@@ -237,7 +237,7 @@ command or the ``%dynamic`` directive. For example:
 
     Idris> :dynamic libm.so
     Idris> :x unsafePerformIO ((mkForeign (FFun "sin" [FFloat] FFloat)) 1.6)
-    0.9995736030415051 : Float
+    0.9995736030415051 : Double
 
 Type Providers
 ==============

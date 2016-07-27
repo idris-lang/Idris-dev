@@ -8,7 +8,7 @@ Primitive Types
 ===============
 
 Idris defines several primitive types: ``Int``, ``Integer`` and
-``Float`` for numeric operations, ``Char`` and ``String`` for text
+``Double`` for numeric operations, ``Char`` and ``String`` for text
 manipulation, and ``Ptr`` which represents foreign pointers. There are
 also several data types declared in the library, including ``Bool``,
 with values ``True`` and ``False``. We can declare some constants with
