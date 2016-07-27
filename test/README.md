@@ -8,6 +8,7 @@ Tests are categorised as follows:
 + *corecords*:      Tests for corecord
 + *delab*:          De-elaboration tests
 + *directives*:     Tests for directives
++ *disambig*:       Disambiguaton tests
 + *docs*:           Testing documentation functionality
 + *dsl*:            Embedded DSLs and features to support DSL development
 + *effects*:        Effects package
@@ -31,6 +32,7 @@ Tests are categorised as follows:
 + *regression*:     Regression tests, covering previous bug fixes
 + *sourceLocation*: Interaction with files from Idris
 + *sugar*:          Syntactic sugar, syntax extensions
++ *syntax*:         Syntax extensions
 + *tactics*:        Testing for tactics
 + *totality*:       Totality checking
 + *tutorial*:       Examples from the tutorial
