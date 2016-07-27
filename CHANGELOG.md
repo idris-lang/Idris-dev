@@ -31,6 +31,10 @@
 * Idris' documentation system now displays the documentation for auto
   implicits in the output of `:doc`. This is tested for in `docs005`.
 
+## Miscellaneous updates
+
+* The test suite now uses [tasty-golden](https://hackage.haskell.org/package/tasty-golden). New tests must be registered in `test/TestData.hs`, as explained in the relevant `README.md`.
+
 # New in 0.12:
 
 ## Language updates
