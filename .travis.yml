@@ -100,15 +100,38 @@ before_script:
   - tar -xf Idris-dev/dist/idris*.tar.gz
   - cd idris*
 script:
+###
+  - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
   - cabal configure -f FFI -f CI
+  - echo -en 'travis_fold:end:script.configure\\r'
+###
+  - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'
   - cabal build
+  - echo -en 'travis_fold:end:script.build\\r'
+###
+  - echo 'Copy...' && echo -en 'travis_fold:start:script.copy\\r'
   - cabal copy
+  - echo -en 'travis_fold:end:script.copy\\r'
+###
+  - echo 'Register...' && echo -en 'travis_fold:start:script.register\\r'
   - cabal register
+  - echo -en 'travis_fold:end:script.register\\r'
+###
+  - echo 'Cppcheck...' && echo -en 'travis_fold:start:script.cppcheck\\r'
   - if [[ "$TESTS" == "test_c" ]]; then
       cppcheck -i 'mini-gmp.c' rts;
     fi
+  - echo -en 'travis_fold:end:script.cppcheck\\r'
+###
+  - echo 'Tests...' && echo -en 'travis_fold:start:script.tests\\r'
   - for test in $TESTS; do
       echo "make -j2 $test";
       make -j2 $test;
     done
+  - echo -en 'travis_fold:end:script.tests\\r'
+###
+  - echo 'Benchmarks...' && echo -en 'travis_fold:start:script.benchmarks\\r'
   - cd benchmarks && ./build.pl && ./run.pl && cd ..
+  - echo -en 'travis_fold:end:script.benchmarks\\r'
+###
+#
