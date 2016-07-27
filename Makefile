@@ -20,13 +20,13 @@ build: dist/setup-config
 test: doc test_c
 
 test_c:
-	$(MAKE) -C test IDRIS=../dist/build/idris/idris test
+	echo "test_c not supported"
 
 test_js:
-	$(MAKE) -C test IDRIS=../dist/build/idris/idris test_js
+	echo "test_js not supported"
 
 test_timed:
-	$(MAKE) -C test IDRIS=../dist/build/idris/idris time
+	echo "test_timed not supported"
 
 lib_clean:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris RTS=../../dist/build/rts/libidris_rts clean
