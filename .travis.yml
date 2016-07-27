@@ -102,7 +102,7 @@ before_script:
 script:
 ###
   - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
-  - cabal configure -f FFI -f CI
+  - cabal configure -f FFI -f CI --enable-tests
   - echo -en 'travis_fold:end:script.configure\\r'
 ###
   - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'
@@ -125,8 +125,8 @@ script:
 ###
   - echo 'Tests...' && echo -en 'travis_fold:start:script.tests\\r'
   - for test in $TESTS; do
-      echo "make -j2 $test";
-      make -j2 $test;
+      echo "make TEST-JOBS=2 $test";
+      travis_wait make TEST-JOBS=2 $test;
     done
   - echo -en 'travis_fold:end:script.tests\\r'
 ###

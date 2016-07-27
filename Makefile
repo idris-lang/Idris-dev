@@ -1,10 +1,15 @@
-.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib fast test_c test lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs
+.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib fast test_js test_c test test_clean lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs
+
+ARGS=
+TEST-JOBS=
+TEST-ARGS=
 
 include config.mk
 -include custom.mk
 
 ifdef CI
 CABALFLAGS += -f CI
+TEST-ARGS += --color always
 endif
 
 install:
@@ -20,13 +25,20 @@ build: dist/setup-config
 test: doc test_c
 
 test_c:
-	echo "test_c not supported"
+	$(CABAL) test $(ARGS) --test-options \
+		"$(TEST-ARGS) --rerun-update +RTS -N$(TEST-JOBS) -RTS"
 
 test_js:
-	echo "test_js not supported"
+	$(CABAL) test $(ARGS) --test-options \
+		"$(TEST-ARGS) --node --rerun-update +RTS -N$(TEST-JOBS) -RTS"
 
-test_timed:
-	echo "test_timed not supported"
+test_update:
+	$(CABAL) test $(ARGS) --test-options \
+		"$(TEST-ARGS) --accept +RTS -N$(TEST-JOBS) -RTS"
+
+test_clean:
+	rm -f test/*~
+	rm -f test/*/output
 
 lib_clean:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris RTS=../../dist/build/rts/libidris_rts clean
