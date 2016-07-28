@@ -1994,8 +1994,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
               else fp <+> align (vsep (map (prettyArgS d bnd) shownArgs))
     prettySe d p bnd (PWithApp _ f a) = prettySe d p bnd f <+> text "|" <+> prettySe d p bnd a
     prettySe d p bnd (PCase _ scr cases) =
-      align $ kwd "case" <+> prettySe (decD d) startPrec bnd scr <+> kwd "of" <$>
-      depth d (indent 2 (vsep (map ppcase cases)))
+      bracket p funcAppPrec $
+          align $ kwd "case" <+> prettySe (decD d) startPrec bnd scr <+> kwd "of" <$>
+          depth d (indent 2 (vsep (map ppcase cases)))
       where
         ppcase (l, r) = let prettyCase = prettySe (decD d) startPrec
                                          ([(n, False) | n <- vars l] ++ bnd)
@@ -2255,6 +2256,7 @@ prettyName :: Bool           -- ^ whether the name should be parenthesised if it
            -> Doc OutputAnnotation
 prettyName infixParen showNS bnd n
     | (MN _ s)  <- n, isPrefixOf "_" $ T.unpack s = text "_"
+    | (UN n')   <- n, isPrefixOf "__" $ T.unpack n' = text "_"
     | (UN n')   <- n, T.unpack n' == "_" = text "_"
     | Just imp  <- lookup n bnd = annotate (AnnBoundName n imp) fullName
     | otherwise                 = annotate (AnnName n Nothing Nothing Nothing) fullName
