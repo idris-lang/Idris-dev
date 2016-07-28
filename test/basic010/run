@@ -8,7 +8,7 @@ do
 done
 
 if (which timeout&>/dev/null); then
-    timeout 10 idris $@ Main.idr --nocolour --check --warnreach -o basic010
+    timeout 10 ${IDRIS:-idris} $@ Main.idr --nocolour --check --warnreach -o basic010
     timeout 5  ./basic010
 else
     # From http://unix.stackexchange.com/questions/43340/how-to-introduce-timeout-for-shell-scripting
@@ -35,7 +35,7 @@ else
 
     }
 
-    timeout 10 "idris ${extraargs[*]} Main.idr --nocolour --check --warnreach -o basic010"
+    timeout 10 "${IDRIS:-idris} ${extraargs[*]} Main.idr --nocolour --check --warnreach -o basic010"
     timeout 5  "./basic010"
 fi
 rm -f *.ibc basic010

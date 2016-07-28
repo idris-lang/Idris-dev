@@ -2,6 +2,8 @@ import Data.Vect
 import Data.Fin
 import Control.Isomorphism
 
+-- Tests if Idris can disambiguate between the three `toVect` operators
+
 Dec0 : Type -> Type
 Dec0 = Dec
 
