@@ -19,10 +19,10 @@ listenOnLocalhost (PortNumber port) = do
     localhost <- inet_addr "127.0.0.1"
     bracketOnError
       (socket AF_INET Stream proto)
-      (sClose)
+      (close)
       (\sock -> do
           setSocketOption sock ReuseAddr 1
-          bindSocket sock (SockAddrInet port localhost)
+          bind sock (SockAddrInet port localhost)
           listen sock maxListenQueue
           return sock
       )
@@ -32,10 +32,10 @@ listenOnLocalhostAnyPort = do
     localhost <- inet_addr "127.0.0.1"
     bracketOnError
       (socket AF_INET Stream proto)
-      (sClose)
+      (close)
       (\sock -> do
           setSocketOption sock ReuseAddr 1
-          bindSocket sock (SockAddrInet aNY_PORT localhost)
+          bind sock (SockAddrInet aNY_PORT localhost)
           listen sock maxListenQueue
           port <- socketPort sock
           return (sock, port)
