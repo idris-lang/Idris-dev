@@ -636,6 +636,15 @@ convEq ctxt holes topx topy = ceq [] topx topy where
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Pi i v t) (Pi i' v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
+    -- Special case for 'case' blocks - size of scope causes complications,
+    -- we only want to check the blocks themselves are valid and identical
+    -- in the current scope. So, just check the bodies, and the additional
+    -- arguments the case blocks are applied to.
+    ceq ps x@(App _ _ _) y@(App _ _ _)
+        | (P _ cx _, xargs) <- unApply x,
+          (P _ cy _, yargs) <- unApply y,
+          caseName cx && caseName cy = sameCase ps cx cy xargs yargs
+
     ceq ps (App _ fx ax) (App _ fy ay) = liftM2 (&&) (ceq ps fx fy) (ceq ps ax ay)
     ceq ps (Constant x) (Constant y) = return (x == y)
     ceq ps (TType x) (TType y) | x == y = return True
@@ -677,6 +686,24 @@ convEq ctxt holes topx topy = ceq [] topx topy where
                                      (_, ydef) = cases_compiletime yd in
                                        caseeq ((x,y):ps) xdef ydef
                         _ -> return False
+
+    sameCase :: [(Name, Name)] -> Name -> Name -> [Term] -> [Term] -> 
+                StateT UCs TC Bool
+    sameCase ps x y xargs yargs
+          = case (lookupDef x ctxt, lookupDef y ctxt) of
+                 ([Function _ xdef], [Function _ ydef])
+                       -> ceq ((x,y):ps) xdef ydef
+                 ([CaseOp _ _ _ _ _ xd],
+                  [CaseOp _ _ _ _ _ yd])
+                       -> let (xin, xdef) = cases_compiletime xd
+                              (yin, ydef) = cases_compiletime yd in
+                            do liftM2 (&&) 
+                                  (do ok <- zipWithM (ceq ps)
+                                              (drop (length xin) xargs)
+                                              (drop (length yin) yargs)
+                                      return (and ok))
+                                  (caseeq ((x,y):ps) xdef ydef)
+                 _ -> return False
 
 -- SPECIALISATION -----------------------------------------------------------
 -- We need too much control to be able to do this by tweaking the main
