@@ -63,28 +63,31 @@ ingredients = [rerunningTests [consoleTestReporter],
 -- A ripoff of goldenVsFile from Tasty.Golden
 test :: String -> String -> IO () -> TestTree
 test name path act =
-  goldenTest name (BS.readFile ref) (act >> BS.readFile new) cmp upd
+  goldenTest name (readFile ref) (act >> readFile new) cmp upd
     where
       ref = path </> "expected"
       new = path </> "output"
-      cmp x y = return $ if x == y then Nothing
+      cmp x y = return $ if normalize x == normalize y then Nothing
                                    else Just $ printDiff (ref, x) (new, y)
-      upd = BS.writeFile ref
+      upd = writeFile ref
+      normalize [] = []
+      normalize ('\\':'\\':xs) = '/':normalize xs
+      normalize ('\\':xs) = '/':normalize xs
+      normalize (x:xs) = x:normalize xs
+
 
 -- Takes the filepath and content of `expected` and `output`
 -- and formats an error message stating their difference
-printDiff :: (String, BS.ByteString) -> (String, BS.ByteString) -> String
+printDiff :: (String, String) -> (String, String) -> String
 printDiff (ref, x) (new, y) =
-  let refcnt = BSC.unpack x
-      newcnt = BSC.unpack y
-      printContent cnt =
+  let printContent cnt =
         if Data.List.null cnt
            then " is empty...\n"
            else " is: \n" ++ unlines (fmap ((++) "  ") (lines cnt))
    in
      "Test mismatch!\n" ++
-       "Golden file " ++ ref ++ printContent refcnt ++
-       "However, " ++ new ++ printContent newcnt
+       "Golden file " ++ ref ++ printContent x ++
+       "However, " ++ new ++ printContent y
 
 -- Should always output a 3-charater string from a postive Int
 indexToString :: Int -> String
@@ -125,4 +128,3 @@ main = do
        in
         mkGoldenTests (testFamiliesForCodegen codegen)
                     (flags ++ idrisFlags)
-
