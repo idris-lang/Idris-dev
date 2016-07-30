@@ -198,7 +198,7 @@ cannot be specified explicitly. The REPL command ``:type Type 1`` will
 result in an error, as will attempting to specify the universe level
 of any type.
 
-Why does Idris use ``Float`` and ``Double`` instead of ``Float32`` and ``Float64``?
+Why does Idris use ``Double`` instead of ``Float64``?
 ===================================================================================
 
 Historically the C language and many other languages have used the
@@ -212,8 +212,8 @@ the size is described in the type name.
 
 Due to developer familiarity with the older naming convention, and
 choice by the developers of Idris, Idris uses the C style convention.
-That is, the names ``Float`` and ``Double`` are used to describe
-single and double precision numbers.
+That is, the name ``Double`` is used to describe double precision
+numbers, and Idris does not support 32 bit floats at present.
 
 What is -ffreestanding?
 =======================

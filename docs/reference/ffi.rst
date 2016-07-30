@@ -341,7 +341,7 @@ follows:
 
       data JS_Types : Type -> Type where
            JS_Str   : JS_Types String
-           JS_Float : JS_Types Float
+           JS_Float : JS_Types Double
            JS_Ptr   : JS_Types Ptr
            JS_Unit  : JS_Types ()
            JS_FnT   : JS_FnTypes a -> JS_Types (JsFn a)
