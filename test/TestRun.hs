@@ -70,10 +70,16 @@ test name path act =
       cmp x y = return $ if normalize x == normalize y then Nothing
                                    else Just $ printDiff (ref, x) (new, y)
       upd = writeFile ref
+      -- just pretend that backslashes are slashes for comparison
+      -- purposes to avoid path problems, so don't write any tests
+      -- that depend on that distinction in other contexts.
+      -- Also compare CRLF and LF as equal, fixes a weird corner case
+      -- on Mac where basic010 and reg039 produces CRLF
       normalize [] = []
-      normalize ('\\':'\\':xs) = '/':normalize xs
-      normalize ('\\':xs) = '/':normalize xs
-      normalize (x:xs) = x:normalize xs
+      normalize ('\r':'\n':xs) = '\n' : normalize xs
+      normalize ('\\':'\\':xs) = '/' : normalize xs
+      normalize ('\\':xs) = '/' : normalize xs
+      normalize (x : xs) = x : normalize xs
 
 
 -- Takes the filepath and content of `expected` and `output`
