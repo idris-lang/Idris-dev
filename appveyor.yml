@@ -1,0 +1,20 @@
+version: 1.0.{build}
+init:
+- ps: >-
+    choco install ghc --version 7.10.3 | Out-Null
+
+    $env:PATH="$env:PATH;C:\tools\ghc\ghc-7.10.3\bin;$HOME\AppData\Roaming\cabal\bin"
+
+    choco install cabal
+
+    cabal update
+
+    $env:current_posix=c:\msys64\usr\bin\cygpath -u $(pwd)
+
+environment:
+  MSYSTEM: MINGW64
+  MSYS2_PATH_TYPE: inherit
+build_script:
+- ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal install -fffi -j4 --enable-tests"
+test_script:
+- ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && make test_c"
