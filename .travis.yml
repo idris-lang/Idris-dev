@@ -79,15 +79,15 @@ install:
     then
       $ZCAT $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
               $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
-    fi;
+    fi
   - travis_retry cabal update -v
   # Run build with 2 parallel jobs
   # The container environment reports 16 cores,
   # causing cabal's default configuration (jobs: $ncpus)
   # to run into the GHC #9221 bug which can result in longer build-times.
-  - $SED -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config;
-  - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt;
-  - $SED -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt;
+  - $SED -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
+  - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
+  - $SED -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
   # check whether current requested install-plan matches cached package-db snapshot
   - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
     then
