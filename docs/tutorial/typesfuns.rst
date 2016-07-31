@@ -1216,8 +1216,9 @@ Pythagorean triples as follows:
 The ``[a..b]`` notation is another shorthand which builds a list of
 numbers between ``a`` and ``b``. Alternatively ``[a,b..c]`` builds a
 list of numbers between ``a`` and ``c`` with the increment specified
-by the difference between ``a`` and ``b``. This works for any numeric
-type, using the ``count`` function from the prelude.
+by the difference between ``a`` and ``b``. This works for type ``Nat``,
+``Int`` and ``Integer``, using the ``enumFromTo`` and ``enumFromThenTo``
+function from the prelude.
 
 ``case`` expressions
 --------------------
