@@ -23,6 +23,7 @@ import Control.Monad.State.Strict
 import Control.Applicative
 import System.FilePath (takeFileName, isValid)
 import Data.Maybe (isNothing, fromJust)
+import Data.List (union)
 
 import Util.System
 
@@ -30,6 +31,7 @@ type PParser = StateT PkgDesc IdrisInnerParser
 
 data PkgDesc = PkgDesc {
     pkgname       :: String       -- ^ Name associated with a package.
+  , pkgdeps       :: [String]     -- ^ List of packages this package depends on.
   , pkgbrief      :: Maybe String -- ^ Brief description of the package.
   , pkgversion    :: Maybe String -- ^ Version string to associate with the package.
   , pkgreadme     :: Maybe String -- ^ Location of the README file.
@@ -52,7 +54,7 @@ data PkgDesc = PkgDesc {
 
 -- | Default settings for package descriptions.
 defaultPkg :: PkgDesc
-defaultPkg = PkgDesc "" Nothing Nothing Nothing Nothing
+defaultPkg = PkgDesc "" [] Nothing Nothing Nothing Nothing
                         Nothing Nothing Nothing Nothing
                         Nothing [] [] Nothing [] "" [] (sUN "") Nothing []
 
@@ -169,7 +171,9 @@ pClause = do reserved "executable"; lchar '=';
              ps <- sepBy1 (fst <$> identifier) (lchar ',')
              st <- get
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", x]) ps
-             put (st {idris_opts = pkgs ++ idris_opts st})
+
+             put (st { pkgdeps    = ps `union` (pkgdeps st)
+                     , idris_opts = pkgs ++ idris_opts st})
 
       <|> do reserved "modules"; lchar '=';
              ms <- sepBy1 (fst <$> iName []) (lchar ',')
