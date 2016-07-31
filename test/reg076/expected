@@ -1,0 +1,8 @@
+./reg076.idr:8:1: error: Missing
+    fixity declaration for
+    Main.:>, expected: "->", "=>",
+    ambiguous use of a left-associative operator,
+    ambiguous use of a non-associative operator,
+    ambiguous use of a right-associative operator
+<EOF> 
+^     

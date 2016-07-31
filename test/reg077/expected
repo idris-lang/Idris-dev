@@ -1,0 +1,6 @@
+./reg077.idr:3:1: error: Missing
+    fixity declaration for
+    Main.:>>, expected: ")", ";",
+    "in", start of block
+<EOF> 
+^     
