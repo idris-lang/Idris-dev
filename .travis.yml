@@ -21,6 +21,9 @@ addons:
 
 matrix:
   include:
+    - os: osx
+      env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
+      compiler: ": #GHC 8.0.1"
     - env: CABALVER="1.20" GHCVER="7.6.3" TESTS="test_c"
       # separate caches for different compiler versions
       # until https://github.com/travis-ci/travis-ci/issues/4393 is resolved
@@ -51,26 +54,40 @@ before_cache:
 
 before_install:
   - unset CC
-  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
+  - if [[ $TRAVIS_OS_NAME == 'linux' ]];
+    then
+        export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH;
+        export SED=sed;
+        export ZCAT=zcat;
+    fi
   - env
+  - if [[ $TRAVIS_OS_NAME == 'osx' ]];
+    then
+        brew update; brew install ghc; brew install cabal-install;
+        brew install libffi; brew install pkg-config; brew install cppcheck;
+        brew install gnu-sed;
+        export PATH=$HOME/.cabal/bin:$PATH;
+        export SED=gsed;
+        export ZCAT=gzcat;
+        export PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig:$PKG_CONFIG_PATH;
+    fi
 
 install:
   - cabal --version
   - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
   - if [ -f $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz ];
     then
-      zcat $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
-          $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
+      $ZCAT $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
+              $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
     fi
   - travis_retry cabal update -v
   # Run build with 2 parallel jobs
   # The container environment reports 16 cores,
   # causing cabal's default configuration (jobs: $ncpus)
   # to run into the GHC #9221 bug which can result in longer build-times.
-  - sed -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
+  - $SED -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
   - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
-  - sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
-
+  - $SED -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
   # check whether current requested install-plan matches cached package-db snapshot
   - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
     then
@@ -84,7 +101,6 @@ install:
       mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
       cabal install -f FFI --only-dependencies --enable-tests;
     fi
-
   # snapshot package-db on cache miss
   - if [ ! -d $HOME/.cabsnap ];
     then
