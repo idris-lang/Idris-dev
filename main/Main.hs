@@ -10,11 +10,13 @@ import Idris.Imports
 import Idris.Error
 import Idris.CmdOptions
 
+import Idris.Package
+
 import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
 
 import Util.System ( setupBundledCC )
 
-import Pkg.Package
+
 
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.
