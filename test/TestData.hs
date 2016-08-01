@@ -30,8 +30,8 @@ toCodegenSet compatCodegen = fmap Set.fromList mList where
             NONE  -> Nothing
 
 testFamilies :: [TestFamily]
-testFamilies = fmap instanciate testFamiliesData where
-  instanciate (id, name, testsData) = TestFamily id name tests where
+testFamilies = fmap instantiate testFamiliesData where
+  instantiate (id, name, testsData) = TestFamily id name tests where
     tests = IMap.fromList (fmap makeSetCodegen testsData)
     makeSetCodegen (index, codegens) = (index, toCodegenSet codegens)
 
