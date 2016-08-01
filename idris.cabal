@@ -1042,7 +1042,9 @@ Library
                 , IRTS.Simplified
                 , IRTS.System
 
-                , Pkg.Package
+                , Idris.Package
+                , Idris.Package.Common
+
                 , Util.DynamicLinker
                 , Util.ScreenSize
                 , Util.System
@@ -1051,7 +1053,7 @@ Library
                   Util.Pretty
                 , Util.Net
 
-                , Pkg.PParser
+                , Idris.Package.Parser
 
                 -- Auto Generated
                 , Paths_idris

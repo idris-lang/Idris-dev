@@ -1,12 +1,12 @@
 {-|
-Module      : Pkg.Package
+Module      : Idris.Package
 Description : Functionality for working with Idris packages.
 Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE CPP #-}
-module Pkg.Package where
+module Idris.Package where
 
 import System.Process
 import System.Directory
@@ -38,7 +38,8 @@ import Idris.Output
 import Idris.Imports
 import Idris.Error (ifail)
 
-import Pkg.PParser
+import Idris.Package.Common
+import Idris.Package.Parser
 
 import IRTS.System
 
@@ -48,6 +49,9 @@ import IRTS.System
 -- * invoke the makefile if there is one
 -- * invoke idris on each module, with idris_opts
 -- * install everything into datadir/pname, if install flag is set
+
+getPkgDesc :: FilePath -> IO PkgDesc
+getPkgDesc = parseDesc
 
 --  --------------------------------------------------------- [ Build Packages ]
 
