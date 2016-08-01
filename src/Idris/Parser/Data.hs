@@ -198,7 +198,7 @@ SimpleConstructorList ::=
   ;
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
-data_ syn = checkFixity' $
+data_ syn = checkDeclFixity $
             do (doc, argDocs, acc, dataOpts) <- try (do
                     (doc, argDocs) <- option noDocs docComment
                     pushIndent
@@ -251,14 +251,6 @@ data_ syn = checkFixity' $
                     return d)
            <?> "data type declaration"
   where
-    checkFixity' :: IdrisParser PDecl -> IdrisParser PDecl
-    checkFixity' p = do decl <- p
-                        case getName decl of
-                          Nothing -> return decl
-                          Just n -> do checkFixity n
-                                       return decl
-    getName (PData _ _ _ _  _ (PDatadecl tyn _ _ _)) = Just tyn
-    getName _ = Nothing
     mkPApp :: FC -> PTerm -> [PTerm] -> PTerm
     mkPApp fc t [] = t
     mkPApp fc t xs = PApp fc t (map pexp xs)
@@ -286,7 +278,7 @@ constructor syn
          let doc' = annotCode (tryFullExpr syn ist) doc
              argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
                         | (n, d) <- argDocs ]
-         checkFixity cn
+         checkNameFixity cn
          return (doc', argDocs', cn, nfc, ty, fc, fs)
       <?> "constructor"
 
@@ -303,7 +295,7 @@ simpleConstructor syn
           fc <- getFC
           args <- many (do notEndApp
                            simpleExpr syn)
-          checkFixity cn
+          checkNameFixity cn
           return (doc', [], cn, nfc, args, fc, [])
        <?> "constructor"
 

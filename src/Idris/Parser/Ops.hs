@@ -161,16 +161,27 @@ fixity = do pushIndent
                    extractName :: FixDecl -> String
                    extractName (Fix _ n) = n
 
-{- | Checks that an operator name also has a fixity declaration -}
-checkFixity :: Name -> IdrisParser ()
-checkFixity n = do fOk <- fixityOk n
-                   unless fOk . fail $
-                     "Missing fixity declaration for " ++ show n
-      where fixityOk (NS n _) = fixityOk n
-            fixityOk (UN n) | all (flip elem opChars) (str n) =
-                                do fixities <- fmap idris_infixes get
-                                   return . elem (str n) . map (\ (Fix _ op) -> op) $ fixities
-                            | otherwise = return True
+-- | Check that a declaration of an operator also has fixity declared
+checkDeclFixity :: IdrisParser PDecl -> IdrisParser PDecl
+checkDeclFixity p = do decl <- p
+                       case getDeclName decl of
+                         Nothing -> return decl
+                         Just n -> do checkNameFixity n
+                                      return decl
+  where getDeclName (PTy _ _ _ _ _ n _ _ )                = Just n
+        getDeclName (PData _ _ _ _ _ (PDatadecl n _ _ _)) = Just n
+        getDeclName _ = Nothing
+
+-- | Checks that an operator name also has a fixity declaration
+checkNameFixity :: Name -> IdrisParser ()
+checkNameFixity n = do fOk <- fixityOk n
+                       unless fOk . fail $
+                         "Missing fixity declaration for " ++ show n
+      where fixityOk (NS n' _) = fixityOk n'
+            fixityOk (UN n') | all (flip elem opChars) (str n') =
+                                 do fixities <- fmap idris_infixes get
+                                    return . elem (str n') . map (\ (Fix _ op) -> op) $ fixities
+                             | otherwise = return True
             fixityOk _ = return True
 
 {- | Parses a fixity declaration type (i.e. infix or prefix, associtavity)
