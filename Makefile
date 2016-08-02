@@ -9,7 +9,9 @@ include config.mk
 
 ifdef CI
 CABALFLAGS += -f CI
+ifndef APPVEYOR
 TEST-ARGS += --color always
+endif
 endif
 
 install:
