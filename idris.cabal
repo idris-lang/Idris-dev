@@ -656,6 +656,12 @@ Extra-source-files:
                        test/pkg004/*.idr
                        test/pkg004/expected
                        test/pkg004/*.ipkg
+                       test/pkg005/run
+                       test/pkg005/expected
+                       test/pkg005/*.ipkg
+                       test/pkg006/run
+                       test/pkg006/expected
+                       test/pkg006/*.ipkg
 
                        test/proof001/run
                        test/proof001/*.idr

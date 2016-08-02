@@ -30,7 +30,7 @@ data PkgDesc = PkgDesc {
   , idris_opts    :: [Opt]        -- ^ List of options to give the compiler.
   , sourcedir     :: String       -- ^ Source directory for Idris files.
   , modules       :: [Name]       -- ^ Modules provided by the package.
-  , idris_main    :: Name         -- ^ If an executable in which module can the Main namespace and function be found.
+  , idris_main    :: Maybe Name   -- ^ If an executable in which module can the Main namespace and function be found.
   , execout       :: Maybe String -- ^ What to call the executable.
   , idris_tests   :: [Name]       -- ^ Lists of tests to execute against the package.
   } deriving (Show)
@@ -39,4 +39,4 @@ data PkgDesc = PkgDesc {
 defaultPkg :: PkgDesc
 defaultPkg = PkgDesc "" [] Nothing Nothing Nothing Nothing
                         Nothing Nothing Nothing Nothing
-                        Nothing [] [] Nothing [] "" [] (sUN "") Nothing []
+                        Nothing [] [] Nothing [] "" [] Nothing Nothing []

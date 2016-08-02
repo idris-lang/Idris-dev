@@ -127,7 +127,7 @@ pClause = do reserved "executable"; lchar '=';
       <|> do reserved "main"; lchar '=';
              main <- fst <$> iName []
              st <- get
-             put (st { idris_main = main })
+             put (st { idris_main = Just main })
 
       <|> do reserved "sourcedir"; lchar '=';
              src <- fst <$> identifier
