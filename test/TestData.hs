@@ -156,6 +156,8 @@ testFamiliesData = [
     [ (  1, C_CG ),
       (  2, ANY  ),
       (  3, C_CG )]),
+  ("layout",          "Layout",
+    [ (  1, ANY  )]),
   ("literate",        "Literate programming",
     [ (  1, ANY  )]),
   ("meta",            "Meta-programming",
@@ -297,4 +299,3 @@ testFamiliesData = [
     [ (  1, ANY  ),
       (  2, ANY  ),
       (  3, C_CG )])]
-
