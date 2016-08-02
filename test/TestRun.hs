@@ -1,14 +1,12 @@
 module Main where
 
 import Control.Monad
+import qualified Data.ByteString.Lazy.UTF8 as BLU
+import Data.Char (isLetter)
 import Data.Typeable
 import Data.Proxy
 import Data.List
-import Data.Map.Strict as Map
-import Data.IntSet as ISet
-import Data.IntMap as IMap
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BSC
+import qualified Data.IntMap as IMap
 
 import System.Directory
 import System.Environment
@@ -19,7 +17,6 @@ import System.FilePath ((</>))
 import Options.Applicative
 import Test.Tasty
 import Test.Tasty.Golden
-import Test.Tasty.Golden.Advanced
 import Test.Tasty.Runners
 import Test.Tasty.Options
 import Test.Tasty.Ingredients.Rerun
@@ -51,7 +48,7 @@ instance IsOption NodeOpt where
   parseValue = fmap NodeOpt . safeRead
   optionName = return nodeArg
   optionHelp = return nodeHelp
-  optionCLParser = fmap NodeOpt $ switch (long nodeArg <> help nodeHelp)
+  optionCLParser = NodeOpt <$> switch (long nodeArg <> help nodeHelp)
 
 ingredients :: [Ingredient]
 ingredients = defaultIngredients ++
@@ -63,43 +60,21 @@ ingredients = defaultIngredients ++
 -- Compare a given file contents against the golden file contents
 -- A ripoff of goldenVsFile from Tasty.Golden
 test :: String -> String -> IO () -> TestTree
-test name path act =
-  goldenTest name (readFile ref) (act >> readFile new) cmp upd
-    where
-      ref = path </> "expected"
-      new = path </> "output"
-      cmp x y = return $ if normalize x == normalize y then Nothing
-                                   else Just $ printDiff (ref, x) (new, y)
-      upd = writeFile ref
-      -- just pretend that backslashes are slashes for comparison
-      -- purposes to avoid path problems, so don't write any tests
-      -- that depend on that distinction in other contexts.
-      -- Also compare CRLF and LF as equal, fixes a weird corner case
-      -- on Mac where basic010 and reg039 produces CRLF
-      normalize [] = []
-      normalize ('\r':'\n':xs) = '\n' : normalize xs
-      normalize ('\\':'\\':xs) = '/' : normalize xs
-      normalize ('\\':xs) = '/' : normalize xs
-      normalize (x : xs) = x : normalize xs
-
-
--- Takes the filepath and content of `expected` and `output`
--- and formats an error message stating their difference
-printDiff :: (String, String) -> (String, String) -> String
-printDiff (ref, x) (new, y) =
-  let printContent cnt =
-        if Data.List.null cnt
-           then " is empty...\n"
-           else " is: \n" ++ unlines (fmap ((++) "  ") (lines cnt))
-   in
-     "Test mismatch!\n" ++
-       "Golden file " ++ ref ++ printContent x ++
-       "However, " ++ new ++ printContent y
+test testName path act = goldenVsStringDiff testName diff ref act'
+  where
+    ref = path </> "expected"
+    output = path </> "output"
+    diff ref new = ["diff", "-u", new, ref]
+    act' = (BLU.fromString . normalise) <$> (act >> readFile output)
+    -- Normalise paths e.g. ".\foo.idr" to "./foo.idr".
+    normalise ('.' : '\\' : c : xs) | isLetter c  = '.' : '/' : c : normalise xs
+    normalise (x : xs) = x : normalise xs
+    normalise [] = []
 
 -- Should always output a 3-charater string from a postive Int
 indexToString :: Int -> String
 indexToString index = let str = show index in
-                          (replicate (3 - length str) '0') ++ str
+                          replicate (3 - length str) '0' ++ str
 
 -- Turns the collection of TestFamily into actual tests usable by Tasty
 mkGoldenTests :: [TestFamily] -> Flags -> TestTree
@@ -127,7 +102,7 @@ runTest path flags = do
   writeFile (path </> "output") output
 
 main :: IO ()
-main = do
+main =
   defaultMainWithIngredients ingredients $
     askOption $ \(NodeOpt node) ->
       let (codegen, flags) = if node then (JS, ["--codegen", "node"])
