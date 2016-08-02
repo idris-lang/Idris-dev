@@ -54,7 +54,8 @@ instance IsOption NodeOpt where
   optionCLParser = fmap NodeOpt $ switch (long nodeArg <> help nodeHelp)
 
 ingredients :: [Ingredient]
-ingredients = [rerunningTests [consoleTestReporter],
+ingredients = defaultIngredients ++
+              [rerunningTests [consoleTestReporter],
                includingOptions [Option (Proxy :: Proxy NodeOpt)] ]
 
 ----------------------------------------------------------------------- [ Core ]
