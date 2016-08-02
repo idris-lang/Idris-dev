@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} $@ --build base001.ipkg
+${IDRIS:-idris} $@ --build base001.ipkg | grep -v 'make.*:'
 ./base001
-make clean
+make clean | grep -v 'make.*:'
 rm -f *.ibc base001
