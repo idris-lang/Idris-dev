@@ -50,6 +50,8 @@ testFamiliesForCodegen codegen =
 -- The third column is the data for each test
 testFamiliesData :: [(String, String, [(Index, CompatCodegen)])]
 testFamiliesData = [
+  ("base",            "Base",
+    [ (  1, C_CG )]),
   ("basic",           "Basic",
     [ (  1, ANY  ),
       (  2, ANY  ),
@@ -299,4 +301,3 @@ testFamiliesData = [
     [ (  1, ANY  ),
       (  2, ANY  ),
       (  3, C_CG )])]
-
