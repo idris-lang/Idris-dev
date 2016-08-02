@@ -1,5 +1,3 @@
-gcc -Wall -o exit1 exit1.c
-gcc -Wall -c sys.c
 Type checking ./base001.idr
 exit1: Executing cmd 'exit 1'
 exit1: raw exitStatus = 256
@@ -25,4 +23,3 @@ raw status = 32512
 exit status = 127
 True
 
-rm exit1 sys.o
