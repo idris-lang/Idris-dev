@@ -1,3 +1,5 @@
+.SILENT:
+
 .PHONY:
 all: exit1 sys.o
 
