@@ -121,9 +121,11 @@ mkGoldenTests testFamilies flags =
 runTest :: String -> Flags -> IO ()
 runTest path flags = do
   let run = (proc "bash" ("run" : flags)) {cwd = Just path,
-                                           std_out = CreatePipe}
-  (_, output, _) <- readCreateProcessWithExitCode run ""
+                                           std_out = CreatePipe,
+                                           std_err = CreatePipe}
+  (_, output, error_out) <- readCreateProcessWithExitCode run ""
   writeFile (path </> "output") output
+  hPutStrLn stderr error_out
 
 main :: IO ()
 main = do
