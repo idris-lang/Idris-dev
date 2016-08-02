@@ -168,6 +168,8 @@ testFamiliesData = [
       (  2, ANY  ),
       (  3, ANY  ),
       (  4, ANY  )]),
+  ("prelude",         "Prelude",
+    [ (  1, ANY  )]),
   ("primitives",      "Primitive types",
     [ (  1, ANY  ),
       (  2, ANY  ),

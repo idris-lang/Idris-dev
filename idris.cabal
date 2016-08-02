@@ -615,6 +615,10 @@ Extra-source-files:
                        test/meta004/*.idr
                        test/meta004/expected
 
+                       test/prelude001/expected
+                       test/prelude001/prelude001.idr
+                       test/prelude001/run
+
                        test/primitives001/run
                        test/primitives001/*.idr
                        test/primitives001/expected
