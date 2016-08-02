@@ -1,4 +1,4 @@
-.SILENT:
+MAKEFLAGS += --no-print-directory
 
 .PHONY:
 all: exit1 sys.o
