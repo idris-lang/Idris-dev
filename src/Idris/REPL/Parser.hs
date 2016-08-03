@@ -520,7 +520,7 @@ packageBasedCmd valParser cmd name =
 
 cmd_search :: String -> P.IdrisParser (Either String Command)
 cmd_search = packageBasedCmd
-  (P.typeExpr (defaultSyntax { implicitAllowed = True })) Search
+  (P.fullExpr (defaultSyntax { implicitAllowed = True })) Search
 
 cmd_proofsearch :: String -> P.IdrisParser (Either String Command)
 cmd_proofsearch name = do
