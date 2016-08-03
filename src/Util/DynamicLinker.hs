@@ -132,6 +132,8 @@ mapMFirst f (a:as) = do res <- try (f a)
                           Left (ex :: IOException) -> mapMFirst f as
                           Right res -> return $ Just res
 
+-- Both regexes copyright 2009-2011 Howard B. Golden, CJ van den Berg and Ian
+-- Lynagh. From the Glasgow Haskell Compiler. BSD licensed.
 invalidLibRegex :: Regex
 invalidLibRegex = makeRegex "(([^ \t()])+\\.so([^ \t:()])*):([ \t])*(invalid ELF header|file too short)"
 
