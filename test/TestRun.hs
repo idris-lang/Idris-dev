@@ -104,7 +104,7 @@ indexToString index = let str = show index in
 -- Turns the collection of TestFamily into actual tests usable by Tasty
 mkGoldenTests :: [TestFamily] -> Flags -> TestTree
 mkGoldenTests testFamilies flags =
-  testGroup "Regression and sanity tests"
+  testGroup "Regression and feature tests"
             (fmap mkTestFamily testFamilies)
     where
       mkTestFamily (TestFamily id name tests) =
