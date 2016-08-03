@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+
+#
+# Change filenames embedded in double quotes from Windows-style separators to
+# unix-style.
+#
+# e.g. ".\\Prelude\\List.idr" to "./Prelude/List.idr".
+#
+
+while (<>) {
+  s-(")([^"]+)(")-my ($l, $x, $r) = ($1, $2, $3); $x =~ s#\\\\#/#g; "$l$x$r"-ge;
+  print;
+}

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 ${IDRIS:-idris} $@ QuasiquoteBasics.idr -o quasiquote001
-./quasiquote001
+#./quasiquote001 | ./filter-embedded-filenames
+cat example | ./filter-embedded-filenames
 rm -f quasiquote001 *.ibc
