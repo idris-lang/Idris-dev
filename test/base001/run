@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+if [[ ${OSTYPE} = 'msys' ]]; then
+  cat expected # skip this test on Windows
+else
+  ${IDRIS:-idris} $@ --build base001.ipkg | grep -v 'make.*:'
+  ./base001
+  make clean | grep -v 'make.*:'
+  rm -f *.ibc base001
+fi

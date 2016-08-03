@@ -293,6 +293,15 @@ Extra-source-files:
                        test/reg075/*.idr
                        test/reg075/expected
 
+                       test/base001/Makefile
+                       test/base001/base001.idr
+                       test/base001/base001.ipkg
+                       test/base001/exit1.c
+                       test/base001/expected
+                       test/base001/run
+                       test/base001/sys.c
+                       test/base001/sys.h
+
                        test/basic001/run
                        test/basic001/*.idr
                        test/basic001/expected
@@ -598,6 +607,10 @@ Extra-source-files:
                        test/io003/*.idr
                        test/io003/expected
 
+                       test/layout001/expected
+                       test/layout001/*.idr
+                       test/layout001/run
+
                        test/literate001/run
                        test/literate001/*.lidr
                        test/literate001/expected
@@ -614,6 +627,10 @@ Extra-source-files:
                        test/meta004/run
                        test/meta004/*.idr
                        test/meta004/expected
+
+                       test/prelude001/expected
+                       test/prelude001/prelude001.idr
+                       test/prelude001/run
 
                        test/primitives001/run
                        test/primitives001/*.idr
@@ -1042,7 +1059,9 @@ Library
                 , IRTS.Simplified
                 , IRTS.System
 
-                , Pkg.Package
+                , Idris.Package
+                , Idris.Package.Common
+
                 , Util.DynamicLinker
                 , Util.ScreenSize
                 , Util.System
@@ -1051,7 +1070,7 @@ Library
                   Util.Pretty
                 , Util.Net
 
-                , Pkg.PParser
+                , Idris.Package.Parser
 
                 -- Auto Generated
                 , Paths_idris

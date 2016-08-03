@@ -1,0 +1,93 @@
+Checking layout001a.idr
+./layout001a.idr:5:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+y 
+^ 
+Checking layout001b.idr
+./layout001b.idr:5:3: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+= y 
+  ^ 
+Checking layout001c.idr
+./layout001c.idr:3:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+2 
+^ 
+Checking layout001d.idr
+Checking layout001e.idr
+./layout001e.idr:6:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+3 
+^ 
+Checking layout001f.idr
+./layout001f.idr:6:2: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+ 3 
+ ^ 
+Checking layout001g.idr
+./layout001g.idr:6:3: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+  3 
+  ^ 
+Checking layout001h.idr
+./layout001h.idr:6:3: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+  3 
+  ^ 
+Checking layout001i.idr
+./layout001i.idr:6:4: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+   3 
+   ^ 
+Checking layout001j.idr
+./layout001j.idr:6:5: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+    3 
+    ^ 
+Checking layout001k.idr
+Checking layout001l.idr
+./layout001l.idr:6:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+y 
+^ 
+Checking layout001n.idr
+Checking mplus1.idr
+mplus1.idr:13:31:
+When checking right hand side of term with expected type
+        Maybe Int
+
+When checking an application of function Prelude.Applicative.pure:
+        No such variable f
+Checking mplus2.idr
+./mplus2.idr:17:37: error: not
+    end of block, expected: ")",
+    "->", ";", "in",
+    ambiguous use of a left-associative operator,
+    ambiguous use of a non-associative operator,
+    ambiguous use of a right-associative operator,
+    do block expression,
+    end of input
+                                    `mplus` pure f 
+                                    ^              
+Checking mplus3.idr
+mplus3.idr:11:1:warning - Unreachable case: term

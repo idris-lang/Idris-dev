@@ -1,0 +1,25 @@
+Type checking ./base001.idr
+exit1: Executing cmd 'exit 1'
+exit1: raw exitStatus = 256
+exit1: WEXITSTATUS(exitStatus) = 1
+exit1: Executing cmd './does-not-exist'
+exit1: raw exitStatus = 32512
+exit1: WEXITSTATUS(exitStatus) = 127
+-------------------------------------------
+Executing 'exit 1'
+raw status = 256
+exit status = 1
+True
+
+-------------------------------------------
+Executing './exit1'
+raw status = 256
+exit status = 1
+True
+
+-------------------------------------------
+Executing './does-not-exist'
+raw status = 32512
+exit status = 127
+True
+

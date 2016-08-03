@@ -30,8 +30,8 @@ toCodegenSet compatCodegen = fmap Set.fromList mList where
             NONE  -> Nothing
 
 testFamilies :: [TestFamily]
-testFamilies = fmap instanciate testFamiliesData where
-  instanciate (id, name, testsData) = TestFamily id name tests where
+testFamilies = fmap instantiate testFamiliesData where
+  instantiate (id, name, testsData) = TestFamily id name tests where
     tests = IMap.fromList (fmap makeSetCodegen testsData)
     makeSetCodegen (index, codegens) = (index, toCodegenSet codegens)
 
@@ -50,6 +50,8 @@ testFamiliesForCodegen codegen =
 -- The third column is the data for each test
 testFamiliesData :: [(String, String, [(Index, CompatCodegen)])]
 testFamiliesData = [
+  ("base",            "Base",
+    [ (  1, C_CG )]),
   ("basic",           "Basic",
     [ (  1, ANY  ),
       (  2, ANY  ),
@@ -156,6 +158,8 @@ testFamiliesData = [
     [ (  1, C_CG ),
       (  2, ANY  ),
       (  3, C_CG )]),
+  ("layout",          "Layout",
+    [ (  1, ANY  )]),
   ("literate",        "Literate programming",
     [ (  1, ANY  )]),
   ("meta",            "Meta-programming",
@@ -168,6 +172,8 @@ testFamiliesData = [
       (  2, ANY  ),
       (  3, ANY  ),
       (  4, ANY  )]),
+  ("prelude",         "Prelude",
+    [ (  1, ANY  )]),
   ("primitives",      "Primitive types",
     [ (  1, ANY  ),
       (  2, ANY  ),
@@ -297,4 +303,3 @@ testFamiliesData = [
     [ (  1, ANY  ),
       (  2, ANY  ),
       (  3, C_CG )])]
-
