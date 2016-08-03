@@ -146,12 +146,18 @@ natRange n = List.reverse (go n)
 
 -- predefine Nat versions of Enum, so we can use them in the default impls
 total natEnumFromThen : Nat -> Nat -> Stream Nat
-natEnumFromThen n inc = n :: natEnumFromThen (inc + n) inc
+natEnumFromThen n next = n :: natEnumFromThen next (minus next n)
 total natEnumFromTo : Nat -> Nat -> List Nat
-natEnumFromTo n m = map (plus n) (natRange (minus (S m) n))
+natEnumFromTo n m = if n <= m
+                    then go n m
+                    else List.reverse $ go m n
+  where go : Nat -> Nat -> List Nat
+        go n m = map (plus n) (natRange (minus (S m) n))
+total natEnumFromThenTo' : Nat -> Nat -> Nat -> List Nat
+natEnumFromThenTo' _ Z       _ = []
+natEnumFromThenTo' n (S inc) m = map (plus n . (* (S inc))) (natRange (S (divNatNZ (minus m n) (S inc) SIsNotZ)))
 total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
-natEnumFromThenTo _ Z       _ = []
-natEnumFromThenTo n (S inc) m = map (plus n . (* (S inc))) (natRange (S (divNatNZ (minus m n) (S inc) SIsNotZ)))
+natEnumFromThenTo n next m = natEnumFromThenTo' n (minus next n) m
 
 interface Enum a where
   total pred : a -> a
@@ -184,36 +190,38 @@ Enum Integer where
   fromNat n = cast n
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
   enumFromTo n m = if n <= m
-                   then go (natRange (S (cast {to = Nat} (m - n))))
-                   else []
-    where go : List Nat -> List Integer
-          go [] = []
-          go (x :: xs) = n + cast x :: go xs
+                   then go n m
+                   else List.reverse $ go m n
+    where go' : Integer -> List Nat -> List Integer
+          go' _ [] = []
+          go' n (x :: xs) = n + cast x :: go' n xs
+          go : Integer -> Integer -> List Integer
+          go n m = go' n (natRange (S (cast {to = Nat} (m - n))))
   enumFromThenTo _ 0   _ = []
-  enumFromThenTo n inc m = go (natRange (S (divNatNZ (fromInteger (abs (m - n))) (S (fromInteger ((abs inc) - 1))) SIsNotZ)))
+  enumFromThenTo n next m = go (natRange (S (divNatNZ (fromInteger (abs (m - n))) (S (fromInteger ((abs (next - n)) - 1))) SIsNotZ)))
     where go : List Nat -> List Integer
           go [] = []
-          go (x :: xs) = n + (cast x * inc) :: go xs
+          go (x :: xs) = n + (cast x * (next - n)) :: go xs
 
 Enum Int where
   pred n = n - 1
   succ n = n + 1
   toNat n = cast n
   fromNat n = cast n
-  enumFromTo n m =
-    if n <= m
-       then go [] (cast {to = Nat} (m - n)) m
-       else []
-       where
-         go : List Int -> Nat -> Int -> List Int
-         go acc Z     m = m :: acc
-         go acc (S k) m = go (m :: acc) k (m - 1)
+  enumFromTo n m = if n <= m
+                   then go n m
+                   else List.reverse $ go m n
+    where go' : List Int -> Nat -> Int -> List Int
+          go' acc Z     m = m :: acc
+          go' acc (S k) m = go' (m :: acc) k (m - 1)
+          go : Int -> Int -> List Int
+          go n m = go' [] (cast {to = Nat} (m - n)) m
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
   enumFromThenTo _ 0   _ = []
-  enumFromThenTo n inc m = go (natRange (S (divNatNZ (cast {to=Nat} (abs (m - n))) (S (cast {to=Nat} ((abs inc) - 1))) SIsNotZ)))
+  enumFromThenTo n next m = go (natRange (S (divNatNZ (cast {to=Nat} (abs (m - n))) (S (cast {to=Nat} ((abs (next - n)) - 1))) SIsNotZ)))
     where go : List Nat -> List Int
           go [] = []
-          go (x :: xs) = n + (cast x * inc) :: go xs
+          go (x :: xs) = n + (cast x * (next - n)) :: go xs
 
 Enum Char where
   toNat c   = toNat (ord c)
@@ -224,12 +232,12 @@ Enum Char where
 syntax "[" [start] ".." [end] "]"
      = enumFromTo start end
 syntax "[" [start] "," [next] ".." [end] "]"
-     = enumFromThenTo start (next - start) end
+     = enumFromThenTo start next end
 
 syntax "[" [start] ".." "]"
      = enumFrom start
 syntax "[" [start] "," [next] ".." "]"
-     = enumFromThen start (next - start)
+     = enumFromThen start next
 
 ---- More utilities
 

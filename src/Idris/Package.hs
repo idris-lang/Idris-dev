@@ -82,7 +82,7 @@ buildPkg copts warnonly (install, fp) = do
             Left emsg -> do
               putStrLn emsg
               exitWith (ExitFailure 1)
-            Right opts -> buildMods opts [idris_main pkgdesc]
+            Right opts -> buildMain opts (idris_main pkgdesc)
     case m_ist of
       Nothing  -> exitWith (ExitFailure 1)
       Just ist -> do
@@ -91,6 +91,11 @@ buildPkg copts warnonly (install, fp) = do
           Just _ -> exitWith (ExitFailure 1)
           _      -> return ()
         when install $ installPkg (opt getIBCSubDir copts) pkgdesc
+  where
+    buildMain opts (Just mod) = buildMods opts [mod]
+    buildMain _ Nothing = do
+      putStrLn "Can't build an executable: No main module given"
+      exitWith (ExitFailure 1)
 
 --  --------------------------------------------------------- [ Check Packages ]
 
@@ -140,19 +145,20 @@ replPkg copts fp = do
     case mergeOptions copts (idris_opts pkgdesc) of
       Left emsg  -> ifail emsg
       Right opts -> do
-        let mod = idris_main pkgdesc
-        let f = toPath (showCG mod)
         putIState orig
         dir <- runIO getCurrentDirectory
         runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
-
-        if (f /= "")
-          then idrisMain ((Filename f) : opts)
-          else iputStrLn "Can't start REPL: no main module given"
+        runMain opts (idris_main pkgdesc)
         runIO $ setCurrentDirectory dir
 
   where
     toPath n = foldl1' (</>) $ splitOn "." n
+
+    runMain opts (Just mod) = do
+      let f = toPath (showCG mod)
+      idrisMain ((Filename f) : opts)
+    runMain _ Nothing =
+      iputStrLn "Can't start REPL: no main module given"
 
 --  --------------------------------------------------------------- [ Cleaning ]
 

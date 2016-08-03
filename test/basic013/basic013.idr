@@ -31,4 +31,13 @@ main = do putStrLn foo
           putStrLn ("Tail Tail: " ++ strTail (strTail newstr))
           putStrLn ("Cons: " ++ strCons 'λ' newstr)
           putStrLn ("Reverse: " ++ reverse newstr)
+          printLn [1..5]
+          printLn [5..1]
+          printLn [(-9), (-7)..(-1)]
+          printLn [17,15..1]
+          printLn [19,15..2]
+          printLn $ the (List Nat) [1..5]
+          printLn $ the (List Nat) [5..1]
+          printLn $ the (List Int) [(-1)..(-5)]
+          printLn $ the (List Nat) [1,3..5]
 
