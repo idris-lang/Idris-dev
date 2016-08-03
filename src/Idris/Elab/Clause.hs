@@ -51,6 +51,8 @@ import Control.Monad.State.Strict as State
 import qualified Control.Monad.State.Lazy as LState
 import Data.List
 import Data.Maybe
+import Data.Word
+
 import Debug.Trace
 
 import qualified Data.Map as Map
@@ -487,9 +489,9 @@ elabPE info fc caller r =
 
             -- Simple but effective string hashing...
             -- Keep it to 32 bits for readability/debuggability
-            qhash :: Int -> String -> String
+            qhash :: Word64 -> String -> String
             qhash hash [] = showHex (abs hash `mod` 0xffffffff) ""
-            qhash hash (x:xs) = qhash (hash * 33 + fromEnum x) xs
+            qhash hash (x:xs) = qhash (hash * 33 + fromIntegral(fromEnum x)) xs
 
 -- | Checks if the clause is a possible left hand side.
 checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
