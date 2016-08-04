@@ -1,9 +1,7 @@
 version: 1.0.{build}
 init:
 - ps: >-
-    Get-WinSystemLocale
-
-    [Console]::OutputEncoding
+    c:\msys64\usr\bin\bash -l -c "diff --version"
 
     choco install ghc --version 7.10.3 | Out-Null
 
