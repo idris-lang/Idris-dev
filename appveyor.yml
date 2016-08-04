@@ -2,6 +2,7 @@ version: 1.0.{build}
 init:
 - ps: >-
     Get-WinSystemLocale
+
     [Console]::OutputEncoding
 
     choco install ghc --version 7.10.3 | Out-Null
