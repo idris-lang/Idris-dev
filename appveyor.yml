@@ -1,6 +1,8 @@
 version: 1.0.{build}
 init:
 - ps: >-
+    c:\msys64\usr\bin\bash -l -c "diff --version"
+
     choco install ghc --version 7.10.3 | Out-Null
 
     $env:PATH="$env:PATH;C:\tools\ghc\ghc-7.10.3\bin;$HOME\AppData\Roaming\cabal\bin"
