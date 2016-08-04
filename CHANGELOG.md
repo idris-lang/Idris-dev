@@ -26,6 +26,7 @@
 * The File Effect has been updated to take into account changes in
   `Prelude.File` and to provide a 'better' API.
 * `natEnumFromThen` and `natEnumFromTo` have been updated to correctly calculate reverse ranges. Range syntax `[a,b..c]` now can be used again to generate reverse ranges.
+* `divBN` and `modBN` now can only be used for unsigned numbers.
 
 ## Tool updates
 
