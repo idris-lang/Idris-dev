@@ -9,6 +9,7 @@ import qualified Data.IntMap as IMap
 
 import System.Directory
 import System.Environment
+import System.Exit
 import System.Process
 import System.Info
 import System.IO
@@ -90,10 +91,10 @@ mkGoldenTests testFamilies flags =
 -- this thing.
 runTest :: String -> Flags -> IO ()
 runTest path flags = do
-  let run = (proc "bash" ("run" : flags)) {cwd = Just path,
-                                           std_out = CreatePipe}
-  (_, output, _) <- readCreateProcessWithExitCode run ""
+  let run = (proc "bash" ("run" : flags)) {cwd = Just path}
+  (_, output, error_out) <- readCreateProcessWithExitCode run ""
   writeFile (path </> "output") (normalise output)
+  when (error_out /= "") $ hPutStrLn stderr ("\nError: " ++ path ++ "\n" ++ error_out)
     where
       -- Normalise paths e.g. '.\foo.idr' to './foo.idr'.
       -- Also embedded paths e.g. ".\\Prelude\\List.idr" to "./Prelude/List.idr".

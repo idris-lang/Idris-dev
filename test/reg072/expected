@@ -1,5 +1,4 @@
-DoubleEquality.idr:4:87:
-When checking right hand side of oops with expected type
+DoubleEquality.idr:4:87:When checking right hand side of oops with expected type
         Void
 
 When checking argument value to function Prelude.Basics.the:

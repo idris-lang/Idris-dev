@@ -1,5 +1,4 @@
-totality006.idr:8:1:
-Main.prf is not total as there are missing cases
+totality006.idr:8:1:Main.prf is not total as there are missing cases
 totality006a.idr:11:6:prf' (S _) (S _) Oh is a valid case
 totality006b.idr:10:1:
 totality006b.blargh is not total as there are missing cases

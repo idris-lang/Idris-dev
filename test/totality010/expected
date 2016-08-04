@@ -1,4 +1,2 @@
-totality010.idr:27:1:
-Main.evenNotS is not total as there are missing cases
-totality010.idr:30:1:
-Main.bad is possibly not total due to: Main.evenNotS
+totality010.idr:27:1:Main.evenNotS is not total as there are missing cases
+totality010.idr:30:1:Main.bad is possibly not total due to: Main.evenNotS

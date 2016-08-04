@@ -1,5 +1,4 @@
-reg068.idr:1:6:
-Main.nat has a name which may be implicitly bound.
+reg068.idr:1:6:Main.nat has a name which may be implicitly bound.
 This is likely to lead to problems!
 reg068.idr:2:6:Main.ze has a name which may be implicitly bound.
 This is likely to lead to problems!
