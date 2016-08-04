@@ -1,7 +1,6 @@
 module Main where
 
 import Control.Monad
-import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.Char (isLetter)
 import Data.Typeable
 import Data.Proxy
@@ -60,16 +59,11 @@ ingredients = defaultIngredients ++
 -- Compare a given file contents against the golden file contents
 -- A ripoff of goldenVsFile from Tasty.Golden
 test :: String -> String -> IO () -> TestTree
-test testName path act = goldenVsStringDiff testName diff ref act'
+test testName path = goldenVsFileDiff testName diff ref output
   where
     ref = path </> "expected"
     output = path </> "output"
     diff ref new = ["diff", "-u", new, ref]
-    act' = (BLU.fromString . normalise) <$> (act >> readFile output)
-    -- Normalise paths e.g. ".\foo.idr" to "./foo.idr".
-    normalise ('.' : '\\' : c : xs) | isLetter c  = '.' : '/' : c : normalise xs
-    normalise (x : xs) = x : normalise xs
-    normalise [] = []
 
 -- Should always output a 3-charater string from a postive Int
 indexToString :: Int -> String
@@ -99,7 +93,12 @@ runTest path flags = do
   let run = (proc "bash" ("run" : flags)) {cwd = Just path,
                                            std_out = CreatePipe}
   (_, output, _) <- readCreateProcessWithExitCode run ""
-  writeFile (path </> "output") output
+  writeFile (path </> "output") (normalise output)
+    where
+      -- Normalise paths e.g. ".\foo.idr" to "./foo.idr".
+      normalise ('.' : '\\' : c : xs) | isLetter c  = '.' : '/' : c : normalise xs
+      normalise (x : xs) = x : normalise xs
+      normalise [] = []
 
 main :: IO ()
 main =

@@ -1202,7 +1202,6 @@ Test-suite regression-and-feature-tests
                , tasty-rerun >= 1.0.0
                , bytestring
                , transformers
-               , utf8-string
   if impl(ghc < 7.10)
     Extensions: DeriveDataTypeable
 
