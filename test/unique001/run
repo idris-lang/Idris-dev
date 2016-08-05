@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
+
 ${IDRIS:-idris} $@ --nocolour unique001.idr -o unique001
 ./unique001
-${IDRIS:-idris} $@ --nocolour unique001a.idr --check
-${IDRIS:-idris} $@ --nocolour unique001b.idr --check
-${IDRIS:-idris} $@ --nocolour unique001c.idr --check
-${IDRIS:-idris} $@ --nocolour unique001d.idr --check
-${IDRIS:-idris} $@ --nocolour unique001e.idr --check
+
 rm -f unique001 *.ibc
