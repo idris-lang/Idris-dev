@@ -52,3 +52,19 @@ Can't match on bar xs xs Refl
 reg034.idr:9:5:When checking left hand side of foo:
 Can't match on foo f x x Refl
 reg035b.idr:8:6:No such variable __pi_arg
+reg044.idr:4:6-11:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+reg044.idr:4:4:
+When checking right hand side of Main.pf with expected type
+        (b : Nat) -> (a : Nat) -> (S a = S b) -> a = b
+
+Type mismatch between
+        b = b (Type of Refl)
+and
+        a = b (Expected type)
+
+Specifically:
+        Type mismatch between
+                b
+        and
+                a
