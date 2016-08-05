@@ -2,6 +2,10 @@ sudo: false
 
 language: c
 
+env:
+  global:
+    - PKGNAME=idris
+
 addons:
   apt:
     sources:
@@ -113,8 +117,8 @@ install:
 before_script:
   - cabal sdist
   - cd ..
-  - tar -xf Idris-dev/dist/idris*.tar.gz
-  - cd idris*
+  - tar -xf */dist/${PKGNAME}*.tar.gz
+  - cd ${PKGNAME}*
 script:
 ###
   - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
