@@ -23,7 +23,7 @@ else
         # (spawn accepts one command)
         command="/bin/sh -c \"$2\""
 
-        expect -c "set echo \"-noecho\"; set timeout $time; spawn -noecho $command; expect timeout { exit 1 } eof { exit 0 }"
+        expect -c "set echo \"-noecho\"; set timeout $time; spawn -noecho $command; expect timeout { exit 1 } eof { exit 0 }" | perl -pe 's/\r$//'
 
         if [ $? = 1 ] ; then
             echo "Timeout after ${time} seconds"
