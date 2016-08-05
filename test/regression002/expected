@@ -6,3 +6,18 @@ reg003a.idr:9:6:When checking type of Main.test:
 No such variable EvenList
 reg006.idr:17:1:
 RBTree.lookup is possibly not total due to recursive path RBTree.lookup --> RBTree.lookup
+reg007.lidr:8:1:A.n is already defined
+reg007.lidr:12:11-17:
+When checking right hand side of hurrah with expected type
+        0 = 1
+
+Type mismatch between
+        n = lala (Type of isSame)
+and
+        0 = 1 (Expected type)
+
+Specifically:
+        Type mismatch between
+                1
+        and
+                0

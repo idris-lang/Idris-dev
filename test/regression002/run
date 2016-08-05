@@ -4,6 +4,7 @@ ${IDRIS:-idris} $@ --nobanner --nocolour --quiet <<!
 :load reg003.idr
 :load reg003a.idr
 :load reg006.idr
+:load reg007.lidr
 !
 
 rm -f *.ibc
