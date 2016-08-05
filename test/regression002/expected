@@ -120,3 +120,5 @@ reg068.idr:2:6:When checking constructor Main.ze:
 Type level variable nat is not Main.nat
 Mod.idr:11:1:
 public export Mod.natexp can't refer to export Mod.natfn
+reg070.idr:7:1:
+Test_show.Te implementation of Prelude.Show.Show is possibly not total due to: Prelude.Show.Test_show.Te implementation of Prelude.Show.Show, method show
