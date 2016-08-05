@@ -75,3 +75,13 @@ When checking right hand side of uhOh with expected type
         Void
 
 No such variable Bogus
+./badbangop.idr:7:1: error: ! is
+    not a valid
+    operator, expected: space
+(!) : List a -> Nat -> Maybe a 
+^                              
+./baddoublebang.idr:6:28: error: unexpected
+    Operator without known fixity:
+    !!, expected: space
+doubleBang mmn = do pure !!mmn 
+                           ^   
