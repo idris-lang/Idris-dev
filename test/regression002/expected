@@ -109,3 +109,12 @@ reg055a.idr:13:7:When checking left hand side of Foo.apply:
 Can't match on apply (\x => \y => x) a
 reg056.idr:7:7:dodgy n m Refl is a valid case
 reg056.idr:10:6:nonk Refl is a valid case
+reg068.idr:1:6:
+Main.nat has a name which may be implicitly bound.
+This is likely to lead to problems!
+reg068.idr:2:6:Main.ze has a name which may be implicitly bound.
+This is likely to lead to problems!
+reg068.idr:2:8-11:WARNING: nat is bound as an implicit
+	Did you mean to refer to Main.nat?
+reg068.idr:2:6:When checking constructor Main.ze:
+Type level variable nat is not Main.nat
