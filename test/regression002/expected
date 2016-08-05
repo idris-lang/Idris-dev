@@ -21,3 +21,6 @@ Specifically:
                 1
         and
                 0
+reg010.idr:5:15:
+When checking left hand side of with block in usubst.unsafeSubst:
+Can't match on with block in usubst.unsafeSubst warg a P x x px
