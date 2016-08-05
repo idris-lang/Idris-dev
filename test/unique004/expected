@@ -20,3 +20,7 @@ unique002a.idr:15:5:Type mismatch between
         Int -> String
 and
         UniqueType (Int -> String)
+unique003.idr:18:5:Type mismatch between
+        Int -> String
+and
+        UniqueType (Int -> String)

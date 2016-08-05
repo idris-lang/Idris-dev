@@ -8,6 +8,7 @@ ${IDRIS:-idris} --nobanner --nocolour --quiet <<!
 :load unique001e.idr
 :load unique002.idr
 :load unique002a.idr
+:load unique003.idr
 !
 
 rm -f *.ibc
