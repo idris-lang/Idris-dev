@@ -115,9 +115,10 @@ install:
     fi
 
 before_script:
+  - ORIGINAL_DIR=$(pwd)
   - cabal sdist
   - cd ..
-  - tar -xf */dist/${PKGNAME}*.tar.gz
+  - tar -xf ${ORIGINAL_DIR}/dist/${PKGNAME}*.tar.gz
   - cd ${PKGNAME}*
 script:
 ###
