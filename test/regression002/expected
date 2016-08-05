@@ -35,3 +35,10 @@ A.B implementation of Prelude.Show.Show is possibly not total due to: A.showB
 reg018c.idr:21:1:
 CodataTest.inf is possibly not total due to: with block in CodataTest.inf
 reg018d.idr:8:1:Main.pull is not total as there are missing cases
+reg023.idr:7:5:When checking right hand side of bad with expected type
+        f Nat
+
+Type mismatch between
+        Nat (Type of 0)
+and
+        f Nat (Expected type)
