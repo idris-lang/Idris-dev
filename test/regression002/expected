@@ -4,3 +4,5 @@ reg003a.idr:7:11:When checking type of Main.OCons:
 No such variable EvenList
 reg003a.idr:9:6:When checking type of Main.test:
 No such variable EvenList
+reg006.idr:17:1:
+RBTree.lookup is possibly not total due to recursive path RBTree.lookup --> RBTree.lookup
