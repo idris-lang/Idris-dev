@@ -95,8 +95,10 @@ runTest path flags = do
   (_, output, _) <- readCreateProcessWithExitCode run ""
   writeFile (path </> "output") (normalise output)
     where
-      -- Normalise paths e.g. ".\foo.idr" to "./foo.idr".
+      -- Normalise paths e.g. '.\foo.idr' to './foo.idr'.
+      -- Also embedded paths e.g. ".\\Prelude\\List.idr" to "./Prelude/List.idr".
       normalise ('.' : '\\' : c : xs) | isLetter c  = '.' : '/' : c : normalise xs
+      normalise ('\\':'\\':xs) = '/' : normalise xs
       normalise (x : xs) = x : normalise xs
       normalise [] = []
 
