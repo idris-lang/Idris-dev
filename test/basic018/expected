@@ -2,8 +2,7 @@ basic018.idr:7:12-17:WARNING: thing is bound as an implicit
 	Did you mean to refer to Main.thing?
 basic018.idr:12:8-13:WARNING: thing is bound as an implicit
 	Did you mean to refer to Main.thing?
-basic018.idr:13:6:
-When checking right hand side of test with expected type
+basic018.idr:13:6:When checking right hand side of test with expected type
         thing = S 41
 
 Type mismatch between

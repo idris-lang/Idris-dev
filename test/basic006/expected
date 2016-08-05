@@ -1,5 +1,4 @@
-test020a.idr:16:18:
-When checking right hand side of foo with expected type
+test020a.idr:16:18:When checking right hand side of foo with expected type
         List a
 
 When checking an application of function Prelude.List.reverse:
