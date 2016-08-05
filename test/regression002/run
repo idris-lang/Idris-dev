@@ -29,6 +29,7 @@ ${IDRIS:-idris} $@ --nobanner --nocolour --quiet <<!
 :load reg068.idr
 :load reg069.idr
 :load reg070.idr
+:load DoubleEquality.idr
 !
 
 rm -f *.ibc
