@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+${IDRIS:-idris} $@ --nobanner --nocolour --quiet <<!
+:load reg003.idr
+:load reg003a.idr
+!
+
+rm -f *.ibc
