@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-${IDRIS:-idris} $@ reg056.idr -o reg056
-rm -f *.ibc

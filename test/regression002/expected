@@ -107,3 +107,5 @@ When checking an application of constructor Foo.CAny:
         Attempting concrete match on polymorphic argument: Nothing
 reg055a.idr:13:7:When checking left hand side of Foo.apply:
 Can't match on apply (\x => \y => x) a
+reg056.idr:7:7:dodgy n m Refl is a valid case
+reg056.idr:10:6:nonk Refl is a valid case
