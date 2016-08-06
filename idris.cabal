@@ -864,12 +864,9 @@ Extra-source-files:
                        test/unique001/run
                        test/unique001/*.idr
                        test/unique001/expected
-                       test/unique002/run
-                       test/unique002/*.idr
-                       test/unique002/expected
-                       test/unique003/run
-                       test/unique003/*.idr
-                       test/unique003/expected
+                       test/unique004/run
+                       test/unique004/*.idr
+                       test/unique004/expected
 
                        test/views001/run
                        test/views001/*.idr
