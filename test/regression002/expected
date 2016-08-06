@@ -7,8 +7,7 @@ No such variable EvenList
 reg006.idr:17:1:
 RBTree.lookup is possibly not total due to recursive path RBTree.lookup --> RBTree.lookup
 reg007.lidr:8:1:A.n is already defined
-reg007.lidr:12:11-17:
-When checking right hand side of hurrah with expected type
+reg007.lidr:12:11-17:When checking right hand side of hurrah with expected type
         0 = 1
 
 Type mismatch between
@@ -54,8 +53,7 @@ Can't match on foo f x x Refl
 reg035b.idr:8:6:No such variable __pi_arg
 reg044.idr:4:6-11:
 This style of tactic proof is deprecated. See %runElab for the replacement.
-reg044.idr:4:4:
-When checking right hand side of Main.pf with expected type
+reg044.idr:4:4:When checking right hand side of Main.pf with expected type
         (b : Nat) -> (a : Nat) -> (S a = S b) -> a = b
 
 Type mismatch between
@@ -70,8 +68,7 @@ Specifically:
                 a
 reg049.idr:2:9:When checking constructor Main.Bogus:
 Void is not Main.Foo
-reg049.idr:5:6:
-When checking right hand side of uhOh with expected type
+reg049.idr:5:6:When checking right hand side of uhOh with expected type
         Void
 
 No such variable Bogus
@@ -109,8 +106,7 @@ reg055a.idr:13:7:When checking left hand side of Foo.apply:
 Can't match on apply (\x => \y => x) a
 reg056.idr:7:7:dodgy n m Refl is a valid case
 reg056.idr:10:6:nonk Refl is a valid case
-reg068.idr:1:6:
-Main.nat has a name which may be implicitly bound.
+reg068.idr:1:6:Main.nat has a name which may be implicitly bound.
 This is likely to lead to problems!
 reg068.idr:2:6:Main.ze has a name which may be implicitly bound.
 This is likely to lead to problems!
@@ -118,12 +114,10 @@ reg068.idr:2:8-11:WARNING: nat is bound as an implicit
 	Did you mean to refer to Main.nat?
 reg068.idr:2:6:When checking constructor Main.ze:
 Type level variable nat is not Main.nat
-Mod.idr:11:1:
-public export Mod.natexp can't refer to export Mod.natfn
+Mod.idr:11:1:public export Mod.natexp can't refer to export Mod.natfn
 reg070.idr:7:1:
 Test_show.Te implementation of Prelude.Show.Show is possibly not total due to: Prelude.Show.Test_show.Te implementation of Prelude.Show.Show, method show
-DoubleEquality.idr:4:87:
-When checking right hand side of oops with expected type
+DoubleEquality.idr:4:87:When checking right hand side of oops with expected type
         Void
 
 When checking argument value to function Prelude.Basics.the:
