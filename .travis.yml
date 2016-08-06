@@ -11,13 +11,6 @@ addons:
     sources:
       - hvr-ghc
     packages:
-      - ghc-7.6.3
-      - ghc-7.8.4
-      - ghc-7.10.3
-      - ghc-8.0.1
-      - cabal-install-1.20
-      - cabal-install-1.22
-      - cabal-install-1.24
       # test dependencies
       - expect
       - cppcheck
@@ -32,20 +25,28 @@ matrix:
       # separate caches for different compiler versions
       # until https://github.com/travis-ci/travis-ci/issues/4393 is resolved
       compiler: ": #GHC 7.6.3"
+      addons: {apt: {packages: [cabal-install-1.20,ghc-7.6.3], sources: [hvr-ghc]}}
     - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="test_c"
       compiler: ": #GHC 7.8.4"
+      addons: {apt: {packages: [cabal-install-1.20,ghc-7.8.4], sources: [hvr-ghc]}}
     - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="lib_doc doc"
       compiler: ": #GHC 7.10.3"
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3], sources: [hvr-ghc]}}
     - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="test_js"
       compiler: ": #GHC 7.10.3"
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3], sources: [hvr-ghc]}}
     - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="test_c"
       compiler: ": #GHC 7.10.3"
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3], sources: [hvr-ghc]}}
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="lib_doc doc"
       compiler: ": #GHC 8.0.1"
+      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1], sources: [hvr-ghc]}}
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_js"
       compiler: ": #GHC 8.0.1"
+      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1], sources: [hvr-ghc]}}
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
+      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1], sources: [hvr-ghc]}}
 
 cache:
   directories:
@@ -155,4 +156,4 @@ script:
   - cd benchmarks && ./build.pl && ./run.pl && cd ..
   - echo -en 'travis_fold:end:script.benchmarks\\r'
 ###
-#
+# EOF
