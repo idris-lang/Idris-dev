@@ -19,7 +19,6 @@ addons:
       - cabal-install-1.22
       - cabal-install-1.24
       # test dependencies
-      - expect
       - cppcheck
       - hscolour
 
