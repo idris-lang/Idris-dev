@@ -1282,7 +1282,7 @@ elab ist info emode opts fn tm
          elab' ina (Just fc') tm
          script <- get_guess
          fullyElaborated script
-         solve -- eliminate the hole. Becuase there are no references, the script is only in the binding
+         solve -- eliminate the hole. Because there are no references, the script is only in the binding
          env <- get_env
          runElabAction info ist (maybe fc' id fc) env script ns
          solve
