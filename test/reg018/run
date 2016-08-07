@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-${IDRIS:-idris} $@ reg018a.idr --check
-${IDRIS:-idris} $@ reg018b.idr --check
-${IDRIS:-idris} $@ reg018c.idr --check
-${IDRIS:-idris} $@ reg018d.idr --check
-rm *.ibc
