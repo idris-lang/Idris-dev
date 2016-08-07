@@ -12,7 +12,7 @@ module Idris.REPL(
     getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc
   , getPkgREPL, getPkgTest, getPort, getIBCSubDir
   , idris, idrisMain, loadInputs
-  , opt, runClient, runMain, ver
+  , opt, runClient, runMain
   ) where
 
 import Idris.AbsSyntax
@@ -55,6 +55,8 @@ import Idris.Elab.Data
 import Idris.Elab.Value
 import Idris.Elab.Term
 
+import Idris.Info
+
 import Version_idris (gitHash)
 import Util.System
 import Util.DynamicLinker
@@ -71,7 +73,7 @@ import Idris.Core.Constraints
 import IRTS.Compiler
 import IRTS.CodegenCommon
 import IRTS.Exports
-import IRTS.System
+--import IRTS.System
 
 import Control.Category
 import qualified Control.Exception as X
@@ -567,7 +569,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.ErrPPrint e) =
          msg = (IdeMode.SymbolAtom "ok", out, spans)
      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 runIdeModeCommand h id orig fn modes IdeMode.GetIdrisVersion =
-  let idrisVersion = (versionBranch version,
+  let idrisVersion = (versionBranch getIdrisVersionNoGit,
                       if not (null gitHash)
                         then [gitHash]
                         else [])
@@ -1472,7 +1474,7 @@ showTotalN ist n = case lookupTotal n (tt_ctxt ist) of
        showN n = annotate (AnnName n Nothing Nothing Nothing) . text $
                  showName (Just ist) [] ppo False n
 
-displayHelp = let vstr = showVersion version in
+displayHelp = let vstr = showVersion getIdrisVersionNoGit in
               "\nIdris version " ++ vstr ++ "\n" ++
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
               concatMap cmdInfo helphead ++
@@ -1799,13 +1801,13 @@ idrisMain opts =
          Just expr -> execScript expr
 
        -- Create Idris data dir + repl history and config dir
-       idrisCatch (do dir <- getIdrisUserDataDir
+       idrisCatch (do dir <- runIO $ getIdrisUserDataDir
                       exists <- runIO $ doesDirectoryExist dir
                       unless exists $ logLvl 1 ("Creating " ++ dir)
                       runIO $ createDirectoryIfMissing True (dir </> "repl"))
          (\e -> return ())
 
-       historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
+       historyFile <- runIO $ getIdrisHistoryFile
 
        when ok $ case opt getPkgIndex opts of
                       (f : _) -> writePkgIndex f
@@ -1850,18 +1852,10 @@ execScript expr = do i <- getIState
                                              res <- execute tm
                                              runIO $ exitSuccess
 
--- | Get the platform-specific, user-specific Idris dir
-getIdrisUserDataDir :: Idris FilePath
-getIdrisUserDataDir = runIO $ getAppUserDataDirectory "idris"
-
--- | Locate the platform-specific location for the init script
-getInitScript :: Idris FilePath
-getInitScript = do idrisDir <- getIdrisUserDataDir
-                   return $ idrisDir </> "repl" </> "init"
 
 -- | Run the initialisation script
 initScript :: Idris ()
-initScript = do script <- getInitScript
+initScript = do script <- runIO $ getIdrisInitScript
                 idrisCatch (do go <- runIO $ doesFileExist script
                                when go $ do
                                  h <- runIO $ openFile script ReadMode
@@ -1873,7 +1867,7 @@ initScript = do script <- getInitScript
                          ist <- getIState
                          unless eof $ do
                            line <- runIO $ hGetLine h
-                           script <- getInitScript
+                           script <- runIO $ getIdrisInitScript
                            c <- colourise
                            processLine ist line script c
                            runInit h
@@ -2011,16 +2005,17 @@ getPort (_:xs) = getPort xs
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe
 
+{-
 ver = showVersion version ++ suffix
         where
             suffix = if gitHash =="" then "" else "-" ++ gitHash
-
+-}
 defaultPort :: PortID
 defaultPort = PortNumber (fromIntegral 4294)
 
 banner = "     ____    __     _                                          \n" ++
          "    /  _/___/ /____(_)____                                     \n" ++
-         "    / // __  / ___/ / ___/     Version " ++ ver ++ "\n" ++
+         "    / // __  / ___/ / ___/     Version " ++ getIdrisVersion ++ "\n" ++
          "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
          " /___/\\__,_/_/  /_/____/       Type :? for help               \n" ++
          "\n" ++

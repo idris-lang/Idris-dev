@@ -9,10 +9,10 @@ import Idris.REPL
 import Idris.Imports
 import Idris.Error
 import Idris.CmdOptions
-
+import Idris.Info
 import Idris.Package
 
-import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+
 
 import Util.System ( setupBundledCC )
 
@@ -62,12 +62,8 @@ runIdris opts = do
                   _ -> ifail "Too many packages"
        fs -> runIO $ mapM_ (buildPkg opts (WarnOnly `elem` opts)) fs
 
-showver :: IO b
-showver = do putStrLn $ "Idris version " ++ ver
-             exitSuccess
-
 showLibs :: IO b
-showLibs = do libFlags <- getLibFlags
+showLibs = do libFlags <- getIdrisFlagsLib
               putStrLn $ unwords libFlags
               exitSuccess
 
@@ -76,7 +72,7 @@ showLibdir = do putStrLn =<< getIdrisLibDir
                 exitSuccess
 
 showIncs :: IO b
-showIncs = do incFlags <- getIncFlags
+showIncs = do incFlags <- getIdrisFlagsInc
               putStrLn $ unwords incFlags
               exitSuccess
 
