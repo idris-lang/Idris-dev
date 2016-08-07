@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 import Control.Monad
 import Data.IORef
 import Control.Exception (SomeException, catch)
@@ -80,6 +81,7 @@ isFreestanding flags =
     Just True -> True
     Just False -> False
     Nothing -> False
+
 -- -----------------------------------------------------------------------------
 -- Clean
 
@@ -90,7 +92,6 @@ idrisClean _ flags _ _ = cleanStdLib
       cleanStdLib = makeClean "libs"
 
       makeClean dir = make verbosity [ "-C", dir, "clean", "IDRIS=idris" ]
-
 
 -- -----------------------------------------------------------------------------
 -- Configure
@@ -182,6 +183,17 @@ idrisPreSDist args flags = do
   generateToolchainModule verb "src" Nothing
   preSDist simpleUserHooks args flags
 
+idrisSDist sdist pkgDesc bi hooks flags = do
+  pkgDesc' <- addGitFiles pkgDesc
+  sdist pkgDesc' bi hooks flags
+    where
+      addGitFiles :: PackageDescription -> IO PackageDescription
+      addGitFiles pkgDesc = do
+        files <- gitFiles
+        return $ pkgDesc { extraSrcFiles = extraSrcFiles pkgDesc ++ files}
+      gitFiles :: IO [FilePath]
+      gitFiles = liftM lines (readProcess "git" ["ls-files"] "")
+
 idrisPostSDist args flags desc lbi = do
   Control.Exception.catch (do let file = "src" </> "Version_idris" Px.<.> "hs"
                               let targetFile = "src" </> "Target_idris" Px.<.> "hs"
@@ -200,8 +212,6 @@ getVersion args flags = do
       hash <- gitHash
       let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
       return (Just buildinfo, [])
-
-
 
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
@@ -232,8 +242,6 @@ idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
 
       gmpflag False = []
       gmpflag True = ["GMP=-DIDRIS_GMP"]
-
-
 
 -- -----------------------------------------------------------------------------
 -- Copy/Install
@@ -304,6 +312,7 @@ main = defaultMainWithHooks $ simpleUserHooks
                   idrisInstall (S.fromFlag $ S.installVerbosity flags)
                                NoCopyDest pkg local
    , preSDist = idrisPreSDist
+   , sDistHook = idrisSDist (sDistHook simpleUserHooks)
    , postSDist = idrisPostSDist
 #if __GLASGOW_HASKELL__ < 710
    , testHook = idrisTestHook ()
