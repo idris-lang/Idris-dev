@@ -6,7 +6,7 @@ import Control.Monad ( when )
 
 import Idris.AbsSyntax
 import Idris.REPL
-import Idris.Imports
+-- import Idris.Imports
 import Idris.Error
 import Idris.CmdOptions
 import Idris.Info
@@ -78,10 +78,10 @@ showIncs = do incFlags <- getIdrisFlagsInc
 
 -- | List idris packages installed
 showPkgs :: IO b
-showPkgs = do mapM_ putStrLn =<< installedPackages
+showPkgs = do mapM_ putStrLn =<< getIdrisInstalledPackages
               exitSuccess
 
 showLoggingCats :: IO b
 showLoggingCats = do
-    putStrLn loggingCatsStr
+    mapM_ putStrLn =<< getIdrisLoggingCategories
     exitSuccess

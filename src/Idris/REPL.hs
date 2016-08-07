@@ -73,7 +73,6 @@ import Idris.Core.Constraints
 import IRTS.Compiler
 import IRTS.CodegenCommon
 import IRTS.Exports
---import IRTS.System
 
 import Control.Category
 import qualified Control.Exception as X
