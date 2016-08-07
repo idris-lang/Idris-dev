@@ -2,7 +2,7 @@
 
 set -eu
 
-TIMEOUT=../bin/timeout
+TIMEOUT=../scripts/timeout
 
 $TIMEOUT 10 "${IDRIS:-idris}" "$@" Main.idr --nocolour --check --warnreach -o basic010
 $TIMEOUT 5  ./basic010
