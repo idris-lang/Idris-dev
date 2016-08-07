@@ -189,6 +189,7 @@ Library
                 , Idris.IdrisDoc
                 , Idris.Imports
                 , Idris.Info
+                , Idris.Info.Show
                 , Idris.Inliner
                 , Idris.Interactive
                 , Idris.Output

@@ -10,6 +10,7 @@ import Idris.REPL
 import Idris.Error
 import Idris.CmdOptions
 import Idris.Info
+import Idris.Info.Show
 import Idris.Package
 
 
@@ -28,11 +29,11 @@ main = do opts <- runArgParser
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do
     runIO setupBundledCC
-    when (ShowLoggingCats `elem` opts)  $ runIO showLoggingCats
-    when (ShowIncs `elem` opts)         $ runIO showIncs
-    when (ShowLibs `elem` opts)         $ runIO showLibs
-    when (ShowLibdir `elem` opts)       $ runIO showLibdir
-    when (ShowPkgs `elem` opts)         $ runIO showPkgs
+    when (ShowLoggingCats `elem` opts)  $ runIO showIdrisLoggingCategories
+    when (ShowIncs `elem` opts)         $ runIO showIdrisFlagsInc
+    when (ShowLibs `elem` opts)         $ runIO showIdrisFlagsLibs
+    when (ShowLibdir `elem` opts)       $ runIO showIdrisLibDir
+    when (ShowPkgs `elem` opts)         $ runIO showIdrisInstalledPackages
     case opt getClient opts of
        []    -> return ()
        (c:_) -> do setVerbose False
@@ -61,27 +62,3 @@ runIdris opts = do
                   [f] -> replPkg opts f
                   _ -> ifail "Too many packages"
        fs -> runIO $ mapM_ (buildPkg opts (WarnOnly `elem` opts)) fs
-
-showLibs :: IO b
-showLibs = do libFlags <- getIdrisFlagsLib
-              putStrLn $ unwords libFlags
-              exitSuccess
-
-showLibdir :: IO b
-showLibdir = do putStrLn =<< getIdrisLibDir
-                exitSuccess
-
-showIncs :: IO b
-showIncs = do incFlags <- getIdrisFlagsInc
-              putStrLn $ unwords incFlags
-              exitSuccess
-
--- | List idris packages installed
-showPkgs :: IO b
-showPkgs = do mapM_ putStrLn =<< getIdrisInstalledPackages
-              exitSuccess
-
-showLoggingCats :: IO b
-showLoggingCats = do
-    mapM_ putStrLn =<< getIdrisLoggingCategories
-    exitSuccess
