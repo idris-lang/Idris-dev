@@ -29,11 +29,11 @@ main = do opts <- runArgParser
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do
     runIO setupBundledCC
-    when (ShowLoggingCats `elem` opts)  $ runIO showIdrisLoggingCategories
-    when (ShowIncs `elem` opts)         $ runIO showIdrisFlagsInc
-    when (ShowLibs `elem` opts)         $ runIO showIdrisFlagsLibs
-    when (ShowLibdir `elem` opts)       $ runIO showIdrisLibDir
-    when (ShowPkgs `elem` opts)         $ runIO showIdrisInstalledPackages
+    when (ShowLoggingCats `elem` opts)  $ runIO showExitIdrisLoggingCategories
+    when (ShowIncs `elem` opts)         $ runIO showExitIdrisFlagsInc
+    when (ShowLibs `elem` opts)         $ runIO showExitIdrisFlagsLibs
+    when (ShowLibdir `elem` opts)       $ runIO showExitIdrisLibDir
+    when (ShowPkgs `elem` opts)         $ runIO showExitIdrisInstalledPackages
     case opt getClient opts of
        []    -> return ()
        (c:_) -> do setVerbose False
