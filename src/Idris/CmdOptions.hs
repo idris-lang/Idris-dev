@@ -10,6 +10,7 @@ module Idris.CmdOptions where
 
 import Idris.AbsSyntaxTree
 import Idris.REPL
+import Idris.Info (getIdrisVersion)
 
 import IRTS.CodegenCommon
 
@@ -33,7 +34,7 @@ runArgParser = do opts <- execParser $ info parser
                           )
                   return $ preProcOpts opts
                where
-                 idrisHeader = PP.hsep [PP.text "Idris version", PP.text ver, PP.text ", (C) The Idris Community 2016"]
+                 idrisHeader = PP.hsep [PP.text "Idris version", PP.text getIdrisVersion, PP.text ", (C) The Idris Community 2016"]
                  idrisProgDesc = PP.vsep [PP.empty,
                                           PP.text "Idris is a general purpose pure functional programming language with dependent",
                                           PP.text "types. Dependent types allow types to be predicated on values, meaning that",
@@ -201,7 +202,7 @@ parseFlags = many $
       maybeRead = fmap fst . listToMaybe . reads
 
 parseVersion :: Parser (a -> a)
-parseVersion = infoOption ver (short 'v' <> long "version" <> help "Print version information")
+parseVersion = infoOption getIdrisVersion (short 'v' <> long "version" <> help "Print version information")
 
 preProcOpts :: [Opt] -> [Opt]
 preProcOpts (NoBuiltins : xs) = NoBuiltins : NoPrelude : preProcOpts xs
