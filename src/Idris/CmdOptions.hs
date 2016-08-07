@@ -114,6 +114,7 @@ parseFlags = many $
   <|> flag' ErrContext     (long "errorcontext")
 
   -- Show things
+  <|> flag' ShowAll         (long "info"        <> help "Display information about installation.")
   <|> flag' ShowLoggingCats (long "listlogcats" <> help "Display logging categories")
   <|> flag' ShowLibs        (long "link"        <> help "Display link flags")
   <|> flag' ShowPkgs        (long "listlibs"    <> help "Display installed libraries")

@@ -550,6 +550,7 @@ data Opt = Filename String
          | ColourREPL Bool
          | Idemode
          | IdemodeSocket
+         | ShowAll
          | ShowLibs
          | ShowLibdir
          | ShowIncs

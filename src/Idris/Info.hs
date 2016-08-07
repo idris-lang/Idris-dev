@@ -74,4 +74,4 @@ getIdrisInstalledPackages :: IO [String]
 getIdrisInstalledPackages = installedPackages
 
 getIdrisLoggingCategories :: IO [String]
-getIdrisLoggingCategories = pure $ words loggingCatsStr
+getIdrisLoggingCategories = return $ words loggingCatsStr

@@ -54,3 +54,42 @@ showExitIdrisLoggingCategories :: IO ()
 showExitIdrisLoggingCategories = do
   showIdrisLoggingCategories
   exitSuccess
+
+showIdrisInfo :: IO ()
+showIdrisInfo = do
+  putStrLn $ unwords ["Idris", getIdrisVersion]
+
+  ps <- getIdrisInstalledPackages
+  putStrLn $ unwords (["Installed Packages:"] ++ ps)
+
+  cs <- getIdrisLoggingCategories
+  putStrLn $ unwords (["Logging Categories:"] ++ cs)
+
+  putStrLn "Paths:"
+  ldir <- getIdrisLibDir
+  udir <- getIdrisUserDataDir
+  putStrLn $ unwords ["-", "Library Dir:", ldir]
+  putStrLn $ unwords ["-", "User Dir:",    udir]
+
+  putStrLn "Flags:"
+  lflag <- getIdrisFlagsLib
+  iflag <- getIdrisFlagsInc
+  eflag <- getIdrisFlagsEnv
+  putStrLn $ unwords (["-", "Libraries:", show lflag])
+  putStrLn $ unwords (["-", "Includes:",  show iflag])
+  putStrLn $ unwords (["-", "Env:",       show eflag])
+
+  cc <- getIdrisCC
+  putStrLn $ unwords ["CC:", cc]
+
+  putStrLn "Files:"
+  hfile   <- getIdrisHistoryFile
+  iscript <- getIdrisInitScript
+  putStrLn $ unwords (["-", "History File:",    hfile])
+  putStrLn $ unwords (["-", "REPL Init Script", iscript])
+
+
+showExitIdrisInfo :: IO ()
+showExitIdrisInfo = do
+  showIdrisInfo
+  exitSuccess
