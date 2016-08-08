@@ -169,7 +169,7 @@ Usage from C code
 * Feel free to mutate both the pointer ``data`` (eg. after calling ``realloc``)
   and the memory it points to. However, keep in mind
   that this must not break Idris's referential transparency.
- 
+
 * **WARNING!** If you call ``cdata_allocate`` or ``cdata_manage``,
   the resulting ``CData`` object *must* be returned from your
   FFI function so that it is inserted in the C heap by the RTS.
@@ -184,7 +184,7 @@ Usage from C code
     other_fun cd i = foreign FFI_C "other_fun" (CData -> Int -> IO Int) cd i
 
 .. code:: cpp
-    
+
     #include "idris_rts.h"
 
     static void finalizer(void * data)
@@ -310,3 +310,26 @@ Reflection
 Including ``%reflection`` functions and ``quoteGoal x by fn in t``,
 which applies ``fn`` to the expected type of the current expression, and
 puts the result in ``x`` which is in scope when elaborating ``t``.
+
+Bash Completion
+================
+
+Use of ``optparse-applicative`` allows Idris to support Bash
+completion.  You can obtain the completion script for Idris using the
+following command::
+
+   idris --bash-completion-script `which idris`
+
+
+To enable completion for the lifetime of your current session, run the
+following command::
+
+   source <(idris --bash-completion-script `which idris`)
+
+
+To enable completion permenatly you must either:
+
+* Modify your bash init script with the above command.
+
+* Add the completion script to the appropriate ``bash_completion.d/``
+  folder on your machine.
