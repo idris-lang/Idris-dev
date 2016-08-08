@@ -1148,7 +1148,7 @@ data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
            | PAlternative [(Name, Name)] PAltType [PTerm] -- ^ (| A, B, C|). Includes unapplied unique name mappings for mkUniqueNames.
            | PHidden PTerm                                -- ^ Irrelevant or hidden pattern
            | PType FC                                     -- ^ 'Type' type
-           | PUniverse Universe                           -- ^ Some universe
+           | PUniverse FC Universe                        -- ^ Some universe
            | PGoal FC PTerm Name PTerm                    -- ^ quoteGoal, used for %reflection functions
            | PConstant FC Const                           -- ^ Builtin types
            | Placeholder                                  -- ^ Underscore
@@ -1211,7 +1211,7 @@ mapPTermFC f g (PAs fc n t)                   = PAs (f fc) n (mapPTermFC f g t)
 mapPTermFC f g (PAlternative ns ty ts)        = PAlternative ns ty (map (mapPTermFC f g) ts)
 mapPTermFC f g (PHidden t)                    = PHidden (mapPTermFC f g t)
 mapPTermFC f g (PType fc)                     = PType (f fc)
-mapPTermFC f g (PUniverse u)                  = PUniverse u
+mapPTermFC f g (PUniverse fc u)               = PUniverse (f fc) u
 mapPTermFC f g (PGoal fc t1 n t2)             = PGoal (f fc) (mapPTermFC f g t1) n (mapPTermFC f g t2)
 mapPTermFC f g (PConstant fc c)               = PConstant (f fc) c
 mapPTermFC f g Placeholder                    = Placeholder
@@ -1443,7 +1443,7 @@ highestFC (PAlternative _ _ args) =
     (fc:_) -> Just fc
 highestFC (PHidden _)             = Nothing
 highestFC (PType fc)              = Just fc
-highestFC (PUniverse _)           = Nothing
+highestFC (PUniverse _ _)         = Nothing
 highestFC (PGoal fc _ _ _)        = Just fc
 highestFC (PConstant fc _)        = Just fc
 highestFC Placeholder             = Nothing
@@ -2083,7 +2083,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
                     depth d . prettySe (decD d) startPrec bnd)
                   empty as
     prettySe d p bnd (PType _)        = annotate (AnnType "Type" "The type of types") $ text "Type"
-    prettySe d p bnd (PUniverse u)    = annotate (AnnType (show u) "The type of unique types") $ text (show u)
+    prettySe d p bnd (PUniverse _ u)  = annotate (AnnType (show u) "The type of unique types") $ text (show u)
     prettySe d p bnd (PConstant _ c)  = annotate (AnnConst c) (text (show c))
     -- XXX: add pretty for tactics
     prettySe d p bnd (PProof ts)      =
@@ -2408,7 +2408,7 @@ instance Sized PTerm where
   size (PDisamb _ tm)                 = size tm
   size (PNoImplicits tm)              = size tm
   size (PType _)                      = 1
-  size (PUniverse _)                  = 1
+  size (PUniverse _ _)                = 1
   size (PConstant fc const)           = 1 + size fc + size const
   size Placeholder                    = 1
   size (PDoBlock dos)                 = 1 + size dos

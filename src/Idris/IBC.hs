@@ -49,7 +49,7 @@ import Codec.Archive.Zip
 import Debug.Trace
 
 ibcVersion :: Word16
-ibcVersion = 145
+ibcVersion = 146
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -1850,8 +1850,9 @@ instance Binary PTerm where
                 PDisamb x1 x2 -> do putWord8 37
                                     put x1
                                     put x2
-                PUniverse x1 -> do putWord8 38
-                                   put x1
+                PUniverse x1 x2 -> do putWord8 38
+                                      put x1
+                                      put x2
                 PRunElab x1 x2 x3 -> do putWord8 39
                                         put x1
                                         put x2
@@ -2003,7 +2004,8 @@ instance Binary PTerm where
                             x2 <- get
                             return (PDisamb x1 x2)
                    38 -> do x1 <- get
-                            return (PUniverse x1)
+                            x2 <- get
+                            return (PUniverse x1 x2)
                    39 -> do x1 <- get
                             x2 <- get
                             x3 <- get
