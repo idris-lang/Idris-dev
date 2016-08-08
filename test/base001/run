@@ -4,7 +4,7 @@ if [[ ${OSTYPE} = 'msys' ]]; then
   cat expected # skip this test on Windows
 else
   ${IDRIS:-idris} $@ --build base001.ipkg | grep -v 'make.*:'
-  ./base001
+  ./base001 2>&1 | grep -v './does-not-exist: No such file or directory'
   make clean | grep -v 'make.*:'
   rm -f *.ibc base001
 fi
