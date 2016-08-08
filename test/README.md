@@ -148,7 +148,6 @@ Currently, `NONE` has the same effect as `ANY`, but this will change.
 
 1. Delete the corresponding directory
 2. Remove the corresponding line in the definition of `testFamiliesData` in `TestData.hs`
-3. Remove the related lines under `Extra-source-files` in `idris.cabal`
 
 ### Updating golden files
 
