@@ -155,8 +155,8 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     -- To make sure the type constructor of the class is in the appropriate
     -- uniqueness hierarchy
-    chkUniq u@(PUniverse _) (PType _) = u
-    chkUniq (PUniverse l) (PUniverse r) = PUniverse (min l r)
+    chkUniq u@(PUniverse _ _) (PType _) = u
+    chkUniq (PUniverse _ l) (PUniverse _ r) = PUniverse NoFC (min l r)
     chkUniq (PPi _ _ _ _ sc) t = chkUniq sc t
     chkUniq _ t = t
 

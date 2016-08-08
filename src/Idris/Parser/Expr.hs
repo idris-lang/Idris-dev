@@ -413,11 +413,11 @@ simpleExpr syn =
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
-        <|> try (do reserved "Type*"; return $ PUniverse AllTypes)
-        <|> do reserved "AnyType"; return $ PUniverse AllTypes
+        <|> try (do fc <- reservedFC "Type*"; return $ PUniverse fc AllTypes)
+        <|> do fc <- reservedFC "AnyType"; return $ PUniverse fc AllTypes
         <|> PType <$> reservedFC "Type"
-        <|> do reserved "UniqueType"; return $ PUniverse UniqueType
-        <|> do reserved "NullType"; return $ PUniverse NullType
+        <|> do fc <- reservedFC "UniqueType"; return $ PUniverse fc UniqueType
+        <|> do fc <- reservedFC "NullType"; return $ PUniverse fc NullType
         <|> do (c, cfc) <- constant
                fc <- getFC
                return (modifyConst syn fc (PConstant cfc c))

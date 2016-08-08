@@ -369,7 +369,10 @@ elab ist info emode opts fn tm
       do apply RType []
          solve
          highlightSource fc' (AnnType "Type" "The type of types")
-    elab' ina fc (PUniverse u)   = do apply (RUType u) []; solve
+    elab' ina fc (PUniverse fc' u)   =
+      do apply (RUType u) []
+         solve
+         highlightSource fc' (AnnType (show u) "The type of unique types")
 --  elab' (_,_,inty) (PConstant c)
 --     | constType c && pattern && not reflection && not inty
 --       = lift $ tfail (Msg "Typecase is not allowed")

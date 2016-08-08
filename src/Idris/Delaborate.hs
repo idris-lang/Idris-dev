@@ -175,7 +175,7 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
     de env _ (TType i) = PType un
-    de env _ (UType u) = PUniverse u
+    de env _ (UType u) = PUniverse un u
 
     dens x | fullname = x
     dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
