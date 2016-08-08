@@ -16,11 +16,16 @@ module Idris.Info
   , getIdrisUserDataDir
   , getIdrisInitScript
   , getIdrisHistoryFile
+  , getIdrisInstalledPackages
+  , getIdrisLoggingCategories
   ) where
 
 import System.FilePath
 import System.Directory
 import Data.Version
+
+import Idris.Imports (installedPackages)
+import Idris.AbsSyntax (loggingCatsStr)
 
 import qualified IRTS.System as S
 
@@ -64,3 +69,9 @@ getIdrisHistoryFile :: IO FilePath
 getIdrisHistoryFile = do
   udir <- getIdrisUserDataDir
   return (udir </> "repl" </> "history")
+
+getIdrisInstalledPackages :: IO [String]
+getIdrisInstalledPackages = installedPackages
+
+getIdrisLoggingCategories :: IO [String]
+getIdrisLoggingCategories = return $ words loggingCatsStr
