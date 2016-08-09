@@ -1,15 +1,22 @@
 {-|
 Module      : Idris.CmdOptions
-Description : CLI for the Idris executable.
-Copyright   :
+Description : A parser for the CmdOptions for the Idris executable.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE Arrows #-}
-module Idris.CmdOptions where
+module Idris.CmdOptions
+  (
+    module Idris.CmdOptions
+  , opt
+  , getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc
+  , getPkgREPL, getPkgTest, getPort, getIBCSubDir
+  ) where
 
 import Idris.AbsSyntaxTree
-import Idris.REPL
+import Idris.AbsSyntax (opt, getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc
+  , getPkgREPL, getPkgTest, getPort, getIBCSubDir)
+-- import Idris.REPL
 import Idris.Info (getIdrisVersion)
 
 import IRTS.CodegenCommon

@@ -206,6 +206,7 @@ Library
                 , Idris.Reflection
                 , Idris.REPL
                 , Idris.REPL.Parser
+                , Idris.REPL.Commands
                 , Idris.Transforms
                 , Idris.TypeSearch
                 , Idris.Unlit

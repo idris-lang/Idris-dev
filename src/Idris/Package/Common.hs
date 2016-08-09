@@ -1,15 +1,14 @@
 {-|
 Module      : Idris.Package.Common
 Description : Data structures common to all `iPKG` file formats.
-Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
 module Idris.Package.Common where
 
-import Idris.Core.TT
-import Idris.REPL
-import Idris.AbsSyntaxTree
+import Idris.Core.TT (Name)
+
+import Idris.AbsSyntaxTree (Opt(..))
 
 -- | Description of an Idris package.
 data PkgDesc = PkgDesc {
