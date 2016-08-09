@@ -598,7 +598,7 @@ fnDecl syn = try (do notEndBlock
 @
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
-fnDecl' syn = checkFixity $
+fnDecl' syn = checkDeclFixity $
               do (doc, argDocs, fc, opts', n, nfc, acc) <- try (do
                         pushIndent
                         (doc, argDocs) <- docstring syn
@@ -618,22 +618,6 @@ fnDecl' syn = checkFixity $
             <|> caf syn
             <|> pattern syn
             <?> "function declaration"
-    where checkFixity :: IdrisParser PDecl -> IdrisParser PDecl
-          checkFixity p = do decl <- p
-                             case getName decl of
-                               Nothing -> return decl
-                               Just n -> do fOk <- fixityOK n
-                                            unless fOk . fail $
-                                              "Missing fixity declaration for " ++ show n
-                                            return decl
-          getName (PTy _ _ _ _ _ n _ _) = Just n
-          getName _ = Nothing
-          fixityOK (NS n _) = fixityOK n
-          fixityOK (UN n)  | all (flip elem opChars) (str n) =
-                               do fixities <- fmap idris_infixes get
-                                  return . elem (str n) . map (\ (Fix _ op) -> op) $ fixities
-                           | otherwise                 = return True
-          fixityOK _        = return True
 
 {-| Parses a series of function and accessbility options
 

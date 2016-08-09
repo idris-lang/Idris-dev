@@ -117,6 +117,20 @@ Type level variable nat is not Main.nat
 Mod.idr:11:1:public export Mod.natexp can't refer to export Mod.natfn
 reg070.idr:7:1:
 Test_show.Te implementation of Prelude.Show.Show is possibly not total due to: Prelude.Show.Test_show.Te implementation of Prelude.Show.Show, method show
+./reg076.idr:8:1: error: Missing
+    fixity declaration for
+    Main.:>, expected: "->", "=>",
+    ambiguous use of a left-associative operator,
+    ambiguous use of a non-associative operator,
+    ambiguous use of a right-associative operator
+<EOF> 
+^     
+./reg077.idr:3:1: error: Missing
+    fixity declaration for
+    Main.:>>, expected: ")", ";",
+    "in", start of block
+<EOF> 
+^     
 DoubleEquality.idr:4:87:When checking right hand side of oops with expected type
         Void
 
