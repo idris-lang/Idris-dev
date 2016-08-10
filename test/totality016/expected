@@ -1,0 +1,9 @@
+totality016.idr:15:1:Main.f1 is not total as there are missing cases
+totality016.idr:19:1:Main.f2 is not total as there are missing cases
+totality016.idr:23:1:Main.f3 is not total as there are missing cases
+totality016.idr:27:1:Main.g1 is not total as there are missing cases
+totality016.idr:31:1:Main.g2 is not total as there are missing cases
+totality016.idr:35:1:Main.h1 is not total as there are missing cases
+totality016.idr:39:1:Main.h2 is not total as there are missing cases
+totality016.idr:43:1:Main.h3 is not total as there are missing cases
+totality016.idr:47:1:Main.h4 is not total as there are missing cases
