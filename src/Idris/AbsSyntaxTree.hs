@@ -162,7 +162,7 @@ defaultPPOption = PPOption {
     ppopt_impl = False
   , ppopt_desugarnats = False
   , ppopt_pinames = False
-  , ppopt_depth = Just 200
+  , ppopt_depth = Nothing
   }
 
 -- | Pretty printing options with the most verbosity.
@@ -171,7 +171,7 @@ verbosePPOption = PPOption {
     ppopt_impl = True
   , ppopt_desugarnats = True
   , ppopt_pinames = True
-  , ppopt_depth = Just 200
+  , ppopt_depth = Nothing
   }
 
 -- | Get pretty printing options from the big options record.
