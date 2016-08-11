@@ -362,9 +362,22 @@ process reexp phase archive fn = do
                 when (ver /= ibcVersion) $ do
                                     logIBC 1 "ibc out of date"
                                     let e = if ver < ibcVersion
-                                            then " an earlier " else " a later "
-                                    ifail $ "Incompatible ibc version.\nThis library was built with"
-                                            ++ e ++ "version of Idris.\n" ++ "Please clean and rebuild."
+                                            then "an earlier" else "a later"
+                                    ldir <- runIO $ getIdrisLibDir
+                                    let start = if ldir `L.isPrefixOf` fn
+                                                  then "This external module"
+                                                  else "This module"
+                                    let end = case L.stripPrefix ldir fn of
+                                                Nothing -> "Please clean and rebuild."
+
+                                                Just ploc -> unwords ["Please reinstall:", L.head $ splitDirectories ploc]
+                                    ifail $ unlines [ unwords ["Incompatible ibc version for:", show fn]
+                                                    , unwords [start
+                                                              , "was built with"
+                                                              , e
+                                                              , "version of Idris."]
+                                                    , end
+                                                    ]
                 source <- getEntry "" "sourcefile" archive
                 srcok <- runIO $ doesFileExist source
                 when srcok $ timestampOlder source fn
