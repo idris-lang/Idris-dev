@@ -121,7 +121,7 @@ and somewhat self-explanatory.
     # Using cabal
     cabal test --test-options="--pattern foo042 --accept"
     # Using stack
-    stack test --test-arguments"--pattern foo042 --accept"
+    stack test --test-arguments="--pattern foo042 --accept"
     ```
 8. Check the content of `expected`. Maybe the test didn't do what you thought it would. Fix and go back to 7 until it's ok.
 9. Add under `Extra-source-files` in `idris.cabal` the patterns that match the folder's content. If you forget this, your test will fail in Travis CI. With the previous example, it should be at least:
@@ -148,7 +148,6 @@ Currently, `NONE` has the same effect as `ANY`, but this will change.
 
 1. Delete the corresponding directory
 2. Remove the corresponding line in the definition of `testFamiliesData` in `TestData.hs`
-3. Remove the related lines under `Extra-source-files` in `idris.cabal`
 
 ### Updating golden files
 

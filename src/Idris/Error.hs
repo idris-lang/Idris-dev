@@ -146,7 +146,7 @@ warnDisamb ist (PDisamb ds tm) = warnDisamb ist tm >>
           when (not (any (isIn d . fst) (ctxtAlist (tt_ctxt ist)))) $
             ierror . Msg $
               "Nothing found in namespace \"" ++
-              intercalate "." (map T.unpack d) ++
+              intercalate "." (map T.unpack . reverse $ d) ++
               "\"."
         isIn d (NS _ ns) = isPrefixOf d ns
         isIn d _ = False
