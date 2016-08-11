@@ -7,7 +7,7 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Completion (replCompletion, proverCompletion) where
 
-import Idris.Core.Evaluate (ctxtAlist)
+import Idris.Core.Evaluate (definitions, ctxtAlist)
 import Idris.Core.TT
 
 import Idris.AbsSyntax (runIO)
@@ -24,10 +24,11 @@ import Control.Monad.State.Strict
 import Data.List
 import Data.Maybe
 import Data.Char(toLower)
+import qualified Data.Map.Strict as Map
+import qualified Data.Text as T
 
 import System.Console.Haskeline
 import System.Console.ANSI (Color)
-
 
 commands = [ n | (names, _, _) <- allHelp ++ extraHelp, n <- names ]
 
@@ -36,23 +37,27 @@ tacticArgs = [ (name, args) | (names, args, _) <- Idris.Parser.Expr.tactics
                             , name <- names ]
 tactics = map fst tacticArgs
 
--- | Convert a name into a string usable for completion. Filters out names
--- that users probably don't want to see.
-nameString :: Name -> Maybe String
-nameString (UN n)       = Just (str n)
-nameString (NS n _)     = nameString n
-nameString _            = Nothing
-
--- FIXME: Respect module imports
--- Issue #1767 in the issue tracker.
---    https://github.com/idris-lang/Idris-dev/issues/1767
 -- | Get the user-visible names from the current interpreter state.
 names :: Idris [String]
 names = do i <- get
            let ctxt = tt_ctxt i
-           return . nub $
-             mapMaybe (nameString . fst) (ctxtAlist ctxt) ++
+           return $
+             mapMaybe nameString (allNames $ definitions ctxt) ++
              "Type" : map fst Idris.Parser.Expr.constants
+  where
+    -- We need both fully qualified names and identifiers that map to them
+    allNames :: Ctxt a -> [Name]
+    allNames ctxt =
+      let mappings = Map.toList ctxt
+      in concatMap (\(name, mapping) -> name : Map.keys mapping) mappings
+    -- Convert a name into a string usable for completion. Filters out names
+    -- that users probably don't want to see.
+    nameString :: Name -> Maybe String
+    nameString (UN n)       = Just (str n)
+    nameString (NS n ns)    =
+      let path = intercalate "." . map T.unpack . reverse $ ns
+      in fmap ((path ++ ".") ++) $ nameString n
+    nameString _            = Nothing
 
 metavars :: Idris [String]
 metavars = do i <- get
@@ -63,26 +68,49 @@ modules :: Idris [String]
 modules = do i <- get
              return $ map show $ imported i
 
+namespaces :: Idris [String]
+namespaces = do
+  ctxt <- fmap tt_ctxt get
+  let names = map fst $ ctxtAlist ctxt
+  return $ nub $ catMaybes $ map extractNS names
+  where
+    extractNS :: Name -> Maybe String
+    extractNS (NS n ns) = Just $ intercalate "." . map T.unpack . reverse $ ns
+    extractNS _ = Nothing
 
+-- UpTo means if user enters full name then no other completions are shown
+-- Full always show other (longer) completions if there are any
+data CompletionMode = UpTo | Full deriving Eq
 
-completeWith :: [String] -> String -> [Completion]
-completeWith ns n = if uniqueExists
-                    then [simpleCompletion n]
-                    else map simpleCompletion prefixMatches
+completeWithMode :: CompletionMode -> [String] -> String -> [Completion]
+completeWithMode mode ns n =
+  if uniqueExists || (fullWord && mode == UpTo)
+  then [simpleCompletion n]
+  else map simpleCompletion prefixMatches
     where prefixMatches = filter (isPrefixOf n) ns
           uniqueExists = [n] == prefixMatches
+          fullWord = n `elem` ns
 
-completeName :: [String] -> String -> Idris [Completion]
-completeName extra n = do ns <- names
-                          return $ completeWith (extra ++ ns) n
+completeWith = completeWithMode Full
 
-completeExpr :: [String] -> CompletionFunc Idris
-completeExpr extra = completeWord Nothing (" \t(){}:" ++ opChars) (completeName extra)
+completeName :: CompletionMode -> [String] -> CompletionFunc Idris
+completeName mode extra = completeWord Nothing (" \t(){}:" ++ completionWhitespace) completeName
+  where
+    completeName n = do
+      ns <- names
+      return $ completeWithMode mode (extra ++ ns) n
+    -- The '.' needs not to be taken into consideration because it serves as namespace separator
+    completionWhitespace = opChars \\ "."
 
 completeMetaVar :: CompletionFunc Idris
 completeMetaVar = completeWord Nothing (" \t(){}:" ++ opChars) completeM
     where completeM m = do mvs <- metavars
-                           return $ completeWith mvs m
+                           return $ completeWithMode UpTo mvs m
+
+completeNamespace :: CompletionFunc Idris
+completeNamespace = completeWord Nothing " \t" completeN
+  where completeN n = do ns <- namespaces
+                         return $ completeWithMode UpTo ns n
 
 completeOption :: CompletionFunc Idris
 completeOption = completeWord Nothing " \t" completeOpt
@@ -133,16 +161,16 @@ completeColour (prev, next) = case words (reverse prev) of
 completeCmd :: String -> CompletionFunc Idris
 completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lookupInHelp cmd
     where completeArg FileArg = completeFilename (prev, next)
-          completeArg NameArg = completeExpr [] (prev, next) -- FIXME only complete one name
+          completeArg NameArg = completeName UpTo [] (prev, next)
           completeArg OptionArg = completeOption (prev, next)
-          completeArg ModuleArg = noCompletion (prev, next) -- FIXME do later
-          completeArg NamespaceArg = noCompletion (prev, next) -- FIXME do later
-          completeArg ExprArg = completeExpr [] (prev, next)
-          completeArg MetaVarArg = completeMetaVar (prev, next) -- FIXME only complete one name
+          completeArg ModuleArg = noCompletion (prev, next)
+          completeArg NamespaceArg = completeNamespace (prev, next)
+          completeArg ExprArg = completeName Full [] (prev, next)
+          completeArg MetaVarArg = completeMetaVar (prev, next)
           completeArg ColourArg = completeColour (prev, next)
           completeArg NoArg = noCompletion (prev, next)
           completeArg ConsoleWidthArg = completeConsoleWidth (prev, next)
-          completeArg DeclArg = completeExpr [] (prev, next)
+          completeArg DeclArg = completeName Full [] (prev, next)
           completeArg PkgArgs = completePkg (prev, next)
           completeArg (ManyArgs a) = completeArg a
           completeArg (OptionalArg a) = completeArg a
@@ -154,7 +182,7 @@ completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lo
 replCompletion :: CompletionFunc Idris
 replCompletion (prev, next) = case firstWord of
                                 ':':cmdName -> completeCmd (':':cmdName) (prev, next)
-                                _           -> completeExpr [] (prev, next)
+                                _           -> completeName UpTo [] (prev, next)
     where firstWord = fst $ break isWhitespace $ dropWhile isWhitespace $ reverse prev
 
 
@@ -171,7 +199,7 @@ completeTactic as tac (prev, next) = fromMaybe completeTacName . fmap completeAr
     where completeTacName = return ("", completeWith tactics tac)
           completeArg Nothing              = noCompletion (prev, next)
           completeArg (Just NameTArg)      = noCompletion (prev, next) -- this is for binding new names!
-          completeArg (Just ExprTArg)      = completeExpr as (prev, next)
+          completeArg (Just ExprTArg)      = completeName Full as (prev, next)
           completeArg (Just StringLitTArg) = noCompletion (prev, next)
           completeArg (Just AltsTArg)      = noCompletion (prev, next) -- TODO
 
