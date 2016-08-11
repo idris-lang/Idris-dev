@@ -6,7 +6,6 @@ import Control.Monad ( when )
 
 import Idris.AbsSyntax
 import Idris.REPL
--- import Idris.Imports
 import Idris.Error
 import Idris.CmdOptions
 import Idris.Info

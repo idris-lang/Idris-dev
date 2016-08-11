@@ -1,7 +1,6 @@
 {-|
 Module      : Idris.REPL.Parser
 Description : Parser for the REPL commands.
-Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
@@ -20,6 +19,8 @@ import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Help
 import qualified Idris.Parser as P
+
+import Idris.REPL.Commands
 
 import Control.Applicative
 import Control.Monad.State.Strict

@@ -9,10 +9,8 @@ Maintainer  : The Idris Community.
              PatternGuards, CPP #-}
 
 module Idris.REPL(
-    getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc
-  , getPkgREPL, getPkgTest, getPort, getIBCSubDir
-  , idris, idrisMain, loadInputs
-  , opt, runClient, runMain
+    idris, idrisMain, loadInputs
+  , runClient, runMain
   ) where
 
 import Idris.AbsSyntax
@@ -47,6 +45,7 @@ import Idris.TypeSearch (searchByType)
 import Idris.IBC (loadPkgIndex, writePkgIndex)
 
 import Idris.REPL.Browse (namesInNS, namespacesInNS)
+import Idris.REPL.Commands
 
 import Idris.ElabDecls
 import Idris.Elab.Type
@@ -226,9 +225,10 @@ processNetCmd orig i h fn cmd
            IdeMode n _ -> ist {idris_outputmode = IdeMode n h}
 
 -- | Run a command on the server on localhost
-runClient :: PortID -> String -> IO ()
+runClient :: Maybe PortID -> String -> IO ()
 runClient port str = withSocketsDo $ do
-              res <- X.try (connectTo "localhost" port)
+              let port' = fromMaybe defaultPort port
+              res <- X.try (connectTo "localhost" port')
               case res of
                 Right h -> do
                   hSetEncoding h utf8
@@ -1707,14 +1707,19 @@ idrisMain opts =
        let cgFlags = opt getCodegenArgs opts
 
        -- Now set/unset specifically chosen optimisations
-       sequence_ (opt getOptimisation opts)
+       let os = opt getOptimisation opts
+
+       mapM_ processOptimisation os
+
        script <- case opt getExecScript opts of
                    []     -> return Nothing
                    x:y:xs -> do iputStrLn "More than one interpreter expression found."
                                 runIO $ exitWith (ExitFailure 1)
                    [expr] -> return (Just expr)
        let immediate = opt getEvalExpr opts
-       let port = getPort opts
+       let port = case getPort opts of
+                    Nothing -> defaultPort
+                    Just p  -> p
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = DefaultCheckingTotal })
@@ -1829,6 +1834,10 @@ idrisMain opts =
     makeOption ErrContext    = setErrContext True
     makeOption _             = return ()
 
+    processOptimisation :: (Bool,Optimisation) -> Idris ()
+    processOptimisation (True,  p) = addOptimise p
+    processOptimisation (False, p) = removeOptimise p
+
     addPkgDir :: String -> Idris ()
     addPkgDir p = do ddir <- runIO getIdrisLibDir
                      addImportDir (ddir </> p)
@@ -1882,133 +1891,7 @@ initScript = do script <- runIO $ getIdrisInitScript
                    Success (Right cmd ) -> process [] cmd
                    Success (Left err) -> runIO $ print err
 
-getFile :: Opt -> Maybe String
-getFile (Filename str) = Just str
-getFile _ = Nothing
 
-getBC :: Opt -> Maybe String
-getBC (BCAsm str) = Just str
-getBC _ = Nothing
-
-getOutput :: Opt -> Maybe String
-getOutput (Output str) = Just str
-getOutput _ = Nothing
-
-getIBCSubDir :: Opt -> Maybe String
-getIBCSubDir (IBCSubDir str) = Just str
-getIBCSubDir _ = Nothing
-
-getImportDir :: Opt -> Maybe String
-getImportDir (ImportDir str) = Just str
-getImportDir _ = Nothing
-
-getPkgDir :: Opt -> Maybe String
-getPkgDir (Pkg str) = Just str
-getPkgDir _ = Nothing
-
-getPkg :: Opt -> Maybe (Bool, String)
-getPkg (PkgBuild str) = Just (False, str)
-getPkg (PkgInstall str) = Just (True, str)
-getPkg _ = Nothing
-
-getPkgClean :: Opt -> Maybe String
-getPkgClean (PkgClean str) = Just str
-getPkgClean _ = Nothing
-
-getPkgREPL :: Opt -> Maybe String
-getPkgREPL (PkgREPL str) = Just str
-getPkgREPL _ = Nothing
-
-getPkgCheck :: Opt -> Maybe String
-getPkgCheck (PkgCheck str) = Just str
-getPkgCheck _              = Nothing
-
--- | Returns None if given an Opt which is not PkgMkDoc
---   Otherwise returns Just x, where x is the contents of PkgMkDoc
-getPkgMkDoc :: Opt          -- ^ Opt to extract
-            -> Maybe String -- ^ Result
-getPkgMkDoc (PkgMkDoc str) = Just str
-getPkgMkDoc _              = Nothing
-
-getPkgTest :: Opt          -- ^ the option to extract
-           -> Maybe String -- ^ the package file to test
-getPkgTest (PkgTest f) = Just f
-getPkgTest _ = Nothing
-
-getCodegen :: Opt -> Maybe Codegen
-getCodegen (UseCodegen x) = Just x
-getCodegen _ = Nothing
-
-getCodegenArgs :: Opt -> Maybe String
-getCodegenArgs (CodegenArgs args) = Just args
-getCodegenArgs _ = Nothing
-
-getConsoleWidth :: Opt -> Maybe ConsoleWidth
-getConsoleWidth (UseConsoleWidth x) = Just x
-getConsoleWidth _ = Nothing
-
-
-getExecScript :: Opt -> Maybe String
-getExecScript (InterpretScript expr) = Just expr
-getExecScript _ = Nothing
-
-getPkgIndex :: Opt -> Maybe FilePath
-getPkgIndex (PkgIndex file) = Just file
-getPkgIndex _ = Nothing
-
-getEvalExpr :: Opt -> Maybe String
-getEvalExpr (EvalExpr expr) = Just expr
-getEvalExpr _ = Nothing
-
-getOutputTy :: Opt -> Maybe OutputType
-getOutputTy (OutputTy t) = Just t
-getOutputTy _ = Nothing
-
-getLanguageExt :: Opt -> Maybe LanguageExt
-getLanguageExt (Extension e) = Just e
-getLanguageExt _ = Nothing
-
-getTriple :: Opt -> Maybe String
-getTriple (TargetTriple x) = Just x
-getTriple _ = Nothing
-
-getCPU :: Opt -> Maybe String
-getCPU (TargetCPU x) = Just x
-getCPU _ = Nothing
-
-getOptLevel :: Opt -> Maybe Int
-getOptLevel (OptLevel x) = Just x
-getOptLevel _ = Nothing
-
-getOptimisation :: Opt -> Maybe (Idris ())
-getOptimisation (AddOpt p) = Just $ addOptimise p
-getOptimisation (RemoveOpt p) = Just $ removeOptimise p
-getOptimisation _ = Nothing
-
-getColour :: Opt -> Maybe Bool
-getColour (ColourREPL b) = Just b
-getColour _ = Nothing
-
-getClient :: Opt -> Maybe String
-getClient (Client x) = Just x
-getClient _ = Nothing
-
--- Get the first valid port
-getPort :: [Opt] -> PortID
-getPort [] = defaultPort
-getPort (Port p:xs)
-    | all (`elem` ['0'..'9']) p = PortNumber $ fromIntegral (read p)
-    | otherwise                 = getPort xs
-getPort (_:xs) = getPort xs
-
-opt :: (Opt -> Maybe a) -> [Opt] -> [a]
-opt = mapMaybe
-
-{-
-ver = showVersion version ++ suffix
-        where
-            suffix = if gitHash =="" then "" else "-" ++ gitHash
--}
 defaultPort :: PortID
 defaultPort = PortNumber (fromIntegral 4294)
 

@@ -489,7 +489,7 @@ verifyTotality (fc, n)
 
                  case getPartial ist [] ns of
                       Nothing -> return ()
-                      Just bad -> do let t' = Partial (Other bad) 
+                      Just bad -> do let t' = Partial (Other bad)
                                      logCoverage 2 $ "Set to " ++ show t'
                                      setTotality n t'
                                      addIBC (IBCTotal n t')
@@ -503,7 +503,7 @@ verifyTotality (fc, n)
 
     getPartial ist [] [] = Nothing
     getPartial ist bad [] = Just bad
-    getPartial ist bad (n : ns) 
+    getPartial ist bad (n : ns)
         = case lookupTotalExact n (tt_ctxt ist) of
                Just (Partial _) -> getPartial ist (n : bad) ns
                _ -> getPartial ist bad ns
