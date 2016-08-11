@@ -1,11 +1,17 @@
 version: 1.0.{build}
 init:
 - ps: >-
-    choco install ghc --version 7.10.3 | Out-Null
-
-    $env:PATH="$env:PATH;C:\tools\ghc\ghc-7.10.3\bin;$HOME\AppData\Roaming\cabal\bin"
-
     choco install cabal
+
+    mkdir C:\ghc
+
+    Invoke-WebRequest "http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
+    
+    7z x C:\ghc\ghc.tar.xz -oC:\ghc
+    
+    7z x C:\ghc\ghc.tar -oC:\ghc
+
+    $env:PATH="$env:PATH;c:\ghc\ghc-7.10.3\bin;$HOME\AppData\Roaming\cabal\bin"
 
     cabal update
 
