@@ -193,6 +193,8 @@ Library
                 , Idris.Inliner
                 , Idris.Interactive
                 , Idris.Output
+                , Idris.Main
+                , Idris.ModeCommon
                 , Idris.Parser
                 , Idris.Parser.Helpers
                 , Idris.Parser.Ops
