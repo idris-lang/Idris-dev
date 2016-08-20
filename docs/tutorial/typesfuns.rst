@@ -1067,11 +1067,12 @@ updated):
 
     *record> record { firstName = "Jim" } fred
     MkPerson "Jim" "Joe" "Bloggs" 30 : Person
-    *record> record { firstName = "Jim", age = 20 } fred
-    MkPerson "Jim" "Joe" "Bloggs" 20 : Person
+    *record> record { firstName = "Jim", age $= (+ 1) } fred
+    MkPerson "Jim" "Joe" "Bloggs" 31 : Person
 
 The syntax ``record { field = val, ... }`` generates a function which
-updates the given fields in a record.
+updates the given fields in a record. ``=`` assigns a new value to a field,
+and ``$=`` applies a function to update its value.
 
 Each record is defined in its own namespace, which means that field names 
 can be reused in multiple records.
