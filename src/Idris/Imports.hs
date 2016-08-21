@@ -71,9 +71,9 @@ findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
                                 ibc <- runIO $ doesFileExist' ibcp
                                 idr  <- runIO $ doesFileExist' idrp
                                 lidr <- runIO $ doesFileExist' lidrp
---                              when idr $ putStrLn $ idrp ++ " ok"
---                              when lidr $ putStrLn $ lidrp ++ " ok"
---                              when ibc $ putStrLn $ ibcp ++ " ok"
+                                when idr $ runIO $ putStrLn $ idrp ++ " ok"
+                                when lidr $ runIO $ putStrLn $ lidrp ++ " ok"
+                                when ibc $ runIO $ putStrLn $ ibcp ++ " ok"
                                 let isrc = if lidr
                                            then LIDR lidrp
                                            else IDR idrp

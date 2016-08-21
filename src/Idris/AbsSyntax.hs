@@ -1062,6 +1062,23 @@ allImportDirs = do i <- getIState
                    let optdirs = opt_importdirs (idris_options i)
                    return ("." : reverse optdirs)
 
+addSourceDir :: FilePath -> Idris ()
+addSourceDir fp = do i <- getIState
+                     let opts = idris_options i
+                     let opts' = opts { opt_sourcedirs = nub $ fp : opt_sourcedirs opts  }
+                     putIState $ i { idris_options = opts' }
+
+setSourceDirs :: [FilePath] -> Idris ()
+setSourceDirs fps = do i <- getIState
+                       let opts = idris_options i
+                       let opts' = opts { opt_sourcedirs = nub $ fps  }
+                       putIState $ i { idris_options = opts' }
+
+allSourceDirs :: Idris [FilePath]
+allSourceDirs = do i <- getIState
+                   let optdirs = opt_sourcedirs (idris_options i)
+                   return ("." : reverse optdirs)
+
 colourise :: Idris Bool
 colourise = do i <- getIState
                return $ idris_colourRepl i

@@ -145,6 +145,7 @@ instance NFData Opt where
     rnf (Port str) = rnf  str `seq` ()
     rnf (IBCSubDir str) = rnf  str `seq` ()
     rnf (ImportDir str) = rnf  str `seq` ()
+    rnf (SourceDir str) = rnf  str `seq` ()
     rnf (PkgBuild str) = rnf  str `seq` ()
     rnf (PkgInstall str) = rnf  str `seq` ()
     rnf (PkgClean str) = rnf  str `seq` ()
@@ -200,6 +201,7 @@ instance NFData IOption where
          opt_outputTy
          opt_ibcsubdir
          opt_importdirs
+         opt_sourcedirs
          opt_triple
          opt_cpu
          opt_cmdline
@@ -225,6 +227,7 @@ instance NFData IOption where
          `seq` rnf opt_outputTy
          `seq` rnf opt_ibcsubdir
          `seq` rnf opt_importdirs
+         `seq` rnf opt_sourcedirs
          `seq` rnf opt_triple
          `seq` rnf opt_cpu
          `seq` rnf opt_cmdline
@@ -286,6 +289,7 @@ instance NFData IBCWrite where
     rnf (IBCKeyword string) = rnf string `seq` ()
     rnf (IBCImport imp) = rnf imp `seq` ()
     rnf (IBCImportDir filePath) = rnf filePath `seq` ()
+    rnf (IBCSourceDir filePath) = rnf filePath `seq` ()
     rnf (IBCObj codegen filePath) = rnf codegen `seq` rnf filePath `seq` ()
     rnf (IBCLib codegen string) = rnf codegen `seq` rnf string `seq` ()
     rnf (IBCCGFlag codegen string) = rnf codegen `seq` rnf string `seq` ()
