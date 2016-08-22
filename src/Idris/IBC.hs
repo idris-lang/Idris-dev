@@ -49,7 +49,7 @@ import Codec.Archive.Zip
 import Debug.Trace
 
 ibcVersion :: Word16
-ibcVersion = 145
+ibcVersion = 147
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -365,9 +365,22 @@ process reexp phase archive fn = do
                 when (ver /= ibcVersion) $ do
                                     logIBC 1 "ibc out of date"
                                     let e = if ver < ibcVersion
-                                            then " an earlier " else " a later "
-                                    ifail $ "Incompatible ibc version.\nThis library was built with"
-                                            ++ e ++ "version of Idris.\n" ++ "Please clean and rebuild."
+                                            then "an earlier" else "a later"
+                                    ldir <- runIO $ getIdrisLibDir
+                                    let start = if ldir `L.isPrefixOf` fn
+                                                  then "This external module"
+                                                  else "This module"
+                                    let end = case L.stripPrefix ldir fn of
+                                                Nothing -> "Please clean and rebuild."
+
+                                                Just ploc -> unwords ["Please reinstall:", L.head $ splitDirectories ploc]
+                                    ifail $ unlines [ unwords ["Incompatible ibc version for:", show fn]
+                                                    , unwords [start
+                                                              , "was built with"
+                                                              , e
+                                                              , "version of Idris."]
+                                                    , end
+                                                    ]
                 source <- getEntry "" "sourcefile" archive
                 srcok <- runIO $ doesFileExist source
                 when srcok $ timestampOlder source fn
@@ -1859,8 +1872,9 @@ instance Binary PTerm where
                 PDisamb x1 x2 -> do putWord8 37
                                     put x1
                                     put x2
-                PUniverse x1 -> do putWord8 38
-                                   put x1
+                PUniverse x1 x2 -> do putWord8 38
+                                      put x1
+                                      put x2
                 PRunElab x1 x2 x3 -> do putWord8 39
                                         put x1
                                         put x2
@@ -2012,7 +2026,8 @@ instance Binary PTerm where
                             x2 <- get
                             return (PDisamb x1 x2)
                    38 -> do x1 <- get
-                            return (PUniverse x1)
+                            x2 <- get
+                            return (PUniverse x1 x2)
                    39 -> do x1 <- get
                             x2 <- get
                             x3 <- get

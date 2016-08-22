@@ -1,2 +1,0 @@
-Mod.idr:11:1:
-public export Mod.natexp can't refer to export Mod.natfn

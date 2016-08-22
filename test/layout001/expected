@@ -1,0 +1,76 @@
+./layout001a.idr:5:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+y 
+^ 
+./layout001b.idr:5:3: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+= y 
+  ^ 
+./layout001c.idr:3:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+2 
+^ 
+./layout001e.idr:6:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+3 
+^ 
+./layout001f.idr:6:2: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+ 3 
+ ^ 
+./layout001g.idr:6:3: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+  3 
+  ^ 
+./layout001h.idr:6:3: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+  3 
+  ^ 
+./layout001i.idr:6:4: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+   3 
+   ^ 
+./layout001j.idr:6:5: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+    3 
+    ^ 
+./layout001l.idr:6:1: error: Wrong
+    indention: should be greater
+    than context
+    indentation, expected: space
+y 
+^ 
+mplus1.idr:13:31:When checking right hand side of term with expected type
+        Maybe Int
+
+When checking an application of function Prelude.Applicative.pure:
+        No such variable f
+./mplus2.idr:17:37: error: not
+    end of block, expected: ")",
+    "->", ";", "in",
+    ambiguous use of a left-associative operator,
+    ambiguous use of a non-associative operator,
+    ambiguous use of a right-associative operator,
+    do block expression,
+    end of input
+                                    `mplus` pure f 
+                                    ^              
+mplus3.idr:11:1:warning - Unreachable case: term

@@ -1,0 +1,26 @@
+unique001a.idr:33:11:Type mismatch between
+        Int -> String
+and
+        UniqueType (Int -> String)
+unique001a.idr:44:12:Type mismatch between
+        Int -> String
+and
+        UniqueType (Int -> String)
+unique001a.idr:55:12:Type mismatch between
+        UniqueType (Int -> String)
+and
+        Int -> String
+unique001b.idr:16:7:Borrowed name xs must not be used on RHS
+unique001c.idr:46:6:Unique name f is used more than once
+unique001d.idr:3:7:Borrowed name x must not be used on RHS
+unique001e.idr:3:10:
+Constructor Main.Nil has a UniqueType, but the data type does not
+unique002.idr:15:5:Unique name xs is used more than once
+unique002a.idr:15:5:Type mismatch between
+        Int -> String
+and
+        UniqueType (Int -> String)
+unique003.idr:18:5:Type mismatch between
+        Int -> String
+and
+        UniqueType (Int -> String)

@@ -1,2 +1,0 @@
-reg006.idr:17:1:
-RBTree.lookup is possibly not total due to recursive path RBTree.lookup --> RBTree.lookup

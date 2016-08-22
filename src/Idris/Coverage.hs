@@ -17,6 +17,7 @@ import Idris.Delaborate
 import Idris.Error
 import Idris.Output (iWarn, iputStrLn)
 
+import Data.Char
 import Data.List
 import Data.Either
 import Data.Maybe
@@ -203,46 +204,62 @@ recoverableCoverage _ _ = False
 
 genAll :: IState -> (Bool, [PTerm]) -> [PTerm]
 genAll i (addPH, args)
-   = case filter (/=Placeholder) $ fnub (concatMap otherPats (fnub args)) of
+   = case filter (/=Placeholder) $ fnub $ enrichPats $ fnub (concatMap otherPats (fnub args)) of
           [] -> [Placeholder]
-          xs -> ph $ inventConsts xs
+          xs -> ph xs
   where
     ph ts = if addPH then Placeholder : ts else ts
 
-    -- if they're constants, invent a new one to make sure that
-    -- constants which are not explicitly handled are covered
-    inventConsts cs@(PConstant fc c : _) = map (PConstant NoFC) (ic' (mapMaybe getConst cs))
-      where getConst (PConstant _ c) = Just c
-            getConst _ = Nothing
-    inventConsts xs = xs
+    -- for every constant in a term (at any level) take next one to make sure
+    -- that constants which are not explicitly handled are covered
+    nextConst (PConstant fc c) = PConstant NoFC (nc' c)
+    nextConst o = o
 
-    -- try constants until they're not in the list.
-    -- FIXME: It is, of course, possible that someone has enumerated all
-    -- the constants and matched on them (maybe in generated code) and this
-    -- will be really slow. This is sufficiently unlikely that we won't
-    -- worry for now...
+    nc' (I c) = I (c + 1)
+    nc' (BI c) = BI (c + 1)
+    nc' (Fl c) = Fl (c + 1)
+    nc' (B8 c) = B8 (c + 1)
+    nc' (B16 c) = B16 (c + 1)
+    nc' (B32 c) = B32 (c + 1)
+    nc' (B64 c) = B64 (c + 1)
+    nc' (Ch c) = Ch (chr $ ord c + 1)
+    nc' (Str c) = Str (c ++ "'")
+    nc' o = o
 
-    ic' xs@(I _ : _) = firstMissing xs (lotsOfNums I)
-    ic' xs@(BI _ : _) = firstMissing xs (lotsOfNums BI)
-    ic' xs@(Fl _ : _) = firstMissing xs (lotsOfNums Fl)
-    ic' xs@(B8 _ : _) = firstMissing xs (lotsOfNums B8)
-    ic' xs@(B16 _ : _) = firstMissing xs (lotsOfNums B16)
-    ic' xs@(B32 _ : _) = firstMissing xs (lotsOfNums B32)
-    ic' xs@(B64 _ : _) = firstMissing xs (lotsOfNums B64)
-    ic' xs@(Ch _ : _) = firstMissing xs lotsOfChars
-    ic' xs@(Str _ : _) = firstMissing xs lotsOfStrings
-    -- The rest are types with only one case
-    ic' xs = xs
+    -- enrich patterns with cartesian products so that
+    -- (True, _) and (_, True) give (True, True)
+    -- with all other combinations to be checked for coverage later
+    enrichPats :: [PTerm] -> [PTerm]
+    enrichPats xs = xs ++ enrichPats' xs
 
-    firstMissing cs (x : xs) | x `elem` cs = firstMissing cs xs
-                             | otherwise = x : cs
+    enrichPats' :: [PTerm] -> [PTerm]
+    enrichPats' [] = []
+    enrichPats' [x] = [x]
+    enrichPats' (x : xs) = concatMap (combinePHPats x) xs ++ enrichPats' xs
 
-    lotsOfNums t = map t [0..]
-    lotsOfChars = map Ch ['a'..]
-    lotsOfStrings = map Str (map (("some string " ++).show) [1..])
+    combinePHPats :: PTerm -> PTerm -> [PTerm]
+    combinePHPats Placeholder x = [x]
+    combinePHPats x Placeholder = [x]
+    combinePHPats (PPair fc1 hls1 pi1 l1 r1) (PPair fc2 hls2 pi2 l2 r2) =
+      let ls = enrichPats $ combinePHPats l1 l2
+          rs = enrichPats $ combinePHPats r1 r2
+      in  [ PPair fc1 hls1 pi1 l r | l <- ls, r <- rs]
+    combinePHPats (PDPair fc1 hls1 p1 t1 t v1) (PDPair fc2 hls2 p2 t2 _ v2) =
+      let ts = enrichPats $ combinePHPats t1 t2
+          vs = enrichPats $ combinePHPats v1 v2
+      in [ PDPair fc1 hls1 p1 t' t v' | t' <- ts, v' <- vs]
+    combinePHPats p1@(PApp fc x xs@(_:_)) p2@(PApp _ x' xs')
+      | quickEq x x' && length xs == length xs' =
+         let ls = map getExpTm xs
+             rs = map getExpTm xs'
+             pss = cph $ zipWith combinePHPats ls rs
+         in (map (\ps -> resugar (PApp fc x $ zipWith upd ps xs)) pss)
+    combinePHPats x y = [x, y]
 
-    nubMap f acc [] = acc
-    nubMap f acc (x : xs) = nubMap f (fnub' acc (f x)) xs
+    cph :: [[PTerm]] -> [[PTerm]]
+    cph [] = []
+    cph [x] = [x]
+    cph (xs : xss) = concatMap (\x -> map (x:) $ cph xss) xs
 
     otherPats :: PTerm -> [PTerm]
     otherPats o@(PRef fc hl n) = ph $ ops fc n [] o
@@ -257,7 +274,7 @@ genAll i (addPH, args)
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
                  [pexp t,pexp v]) o
-    otherPats o@(PConstant _ c) = ph $ inventConsts [o] -- return o
+    otherPats o@(PConstant _ c) = ph [o, nextConst o]
     otherPats arg = return Placeholder
 
     ops fc n xs o
@@ -311,6 +328,7 @@ genAll i (addPH, args)
     quickEq :: PTerm -> PTerm -> Bool
     quickEq (PConstant _ n) (PConstant _ n') = n == n'
     quickEq (PRef _ _ n) (PRef _ _ n') = n == n'
+    quickEq (PPair _ _ _ l r) (PPair _ _ _ l' r') = quickEq l l' && quickEq r r'
     quickEq (PApp _ t as) (PApp _ t' as')
         | length as == length as'
            = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))
@@ -489,7 +507,7 @@ verifyTotality (fc, n)
 
                  case getPartial ist [] ns of
                       Nothing -> return ()
-                      Just bad -> do let t' = Partial (Other bad) 
+                      Just bad -> do let t' = Partial (Other bad)
                                      logCoverage 2 $ "Set to " ++ show t'
                                      setTotality n t'
                                      addIBC (IBCTotal n t')
@@ -503,7 +521,7 @@ verifyTotality (fc, n)
 
     getPartial ist [] [] = Nothing
     getPartial ist bad [] = Just bad
-    getPartial ist bad (n : ns) 
+    getPartial ist bad (n : ns)
         = case lookupTotalExact n (tt_ctxt ist) of
                Just (Partial _) -> getPartial ist (n : bad) ns
                _ -> getPartial ist bad ns
@@ -557,8 +575,9 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
                             findCalls [] Toplevel (dePat rhs') (patvars lhs')
                                       (zip pargs [0..])
 
-  findCalls cases Delayed ap@(P _ n _) pvs args
-     | n == topfn = []
+  -- Under a delay, calls are excluded from the graph - if it's a call to a
+  -- non-total function we'll find that in the final totality check
+  findCalls cases Delayed ap@(P _ n _) pvs args = []
   findCalls cases guarded ap@(App _ f a) pvs pargs
      -- under a call to "assert_total", don't do any checking, just believe
      -- that it is total.

@@ -1,2 +1,0 @@
-reg070.idr:7:1:
-Test_show.Te implementation of Prelude.Show.Show is possibly not total due to: Prelude.Show.Test_show.Te implementation of Prelude.Show.Show, method show

@@ -413,11 +413,11 @@ simpleExpr syn =
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
-        <|> try (do reserved "Type*"; return $ PUniverse AllTypes)
-        <|> do reserved "AnyType"; return $ PUniverse AllTypes
+        <|> try (do fc <- reservedFC "Type*"; return $ PUniverse fc AllTypes)
+        <|> do fc <- reservedFC "AnyType"; return $ PUniverse fc AllTypes
         <|> PType <$> reservedFC "Type"
-        <|> do reserved "UniqueType"; return $ PUniverse UniqueType
-        <|> do reserved "NullType"; return $ PUniverse NullType
+        <|> do fc <- reservedFC "UniqueType"; return $ PUniverse fc UniqueType
+        <|> do fc <- reservedFC "NullType"; return $ PUniverse fc NullType
         <|> do (c, cfc) <- constant
                fc <- getFC
                return (modifyConst syn fc (PConstant cfc c))
@@ -829,6 +829,9 @@ FieldType ::=
   ;
 @
 -}
+
+data SetOrUpdate = FieldSet PTerm | FieldUpdate PTerm
+
 recordType :: SyntaxInfo -> IdrisParser PTerm
 recordType syn =
       do kw <- reservedFC "record"
@@ -836,7 +839,7 @@ recordType syn =
          fgs <- fieldGetOrSet
          lchar '}'
          fc <- getFC
-         rec <- optional (simpleExpr syn)
+         rec <- optional (do notEndApp; simpleExpr syn)
          highlightP kw AnnKeyword
          case fgs of
               Left fields ->
@@ -854,28 +857,34 @@ recordType syn =
                    Just v -> return (getAll fc (reverse fields) v)
 
        <?> "record setting expression"
-   where fieldSet :: IdrisParser ([Name], PTerm)
+   where fieldSet :: IdrisParser ([Name], SetOrUpdate)
          fieldSet = do ns <- fieldGet
-                       lchar '='
-                       e <- expr syn
-                       return (ns, e)
+                       (do lchar '='
+                           e <- expr syn
+                           return (ns, FieldSet e))
+                         <|> do symbol "$="
+                                e <- expr syn
+                                return (ns, FieldUpdate e)
                     <?> "field setter"
 
          fieldGet :: IdrisParser [Name]
          fieldGet = sepBy1 (fst <$> fnName) (symbol "->")
 
-         fieldGetOrSet :: IdrisParser (Either [([Name], PTerm)] [Name])
+         fieldGetOrSet :: IdrisParser (Either [([Name], SetOrUpdate)] [Name])
          fieldGetOrSet = try (do fs <- sepBy1 fieldSet (lchar ',')
                                  return (Left fs))
                      <|> do f <- fieldGet
                             return (Right f)
 
-         applyAll :: FC -> [([Name], PTerm)] -> PTerm -> PTerm
+         applyAll :: FC -> [([Name], SetOrUpdate)] -> PTerm -> PTerm
          applyAll fc [] x = x
          applyAll fc ((ns, e) : es) x
             = applyAll fc es (doUpdate fc ns e x)
 
-         doUpdate fc [n] e get
+         doUpdate fc ns (FieldUpdate e) get
+              = let get' = getAll fc (reverse ns) get in
+                    doUpdate fc ns (FieldSet (PApp fc e [pexp get'])) get
+         doUpdate fc [n] (FieldSet e) get
               = PApp fc (PRef fc [] (mkType n)) [pexp e, pexp get]
          doUpdate fc (n : ns) e get
               = PApp fc (PRef fc [] (mkType n))

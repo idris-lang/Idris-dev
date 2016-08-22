@@ -354,11 +354,11 @@ Integral Int where
 -- ------------------------------------------------------------------- [ Bits8 ]
 divB8 : Bits8 -> Bits8 -> Bits8
 divB8 x y = case y == 0 of
-  False => prim__sdivB8 x y
+  False => prim__udivB8 x y
 
 modB8 : Bits8 -> Bits8 -> Bits8
 modB8 x y = case y == 0 of
-  False => prim__sremB8 x y
+  False => prim__uremB8 x y
 
 Integral Bits8 where
   div = divB8
@@ -367,11 +367,11 @@ Integral Bits8 where
 -- ------------------------------------------------------------------ [ Bits16 ]
 divB16 : Bits16 -> Bits16 -> Bits16
 divB16 x y = case y == 0 of
-  False => prim__sdivB16 x y
+  False => prim__udivB16 x y
 
 modB16 : Bits16 -> Bits16 -> Bits16
 modB16 x y = case y == 0 of
-  False => prim__sremB16 x y
+  False => prim__uremB16 x y
 
 Integral Bits16 where
   div = divB16
@@ -380,11 +380,11 @@ Integral Bits16 where
 -- ------------------------------------------------------------------ [ Bits32 ]
 divB32 : Bits32 -> Bits32 -> Bits32
 divB32 x y = case y == 0 of
-  False => prim__sdivB32 x y
+  False => prim__udivB32 x y
 
 modB32 : Bits32 -> Bits32 -> Bits32
 modB32 x y = case y == 0 of
-  False => prim__sremB32 x y
+  False => prim__uremB32 x y
 
 Integral Bits32 where
   div = divB32
@@ -393,11 +393,11 @@ Integral Bits32 where
 -- ------------------------------------------------------------------ [ Bits64 ]
 divB64 : Bits64 -> Bits64 -> Bits64
 divB64 x y = case y == 0 of
-  False => prim__sdivB64 x y
+  False => prim__udivB64 x y
 
 modB64 : Bits64 -> Bits64 -> Bits64
 modB64 x y = case y == 0 of
-  False => prim__sremB64 x y
+  False => prim__uremB64 x y
 
 Integral Bits64 where
   div = divB64

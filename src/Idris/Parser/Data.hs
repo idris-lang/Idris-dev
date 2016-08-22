@@ -198,7 +198,8 @@ SimpleConstructorList ::=
   ;
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
-data_ syn = do (doc, argDocs, acc, dataOpts) <- try (do
+data_ syn = checkDeclFixity $
+            do (doc, argDocs, acc, dataOpts) <- try (do
                     (doc, argDocs) <- option noDocs docComment
                     pushIndent
                     acc <- accessibility
@@ -277,6 +278,7 @@ constructor syn
          let doc' = annotCode (tryFullExpr syn ist) doc
              argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
                         | (n, d) <- argDocs ]
+         checkNameFixity cn
          return (doc', argDocs', cn, nfc, ty, fc, fs)
       <?> "constructor"
 
@@ -293,6 +295,7 @@ simpleConstructor syn
           fc <- getFC
           args <- many (do notEndApp
                            simpleExpr syn)
+          checkNameFixity cn
           return (doc', [], cn, nfc, args, fc, [])
        <?> "constructor"
 

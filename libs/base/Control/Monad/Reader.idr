@@ -7,7 +7,7 @@ import Control.Monad.Trans
 %access public export
 
 ||| A monad representing a computation that runs in an immutable context
-interface Monad m => MonadReader r (m : Type -> Type) where
+interface Monad m => MonadReader r (m : Type -> Type) | m where
     ||| Return the context
     ask   : m r
     ||| Temprorarily modify the input and run an action in the new context

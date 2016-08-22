@@ -598,7 +598,7 @@ fnDecl syn = try (do notEndBlock
 @
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
-fnDecl' syn = checkFixity $
+fnDecl' syn = checkDeclFixity $
               do (doc, argDocs, fc, opts', n, nfc, acc) <- try (do
                         pushIndent
                         (doc, argDocs) <- docstring syn
@@ -618,22 +618,6 @@ fnDecl' syn = checkFixity $
             <|> caf syn
             <|> pattern syn
             <?> "function declaration"
-    where checkFixity :: IdrisParser PDecl -> IdrisParser PDecl
-          checkFixity p = do decl <- p
-                             case getName decl of
-                               Nothing -> return decl
-                               Just n -> do fOk <- fixityOK n
-                                            unless fOk . fail $
-                                              "Missing fixity declaration for " ++ show n
-                                            return decl
-          getName (PTy _ _ _ _ _ n _ _) = Just n
-          getName _ = Nothing
-          fixityOK (NS n _) = fixityOK n
-          fixityOK (UN n)  | all (flip elem opChars) (str n) =
-                               do fixities <- fmap idris_infixes get
-                                  return . elem (str n) . map (\ (Fix _ op) -> op) $ fixities
-                           | otherwise                 = return True
-          fixityOK _        = return True
 
 {-| Parses a series of function and accessbility options
 
@@ -1116,7 +1100,9 @@ RHSName ::= '{' FnName '}';
 @
 -}
 rhs :: SyntaxInfo -> Name -> IdrisParser PTerm
-rhs syn n = do lchar '='; expr syn
+rhs syn n = do lchar '='
+               indentPropHolds gtProp
+               expr syn
         <|> do symbol "?=";
                fc <- getFC
                name <- option n' (do symbol "{"; n <- fst <$> fnName; symbol "}";
@@ -1569,7 +1555,7 @@ parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [Im
 parseImports fname input
     = do i <- getIState
          case parseString (runInnerParser (evalStateT imports i)) (Directed (UTF8.fromString fname) 0 0 0 0) input of
-              Failure err -> fail (show err)
+              Failure (ErrInfo err _) -> fail (show err)
               Success (x, annots, i) ->
                 do putIState i
                    fname' <- runIO $ Dir.makeAbsolute fname
@@ -1631,7 +1617,7 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Delta ->
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            Failure doc     -> do -- FIXME: Get error location from trifecta
+            Failure (ErrInfo doc _)     -> do -- FIXME: Get error location from trifecta
                                   -- this can't be the solution!
                                   -- Issue #1575 on the issue tracker.
                                   --    https://github.com/idris-lang/Idris-dev/issues/1575

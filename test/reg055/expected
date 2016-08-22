@@ -1,9 +1,0 @@
-reg055.idr:5:3:When checking left hand side of g:
-Can't match on g (f 0)
-reg055.idr:8:3:When checking left hand side of h:
-Can't match on h x x
-reg055a.idr:8:5:When checking left hand side of foo:
-When checking an application of constructor Foo.CAny:
-        Attempting concrete match on polymorphic argument: Nothing
-reg055a.idr:13:7:When checking left hand side of Foo.apply:
-Can't match on apply (\x => \y => x) a

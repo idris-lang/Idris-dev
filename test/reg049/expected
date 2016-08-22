@@ -1,7 +1,0 @@
-reg049.idr:2:9:When checking constructor Main.Bogus:
-Void is not Main.Foo
-reg049.idr:5:6:
-When checking right hand side of uhOh with expected type
-        Void
-
-No such variable Bogus

@@ -1,0 +1,26 @@
+version: 1.0.{build}
+init:
+- ps: >-
+    choco install cabal
+
+    mkdir C:\ghc
+
+    Invoke-WebRequest "http://downloads.haskell.org/~ghc/7.10.3/ghc-7.10.3-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
+    
+    7z x C:\ghc\ghc.tar.xz -oC:\ghc
+    
+    7z x C:\ghc\ghc.tar -oC:\ghc
+
+    $env:PATH="$env:PATH;c:\ghc\ghc-7.10.3\bin;$HOME\AppData\Roaming\cabal\bin"
+
+    cabal update
+
+    $env:current_posix=c:\msys64\usr\bin\cygpath -u $(pwd)
+
+environment:
+  MSYSTEM: MINGW64
+  MSYS2_PATH_TYPE: inherit
+build_script:
+- ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal install -fffi -j4 --enable-tests"
+test_script:
+- ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && make test_c"

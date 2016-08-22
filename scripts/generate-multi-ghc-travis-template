@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -eu
+
+script=$(basename "$0")
+
+if [[ ! -r idris.cabal ]]; then
+  echo "$script: Execute this script in the idris root directory" >&2
+  exit 2
+fi
+
+if [[ ! -r ../multi-ghc-travis/make_travis_yml.hs ]]; then
+  echo "$script: Expected to find multi-ghc-travis at ../multi-ghc-travis"
+  exit 2
+fi
+
+output=travis-template.yml
+../multi-ghc-travis/make_travis_yml.hs idris.cabal cppcheck hscolour >${output}
+
+echo Now compare the generated ${output} with .travis.yml

@@ -792,6 +792,9 @@ VAL doCopyTo(VM* vm, VAL x) {
     case CT_MANAGEDPTR:
         cl = MKMPTRc(vm, x->info.mptr->data, x->info.mptr->size);
         break;
+    case CT_CDATA:
+        cl = MKCDATAc(vm, x->info.c_heap_item);
+        break;
     case CT_BITS8:
         cl = idris_b8CopyForGC(vm, x);
         break;

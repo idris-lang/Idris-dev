@@ -1,8 +1,11 @@
 # Idris
 
 [![Build Status](https://travis-ci.org/idris-lang/Idris-dev.svg?branch=master)](https://travis-ci.org/idris-lang/Idris-dev)
+[![Appveyor build](https://ci.appveyor.com/api/projects/status/xi8yu81oy1134g7o/branch/master?svg=true)](https://ci.appveyor.com/project/idrislang/idris-dev)
 [![Documentation Status](https://readthedocs.org/projects/idris/badge/?version=latest)](https://readthedocs.org/projects/idris/?badge=latest)
 [![Hackage](https://budueba.com/hackage/idris)](https://hackage.haskell.org/package/idris)
+[![Stackage LTS](http://stackage.org/package/idris/badge/lts)](http://stackage.org/lts/package/idris)
+[![Stackage Nightly](http://stackage.org/package/idris/badge/nightly)](http://stackage.org/nightly/package/idris)
 
 Idris (http://idris-lang.org/) is a general-purpose functional programming
 language with dependent types.

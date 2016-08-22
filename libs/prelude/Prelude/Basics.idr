@@ -19,7 +19,7 @@ the _ = id
 
 ||| Constant function. Ignores its second argument.
 const : a -> b -> a
-const x = \v => x
+const x = \value => x
 
 ||| Return the first element of a pair.
 fst : (a, b) -> a

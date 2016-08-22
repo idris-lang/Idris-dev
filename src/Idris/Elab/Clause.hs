@@ -51,6 +51,8 @@ import Control.Monad.State.Strict as State
 import qualified Control.Monad.State.Lazy as LState
 import Data.List
 import Data.Maybe
+import Data.Word
+
 import Debug.Trace
 
 import qualified Data.Map as Map
@@ -84,7 +86,8 @@ elabClauses info' fc opts n_in cs =
                     -- question: CAFs in where blocks?
                     tclift $ tfail $ At fc (NoTypeDecl n)
               [ty] -> return ty
-           let atys = map snd (getArgTys fty)
+           let atys_in = map snd (getArgTys (normalise ctxt [] fty))
+           let atys = map (\x -> (x, isCanonical x ctxt)) atys_in
            cs_elab <- mapM (elabClause info opts)
                            (zip [0..] cs)
            ctxt <- getContext
@@ -486,9 +489,9 @@ elabPE info fc caller r =
 
             -- Simple but effective string hashing...
             -- Keep it to 32 bits for readability/debuggability
-            qhash :: Int -> String -> String
+            qhash :: Word64 -> String -> String
             qhash hash [] = showHex (abs hash `mod` 0xffffffff) ""
-            qhash hash (x:xs) = qhash (hash * 33 + fromEnum x) xs
+            qhash hash (x:xs) = qhash (hash * 33 + fromIntegral(fromEnum x)) xs
 
 -- | Checks if the clause is a possible left hand side.
 checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
@@ -670,7 +673,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                     (do pbinds ist lhs_tm
                         -- proof search can use explicitly written names
                         mapM_ addPSname (allNamesIn lhs_in)
-                        mapM_ setinj (nub (tcparams ++ inj))
+                        ulog <- getUnifyLog
+                        traceWhen ulog ("Setting injective: " ++ show (nub (tcparams ++ inj))) $
+                          mapM_ setinj (nub (tcparams ++ inj))
                         setNextName
                         (ElabResult _ _ is ctxt' newDecls highlights newGName) <-
                           errAt "right hand side of " fname (Just clhsty)

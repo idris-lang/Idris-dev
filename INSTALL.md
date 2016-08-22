@@ -63,8 +63,8 @@ contribute.
 [Stack](https://github.com/commercialhaskell/stack) is a new
 cross-platform program for developing Haskell projects, that enhances
 the functionality provided by Cabal. There is experimental support for
-building Idris from source with stack.  
-This installation has been tested on Ubuntu 14.04.2 LTS, and the current 
+building Idris from source with stack.
+This installation has been tested on Ubuntu 16.04.1 LTS, and the current
 NixOS unstable.
 
 To build Idris with stack the following commands are recommended:
@@ -96,9 +96,9 @@ option flags needs to be fully commented out.
 There have been reports in the past over building Idris on Mac OS X,
 using stack, and linking to a HomeBrew installation of `libFFI`. The
 build has failed to find the correct `libFFI` installation. If you
-encounter this then the fix is to augment the `PKG_CONFIG_PATH` when
-running the stack build:
+encounter this then the fix is to augment the `PKG_CONFIG_PATH` for
+`libFFI`. For example:
 
 ```
-PKG_CONFIG_PATH=/usr/local/Cellar/libffi/3.0.13/lib/pkgconfig stack build
+PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig stack build
 ```

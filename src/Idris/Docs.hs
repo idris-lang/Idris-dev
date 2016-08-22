@@ -69,49 +69,62 @@ showDoc ist d
                 renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) d
 
 pprintFD :: IState -> Bool -> Bool -> FunDoc -> Doc OutputAnnotation
-pprintFD ist totalityFlag nsFlag (FD n doc args ty f)
-    = nest 4 (prettyName True nsFlag [] n <+> colon <+>
-              pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
-                                     , not (T.isPrefixOf (T.pack "__") n') ] infixes ty <$>
-              -- show doc
-              renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc <$>
-              -- show fixity
-              maybe empty (\f -> text (show f) <> line) f <>
-              -- show arguments doc
-              let argshow = showArgs args [] in
-              (if not (null argshow)
-                then nest 4 $ text "Arguments:" <$> vsep argshow
-                else empty) <>
-              -- show totality status
-              let totality = getTotality in
-              (if totalityFlag && not (null totality) then
-                line <> (vsep . map (\t -> text "The function is" <+> t) $ totality)
-               else
-                empty))
+pprintFD ist totalityFlag nsFlag (FD n doc args ty f) =
+          nest 4 (prettyName True nsFlag [] n
+      <+> colon
+      <+> pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
+                             , not (T.isPrefixOf (T.pack "__") n') ] infixes ty
+      -- show doc
+      <$> renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc
+      -- show fixity
+      <$> maybe empty (\f -> text (show f) <> line) f
+      -- show arguments doc
+      <> let argshow = showArgs args [] in
+           (if not (null argshow)
+             then nest 4 $ text "Arguments:" <$> vsep argshow
+             else empty)
+      -- show totality status
+      <> let totality = getTotality in
+           (if totalityFlag && not (null totality)
+              then line <> (vsep . map (\t -> text "The function is" <+> t) $ totality)
+              else empty))
 
-    where ppo = ppOptionIst ist
-          infixes = idris_infixes ist
-          showArgs ((n, ty, Exp {}, Just d):args) bnd
-             = bindingOf n False <+> colon <+>
-               pprintPTerm ppo bnd [] infixes ty <>
-               showDoc ist d <> line
-               :
-               showArgs args ((n, False):bnd)
-          showArgs ((n, ty, Constraint {}, Just d):args) bnd
-             = text "Class constraint" <+>
-               pprintPTerm ppo bnd [] infixes ty <> showDoc ist d <> line
-               :
-               showArgs args ((n, True):bnd)
-          showArgs ((n, ty, Imp {}, Just d):args) bnd
-             = text "(implicit)" <+>
-               bindingOf n True <+> colon <+>
-               pprintPTerm ppo bnd [] infixes ty <>
-               showDoc ist d <> line
-               :
-               showArgs args ((n, True):bnd)
-          showArgs ((n, _, _, _):args) bnd = showArgs args ((n, True):bnd)
-          showArgs []                  _ = []
-          getTotality = map (text . show) $ lookupTotal n (tt_ctxt ist)
+    where
+      ppo = ppOptionIst ist
+
+      infixes = idris_infixes ist
+
+      -- Recurse over and show the Function's Documented arguments
+      showArgs ((n, ty, Exp {}, Just d):args)        bnd = -- Explicitly bound.
+            bindingOf n False
+        <+> colon
+        <+> pprintPTerm ppo bnd [] infixes ty
+        <> showDoc ist d
+        <> line : showArgs args ((n, False):bnd)
+      showArgs ((n, ty, Constraint {}, Just d):args) bnd = -- Class constraints.
+            text "Class constraint"
+        <+> pprintPTerm ppo bnd [] infixes ty
+        <> showDoc ist d
+        <> line : showArgs args ((n, True):bnd)
+      showArgs ((n, ty, Imp {}, Just d):args)        bnd = -- Implicit arguments.
+            text "(implicit)"
+        <+> bindingOf n True
+        <+> colon
+        <+> pprintPTerm ppo bnd [] infixes ty
+        <> showDoc ist d
+        <> line : showArgs args ((n, True):bnd)
+      showArgs ((n, ty, TacImp{}, Just d):args)      bnd = -- Tacit implicits
+            text "(auto implicit)"
+        <+> bindingOf n True
+        <+> colon
+        <+> pprintPTerm ppo bnd [] infixes ty
+        <> showDoc ist d
+        <> line : showArgs args ((n, True):bnd)
+      showArgs ((n, _, _, _):args)                   bnd = -- Anything else
+            showArgs args ((n, True):bnd)
+      showArgs []                                    _   = [] -- end of arguments
+
+      getTotality = map (text . show) $ lookupTotal n (tt_ctxt ist)
 
 pprintFDWithTotality :: IState -> Bool -> FunDoc -> Doc OutputAnnotation
 pprintFDWithTotality ist = pprintFD ist True

@@ -2,39 +2,41 @@ sudo: false
 
 language: c
 
-addons:
-  apt:
-    sources:
-      - hvr-ghc
-    packages:
-      - ghc-7.6.3
-      - ghc-7.8.4
-      - ghc-7.10.2
-      - cabal-install-1.20
-      - cabal-install-1.22
-      # test dependencies
-      - expect
-      - cppcheck
-      - hscolour
+env:
+  global:
+    - PKGNAME=idris
 
 matrix:
   include:
+    - os: osx
+      env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
+      compiler: ": #GHC 8.0.1"
     - env: CABALVER="1.20" GHCVER="7.6.3" TESTS="test_c"
       # separate caches for different compiler versions
       # until https://github.com/travis-ci/travis-ci/issues/4393 is resolved
       compiler: ": #GHC 7.6.3"
-    - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="lib_doc doc"
-      compiler: ": #GHC 7.8.4"
-    - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="test_js"
-      compiler: ": #GHC 7.8.4"
+      addons: {apt: {packages: [cabal-install-1.20,ghc-7.6.3,cppcheck,hscolour], sources: [hvr-ghc]}}
     - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="test_c"
       compiler: ": #GHC 7.8.4"
-    - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="lib_doc doc"
-      compiler: ": #GHC 7.10.2"
-    - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="test_js"
-      compiler: ": #GHC 7.10.2"
-    - env: CABALVER="1.22" GHCVER="7.10.2" TESTS="test_c"
-      compiler: ": #GHC 7.10.2"
+      addons: {apt: {packages: [cabal-install-1.20,ghc-7.8.4,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="lib_doc doc"
+      compiler: ": #GHC 7.10.3"
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="test_js"
+      compiler: ": #GHC 7.10.3"
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="test_c"
+      compiler: ": #GHC 7.10.3"
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="lib_doc doc"
+      compiler: ": #GHC 8.0.1"
+      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_js"
+      compiler: ": #GHC 8.0.1"
+      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
+      compiler: ": #GHC 8.0.1"
+      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
 
 cache:
   directories:
@@ -47,26 +49,40 @@ before_cache:
 
 before_install:
   - unset CC
-  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH
+  - if [[ $TRAVIS_OS_NAME == 'linux' ]];
+    then
+        export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH;
+        export SED=sed;
+        export ZCAT=zcat;
+    fi
   - env
+  - if [[ $TRAVIS_OS_NAME == 'osx' ]];
+    then
+        brew update; brew install ghc; brew install cabal-install;
+        brew install libffi; brew install pkg-config; brew install cppcheck;
+        brew install gnu-sed;
+        export PATH=$HOME/.cabal/bin:$PATH;
+        export SED=gsed;
+        export ZCAT=gzcat;
+        export PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig:$PKG_CONFIG_PATH;
+    fi
 
 install:
   - cabal --version
   - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
   - if [ -f $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz ];
     then
-      zcat $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
-          $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
+      $ZCAT $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
+              $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
     fi
   - travis_retry cabal update -v
   # Run build with 2 parallel jobs
   # The container environment reports 16 cores,
   # causing cabal's default configuration (jobs: $ncpus)
   # to run into the GHC #9221 bug which can result in longer build-times.
-  - sed -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
+  - $SED -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
   - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
-  - sed -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
-
+  - $SED -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
   # check whether current requested install-plan matches cached package-db snapshot
   - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
     then
@@ -80,7 +96,6 @@ install:
       mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
       cabal install -f FFI --only-dependencies --enable-tests;
     fi
-
   # snapshot package-db on cache miss
   - if [ ! -d $HOME/.cabsnap ];
     then
@@ -91,20 +106,44 @@ install:
     fi
 
 before_script:
+  - ORIGINAL_DIR=$(pwd)
   - cabal sdist
   - cd ..
-  - tar -xf Idris-dev/dist/idris*.tar.gz
-  - cd idris*
+  - tar -xf ${ORIGINAL_DIR}/dist/${PKGNAME}*.tar.gz
+  - cd ${PKGNAME}*
 script:
-  - cabal configure -f FFI -f CI
+###
+  - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
+  - cabal configure -f FFI -f CI --enable-tests
+  - echo -en 'travis_fold:end:script.configure\\r'
+###
+  - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'
   - cabal build
+  - echo -en 'travis_fold:end:script.build\\r'
+###
+  - echo 'Copy...' && echo -en 'travis_fold:start:script.copy\\r'
   - cabal copy
+  - echo -en 'travis_fold:end:script.copy\\r'
+###
+  - echo 'Register...' && echo -en 'travis_fold:start:script.register\\r'
   - cabal register
+  - echo -en 'travis_fold:end:script.register\\r'
+###
+  - echo 'Cppcheck...' && echo -en 'travis_fold:start:script.cppcheck\\r'
   - if [[ "$TESTS" == "test_c" ]]; then
       cppcheck -i 'mini-gmp.c' rts;
     fi
+  - echo -en 'travis_fold:end:script.cppcheck\\r'
+###
+  - echo 'Tests...' && echo -en 'travis_fold:start:script.tests\\r'
   - for test in $TESTS; do
-      echo "make -j2 $test";
-      make -j2 $test;
+      echo "make TEST-JOBS=2 $test";
+      travis_wait make TEST-JOBS=2 $test;
     done
+  - echo -en 'travis_fold:end:script.tests\\r'
+###
+  - echo 'Benchmarks...' && echo -en 'travis_fold:start:script.benchmarks\\r'
   - cd benchmarks && ./build.pl && ./run.pl && cd ..
+  - echo -en 'travis_fold:end:script.benchmarks\\r'
+###
+# EOF

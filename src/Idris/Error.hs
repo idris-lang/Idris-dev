@@ -121,7 +121,7 @@ warnDisamb ist (PDPair _ _ _ x y z) = warnDisamb ist x >> warnDisamb ist y >> wa
 warnDisamb ist (PAlternative _ _ tms) = mapM_ (warnDisamb ist) tms
 warnDisamb ist (PHidden tm) = warnDisamb ist tm
 warnDisamb ist (PType _) = return ()
-warnDisamb ist (PUniverse _) = return ()
+warnDisamb ist (PUniverse _ _) = return ()
 warnDisamb ist (PGoal _ x _ y) = warnDisamb ist x >> warnDisamb ist y
 warnDisamb ist (PConstant _ _) = return ()
 warnDisamb ist Placeholder = return ()
@@ -146,7 +146,7 @@ warnDisamb ist (PDisamb ds tm) = warnDisamb ist tm >>
           when (not (any (isIn d . fst) (ctxtAlist (tt_ctxt ist)))) $
             ierror . Msg $
               "Nothing found in namespace \"" ++
-              intercalate "." (map T.unpack d) ++
+              intercalate "." (map T.unpack . reverse $ d) ++
               "\"."
         isIn d (NS _ ns) = isPrefixOf d ns
         isIn d _ = False

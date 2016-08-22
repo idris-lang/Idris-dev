@@ -1,0 +1,29 @@
+Data type docs005.Foobar : Type
+    A foobar with an auto implicit
+    
+Constructors:
+    NewFoo : (xs : List String) ->
+        (ys : List Nat) -> {auto prf : NonEmpty ys} -> Foobar
+        New Foo
+        Arguments:
+            xs : List String  -- Some xs
+            
+            ys : List Nat  -- Some ys
+            
+            (implicit) prf1 : NonEmpty xs  -- A prf
+            
+            (auto implicit) prf : NonEmpty ys  -- The prf
+            
+docs005.NewFoo : (xs : List String) ->
+    (ys : List Nat) -> {auto prf : NonEmpty ys} -> Foobar
+    New Foo
+    Arguments:
+        xs : List String  -- Some xs
+        
+        ys : List Nat  -- Some ys
+        
+        (implicit) prf1 : NonEmpty xs  -- A prf
+        
+        (auto implicit) prf : NonEmpty ys  -- The prf
+        
+    The function is Total

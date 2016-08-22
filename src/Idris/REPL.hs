@@ -9,10 +9,8 @@ Maintainer  : The Idris Community.
              PatternGuards, CPP #-}
 
 module Idris.REPL(
-    getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc
-  , getPkgREPL, getPkgTest, getPort, getIBCSubDir
-  , idris, idrisMain, loadInputs
-  , opt, runClient, runMain, ver
+    idris, idrisMain, loadInputs
+  , runClient, runMain
   ) where
 
 import Idris.AbsSyntax
@@ -47,6 +45,7 @@ import Idris.TypeSearch (searchByType)
 import Idris.IBC (loadPkgIndex, writePkgIndex)
 
 import Idris.REPL.Browse (namesInNS, namespacesInNS)
+import Idris.REPL.Commands
 
 import Idris.ElabDecls
 import Idris.Elab.Type
@@ -54,6 +53,8 @@ import Idris.Elab.Clause
 import Idris.Elab.Data
 import Idris.Elab.Value
 import Idris.Elab.Term
+
+import Idris.Info
 
 import Version_idris (gitHash)
 import Util.System
@@ -71,7 +72,6 @@ import Idris.Core.Constraints
 import IRTS.Compiler
 import IRTS.CodegenCommon
 import IRTS.Exports
-import IRTS.System
 
 import Control.Category
 import qualified Control.Exception as X
@@ -80,7 +80,7 @@ import Data.List.Split (splitOn)
 import Data.List (groupBy)
 import qualified Data.Text as T
 
-import Text.Trifecta.Result(Result(..))
+import Text.Trifecta.Result(Result(..), ErrInfo(..))
 
 import System.Console.Haskeline as H
 import System.FilePath
@@ -190,7 +190,7 @@ processNetCmd :: IState -> IState -> Handle -> FilePath -> String ->
                  IO (IState, FilePath)
 processNetCmd orig i h fn cmd
     = do res <- case parseCmd i "(net)" cmd of
-                  Failure err -> return (Left (Msg " invalid command"))
+                  Failure (ErrInfo err _) -> return (Left (Msg " invalid command"))
                   Success (Right c) -> runExceptT $ evalStateT (processNet fn c) i
                   Success (Left err) -> return (Left (Msg err))
          case res of
@@ -225,9 +225,10 @@ processNetCmd orig i h fn cmd
            IdeMode n _ -> ist {idris_outputmode = IdeMode n h}
 
 -- | Run a command on the server on localhost
-runClient :: PortID -> String -> IO ()
+runClient :: Maybe PortID -> String -> IO ()
 runClient port str = withSocketsDo $ do
-              res <- X.try (connectTo "localhost" port)
+              let port' = fromMaybe defaultPort port
+              res <- X.try (connectTo "localhost" port')
               case res of
                 Right h -> do
                   hSetEncoding h utf8
@@ -307,7 +308,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.Interpret cmd) =
   do c <- colourise
      i <- getIState
      case parseCmd i "(input)" cmd of
-       Failure err -> iPrintError $ show (fixColour False err)
+       Failure (ErrInfo err _) -> iPrintError $ show (fixColour False err)
        Success (Right (Prove mode n')) ->
          idrisCatch
            (do process fn (Prove mode n')
@@ -435,9 +436,9 @@ runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
         splitPi :: IState -> Type -> ([(Name, Type, PTerm)], Type, PTerm)
         splitPi ist (Bind n (Pi _ t _) rest) =
           let (hs, c, pc) = splitPi ist rest in
-            ((n, t, delabTy' ist [] t False False):hs,
-             c, delabTy' ist [] c False False)
-        splitPi ist tm = ([], tm, delabTy' ist [] tm False False)
+            ((n, t, delabTy' ist [] t False False True):hs,
+             c, delabTy' ist [] c False False True)
+        splitPi ist tm = ([], tm, delabTy' ist [] tm False False True)
 
         -- | Get the types of a list of metavariable names
         mvTys :: IState -> [Name] -> [(Name, Type)]
@@ -567,7 +568,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.ErrPPrint e) =
          msg = (IdeMode.SymbolAtom "ok", out, spans)
      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 runIdeModeCommand h id orig fn modes IdeMode.GetIdrisVersion =
-  let idrisVersion = (versionBranch version,
+  let idrisVersion = (versionBranch getIdrisVersionNoGit,
                       if not (null gitHash)
                         then [gitHash]
                         else [])
@@ -722,8 +723,8 @@ processInput cmd orig inputs efile
          let fn = fromMaybe "" (listToMaybe inputs)
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Failure err ->   do iputStrLn $ show (fixColour c err)
-                                return (Just inputs)
+            Failure (ErrInfo err _) ->   do iputStrLn $ show (fixColour c err)
+                                            return (Just inputs)
             Success (Right Reload) ->
                 reload orig inputs
             Success (Right Watch) ->
@@ -785,10 +786,10 @@ edit f orig
          env <- runIO getEnvironment
          let editor = getEditor env
          let line = case errSpan i of
-                        Just l -> ['+' : show (fst (fc_start l))]
-                        Nothing -> []
-         let args = line ++ [fixName f]
-         runIO $ rawSystem editor args
+                        Just l -> '+' : show (fst (fc_start l))
+                        Nothing -> ""
+         let cmdLine = intercalate " " [editor, line, fixName f]
+         runIO $ system cmdLine
          clearErr
   -- The $!! here prevents a space leak on reloading.
   -- This isn't a solution - but it's a temporary stopgap.
@@ -803,8 +804,11 @@ edit f orig
    where getEditor env | Just ed <- lookup "EDITOR" env = ed
                        | Just ed <- lookup "VISUAL" env = ed
                        | otherwise = "vi"
-         fixName file | map toLower (takeExtension file) `elem` [".lidr", ".idr"] = file
-                      | otherwise = addExtension file "idr"
+         fixName file | map toLower (takeExtension file) `elem` [".lidr", ".idr"] = quote file
+                      | otherwise = quote $ addExtension file "idr"
+            where
+                quoteChar = if isWindows then '"' else '\''
+                quote s = [quoteChar] ++ s ++ [quoteChar]
 
 
 
@@ -1472,7 +1476,7 @@ showTotalN ist n = case lookupTotal n (tt_ctxt ist) of
        showN n = annotate (AnnName n Nothing Nothing Nothing) . text $
                  showName (Just ist) [] ppo False n
 
-displayHelp = let vstr = showVersion version in
+displayHelp = let vstr = showVersion getIdrisVersionNoGit in
               "\nIdris version " ++ vstr ++ "\n" ++
               "--------------" ++ map (\x -> '-') vstr ++ "\n\n" ++
               concatMap cmdInfo helphead ++
@@ -1707,14 +1711,19 @@ idrisMain opts =
        let cgFlags = opt getCodegenArgs opts
 
        -- Now set/unset specifically chosen optimisations
-       sequence_ (opt getOptimisation opts)
+       let os = opt getOptimisation opts
+
+       mapM_ processOptimisation os
+
        script <- case opt getExecScript opts of
                    []     -> return Nothing
                    x:y:xs -> do iputStrLn "More than one interpreter expression found."
                                 runIO $ exitWith (ExitFailure 1)
                    [expr] -> return (Just expr)
        let immediate = opt getEvalExpr opts
-       let port = getPort opts
+       let port = case getPort opts of
+                    Nothing -> defaultPort
+                    Just p  -> p
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = DefaultCheckingTotal })
@@ -1789,8 +1798,8 @@ idrisMain opts =
                      mapM_ (\str -> do ist <- getIState
                                        c <- colourise
                                        case parseExpr ist str of
-                                         Failure err -> do iputStrLn $ show (fixColour c err)
-                                                           runIO $ exitWith (ExitFailure 1)
+                                         Failure (ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
+                                                                       runIO $ exitWith (ExitFailure 1)
                                          Success e -> process "" (Eval e))
                            exprs
                      runIO exitSuccess
@@ -1801,13 +1810,13 @@ idrisMain opts =
          Just expr -> execScript expr
 
        -- Create Idris data dir + repl history and config dir
-       idrisCatch (do dir <- getIdrisUserDataDir
+       idrisCatch (do dir <- runIO $ getIdrisUserDataDir
                       exists <- runIO $ doesDirectoryExist dir
                       unless exists $ logLvl 1 ("Creating " ++ dir)
                       runIO $ createDirectoryIfMissing True (dir </> "repl"))
          (\e -> return ())
 
-       historyFile <- fmap (</> "repl" </> "history") getIdrisUserDataDir
+       historyFile <- runIO $ getIdrisHistoryFile
 
        when ok $ case opt getPkgIndex opts of
                       (f : _) -> writePkgIndex f
@@ -1830,6 +1839,10 @@ idrisMain opts =
     makeOption ErrContext    = setErrContext True
     makeOption _             = return ()
 
+    processOptimisation :: (Bool,Optimisation) -> Idris ()
+    processOptimisation (True,  p) = addOptimise p
+    processOptimisation (False, p) = removeOptimise p
+
     addPkgDir :: String -> Idris ()
     addPkgDir p = do ddir <- runIO getIdrisLibDir
                      addImportDir (ddir </> p)
@@ -1845,25 +1858,17 @@ execScript :: String -> Idris ()
 execScript expr = do i <- getIState
                      c <- colourise
                      case parseExpr i expr of
-                          Failure err -> do iputStrLn $ show (fixColour c err)
-                                            runIO $ exitWith (ExitFailure 1)
+                          Failure (ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
+                                                        runIO $ exitWith (ExitFailure 1)
                           Success term -> do ctxt <- getContext
                                              (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
                                              res <- execute tm
                                              runIO $ exitSuccess
 
--- | Get the platform-specific, user-specific Idris dir
-getIdrisUserDataDir :: Idris FilePath
-getIdrisUserDataDir = runIO $ getAppUserDataDirectory "idris"
-
--- | Locate the platform-specific location for the init script
-getInitScript :: Idris FilePath
-getInitScript = do idrisDir <- getIdrisUserDataDir
-                   return $ idrisDir </> "repl" </> "init"
 
 -- | Run the initialisation script
 initScript :: Idris ()
-initScript = do script <- getInitScript
+initScript = do script <- runIO $ getIdrisInitScript
                 idrisCatch (do go <- runIO $ doesFileExist script
                                when go $ do
                                  h <- runIO $ openFile script ReadMode
@@ -1875,13 +1880,13 @@ initScript = do script <- getInitScript
                          ist <- getIState
                          unless eof $ do
                            line <- runIO $ hGetLine h
-                           script <- getInitScript
+                           script <- runIO $ getIdrisInitScript
                            c <- colourise
                            processLine ist line script c
                            runInit h
           processLine i cmd input clr =
               case parseCmd i input cmd of
-                   Failure err -> runIO $ print (fixColour clr err)
+                   Failure (ErrInfo err _) -> runIO $ print (fixColour clr err)
                    Success (Right Reload) -> iPrintError "Init scripts cannot reload the file"
                    Success (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
                    Success (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"
@@ -1891,142 +1896,13 @@ initScript = do script <- getInitScript
                    Success (Right cmd ) -> process [] cmd
                    Success (Left err) -> runIO $ print err
 
-getFile :: Opt -> Maybe String
-getFile (Filename str) = Just str
-getFile _ = Nothing
-
-getBC :: Opt -> Maybe String
-getBC (BCAsm str) = Just str
-getBC _ = Nothing
-
-getOutput :: Opt -> Maybe String
-getOutput (Output str) = Just str
-getOutput _ = Nothing
-
-getIBCSubDir :: Opt -> Maybe String
-getIBCSubDir (IBCSubDir str) = Just str
-getIBCSubDir _ = Nothing
-
-getImportDir :: Opt -> Maybe String
-getImportDir (ImportDir str) = Just str
-getImportDir _ = Nothing
-
-getSourceDir :: Opt -> Maybe String
-getSourceDir (SourceDir str) = Just str
-getSourceDir _ = Nothing
-
-getPkgDir :: Opt -> Maybe String
-getPkgDir (Pkg str) = Just str
-getPkgDir _ = Nothing
-
-getPkg :: Opt -> Maybe (Bool, String)
-getPkg (PkgBuild str) = Just (False, str)
-getPkg (PkgInstall str) = Just (True, str)
-getPkg _ = Nothing
-
-getPkgClean :: Opt -> Maybe String
-getPkgClean (PkgClean str) = Just str
-getPkgClean _ = Nothing
-
-getPkgREPL :: Opt -> Maybe String
-getPkgREPL (PkgREPL str) = Just str
-getPkgREPL _ = Nothing
-
-getPkgCheck :: Opt -> Maybe String
-getPkgCheck (PkgCheck str) = Just str
-getPkgCheck _              = Nothing
-
--- | Returns None if given an Opt which is not PkgMkDoc
---   Otherwise returns Just x, where x is the contents of PkgMkDoc
-getPkgMkDoc :: Opt          -- ^ Opt to extract
-            -> Maybe String -- ^ Result
-getPkgMkDoc (PkgMkDoc str) = Just str
-getPkgMkDoc _              = Nothing
-
-getPkgTest :: Opt          -- ^ the option to extract
-           -> Maybe String -- ^ the package file to test
-getPkgTest (PkgTest f) = Just f
-getPkgTest _ = Nothing
-
-getCodegen :: Opt -> Maybe Codegen
-getCodegen (UseCodegen x) = Just x
-getCodegen _ = Nothing
-
-getCodegenArgs :: Opt -> Maybe String
-getCodegenArgs (CodegenArgs args) = Just args
-getCodegenArgs _ = Nothing
-
-getConsoleWidth :: Opt -> Maybe ConsoleWidth
-getConsoleWidth (UseConsoleWidth x) = Just x
-getConsoleWidth _ = Nothing
-
-
-getExecScript :: Opt -> Maybe String
-getExecScript (InterpretScript expr) = Just expr
-getExecScript _ = Nothing
-
-getPkgIndex :: Opt -> Maybe FilePath
-getPkgIndex (PkgIndex file) = Just file
-getPkgIndex _ = Nothing
-
-getEvalExpr :: Opt -> Maybe String
-getEvalExpr (EvalExpr expr) = Just expr
-getEvalExpr _ = Nothing
-
-getOutputTy :: Opt -> Maybe OutputType
-getOutputTy (OutputTy t) = Just t
-getOutputTy _ = Nothing
-
-getLanguageExt :: Opt -> Maybe LanguageExt
-getLanguageExt (Extension e) = Just e
-getLanguageExt _ = Nothing
-
-getTriple :: Opt -> Maybe String
-getTriple (TargetTriple x) = Just x
-getTriple _ = Nothing
-
-getCPU :: Opt -> Maybe String
-getCPU (TargetCPU x) = Just x
-getCPU _ = Nothing
-
-getOptLevel :: Opt -> Maybe Int
-getOptLevel (OptLevel x) = Just x
-getOptLevel _ = Nothing
-
-getOptimisation :: Opt -> Maybe (Idris ())
-getOptimisation (AddOpt p) = Just $ addOptimise p
-getOptimisation (RemoveOpt p) = Just $ removeOptimise p
-getOptimisation _ = Nothing
-
-getColour :: Opt -> Maybe Bool
-getColour (ColourREPL b) = Just b
-getColour _ = Nothing
-
-getClient :: Opt -> Maybe String
-getClient (Client x) = Just x
-getClient _ = Nothing
-
--- Get the first valid port
-getPort :: [Opt] -> PortID
-getPort [] = defaultPort
-getPort (Port p:xs)
-    | all (`elem` ['0'..'9']) p = PortNumber $ fromIntegral (read p)
-    | otherwise                 = getPort xs
-getPort (_:xs) = getPort xs
-
-opt :: (Opt -> Maybe a) -> [Opt] -> [a]
-opt = mapMaybe
-
-ver = showVersion version ++ suffix
-        where
-            suffix = if gitHash =="" then "" else "-" ++ gitHash
 
 defaultPort :: PortID
 defaultPort = PortNumber (fromIntegral 4294)
 
 banner = "     ____    __     _                                          \n" ++
          "    /  _/___/ /____(_)____                                     \n" ++
-         "    / // __  / ___/ / ___/     Version " ++ ver ++ "\n" ++
+         "    / // __  / ___/ / ___/     Version " ++ getIdrisVersion ++ "\n" ++
          "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
          " /___/\\__,_/_/  /_/____/       Type :? for help               \n" ++
          "\n" ++

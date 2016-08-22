@@ -529,8 +529,8 @@ irSC top vs (ProjCase tm alts) = do
 -- Transform matching on Delay to applications of Force.
 irSC top vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
     | delay == txt "Delay"
-    = do sc' <- irSC top vs $ mkForce n' n sc
-         return $ LLet n' (LForce (LV (Glob n))) sc'
+    = do sc' <- irSC top vs sc -- mkForce n' n sc
+         return $ lsubst n' (LForce (LV (Glob n))) sc'
 
 -- There are two transformations in this case:
 --

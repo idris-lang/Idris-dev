@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} -p contrib --nobanner --nocolor < input
+${IDRIS:-idris} $@ -p contrib --nobanner --nocolor < input | perl -pe 's-Data\\Z-Data/Z-g'

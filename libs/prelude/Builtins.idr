@@ -12,7 +12,7 @@
 namespace Builtins
   ||| The non-dependent pair type, also known as conjunction.
   ||| @A the type of the left elements in the pair
-  ||| @B the type of the left elements in the pair
+  ||| @B the type of the right elements in the pair
   %elim data Pair : (A : Type) -> (B : Type) -> Type where
      ||| A pair of elements
      ||| @a the left element of the pair
@@ -26,7 +26,7 @@ namespace Builtins
   ||| The non-dependent pair type, also known as conjunction, usable with
   ||| UniqueTypes.
   ||| @A the type of the left elements in the pair
-  ||| @B the type of the left elements in the pair
+  ||| @B the type of the right elements in the pair
   data UPair : (A : AnyType) -> (B : AnyType) -> AnyType where
      ||| A pair of elements
      ||| @a the left element of the pair
@@ -73,7 +73,6 @@ void : Void -> a
 
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
-
 
 infix 5 ~=~
 

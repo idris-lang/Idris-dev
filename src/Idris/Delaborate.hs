@@ -8,7 +8,7 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Delaborate (
-    annName, bugaddr, delab, delab', delabMV, delabSugared
+    annName, bugaddr, delab, delabDirect, delab', delabMV, delabSugared
   , delabTy, delabTy', fancifyAnnots, pprintDelab, pprintNoDelab
   , pprintDelabTy, pprintErr, resugar
   ) where
@@ -81,30 +81,50 @@ delabSugared ist tm = resugar ist $ delab ist tm
 
 -- | Delaborate a term without resugaring
 delab :: IState -> Term -> PTerm
-delab i tm = delab' i tm False False
+delab i tm = delab' i tm False False 
 
 delabMV :: IState -> Term -> PTerm
-delabMV i tm = delab' i tm False True
+delabMV i tm = delab' i tm False True 
+
+-- | Delaborate a term directly, leaving case applications as they are.
+-- We need this for interactive case splitting, where we need access to the
+-- underlying function in a delaborated form, to generate the right patterns
+delabDirect :: IState -> Term -> PTerm
+delabDirect i tm = delabTy' i [] tm False False False
 
 delabTy :: IState -> Name -> PTerm
 delabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> case lookupCtxt n (idris_implicits i) of
-                         (imps:_) -> delabTy' i imps ty False False
-                         _ -> delabTy' i [] ty False False
+                         (imps:_) -> delabTy' i imps ty False False True
+                         _ -> delabTy' i [] ty False False True
            [] -> error "delabTy: got non-existing name"
 
 delab' :: IState -> Term -> Bool -> Bool -> PTerm
-delab' i t f mvs = delabTy' i [] t f mvs
+delab' i t f mvs = delabTy' i [] t f mvs True
 
 delabTy' :: IState -> [PArg] -- ^ implicit arguments to type, if any
           -> Term
           -> Bool -- ^ use full names
           -> Bool -- ^ Don't treat metavariables specially
+          -> Bool -- ^ resugar cases
           -> PTerm
-delabTy' ist imps tm fullname mvs = de [] imps tm
+delabTy' ist imps tm fullname mvs docases = de [] imps tm
   where
     un = fileFC "(val)"
+    
+    -- Special case for spotting applications of case functions
+    -- (Normally the scrutinee is let-bound, but hole types get normalised,
+    -- so they could appear in this form. The scrutinee is always added as
+    -- the last argument,
+    -- although that's not always the thing that gets pattern matched
+    -- in the elaborated block)
+    de env imps sc
+          | docases
+          , isCaseApp sc
+          , (P _ cOp _, args@(_:_)) <- unApply sc
+          , Just caseblock <- delabCase env imps (last args) cOp args 
+                 = caseblock
 
     de env _ (App _ f a) = deFn env f [a]
     de env _ (V i)     | i < length env = PRef un [] (snd (env!!i))
@@ -141,9 +161,10 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
           = PPi expl n NoFC (de env [] ty) (de ((n,n):env) [] sc)
 
     de env imps (Bind n (Let ty val) sc)
-          | isCaseApp sc
+          | docases
+          , isCaseApp sc
           , (P _ cOp _, args) <- unApply sc
-          , Just caseblock    <- delabCase env imps n val cOp args = caseblock
+          , Just caseblock    <- delabCase env imps val cOp args = caseblock
           | otherwise    =
               PLet un n NoFC (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
     de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
@@ -154,7 +175,7 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
     de env _ (TType i) = PType un
-    de env _ (UType u) = PUniverse u
+    de env _ (UType u) = PUniverse un u
 
     dens x | fullname = x
     dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
@@ -206,8 +227,8 @@ delabTy' ist imps tm fullname mvs = de [] imps tm
             isCN (SN (CaseN _ _)) = True
             isCN _ = False
 
-    delabCase :: [(Name, Name)] -> [PArg] -> Name -> Term -> Name -> [Term] -> Maybe PTerm
-    delabCase env imps scvar scrutinee caseName caseArgs =
+    delabCase :: [(Name, Name)] -> [PArg] -> Term -> Name -> [Term] -> Maybe PTerm
+    delabCase env imps scrutinee caseName caseArgs =
       do cases <- case lookupCtxt caseName (idris_patdefs ist) of
                     [(cases, _)] -> return cases
                     _ -> Nothing
@@ -247,8 +268,8 @@ pprintDelabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> annotate (AnnTerm [] ty) . prettyIst i $
                      case lookupCtxt n (idris_implicits i) of
-                         (imps:_) -> resugar i $ delabTy' i imps ty False False
-                         _ -> resugar i $ delabTy' i [] ty False False
+                         (imps:_) -> resugar i $ delabTy' i imps ty False False True
+                         _ -> resugar i $ delabTy' i [] ty False False True
            [] -> error "pprintDelabTy got a name that doesn't exist"
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation

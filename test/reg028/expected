@@ -1,6 +1,0 @@
-reg028.idr:5:1:
-tbad.bad is possibly not total due to: with block in tbad.bad
-reg028a.idr:17:14-19:
-This style of tactic proof is deprecated. See %runElab for the replacement.
-reg028a.idr:11:1:
-tbad.qsort' is possibly not total due to: with block in tbad.qsort'

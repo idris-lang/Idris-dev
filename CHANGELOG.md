@@ -1,7 +1,48 @@
 # New in 0.13:
 
+## Language updates
+
+* `record` syntax now allows updating fields, including nested fields,
+  by applying a function using the `$=` operator.  For example:
+
+  ```
+  record Score where
+         constructor MkScore
+         correct : Nat
+         attempted : Nat
+
+  record GameState where
+         constructor MkGameState
+         score : Score
+         difficulty : Nat
+
+  correct : GameState -> GameState
+  correct st = record { score->correct $= (+1),
+                        score->attempted $= (+1) } st
+  ```
+
+## Library updates
+
 * The File Effect has been updated to take into account changes in
   `Prelude.File` and to provide a 'better' API.
+* `natEnumFromThen` and `natEnumFromTo` have been updated to correctly calculate reverse ranges. Range syntax `[a,b..c]` now can be used again to generate reverse ranges.
+* `divBN` and `modBN` now can only be used for unsigned numbers.
+
+## Tool updates
+
+* Idris' documentation system now displays the documentation for auto
+  implicits in the output of `:doc`. This is tested for in `docs005`.
+
+* New command line flag `--info` that displays information about the installation.
+## Miscellaneous updates
+
+* The test suite now uses [tasty-golden](https://hackage.haskell.org/package/tasty-golden). New tests must be registered in `test/TestData.hs`, as explained in the relevant `README.md`.
+* Added OSX and Windows continous integration with Travis and Appveyor.
+
+## UI Changes
+
+* The :e command can now handle an $EDITOR with arguments in it, like "emacs -nw" 
+
 
 # New in 0.12:
 

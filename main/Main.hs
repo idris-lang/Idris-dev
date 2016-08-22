@@ -6,15 +6,17 @@ import Control.Monad ( when )
 
 import Idris.AbsSyntax
 import Idris.REPL
-import Idris.Imports
 import Idris.Error
 import Idris.CmdOptions
+import Idris.Info
+import Idris.Info.Show
+import Idris.Package
 
-import IRTS.System ( getLibFlags, getIdrisLibDir, getIncFlags )
+
 
 import Util.System ( setupBundledCC )
 
-import Pkg.Package
+
 
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.
@@ -26,11 +28,12 @@ main = do opts <- runArgParser
 runIdris :: [Opt] -> Idris ()
 runIdris opts = do
     runIO setupBundledCC
-    when (ShowLoggingCats `elem` opts)  $ runIO showLoggingCats
-    when (ShowIncs `elem` opts)         $ runIO showIncs
-    when (ShowLibs `elem` opts)         $ runIO showLibs
-    when (ShowLibdir `elem` opts)       $ runIO showLibdir
-    when (ShowPkgs `elem` opts)         $ runIO showPkgs
+    when (ShowAll `elem` opts)          $ runIO showExitIdrisInfo
+    when (ShowLoggingCats `elem` opts)  $ runIO showExitIdrisLoggingCategories
+    when (ShowIncs `elem` opts)         $ runIO showExitIdrisFlagsInc
+    when (ShowLibs `elem` opts)         $ runIO showExitIdrisFlagsLibs
+    when (ShowLibdir `elem` opts)       $ runIO showExitIdrisLibDir
+    when (ShowPkgs `elem` opts)         $ runIO showExitIdrisInstalledPackages
     case opt getClient opts of
        []    -> return ()
        (c:_) -> do setVerbose False
@@ -59,31 +62,3 @@ runIdris opts = do
                   [f] -> replPkg opts f
                   _ -> ifail "Too many packages"
        fs -> runIO $ mapM_ (buildPkg opts (WarnOnly `elem` opts)) fs
-
-showver :: IO b
-showver = do putStrLn $ "Idris version " ++ ver
-             exitSuccess
-
-showLibs :: IO b
-showLibs = do libFlags <- getLibFlags
-              putStrLn $ unwords libFlags
-              exitSuccess
-
-showLibdir :: IO b
-showLibdir = do putStrLn =<< getIdrisLibDir
-                exitSuccess
-
-showIncs :: IO b
-showIncs = do incFlags <- getIncFlags
-              putStrLn $ unwords incFlags
-              exitSuccess
-
--- | List idris packages installed
-showPkgs :: IO b
-showPkgs = do mapM_ putStrLn =<< installedPackages
-              exitSuccess
-
-showLoggingCats :: IO b
-showLoggingCats = do
-    putStrLn loggingCatsStr
-    exitSuccess

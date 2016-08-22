@@ -1,4 +1,0 @@
-reg034.idr:6:5:When checking left hand side of bar:
-Can't match on bar xs xs Refl
-reg034.idr:9:5:When checking left hand side of foo:
-Can't match on foo f x x Refl

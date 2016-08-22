@@ -1,0 +1,147 @@
+reg003a.idr:4:11:When checking type of Main.ECons:
+No such variable OddList
+reg003a.idr:7:11:When checking type of Main.OCons:
+No such variable EvenList
+reg003a.idr:9:6:When checking type of Main.test:
+No such variable EvenList
+reg006.idr:17:1:
+RBTree.lookup is possibly not total due to recursive path RBTree.lookup --> RBTree.lookup
+reg007.lidr:8:1:A.n is already defined
+reg007.lidr:12:11-17:When checking right hand side of hurrah with expected type
+        0 = 1
+
+Type mismatch between
+        n = lala (Type of isSame)
+and
+        0 = 1 (Expected type)
+
+Specifically:
+        Type mismatch between
+                1
+        and
+                0
+reg010.idr:5:15:
+When checking left hand side of with block in usubst.unsafeSubst:
+Can't match on with block in usubst.unsafeSubst warg a P x x px
+reg018a.idr:16:1:
+conat.minusCoNat is possibly not total due to recursive path conat.minusCoNat --> conat.minusCoNat
+reg018a.idr:21:1:
+conat.loopForever is possibly not total due to: conat.minusCoNat
+reg018b.idr:8:1:
+A.showB is possibly not total due to recursive path A.showB --> A.showB
+reg018b.idr:11:1:
+A.B implementation of Prelude.Show.Show is possibly not total due to: A.showB
+reg018c.idr:21:1:
+CodataTest.inf is possibly not total due to: with block in CodataTest.inf
+reg018d.idr:8:1:Main.pull is not total as there are missing cases
+reg023.idr:7:5:When checking right hand side of bad with expected type
+        f Nat
+
+Type mismatch between
+        Nat (Type of 0)
+and
+        f Nat (Expected type)
+reg028.idr:5:1:tbad.bad is possibly not total due to: with block in tbad.bad
+reg028a.idr:17:14-19:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+reg028a.idr:11:1:
+tbad.qsort' is possibly not total due to: with block in tbad.qsort'
+reg034.idr:6:5:When checking left hand side of bar:
+Can't match on bar xs xs Refl
+reg034.idr:9:5:When checking left hand side of foo:
+Can't match on foo f x x Refl
+reg035b.idr:8:6:No such variable __pi_arg
+reg044.idr:4:6-11:
+This style of tactic proof is deprecated. See %runElab for the replacement.
+reg044.idr:4:4:When checking right hand side of Main.pf with expected type
+        (b : Nat) -> (a : Nat) -> (S a = S b) -> a = b
+
+Type mismatch between
+        b = b (Type of Refl)
+and
+        a = b (Expected type)
+
+Specifically:
+        Type mismatch between
+                b
+        and
+                a
+reg049.idr:2:9:When checking constructor Main.Bogus:
+Void is not Main.Foo
+reg049.idr:5:6:When checking right hand side of uhOh with expected type
+        Void
+
+No such variable Bogus
+./badbangop.idr:7:1: error: ! is
+    not a valid
+    operator, expected: space
+(!) : List a -> Nat -> Maybe a 
+^                              
+./baddoublebang.idr:6:28: error: unexpected
+    Operator without known fixity:
+    !!, expected: space
+doubleBang mmn = do pure !!mmn 
+                           ^   
+reg054.idr:18:5:When checking left hand side of inf:
+When checking an application of constructor Main.MkInfer:
+        Attempting concrete match on polymorphic argument: 0
+reg054.idr:34:7:When checking left hand side of weird:
+No explicit types on left hand side: Char
+reg054.idr:37:8:When checking left hand side of weird':
+No explicit types on left hand side: Nat
+reg054.idr:40:1-8:When checking left hand side of tctrick:
+When checking an application of Main.tctrick:
+        Type mismatch between
+                Maybe a1 (Type of Just x)
+        and
+                a (Expected type)
+reg055.idr:5:3:When checking left hand side of g:
+Can't match on g (f 0)
+reg055.idr:8:3:When checking left hand side of h:
+Can't match on h x x
+reg055a.idr:8:5:When checking left hand side of foo:
+When checking an application of constructor Foo.CAny:
+        Attempting concrete match on polymorphic argument: Nothing
+reg055a.idr:13:7:When checking left hand side of Foo.apply:
+Can't match on apply (\x => \y => x) a
+reg056.idr:7:7:dodgy n m Refl is a valid case
+reg056.idr:10:6:nonk Refl is a valid case
+reg068.idr:1:6:Main.nat has a name which may be implicitly bound.
+This is likely to lead to problems!
+reg068.idr:2:6:Main.ze has a name which may be implicitly bound.
+This is likely to lead to problems!
+reg068.idr:2:8-11:WARNING: nat is bound as an implicit
+	Did you mean to refer to Main.nat?
+reg068.idr:2:6:When checking constructor Main.ze:
+Type level variable nat is not Main.nat
+Mod.idr:11:1:public export Mod.natexp can't refer to export Mod.natfn
+reg070.idr:7:1:
+Test_show.Te implementation of Prelude.Show.Show is possibly not total due to: Prelude.Show.Test_show.Te implementation of Prelude.Show.Show, method show
+./reg076.idr:8:1: error: Missing
+    fixity declaration for
+    Main.:>, expected: "->", "=>",
+    ambiguous use of a left-associative operator,
+    ambiguous use of a non-associative operator,
+    ambiguous use of a right-associative operator
+<EOF> 
+^     
+./reg077.idr:3:1: error: Missing
+    fixity declaration for
+    Main.:>>, expected: ")", ";",
+    "in", start of block
+<EOF> 
+^     
+DoubleEquality.idr:4:87:When checking right hand side of oops with expected type
+        Void
+
+When checking argument value to function Prelude.Basics.the:
+        Type mismatch between
+                x = x (Type of Refl)
+        and
+                (-0.0) = 0.0 (Expected type)
+        
+        Specifically:
+                Type mismatch between
+                        -0.0
+                and
+                        0.0

@@ -18,7 +18,8 @@ allows casing on arbitrary terms, here we choose to maintain the distinction
 in order to allow for better optimisation opportunities.
 
 -}
-{-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances #-}
+{-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances,
+    DeriveGeneric #-}
 
 module Idris.Core.CaseTree (
     CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo
@@ -36,6 +37,7 @@ import Data.Maybe
 import Data.List hiding (partition)
 import qualified Data.List(partition)
 import Debug.Trace
+import GHC.Generics (Generic)
 
 data CaseDef = CaseDef [Name] !SC [Term]
     deriving Show
@@ -45,14 +47,14 @@ data SC' t = Case CaseType Name [CaseAlt' t]  -- ^ invariant: lowest tags first
            | STerm !t
            | UnmatchedCase String -- ^ error message
            | ImpossibleCase -- ^ already checked to be impossible
-    deriving (Eq, Ord, Functor)
+    deriving (Eq, Ord, Functor, Generic)
 {-!
 deriving instance Binary SC'
 deriving instance NFData SC'
 !-}
 
 data CaseType = Updatable | Shared
-   deriving (Eq, Ord, Show)
+   deriving (Eq, Ord, Show, Generic)
 
 type SC = SC' Term
 
@@ -61,7 +63,7 @@ data CaseAlt' t = ConCase Name Int [Name] !(SC' t)
                 | ConstCase Const         !(SC' t)
                 | SucCase Name            !(SC' t)
                 | DefaultCase             !(SC' t)
-    deriving (Show, Eq, Ord, Functor)
+    deriving (Show, Eq, Ord, Functor, Generic)
 {-!
 deriving instance Binary CaseAlt'
 deriving instance NFData CaseAlt'
@@ -249,7 +251,8 @@ data Phase = CompileTime | RunTime
 -- Work Right to Left
 
 simpleCase :: Bool -> SC -> Bool ->
-              Phase -> FC -> [Int] -> [Type] ->
+              Phase -> FC -> [Int] -> 
+              [(Type, Bool)] -> -- (Argument type, whether it's canonical)
               [([Name], Term, Term)] ->
               ErasureInfo ->
               TC CaseDef
@@ -271,7 +274,7 @@ simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
                 OK pats ->
                     let numargs    = length (fst (head pats))
                         ns         = take numargs args
-                        (ns', ps') = order [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats
+                        (ns', ps') = order phase [(n, i `elem` inacc) | (i,n) <- zip [0..] ns] pats (map snd argtys)
                         (tree, st) = runCaseBuilder erInfo
                                          (match ns' ps' defcase)
                                          ([], numargs, [])
@@ -429,28 +432,38 @@ partition xs = error $ "Partition " ++ show xs
 --
 -- The first argument means [(Name, IsInaccessible)].
 
-order :: [(Name, Bool)] -> [Clause] -> ([Name], [Clause])
-order []  cs = ([], cs)
-order ns' [] = (map fst ns', [])
-order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
-                   -- only sort the arguments where there is no clash in
-                   -- constructor tags between families, and no constructor/constant
-                   -- clash, because otherwise we can't reliable make the
-                   -- case distinction on evaluation
-                   (patnames_ord, patnames_rest)
-                        = Data.List.partition (noClash . map snd) patnames
-                   -- note: sortBy . reverse is not nonsense because sortBy is stable
-                   pats' = transpose (sortBy moreDistinct (reverse patnames_ord)
-                                         ++ patnames_rest) in
-                   (getNOrder pats', zipWith rebuild pats' cs)
+order :: Phase -> [(Name, Bool)] -> [Clause] -> [Bool] -> ([Name], [Clause])
+-- do nothing at compile time: FIXME (EB): Put this in after checking 
+-- implications for Franck's reflection work... see issue 3233
+-- order CompileTime ns cs _ = (map fst ns, cs) 
+order _ []  cs cans = ([], cs)
+order _ ns' [] cans = (map fst ns', [])
+order phase ns' cs cans 
+    = let patnames = transpose (map (zip ns') (map (zip cans) (map fst cs)))
+          -- only sort the arguments where there is no clash in
+          -- constructor tags between families, the argument type is canonical,
+          -- and no constructor/constant
+          -- clash, because otherwise we can't reliable make the
+          -- case distinction on evaluation
+          (patnames_ord, patnames_rest)
+                = Data.List.partition (noClash . map snd) patnames 
+          patnames_ord' = case phase of
+                               CompileTime -> patnames_ord
+                               -- reversing tends to make better case trees
+                               -- and helps erasure
+                               RunTime -> reverse patnames_ord
+          pats' = transpose (sortBy moreDistinct patnames_ord'
+                                       ++ patnames_rest) in
+          (getNOrder pats', zipWith rebuild pats' cs)
   where
     getNOrder [] = error $ "Failed order on " ++ show (map fst ns', cs)
     getNOrder (c : _) = map (fst . fst) c
 
-    rebuild patnames clause = (map snd patnames, snd clause)
+    rebuild patnames clause = (map (snd . snd) patnames, snd clause)
 
     noClash [] = True
-    noClash (p : ps) = not (any (clashPat p) ps) && noClash ps
+    noClash ((can, p) : ps) = can && not (any (clashPat p) (map snd ps)) 
+                                  && noClash ps
 
     clashPat (PCon _ _ _ _) (PConst _) = True
     clashPat (PConst _) (PCon _ _ _ _) = True
@@ -460,12 +473,13 @@ order ns' cs = let patnames = transpose (map (zip ns') (map fst cs))
     clashPat _ _ = False
 
     -- this compares (+isInaccessible, -numberOfCases)
-    moreDistinct xs ys = compare (snd . fst . head $ xs, numNames [] (map snd ys))
-                                 (snd . fst . head $ ys, numNames [] (map snd xs))
+    moreDistinct xs ys 
+        = compare (snd . fst . head $ xs, numNames [] (map snd ys))
+                  (snd . fst . head $ ys, numNames [] (map snd xs))
 
-    numNames xs (PCon _ n _ _ : ps)
+    numNames xs ((_, PCon _ n _ _) : ps)
         | not (Left n `elem` xs) = numNames (Left n : xs) ps
-    numNames xs (PConst c : ps)
+    numNames xs ((_, PConst c) : ps)
         | not (Right c `elem` xs) = numNames (Right c : xs) ps
     numNames xs (_ : ps) = numNames xs ps
     numNames xs [] = length xs

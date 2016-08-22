@@ -18,9 +18,6 @@ copy q = `((~q,~q) : (Type, Type))
 thing : TT -> TT
 thing tm = `(with List [Type, ~tm])
 
-
-
-
 namespace Main
   main : IO ()
   main = do putStrLn . show $ twoElems

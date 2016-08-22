@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-${IDRIS:-idris} --nocolour $@ unique003.idr --check
-rm -f *.ibc

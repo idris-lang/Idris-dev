@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 import Control.Monad
 import Data.IORef
 import Control.Exception (SomeException, catch)
@@ -80,6 +81,7 @@ isFreestanding flags =
     Just True -> True
     Just False -> False
     Nothing -> False
+
 -- -----------------------------------------------------------------------------
 -- Clean
 
@@ -90,7 +92,6 @@ idrisClean _ flags _ _ = cleanStdLib
       cleanStdLib = makeClean "libs"
 
       makeClean dir = make verbosity [ "-C", dir, "clean", "IDRIS=idris" ]
-
 
 -- -----------------------------------------------------------------------------
 -- Configure
@@ -182,6 +183,17 @@ idrisPreSDist args flags = do
   generateToolchainModule verb "src" Nothing
   preSDist simpleUserHooks args flags
 
+idrisSDist sdist pkgDesc bi hooks flags = do
+  pkgDesc' <- addGitFiles pkgDesc
+  sdist pkgDesc' bi hooks flags
+    where
+      addGitFiles :: PackageDescription -> IO PackageDescription
+      addGitFiles pkgDesc = do
+        files <- gitFiles
+        return $ pkgDesc { extraSrcFiles = extraSrcFiles pkgDesc ++ files}
+      gitFiles :: IO [FilePath]
+      gitFiles = liftM lines (readProcess "git" ["ls-files"] "")
+
 idrisPostSDist args flags desc lbi = do
   Control.Exception.catch (do let file = "src" </> "Version_idris" Px.<.> "hs"
                               let targetFile = "src" </> "Target_idris" Px.<.> "hs"
@@ -201,13 +213,11 @@ getVersion args flags = do
       let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
       return (Just buildinfo, [])
 
-
-
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
         createDirectoryIfMissingVerbose verbosity True dir
-        windres verbosity ["icons/idris_icon.rc","-o", dir++"idris_icon.o"]
-        return (Nothing, [("idris", emptyBuildInfo { ldOptions = [dir ++ "idris_icon.o"] })])
+        windres verbosity ["icons/idris_icon.rc","-o", dir++"/idris_icon.o"]
+        return (Nothing, [("idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
      where
         verbosity = S.fromFlag $ S.buildVerbosity flags
         dir = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
@@ -232,8 +242,6 @@ idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
 
       gmpflag False = []
       gmpflag True = ["GMP=-DIDRIS_GMP"]
-
-
 
 -- -----------------------------------------------------------------------------
 -- Copy/Install
@@ -264,6 +272,30 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
          make verbosity [ "-C", src, "install" , "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
 
 -- -----------------------------------------------------------------------------
+-- Test
+
+-- FIXME: We use the __GLASGOW_HASKELL__ macro because MIN_VERSION_cabal seems
+-- to be broken !
+
+-- There are two "dataDir" in cabal, and they don't relate to each other.
+-- When fetching modules, idris uses the second path (in the pkg record),
+-- which by default is the root folder of the project.
+-- We want it to be the install directory where we put the idris libraries.
+fixPkg pkg target = pkg { dataDir = target }
+
+-- The "Args" argument of the testHooks has been added in cabal 1.22.0,
+-- and should therefore be ignored for prior versions.
+#if __GLASGOW_HASKELL__ < 710
+originalTestHook _ = testHook simpleUserHooks
+#else
+originalTestHook = testHook simpleUserHooks
+#endif
+
+idrisTestHook args pkg local hooks flags = do
+  let target = datadir $ L.absoluteInstallDirs pkg local NoCopyDest
+  originalTestHook args (fixPkg pkg target) local hooks flags
+
+-- -----------------------------------------------------------------------------
 -- Main
 
 -- Install libraries during both copy and install
@@ -280,5 +312,11 @@ main = defaultMainWithHooks $ simpleUserHooks
                   idrisInstall (S.fromFlag $ S.installVerbosity flags)
                                NoCopyDest pkg local
    , preSDist = idrisPreSDist
+   , sDistHook = idrisSDist (sDistHook simpleUserHooks)
    , postSDist = idrisPostSDist
+#if __GLASGOW_HASKELL__ < 710
+   , testHook = idrisTestHook ()
+#else
+   , testHook = idrisTestHook
+#endif
    }

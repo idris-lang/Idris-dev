@@ -1,5 +1,4 @@
-Syntax.idr:6:7-9:1:
-When checking right hand side of foo with expected type
+Syntax.idr:6:7-9:1:When checking right hand side of foo with expected type
         Nat
 
 When checking an application of function Prelude.Interfaces.+:
@@ -7,8 +6,7 @@ When checking an application of function Prelude.Interfaces.+:
                 String (Type of "argh")
         and
                 Nat (Expected type)
-SyntaxTest.idr:5:7-6:1:
-When checking right hand side of foo with expected type
+SyntaxTest.idr:5:7-6:1:When checking right hand side of foo with expected type
         Nat
 
 When checking an application of function Prelude.Interfaces.+:

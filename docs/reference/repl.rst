@@ -367,7 +367,7 @@ some string, and prints the results. For example:
 
     prim__eqChar : Char -> Char -> Int
 
-    prim__eqFloat : Float -> Float -> Int
+    prim__eqFloat : Double -> Double -> Int
 
     prim__eqInt : Int -> Int -> Int
 

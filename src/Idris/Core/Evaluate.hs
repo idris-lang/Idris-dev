@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, BangPatterns,
-             PatternGuards #-}
+             PatternGuards, DeriveGeneric #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
@@ -21,7 +21,8 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupTotalExact, lookupInjectiveExact,
-                lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, isDConName, canBeDConName, isTConName, isConName, isFnName,
+                lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, 
+                isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
@@ -31,6 +32,7 @@ import Control.Monad.State -- not Strict!
 import qualified Data.Binary as B
 import Data.Binary hiding (get, put)
 import Data.Maybe (listToMaybe)
+import GHC.Generics (Generic)
 
 import Idris.Core.TT
 import Idris.Core.CaseTree
@@ -634,6 +636,15 @@ convEq ctxt holes topx topy = ceq [] topx topy where
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Pi i v t) (Pi i' v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
+    -- Special case for 'case' blocks - size of scope causes complications,
+    -- we only want to check the blocks themselves are valid and identical
+    -- in the current scope. So, just check the bodies, and the additional
+    -- arguments the case blocks are applied to.
+    ceq ps x@(App _ _ _) y@(App _ _ _)
+        | (P _ cx _, xargs) <- unApply x,
+          (P _ cy _, yargs) <- unApply y,
+          caseName cx && caseName cy = sameCase ps cx cy xargs yargs
+
     ceq ps (App _ fx ax) (App _ fy ay) = liftM2 (&&) (ceq ps fx fy) (ceq ps ax ay)
     ceq ps (Constant x) (Constant y) = return (x == y)
     ceq ps (TType x) (TType y) | x == y = return True
@@ -676,6 +687,24 @@ convEq ctxt holes topx topy = ceq [] topx topy where
                                        caseeq ((x,y):ps) xdef ydef
                         _ -> return False
 
+    sameCase :: [(Name, Name)] -> Name -> Name -> [Term] -> [Term] -> 
+                StateT UCs TC Bool
+    sameCase ps x y xargs yargs
+          = case (lookupDef x ctxt, lookupDef y ctxt) of
+                 ([Function _ xdef], [Function _ ydef])
+                       -> ceq ((x,y):ps) xdef ydef
+                 ([CaseOp _ _ _ _ _ xd],
+                  [CaseOp _ _ _ _ _ yd])
+                       -> let (xin, xdef) = cases_compiletime xd
+                              (yin, ydef) = cases_compiletime yd in
+                            do liftM2 (&&) 
+                                  (do ok <- zipWithM (ceq ps)
+                                              (drop (length xin) xargs)
+                                              (drop (length yin) yargs)
+                                      return (and ok))
+                                  (caseeq ((x,y):ps) xdef ydef)
+                 _ -> return False
+
 -- SPECIALISATION -----------------------------------------------------------
 -- We need too much control to be able to do this by tweaking the main
 -- evaluator
@@ -696,10 +725,11 @@ data Def = Function !Type !Term
          | Operator Type Int ([Value] -> Maybe Value)
          | CaseOp CaseInfo
                   !Type
-                  ![Type] -- argument types
+                  ![(Type, Bool)] -- argument types, whether canonical
                   ![Either Term (Term, Term)] -- original definition
                   ![([Name], Term, Term)] -- simplified for totality check definition
                   !CaseDefs
+  deriving Generic
 --                   [Name] SC -- Compile time case definition
 --                   [Name] SC -- Run time cae definitions
 
@@ -709,12 +739,14 @@ data CaseDefs = CaseDefs {
                   cases_inlined :: !([Name], SC),
                   cases_runtime :: !([Name], SC)
                 }
+  deriving Generic
 
 data CaseInfo = CaseInfo {
                   case_inlinable :: Bool, -- decided by machine
                   case_alwaysinline :: Bool, -- decided by %inline flag
                   tc_dictionary :: Bool
                 }
+  deriving Generic
 
 {-!
 deriving instance Binary Def
@@ -761,7 +793,7 @@ instance Show Def where
 -- Private => Programs can't access the name, doesn't reduce internally
 
 data Accessibility = Hidden | Public | Frozen | Private
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Generic)
 {-!
 deriving instance NFData Accessibility
 !-}
@@ -780,7 +812,7 @@ data Totality = Total [Int] -- ^ well-founded arguments
               | Partial PReason
               | Unchecked
               | Generated
-    deriving Eq
+    deriving (Eq, Generic)
 {-!
 deriving instance NFData Totality
 !-}
@@ -788,7 +820,7 @@ deriving instance NFData Totality
 -- | Reasons why a function may not be total
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
              | ExternalIO | BelieveMe | Mutual [Name] | NotProductive
-    deriving (Show, Eq)
+    deriving (Show, Eq, Generic)
 {-!
 deriving instance NFData PReason
 !-}
@@ -825,14 +857,14 @@ deriving instance Binary PReason
 data MetaInformation =
       EmptyMI -- ^ No meta-information
     | DataMI [Int] -- ^ Meta information for a data declaration with position of parameters
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 -- | Contexts used for global definitions and for proof state. They contain
 -- universe constraints and existing definitions.
 data Context = MkContext {
                   next_tvar       :: Int,
                   definitions     :: Ctxt (Def, Injectivity, Accessibility, Totality, MetaInformation)
-                } deriving Show
+                } deriving (Show, Generic)
 
 
 -- | The initial empty context
@@ -911,7 +943,7 @@ addDatatype (Data n tag ty unique cons) uctxt
 addCasedef :: Name -> ErasureInfo -> CaseInfo ->
               Bool -> SC -> -- default case
               Bool -> Bool ->
-              [Type] -> -- argument types
+              [(Type, Bool)] -> -- argument types, whether canonical
               [Int] ->  -- inaccessible arguments
               [Either Term (Term, Term)] ->
               [([Name], Term, Term)] -> -- totality
@@ -1014,6 +1046,15 @@ lookupTy n ctxt = map snd (lookupTyName n ctxt)
 -- | Get the single type that matches some name precisely
 lookupTyExact :: Name -> Context -> Maybe Type
 lookupTyExact n ctxt = fmap snd (lookupTyNameExact n ctxt)
+
+-- | Return true if the given type is a concrete type familyor primitive
+-- False it it's a function to compute a type or a variable
+isCanonical :: Type -> Context -> Bool
+isCanonical t ctxt
+     = case unApply t of
+            (P _ n _, _) -> isConName n ctxt
+            (Constant _, _) -> True
+            _ -> False
 
 isConName :: Name -> Context -> Bool
 isConName n ctxt = isTConName n ctxt || isDConName n ctxt
