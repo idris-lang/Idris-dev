@@ -98,9 +98,9 @@ getImports acc (f : fs) = do
    i <- getIState
    let file = extractFileName f
    ibcsd <- valIBCSubDir i
-   srcds <- allSourceDirs
    idrisCatch (do
-       fp <- findImport ["."] ibcsd file
+       srcds <- allSourceDirs
+       fp <- findImport srcds ibcsd file
        let parsef = fname fp
        case lookup parsef acc of
             Just _ -> getImports acc fs
