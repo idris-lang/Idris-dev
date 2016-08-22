@@ -2537,6 +2537,10 @@ getImportDir :: Opt -> Maybe String
 getImportDir (ImportDir str) = Just str
 getImportDir _ = Nothing
 
+getSourceDir :: Opt -> Maybe String
+getSourceDir (SourceDir str) = Just str
+getSourceDir _ = Nothing
+
 getPkgDir :: Opt -> Maybe String
 getPkgDir (Pkg str) = Just str
 getPkgDir _ = Nothing
