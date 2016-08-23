@@ -97,10 +97,11 @@ The option `--cg-opt <ARG>` can be used to pass options to the code
 generator. The format of `<ARG>` is dependent on the selected backend.
 
 Further, Idris does support multiple include paths.  The CLI option
-`-i <dir>` allows you to add a directory to the search path; this
+`-i <dir>` allows you to add a directory to the library search path; this
 option can be used multiple times. This is a cleaner option when you
 wish to add single directories to the `IDRIS_LIBRARY_PATH` than
 ammending `IDRIS_LIBRARY_PATH` directly.
+To add directories to the source search path, use the `--sourcepath <dir>` option.
 
 Moreover, rather than using `TARGET` the CLI option `--ibcsubdir` can
 be used to direct where built IBC files are placed.
