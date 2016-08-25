@@ -2,6 +2,6 @@ interfaces005a.idr:18:3:
 Set.TreeSet.Set must be defined by a type or data constructor
 No such variable TreeSet
 interfaces005b.idr:4:11:
-Data definitions not allowed in a class declaration
+Data definitions not allowed in an interface declaration
 interfaces005b.idr:18:3:SetSig is not an interface
 No such variable TreeSet

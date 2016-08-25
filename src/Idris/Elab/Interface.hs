@@ -113,7 +113,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let cons = [(cd, pDocs ++ mapMaybe memberDocs ds, cn, NoFC, cty, fc, [])]
          let ddecl = PDatadecl tn NoFC tty cons
 
-         logElab 5 $ "Class data " ++ show (showDImp verbosePPOption ddecl)
+         logElab 5 $ "Interface data " ++ show (showDImp verbosePPOption ddecl)
 
          -- Elaborate the data declaration
          elabData info (syn { no_imp = no_imp syn ++ mnames,
@@ -164,12 +164,12 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     checkDefaultSuperInterfaceInstance :: PDecl -> Idris ()
     checkDefaultSuperInterfaceInstance (PInstance _ _ _ fc cs _ _ _ n _ ps _ _ _ _)
         = do when (not $ null cs) . tclift
-                $ tfail (At fc (Msg "Default superclass instances can't have constraints."))
+                $ tfail (At fc (Msg "Default super interface implementations can't have constraints."))
              i <- getIState
              let t = PApp fc (PRef fc [] n) (map pexp ps)
              let isConstrained = any (== t) (map snd constraints)
              when (not isConstrained) . tclift
-                $ tfail (At fc (Msg "Default instances must be for a superclass constraint on the containing class."))
+                $ tfail (At fc (Msg "Default implementations must be for a super interface constraint on the containing interface."))
              return ()
 
     checkConstraintName :: [Name] -> Name -> Idris ()
@@ -207,8 +207,8 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                                               (\ l s p -> Imp l s p Nothing True) t'))),
                          (n, (nfc, syn, o, t) ) )
     tdecl allmeths (PData doc _ syn _ _ _)
-         = ierror $ At fc (Msg "Data definitions not allowed in a class declaration")
-    tdecl _ _ = ierror $ At fc (Msg "Not allowed in a class declaration")
+         = ierror $ At fc (Msg "Data definitions not allowed in an interface declaration")
+    tdecl _ _ = ierror $ At fc (Msg "Not allowed in an interface declaration")
 
     -- Create default definitions
     defdecl mtys c d@(PClauses fc opts n cs) =
@@ -305,7 +305,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     -- are used in the type
     insertConstraint :: PTerm -> [Name] -> PTerm -> PTerm
     insertConstraint c all sc
-          = let dictN = sMN 0 "__class" in
+          = let dictN = sMN 0 "__interface" in
                 PPi (constraint { pstatic = Static })
                     dictN NoFC c
                     (constrainMeths (map basename all)

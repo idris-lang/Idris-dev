@@ -67,9 +67,9 @@ data IBCFile = IBCFile {
   , ibc_implicits              :: ![(Name, [PArg])]
   , ibc_fixes                  :: ![FixDecl]
   , ibc_statics                :: ![(Name, [Bool])]
-  , ibc_classes                :: ![(Name, InterfaceInfo)]
+  , ibc_interfaces             :: ![(Name, InterfaceInfo)]
   , ibc_records                :: ![(Name, RecordInfo)]
-  , ibc_instances              :: ![(Bool, Bool, Name, Name)]
+  , ibc_implementations        :: ![(Bool, Bool, Name, Name)]
   , ibc_dsls                   :: ![(Name, DSL)]
   , ibc_datatypes              :: ![(Name, TypeInfo)]
   , ibc_optimise               :: ![(Name, OptInfo)]
@@ -172,9 +172,9 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_implicits"  (ibc_implicits i),
                        makeEntry "ibc_fixes"  (ibc_fixes i),
                        makeEntry "ibc_statics"  (ibc_statics i),
-                       makeEntry "ibc_classes"  (ibc_classes i),
+                       makeEntry "ibc_interfaces"  (ibc_interfaces i),
                        makeEntry "ibc_records"  (ibc_records i),
-                       makeEntry "ibc_instances"  (ibc_instances i),
+                       makeEntry "ibc_implementations"  (ibc_implementations i),
                        makeEntry "ibc_dsls"  (ibc_dsls i),
                        makeEntry "ibc_datatypes"  (ibc_datatypes i),
                        makeEntry "ibc_optimise"  (ibc_optimise i),
@@ -270,14 +270,14 @@ ibc i (IBCStatic n) f
                         _ -> ifail "IBC write failed"
 ibc i (IBCInterface n) f
                    = case lookupCtxtExact n (idris_interfaces i) of
-                        Just v -> return f { ibc_classes = (n,v): ibc_classes f     }
+                        Just v -> return f { ibc_interfaces = (n,v): ibc_interfaces f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCRecord n) f
                    = case lookupCtxtExact n (idris_records i) of
                         Just v -> return f { ibc_records = (n,v): ibc_records f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCInstance int res n ins) f
-                   = return f { ibc_instances = (int, res, n, ins) : ibc_instances f }
+                   = return f { ibc_implementations = (int, res, n, ins) : ibc_implementations f }
 ibc i (IBCDSL n) f
                    = case lookupCtxtExact n (idris_dsls i) of
                         Just v -> return f { ibc_dsls = (n,v): ibc_dsls f     }
@@ -547,7 +547,7 @@ processStatics ar = do
 
 processInterfaces :: Archive -> Idris ()
 processInterfaces ar = do
-    cs <- getEntry [] "ibc_classes" ar
+    cs <- getEntry [] "ibc_interfaces" ar
     mapM_ (\ (n, c) -> do
         i <- getIState
         -- Don't lose instances from previous IBCs, which
@@ -566,7 +566,7 @@ processRecords ar = do
 
 processInstances :: Archive -> Idris ()
 processInstances ar = do
-    cs <- getEntry [] "ibc_instances" ar
+    cs <- getEntry [] "ibc_implementations" ar
     mapM_ (\ (i, res, n, ins) -> addInstance i res n ins) cs
 
 processDSLs :: Archive -> Idris ()
