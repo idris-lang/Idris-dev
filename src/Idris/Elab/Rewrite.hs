@@ -233,7 +233,7 @@ mkLemma info lemma tcon ps ty =
   where
     fc = emptyFC
 
-    namesFrom x i = sMN i x : namesFrom x (i + 1)
+    namesFrom x i = sMN i (x ++ show i) : namesFrom x (i + 1)
 
     mkTy fn pinfo ps is
          = PApp fc (PRef fc [] fn) (mkArgs pinfo ps is)

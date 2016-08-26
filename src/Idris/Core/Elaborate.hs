@@ -575,6 +575,7 @@ prepare_apply fn imps =
        claims <- -- trace (show (fn, imps, ty, map fst env, normalise ctxt env (finalise ty))) $
                  mkClaims (finalise ty)
                           (normalise ctxt env (finalise ty))
+                          False
                           imps [] (map fst env)
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
@@ -585,11 +586,12 @@ prepare_apply fn imps =
   where
     mkClaims :: Type   -- ^ The type of the operation being applied
              -> Type   -- ^ Normalised version if we need it
+             -> Bool   -- ^ Using normalised verison
              -> [Bool] -- ^ Whether the arguments are implicit
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi _ t_in _) sc) (Bind _ _ scn) (i : is) claims hs =
+    mkClaims (Bind n' (Pi _ t_in _) sc) (Bind _ _ scn) norm (i : is) claims hs =
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
@@ -597,11 +599,12 @@ prepare_apply fn imps =
            env <- get_env
            claim n (forgetEnv (map fst env) t)
            when i (movelast n)
-           mkClaims sc' scn is ((n', n) : claims) hs
+           mkClaims sc' scn norm is ((n', n) : claims) hs
     -- if we run out of arguments, we need the normalised version...
-    mkClaims t tn@(Bind _ _ sc) (i : is) cs hs = mkClaims tn tn (i : is) cs hs
-    mkClaims t _ [] claims _ = return $! (reverse claims)
-    mkClaims _ _ _ _ _
+    mkClaims t tn@(Bind _ _ sc) False (i : is) cs hs 
+          = mkClaims tn tn True (i : is) cs hs
+    mkClaims t _ _ [] claims _ = return $! (reverse claims)
+    mkClaims _ _ _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
                         case lookupTy n ctxt of
