@@ -34,6 +34,8 @@
   implicits in the output of `:doc`. This is tested for in `docs005`.
 
 * New command line flag `--info` that displays information about the installation.
+
+* New command line flag `--sourcepath <dir>` that allows adding directories to the source search path.
 ## Miscellaneous updates
 
 * The test suite now uses [tasty-golden](https://hackage.haskell.org/package/tasty-golden). New tests must be registered in `test/TestData.hs`, as explained in the relevant `README.md`.

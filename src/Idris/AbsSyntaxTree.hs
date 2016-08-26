@@ -103,6 +103,7 @@ data IOption = IOption {
   , opt_outputTy     :: OutputType
   , opt_ibcsubdir    :: FilePath
   , opt_importdirs   :: [FilePath]
+  , opt_sourcedirs   :: [FilePath]
   , opt_triple       :: String
   , opt_cpu          :: String
   , opt_cmdline      :: [Opt]          -- ^ remember whole command line
@@ -131,6 +132,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_outputTy   = Executable
                       , opt_ibcsubdir  = ""
                       , opt_importdirs = []
+                      , opt_sourcedirs = []
                       , opt_triple     = ""
                       , opt_cpu        = ""
                       , opt_cmdline    = []
@@ -356,6 +358,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCKeyword String
               | IBCImport (Bool, FilePath) -- ^ True = import public
               | IBCImportDir FilePath
+              | IBCSourceDir FilePath
               | IBCObj Codegen FilePath
               | IBCLib Codegen String
               | IBCCGFlag Codegen String
@@ -519,6 +522,7 @@ data Opt = Filename String
          | Port String -- ^ REPL TCP port
          | IBCSubDir String
          | ImportDir String
+         | SourceDir String
          | PkgBuild String
          | PkgInstall String
          | PkgClean String

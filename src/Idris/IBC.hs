@@ -49,7 +49,7 @@ import Codec.Archive.Zip
 import Debug.Trace
 
 ibcVersion :: Word16
-ibcVersion = 146
+ibcVersion = 147
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -63,6 +63,7 @@ data IBCFile = IBCFile {
   , ibc_reachablenames         :: ![Name]
   , ibc_imports                :: ![(Bool, FilePath)]
   , ibc_importdirs             :: ![FilePath]
+  , ibc_sourcedirs             :: ![FilePath]
   , ibc_implicits              :: ![(Name, [PArg])]
   , ibc_fixes                  :: ![FixDecl]
   , ibc_statics                :: ![(Name, [Bool])]
@@ -115,7 +116,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -167,6 +168,7 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "sourcefile"  (sourcefile i),
                        makeEntry "ibc_imports"  (ibc_imports i),
                        makeEntry "ibc_importdirs"  (ibc_importdirs i),
+                       makeEntry "ibc_sourcedirs"  (ibc_sourcedirs i),
                        makeEntry "ibc_implicits"  (ibc_implicits i),
                        makeEntry "ibc_fixes"  (ibc_fixes i),
                        makeEntry "ibc_statics"  (ibc_statics i),
@@ -291,6 +293,7 @@ ibc i (IBCSyntax n) f = return f { ibc_syntax = n : ibc_syntax f }
 ibc i (IBCKeyword n) f = return f { ibc_keywords = n : ibc_keywords f }
 ibc i (IBCImport n) f = return f { ibc_imports = n : ibc_imports f }
 ibc i (IBCImportDir n) f = return f { ibc_importdirs = n : ibc_importdirs f }
+ibc i (IBCSourceDir n) f = return f { ibc_sourcedirs = n : ibc_sourcedirs f }
 ibc i (IBCObj tgt n) f = return f { ibc_objs = (tgt, n) : ibc_objs f }
 ibc i (IBCLib tgt n) f = return f { ibc_libs = (tgt, n) : ibc_libs f }
 ibc i (IBCCGFlag tgt n) f = return f { ibc_cgflags = (tgt, n) : ibc_cgflags f }
@@ -382,6 +385,7 @@ process reexp phase archive fn = do
                 srcok <- runIO $ doesFileExist source
                 when srcok $ timestampOlder source fn
                 processImportDirs archive
+                processSourceDirs archive
                 processImports reexp phase archive
                 processImplicits archive
                 processInfix archive
@@ -491,6 +495,11 @@ processImportDirs :: Archive -> Idris ()
 processImportDirs ar = do
     fs <- getEntry [] "ibc_importdirs" ar
     mapM_ addImportDir fs
+
+processSourceDirs :: Archive -> Idris ()
+processSourceDirs ar = do
+    fs <- getEntry [] "ibc_sourcedirs" ar
+    mapM_ addSourceDir fs
 
 processImports :: Bool -> IBCPhase -> Archive -> Idris ()
 processImports reexp phase ar = do

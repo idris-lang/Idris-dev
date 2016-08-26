@@ -1692,6 +1692,7 @@ idrisMain opts =
        let output = opt getOutput opts
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
+       let sourcedirs = opt getSourceDir opts
        let bcs = opt getBC opts
        let pkgdirs = opt getPkgDir opts
        -- Set default optimisations
@@ -1749,6 +1750,7 @@ idrisMain opts =
          [] -> setIBCSubDir ""
          (d:_) -> setIBCSubDir d
        setImportDirs importdirs
+       setSourceDirs sourcedirs
 
        setNoBanner nobanner
 

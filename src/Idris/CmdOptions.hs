@@ -132,6 +132,7 @@ parseFlags = many $
 
   <|> (IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory"))
   <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))
+  <|> (SourceDir <$> strOption (long "sourcepath" <> help "Add directory to the list of source search paths"))
 
   <|> flag' WarnOnly (long "warn")
 
