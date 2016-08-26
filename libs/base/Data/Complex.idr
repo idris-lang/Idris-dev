@@ -27,7 +27,7 @@ implementation Show a => Show (Complex a) where
             plus_i = User 6
 
 
--- when we have a type class 'Fractional' (which contains Double),
+-- when we have an interface 'Fractional' (which contains Double),
 -- we can do:
 {-
 implementation Fractional a => Fractional (Complex a) where

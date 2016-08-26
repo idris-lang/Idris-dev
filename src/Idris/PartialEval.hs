@@ -160,7 +160,7 @@ mkPE_TyDecl ist args ty = mkty args ty
     gen (App s f a) = App s <$> gen f <*> gen a
     gen tm = return tm
 
--- | Checks if a given argument is a type class constraint argument
+-- | Checks if a given argument is an interface constraint argument
 interfaceConstraint :: Idris.AbsSyntax.IState -> TT Name -> Bool
 interfaceConstraint ist v
     | (P _ c _, args) <- unApply v = case lookupCtxt c (idris_interfaces ist) of
@@ -168,7 +168,7 @@ interfaceConstraint ist v
                                           _ -> False
     | otherwise = False
 
--- | Checks if the given arguments of a type class constraint are all either constants
+-- | Checks if the given arguments of an interface constraint are all either constants
 -- or references (i.e. that it doesn't contain any complex terms).
 concreteInterface :: IState -> TT Name -> Bool
 concreteInterface ist v

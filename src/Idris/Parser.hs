@@ -179,7 +179,7 @@ Decl ::=
   | Params
   | Mutual
   | Namespace
-  | Class
+  | Interface
   | Instance
   | DSL
   | Directive
@@ -316,7 +316,7 @@ declExtension syn ns rules =
 
     -- Below is a lot of tedious boilerplate which updates any top level
     -- names in the declaration. It will only change names which are bound in
-    -- the declaration (including method names in classes and field names in
+    -- the declaration (including method names in interfaces and field names in
     -- record declarations, not including pattern variables)
     updateB :: [(Name, SynMatch)] -> Name -> Name
     updateB ns (NS n mods) = NS (updateB ns n) mods
@@ -846,7 +846,7 @@ instanceBlock syn = do reservedHL "where"
                        return (concat ds)
                     <?> "implementation block"
 
-{-| Parses a methods and instances block (for type classes)
+{-| Parses a methods and instances block (for interfaces)
 
 @
 MethodOrInstance ::=
@@ -856,7 +856,7 @@ MethodOrInstance ::=
 @
 
 @
-ClassBlock ::=
+InterfaceBlock ::=
   'where' OpenBlock Constructor? MethodOrInstance* CloseBlock
   ;
 @
@@ -886,18 +886,18 @@ interfaceBlock syn = do reservedHL "where"
     annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
     annotate syn ist = annotCode $ tryFullExpr syn ist
 
-{-| Parses a type class declaration
+{-| Parses an interface declaration
 
 @
-ClassArgument ::=
+InterfaceArgument ::=
    Name
    | '(' Name ':' Expr ')'
    ;
 @
 
 @
-Class ::=
-  DocComment_t? Accessibility? 'class' ConstraintList? Name ClassArgument* ClassBlock?
+Interface ::=
+  DocComment_t? Accessibility? 'interface' ConstraintList? Name InterfaceArgument* InterfaceBlock?
   ;
 @
 -}
@@ -935,7 +935,7 @@ interface_ syn = do (doc, argDocs, acc)
               fc <- getFC
               return (i, ifc, PType fc)
 
-{-| Parses a type class instance declaration
+{-| Parses an interface implementation declaration
 
 @
   Instance ::=

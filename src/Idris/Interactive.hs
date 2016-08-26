@@ -426,7 +426,7 @@ makeLemma fn updatefile l n
         -- Guess which binders should be implicits in the generated lemma.
         -- Make them implicit if they appear guarded by a top level constructor,
         -- or at the top level themselves.
-        -- Also, make type class instances implicit
+        -- Also, make interface implementations implicit
         guessImps :: IState -> Context -> Term -> [Name]
         -- machine names aren't lifted
         guessImps ist ctxt (Bind n@(MN _ _) (Pi _ ty _) sc)

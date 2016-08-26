@@ -165,7 +165,7 @@ fetchInfo ist nss =
     filterContents p (NsInfo md ns) = NsInfo md (filter p ns)
     updateContents f x = x { nsContents = f (nsContents x) }
 
--- | Removes loose class methods and data constructors,
+-- | Removes loose interface methods and data constructors,
 --   leaving them documented only under their parent.
 removeOrphans :: [NsItem] -- ^ List to remove orphans from
               -> [NsItem] -- ^ Orphan-free list
@@ -577,7 +577,7 @@ createFunDoc ist fd@(FD name docstring args ftype fixity) = do
 
 
 -- | Generates HTML documentation for any Docs type
---   TODO: Generate actual signatures for typeclasses
+--   TODO: Generate actual signatures for interfaces
 createOtherDoc :: IState -- ^ Needed to determine the types of names
                -> Docs   -- ^ Namespace item to generate HTML block for
                -> H.Html -- ^ Resulting HTML

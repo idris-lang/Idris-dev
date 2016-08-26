@@ -45,18 +45,18 @@ type FunDoc = FunDoc' (Docstring DocTerm)
 data Docs' d = FunDoc (FunDoc' d)
              | DataDoc (FunDoc' d) -- type constructor docs
                        [FunDoc' d] -- data constructor docs
-             | InterfaceDoc Name d   -- class docs
-                        [FunDoc' d] -- method docs
-                        [(Name, Maybe d)] -- parameters and their docstrings
-                        [(Maybe Name, PTerm, (d, [(Name, d)]))] -- instances: name for named instances, the constraint term, the docs
-                        [PTerm] -- subclasses
-                        [PTerm] -- superclasses
-                        (Maybe (FunDoc' d)) -- explicit constructor
+             | InterfaceDoc Name d  -- interface docs
+                            [FunDoc' d] -- method docs
+                            [(Name, Maybe d)] -- parameters and their docstrings
+                            [(Maybe Name, PTerm, (d, [(Name, d)]))] -- instances: name for named instances, the constraint term, the docs
+                            [PTerm] -- sub interfaces
+                            [PTerm] -- super interfaces
+                            (Maybe (FunDoc' d)) -- explicit constructor
              | RecordDoc Name d -- record docs
                          (FunDoc' d) -- data constructor docs
                          [FunDoc' d] -- projection docs
                          [(Name, PTerm, Maybe d)] -- parameters with type and doc
-             | NamedInstanceDoc Name (FunDoc' d) -- name is class
+             | NamedInstanceDoc Name (FunDoc' d) -- name is interface
              | ModDoc [String] -- Module name
                       d
   deriving Functor
@@ -101,7 +101,7 @@ pprintFD ist totalityFlag nsFlag (FD n doc args ty f) =
         <+> pprintPTerm ppo bnd [] infixes ty
         <> showDoc ist d
         <> line : showArgs args ((n, False):bnd)
-      showArgs ((n, ty, Constraint {}, Just d):args) bnd = -- Class constraints.
+      showArgs ((n, ty, Constraint {}, Just d):args) bnd = -- Interface constraints.
             text "Class constraint"
         <+> pprintPTerm ppo bnd [] infixes ty
         <> showDoc ist d

@@ -460,7 +460,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
             substEnv ((n, t) : env) tm
                 = substEnv env (substV (P Bound n (binderTy t)) tm)
 
-            -- remove any unnecessary lambdas (helps with type class
+            -- remove any unnecessary lambdas (helps with interface
             -- resolution later).
             eta ks (Bind n (Lam ty) sc) = eta ((n, ty) : ks) sc
             eta ks t = rebind ks t
@@ -488,8 +488,8 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 --     un' env fn bnames (Bind x (PVTy _) sx) (Bind y (PVTy _) sy)
 --         = un' env False ((x,y):bnames) sx sy
 
-    -- f D unifies with t -> D. This is dubious, but it helps with type
-    -- class resolution for type classes over functions.
+    -- f D unifies with t -> D. This is dubious, but it helps with
+    -- interface resolution for interfaces over functions.
 
     un' env fn bnames (App _ f x) (Bind n (Pi i t k) y)
       | noOccurrence n y && injectiveApp f

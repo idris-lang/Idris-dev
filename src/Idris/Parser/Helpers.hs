@@ -676,7 +676,7 @@ addAcc n a = do i <- get
                 put (i { hide_list = addDef n a (hide_list i) })
 
 {- | Add accessbility option for data declarations
- (works for classes too - 'abstract' means the data/class is visible but members not) -}
+ (works for interfaces too - 'abstract' means the data/interface is visible but members not) -}
 accData :: Accessibility -> Name -> [Name] -> IdrisParser ()
 accData Frozen n ns = do addAcc n Public -- so that it can be used in public definitions
                          mapM_ (\n -> addAcc n Private) ns -- so that they are invisible

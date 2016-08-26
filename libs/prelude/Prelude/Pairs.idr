@@ -49,5 +49,5 @@ using (a : Type, P : a -> Type)
     getProof = snd
     %deprecate DPair.getProof "This is being deprecated in favour of `snd`."
 
-  -- Polymorphic (class-based) projections have been removed
+  -- Polymorphic (interface-based) projections have been removed
   -- because type-directed name disambiguation works better.

@@ -68,7 +68,7 @@ logging level between: 1 to 10 using the command-line option: ``--log
 
 + Level 0: Show no logging output. Default level
 + Level 1: High level details of the compilation process.
-+ Level 2: Provides details of the coverage checking, and further details the elaboration process specifically: Class, Clauses, Data, Term, and Types,
++ Level 2: Provides details of the coverage checking, and further details the elaboration process specifically: Interface, Clauses, Data, Term, and Types,
 + Level 3: Provides details of compilation of the IRTS, erasure, parsing, case splitting, and further details elaboration of: Instances, Providers, and Values.
 + Level 4: Provides further details on: Erasure, Coverage Checking, Case splitting, and elaboration of clauses.
 + Level 5: Provides details on the prover, and further details elaboration (adding declarations) and compilation of the IRTS.

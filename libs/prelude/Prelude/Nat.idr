@@ -197,7 +197,7 @@ toIntNat n = toIntNat' n 0 where
 (-) m n {smaller} = minus m n
 
 --------------------------------------------------------------------------------
--- Type class implementations
+-- Interface implementations
 --------------------------------------------------------------------------------
 
 Eq Nat where

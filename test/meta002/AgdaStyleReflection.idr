@@ -1,5 +1,5 @@
 ||| Implement an Agda-style reflection system as a DSL inside of
-||| Idris's reflected elaboration. Requires handling type class
+||| Idris's reflected elaboration. Requires handling interface
 ||| resolution and implicit arguments - some of the same features as
 ||| the Idris elaborator itself.
 |||

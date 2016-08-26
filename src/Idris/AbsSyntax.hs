@@ -434,9 +434,9 @@ pop_estack = do i <- getIState
     where ptail [] = []
           ptail (x : xs) = xs
 
--- | Add a class instance function.
+-- | Add an interface implementation function.
 --
--- Precondition: the instance should have the correct type.
+-- Precondition: the implementation should have the correct type.
 --
 -- Dodgy hack 1: Put integer instances first in the list so they are
 -- resolved by default.
@@ -444,7 +444,7 @@ pop_estack = do i <- getIState
 -- Dodgy hack 2: put constraint chasers (ParentN) last
 addInstance :: Bool -- ^ whether the name is an Integer instance
             -> Bool -- ^ whether to include the instance in instance search
-            -> Name -- ^ the name of the class
+            -> Name -- ^ the name of the interface
             -> Name -- ^ the name of the instance
             -> Idris ()
 addInstance int res n i
@@ -1476,7 +1476,7 @@ addStatics n tm ptm =
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
 
-    -- if a name appears in a type class or tactic implicit index, it doesn't
+    -- if a name appears in an interface or tactic implicit index, it doesn't
     -- affect its 'uniquely inferrable' from a static status since these are
     -- resolved by searching.
     searchArg (Constraint _ _) = True
@@ -1776,7 +1776,7 @@ addImplBoundInf ist ns inf = addImpl' False ns inf [] ist
 -- | Add the implicit arguments to applications in the term [Name]
 -- gives the names to always expend, even when under a binder of that
 -- name (this is to expand methods with implicit arguments in
--- dependent type classes).
+-- dependent interfaces).
 addImpl :: [Name] -> IState -> PTerm -> PTerm
 addImpl = addImpl' False [] []
 

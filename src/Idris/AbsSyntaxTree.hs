@@ -647,7 +647,7 @@ data FnOpt = Inlinable -- ^ always evaluate when simplifying
            | TotalFn | PartialFn | CoveringFn
            | Coinductive | AssertTotal
 
-           -- | type class dictionary, eval only when a function
+           -- | interface dictionary, eval only when a function
            -- argument, and further evaluation results.
            | Dictionary
            | Implicit                       -- ^ implicit coercion
@@ -684,7 +684,7 @@ data ProvideWhat' t = ProvTerm t t     -- ^ the first is the goal type, the seco
 type ProvideWhat = ProvideWhat' PTerm
 
 -- | Top-level declarations such as compiler directives, definitions,
--- datatypes and typeclasses.
+-- datatypes and interfaces.
 data PDecl' t
    -- | Fixity declaration
    = PFix FC Fixity [String]
@@ -717,13 +717,13 @@ data PDecl' t
              (Docstring (Either Err t)) -- Constructor doc
              SyntaxInfo -- Constructor SyntaxInfo
 
-   -- | Type class: arguments are documentation, syntax info, source
-   -- location, constraints, class name, class name location,
+   -- | Interface: arguments are documentation, syntax info, source
+   -- location, constraints, interface name, interface name location,
    -- parameters, method declarations, optional constructor name
    | PInterface (Docstring (Either Err t)) SyntaxInfo FC
             [(Name, t)]                        -- constraints
-            Name                               -- class name
-            FC                                 -- accurate location of class name
+            Name                               -- interface name
+            FC                                 -- accurate location of interface name
             [(Name, FC, t)]                    -- parameters and precise locations
             [(Name, Docstring (Either Err t))] -- parameter docstrings
             [(Name, FC)]                       -- determining parameters and precise locations
@@ -732,7 +732,7 @@ data PDecl' t
             (Docstring (Either Err t))         -- instance constructor docs
 
    -- | Instance declaration: arguments are documentation, syntax
-   -- info, source location, constraints, class name, parameters, full
+   -- info, source location, constraints, interface name, parameters, full
    -- instance type, optional explicit name, and definitions
    | PInstance (Docstring (Either Err t))         -- Instance docs
                [(Name, Docstring (Either Err t))] -- Parameter docs
@@ -741,8 +741,8 @@ data PDecl' t
                [Name]                             -- parent dictionaries to search for constraints
                Accessibility
                FnOpts
-               Name                               -- class
-               FC                                 -- precise location of class
+               Name                               -- interface
+               FC                                 -- precise location of interface
                [t]                                -- parameters
                [(Name, t)]                        -- Extra names in scope in the body
                t                                  -- full instance type
@@ -1067,7 +1067,7 @@ data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
            | PIfThenElse FC PTerm PTerm PTerm    -- ^ Conditional expressions - elaborated to an overloading of ifThenElse
            | PCase FC PTerm [(PTerm, PTerm)]     -- ^ A case expression. Args are source location, scrutinee, and a list of pattern/RHS pairs
            | PTrue FC PunInfo                    -- ^ Unit type..?
-           | PResolveTC FC                       -- ^ Solve this dictionary by type class resolution
+           | PResolveTC FC                       -- ^ Solve this dictionary by interface resolution
            | PRewrite FC (Maybe Name) PTerm PTerm (Maybe PTerm)
              -- ^ "rewrite" syntax, with optional rewriting function and
              -- optional result type
@@ -1411,7 +1411,7 @@ highestFC (PRunElab fc _ _)       = Just fc
 highestFC (PConstSugar fc _)      = Just fc
 highestFC (PAppImpl t _)          = highestFC t
 
--- Type class data
+-- Interface data
 
 data InterfaceInfo = CI {
     instanceCtorName                   :: Name
@@ -1586,7 +1586,7 @@ data SyntaxInfo = Syn {
   , syn_namespace     :: [String]
   , no_imp            :: [Name]
   , imp_methods       :: [Name]
-  -- ^ class methods. When expanding implicits, these should be
+  -- ^ interface methods. When expanding implicits, these should be
   -- expanded even under binders
   , decoration        :: Name -> Name
   , inPattern         :: Bool

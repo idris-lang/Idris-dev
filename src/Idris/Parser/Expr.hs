@@ -740,7 +740,7 @@ implicitArg syn = do lchar '{'
                      return (pimp n v True)
                   <?> "implicit function argument"
 
-{-| Parses a constraint argument (for selecting a named type class instance)
+{-| Parses a constraint argument (for selecting a named interface implementation)
 
 >    ConstraintArg ::=
 >      '@{' Expr '}'

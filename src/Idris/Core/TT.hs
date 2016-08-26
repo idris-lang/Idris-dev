@@ -598,7 +598,7 @@ mapCtxt :: (a -> b) -> Ctxt a -> Ctxt b
 mapCtxt = fmap . fmap
 
 -- |Return True if the argument 'Name' should be interpreted as the name of a
--- typeclass.
+-- interface.
 tcname (UN xs) = False
 tcname (NS n _) = tcname n
 tcname (SN (InstanceN _ _)) = True

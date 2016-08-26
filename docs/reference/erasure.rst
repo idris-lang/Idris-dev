@@ -163,7 +163,7 @@ analysis algorithm.)
 * function arguments
 
 * data constructor fields (including record fields and dictionary
-  fields of class instances)
+  fields of interface implementations)
 
 For example, ``Either`` often compiles to the same runtime
 representation as ``Bool``. Constructor field removal sometimes
@@ -295,7 +295,7 @@ considered to be using all their arguments. To work around this, you
 can force erasure via the type system, using the ``Erased`` wrapper:
 https://github.com/idris-lang/Idris-dev/blob/master/libs/base/Data/Erased.idr
 
-Typeclass methods are considered to be using the union of all their
+Interface methods are considered to be using the union of all their
 implementations. In other words, an argument of a method is unused
 only if it is unused in every implementation of the method that occurs
 in the program.
