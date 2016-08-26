@@ -5,4 +5,4 @@ module Main
 %language ErrorReflection
 
 main : IO ()
-main = return ()
+main = pure ()

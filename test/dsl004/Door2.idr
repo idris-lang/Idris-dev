@@ -19,7 +19,7 @@ data DoorCmd : AnyType -> AnyType where
      Close : DoorH OPEN -> DoorCmd (DoorH CLOSED)
 
 data DoorLang : AnyType -> AnyType where
-     Return : a -> DoorLang a
+     Pure : a -> DoorLang a
      Action : DoorCmd a -> DoorLang a
      (>>=) : DoorLang a -> (a -> DoorLang b) -> DoorLang b
 
@@ -33,5 +33,5 @@ testProg h = do h <- Action (Knock h)
                 (True @@ h) <- Action (Open h) 
                      | (False @@ h) => testProg h 
                 h <- Action (Close h)
-                Return ()
+                Pure ()
 

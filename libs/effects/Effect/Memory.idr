@@ -45,7 +45,7 @@ do_malloc size with (fromInteger (cast size) == size)
   | True  = do ptr <- ioe_lift $ foreign FFI_C "malloc" (Int -> IO Ptr) (fromInteger $ cast size)
                fail  <- ioe_lift $ nullPtr ptr
                if fail then ioe_fail "Cannot allocate memory"
-               else return ptr
+               else pure ptr
   | False = ioe_fail "The target architecture does not support adressing enough memory"
 
 private
@@ -66,15 +66,15 @@ do_memmove dest src dest_offset src_offset size
 
 private
 do_peek : Ptr -> Nat -> (size : Nat) -> IO (Vect size Bits8)
-do_peek _   _       Z = return (Vect.Nil)
+do_peek _   _       Z = pure (Vect.Nil)
 do_peek ptr offset (S n)
   = do b <- foreign FFI_C "idris_peek" (Ptr -> Int -> IO Bits8) ptr (fromInteger $ cast offset)
        bs <- do_peek ptr (S offset) n
-       Monad.return (Vect.(::) b bs)
+       Applicative.pure (Vect.(::) b bs)
 
 private
 do_poke : Ptr -> Nat -> Vect size Bits8 -> IO ()
-do_poke _   _      []     = return ()
+do_poke _   _      []     = pure ()
 do_poke ptr offset (b::bs)
   = do foreign FFI_C "idris_poke" (Ptr -> Int -> Bits8 -> IO ()) ptr (fromInteger $ cast offset) b
        do_poke ptr (S offset) bs
@@ -179,5 +179,5 @@ move : {dst_size : Nat} ->
 move dst_offset src_offset size dst_bounds src_bounds
   = do src_ptr <- Src :- getRawPtr
        Dst :- move' src_ptr dst_offset src_offset size dst_bounds src_bounds
-       return ()
+       pure ()
 

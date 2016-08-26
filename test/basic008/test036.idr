@@ -10,8 +10,8 @@ unused _ s = s
 doTest : Maybe Nat
 doTest = do
   a <- Nothing
-  unused a (return 3)
- `maybechoice` return 2
+  unused a (pure 3)
+ `maybechoice` pure 2
 
 main : IO ()
 main = putStrLn . show $ doTest

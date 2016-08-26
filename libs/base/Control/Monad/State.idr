@@ -27,7 +27,7 @@ implementation Monad f => Applicative (StateT stateType f) where
 
     (ST f) <*> (ST a) = ST (\st => do (g, r) <- f st
                                       (b, t) <- a r
-                                      return (g b, t))
+                                      pure (g b, t))
 
 implementation Monad m => Monad (StateT stateType m) where
     (ST f) >>= k = ST (\st => do (v, st') <- f st
@@ -35,12 +35,12 @@ implementation Monad m => Monad (StateT stateType m) where
                                  kv st')
 
 implementation Monad m => MonadState stateType (StateT stateType m) where
-    get   = ST (\x => return (x, x))
-    put x = ST (\y => return ((), x))
+    get   = ST (\x => pure (x, x))
+    put x = ST (\y => pure ((), x))
 
 implementation MonadTrans (StateT stateType) where
     lift x = ST (\st => do r <- x
-                           return (r, st))
+                           pure (r, st))
 
 ||| Apply a function to modify the context of this computation
 modify : MonadState stateType m => (stateType -> stateType) -> m ()
@@ -50,7 +50,7 @@ modify f = do s <- get
 ||| Evaluate a function in the context held by this computation
 gets : MonadState stateType m => (stateType -> a) -> m a
 gets f = do s <- get
-            return (f s)
+            pure (f s)
 
 ||| The State monad. See the MonadState interface
 State : (stateType : Type) -> (ty : Type) -> Type

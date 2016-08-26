@@ -18,7 +18,7 @@ implementation Functor (Process msg) where
      map f (Lift a) = Lift (map f a)
 
 implementation Applicative (Process msg) where
-     pure = Lift . return
+     pure = Lift . pure
      (Lift f) <*> (Lift a) = Lift (f <*> a)
 
 implementation Monad (Process msg) where
@@ -32,14 +32,14 @@ run (Lift prog) = prog
 ||| Get current process ID
 export
 myID : Process msg (ProcID msg)
-myID = Lift (return (MkPID prim__vm))
+myID = Lift (pure (MkPID prim__vm))
 
 ||| Send a message to another process
 ||| Returns whether the send was unsuccessful.
 export
 send : ProcID msg -> msg -> Process msg Bool
 send (MkPID p) m = Lift (do x <- sendToThread p 0 (prim__vm, m)
-                            return (x /= 0))
+                            pure (x /= 0))
 
 ||| Return whether a message is waiting in the queue
 export
@@ -55,7 +55,7 @@ msgWaitingFrom (MkPID p) = Lift (checkMsgsFrom p 0)
 export
 recv : Process msg msg
 recv {msg} = do (senderid, m) <- Lift get
-                return m
+                pure m
   where get : IO (Ptr, msg)
         get = getMsg
 
@@ -74,11 +74,11 @@ export
 recvWithSender : Process msg (ProcID msg, msg)
 recvWithSender {msg}
      = do (senderid, m) <- Lift get
-          return (MkPID senderid, m)
+          pure (MkPID senderid, m)
   where get : IO (Ptr, msg)
         get = getMsg
 
 export
 create : Process msg () -> Process msg (ProcID msg)
 create (Lift p) = do ptr <- Lift (fork p)
-                     return (MkPID ptr)
+                     pure (MkPID ptr)

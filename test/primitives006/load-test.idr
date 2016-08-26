@@ -26,7 +26,7 @@ unit n b =
         in printLn $ (show b ++ "/" ++ show n, length expanded, length elines)
 
 alloc : Int -> Int -> IO Int
-alloc x 0 = return x
+alloc x 0 = pure x
 alloc x i = do
   -- allocate an array
   arr <- BA.allocate (64 * 1024 * 1024)

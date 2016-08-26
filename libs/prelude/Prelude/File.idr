@@ -42,7 +42,7 @@ strError err = unsafePerformIO -- yeah, yeah...
 getFileError : IO FileError
 getFileError = do MkRaw err <- foreign FFI_C "idris_mkFileError"
                                     (Ptr -> IO (Raw FileError)) prim__vm
-                  return err
+                  pure err
 
 Show FileError where
   show FileReadError = "File Read Error"
@@ -73,7 +73,7 @@ do_ferror h = foreign FFI_C "fileError" (Ptr -> IO Int) h
 export
 ferror : File -> IO Bool
 ferror (FHandle h) = do err <- do_ferror h
-                        return (not (err == 0))
+                        pure (not (err == 0))
 
 ||| Call the RTS's file opening function
 private
@@ -89,14 +89,14 @@ fopen : (f : String) -> (m : String) -> IO (Either FileError File)
 fopen f m = do h <- do_fopen f m
                if !(nullPtr h)
                   then do err <- getFileError
-                          return (Left err)
-                  else return (Right (FHandle h))
+                          pure (Left err)
+                  else pure (Right (FHandle h))
 
 ||| Check whether a file handle is actually a null pointer
 export
 validFile : File -> IO Bool
 validFile (FHandle h) = do x <- nullPtr h
-                           return (not x)
+                           pure (not x)
 
 ||| Modes for opening files
 data Mode = Read | WriteTruncate | Append | ReadWrite | ReadWriteTruncate | ReadAppend
@@ -148,8 +148,8 @@ fileSize : File -> IO (Either FileError Int)
 fileSize (FHandle h) = do s <- do_getFileSize h
                           if (s < 0) 
                              then do err <- getFileError
-                                     return (Left err)
-                             else return (Right s) 
+                                     pure (Left err)
+                             else pure (Right s)
 
 private
 do_fread : Ptr -> IO' l String
@@ -159,8 +159,8 @@ export
 fgetc : File -> IO (Either FileError Char)
 fgetc (FHandle h) = do let c = cast !(foreign FFI_C "fgetc" (Ptr -> IO Int) h)
                        if !(ferror (FHandle h))
-                          then return (Left FileReadError)
-                          else return (Right c)
+                          then pure (Left FileReadError)
+                          else pure (Right c)
 
 export
 fflush : File -> IO ()
@@ -175,8 +175,8 @@ popen : String -> Mode -> IO (Either FileError File)
 popen f m = do ptr <- do_popen f (modeStr m)
                if !(nullPtr ptr)
                   then do err <- getFileError
-                          return (Left err)
-                  else return (Right (FHandle ptr))
+                          pure (Left err)
+                  else pure (Right (FHandle ptr))
 
 export
 pclose : File -> IO ()
@@ -189,8 +189,8 @@ export
 fread : File -> IO (Either FileError String)
 fread (FHandle h) = do str <- do_fread h
                        if !(ferror (FHandle h))
-                          then return (Left FileReadError)
-                          else return (Right str)
+                          then pure (Left FileReadError)
+                          else pure (Right str)
 
 ||| Read a line from a file
 ||| @h a file handle which must be open for reading
@@ -206,10 +206,10 @@ do_fwrite h s = do res <- prim_fwrite h s
                    if (res /= 0)
                       then do errno <- getErrno
                               if errno == 0
-                                 then return (Left FileWriteError)
+                                 then pure (Left FileWriteError)
                                  else do err <- getFileError
-                                         return (Left err)
-                      else return (Right ())
+                                         pure (Left err)
+                      else pure (Right ())
 
 export
 fwrite : File -> String -> IO (Either FileError ())
@@ -236,7 +236,7 @@ do_feof h = foreign FFI_C "fileEOF" (Ptr -> IO Int) h
 export
 fEOF : File -> IO Bool
 fEOF (FHandle h) = do eof <- do_feof h
-                      return (not (eof == 0))
+                      pure (not (eof == 0))
 
 ||| Check if a file handle has reached the end
 export
@@ -248,7 +248,7 @@ feof = fEOF
 export
 fpoll : File -> IO Bool
 fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
-                       return (p > 0)
+                       pure (p > 0)
 
 ||| Read the contents of a file into a string
 ||| This checks the size of the file before beginning to read, and only
@@ -258,29 +258,29 @@ fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
 export
 readFile : (filepath : String) -> IO (Either FileError String)
 readFile fn = do Right h <- openFile fn Read
-                    | Left err => return (Left err)
+                    | Left err => pure (Left err)
                  Right max <- fileSize h
-                    | Left err => return (Left err)
+                    | Left err => pure (Left err)
                  c <- readFile' h max ""
                  closeFile h
-                 return c
+                 pure c
   where
     readFile' : File -> Int -> String -> IO (Either FileError String)
     readFile' h max contents =
        do x <- fEOF h
           if not x && max > 0
                    then do Right l <- fGetLine h
-                               | Left err => return (Left err)
+                               | Left err => pure (Left err)
                            assert_total $
                              readFile' h (max - cast (length l)) (contents ++ l)
-                   else return (Right contents)
+                   else pure (Right contents)
 
 ||| Write a string to a file
 export
 writeFile : (filepath : String) -> (contents : String) ->
             IO (Either FileError ())
 writeFile fn contents = do
-     Right h  <- openFile fn WriteTruncate | Left err => return (Left err)
-     Right () <- fPutStr h contents        | Left err => return (Left err)
+     Right h  <- openFile fn WriteTruncate | Left err => pure (Left err)
+     Right () <- fPutStr h contents        | Left err => pure (Left err)
      closeFile h
-     return (Right ())
+     pure (Right ())

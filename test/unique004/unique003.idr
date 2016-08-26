@@ -19,4 +19,4 @@ foo xs = do let f = \x : Int => showU xs -- can't build this in unique context
             putStrLn (f 10) 
             putStrLn $ free xs
             putStrLn (f 10) 
-            return ()
+            pure ()

@@ -4,7 +4,7 @@ module Prelude.Monad
 
 import Builtins
 import Prelude.Functor
-import Prelude.Applicative
+import public Prelude.Applicative
 import Prelude.Basics
 import IO
 
@@ -27,6 +27,7 @@ interface Applicative m => Monad (m : Type -> Type) where
 ||| define `return` and `pure` differently!
 return : Monad m => a -> m a
 return = pure
+%deprecate return "Please use `pure`, which is equivalent."
 
 flatten : Monad m => m (m a) -> m a
 flatten = join
@@ -36,13 +37,13 @@ flatten = join
 -- Prelude modules other than the top level.
 
 Functor (IO' ffi) where
-    map f io = io_bind io (\b => io_return (f b))
+    map f io = io_bind io (\b => io_pure (f b))
 
 Applicative (IO' ffi) where
-    pure x = io_return x
+    pure x = io_pure x
     f <*> a = io_bind f (\f' =>
                 io_bind a (\a' =>
-                  io_return (f' a')))
+                  io_pure (f' a')))
 
 
 Monad (IO' ffi) where

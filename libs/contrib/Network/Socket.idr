@@ -219,7 +219,7 @@ socket sf st pn = do
 
   if socket_res == -1
     then map Left getErrno
-    else return $ Right (MkSocket socket_res sf st pn)
+    else pure $ Right (MkSocket socket_res sf st pn)
 
 ||| Close a socket
 export
@@ -245,7 +245,7 @@ bind sock addr port = do
                   (toCode $ socketType sock) (saString addr) port
   if bind_res == (-1)
     then getErrno
-    else return 0
+    else pure 0
 
 ||| Connects to a given address and port.
 ||| Returns 0 on success, and an error number on error.
@@ -261,7 +261,7 @@ connect sock addr port = do
 
   if conn_res == (-1)
     then getErrno
-    else return 0
+    else pure 0
 
 ||| Listens on a bound socket.
 |||
@@ -273,7 +273,7 @@ listen sock = do
                     (descriptor sock) BACKLOG
   if listen_res == (-1)
     then getErrno
-    else return 0
+    else pure 0
 
 ||| Parses a textual representation of an IPv4 address into a SocketAddress
 parseIPv4 : String -> SocketAddress
@@ -305,9 +305,9 @@ getSockAddr (SAPtr ptr) = do
                            (Ptr -> IO String)
                            ptr
 
-      return $ parseIPv4 ipv4_addr
-    Just AF_INET6 => return IPv6Addr
-    Just AF_UNSPEC => return InvalidAddress)
+      pure $ parseIPv4 ipv4_addr
+    Just AF_INET6 => pure IPv6Addr
+    Just AF_UNSPEC => pure InvalidAddress)
 
 ||| Accept a connection on the provided socket.
 |||
@@ -337,7 +337,7 @@ accept sock = do
       let (MkSocket _ fam ty p_num) = sock
       sockaddr <- getSockAddr (SAPtr sockaddr_ptr)
       sockaddr_free (SAPtr sockaddr_ptr)
-      return $ Right ((MkSocket accept_res fam ty p_num), sockaddr)
+      pure $ Right ((MkSocket accept_res fam ty p_num), sockaddr)
 
 ||| Send data on the specified socket.
 |||
@@ -357,7 +357,7 @@ send sock dat = do
 
   if send_res == (-1)
     then map Left getErrno
-    else return $ Right send_res
+    else pure $ Right send_res
 
 freeRecvStruct : RecvStructPtr -> IO ()
 freeRecvStruct (RSPtr p) =
@@ -400,18 +400,18 @@ recv sock len = do
     then do
       errno <- getErrno
       freeRecvStruct (RSPtr recv_struct_ptr)
-      return $ Left errno
+      pure $ Left errno
     else
       if recv_res == 0
         then do
            freeRecvStruct (RSPtr recv_struct_ptr)
-           return $ Left 0
+           pure $ Left 0
         else do
            payload <- foreign FFI_C "idrnet_get_recv_payload"
                              (Ptr -> IO String)
                              recv_struct_ptr
            freeRecvStruct (RSPtr recv_struct_ptr)
-           return $ Right (payload, recv_res)
+           pure $ Right (payload, recv_res)
 
 ||| Sends the data in a given memory location
 |||
@@ -432,7 +432,7 @@ sendBuf sock (BPtr ptr) len = do
 
   if send_res == (-1)
    then map Left getErrno
-   else return $ Right send_res
+   else pure $ Right send_res
 
 ||| Receive data from a given memory location.
 |||
@@ -453,7 +453,7 @@ recvBuf sock (BPtr ptr) len = do
 
   if (recv_res == (-1))
     then map Left getErrno
-    else return $ Right recv_res
+    else pure $ Right recv_res
 
 ||| Send a message.
 |||
@@ -477,7 +477,7 @@ sendTo sock addr p dat = do
 
   if sendto_res == (-1)
     then map Left getErrno
-    else return $ Right sendto_res
+    else pure $ Right sendto_res
 
 ||| Send a message stored in some buffer.
 |||
@@ -502,7 +502,7 @@ sendToBuf sock addr p (BPtr dat) len = do
 
   if sendto_res == (-1)
     then map Left getErrno
-    else return $ Right sendto_res
+    else pure $ Right sendto_res
 
 ||| Utility function to get the payload of the sent message as a `String`.
 foreignGetRecvfromPayload : RecvfromStructPtr -> IO String
@@ -528,7 +528,7 @@ foreignGetRecvfromPort (RFPtr p) = do
   port         <- foreign FFI_C "idrnet_sockaddr_ipv4_port"
                           (Ptr -> IO Int)
                           sockaddr_ptr
-  return port
+  pure port
 
 
 ||| Receive a message.
@@ -568,7 +568,7 @@ recvFrom sock bl = do
           port <- foreignGetRecvfromPort recv_ptr'
           addr <- foreignGetRecvfromAddr recv_ptr'
           freeRecvfromStruct recv_ptr'
-          return $ Right (MkUDPAddrInfo addr port, payload, result)
+          pure $ Right (MkUDPAddrInfo addr port, payload, result)
 
 ||| Receive a message placed on a 'known' buffer.
 |||
@@ -606,6 +606,6 @@ recvFromBuf sock (BPtr ptr) bl = do
           port <- foreignGetRecvfromPort recv_ptr'
           addr <- foreignGetRecvfromAddr recv_ptr'
           freeRecvfromStruct recv_ptr'
-          return $ Right (MkUDPAddrInfo addr port, result + 1)
+          pure $ Right (MkUDPAddrInfo addr port, result + 1)
 
 -- --------------------------------------------------------------------- [ EOF ]

@@ -42,7 +42,7 @@ isElem x (y :: xs) with (decEq x y)
 ||| @xs The list to be removed from
 ||| @p A proof that the element to be removed is in the list
 dropElem : (xs : List a) -> (p : Elem x xs) -> List a
-dropElem (x :: ys) Here = ys 
+dropElem (x :: ys) Here = ys
 dropElem (x :: ys) (There p) = x :: dropElem ys p
 
 ||| The intersectBy function returns the intersect of two lists by user-supplied equality predicate.

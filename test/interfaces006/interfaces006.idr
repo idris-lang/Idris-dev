@@ -10,7 +10,7 @@ interface Category c => Functor (c: k -> k -> Type) (f: k -> k) where
 
 infixr 1 =<<
 interface Functor c m => Monad (c: k -> k -> Type) (m: k -> k) where
-  return: c x (m x)
+  pure: c x (m x)
   join: c (m (m x)) (m x)
   (=<<) : c x (m y) -> c (m x) (m y)
 

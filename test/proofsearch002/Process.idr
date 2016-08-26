@@ -347,7 +347,7 @@ removeConn cl acc (x :: xs) = removeConn cl (x :: acc) xs
 getRequest :  EvalState iface hs -> Maybe (Ptr, (ty ** (Nat, iface ty)), EvalState iface hs)
 getRequest (MkEvalState queue reply clients nh) 
      = do (pid, req, queue') <- removeReq [] queue
-          return (pid, req, MkEvalState queue' reply clients nh)
+          pure (pid, req, MkEvalState queue' reply clients nh)
 
 countClients : EvalState iface hs -> (Nat, EvalState iface hs)
 countClients (MkEvalState queue reply clients nh) 

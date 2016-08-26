@@ -33,13 +33,13 @@ stealBindings : Raw -> (nsubst : TTName -> Maybe TTName) -> Elab (List (TTName, 
 stealBindings (RBind n b tm) nsubst =
   do n' <- nameFrom n
      (bindings, result) <- stealBindings tm (extend nsubst n n')
-     return ((n', map (alphaRaw nsubst) b) :: bindings, result)
-stealBindings tm nsubst = return ([], alphaRaw nsubst tm)
+     pure ((n', map (alphaRaw nsubst) b) :: bindings, result)
+stealBindings tm nsubst = pure ([], alphaRaw nsubst tm)
 
 ||| Get the last element of a list. Fail on empty lists.
 last : List a -> Elab a
 last [] = fail [TextPart "Unexpected empty list"]
-last [x] = return x
+last [x] = pure x
 last (_::x::xs) = last (x::xs)
 
 ||| Grab the binders from around a term, assuming that they have been
@@ -110,10 +110,10 @@ elabPatternClause lhs rhs =
         | fail [TextPart "Couldn't infer type of left-hand pattern"]
      rhsTm <- runElab (bindPatTys pvars rhsTy) $
                 do -- Introduce all the pattern variables from the LHS
-                   repeatUntilFail bindPat <|> return ()
+                   repeatUntilFail bindPat <|> pure ()
                    rhs
      realRhs <- forget (fst rhsTm)
-     return $ MkFunClause (bindPats pvars lhsTm) realRhs
+     pure $ MkFunClause (bindPats pvars lhsTm) realRhs
 
 ||| Introduce a unique binder name, returning it
 intro1 : Elab TTName
@@ -121,7 +121,7 @@ intro1 = do g <- snd <$> getGoal
             case g of
               Bind n (Pi _ _) _ => do n' <- nameFrom n
                                       intro n'
-                                      return n'
+                                      pure n'
               _ => fail [ TextPart "Can't intro1 because goal"
                         , TermPart g
                         , TextPart "isn't a function type."]
@@ -134,13 +134,13 @@ doTimes (S k) x = [| x :: (doTimes k x) |]
 
 ||| Zip two lists, failing if their lengths don't match.
 zipH : List a -> List b -> Elab (List (a, b))
-zipH [] [] = return []
+zipH [] [] = pure []
 zipH (x::xs) (y::ys) = ((x, y) ::) <$> zipH xs ys
 zipH _ _ = fail [TextPart "length mismatch"]
 
 unsafeNth : Nat -> List a -> Elab a
 unsafeNth _     []        = fail [TextPart "Ran out of list elements"]
-unsafeNth Z     (x :: _)  = return x
+unsafeNth Z     (x :: _)  = pure x
 unsafeNth (S k) (_ :: xs) = unsafeNth k xs
 
 

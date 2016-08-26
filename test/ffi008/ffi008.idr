@@ -35,12 +35,12 @@ main : IO ()
 main = do
     printLn $ sizeOf test1 == !size1
     printLn $ sizeOf test2 == !size2
-    fms <- return $ (test2#0) !mystruct
+    fms <- pure $ (test2#0) !mystruct
     poke I32 fms 122
     print_mystruct
     printLn $ fields test3
     withAlloc test2 $ \p => do
-        f1 <- return $ (test2 # 0) p
+        f1 <- pure $ (test2 # 0) p
         poke I32 f1 8
         update I32 f1 (* 2)
         print !(peek I32 f1)

@@ -36,5 +36,5 @@ locally newst prog = do st <- get
                         putM newst
                         val <- prog
                         putM st
-                        return val
+                        pure val
 

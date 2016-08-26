@@ -253,7 +253,7 @@ namespace Tactics
   export
   lookupTyExact : TTName -> Elab (TTName, NameType, TT)
   lookupTyExact n = case !(lookupTy n) of
-                      [res] => return res
+                      [res] => pure res
                       []    => fail [NamePart n, TextPart "is not defined."]
                       xs    => fail [NamePart n, TextPart "is ambiguous."]
 
@@ -269,7 +269,7 @@ namespace Tactics
   export
   lookupDatatypeExact : TTName -> Elab Datatype
   lookupDatatypeExact n = case !(lookupDatatype n) of
-                            [res] => return res
+                            [res] => pure res
                             []    => fail [TextPart "No datatype named", NamePart n]
                             xs    => fail [TextPart "More than one datatype named", NamePart n]
 
@@ -285,7 +285,7 @@ namespace Tactics
   export
   lookupFunDefnExact : TTName -> Elab (FunDefn TT)
   lookupFunDefnExact n = case !(lookupFunDefn n) of
-                           [res] => return res
+                           [res] => pure res
                            []    => fail [TextPart "No function named", NamePart n]
                            xs    => fail [TextPart "More than one function named", NamePart n]
 
@@ -299,7 +299,7 @@ namespace Tactics
   export
   lookupArgsExact : TTName -> Elab (TTName, List FunArg, Raw)
   lookupArgsExact n = case !(lookupArgs n) of
-                        [res] => return res
+                        [res] => pure res
                         []    => fail [NamePart n, TextPart "is not defined."]
                         xs    => fail [NamePart n, TextPart "is ambiguous."]
 

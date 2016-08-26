@@ -23,7 +23,7 @@ checkMsgs : IO Bool
 checkMsgs = do msgs <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Ptr)
                             prim__vm
                null <- nullPtr msgs
-               return (not null)
+               pure (not null)
 
 ||| Check for messages in the process inbox
 ||| If no messages, waits for the given number of seconds
@@ -32,7 +32,7 @@ checkMsgsTimeout timeout
           = do msgs <- foreign FFI_C "idris_checkMessagesTimeout" 
                             (Ptr -> Int -> IO Ptr) prim__vm timeout
                null <- nullPtr msgs
-               return (not null)
+               pure (not null)
 
 private
 sender : Ptr -> IO Ptr
@@ -61,7 +61,7 @@ checkMsgsFrom sender channel
   = do msgs <- foreign FFI_C "idris_checkMessagesFrom" (Ptr -> Int -> Ptr -> IO Ptr)
                              prim__vm channel sender
        null <- nullPtr msgs
-       return (not null)
+       pure (not null)
 
 ||| Check inbox for messages. If there are none, blocks until a message
 ||| arrives.
@@ -71,7 +71,7 @@ getMsg : IO a
 getMsg {a} = do m <- foreign FFI_C "idris_recvMessage" 
                              (Ptr -> IO Ptr) prim__vm
                 MkRaw x <- foreign FFI_C "idris_getMsg" (Ptr -> IO (Raw a)) m
-                return x
+                pure x
 
 ||| Check inbox for messages. If there are none, blocks until a message
 ||| arrives. Return triple of sender's ID, channel ID, and the message.
@@ -85,7 +85,7 @@ getMsgWithSender {a}
                 vm <- sender m
                 chan <- channel_id m
                 foreign FFI_C "idris_freeMsg" (Ptr -> IO ()) m
-                return (vm, chan, x)
+                pure (vm, chan, x)
 
 ||| Check inbox for messages on a particular channel. If there are none,
 ||| blocks until a message arrives. Returns `Nothing` if the sender isn't

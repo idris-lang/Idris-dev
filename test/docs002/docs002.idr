@@ -4,8 +4,8 @@ module Main
 %language TypeProviders
 
 getType : Int -> IO (Provider Type)
-getType 0 = return (Provide Int)
-getType _ = return (Provide Bool)
+getType 0 = pure (Provide Int)
+getType _ = pure (Provide Bool)
 
 ||| Some documentation
 %provide (T1 : Type) with getType 0

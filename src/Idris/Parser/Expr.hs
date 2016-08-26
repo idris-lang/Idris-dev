@@ -1287,7 +1287,7 @@ listExpr syn = do (FC f (l, c) _) <- getFC
                                qs <- sepBy1 (do_ syn) (lchar ',')
                                lchar ']'
                                return (PDoBlock (map addGuard qs ++
-                                          [DoExp fc (PApp fc (PRef fc [] (sUN "return"))
+                                          [DoExp fc (PApp fc (PRef fc [] (sUN "pure"))
                                                        [pexp x])]))) <|>
                             (do xs <- many (do (FC fn (sl, sc) _) <- getFC
                                                lchar ',' <?> "list element"

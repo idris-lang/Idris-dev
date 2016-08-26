@@ -27,7 +27,7 @@ getInjectivity cn = exists <|> declare
   where exists : Elab TTName
         exists = do (fn, Ref, _) <- lookupTyExact (injName cn)
                       | (fn, _, _) => fail [TextPart "Bad earlier declaration of", NamePart fn]
-                    return fn
+                    pure fn
 
         covering
         declare : Elab TTName
@@ -73,7 +73,7 @@ getInjectivity cn = exists <|> declare
                                  search -- rhs is conjunction of Refls
                      defineFunction $
                        DefineFun fn [clause]
-                     return fn
+                     pure fn
 
 countBinders : TT -> Nat
 countBinders (Bind _ _ body) = S (countBinders body)

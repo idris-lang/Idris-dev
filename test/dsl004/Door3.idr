@@ -18,13 +18,13 @@ data DoorCmd : AnyType -> AnyType where
      Close : DoorH OPEN -> DoorCmd (DoorH CLOSED)
 
 data DoorLang : AnyType -> AnyType where
-     Return : {a : AnyType} -> a -> DoorLang a
+     Pure : {a : AnyType} -> a -> DoorLang a
      Action : DoorCmd a -> DoorLang a
      (>>=) : DoorLang a -> (a -> DoorLang b) -> DoorLang b
 
 testProg : DoorH CLOSED -> DoorLang (DoorH CLOSED)
 testProg h = do h <- Action (Knock h)
                 (True @@ h) <- Action (Open h) 
-                   | (False @@ h) => Return h
+                   | (False @@ h) => Pure h
                 Action (Close h)
 

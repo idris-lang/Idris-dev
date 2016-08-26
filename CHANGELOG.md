@@ -28,6 +28,8 @@
 * `natEnumFromThen` and `natEnumFromTo` have been updated to correctly calculate reverse ranges. Range syntax `[a,b..c]` now can be used again to generate reverse ranges.
 * `divBN` and `modBN` now can only be used for unsigned numbers.
 
+* `return`, which has been an alias for `pure` for many releases, is now deprecated.
+
 ## Tool updates
 
 * Idris' documentation system now displays the documentation for auto

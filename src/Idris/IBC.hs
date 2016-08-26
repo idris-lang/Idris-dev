@@ -49,7 +49,7 @@ import Codec.Archive.Zip
 import Debug.Trace
 
 ibcVersion :: Word16
-ibcVersion = 147
+ibcVersion = 148
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -1853,8 +1853,6 @@ instance Binary PTerm where
                 PIdiom x1 x2 -> do putWord8 27
                                    put x1
                                    put x2
-                PReturn x1 -> do putWord8 28
-                                 put x1
                 PMetavar x1 x2 -> do putWord8 29
                                      put x1
                                      put x2
@@ -2006,8 +2004,6 @@ instance Binary PTerm where
                    27 -> do x1 <- get
                             x2 <- get
                             return (PIdiom x1 x2)
-                   28 -> do x1 <- get
-                            return (PReturn x1)
                    29 -> do x1 <- get
                             x2 <- get
                             return (PMetavar x1 x2)
@@ -2450,7 +2446,7 @@ instance Binary Syntax where
                    _ -> error "Corrupted binary data for Syntax"
 
 instance (Binary t) => Binary (DSL' t) where
-        put (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)
+        put (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9)
           = do put x1
                put x2
                put x3
@@ -2460,7 +2456,6 @@ instance (Binary t) => Binary (DSL' t) where
                put x7
                put x8
                put x9
-               put x10
         get
           = do x1 <- get
                x2 <- get
@@ -2471,8 +2466,7 @@ instance (Binary t) => Binary (DSL' t) where
                x7 <- get
                x8 <- get
                x9 <- get
-               x10 <- get
-               return (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)
+               return (DSL x1 x2 x3 x4 x5 x6 x7 x8 x9)
 
 instance Binary SSymbol where
         put x

@@ -2275,7 +2275,6 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PTactics _) _ = return []
     match (PResolveTC _) (PResolveTC _) = return []
     match (PTrue _ _) (PTrue _ _) = return []
-    match (PReturn _) (PReturn _) = return []
     match (PPi _ _ _ t s) (PPi _ _ _ t' s') = do mt <- match' t t'
                                                  ms <- match' s s'
                                                  return (mt ++ ms)

@@ -6,7 +6,7 @@ module Main
 
 -- Provide the Unit type
 goodProvider : IO (Provider Type)
-goodProvider = return (Provide (the Type ()))
+goodProvider = pure (Provide (the Type ()))
 
 %provide (Unit' : Type) with goodProvider
 
@@ -15,7 +15,7 @@ foo = ()
 
 -- Always fail
 badProvider : IO (Provider Type)
-badProvider = return (Error "Always fails")
+badProvider = pure (Error "Always fails")
 
 %provide (t : Type) with badProvider
 

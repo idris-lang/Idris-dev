@@ -15,7 +15,7 @@ implementation Category Morphism where
   (Mor f) . (Mor g) = with Basics (Mor (f . g))
 
 implementation Monad m => Category (Kleislimorphism m) where
-  id                        = Kleisli (return . id)
+  id                        = Kleisli (pure . id)
   (Kleisli f) . (Kleisli g) = Kleisli $ \a => g a >>= f
 
 infixr 1 >>>

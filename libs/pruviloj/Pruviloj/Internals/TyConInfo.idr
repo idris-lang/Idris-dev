@@ -51,14 +51,14 @@ alphaTyConInfo ren (MkTyConInfo (tcArg::tcArgs) res) =
   in MkTyConInfo (tcArg'::tcArgs') res'
 
 getTyConInfo' : List TyConArg -> Raw -> (TTName -> Maybe TTName) -> Elab TyConInfo
-getTyConInfo' [] res _ = return (MkTyConInfo [] res)
+getTyConInfo' [] res _ = pure (MkTyConInfo [] res)
 getTyConInfo' (tcArg::tcArgs) res ren =
   do let n = tyConArgName tcArg
      n' <- nameFrom n
      let ren' = extend ren n n'
      -- n' is globally unique so we don't worry about scope
      next <- getTyConInfo' tcArgs (RApp res (Var n')) ren'
-     return $ alphaTyConInfo ren' $
+     pure $ alphaTyConInfo ren' $
        record {args = setTyConArgName tcArg n' :: args next} next
 
 getTyConInfo : List TyConArg -> Raw -> Elab TyConInfo
@@ -68,14 +68,14 @@ getTyConInfo args res = getTyConInfo' args res (const Nothing)
 processCtorArgs : TyConInfo -> (TTName, List CtorArg, Raw) -> Elab (TTName, List CtorArg, Raw)
 processCtorArgs info (cn, cargs, resTy) =
     do (args', ty') <- convert' (const Nothing) cargs resTy info
-       return (cn, args', ty')
+       pure (cn, args', ty')
   where
     ||| Find the name that was assigned to a given parameter
     ||| by comparing positions in the TyConInfo
     findParam : TTName -> List Raw -> List TyConArg -> Elab TTName
     findParam paramN (Var n :: args) (TyConParameter a :: tcArgs) =
       if n == paramN
-        then return (name a)
+        then pure (name a)
         else findParam paramN args tcArgs
     findParam paramN (_ :: args) (_ :: tcArgs) =
       findParam paramN args tcArgs
@@ -87,7 +87,7 @@ processCtorArgs info (cn, cargs, resTy) =
     convert' : (TTName -> Maybe TTName) ->
                List CtorArg -> Raw ->
                TyConInfo -> Elab (List CtorArg, Raw)
-    convert' subst [] ty info = return ([], alphaRaw subst ty)
+    convert' subst [] ty info = pure ([], alphaRaw subst ty)
     convert' subst (CtorField a :: args) ty info =
       do n' <- nameFrom (name a)
          let a' = record {
@@ -96,7 +96,7 @@ processCtorArgs info (cn, cargs, resTy) =
                   } a
          let subst' = extend subst (name a) n'
          (args', ty') <- convert' subst' args ty info
-         return (CtorField a' :: args', ty')
+         pure (CtorField a' :: args', ty')
     convert' subst (CtorParameter a :: ctorArgs) ty info =
       do n' <- findParam (name a) (snd (unApply ty)) (args info)
          let a' = record {
@@ -105,4 +105,4 @@ processCtorArgs info (cn, cargs, resTy) =
                   } a
          let subst' = extend subst (name a) n'
          (args', ty') <- convert' subst' ctorArgs ty info
-         return (CtorParameter a' :: args', ty')
+         pure (CtorParameter a' :: args', ty')

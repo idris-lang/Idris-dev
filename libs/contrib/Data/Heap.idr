@@ -173,5 +173,5 @@ main = do
   _ <- printLn $ main.sort [10, 3, 7, 2, 9, 1, 8, 0, 6, 4, 5]
   _ <- printLn $ main.sort ["orange", "apple", "pear", "lime", "durian"]
   _ <- printLn $ main.sort [("jim", 19, "cs"), ("alice", 20, "english"), ("bob", 50, "engineering")]
-  return ()
+  pure ()
 -}

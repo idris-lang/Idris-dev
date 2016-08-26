@@ -30,7 +30,7 @@ getDisjointness l r = exists <|> declare
 
   where exists : Elab TTName
         exists = do (yep, _, _) <- lookupTyExact (disjointName l r)
-                    return yep
+                    pure yep
 
         notConstructor : TTName -> Elab a
         notConstructor c = fail [NamePart c, TextPart "is not a constructor"]
@@ -58,7 +58,7 @@ getDisjointness l r = exists <|> declare
                      h <- gensym "h"
                      declareType $ Declare fn (args ++ [MkFunArg h eq Explicit NotErased]) `(Void)
                      defineFunction $ DefineFun fn []
-                     return fn
+                     pure fn
 
 ----------------------
 -- PUBLIC INTERFACE --

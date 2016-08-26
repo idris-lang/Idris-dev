@@ -22,10 +22,10 @@ extractList t = Just t -- Nothing
 total
 has2elts : Err -> Maybe (List ErrorReportPart)
 has2elts (CantSolveGoal tm _) = do lst <- extractList tm
-                                   return [ TextPart "Could not prove that"
-                                          , TermPart lst
-                                          , TextPart "has at least two elements."
-                                          ]
+                                   pure [ TextPart "Could not prove that"
+                                        , TermPart lst
+                                        , TextPart "has at least two elements."
+                                        ]
 has2elts e = Just [TextPart (show e)]
 
 %error_handlers cadr cons1 has2elts

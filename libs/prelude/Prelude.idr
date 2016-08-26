@@ -50,7 +50,7 @@ decAsBool (No _)  = False
 ---- Functor implementations
 
 Functor PrimIO where
-    map f io = prim_io_bind io (prim_io_return . f)
+    map f io = prim_io_bind io (prim_io_pure . f)
 
 Functor Maybe where
     map f (Just x) = Just (f x)
@@ -63,9 +63,9 @@ Functor (Either e) where
 ---- Applicative implementations
 
 Applicative PrimIO where
-    pure = prim_io_return
+    pure = prim_io_pure
 
-    am <*> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_return . f))
+    am <*> bm = prim_io_bind am (\f => prim_io_bind bm (prim_io_pure . f))
 
 Applicative Maybe where
     pure = Just
@@ -252,19 +252,19 @@ namespace JSNull
   partial
   nullPtr : Ptr -> JS_IO Bool
   nullPtr p = do ok <- foreign FFI_JS "isNull" (Ptr -> JS_IO Int) p
-                 return (ok /= 0)
+                 pure (ok /= 0)
 
   ||| Check if a supposed string was actually a null pointer
   partial
   nullStr : String -> JS_IO Bool
   nullStr p = do ok <- foreign FFI_JS "isNull" (String -> JS_IO Int) p
-                 return (ok /= 0)
+                 pure (ok /= 0)
 
 
 ||| Pointer equality
 eqPtr : Ptr -> Ptr -> IO Bool
 eqPtr x y = do eq <- foreign FFI_C "idris_eqPtr" (Ptr -> Ptr -> IO Int) x y
-               return (eq /= 0)
+               pure (eq /= 0)
 
 ||| Loop while some test is true
 |||
@@ -275,7 +275,7 @@ while : (test : IO' l Bool) -> (body : IO' l ()) -> IO' l ()
 while t b = do v <- t
                if v then do b
                             while t b
-                    else return ()
+                    else pure ()
 
 ------- Some error rewriting
 

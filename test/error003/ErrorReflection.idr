@@ -47,7 +47,7 @@ reifyTy : TT -> Maybe Ty'
 reifyTy (P (DCon _ _) (NS (UN "TUnit") _) _) = Just TUnit
 reifyTy (App (App (P (DCon _ _) (NS (UN "TFun") _) _) t1) t2) = do ty1 <- reifyTy t1
                                                                    ty2 <- reifyTy t2
-                                                                   return $ TFun ty1 ty2
+                                                                   pure $ TFun ty1 ty2
 reifyTy (P _ (MN i n) _) = Just (TVar i n)
 reifyTy _ = Nothing
 

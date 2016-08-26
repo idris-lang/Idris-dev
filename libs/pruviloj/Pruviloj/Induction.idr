@@ -63,12 +63,12 @@ mutual
 
 generalize : (hint : String) -> (ctxt, subject : Raw) -> Elab (TTName, Raw)
 generalize hint ctxt subj = do n <- gensym hint
-                               return (n, !(gen' n ctxt subj))
+                               pure (n, !(gen' n ctxt subj))
   where
     mutual
       gen' : TTName -> Raw -> Raw -> Elab Raw
       gen' var outer inner = if alphaEqual (const Nothing) outer inner
-                               then return (Var var)
+                               then pure (Var var)
                                else breakAndRecurse var outer inner
 
       genB : TTName -> Binder Raw -> Raw -> Elab (Binder Raw)
@@ -87,10 +87,10 @@ generalize hint ctxt subj = do n <- gensym hint
           do n' <- nameFrom n
              b' <- genB var b inner
              body' <- gen' var (alphaRaw (rename n n') tm) inner
-             return $ RBind n' b' body'
+             pure $ RBind n' b' body'
       breakAndRecurse var (RApp tm tm') inner =
           [| RApp (gen' var tm inner) (gen' var tm' inner) |]
-      breakAndRecurse var other inner = return other
+      breakAndRecurse var other inner = pure other
 
 
 countBinders : TT -> Nat
@@ -105,7 +105,7 @@ indexVals tm info =
      let argsTogether = zip tyArgs (args info)
      (argVal, TyConIndex _) <- argsTogether
              | _ => empty
-     return argVal
+     pure argVal
 
 makeMotive : (info : TyConInfo) -> (subj, subjTy, goal : Raw) -> Elab ()
 makeMotive info sub subjTy goal =
@@ -154,4 +154,4 @@ induction subj =
               motiveH <- unsafeNth (length (args info) + 1) argHoles
               focus motiveH; makeMotive info subj ty' g
 
-              return (drop (2 + length (tyConArgs tydef)) argHoles)
+              pure (drop (2 + length (tyConArgs tydef)) argHoles)

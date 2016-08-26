@@ -1,7 +1,7 @@
 module Main
 
 forLoop : List a -> (a -> IO ()) -> IO ()
-forLoop [] f = return ()
+forLoop [] f = pure ()
 forLoop (x :: xs) f = do f x
                          forLoop xs f
 

@@ -106,7 +106,7 @@ perfLog : PMetrics -> String -> IO ()
 perfLog res msg =
     if livePerf res
       then putStrLn $ unwords ["PERF:", msg]
-      else return ()
+      else pure ()
 
 -- ------------------------------------------------------- [ Effect Definition ]
 

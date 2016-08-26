@@ -22,14 +22,14 @@ getEnv key = do
 setEnv : String -> String -> IO Bool
 setEnv key value = do
   ok <- foreign FFI_C "setenv" (String -> String -> Int -> IO Int) key value 1
-  return (ok == 0)
+  pure (ok == 0)
 
 ||| Unsets an environment variable.
 ||| Returns true if the variable was able to be unset.
 unsetEnv : String -> IO Bool
 unsetEnv key = do
   ok <- foreign FFI_C "unsetenv" (String -> IO Int) key
-  return (ok == 0)
+  pure (ok == 0)
 
 getEnvironment : IO (List (String, String))
 getEnvironment = getAllPairs 0 []
@@ -49,7 +49,7 @@ getEnvironment = getAllPairs 0 []
       envPair <- getEnvPair n
       is_nil  <- nullStr envPair
       if is_nil
-         then return $ reverse $ map splitEq acc
+         then pure $ reverse $ map splitEq acc
          else getAllPairs (n + 1) (envPair :: acc)
 
 ||| Quit with a particular exit code
@@ -59,7 +59,7 @@ exit code = foreign FFI_C "exit" (Int -> IO ()) code
 ||| Get the numbers of seconds since 1st January 1970, 00:00 UTC 
 time : IO Integer
 time = do MkRaw t <- foreign FFI_C "idris_time" (IO (Raw Integer))
-          return t
+          pure t
 
 usleep : Int -> IO ()
 usleep i = foreign FFI_C "usleep" (Int -> IO ()) i
