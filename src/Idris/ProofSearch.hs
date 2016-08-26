@@ -101,7 +101,7 @@ trivialTCs ok elab ist
 
         tcArg env ty
            | (P _ n _, args) <- unApply (getRetTy (normalise (tt_ctxt ist) env ty))
-                 = case lookupCtxtExact n (idris_classes ist) of
+                 = case lookupCtxtExact n (idris_interfaces ist) of
                         Just _ -> True
                         _ -> False
            | otherwise = False
@@ -412,13 +412,13 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
 
     -- returns Just hs if okay, where hs are holes which are okay in the
     -- goal, or Nothing if not okay to proceed
-    tcArgsOK ty hs | (P _ nc _, as) <- unApply (getRetTy ty), nc == numclass && defaultOn
+    tcArgsOK ty hs | (P _ nc _, as) <- unApply (getRetTy ty), nc == numinterface && defaultOn
        = Just []
     tcArgsOK ty hs -- if any determining arguments are metavariables, postpone
        = let (f, as) = unApply (getRetTy ty) in
              case f of
-                  P _ cn _ -> case lookupCtxtExact cn (idris_classes ist) of
-                                   Just ci -> tcDetArgsOK 0 (class_determiners ci) hs as
+                  P _ cn _ -> case lookupCtxtExact cn (idris_interfaces ist) of
+                                   Just ci -> tcDetArgsOK 0 (interface_determiners ci) hs as
                                    Nothing -> if any (isMeta hs) as
                                                  then Nothing
                                                  else Just []
@@ -451,9 +451,9 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
        | Constant _ <- c = not (n `elem` hs)
     notHole _ _ = True
 
-    numclass = sNS (sUN "Num") ["Interfaces","Prelude"]
+    numinterface = sNS (sUN "Num") ["Interfaces","Prelude"]
 
-    addDefault t num@(P _ nc _) [P Bound a _] | nc == numclass && defaultOn
+    addDefault t num@(P _ nc _) [P Bound a _] | nc == numinterface && defaultOn
         = do focus a
              fill (RConstant (AType (ATInt ITBig))) -- default Integer
              solve
@@ -525,7 +525,7 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
 findInstances :: IState -> Term -> [Name]
 findInstances ist t
     | (P _ n _, _) <- unApply (getRetTy t)
-        = case lookupCtxt n (idris_classes ist) of
+        = case lookupCtxt n (idris_interfaces ist) of
             [CI _ _ _ _ _ ins _] ->
               [n | (n, True) <- ins, accessible n]
             _ -> []

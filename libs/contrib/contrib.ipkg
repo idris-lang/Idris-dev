@@ -9,7 +9,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Control.Isomorphism.Primitives,
           Control.Partial,
 
-          Classes.Verified,
+          Interfaces.Verified,
 
           Data.Fun, Data.Rel,
           Data.Hash,

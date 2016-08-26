@@ -1,6 +1,6 @@
 module Default
 
-class Default a where
+interface Default a where
     default : a
 
 instance Default Int where

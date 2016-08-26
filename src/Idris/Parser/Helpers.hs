@@ -713,8 +713,8 @@ collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
 collect (POpenInterfaces f ns ps : ds) = POpenInterfaces f ns (collect ps) : collect ds
 collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
 collect (PNamespace ns fc ps : ds) = PNamespace ns fc (collect ps) : collect ds
-collect (PClass doc f s cs n nfc ps pdocs fds ds cn cd : ds')
-    = PClass doc f s cs n nfc ps pdocs fds (collect ds) cn cd : collect ds'
+collect (PInterface doc f s cs n nfc ps pdocs fds ds cn cd : ds')
+    = PInterface doc f s cs n nfc ps pdocs fds (collect ds) cn cd : collect ds'
 collect (PInstance doc argDocs f s cs pnames acc opts n nfc ps pextra t en ds : ds')
     = PInstance doc argDocs f s cs pnames acc opts n nfc ps pextra t en (collect ds) : collect ds'
 collect (d : ds) = d : collect ds

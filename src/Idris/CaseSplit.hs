@@ -401,8 +401,8 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> Idris String
 getClause l fn un fp
     = do i <- getIState
-         case lookupCtxt un (idris_classes i) of
-              [c] -> return (mkClassBodies i (class_methods c))
+         case lookupCtxt un (idris_interfaces i) of
+              [c] -> return (mkInterfaceBodies i (interface_methods c))
               _ -> do ty_in <- getInternalApp fp l
                       let ty = case ty_in of
                                     PTyped n t -> t
@@ -436,8 +436,8 @@ getClause l fn un fp
                                                           sUN "z"]) used
 
          -- write method declarations, indent with 4 spaces
-         mkClassBodies :: IState -> [(Name, (Bool, FnOpts, PTerm))] -> String
-         mkClassBodies i ns
+         mkInterfaceBodies :: IState -> [(Name, (Bool, FnOpts, PTerm))] -> String
+         mkInterfaceBodies i ns
              = showSep "\n"
                   (zipWith (\(n, (_, _, ty)) m -> "    " ++
                             def (show (nsroot n)) ++ " "

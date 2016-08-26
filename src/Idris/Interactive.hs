@@ -349,10 +349,10 @@ makeLemma fn updatefile l n
         if (not isProv) then do
             let skip = guessImps i (tt_ctxt i) mty
             let impty = stripMNBind skip margs (delab i mty)
-            let classes = guessClasses i (tt_ctxt i) [] (allNamesIn impty) mty
+            let interfaces = guessInterfaces i (tt_ctxt i) [] (allNamesIn impty) mty
 
             let lem = show n ++ " : " ++
-                            constraints i classes mty ++
+                            constraints i interfaces mty ++
                             showTmOpts (defaultPPOption { ppopt_pinames = True })
                                        impty
             let lem_app = guessBrackets False tyline (show n) (show n ++ appArgs skip margs mty)
@@ -434,7 +434,7 @@ makeLemma fn updatefile l n
         guessImps ist ctxt (Bind n (Pi _ ty _) sc)
            | guarded ctxt n (substV (P Bound n Erased) sc)
                 = n : guessImps ist ctxt sc
-           | isClass ist ty
+           | isInterface ist ty
                 = n : guessImps ist ctxt sc
            | paramty ty = n : guessImps ist ctxt sc
            | ignoreName n = n : guessImps ist ctxt sc
@@ -450,13 +450,13 @@ makeLemma fn updatefile l n
                             "_aX" -> True
                             _ -> False
 
-        guessClasses :: IState -> Context -> [Name] -> [Name] -> Term -> [Name]
-        guessClasses ist ctxt binders usednames (Bind n (Pi _ ty _) sc)
-           | isParamClass ist ty && any (\x -> elem x usednames)
-                                        (paramNames binders ty)
-                = n : guessClasses ist ctxt (n : binders) usednames sc
-           | otherwise = guessClasses ist ctxt (n : binders) usednames sc
-        guessClasses ist ctxt _ _ _ = []
+        guessInterfaces :: IState -> Context -> [Name] -> [Name] -> Term -> [Name]
+        guessInterfaces ist ctxt binders usednames (Bind n (Pi _ ty _) sc)
+           | isParamInterface ist ty && any (\x -> elem x usednames)
+                                            (paramNames binders ty)
+                = n : guessInterfaces ist ctxt (n : binders) usednames sc
+           | otherwise = guessInterfaces ist ctxt (n : binders) usednames sc
+        guessInterfaces ist ctxt _ _ _ = []
 
         paramNames bs ty | (P _ _ _, args) <- unApply ty
              = vnames args
@@ -464,16 +464,16 @@ makeLemma fn updatefile l n
                 vnames (V i : xs) | i < length bs = bs !! i : vnames xs
                 vnames (_ : xs) = vnames xs
 
-        isClass ist t
+        isInterface ist t
            | (P _ n _, args) <- unApply t
-                = case lookupCtxtExact n (idris_classes ist) of
+                = case lookupCtxtExact n (idris_interfaces ist) of
                        Just _ -> True
                        _ -> False
            | otherwise = False
 
-        isParamClass ist t
+        isParamInterface ist t
            | (P _ n _, args) <- unApply t
-                = case lookupCtxtExact n (idris_classes ist) of
+                = case lookupCtxtExact n (idris_interfaces ist) of
                        Just _ -> any isV args
                        _ -> False
            | otherwise = False

@@ -216,7 +216,7 @@ data IState = IState {
   , idris_infixes      :: [FixDecl]          -- ^ Currently defined infix operators
   , idris_implicits    :: Ctxt [PArg]
   , idris_statics      :: Ctxt [Bool]
-  , idris_classes      :: Ctxt ClassInfo
+  , idris_interfaces   :: Ctxt InterfaceInfo
   , idris_openimpls    :: [Name]             -- ^ Privileged implementations, will resolve immediately
   , idris_records      :: Ctxt RecordInfo
   , idris_dsls         :: Ctxt DSL
@@ -347,7 +347,7 @@ primDefs = [ sUN "unsafePerformPrimIO"
 data IBCWrite = IBCFix FixDecl
               | IBCImp Name
               | IBCStatic Name
-              | IBCClass Name
+              | IBCInterface Name
               | IBCRecord Name
               | IBCInstance Bool Bool Name Name
               | IBCDSL Name
@@ -719,7 +719,7 @@ data PDecl' t
    -- | Type class: arguments are documentation, syntax info, source
    -- location, constraints, class name, class name location,
    -- parameters, method declarations, optional constructor name
-   | PClass (Docstring (Either Err t)) SyntaxInfo FC
+   | PInterface (Docstring (Either Err t)) SyntaxInfo FC
             [(Name, t)]                        -- constraints
             Name                               -- class name
             FC                                 -- accurate location of class name
@@ -912,8 +912,8 @@ mapPDeclFC f g (PRecord doc syn fc opts n nfc params paramdocs fields ctor ctorD
             (fmap (\(ctorN, ctorNFC) -> (ctorN, g ctorNFC)) ctor)
             ctorDoc
             syn'
-mapPDeclFC f g (PClass doc syn fc constrs n nfc params paramDocs det body ctor ctorDoc) =
-    PClass doc syn (f fc)
+mapPDeclFC f g (PInterface doc syn fc constrs n nfc params paramDocs det body ctor ctorDoc) =
+    PInterface doc syn (f fc)
            (map (\(constrn, constr) -> (constrn, mapPTermFC f g constr)) constrs)
            n (g nfc) (map (\(n, nfc, pty) -> (n, g nfc, mapPTermFC f g pty)) params)
            paramDocs (map (\(dn, dnfc) -> (dn, g dnfc)) det)
@@ -964,7 +964,7 @@ declared (PParams _ _ ds) = concatMap declared ds
 declared (POpenInterfaces _ _ ds) = concatMap declared ds
 declared (PNamespace _ _ ds) = concatMap declared ds
 declared (PRecord _ _ _ _ n  _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
-declared (PClass _ _ _ _ n _ _ _ _ ms cn cd) = n : (map fst (maybeToList cn) ++ concatMap declared ms)
+declared (PInterface _ _ _ _ n _ _ _ _ ms cn cd) = n : (map fst (maybeToList cn) ++ concatMap declared ms)
 declared (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
     = case mn of
            Nothing -> []
@@ -988,7 +988,7 @@ tldeclared (PParams _ _ ds)                       = []
 tldeclared (POpenInterfaces _ _ ds)               = concatMap tldeclared ds
 tldeclared (PMutual _ ds)                         = concatMap tldeclared ds
 tldeclared (PNamespace _ _ ds)                    = concatMap tldeclared ds
-tldeclared (PClass _ _ _ _ n _ _ _ _ ms cn _)     = n : (map fst (maybeToList cn) ++ concatMap tldeclared ms)
+tldeclared (PInterface _ _ _ _ n _ _ _ _ ms cn _)     = n : (map fst (maybeToList cn) ++ concatMap tldeclared ms)
 tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
     = case mn of
            Nothing -> []
@@ -1008,7 +1008,7 @@ defined (PParams _ _ ds)                          = concatMap defined ds
 defined (POpenInterfaces _ _ ds)                  = concatMap defined ds
 defined (PNamespace _ _ ds)                       = concatMap defined ds
 defined (PRecord _ _ _ _ n _ _ _ _ cn _ _)        = n : map fst (maybeToList cn)
-defined (PClass _ _ _ _ n _ _ _ _ ms cn _)        = n : (map fst (maybeToList cn) ++ concatMap defined ms)
+defined (PInterface _ _ _ _ n _ _ _ _ ms cn _)        = n : (map fst (maybeToList cn) ++ concatMap defined ms)
 defined (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
     = case mn of
            Nothing -> []
@@ -1412,18 +1412,18 @@ highestFC (PAppImpl t _)          = highestFC t
 
 -- Type class data
 
-data ClassInfo = CI {
-    instanceCtorName           :: Name
-  , class_methods              :: [(Name, (Bool, FnOpts, PTerm))] -- ^ flag whether it's a "data" method
-  , class_defaults             :: [(Name, (Name, PDecl))]         -- ^ method name -> default impl
-  , class_default_superclasses :: [PDecl]
-  , class_params               :: [Name]
-  , class_instances            :: [(Name, Bool)] -- ^ the Bool is whether to include in instance search, so named instances are excluded
-  , class_determiners          :: [Int]
+data InterfaceInfo = CI {
+    instanceCtorName                   :: Name
+  , interface_methods                  :: [(Name, (Bool, FnOpts, PTerm))] -- ^ flag whether it's a "data" method
+  , interface_defaults                 :: [(Name, (Name, PDecl))]         -- ^ method name -> default impl
+  , interface_default_super_interfaces :: [PDecl]
+  , interface_params                   :: [Name]
+  , interface_instances                :: [(Name, Bool)] -- ^ the Bool is whether to include in instance search, so named instances are excluded
+  , interface_determiners              :: [Int]
   } deriving (Show, Generic)
 {-!
-deriving instance Binary ClassInfo
-deriving instance NFData ClassInfo
+deriving instance Binary InterfaceInfo
+deriving instance NFData InterfaceInfo
 !-}
 
 -- Record data
@@ -2241,7 +2241,7 @@ showDeclImp o (PParams _ ns ps)     = text "params" <+> braces (text (show ns) <
 showDeclImp o (POpenInterfaces _ ns ps) = text "open" <+> braces (text (show ns) <> line <> showDecls o ps <> line)
 showDeclImp o (PNamespace n fc ps)  = text "namespace" <+> text n <> braces (line <> showDecls o ps <> line)
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
-showDeclImp o (PClass _ _ _ cs n _ ps _ _ ds _ _)
+showDeclImp o (PInterface _ _ _ cs n _ ps _ _ ds _ _)
    = text "interface" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
 showDeclImp o (PInstance _ _ _ _ cs _ acc _ n _ _ _ t _ ds)
    = text "implementation" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
