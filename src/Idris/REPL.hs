@@ -868,7 +868,7 @@ process fn (NewDefn decls) = do
   getName (PTy docs argdocs syn fc opts name _ ty) = Just name
   getName (PClauses fc opts name (clause:clauses)) = Just (getClauseName clause)
   getName (PData doc argdocs syn fc opts dataDecl) = Just (d_name dataDecl)
-  getName (PClass doc syn fc constraints name nfc parms parmdocs fds decls _ _) = Just name
+  getName (PInterface doc syn fc constraints name nfc parms parmdocs fds decls _ _) = Just name
   getName _ = Nothing
   -- getClauseName is partial and I am not sure it's used safely! -- trillioneyes
   getClauseName (PClause fc name whole with rhs whereBlock) = name
@@ -943,7 +943,7 @@ process fn (Undefine names) = undefine names
     undefOne n = do fputState (ctxt_lookup n . known_terms) Nothing
                     -- for now just assume it's a class. Eventually we'll want some kind of
                     -- smart detection of exactly what kind of name we're undefining.
-                    fputState (ctxt_lookup n . known_classes) Nothing
+                    fputState (ctxt_lookup n . known_interfaces) Nothing
                     fmodifyState repl_definitions (delete n)
     undefClosure n =
       do replDefs <- idris_repl_defs `fmap` get

@@ -1117,7 +1117,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
          addResolvesArgs fc (Bind n (Pi _ ty _) sc) (a : args)
              | (P _ cn _, _) <- unApply ty,
                getTm a == Placeholder
-                 = case lookupCtxtExact cn (idris_classes ist) of
+                 = case lookupCtxtExact cn (idris_interfaces ist) of
                         Just _ -> a { getTm = PResolveTC fc } : addResolvesArgs fc sc args
                         Nothing -> a : addResolvesArgs fc sc args
          addResolvesArgs fc (Bind n (Pi _ ty _) sc) (a : args)

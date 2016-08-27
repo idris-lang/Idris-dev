@@ -91,7 +91,7 @@ instance NFData PAltType
 instance (NFData t) => NFData (PTactic' t)
 instance (NFData t) => NFData (PDo' t)
 instance (NFData t) => NFData (PArg' t)
-instance NFData ClassInfo
+instance NFData InterfaceInfo
 instance NFData RecordInfo
 instance NFData OptInfo
 instance NFData TypeInfo

@@ -1,4 +1,4 @@
-module TestTypeclasses
+module TestInterfaces
 
 ||| This is a test
 |||

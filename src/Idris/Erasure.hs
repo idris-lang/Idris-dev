@@ -79,7 +79,7 @@ performUsageAnalysis startNames = do
     case startNames of
       [] -> return []  -- no main -> not compiling -> reachability irrelevant
       main  -> do
-        ci  <- idris_classes <$> getIState
+        ci  <- idris_interfaces <$> getIState
         cg  <- idris_callgraph <$> getIState
         opt <- idris_optimisation <$> getIState
         used <- idris_erasureUsed <$> getIState
@@ -170,7 +170,7 @@ forwardChain deps
 
 -- | Build the dependency graph, starting the depth-first search from
 -- a list of Names.
-buildDepMap :: Ctxt ClassInfo -> [(Name, Int)] -> [(Name, Int)] ->
+buildDepMap :: Ctxt InterfaceInfo -> [(Name, Int)] -> [(Name, Int)] ->
                Context -> [Name] -> Deps
 buildDepMap ci used externs ctx startNames
     = addPostulates used $ dfs S.empty M.empty startNames
@@ -252,7 +252,7 @@ buildDepMap ci used externs ctx startNames
 
     -- get Deps for a Name
     getDeps :: Name -> Deps
-    getDeps (SN (WhereN i (SN (InstanceCtorN classN)) (MN i' field)))
+    getDeps (SN (WhereN i (SN (InstanceCtorN interfaceN)) (MN i' field)))
         = M.empty  -- these deps are created when applying instance ctors
     getDeps n = case lookupDefExact n ctx of
         Just def -> getDepsDef n def
@@ -338,7 +338,7 @@ buildDepMap ci used externs ctx startNames
 
         -- generate metamethod names, "n" is the instance ctor
         meth :: Int -> Maybe Name
-        meth | SN (InstanceCtorN className) <- n = \j -> Just (mkFieldName n j)
+        meth | SN (InstanceCtorN interfaceName) <- n = \j -> Just (mkFieldName n j)
              | otherwise = \j -> Nothing
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
@@ -381,7 +381,7 @@ buildDepMap ci used externs ctx startNames
     getDepsTerm vs bs cd app@(App _ _ _)
         | (fun, args) <- unApply app = case fun of
             -- instance constructors -> create metamethod deps
-            P (DCon _ _ _) ctorName@(SN (InstanceCtorN className)) _
+            P (DCon _ _ _) ctorName@(SN (InstanceCtorN interfaceName)) _
                 -> conditionalDeps ctorName args  -- regular data ctor stuff
                     `union` unionMap (methodDeps ctorName) (zip [0..] args)  -- method-specific stuff
 

@@ -226,7 +226,7 @@ internalDecl syn
                    <|> params syn
                    <|> mutual syn
                    <|> namespace syn
-                   <|> class_ syn
+                   <|> interface_ syn
                    <|> do d <- dsl syn; return [d]
                    <|> directive syn
                    <|> provider syn
@@ -340,8 +340,8 @@ declExtension syn ns rules =
                    (updateRecCon ns cname)
                    cdoc
                    s
-    updateNs ns (PClass docs s fc cs cn fc' ps pdocs pdets ds cname cdocs)
-         = PClass docs s fc cs (updateB ns cn) fc' ps pdocs pdets
+    updateNs ns (PInterface docs s fc cs cn fc' ps pdocs pdets ds cname cdocs)
+         = PInterface docs s fc cs (updateB ns cn) fc' ps pdocs pdets
                   (map (updateNs ns) ds)
                   (updateRecCon ns cname)
                   cdocs
@@ -861,23 +861,23 @@ ClassBlock ::=
   ;
 @
 -}
-classBlock :: SyntaxInfo -> IdrisParser (Maybe (Name, FC), Docstring (Either Err PTerm), [PDecl])
-classBlock syn = do reservedHL "where"
-                    openBlock
-                    (cn, cd) <- option (Nothing, emptyDocstring) $
-                                try (do (doc, _) <- option noDocs docComment
-                                        n <- constructor
-                                        return (Just n, doc))
-                    ist <- get
-                    let cd' = annotate syn ist cd
+interfaceBlock :: SyntaxInfo -> IdrisParser (Maybe (Name, FC), Docstring (Either Err PTerm), [PDecl])
+interfaceBlock syn = do reservedHL "where"
+                        openBlock
+                        (cn, cd) <- option (Nothing, emptyDocstring) $
+                                    try (do (doc, _) <- option noDocs docComment
+                                            n <- constructor
+                                            return (Just n, doc))
+                        ist <- get
+                        let cd' = annotate syn ist cd
 
-                    ds <- many (notEndBlock >> try (instance_ True syn)
-                                               <|> do x <- data_ syn
-                                                      return [x]
-                                               <|> fnDecl syn)
-                    closeBlock
-                    return (cn, cd', concat ds)
-                 <?> "class block"
+                        ds <- many (notEndBlock >> try (instance_ True syn)
+                                                   <|> do x <- data_ syn
+                                                          return [x]
+                                                   <|> fnDecl syn)
+                        closeBlock
+                        return (cn, cd', concat ds)
+                     <?> "class block"
 
   where
     constructor :: IdrisParser (Name, FC)
@@ -901,29 +901,29 @@ Class ::=
   ;
 @
 -}
-class_ :: SyntaxInfo -> IdrisParser [PDecl]
-class_ syn = do (doc, argDocs, acc)
-                  <- try (do (doc, argDocs) <- docstring syn
-                             acc <- accessibility
-                             classKeyword
-                             return (doc, argDocs, acc))
-                fc <- getFC
-                cons <- constraintList syn
-                let cons' = [(c, ty) | (c, _, ty) <- cons]
-                (n_in, nfc) <- fnName
-                let n = expandNS syn n_in
-                cs <- many carg
-                fds <- option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
-                (cn, cd, ds) <- option (Nothing, fst noDocs, []) (classBlock syn)
-                accData acc n (concatMap declared ds)
-                return [PClass doc syn fc cons' n nfc cs argDocs fds ds cn cd]
-             <?> "type-class declaration"
+interface_ :: SyntaxInfo -> IdrisParser [PDecl]
+interface_ syn = do (doc, argDocs, acc)
+                      <- try (do (doc, argDocs) <- docstring syn
+                                 acc <- accessibility
+                                 interfaceKeyword
+                                 return (doc, argDocs, acc))
+                    fc <- getFC
+                    cons <- constraintList syn
+                    let cons' = [(c, ty) | (c, _, ty) <- cons]
+                    (n_in, nfc) <- fnName
+                    let n = expandNS syn n_in
+                    cs <- many carg
+                    fds <- option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
+                    (cn, cd, ds) <- option (Nothing, fst noDocs, []) (interfaceBlock syn)
+                    accData acc n (concatMap declared ds)
+                    return [PInterface doc syn fc cons' n nfc cs argDocs fds ds cn cd]
+                 <?> "type-class declaration"
   where
     fundeps :: IdrisParser [(Name, FC)]
     fundeps = do lchar '|'; sepBy name (lchar ',')
 
-    classKeyword :: IdrisParser ()
-    classKeyword = reservedHL "interface"
+    interfaceKeyword :: IdrisParser ()
+    interfaceKeyword = reservedHL "interface"
                <|> do reservedHL "class"
                       fc <- getFC
                       parserWarning fc Nothing (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
@@ -1866,7 +1866,7 @@ loadSource lidr f toline
     toMutual x = let r = PMutual (fileFC "single mutual") [x] in
                  case x of
                    PClauses{} -> r
-                   PClass{} -> r
+                   PInterface{} -> r
                    PData{} -> r
                    PInstance{} -> r
                    _ -> x

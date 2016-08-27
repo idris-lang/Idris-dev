@@ -868,7 +868,7 @@ elab ist info emode opts fn tm
                     let isinf = f == inferCon || tcname f
                     -- if f is a type class, we need to know its arguments so that
                     -- we can unify with them
-                    case lookupCtxt f (idris_classes ist) of
+                    case lookupCtxt f (idris_interfaces ist) of
                         [] -> return ()
                         _ -> do mapM_ setInjective (map getTm args)
                                 -- maybe more things are solvable now
@@ -961,10 +961,10 @@ elab ist info emode opts fn tm
                      Just b ->
                        case unApply (normalise (tt_ctxt ist) env (binderTy b)) of
                             (P _ c _, args) ->
-                                case lookupCtxtExact c (idris_classes ist) of
+                                case lookupCtxtExact c (idris_interfaces ist) of
                                    Nothing -> return ()
                                    Just ci -> -- type class, set as injective
-                                        do mapM_ setinjArg (getDets 0 (class_determiners ci) args)
+                                        do mapM_ setinjArg (getDets 0 (interface_determiners ci) args)
                                         -- maybe we can solve more things now...
                                            ulog <- getUnifyLog
                                            probs <- get_probs
@@ -1137,7 +1137,7 @@ elab ist info emode opts fn tm
                                     _ -> return (n, False)
 
               tcName tm | (P _ n _, _) <- unApply tm
-                  = case lookupCtxt n (idris_classes ist) of
+                  = case lookupCtxt n (idris_interfaces ist) of
                          [_] -> True
                          _ -> False
               tcName _ = False
@@ -1745,18 +1745,18 @@ pruneByType _ t _ _ as = as
 -- to it later - just returns 'var' for now. EB)
 isPlausible :: IState -> Bool -> Env -> Name -> Type -> Bool
 isPlausible ist var env n ty
-    = let (hvar, classes) = collectConstraints [] [] ty in
+    = let (hvar, interfaces) = collectConstraints [] [] ty in
           case hvar of
                Nothing -> True
-               Just rth -> var -- trace (show (rth, classes)) var
+               Just rth -> var -- trace (show (rth, interfaces)) var
    where
      collectConstraints :: [Name] -> [(Term, [Name])] -> Type ->
                                      (Maybe Name, [(Term, [Name])])
      collectConstraints env tcs (Bind n (Pi _ ty _) sc)
          = let tcs' = case unApply ty of
                            (P _ c _, _) ->
-                               case lookupCtxtExact c (idris_classes ist) of
-                                    Just tc -> ((ty, map fst (class_instances tc))
+                               case lookupCtxtExact c (idris_interfaces ist) of
+                                    Just tc -> ((ty, map fst (interface_instances tc))
                                                      : tcs)
                                     Nothing -> tcs
                            _ -> tcs
@@ -2321,15 +2321,15 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            returnUnit
       | n == tacN "Prim__AddInstance"
       = do ~[cls, inst] <- tacTmArgs 2 tac args
-           className <- reifyTTName cls
+           interfaceName <- reifyTTName cls
            instName <- reifyTTName inst
-           updateAux $ \e -> e { new_tyDecls = RAddInstance className instName :
+           updateAux $ \e -> e { new_tyDecls = RAddInstance interfaceName instName :
                                                new_tyDecls e }
            returnUnit
       | n == tacN "Prim__IsTCName"
       = do ~[n] <- tacTmArgs 1 tac args
            n' <- reifyTTName n
-           case lookupCtxtExact n' (idris_classes ist) of
+           case lookupCtxtExact n' (idris_interfaces ist) of
              Just _ -> fmap fst . checkClosed $ Var (sNS (sUN "True") ["Bool", "Prelude"])
              Nothing -> fmap fst . checkClosed $ Var (sNS (sUN "False") ["Bool", "Prelude"])
       | n == tacN "Prim__ResolveTC"
@@ -2819,12 +2819,12 @@ processTacticDecls info steps =
             _ -> return ()
          -- TODO: inaccessible
 
-    RAddInstance className instName ->
+    RAddInstance interfaceName instName ->
       do -- The type class resolution machinery relies on a special
          logElab 2 $ "Adding elab script instance " ++ show instName ++
-                    " for " ++ show className
-         addInstance False True className instName
-         addIBC (IBCInstance False True className instName)
+                    " for " ++ show interfaceName
+         addInstance False True interfaceName instName
+         addIBC (IBCInstance False True interfaceName instName)
     RClausesInstrs n cs ->
       do logElab 3 $ "Pattern-matching definition from tactics: " ++ show n
          solveDeferred emptyFC n

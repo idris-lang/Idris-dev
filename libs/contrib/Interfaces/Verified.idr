@@ -1,4 +1,4 @@
-module Classes.Verified
+module Interfaces.Verified
 
 import Control.Algebra
 import Control.Algebra.Lattice

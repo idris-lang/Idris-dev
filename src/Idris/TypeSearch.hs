@@ -30,8 +30,8 @@ import qualified Data.Text                     as T (pack, isPrefixOf)
 import           Data.Traversable                   (traverse)
 
 import Idris.AbsSyntax     (addUsingConstraints, addImpl, getIState, putIState, implicit, logLvl)
-import Idris.AbsSyntaxTree (class_instances, ClassInfo, defaultSyntax, eqTy, Idris
-                           , IState (idris_classes, idris_docstrings, tt_ctxt, idris_outputmode),
+import Idris.AbsSyntaxTree (interface_instances, InterfaceInfo, defaultSyntax, eqTy, Idris
+                           , IState (idris_interfaces, idris_docstrings, tt_ctxt, idris_outputmode),
                            implicitAllowed, OutputMode(..), PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
 import Idris.Core.TT       hiding (score)
@@ -173,8 +173,8 @@ deleteFromArgList n = filter ((/= n) . fst)
 -- | Asymmetric modifications to keep track of
 data AsymMods = Mods
   { argApp         :: !Int
-  , typeClassApp   :: !Int
-  , typeClassIntro :: !Int
+  , interfaceApp   :: !Int
+  , interfaceIntro :: !Int
   } deriving (Eq, Show)
 
 
@@ -253,18 +253,18 @@ instance Monoid Score where
 type ArgsDAG = [((Name, Type), (Int, Set Name))]
 
 -- | A list of typeclass constraints
-type Classes = [(Name, Type)]
+type Interfaces = [(Name, Type)]
 
 -- | The state corresponding to an attempted match of two types.
 data State = State
   { holes          :: ![(Name, Type)] -- ^ names which have yet to be resolved
-  , argsAndClasses :: !(Sided (ArgsDAG, Classes))
+  , argsAndInterfaces :: !(Sided (ArgsDAG, Interfaces))
      -- ^ arguments and typeclass constraints for each type which have yet to be resolved
   , score     :: !Score -- ^ the score so far
   , usedNames :: ![Name] -- ^ all names that have been used
   } deriving Show
 
-modifyTypes :: (Type -> Type) -> (ArgsDAG, Classes) -> (ArgsDAG, Classes)
+modifyTypes :: (Type -> Type) -> (ArgsDAG, Interfaces) -> (ArgsDAG, Interfaces)
 modifyTypes f = modifyDag *** modifyList
   where
   modifyDag = map (first (second f))
@@ -273,11 +273,11 @@ modifyTypes f = modifyDag *** modifyList
 findNameInArgsDAG :: Name -> ArgsDAG -> Maybe (Type, Maybe Int)
 findNameInArgsDAG name = fmap ((snd . fst) &&& (Just . fst . snd)) . find ((name ==) . fst . fst)
 
-findName :: Name -> (ArgsDAG, Classes) -> Maybe (Type, Maybe Int)
-findName n (args, classes) = findNameInArgsDAG n args <|> ((,) <$> lookup n classes <*> Nothing)
+findName :: Name -> (ArgsDAG, Interfaces) -> Maybe (Type, Maybe Int)
+findName n (args, interfaces) = findNameInArgsDAG n args <|> ((,) <$> lookup n interfaces <*> Nothing)
 
-deleteName :: Name -> (ArgsDAG, Classes) -> (ArgsDAG, Classes)
-deleteName n (args, classes) = (deleteFromDag n args, filter ((/= n) . fst) classes)
+deleteName :: Name -> (ArgsDAG, Interfaces) -> (ArgsDAG, Interfaces)
+deleteName n (args, interfaces) = (deleteFromDag n args, filter ((/= n) . fst) interfaces)
 
 tcToMaybe :: TC a -> Maybe a
 tcToMaybe (OK x) = Just x
@@ -287,8 +287,8 @@ inArgTys :: (Type -> Type) -> ArgsDAG -> ArgsDAG
 inArgTys = map . first . second
 
 
-typeclassUnify :: Ctxt ClassInfo -> Context -> Type -> Type -> Maybe [(Name, Type)]
-typeclassUnify classInfo ctxt ty tyTry = do
+interfaceUnify :: Ctxt InterfaceInfo -> Context -> Type -> Type -> Maybe [(Name, Type)]
+interfaceUnify interfaceInfo ctxt ty tyTry = do
   res <- tcToMaybe $ match_unify ctxt [] (ty, Nothing) (retTy, Nothing) [] theHoles []
   guard $ null (theHoles \\ map fst res)
   let argTys' = map (second $ foldr (.) id [ subst n t | (n, t) <- res ]) tcArgs
@@ -297,13 +297,13 @@ typeclassUnify classInfo ctxt ty tyTry = do
   tyTry' = vToP tyTry
   theHoles = map fst nonTcArgs
   retTy = getRetTy tyTry'
-  (tcArgs, nonTcArgs) = partition (isTypeClassArg classInfo . snd) $ getArgTys tyTry'
+  (tcArgs, nonTcArgs) = partition (isInterfaceArg interfaceInfo . snd) $ getArgTys tyTry'
 
-isTypeClassArg :: Ctxt ClassInfo -> Type -> Bool
-isTypeClassArg classInfo ty = not (null (getClassName clss >>= flip lookupCtxt classInfo)) where
+isInterfaceArg :: Ctxt InterfaceInfo -> Type -> Bool
+isInterfaceArg interfaceInfo ty = not (null (getInterfaceName clss >>= flip lookupCtxt interfaceInfo)) where
   (clss, args) = unApply ty
-  getClassName (P (TCon _ _) className _) = [className]
-  getClassName _ = []
+  getInterfaceName (P (TCon _ _) interfaceName _) = [interfaceName]
+  getInterfaceName _ = []
 
 
 -- | Compute the power set
@@ -345,12 +345,12 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
            <$> flipEqualities ty <*> flipEqualitiesDag xs
     startStates (numEqFlips, sndDag, sndRetTy) = do
       state <- unifyQueue (State startingHoles
-                (Sided (dag1, typeClassArgs1) (sndDag, typeClassArgs2))
+                (Sided (dag1, interfaceArgs1) (sndDag, interfaceArgs2))
                 (mempty { equalityFlips = numEqFlips }) usedns) [(retTy1, sndRetTy)]
       return (score state, state)
 
 
-    (dag2, typeClassArgs2, retTy2) = makeDag (uniqueBinders (map fst argNames1) type2)
+    (dag2, interfaceArgs2, retTy2) = makeDag (uniqueBinders (map fst argNames1) type2)
     argNames2 = map fst dag2
     usedns = map fst startingHoles
     startingHoles = argNames1 ++ argNames2
@@ -376,13 +376,13 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
 
   ctxt = tt_ctxt istate
-  classInfo = idris_classes istate
+  interfaceInfo = idris_interfaces istate
 
-  (dag1, typeClassArgs1, retTy1) = makeDag type1
+  (dag1, interfaceArgs1, retTy1) = makeDag type1
   argNames1 = map fst dag1
-  makeDag :: Type -> (ArgsDAG, Classes, Type)
+  makeDag :: Type -> (ArgsDAG, Interfaces, Type)
   makeDag = first3 (zipWith (\i (ty, deps) -> (ty, (i, deps))) [0..] . reverseDag) .
-    computeDagP (isTypeClassArg classInfo) . vToP . unLazy
+    computeDagP (isInterfaceArg interfaceInfo) . vToP . unLazy
   first3 f (a,b,c) = (f a, b, c)
 
   -- update our state with the unification resolutions
@@ -396,14 +396,14 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     let transScore = fromMaybe 0 (abs <$> ((-) <$> ix1 <*> ix2))
     return (inScore (\s -> s { transposition = transposition s + transScore }) state'', (ty1, ty2) : queue)
     where
-    unresolved = argsAndClasses state
+    unresolved = argsAndInterfaces state
     inScore f stat = stat { score = f (score stat) }
     findArgs = ((,) <$> findName name  (left unresolved) <*> findName name2 (right unresolved)) <|>
                ((,) <$> findName name2 (left unresolved) <*> findName name  (right unresolved))
     matchnames = [name, name2]
     deleteArgs = deleteName name . deleteName name2
     state' = state { holes = filter (not . (`elem` matchnames) . fst) (holes state)
-                   , argsAndClasses = both (modifyTypes (subst name term) . deleteArgs) unresolved}
+                   , argsAndInterfaces = both (modifyTypes (subst name term) . deleteArgs) unresolved}
 
   resolveUnis ((name, term) : xs)
     state@(State hs unresolved _ _) = case both (findName name) unresolved of
@@ -427,7 +427,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     addScore additions theState = theState { score = let s = score theState in
       s { asymMods = asymMods s `mappend` additions } }
     state' = state { holes = filter (not . (`elem` toDelete) . fst) hs
-                   , argsAndClasses = both (modifyTypes (subst name term) . deleteMany) (argsAndClasses state) }
+                   , argsAndInterfaces = both (modifyTypes (subst name term) . deleteMany) (argsAndInterfaces state) }
     nextStep = resolveUnis xs state'
 
 
@@ -443,19 +443,19 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     guard $ scoreCriterion (score state')
     unifyQueue state' (queue ++ queueAdditions)
 
-  possClassInstances :: [Name] -> Type -> [Type]
-  possClassInstances usedns ty = do
-    className <- getClassName clss
-    classDef <- lookupCtxt className classInfo
-    n <- class_instances classDef
+  possInterfaceInstances :: [Name] -> Type -> [Type]
+  possInterfaceInstances usedns ty = do
+    interfaceName <- getInterfaceName clss
+    interfaceDef <- lookupCtxt interfaceName interfaceInfo
+    n <- interface_instances interfaceDef
     def <- lookupCtxt (fst n) (definitions ctxt)
     nty <- normaliseC ctxt [] <$> (case typeFromDef def of Just x -> [x]; Nothing -> [])
     let ty' = vToP (uniqueBinders usedns nty)
     return ty'
     where
     (clss, _) = unApply ty
-    getClassName (P (TCon _ _) className _) = [className]
-    getClassName _ = []
+    getInterfaceName (P (TCon _ _) interfaceName _) = [interfaceName]
+    getInterfaceName _ = []
 
   -- 'Just' if the computation hasn't totally failed yet, 'Nothing' if it has
   -- 'Left' if we haven't found a terminal state, 'Right' if we have
@@ -496,24 +496,24 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
                | sds <- allMods ]
       where
       allMods = parallel defMod mods
-      mods :: Sided [( Classes, AsymMods, [Name] )]
+      mods :: Sided [( Interfaces, AsymMods, [Name] )]
       mods = both (instanceMods . snd) unresolved
-      defMod :: Sided (Classes, AsymMods, [Name])
+      defMod :: Sided (Interfaces, AsymMods, [Name])
       defMod = both (\(_, cs) -> (cs, mempty , [])) unresolved
       parallel :: Sided a -> Sided [a] -> [Sided a]
       parallel (Sided l r) (Sided ls rs) = map (flip Sided r) ls ++ map (Sided l) rs
-      instanceMods :: Classes -> [( Classes , AsymMods, [Name] )]
-      instanceMods classes = [ ( newClassArgs, mempty { typeClassApp = 1 }, newHoles )
-                      | (_, ty) <- classes
-                      , inst <- possClassInstances usedns ty
-                      , newClassArgs <- maybeToList $ typeclassUnify classInfo ctxt ty inst
-                      , let newHoles = map fst newClassArgs ]
+      instanceMods :: Interfaces -> [( Interfaces , AsymMods, [Name] )]
+      instanceMods interfaces = [ ( newInterfaceArgs, mempty { interfaceApp = 1 }, newHoles )
+                      | (_, ty) <- interfaces
+                      , inst <- possInterfaceInstances usedns ty
+                      , newInterfaceArgs <- maybeToList $ interfaceUnify interfaceInfo ctxt ty inst
+                      , let newHoles = map fst newInterfaceArgs ]
 
 
   -- Stage 1 - match arguments
   nextSteps (State hs (Sided (dagL, c1) (dagR, c2)) scoreAcc usedns) = results where
 
-    results = concatMap takeSomeClasses results1
+    results = concatMap takeSomeInterfaces results1
 
     -- we only try to match arguments whose names don't appear in the types
     -- of any other arguments
@@ -532,18 +532,18 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
   -- Stage 2 - simply introduce a subset of the typeclasses
   -- we've finished, so take some classes
-  takeSomeClasses (State [] unresolved@(Sided ([], _) ([], _)) scoreAcc usedns) =
-    map statesFromMods . prod $ both (classMods . snd) unresolved
+  takeSomeInterfaces (State [] unresolved@(Sided ([], _) ([], _)) scoreAcc usedns) =
+    map statesFromMods . prod $ both (interfaceMods . snd) unresolved
     where
     swap (Sided l r) = Sided r l
-    statesFromMods :: Sided (Classes, AsymMods) -> State
-    statesFromMods sides = let classes = both (\(c, _) -> ([], c)) sides
+    statesFromMods :: Sided (Interfaces, AsymMods) -> State
+    statesFromMods sides = let interfaces = both (\(c, _) -> ([], c)) sides
                                mods    = swap (both snd sides) in
-      State [] classes (scoreAcc `mappend` (mempty { asymMods = mods })) usedns
-    classMods :: Classes -> [(Classes, AsymMods)]
-    classMods cs = let lcs = length cs in
-      [ (cs', mempty { typeClassIntro = lcs - length cs' }) | cs' <- subsets cs ]
+      State [] interfaces (scoreAcc `mappend` (mempty { asymMods = mods })) usedns
+    interfaceMods :: Interfaces -> [(Interfaces, AsymMods)]
+    interfaceMods cs = let lcs = length cs in
+      [ (cs', mempty { interfaceIntro = lcs - length cs' }) | cs' <- subsets cs ]
     prod :: Sided [a] -> [Sided a]
     prod (Sided ls rs) = [Sided l r | l <- ls, r <- rs]
   -- still have arguments to match, so just be the identity
-  takeSomeClasses s = [s]
+  takeSomeInterfaces s = [s]

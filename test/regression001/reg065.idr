@@ -2,7 +2,7 @@
 |||
 ||| Fixes a regression where previous methods used in a later method's
 ||| type would lead to "can't find interface" errors
-module TypeClassDep
+module InterfaceDep
 
 import Data.Vect
 

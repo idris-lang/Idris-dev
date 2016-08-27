@@ -151,7 +151,7 @@ Library
                 , Idris.Elab.Clause
                 , Idris.Elab.Data
                 , Idris.Elab.Record
-                , Idris.Elab.Class
+                , Idris.Elab.Interface
                 , Idris.Elab.Instance
                 , Idris.Elab.Provider
                 , Idris.Elab.RunElab

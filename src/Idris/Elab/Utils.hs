@@ -191,7 +191,7 @@ pbinds i (Bind n (PVar t) sc)
     = do attack; patbind n
          env <- get_env
          case unApply (normalise (tt_ctxt i) env t) of
-              (P _ c _, args) -> case lookupCtxt c (idris_classes i) of
+              (P _ c _, args) -> case lookupCtxt c (idris_interfaces i) of
                                    [] -> return ()
                                    _ -> -- type class, set as injective
                                         mapM_ setinjArg args
@@ -270,7 +270,7 @@ getTCinj i ap@(App _ f a)
       isTCName n = mapMaybe getInjName args
     | otherwise = []
   where
-    isTCName n = case lookupCtxtExact n (idris_classes i) of
+    isTCName n = case lookupCtxtExact n (idris_interfaces i) of
                       Just _ -> True
                       _ -> False
     getInjName t | (P _ x _, _) <- unApply t = Just x

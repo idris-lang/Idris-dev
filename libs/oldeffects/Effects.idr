@@ -26,7 +26,7 @@ data EFFECT : Type where
 
 ||| Handler classes describe how an effect `e` is translated to the
 ||| underlying computation context `m` for execution.
-class Handler (e : Effect) (m : Type -> Type) where
+interface Handler (e : Effect) (m : Type -> Type) where
   ||| How to handle the effect.
   |||
   ||| @ r The resource being handled.

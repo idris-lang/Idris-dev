@@ -67,7 +67,7 @@ data IBCFile = IBCFile {
   , ibc_implicits              :: ![(Name, [PArg])]
   , ibc_fixes                  :: ![FixDecl]
   , ibc_statics                :: ![(Name, [Bool])]
-  , ibc_classes                :: ![(Name, ClassInfo)]
+  , ibc_classes                :: ![(Name, InterfaceInfo)]
   , ibc_records                :: ![(Name, RecordInfo)]
   , ibc_instances              :: ![(Bool, Bool, Name, Name)]
   , ibc_dsls                   :: ![(Name, DSL)]
@@ -268,8 +268,8 @@ ibc i (IBCStatic n) f
                    = case lookupCtxtExact n (idris_statics i) of
                         Just v -> return f { ibc_statics = (n,v): ibc_statics f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCClass n) f
-                   = case lookupCtxtExact n (idris_classes i) of
+ibc i (IBCInterface n) f
+                   = case lookupCtxtExact n (idris_interfaces i) of
                         Just v -> return f { ibc_classes = (n,v): ibc_classes f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCRecord n) f
@@ -390,7 +390,7 @@ process reexp phase archive fn = do
                 processImplicits archive
                 processInfix archive
                 processStatics archive
-                processClasses archive
+                processInterfaces archive
                 processRecords archive
                 processInstances archive
                 processDSLs archive
@@ -545,18 +545,18 @@ processStatics ar = do
     mapM_ (\ (n, s) ->
         updateIState (\i -> i { idris_statics = addDef n s (idris_statics i) })) ss
 
-processClasses :: Archive -> Idris ()
-processClasses ar = do
+processInterfaces :: Archive -> Idris ()
+processInterfaces ar = do
     cs <- getEntry [] "ibc_classes" ar
     mapM_ (\ (n, c) -> do
         i <- getIState
         -- Don't lose instances from previous IBCs, which
         -- could have loaded in any order
-        let is = case lookupCtxtExact n (idris_classes i) of
+        let is = case lookupCtxtExact n (idris_interfaces i) of
                     Just (CI _ _ _ _ _ ins _) -> ins
                     _ -> []
-        let c' = c { class_instances = class_instances c ++ is }
-        putIState (i { idris_classes = addDef n c' (idris_classes i) })) cs
+        let c' = c { interface_instances = interface_instances c ++ is }
+        putIState (i { idris_interfaces = addDef n c' (idris_interfaces i) })) cs
 
 processRecords :: Archive -> Idris ()
 processRecords ar = do
@@ -1410,7 +1410,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                 put x10
                                                 put x11
                                                 put x12
-                PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12
+                PInterface x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12
                                          -> do putWord8 7
                                                put x1
                                                put x2
@@ -1547,7 +1547,7 @@ instance (Binary t) => Binary (PDecl' t) where
                            x10 <- get
                            x11 <- get
                            x12 <- get
-                           return (PClass x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
+                           return (PInterface x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
                    8 -> do x1 <- get
                            x2 <- get
                            x3 <- get
@@ -2357,7 +2357,7 @@ instance (Binary t) => Binary (PArg' t) where
                    _ -> error "Corrupted binary data for PArg'"
 
 
-instance Binary ClassInfo where
+instance Binary InterfaceInfo where
         put (CI x1 x2 x3 x4 x5 _ x6)
           = do put x1
                put x2

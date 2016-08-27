@@ -45,7 +45,7 @@ type FunDoc = FunDoc' (Docstring DocTerm)
 data Docs' d = FunDoc (FunDoc' d)
              | DataDoc (FunDoc' d) -- type constructor docs
                        [FunDoc' d] -- data constructor docs
-             | ClassDoc Name d   -- class docs
+             | InterfaceDoc Name d   -- class docs
                         [FunDoc' d] -- method docs
                         [(Name, Maybe d)] -- parameters and their docstrings
                         [(Maybe Name, PTerm, (d, [(Name, d)]))] -- instances: name for named instances, the constraint term, the docs
@@ -139,7 +139,7 @@ pprintDocs ist (DataDoc t args)
              if null args then text "No constructors."
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFDWithoutTotality ist False) args))
-pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ctor)
+pprintDocs ist (InterfaceDoc n doc meths params instances sub_interfaces super_interfaces ctor)
            = nest 4 (text "Interface" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
@@ -164,13 +164,13 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
               else line <$> nest 4 (text "Named implementations:" <$>
                                     vsep (map pprintInstance namedInstances)))
              <>
-             (if null subclasses then empty
+             (if null sub_interfaces then empty
               else line <$> nest 4 (text "Child interfaces:" <$>
-                                    vsep (map (dumpInstance . prettifySubclasses) subclasses)))
+                                    vsep (map (dumpInstance . prettifySubInterfaces) sub_interfaces)))
              <>
-             (if null superclasses then empty
+             (if null super_interfaces then empty
               else line <$> nest 4 (text "Default parent implementations:" <$>
-                                     vsep (map dumpInstance superclasses)))
+                                     vsep (map dumpInstance super_interfaces)))
   where
     params' = zip pNames (repeat False)
 
@@ -213,10 +213,10 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
     dumpInstance :: PTerm -> Doc OutputAnnotation
     dumpInstance = pprintPTerm ppo params' [] infixes
 
-    prettifySubclasses (PPi (Constraint _ _) _ _ tm _)   = prettifySubclasses tm
-    prettifySubclasses (PPi plcity           nm fc t1 t2) = PPi plcity (safeHead nm pNames) NoFC (prettifySubclasses t1) (prettifySubclasses t2)
-    prettifySubclasses (PApp fc ref args)              = PApp fc ref $ updateArgs pNames args
-    prettifySubclasses tm                              = tm
+    prettifySubInterfaces (PPi (Constraint _ _) _ _ tm _)    = prettifySubInterfaces tm
+    prettifySubInterfaces (PPi plcity           nm fc t1 t2) = PPi plcity (safeHead nm pNames) NoFC (prettifySubInterfaces t1) (prettifySubInterfaces t2)
+    prettifySubInterfaces (PApp fc ref args)                 = PApp fc ref $ updateArgs pNames args
+    prettifySubInterfaces tm                                 = tm
 
     safeHead _ (y:_) = y
     safeHead x []    = x
@@ -228,9 +228,9 @@ pprintDocs ist (ClassDoc n doc meths params instances subclasses superclasses ct
     updateRef nm (PRef fc _ _) = PRef fc [] nm
     updateRef _  pt          = pt
 
-    isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args')) = nm == n && map getTm args == map getTm args'
-    isSubclass (PPi _   _            _ _ pt)                                           = isSubclass pt
-    isSubclass _                                                                       = False
+    isSubInterface (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args')) = nm == n && map getTm args == map getTm args'
+    isSubInterface (PPi _   _            _ _ pt)                                           = isSubInterface pt
+    isSubInterface _                                                                       = False
 
     prettyParameters =
       if any (isJust . snd) params
@@ -287,24 +287,24 @@ getDocs n@(NS n' ns) w | n' == modDocName
                              " do not exist! This shouldn't have happened and is a bug."
 getDocs n w
    = do i <- getIState
-        docs <- if | Just ci <- lookupCtxtExact n (idris_classes i)
-                     -> docClass n ci
+        docs <- if | Just ci <- lookupCtxtExact n (idris_interfaces i)
+                     -> docInterface n ci
                    | Just ri <- lookupCtxtExact n (idris_records i)
                      -> docRecord n ri
                    | Just ti <- lookupCtxtExact n (idris_datatypes i)
                      -> docData n ti
-                   | Just class_ <- classNameForInst i n
+                   | Just interface_ <- interfaceNameForInst i n
                      -> do fd <- docFun n
-                           return $ NamedInstanceDoc class_ fd
+                           return $ NamedInstanceDoc interface_ fd
                    | otherwise
                      -> do fd <- docFun n
                            return (FunDoc fd)
         return $ fmap (howMuch w) docs
-  where classNameForInst :: IState -> Name -> Maybe Name
-        classNameForInst ist n =
+  where interfaceNameForInst :: IState -> Name -> Maybe Name
+        interfaceNameForInst ist n =
           listToMaybe [ cn
-                      | (cn, ci) <- toAlist (idris_classes ist)
-                      , n `elem` map fst (class_instances ci)
+                      | (cn, ci) <- toAlist (idris_interfaces ist)
+                      , n `elem` map fst (interface_instances ci)
                       ]
 
 docData :: Name -> TypeInfo -> Idris Docs
@@ -313,30 +313,30 @@ docData n ti
        cdocs <- mapM docFun (con_names ti)
        return (DataDoc tdoc cdocs)
 
-docClass :: Name -> ClassInfo -> Idris Docs
-docClass n ci
+docInterface :: Name -> InterfaceInfo -> Idris Docs
+docInterface n ci
   = do i <- getIState
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
            docstr = maybe emptyDocstring fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd)))
-                        (class_params ci)
+                        (interface_params ci)
            docsForInstance inst = fromMaybe (emptyDocstring, []) .
                                   flip lookupCtxtExact (idris_docstrings i) $
                                   inst
            instances = map (\inst -> (namedInst inst,
                                       delabTy i inst,
                                       docsForInstance inst))
-                           (nub (map fst (class_instances ci)))
-           (subclasses, instances') = partition (isSubclass . (\(_,tm,_) -> tm)) instances
-           superclasses = catMaybes $ map getDInst (class_default_superclasses ci)
-       mdocs <- mapM (docFun . fst) (class_methods ci)
+                           (nub (map fst (interface_instances ci)))
+           (sub_interfaces, instances') = partition (isSubInterface . (\(_,tm,_) -> tm)) instances
+           super_interfaces = catMaybes $ map getDInst (interface_default_super_interfaces ci)
+       mdocs <- mapM (docFun . fst) (interface_methods ci)
        let ctorN = instanceCtorName ci
        ctorDocs <- case basename ctorN of
                      SN _ -> return Nothing
                      _    -> fmap Just $ docFun ctorN
-       return $ ClassDoc
+       return $ InterfaceDoc
                   n docstr mdocs params
-                  instances' (map (\(_,tm,_) -> tm) subclasses) superclasses
+                  instances' (map (\(_,tm,_) -> tm) sub_interfaces) super_interfaces
                   ctorDocs
   where
     namedInst (NS n ns) = fmap (flip NS ns) (namedInst n)
@@ -346,11 +346,11 @@ docClass n ci
     getDInst (PInstance _ _ _ _ _ _ _ _ _ _ _ _ t _ _) = Just t
     getDInst _                                         = Nothing
 
-    isSubclass (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args'))
+    isSubInterface (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args'))
       = nm == n && map getTm args == map getTm args'
-    isSubclass (PPi _ _ _ _ pt)
-      = isSubclass pt
-    isSubclass _
+    isSubInterface (PPi _ _ _ _ pt)
+      = isSubInterface pt
+    isSubInterface _
       = False
 
 docRecord :: Name -> RecordInfo -> Idris Docs

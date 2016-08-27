@@ -77,7 +77,7 @@ elabInstance :: ElabInfo
              -> Idris ()
 elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t expn ds = do
     ist <- getIState
-    (n, ci) <- case lookupCtxtName n (idris_classes ist) of
+    (n, ci) <- case lookupCtxtName n (idris_interfaces ist) of
                   [c] -> return c
                   [] -> ifail $ show fc ++ ":" ++ show n ++ " is not an interface"
                   cs -> tclift $ tfail $ At fc
@@ -89,22 +89,22 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
 
     let totopts = Dictionary : Inlinable : opts
 
-    let emptyclass = null (class_methods ci)
+    let emptyinterface = null (interface_methods ci)
     when (what /= EDefns) $ do
          nty <- elabType' True info syn doc argDocs fc totopts iname NoFC
                           (piBindp expl_param pextra t)
          -- if the instance type matches any of the instances we have already,
          -- and it's not a named instance, then it's overlapping, so report an error
          case expn of
-            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping ist (class_determiners ci) (delab ist nty))
-                                (map fst $ class_instances ci)
+            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping ist (interface_determiners ci) (delab ist nty))
+                                (map fst $ interface_instances ci)
                           addInstance intInst True n iname
             Just _ -> addInstance intInst False n iname
-    when (what /= ETypes && (not (null ds && not emptyclass))) $ do
+    when (what /= ETypes && (not (null ds && not emptyinterface))) $ do
          -- Add the parent implementation names to the privileged set
          oldOpen <- addOpenImpl parents
 
-         let ips = zip (class_params ci) ps
+         let ips = zip (interface_params ci) ps
          let ns = case n of
                     NS n ns' -> ns'
                     _ -> []
@@ -118,9 +118,9 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          let pnames = nub $ map pname (concat (nub wparams)) ++
                           concatMap (namesIn [] ist) ps
 
-         let superclassInstances = map (substInstance ips pnames) (class_default_superclasses ci)
-         undefinedSuperclassInstances <- filterM (fmap not . isOverlapping ist) superclassInstances
-         mapM_ (rec_elabDecl info EAll info) undefinedSuperclassInstances
+         let superInterfaceInstances = map (substInstance ips pnames) (interface_default_super_interfaces ci)
+         undefinedSuperInterfaceInstances <- filterM (fmap not . isOverlapping ist) superInterfaceInstances
+         mapM_ (rec_elabDecl info EAll info) undefinedSuperInterfaceInstances
 
          ist <- getIState
          -- Bring variables in instance head into scope when building the
@@ -132,7 +132,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
                               _ -> (zip headVars (repeat Placeholder), Erased)
          logElab 3 $ "Head var types " ++ show headVarTypes ++ " from " ++ show ty
 
-         let all_meths = map (nsroot . fst) (class_methods ci)
+         let all_meths = map (nsroot . fst) (interface_methods ci)
          let mtys = map (\ (n, (inj, op, t)) ->
                    let t_in = substMatchesShadow ips pnames t
                        mnamemap =
@@ -142,16 +142,16 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
                        t' = substMatchesShadow mnamemap pnames t_in in
                        (decorate ns iname n,
                            op, coninsert cs pextra t', t'))
-              (class_methods ci)
+              (interface_methods ci)
          logElab 3 (show (mtys, ips))
-         logElab 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (class_methods ci)))
-         let ds_defs = insertDefaults ist iname (class_defaults ci) ns ds
+         logElab 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (interface_methods ci)))
+         let ds_defs = insertDefaults ist iname (interface_defaults ci) ns ds
          logElab 3 ("After defaults: " ++ show ds_defs ++ "\n")
-         let ds' = reorderDefs (map fst (class_methods ci)) ds_defs
+         let ds' = reorderDefs (map fst (interface_methods ci)) ds_defs
          logElab 1 ("Reordered: " ++ show ds' ++ "\n")
 
-         mapM_ (warnMissing ds' ns iname) (map fst (class_methods ci))
-         mapM_ (checkInClass (map fst (class_methods ci))) (concatMap defined ds')
+         mapM_ (warnMissing ds' ns iname) (map fst (interface_methods ci))
+         mapM_ (checkInInterface (map fst (interface_methods ci))) (concatMap defined ds')
          let wbTys = map mkTyDecl mtys
          let wbVals_orig = map (decorateid (decorate ns iname)) ds'
          ist <- getIState
@@ -199,14 +199,14 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
 
          mapM_ (rec_elabDecl info EAll info) wbVals'
 
-         mapM_ (checkInjectiveDef fc (class_methods ci)) (zip ds' wbVals')
+         mapM_ (checkInjectiveDef fc (interface_methods ci)) (zip ds' wbVals')
 
          pop_estack
 
          setOpenImpl oldOpen
 --          totalityCheckBlock
 
-         checkInjectiveArgs fc n (class_determiners ci) (lookupTyExact iname (tt_ctxt ist))
+         checkInjectiveArgs fc n (interface_determiners ci) (lookupTyExact iname (tt_ctxt ist))
          addIBC (IBCInstance intInst (isNothing expn) n iname)
 
   where
@@ -228,7 +228,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
                      (substMatchesShadow ips pnames t) expn ds
 
     isOverlapping i (PInstance doc argDocs syn _ _ _ _ _ n nfc ps pextra t expn _)
-        = case lookupCtxtName n (idris_classes i) of
+        = case lookupCtxtName n (idris_interfaces i) of
             [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of
                               [] -> elabFindOverlapping i ci iname syn t
@@ -255,7 +255,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
              ctxt <- getContext
              (cty, _) <- recheckC (constraintNS info) fc id [] tyT
              let nty = normalise ctxt [] cty
-             return $ any (isJust . findOverlapping i (class_determiners ci) (delab i nty)) (map fst $ class_instances ci)
+             return $ any (isJust . findOverlapping i (interface_determiners ci) (delab i nty)) (map fst $ interface_instances ci)
 
     findOverlapping i dets t n
      | SN (ParentN _ _) <- n = Nothing
@@ -375,7 +375,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
             = iWarn fc . text $ "method " ++ show meth ++ " not defined"
         | otherwise = return ()
 
-    checkInClass ns meth
+    checkInInterface ns meth
         | any (eqRoot meth) ns = return ()
         | otherwise = tclift $ tfail (At fc (Msg $
                                 show meth ++ " not a method of class " ++ show n))

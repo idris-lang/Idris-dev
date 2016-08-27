@@ -40,7 +40,7 @@ f = do
 module Idris.ASTUtils(
     Field(), cg_usedpos, ctxt_lookup, fgetState, fmodifyState
   , fputState, idris_fixities, ist_callgraph, ist_optimisation
-  , known_classes, known_terms, opt_detaggable, opt_inaccessible
+  , known_interfaces, known_terms, opt_detaggable, opt_inaccessible
   , opts_idrisCmdline, repl_definitions
   ) where
 
@@ -148,8 +148,8 @@ known_terms :: Field IState (Ctxt (Def, Injectivity, Accessibility, Totality, Me
 known_terms = Field (definitions . tt_ctxt)
                     (\v state -> state {tt_ctxt = (tt_ctxt state) {definitions = v}})
 
-known_classes :: Field IState (Ctxt ClassInfo)
-known_classes = Field idris_classes (\v state -> state {idris_classes = idris_classes state})
+known_interfaces :: Field IState (Ctxt InterfaceInfo)
+known_interfaces = Field idris_interfaces (\v state -> state {idris_interfaces = idris_interfaces state})
 
 
 -- | Names defined at the repl
