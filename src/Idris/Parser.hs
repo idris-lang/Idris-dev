@@ -685,6 +685,8 @@ fnOpt = do reservedHL "total"; return TotalFn
                     return NoImplicit
         <|> do try (lchar '%' *> reserved "inline");
                     return Inlinable
+        <|> do try (lchar '%' *> reserved "static");
+                    return StaticFn
         <|> do try (lchar '%' *> reserved "assert_total");
                fc <- getFC
                parserWarning fc Nothing (Msg "%assert_total is deprecated. Use the 'assert_total' function instead.")

@@ -397,12 +397,15 @@ elabPE info fc caller r =
                                   [Total _] -> 65536
                                   [Productive] -> 16
                                   _ -> 1
+                let specnames = mapMaybe (specName (pe_simple specdecl))
+                                         (snd specapp)
+                descs <- mapM getStaticsFrom (map fst specnames)
+
                 let opts = [Specialise ((if pe_simple specdecl
                                             then map (\x -> (x, Nothing)) cgns'
                                             else []) ++
-                                         (n, Just maxred) :
-                                           mapMaybe (specName (pe_simple specdecl))
-                                                    (snd specapp))]
+                                         (n, Just maxred) : specnames ++ 
+                                             concat descs)]
                 logElab 3 $ "Specialising application: " ++ show specapp
                               ++ " in " ++ show caller ++
                               " with " ++ show opts
@@ -442,6 +445,20 @@ elabPE info fc caller r =
     specName simpl (ExplicitS, tm)
         | (P Ref n _, _) <- unApply tm = Just (n, Just (if simpl then 1 else 0))
     specName simpl _ = Nothing
+
+    -- get the descendants of the name 'n' which are marked %static
+    -- Marking a function %static essentially means it's used to construct
+    -- programs, so should be evaluated by the partial evaluator
+    getStaticsFrom :: Name -> Idris [(Name, Maybe Int)]
+    getStaticsFrom n = do ns <- getAllNames n
+                          i <- getIState
+                          let statics = filter (staticFn i) ns
+                          return (map (\n -> (n, Nothing)) statics)
+        
+    staticFn :: IState -> Name -> Bool
+    staticFn i n =  case lookupCtxt n (idris_flags i) of
+                            [opts] -> elem StaticFn opts
+                            _ -> False
 
     notStatic ist n = case lookupCtxtExact n (idris_statics ist) of
                            Just s -> not (or s)

@@ -1223,6 +1223,7 @@ instance Binary FnOpt where
                                  put x1
                 AutoHint -> putWord8 15
                 PEGenerated -> putWord8 16
+                StaticFn -> putWord8 17
         get
           = do i <- getWord8
                case i of
@@ -1245,6 +1246,7 @@ instance Binary FnOpt where
                             return $ CExport x1
                    15 -> return AutoHint
                    16 -> return PEGenerated
+                   17 -> return StaticFn
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where
