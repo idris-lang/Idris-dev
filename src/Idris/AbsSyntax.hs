@@ -449,12 +449,12 @@ addInstance :: Bool -- ^ whether the name is an Integer instance
             -> Idris ()
 addInstance int res n i
     = do ist <- getIState
-         case lookupCtxt n (idris_classes ist) of
+         case lookupCtxt n (idris_interfaces ist) of
                 [CI a b c d e ins fds] ->
-                     do let cs = addDef n (CI a b c d e (addI i ins) fds) (idris_classes ist)
-                        putIState $ ist { idris_classes = cs }
-                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [(i, res)] []) (idris_classes ist)
-                        putIState $ ist { idris_classes = cs }
+                     do let cs = addDef n (CI a b c d e (addI i ins) fds) (idris_interfaces ist)
+                        putIState $ ist { idris_interfaces = cs }
+                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [(i, res)] []) (idris_interfaces ist)
+                        putIState $ ist { idris_interfaces = cs }
   where addI, insI :: Name -> [(Name, Bool)] -> [(Name, Bool)]
         addI i ins | int = (i, res) : ins
                    | chaser n = ins ++ [(i, res)]
@@ -493,13 +493,13 @@ getOpenImpl :: Idris [Name]
 getOpenImpl = do ist <- getIState
                  return (idris_openimpls ist)
 
-addClass :: Name -> ClassInfo -> Idris ()
-addClass n i
+addInterface :: Name -> InterfaceInfo -> Idris ()
+addInterface n i
    = do ist <- getIState
-        let i' = case lookupCtxt n (idris_classes ist) of
-                      [c] -> c { class_instances = class_instances i }
+        let i' = case lookupCtxt n (idris_interfaces ist) of
+                      [c] -> c { interface_instances = interface_instances i }
                       _ -> i
-        putIState $ ist { idris_classes = addDef n i' (idris_classes ist) }
+        putIState $ ist { idris_interfaces = addDef n i' (idris_interfaces ist) }
 
 addRecord :: Name -> RecordInfo -> Idris ()
 addRecord n ri = do ist <- getIState
@@ -1353,8 +1353,8 @@ expandParamsD rhs ist dec ps ns (PParams f params pds)
 --                (map (expandParamsD ist dec ps ns) pds)
 expandParamsD rhs ist dec ps ns (PMutual f pds)
    = PMutual f (map (expandParamsD rhs ist dec ps ns) pds)
-expandParamsD rhs ist dec ps ns (PClass doc info f cs n nfc params pDocs fds decls cn cd)
-   = PClass doc info f
+expandParamsD rhs ist dec ps ns (PInterface doc info f cs n nfc params pDocs fds decls cn cd)
+   = PInterface doc info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
            n nfc
            (map (\(n, fc, t) -> (n, fc, expandParams dec ps ns [] t)) params)

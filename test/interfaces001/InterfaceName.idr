@@ -1,4 +1,4 @@
-module ClassName
+module InterfaceName
 
 ||| A fancy shower with a constructor
 ||| @ a the thing to be shown
@@ -21,7 +21,7 @@ badShow = MkMyShow (const "hej")
 test1 : twiceAString 2 = "22"
 test1 = Refl
 
-test2 : twiceAString @{ClassName.badShow} 2 = "hejhej"
+test2 : twiceAString @{InterfaceName.badShow} 2 = "hejhej"
 test2 = Refl
 
 

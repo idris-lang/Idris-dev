@@ -34,7 +34,7 @@ import Idris.Elab.Type
 import Idris.Elab.Clause
 import Idris.Elab.Data
 import Idris.Elab.Record
-import Idris.Elab.Class
+import Idris.Elab.Interface
 import Idris.Elab.Instance
 import Idris.Elab.Provider
 import Idris.Elab.RunElab
@@ -271,10 +271,10 @@ elabDecl' what info (PNamespace n nfc ps) =
     newNS = n : namespace info
     ninfo = info { namespace = newNS }
 
-elabDecl' what info (PClass doc s f cs n nfc ps pdocs fds ds cn cd)
+elabDecl' what info (PInterface doc s f cs n nfc ps pdocs fds ds cn cd)
   | what /= EDefns
     = do logElab 1 $ "Elaborating class " ++ show n
-         elabClass info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
+         elabInterface info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
 elabDecl' what info (PInstance doc argDocs s f cs pnames acc fnopts n nfc ps pextra t expn ds)
     = do logElab 1 $ "Elaborating instance " ++ show n
          elabInstance info s doc argDocs what f cs pnames acc fnopts n nfc ps pextra t expn ds

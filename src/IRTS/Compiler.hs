@@ -628,7 +628,7 @@ irAlt top vs _ (ConCase n t args sc) = do
     LConCase (-1) n usedArgs <$> irSC top (methodVars `M.union` vs) sc
   where
     methodVars = case n of
-        SN (InstanceCtorN className)
+        SN (InstanceCtorN interfaceName)
             -> M.fromList [(v, VI
                 { viMethod = Just $ mkFieldName n i
                 }) | (v,i) <- zip args [0..]]

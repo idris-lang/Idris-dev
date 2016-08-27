@@ -7,7 +7,7 @@ Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-missing-signatures #-}
-module Idris.Elab.Class(elabClass) where
+module Idris.Elab.Interface(elabInterface) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -61,7 +61,7 @@ import Util.Pretty(pretty, text)
 
 data MArgTy = IA Name | EA Name | CA deriving Show
 
-elabClass :: ElabInfo
+elabInterface :: ElabInfo
           -> SyntaxInfo
           -> Docstring (Either Err PTerm)
           -> FC
@@ -75,7 +75,7 @@ elabClass :: ElabInfo
           -> Maybe (Name, FC)             -- ^ instance ctor name and location
           -> Docstring (Either Err PTerm) -- ^ instance ctor docs
           -> Idris ()
-elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
+elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     = do let cn = fromMaybe (SN (InstanceCtorN tn)) (fst <$> mcn)
          let tty = pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
          let constraint = PApp fc (PRef fc [] tn)
@@ -89,7 +89,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          -- build data declaration
          let mdecls = filter tydecl ds -- method declarations
          let idecls = filter instdecl ds -- default superclass instance declarations
-         mapM_ checkDefaultSuperclassInstance idecls
+         mapM_ checkDefaultSuperInterfaceInstance idecls
          let mnames = map getMName mdecls
          ist <- getIState
          let constraintNames = nub $
@@ -119,7 +119,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          elabData info (syn { no_imp = no_imp syn ++ mnames,
                               imp_methods = mnames }) doc pDocs fc [] ddecl
          dets <- findDets cn (map fst fds)
-         addClass tn (CI cn (map nodoc imethods) defaults idecls (map (\(n, _, _) -> n) ps) [] dets)
+         addInterface tn (CI cn (map nodoc imethods) defaults idecls (map (\(n, _, _) -> n) ps) [] dets)
 
          -- for each constraint, build a top level function to chase it
          cfns <- mapM (cfun cn constraint syn (map fst imethods)) constraints
@@ -139,7 +139,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
          -- add the default definitions
          mapM_ (rec_elabDecl info EAll info) (concatMap (snd.snd) defs)
-         addIBC (IBCClass tn)
+         addIBC (IBCInterface tn)
 
          sendHighlighting $
            [(tnfc, AnnName tn Nothing Nothing Nothing)] ++
@@ -161,8 +161,8 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     chkUniq _ t = t
 
     -- TODO: probably should normalise
-    checkDefaultSuperclassInstance :: PDecl -> Idris ()
-    checkDefaultSuperclassInstance (PInstance _ _ _ fc cs _ _ _ n _ ps _ _ _ _)
+    checkDefaultSuperInterfaceInstance :: PDecl -> Idris ()
+    checkDefaultSuperInterfaceInstance (PInstance _ _ _ fc cs _ _ _ n _ ps _ _ _ _)
         = do when (not $ null cs) . tclift
                 $ tfail (At fc (Msg "Default superclass instances can't have constraints."))
              i <- getIState
@@ -249,7 +249,7 @@ elabClass info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              let conn = case con of
                             PRef _ _ n -> n
                             PApp _ (PRef _ _ n) _ -> n
-             let conn' = case lookupCtxtName conn (idris_classes i) of
+             let conn' = case lookupCtxtName conn (idris_interfaces i) of
                                 [(n, _)] -> n
                                 _ -> conn
              addInstance False True conn' cfn
@@ -341,7 +341,7 @@ memberDocs (PTy d _ _ _ _ n _ _) = Just (basename n, d)
 memberDocs (PPostulate _ d _ _ _ _ n _) = Just (basename n, d)
 memberDocs (PData d _ _ _ _ pdata) = Just (basename $ d_name pdata, d)
 memberDocs (PRecord d _ _ _ n _ _ _ _ _ _ _ ) = Just (basename n, d)
-memberDocs (PClass d _ _ _ n _ _ _ _ _ _ _) = Just (basename n, d)
+memberDocs (PInterface d _ _ _ n _ _ _ _ _ _ _) = Just (basename n, d)
 memberDocs _ = Nothing
 
 
