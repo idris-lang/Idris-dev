@@ -35,6 +35,7 @@ using (G : Vect n Ty)
       If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
       Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b
 
+  %static
   lam_ : TTName -> Expr (a :: G) t -> Expr G (TyFun a t)
   lam_ _ = Lam
 
