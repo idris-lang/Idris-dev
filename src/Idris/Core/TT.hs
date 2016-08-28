@@ -45,7 +45,7 @@ module Idris.Core.TT(
   , pEraseType, pmap, pprintRaw, pprintTT, pprintTTClause, prettyEnv, psubst
   , pToV, pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget
   , safeForgetEnv, showCG, showEnv, showEnvDbg, showSep
-  , sInstanceN, sMN, sNS, spanFC, str, subst, substNames, substTerm
+  , sImplementationN, sMN, sNS, spanFC, str, subst, substNames, substTerm
   , substV, sUN, tcname, termSmallerThan, tfail, thead, tnull
   , toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName
   , uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm
@@ -504,12 +504,12 @@ deriving instance NFData Name
 
 data SpecialName = WhereN !Int !Name !Name
                  | WithN !Int !Name
-                 | InstanceN !Name [T.Text]
+                 | ImplementationN !Name [T.Text]
                  | ParentN !Name !T.Text
                  | MethodN !Name
                  | CaseN !FC' !Name
                  | ElimN !Name
-                 | InstanceCtorN !Name
+                 | ImplementationCtorN !Name
                  | MetaN !Name !Name
   deriving (Eq, Ord, Data, Generic, Typeable)
 {-!
@@ -517,8 +517,8 @@ deriving instance Binary SpecialName
 deriving instance NFData SpecialName
 !-}
 
-sInstanceN :: Name -> [String] -> SpecialName
-sInstanceN n ss = InstanceN n (map T.pack ss)
+sImplementationN :: Name -> [String] -> SpecialName
+sImplementationN n ss = ImplementationN n (map T.pack ss)
 
 sParentN :: Name -> String -> SpecialName
 sParentN n s = ParentN n (T.pack s)
@@ -552,13 +552,13 @@ instance Show Name where
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
     show (WithN i n) = "with block in " ++ show n
-    show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " implementation of " ++ show cl
+    show (ImplementationN cl inst) = showSep ", " (map T.unpack inst) ++ " implementation of " ++ show cl
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN fc n) = "case block in " ++ show n ++
                         if fc == FC' emptyFC then "" else " at " ++ show fc
     show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
-    show (InstanceCtorN n) = "constructor of " ++ show n
+    show (ImplementationCtorN n) = "constructor of " ++ show n
     show (MetaN parent meta) = "<<" ++ show parent ++ " " ++ show meta ++ ">>"
 
 -- Show a name in a way decorated for code generation, not human reading
@@ -570,12 +570,12 @@ showCG (MN i s) = "{" ++ T.unpack s ++ show i ++ "}"
 showCG (SN s) = showCG' s
   where showCG' (WhereN i p c) = showCG p ++ ":" ++ showCG c ++ ":" ++ show i
         showCG' (WithN i n) = "_" ++ showCG n ++ "_with_" ++ show i
-        showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
+        showCG' (ImplementationN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
         showCG' (CaseN fc c) = showCG c ++ showFC' fc ++ "_case"
         showCG' (ElimN sn) = showCG sn ++ "_elim"
-        showCG' (InstanceCtorN n) = showCG n ++ "_ictor"
+        showCG' (ImplementationCtorN n) = showCG n ++ "_ictor"
         showCG' (MetaN parent meta) = showCG parent ++ "_meta_" ++ showCG meta
         showFC' (FC' NoFC) = ""
         showFC' (FC' (FileFC f)) = "_" ++ cgFN f
@@ -601,7 +601,7 @@ mapCtxt = fmap . fmap
 -- interface.
 tcname (UN xs) = False
 tcname (NS n _) = tcname n
-tcname (SN (InstanceN _ _)) = True
+tcname (SN (ImplementationN _ _)) = True
 tcname (SN (MethodN _)) = True
 tcname (SN (ParentN _ _)) = True
 tcname _ = False
@@ -1511,12 +1511,12 @@ nextName (SN x) = SN (nextName' x)
   where
     nextName' (WhereN i f x) = WhereN i f (nextName x)
     nextName' (WithN i n) = WithN i (nextName n)
-    nextName' (InstanceN n ns) = InstanceN (nextName n) ns
+    nextName' (ImplementationN n ns) = ImplementationN (nextName n) ns
     nextName' (ParentN n ns) = ParentN (nextName n) ns
     nextName' (CaseN fc n) = CaseN fc (nextName n)
     nextName' (ElimN n) = ElimN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
-    nextName' (InstanceCtorN n) = InstanceCtorN (nextName n)
+    nextName' (ImplementationCtorN n) = ImplementationCtorN (nextName n)
     nextName' (MetaN parent meta) = MetaN parent (nextName meta)
 nextName (SymRef i) = error "Can't generate a name from a symbol reference"
 

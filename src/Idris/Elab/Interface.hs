@@ -76,7 +76,7 @@ elabInterface :: ElabInfo
           -> Docstring (Either Err PTerm) -- ^ instance ctor docs
           -> Idris ()
 elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
-    = do let cn = fromMaybe (SN (InstanceCtorN tn)) (fst <$> mcn)
+    = do let cn = fromMaybe (SN (ImplementationCtorN tn)) (fst <$> mcn)
          let tty = pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
          let constraint = PApp fc (PRef fc [] tn)
                                   (map (pexp . PRef fc []) (map (\(n, _, _) -> n) ps))
@@ -164,12 +164,12 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     checkDefaultSuperInterfaceInstance :: PDecl -> Idris ()
     checkDefaultSuperInterfaceInstance (PInstance _ _ _ fc cs _ _ _ n _ ps _ _ _ _)
         = do when (not $ null cs) . tclift
-                $ tfail (At fc (Msg "Default superclass instances can't have constraints."))
+                $ tfail (At fc (Msg "Default superclass implementations can't have constraints."))
              i <- getIState
              let t = PApp fc (PRef fc [] n) (map pexp ps)
              let isConstrained = any (== t) (map snd constraints)
              when (not isConstrained) . tclift
-                $ tfail (At fc (Msg "Default instances must be for a superclass constraint on the containing class."))
+                $ tfail (At fc (Msg "Default implementations must be for a superclass constraint on the containing class."))
              return ()
 
     checkConstraintName :: [Name] -> Name -> Idris ()
@@ -252,7 +252,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              let conn' = case lookupCtxtName conn (idris_interfaces i) of
                                 [(n, _)] -> n
                                 _ -> conn
-             addInstance False True conn' cfn
+             addImplementation False True conn' cfn
              addIBC (IBCInstance False True conn' cfn)
 --              iputStrLn ("Added " ++ show (conn, cfn, ty))
              return [PTy emptyDocstring [] syn fc [] cfn NoFC ty,

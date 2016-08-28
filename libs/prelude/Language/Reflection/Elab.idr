@@ -182,7 +182,7 @@ data Elab : Type -> Type where
   Prim__DefineFunction : FunDefn Raw -> Elab ()
   Prim__DeclareDatatype : TyDecl -> Elab ()
   Prim__DefineDatatype : DataDefn -> Elab ()
-  Prim__AddInstance : TTName -> TTName -> Elab ()
+  Prim__AddImplementation : TTName -> TTName -> Elab ()
   Prim__IsTCName : TTName -> Elab Bool
 
   Prim__ResolveTC : TTName -> Elab ()
@@ -557,8 +557,8 @@ namespace Tactics
   ||| @ ifaceName the name of the interface for which an implementation is being registered
   ||| @ instName the name of the definition to use in implementation search
   export
-  addInstance : (ifaceName, instName : TTName) -> Elab ()
-  addInstance ifaceName instName = Prim__AddInstance ifaceName instName
+  addImplementation : (ifaceName, instName : TTName) -> Elab ()
+  addImplementation ifaceName instName = Prim__AddImplementation ifaceName instName
 
   ||| Determine whether a name denotes an interface.
   |||

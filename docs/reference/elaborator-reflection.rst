@@ -172,7 +172,7 @@ Changing the Global Context
 ``Elab`` scripts can modify the global context during execution.
 Just as the Idris elaborator produces auxiliary definitions to implement features such as ``where``-blocks and ``case`` expressions, user elaboration scripts may need to define functions.
 Furthermore, this allows ``Elab`` reflection to be used to implement features such as interface deriving.
-The operations ``declareType``, ``defineFunction``, and ``addInstance`` allow ``Elab`` scripts to modify the global context.
+The operations ``declareType``, ``defineFunction``, and ``addImplementation`` allow ``Elab`` scripts to modify the global context.
 
 Using Idris's Features
 ======================

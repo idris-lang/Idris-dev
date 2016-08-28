@@ -69,7 +69,7 @@ data IBCFile = IBCFile {
   , ibc_statics                :: ![(Name, [Bool])]
   , ibc_classes                :: ![(Name, InterfaceInfo)]
   , ibc_records                :: ![(Name, RecordInfo)]
-  , ibc_instances              :: ![(Bool, Bool, Name, Name)]
+  , ibc_implementations        :: ![(Bool, Bool, Name, Name)]
   , ibc_dsls                   :: ![(Name, DSL)]
   , ibc_datatypes              :: ![(Name, TypeInfo)]
   , ibc_optimise               :: ![(Name, OptInfo)]
@@ -174,7 +174,7 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_statics"  (ibc_statics i),
                        makeEntry "ibc_classes"  (ibc_classes i),
                        makeEntry "ibc_records"  (ibc_records i),
-                       makeEntry "ibc_instances"  (ibc_instances i),
+                       makeEntry "ibc_implementations"  (ibc_implementations i),
                        makeEntry "ibc_dsls"  (ibc_dsls i),
                        makeEntry "ibc_datatypes"  (ibc_datatypes i),
                        makeEntry "ibc_optimise"  (ibc_optimise i),
@@ -277,7 +277,7 @@ ibc i (IBCRecord n) f
                         Just v -> return f { ibc_records = (n,v): ibc_records f     }
                         _ -> ifail "IBC write failed"
 ibc i (IBCInstance int res n ins) f
-                   = return f { ibc_instances = (int, res, n, ins) : ibc_instances f }
+                   = return f { ibc_implementations = (int, res, n, ins) : ibc_implementations f }
 ibc i (IBCDSL n) f
                    = case lookupCtxtExact n (idris_dsls i) of
                         Just v -> return f { ibc_dsls = (n,v): ibc_dsls f     }
@@ -566,8 +566,8 @@ processRecords ar = do
 
 processInstances :: Archive -> Idris ()
 processInstances ar = do
-    cs <- getEntry [] "ibc_instances" ar
-    mapM_ (\ (i, res, n, ins) -> addInstance i res n ins) cs
+    cs <- getEntry [] "ibc_implementations" ar
+    mapM_ (\ (i, res, n, ins) -> addImplementation i res n ins) cs
 
 processDSLs :: Archive -> Idris ()
 processDSLs ar = do
@@ -2141,7 +2141,7 @@ instance (Binary t) => Binary (PTactic' t) where
                                         put x1
                                         put x2
                                         put x3
-                TCInstance -> putWord8 31
+                TCImplementation -> putWord8 31
                 GoalType x1 x2 -> do putWord8 32
                                      put x1
                                      put x2
@@ -2222,7 +2222,7 @@ instance (Binary t) => Binary (PTactic' t) where
                             x2 <- get
                             x3 <- get
                             return (LetTacTy x1 x2 x3)
-                   31 -> return TCInstance
+                   31 -> return TCImplementation
                    32 -> do x1 <- get
                             x2 <- get
                             return (GoalType x1 x2)

@@ -276,7 +276,7 @@ elabDecl' what info (PInterface doc s f cs n nfc ps pdocs fds ds cn cd)
     = do logElab 1 $ "Elaborating class " ++ show n
          elabInterface info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
 elabDecl' what info (PInstance doc argDocs s f cs pnames acc fnopts n nfc ps pextra t expn ds)
-    = do logElab 1 $ "Elaborating instance " ++ show n
+    = do logElab 1 $ "Elaborating implementation " ++ show n
          elabInstance info s doc argDocs what f cs pnames acc fnopts n nfc ps pextra t expn ds
 elabDecl' what info (PRecord doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn)
     = do logElab 1 $ "Elaborating record " ++ show name
