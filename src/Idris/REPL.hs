@@ -904,8 +904,8 @@ process fn (NewDefn decls) = do
   fixClauses :: PDecl' t -> PDecl' t
   fixClauses (PClauses fc opts _ css@(clause:cs)) =
     PClauses fc opts (getClauseName clause) css
-  fixClauses (PInstance doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty instName decls) =
-    PInstance doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty instName (map fixClauses decls)
+  fixClauses (PImplementation doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty implName decls) =
+    PImplementation doc argDocs syn fc constraints pnames acc opts cls nfc parms pextra ty implName (map fixClauses decls)
   fixClauses decl = decl
 
   info = recinfo (fileFC "toplevel")

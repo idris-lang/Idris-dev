@@ -345,8 +345,8 @@ declExtension syn ns rules =
                   (map (updateNs ns) ds)
                   (updateRecCon ns cname)
                   cdocs
-    updateNs ns (PInstance docs pdocs s fc cs pnames acc opts cn fc' ps pextra ity ni ds)
-         = PInstance docs pdocs s fc cs pnames acc opts (updateB ns cn) fc'
+    updateNs ns (PImplementation docs pdocs s fc cs pnames acc opts cn fc' ps pextra ity ni ds)
+         = PImplementation docs pdocs s fc cs pnames acc opts (updateB ns cn) fc'
                      ps pextra ity (fmap (updateB ns) ni)
                             (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
@@ -966,7 +966,7 @@ instance_ kwopt syn
                    let t = bindList (PPi constraint) cs sc
                    pnames <- instanceUsing
                    ds <- instanceBlock syn
-                   return [PInstance doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
+                   return [PImplementation doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
                  <?> "implementation declaration"
   where instanceName :: IdrisParser Name
         instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
@@ -1868,7 +1868,7 @@ loadSource lidr f toline
                    PClauses{} -> r
                    PInterface{} -> r
                    PData{} -> r
-                   PInstance{} -> r
+                   PImplementation{} -> r
                    _ -> x
 
     addModDoc :: SyntaxInfo -> [String] -> Docstring () -> Idris ()

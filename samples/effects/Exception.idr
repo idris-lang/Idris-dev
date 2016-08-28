@@ -7,7 +7,7 @@ import Control.IOExcept
 
 data MyErr = NotANumber | OutOfRange
 
-instance Show MyErr where
+implementation Show MyErr where
     show NotANumber = "Not a number"
     show OutOfRange = "Out of range"
 

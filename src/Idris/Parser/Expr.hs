@@ -1582,7 +1582,7 @@ tactics =
   , (["search"], Nothing, const $
       do depth <- option 10 $ fst <$> natural
          return (ProofSearch True True (fromInteger depth) Nothing [] []))
-  , noArgs ["instance"] TCInstance
+  , noArgs ["instance"] TCImplementation
   , noArgs ["solve"] Solve
   , noArgs ["attack"] Attack
   , noArgs ["state", ":state"] ProofState

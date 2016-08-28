@@ -552,7 +552,7 @@ instance Show Name where
 instance Show SpecialName where
     show (WhereN i p c) = show p ++ ", " ++ show c
     show (WithN i n) = "with block in " ++ show n
-    show (InstanceN cl inst) = showSep ", " (map T.unpack inst) ++ " implementation of " ++ show cl
+    show (InstanceN cl impl) = showSep ", " (map T.unpack impl) ++ " implementation of " ++ show cl
     show (MethodN m) = "method " ++ show m
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN fc n) = "case block in " ++ show n ++
@@ -570,7 +570,7 @@ showCG (MN i s) = "{" ++ T.unpack s ++ show i ++ "}"
 showCG (SN s) = showCG' s
   where showCG' (WhereN i p c) = showCG p ++ ":" ++ showCG c ++ ":" ++ show i
         showCG' (WithN i n) = "_" ++ showCG n ++ "_with_" ++ show i
-        showCG' (InstanceN cl inst) = '@':showCG cl ++ '$':showSep ":" (map T.unpack inst)
+        showCG' (InstanceN cl impl) = '@':showCG cl ++ '$':showSep ":" (map T.unpack impl)
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
         showCG' (CaseN fc c) = showCG c ++ showFC' fc ++ "_case"
@@ -853,7 +853,7 @@ deriving instance Binary Raw
 deriving instance NFData Raw
 !-}
 
-data ImplicitInfo = Impl { tcinstance :: Bool, toplevel_imp :: Bool,
+data ImplicitInfo = Impl { tcimplementation :: Bool, toplevel_imp :: Bool,
                            machine_gen :: Bool }
   deriving (Show, Eq, Ord, Data, Generic, Typeable)
 

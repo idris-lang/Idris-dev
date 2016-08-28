@@ -84,7 +84,7 @@ tacN str = sNS (sUN str) ["Elab", "Reflection", "Language"]
 reify :: IState -> Term -> ElabD PTactic
 reify _ (P _ n _) | n == reflm "Intros" = return Intros
 reify _ (P _ n _) | n == reflm "Trivial" = return Trivial
-reify _ (P _ n _) | n == reflm "Instance" = return TCInstance
+reify _ (P _ n _) | n == reflm "Instance" = return TCImplementation
 reify _ (P _ n _) | n == reflm "Solve" = return Solve
 reify _ (P _ n _) | n == reflm "Compute" = return Compute
 reify _ (P _ n _) | n == reflm "Skip" = return Skip
@@ -699,8 +699,8 @@ reflectSpecialName (WhereN i n1 n2) =
 reflectSpecialName (WithN i n) = reflCall "WithN" [ RConstant (I i)
                                                   , reflectName n
                                                   ]
-reflectSpecialName (InstanceN inst ss) =
-  reflCall "InstanceN" [ reflectName inst
+reflectSpecialName (InstanceN impl ss) =
+  reflCall "InstanceN" [ reflectName impl
                        , mkList (RConstant StrType) $
                            map (RConstant . Str . T.unpack) ss
                        ]
