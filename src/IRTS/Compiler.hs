@@ -633,7 +633,7 @@ irAlt top vs _ (ConCase n t args sc) = do
                 { viMethod = Just $ mkFieldName n i
                 }) | (v,i) <- zip args [0..]]
         _
-            -> M.empty -- not an instance constructor
+            -> M.empty -- not an implementation constructor
 
 irAlt top vs _ (ConstCase x rhs)
     | matchable   x = LConstCase x <$> irSC top vs rhs

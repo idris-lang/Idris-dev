@@ -385,7 +385,7 @@ tacticsExpr syn = do kw <- reservedFC "tactics"
 SimpleExpr ::=
     {- External (User-defined) Simple Expression -}
   | '?' Name
-  | % 'instance'
+  | % 'implementation'
   | 'Refl' ('{' Expr '}')?
   | ProofExpr
   | TacticsExpr

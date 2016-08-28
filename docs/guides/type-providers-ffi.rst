@@ -209,7 +209,7 @@ Next, an Idris file to define our providers:
     -- stat types.
     data BitWidth = B8 | B16 | B32 | B64
 
-    instance Show BitWidth where
+    implementation Show BitWidth where
       show B8 = "8 bits"
       show B16 = "16 bits"
       show B32 = "32 bits"

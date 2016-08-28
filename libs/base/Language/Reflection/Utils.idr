@@ -347,7 +347,7 @@ pure : Raw -> Raw
 pure = id
 
 --------------------------------------
--- Instances for definition reflection
+-- Implementations for definition reflection
 --------------------------------------
 implementation Show Erasure where
   show Erased    = "Erased"
