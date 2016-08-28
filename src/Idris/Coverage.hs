@@ -779,12 +779,23 @@ mkMultiPaths :: IState -> MultiPath -> [SCGEntry] -> [MultiPath]
 mkMultiPaths ist path [] = [reverse path]
 mkMultiPaths ist path cg = concatMap extend cg
   where extend (nextf, args)
-           | (nextf, args) `elem` path = [ reverse ((nextf, args) : path) ]
+           | (nextf, args) `inPath` path = [ reverse ((nextf, args) : path) ]
            | [Unchecked] <- lookupTotal nextf (tt_ctxt ist)
                = case lookupCtxt nextf (idris_callgraph ist) of
                     [ncg] -> mkMultiPaths ist ((nextf, args) : path) (scg ncg)
                     _ -> [ reverse ((nextf, args) : path) ]
            | otherwise = [ reverse ((nextf, args) : path) ]
+
+        inPath :: SCGEntry -> [SCGEntry] -> Bool
+        inPath f [] = False
+        inPath f (g : gs) = smallerEq f g || f == g || inPath f gs
+
+        smallerEq :: SCGEntry -> SCGEntry -> Bool
+        smallerEq (f, args) (g, args')
+            = f == g && not (null (filter smallers args))
+                     && filter smallers args == filter smallers args'
+        smallers (Just (_, Smaller)) = True
+        smallers _ = False
 
 -- If any route along the multipath leads to infinite descent, we're fine.
 -- Try a route beginning with every argument.
