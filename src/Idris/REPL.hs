@@ -1021,8 +1021,16 @@ process fn (Check t)
                                    (pprintDelab ist ty')
 
 process fn (Core t)
-   = do (tm, ty) <- elabREPL (recinfo (fileFC "toplevel")) ERHS t
-        iPrintTermWithType (pprintTT [] tm) (pprintTT [] ty)
+   = case t of
+       PRef _ _ n ->
+         do ist <- getIState
+            case lookupDef n (tt_ctxt ist) of
+              [CaseOp _ _ _ _ _ _] -> pprintDef True n >>= iRenderResult . vsep
+              _ -> coreTerm t
+       t -> coreTerm t
+   where coreTerm t =
+           do (tm, ty) <- elabREPL (recinfo (fileFC "toplevel")) ERHS t
+              iPrintTermWithType (pprintTT [] tm) (pprintTT [] ty)
 
 process fn (DocStr (Left n) w)
   | UN ty <- n, ty == T.pack "Type" = getIState >>= iRenderResult . pprintTypeDoc
@@ -1415,7 +1423,7 @@ process fn (MakeDoc s) =
          case result of Right _   -> iputStrLn "IdrisDoc generated"
                         Left  err -> iPrintError err
 process fn (PrintDef n) =
-  do result <- pprintDef n
+  do result <- pprintDef False n
      case result of
        [] -> iPrintError "Not found"
        outs -> iRenderResult . vsep $ outs
@@ -1442,7 +1450,7 @@ process fn (TransformInfo n)
 --                    showTrans i ts
 
 process fn (PPrint fmt width (PRef _ _ n))
-   = do outs <- pprintDef n
+   = do outs <- pprintDef False n
         iPrintResult =<< renderExternal fmt width (vsep outs)
 
 
@@ -1486,17 +1494,26 @@ displayHelp = let vstr = showVersion getIdrisVersionNoGit in
             l ++ take (c1 - length l) (repeat ' ') ++
             m ++ take (c2 - length m) (repeat ' ') ++ r ++ "\n"
 
-pprintDef :: Name -> Idris [Doc OutputAnnotation]
-pprintDef n =
+pprintDef :: Bool -> Name -> Idris [Doc OutputAnnotation]
+pprintDef asCore n =
   do ist <- getIState
      ctxt <- getContext
      let ambiguous = length (lookupNames n ctxt) > 1
          patdefs = idris_patdefs ist
          tyinfo = idris_datatypes ist
-     return $ map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
-              map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
-              map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
-  where ppDef :: Bool -> IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
+     if asCore
+       then return $ map (ppCoreDef ist) (lookupCtxtName n patdefs)
+       else return $ map (ppDef ambiguous ist) (lookupCtxtName n patdefs) ++
+                     map (ppTy ambiguous ist) (lookupCtxtName n tyinfo) ++
+                     map (ppCon ambiguous ist) (filter (flip isDConName ctxt) (lookupNames n ctxt))
+  where ppCoreDef :: IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
+        ppCoreDef ist (n, (clauses, missing)) =
+          case lookupTy n (tt_ctxt ist) of
+            [] -> error "Attempted pprintDef of TT of thing that doesn't exist"
+            (ty:_) -> prettyName True True [] n <+> colon <+>
+                      align (annotate (AnnTerm [] ty) (pprintTT [] ty)) <$>
+                      vsep (map (\(vars, lhs, rhs) ->  pprintTTClause vars lhs rhs) clauses)
+        ppDef :: Bool -> IState -> (Name, ([([(Name, Term)], Term, Term)], [PTerm])) -> Doc OutputAnnotation
         ppDef amb ist (n, (clauses, missing)) =
           prettyName True amb [] n <+> colon <+>
           align (pprintDelabTy ist n) <$>
