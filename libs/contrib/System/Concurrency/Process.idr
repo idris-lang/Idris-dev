@@ -32,13 +32,15 @@ run (Lift prog) = prog
 ||| Get current process ID
 export
 myID : Process msg (ProcID msg)
-myID = Lift (pure (MkPID prim__vm))
+myID = Lift (do me <- getMyVM
+                pure (MkPID me))
 
 ||| Send a message to another process
 ||| Returns whether the send was unsuccessful.
 export
 send : ProcID msg -> msg -> Process msg Bool
-send (MkPID p) m = Lift (do x <- sendToThread p 0 (prim__vm, m)
+send (MkPID p) m = Lift (do me <- getMyVM
+                            x <- sendToThread p 0 (me, m)
                             pure (x /= 0))
 
 ||| Return whether a message is waiting in the queue

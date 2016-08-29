@@ -627,11 +627,11 @@ doOp v (LExternal wf) [_,x,s]
        = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
                               ++ "),GETSTR("
                               ++ creg s ++ "))))"
-doOp v (LExternal vm) [] | vm == sUN "prim__vm" = v ++ "MKPTR(vm, vm)"
 doOp v (LExternal si) [] | si == sUN "prim__stdin" = v ++ "MKPTR(vm, stdin)"
 doOp v (LExternal so) [] | so == sUN "prim__stdout" = v ++ "MKPTR(vm, stdout)"
 doOp v (LExternal se) [] | se == sUN "prim__stderr" = v ++ "MKPTR(vm, stderr)"
 
+doOp v (LExternal vm) [_] | vm == sUN "prim__vm" = v ++ "MKPTR(vm, vm)"
 doOp v (LExternal nul) [] | nul == sUN "prim__null" = v ++ "MKPTR(vm, NULL)"
 doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqPtr"
     = v ++ "MKINT((i_int)(GETPTR(" ++ creg x ++ ") == GETPTR(" ++ creg y ++ ")))"

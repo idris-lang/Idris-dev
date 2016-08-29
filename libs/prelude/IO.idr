@@ -205,7 +205,7 @@ run__provider : IO a -> PrimIO a
 run__provider (MkIO f) = f (TheWorld prim__TheWorld)
 
 prim_fork : PrimIO () -> PrimIO Ptr
-prim_fork x = prim_io_pure prim__vm -- compiled specially
+prim_fork x = prim_io_pure (prim__vm prim__TheWorld) -- compiled specially
 
 namespace IO
   fork : IO' l () -> IO' l Ptr
@@ -214,8 +214,12 @@ namespace IO
                                      (\ x => prim_io_pure x)))
                                 (\x => prim_io_pure x))
 
+  getMyVM : IO' l Ptr
+  getMyVM = MkIO (\w => prim_io_pure (prim__vm (world w)))
+
   forceGC : IO ()
-  forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
+  forceGC = io_bind getMyVM
+               (\vm => foreign FFI_C "idris_forceGC" (Ptr -> IO ()) vm)
 
   getErrno : IO Int
   getErrno = foreign FFI_C "idris_errno" (IO Int)

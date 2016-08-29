@@ -13,13 +13,14 @@ import System
 |||          the receiver will create a new channel ID
 sendToThread : (thread_id : Ptr) -> (channel : Int) -> a -> IO Int
 sendToThread {a} dest channel val
-   = foreign FFI_C "idris_sendMessage" (Ptr -> Int -> Ptr -> Raw a -> IO Int)
-                prim__vm channel dest (MkRaw val)
+   = do me <- getMyVM
+        foreign FFI_C "idris_sendMessage" (Ptr -> Int -> Ptr -> Raw a -> IO Int)
+                me channel dest (MkRaw val)
 
 ||| Check for messages in the process inbox
 checkMsgs : IO Bool
-checkMsgs = do msgs <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Ptr)
-                            prim__vm
+checkMsgs = do me <- getMyVM
+               msgs <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Ptr) me
                null <- nullPtr msgs
                pure (not null)
 
@@ -27,8 +28,9 @@ checkMsgs = do msgs <- foreign FFI_C "idris_checkMessages" (Ptr -> IO Ptr)
 ||| If no messages, waits for the given number of seconds
 checkMsgsTimeout : Int -> IO Bool
 checkMsgsTimeout timeout
-          = do msgs <- foreign FFI_C "idris_checkMessagesTimeout" 
-                            (Ptr -> Int -> IO Ptr) prim__vm timeout
+          = do me <- getMyVM
+               msgs <- foreign FFI_C "idris_checkMessagesTimeout" 
+                            (Ptr -> Int -> IO Ptr) me timeout
                null <- nullPtr msgs
                pure (not null)
 
@@ -44,8 +46,9 @@ channel_id msg = foreign FFI_C "idris_getChannel" (Ptr -> IO Int) msg
 ||| Returns either 'Nothing', if none, or 'Just (pid, channel)' as pid 
 ||| of sender and new channel id.
 listenMsgs : IO (Maybe (Ptr, Int))
-listenMsgs = do msg <- foreign FFI_C "idris_checkInitMessages" (Ptr -> IO Ptr)
-                             prim__vm
+listenMsgs = do me <- getMyVM
+                msg <- foreign FFI_C "idris_checkInitMessages" (Ptr -> IO Ptr)
+                             me
                 null <- nullPtr msg
                 if null then pure Nothing
                         else do s_id <- sender msg
@@ -56,8 +59,9 @@ listenMsgs = do msg <- foreign FFI_C "idris_checkInitMessages" (Ptr -> IO Ptr)
 ||| If channel is '0', accept on any channel.
 checkMsgsFrom : Ptr -> (channel : Int) -> IO Bool
 checkMsgsFrom sender channel 
-  = do msgs <- foreign FFI_C "idris_checkMessagesFrom" (Ptr -> Int -> Ptr -> IO Ptr)
-                             prim__vm channel sender
+  = do me <- getMyVM
+       msgs <- foreign FFI_C "idris_checkMessagesFrom" (Ptr -> Int -> Ptr -> IO Ptr)
+                             me channel sender
        null <- nullPtr msgs
        pure (not null)
 
@@ -66,8 +70,8 @@ checkMsgsFrom sender channel
 ||| Note that this is not at all type safe! It is intended to be used in
 ||| a type safe wrapper.
 getMsg : IO a
-getMsg {a} = do m <- foreign FFI_C "idris_recvMessage" 
-                             (Ptr -> IO Ptr) prim__vm
+getMsg {a} = do me <- getMyVM
+                m <- foreign FFI_C "idris_recvMessage" (Ptr -> IO Ptr) me
                 MkRaw x <- foreign FFI_C "idris_getMsg" (Ptr -> IO (Raw a)) m
                 pure x
 
@@ -77,8 +81,9 @@ getMsg {a} = do m <- foreign FFI_C "idris_recvMessage"
 ||| a type safe wrapper.
 getMsgWithSender : IO (Ptr, Int, a)
 getMsgWithSender {a} 
-           = do m <- foreign FFI_C "idris_recvMessage" 
-                             (Ptr -> IO Ptr) prim__vm
+           = do me <- getMyVM
+                m <- foreign FFI_C "idris_recvMessage" 
+                             (Ptr -> IO Ptr) me
                 MkRaw x <- foreign FFI_C "idris_getMsg" (Ptr -> IO (Raw a)) m
                 vm <- sender m
                 chan <- channel_id m
@@ -90,8 +95,9 @@ getMsgWithSender {a}
 ||| alive
 getMsgFrom : Ptr -> (channel : Int) -> IO (Maybe a)
 getMsgFrom {a} sender channel 
-  = do m <- foreign FFI_C "idris_recvMessageFrom"
-                    (Ptr -> Int -> Ptr -> IO Ptr) prim__vm channel sender
+  = do me <- getMyVM
+       m <- foreign FFI_C "idris_recvMessageFrom"
+                    (Ptr -> Int -> Ptr -> IO Ptr) me channel sender
        null <- nullPtr m
        if null 
           then pure Nothing

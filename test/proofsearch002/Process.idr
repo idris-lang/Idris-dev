@@ -378,7 +378,8 @@ eval st (Fork proc) k
              k (MkPID ptr) st 
 
 eval st (Work proc cont) k 
-        = do ptr <- fork (eval (MkEvalState [] [] 0 0) (proc (MkPID prim__vm))
+        = do me <- getMyVM
+             ptr <- fork (eval (MkEvalState [] [] 0 0) (proc (MkPID me))
                                (\_, _ => pure ()))
              eval (record { clients = clients st + 1 } st) cont k
 
@@ -420,11 +421,12 @@ eval {iface} {hs} st (Respond f) k
                        k val st''')
 
 eval {hs} st (Connect {serveri} (MkPID pid)) k 
-     = if pid == prim__vm then k False st else do
-          v <- sendToThread pid 0 (MsgQuery {iface=serveri} {hs}
-                                            ConnectMsg)
-          -- TODO: Wait for ACK
-          k (v == 1) st
+     = do me <- getMyVM
+          if pid == me then k False st else do
+            v <- sendToThread pid 0 (MsgQuery {iface=serveri} {hs}
+                                              ConnectMsg)
+            -- TODO: Wait for ACK
+            k (v == 1) st
 
 eval {hs} st (Disconnect {serveri} (MkPID pid)) k 
      = do v <- sendToThread pid 0 (MsgQuery {iface=serveri} {hs} 

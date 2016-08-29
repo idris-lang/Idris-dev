@@ -204,7 +204,7 @@ export data CData : Type
 %extern prim__readFile : prim__WorldType -> Ptr -> String
 %extern prim__writeFile : prim__WorldType -> Ptr -> String -> Int
 
-%extern prim__vm : Ptr
+%extern prim__vm : prim__WorldType -> Ptr
 %extern prim__stdin : Ptr
 %extern prim__stdout : Ptr
 %extern prim__stderr : Ptr

@@ -14,7 +14,8 @@ pong = do (sender, x) <- recvMsg
           pure ()
 
 ping : Ptr -> IO ()
-ping thread = do sendToThread thread 0 (prim__vm, "Hello!")
+ping thread = do me <- getMyVM
+                 sendToThread thread 0 (me, "Hello!")
                  pure ()
 
 pingpong : IO ()

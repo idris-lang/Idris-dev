@@ -40,8 +40,9 @@ strError err = unsafePerformIO -- yeah, yeah...
                   (foreign FFI_C "idris_showerror" (Int -> IO String) err)
 
 getFileError : IO FileError
-getFileError = do MkRaw err <- foreign FFI_C "idris_mkFileError"
-                                    (Ptr -> IO (Raw FileError)) prim__vm
+getFileError = do vm <- getMyVM
+                  MkRaw err <- foreign FFI_C "idris_mkFileError"
+                                    (Ptr -> IO (Raw FileError)) vm
                   pure err
 
 Show FileError where
