@@ -55,4 +55,4 @@ main = do
             i <- test7 fptr 3
             printLn i
             test8
-            return ()
+            pure ()

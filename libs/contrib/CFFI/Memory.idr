@@ -33,7 +33,7 @@ mfree ptr = foreign FFI_C "free" (Ptr -> IO ()) ptr
 
 ||| Allocate enough memory to hold an instance of a C typr
 alloc : Composite -> IO CPtr
-alloc t = return $ CPt !(calloc 1 (sizeOf t)) 0
+alloc t = pure $ CPt !(calloc 1 (sizeOf t)) 0
 
 ||| Free memory allocated with alloc
 free : CPtr -> IO ()
@@ -63,24 +63,24 @@ peek PTR (CPt p o) = prim_peekPtr p o
 ||| Write to memory
 poke : (t : CType) -> CPtr -> translate t -> IO ()
 poke I8 (CPt p o) x = do _ <- prim_poke8 p o x
-                         return ()
+                         pure ()
 poke I16 (CPt p o) x = do _ <- prim_poke16 p o x
-                          return ()
+                          pure ()
 poke I32 (CPt p o) x = do _ <- prim_poke32 p o x
-                          return ()
+                          pure ()
 poke I64 (CPt p o) x = do _ <- prim_poke64 p o x
-                          return ()
+                          pure ()
 poke PTR (CPt p o) x = do _ <- prim_pokePtr p o x
-                          return ()
+                          pure ()
 poke FLOAT (CPt p o) x = do _ <- prim_pokeSingle p o x
-                            return ()
+                            pure ()
 poke DOUBLE (CPt p o) x = do _ <- prim_pokeDouble p o x
-                             return ()
+                             pure ()
 
 ||| Update memory with a function.
 update : (t: CType) -> CPtr -> (translate t -> translate t) -> IO ()
 update ty cp f = do val <- peek ty cp
-                    out <- return $ f val
+                    out <- pure $ f val
                     poke ty cp out
 
 ||| Get a pointer to a field in a composite value

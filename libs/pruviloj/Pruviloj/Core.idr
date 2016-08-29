@@ -87,7 +87,7 @@ newHole : (hint : String) -> (ty : Raw) -> Elab TTName
 newHole hint ty =
     do hn <- gensym hint
        claim hn ty
-       return hn
+       pure hn
 
 ||| Use a term to solve a hole
 |||
@@ -105,7 +105,7 @@ intros = do g <- snd <$> getGoal
             do n' <- nameFrom n
                intro n'
                (n' ::) <$> go body
-        go _ = return []
+        go _ = pure []
 
 ||| Run a tactic inside of a particular hole, if it still exists. If
 ||| it has been solved, do nothing.
@@ -113,7 +113,7 @@ inHole : TTName -> Elab a -> Elab (Maybe a)
 inHole h todo =
   if (h `elem` !getHoles)
     then do focus h; Just <$> todo
-    else return Nothing
+    else pure Nothing
 
 ||| Restrict a polymorphic type to () for contexts where it doesn't
 ||| matter. This is nice for sticking `debug` in a context where
@@ -132,7 +132,7 @@ equiv newGoal =
        claim h newGoal
        fill (Var h); solve
        focus h
-       return h
+       pure h
 
 ||| Remember a term built with elaboration for later use. If the
 ||| current goal is `h`, then `remember n ty` puts a fresh hole at
@@ -149,14 +149,14 @@ remember n ty =
        claim todo ty
        letbind n ty (Var todo)
        focus todo
-       return todo
+       pure todo
 
 ||| Repeat a given tactic until it fails. Fails if the tactic fails on
 ||| the first attempt; succeeds otherwise.
 repeatUntilFail : Elab () -> Elab ()
 repeatUntilFail tac =
     do tac
-       repeatUntilFail tac <|> return ()
+       repeatUntilFail tac <|> pure ()
 
 ||| If the current goal is a pattern-bound variable, bind it with the
 ||| expected name. Otherwise fail.
@@ -181,7 +181,7 @@ total
 inferType : (tac : Elab ()) -> Elab (TT, TT)
 inferType tac =
     case fst !(runElab `(Infer) (do startInfer; tac)) of
-        `(MkInfer ~ty ~tm) => return (tm, ty)
+        `(MkInfer ~ty ~tm) => pure (tm, ty)
         _ => fail [TextPart "Not infer"]
   where
     startInfer : Elab ()
@@ -219,7 +219,7 @@ refine tm =
        newHoles <- apply tm (replicate argCount True)
        solve
        actualHoles <- getHoles
-       return (filter (flip elem actualHoles) newHoles)
+       pure (filter (flip elem actualHoles) newHoles)
 
   where countPi : Raw -> Nat
         countPi (RBind _ (Pi _ _) body) = S (countPi body)

@@ -5,13 +5,13 @@ mwhile t b = do v <- t
                 case v of
                      True => do b
                                 mwhile t b
-                     False => return ()
+                     False => pure ()
 
 dumpFile : String -> IO ()
 dumpFile fn = do { Right h <- openFile fn Read
                    mwhile (do { -- putStrLn "TEST"
                                 x <- fEOF h
-                                return (not x) })
+                                pure (not x) })
                           (do { Right l <- fGetLine h
                                 putStr l })
                    closeFile h }

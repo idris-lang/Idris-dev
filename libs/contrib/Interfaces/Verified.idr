@@ -35,8 +35,8 @@ interface (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) w
                      mf <*> mx = mf >>= \f =>
                                  mx >>= \x =>
                                         pure (f x)
-  monadLeftIdentity : (x : a) -> (f : a -> m b) -> return x >>= f = f x
-  monadRightIdentity : (mx : m a) -> mx >>= Monad.return = mx
+  monadLeftIdentity : (x : a) -> (f : a -> m b) -> pure x >>= f = f x
+  monadRightIdentity : (mx : m a) -> mx >>= pure = mx
   monadAssociativity : (mx : m a) -> (f : a -> m b) -> (g : b -> m c) ->
                        (mx >>= f) >>= g = mx >>= (\x => f x >>= g)
 

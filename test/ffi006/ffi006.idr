@@ -11,7 +11,7 @@ cons x xs = x :: xs
 
 show' : List Int -> IO String
 show' xs = do putStrLn "Ready to show..."
-              return (show xs)
+              pure (show xs)
 
 testList : FFI_Export FFI_C "testHdr.h" []
 testList = Data (List Int) "ListInt" $

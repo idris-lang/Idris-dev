@@ -26,7 +26,7 @@ intros : Elab ()
 intros = do g <- getGoal
             case snd g of
               `(~_ -> ~_) => intro'
-              _ => return ()
+              _ => pure ()
 
 foo : Nat -> Nat
 foo = %runElab (do intro (UN "fnord")
@@ -36,7 +36,7 @@ foo = %runElab (do intro (UN "fnord")
 
 %runElab (do n <- isTCName `{Nat}
              s <- isTCName `{Show}
-             if n || not s then fail [TextPart "nope"] else return ())
+             if n || not s then fail [TextPart "nope"] else pure ())
 
 -- Note that <|> is equivalent to "try" in the old tactics.
 -- In these tactics, we use ordinary do notation and ordinary documentation strings!
@@ -121,7 +121,7 @@ namespace STLC
           mkTypeHole hint = do holeName <- gensym hint
                                claim holeName RType
                                unfocus holeName
-                               return holeName
+                               pure holeName
 
   -- FIXME: Removing the let-bound Elab script showed a deficiency in
   -- how accessible arguments are identified in type signatures. It
@@ -217,13 +217,13 @@ namespace STLC
               mkEnvH = do envH <- gensym "env"
                           claim envH `(List Ty)
                           unfocus envH
-                          return envH
+                          pure envH
 
               mkTyH : Elab TTName
               mkTyH = do tyH <- gensym "ty"
                          claim tyH `(Ty)
                          unfocus tyH
-                         return tyH
+                         pure tyH
 
               mkIx : Fin n -> Elab ()
               mkIx FZ = do envH <- mkEnvH

@@ -39,7 +39,7 @@ implementation Monad m => Monad (ReaderT r m) where
                                  ka r
 
 implementation Monad m => MonadReader r (ReaderT r m) where
-    ask            = RD return
+    ask            = RD pure
     local f (RD m) = RD $ m . f
 
 implementation MonadTrans (ReaderT r) where
@@ -48,7 +48,7 @@ implementation MonadTrans (ReaderT r) where
 ||| Evaluate a function in the context of a Reader monad
 asks : MonadReader r m => (r -> a) -> m a
 asks f = do r <- ask
-            return (f r)
+            pure (f r)
 
 ||| The reader monad. See MonadReader
 Reader : Type -> Type -> Type

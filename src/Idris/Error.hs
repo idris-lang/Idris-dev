@@ -133,7 +133,6 @@ warnDisamb ist (PDoBlock steps) = mapM_ wStep steps
         wStep (DoLet _ _ _ x y) = warnDisamb ist x >> warnDisamb ist y
         wStep (DoLetP _ x y) = warnDisamb ist x >> warnDisamb ist y
 warnDisamb ist (PIdiom _ x) = warnDisamb ist x
-warnDisamb ist (PReturn _) = return ()
 warnDisamb ist (PMetavar _ _) = return ()
 warnDisamb ist (PProof tacs) = mapM_ (Foldable.mapM_ (warnDisamb ist)) tacs
 warnDisamb ist (PTactics tacs) = mapM_ (Foldable.mapM_ (warnDisamb ist)) tacs

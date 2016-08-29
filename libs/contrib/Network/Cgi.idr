@@ -32,29 +32,29 @@ getAction (MkCGI act) = act
 
 implementation Functor CGI where
     map f (MkCGI c) = MkCGI (\s => do (a, i) <- c s
-                                      return (f a, i))
+                                      pure (f a, i))
 
 implementation Applicative CGI where
-    pure v = MkCGI (\s => return (v, s))
+    pure v = MkCGI (\s => pure (v, s))
 
     (MkCGI a) <*> (MkCGI b) = MkCGI (\s => do (f, i) <- a s
                                               (c, j) <- b i
-                                              return (f c, j))
+                                              pure (f c, j))
 
 implementation Monad CGI where
     (>>=) (MkCGI f) k = MkCGI (\s => do v <- f s
                                         getAction (k (fst v)) (snd v))
 
 setInfo : CGIInfo -> CGI ()
-setInfo i = MkCGI (\s => return ((), i))
+setInfo i = MkCGI (\s => pure ((), i))
 
 getInfo : CGI CGIInfo
-getInfo = MkCGI (\s => return (s, s))
+getInfo = MkCGI (\s => pure (s, s))
 
 export
 lift : IO a -> CGI a
 lift op = MkCGI (\st => do { x <- op
-                             return (x, st) } )
+                             pure (x, st) } )
 
 export
 output : String -> CGI ()
@@ -64,30 +64,30 @@ output s = do i <- getInfo
 export
 queryVars : CGI Vars
 queryVars = do i <- getInfo
-               return (GET i)
+               pure (GET i)
 
 export
 postVars : CGI Vars
 postVars = do i <- getInfo
-              return (POST i)
+              pure (POST i)
 
 export
 cookieVars : CGI Vars
 cookieVars = do i <- getInfo
-                return (Cookies i)
+                pure (Cookies i)
 
 export
 queryVar : String -> CGI (Maybe String)
 queryVar x = do vs <- queryVars
-                return (lookup x vs)
+                pure (lookup x vs)
 
 getOutput : CGI String
 getOutput = do i <- getInfo
-               return (Output i)
+               pure (Output i)
 
 getHeaders : CGI String
 getHeaders = do i <- getInfo
-                return (Headers i)
+                pure (Headers i)
 
 export
 flushHeaders : CGI ()
@@ -110,14 +110,14 @@ getVars seps query = mapMaybe readVar (split (\x => elem x seps) query)
 getContent : Int -> IO String
 getContent x = getC (cast x) "" where
     getC : Nat -> String -> IO String
-    getC Z     acc = return $ reverse acc
+    getC Z     acc = pure $ reverse acc
     getC (S k) acc = do x <- getChar
                         getC k (strCons x acc)
 
 getCgiEnv : String -> IO String
 getCgiEnv key = do
   val <- getEnv key
-  return $ maybe "" id val
+  pure $ maybe "" id val
 
 export
 runCGI : CGI a -> IO a
@@ -138,6 +138,6 @@ runCGI prog = do
                  "")
     putStrLn (Headers st)
     putStr (Output st)
-    return v
+    pure v
 
 

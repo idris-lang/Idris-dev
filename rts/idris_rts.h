@@ -213,7 +213,7 @@ typedef void(*func)(VM*, VAL*);
 
 typedef intptr_t i_int;
 
-#define MKINT(x) ((void*)((x)<<1)+1)
+#define MKINT(x) ((void*)((i_int)(((x)<<1)+1)))
 #define GETINT(x) ((i_int)(x)>>1)
 #define ISINT(x) ((((i_int)x)&1) == 1)
 #define ISSTR(x) (GETTY(x) == CT_STRING)

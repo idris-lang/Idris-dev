@@ -29,7 +29,7 @@ import IO
 ||| descriptor
 putStr' : String -> IO' ffi ()
 putStr' x = do prim_write x
-               return ()
+               pure ()
 
 ||| Output a string to stdout without a trailing newline
 putStr : String -> IO ()
@@ -66,7 +66,7 @@ printLn = printLn'
 ||| descriptor
 getLine' : IO' ffi String
 getLine' = do x <- prim_read
-              return (reverse (trimNL (reverse x)))
+              pure (reverse (trimNL (reverse x)))
   where trimNL : String -> String
         trimNL str with (strM str)
           trimNL "" | StrNil = ""
@@ -103,7 +103,7 @@ getArgs = do n <- numArgs
 
     partial
     ga' : List String -> Int -> Int -> IO (List String)
-    ga' acc i n = if (i == n) then (return $ reverse acc) else
+    ga' acc i n = if (i == n) then (pure $ reverse acc) else
                     do arg <- getArg i
                        ga' (arg :: acc) (i+1) n
 
@@ -155,7 +155,7 @@ replWith acc prompt fn
         case fn acc x of
              Just (out, acc') => do putStr out
                                     replWith acc' prompt fn
-             Nothing => return ()
+             Nothing => pure ()
 
 ||| A basic read-eval-print loop
 ||| @ prompt the prompt to show

@@ -303,15 +303,15 @@ staticEff = id
 toEff : .(xs' : List EFFECT) -> EffM m a xs (\v => xs') -> EffM m a xs (\v => xs')
 toEff xs' = id
 
-return : a -> EffM m a xs (\v => xs)
-return x = Value x
-
--- ------------------------------------------------------ [ for idiom brackets ]
-
 infixl 2 <*>
 
 pure : a -> EffM m a xs (\v => xs)
 pure = Value
+
+return : a -> EffM m a xs (\v => xs)
+return = pure
+
+%deprecate Effects.return "Please use `pure`."
 
 pureM : (val : a) -> EffM m a (xs val) xs
 pureM = Value
@@ -320,7 +320,7 @@ pureM = Value
         EffM m a xs (\v => xs) -> EffM m b xs (\v => xs)
 (<*>) prog v = do fn <- prog
                   arg <- v
-                  return (fn arg)
+                  pure (fn arg)
 
 (<$>) : (a -> b) ->
         EffM m a xs (\v => xs) -> EffM m b xs (\v => xs)

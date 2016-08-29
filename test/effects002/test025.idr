@@ -26,7 +26,7 @@ testMemory = do Src :- allocate 5
                 Dst :- poke 4 (sub1 end) Oh
                 res <- Dst :- peek 1 (S(S(S(S Z)))) Oh
                 Dst :- free
-                return (map (prim__zextB8_Int) res)
+                pure (map (prim__zextB8_Int) res)
 
 main : IO ()
 main = ioe_run (runInit [Dst := (), Src := ()] testMemory)

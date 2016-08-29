@@ -98,8 +98,8 @@ prim_io_bind (Prim__IO v) k = k v
 unsafePerformPrimIO : PrimIO a -> a
 -- compiled as primitive
 
-prim_io_return : a -> PrimIO a
-prim_io_return x = Prim__IO x
+prim_io_pure : a -> PrimIO a
+prim_io_pure x = Prim__IO x
 
 io_bind : IO' l a -> (a -> IO' l b) -> IO' l b
 io_bind (MkIO fn) k
@@ -107,8 +107,8 @@ io_bind (MkIO fn) k
                     (\ b => case k b of
                                  MkIO fkb => fkb w))
 
-io_return : a -> IO' l a
-io_return x = MkIO (\w => prim_io_return x)
+io_pure : a -> IO' l a
+io_pure x = MkIO (\w => prim_io_pure x)
 
 liftPrimIO : (World -> PrimIO a) -> IO' l a
 liftPrimIO = MkIO
@@ -122,21 +122,21 @@ run__IO f = call__IO f
 
 unsafePerformIO : IO' ffi a -> a
 unsafePerformIO (MkIO f) = unsafePerformPrimIO
-        (prim_io_bind (f (TheWorld prim__TheWorld)) (\ b => prim_io_return b))
+        (prim_io_bind (f (TheWorld prim__TheWorld)) (\ b => prim_io_pure b))
 
 prim_read : IO' l String
-prim_read = MkIO (\w => prim_io_return (prim__readString (world w)))
+prim_read = MkIO (\w => prim_io_pure (prim__readString (world w)))
 
 prim_write : String -> IO' l Int
 prim_write s
-   = MkIO (\w => prim_io_return (prim__writeString (world w) s))
+   = MkIO (\w => prim_io_pure (prim__writeString (world w) s))
 
 prim_fread : Ptr -> IO' l String
-prim_fread h = MkIO (\w => prim_io_return (prim__readFile (world w) h))
+prim_fread h = MkIO (\w => prim_io_pure (prim__readFile (world w) h))
 
 prim_fwrite : Ptr -> String -> IO' l Int
 prim_fwrite h s
-   = MkIO (\w => prim_io_return (prim__writeFile (world w) h s))
+   = MkIO (\w => prim_io_pure (prim__writeFile (world w) h s))
 
 --------- The C FFI
 namespace FFI_C
@@ -205,14 +205,14 @@ run__provider : IO a -> PrimIO a
 run__provider (MkIO f) = f (TheWorld prim__TheWorld)
 
 prim_fork : PrimIO () -> PrimIO Ptr
-prim_fork x = prim_io_return prim__vm -- compiled specially
+prim_fork x = prim_io_pure prim__vm -- compiled specially
 
 namespace IO
   fork : IO' l () -> IO' l Ptr
   fork (MkIO f) = MkIO (\w => prim_io_bind
                                 (prim_fork (prim_io_bind (f w)
-                                     (\ x => prim_io_return x)))
-                                (\x => prim_io_return x))
+                                     (\ x => prim_io_pure x)))
+                                (\x => prim_io_pure x))
 
   forceGC : IO ()
   forceGC = foreign FFI_C "idris_forceGC" (Ptr -> IO ()) prim__vm
@@ -316,52 +316,52 @@ namespace FFI_Export
 
 -- Accessing memory
 prim_peek8 : Ptr -> Int -> IO Bits8
-prim_peek8 ptr offset = MkIO (\w => prim_io_return (prim__peek8 (world w) ptr offset))
+prim_peek8 ptr offset = MkIO (\w => prim_io_pure (prim__peek8 (world w) ptr offset))
 
 prim_poke8 : Ptr -> Int -> Bits8 -> IO Int
-prim_poke8 ptr offset val = MkIO (\w =>  prim_io_return (
+prim_poke8 ptr offset val = MkIO (\w =>  prim_io_pure (
     prim__poke8 (world w) ptr offset val))
 
 prim_peek16 : Ptr -> Int -> IO Bits16
-prim_peek16 ptr offset = MkIO (\w => prim_io_return (prim__peek16 (world w) ptr offset))
+prim_peek16 ptr offset = MkIO (\w => prim_io_pure (prim__peek16 (world w) ptr offset))
 
 prim_poke16 : Ptr -> Int -> Bits16 -> IO Int
-prim_poke16 ptr offset val = MkIO (\w =>  prim_io_return (
+prim_poke16 ptr offset val = MkIO (\w =>  prim_io_pure (
     prim__poke16 (world w) ptr offset val))
 
 prim_peek32 : Ptr -> Int -> IO Bits32
-prim_peek32 ptr offset = MkIO (\w => prim_io_return (prim__peek32 (world w) ptr offset))
+prim_peek32 ptr offset = MkIO (\w => prim_io_pure (prim__peek32 (world w) ptr offset))
 
 prim_poke32 : Ptr -> Int -> Bits32 -> IO Int
-prim_poke32 ptr offset val = MkIO (\w =>  prim_io_return (
+prim_poke32 ptr offset val = MkIO (\w =>  prim_io_pure (
     prim__poke32 (world w) ptr offset val))
 
 prim_peek64 : Ptr -> Int -> IO Bits64
-prim_peek64 ptr offset = MkIO (\w => prim_io_return (prim__peek64 (world w) ptr offset))
+prim_peek64 ptr offset = MkIO (\w => prim_io_pure (prim__peek64 (world w) ptr offset))
 
 prim_poke64 : Ptr -> Int -> Bits64 -> IO Int
-prim_poke64 ptr offset val = MkIO (\w =>  prim_io_return (
+prim_poke64 ptr offset val = MkIO (\w =>  prim_io_pure (
     prim__poke64 (world w) ptr offset val))
 
 prim_peekPtr : Ptr -> Int -> IO Ptr
-prim_peekPtr ptr offset = MkIO (\w => prim_io_return (prim__peekPtr (world w) ptr offset))
+prim_peekPtr ptr offset = MkIO (\w => prim_io_pure (prim__peekPtr (world w) ptr offset))
 
 prim_pokePtr : Ptr -> Int -> Ptr -> IO Int
-prim_pokePtr ptr offset val = MkIO (\w =>  prim_io_return (
+prim_pokePtr ptr offset val = MkIO (\w =>  prim_io_pure (
     prim__pokePtr (world w) ptr offset val))
 
 prim_peekDouble : Ptr -> Int -> IO Double
-prim_peekDouble ptr offset = MkIO (\w => prim_io_return (prim__peekDouble (world w) ptr offset))
+prim_peekDouble ptr offset = MkIO (\w => prim_io_pure (prim__peekDouble (world w) ptr offset))
 
 prim_pokeDouble : Ptr -> Int -> Double -> IO Int
-prim_pokeDouble ptr offset val = MkIO (\w =>  prim_io_return (
+prim_pokeDouble ptr offset val = MkIO (\w =>  prim_io_pure (
     prim__pokeDouble (world w) ptr offset val))
 
 ||| Single precision floats are marshalled to Doubles
 prim_peekSingle : Ptr -> Int -> IO Double
-prim_peekSingle ptr offset = MkIO (\w => prim_io_return (prim__peekSingle (world w) ptr offset))
+prim_peekSingle ptr offset = MkIO (\w => prim_io_pure (prim__peekSingle (world w) ptr offset))
 
 ||| Single precision floats are marshalled to Doubles
 prim_pokeSingle : Ptr -> Int -> Double -> IO Int
-prim_pokeSingle ptr offset val = MkIO (\w =>  prim_io_return (
+prim_pokeSingle ptr offset val = MkIO (\w =>  prim_io_pure (
     prim__pokeSingle (world w) ptr offset val))

@@ -22,12 +22,12 @@ eval : Expr -> Eff Integer [EXCEPTION String, STDIO, RND, STATE Env]
 eval (Var x) = do vs <- get
                   case lookup x vs of
                         Nothing => raise ("No such variable " ++ x)
-                        Just val => return val
-eval (Val x) = return x
+                        Just val => pure val
+eval (Val x) = pure x
 eval (Add l r) = [| eval l + eval r |]
 eval (Random upper) = do val <- rndInt 0 upper
                          putStrLn (show val)
-                         return val
+                         pure val
 
 testExpr : Expr
 testExpr = Add (Add (Var "foo") (Val 42)) (Random 100)

@@ -24,7 +24,7 @@ implementation Catchable (IOExcept err) err where
     catch (IOM prog) h = IOM (do p' <- prog
                                  case p' of
                                       Left e => let IOM he = h e in he
-                                      Right val => return (Right val))
+                                      Right val => pure (Right val))
     throw = ioe_fail
 
 implementation Catchable List () where

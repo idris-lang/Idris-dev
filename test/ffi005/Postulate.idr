@@ -3,7 +3,7 @@ module Main
 %language TypeProviders
 
 bad : IO (Provider Type)
-bad = return $ pure Void
+bad = pure $ pure Void
 
 %provide postulate oops with bad
 

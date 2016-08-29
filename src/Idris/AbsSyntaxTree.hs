@@ -1089,7 +1089,6 @@ data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
            | Placeholder                                  -- ^ Underscore
            | PDoBlock [PDo]                               -- ^ Do notation
            | PIdiom FC PTerm                              -- ^ Idiom brackets
-           | PReturn FC
            | PMetavar FC Name                             -- ^ A metavariable, ?name, and its precise location
            | PProof [PTactic]                             -- ^ Proof script
            | PTactics [PTactic]                           -- ^ As PProof, but no auto solving
@@ -1158,7 +1157,6 @@ mapPTermFC f g (PDoBlock dos) = PDoBlock (map mapPDoFC dos)
         mapPDoFC (DoLet fc n nfc t1 t2) = DoLet (f fc) n (g nfc) (mapPTermFC f g t1) (mapPTermFC f g t2)
         mapPDoFC (DoLetP fc t1 t2) = DoLetP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2)
 mapPTermFC f g (PIdiom fc t)                  = PIdiom (f fc) (mapPTermFC f g t)
-mapPTermFC f g (PReturn fc)                   = PReturn (f fc)
 mapPTermFC f g (PMetavar fc n)                = PMetavar (g fc) n
 mapPTermFC f g (PProof tacs)                  = PProof (map (fmap (mapPTermFC f g)) tacs)
 mapPTermFC f g (PTactics tacs)                = PTactics (map (fmap (mapPTermFC f g)) tacs)
@@ -1394,7 +1392,6 @@ highestFC (PDoBlock lines) =
     getDoFC (DoLetP fc l r)       = fc
 
 highestFC (PIdiom fc _)           = Just fc
-highestFC (PReturn fc)            = Just fc
 highestFC (PMetavar fc _)         = Just fc
 highestFC (PProof _)              = Nothing
 highestFC (PTactics _)            = Nothing
@@ -1460,7 +1457,6 @@ deriving instance NFData OptInfo
 -- | Syntactic sugar info
 data DSL' t = DSL {
     dsl_bind    :: t
-  , dsl_return  :: t
   , dsl_apply   :: t
   , dsl_pure    :: t
   , dsl_var     :: Maybe t
@@ -1561,7 +1557,6 @@ updateSyntaxRules rules (SyntaxRules sr) = SyntaxRules newRules
     symCompare (SimpleExpr e1) (SimpleExpr e2)  = compare e1 e2
 
 initDSL = DSL (PRef f [] (sUN ">>="))
-              (PRef f [] (sUN "return"))
               (PRef f [] (sUN "<*>"))
               (PRef f [] (sUN "pure"))
               Nothing
@@ -2026,7 +2021,6 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PTactics ts)    =
       kwd "tactics" <+> lbrace <> ellipsis <> rbrace
     prettySe d p bnd (PMetavar _ n)   = annotate (AnnName n (Just MetavarOutput) Nothing Nothing) $  text "?" <> pretty n
-    prettySe d p bnd (PReturn f)      = kwd "return"
     prettySe d p bnd PImpossible      = kwd "impossible"
     prettySe d p bnd Placeholder      = text "_"
     prettySe d p bnd (PDoBlock dos)   =
@@ -2348,7 +2342,6 @@ instance Sized PTerm where
   size Placeholder                    = 1
   size (PDoBlock dos)                 = 1 + size dos
   size (PIdiom fc term)               = 1 + size term
-  size (PReturn fc)                   = 1
   size (PMetavar _ name)              = 1
   size (PProof tactics)               = size tactics
   size (PElabError err)               = size err

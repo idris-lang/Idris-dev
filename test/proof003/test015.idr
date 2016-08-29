@@ -68,7 +68,7 @@ readNum : IO Nat
 readNum = do putStr "Enter a number:"
              i <- getLine
              let n : Integer = cast i
-             return (fromInteger n)
+             pure (fromInteger n)
 
 main : IO ()
 main = do let Just bin1 = natToBin 8 42

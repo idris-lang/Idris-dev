@@ -1133,7 +1133,7 @@ lookupDefAcc :: Name -> Bool -> Context ->
 lookupDefAcc n mkpublic ctxt
     = map mkp $ lookupCtxt n (definitions ctxt)
   -- io_bind a special case for REPL prettiness
-  where mkp (d, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_return"))
+  where mkp (d, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_pure"))
                                    then (d, Public) else (d, a)
 
 lookupDefAccExact :: Name -> Bool -> Context ->
@@ -1141,7 +1141,7 @@ lookupDefAccExact :: Name -> Bool -> Context ->
 lookupDefAccExact n mkpublic ctxt
     = fmap mkp $ lookupCtxtExact n (definitions ctxt)
   -- io_bind a special case for REPL prettiness
-  where mkp (d, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_return"))
+  where mkp (d, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_pure"))
                                    then (d, Public) else (d, a)
 
 lookupTotal :: Name -> Context -> [Totality]

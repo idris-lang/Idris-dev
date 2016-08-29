@@ -11,24 +11,24 @@ ping main proc
         msg <- recv
         Lift (putStrLn ("Reply: " ++ show msg))
         send main "Done"
-        return ()
+        pure ()
 
 pong : Process String ()
 pong = do -- Lift (putStrLn "Waiting for message")
           (sender, m) <- recvWithSender
           Lift $ putStrLn ("Received " ++ m)
           send sender ("Hello back!")
-          return ()
+          pure ()
 
 mainProc : Process String ()
 mainProc = do mainID <- myID
               pongth <- create pong
               pingth <- create (ping mainID pongth)
               recv -- block until everything done
-              return ()
+              pure ()
 
 repeatIO : Int -> IO ()
-repeatIO 0 = return ()
+repeatIO 0 = pure ()
 repeatIO n = do printLn n
                 run mainProc
                 repeatIO (n - 1)

@@ -86,11 +86,11 @@ parseDouble = mkDouble . wfe . trim
                      do
                        w <- cast <$> parseInteger whole
                        e <- parseInteger exp
-                       return (w, 0, e)
+                       pure (w, 0, e)
                    (whole::[]) =>      
                      do
                        w <- cast <$> parseInteger whole
-                       return (w, 0, 0)
+                       pure (w, 0, 0)
                    _ => Nothing
                (whole::fracAndExp::[]) =>
                  case split (\c => c == 'e' || c == 'E') fracAndExp of
@@ -101,12 +101,12 @@ parseDouble = mkDouble . wfe . trim
                        f <- (/ (pow 10 (length frac))) <$> 
                             (cast <$> parseNumWithoutSign (unpack frac) 0)
                        e <- parseInteger exp
-                       return (w, if w < 0 then (-f) else f, e)
+                       pure (w, if w < 0 then (-f) else f, e)
                    (frac::[]) =>      
                      do
                        w <- cast <$> parseInteger whole
                        f <- (/ (pow 10 (length frac))) <$> 
                             (cast <$> parseNumWithoutSign (unpack frac) 0)
-                       return (w, if w < 0 then (-f) else f, 0)
+                       pure (w, if w < 0 then (-f) else f, 0)
                    _ => Nothing
                _ => Nothing

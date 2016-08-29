@@ -10,7 +10,7 @@ test xs = do let lst = Data.SortedMap.toList mp
                         if length found /= n 
                            then putStrLn $ "some lost in " ++ show xs ++ ": res=" ++ show res 
                                             ++ " toList=" ++ show lst
-                           else return ()
+                           else pure ()
 
   where  
     mp : SortedMap Int ()

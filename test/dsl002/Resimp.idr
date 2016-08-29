@@ -117,12 +117,12 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
                 Res gam (update gam p c) t
        While  : Res gam gam (R Bool) ->
                 Res gam gam (R ()) -> Res gam gam (R ())
-       Return : a -> Res gam gam (R a)
+       Pure : a -> Res gam gam (R a)
        (>>=)  : Res gam gam'  (R a) -> (a -> Res gam' gam'' (R t)) ->
                 Res gam gam'' (R t)
 
   ioret : a -> IO a
-  ioret = return
+  ioret = pure
 
   interp : Env gam -> %static (e : Res gam gam' t) ->
            (Env gam' -> interpTy t -> IO u) -> IO u
@@ -133,10 +133,10 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
                    (\env', scope' => k (envTail env') scope')
   interp env (Update method x) k
       = do x' <- getUpdater (method (envLookup x env))
-           k (envUpdateVal x x' env) (return ())
+           k (envUpdateVal x x' env) (pure ())
   interp env (Use method x) k
       = do x' <- getReader (method (envLookup x env))
-           k env (return x')
+           k env (pure x')
   interp env (Lift io) k
      = k env io
   interp env (Check x left right) k =
@@ -148,12 +148,12 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
           (\env', result =>
              do r <- result
                 if (not r)
-                   then (k env' (return ()))
+                   then (k env' (pure ()))
                    else (interp env' body
                         (\env'', body' =>
                            do v <- body' -- make sure it's evalled
                               interp env'' (While test body) k )))
-  interp env (Return v) k = k env (return v)
+  interp env (Pure v) k = k env (pure v)
   interp env (v >>= f) k
      = interp env v (\env', v' => do n <- v'
                                      interp env' (f n) k)

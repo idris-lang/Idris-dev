@@ -14,7 +14,7 @@ Storable Bits8 where
     peek p offset = prim_peek8 p offset
     poke p offset val = do
         _ <- prim_poke8 p offset val
-        return ()
+        pure ()
 
 Storable Bits16 where
     sizeOf _ = 2
@@ -22,7 +22,7 @@ Storable Bits16 where
     peek p offset = prim_peek16 p offset
     poke p offset val = do
         _ <- prim_poke16 p offset val
-        return ()
+        pure ()
 
 Storable Bits32 where
     sizeOf _ = 4
@@ -30,7 +30,7 @@ Storable Bits32 where
     peek p offset = prim_peek32 p offset
     poke p offset val = do
         _ <- prim_poke32 p offset val
-        return ()
+        pure ()
 
 Storable Bits64 where
     sizeOf _ = 8
@@ -38,4 +38,4 @@ Storable Bits64 where
     peek p offset = prim_peek64 p offset
     poke p offset val = do
         _ <- prim_poke64 p offset val
-        return ()
+        pure ()

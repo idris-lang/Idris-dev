@@ -15,4 +15,4 @@ foo : UList Int -> IO ()
 foo xs = do let f = \x : Int => showU xs
             putStrLn $ free xs
             putStrLn $ f 42
-            return ()
+            pure ()

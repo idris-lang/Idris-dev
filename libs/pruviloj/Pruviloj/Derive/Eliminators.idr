@@ -20,7 +20,7 @@ bindParams info = traverse_ (uncurry forall) (getParams info)
 bindIndices : TyConInfo -> Elab Renamer
 bindIndices info = bind' (getIndices info) noRenames
   where bind' : List (TTName, Raw) -> Renamer -> Elab Renamer
-        bind' []              ren = return ren
+        bind' []              ren = pure ren
         bind' ((n, t) :: ixs) ren = do n' <- nameFrom n
                                        forall n' (alphaRaw ren t)
                                        bind' ixs (extend ren n n')
@@ -31,7 +31,7 @@ bindTarget : TyConInfo -> Elab (TTName, Renamer)
 bindTarget info = do ren <- bindIndices info
                      tn <- gensym "target"
                      forall tn (alphaRaw ren $ result info)
-                     return (tn, ren)
+                     pure (tn, ren)
 
 elabMotive : TyConInfo -> Elab ()
 elabMotive info = do attack
@@ -75,7 +75,7 @@ mkIh info motiveName recArg argty fam =
                 fill argTm; solve
                 solve -- attack
                 solve -- ihT
-        else return ()
+        else pure ()
 
 elabMethodTy : TyConInfo -> TTName -> List CtorArg -> Raw -> Raw -> Elab ()
 elabMethodTy info motiveName [] res ctorApp =
@@ -146,7 +146,7 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
         -- Establish a hole for each argument to the constructor
         for {b=()} args $ \arg =>
           case arg of
-            CtorParameter _ => return ()
+            CtorParameter _ => pure ()
             CtorField arg => do claim (name arg) (type arg)
                                 unfocus (name arg)
 
@@ -187,16 +187,16 @@ getElimClause info elimn methCount (cn, args, resTy) whichCon =
                      for args
                          (\x =>
                             case x of
-                              CtorParameter _ => return List.Nil
+                              CtorParameter _ => pure List.Nil
                               CtorField arg =>
                                 do let n = name arg
                                    let t = type arg
                                    (argArgs, argRes) <- stealBindings t noRenames
                                    if headsMatch argRes (result info) --recursive
-                                     then return [ NormalArgument n
-                                                 , IHArgument n
-                                                 ]
-                                     else return [NormalArgument n])
+                                     then pure [ NormalArgument n
+                                               , IHArgument n
+                                               ]
+                                     else pure [NormalArgument n])
 
         argHs <- apply (Var methN) (replicate (List.length argSpec) True)
         solve
@@ -261,5 +261,5 @@ deriveElim tyn elimn =
      clauses <- getElimClauses info elimn ctors
 
      defineFunction $ DefineFun elimn clauses
-     return ()
+     pure ()
 

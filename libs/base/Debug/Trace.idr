@@ -5,6 +5,6 @@ module Debug.Trace
 ||| @ result the final result
 export
 trace : (msg : String) -> (result : a) -> a
-trace x val = unsafePerformIO {ffi=FFI_C} (do putStrLn x; return val)
+trace x val = unsafePerformIO {ffi=FFI_C} (do putStrLn x; pure val)
 
 
