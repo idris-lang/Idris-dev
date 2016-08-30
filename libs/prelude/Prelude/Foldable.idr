@@ -16,7 +16,7 @@ import Prelude.Algebra
 ||| @t The type of the 'Foldable' parameterised type.
 interface Foldable (t : Type -> Type) where
 
-  ||| Successivly combine the elements in a parameterised type using
+  ||| Successively combine the elements in a parameterised type using
   ||| the provided function, starting with the element that is in the
   ||| final position i.e. the right-most position.
   |||
