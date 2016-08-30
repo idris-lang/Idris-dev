@@ -42,8 +42,8 @@ module Idris.Core.TT(
   , intTyName, isInjective, isTypeConst, lookupCtxt
   , lookupCtxtExact, lookupCtxtName, mapCtxt, mkApp, nativeTyWidth
   , nextName, noOccurrence, nsroot, occurrences
-  , pEraseType, pmap, pprintRaw, pprintTT, prettyEnv, psubst, pToV
-  , pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget
+  , pEraseType, pmap, pprintRaw, pprintTT, pprintTTClause, prettyEnv, psubst
+  , pToV, pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget
   , safeForgetEnv, showCG, showEnv, showEnvDbg, showSep
   , sInstanceN, sMN, sNS, spanFC, str, subst, substNames, substTerm
   , substV, sUN, tcname, termSmallerThan, tfail, thead, tnull
@@ -54,8 +54,8 @@ module Idris.Core.TT(
 -- Work around AMP without CPP
 import Prelude (Eq(..), Show(..), Ord(..), Functor(..), Monad(..), String, Int,
                 Integer, Ordering(..), Maybe(..), Num(..), Bool(..), Enum(..),
-                Read(..), FilePath, Double, (&&), (||), ($), (.), div, error, fst,
-                snd, not, mod, read, otherwise)
+                Read(..), FilePath, Double, (&&), (||), ($), (.), div, error, flip,
+                fst, snd, not, mod, read, otherwise)
 
 import Control.Applicative (Applicative (..), Alternative)
 import qualified Control.Applicative as A (Alternative (..))
@@ -1810,6 +1810,23 @@ pprintTT bound tm = pp startPrec bound tm
     bracket outer inner doc
       | outer > inner = lparen <> doc <> rparen
       | otherwise     = doc
+
+pprintTTClause :: [(Name, Type)] -> Term -> Term -> Doc OutputAnnotation
+pprintTTClause pvars lhs rhs =
+    vars pvars . group . align $
+      pprintTT (map fst pvars) lhs <$>
+      text "↦" <$>
+      (pprintTT (map fst pvars) rhs)
+  where vars [] terms = terms
+        vars (v:vs) terms =
+          annotate AnnKeyword (text "var") <+>
+          group (align (sep (punctuate comma (reverse (bindVars [] (v:vs)))))) <+>
+          annotate AnnKeyword (text ".") <$>
+          indent 2 terms
+        bindVars _ [] = []
+        bindVars ns ((n, ty):vs) =
+          bindingOf n False <+> colon <+> pprintTT ns ty : bindVars (n:ns) vs
+
 
 -- | Pretty-print a raw term.
 pprintRaw :: [Name] -- ^ Bound names, for highlighting
