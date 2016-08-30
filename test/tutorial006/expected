@@ -1,18 +1,18 @@
 tutorial006a.idr:5:23-25:
 When checking right hand side of vapp with expected type
-        Vect (S k + m) a
+        Vect (S len + m) a
 
 When checking argument xs to constructor Data.Vect.:::
         Type mismatch between
-                Vect (k + k) a (Type of vapp xs xs)
+                Vect (len + len) a (Type of vapp xs xs)
         and
-                Vect (plus k m) a (Expected type)
+                Vect (plus len m) a (Expected type)
         
         Specifically:
                 Type mismatch between
-                        plus k k
+                        plus len len
                 and
-                        plus k m
+                        plus len m
 tutorial006b.idr:10:10:
 When checking right hand side of with block in Main.parity with expected type
         Parity (S (S (j + j)))

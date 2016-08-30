@@ -9,13 +9,15 @@ import Language.Reflection
 infixr 7 ::
 
 ||| Vectors: Generic lists with explicit length in the type
+||| @ len the length of the list
+||| @ elem the type of elements
 %elim
-data Vect : Nat -> Type -> Type where
+data Vect : (len : Nat) -> (elem : Type) -> Type where
   ||| Empty vector
-  Nil  : Vect Z a
-  ||| A non-empty vector of length `S k`, consisting of a head element and
-  ||| the rest of the list, of length `k`.
-  (::) : (x : a) -> (xs : Vect k a) -> Vect (S k) a
+  Nil  : Vect Z elem
+  ||| A non-empty vector of length `S len`, consisting of a head element and
+  ||| the rest of the list, of length `len`.
+  (::) : (x : elem) -> (xs : Vect len elem) -> Vect (S len) elem
 
 -- Hints for interactive editing
 %name Vect xs,ys,zs,ws
@@ -28,14 +30,14 @@ data Vect : Nat -> Type -> Type where
 |||
 ||| **Note**: this is only useful if you don't already statically know the length
 ||| and you want to avoid matching the implicit argument for erasure reasons.
-||| @ n the length (provably equal to the return value)
+||| @ len the length (provably equal to the return value)
 ||| @ xs the vector
-length : (xs : Vect n a) -> Nat
+length : (xs : Vect len elem) -> Nat
 length [] = 0
 length (x::xs) = 1 + length xs
 
 ||| Show that the length function on vectors in fact calculates the length
-private lengthCorrect : (n : Nat) -> (xs : Vect n a) -> length xs = n
+private lengthCorrect : (len : Nat) -> (xs : Vect len elem) -> length xs = len
 lengthCorrect Z     []        = Refl
 lengthCorrect (S n) (x :: xs) = rewrite lengthCorrect n xs in Refl
 
@@ -44,44 +46,44 @@ lengthCorrect (S n) (x :: xs) = rewrite lengthCorrect n xs in Refl
 --------------------------------------------------------------------------------
 
 ||| All but the first element of the vector
-tail : Vect (S n) a -> Vect n a
+tail : Vect (S len) elem -> Vect len elem
 tail (x::xs) = xs
 
 ||| Only the first element of the vector
-head : Vect (S n) a -> a
+head : Vect (S len) elem -> elem
 head (x::xs) = x
 
 ||| The last element of the vector
-last : Vect (S n) a -> a
+last : Vect (S len) elem -> elem
 last (x::[])    = x
 last (x::y::ys) = last $ y::ys
 
 ||| All but the last element of the vector
-init : Vect (S n) a -> Vect n a
+init : Vect (S len) elem -> Vect len elem
 init (x::[])    = []
 init (x::y::ys) = x :: init (y::ys)
 
 ||| Extract a particular element from a vector
-index : Fin n -> Vect n a -> a
+index : Fin len -> Vect len elem -> elem
 index FZ     (x::xs) = x
 index (FS k) (x::xs) = index k xs
 
 
 ||| Insert an element at a particular index
-insertAt : Fin (S n) -> a -> Vect n a -> Vect (S n) a
+insertAt : Fin (S len) -> elem -> Vect len elem -> Vect (S len) elem
 insertAt FZ     y xs      = y :: xs
 insertAt (FS k) y (x::xs) = x :: insertAt k y xs
 insertAt (FS k) y []      = absurd k
 
 ||| Construct a new vector consisting of all but the indicated element
-deleteAt : Fin (S n) -> Vect (S n) a -> Vect n a
-deleteAt           FZ     (x::xs) = xs
-deleteAt {n = S m} (FS k) (x::xs) = x :: deleteAt k xs
-deleteAt {n = Z}   (FS k) (x::xs) = absurd k
-deleteAt           _      []      impossible
+deleteAt : Fin (S len) -> Vect (S len) elem -> Vect len elem
+deleteAt             FZ     (x::xs) = xs
+deleteAt {len = S m} (FS k) (x::xs) = x :: deleteAt k xs
+deleteAt {len = Z}   (FS k) (x::xs) = absurd k
+deleteAt             _      []      impossible
 
 ||| Replace an element at a particlar index with another
-replaceAt : Fin n -> t -> Vect n t -> Vect n t
+replaceAt : Fin len -> elem -> Vect len elem -> Vect len elem
 replaceAt FZ     y (x::xs) = y :: xs
 replaceAt (FS k) y (x::xs) = x :: replaceAt k y xs
 
@@ -89,7 +91,7 @@ replaceAt (FS k) y (x::xs) = x :: replaceAt k y xs
 ||| @ i the index to replace at
 ||| @ f the update function
 ||| @ xs the vector to replace in
-updateAt : (i : Fin n) -> (f : t -> t) -> (xs : Vect n t) -> Vect n t
+updateAt : (i : Fin len) -> (f : elem -> elem) -> (xs : Vect len elem) -> Vect len elem
 updateAt FZ     f (x::xs) = f x :: xs
 updateAt (FS k) f (x::xs) = x :: updateAt k f xs
 
@@ -99,13 +101,13 @@ updateAt (FS k) f (x::xs) = x :: updateAt k f xs
 
 ||| Get the first n elements of a Vect
 ||| @ n the number of elements to take
-take : (n : Nat) -> Vect (n + m) a -> Vect n a
+take : (n : Nat) -> Vect (n + m) elem -> Vect n elem
 take Z     xs        = []
 take (S k) (x :: xs) = x :: take k xs
 
 ||| Remove the first n elements of a Vect
 ||| @ n the number of elements to remove
-drop : (n : Nat) -> Vect (n + m) a -> Vect m a
+drop : (n : Nat) -> Vect (n + m) elem -> Vect m elem
 drop Z     xs        = xs
 drop (S k) (x :: xs) = drop k xs
 
@@ -113,7 +115,7 @@ drop (S k) (x :: xs) = drop k xs
 ||| Boolean predicate.
 |||
 ||| @ p the predicate
-takeWhile : (p : a -> Bool) -> Vect n a -> (q ** Vect q a)
+takeWhile : (p : elem -> Bool) -> Vect len elem -> (q ** Vect q elem)
 takeWhile p []      = (_ ** [])
 takeWhile p (x::xs) =
   let (len ** ys) = takeWhile p xs
@@ -126,7 +128,7 @@ takeWhile p (x::xs) =
 ||| Boolean predicate.
 |||
 ||| @ p the predicate
-dropWhile : (p : a -> Bool) -> Vect n a -> (q ** Vect q a)
+dropWhile : (p : elem -> Bool) -> Vect len elem -> (q ** Vect q elem)
 dropWhile p [] = (_ ** [])
 dropWhile p (x::xs) =
   if p x then
@@ -139,9 +141,9 @@ dropWhile p (x::xs) =
 --------------------------------------------------------------------------------
 
 ||| Reverse the order of the elements of a vector
-reverse : Vect n a -> Vect n a
+reverse : Vect len elem -> Vect len elem
 reverse xs = go [] xs
-  where go : Vect n a -> Vect m a -> Vect (n+m) a
+  where go : Vect n elem -> Vect m elem -> Vect (n+m) elem
         go {n}         acc []        = rewrite plusZeroRightNeutral n in acc
         go {n} {m=S m} acc (x :: xs) = rewrite sym $ plusSuccRightSucc n m
                                        in go (x::acc) xs
@@ -149,11 +151,11 @@ reverse xs = go [] xs
 ||| Alternate an element between the other elements of a vector
 ||| @ sep the element to intersperse
 ||| @ xs the vector to separate with `sep`
-intersperse : (sep : a) -> (xs : Vect n a) -> Vect (n + pred n) a
+intersperse : (sep : elem) -> (xs : Vect len elem) -> Vect (len + pred len) elem
 intersperse sep []      = []
 intersperse sep (x::xs) = x :: intersperse' sep xs
   where
-    intersperse' : a -> Vect n a -> Vect (n + n) a
+    intersperse' : elem -> Vect n elem -> Vect (n + n) elem
     intersperse'         sep []      = []
     intersperse' {n=S n} sep (x::xs) = rewrite sym $ plusSuccRightSucc n n
                                        in sep :: x :: intersperse' sep xs
@@ -163,17 +165,17 @@ intersperse sep (x::xs) = x :: intersperse' sep xs
 --------------------------------------------------------------------------------
 
 
-fromList' : Vect n a -> (l : List a) -> Vect (length l + n) a
+fromList' : Vect len elem -> (l : List elem) -> Vect (length l + len) elem
 fromList' ys [] = ys
-fromList' {n} ys (x::xs) =
-  rewrite (plusSuccRightSucc (length xs) n) ==>
-          Vect (plus (length xs) (S n)) a in
+fromList' {len} ys (x::xs) =
+  rewrite (plusSuccRightSucc (length xs) len) ==>
+          Vect (plus (length xs) (S len)) elem in
   fromList' (x::ys) xs
 
 ||| Convert a list to a vector.
 |||
 ||| The length of the list should be statically known.
-fromList : (l : List a) -> Vect (length l) a
+fromList : (l : List elem) -> Vect (length l) elem
 fromList l =
   rewrite (sym $ plusZeroRightNeutral (length l)) in
   reverse $ fromList' [] l
@@ -183,30 +185,31 @@ fromList l =
 --------------------------------------------------------------------------------
 
 ||| Append two vectors
-(++) : Vect m a -> Vect n a -> Vect (m + n) a
+(++) : (xs : Vect m elem) -> (ys : Vect n elem) -> Vect (m + n) elem
 (++) []      ys = ys
 (++) (x::xs) ys = x :: xs ++ ys
 
-||| Repeate some value n times
-||| @ n the number of times to repeat it
+||| Repeate some value some number of times.
+|||
+||| @ len the number of times to repeat it
 ||| @ x the value to repeat
-replicate : (n : Nat) -> (x : a) -> Vect n a
+replicate : (len : Nat) -> (x : elem) -> Vect len elem
 replicate Z     x = []
 replicate (S k) x = x :: replicate k x
 
 ||| Merge two ordered vectors
-mergeBy : (a -> a -> Ordering) -> Vect n a -> Vect m a -> Vect (n + m) a
+mergeBy : (elem -> elem -> Ordering) -> (xs : Vect n elem) -> (ys : Vect m elem) -> Vect (n + m) elem
 mergeBy order [] [] = []
 mergeBy order [] (x :: xs) = x :: xs
-mergeBy {n = S k} order (x :: xs) [] = rewrite plusZeroRightNeutral (S k) in  
+mergeBy {n = S k} order (x :: xs) [] = rewrite plusZeroRightNeutral (S k) in
                                                x :: xs
-mergeBy {n = S k} {m = S k'} order (x :: xs) (y :: ys) 
+mergeBy {n = S k} {m = S k'} order (x :: xs) (y :: ys)
      = case order x y of
             LT => x :: mergeBy order xs (y :: ys)
-            _  => rewrite sym (plusSuccRightSucc k k') in 
+            _  => rewrite sym (plusSuccRightSucc k k') in
                              y :: mergeBy order (x :: xs) ys
 
-merge : Ord a => Vect n a -> Vect m a -> Vect (n + m) a
+merge : Ord elem => Vect n elem -> Vect m elem -> Vect (n + m) elem
 merge = mergeBy compare
 
 --------------------------------------------------------------------------------
@@ -223,26 +226,26 @@ zipWith f []      []      = []
 zipWith f (x::xs) (y::ys) = f x y :: zipWith f xs ys
 
 ||| Combine three equal-length vectors into a vector with some function
-zipWith3 : (a -> b -> c -> d) -> Vect n a -> Vect n b -> Vect n c -> Vect n d
+zipWith3 : (a -> b -> c -> d) -> (xs : Vect n a) -> (ys : Vect n b) -> (zs : Vect n c) -> Vect n d
 zipWith3 f []      []      []      = []
 zipWith3 f (x::xs) (y::ys) (z::zs) = f x y z :: zipWith3 f xs ys zs
 
 ||| Combine two equal-length vectors pairwise
-zip : Vect n a -> Vect n b -> Vect n (a, b)
+zip : (xs : Vect n a) -> (ys : Vect n b) -> Vect n (a, b)
 zip = zipWith (\x,y => (x,y))
 
 ||| Combine three equal-length vectors elementwise into a vector of tuples
-zip3 : Vect n a -> Vect n b -> Vect n c -> Vect n (a, b, c)
+zip3 : (xs : Vect n a) -> (ys : Vect n b) -> (zs : Vect n c) -> Vect n (a, b, c)
 zip3 = zipWith3 (\x,y,z => (x,y,z))
 
 ||| Convert a vector of pairs to a pair of vectors
-unzip : Vect n (a, b) -> (Vect n a, Vect n b)
+unzip : (xs : Vect n (a, b)) -> (Vect n a, Vect n b)
 unzip []           = ([], [])
 unzip ((l, r)::xs) with (unzip xs)
   | (lefts, rights) = (l::lefts, r::rights)
 
 ||| Convert a vector of three-tuples to a triplet of vectors
-unzip3 : Vect n (a, b, c) -> (Vect n a, Vect n b, Vect n c)
+unzip3 : (xs : Vect n (a, b, c)) -> (Vect n a, Vect n b, Vect n c)
 unzip3 []            = ([], [], [])
 unzip3 ((l,c,r)::xs) with (unzip3 xs)
   | (lefts, centers, rights) = (l::lefts, c::centers, r::rights)
@@ -251,7 +254,7 @@ unzip3 ((l,c,r)::xs) with (unzip3 xs)
 -- Equality
 --------------------------------------------------------------------------------
 
-implementation (Eq a) => Eq (Vect n a) where
+implementation (Eq elem) => Eq (Vect len elem) where
   (==) []      []      = True
   (==) (x::xs) (y::ys) = x == y && xs == ys
 
@@ -260,7 +263,7 @@ implementation (Eq a) => Eq (Vect n a) where
 -- Order
 --------------------------------------------------------------------------------
 
-implementation Ord a => Ord (Vect n a) where
+implementation Ord elem => Ord (Vect len elem) where
   compare []      []      = EQ
   compare (x::xs) (y::ys) = compare x y `thenCompare` compare xs ys
 
@@ -283,7 +286,7 @@ implementation Functor (Vect n) where
 |||
 ||| @ f the partial function (expressed by returning `Maybe`)
 ||| @ xs the vector to check for results
-mapMaybe : (f : a -> Maybe b) -> (xs : Vect n a) -> (m : Nat ** Vect m b)
+mapMaybe : (f : a -> Maybe b) -> (xs : Vect len a) -> (m : Nat ** Vect m b)
 mapMaybe f []      = (_ ** [])
 mapMaybe f (x::xs) =
   let (len ** ys) = mapMaybe f xs
@@ -308,7 +311,7 @@ implementation Foldable (Vect n) where
 --------------------------------------------------------------------------------
 
 ||| Flatten a vector of equal-length vectors
-concat : Vect m (Vect n a) -> Vect (m * n) a
+concat : (xss : Vect m (Vect n elem)) -> Vect (m * n) elem
 concat []      = []
 concat (v::vs) = v ++ concat vs
 
@@ -323,7 +326,7 @@ foldl1 f (x::xs) = foldl f x xs
 -- Scans
 --------------------------------------------------------------------------------
 
-scanl : (b -> a -> b) -> b -> Vect n a -> Vect (S n) b
+scanl : (res -> elem -> res) -> res -> Vect len elem -> Vect (S len) res
 scanl f q []      = [q]
 scanl f q (x::xs) = q :: scanl f (f q x) xs
 
@@ -335,37 +338,37 @@ scanl f q (x::xs) = q :: scanl f (f q x) xs
 ||| @ p the equality test
 ||| @ e the item to search for
 ||| @ xs the vector to search in
-elemBy : (p : a -> a -> Bool) -> (e : a) -> (xs : Vect n a) -> Bool
+elemBy : (p : elem -> elem -> Bool) -> (e : elem) -> (xs : Vect len elem) -> Bool
 elemBy p e []      = False
 elemBy p e (x::xs) = p e x || elemBy p e xs
 
 ||| Use the default Boolean equality on elements to search for an item
 ||| @ x what to search for
 ||| @ xs where to search
-elem : Eq a => (x : a) -> (xs : Vect n a) -> Bool
+elem : Eq elem => (x : elem) -> (xs : Vect len elem) -> Bool
 elem = elemBy (==)
 
 ||| Find the association of some key with a user-provided comparison
 ||| @ p the comparison operator for keys (True if they match)
 ||| @ e the key to look for
-lookupBy : (p : a -> a -> Bool) -> (e : a) -> (xs : Vect n (a, b)) -> Maybe b
+lookupBy : (p : key -> key -> Bool) -> (e : key) -> (xs : Vect n (key, val)) -> Maybe val
 lookupBy p e []           = Nothing
 lookupBy p e ((l, r)::xs) = if p e l then Just r else lookupBy p e xs
 
 ||| Find the assocation of some key using the default Boolean equality test
-lookup : Eq a => a -> Vect n (a, b) -> Maybe b
+lookup : Eq key => key -> Vect n (key, val) -> Maybe val
 lookup = lookupBy (==)
 
 ||| Check if any element of xs is found in elems by a user-provided comparison
 ||| @ p the comparison operator
 ||| @ elems the vector to search
 ||| @ xs what to search for
-hasAnyBy : (p : a -> a -> Bool) -> (elems : Vect m a) -> (xs : Vect n a) -> Bool
+hasAnyBy : (p : elem -> elem -> Bool) -> (elems : Vect m elem) -> (xs : Vect len elem) -> Bool
 hasAnyBy p elems []      = False
 hasAnyBy p elems (x::xs) = elemBy p x elems || hasAnyBy p elems xs
 
 ||| Check if any element of xs is found in elems using the default Boolean equality test
-hasAny : Eq a => Vect m a -> Vect n a -> Bool
+hasAny : Eq elem => Vect m elem -> Vect len elem -> Bool
 hasAny = hasAnyBy (==)
 
 --------------------------------------------------------------------------------
@@ -374,31 +377,31 @@ hasAny = hasAnyBy (==)
 
 ||| Find the first element of the vector that satisfies some test
 ||| @ p the test to satisfy
-find : (p : a -> Bool) -> (xs : Vect n a) -> Maybe a
+find : (p : elem -> Bool) -> (xs : Vect len elem) -> Maybe elem
 find p []      = Nothing
 find p (x::xs) = if p x then Just x else find p xs
 
 ||| Find the index of the first element of the vector that satisfies some test
-findIndex : (a -> Bool) -> Vect n a -> Maybe (Fin n)
+findIndex : (elem -> Bool) -> Vect len elem -> Maybe (Fin len)
 findIndex p []        = Nothing
 findIndex p (x :: xs) = if p x then Just 0 else map FS (findIndex p xs)
 
 ||| Find the indices of all elements that satisfy some test
-findIndices : (a -> Bool) -> Vect m a -> List (Fin m)
+findIndices : (elem -> Bool) -> Vect m elem -> List (Fin m)
 findIndices p []        = []
 findIndices p (x :: xs) = let is = map FS $ findIndices p xs
                            in if p x then 0 :: is else is
 
-elemIndexBy : (a -> a -> Bool) -> a -> Vect m a -> Maybe (Fin m)
+elemIndexBy : (elem -> elem -> Bool) -> elem -> Vect m elem -> Maybe (Fin m)
 elemIndexBy p e = findIndex $ p e
 
-elemIndex : Eq a => a -> Vect m a -> Maybe (Fin m)
+elemIndex : Eq elem => elem -> Vect m elem -> Maybe (Fin m)
 elemIndex = elemIndexBy (==)
 
-elemIndicesBy : (a -> a -> Bool) -> a -> Vect m a -> List (Fin m)
+elemIndicesBy : (elem -> elem -> Bool) -> elem -> Vect m elem -> List (Fin m)
 elemIndicesBy p e = findIndices $ p e
 
-elemIndices : Eq a => a -> Vect m a -> List (Fin m)
+elemIndices : Eq elem => elem -> Vect m elem -> List (Fin m)
 elemIndices = elemIndicesBy (==)
 
 --------------------------------------------------------------------------------
@@ -406,7 +409,7 @@ elemIndices = elemIndicesBy (==)
 --------------------------------------------------------------------------------
 
 ||| Find all elements of a vector that satisfy some test
-filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
+filter : (elem -> Bool) -> Vect len elem -> (p ** Vect p elem)
 filter p []      = ( _ ** [] )
 filter p (x::xs) =
   let (_ ** tail) = filter p xs
@@ -416,10 +419,10 @@ filter p (x::xs) =
         (_ ** tail)
 
 ||| Make the elements of some vector unique by some test
-nubBy : (a -> a -> Bool) -> Vect n a -> (p ** Vect p a)
+nubBy : (elem -> elem -> Bool) -> Vect len elem -> (p ** Vect p elem)
 nubBy = nubBy' []
   where
-    nubBy' : Vect m a -> (a -> a -> Bool) -> Vect n a -> (p ** Vect p a)
+    nubBy' : Vect m elem -> (elem -> elem -> Bool) -> Vect len elem -> (p ** Vect p elem)
     nubBy' acc p []      = (_ ** [])
     nubBy' acc p (x::xs) with (elemBy p x acc)
       | True  = nubBy' acc p xs
@@ -427,16 +430,16 @@ nubBy = nubBy' []
         | (_ ** tail) = (_ ** x::tail)
 
 ||| Make the elements of some vector unique by the default Boolean equality
-nub : Eq a => Vect n a -> (p ** Vect p a)
+nub : Eq elem => Vect len elem -> (p ** Vect p elem)
 nub = nubBy (==)
 
-deleteBy : (a -> a -> Bool) -> a -> Vect n a -> (p ** Vect p a)
+deleteBy : (elem -> elem -> Bool) -> elem -> Vect len elem -> (p ** Vect p elem)
 deleteBy _  _ []      = (_ ** [])
 deleteBy eq x (y::ys) =
   let (len ** zs) = deleteBy eq x ys
   in if x `eq` y then (_ ** ys) else (S len ** y ::zs)
 
-delete : (Eq a) => a -> Vect n a -> (p ** Vect p a)
+delete : (Eq elem) => elem -> Vect len elem -> (p ** Vect p elem)
 delete = deleteBy (==)
 
 --------------------------------------------------------------------------------
@@ -448,10 +451,10 @@ delete = deleteBy (==)
 ||| It is equivalent to (take n xs, drop n xs)
 ||| @ n   the index to split at
 ||| @ xs  the Vect to split in two
-splitAt : (n : Nat) -> (xs : Vect (n + m) a) -> (Vect n a, Vect m a)
+splitAt : (n : Nat) -> (xs : Vect (n + m) elem) -> (Vect n elem, Vect m elem)
 splitAt n xs = (take n xs, drop n xs)
 
-partition : (a -> Bool) -> Vect n a -> ((p ** Vect p a), (q ** Vect q a))
+partition : (elem -> Bool) -> Vect len elem -> ((p ** Vect p elem), (q ** Vect q elem))
 partition p []      = ((_ ** []), (_ ** []))
 partition p (x::xs) =
   let ((leftLen ** lefts), (rightLen ** rights)) = partition p xs in
@@ -464,29 +467,29 @@ partition p (x::xs) =
 -- Predicates
 --------------------------------------------------------------------------------
 
-isPrefixOfBy : (a -> a -> Bool) -> Vect m a -> Vect n a -> Bool
+isPrefixOfBy : (elem -> elem -> Bool) -> Vect m elem -> Vect len elem -> Bool
 isPrefixOfBy p [] right        = True
 isPrefixOfBy p left []         = False
 isPrefixOfBy p (x::xs) (y::ys) = p x y && isPrefixOfBy p xs ys
 
-isPrefixOf : Eq a => Vect m a -> Vect n a -> Bool
+isPrefixOf : Eq elem => Vect m elem -> Vect len elem -> Bool
 isPrefixOf = isPrefixOfBy (==)
 
-isSuffixOfBy : (a -> a -> Bool) -> Vect m a -> Vect n a -> Bool
+isSuffixOfBy : (elem -> elem -> Bool) -> Vect m elem -> Vect len elem -> Bool
 isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 
-isSuffixOf : Eq a => Vect m a -> Vect n a -> Bool
+isSuffixOf : Eq elem => Vect m elem -> Vect len elem -> Bool
 isSuffixOf = isSuffixOfBy (==)
 
 --------------------------------------------------------------------------------
 -- Conversions
 --------------------------------------------------------------------------------
 
-maybeToVect : Maybe a -> (p ** Vect p a)
+maybeToVect : Maybe elem -> (p ** Vect p elem)
 maybeToVect Nothing  = (_ ** [])
 maybeToVect (Just j) = (_ ** [j])
 
-vectToMaybe : Vect n a -> Maybe a
+vectToMaybe : Vect len elem -> Maybe elem
 vectToMaybe []      = Nothing
 vectToMaybe (x::xs) = Just x
 
@@ -494,25 +497,25 @@ vectToMaybe (x::xs) = Just x
 -- Misc
 --------------------------------------------------------------------------------
 
-catMaybes : Vect n (Maybe a) -> (p ** Vect p a)
+catMaybes : Vect n (Maybe elem) -> (p ** Vect p elem)
 catMaybes []             = (_ ** [])
 catMaybes (Nothing::xs)  = catMaybes xs
 catMaybes ((Just j)::xs) =
   let (_ ** tail) = catMaybes xs
    in (_ ** j::tail)
 
-diag : Vect n (Vect n a) -> Vect n a
+diag : Vect len (Vect len elem) -> Vect len elem
 diag []             = []
 diag ((x::xs)::xss) = x :: diag (map tail xss)
 
-range : {n : Nat} -> Vect n (Fin n)
-range {n=Z}   = []
-range {n=S _} = FZ :: map FS range
+range : {len : Nat} -> Vect len (Fin len)
+range {len=Z}   = []
+range {len=S _} = FZ :: map FS range
 
 ||| Transpose a Vect of Vects, turning rows into columns and vice versa.
 |||
 ||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
-transpose : {n : Nat} -> Vect m (Vect n a) -> Vect n (Vect m a)
+transpose : {n : Nat} -> Vect m (Vect n elem) -> Vect n (Vect m elem)
 transpose []        = replicate _ []
 transpose (x :: xs) = zipWith (::) x (transpose xs)
 
@@ -527,7 +530,7 @@ implementation Applicative (Vect k) where
 
 ||| This monad is different from the List monad, (>>=)
 ||| uses the diagonal.
-implementation Monad (Vect n) where
+implementation Monad (Vect len) where
     m >>= f = diag (map f m)
 
 implementation Traversable (Vect n) where
@@ -538,14 +541,14 @@ implementation Traversable (Vect n) where
 -- Show
 --------------------------------------------------------------------------------
 
-implementation Show a => Show (Vect n a) where
+implementation Show elem => Show (Vect len elem) where
     show = show . toList
 
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
 
-vectConsCong : (x : a) -> (xs : Vect n a) -> (ys : Vect m a) -> (xs = ys) -> (x :: xs = x :: ys)
+vectConsCong : (x : elem) -> (xs : Vect len elem) -> (ys : Vect m elem) -> (xs = ys) -> (x :: xs = x :: ys)
 vectConsCong x xs xs Refl = Refl
 
 vectNilRightNeutral : (xs : Vect n a) -> xs ++ [] = xs
@@ -553,7 +556,10 @@ vectNilRightNeutral [] = Refl
 vectNilRightNeutral (x :: xs) =
   vectConsCong _ _ _ (vectNilRightNeutral xs)
 
-vectAppendAssociative : (x : Vect xLen a) -> (y : Vect yLen a) -> (z : Vect zLen a) -> x ++ (y ++ z) = (x ++ y) ++ z
+vectAppendAssociative : (xs : Vect xLen elem) ->
+                        (ys : Vect yLen elem) ->
+                        (zs : Vect zLen elem) ->
+                        xs ++ (ys ++ zs) = (xs ++ ys) ++ zs
 vectAppendAssociative [] y z = Refl
 vectAppendAssociative (x :: xs) ys zs =
   vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
@@ -599,7 +605,7 @@ noEmptyElem : {x : a} -> Elem x [] -> Void
 noEmptyElem Here impossible
 
 Uninhabited (Elem x []) where
-  uninhabited = noEmptyElem 
+  uninhabited = noEmptyElem
 
 ||| An item not in the head and not in the tail is not in the Vect at all
 neitherHereNorThere : {x, y : a} -> {xs : Vect n a} -> Not (x = y) -> Not (Elem x xs) -> Not (Elem x (y :: xs))
@@ -634,7 +640,7 @@ mapElem (There e) = There (mapElem e)
 ||| length in its type, otherwise return Nothing
 ||| @len the required length
 ||| @xs the vector with the desired length
--- Needs to be Maybe rather than Dec, because if 'n' is unequal to m, we 
+-- Needs to be Maybe rather than Dec, because if 'n' is unequal to m, we
 -- only know we don't know how to make a Vect n a, not that one can't exist.
 exactLength : {m : Nat} -> -- expected at run-time
               (len : Nat) -> (xs : Vect m a) -> Maybe (Vect len a)
@@ -654,4 +660,3 @@ overLength {m} n xs with (cmp m n)
          = Just (0 ** xs)
   overLength {m = plus n (S x)} n xs | (CmpGT x)
          = Just (S x ** rewrite plusCommutative (S x) n in xs)
-
