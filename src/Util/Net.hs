@@ -14,6 +14,7 @@ import Control.Exception (bracketOnError)
 
 -- Copied from upstream impl of listenOn
 -- bound to localhost interface instead of iNADDR_ANY
+listenOnLocalhost :: PortID -> IO Socket
 listenOnLocalhost (PortNumber port) = do
     proto <- getProtocolNumber "tcp"
     localhost <- inet_addr "127.0.0.1"
@@ -27,6 +28,7 @@ listenOnLocalhost (PortNumber port) = do
           return sock
       )
 
+listenOnLocalhostAnyPort :: IO (Socket, PortNumber)
 listenOnLocalhostAnyPort = do
     proto <- getProtocolNumber "tcp"
     localhost <- inet_addr "127.0.0.1"
