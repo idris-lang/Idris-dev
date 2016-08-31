@@ -37,6 +37,7 @@ import Idris.IBC
 import Idris.Output
 import Idris.Imports
 import Idris.Error (ifail)
+import Idris.Main (idrisMain, idris)
 
 import Idris.Package.Common
 import Idris.Package.Parser

@@ -3,8 +3,7 @@ module Main where
 import Idris.Core.TT
 import Idris.AbsSyntax
 import Idris.ElabDecls
-import Idris.REPL
-
+import Idris.Main
 import IRTS.Compiler
 import IRTS.CodegenC
 

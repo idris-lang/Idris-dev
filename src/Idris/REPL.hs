@@ -1,59 +1,53 @@
 {-|
 Module      : Idris.REPL
 Description : Entry Point for the Idris REPL and CLI.
-Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
              PatternGuards, CPP #-}
-
-module Idris.REPL(
-    idris, idrisMain, loadInputs
-  , runClient, runMain
+module Idris.REPL
+  ( idemodeStart
+  , startServer
+  , runClient
+  , process
+  , replSettings
+  , repl
+  , proofs
   ) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
 import Idris.Apropos (apropos, aproposModules)
 import Idris.REPL.Parser
-import Idris.Erasure
 import Idris.Error
 import Idris.IBC
 import Idris.ErrReverse
 import Idris.Delaborate
-import Idris.Docstrings (Docstring, overview, renderDocstring, renderDocTerm)
+import Idris.Docstrings (overview, renderDocstring, renderDocTerm)
 import Idris.Help
 import Idris.IdrisDoc
 import Idris.Prover
 import Idris.Parser hiding (indent)
-import Idris.Primitives
 import Idris.Coverage
 import Idris.Docs hiding (Doc)
 import Idris.Completion
 import qualified Idris.IdeMode as IdeMode
-import Idris.Chaser
-import Idris.Imports
 import Idris.Colours hiding (colourise)
 import Idris.Inliner
-import Idris.CaseSplit
-import Idris.DeepSeq
 import Idris.Output
 import Idris.Interactive
 import Idris.WhoCalls
 import Idris.TypeSearch (searchByType)
-import Idris.IBC (loadPkgIndex, writePkgIndex)
 
 import Idris.REPL.Browse (namesInNS, namespacesInNS)
 import Idris.REPL.Commands
 
 import Idris.ElabDecls
-import Idris.Elab.Type
 import Idris.Elab.Clause
-import Idris.Elab.Data
 import Idris.Elab.Value
 import Idris.Elab.Term
-
+import Idris.ModeCommon
 import Idris.Info
 
 import Version_idris (gitHash)
@@ -70,14 +64,11 @@ import Idris.Core.WHNF
 import Idris.Core.Constraints
 
 import IRTS.Compiler
-import IRTS.CodegenCommon
-import IRTS.Exports
 
 import Control.Category
 import qualified Control.Exception as X
 import Prelude hiding ((<$>), (.), id)
 import Data.List.Split (splitOn)
-import Data.List (groupBy)
 import qualified Data.Text as T
 
 import Text.Trifecta.Result(Result(..), ErrInfo(..))
@@ -101,7 +92,6 @@ import Data.List hiding (group)
 import Data.Char
 import qualified Data.Set as S
 import Data.Version
-import Data.Word (Word)
 import Data.Either (partitionEithers)
 import Control.DeepSeq
 
@@ -109,9 +99,7 @@ import Control.Concurrent.Async (race)
 import System.FSNotify (withManager, watchDir)
 import System.FSNotify.Devel (allEvents, doAllEvents)
 
-import Numeric ( readHex )
 
-import Debug.Trace
 
 -- | Run the REPL
 repl :: IState -- ^ The initial state
@@ -1553,388 +1541,3 @@ replSettings hFile = setComplete replCompletion $ defaultSettings {
                        historyFile = hFile
                      }
 
--- | Invoke as if from command line. It is an error if there are unresolved totality problems.
-idris :: [Opt] -> IO (Maybe IState)
-idris opts = do res <- runExceptT $ execStateT totalMain idrisInit
-                case res of
-                  Left err -> do putStrLn $ pshow idrisInit err
-                                 return Nothing
-                  Right ist -> return (Just ist)
-    where totalMain = do idrisMain opts
-                         ist <- getIState
-                         case idris_totcheckfail ist of
-                           ((fc, msg):_) -> ierror . At fc . Msg $ "Could not build: "++  msg
-                           [] -> return ()
-
-
-loadInputs :: [FilePath] -> Maybe Int -> Idris [FilePath]
-loadInputs inputs toline -- furthest line to read in input source files
-  = idrisCatch
-       (do ist <- getIState
-           -- if we're in --check and not outputting anything, don't bother
-           -- loading, as it gets really slow if there's lots of modules in
-           -- a package (instead, reload all at the end to check for
-           -- consistency only)
-           opts <- getCmdLine
-
-           let loadCode = case opt getOutput opts of
-                               [] -> not (NoREPL `elem` opts)
-                               _ -> True
-
-           -- For each ifile list, check it and build ibcs in the same clean IState
-           -- so that they don't interfere with each other when checking
-
-           importlists <- getImports [] inputs
-
-           logParser 1 (show (map (\(i,m) -> (i, map import_path m)) importlists))
-
-           let ninputs = zip [1..] inputs
-           ifiles <- mapWhileOK (\(num, input) ->
-                do putIState ist
-                   modTree <- buildTree
-                                   (map snd (take (num-1) ninputs))
-                                   importlists
-                                   input
-                   let ifiles = getModuleFiles modTree
-                   logParser 1 ("MODULE TREE : " ++ show modTree)
-                   logParser 1 ("RELOAD: " ++ show ifiles)
-                   when (not (all ibc ifiles) || loadCode) $
-                        tryLoad False IBC_Building (filter (not . ibc) ifiles)
-                   -- return the files that need rechecking
-                   return (input, ifiles))
-                      ninputs
-           inew <- getIState
-           let tidata = idris_tyinfodata inew
-           -- If it worked, load the whole thing from all the ibcs together
-           case errSpan inew of
-              Nothing ->
-                do putIState $!! ist { idris_tyinfodata = tidata }
-                   ibcfiles <- mapM findNewIBC (nub (concatMap snd ifiles))
---                    logLvl 0 $ "Loading from " ++ show ibcfiles
-                   tryLoad True (IBC_REPL True) (mapMaybe id ibcfiles)
-              _ -> return ()
-           exports <- findExports
-
-           case opt getOutput opts of
-               [] -> performUsageAnalysis (getExpNames exports) -- interactive
-               _  -> return []  -- batch, will be checked by the compiler
-
-           return (map fst ifiles))
-        (\e -> do i <- getIState
-                  case e of
-                    At f e' -> do setErrSpan f
-                                  iWarn f $ pprintErr i e'
-                    ProgramLineComment -> return () -- fail elsewhere
-                    _ -> do setErrSpan emptyFC -- FIXME! Propagate it
-                                               -- Issue #1576 on the issue tracker.
-                                               -- https://github.com/idris-lang/Idris-dev/issues/1576
-                            iWarn emptyFC $ pprintErr i e
-                  return [])
-   where -- load all files, stop if any fail
-         tryLoad :: Bool -> IBCPhase -> [IFileType] -> Idris ()
-         tryLoad keepstate phase [] = warnTotality >> return ()
-         tryLoad keepstate phase (f : fs)
-                 = do ist <- getIState
-                      let maxline
-                            = case toline of
-                                Nothing -> Nothing
-                                Just l -> case f of
-                                            IDR fn -> if any (fmatch fn) inputs
-                                                         then Just l
-                                                         else Nothing
-                                            LIDR fn -> if any (fmatch fn) inputs
-                                                          then Just l
-                                                          else Nothing
-                                            _ -> Nothing
-                      loadFromIFile True phase f maxline
-                      inew <- getIState
-                      -- FIXME: Save these in IBC to avoid this hack! Need to
-                      -- preserve it all from source inputs
-                      --
-                      -- Issue #1577 on the issue tracker.
-                      --     https://github.com/idris-lang/Idris-dev/issues/1577
-                      let tidata = idris_tyinfodata inew
-                      let patdefs = idris_patdefs inew
-                      ok <- noErrors
-                      if ok then
-                            -- The $!! here prevents a space leak on reloading.
-                            -- This isn't a solution - but it's a temporary stopgap.
-                            -- See issue #2386
-                            do when (not keepstate) $ putIState $!! ist
-                               ist <- getIState
-                               putIState $!! ist { idris_tyinfodata = tidata,
-                                                   idris_patdefs = patdefs }
-                               tryLoad keepstate phase fs
-                          else warnTotality
-
-         ibc (IBC _ _) = True
-         ibc _ = False
-
-         fmatch ('.':'/':xs) ys = fmatch xs ys
-         fmatch xs ('.':'/':ys) = fmatch xs ys
-         fmatch xs ys = xs == ys
-
-         findNewIBC :: IFileType -> Idris (Maybe IFileType)
-         findNewIBC i@(IBC _ _) = return (Just i)
-         findNewIBC s@(IDR f) = do ist <- get
-                                   ibcsd <- valIBCSubDir ist
-                                   let ibc = ibcPathNoFallback ibcsd f
-                                   ok <- runIO $ doesFileExist ibc
-                                   if ok then return (Just (IBC ibc s))
-                                         else return Nothing
-         findNewIBC s@(LIDR f) = do ist <- get
-                                    ibcsd <- valIBCSubDir ist
-                                    let ibc = ibcPathNoFallback ibcsd f
-                                    ok <- runIO $ doesFileExist ibc
-                                    if ok then return (Just (IBC ibc s))
-                                          else return Nothing
-
-         -- Like mapM, but give up when there's an error
-         mapWhileOK f [] = return []
-         mapWhileOK f (x : xs) = do x' <- f x
-                                    ok <- noErrors
-                                    if ok then do xs' <- mapWhileOK f xs
-                                                  return (x' : xs')
-                                          else return [x']
-
-idrisMain :: [Opt] -> Idris ()
-idrisMain opts =
-  do   mapM_ setWidth (opt getConsoleWidth opts)
-       let inputs = opt getFile opts
-       let quiet = Quiet `elem` opts
-       let nobanner = NoBanner `elem` opts
-       let idesl = Idemode `elem` opts || IdemodeSocket `elem` opts
-       let runrepl = not (NoREPL `elem` opts)
-       let verbose = runrepl || Verbose `elem` opts
-       let output = opt getOutput opts
-       let ibcsubdir = opt getIBCSubDir opts
-       let importdirs = opt getImportDir opts
-       let sourcedirs = opt getSourceDir opts
-       let bcs = opt getBC opts
-       let pkgdirs = opt getPkgDir opts
-       -- Set default optimisations
-       let optimise = case opt getOptLevel opts of
-                        [] -> 2
-                        xs -> last xs
-
-       setOptLevel optimise
-       let outty = case opt getOutputTy opts of
-                     [] -> if Interface `elem` opts then
-                              Object else Executable
-                     xs -> last xs
-       let cgn = case opt getCodegen opts of
-                   [] -> Via IBCFormat "c"
-                   xs -> last xs
-       let cgFlags = opt getCodegenArgs opts
-
-       -- Now set/unset specifically chosen optimisations
-       let os = opt getOptimisation opts
-
-       mapM_ processOptimisation os
-
-       script <- case opt getExecScript opts of
-                   []     -> return Nothing
-                   x:y:xs -> do iputStrLn "More than one interpreter expression found."
-                                runIO $ exitWith (ExitFailure 1)
-                   [expr] -> return (Just expr)
-       let immediate = opt getEvalExpr opts
-       let port = case getPort opts of
-                    Nothing -> defaultPort
-                    Just p  -> p
-
-       when (DefaultTotal `elem` opts) $ do i <- getIState
-                                            putIState (i { default_total = DefaultCheckingTotal })
-       tty <- runIO isATTY
-       setColourise $ not quiet && last (tty : opt getColour opts)
-
-
-
-       mapM_ addLangExt (opt getLanguageExt opts)
-       setREPL runrepl
-       setQuiet (quiet || isJust script || not (null immediate))
-       setVerbose verbose
-       setCmdLine opts
-       setOutputTy outty
-       setNoBanner nobanner
-       setCodegen cgn
-       mapM_ (addFlag cgn) cgFlags
-       mapM_ makeOption opts
-       -- if we have the --bytecode flag, drop into the bytecode assembler
-       case bcs of
-         [] -> return ()
-         xs -> return () -- runIO $ mapM_ bcAsm xs
-       case ibcsubdir of
-         [] -> setIBCSubDir ""
-         (d:_) -> setIBCSubDir d
-       setImportDirs importdirs
-       setSourceDirs sourcedirs
-
-       setNoBanner nobanner
-
-       when (not (NoBasePkgs `elem` opts)) $ do
-           addPkgDir "prelude"
-           addPkgDir "base"
-       mapM_ addPkgDir pkgdirs
-       elabPrims
-       when (not (NoBuiltins `elem` opts)) $ do x <- loadModule "Builtins" (IBC_REPL True)
-                                                addAutoImport "Builtins"
-                                                return ()
-       when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude" (IBC_REPL True)
-                                               addAutoImport "Prelude"
-                                               return ()
-       when (runrepl && not idesl) initScript
-
-       nobanner <- getNoBanner
-
-       when (runrepl &&
-             not quiet &&
-             not idesl &&
-             not (isJust script) &&
-             not nobanner &&
-             null immediate) $
-         iputStrLn banner
-
-       orig <- getIState
-
-       mods <- if idesl then return [] else loadInputs inputs Nothing
-       let efile = case inputs of
-                        [] -> ""
-                        (f:_) -> f
-
-       runIO $ hSetBuffering stdout LineBuffering
-
-       ok <- noErrors
-       when ok $ case output of
-                    [] -> return ()
-                    (o:_) -> idrisCatch (process "" (Compile cgn o))
-                               (\e -> do ist <- getIState ; iputStrLn $ pshow ist e)
-
-       case immediate of
-         [] -> return ()
-         exprs -> do setWidth InfinitelyWide
-                     mapM_ (\str -> do ist <- getIState
-                                       c <- colourise
-                                       case parseExpr ist str of
-                                         Failure (ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
-                                                                       runIO $ exitWith (ExitFailure 1)
-                                         Success e -> process "" (Eval e))
-                           exprs
-                     runIO exitSuccess
-
-
-       case script of
-         Nothing -> return ()
-         Just expr -> execScript expr
-
-       -- Create Idris data dir + repl history and config dir
-       idrisCatch (do dir <- runIO $ getIdrisUserDataDir
-                      exists <- runIO $ doesDirectoryExist dir
-                      unless exists $ logLvl 1 ("Creating " ++ dir)
-                      runIO $ createDirectoryIfMissing True (dir </> "repl"))
-         (\e -> return ())
-
-       historyFile <- runIO $ getIdrisHistoryFile
-
-       when ok $ case opt getPkgIndex opts of
-                      (f : _) -> writePkgIndex f
-                      _ -> return ()
-
-       when (runrepl && not idesl) $ do
---          clearOrigPats
-         startServer port orig mods
-         runInputT (replSettings (Just historyFile)) $ repl (force orig) mods efile
-       let idesock = IdemodeSocket `elem` opts
-       when (idesl) $ idemodeStart idesock orig inputs
-       ok <- noErrors
-       when (not ok) $ runIO (exitWith (ExitFailure 1))
-  where
-    makeOption (OLogging i)  = setLogLevel i
-    makeOption (OLogCats cs) = setLogCats cs
-    makeOption TypeCase      = setTypeCase True
-    makeOption TypeInType    = setTypeInType True
-    makeOption NoCoverage    = setCoverage False
-    makeOption ErrContext    = setErrContext True
-    makeOption _             = return ()
-
-    processOptimisation :: (Bool,Optimisation) -> Idris ()
-    processOptimisation (True,  p) = addOptimise p
-    processOptimisation (False, p) = removeOptimise p
-
-    addPkgDir :: String -> Idris ()
-    addPkgDir p = do ddir <- runIO getIdrisLibDir
-                     addImportDir (ddir </> p)
-                     addIBC (IBCImportDir (ddir </> p))
-
-runMain :: Idris () -> IO ()
-runMain prog = do res <- runExceptT $ execStateT prog idrisInit
-                  case res of
-                       Left err -> putStrLn $ "Uncaught error: " ++ show err
-                       Right _ -> return ()
-
-execScript :: String -> Idris ()
-execScript expr = do i <- getIState
-                     c <- colourise
-                     case parseExpr i expr of
-                          Failure (ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
-                                                        runIO $ exitWith (ExitFailure 1)
-                          Success term -> do ctxt <- getContext
-                                             (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
-                                             res <- execute tm
-                                             runIO $ exitSuccess
-
-
--- | Run the initialisation script
-initScript :: Idris ()
-initScript = do script <- runIO $ getIdrisInitScript
-                idrisCatch (do go <- runIO $ doesFileExist script
-                               when go $ do
-                                 h <- runIO $ openFile script ReadMode
-                                 runInit h
-                                 runIO $ hClose h)
-                           (\e -> iPrintError $ "Error reading init file: " ++ show e)
-    where runInit :: Handle -> Idris ()
-          runInit h = do eof <- lift . lift $ hIsEOF h
-                         ist <- getIState
-                         unless eof $ do
-                           line <- runIO $ hGetLine h
-                           script <- runIO $ getIdrisInitScript
-                           c <- colourise
-                           processLine ist line script c
-                           runInit h
-          processLine i cmd input clr =
-              case parseCmd i input cmd of
-                   Failure (ErrInfo err _) -> runIO $ print (fixColour clr err)
-                   Success (Right Reload) -> iPrintError "Init scripts cannot reload the file"
-                   Success (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
-                   Success (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"
-                   Success (Right Edit) -> iPrintError "Init scripts cannot invoke the editor"
-                   Success (Right Proofs) -> proofs i
-                   Success (Right Quit) -> iPrintError "Init scripts cannot quit Idris"
-                   Success (Right cmd ) -> process [] cmd
-                   Success (Left err) -> runIO $ print err
-
-
-defaultPort :: PortID
-defaultPort = PortNumber (fromIntegral 4294)
-
-banner = "     ____    __     _                                          \n" ++
-         "    /  _/___/ /____(_)____                                     \n" ++
-         "    / // __  / ___/ / ___/     Version " ++ getIdrisVersion ++ "\n" ++
-         "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
-         " /___/\\__,_/_/  /_/____/       Type :? for help               \n" ++
-         "\n" ++
-         "Idris is free software with ABSOLUTELY NO WARRANTY.            \n" ++
-         "For details type :warranty."
-
-warranty = "\n"                                                                          ++
-           "\t THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY  \n" ++
-           "\t EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE     \n" ++
-           "\t IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR    \n" ++
-           "\t PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE   \n" ++
-           "\t LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR   \n" ++
-           "\t CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF  \n" ++
-           "\t SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR       \n" ++
-           "\t BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, \n" ++
-           "\t WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE  \n" ++
-           "\t OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN\n" ++
-           "\t IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n"
