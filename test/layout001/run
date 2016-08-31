@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-${IDRIS:-idris} --nobanner --nocolour --quiet <<!
+${IDRIS:-idris} --nobanner --nocolour --quiet --port none <<!
 :load layout001a.idr
 :load layout001b.idr
 :load layout001c.idr

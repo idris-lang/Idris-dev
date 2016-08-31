@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 ${IDRIS:-idris} $@ test001.idr -o test001
 ./test001
-${IDRIS:-idris} $@ test001.idr --quiet < input
+${IDRIS:-idris} $@ test001.idr --quiet --port none < input
 rm -f test001 test001.ibc

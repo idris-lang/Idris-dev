@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-${IDRIS:-idris} $@ --nobanner --nocolour --quiet <<!
+${IDRIS:-idris} $@ --nobanner --nocolour --quiet --port none <<!
 :load reg003.idr
 :load reg003a.idr
 :load reg006.idr

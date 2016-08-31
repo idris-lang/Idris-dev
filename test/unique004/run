@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-${IDRIS:-idris} --nobanner --nocolour --quiet <<!
+${IDRIS:-idris} --nobanner --nocolour --quiet --port none <<!
 :load unique001a.idr
 :load unique001b.idr
 :load unique001c.idr
