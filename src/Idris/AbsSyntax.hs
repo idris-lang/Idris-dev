@@ -2632,12 +2632,10 @@ getClient (Client x) = Just x
 getClient _ = Nothing
 
 -- Get the first valid port
-getPort :: [Opt] -> Maybe PortID
-getPort [] = Nothing
-getPort (Port p:xs)
-    | all (`elem` ['0'..'9']) p = Just (PortNumber $ fromIntegral (read p))
-    | otherwise                 = getPort xs
-getPort (_:xs) = getPort xs
+getPort :: [Opt] -> Maybe REPLPort
+getPort []            = Nothing
+getPort (Port p : xs) = Just p
+getPort (_      : xs) = getPort xs
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]
 opt = mapMaybe

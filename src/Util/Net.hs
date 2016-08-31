@@ -8,14 +8,14 @@ Maintainer  : The Idris Community.
 module Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort) where
 
 import Network hiding (socketPort)
-import Network.Socket hiding (sClose, PortNumber)
+import Network.Socket hiding (sClose)
 import Network.BSD (getProtocolNumber)
 import Control.Exception (bracketOnError)
 
 -- Copied from upstream impl of listenOn
 -- bound to localhost interface instead of iNADDR_ANY
-listenOnLocalhost :: PortID -> IO Socket
-listenOnLocalhost (PortNumber port) = do
+listenOnLocalhost :: PortNumber -> IO Socket
+listenOnLocalhost port = do
     proto <- getProtocolNumber "tcp"
     localhost <- inet_addr "127.0.0.1"
     bracketOnError

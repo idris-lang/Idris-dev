@@ -154,7 +154,7 @@ repl orig mods efile
                               else show n
 
 -- | Run the REPL server
-startServer :: PortID -> IState -> [FilePath] -> Idris ()
+startServer :: PortNumber -> IState -> [FilePath] -> Idris ()
 startServer port orig fn_in = do tid <- runIO $ forkIO (serverLoop port)
                                  return ()
   where serverLoop port = withSocketsDo $
@@ -213,10 +213,10 @@ processNetCmd orig i h fn cmd
            IdeMode n _ -> ist {idris_outputmode = IdeMode n h}
 
 -- | Run a command on the server on localhost
-runClient :: Maybe PortID -> String -> IO ()
+runClient :: Maybe PortNumber -> String -> IO ()
 runClient port str = withSocketsDo $ do
               let port' = fromMaybe defaultPort port
-              res <- X.try (connectTo "localhost" port')
+              res <- X.try (connectTo "localhost" $ PortNumber port')
               case res of
                 Right h -> do
                   hSetEncoding h utf8
