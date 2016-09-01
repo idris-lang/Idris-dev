@@ -757,15 +757,6 @@ deriving instance Binary CaseInfo
 {-!
 deriving instance Binary CaseDefs
 !-}
-{-!
-deriving instance NFData Def
-!-}
-{-!
-deriving instance NFData CaseInfo
-!-}
-{-!
-deriving instance NFData CaseDefs
-!-}
 
 instance Show Def where
     show (Function ty tm) = "Function: " ++ show (ty, tm)
@@ -794,9 +785,6 @@ instance Show Def where
 
 data Accessibility = Hidden | Public | Frozen | Private
     deriving (Eq, Ord, Generic)
-{-!
-deriving instance NFData Accessibility
-!-}
 
 instance Show Accessibility where
   show Public = "public export"
@@ -813,17 +801,11 @@ data Totality = Total [Int] -- ^ well-founded arguments
               | Unchecked
               | Generated
     deriving (Eq, Generic)
-{-!
-deriving instance NFData Totality
-!-}
 
 -- | Reasons why a function may not be total
 data PReason = Other [Name] | Itself | NotCovering | NotPositive | UseUndef Name
              | ExternalIO | BelieveMe | Mutual [Name] | NotProductive
     deriving (Show, Eq, Generic)
-{-!
-deriving instance NFData PReason
-!-}
 
 instance Show Totality where
     show (Total args)= "Total" -- ++ show args ++ " decreasing arguments"

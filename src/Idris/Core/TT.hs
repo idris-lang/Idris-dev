@@ -182,7 +182,6 @@ fileFC s = FileFC s
 
 {-!
 deriving instance Binary FC
-deriving instance NFData FC
 !-}
 
 instance Sized FC where
@@ -246,7 +245,6 @@ data Provenance = ExpectedType
                 | SourceTerm Term
   deriving (Show, Eq, Data, Generic, Typeable)
 {-!
-deriving instance NFData Err
 deriving instance Binary Err
 !-}
 
@@ -343,10 +341,6 @@ instance Applicative TC where
 instance Alternative TC where
     empty = mzero
     (<|>) = mplus
-
-{-!
-deriving instance NFData Err
-!-}
 
 instance Sized ErrorReportPart where
   size (TextPart msg) = 1 + length msg
@@ -499,7 +493,6 @@ caseName _ = False
 
 {-!
 deriving instance Binary Name
-deriving instance NFData Name
 !-}
 
 data SpecialName = WhereN !Int !Name !Name
@@ -514,7 +507,6 @@ data SpecialName = WhereN !Int !Name !Name
   deriving (Eq, Ord, Data, Generic, Typeable)
 {-!
 deriving instance Binary SpecialName
-deriving instance NFData SpecialName
 !-}
 
 sInstanceN :: Name -> [String] -> SpecialName
@@ -695,11 +687,6 @@ intTyName (ITChar) = "Char"
 
 data ArithTy = ATInt IntTy | ATFloat -- TODO: Float vectors https://github.com/idris-lang/Idris-dev/issues/1723
     deriving (Show, Eq, Ord, Data, Generic, Typeable)
-{-!
-deriving instance NFData IntTy
-deriving instance NFData NativeTy
-deriving instance NFData ArithTy
-!-}
 
 instance Pretty ArithTy OutputAnnotation where
     pretty (ATInt ITNative) = text "Int"
@@ -752,7 +739,6 @@ instance Eq Const where
 
 {-!
 deriving instance Binary Const
-deriving instance NFData Const
 !-}
 
 isTypeConst :: Const -> Bool
@@ -850,7 +836,6 @@ instance Pretty Raw OutputAnnotation where
 
 {-!
 deriving instance Binary Raw
-deriving instance NFData Raw
 !-}
 
 data ImplicitInfo = Impl { tcinstance :: Bool, toplevel_imp :: Bool,
@@ -859,7 +844,6 @@ data ImplicitInfo = Impl { tcinstance :: Bool, toplevel_imp :: Bool,
 
 {-!
 deriving instance Binary ImplicitInfo
-deriving instance NFData ImplicitInfo
 !-}
 
 -- The type parameter `b` will normally be something like `TT Name` or just
@@ -910,7 +894,6 @@ data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}
   deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Data, Generic, Typeable)
 {-!
 deriving instance Binary Binder
-deriving instance NFData Binder
 !-}
 
 instance Sized a => Sized (Binder a) where
@@ -953,9 +936,6 @@ internalNS = "(internal)"
 data UExp = UVar String Int -- ^ universe variable, with source file to disambiguate
           | UVal Int -- ^ explicit universe level
   deriving (Eq, Ord, Data, Generic, Typeable)
-{-!
-deriving instance NFData UExp
-!-}
 
 instance Sized UExp where
   size _ = 1
@@ -995,7 +975,6 @@ data NameType = Bound
   deriving (Show, Ord, Data, Generic, Typeable)
 {-!
 deriving instance Binary NameType
-deriving instance NFData NameType
 !-}
 
 instance Sized NameType where
@@ -1035,7 +1014,6 @@ data TT n = P NameType n (TT n) -- ^ named references with type
   deriving (Ord, Functor, Data, Generic, Typeable)
 {-!
 deriving instance Binary TT
-deriving instance NFData TT
 !-}
 
 class TermSize a where
@@ -1109,7 +1087,6 @@ data TypeInfo = TI { con_names :: [Name],
     deriving (Show, Generic)
 {-!
 deriving instance Binary TypeInfo
-deriving instance NFData TypeInfo
 !-}
 
 instance Eq n => Eq (TT n) where

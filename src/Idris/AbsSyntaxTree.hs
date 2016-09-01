@@ -320,7 +320,6 @@ data SizeChange = Smaller | Same | Bigger | Unknown
     deriving (Show, Eq, Generic)
 {-!
 deriving instance Binary SizeChange
-deriving instance NFData SizeChange
 !-}
 
 type SCGEntry = (Name, [Maybe (Int, SizeChange)])
@@ -333,7 +332,6 @@ data CGInfo = CGInfo {
   } deriving (Show, Generic)
 {-!
 deriving instance Binary CGInfo
-deriving instance NFData CGInfo
 !-}
 
 primDefs = [ sUN "unsafePerformPrimIO"
@@ -428,9 +426,6 @@ throwError = Trans.lift . throwE
 data Codegen = Via IRFormat String
              | Bytecode
     deriving (Show, Eq, Generic)
-{-!
-deriving instance NFData Codegen
-!-}
 
 data IRFormat = IBCFormat | JSONFormat deriving (Show, Eq, Generic)
 
@@ -567,7 +562,6 @@ data Fixity = Infixl  { prec :: Int }
     deriving (Eq, Generic)
 {-!
 deriving instance Binary Fixity
-deriving instance NFData Fixity
 !-}
 
 instance Show Fixity where
@@ -584,7 +578,6 @@ instance Show FixDecl where
 
 {-!
 deriving instance Binary FixDecl
-deriving instance NFData FixDecl
 !-}
 
 instance Ord FixDecl where
@@ -595,7 +588,6 @@ data Static = Static | Dynamic
   deriving (Show, Eq, Data, Generic, Typeable)
 {-!
 deriving instance Binary Static
-deriving instance NFData Static
 !-}
 
 -- ^ Mark bindings with their explicitness, and laziness
@@ -620,7 +612,6 @@ data Plicity = Imp { pargopts  :: [ArgOpt]
 
 {-!
 deriving instance Binary Plicity
-deriving instance NFData Plicity
 !-}
 
 is_scoped :: Plicity -> Maybe ImplicitInfo
@@ -664,7 +655,6 @@ data FnOpt = Inlinable -- ^ always evaluate when simplifying
     deriving (Show, Eq, Generic)
 {-!
 deriving instance Binary FnOpt
-deriving instance NFData FnOpt
 !-}
 
 type FnOpts = [FnOpt]
@@ -767,7 +757,6 @@ data PDecl' t
  deriving (Functor, Generic)
 {-!
 deriving instance Binary PDecl'
-deriving instance NFData PDecl'
 !-}
 
 -- | The set of source directives
@@ -839,7 +828,6 @@ data PClause' t = PClause  FC Name t [t] t                    [PDecl' t] -- ^ A 
     deriving (Functor, Generic)
 {-!
 deriving instance Binary PClause'
-deriving instance NFData PClause'
 !-}
 
 -- | Data declaration
@@ -869,7 +857,6 @@ mapPDataFC f g (PLaterdecl n nfc tycon) =
   PLaterdecl n (g nfc) (mapPTermFC f g tycon)
 {-!
 deriving instance Binary PData'
-deriving instance NFData PData'
 !-}
 
 -- Handy to get a free function for applying PTerm -> PTerm functions
@@ -1174,7 +1161,6 @@ mapPTermFC f g (PQuoteName n x fc)            = PQuoteName n x (g fc)
 
 {-!
 dg instance Binary PTerm
-deriving instance NFData PTerm
 !-}
 
 mapPT :: (PTerm -> PTerm) -> PTerm -> PTerm
@@ -1238,7 +1224,6 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
     deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, Typeable)
 {-!
 deriving instance Binary PTactic'
-deriving instance NFData PTactic'
 !-}
 instance Sized a => Sized (PTactic' a) where
   size (Intro nms)      = 1 + size nms
@@ -1285,7 +1270,6 @@ data PDo' t = DoExp  FC t
     deriving (Eq, Functor, Data, Generic, Typeable)
 {-!
 deriving instance Binary PDo'
-deriving instance NFData PDo'
 !-}
 
 instance Sized a => Sized (PDo' a) where
@@ -1339,7 +1323,6 @@ instance Sized a => Sized (PArg' a) where
 
 {-!
 deriving instance Binary PArg'
-deriving instance NFData PArg'
 !-}
 
 pimp n t mach = PImp 1 mach [] n t
@@ -1421,7 +1404,6 @@ data InterfaceInfo = CI {
   } deriving (Show, Generic)
 {-!
 deriving instance Binary InterfaceInfo
-deriving instance NFData InterfaceInfo
 !-}
 
 -- Record data
@@ -1442,7 +1424,6 @@ data FnInfo = FnInfo { fn_params :: [Int] }
     deriving (Show, Generic)
 {-!
 deriving instance Binary FnInfo
-deriving instance NFData FnInfo
 !-}
 
 data OptInfo = Optimise {
@@ -1451,7 +1432,6 @@ data OptInfo = Optimise {
   } deriving (Show, Generic)
 {-!
 deriving instance Binary OptInfo
-deriving instance NFData OptInfo
 !-}
 
 -- | Syntactic sugar info
@@ -1468,7 +1448,6 @@ data DSL' t = DSL {
   } deriving (Show, Functor, Generic)
 {-!
 deriving instance Binary DSL'
-deriving instance NFData DSL'
 !-}
 
 type DSL = DSL' PTerm
@@ -1479,7 +1458,6 @@ data SynContext = PatternSyntax
     deriving (Show, Generic)
 {-!
 deriving instance Binary SynContext
-deriving instance NFData SynContext
 !-}
 
 data Syntax = Rule [SSymbol] PTerm SynContext
@@ -1499,7 +1477,6 @@ syntaxSymbols (Rule ss _ _) = ss
 syntaxSymbols (DeclRule ss _) = ss
 {-!
 deriving instance Binary Syntax
-deriving instance NFData Syntax
 !-}
 
 data SSymbol = Keyword Name
@@ -1512,7 +1489,6 @@ data SSymbol = Keyword Name
 
 {-!
 deriving instance Binary SSymbol
-deriving instance NFData SSymbol
 !-}
 
 newtype SyntaxRules = SyntaxRules { syntaxRulesList :: [Syntax] }
@@ -1572,7 +1548,6 @@ data Using = UImplicit Name PTerm
     deriving (Show, Eq, Data, Generic, Typeable)
 {-!
 deriving instance Binary Using
-deriving instance NFData Using
 !-}
 
 data SyntaxInfo = Syn {
@@ -1595,7 +1570,6 @@ data SyntaxInfo = Syn {
   , withAppAllowed    :: Bool
   } deriving (Show, Generic)
 {-!
-deriving instance NFData SyntaxInfo
 deriving instance Binary SyntaxInfo
 !-}
 
