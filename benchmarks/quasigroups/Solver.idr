@@ -184,9 +184,8 @@ fillBoard {n=(S n)} b l with (emptyCell b)
   | Left full = Just (b ** (l, full))
   | Right (coords ** p) = recurse last
   where
-    %assert_total
     tryAll : (v : Fin (S n)) -> (Fin (S n), Maybe (b' : Board (S n) ** LegalBoard b'))
-    tryAll v = --trace ("Trying " ++ show (the Int (cast v))) $
+    tryAll v = assert_total $ --trace ("Trying " ++ show (the Int (cast v))) $
       case tryValue l coords p v of
         Right success => (v, Just success)
         Left _ => -- TODO: Prove unsolvable
@@ -194,9 +193,8 @@ fillBoard {n=(S n)} b l with (emptyCell b)
             FS k => tryAll (weaken k)
             FZ => (v, Nothing)
 
-    %assert_total
     recurse : Fin (S n) -> Maybe (b' : Board (S n) ** CompleteBoard b')
-    recurse start =
+    recurse start = assert_total $
       case tryAll start of
         (_, Nothing) => Nothing
         (FZ, Just (b' ** l')) => fillBoard b' l'

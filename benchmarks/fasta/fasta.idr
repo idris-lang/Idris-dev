@@ -31,7 +31,7 @@ splitAt' n s = let s' = unpack s in (pack $ take n s', pack $ drop n s')
 writeAlu : String -> String -> IO ()
 writeAlu name s0 = putStrLn name *> go s0
   where
-    go "" = return ()
+    go "" = pure ()
     go s  = let (h,t) = splitAt' 60 s in putStrLn h *> go t
 
 replicate : Int -> Char -> String
@@ -64,7 +64,7 @@ make name n0 tbl seed0 = do
     lookupTable = Foldable.concat (fill (scanl accum ('a',0) tbl) 0)
 
     make' : Int -> Int -> Int -> String -> IO Int
-    make' 0 col seed buf = when (col > 0) (putStrLn buf) *> return seed
+    make' 0 col seed buf = when (col > 0) (putStrLn buf) *> pure seed
     make' n col seed buf = do
       let newseed  = modInt (seed * 3877 + 29573) modulus
       let nextchar = strIndex lookupTable newseed
@@ -80,4 +80,4 @@ main = do
     writeAlu ">ONE Homo sapiens alu" (takeRepeat (fromInteger (cast n)*2) alu)
     nseed <- make ">TWO IUB ambiguity codes" (fromInteger (cast n)*3) iub 42
     make ">THREE Homo sapiens frequency" (fromInteger (cast n)*5) homosapiens nseed
-    return ()
+    pure ()
