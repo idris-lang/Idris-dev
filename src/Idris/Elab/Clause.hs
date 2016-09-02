@@ -1109,7 +1109,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
          addResolves ty (PApp fc f args) = PApp fc f (addResolvesArgs fc ty args)
          addResolves ty tm = tm
 
-         -- if an argument's type is a type class, and is otherwise to
+         -- if an argument's type is an interface, and is otherwise to
          -- be inferred, then resolve it with instance search
          -- This is something of a hack, because matching on the top level
          -- application won't find this information for us

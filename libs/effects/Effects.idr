@@ -366,7 +366,7 @@ eff env (l :- prog) k
    = let env' = unlabel env in
          eff env' prog (\p', envk => k p' (relabel l envk))
 
--- yuck :) Haven't got interface instances working nicely in tactic
+-- yuck :) Haven't got interface implementations working nicely in tactic
 -- proofs yet, and 'search' can't be told about any hints yet,
 -- so just brute force it.
 syntax MkDefaultEnv = with Env

@@ -240,7 +240,7 @@ surround it in parentheses.
     Idris> :t plus 4
     plus (Builtins.fromInteger 4) : Nat -> Nat
 
-You can also ask for basic information about typeclasses with ``:doc``:
+You can also ask for basic information about interfaces with ``:doc``:
 
 ::
 
@@ -268,14 +268,11 @@ Other documentation is also available from ``:doc``:
 ::
 
     Idris> :doc (+)
-    Prelude.Classes.+ : (a : Type) -> (Num a) -> a -> a -> a
+    Prelude.Interfaces.(+) : Num ty => ty -> ty -> ty
 
     infixl 8
 
-    Arguments:
-            Class constraint Prelude.Classes.Num a
-            __pi_arg : a
-            __pi_arg1 : a
+    The function is Total
 
 ::
 
@@ -302,17 +299,30 @@ Other documentation is also available from ``:doc``:
 ::
 
     Idris> :doc Monad
-    Interface Prelude.Monad.Monad
+    Interface Monad
+
+    Parameters:
+        m
+
     Methods:
+        (>>=) : Monad m => m a -> (a -> m b) -> m b
+            Also called bind.
+            infixl 5
 
-    Prelude.Monad.>>= : (m : Type -> Type) -> (a : Type) -> (b : Type) -> (Monad m) -> (m a) -> (a -> m b) -> m b
+            The function is Total
+        join : Monad m => m (m a) -> m a
+            Also called flatten or mu
 
-    infixl 5
-
-    Arguments:
-            Class constraint Prelude.Monad.Monad m
-            __pi_arg : m a
-            __pi_arg1 : a -> m b
+            The function is Total
+    Implementations:
+        Monad (IO' ffi)
+        Monad Stream
+        Monad Provider
+        Monad Elab
+        Monad PrimIO
+        Monad Maybe
+        Monad (Either e)
+        Monad List
 
 Finding things
 ~~~~~~~~~~~~~~
@@ -382,7 +392,7 @@ some string, and prints the results. For example:
 
 
     Eq : Type -> Type
-    The Eq class defines inequality and equality.
+    The Eq interface defines inequality and equality.
 
     GTE : Nat -> Nat -> Type
     Greater than or equal to
@@ -426,10 +436,10 @@ some string, and prints the results. For example:
     > Prelude.pow : Num a => a -> Nat -> a
 
 
-    > Prelude.Classes.(*) : Num a => a -> a -> a
+    > Prelude.Interfaces.(*) : Num a => a -> a -> a
 
 
-    > Prelude.Classes.(+) : Num a => a -> a -> a
+    > Prelude.Interfaces.(+) : Num a => a -> a -> a
     ... (More results)
 
 ``:search`` can also look for dependent types:

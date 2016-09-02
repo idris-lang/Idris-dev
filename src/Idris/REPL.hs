@@ -929,7 +929,7 @@ process fn (Undefine names) = undefine names
          else do tclift $ tfail $ Msg ("Can't undefine " ++ show n ++ " because it wasn't defined at the repl")
                  undefine' names already
     undefOne n = do fputState (ctxt_lookup n . known_terms) Nothing
-                    -- for now just assume it's a class. Eventually we'll want some kind of
+                    -- for now just assume it's an interface. Eventually we'll want some kind of
                     -- smart detection of exactly what kind of name we're undefining.
                     fputState (ctxt_lookup n . known_interfaces) Nothing
                     fmodifyState repl_definitions (delete n)

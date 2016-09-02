@@ -275,7 +275,7 @@ That is, ``{x}`` behaves like ``{x=x}``.
 Existence of an instance
 ========================
 
-In order to show that an instance of some typeclass is defined for some
+In order to show that an instance of some interface is defined for some
 type, one could use the ``%instance`` keyword:
 
 .. code:: idris

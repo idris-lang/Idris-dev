@@ -185,7 +185,7 @@ decorateid decorate (PClauses f o n cs)
           dappname t = t
 
 
--- if 't' is a type class application, assume its arguments are injective
+-- if 't' is an interface application, assume its arguments are injective
 pbinds :: IState -> Term -> ElabD ()
 pbinds i (Bind n (PVar t) sc)
     = do attack; patbind n
@@ -193,7 +193,7 @@ pbinds i (Bind n (PVar t) sc)
          case unApply (normalise (tt_ctxt i) env t) of
               (P _ c _, args) -> case lookupCtxt c (idris_interfaces i) of
                                    [] -> return ()
-                                   _ -> -- type class, set as injective
+                                   _ -> -- interface, set as injective
                                         mapM_ setinjArg args
               _ -> return ()
          pbinds i sc

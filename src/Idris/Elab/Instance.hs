@@ -67,9 +67,9 @@ elabInstance :: ElabInfo
              -> [Name]          -- ^ parent dictionary names (optionally)
              -> Accessibility
              -> FnOpts
-             -> Name            -- ^ the class
-             -> FC              -- ^ precise location of class name
-             -> [PTerm]         -- ^ class parameters (i.e. instance)
+             -> Name            -- ^ the interface
+             -> FC              -- ^ precise location of interface name
+             -> [PTerm]         -- ^ interface parameters (i.e. instance)
              -> [(Name, PTerm)] -- ^ Extra arguments in scope (e.g. instance in where block)
              -> PTerm           -- ^ full instance type
              -> Maybe Name      -- ^ explicit name
@@ -233,7 +233,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
                             case lookupTy iname (tt_ctxt i) of
                               [] -> elabFindOverlapping i ci iname syn t
                               (_:_) -> return True
-            _ -> return False -- couldn't find class, just let elabInstance fail later
+            _ -> return False -- couldn't find interface, just let elabInstance fail later
 
     -- TODO: largely based upon elabType' - should try to abstract
     -- Issue #1614 in the issue tracker:
@@ -341,7 +341,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
     coninsert cs ex sc = conbind cs (extrabind ex sc)
 
     -- Reorder declarations to be in the same order as defined in the
-    -- class declaration (important so that we insert default definitions
+    -- interface declaration (important so that we insert default definitions
     -- in the right place, and so that dependencies between methods are
     -- respected)
     reorderDefs :: [Name] -> [PDecl] -> [PDecl]
@@ -414,7 +414,7 @@ getTypeIn ist n tm = Placeholder
 
 toImp fc n = pimp n (PRef fc [] n) True
 
--- | Propagate class parameters to method bodies, if they're not
+-- | Propagate interface parameters to method bodies, if they're not
 -- already there, and they are needed (i.e. appear in method's type)
 addParams :: [Name] -> PDecl -> PDecl
 addParams ps (PClauses fc opts n cs) = PClauses fc opts n (map addCParams cs)
@@ -449,7 +449,7 @@ addParams ps (PClauses fc opts n cs) = PClauses fc opts n (map addCParams cs)
 
 addParams ps d = d
 
--- | Check a given method definition is injective, if the class info
+-- | Check a given method definition is injective, if the interface info
 -- says it needs to be.  Takes originally written decl and the one
 -- with name decoration, so we know which name to look up.
 checkInjectiveDef :: FC -> [(Name, (Bool, FnOpts, PTerm))] ->

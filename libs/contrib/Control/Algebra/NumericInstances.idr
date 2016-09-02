@@ -1,4 +1,4 @@
-||| Instances of algebraic classes (group, ring, etc) for numeric data types,
+||| Instances of algebraic interfaces (group, ring, etc) for numeric data types,
 ||| and Complex number types.
 module Control.Algebra.NumericInstances
 

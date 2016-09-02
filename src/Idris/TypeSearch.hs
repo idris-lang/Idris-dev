@@ -252,16 +252,16 @@ instance Monoid Score where
 -- The 'Int' represents the position of the argument (1st argument, 2nd, etc.)
 type ArgsDAG = [((Name, Type), (Int, Set Name))]
 
--- | A list of typeclass constraints
+-- | A list of interface constraints
 type Interfaces = [(Name, Type)]
 
 -- | The state corresponding to an attempted match of two types.
 data State = State
-  { holes          :: ![(Name, Type)] -- ^ names which have yet to be resolved
+  { holes             :: ![(Name, Type)] -- ^ names which have yet to be resolved
   , argsAndInterfaces :: !(Sided (ArgsDAG, Interfaces))
-     -- ^ arguments and typeclass constraints for each type which have yet to be resolved
-  , score     :: !Score -- ^ the score so far
-  , usedNames :: ![Name] -- ^ all names that have been used
+     -- ^ arguments and interface constraints for each type which have yet to be resolved
+  , score             :: !Score -- ^ the score so far
+  , usedNames         :: ![Name] -- ^ all names that have been used
   } deriving Show
 
 modifyTypes :: (Type -> Type) -> (ArgsDAG, Interfaces) -> (ArgsDAG, Interfaces)
@@ -477,11 +477,11 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
   -- the search tree. Once we advance in a phase, there should be no going back.
   nextSteps :: State -> [State]
 
-  -- Stage 3 - match typeclasses
+  -- Stage 3 - match interfaces
   nextSteps (State [] unresolved@(Sided ([], c1) ([], c2)) scoreAcc usedns) =
     if null results3 then results4 else results3
     where
-    -- try to match a typeclass argument from the left with a typeclass argument from the right
+    -- try to match an interface argument from the left with an interface argument from the right
     results3 =
          catMaybes [ unifyQueue (State []
          (Sided ([], deleteFromArgList n1 c1)
@@ -489,7 +489,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
          scoreAcc usedns) [(ty1, ty2)]
      | (n1, ty1) <- c1, (n2, ty2) <- c2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
 
-    -- try to hunt match a typeclass constraint by replacing it with an instance
+    -- try to hunt match an interface constraint by replacing it with an instance
     results4 = [ State [] (both (\(cs, _, _) -> ([], cs)) sds)
                (scoreAcc `mappend` Score 0 0 (both (\(_, amods, _) -> amods) sds))
                (usedns ++ sided (++) (both (\(_, _, hs) -> hs) sds))
@@ -530,8 +530,8 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
 
 
 
-  -- Stage 2 - simply introduce a subset of the typeclasses
-  -- we've finished, so take some classes
+  -- Stage 2 - simply introduce a subset of the interfaces
+  -- we've finished, so take some interfaces
   takeSomeInterfaces (State [] unresolved@(Sided ([], _) ([], _)) scoreAcc usedns) =
     map statesFromMods . prod $ both (interfaceMods . snd) unresolved
     where

@@ -1,5 +1,5 @@
 ||| Matrix operations with vector space dimensionalities enforced
-||| at the type level. Uses operations from the Num type class.
+||| at the type level. Uses operations from the Num interface.
 module Data.Matrix.Numeric
 
 import public Data.Matrix

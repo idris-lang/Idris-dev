@@ -1,5 +1,5 @@
 {-|
-Module      : Idris.Elab.Class
+Module      : Idris.Elab.Interface
 Description : Code to elaborate interfaces.
 Copyright   :
 License     : BSD3
@@ -71,7 +71,7 @@ elabInterface :: ElabInfo
           -> [(Name, FC, PTerm)]
           -> [(Name, Docstring (Either Err PTerm))]
           -> [(Name, FC)]                 -- ^ determining params
-          -> [PDecl]                      -- ^ class body
+          -> [PDecl]                      -- ^ interface body
           -> Maybe (Name, FC)             -- ^ instance ctor name and location
           -> Docstring (Either Err PTerm) -- ^ instance ctor docs
           -> Idris ()
@@ -88,7 +88,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
          -- build data declaration
          let mdecls = filter tydecl ds -- method declarations
-         let idecls = filter instdecl ds -- default superclass instance declarations
+         let idecls = filter instdecl ds -- default super interface implementation declarations
          mapM_ checkDefaultSuperInterfaceInstance idecls
          let mnames = map getMName mdecls
          ist <- getIState
@@ -153,7 +153,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     pibind [] x = x
     pibind ((n, ty): ns) x = PPi expl n NoFC ty (pibind ns (chkUniq ty x))
 
-    -- To make sure the type constructor of the class is in the appropriate
+    -- To make sure the type constructor of the interface is in the appropriate
     -- uniqueness hierarchy
     chkUniq u@(PUniverse _ _) (PType _) = u
     chkUniq (PUniverse _ l) (PUniverse _ r) = PUniverse NoFC (min l r)
@@ -260,8 +260,8 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     -- | Generate a top level function which looks up a method in a given
     -- dictionary (this is inlinable, always)
-    tfun :: Name -- ^ The name of the class
-         -> PTerm -- ^ A constraint for the class, to be inserted under the implicit bindings
+    tfun :: Name -- ^ The name of the interface
+         -> PTerm -- ^ A constraint for the interface, to be inserted under the implicit bindings
          -> SyntaxInfo -> [Name] -- ^ All the method names
          -> (Name, (Bool, FC, Docstring (Either Err PTerm), FnOpts, PTerm))
             -- ^ The present declaration
@@ -313,7 +313,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
      where
        -- After we insert the constraint into the lookup, we need to
        -- ensure that the same dictionary is used to resolve lookups
-       -- to the other methods in the class
+       -- to the other methods in the interface
        constrainMeths :: [Name] -> Name -> PTerm -> PTerm
        constrainMeths allM dictN tm = transform (addC allM dictN) tm
 
@@ -322,7 +322,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
           | otherwise = m
        addC _ _ tm = tm
 
-    -- make arguments explicit and don't bind class parameters
+    -- make arguments explicit and don't bind interface parameters
     toExp ns e (PPi (Imp l s p _ _) n fc ty sc)
         | n `elem` ns = toExp ns e sc
         | otherwise = PPi (e l s p) n fc ty (toExp ns e sc)

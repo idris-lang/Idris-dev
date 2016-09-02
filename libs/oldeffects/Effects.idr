@@ -24,7 +24,7 @@ Effect = (x : Type) -> Type -> (x -> Type) -> Type
 data EFFECT : Type where
      MkEff : Type -> Effect -> EFFECT
 
-||| Handler classes describe how an effect `e` is translated to the
+||| Handler interfaces describe how an effect `e` is translated to the
 ||| underlying computation context `m` for execution.
 interface Handler (e : Effect) (m : Type -> Type) where
   ||| How to handle the effect.
@@ -235,7 +235,7 @@ eff {xs = [l ::: x]} env (l :- prog) k
    = let env' = unlabel env in
          eff env' prog (\p', envk => k p' (relabel l envk))
 
--- yuck :) Haven't got type class instances working nicely in tactic
+-- yuck :) Haven't got interface implementations working nicely in tactic
 -- proofs yet, and 'search' can't be told about any hints yet,
 -- so just brute force it.
 syntax MkDefaultEnv = with Env
