@@ -46,7 +46,7 @@ pidigit = do
   let n = fromIntegerNat (the Integer (cast a))
   let l = str (MkF 1 0 1) 1 n
   loop 10 0 l
-  return ()
+  pure ()
 
 main : IO ()
 main = pidigit

@@ -14,24 +14,24 @@ Parser : Nat -> Type
 Parser n = Either ParseErr (b : Board n ** LegalBoard b)
 
 mapM : Monad m => (a -> m b) -> Vect n a -> m (Vect n b)
-mapM _ Nil = return Vect.Nil
+mapM _ Nil = pure Vect.Nil
 mapM f (x::xs) = do
   x' <- f x
   xs' <- mapM f xs
-  return (Vect.(::) x' xs')
+  pure (Vect.(::) x' xs')
 
 parseToken : String -> Either String (Cell n)
-parseToken "." = return Nothing
+parseToken "." = pure Nothing
 parseToken "0" = Left "Got cell 0, expected 1-based numbering"
 parseToken x = map Just (tryParseFin ((cast x) - 1))
   where
     tryParseFin : Int -> Either String (Fin n)
     tryParseFin {n=Z} _ = Left ("Given cell " ++ x ++ " out of range")
-    tryParseFin {n=S k} 0 = return FZ
+    tryParseFin {n=S k} 0 = pure FZ
     tryParseFin {n=S k} x =
       case tryParseFin {n=k} (x-1) of
         Left err => Left err
-        Right fin => return (FS fin)
+        Right fin => pure (FS fin)
 
 length : Vect n a -> Nat
 length {n=n} _ = n
@@ -45,7 +45,7 @@ parseCols {n=S k} row l cs = helper last l
       let here = (x, row) -- TODO: Determine why naming this makes idris smarter
       tok <- parseToken {n=S k} (index x cs)
       case tok of
-        Nothing => return (_ ** l)
+        Nothing => pure (_ ** l)
         Just t =>
            case legalVal b here t of
              Yes prf => Right (_ ** Step prf l)
@@ -79,4 +79,4 @@ parse str =
   let rows = fromList (lines str) in
   case parseRows {n=length rows} emptyBoard Base rows of
     Left msg => Left msg
-    Right board => return (_ ** board)
+    Right board => pure (_ ** board)

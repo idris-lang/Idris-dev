@@ -15,8 +15,8 @@ vsort [] = []
 vsort (x :: xs) = insert x (vsort xs)
 
 mkSortVec : (n : Nat) -> Eff (Vect n Int) [RND]
-mkSortVec Z = return []
-mkSortVec (S k) = return (fromInteger !(rndInt 0 10000) :: !(mkSortVec k))
+mkSortVec Z = pure []
+mkSortVec (S k) = pure (fromInteger !(rndInt 0 10000) :: !(mkSortVec k))
 
 main : IO ()
 main = do (_ :: arg :: _) <- getArgs
