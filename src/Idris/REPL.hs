@@ -1512,7 +1512,7 @@ pprintDef asCore n =
                   let ppTm t = annotate (AnnTerm (zip vars (repeat False)) t) .
                                pprintPTerm (ppOptionIst ist)
                                      (zip vars (repeat False))
-                                     [] [] .
+                                     [] (idris_infixes ist) .
                                delab ist $
                                t
                   in group $ ppTm lhs <+> text "=" <$> (group . align . hang 2 $ ppTm rhs)

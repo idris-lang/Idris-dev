@@ -5,8 +5,8 @@ foo n = case n of
 bar : Nat -> String -> String
 bar x y = case x of
             0 => y
-            S _ => (y ++ y)
+            S _ => y ++ y
 append : List a -> List a -> List a
 append xs ys = case xs of
                  [] => ys
-                 (x :: xs) => (x :: (append xs ys))
+                 x :: xs => x :: append xs ys
