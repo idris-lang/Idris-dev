@@ -253,7 +253,7 @@ buildDepMap ci used externs ctx startNames
     -- get Deps for a Name
     getDeps :: Name -> Deps
     getDeps (SN (WhereN i (SN (InstanceCtorN interfaceN)) (MN i' field)))
-        = M.empty  -- these deps are created when applying instance ctors
+        = M.empty  -- these deps are created when applying implementation ctors
     getDeps n = case lookupDefExact n ctx of
         Just def -> getDepsDef n def
         Nothing  -> error $ "erasure checker: unknown reference: " ++ show n
@@ -336,7 +336,7 @@ buildDepMap ci used externs ctx startNames
         -- this is safe because it's certainly a patvar
         varIdx = fromJust (viFunArg var)
 
-        -- generate metamethod names, "n" is the instance ctor
+        -- generate metamethod names, "n" is the implementation ctor
         meth :: Int -> Maybe Name
         meth | SN (InstanceCtorN interfaceName) <- n = \j -> Just (mkFieldName n j)
              | otherwise = \j -> Nothing
@@ -380,7 +380,7 @@ buildDepMap ci used externs ctx startNames
     -- applications may add items to Cond
     getDepsTerm vs bs cd app@(App _ _ _)
         | (fun, args) <- unApply app = case fun of
-            -- instance constructors -> create metamethod deps
+            -- implementation constructors -> create metamethod deps
             P (DCon _ _ _) ctorName@(SN (InstanceCtorN interfaceName)) _
                 -> conditionalDeps ctorName args  -- regular data ctor stuff
                     `union` unionMap (methodDeps ctorName) (zip [0..] args)  -- method-specific stuff

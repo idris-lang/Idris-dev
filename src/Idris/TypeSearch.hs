@@ -30,7 +30,7 @@ import qualified Data.Text                     as T (pack, isPrefixOf)
 import           Data.Traversable                   (traverse)
 
 import Idris.AbsSyntax     (addUsingConstraints, addImpl, getIState, putIState, implicit, logLvl)
-import Idris.AbsSyntaxTree (interface_instances, InterfaceInfo, defaultSyntax, eqTy, Idris
+import Idris.AbsSyntaxTree (interface_implementations, InterfaceInfo, defaultSyntax, eqTy, Idris
                            , IState (idris_interfaces, idris_docstrings, tt_ctxt, idris_outputmode),
                            implicitAllowed, OutputMode(..), PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
@@ -447,7 +447,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
   possInterfaceInstances usedns ty = do
     interfaceName <- getInterfaceName clss
     interfaceDef <- lookupCtxt interfaceName interfaceInfo
-    n <- interface_instances interfaceDef
+    n <- interface_implementations interfaceDef
     def <- lookupCtxt (fst n) (definitions ctxt)
     nty <- normaliseC ctxt [] <$> (case typeFromDef def of Just x -> [x]; Nothing -> [])
     let ty' = vToP (uniqueBinders usedns nty)
@@ -489,7 +489,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
          scoreAcc usedns) [(ty1, ty2)]
      | (n1, ty1) <- c1, (n2, ty2) <- c2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
 
-    -- try to hunt match an interface constraint by replacing it with an instance
+    -- try to hunt match an interface constraint by replacing it with an implementation
     results4 = [ State [] (both (\(cs, _, _) -> ([], cs)) sds)
                (scoreAcc `mappend` Score 0 0 (both (\(_, amods, _) -> amods) sds))
                (usedns ++ sided (++) (both (\(_, _, hs) -> hs) sds))

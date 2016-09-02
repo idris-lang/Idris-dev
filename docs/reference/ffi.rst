@@ -47,7 +47,7 @@ the C FFI and ``JS_IO`` to use the JavaScript FFI:
     JS_IO a = IO' FFI_JS a
 
 As before, the entry point to an Idris program is ``main``, but the
-type of ``main`` can now be any instance of ``IO'``, e.g. the
+type of ``main`` can now be any implementation of ``IO'``, e.g. the
 following are both valid:
 
 .. code-block:: idris

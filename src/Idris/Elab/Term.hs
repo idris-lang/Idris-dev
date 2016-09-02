@@ -93,7 +93,7 @@ build ist info emode opts fn tm
          ivs <- get_instances
          ptm <- get_term
          -- Resolve remaining interfaces. Two passes - first to get the
-         -- default Num instances, second to clean up the rest
+         -- default Num implementations, second to clean up the rest
          when (not pattern) $
               mapM_ (\n -> when (n `elem` hs) $
                              do focus n
@@ -863,7 +863,7 @@ elab ist info emode opts fn tm
                else
                  do ivs <- get_instances
                     ps <- get_probs
-                    -- HACK: we shouldn't resolve interfaces if we're defining an instance
+                    -- HACK: we shouldn't resolve interfaces if we're defining an implementation
                     -- function or default definition.
                     let isinf = f == inferCon || tcname f
                     -- if f is an interface, we need to know its arguments so that
@@ -1738,7 +1738,7 @@ pruneByType env (P _ n _) goalty ist as
 pruneByType _ t _ _ as = as
 
 -- Could the name feasibly be the return type?
--- If there is an interface constraint on the return type, and no instance
+-- If there is an interface constraint on the return type, and no implementation
 -- in the environment or globally for that name, then no
 -- Otherwise, yes
 -- (FIXME: This isn't complete, but I'm leaving it here and coming back
@@ -1756,7 +1756,7 @@ isPlausible ist var env n ty
          = let tcs' = case unApply ty of
                            (P _ c _, _) ->
                                case lookupCtxtExact c (idris_interfaces ist) of
-                                    Just tc -> ((ty, map fst (interface_instances tc))
+                                    Just tc -> ((ty, map fst (interface_implementations tc))
                                                      : tcs)
                                     Nothing -> tcs
                            _ -> tcs

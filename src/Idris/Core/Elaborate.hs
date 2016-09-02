@@ -329,7 +329,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
         isInj ctxt (Bind _ (Pi _ _ _) sc) = True
         isInj ctxt _ = False
 
--- | get instance argument names
+-- | get implementation argument names
 get_instances :: Elab' aux [Name]
 get_instances = do ES p _ _ <- get
                    return $! (instances (fst p))
