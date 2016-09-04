@@ -50,7 +50,6 @@ data SC' t = Case CaseType Name [CaseAlt' t]  -- ^ invariant: lowest tags first
     deriving (Eq, Ord, Functor, Generic)
 {-!
 deriving instance Binary SC'
-deriving instance NFData SC'
 !-}
 
 data CaseType = Updatable | Shared
@@ -66,7 +65,6 @@ data CaseAlt' t = ConCase Name Int [Name] !(SC' t)
     deriving (Show, Eq, Ord, Functor, Generic)
 {-!
 deriving instance Binary CaseAlt'
-deriving instance NFData CaseAlt'
 !-}
 
 type CaseAlt = CaseAlt' Term
