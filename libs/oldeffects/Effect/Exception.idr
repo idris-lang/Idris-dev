@@ -7,20 +7,20 @@ import Control.IOExcept
 data Exception : Type -> Effect where
      Raise : a -> { () } Exception a b
 
-instance Handler (Exception a) Maybe where
+implementation Handler (Exception a) Maybe where
      handle _ (Raise e) k = Nothing
 
-instance Handler (Exception a) List where
+implementation Handler (Exception a) List where
      handle _ (Raise e) k = []
 
-instance Show a => Handler (Exception a) IO where
+implementation Show a => Handler (Exception a) IO where
      handle _ (Raise e) k = do printLn e
                                believe_me (exit 1)
 
-instance Handler (Exception a) (IOExcept a) where
+implementation Handler (Exception a) (IOExcept a) where
      handle _ (Raise e) k = ioM (pure (Left e))
 
-instance Handler (Exception a) (Either a) where
+implementation Handler (Exception a) (Either a) where
      handle _ (Raise e) k = Left e
 
 EXCEPTION : Type -> EFFECT

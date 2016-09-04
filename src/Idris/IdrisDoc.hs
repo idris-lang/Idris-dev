@@ -226,7 +226,7 @@ referredNss (n, Just d, _) =
         getFunDocs (DataDoc f fs)                  = f:fs
         getFunDocs (InterfaceDoc _ _ fs _ _ _ _ _) = fs
         getFunDocs (RecordDoc _ _ f fs _)          = f:fs
-        getFunDocs (NamedInstanceDoc _ fd)         = [fd]
+        getFunDocs (NamedImplementationDoc _ fd)         = [fd]
         getFunDocs (ModDoc _ _)                    = []
         types (FD _ _ args t _)                    = t:(map second args)
         second (_, x, _, _)                        = x
@@ -643,7 +643,7 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
           H.dt $ toHtml $ show name
           H.dd $ Docstrings.renderHtml docstring
 
-createOtherDoc ist (NamedInstanceDoc _ fd) = createFunDoc ist fd
+createOtherDoc ist (NamedImplementationDoc _ fd) = createFunDoc ist fd
 
 createOtherDoc ist (ModDoc _  docstring) = do
   Docstrings.renderHtml docstring

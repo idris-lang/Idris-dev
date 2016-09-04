@@ -4,7 +4,7 @@ data Bit : Nat -> Type where
      b0 : Bit 0
      b1 : Bit 1
 
-instance Show (Bit n) where
+implementation Show (Bit n) where
      show b0 = "0"
      show b1 = "1"
 
@@ -14,7 +14,7 @@ data Binary : (width : Nat) -> (value : Nat) -> Type where
      zero : Binary Z Z
      (#)  : Binary w v -> Bit bit -> Binary (S w) (bit + 2 * v)
 
-instance Show (Binary w k) where
+implementation Show (Binary w k) where
      show zero = ""
      show (bin # bit) = show bin ++ show bit
 

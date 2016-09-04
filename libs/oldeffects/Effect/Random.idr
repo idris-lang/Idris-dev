@@ -7,7 +7,7 @@ data Random : Effect where
      setSeed   : Integer -> { Integer } Random () 
 
 using (m : Type -> Type)
-  instance Handler Random m where
+  implementation Handler Random m where
      handle seed getRandom k
               = let seed' = assert_total ((1664525 * seed + 1013904223) `prim__sremBigInt` (pow 2 32)) in
                     k seed' seed'

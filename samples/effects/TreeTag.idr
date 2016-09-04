@@ -6,7 +6,7 @@ import Effect.State
 data BTree a = Leaf
              | Node (BTree a) a (BTree a)
 
-instance Show a => Show (BTree a) where
+implementation Show a => Show (BTree a) where
   show Leaf = "[]"
   show (Node l x r) = "[" ++ show l ++ " "
                           ++ show x ++ " "

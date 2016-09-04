@@ -213,9 +213,9 @@ documentPkg copts fp = do
             idrisMain opts
             addImportDir (sourcedir pkgdesc)
             load fs
-      idrisInstance  <- run loader idrisInit
+      idrisImplementation  <- run loader idrisInit
       setCurrentDirectory cd
-      case idrisInstance of
+      case idrisImplementation of
         Left  err -> do
           putStrLn $ pshow idrisInit err
           exitWith (ExitFailure 1)

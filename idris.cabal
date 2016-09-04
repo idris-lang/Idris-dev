@@ -152,7 +152,7 @@ Library
                 , Idris.Elab.Data
                 , Idris.Elab.Record
                 , Idris.Elab.Interface
-                , Idris.Elab.Instance
+                , Idris.Elab.Implementation
                 , Idris.Elab.Provider
                 , Idris.Elab.RunElab
                 , Idris.Elab.Transform

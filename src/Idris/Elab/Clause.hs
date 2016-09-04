@@ -666,7 +666,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         let winfo = (pinfo info newargs defs windex) { elabFC = Just fc }
         let wb = map (mkStatic static_names) $
-                 map (expandInstanceScope ist decorate newargs defs) $
+                 map (expandImplementationScope ist decorate newargs defs) $
                  map (expandParamsD False ist decorate newargs defs) whereblock
 
         -- Split the where block into declarations with a type, and those

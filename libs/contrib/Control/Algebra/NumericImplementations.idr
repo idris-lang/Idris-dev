@@ -1,6 +1,6 @@
-||| Instances of algebraic interfaces (group, ring, etc) for numeric data types,
+||| Implementations of algebraic interfaces (group, ring, etc) for numeric data types,
 ||| and Complex number types.
-module Control.Algebra.NumericInstances
+module Control.Algebra.NumericImplementations
 
 import Control.Algebra
 import Control.Algebra.VectorSpace

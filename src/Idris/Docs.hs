@@ -56,7 +56,7 @@ data Docs' d = FunDoc (FunDoc' d)
                          (FunDoc' d) -- data constructor docs
                          [FunDoc' d] -- projection docs
                          [(Name, PTerm, Maybe d)] -- parameters with type and doc
-             | NamedInstanceDoc Name (FunDoc' d) -- name is interface
+             | NamedImplementationDoc Name (FunDoc' d) -- name is interface
              | ModDoc [String] -- Module name
                       d
   deriving Functor
@@ -139,7 +139,7 @@ pprintDocs ist (DataDoc t args)
              if null args then text "No constructors."
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFDWithoutTotality ist False) args))
-pprintDocs ist (InterfaceDoc n doc meths params instances sub_interfaces super_interfaces ctor)
+pprintDocs ist (InterfaceDoc n doc meths params implementations sub_interfaces super_interfaces ctor)
            = nest 4 (text "Interface" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
@@ -157,33 +157,33 @@ pprintDocs ist (InterfaceDoc n doc meths params instances sub_interfaces super_i
                    ctor
              <>
              nest 4 (text "Implementations:" <$>
-                       vsep (if null instances then [text "<no implementations>"]
-                             else map pprintInstance normalInstances))
+                       vsep (if null implementations then [text "<no implementations>"]
+                             else map pprintImplementation normalImplementations))
              <>
-             (if null namedInstances then empty
+             (if null namedImplementations then empty
               else line <$> nest 4 (text "Named implementations:" <$>
-                                    vsep (map pprintInstance namedInstances)))
+                                    vsep (map pprintImplementation namedImplementations)))
              <>
              (if null sub_interfaces then empty
               else line <$> nest 4 (text "Child interfaces:" <$>
-                                    vsep (map (dumpInstance . prettifySubInterfaces) sub_interfaces)))
+                                    vsep (map (dumpImplementation . prettifySubInterfaces) sub_interfaces)))
              <>
              (if null super_interfaces then empty
               else line <$> nest 4 (text "Default parent implementations:" <$>
-                                     vsep (map dumpInstance super_interfaces)))
+                                     vsep (map dumpImplementation super_interfaces)))
   where
     params' = zip pNames (repeat False)
 
-    (normalInstances, namedInstances) = partition (\(n, _, _) -> not $ isJust n)
-                                                  instances
+    (normalImplementations, namedImplementations) = partition (\(n, _, _) -> not $ isJust n)
+                                                              implementations
 
     pNames  = map fst params
 
     ppo = ppOptionIst ist
     infixes = idris_infixes ist
 
-    pprintInstance (mname, term, (doc, argDocs)) =
-      nest 4 (iname mname <> dumpInstance term <>
+    pprintImplementation (mname, term, (doc, argDocs)) =
+      nest 4 (iname mname <> dumpImplementation term <>
               (if nullDocstring doc
                   then empty
                   else line <>
@@ -194,13 +194,13 @@ pprintDocs ist (InterfaceDoc n doc meths params instances sub_interfaces super_i
                          doc) <>
               if null argDocs
                  then empty
-                 else line <> vsep (map (prettyInstanceParam (map fst argDocs)) argDocs))
+                 else line <> vsep (map (prettyImplementationParam (map fst argDocs)) argDocs))
 
 
     iname Nothing = empty
     iname (Just n) = annName n <+> colon <> space
 
-    prettyInstanceParam params (name, doc) =
+    prettyImplementationParam params (name, doc) =
       if nullDocstring doc
          then empty
          else prettyName True False (zip params (repeat False)) name <+>
@@ -210,8 +210,8 @@ pprintDocs ist (InterfaceDoc n doc meths params instances sub_interfaces super_i
 -- then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
 -- else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
-    dumpInstance :: PTerm -> Doc OutputAnnotation
-    dumpInstance = pprintPTerm ppo params' [] infixes
+    dumpImplementation :: PTerm -> Doc OutputAnnotation
+    dumpImplementation = pprintPTerm ppo params' [] infixes
 
     prettifySubInterfaces (PPi (Constraint _ _) _ _ tm _)    = prettifySubInterfaces tm
     prettifySubInterfaces (PPi plcity           nm fc t1 t2) = PPi plcity (safeHead nm pNames) NoFC (prettifySubInterfaces t1) (prettifySubInterfaces t2)
@@ -264,7 +264,7 @@ pprintDocs ist (RecordDoc n doc ctor projs params)
          else hsep (punctuate comma (map prettyParam [(n,pt) | (n,pt,_) <- params]))
     prettyParam (n,pt) = prettyName True False params' n <+> text ":" <+> pprintPTerm ppo params' [] infixes pt
 
-pprintDocs ist (NamedInstanceDoc _cls doc)
+pprintDocs ist (NamedImplementationDoc _cls doc)
    = nest 4 (text "Named instance:" <$> pprintFDWithoutTotality ist True doc)
 
 pprintDocs ist (ModDoc mod docs)
@@ -293,15 +293,15 @@ getDocs n w
                      -> docRecord n ri
                    | Just ti <- lookupCtxtExact n (idris_datatypes i)
                      -> docData n ti
-                   | Just interface_ <- interfaceNameForInst i n
+                   | Just interface_ <- interfaceNameForImpl i n
                      -> do fd <- docFun n
-                           return $ NamedInstanceDoc interface_ fd
+                           return $ NamedImplementationDoc interface_ fd
                    | otherwise
                      -> do fd <- docFun n
                            return (FunDoc fd)
         return $ fmap (howMuch w) docs
-  where interfaceNameForInst :: IState -> Name -> Maybe Name
-        interfaceNameForInst ist n =
+  where interfaceNameForImpl :: IState -> Name -> Maybe Name
+        interfaceNameForImpl ist n =
           listToMaybe [ cn
                       | (cn, ci) <- toAlist (idris_interfaces ist)
                       , n `elem` map fst (interface_instances ci)
@@ -320,31 +320,31 @@ docInterface n ci
            docstr = maybe emptyDocstring fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd)))
                         (interface_params ci)
-           docsForInstance inst = fromMaybe (emptyDocstring, []) .
+           docsForImplementation impl = fromMaybe (emptyDocstring, []) .
                                   flip lookupCtxtExact (idris_docstrings i) $
-                                  inst
-           instances = map (\inst -> (namedInst inst,
-                                      delabTy i inst,
-                                      docsForInstance inst))
-                           (nub (map fst (interface_instances ci)))
-           (sub_interfaces, instances') = partition (isSubInterface . (\(_,tm,_) -> tm)) instances
-           super_interfaces = catMaybes $ map getDInst (interface_default_super_interfaces ci)
+                                  impl
+           implementations = map (\impl -> (namedImpl impl,
+                                            delabTy i impl,
+                                            docsForImplementation impl))
+                             (nub (map fst (interface_instances ci)))
+           (sub_interfaces, implementations') = partition (isSubInterface . (\(_,tm,_) -> tm)) implementations
+           super_interfaces = catMaybes $ map getDImpl (interface_default_super_interfaces ci)
        mdocs <- mapM (docFun . fst) (interface_methods ci)
-       let ctorN = instanceCtorName ci
+       let ctorN = implementationCtorName ci
        ctorDocs <- case basename ctorN of
                      SN _ -> return Nothing
                      _    -> fmap Just $ docFun ctorN
        return $ InterfaceDoc
                   n docstr mdocs params
-                  instances' (map (\(_,tm,_) -> tm) sub_interfaces) super_interfaces
+                  implementations' (map (\(_,tm,_) -> tm) sub_interfaces) super_interfaces
                   ctorDocs
   where
-    namedInst (NS n ns) = fmap (flip NS ns) (namedInst n)
-    namedInst n@(UN _)  = Just n
-    namedInst _         = Nothing
+    namedImpl (NS n ns) = fmap (flip NS ns) (namedImpl n)
+    namedImpl n@(UN _)  = Just n
+    namedImpl _         = Nothing
 
-    getDInst (PInstance _ _ _ _ _ _ _ _ _ _ _ _ t _ _) = Just t
-    getDInst _                                         = Nothing
+    getDImpl (PImplementation _ _ _ _ _ _ _ _ _ _ _ _ t _ _) = Just t
+    getDImpl _                                         = Nothing
 
     isSubInterface (PPi (Constraint _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args'))
       = nm == n && map getTm args == map getTm args'
