@@ -108,7 +108,7 @@ idrisMain opts =
                    [expr] -> return (Just expr)
        let immediate = opt getEvalExpr opts
        let port = case getPort opts of
-                    Nothing -> defaultPort
+                    Nothing -> ListenPort defaultPort
                     Just p  -> p
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
@@ -209,7 +209,9 @@ idrisMain opts =
 
        when (runrepl && not idesl) $ do
 --          clearOrigPats
-         startServer port orig mods
+         case port of
+           DontListen -> return ()
+           ListenPort port' -> startServer port' orig mods
          runInputT (replSettings (Just historyFile)) $ repl (force orig) mods efile
        let idesock = IdemodeSocket `elem` opts
        when (idesl) $ idemodeStart idesock orig inputs

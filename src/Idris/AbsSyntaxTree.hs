@@ -49,6 +49,7 @@ import Data.Traversable (Traversable)
 import Data.Typeable
 import Data.Foldable (Foldable)
 import GHC.Generics (Generic)
+import Network.Socket(PortNumber)
 
 import Debug.Trace
 
@@ -514,7 +515,7 @@ data Opt = Filename String
          | ErrContext
          | ShowImpl
          | Verbose
-         | Port String -- ^ REPL TCP port
+         | Port REPLPort -- ^ REPL TCP port
          | IBCSubDir String
          | ImportDir String
          | SourceDir String
@@ -552,6 +553,9 @@ data Opt = Filename String
          | NoElimDeprecationWarnings      -- ^ Don't show deprecation warnings for %elim
          | NoOldTacticDeprecationWarnings -- ^ Don't show deprecation warnings for old-style tactics
     deriving (Show, Eq, Generic)
+
+data REPLPort = DontListen | ListenPort PortNumber
+  deriving (Eq, Generic, Show)
 
 -- Parsed declarations
 

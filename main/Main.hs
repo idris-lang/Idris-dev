@@ -40,7 +40,11 @@ runIdris opts = do
        []    -> return ()
        (c:_) -> do setVerbose False
                    setQuiet True
-                   runIO $ runClient (getPort opts) c
+                   case getPort opts of
+                     Just  DontListen       ->
+                       ifail "\"--client\" and \"--port none\" are incompatible"
+                     Just (ListenPort port) -> runIO $ runClient (Just port) c
+                     Nothing                -> runIO $ runClient Nothing c
                    runIO exitSuccess
 
     -- Work with Idris packages.                   

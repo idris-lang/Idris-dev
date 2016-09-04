@@ -23,6 +23,10 @@ import IRTS.CodegenCommon
 
 import Options.Applicative
 import Options.Applicative.Arrows
+import Options.Applicative.Types (ReadM(..))
+import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Reader (ask)
+import Control.Monad.Trans.Except (throwE)
 import Data.Char
 import Data.Maybe
 
@@ -137,7 +141,7 @@ parseFlags = many $
   <|> flag' WarnOnly (long "warn")
 
   <|> (Pkg  <$> strOption (short 'p' <> long "package" <> help "Add package as a dependency"))
-  <|> (Port <$> strOption (long "port" <> metavar "PORT" <> help "REPL TCP port"))
+  <|> (Port <$> option portReader (long "port" <> metavar "PORT" <> help "REPL TCP port - pass \"none\" to not bind any port"))
 
   -- Package commands
   <|> (PkgBuild   <$> strOption (long "build"    <> metavar "IPKG" <> help "Build package"))
@@ -209,6 +213,14 @@ parseFlags = many $
       getExt s = fromMaybe (error ("Unknown extension " ++ s)) (maybeRead s)
       maybeRead :: String -> Maybe LanguageExt
       maybeRead = fmap fst . listToMaybe . reads
+      portReader :: ReadM REPLPort
+      portReader =
+        ((ListenPort . fromIntegral) <$> auto) <|>
+        (ReadM $ do opt <- ask
+                    if map toLower opt == "none"
+                      then return $ DontListen
+                      else lift $ throwE $ ErrorMsg $
+                           "got " <> opt <> " expected port number or \"none\"")
 
 parseVersion :: Parser (a -> a)
 parseVersion = infoOption getIdrisVersion (short 'v' <> long "version" <> help "Print version information")

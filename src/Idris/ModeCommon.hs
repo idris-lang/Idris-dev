@@ -27,14 +27,14 @@ import Prelude hiding ((<$>), (.), id)
 import System.Directory
 import Control.Monad
 import Control.Monad.Trans.State.Strict (get)
-import Network (PortID(PortNumber))
+import Network.Socket (PortNumber)
 import Data.Maybe
 import Data.List hiding (group)
 import Control.DeepSeq
 
 
-defaultPort :: PortID
-defaultPort = PortNumber (fromIntegral 4294)
+defaultPort :: PortNumber
+defaultPort = fromIntegral 4294
 
 
 loadInputs :: [FilePath] -> Maybe Int -> Idris [FilePath]
