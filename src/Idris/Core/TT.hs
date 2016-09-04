@@ -1645,14 +1645,14 @@ showEnv' env t dbg = se 10 env t where
 -- | Check whether a term has any hole bindings in it - impure if so
 pureTerm :: TT Name -> Bool
 pureTerm (App _ f a) = pureTerm f && pureTerm a
-pureTerm (Bind n b sc) = notClassName n && pureBinder b && pureTerm sc where
+pureTerm (Bind n b sc) = notInterfaceName n && pureBinder b && pureTerm sc where
     pureBinder (Hole _) = False
     pureBinder (Guess _ _) = False
     pureBinder (Let t v) = pureTerm t && pureTerm v
     pureBinder t = pureTerm (binderTy t)
 
-    notClassName (MN _ c) | c == txt "__class" = False
-    notClassName _ = True
+    notInterfaceName (MN _ c) | c == txt "__interface" = False
+    notInterfaceName _ = True
 
 pureTerm _ = True
 

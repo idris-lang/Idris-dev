@@ -403,7 +403,7 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
                               P _ n _ -> zip (repeat n) okholePos
                               _ -> []
 
-           traceWhen ulog ("Resolving class " ++ show g ++ "\nin" ++ show env ++ "\n" ++ show okholes) $
+           traceWhen ulog ("Resolving interface " ++ show g ++ "\nin" ++ show env ++ "\n" ++ show okholes) $
             try' (trivialTCs okholes elab ist)
                 (do addDefault t tc ttypes
                     let stk = map fst (filter snd $ elab_stack ist)

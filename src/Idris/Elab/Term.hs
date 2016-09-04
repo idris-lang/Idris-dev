@@ -396,7 +396,7 @@ elab ist info emode opts fn tm
     elab' ina fc (PResolveTC (FC "HACK" _ _)) -- for chasing parent interfaces
        = do g <- goal; resolveTC False False 5 g fn elabRec ist
     elab' ina fc (PResolveTC fc')
-        = do c <- getNameFrom (sMN 0 "__class")
+        = do c <- getNameFrom (sMN 0 "__interface")
              instanceArg c
     -- Elaborate the equality type first homogeneously, then
     -- heterogeneously as a fallback

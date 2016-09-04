@@ -378,7 +378,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
     checkInInterface ns meth
         | any (eqRoot meth) ns = return ()
         | otherwise = tclift $ tfail (At fc (Msg $
-                                show meth ++ " not a method of class " ++ show n))
+                                show meth ++ " not a method of interface " ++ show n))
 
     eqRoot x y = nsroot x == nsroot y
 

@@ -102,7 +102,7 @@ pprintFD ist totalityFlag nsFlag (FD n doc args ty f) =
         <> showDoc ist d
         <> line : showArgs args ((n, False):bnd)
       showArgs ((n, ty, Constraint {}, Just d):args) bnd = -- Interface constraints.
-            text "Class constraint"
+            text "Interface constraint"
         <+> pprintPTerm ppo bnd [] infixes ty
         <> showDoc ist d
         <> line : showArgs args ((n, True):bnd)

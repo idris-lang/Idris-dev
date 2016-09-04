@@ -877,8 +877,7 @@ interfaceBlock syn = do reservedHL "where"
                                                    <|> fnDecl syn)
                         closeBlock
                         return (cn, cd', concat ds)
-                     <?> "class block"
-
+                     <?> "interface block"
   where
     constructor :: IdrisParser (Name, FC)
     constructor = reservedHL "constructor" *> fnName
@@ -917,7 +916,7 @@ interface_ syn = do (doc, argDocs, acc)
                     (cn, cd, ds) <- option (Nothing, fst noDocs, []) (interfaceBlock syn)
                     accData acc n (concatMap declared ds)
                     return [PInterface doc syn fc cons' n nfc cs argDocs fds ds cn cd]
-                 <?> "type-class declaration"
+                 <?> "interface declaration"
   where
     fundeps :: IdrisParser [(Name, FC)]
     fundeps = do lchar '|'; sepBy name (lchar ',')
