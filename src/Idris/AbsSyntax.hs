@@ -442,12 +442,12 @@ pop_estack = do i <- getIState
 -- resolved by default.
 --
 -- Dodgy hack 2: put constraint chasers (ParentN) last
-addInstance :: Bool -- ^ whether the name is an Integer instance
-            -> Bool -- ^ whether to include the instance in instance search
-            -> Name -- ^ the name of the interface
-            -> Name -- ^ the name of the instance
-            -> Idris ()
-addInstance int res n i
+addImplementation :: Bool -- ^ whether the name is an Integer instance
+                  -> Bool -- ^ whether to include the instance in instance search
+                  -> Name -- ^ the name of the interface
+                  -> Name -- ^ the name of the instance
+                  -> Idris ()
+addImplementation int res n i
     = do ist <- getIState
          case lookupCtxt n (idris_interfaces ist) of
                 [CI a b c d e ins fds] ->

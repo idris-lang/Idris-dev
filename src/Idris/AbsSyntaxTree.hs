@@ -1198,7 +1198,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Unfocus
                 | MatchRefine Name
                 | LetTac Name t | LetTacTy Name t t
-                | Exact t | Compute | Trivial | TCInstance
+                | Exact t | Compute | Trivial | TCImplementation
                 | ProofSearch Bool Bool Int (Maybe Name)
                               [Name] -- allowed local names
                               [Name] -- hints
@@ -1258,7 +1258,7 @@ instance Sized a => Sized (PTactic' a) where
   size Unfocus          = 1
   size (MatchRefine x)  = 1 + size x
   size (LetTacTy x y z) = 1 + size x + size y + size z
-  size TCInstance       = 1
+  size TCImplementation       = 1
 
 type PTactic = PTactic' PTerm
 
@@ -1928,7 +1928,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
         , kwd "else" <+> prettySe (decD d) startPrec bnd f
         ]
     prettySe d p bnd (PHidden tm)         = text "." <> prettySe (decD d) funcAppPrec bnd tm
-    prettySe d p bnd (PResolveTC _)       = kwd "%instance"
+    prettySe d p bnd (PResolveTC _)       = kwd "%implementation"
     prettySe d p bnd (PTrue _ IsType)     = annName unitTy $ text "()"
     prettySe d p bnd (PTrue _ IsTerm)     = annName unitCon $ text "()"
     prettySe d p bnd (PTrue _ TypeOrTerm) = text "()"

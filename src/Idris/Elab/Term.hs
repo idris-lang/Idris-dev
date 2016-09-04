@@ -2319,7 +2319,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            -- the rest happens in a bit
            updateAux $ \e -> e { new_tyDecls = RDatatypeDefnInstrs n tyconTy ctors' : new_tyDecls e }
            returnUnit
-      | n == tacN "Prim__AddInstance"
+      | n == tacN "Prim__AddImplementation"
       = do ~[cls, inst] <- tacTmArgs 2 tac args
            interfaceName <- reifyTTName cls
            instName <- reifyTTName inst
@@ -2549,7 +2549,7 @@ runTac autoSolve ist perhapsFC fn tac
                    when autoSolve solveAll
     runT Compute = compute
     runT Trivial = do trivial' ist; when autoSolve solveAll
-    runT TCInstance = runT (Exact (PResolveTC emptyFC))
+    runT TCImplementation = runT (Exact (PResolveTC emptyFC))
     runT (ProofSearch rec prover depth top psns hints)
          = do proofSearch' ist rec False depth prover top fn psns hints
               when autoSolve solveAll
@@ -2821,9 +2821,9 @@ processTacticDecls info steps =
 
     RAddInstance interfaceName instName ->
       do -- The interface resolution machinery relies on a special
-         logElab 2 $ "Adding elab script instance " ++ show instName ++
+         logElab 2 $ "Adding elab script implementation " ++ show instName ++
                     " for " ++ show interfaceName
-         addInstance False True interfaceName instName
+         addImplementation False True interfaceName instName
          addIBC (IBCInstance False True interfaceName instName)
     RClausesInstrs n cs ->
       do logElab 3 $ "Pattern-matching definition from tactics: " ++ show n

@@ -252,7 +252,7 @@ buildDepMap ci used externs ctx startNames
 
     -- get Deps for a Name
     getDeps :: Name -> Deps
-    getDeps (SN (WhereN i (SN (InstanceCtorN interfaceN)) (MN i' field)))
+    getDeps (SN (WhereN i (SN (ImplementationCtorN interfaceN)) (MN i' field)))
         = M.empty  -- these deps are created when applying instance ctors
     getDeps n = case lookupDefExact n ctx of
         Just def -> getDepsDef n def
@@ -338,7 +338,7 @@ buildDepMap ci used externs ctx startNames
 
         -- generate metamethod names, "n" is the instance ctor
         meth :: Int -> Maybe Name
-        meth | SN (InstanceCtorN interfaceName) <- n = \j -> Just (mkFieldName n j)
+        meth | SN (ImplementationCtorN interfaceName) <- n = \j -> Just (mkFieldName n j)
              | otherwise = \j -> Nothing
 
     -- Named variables -> DeBruijn variables -> Conds/guards -> Term -> Deps
@@ -381,7 +381,7 @@ buildDepMap ci used externs ctx startNames
     getDepsTerm vs bs cd app@(App _ _ _)
         | (fun, args) <- unApply app = case fun of
             -- instance constructors -> create metamethod deps
-            P (DCon _ _ _) ctorName@(SN (InstanceCtorN interfaceName)) _
+            P (DCon _ _ _) ctorName@(SN (ImplementationCtorN interfaceName)) _
                 -> conditionalDeps ctorName args  -- regular data ctor stuff
                     `union` unionMap (methodDeps ctorName) (zip [0..] args)  -- method-specific stuff
 
@@ -486,7 +486,7 @@ buildDepMap ci used externs ctx startNames
                 then length $ getArgTys (argTys !! i)
                 else error $ "invalid field number " ++ show i ++ " for " ++ show ctorName
 
-        | otherwise = error $ "unknown instance constructor: " ++ show ctorName
+        | otherwise = error $ "unknown implementation constructor: " ++ show ctorName
 
     getArity n = case lookupDefExact n ctx of
         Just (CaseOp ci ty tys def tot cdefs) -> length tys

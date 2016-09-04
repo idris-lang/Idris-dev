@@ -98,8 +98,8 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          case expn of
             Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping ist (interface_determiners ci) (delab ist nty))
                                 (map fst $ interface_instances ci)
-                          addInstance intInst True n iname
-            Just _ -> addInstance intInst False n iname
+                          addImplementation intInst True n iname
+            Just _ -> addImplementation intInst False n iname
     when (what /= ETypes && (not (null ds && not emptyinterface))) $ do
          -- Add the parent implementation names to the privileged set
          oldOpen <- addOpenImpl parents
@@ -159,9 +159,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          let wb = wbTys ++ wbVals
 
          logElab 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
-         logElab 3 $ "Instance is " ++ show ps ++ " implicits " ++
-                                      show (concat (nub wparams))
-
+         logElab 3 $ "Implementation is " ++ show ps ++ " implicits " ++ show (concat (nub wparams))
 
          let lhsImps = map (\n -> pimp n (PRef fc [] n) True) headVars
 
@@ -169,8 +167,8 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
                            (map (pexp . (mkMethApp lhsImps)) mtys)
 
-         logElab 5 $ "Instance LHS " ++ show totopts ++ "\n" ++ showTmImpls lhs ++ " " ++ show headVars
-         logElab 5 $ "Instance RHS " ++ show rhs
+         logElab 5 $ "Implementation LHS " ++ show totopts ++ "\n" ++ showTmImpls lhs ++ " " ++ show headVars
+         logElab 5 $ "Implementation RHS " ++ show rhs
 
          push_estack iname True
          logElab 3 ("Method types: " ++ show wbTys)
@@ -217,8 +215,8 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
     mkiname n' ns ps' expn' =
         case expn' of
           Nothing -> case ns of
-                          [] -> SN (sInstanceN n' (map show ps'))
-                          m -> sNS (SN (sInstanceN n' (map show ps'))) m
+                          [] -> SN (sImplementationN n' (map show ps'))
+                          m -> sNS (SN (sImplementationN n' (map show ps'))) m
           Just nm -> nm
 
     substInstance ips pnames (PInstance doc argDocs syn _ cs parents acc opts n nfc ps pextra t expn ds)
