@@ -90,7 +90,7 @@ build ist info emode opts fn tm
                         _ -> False
 
          hs <- get_holes
-         ivs <- get_instances
+         ivs <- get_implementations
          ptm <- get_term
          -- Resolve remaining interfaces. Two passes - first to get the
          -- default Num implementations, second to clean up the rest
@@ -100,7 +100,7 @@ build ist info emode opts fn tm
                                 g <- goal
                                 try (resolveTC' True True 10 g fn ist)
                                     (movelast n)) ivs
-         ivs <- get_instances
+         ivs <- get_implementations
          hs <- get_holes
          when (not pattern) $
               mapM_ (\n -> when (n `elem` hs) $
@@ -397,7 +397,7 @@ elab ist info emode opts fn tm
        = do g <- goal; resolveTC False False 5 g fn elabRec ist
     elab' ina fc (PResolveTC fc')
         = do c <- getNameFrom (sMN 0 "__interface")
-             instanceArg c
+             implementationArg c
     -- Elaborate the equality type first homogeneously, then
     -- heterogeneously as a fallback
     elab' ina _ (PApp fc (PRef _ _ n) args)
@@ -721,7 +721,7 @@ elab ist info emode opts fn tm
                highlightSource nfc (AnnBoundName n False)
     elab' ina _ tm@(PLet fc n nfc ty val sc)
           = do attack
-               ivs <- get_instances
+               ivs <- get_implementations
                tyn <- getNameFrom (sMN 0 "letty")
                claim tyn RType
                valn <- getNameFrom (sMN 0 "letval")
@@ -738,7 +738,7 @@ elab ist info emode opts fn tm
                focus valn
                elabE (ina { e_inarg = True, e_intype = True })
                      (Just fc) val
-               ivs' <- get_instances
+               ivs' <- get_implementations
                env <- get_env
                elabE (ina { e_inarg = True }) (Just fc) sc
                when (not (pattern || intransform)) $
@@ -861,7 +861,7 @@ elab ist info emode opts fn tm
                          (ffc, annot) : map (\f -> (f, annot)) hls
                        return []
                else
-                 do ivs <- get_instances
+                 do ivs <- get_implementations
                     ps <- get_probs
                     -- HACK: we shouldn't resolve interfaces if we're defining an implementation
                     -- function or default definition.
@@ -913,7 +913,7 @@ elab ist info emode opts fn tm
                          rs@(_:_) | not pattern -> return rs -- quit, try again
                          _ -> do solve
                                  hs <- get_holes
-                                 ivs' <- get_instances
+                                 ivs' <- get_implementations
                                  -- Attempt to resolve any interfaces which have 'complete' types,
                                  -- i.e. no holes in them
                                  when (not pattern || (e_inarg ina && not tcgen)) $ 
@@ -1473,7 +1473,7 @@ elab ist info emode opts fn tm
     fullApp x = x
 
     insertScopedImps fc (Bind n (Pi im@(Just i) _ _) sc) xs
-      | tcinstance i && not (toplevel_imp i)
+      | tcimplementation i && not (toplevel_imp i)
           = pimp n (PResolveTC fc) True : insertScopedImps fc sc xs
       | not (toplevel_imp i)
           = pimp n Placeholder True : insertScopedImps fc sc xs
@@ -2320,10 +2320,10 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            updateAux $ \e -> e { new_tyDecls = RDatatypeDefnInstrs n tyconTy ctors' : new_tyDecls e }
            returnUnit
       | n == tacN "Prim__AddImplementation"
-      = do ~[cls, inst] <- tacTmArgs 2 tac args
+      = do ~[cls, impl] <- tacTmArgs 2 tac args
            interfaceName <- reifyTTName cls
-           instName <- reifyTTName inst
-           updateAux $ \e -> e { new_tyDecls = RAddInstance interfaceName instName :
+           implName <- reifyTTName impl
+           updateAux $ \e -> e { new_tyDecls = RAddImplementation interfaceName implName :
                                                new_tyDecls e }
            returnUnit
       | n == tacN "Prim__IsTCName"
@@ -2819,12 +2819,12 @@ processTacticDecls info steps =
             _ -> return ()
          -- TODO: inaccessible
 
-    RAddInstance interfaceName instName ->
+    RAddImplementation interfaceName implName ->
       do -- The interface resolution machinery relies on a special
-         logElab 2 $ "Adding elab script implementation " ++ show instName ++
-                    " for " ++ show interfaceName
-         addImplementation False True interfaceName instName
-         addIBC (IBCInstance False True interfaceName instName)
+         logElab 2 $ "Adding elab script implementation " ++ show implName ++
+                     " for " ++ show interfaceName
+         addImplementation False True interfaceName implName
+         addIBC (IBCImplementation False True interfaceName implName)
     RClausesInstrs n cs ->
       do logElab 3 $ "Pattern-matching definition from tactics: " ++ show n
          solveDeferred emptyFC n

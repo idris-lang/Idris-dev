@@ -443,8 +443,8 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     guard $ scoreCriterion (score state')
     unifyQueue state' (queue ++ queueAdditions)
 
-  possInterfaceInstances :: [Name] -> Type -> [Type]
-  possInterfaceInstances usedns ty = do
+  possInterfaceImplementations :: [Name] -> Type -> [Type]
+  possInterfaceImplementations usedns ty = do
     interfaceName <- getInterfaceName clss
     interfaceDef <- lookupCtxt interfaceName interfaceInfo
     n <- interface_implementations interfaceDef
@@ -497,16 +497,16 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
       where
       allMods = parallel defMod mods
       mods :: Sided [( Interfaces, AsymMods, [Name] )]
-      mods = both (instanceMods . snd) unresolved
+      mods = both (implementationMods . snd) unresolved
       defMod :: Sided (Interfaces, AsymMods, [Name])
       defMod = both (\(_, cs) -> (cs, mempty , [])) unresolved
       parallel :: Sided a -> Sided [a] -> [Sided a]
       parallel (Sided l r) (Sided ls rs) = map (flip Sided r) ls ++ map (Sided l) rs
-      instanceMods :: Interfaces -> [( Interfaces , AsymMods, [Name] )]
-      instanceMods interfaces = [ ( newInterfaceArgs, mempty { interfaceApp = 1 }, newHoles )
+      implementationMods :: Interfaces -> [( Interfaces , AsymMods, [Name] )]
+      implementationMods interfaces = [ ( newInterfaceArgs, mempty { interfaceApp = 1 }, newHoles )
                       | (_, ty) <- interfaces
-                      , inst <- possInterfaceInstances usedns ty
-                      , newInterfaceArgs <- maybeToList $ interfaceUnify interfaceInfo ctxt ty inst
+                      , impl <- possInterfaceImplementations usedns ty
+                      , newInterfaceArgs <- maybeToList $ interfaceUnify interfaceInfo ctxt ty impl
                       , let newHoles = map fst newInterfaceArgs ]
 
 

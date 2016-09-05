@@ -142,7 +142,7 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
        | toplevel_imp impl -- information in 'imps' repeated
           = PPi (Imp [] Dynamic False (Just impl) False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
     de env is (Bind n (Pi (Just impl) ty _) sc)
-       | tcinstance impl
+       | tcimplementation impl
           = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
        | otherwise
           = PPi (Imp [] Dynamic False (Just impl) False) n NoFC (de env [] ty) (de ((n,n):env) is sc)

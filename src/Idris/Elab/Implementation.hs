@@ -1,12 +1,12 @@
 {-|
-Module      : Idris.Elab.Instance
+Module      : Idris.Elab.Implementation
 Description : Code to elaborate instances.
 Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE PatternGuards #-}
-module Idris.Elab.Instance(elabImplementation) where
+module Idris.Elab.Implementation(elabImplementation) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -98,8 +98,8 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          case expn of
             Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping ist (interface_determiners ci) (delab ist nty))
                                 (map fst $ interface_implementations ci)
-                          addImplementation intInst True n iname
-            Just _ -> addImplementation intInst False n iname
+                          addImplementation intImpl True n iname
+            Just _ -> addImplementation intImpl False n iname
     when (what /= ETypes && (not (null ds && not emptyinterface))) $ do
          -- Add the parent implementation names to the privileged set
          oldOpen <- addOpenImpl parents
@@ -118,9 +118,9 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          let pnames = nub $ map pname (concat (nub wparams)) ++
                           concatMap (namesIn [] ist) ps
 
-         let superInterfaceInstances = map (substInstance ips pnames) (interface_default_super_interfaces ci)
-         undefinedSuperInterfaceInstances <- filterM (fmap not . isOverlapping ist) superInterfaceInstances
-         mapM_ (rec_elabDecl info EAll info) undefinedSuperInterfaceInstances
+         let superInterfaceImplementations = map (substImplementation ips pnames) (interface_default_super_interfaces ci)
+         undefinedSuperInterfaceImplementations <- filterM (fmap not . isOverlapping ist) superInterfaceImplementations
+         mapM_ (rec_elabDecl info EAll info) undefinedSuperInterfaceImplementations
 
          ist <- getIState
          -- Bring variables in implementation head into scope when building the
@@ -164,7 +164,7 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          let lhsImps = map (\n -> pimp n (PRef fc [] n) True) headVars
 
          let lhs = PApp fc (PRef fc [] iname) (lhsImps ++ map (toExp .fst) pextra)
-         let rhs = PApp fc (PRef fc [] (instanceCtorName ci))
+         let rhs = PApp fc (PRef fc [] (implementationCtorName ci))
                            (map (pexp . (mkMethApp lhsImps)) mtys)
 
          logElab 5 $ "Implementation LHS " ++ show totopts ++ "\n" ++ showTmImpls lhs ++ " " ++ show headVars
@@ -205,10 +205,10 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
 --          totalityCheckBlock
 
          checkInjectiveArgs fc n (interface_determiners ci) (lookupTyExact iname (tt_ctxt ist))
-         addIBC (IBCInstance intInst (isNothing expn) n iname)
+         addIBC (IBCImplementation intImpl (isNothing expn) n iname)
 
   where
-    intInst = case ps of
+    intImpl = case ps of
                 [PConstant NoFC (AType (ATInt ITNative))] -> True
                 _ -> False
 
@@ -219,13 +219,13 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
                           m -> sNS (SN (sImplementationN n' (map show ps'))) m
           Just nm -> nm
 
-    substInstance ips pnames (PInstance doc argDocs syn _ cs parents acc opts n nfc ps pextra t expn ds)
-        = PInstance doc argDocs syn fc cs parents acc opts n nfc
+    substImplementation ips pnames (PImplementation doc argDocs syn _ cs parents acc opts n nfc ps pextra t expn ds)
+        = PImplementation doc argDocs syn fc cs parents acc opts n nfc
                      (map (substMatchesShadow ips pnames) ps)
                      pextra
                      (substMatchesShadow ips pnames t) expn ds
 
-    isOverlapping i (PInstance doc argDocs syn _ _ _ _ _ n nfc ps pextra t expn _)
+    isOverlapping i (PImplementation doc argDocs syn _ _ _ _ _ n nfc ps pextra t expn _)
         = case lookupCtxtName n (idris_interfaces i) of
             [(n, ci)] -> let iname = (mkiname n (namespace info) ps expn) in
                             case lookupTy iname (tt_ctxt i) of

@@ -396,9 +396,9 @@ mutual
   withNInj Refl = (Refl, Refl)
 
   private
-  instanceNInj : (ImplementationN n xs = ImplementationN n' ys) -> (n = n', xs = ys)
-  instanceNInj Refl = (Refl, Refl)
-
+  implementationNInj : (ImplementationN n xs = ImplementationN n' ys) -> (n = n', xs = ys)
+  implementationNInj Refl = (Refl, Refl)
+  
   private
   parentNInj : (ParentN n x = ParentN n' y) -> (n = n', x = y)
   parentNInj Refl = (Refl, Refl)
@@ -416,8 +416,8 @@ mutual
   elimNInj Refl = Refl
 
   private
-  instanceCtorNInj : (ImplementationCtorN n = ImplementationCtorN n') -> n = n'
-  instanceCtorNInj Refl = Refl
+  implementationCtorNInj : (ImplementationCtorN n = ImplementationCtorN n') -> n = n'
+  implementationCtorNInj Refl = Refl
 
   private
   metaNInj : (MetaN n m = MetaN n' m') -> (n = n', m = m')
@@ -467,9 +467,9 @@ mutual
       decSNEq (ImplementationN n xs) (ImplementationN n xs)  | Yes Refl | Yes Refl =
           Yes Refl
       decSNEq (ImplementationN n xs) (ImplementationN n ys)  | Yes Refl | No contra =
-          No $ contra . snd . instanceNInj
+          No $ contra . snd . implementationNInj
     decSNEq (ImplementationN n xs) (ImplementationN n' ys) | No contra =
-        No $ contra . fst . instanceNInj
+        No $ contra . fst . implementationNInj
   decSNEq (ImplementationN n xs) (ParentN n' x) = No absurd
   decSNEq (ImplementationN n xs) (MethodN n') = No absurd
   decSNEq (ImplementationN n xs) (CaseN loc n') = No absurd
@@ -545,7 +545,7 @@ mutual
     decSNEq (ImplementationCtorN n) (ImplementationCtorN n)  | Yes Refl =
         Yes Refl
     decSNEq (ImplementationCtorN n) (ImplementationCtorN n') | No contra =
-        No $ contra . instanceCtorNInj
+        No $ contra . implementationCtorNInj
   decSNEq (ImplementationCtorN n) (MetaN n' x) = No absurd
   decSNEq (MetaN n n') (WhereN x y z) = No absurd
   decSNEq (MetaN n n') (WithN x y) = No absurd
@@ -798,7 +798,7 @@ data Tactic =
             ||| Build a proof by applying contructors up to a maximum depth
             Search Int |
             ||| Resolve an interface
-            Instance |
+            Implementation |
             ||| Infer the proof target from the context
             Solve |
             ||| introduce all variables into the context
@@ -1272,7 +1272,7 @@ implementation Quotable Tactic TT where
   quote (Seq tac tac') = `(Seq ~(quote tac) ~(quote tac'))
   quote Trivial = `(Trivial)
   quote (Search x) = `(Search ~(quote x))
-  quote Instance = `(Instance)
+  quote Implementation = `(Implementation)
   quote Solve = `(Solve)
   quote Intros = `(Intros)
   quote (Intro n) = `(Intro ~(quote n))
@@ -1302,7 +1302,7 @@ implementation Quotable Tactic Raw where
   quote (Seq tac tac') = `(Seq ~(quote tac) ~(quote tac'))
   quote Trivial = `(Trivial)
   quote (Search x) = `(Search ~(quote x))
-  quote Instance = `(Instance)
+  quote Implementation = `(Implementation)
   quote Solve = `(Solve)
   quote Intros = `(Intros)
   quote (Intro n) = `(Intro ~(quote n))

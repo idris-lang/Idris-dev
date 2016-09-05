@@ -51,7 +51,7 @@ using (G : Vect n Ty)
   (<) : Expr G TyInt -> Expr G TyInt -> Expr G TyBool
   (<) = Op (<)
 
-  instance Num (Expr G TyInt) where
+  implementation Num (Expr G TyInt) where
     (+) x y = Op (+) x y
     (-) x y = Op (-) x y
     (*) x y = Op (*) x y

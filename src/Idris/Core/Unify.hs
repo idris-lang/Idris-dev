@@ -193,13 +193,13 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
 --           case boundVs (envPos x 0 env) tm of
 --                [] -> return [(x, tm)]
 --                (i:_) -> lift $ tfail (UnifyScope x (fst (fst (ns!!i)))
---                                      (inst ns tm) (errEnv env))
+--                                      (impl ns tm) (errEnv env))
         let v = highV (-1) tm in
             if v >= length ns
                then lift $ tfail (Msg "SCOPE ERROR")
                else return [(x, bind v ns tm)]
-      where inst [] tm = tm
-            inst ((n, _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
+      where impl [] tm = tm
+            impl ((n, _) : ns) tm = impl ns (substV (P Bound n Erased) tm)
 
     bind i ns tm
       | i < 0 = tm
@@ -667,13 +667,13 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 --           case boundVs (envPos x 0 env) tm of
 --                [] -> return [(x, tm)]
 --                (i:_) -> lift $ tfail (UnifyScope x (fst (fst (ns!!i)))
---                                      (inst ns tm) (errEnv env))
+--                                      (impl ns tm) (errEnv env))
         let v = highV (-1) tm in
             if v >= length ns
                then lift $ tfail (Msg "SCOPE ERROR")
                else return [(x, bind v ns tm)]
-      where inst [] tm = tm
-            inst (((n, _), _) : ns) tm = inst ns (substV (P Bound n Erased) tm)
+      where impl [] tm = tm
+            impl (((n, _), _) : ns) tm = impl ns (substV (P Bound n Erased) tm)
     checkScope ns (x, tm) = lift $ tfail (Msg "HOLE ERROR")
 
     bind i ns tm

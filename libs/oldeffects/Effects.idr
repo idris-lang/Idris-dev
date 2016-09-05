@@ -116,7 +116,7 @@ data LRes : lbl -> Type -> Type where
 (:::) {lbl} x (MkEff r e) = MkEff (LRes x r) e
 
 using (lbl : Type)
-  instance Default a => Default (LRes lbl a) where
+  implementation Default a => Default (LRes lbl a) where
     default = lbl := default
 
 private

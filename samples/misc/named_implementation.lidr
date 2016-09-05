@@ -1,17 +1,17 @@
 > module MyOrd
 
-An alternative Ord instance for Nats, with an explicit name "myord"
+An alternative Ord implementation for Nats, with an explicit name "myord"
 for the dictionary:
 
-> instance [myord] Ord Nat where
+> implementation [myord] Ord Nat where
 >    compare O (S n)     = GT
 >    compare (S n) O     = LT
 >    compare O O         = EQ
 
 The @{name} syntax below gives an explicit dictionary for the compare function.
 Here, we're telling it to use the "myord" dictionary. Otherwise, it'd just
-use the default (unnamed) instance. Note that there can only be one unnamed
-instance --- they must not overlap.
+use the default (unnamed) implementation. Note that there can only be one unnamed
+implementation --- they must not overlap.
 
 >    compare (S x) (S y) = compare @{myord} x y
 
@@ -25,7 +25,7 @@ Sort foo using the default comparison operator:
 
 -- which gives [1,2,3,4,5,6,7,8]
 
-Sort foo using the alternative instance. No need for 'sortBy' and other
+Sort foo using the alternative implementation. No need for 'sortBy' and other
 such functions. Hoorah!
 
 > test2 : List Nat

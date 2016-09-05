@@ -699,11 +699,11 @@ reflectSpecialName (WhereN i n1 n2) =
 reflectSpecialName (WithN i n) = reflCall "WithN" [ RConstant (I i)
                                                   , reflectName n
                                                   ]
-reflectSpecialName (ImplementationN inst ss) =
-  reflCall "ImplementationN" [ reflectName inst
-                       , mkList (RConstant StrType) $
-                           map (RConstant . Str . T.unpack) ss
-                       ]
+reflectSpecialName (ImplementationN impl ss) =
+  reflCall "ImplementationN" [ reflectName impl
+                             , mkList (RConstant StrType) $
+                                 map (RConstant . Str . T.unpack) ss
+                             ]
 reflectSpecialName (ParentN n s) =
   reflCall "ParentN" [reflectName n, RConstant (Str (T.unpack s))]
 reflectSpecialName (MethodN n) =

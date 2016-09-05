@@ -348,7 +348,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCStatic Name
               | IBCInterface Name
               | IBCRecord Name
-              | IBCInstance Bool Bool Name Name
+              | IBCImplementation Bool Bool Name Name
               | IBCDSL Name
               | IBCData Name
               | IBCOpt Name
@@ -728,20 +728,20 @@ data PDecl' t
    -- | Implementation declaration: arguments are documentation, syntax
    -- info, source location, constraints, interface name, parameters, full
    -- Implementation type, optional explicit name, and definitions
-   | PInstance (Docstring (Either Err t))         -- Implementation docs
-               [(Name, Docstring (Either Err t))] -- Parameter docs
-               SyntaxInfo
-               FC [(Name, t)]                     -- constraints
-               [Name]                             -- parent dictionaries to search for constraints
-               Accessibility
-               FnOpts
-               Name                               -- interface
-               FC                                 -- precise location of interface
-               [t]                                -- parameters
-               [(Name, t)]                        -- Extra names in scope in the body
-               t                                  -- full implementation type
-               (Maybe Name)                       -- explicit name
-               [PDecl' t]
+   | PImplementation (Docstring (Either Err t))         -- Implementation docs
+                     [(Name, Docstring (Either Err t))] -- Parameter docs
+                     SyntaxInfo
+                     FC [(Name, t)]                     -- constraints
+                     [Name]                             -- parent dictionaries to search for constraints
+                     Accessibility
+                     FnOpts
+                     Name                               -- interface
+                     FC                                 -- precise location of interface
+                     [t]                                -- parameters
+                     [(Name, t)]                        -- Extra names in scope in the body
+                     t                                  -- full Implementation type
+                     (Maybe Name)                       -- explicit name
+                     [PDecl' t]
    | PDSL     Name (DSL' t) -- ^ DSL declaration
    | PSyntax  FC Syntax     -- ^ Syntax definition
    | PMutual  FC [PDecl' t] -- ^ Mutual block
@@ -790,7 +790,7 @@ data Directive = DLib Codegen String
 -- after a term elaboration when there's been reflected elaboration.
 data RDeclInstructions = RTyDeclInstrs Name FC [PArg] Type
                        | RClausesInstrs Name [([(Name, Term)], Term, Term)]
-                       | RAddInstance Name Name
+                       | RAddImplementation Name Name
                        | RDatatypeDeclInstrs Name [PArg]
                        -- | Datatype, constructors
                        | RDatatypeDefnInstrs Name Type [(Name, [PArg], Type)]
@@ -912,13 +912,13 @@ mapPDeclFC f g (PInterface doc syn fc constrs n nfc params paramDocs det body ct
            (map (mapPDeclFC f g) body)
            (fmap (\(n, nfc) -> (n, g nfc)) ctor)
            ctorDoc
-mapPDeclFC f g (PInstance doc paramDocs syn fc constrs pnames cn acc opts cnfc params pextra instTy instN body) =
-    PInstance doc paramDocs syn (f fc)
+mapPDeclFC f g (PImplementation doc paramDocs syn fc constrs pnames cn acc opts cnfc params pextra implTy implN body) =
+    PImplementation doc paramDocs syn (f fc)
               (map (\(constrN, constrT) -> (constrN, mapPTermFC f g constrT)) constrs)
               pnames cn acc opts (g cnfc) (map (mapPTermFC f g) params)
               (map (\(en, et) -> (en, mapPTermFC f g et)) pextra)
-              (mapPTermFC f g instTy)
-              instN
+              (mapPTermFC f g implTy)
+              implN
               (map (mapPDeclFC f g) body)
 mapPDeclFC f g (PDSL n dsl) = PDSL n (fmap (mapPTermFC f g) dsl)
 mapPDeclFC f g (PSyntax fc syn) = PSyntax (f fc) $
@@ -957,7 +957,7 @@ declared (POpenInterfaces _ _ ds) = concatMap declared ds
 declared (PNamespace _ _ ds) = concatMap declared ds
 declared (PRecord _ _ _ _ n  _ _ _ _ cn _ _) = n : map fst (maybeToList cn)
 declared (PInterface _ _ _ _ n _ _ _ _ ms cn cd) = n : (map fst (maybeToList cn) ++ concatMap declared ms)
-declared (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
+declared (PImplementation _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
     = case mn of
            Nothing -> []
            Just n -> [n]
@@ -981,7 +981,7 @@ tldeclared (POpenInterfaces _ _ ds)               = concatMap tldeclared ds
 tldeclared (PMutual _ ds)                         = concatMap tldeclared ds
 tldeclared (PNamespace _ _ ds)                    = concatMap tldeclared ds
 tldeclared (PInterface _ _ _ _ n _ _ _ _ ms cn _)     = n : (map fst (maybeToList cn) ++ concatMap tldeclared ms)
-tldeclared (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
+tldeclared (PImplementation _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
     = case mn of
            Nothing -> []
            Just n -> [n]
@@ -1001,7 +1001,7 @@ defined (POpenInterfaces _ _ ds)                  = concatMap defined ds
 defined (PNamespace _ _ ds)                       = concatMap defined ds
 defined (PRecord _ _ _ _ n _ _ _ _ cn _ _)        = n : map fst (maybeToList cn)
 defined (PInterface _ _ _ _ n _ _ _ _ ms cn _)        = n : (map fst (maybeToList cn) ++ concatMap defined ms)
-defined (PInstance _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
+defined (PImplementation _ _ _ _ _ _ _ _ _ _ _ _ _ mn _)
     = case mn of
            Nothing -> []
            Just n -> [n]
@@ -1398,7 +1398,7 @@ highestFC (PAppImpl t _)          = highestFC t
 -- Interface data
 
 data InterfaceInfo = CI {
-    instanceCtorName                   :: Name
+    implementationCtorName                   :: Name
   , interface_methods                  :: [(Name, (Bool, FnOpts, PTerm))] -- ^ flag whether it's a "data" method
   , interface_defaults                 :: [(Name, (Name, PDecl))]         -- ^ method name -> default impl
   , interface_default_super_interfaces :: [PDecl]
@@ -2216,7 +2216,7 @@ showDeclImp o (PNamespace n fc ps)  = text "namespace" <+> text n <> braces (lin
 showDeclImp _ (PSyntax _ syn) = text "syntax" <+> text (show syn)
 showDeclImp o (PInterface _ _ _ cs n _ ps _ _ ds _ _)
    = text "interface" <+> text (show cs) <+> text (show n) <+> text (show ps) <> line <> showDecls o ds
-showDeclImp o (PInstance _ _ _ _ cs _ acc _ n _ _ _ t _ ds)
+showDeclImp o (PImplementation _ _ _ _ cs _ acc _ n _ _ _ t _ ds)
    = text "implementation" <+> text (show cs) <+> text (show n) <+> prettyImp o t <> line <> showDecls o ds
 showDeclImp _ _ = text "..."
 -- showDeclImp (PImport o) = "import " ++ o

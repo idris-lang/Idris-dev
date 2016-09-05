@@ -424,9 +424,9 @@ getFragile n = do
   return $ lookupCtxtExact n (idris_fragile i)
 
 push_estack :: Name -> Bool -> Idris ()
-push_estack n inst
+push_estack n impl
     = do i <- getIState
-         putIState (i { elab_stack = (n, inst) : elab_stack i })
+         putIState (i { elab_stack = (n, impl) : elab_stack i })
 
 pop_estack :: Idris ()
 pop_estack = do i <- getIState
@@ -1363,11 +1363,11 @@ expandParamsD rhs ist dec ps ns (PInterface doc info f cs n nfc params pDocs fds
            (map (expandParamsD rhs ist dec ps ns) decls)
            cn
            cd
-expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
+expandParamsD rhs ist dec ps ns (PImplementation doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
    = let cn' = case cn of
                     Just n -> if n `elem` ns then Just (dec n) else Just n
                     Nothing -> Nothing in
-     PInstance doc argDocs info f
+     PImplementation doc argDocs info f
            (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
            pnames acc opts n
            nfc
@@ -1380,10 +1380,10 @@ expandParamsD rhs ist dec ps ns d = d
 
 mapsnd f (x, t) = (x, f t)
 
-expandInstanceScope ist dec ps ns (PInstance doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
-    = PInstance doc argDocs info f cs pnames acc opts n nfc params (ps ++ pextra)
+expandImplementationScope ist dec ps ns (PImplementation doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
+    = PImplementation doc argDocs info f cs pnames acc opts n nfc params (ps ++ pextra)
                 ty cn decls
-expandInstanceScope ist dec ps ns d = d
+expandImplementationScope ist dec ps ns d = d
 
 -- | Calculate a priority for a type, for deciding elaboration order
 -- * if it's just a type variable or concrete type, do it early (0)

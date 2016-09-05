@@ -555,10 +555,10 @@ namespace Tactics
   ||| Register a new implementation for interface resolution.
   |||
   ||| @ ifaceName the name of the interface for which an implementation is being registered
-  ||| @ instName the name of the definition to use in implementation search
+  ||| @ implName the name of the definition to use in implementation search
   export
-  addImplementation : (ifaceName, instName : TTName) -> Elab ()
-  addImplementation ifaceName instName = Prim__AddImplementation ifaceName instName
+  addImplementation : (ifaceName, implName : TTName) -> Elab ()
+  addImplementation ifaceName implName = Prim__AddImplementation ifaceName implName
 
   ||| Determine whether a name denotes an interface.
   |||

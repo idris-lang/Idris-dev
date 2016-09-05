@@ -330,9 +330,9 @@ checkInjective (tm, l, r) = do ctxt <- get_context
         isInj ctxt _ = False
 
 -- | get implementation argument names
-get_instances :: Elab' aux [Name]
-get_instances = do ES p _ _ <- get
-                   return $! (instances (fst p))
+get_implementations :: Elab' aux [Name]
+get_implementations = do ES p _ _ <- get
+                         return $! (implementations (fst p))
 
 -- | get auto argument names
 get_autos :: Elab' aux [(Name, ([FailContext], [Name]))]
@@ -539,8 +539,8 @@ defer ds n = do n' <- unique_hole n
 deferType :: Name -> Raw -> [Name] -> Elab' aux ()
 deferType n ty ns = processTactic' (DeferType n ty ns)
 
-instanceArg :: Name -> Elab' aux ()
-instanceArg n = processTactic' (Instance n)
+implementationArg :: Name -> Elab' aux ()
+implementationArg n = processTactic' (Implementation n)
 
 autoArg :: Name -> Elab' aux ()
 autoArg n = processTactic' (AutoArg n)
@@ -894,7 +894,7 @@ try' t1 t2 proofSearch
   = do s <- get
        ps <- get_probs
        ulog <- getUnifyLog
-       ivs <- get_instances
+       ivs <- get_implementations
        case prunStateT 999999 False ps Nothing t1 s of
             OK ((v, _, _), s') -> do put s'
                                      return $! v
@@ -960,7 +960,7 @@ tryAll' constrok xs = doAll [] 999999 xs
     doAll cs pmax    ((x, msg):xs)
        = do s <- get
             ps <- get_probs
-            ivs <- get_instances
+            ivs <- get_implementations
             case prunStateT pmax True ps (if constrok then Nothing
                                                       else Just ivs) x s of
                 OK ((v, newps, probs), s') ->
@@ -985,7 +985,7 @@ prunStateT pmax zok ps ivs x s
       = case runStateT x s of
              OK (v, s'@(ES (p, _) _ _)) ->
                  let newps = length (problems p) - length ps
-                     ibad = badInstances (instances p) ivs
+                     ibad = badImplementations (implementations p) ivs
                      newpmax = if newps < 0 then 0 else newps in
                  if (newpmax > pmax || (not zok && newps > 0)) -- length ps == 0 && newpmax > 0))
                     then case reverse (problems p) of
@@ -995,8 +995,8 @@ prunStateT pmax zok ps ivs x s
                             else OK ((v, newpmax, problems p), s')
              Error e -> Error e
   where
-    badInstances _ Nothing = False
-    badInstances inow (Just ithen) = length inow > length ithen
+    badImplementations _ Nothing = False
+    badImplementations inow (Just ithen) = length inow > length ithen
 
 debugElaborator :: [ErrorReportPart] -> Elab' aux a
 debugElaborator msg = do ps <- fmap proof get

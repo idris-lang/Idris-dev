@@ -5,7 +5,7 @@ data Binary : Nat -> Type where
     bO : Binary n -> Binary (n + n)
     bI : Binary n -> Binary (S (n + n))
 
-instance Show (Binary n) where
+implementation Show (Binary n) where
     show (bO x) = show x ++ "0"
     show (bI x) = show x ++ "1"
     show bEnd = ""
