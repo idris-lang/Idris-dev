@@ -373,6 +373,7 @@ scanl f q []      = [q]
 scanl f q (x::xs) = q :: scanl f (f q x) xs
 
 scanl1 : (a -> a -> a) -> List a -> List a
+scanl1 _ []      = []
 scanl1 f (x::xs) = scanl f x xs
 
 --------------------------------------------------------------------------------
