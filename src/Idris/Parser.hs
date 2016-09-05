@@ -180,7 +180,7 @@ Decl ::=
   | Mutual
   | Namespace
   | Interface
-  | Instance
+  | Implementation
   | DSL
   | Directive
   | Provider
@@ -219,7 +219,7 @@ internalDecl syn
                      <|> fail "End of readable input"
   where declBody :: Bool -> IdrisParser [PDecl]
         declBody b =
-                   try (instance_ True syn)
+                   try (implementation_ True syn)
                    <|> try (openInterface syn)
                    <|> declBody' b
                    <|> using_ syn
@@ -832,32 +832,32 @@ namespace syn =
        return [PNamespace n nfc (concat ds)]
      <?> "namespace declaration"
 
-{-| Parses a methods block (for instances)
+{-| Parses a methods block (for implementations)
 
 @
-  InstanceBlock ::= 'where' OpenBlock FnDecl* CloseBlock
+  ImplementationBlock ::= 'where' OpenBlock FnDecl* CloseBlock
 @
 -}
-instanceBlock :: SyntaxInfo -> IdrisParser [PDecl]
-instanceBlock syn = do reservedHL "where"
-                       openBlock
-                       ds <- many (fnDecl syn)
-                       closeBlock
-                       return (concat ds)
-                    <?> "implementation block"
+implementationBlock :: SyntaxInfo -> IdrisParser [PDecl]
+implementationBlock syn = do reservedHL "where"
+                             openBlock
+                             ds <- many (fnDecl syn)
+                             closeBlock
+                             return (concat ds)
+                          <?> "implementation block"
 
-{-| Parses a methods and instances block (for interfaces)
+{-| Parses a methods and implementations block (for interfaces)
 
 @
-MethodOrInstance ::=
+MethodOrImplementation ::=
    FnDecl
-   | Instance
+   | Implementation
    ;
 @
 
 @
 InterfaceBlock ::=
-  'where' OpenBlock Constructor? MethodOrInstance* CloseBlock
+  'where' OpenBlock Constructor? MethodOrImplementation* CloseBlock
   ;
 @
 -}
@@ -871,7 +871,7 @@ interfaceBlock syn = do reservedHL "where"
                         ist <- get
                         let cd' = annotate syn ist cd
 
-                        ds <- many (notEndBlock >> try (instance_ True syn)
+                        ds <- many (notEndBlock >> try (implementation_ True syn)
                                                    <|> do x <- data_ syn
                                                           return [x]
                                                    <|> fnDecl syn)
@@ -937,8 +937,8 @@ interface_ syn = do (doc, argDocs, acc)
 {-| Parses an interface implementation declaration
 
 @
-  Instance ::=
-    DocComment_t? 'instance' ImplementationName? ConstraintList? Name SimpleExpr* InstanceBlock?
+  Implementation ::=
+    DocComment_t? 'implementation' ImplementationName? ConstraintList? Name SimpleExpr* ImplementationBlock?
     ;
 @
 
@@ -946,43 +946,43 @@ interface_ syn = do (doc, argDocs, acc)
 ImplementationName ::= '[' Name ']';
 @
 -}
-instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
-instance_ kwopt syn
+implementation_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
+implementation_ kwopt syn
               = do ist <- get
                    (doc, argDocs) <- docstring syn
                    (opts, acc) <- fnOpts
-                   if kwopt then optional instanceKeyword
-                            else do instanceKeyword
+                   if kwopt then optional implementationKeyword
+                            else do implementationKeyword
                                     return (Just ())
 
                    fc <- getFC
-                   en <- optional instanceName
+                   en <- optional implementationName
                    cs <- constraintList syn
                    let cs' = [(c, ty) | (c, _, ty) <- cs]
                    (cn, cnfc) <- fnName
                    args <- many (simpleExpr syn)
                    let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                    let t = bindList (PPi constraint) cs sc
-                   pnames <- instanceUsing
-                   ds <- instanceBlock syn
+                   pnames <- implementationUsing
+                   ds <- implementationBlock syn
                    return [PInstance doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
                  <?> "implementation declaration"
-  where instanceName :: IdrisParser Name
-        instanceName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
-                          let n = expandNS syn n_in
-                          return n
-                       <?> "implementation name"
-        instanceKeyword :: IdrisParser ()
-        instanceKeyword = reservedHL "implementation"
+  where implementationName :: IdrisParser Name
+        implementationName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
+                                let n = expandNS syn n_in
+                                return n
+                             <?> "implementation name"
+        implementationKeyword :: IdrisParser ()
+        implementationKeyword = reservedHL "implementation"
                       <|> do reservedHL "instance"
                              fc <- getFC
                              parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
 
-        instanceUsing :: IdrisParser [Name]
-        instanceUsing = do reservedHL "using"
-                           ns <- sepBy1 fnName (lchar ',')
-                           return (map fst ns)
-                        <|> return []
+        implementationUsing :: IdrisParser [Name]
+        implementationUsing = do reservedHL "using"
+                                 ns <- sepBy1 fnName (lchar ',')
+                                 return (map fst ns)
+                              <|> return []
 
 -- | Parse a docstring
 docstring :: SyntaxInfo

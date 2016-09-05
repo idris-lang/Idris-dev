@@ -127,7 +127,7 @@ mkRhs fn fam k =
 ||| deriving to occur. It must consist of zero or more non-constraint
 ||| arguments followed by zero or more constraint arguments, followed
 ||| by the two values to compare. The constraint arguments must
-||| provide sufficient instances of `DecEq` to decide the equality of
+||| provide sufficient implementations of `DecEq` to decide the equality of
 ||| each constructor field. The final two arguments to the function
 ||| declaration must be the two values that will be compared for
 ||| equality.

@@ -352,7 +352,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
 
 -- | Resolve interfaces. This will only pick up 'normal'
 -- implementations, never named implementations (which is enforced by
--- 'findInstances').
+-- 'findImplementations').
 resolveTC :: Bool                -- ^ using default Int
           -> Bool                -- ^ allow open implementations
           -> Int                 -- ^ depth

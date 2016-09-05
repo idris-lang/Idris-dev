@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE PatternGuards #-}
-module Idris.Elab.Instance(elabInstance) where
+module Idris.Elab.Instance(elabImplementation) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
@@ -57,25 +57,25 @@ import Data.List.Split (splitOn)
 
 import Util.Pretty(pretty, text)
 
-elabInstance :: ElabInfo
-             -> SyntaxInfo
-             -> Docstring (Either Err PTerm)
-             -> [(Name, Docstring (Either Err PTerm))]
-             -> ElabWhat        -- ^ phase
-             -> FC
-             -> [(Name, PTerm)] -- ^ constraints
-             -> [Name]          -- ^ parent dictionary names (optionally)
-             -> Accessibility
-             -> FnOpts
-             -> Name            -- ^ the interface
-             -> FC              -- ^ precise location of interface name
-             -> [PTerm]         -- ^ interface parameters (i.e. instance)
-             -> [(Name, PTerm)] -- ^ Extra arguments in scope (e.g. instance in where block)
-             -> PTerm           -- ^ full instance type
-             -> Maybe Name      -- ^ explicit name
-             -> [PDecl]
-             -> Idris ()
-elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t expn ds = do
+elabImplementation :: ElabInfo
+                   -> SyntaxInfo
+                   -> Docstring (Either Err PTerm)
+                   -> [(Name, Docstring (Either Err PTerm))]
+                   -> ElabWhat        -- ^ phase
+                   -> FC
+                   -> [(Name, PTerm)] -- ^ constraints
+                   -> [Name]          -- ^ parent dictionary names (optionally)
+                   -> Accessibility
+                   -> FnOpts
+                   -> Name            -- ^ the interface
+                   -> FC              -- ^ precise location of interface name
+                   -> [PTerm]         -- ^ interface parameters (i.e. implementation)
+                   -> [(Name, PTerm)] -- ^ Extra arguments in scope (e.g. implementation in where block)
+                   -> PTerm           -- ^ full implementation type
+                   -> Maybe Name      -- ^ explicit name
+                   -> [PDecl]
+                   -> Idris ()
+elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t expn ds = do
     ist <- getIState
     (n, ci) <- case lookupCtxtName n (idris_interfaces ist) of
                   [c] -> return c
@@ -93,11 +93,11 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
     when (what /= EDefns) $ do
          nty <- elabType' True info syn doc argDocs fc totopts iname NoFC
                           (piBindp expl_param pextra t)
-         -- if the instance type matches any of the instances we have already,
-         -- and it's not a named instance, then it's overlapping, so report an error
+         -- if the implementation type matches any of the implementations we have already,
+         -- and it's not a named implementation, then it's overlapping, so report an error
          case expn of
             Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping ist (interface_determiners ci) (delab ist nty))
-                                (map fst $ interface_instances ci)
+                                (map fst $ interface_implementations ci)
                           addImplementation intInst True n iname
             Just _ -> addImplementation intInst False n iname
     when (what /= ETypes && (not (null ds && not emptyinterface))) $ do
@@ -123,7 +123,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
          mapM_ (rec_elabDecl info EAll info) undefinedSuperInterfaceInstances
 
          ist <- getIState
-         -- Bring variables in instance head into scope when building the
+         -- Bring variables in implementation head into scope when building the
          -- dictionary
          let headVars = nub $ concatMap getHeadVars ps
          let (headVarTypes, ty)
@@ -231,7 +231,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
                             case lookupTy iname (tt_ctxt i) of
                               [] -> elabFindOverlapping i ci iname syn t
                               (_:_) -> return True
-            _ -> return False -- couldn't find interface, just let elabInstance fail later
+            _ -> return False -- couldn't find interface, just let elabImplementation fail later
 
     -- TODO: largely based upon elabType' - should try to abstract
     -- Issue #1614 in the issue tracker:
@@ -253,7 +253,7 @@ elabInstance info syn doc argDocs what fc cs parents acc opts n nfc ps pextra t 
              ctxt <- getContext
              (cty, _) <- recheckC (constraintNS info) fc id [] tyT
              let nty = normalise ctxt [] cty
-             return $ any (isJust . findOverlapping i (interface_determiners ci) (delab i nty)) (map fst $ interface_instances ci)
+             return $ any (isJust . findOverlapping i (interface_determiners ci) (delab i nty)) (map fst $ interface_implementations ci)
 
     findOverlapping i dets t n
      | SN (ParentN _ _) <- n = Nothing
@@ -391,7 +391,7 @@ getHeadVars (PPair _ _ _ l r) = getHeadVars l ++ getHeadVars r
 getHeadVars (PDPair _ _ _ l t r) = getHeadVars l ++ getHeadVars t ++ getHeadVars t
 getHeadVars _ = []
 
--- | Implicitly bind variables from the instance head in method types
+-- | Implicitly bind variables from the implementation head in method types
 impBind :: [(Name, PTerm)] -> PDecl -> PDecl
 impBind vs (PTy d ds syn fc opts n fc' t)
      = PTy d ds syn fc opts n fc'

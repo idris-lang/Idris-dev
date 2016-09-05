@@ -53,7 +53,7 @@ as follows:
 .. code-block:: idris
 
     data (=) : a -> b -> Type where
-         Refl : x = x
+       Refl : x = x
 
 Note that this must be built-in, rather than defined in the library,
 because ``=`` is a reserved operator — you cannot define this directly

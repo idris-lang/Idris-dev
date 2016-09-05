@@ -438,14 +438,14 @@ pop_estack = do i <- getIState
 --
 -- Precondition: the implementation should have the correct type.
 --
--- Dodgy hack 1: Put integer instances first in the list so they are
+-- Dodgy hack 1: Put integer implementations first in the list so they are
 -- resolved by default.
 --
 -- Dodgy hack 2: put constraint chasers (ParentN) last
-addImplementation :: Bool -- ^ whether the name is an Integer instance
-                  -> Bool -- ^ whether to include the instance in instance search
+addImplementation :: Bool -- ^ whether the name is an Integer implementation
+                  -> Bool -- ^ whether to include the implementation in implementation search
                   -> Name -- ^ the name of the interface
-                  -> Name -- ^ the name of the instance
+                  -> Name -- ^ the name of the implementation
                   -> Idris ()
 addImplementation int res n i
     = do ist <- getIState
@@ -467,7 +467,7 @@ addImplementation int res n i
         chaser (NS n _) = chaser n
         chaser _ = False
 
--- | Add a privileged implementation - one which instance search will
+-- | Add a privileged implementation - one which implementation search will
 -- happily resolve immediately if it is type correct This is used for
 -- naming parent implementations when defining an implementation with
 -- constraints.  Returns the old list, so we can revert easily at the
@@ -497,7 +497,7 @@ addInterface :: Name -> InterfaceInfo -> Idris ()
 addInterface n i
    = do ist <- getIState
         let i' = case lookupCtxt n (idris_interfaces ist) of
-                      [c] -> c { interface_instances = interface_instances i }
+                      [c] -> c { interface_implementations = interface_implementations i }
                       _ -> i
         putIState $ ist { idris_interfaces = addDef n i' (idris_interfaces ist) }
 

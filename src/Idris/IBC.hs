@@ -550,12 +550,12 @@ processInterfaces ar = do
     cs <- getEntry [] "ibc_interfaces" ar
     mapM_ (\ (n, c) -> do
         i <- getIState
-        -- Don't lose instances from previous IBCs, which
+        -- Don't lose implementations from previous IBCs, which
         -- could have loaded in any order
         let is = case lookupCtxtExact n (idris_interfaces i) of
                     Just (CI _ _ _ _ _ ins _) -> ins
                     _ -> []
-        let c' = c { interface_instances = interface_instances c ++ is }
+        let c' = c { interface_implementations = interface_implementations c ++ is }
         putIState (i { idris_interfaces = addDef n c' (idris_interfaces i) })) cs
 
 processRecords :: Archive -> Idris ()

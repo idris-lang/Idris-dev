@@ -50,7 +50,7 @@ data ProofState = PS { thname   :: Name,
                        problems :: Fails,
                        injective :: [Name],
                        deferred :: [Name], -- ^ names we'll need to define
-                       instances :: [Name], -- ^ instance arguments (for interfaces)
+                       instances :: [Name], -- ^ implementation arguments (for interfaces)
                        autos    :: [(Name, ([FailContext], [Name]))], -- ^ unsolved 'auto' implicits with their holes
                        psnames  :: [Name], -- ^ Local names okay to use in proof search
                        previous :: Maybe ProofState, -- ^ for undo

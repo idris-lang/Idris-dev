@@ -48,7 +48,7 @@ data Docs' d = FunDoc (FunDoc' d)
              | InterfaceDoc Name d  -- interface docs
                             [FunDoc' d] -- method docs
                             [(Name, Maybe d)] -- parameters and their docstrings
-                            [(Maybe Name, PTerm, (d, [(Name, d)]))] -- instances: name for named instances, the constraint term, the docs
+                            [(Maybe Name, PTerm, (d, [(Name, d)]))] -- implementations: name for named implementations, the constraint term, the docs
                             [PTerm] -- sub interfaces
                             [PTerm] -- super interfaces
                             (Maybe (FunDoc' d)) -- explicit constructor
@@ -304,7 +304,7 @@ getDocs n w
         interfaceNameForInst ist n =
           listToMaybe [ cn
                       | (cn, ci) <- toAlist (idris_interfaces ist)
-                      , n `elem` map fst (interface_instances ci)
+                      , n `elem` map fst (interface_implementations ci)
                       ]
 
 docData :: Name -> TypeInfo -> Idris Docs
@@ -326,7 +326,7 @@ docInterface n ci
            instances = map (\inst -> (namedInst inst,
                                       delabTy i inst,
                                       docsForInstance inst))
-                           (nub (map fst (interface_instances ci)))
+                           (nub (map fst (interface_implementations ci)))
            (sub_interfaces, instances') = partition (isSubInterface . (\(_,tm,_) -> tm)) instances
            super_interfaces = catMaybes $ map getDInst (interface_default_super_interfaces ci)
        mdocs <- mapM (docFun . fst) (interface_methods ci)

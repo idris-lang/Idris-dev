@@ -272,16 +272,16 @@ The latter could be shortened to the following:
 That is, ``{x}`` behaves like ``{x=x}``.
 
 
-Existence of an instance
+Existence of an implementation
 ========================
 
-In order to show that an instance of some interface is defined for some
-type, one could use the ``%instance`` keyword:
+In order to show that an implementation of some interface is defined for some
+type, one could use the ``%implementation`` keyword:
 
 .. code:: idris
 
     foo : Num Nat
-    foo = %instance
+    foo = %implementation
 
 'match' application
 ===================

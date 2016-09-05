@@ -298,7 +298,7 @@ data IState = IState {
   , idris_repl_defs              :: [Name]
 
   -- | Stack of names currently being elaborated, Bool set if it's an
-  -- instance (instances appear twice; also as a funtion name)
+  -- implementation (implementations appear twice; also as a funtion name)
   , elab_stack                   :: [(Name, Bool)]
 
 
@@ -722,13 +722,13 @@ data PDecl' t
             [(Name, Docstring (Either Err t))] -- parameter docstrings
             [(Name, FC)]                       -- determining parameters and precise locations
             [PDecl' t]                         -- declarations
-            (Maybe (Name, FC))                 -- instance constructor name and location
-            (Docstring (Either Err t))         -- instance constructor docs
+            (Maybe (Name, FC))                 -- implementation constructor name and location
+            (Docstring (Either Err t))         -- implementation constructor docs
 
-   -- | Instance declaration: arguments are documentation, syntax
+   -- | Implementation declaration: arguments are documentation, syntax
    -- info, source location, constraints, interface name, parameters, full
-   -- instance type, optional explicit name, and definitions
-   | PInstance (Docstring (Either Err t))         -- Instance docs
+   -- Implementation type, optional explicit name, and definitions
+   | PInstance (Docstring (Either Err t))         -- Implementation docs
                [(Name, Docstring (Either Err t))] -- Parameter docs
                SyntaxInfo
                FC [(Name, t)]                     -- constraints
@@ -739,7 +739,7 @@ data PDecl' t
                FC                                 -- precise location of interface
                [t]                                -- parameters
                [(Name, t)]                        -- Extra names in scope in the body
-               t                                  -- full instance type
+               t                                  -- full implementation type
                (Maybe Name)                       -- explicit name
                [PDecl' t]
    | PDSL     Name (DSL' t) -- ^ DSL declaration
@@ -1403,7 +1403,7 @@ data InterfaceInfo = CI {
   , interface_defaults                 :: [(Name, (Name, PDecl))]         -- ^ method name -> default impl
   , interface_default_super_interfaces :: [PDecl]
   , interface_params                   :: [Name]
-  , interface_instances                :: [(Name, Bool)] -- ^ the Bool is whether to include in instance search, so named instances are excluded
+  , interface_implementations          :: [(Name, Bool)] -- ^ the Bool is whether to include in implementation search, so named implementations are excluded
   , interface_determiners              :: [Int]
   } deriving (Show, Generic)
 {-!
@@ -1514,7 +1514,7 @@ updateSyntaxRules rules (SyntaxRules sr) = SyntaxRules newRules
         EQ -> ruleSort ss1 ss2
         r -> r
 
-    -- Better than creating Ord instance for SSymbol since
+    -- Better than creating Ord implementation for SSymbol since
     -- in general this ordering does not really make sense.
     symCompare (Keyword n1) (Keyword n2)        = compare n1 n2
     symCompare (Keyword _) _                    = LT
@@ -1694,7 +1694,7 @@ piBindp p ((n, ty):ns) t = PPi p n NoFC ty (piBindp p ns t)
 
 -- Pretty-printing declarations and terms
 
--- These "show" instances render to an absurdly wide screen because inserted line breaks
+-- These "show" implementations render to an absurdly wide screen because inserted line breaks
 -- could interfere with interactive editing, which calls "show".
 
 instance Show PTerm where
@@ -1761,7 +1761,7 @@ prettyImp :: PPOption -- ^ pretty printing options
           -> Doc OutputAnnotation
 prettyImp impl = pprintPTerm impl [] [] []
 
--- | Serialise something to base64 using its Binary instance.
+-- | Serialise something to base64 using its Binary implementation.
 
 -- | Do the right thing for rendering a term in an IState
 prettyIst ::  IState -> PTerm -> Doc OutputAnnotation

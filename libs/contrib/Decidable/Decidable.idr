@@ -9,7 +9,7 @@ import Data.Fun
 -- Interface for decidable n-ary Relations
 --------------------------------------------------------------------------------
 
---  Note: Instance resolution for Decidable is likely to not work in the REPL
+--  Note: Implementation resolution for Decidable is likely to not work in the REPL
 --        at the moment.
 interface Decidable (ts : Vect k Type) (p : Rel ts) where
   total decide : liftRel ts p Dec

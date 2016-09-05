@@ -130,7 +130,7 @@ Some tactics may *fail*.
 For example, ``intro`` will fail if the focused hole does not have a function type, ``solve`` will fail if the current hole does not contain a guess, and ``fill`` will fail if the term to be filled in has the wrong type.
 Scripts can also fail explicitly using the ``fail`` tactic.
 
-To account for failure, there is an ``Alternative`` instance for ``Elab``.
+To account for failure, there is an ``Alternative`` implementation for ``Elab``.
 The ``<|>`` operator first tries the script to its left.
 If that script fails, any changes that it made to the state are undone and the right argument is executed.
 If the first argument succeeds, then the second argument is not executed.

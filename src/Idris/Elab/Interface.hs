@@ -62,19 +62,19 @@ import Util.Pretty(pretty, text)
 data MArgTy = IA Name | EA Name | CA deriving Show
 
 elabInterface :: ElabInfo
-          -> SyntaxInfo
-          -> Docstring (Either Err PTerm)
-          -> FC
-          -> [(Name, PTerm)]
-          -> Name
-          -> FC
-          -> [(Name, FC, PTerm)]
-          -> [(Name, Docstring (Either Err PTerm))]
-          -> [(Name, FC)]                 -- ^ determining params
-          -> [PDecl]                      -- ^ interface body
-          -> Maybe (Name, FC)             -- ^ instance ctor name and location
-          -> Docstring (Either Err PTerm) -- ^ instance ctor docs
-          -> Idris ()
+              -> SyntaxInfo
+              -> Docstring (Either Err PTerm)
+              -> FC
+              -> [(Name, PTerm)]
+              -> Name
+              -> FC
+              -> [(Name, FC, PTerm)]
+              -> [(Name, Docstring (Either Err PTerm))]
+              -> [(Name, FC)]                 -- ^ determining params
+              -> [PDecl]                      -- ^ interface body
+              -> Maybe (Name, FC)             -- ^ implementation ctor name and location
+              -> Docstring (Either Err PTerm) -- ^ implementation ctor docs
+              -> Idris ()
 elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     = do let cn = fromMaybe (SN (ImplementationCtorN tn)) (fst <$> mcn)
          let tty = pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
@@ -105,7 +105,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
               = unzip (map (\ (x, y, z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
 
-         -- build instance constructor type
+         -- build implementation constructor type
          let cty = impbind [(pn, pt) | (pn, _, pt) <- ps] $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
