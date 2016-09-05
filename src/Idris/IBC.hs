@@ -567,7 +567,7 @@ processRecords ar = do
 processInstances :: Archive -> Idris ()
 processInstances ar = do
     cs <- getEntry [] "ibc_implementations" ar
-    mapM_ (\ (i, res, n, ins) -> addInstance i res n ins) cs
+    mapM_ (\ (i, res, n, ins) -> addImplementation i res n ins) cs
 
 processDSLs :: Archive -> Idris ()
 processDSLs ar = do
@@ -2141,7 +2141,7 @@ instance (Binary t) => Binary (PTactic' t) where
                                         put x1
                                         put x2
                                         put x3
-                TCInstance -> putWord8 31
+                TCImplementation -> putWord8 31
                 GoalType x1 x2 -> do putWord8 32
                                      put x1
                                      put x2
@@ -2222,7 +2222,7 @@ instance (Binary t) => Binary (PTactic' t) where
                             x2 <- get
                             x3 <- get
                             return (LetTacTy x1 x2 x3)
-                   31 -> return TCInstance
+                   31 -> return TCImplementation
                    32 -> do x1 <- get
                             x2 <- get
                             return (GoalType x1 x2)

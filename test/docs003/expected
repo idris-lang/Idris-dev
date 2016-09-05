@@ -28,11 +28,11 @@ Named implementations:
 Child interfaces:
     Traversable f
     Applicative f
-Named instance:
+Named implementation:
     docs003.mine : Functor List
         
         
-Named instance:
+Named implementation:
     docs003.another : Functor List
         More functors!
         

@@ -938,12 +938,12 @@ interface_ syn = do (doc, argDocs, acc)
 
 @
   Instance ::=
-    DocComment_t? 'instance' InstanceName? ConstraintList? Name SimpleExpr* InstanceBlock?
+    DocComment_t? 'instance' ImplementationName? ConstraintList? Name SimpleExpr* InstanceBlock?
     ;
 @
 
 @
-InstanceName ::= '[' Name ']';
+ImplementationName ::= '[' Name ']';
 @
 -}
 instance_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]

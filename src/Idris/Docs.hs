@@ -265,7 +265,7 @@ pprintDocs ist (RecordDoc n doc ctor projs params)
     prettyParam (n,pt) = prettyName True False params' n <+> text ":" <+> pprintPTerm ppo params' [] infixes pt
 
 pprintDocs ist (NamedInstanceDoc _cls doc)
-   = nest 4 (text "Named instance:" <$> pprintFDWithoutTotality ist True doc)
+   = nest 4 (text "Named implementation:" <$> pprintFDWithoutTotality ist True doc)
 
 pprintDocs ist (ModDoc mod docs)
    = nest 4 $ text "Module" <+> text (concat (intersperse "." mod)) <> colon <$>
