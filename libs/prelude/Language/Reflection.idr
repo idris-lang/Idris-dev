@@ -74,6 +74,14 @@ mutual
                    | MetaN TTName TTName
   %name SpecialName sn, sn'
 
+InstanceN : TTName -> (List String) -> SpecialName
+InstanceN = ImplementationN
+%deprecate InstanceN "`InstanceN` is deprecated, Please use `ImplementationN` instead."
+
+InstanceCtorN : TTName ->  SpecialName
+InstanceCtorN = ImplementationCtorN
+%deprecate InstanceCtorN "`InstanceCtorN` is deprecated, Please use `ImplementationCtorN` instead."
+
 -- Rather  than  implement  one-off  private functions,  we  make  the
 -- disjointness of  the constructors available to  all Idris programs,
 -- at the cost of a bit of scrolling here.

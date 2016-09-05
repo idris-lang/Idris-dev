@@ -410,6 +410,9 @@ simpleExpr syn =
         <|> do (x, FC f (l, c) end) <- try (lchar '?' *> name)
                return (PMetavar (FC f (l, c-1) end) x)
         <|> do lchar '%'; fc <- getFC; reserved "implementation"; return (PResolveTC fc)
+        <|> do lchar '%'; fc <- getFC; reserved "instance"
+               parserWarning fc Nothing $ Msg "The use of %instance is deprecated, use %implementation instead."
+               return (PResolveTC fc)
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
@@ -1467,7 +1470,7 @@ verbatimStringLiteral = token $ do (FC f start _) <- getFC
 
 @
 Static ::=
-  '[' static ']'
+  '%static'
 ;
 @
 -}

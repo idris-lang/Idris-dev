@@ -974,9 +974,9 @@ implementation_ kwopt syn
                              <?> "implementation name"
         implementationKeyword :: IdrisParser ()
         implementationKeyword = reservedHL "implementation"
-                      <|> do reservedHL "instance"
-                             fc <- getFC
-                             parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
+                         <|> do reservedHL "instance"
+                                fc <- getFC
+                                parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
 
         implementationUsing :: IdrisParser [Name]
         implementationUsing = do reservedHL "using"

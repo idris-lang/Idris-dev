@@ -560,6 +560,11 @@ namespace Tactics
   addImplementation : (ifaceName, implName : TTName) -> Elab ()
   addImplementation ifaceName implName = Prim__AddImplementation ifaceName implName
 
+  export
+  addInstance : (ifaceName, implName : TTName) -> Elab ()
+  addInstance = addImplementation
+  %deprecate addInstance "`addInstance` is deprecated, Please use `addImplementation` instead."
+
   ||| Determine whether a name denotes an interface.
   |||
   ||| @ name a name that might denote an interface.
