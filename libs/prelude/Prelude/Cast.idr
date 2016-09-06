@@ -5,7 +5,7 @@ import public Builtins
 
 %access public export
 
-||| Interface for transforming an implementation of a data type to another type.
+||| Interface for transforming an instance of a data type to another type.
 interface Cast from to where
     ||| Perform a cast operation.
     |||

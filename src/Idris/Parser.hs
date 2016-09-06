@@ -219,7 +219,7 @@ internalDecl syn
                      <|> fail "End of readable input"
   where declBody :: Bool -> IdrisParser [PDecl]
         declBody b =
-                   try (implementation_ True syn)
+                   try (implementation True syn)
                    <|> try (openInterface syn)
                    <|> declBody' b
                    <|> using_ syn
@@ -342,13 +342,13 @@ declExtension syn ns rules =
                    s
     updateNs ns (PInterface docs s fc cs cn fc' ps pdocs pdets ds cname cdocs)
          = PInterface docs s fc cs (updateB ns cn) fc' ps pdocs pdets
-                  (map (updateNs ns) ds)
-                  (updateRecCon ns cname)
-                  cdocs
+                      (map (updateNs ns) ds)
+                      (updateRecCon ns cname)
+                      cdocs
     updateNs ns (PImplementation docs pdocs s fc cs pnames acc opts cn fc' ps pextra ity ni ds)
          = PImplementation docs pdocs s fc cs pnames acc opts (updateB ns cn) fc'
-                     ps pextra ity (fmap (updateB ns) ni)
-                            (map (updateNs ns) ds)
+                           ps pextra ity (fmap (updateB ns) ni)
+                           (map (updateNs ns) ds)
     updateNs ns (PMutual fc ds) = PMutual fc (map (updateNs ns) ds)
     updateNs ns (PProvider docs s fc fc' pw n)
         = PProvider docs s fc fc' pw (updateB ns n)
@@ -871,7 +871,7 @@ interfaceBlock syn = do reservedHL "where"
                         ist <- get
                         let cd' = annotate syn ist cd
 
-                        ds <- many (notEndBlock >> try (implementation_ True syn)
+                        ds <- many (notEndBlock >> try (implementation True syn)
                                                    <|> do x <- data_ syn
                                                           return [x]
                                                    <|> fnDecl syn)
@@ -946,27 +946,27 @@ interface_ syn = do (doc, argDocs, acc)
 ImplementationName ::= '[' Name ']';
 @
 -}
-implementation_ :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
-implementation_ kwopt syn
-              = do ist <- get
-                   (doc, argDocs) <- docstring syn
-                   (opts, acc) <- fnOpts
-                   if kwopt then optional implementationKeyword
-                            else do implementationKeyword
-                                    return (Just ())
+implementation :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
+implementation kwopt syn
+                   = do ist <- get
+                        (doc, argDocs) <- docstring syn
+                        (opts, acc) <- fnOpts
+                        if kwopt then optional implementationKeyword
+                                 else do implementationKeyword
+                                         return (Just ())
 
-                   fc <- getFC
-                   en <- optional implementationName
-                   cs <- constraintList syn
-                   let cs' = [(c, ty) | (c, _, ty) <- cs]
-                   (cn, cnfc) <- fnName
-                   args <- many (simpleExpr syn)
-                   let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
-                   let t = bindList (PPi constraint) cs sc
-                   pnames <- implementationUsing
-                   ds <- implementationBlock syn
-                   return [PImplementation doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
-                 <?> "implementation declaration"
+                        fc <- getFC
+                        en <- optional implementationName
+                        cs <- constraintList syn
+                        let cs' = [(c, ty) | (c, _, ty) <- cs]
+                        (cn, cnfc) <- fnName
+                        args <- many (simpleExpr syn)
+                        let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
+                        let t = bindList (PPi constraint) cs sc
+                        pnames <- implementationUsing
+                        ds <- implementationBlock syn
+                        return [PImplementation doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
+                      <?> "implementation declaration"
   where implementationName :: IdrisParser Name
         implementationName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
                                 let n = expandNS syn n_in

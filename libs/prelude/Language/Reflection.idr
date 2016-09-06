@@ -404,6 +404,11 @@ mutual
   withNInj Refl = (Refl, Refl)
 
   private
+  instanceNInj : (InstanceN n xs = InstanceN n' ys) -> (n = n', xs = ys)
+  instanceNInj Refl = (Refl, Refl)
+  %deprecate instanceNInj "`instanceNInj` is deprecated, Please use `implementationNInj` instead."
+
+  private
   implementationNInj : (ImplementationN n xs = ImplementationN n' ys) -> (n = n', xs = ys)
   implementationNInj Refl = (Refl, Refl)
   

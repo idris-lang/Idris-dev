@@ -1368,21 +1368,21 @@ expandParamsD rhs ist dec ps ns (PImplementation doc argDocs info f cs pnames ac
                     Just n -> if n `elem` ns then Just (dec n) else Just n
                     Nothing -> Nothing in
      PImplementation doc argDocs info f
-           (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
-           pnames acc opts n
-           nfc
-           (map (expandParams dec ps ns []) params)
-           (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) pextra)
-           (expandParams dec ps ns [] ty)
-           cn'
-           (map (expandParamsD True ist dec ps ns) decls)
+                     (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
+                     pnames acc opts n
+                     nfc
+                     (map (expandParams dec ps ns []) params)
+                     (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) pextra)
+                     (expandParams dec ps ns [] ty)
+                     cn'
+                     (map (expandParamsD True ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns d = d
 
 mapsnd f (x, t) = (x, f t)
 
 expandImplementationScope ist dec ps ns (PImplementation doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
     = PImplementation doc argDocs info f cs pnames acc opts n nfc params (ps ++ pextra)
-                ty cn decls
+                      ty cn decls
 expandImplementationScope ist dec ps ns d = d
 
 -- | Calculate a priority for a type, for deciding elaboration order

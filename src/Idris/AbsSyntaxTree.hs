@@ -914,12 +914,12 @@ mapPDeclFC f g (PInterface doc syn fc constrs n nfc params paramDocs det body ct
            ctorDoc
 mapPDeclFC f g (PImplementation doc paramDocs syn fc constrs pnames cn acc opts cnfc params pextra implTy implN body) =
     PImplementation doc paramDocs syn (f fc)
-              (map (\(constrN, constrT) -> (constrN, mapPTermFC f g constrT)) constrs)
-              pnames cn acc opts (g cnfc) (map (mapPTermFC f g) params)
-              (map (\(en, et) -> (en, mapPTermFC f g et)) pextra)
-              (mapPTermFC f g implTy)
-              implN
-              (map (mapPDeclFC f g) body)
+                    (map (\(constrN, constrT) -> (constrN, mapPTermFC f g constrT)) constrs)
+                    pnames cn acc opts (g cnfc) (map (mapPTermFC f g) params)
+                    (map (\(en, et) -> (en, mapPTermFC f g et)) pextra)
+                    (mapPTermFC f g implTy)
+                    implN
+                    (map (mapPDeclFC f g) body)
 mapPDeclFC f g (PDSL n dsl) = PDSL n (fmap (mapPTermFC f g) dsl)
 mapPDeclFC f g (PSyntax fc syn) = PSyntax (f fc) $
                                     case syn of

@@ -504,10 +504,10 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
       parallel (Sided l r) (Sided ls rs) = map (flip Sided r) ls ++ map (Sided l) rs
       implementationMods :: Interfaces -> [( Interfaces , AsymMods, [Name] )]
       implementationMods interfaces = [ ( newInterfaceArgs, mempty { interfaceApp = 1 }, newHoles )
-                      | (_, ty) <- interfaces
-                      , impl <- possInterfaceImplementations usedns ty
-                      , newInterfaceArgs <- maybeToList $ interfaceUnify interfaceInfo ctxt ty impl
-                      , let newHoles = map fst newInterfaceArgs ]
+                                      | (_, ty) <- interfaces
+                                      , impl <- possInterfaceImplementations usedns ty
+                                      , newInterfaceArgs <- maybeToList $ interfaceUnify interfaceInfo ctxt ty impl
+                                      , let newHoles = map fst newInterfaceArgs ]
 
 
   -- Stage 1 - match arguments
