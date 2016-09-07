@@ -22,47 +22,34 @@ processShowOptions opts = runIO $ do
   when (ShowLibdir `elem` opts)       $ showExitIdrisLibDir
   when (ShowPkgs `elem` opts)         $ showExitIdrisInstalledPackages
 
+check :: [Opt] -> (Opt -> Maybe a) -> ([a] -> Idris ()) -> Idris ()
+check opts extractOpts action = do
+  case opt extractOpts opts of
+    [] -> return ()
+    fs -> do action fs
+             runIO exitSuccess
+
 processClientOptions :: [Opt] -> Idris ()
-processClientOptions opts =
-  case opt getClient opts of
-     []    -> return ()
-     (c:_) -> do setVerbose False
-                 setQuiet True
-                 runIO $ do
-                   runClient (getPort opts) c
-                   exitSuccess
+processClientOptions opts = check opts getClient $ \fs -> case fs of
+  (c : _) -> do
+    setVerbose False
+    setQuiet True
+    runIO $ runClient (getPort opts) c
 
 processPackageOptions :: [Opt] -> Idris ()
 processPackageOptions opts = do
-  case opt getPkgCheck opts of
-     [] -> return ()
-     fs -> runIO $ do
-             mapM_ (checkPkg opts (WarnOnly `elem` opts) True) fs
-             exitSuccess
-  case opt getPkgClean opts of
-     [] -> return ()
-     fs -> runIO $ do
-             mapM_ (cleanPkg opts) fs
-             exitSuccess
-  case opt getPkgMkDoc opts of
-     [] -> return ()
-     fs -> runIO $ do
-             mapM_ (documentPkg opts) fs
-             exitSuccess
-  case opt getPkgTest opts of
-     [] -> return ()
-     fs -> runIO $ do
-             mapM_ (testPkg opts) fs
-             exitSuccess
-  case opt getPkg opts of
-     [] -> return ()
-     fs -> runIO $ do
-             mapM_ (buildPkg opts (WarnOnly `elem` opts)) fs
-             exitSuccess
-  case opt getPkgREPL opts of
-    []  -> return ()
-    [f] -> do replPkg opts f
-              runIO exitSuccess
+  check opts getPkgCheck $ \fs -> runIO $ do
+    mapM_ (checkPkg opts (WarnOnly `elem` opts) True) fs
+  check opts getPkgClean $ \fs -> runIO $ do
+    mapM_ (cleanPkg opts) fs
+  check opts getPkgMkDoc $ \fs -> runIO $ do
+    mapM_ (documentPkg opts) fs
+  check opts getPkgTest $ \fs -> runIO $ do
+    mapM_ (testPkg opts) fs
+  check opts getPkg $ \fs -> runIO $ do
+    mapM_ (buildPkg opts (WarnOnly `elem` opts)) fs
+  check opts getPkgREPL $ \fs -> case fs of
+    [f] -> replPkg opts f
     _   -> ifail "Too many packages"
 
 runIdris :: [Opt] -> Idris ()
