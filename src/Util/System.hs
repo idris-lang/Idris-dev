@@ -37,7 +37,8 @@ import System.IO.Error
 
 #ifdef FREESTANDING
 import Tools_idris
-import System.FilePath (isAbsolute, dropFileName)
+import Data.List (intercalate)
+import System.FilePath (isAbsolute, dropFileName, searchPathSeparator)
 import System.Directory (doesDirectoryExist)
 import System.Environment (getEnv, setEnv, getExecutablePath)
 #endif
@@ -109,11 +110,10 @@ setupBundledCC = when hasBundledToolchain
                                     if absolute
                                        then tcDir
                                        else dropFileName exePath ++ tcDir
-                        let pathSep = if isWindows then ";" else ":"
                         present <- doesDirectoryExist target
-                        when present
-                            $ do newPath <- return $ target ++ pathSep ++ path
-                                 setEnv "PATH" newPath
+                        when present $ do
+                          newPath <- return $ intercalate [searchPathSeparator] [target, path]
+                          setEnv "PATH" newPath
 #else
 setupBundledCC = return ()
 #endif
