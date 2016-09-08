@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} $@ --quiet --port none test032.idr < input
+
+${IDRIS:-idris} $@ --quiet --port none --indent-with 8 interactive001.idr < input
+
 rm -f *.ibc

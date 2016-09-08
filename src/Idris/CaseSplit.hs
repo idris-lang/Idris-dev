@@ -15,8 +15,8 @@ resolve other dependencies.
 Finally, merge the generated patterns with the original, by matching.
 Always take the "more specific" argument when there is a discrepancy, i.e.
 names over '_', patterns over names, etc.
-
 -}
+
 {-# LANGUAGE PatternGuards #-}
 
 module Idris.CaseSplit(
@@ -28,10 +28,8 @@ module Idris.CaseSplit(
   ) where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree (IState, Idris, PTerm)
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.Typecheck
 import Idris.Delaborate
 import Idris.Elab.Term
 import Idris.Elab.Value
@@ -39,18 +37,11 @@ import Idris.ElabDecls
 import Idris.Error
 import Idris.Output
 import Idris.Parser
-import Idris.Parser.Helpers
 
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Char
 import Data.List (isPrefixOf, isSuffixOf)
-import Data.Maybe
-import Debug.Trace
-import Text.Parser.Char (anyChar)
-import Text.Parser.Combinators
-import Text.Trifecta (Result(..), parseString)
-import Text.Trifecta.Delta
 
 -- | Given a variable to split, and a term application, return a list
 -- of variable updates, paired with a flag to say whether the given
@@ -109,11 +100,11 @@ data MergeState = MS { namemap :: [(Name, Name)],
                        explicit :: [Name],
                        updates :: [(Name, PTerm)] }
 
-addUpdate :: Name -> Idris.AbsSyntaxTree.PTerm -> State MergeState ()
+addUpdate :: Name -> PTerm -> State MergeState ()
 addUpdate n tm = do ms <- get
                     put (ms { updates = ((n, stripNS tm) : updates ms) } )
 
-inventName :: Idris.AbsSyntaxTree.IState -> Maybe Name -> Name -> State MergeState Name
+inventName :: IState -> Maybe Name -> Name -> State MergeState Name
 inventName ist ty n =
     do ms <- get
        let supp = case ty of
@@ -142,7 +133,7 @@ mkSupply ns = mkSupply' ns (map nextName ns)
 varlist :: [Name]
 varlist = map (sUN . (:[])) "xyzwstuv" -- EB's personal preference :)
 
-stripNS :: Idris.AbsSyntaxTree.PTerm -> Idris.AbsSyntaxTree.PTerm
+stripNS :: PTerm -> PTerm
 stripNS tm = mapPT dens tm where
     dens (PRef fc hls n) = PRef fc hls (nsroot n)
     dens t = t
@@ -395,17 +386,19 @@ getClause :: Int      -- ^ line number that the type is declared on
           -> Name     -- ^ User given name
           -> FilePath -- ^ Source file name
           -> Idris String
-getClause l fn un fp
+getClause l _ un fp
     = do i <- getIState
+         indentClause <- getIndentClause
+--         runIO . traceIO $ "indentClause = " ++ show indentClause
          case lookupCtxt un (idris_interfaces i) of
-              [c] -> return (mkInterfaceBodies i (interface_methods c))
+              [c] -> return (mkInterfaceBodies indentClause i (interface_methods c))
               _ -> do ty_in <- getInternalApp fp l
                       let ty = case ty_in of
-                                    PTyped n t -> t
+                                    PTyped _ t -> t
                                     x -> x
                       ist <- get
-                      let ap = mkApp ist ty []
-                      return (showLHSName un ++ " " ++ ap ++ "= ?"
+                      let app = mkApp ist ty []
+                      return (showLHSName un ++ " " ++ app ++ "= ?"
                                       ++ showRHSName un ++ "_rhs")
    where mkApp :: IState -> PTerm -> [Name] -> String
          mkApp i (PPi (Exp _ _ False _) (MN _ _) _ ty sc) used
@@ -431,11 +424,11 @@ getClause l fn un fp
          getNameFrom i used _ = uniqueNameFrom (mkSupply [sUN "x", sUN "y",
                                                           sUN "z"]) used
 
-         -- write method declarations, indent with 4 spaces
-         mkInterfaceBodies :: IState -> [(Name, (Bool, FnOpts, PTerm))] -> String
-         mkInterfaceBodies i ns
+         -- write method declarations, indent with `indent` spaces.
+         mkInterfaceBodies :: Int -> IState -> [(Name, (Bool, FnOpts, PTerm))] -> String
+         mkInterfaceBodies indent i ns
              = showSep "\n"
-                  (zipWith (\(n, (_, _, ty)) m -> "    " ++
+                  (zipWith (\(n, (_, _, ty)) m -> replicate indent ' ' ++
                             def (show (nsroot n)) ++ " "
                                  ++ mkApp i ty []
                                  ++ "= ?"
@@ -460,9 +453,9 @@ getProofClause l fn fp
 -- Purely syntactic - turn a pattern match clause into a with and a new
 -- match clause
 
-mkWith :: String -> Name -> String
-mkWith str n = let str' = replaceRHS str "with (_)"
-               in str' ++ "\n" ++ newpat str
+mkWith :: String -> Name -> Int -> String
+mkWith str n indent = let str' = replaceRHS str "with (_)"
+                      in str' ++ "\n" ++ newpat str
 
    where replaceRHS [] str = str
          replaceRHS ('?':'=': rest) str = str
@@ -471,8 +464,7 @@ mkWith str n = let str' = replaceRHS str "with (_)"
          replaceRHS (x : rest) str = x : replaceRHS rest str
 
          newpat ('>':patstr) = '>':newpat patstr
-         newpat patstr =
-           "  " ++
+         newpat patstr = replicate indent ' ' ++
            replaceRHS patstr "| with_pat = ?" ++ showRHSName n ++ "_rhs"
 
 -- Replace _ with names in missing clauses

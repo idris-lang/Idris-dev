@@ -108,3 +108,4 @@ instance NFData Using
 instance NFData SyntaxInfo
 instance NFData DefaultTotality
 instance NFData IState
+instance NFData InteractiveOpts

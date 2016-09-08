@@ -5,7 +5,9 @@ Description : A parser for the CmdOptions for the Idris executable.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE Arrows #-}
+
 module Idris.CmdOptions
   (
     module Idris.CmdOptions
@@ -19,7 +21,6 @@ import Idris.AbsSyntax (getClient, getIBCSubDir, getPkg, getPkgCheck,
                         getPort, opt)
 import Idris.AbsSyntaxTree
 import Idris.Info (getIdrisVersion)
--- import Idris.REPL
 import IRTS.CodegenCommon
 
 import Control.Monad.Trans (lift)
@@ -33,8 +34,10 @@ import Data.Monoid ((<>))
 import Options.Applicative
 import Options.Applicative.Arrows
 import Options.Applicative.Types (ReadM(..))
-import Safe (lastMay)
+
 import Text.ParserCombinators.ReadP hiding (many, option)
+
+import Safe (lastMay)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 runArgParser :: IO [Opt]
@@ -97,14 +100,15 @@ parseFlags = many $
   <|> flag' Idemode       (long "ide-mode"        <> help "Run the Idris REPL with machine-readable syntax")
   <|> flag' IdemodeSocket (long "ide-mode-socket" <> help "Choose a socket for IDE mode to listen on")
 
-  <|> (Client <$> strOption (long "client"))
+  -- Client flags
+  <|> Client <$> strOption (long "client")
 
   -- Logging Flags
-  <|> (OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level"))
-  <|> (OLogCats <$> option (str >>= parseLogCats)
+  <|> OLogging <$> option auto (long "log" <> metavar "LEVEL" <> help "Debugging log level")
+  <|> OLogCats <$> option (str >>= parseLogCats)
                            (long "logging-categories"
                          <> metavar "CATS"
-                         <> help "Colon separated logging categories. Use --listlogcats to see list."))
+                         <> help "Colon separated logging categories. Use --listlogcats to see list.")
 
   -- Turn off things
   <|> flag' NoBasePkgs (long "nobasepkgs" <> help "Do not use the given base package")
@@ -113,7 +117,7 @@ parseFlags = many $
 
   <|> flag' NoREPL     (long "check"      <> help "Typecheck only, don't start the REPL")
 
-  <|> (Output <$> strOption (short 'o' <> long "output" <> metavar "FILE" <> help "Specify output file"))
+  <|> Output <$> strOption (short 'o' <> long "output" <> metavar "FILE" <> help "Specify output file")
 
   --   <|> flag' TypeCase (long "typecase")
   <|> flag' Interface      (long "interface"   <> help "Generate interface files from ExportLists")
@@ -138,33 +142,41 @@ parseFlags = many $
   <|> flag' (Verbose 2) (long "V1" <> help "Louder verbosity")
   <|> flag' (Verbose 1) (short 'V' <> long "V0" <>long "verbose" <> help "Loud verbosity")
 
-  <|> (IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory"))
-  <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))
-  <|> (SourceDir <$> strOption (long "sourcepath" <> help "Add directory to the list of source search paths"))
+  <|> IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory")
+  <|> ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths")
+  <|> SourceDir <$> strOption (long "sourcepath" <> help "Add directory to the list of source search paths")
 
   <|> flag' WarnOnly (long "warn")
 
-  <|> (Pkg  <$> strOption (short 'p' <> long "package" <> help "Add package as a dependency"))
-  <|> (Port <$> option portReader (long "port" <> metavar "PORT" <> help "REPL TCP port - pass \"none\" to not bind any port"))
+  <|> Pkg  <$> strOption (short 'p' <> long "package" <> help "Add package as a dependency")
+  <|> Port <$> option portReader (long "port" <> metavar "PORT" <> help "REPL TCP port - pass \"none\" to not bind any port")
 
   -- Package commands
-  <|> (PkgBuild      <$> strOption (long "build"      <> metavar "IPKG" <> help "Build package"))
-  <|> (PkgInstall    <$> strOption (long "install"    <> metavar "IPKG" <> help "Install package"))
-  <|> (PkgREPL       <$> strOption (long "repl"       <> metavar "IPKG" <> help "Launch REPL, only for executables"))
-  <|> (PkgClean      <$> strOption (long "clean"      <> metavar "IPKG" <> help "Clean package"))
+  <|> PkgBuild   <$> strOption (long "build"    <> metavar "IPKG" <> help "Build package")
+  <|> PkgInstall <$> strOption (long "install"  <> metavar "IPKG" <> help "Install package")
+  <|> PkgREPL    <$> strOption (long "repl"     <> metavar "IPKG" <> help "Launch REPL, only for executables")
+  <|> PkgClean   <$> strOption (long "clean"    <> metavar "IPKG" <> help "Clean package")
   <|> (PkgDocBuild   <$> strOption (long "mkdoc"      <> metavar "IPKG" <> help "Generate IdrisDoc for package"))
-  <|> (PkgDocInstall <$> strOption (long "installdoc" <> metavar "IPKG" <> help "Install IdrisDoc for package"))
-  <|> (PkgCheck      <$> strOption (long "checkpkg"   <> metavar "IPKG" <> help "Check package only"))
-  <|> (PkgTest       <$> strOption (long "testpkg"    <> metavar "IPKG" <> help "Run tests for package"))
+  <|> PkgDocInstall <$> strOption (long "installdoc" <> metavar "IPKG" <> help "Install IdrisDoc for package")
+  <|> PkgCheck   <$> strOption (long "checkpkg" <> metavar "IPKG" <> help "Check package only")
+  <|> PkgTest    <$> strOption (long "testpkg"  <> metavar "IPKG" <> help "Run tests for package")
+
+  -- Interactive Editing Flags
+  <|> IndentWith    <$> option auto (long "indent-with"
+                                           <> metavar "INDENT"
+                                           <> help "Indentation to use with :makewith (default 2)")
+  <|> IndentClause  <$> option auto (long "indent-clause"
+                                           <> metavar "INDENT"
+                                           <> help "Indentation to use with :addclause (default 2)")
 
   -- Misc options
-  <|> (BCAsm <$> strOption (long "bytecode"))
+  <|> BCAsm <$> strOption (long "bytecode")
 
   <|> flag' (OutputTy Raw)          (short 'S' <> long "codegenonly" <> help "Do no further compilation of code generator output")
   <|> flag' (OutputTy Object)       (short 'c' <> long "compileonly" <> help "Compile to object files rather than an executable")
 
-  <|> (DumpDefun <$> strOption (long "dumpdefuns"))
-  <|> (DumpCases <$> strOption (long "dumpcases"))
+  <|> DumpDefun <$> strOption (long "dumpdefuns")
+  <|> DumpCases <$> strOption (long "dumpcases")
 
   <|> (UseCodegen . parseCodegen) <$> strOption (long "codegen"
                                               <> metavar "TARGET"
@@ -174,14 +186,17 @@ parseFlags = many $
                                                  <> metavar "TARGET"
                                                  <> help "Pass the name of the code generator. This option is for codegens that take JSON formatted IR."))
 
-  <|> (CodegenArgs <$> strOption (long "cg-opt"
-                               <> metavar "ARG"
-                               <> help "Arguments to pass to code generator"))
+  <|> CodegenArgs <$> strOption (long "cg-opt"
+                                 <> metavar "ARG"
+                                 <> help "Arguments to pass to code generator")
 
-  <|> (EvalExpr <$> strOption (long "eval" <> short 'e' <> metavar "EXPR" <> help "Evaluate an expression without loading the REPL"))
+  <|> EvalExpr <$> strOption (long "eval"
+                              <> short 'e'
+                              <> metavar "EXPR"
+                              <> help "Evaluate an expression without loading the REPL")
 
   <|> flag' (InterpretScript "Main.main") (long "execute" <> help "Execute as idris")
-  <|> (InterpretScript <$> strOption      (long "exec" <> metavar "EXPR" <> help "Execute as idris"))
+  <|> InterpretScript <$> strOption      (long "exec" <> metavar "EXPR" <> help "Execute as idris")
 
   <|> ((Extension . getExt) <$> strOption (long "extension"
                                         <> short 'X'
@@ -197,10 +212,10 @@ parseFlags = many $
   <|> flag' (AddOpt PETransform) (long "partial-eval")
   <|> flag' (RemoveOpt PETransform) (long "no-partial-eval" <> help "Switch off partial evaluation, mainly for debugging purposes")
 
-  <|> (OptLevel <$> option auto (short 'O' <> long "level"))
+  <|> OptLevel <$> option auto (short 'O' <> long "level")
 
-  <|> (TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "If supported the codegen will target the named triple."))
-  <|> (TargetCPU    <$> strOption (long "cpu"    <> metavar "CPU"    <> help "If supported the codegen will target the named CPU e.g. corei7 or cortex-m3"))
+  <|> TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "If supported the codegen will target the named triple.")
+  <|> TargetCPU    <$> strOption (long "cpu"    <> metavar "CPU"    <> help "If supported the codegen will target the named CPU e.g. corei7 or cortex-m3")
 
   -- Colour Options
   <|> flag' (ColourREPL True)  (long "colour"   <> long "color"   <> help "Force coloured output")
