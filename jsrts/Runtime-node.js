@@ -1,7 +1,7 @@
 var i$putStr = (function() {
   var fs = require('fs');
   return function(s) {
-    fs.write(1,s);
+    fs.writeSync(1,s);
   };
 })();
 
