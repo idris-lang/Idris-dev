@@ -368,10 +368,24 @@ toList = foldr (::) []
 -- Scans
 --------------------------------------------------------------------------------
 
+||| The scanl function is similar to foldl, but returns all the intermediate
+||| accumulator states in the form of a list.
+|||
+|||````idris example
+|||scanl (+) 0 [1,2,3,4]
+|||````
 scanl : (b -> a -> b) -> b -> List a -> List b
 scanl f q []      = [q]
 scanl f q (x::xs) = q :: scanl f (f q x) xs
 
+||| The scanl1 function is a variant of scanl that doesn't require an explicit 
+||| starting value.
+||| It assumes the first element of the list to be the starting value and then
+||| starts the fold with the element following it.
+|||
+|||````idris example
+|||scanl1 (+) [1,2,3,4]
+|||````
 scanl1 : (a -> a -> a) -> List a -> List a
 scanl1 _ []      = []
 scanl1 f (x::xs) = scanl f x xs
