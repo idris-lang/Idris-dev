@@ -64,7 +64,10 @@ buildPkg :: [Opt]            -- ^ Command line options
 buildPkg copts warnonly (install, fp) = do
   pkgdesc <- parseDesc fp
   dir <- getCurrentDirectory
-  let idx = PkgIndex (pkgIndex (pkgname pkgdesc))
+  let idx' = pkgIndex $ pkgname pkgdesc
+      idx  = PkgIndex $ case opt getIBCSubDir copts of
+        (ibcsubdir:_) -> ibcsubdir </> idx'
+        []            -> idx'
   oks <- mapM (testLib warnonly (pkgname pkgdesc)) (libdeps pkgdesc)
   when (and oks) $ do
     m_ist <- inPkgDir pkgdesc $ do
