@@ -572,11 +572,12 @@ prepare_apply fn imps =
        env <- get_env
        -- let claims = getArgs ty imps
        -- claims <- mkClaims (normalise ctxt env ty) imps []
+       -- Count arguments to check if we need to normalise the type
+       let usety = if argsOK (finalise ty) imps
+                      then finalise ty
+                      else normalise ctxt env (finalise ty)
        claims <- -- trace (show (fn, imps, ty, map fst env, normalise ctxt env (finalise ty))) $
-                 mkClaims (finalise ty)
-                          (normalise ctxt env (finalise ty))
-                          False
-                          imps [] (map fst env)
+                 mkClaims usety imps [] (map fst env)
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)
@@ -584,14 +585,17 @@ prepare_apply fn imps =
        put (ES (p { holes = h : (reverse (take n hs) ++ drop n hs) }, a) s prev)
        return $! claims
   where
+    argsOK :: Type -> [a] -> Bool
+    argsOK (Bind n (Pi _ _ _) sc) (i : is) = argsOK sc is
+    argsOK _ (i : is) = False
+    argsOK _ [] = True
+
     mkClaims :: Type   -- ^ The type of the operation being applied
-             -> Type   -- ^ Normalised version if we need it
-             -> Bool   -- ^ Using normalised verison
              -> [Bool] -- ^ Whether the arguments are implicit
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi _ t_in _) sc) (Bind _ _ scn) norm (i : is) claims hs =
+    mkClaims (Bind n' (Pi _ t_in _) sc) (i : is) claims hs =
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
@@ -599,12 +603,9 @@ prepare_apply fn imps =
            env <- get_env
            claim n (forgetEnv (map fst env) t)
            when i (movelast n)
-           mkClaims sc' scn norm is ((n', n) : claims) hs
-    -- if we run out of arguments, we need the normalised version...
-    mkClaims t tn@(Bind _ _ sc) False (i : is) cs hs 
-          = mkClaims tn tn True (i : is) cs hs
-    mkClaims t _ _ [] claims _ = return $! (reverse claims)
-    mkClaims _ _ _ _ _ _
+           mkClaims sc' is ((n', n) : claims) hs
+    mkClaims t [] claims _ = return $! (reverse claims)
+    mkClaims _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
                         case lookupTy n ctxt of
