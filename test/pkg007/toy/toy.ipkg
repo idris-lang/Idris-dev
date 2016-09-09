@@ -1,0 +1,7 @@
+package toy
+
+modules = Toy,
+          Toy.Vehicle,
+          Toy.Vehicle.Car
+
+opts = "--quiet"
