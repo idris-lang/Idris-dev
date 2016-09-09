@@ -32,8 +32,13 @@ import Paths_idris
 #endif
 
 overrideDataDirWith :: String -> IO FilePath
-overrideDataDirWith envVar = do envValue <- lookupEnv envVar
-                                maybe getDataDir return envValue
+overrideDataDirWith envVar = do
+  envValue <- lookupEnv envVar
+  case envValue of
+    Nothing -> do
+      ddir <- getDataDir
+      return (ddir </> "libs")
+    Just ddir -> return ddir
 
 getCC :: IO String
 getCC = fromMaybe "gcc" <$> lookupEnv "IDRIS_CC"

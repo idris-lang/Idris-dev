@@ -30,6 +30,8 @@
 
 * `return`, which has been an alias for `pure` for many releases, is now deprecated.
 
+* Idris packages are now installed within a sub-directory `libs` of Idris' data directory, before they were installed in the directory's root.
+
 ## Tool updates
 
 * Idris' documentation system now displays the documentation for auto
