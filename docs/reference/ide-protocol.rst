@@ -46,13 +46,13 @@ This is achieved by the already seen ``:load-file`` command.
 The available commands include:
 
   ``(:load-file FILENAME)``
-    Load the named file
+    Load the named file.
 
   ``(:interpret STRING)``
-    Interpret ``STRING`` at the Idris REPL, returning a highlighted result
+    Interpret ``STRING`` at the Idris REPL, returning a highlighted result.
 
   ``(:repl-completions STRING)``
-    Return the result of tab-completing ``STRING`` as a REPL command
+    Return the result of tab-completing ``STRING`` as a REPL command.
 
   ``(:type-of STRING)``
     Return the type of the name, written with Idris syntax in the ``STRING``.
@@ -88,16 +88,16 @@ The available commands include:
     List the currently-active holes, with their types pretty-printed with ``WIDTH`` columns.
 
   ``(:who-calls NAME)``
-    Get a list of callers of ``NAME``
+    Get a list of callers of ``NAME``.
 
   ``(:calls-who NAME)``
-    Get a list of callees of ``NAME``
+    Get a list of callees of ``NAME``.
 
   ``(:browse-namespace NAMESPACE)``
-    Return the contents of ``NAMESPACE``, like ``:browse`` at the command-line REPL
+    Return the contents of ``NAMESPACE``, like ``:browse`` at the command-line REPL.
 
   ``(:normalise-term TM)``
-    Return a highlighted string consisting of the results of normalising the serialised term ``TM`` (which would previously have been sent as the ``tt-term`` property of a string)
+    Return a highlighted string consisting of the results of normalising the serialised term ``TM`` (which would previously have been sent as the ``tt-term`` property of a string).
 
   ``(:show-term-implicits TM)``
     Return a highlighted string consisting of the results of making all arguments in serialised term ``TM`` (which would previously have been sent as the ``tt-term`` property of a string) explicit.
@@ -109,7 +109,10 @@ The available commands include:
     Return a highlighted string consisting of the the core language term corresponding to serialised term ``TM`` (which would previously have been sent as the ``tt-term`` property of a string).
 
   ``(:print-definition NAME)``
-    Return the definition of ``NAME`` as a highlighted string
+    Return the definition of ``NAME`` as a highlighted string.
+
+  ``(:version UID)``
+    Return the version information of the Idris compiler.
 
 
 
