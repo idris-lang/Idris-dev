@@ -254,8 +254,9 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
       target = datadir $ L.absoluteInstallDirs pkg local copy
 
       installStdLib = do
-            putStrLn $ "Installing libraries in " ++ target
-            makeInstall "libs" target
+        let target' = target </> "libs"
+        putStrLn $ "Installing libraries in " ++ target'
+        makeInstall "libs" target'
 
       installRTS = do
          let target' = target </> "rts"
