@@ -253,36 +253,33 @@ Will there be support for Unicode characters for operators?
 
 There are several reasons why we should not support Unicode operators:
 
--  It's hard to type (this is important if you're using someone else's
-   code, for example). I know various editors have their own input
-   methods, but you have to know what they are.
--  Not every piece of software easily supports it. It doesn't render
-   properly on my phone email client, for example, occasionally messes
-   up the terminal I run my IRC client in, doesn't always render
-   properly in my browser, etc. All of these are things I can fix but to
-   have to do so as a barrier to entry to using a programming language
-   doesn't seem to be a good idea to me.
--  Even if we leave it out of the standard library (which we will in any
-   case!) as soon as people start using it in their library code, others
-   have to deal with it.
--  Too many characters look too similar. We had enough trouble with
-   confusion between 0 and O without worrying about all the different
-   kinds of colons and brackets.
--  There seems to be a tendency to go over the top with use of Unicode.
-   For example, using sharp and flat for delay and force (or is it the
-   other way around?) in Agda seems gratuitous. I really don't want to
-   encourage this sort of thing, when words are often better.
+- It's hard to type (this is important if you're using someone else's code, for
+  example). Various editors have their own input methods, but you have to know
+  what they are.
+- Not every piece of software easily supports it. Rendering issues have been
+  noted on some mobile email clients, terminal-based IRC clients, web browsers,
+  etc. There are ways to resolve these rendering issues but they provide a
+  barrier to entry to using Idris.
+- Even if we leave it out of the standard library (which we will in any case!)
+  as soon as people start using it in their library code, others have to deal
+  with it.
+- Too many characters look too similar. We had enough trouble with confusion
+  between 0 and O without worrying about all the different kinds of colons and
+  brackets.
+- There seems to be a tendency to go over the top with use of Unicode. For
+  example, using sharp and flat for delay and force (or is it the other way
+  around?) in Agda seems gratuitous. We don't want to encourage this sort of
+  thing, when words are often better.
 
-I know that used with care it can make things look pretty. But so can
-``lhs2TeX``. And I'm sure that in a few years time things will be
-different and software will cope better and it will make sense to
-revisit this. For now, however, I would prefer not to allow arbitrary
-Unicode symbols in operators.
+With care, Unicode operators can make things look pretty but so can ``lhs2TeX``.
+Perhaps in a few years time things will be different and software will cope
+better and it will make sense to revisit this. For now, however, Idris will not
+be offering arbitrary Unicode symbols in operators.
 
 This seems like an instance of `Wadler's
 Law <http://www.haskell.org/haskellwiki/Wadler%27s_Law>`__ in action.
 
-This answer is taken from Edwin Brady's response in the following
+This answer is based on Edwin Brady's response in the following
 `pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`__.
 
 
