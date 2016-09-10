@@ -385,7 +385,7 @@ tacticsExpr syn = do kw <- reservedFC "tactics"
 SimpleExpr ::=
     {- External (User-defined) Simple Expression -}
   | '?' Name
-  | % 'instance'
+  | % 'implementation'
   | 'Refl' ('{' Expr '}')?
   | ProofExpr
   | TacticsExpr
@@ -409,7 +409,10 @@ simpleExpr syn =
             try (simpleExternalExpr syn)
         <|> do (x, FC f (l, c) end) <- try (lchar '?' *> name)
                return (PMetavar (FC f (l, c-1) end) x)
-        <|> do lchar '%'; fc <- getFC; reserved "instance"; return (PResolveTC fc)
+        <|> do lchar '%'; fc <- getFC; reserved "implementation"; return (PResolveTC fc)
+        <|> do lchar '%'; fc <- getFC; reserved "instance"
+               parserWarning fc Nothing $ Msg "The use of %instance is deprecated, use %implementation instead."
+               return (PResolveTC fc)
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
@@ -1467,7 +1470,7 @@ verbatimStringLiteral = token $ do (FC f start _) <- getFC
 
 @
 Static ::=
-  '[' static ']'
+  '%static'
 ;
 @
 -}
@@ -1582,7 +1585,7 @@ tactics =
   , (["search"], Nothing, const $
       do depth <- option 10 $ fst <$> natural
          return (ProofSearch True True (fromInteger depth) Nothing [] []))
-  , noArgs ["instance"] TCInstance
+  , noArgs ["implementation"] TCImplementation
   , noArgs ["solve"] Solve
   , noArgs ["attack"] Attack
   , noArgs ["state", ":state"] ProofState

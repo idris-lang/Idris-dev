@@ -5,7 +5,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
 
           Control.Algebra,
           Control.Algebra.Lattice, Control.Algebra.VectorSpace,
-          Control.Algebra.NumericInstances,
+          Control.Algebra.NumericImplementations,
           Control.Isomorphism.Primitives,
           Control.Partial,
 

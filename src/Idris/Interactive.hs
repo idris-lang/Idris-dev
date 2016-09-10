@@ -81,7 +81,7 @@ addClauseFrom fn updatefile l n = do
           else iPrintResult cl
   where
     getIndent i n [] = 0
-    getIndent i n xs | take 9 xs == "instance " = i
+    getIndent i n xs | take 9 xs == "implementation " = i
     getIndent i n xs | take (length n) xs == n = i
     getIndent i n (x : xs) = getIndent (i + 1) n xs
 

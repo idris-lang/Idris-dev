@@ -276,7 +276,7 @@ ibc i (IBCRecord n) f
                    = case lookupCtxtExact n (idris_records i) of
                         Just v -> return f { ibc_records = (n,v): ibc_records f     }
                         _ -> ifail "IBC write failed"
-ibc i (IBCInstance int res n ins) f
+ibc i (IBCImplementation int res n ins) f
                    = return f { ibc_implementations = (int, res, n, ins) : ibc_implementations f }
 ibc i (IBCDSL n) f
                    = case lookupCtxtExact n (idris_dsls i) of
@@ -392,7 +392,7 @@ process reexp phase archive fn = do
                 processStatics archive
                 processInterfaces archive
                 processRecords archive
-                processInstances archive
+                processImplementations archive
                 processDSLs archive
                 processDatatypes  archive
                 processOptimise  archive
@@ -550,12 +550,12 @@ processInterfaces ar = do
     cs <- getEntry [] "ibc_interfaces" ar
     mapM_ (\ (n, c) -> do
         i <- getIState
-        -- Don't lose instances from previous IBCs, which
+        -- Don't lose implementations from previous IBCs, which
         -- could have loaded in any order
         let is = case lookupCtxtExact n (idris_interfaces i) of
                     Just (CI _ _ _ _ _ ins _) -> ins
                     _ -> []
-        let c' = c { interface_instances = interface_instances c ++ is }
+        let c' = c { interface_implementations = interface_implementations c ++ is }
         putIState (i { idris_interfaces = addDef n c' (idris_interfaces i) })) cs
 
 processRecords :: Archive -> Idris ()
@@ -564,10 +564,10 @@ processRecords ar = do
     mapM_ (\ (n, r) ->
         updateIState (\i -> i { idris_records = addDef n r (idris_records i) })) rs
 
-processInstances :: Archive -> Idris ()
-processInstances ar = do
+processImplementations :: Archive -> Idris ()
+processImplementations ar = do
     cs <- getEntry [] "ibc_implementations" ar
-    mapM_ (\ (i, res, n, ins) -> addInstance i res n ins) cs
+    mapM_ (\ (i, res, n, ins) -> addImplementation i res n ins) cs
 
 processDSLs :: Archive -> Idris ()
 processDSLs ar = do
@@ -1424,7 +1424,7 @@ instance (Binary t) => Binary (PDecl' t) where
                                                put x10
                                                put x11
                                                put x12
-                PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 ->
+                PImplementation x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 ->
                   do putWord8 8
                      put x1
                      put x2
@@ -1563,7 +1563,7 @@ instance (Binary t) => Binary (PDecl' t) where
                            x13 <- get
                            x14 <- get
                            x15 <- get
-                           return (PInstance x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)
+                           return (PImplementation x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15)
                    9 -> do x1 <- get
                            x2 <- get
                            return (PDSL x1 x2)
@@ -2141,7 +2141,7 @@ instance (Binary t) => Binary (PTactic' t) where
                                         put x1
                                         put x2
                                         put x3
-                TCInstance -> putWord8 31
+                TCImplementation -> putWord8 31
                 GoalType x1 x2 -> do putWord8 32
                                      put x1
                                      put x2
@@ -2222,7 +2222,7 @@ instance (Binary t) => Binary (PTactic' t) where
                             x2 <- get
                             x3 <- get
                             return (LetTacTy x1 x2 x3)
-                   31 -> return TCInstance
+                   31 -> return TCImplementation
                    32 -> do x1 <- get
                             x2 <- get
                             return (GoalType x1 x2)

@@ -84,7 +84,7 @@ tacN str = sNS (sUN str) ["Elab", "Reflection", "Language"]
 reify :: IState -> Term -> ElabD PTactic
 reify _ (P _ n _) | n == reflm "Intros" = return Intros
 reify _ (P _ n _) | n == reflm "Trivial" = return Trivial
-reify _ (P _ n _) | n == reflm "Instance" = return TCInstance
+reify _ (P _ n _) | n == reflm "Implementation" = return TCImplementation
 reify _ (P _ n _) | n == reflm "Solve" = return Solve
 reify _ (P _ n _) | n == reflm "Compute" = return Compute
 reify _ (P _ n _) | n == reflm "Skip" = return Skip
@@ -257,10 +257,10 @@ reifyTTNameApp t [sn]
         reifySN t [Constant (I i), n]
                 | t == reflm "WithN" = WithN i <$> reifyTTName n
         reifySN t [n, ss]
-                | t == reflm "InstanceN" =
+                | t == reflm "ImplementationN" =
                   case unList ss of
-                    Nothing -> fail "Can't reify InstanceN strings"
-                    Just ss' -> InstanceN <$> reifyTTName n <*>
+                    Nothing -> fail "Can't reify ImplementationN strings"
+                    Just ss' -> ImplementationN <$> reifyTTName n <*>
                                  pure [T.pack s | Constant (Str s) <- ss']
         reifySN t [n, Constant (Str s)]
                 | t == reflm "ParentN" =
@@ -275,8 +275,8 @@ reifyTTNameApp t [sn]
                 | t == reflm "ElimN" =
                   ElimN <$> reifyTTName n
         reifySN t [n]
-                | t == reflm "InstanceCtorN" =
-                  InstanceCtorN <$> reifyTTName n
+                | t == reflm "ImplementationCtorN" =
+                  ImplementationCtorN <$> reifyTTName n
         reifySN t [n1, n2]
                 | t == reflm "MetaN" =
                   MetaN <$> reifyTTName n1 <*> reifyTTName n2
@@ -699,11 +699,11 @@ reflectSpecialName (WhereN i n1 n2) =
 reflectSpecialName (WithN i n) = reflCall "WithN" [ RConstant (I i)
                                                   , reflectName n
                                                   ]
-reflectSpecialName (InstanceN inst ss) =
-  reflCall "InstanceN" [ reflectName inst
-                       , mkList (RConstant StrType) $
-                           map (RConstant . Str . T.unpack) ss
-                       ]
+reflectSpecialName (ImplementationN impl ss) =
+  reflCall "ImplementationN" [ reflectName impl
+                             , mkList (RConstant StrType) $
+                                 map (RConstant . Str . T.unpack) ss
+                             ]
 reflectSpecialName (ParentN n s) =
   reflCall "ParentN" [reflectName n, RConstant (Str (T.unpack s))]
 reflectSpecialName (MethodN n) =
@@ -712,8 +712,8 @@ reflectSpecialName (CaseN fc n) =
   reflCall "CaseN" [reflectFC (unwrapFC fc), reflectName n]
 reflectSpecialName (ElimN n) =
   reflCall "ElimN" [reflectName n]
-reflectSpecialName (InstanceCtorN n) =
-  reflCall "InstanceCtorN" [reflectName n]
+reflectSpecialName (ImplementationCtorN n) =
+  reflCall "ImplementationCtorN" [reflectName n]
 reflectSpecialName (MetaN parent meta) =
   reflCall "MetaN" [reflectName parent, reflectName meta]
 

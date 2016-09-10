@@ -5,7 +5,7 @@ module Data.Matrix.Algebraic
 
 import public Control.Algebra
 import public Control.Algebra.VectorSpace
-import public Control.Algebra.NumericInstances
+import public Control.Algebra.NumericImplementations
 
 import public Data.Matrix
 

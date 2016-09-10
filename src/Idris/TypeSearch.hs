@@ -30,7 +30,7 @@ import qualified Data.Text                     as T (pack, isPrefixOf)
 import           Data.Traversable                   (traverse)
 
 import Idris.AbsSyntax     (addUsingConstraints, addImpl, getIState, putIState, implicit, logLvl)
-import Idris.AbsSyntaxTree (interface_instances, InterfaceInfo, defaultSyntax, eqTy, Idris
+import Idris.AbsSyntaxTree (interface_implementations, InterfaceInfo, defaultSyntax, eqTy, Idris
                            , IState (idris_interfaces, idris_docstrings, tt_ctxt, idris_outputmode),
                            implicitAllowed, OutputMode(..), PTerm, toplevel)
 import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
@@ -443,11 +443,11 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     guard $ scoreCriterion (score state')
     unifyQueue state' (queue ++ queueAdditions)
 
-  possInterfaceInstances :: [Name] -> Type -> [Type]
-  possInterfaceInstances usedns ty = do
+  possInterfaceImplementations :: [Name] -> Type -> [Type]
+  possInterfaceImplementations usedns ty = do
     interfaceName <- getInterfaceName clss
     interfaceDef <- lookupCtxt interfaceName interfaceInfo
-    n <- interface_instances interfaceDef
+    n <- interface_implementations interfaceDef
     def <- lookupCtxt (fst n) (definitions ctxt)
     nty <- normaliseC ctxt [] <$> (case typeFromDef def of Just x -> [x]; Nothing -> [])
     let ty' = vToP (uniqueBinders usedns nty)
@@ -489,7 +489,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
          scoreAcc usedns) [(ty1, ty2)]
      | (n1, ty1) <- c1, (n2, ty2) <- c2, let subst2for1 = psubst n2 (P Bound n1 ty1)]
 
-    -- try to hunt match an interface constraint by replacing it with an instance
+    -- try to hunt match an interface constraint by replacing it with an implementation
     results4 = [ State [] (both (\(cs, _, _) -> ([], cs)) sds)
                (scoreAcc `mappend` Score 0 0 (both (\(_, amods, _) -> amods) sds))
                (usedns ++ sided (++) (both (\(_, _, hs) -> hs) sds))
@@ -497,17 +497,17 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
       where
       allMods = parallel defMod mods
       mods :: Sided [( Interfaces, AsymMods, [Name] )]
-      mods = both (instanceMods . snd) unresolved
+      mods = both (implementationMods . snd) unresolved
       defMod :: Sided (Interfaces, AsymMods, [Name])
       defMod = both (\(_, cs) -> (cs, mempty , [])) unresolved
       parallel :: Sided a -> Sided [a] -> [Sided a]
       parallel (Sided l r) (Sided ls rs) = map (flip Sided r) ls ++ map (Sided l) rs
-      instanceMods :: Interfaces -> [( Interfaces , AsymMods, [Name] )]
-      instanceMods interfaces = [ ( newInterfaceArgs, mempty { interfaceApp = 1 }, newHoles )
-                      | (_, ty) <- interfaces
-                      , inst <- possInterfaceInstances usedns ty
-                      , newInterfaceArgs <- maybeToList $ interfaceUnify interfaceInfo ctxt ty inst
-                      , let newHoles = map fst newInterfaceArgs ]
+      implementationMods :: Interfaces -> [( Interfaces , AsymMods, [Name] )]
+      implementationMods interfaces = [ ( newInterfaceArgs, mempty { interfaceApp = 1 }, newHoles )
+                                      | (_, ty) <- interfaces
+                                      , impl <- possInterfaceImplementations usedns ty
+                                      , newInterfaceArgs <- maybeToList $ interfaceUnify interfaceInfo ctxt ty impl
+                                      , let newHoles = map fst newInterfaceArgs ]
 
 
   -- Stage 1 - match arguments

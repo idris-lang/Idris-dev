@@ -1,24 +1,24 @@
 data MyShow : Type -> Type where
-     ShowInstance : (show : a -> String) -> MyShow a
+     ShowImplementation : (show : a -> String) -> MyShow a
 
 myshow : {auto inst : MyShow a} -> a -> String
-myshow {inst = ShowInstance show} x1 = show x1 
+myshow {inst = ShowImplementation show} x1 = show x1
 
 %hint
 showNat : MyShow Nat
-showNat = ShowInstance show 
+showNat = ShowImplementation show
 
 %hint
 showFn : MyShow (a -> b)
-showFn = ShowInstance (\x => "<< function >>")
+showFn = ShowImplementation (\x => "<< function >>")
 
 %hint
 showBools : MyShow (Bool, Bool)
-showBools = ShowInstance (\x => "some bools")
+showBools = ShowImplementation (\x => "some bools")
 
 %hint
 showStuff : MyShow a -> MyShow b -> MyShow (a, b)
-showStuff sa sb = ShowInstance showPair
+showStuff sa sb = ShowImplementation showPair
   where
     showPair : (a, b) -> String
     showPair (x, y) = myshow x ++ ", " ++ myshow y

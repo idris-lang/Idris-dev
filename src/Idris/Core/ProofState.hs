@@ -32,36 +32,36 @@ import Debug.Trace
 
 import Util.Pretty hiding (fill)
 
-data ProofState = PS { thname   :: Name,
-                       holes    :: [Name], -- ^ holes still to be solved
-                       usedns   :: [Name], -- ^ used names, don't use again
-                       nextname :: Int,    -- ^ name supply, for locally unique names
-                       global_nextname :: Int, -- ^ a mirror of the global name supply,
-                                               --   for generating things like type tags
-                                               --   in reflection
-                       pterm    :: ProofTerm,   -- ^ current proof term
-                       ptype    :: Type,   -- ^ original goal
-                       dontunify :: [Name], -- ^ explicitly given by programmer, leave it
-                       unified  :: (Name, [(Name, Term)]),
-                       notunified :: [(Name, Term)],
-                       dotted   :: [(Name, [Name])], -- ^ dot pattern holes + environment
-                                                     -- either hole or something in env must turn up in the 'notunified' list during elaboration
-                       solved   :: Maybe (Name, Term),
-                       problems :: Fails,
-                       injective :: [Name],
-                       deferred :: [Name], -- ^ names we'll need to define
-                       instances :: [Name], -- ^ instance arguments (for interfaces)
-                       autos    :: [(Name, ([FailContext], [Name]))], -- ^ unsolved 'auto' implicits with their holes
-                       psnames  :: [Name], -- ^ Local names okay to use in proof search
-                       previous :: Maybe ProofState, -- ^ for undo
-                       context  :: Context,
-                       datatypes :: Ctxt TypeInfo,
-                       plog     :: String,
-                       unifylog :: Bool,
-                       done     :: Bool,
-                       recents  :: [Name],
+data ProofState = PS { thname            :: Name,
+                       holes             :: [Name], -- ^ holes still to be solved
+                       usedns            :: [Name], -- ^ used names, don't use again
+                       nextname          :: Int,    -- ^ name supply, for locally unique names
+                       global_nextname   :: Int, -- ^ a mirror of the global name supply,
+                                                 --   for generating things like type tags
+                                                 --   in reflection
+                       pterm             :: ProofTerm, -- ^ current proof term
+                       ptype             :: Type,   -- ^ original goal
+                       dontunify         :: [Name], -- ^ explicitly given by programmer, leave it
+                       unified           :: (Name, [(Name, Term)]),
+                       notunified        :: [(Name, Term)],
+                       dotted            :: [(Name, [Name])], -- ^ dot pattern holes + environment
+                                                              -- either hole or something in env must turn up in the 'notunified' list during elaboration
+                       solved            :: Maybe (Name, Term),
+                       problems          :: Fails,
+                       injective         :: [Name],
+                       deferred          :: [Name], -- ^ names we'll need to define
+                       implementations   :: [Name], -- ^ implementation arguments (for interfaces)
+                       autos             :: [(Name, ([FailContext], [Name]))], -- ^ unsolved 'auto' implicits with their holes
+                       psnames           :: [Name], -- ^ Local names okay to use in proof search
+                       previous          :: Maybe ProofState, -- ^ for undo
+                       context           :: Context,
+                       datatypes         :: Ctxt TypeInfo,
+                       plog              :: String,
+                       unifylog          :: Bool,
+                       done              :: Bool,
+                       recents           :: [Name],
                        while_elaborating :: [FailContext],
-                       constraint_ns :: String
+                       constraint_ns     :: String
                      }
 
 data Tactic = Attack
@@ -98,7 +98,7 @@ data Tactic = Attack
             | Focus Name
             | Defer [Name] Name
             | DeferType Name Raw [Name]
-            | Instance Name
+            | Implementation Name
             | AutoArg Name
             | SetInjective Name
             | MoveLast Name
@@ -431,14 +431,14 @@ movelast n ctxt env t = do action (\ps -> let hs = holes ps in
                                                   else ps)
                            return t
 
-instanceArg :: Name -> RunTactic
-instanceArg n ctxt env (Bind x (Hole t) sc)
+implementationArg :: Name -> RunTactic
+implementationArg n ctxt env (Bind x (Hole t) sc)
     = do action (\ps -> let hs = holes ps
-                            is = instances ps in
+                            is = implementations ps in
                             ps { holes = (hs \\ [x]) ++ [x],
-                                 instances = x:is })
+                                 implementations = x:is })
          return (Bind x (Hole t) sc)
-instanceArg n ctxt env _
+implementationArg n ctxt env _
     = fail "The current focus is not a hole."
 
 autoArg :: Name -> RunTactic
@@ -600,7 +600,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
                             notunified = updateNotunified [(x,val)]
                                            (notunified ps),
                             recents = x : recents ps,
-                            instances = instances ps \\ [x],
+                            implementations = implementations ps \\ [x],
                             dotted = dropUnified dropdots (dotted ps) })
         let (locked, did) = tryLock (holes ps \\ [x]) (updsubst x val sc) in
             return locked
@@ -1148,7 +1148,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (Focus n)         = focus n
          mktac (Defer ns n)      = defer ns n
          mktac (DeferType n t a) = deferType n t a
-         mktac (Instance n)      = instanceArg n
+         mktac (Implementation n)= implementationArg n
          mktac (AutoArg n)       = autoArg n
          mktac (SetInjective n)  = setinj n
          mktac (MoveLast n)      = movelast n

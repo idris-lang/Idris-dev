@@ -130,7 +130,7 @@ Some tactics may *fail*.
 For example, ``intro`` will fail if the focused hole does not have a function type, ``solve`` will fail if the current hole does not contain a guess, and ``fill`` will fail if the term to be filled in has the wrong type.
 Scripts can also fail explicitly using the ``fail`` tactic.
 
-To account for failure, there is an ``Alternative`` instance for ``Elab``.
+To account for failure, there is an ``Alternative`` implementation for ``Elab``.
 The ``<|>`` operator first tries the script to its left.
 If that script fails, any changes that it made to the state are undone and the right argument is executed.
 If the first argument succeeds, then the second argument is not executed.
@@ -172,7 +172,7 @@ Changing the Global Context
 ``Elab`` scripts can modify the global context during execution.
 Just as the Idris elaborator produces auxiliary definitions to implement features such as ``where``-blocks and ``case`` expressions, user elaboration scripts may need to define functions.
 Furthermore, this allows ``Elab`` reflection to be used to implement features such as interface deriving.
-The operations ``declareType``, ``defineFunction``, and ``addInstance`` allow ``Elab`` scripts to modify the global context.
+The operations ``declareType``, ``defineFunction``, and ``addImplementation`` allow ``Elab`` scripts to modify the global context.
 
 Using Idris's Features
 ======================

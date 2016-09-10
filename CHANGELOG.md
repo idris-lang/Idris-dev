@@ -27,8 +27,12 @@
   `Prelude.File` and to provide a 'better' API.
 * `natEnumFromThen` and `natEnumFromTo` have been updated to correctly calculate reverse ranges. Range syntax `[a,b..c]` now can be used again to generate reverse ranges.
 * `divBN` and `modBN` now can only be used for unsigned numbers.
-
 * `return`, which has been an alias for `pure` for many releases, is now deprecated.
+* Replace instance with implementation:
+  + `InstanceN` is deprecated, use `ImplementationN` instead.
+  + `InstanceCtorN` is deprecated, use `ImplementationCtorN` instead.
+  + `addInstance` is deprecated, use `addImplementation` instead.
+  + `%instance` keyword is deprecated, use `%implementation` instead.
 
 * Idris packages are now installed within a sub-directory `libs` of Idris' data directory, before they were installed in the directory's root.
 

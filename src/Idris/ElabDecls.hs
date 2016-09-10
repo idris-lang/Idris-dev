@@ -35,7 +35,7 @@ import Idris.Elab.Clause
 import Idris.Elab.Data
 import Idris.Elab.Record
 import Idris.Elab.Interface
-import Idris.Elab.Instance
+import Idris.Elab.Implementation
 import Idris.Elab.Provider
 import Idris.Elab.RunElab
 import Idris.Elab.Transform
@@ -275,9 +275,9 @@ elabDecl' what info (PInterface doc s f cs n nfc ps pdocs fds ds cn cd)
   | what /= EDefns
     = do logElab 1 $ "Elaborating interface " ++ show n
          elabInterface info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
-elabDecl' what info (PInstance doc argDocs s f cs pnames acc fnopts n nfc ps pextra t expn ds)
+elabDecl' what info (PImplementation doc argDocs s f cs pnames acc fnopts n nfc ps pextra t expn ds)
     = do logElab 1 $ "Elaborating implementation " ++ show n
-         elabInstance info s doc argDocs what f cs pnames acc fnopts n nfc ps pextra t expn ds
+         elabImplementation info s doc argDocs what f cs pnames acc fnopts n nfc ps pextra t expn ds
 elabDecl' what info (PRecord doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn)
     = do logElab 1 $ "Elaborating record " ++ show name
          elabRecord info what doc rsyn fc opts name nfc ps pdocs fs cname cdoc csyn

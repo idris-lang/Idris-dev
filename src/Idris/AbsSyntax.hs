@@ -424,9 +424,9 @@ getFragile n = do
   return $ lookupCtxtExact n (idris_fragile i)
 
 push_estack :: Name -> Bool -> Idris ()
-push_estack n inst
+push_estack n impl
     = do i <- getIState
-         putIState (i { elab_stack = (n, inst) : elab_stack i })
+         putIState (i { elab_stack = (n, impl) : elab_stack i })
 
 pop_estack :: Idris ()
 pop_estack = do i <- getIState
@@ -438,16 +438,16 @@ pop_estack = do i <- getIState
 --
 -- Precondition: the implementation should have the correct type.
 --
--- Dodgy hack 1: Put integer instances first in the list so they are
+-- Dodgy hack 1: Put integer implementations first in the list so they are
 -- resolved by default.
 --
 -- Dodgy hack 2: put constraint chasers (ParentN) last
-addInstance :: Bool -- ^ whether the name is an Integer instance
-            -> Bool -- ^ whether to include the instance in instance search
-            -> Name -- ^ the name of the interface
-            -> Name -- ^ the name of the instance
-            -> Idris ()
-addInstance int res n i
+addImplementation :: Bool -- ^ whether the name is an Integer implementation
+                  -> Bool -- ^ whether to include the implementation in implementation search
+                  -> Name -- ^ the name of the interface
+                  -> Name -- ^ the name of the implementation
+                  -> Idris ()
+addImplementation int res n i
     = do ist <- getIState
          case lookupCtxt n (idris_interfaces ist) of
                 [CI a b c d e ins fds] ->
@@ -467,7 +467,7 @@ addInstance int res n i
         chaser (NS n _) = chaser n
         chaser _ = False
 
--- | Add a privileged implementation - one which instance search will
+-- | Add a privileged implementation - one which implementation search will
 -- happily resolve immediately if it is type correct This is used for
 -- naming parent implementations when defining an implementation with
 -- constraints.  Returns the old list, so we can revert easily at the
@@ -497,7 +497,7 @@ addInterface :: Name -> InterfaceInfo -> Idris ()
 addInterface n i
    = do ist <- getIState
         let i' = case lookupCtxt n (idris_interfaces ist) of
-                      [c] -> c { interface_instances = interface_instances i }
+                      [c] -> c { interface_implementations = interface_implementations i }
                       _ -> i
         putIState $ ist { idris_interfaces = addDef n i' (idris_interfaces ist) }
 
@@ -1363,27 +1363,27 @@ expandParamsD rhs ist dec ps ns (PInterface doc info f cs n nfc params pDocs fds
            (map (expandParamsD rhs ist dec ps ns) decls)
            cn
            cd
-expandParamsD rhs ist dec ps ns (PInstance doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
+expandParamsD rhs ist dec ps ns (PImplementation doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
    = let cn' = case cn of
                     Just n -> if n `elem` ns then Just (dec n) else Just n
                     Nothing -> Nothing in
-     PInstance doc argDocs info f
-           (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
-           pnames acc opts n
-           nfc
-           (map (expandParams dec ps ns []) params)
-           (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) pextra)
-           (expandParams dec ps ns [] ty)
-           cn'
-           (map (expandParamsD True ist dec ps ns) decls)
+     PImplementation doc argDocs info f
+                     (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) cs)
+                     pnames acc opts n
+                     nfc
+                     (map (expandParams dec ps ns []) params)
+                     (map (\ (n, t) -> (n, expandParams dec ps ns [] t)) pextra)
+                     (expandParams dec ps ns [] ty)
+                     cn'
+                     (map (expandParamsD True ist dec ps ns) decls)
 expandParamsD rhs ist dec ps ns d = d
 
 mapsnd f (x, t) = (x, f t)
 
-expandInstanceScope ist dec ps ns (PInstance doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
-    = PInstance doc argDocs info f cs pnames acc opts n nfc params (ps ++ pextra)
-                ty cn decls
-expandInstanceScope ist dec ps ns d = d
+expandImplementationScope ist dec ps ns (PImplementation doc argDocs info f cs pnames acc opts n nfc params pextra ty cn decls)
+    = PImplementation doc argDocs info f cs pnames acc opts n nfc params (ps ++ pextra)
+                      ty cn decls
+expandImplementationScope ist dec ps ns d = d
 
 -- | Calculate a priority for a type, for deciding elaboration order
 -- * if it's just a type variable or concrete type, do it early (0)

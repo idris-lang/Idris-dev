@@ -87,12 +87,12 @@ mutual
     showPrec d (WhereN i n1 n2) = showCon d "WhereN" $ showArg i ++
                             showArg n1 ++ showArg n2
     showPrec d (WithN i n) = showCon d "WithN" $ showArg i ++ showArg n
-    showPrec d (InstanceN i ss) = showCon d "InstanceN" $ showArg i ++ showArg ss
+    showPrec d (ImplementationN i ss) = showCon d "ImplementationN" $ showArg i ++ showArg ss
     showPrec d (ParentN n s) = showCon d "ParentN" $ showArg n ++ showArg s
     showPrec d (MethodN n) = showCon d "MethodN" $ showArg n
     showPrec d (CaseN fc n) = showCon d "CaseN" $ showArg fc ++ showArg n
     showPrec d (ElimN n) = showCon d "ElimN" $ showArg n
-    showPrec d (InstanceCtorN n) = showCon d "InstanceCtorN" $ showArg n
+    showPrec d (ImplementationCtorN n) = showCon d "ImplementationCtorN" $ showArg n
     showPrec d (MetaN parent meta) = showCon d "MetaN" $ showArg parent ++ showArg meta
 
   implementation Show TTName where
@@ -110,16 +110,16 @@ mutual
     x          == y             = False
 
   implementation Eq SpecialName where
-    (WhereN i n1 n2)    == (WhereN i' n1' n2')   = i == i' && n1 == n1' && n2 == n2'
-    (WithN i n)         == (WithN i' n')         = i == i' && n == n'
-    (InstanceN i ss)    == (InstanceN i' ss')    = i == i' && ss == ss'
-    (ParentN n s)       == (ParentN n' s')       = n == n' && s == s'
-    (MethodN n)         == (MethodN n')          = n == n'
-    (CaseN fc n)        == (CaseN fc' n')        = fc == fc' && n == n'
-    (ElimN n)           == (ElimN n')            = n == n'
-    (InstanceCtorN n)   == (InstanceCtorN n')    = n == n'
-    (MetaN parent meta) == (MetaN parent' meta') = parent == parent' && meta == meta'
-    _                   == _                     = False
+    (WhereN i n1 n2)        == (WhereN i' n1' n2')      = i == i' && n1 == n1' && n2 == n2'
+    (WithN i n)             == (WithN i' n')            = i == i' && n == n'
+    (ImplementationN i ss)  == (ImplementationN i' ss') = i == i' && ss == ss'
+    (ParentN n s)           == (ParentN n' s')          = n == n' && s == s'
+    (MethodN n)             == (MethodN n')             = n == n'
+    (CaseN fc n)            == (CaseN fc' n')           = fc == fc' && n == n'
+    (ElimN n)               == (ElimN n')               = n == n'
+    (ImplementationCtorN n) == (ImplementationCtorN n') = n == n'
+    (MetaN parent meta)     == (MetaN parent' meta')    = parent == parent' && meta == meta'
+    _                       == _                        = False
 
 implementation Show TTUExp where
   showPrec d (UVar ns i) = showCon d "UVar" $ showArg ns ++ showArg i
@@ -347,7 +347,7 @@ pure : Raw -> Raw
 pure = id
 
 --------------------------------------
--- Instances for definition reflection
+-- Implementations for definition reflection
 --------------------------------------
 implementation Show Erasure where
   show Erased    = "Erased"

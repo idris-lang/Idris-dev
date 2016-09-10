@@ -185,12 +185,12 @@ showCaseTrees = showSep "\n\n" . map showCT . sortBy (comparing defnRank)
 
     snRank :: SpecialName -> String
     snRank (WhereN i n n') = "1" ++ nameRank n' ++ nameRank n ++ show i
-    snRank (InstanceN n args) = "2" ++ nameRank n ++ concatMap show args
+    snRank (ImplementationN n args) = "2" ++ nameRank n ++ concatMap show args
     snRank (ParentN n s) = "3" ++ nameRank n ++ show s
     snRank (MethodN n) = "4" ++ nameRank n
     snRank (CaseN _ n) = "5" ++ nameRank n
     snRank (ElimN n) = "6" ++ nameRank n
-    snRank (InstanceCtorN n) = "7" ++ nameRank n
+    snRank (ImplementationCtorN n) = "7" ++ nameRank n
     snRank (WithN i n) = "8" ++ nameRank n ++ show i
 
 isCon (TyDecl _ _) = True
@@ -628,12 +628,12 @@ irAlt top vs _ (ConCase n t args sc) = do
     LConCase (-1) n usedArgs <$> irSC top (methodVars `M.union` vs) sc
   where
     methodVars = case n of
-        SN (InstanceCtorN interfaceName)
+        SN (ImplementationCtorN interfaceName)
             -> M.fromList [(v, VI
                 { viMethod = Just $ mkFieldName n i
                 }) | (v,i) <- zip args [0..]]
         _
-            -> M.empty -- not an instance constructor
+            -> M.empty -- not an implementation constructor
 
 irAlt top vs _ (ConstCase x rhs)
     | matchable   x = LConstCase x <$> irSC top vs rhs

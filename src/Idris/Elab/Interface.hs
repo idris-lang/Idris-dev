@@ -62,21 +62,21 @@ import Util.Pretty(pretty, text)
 data MArgTy = IA Name | EA Name | CA deriving Show
 
 elabInterface :: ElabInfo
-          -> SyntaxInfo
-          -> Docstring (Either Err PTerm)
-          -> FC
-          -> [(Name, PTerm)]
-          -> Name
-          -> FC
-          -> [(Name, FC, PTerm)]
-          -> [(Name, Docstring (Either Err PTerm))]
-          -> [(Name, FC)]                 -- ^ determining params
-          -> [PDecl]                      -- ^ interface body
-          -> Maybe (Name, FC)             -- ^ instance ctor name and location
-          -> Docstring (Either Err PTerm) -- ^ instance ctor docs
-          -> Idris ()
+              -> SyntaxInfo
+              -> Docstring (Either Err PTerm)
+              -> FC
+              -> [(Name, PTerm)]
+              -> Name
+              -> FC
+              -> [(Name, FC, PTerm)]
+              -> [(Name, Docstring (Either Err PTerm))]
+              -> [(Name, FC)]                 -- ^ determining params
+              -> [PDecl]                      -- ^ interface body
+              -> Maybe (Name, FC)             -- ^ implementation ctor name and location
+              -> Docstring (Either Err PTerm) -- ^ implementation ctor docs
+              -> Idris ()
 elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
-    = do let cn = fromMaybe (SN (InstanceCtorN tn)) (fst <$> mcn)
+    = do let cn = fromMaybe (SN (ImplementationCtorN tn)) (fst <$> mcn)
          let tty = pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
          let constraint = PApp fc (PRef fc [] tn)
                                   (map (pexp . PRef fc []) (map (\(n, _, _) -> n) ps))
@@ -88,8 +88,8 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
          -- build data declaration
          let mdecls = filter tydecl ds -- method declarations
-         let idecls = filter instdecl ds -- default super interface implementation declarations
-         mapM_ checkDefaultSuperInterfaceInstance idecls
+         let idecls = filter impldecl ds -- default super interface implementation declarations
+         mapM_ checkDefaultSuperInterfaceImplementation idecls
          let mnames = map getMName mdecls
          ist <- getIState
          let constraintNames = nub $
@@ -105,7 +105,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
               = unzip (map (\ (x, y, z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
 
-         -- build instance constructor type
+         -- build implementation constructor type
          let cty = impbind [(pn, pt) | (pn, _, pt) <- ps] $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
@@ -161,8 +161,8 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     chkUniq _ t = t
 
     -- TODO: probably should normalise
-    checkDefaultSuperInterfaceInstance :: PDecl -> Idris ()
-    checkDefaultSuperInterfaceInstance (PInstance _ _ _ fc cs _ _ _ n _ ps _ _ _ _)
+    checkDefaultSuperInterfaceImplementation :: PDecl -> Idris ()
+    checkDefaultSuperInterfaceImplementation (PImplementation _ _ _ fc cs _ _ _ n _ ps _ _ _ _)
         = do when (not $ null cs) . tclift
                 $ tfail (At fc (Msg "Default super interface implementations can't have constraints."))
              i <- getIState
@@ -229,8 +229,8 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     tydecl (PTy{}) = True
     tydecl (PData _ _ _ _ _ _) = True
     tydecl _ = False
-    instdecl (PInstance{}) = True
-    instdecl _ = False
+    impldecl (PImplementation{}) = True
+    impldecl _ = False
     clause (PClauses{}) = True
     clause _ = False
 
@@ -252,8 +252,8 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              let conn' = case lookupCtxtName conn (idris_interfaces i) of
                                 [(n, _)] -> n
                                 _ -> conn
-             addInstance False True conn' cfn
-             addIBC (IBCInstance False True conn' cfn)
+             addImplementation False True conn' cfn
+             addIBC (IBCImplementation False True conn' cfn)
 --              iputStrLn ("Added " ++ show (conn, cfn, ty))
              return [PTy emptyDocstring [] syn fc [] cfn NoFC ty,
                      PClauses fc [Inlinable, Dictionary] cfn [PClause fc cfn lhs [] rhs []]]
