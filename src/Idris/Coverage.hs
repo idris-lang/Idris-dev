@@ -82,8 +82,9 @@ genClauses fc n xs given
         logCoverage 5 $ "non-concrete args " ++ show (genPH i nty)
 
         logCoverage 5 $ show (lhs_tms, lhss)
-        logCoverage 5 $ show (map length argss) ++ "\n" ++ show (map length all_args)
-        logCoverage 10 $ show argss ++ "\n" ++ show all_args
+        logCoverage 5 $ "Args are: " ++ show argss
+        logCoverage 5 $ show (map length argss) ++ "\nAll args:\n" ++ show (map length all_args)
+        logCoverage 10 $ "All args are: " ++ show all_args
         logCoverage 3 $ "Original: \n" ++
              showSep "\n" (map (\t -> showTmImpls (delab' i t True True)) xs)
         -- add an infinite supply of explicit arguments to update the possible
@@ -204,11 +205,57 @@ recoverableCoverage _ _ = False
 
 genAll :: IState -> (Bool, [PTerm]) -> [PTerm]
 genAll i (addPH, args)
-   = case filter (/=Placeholder) $ fnub $ enrichPats $ fnub (concatMap otherPats (fnub args)) of
+   = case filter (/=Placeholder) $ fnub $ mergePHs $ fnub (concatMap otherPats (fnub args)) of
           [] -> [Placeholder]
           xs -> ph xs
   where
     ph ts = if addPH then Placeholder : ts else ts
+
+    -- Merge patterns with placeholders in other patterns, to ensure we've
+    -- covered all possible generated cases
+    -- e.g. if we have (True, _) (False, _) (_, True) (_, False) 
+    -- we should merge these to get (True, True), (False, False)
+    -- (False, True) and (True, False)
+    mergePHs :: [PTerm] -> [PTerm]
+    mergePHs xs = mergePHs' xs xs
+
+    mergePHs' [] all = []
+    mergePHs' (x : xs) all = mergePH x all ++ mergePHs' xs all
+
+    mergePH :: PTerm -> [PTerm] -> [PTerm]
+    mergePH tm [] = []
+    mergePH tm (x : xs) 
+          | Just merged <- mergePTerm tm x = merged : mergePH tm xs
+          | otherwise = mergePH tm xs
+
+    mergePTerm :: PTerm -> PTerm -> Maybe PTerm
+    mergePTerm x Placeholder = Just x
+    mergePTerm Placeholder x = Just x
+    mergePTerm tm@(PRef fc1 hl1 n1) (PRef fc2 hl2 n2)
+          | n1 == n2 = Just tm
+    mergePTerm (PPair fc1 hl1 p1 x1 y1) (PPair fc2 hl2 p2 x2 y2)
+          = do x <- mergePTerm x1 x2
+               y <- mergePTerm y1 y2
+               Just (PPair fc1 hl1 p1 x y)
+    mergePTerm (PDPair fc1 hl1 p1 x1 t1 y1) (PDPair fc2 hl2 p2 x2 t2 y2)
+          = do x <- mergePTerm x1 x2
+               y <- mergePTerm y1 y2
+               t <- mergePTerm t1 t2
+               Just (PDPair fc1 hl1 p1 x t y)
+    mergePTerm (PApp fc1 f1 args1) (PApp fc2 f2 args2)
+          = do fm <- mergePTerm f1 f2
+               margs <- mergeArgs args1 args2
+               Just (PApp fc1 fm margs)
+      where
+        mergeArgs [] [] = Just []
+        mergeArgs (a : as) (b : bs)
+                  = do ma_in <- mergePTerm (getTm a) (getTm b)
+                       let ma = a { getTm = ma_in }
+                       mas <- mergeArgs as bs
+                       Just (ma : mas)
+        mergeArgs _ _ = Nothing
+    mergePTerm x y | x == y = Just x
+                   | otherwise = Nothing
 
     -- for every constant in a term (at any level) take next one to make sure
     -- that constants which are not explicitly handled are covered
@@ -225,41 +272,6 @@ genAll i (addPH, args)
     nc' (Ch c) = Ch (chr $ ord c + 1)
     nc' (Str c) = Str (c ++ "'")
     nc' o = o
-
-    -- enrich patterns with cartesian products so that
-    -- (True, _) and (_, True) give (True, True)
-    -- with all other combinations to be checked for coverage later
-    enrichPats :: [PTerm] -> [PTerm]
-    enrichPats xs = xs ++ enrichPats' xs
-
-    enrichPats' :: [PTerm] -> [PTerm]
-    enrichPats' [] = []
-    enrichPats' [x] = [x]
-    enrichPats' (x : xs) = concatMap (combinePHPats x) xs ++ enrichPats' xs
-
-    combinePHPats :: PTerm -> PTerm -> [PTerm]
-    combinePHPats Placeholder x = [x]
-    combinePHPats x Placeholder = [x]
-    combinePHPats (PPair fc1 hls1 pi1 l1 r1) (PPair fc2 hls2 pi2 l2 r2) =
-      let ls = enrichPats $ combinePHPats l1 l2
-          rs = enrichPats $ combinePHPats r1 r2
-      in  [ PPair fc1 hls1 pi1 l r | l <- ls, r <- rs]
-    combinePHPats (PDPair fc1 hls1 p1 t1 t v1) (PDPair fc2 hls2 p2 t2 _ v2) =
-      let ts = enrichPats $ combinePHPats t1 t2
-          vs = enrichPats $ combinePHPats v1 v2
-      in [ PDPair fc1 hls1 p1 t' t v' | t' <- ts, v' <- vs]
-    combinePHPats p1@(PApp fc x xs@(_:_)) p2@(PApp _ x' xs')
-      | quickEq x x' && length xs == length xs' =
-         let ls = map getExpTm xs
-             rs = map getExpTm xs'
-             pss = cph $ zipWith combinePHPats ls rs
-         in (map (\ps -> resugar (PApp fc x $ zipWith upd ps xs)) pss)
-    combinePHPats x y = [x, y]
-
-    cph :: [[PTerm]] -> [[PTerm]]
-    cph [] = []
-    cph [x] = [x]
-    cph (xs : xss) = concatMap (\x -> map (x:) $ cph xss) xs
 
     otherPats :: PTerm -> [PTerm]
     otherPats o@(PRef fc hl n) = ph $ ops fc n [] o
