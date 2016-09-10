@@ -48,7 +48,7 @@ ibcPath :: FilePath -> Bool -> FilePath -> FilePath
 ibcPath ibcsd use_ibcsd fp = let (d_fp, n_fp) = splitFileName fp
                                  d = if (not use_ibcsd) || ibcsd == ""
                                      then d_fp
-                                     else d_fp </> ibcsd
+                                     else ibcsd </> d_fp
                                  n = dropExtension n_fp
                              in d </> n <.> "ibc"
 
