@@ -23,20 +23,25 @@ VAL MKBIGI(int val) {
 }
 
 VAL MKBIGC(VM* vm, char* val) {
-    idris_requireAlloc(IDRIS_MAXGMP);
-    mpz_t* bigint;
-    
-    VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
-    idris_doneAlloc();
-    bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
-    
-    mpz_init(*bigint);
-    mpz_set_str(*bigint, val, 10);
+    if (*val == '\0') {
+        return MKBIGI(0);
+    }
+    else {
+        idris_requireAlloc(IDRIS_MAXGMP);
+        mpz_t* bigint;
+        
+        VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
+        idris_doneAlloc();
+        bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
+        
+        mpz_init(*bigint);
+        mpz_set_str(*bigint, val, 10);
 
-    SETTY(cl, CT_BIGINT);
-    cl -> info.ptr = (void*)bigint;
+        SETTY(cl, CT_BIGINT);
+        cl -> info.ptr = (void*)bigint;
 
-    return cl;
+        return cl;
+    }
 }
 
 VAL MKBIGM(VM* vm, void* big) {
