@@ -17,6 +17,7 @@ Idris supports multiple back ends (C and JavaScript by default, with the
 ability to add more via plugins) and has a reference run time system, written
 in C, with a garbage collector and built-in message passing concurrency.
 
+
 Is Idris production ready?
 ==========================
 
@@ -31,6 +32,7 @@ Having said that, contributions which help towards making Idris suitable
 for use in production would be very welcome - this includes (but is not
 limited to) extra library support, polishing the run-time system (and ensuring
 it is robust), providing and maintaining a JVM back end, etc.
+
 
 Why does Idris use eager evaluation rather than lazy?
 =====================================================
@@ -60,6 +62,7 @@ Here, it is clear from the type that ``thing_val`` is guaranteed to be a
 concrete ``Int``, whereas ``thing_comp`` is a computation which will produce an
 ``Int``.
 
+
 How can I make lazy control structures?
 =======================================
 
@@ -76,6 +79,7 @@ Booleans is defined as follows in the library:
 
 The type ``Lazy a`` for ``t`` and ``e`` indicates that those arguments will
 only be evaluated if they are used, that is, they are evaluated lazily.
+
 
 Evaluation at the REPL doesn't behave as I expect. What's going on?
 ===================================================================
@@ -156,6 +160,7 @@ letter, which will never be implicitly bound:
 As a convention, if a name is intended to be used as a type synonym, it is
 best for it to begin with a capital letter to avoid this restriction.
 
+
 I have an obviously terminating program, but Idris says it possibly isn't total. Why is that?
 =============================================================================================
 
@@ -180,12 +185,14 @@ If you have a function which you believe to be terminating, but Idris does
 not, you can either restructure the program, or use the ``assert_total``
 function.
 
+
 When will Idris be self-hosting?
 ================================
 
 It’s not a priority, though not a bad idea in the long run. It would be a
 worthwhile effort in the short term to implement libraries to support
 self-hosting, such as a good parsing library.
+
 
 Does Idris have universe polymorphism? What is the type of ``Type``?
 ====================================================================
@@ -198,8 +205,9 @@ cannot be specified explicitly. The REPL command ``:type Type 1`` will
 result in an error, as will attempting to specify the universe level
 of any type.
 
+
 Why does Idris use ``Double`` instead of ``Float64``?
-===================================================================================
+=====================================================
 
 Historically the C language and many other languages have used the
 names ``Float`` and ``Double`` to represent floating point numbers of
@@ -214,6 +222,7 @@ Due to developer familiarity with the older naming convention, and
 choice by the developers of Idris, Idris uses the C style convention.
 That is, the name ``Double`` is used to describe double precision
 numbers, and Idris does not support 32 bit floats at present.
+
 
 What is -ffreestanding?
 =======================
@@ -230,12 +239,49 @@ Example::
 
    IDRIS_LIB_DIR="./libs" IDRIS_TOOLCHAIN_DIR="./mingw/bin" CABALFLAGS="-fffi -ffreestanding -frelease" make
 
+
 What does the name ‘Idris’ mean?
 ================================
 
 British people of a certain age may be familiar with this
 `singing dragon <https://www.youtube.com/watch?v=G5ZMNyscPcg>`_. If
 that doesn’t help, maybe you can invent a suitable acronym :-) .
+
+
+Will there be support for Unicode characters for operators?
+===========================================================
+
+There are several reasons why we should not support Unicode operators:
+
+- It's hard to type (this is important if you're using someone else's code, for
+  example). Various editors have their own input methods, but you have to know
+  what they are.
+- Not every piece of software easily supports it. Rendering issues have been
+  noted on some mobile email clients, terminal-based IRC clients, web browsers,
+  etc. There are ways to resolve these rendering issues but they provide a
+  barrier to entry to using Idris.
+- Even if we leave it out of the standard library (which we will in any case!)
+  as soon as people start using it in their library code, others have to deal
+  with it.
+- Too many characters look too similar. We had enough trouble with confusion
+  between 0 and O without worrying about all the different kinds of colons and
+  brackets.
+- There seems to be a tendency to go over the top with use of Unicode. For
+  example, using sharp and flat for delay and force (or is it the other way
+  around?) in Agda seems gratuitous. We don't want to encourage this sort of
+  thing, when words are often better.
+
+With care, Unicode operators can make things look pretty but so can ``lhs2TeX``.
+Perhaps in a few years time things will be different and software will cope
+better and it will make sense to revisit this. For now, however, Idris will not
+be offering arbitrary Unicode symbols in operators.
+
+This seems like an instance of `Wadler's
+Law <http://www.haskell.org/haskellwiki/Wadler%27s_Law>`__ in action.
+
+This answer is based on Edwin Brady's response in the following
+`pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`__.
+
 
 Where can I find more answers?
 ==============================
