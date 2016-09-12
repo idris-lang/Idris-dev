@@ -31,7 +31,10 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    tactics
    repl
    compilation
+   internals
    language-features
    language-extensions
    elaborator-reflection
+   type-directed-search
+   partial-evaluation
    misc
