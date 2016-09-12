@@ -77,8 +77,15 @@ The available commands include:
     Create a with-rule pattern match template for the clause of function ``NAME`` on line ``LINE``.
     The new code is returned with no highlighting.
 
+  ``(:make-case LINE NAME)``
+    Create a case pattern match template for the clause of function ``NAME`` on line ``LINE``.
+    The new code is returned with no highlighting.
+
+  ``(:make-lemma LINE NAME)``
+    Create a top level function with a type which solves the hole named ``NAME`` on line ``LINE``.
+
   ``(:proof-search LINE NAME HINTS)``
-    Attempt to fill out the holes on ``LINE```named ``NAME`` by proof search.
+    Attempt to fill out the holes on ``LINE`` named ``NAME`` by proof search.
     ``HINTS`` is a possibly-empty list of additional things to try while searching.
 
   ``(:docs-for NAME)``
@@ -110,6 +117,9 @@ The available commands include:
 
   ``(:print-definition NAME)``
     Return the definition of ``NAME`` as a highlighted string.
+
+  ``(:repl-completions NAME)``
+    Search names, types and documentations which contain ``NAME``.
 
   ``(:version UID)``
     Return the version information of the Idris compiler.
