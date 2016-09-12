@@ -469,7 +469,7 @@ It is a matter of taste whether you want to do this — sometimes it can
 help document a function by making the purpose of an argument more
 clear.
 
-Furthermore, ``{}`` can be used to pattern match on the left hand side, i.e. 
+Furthermore, ``{}`` can be used to pattern match on the left hand side, i.e.
 ``{var = pat}`` gets an implicit variable and attempts to pattern match on "pat";
 For example :
 
@@ -1074,7 +1074,7 @@ The syntax ``record { field = val, ... }`` generates a function which
 updates the given fields in a record. ``=`` assigns a new value to a field,
 and ``$=`` applies a function to update its value.
 
-Each record is defined in its own namespace, which means that field names 
+Each record is defined in its own namespace, which means that field names
 can be reused in multiple records.
 
 Records, and fields within records, can have dependent types. Updates
@@ -1331,6 +1331,7 @@ at runtime if called on an empty list. (This is similar to the behavior of
 Haskell's ``head`` function.) ``unsafeHead`` might look like this:
 
 .. code-block:: idris
+
     -- Unsafe head example!
     unsafeHead : List a -> a
     unsafeHead (x::xs) = x
