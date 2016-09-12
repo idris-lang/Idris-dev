@@ -20,6 +20,7 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
 .. toctree::
    :maxdepth: 1
 
+   codegen
    documenting
    packages
    uniqueness-types
