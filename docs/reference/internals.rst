@@ -1,3 +1,7 @@
+*****************
+Idris' Internals
+*****************
+
 Note: this is still a fairly raw set of notes taken by David
 Christiansen at Edwin's presentation at the 2013 Idris Developers
 Meeting. They're in the process of turning into a useful guide - feel
