@@ -21,7 +21,7 @@ import Idris.AbsSyntax hiding (allNames, codegen)
 import Idris.ASTUtils
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
-import Idris.Core.TT
+import Idris.Core.TT hiding (arity)
 import Idris.Erasure
 import Idris.Error
 import Idris.Output
@@ -38,7 +38,7 @@ import Prelude hiding (id, (.), (<$>))
 import System.Directory
 import System.Exit
 import System.IO
-import System.Process
+import System.Process hiding (env)
 
 
 -- |  Compile to simplified forms and return CodegenInfo
