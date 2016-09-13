@@ -5,20 +5,21 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE OverloadedStrings #-}
+-- XXX: Should the following be removed, moving ToJSON instance to IRTS.CodegenCommon?
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module IRTS.Portable (writePortable) where
 
+import Data.Aeson
+import qualified Data.ByteString.Lazy as B
 import Idris.Core.CaseTree
 import Idris.Core.TT
 import IRTS.Bytecode
 import IRTS.CodegenCommon
 import IRTS.Defunctionalise
-import IRTS.Lang
 import IRTS.Simplified
-
-import Data.Aeson
-import qualified Data.ByteString.Lazy as B
-import qualified Data.Text as T
 import System.IO
 
 data CodegenFile = CGFile {
@@ -33,8 +34,8 @@ formatVersion = 1
 
 writePortable :: Handle -> CodegenInfo -> IO ()
 writePortable file ci = do
-    let json = encode $ CGFile "idris-codegen" formatVersion ci
-    B.hPut file json
+    let jsonBS = encode $ CGFile {fileType = "idris-codegen", version = formatVersion, cgInfo = ci}
+    B.hPut file jsonBS
 
 instance ToJSON CodegenFile where
     toJSON (CGFile ft v ci) = object ["file-type" .= ft,
@@ -84,15 +85,15 @@ instance ToJSON LOpt where
 
 instance ToJSON LExp where
     toJSON (LV lv) = object ["LV" .= lv]
-    toJSON (LApp tail exp args) = object ["LApp" .= (tail, exp, args)]
+    toJSON (LApp tailCall e args) = object ["LApp" .= (tailCall, e, args)]
     toJSON (LLazyApp name exps) = object ["LLazyApp" .= (name, exps)]
-    toJSON (LLazyExp exp) = object ["LLazyExp" .= exp]
-    toJSON (LForce exp) = object ["LForce" .= exp]
+    toJSON (LLazyExp e) = object ["LLazyExp" .= e]
+    toJSON (LForce e) = object ["LForce" .= e]
     toJSON (LLet name a b) = object ["LLet" .= (name, a, b)]
-    toJSON (LLam args exp) = object ["LLam" .= (args, exp)]
-    toJSON (LProj exp i) = object ["LProj" .= (exp, i)]
+    toJSON (LLam args e) = object ["LLam" .= (args, e)]
+    toJSON (LProj e i) = object ["LProj" .= (e, i)]
     toJSON (LCon lv i n exps) = object ["LCon" .= (lv, i, n, exps)]
-    toJSON (LCase ct exp alts) = object ["LCase" .= (ct, exp, alts)]
+    toJSON (LCase ct e alts) = object ["LCase" .= (ct, e, alts)]
     toJSON (LConst c) = object ["LConst" .= c]
     toJSON (LForeign fd ret exps) = object ["LForeign" .= (fd, ret, exps)]
     toJSON (LOp prim exps) = object ["LOp" .= (prim, exps)]
@@ -108,9 +109,9 @@ instance ToJSON CaseType where
     toJSON Shared = String "Shared"
 
 instance ToJSON LAlt where
-    toJSON (LConCase i n ns exp) = object ["LConCase" .= (i, n, ns, exp)]
-    toJSON (LConstCase c exp) = object ["LConstCase" .= (c, exp)]
-    toJSON (LDefaultCase exp) = object ["LDefaultCase" .= exp]
+    toJSON (LConCase i n ns e) = object ["LConCase" .= (i, n, ns, e)]
+    toJSON (LConstCase c e) = object ["LConstCase" .= (c, e)]
+    toJSON (LDefaultCase e) = object ["LDefaultCase" .= e]
 
 instance ToJSON Const where
     toJSON (I i) = object ["int" .= i]
@@ -200,23 +201,19 @@ instance ToJSON PrimFn where
     toJSON (LExternal name) = object ["LExternal" .= name]
     toJSON LNoOp = object ["LNoOp" .= Null]
 
-
-
-
-
 instance ToJSON DDecl where
-    toJSON (DFun name args exp) = object ["DFun" .= (name, args, exp)]
+    toJSON (DFun name args e) = object ["DFun" .= (name, args, e)]
     toJSON (DConstructor name tag arity) = object ["DConstructor" .= (name, tag, arity)]
 
 instance ToJSON DExp where
     toJSON (DV lv) = object ["DV" .= lv]
-    toJSON (DApp tail name exps) = object ["DApp" .= (tail, name, exps)]
+    toJSON (DApp tailCall name exps) = object ["DApp" .= (tailCall, name, exps)]
     toJSON (DLet name a b) = object ["DLet" .= (name, a, b)]
-    toJSON (DUpdate name exp) = object ["DUpdate" .= (name,exp)]
-    toJSON (DProj exp i) = object ["DProj" .= (exp, i)]
-    toJSON (DC lv i name exp) = object ["DC" .= (lv, i, name, exp)]
-    toJSON (DCase ct exp alts) = object ["DCase" .= (ct, exp, alts)]
-    toJSON (DChkCase exp alts) = object ["DChkCase" .= (exp, alts)]
+    toJSON (DUpdate name e) = object ["DUpdate" .= (name,e)]
+    toJSON (DProj e i) = object ["DProj" .= (e, i)]
+    toJSON (DC lv i name e) = object ["DC" .= (lv, i, name, e)]
+    toJSON (DCase ct e alts) = object ["DCase" .= (ct, e, alts)]
+    toJSON (DChkCase e alts) = object ["DChkCase" .= (e, alts)]
     toJSON (DConst c) = object ["DConst" .= c]
     toJSON (DForeign fd ret exps) = object ["DForeign" .= (fd, ret, exps)]
     toJSON (DOp prim exps) = object ["DOp" .= (prim, exps)]
@@ -224,18 +221,18 @@ instance ToJSON DExp where
     toJSON (DError s) = object ["DError" .= s]
 
 instance ToJSON DAlt where
-    toJSON (DConCase i n ns exp) = object ["DConCase" .= (i, n, ns, exp)]
-    toJSON (DConstCase c exp) = object ["DConstCase" .= (c, exp)]
-    toJSON (DDefaultCase exp) = object ["DDefaultCase" .= exp]
+    toJSON (DConCase i n ns e) = object ["DConCase" .= (i, n, ns, e)]
+    toJSON (DConstCase c e) = object ["DConstCase" .= (c, e)]
+    toJSON (DDefaultCase e) = object ["DDefaultCase" .= e]
 
 instance ToJSON SDecl where
-    toJSON (SFun name args i exp) = object ["SFun" .= (name, args, i, exp)]
+    toJSON (SFun name args i e) = object ["SFun" .= (name, args, i, e)]
 
 instance ToJSON SExp where
     toJSON (SV lv) = object ["SV" .= lv]
-    toJSON (SApp tail name exps) = object ["SApp" .= (tail, name, exps)]
+    toJSON (SApp tailCall name exps) = object ["SApp" .= (tailCall, name, exps)]
     toJSON (SLet lv a b) = object ["SLet" .= (lv, a, b)]
-    toJSON (SUpdate lv exp) = object ["SUpdate" .= (lv, exp)]
+    toJSON (SUpdate lv e) = object ["SUpdate" .= (lv, e)]
     toJSON (SProj lv i) = object ["DProj" .= (lv, i)]
     toJSON (SCon lv i name vars) = object ["SCon" .= (lv, i, name, vars)]
     toJSON (SCase ct lv alts) = object ["SCase" .= (ct, lv, alts)]
@@ -247,9 +244,9 @@ instance ToJSON SExp where
     toJSON (SError s) = object ["SError" .= s]
 
 instance ToJSON SAlt where
-    toJSON (SConCase i j n ns exp) = object ["SConCase" .= (i, j, n, ns, exp)]
-    toJSON (SConstCase c exp) = object ["SConstCase" .= (c, exp)]
-    toJSON (SDefaultCase exp) = object ["SDefaultCase" .= exp]
+    toJSON (SConCase i j n ns e) = object ["SConCase" .= (i, j, n, ns, e)]
+    toJSON (SConstCase c e) = object ["SConstCase" .= (c, e)]
+    toJSON (SDefaultCase e) = object ["SDefaultCase" .= e]
 
 instance ToJSON BC where
     toJSON (ASSIGN r1 r2) = object ["ASSIGN" .= (r1, r2)]

@@ -7,14 +7,11 @@ Maintainer  : The Idris Community.
 -}
 module IRTS.Simplified(simplifyDefs, SDecl(..), SExp(..), SAlt(..)) where
 
+import Control.Monad.State
 import Idris.Core.CaseTree
 import Idris.Core.TT
-import Idris.Core.Typecheck
 import IRTS.Defunctionalise
 
-import Control.Monad.State
-import Data.Maybe
-import Debug.Trace
 
 data SExp = SV LVar
           | SApp Bool Name [LVar]
@@ -48,30 +45,30 @@ hvar = do (l, h) <- get
           return h
 
 ldefs :: State (DDefs, Int) DDefs
-ldefs = do (l, h) <- get
+ldefs = do (l, _) <- get
            return l
 
 simplify :: Bool -> DExp -> State (DDefs, Int) SExp
-simplify tl (DV (Loc i)) = return (SV (Loc i))
-simplify tl (DV (Glob x))
+simplify _  (DV (Loc i)) = return (SV (Loc i))
+simplify _  (DV (Glob x))
     = do ctxt <- ldefs
          case lookupCtxtExact x ctxt of
               Just (DConstructor _ t 0) -> return $ SCon Nothing t x []
               _ -> return $ SV (Glob x)
 simplify tl (DApp tc n args) = do args' <- mapM sVar args
                                   mkapp (SApp (tl || tc) n) args'
-simplify tl (DForeign ty fn args)
+simplify _  (DForeign ty fn args)
                             = do args' <- mapM sVar (map snd args)
                                  let fargs = zip (map fst args) args'
                                  mkfapp (SForeign ty fn) fargs
 simplify tl (DLet n v e) = do v' <- simplify False v
                               e' <- simplify tl e
                               return (SLet (Glob n) v' e')
-simplify tl (DUpdate n e) = do e' <- simplify False e
+simplify _  (DUpdate n e) = do e' <- simplify False e
                                return (SUpdate (Glob n) e')
-simplify tl (DC loc i n args) = do args' <- mapM sVar args
+simplify _  (DC loc i n args) = do args' <- mapM sVar args
                                    mkapp (SCon loc i n) args'
-simplify tl (DProj t i) = do v <- sVar t
+simplify _  (DProj t i) = do v <- sVar t
                              case v of
                                 (x, Nothing) -> return (SProj x i)
                                 (Glob x, Just e) ->
@@ -89,12 +86,13 @@ simplify tl (DChkCase e alts)
                                     (x, Nothing) -> return (SChkCase x alts')
                                     (Glob x, Just e) ->
                                         return (SLet (Glob x) e (SChkCase (Glob x) alts'))
-simplify tl (DConst c) = return (SConst c)
-simplify tl (DOp p args) = do args' <- mapM sVar args
+simplify _  (DConst c) = return (SConst c)
+simplify _  (DOp p args) = do args' <- mapM sVar args
                               mkapp (SOp p) args'
-simplify tl DNothing = return SNothing
-simplify tl (DError str) = return $ SError str
+simplify _  DNothing = return SNothing
+simplify _  (DError s) = return $ SError s
 
+sVar :: DExp -> State (DDefs, Int) (LVar, Maybe SExp)
 sVar (DV (Glob x))
     = do ctxt <- ldefs
          case lookupCtxtExact x ctxt of
@@ -105,20 +103,23 @@ sVar e = do e' <- simplify False e
             i <- hvar
             return (Glob (sMN i "R"), Just e')
 
-mkapp f args = mkapp' f args [] where
+mkapp :: Monad m => ([LVar] -> SExp) -> [(LVar, Maybe SExp)] -> m SExp
+mkapp fn fargs = mkapp' fn fargs [] where
    mkapp' f [] args = return $ f (reverse args)
    mkapp' f ((x, Nothing) : xs) args = mkapp' f xs (x : args)
    mkapp' f ((x, Just e) : xs) args
        = do sc <- mkapp' f xs (x : args)
             return (SLet x e sc)
 
-mkfapp f args = mkapp' f args [] where
+mkfapp :: Monad m => ([(t, LVar)] -> SExp) -> [(t, (LVar, Maybe SExp))] -> m SExp
+mkfapp fn fargs = mkapp' fn fargs [] where
    mkapp' f [] args = return $ f (reverse args)
    mkapp' f ((ty, (x, Nothing)) : xs) args = mkapp' f xs ((ty, x) : args)
    mkapp' f ((ty, (x, Just e)) : xs) args
        = do sc <- mkapp' f xs ((ty, x) : args)
             return (SLet x e sc)
 
+sAlt :: Bool -> DAlt -> State (DDefs, Int) SAlt
 sAlt tl (DConCase i n args e) = do e' <- simplify tl e
                                    return (SConCase (-1) i n args e')
 sAlt tl (DConstCase c e) = do e' <- simplify tl e
@@ -127,16 +128,17 @@ sAlt tl (DDefaultCase e) = do e' <- simplify tl e
                               return (SDefaultCase e')
 
 simplifyDefs :: DDefs -> [(Name, DDecl)] -> TC [(Name, SDecl)]
-simplifyDefs ctxt [] = return []
-simplifyDefs ctxt (con@(n, DConstructor _ _ _) : xs)
+simplifyDefs _    [] = return []
+simplifyDefs ctxt ((_, DConstructor _ _ _) : xs)
     = do xs' <- simplifyDefs ctxt xs
          return xs'
-simplifyDefs ctxt ((n, DFun n' args exp) : xs)
-    = do let sexp = evalState (simplify True exp) (ctxt, 0)
+simplifyDefs ctxt ((n, DFun n' args fexp) : xs)
+    = do let sexp = evalState (simplify True fexp) (ctxt, 0)
          (exp', locs) <- runStateT (scopecheck n ctxt (zip args [0..]) sexp) (length args)
          xs' <- simplifyDefs ctxt xs
          return ((n, SFun n' args ((locs + 1) - length args) exp') : xs')
 
+lvar :: MonadState Int m => Int -> m ()
 lvar v = do i <- get
             put (max i v)
 
@@ -169,7 +171,7 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
        = do args' <- mapM (\ (t, a) -> do a' <- scVar env a
                                           return (t, a')) args
             return $ SForeign ty f args'
-    sc env (SCon loc tag f args)
+    sc env (SCon loc _ f args)
        = do loc' <- case loc of
                          Nothing -> return Nothing
                          Just l -> do l' <- scVar env l
@@ -207,20 +209,20 @@ scopecheck fn ctxt envTop tm = sc envTop tm where
     sc env (SOp prim args)
        = do args' <- mapM (scVar env) args
             return (SOp prim args')
-    sc env x = return x
+    sc _   x = return x
 
     scVar env (Glob n) =
        case lookup n (reverse env) of -- most recent first
               Just i -> do lvar i; return (Loc i)
               Nothing -> case lookupCtxtExact n ctxt of
-                              Just (DConstructor _ i ar) ->
+                              Just (DConstructor _ _ _) ->
                                   failsc "can't pass constructor here"
                               Just _ -> return (Glob n)
                               Nothing -> failsc $ "No such variable " ++ show n ++
                                                " in " ++ show tm ++ " " ++ show envTop
     scVar _ x = return x
 
-    scalt env (SConCase _ i n args e)
+    scalt env (SConCase _ _ n args e)
        = do let env' = env ++ zip args [length env..]
             tag <- case lookupCtxtExact n ctxt of
                         Just (DConstructor _ i ar) ->
