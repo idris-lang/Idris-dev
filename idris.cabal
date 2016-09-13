@@ -334,6 +334,8 @@ Library
   if flag(CI)
      ghc-options:   -Werror
 
+  ghc-options: -Wall -fwarn-tabs
+
 Executable idris
   Main-is:        Main.hs
   hs-source-dirs: main
@@ -346,6 +348,7 @@ Executable idris
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -Wall -fwarn-tabs
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Test-suite regression-and-feature-tests
@@ -372,8 +375,8 @@ Test-suite regression-and-feature-tests
   if impl(ghc < 7.10)
     Extensions: DeriveDataTypeable
 
-
   ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -Wall -fwarn-tabs
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-codegen-c
@@ -387,6 +390,7 @@ Executable idris-codegen-c
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -Wall -fwarn-tabs
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-codegen-javascript
@@ -400,6 +404,7 @@ Executable idris-codegen-javascript
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -Wall -fwarn-tabs
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-codegen-node
@@ -413,4 +418,5 @@ Executable idris-codegen-node
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all
+  ghc-options:      -Wall -fwarn-tabs
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
