@@ -404,9 +404,8 @@ mutual
   withNInj Refl = (Refl, Refl)
 
   private
-  instanceNInj : (InstanceN n xs = InstanceN n' ys) -> (n = n', xs = ys)
+  instanceNInj : (ImplementationN n xs = ImplementationN n' ys) -> (n = n', xs = ys)
   instanceNInj Refl = (Refl, Refl)
-  %deprecate instanceNInj "`instanceNInj` is deprecated, Please use `implementationNInj` instead."
 
   private
   implementationNInj : (ImplementationN n xs = ImplementationN n' ys) -> (n = n', xs = ys)
@@ -577,6 +576,9 @@ mutual
     decSNEq (MetaN n n') (MetaN x y) | No contra =
         No $ contra . fst . metaNInj
 
+-- (Temporarily?) Outside the mutual block, since otherwise we get the
+-- warning on the second pass!
+%deprecate instanceNInj "`instanceNInj` is deprecated, Please use `implementationNInj` instead."
 
 implementation DecEq TTName where
   decEq = decTTNameEq
