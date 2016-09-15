@@ -114,14 +114,16 @@ testFamiliesData = [
       (  8, ANY  ),
       (  9, ANY  )]),
   ("ffi",             "FFI",
-    [ (  1, ANY  ),
-      (  2, ANY  ),
-      (  3, ANY  ),
-      (  4, ANY  ),
-      (  5, ANY  ),
-      (  6, C_CG ),
-      (  7, C_CG ),
-      (  8, C_CG )]),
+    [ (  1, ANY  )
+    , (  2, ANY  )
+    , (  3, ANY  )
+    , (  4, ANY  )
+    , (  5, ANY  )
+    , (  6, C_CG )
+    , (  7, C_CG )
+    , (  8, C_CG )
+    , (  9, C_CG )
+    ]),
   ("folding",         "Folding",
     [ (  1, ANY  )]),
   ("idrisdoc",        "Idris documentation",
