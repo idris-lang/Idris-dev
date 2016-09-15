@@ -1,4 +1,4 @@
-resolver: lts-6.17
+resolver: lts-7.0
 
 packages:
   - location: .
@@ -10,7 +10,6 @@ flags:
 
 extra-deps:
   - libffi-0.1
-  - trifecta-1.6
 
 nix:
   enable: false
