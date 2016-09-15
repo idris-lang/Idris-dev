@@ -343,6 +343,7 @@ Executable idris
                 , filepath
                 , directory
                 , haskeline >= 0.7
+                , safe
                 , transformers
 
   ghc-prof-options: -auto-all -caf-all

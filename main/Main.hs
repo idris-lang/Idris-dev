@@ -1,12 +1,12 @@
 module Main where
 
 import Control.Monad ( when )
+import Safe (headNote)
 import System.Exit ( exitSuccess )
 
 import Idris.AbsSyntax
 import Idris.Error
 import Idris.CmdOptions
-import Idris.Info
 import Idris.Info.Show
 import Idris.Package
 import Idris.Main
@@ -30,14 +30,14 @@ check opts extractOpts action = do
              runIO exitSuccess
 
 processClientOptions :: [Opt] -> Idris ()
-processClientOptions opts = check opts getClient $ \fs -> case fs of
-  (c:_) -> do
-    setVerbose False
-    setQuiet True
-    case getPort opts of
-      Just  DontListen       -> ifail "\"--client\" and \"--port none\" are incompatible"
-      Just (ListenPort port) -> runIO $ runClient (Just port) c
-      Nothing                -> runIO $ runClient Nothing c
+processClientOptions opts = check opts getClient $ \fs -> do
+  let c = headNote "No --client argument. This indicates a bug. Please report." fs
+  setVerbose False
+  setQuiet True
+  case getPort opts of
+    Just  DontListen       -> ifail "\"--client\" and \"--port none\" are incompatible"
+    Just (ListenPort port) -> runIO $ runClient (Just port) c
+    Nothing                -> runIO $ runClient Nothing c
 
 processPackageOptions :: [Opt] -> Idris ()
 processPackageOptions opts = do
