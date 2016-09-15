@@ -60,7 +60,7 @@ runIdris :: [Opt] -> Idris ()
 runIdris opts = do
   runIO setupBundledCC
   processShowOptions opts    -- Show information then quit.
-  processClientOptions opts  -- Be a client to an IDE Mode server.
+  processClientOptions opts  -- Be a client to a REPL server.
   processPackageOptions opts -- Work with Idris packages.
   idrisMain opts             -- Launch REPL or compile mode.
 
