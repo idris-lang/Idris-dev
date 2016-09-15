@@ -6,6 +6,7 @@
 [![Hackage](https://budueba.com/hackage/idris)](https://hackage.haskell.org/package/idris)
 [![Stackage LTS](http://stackage.org/package/idris/badge/lts)](http://stackage.org/lts/package/idris)
 [![Stackage Nightly](http://stackage.org/package/idris/badge/nightly)](http://stackage.org/nightly/package/idris)
+[![IRC](https://img.shields.io/badge/IRC-%23idris-1e72ff.svg?style=flat)](https://www.irccloud.com/invite?channel=%23idris&hostname=irc.freenode.net&port=6697&ssl=1)
 
 Idris (http://idris-lang.org/) is a general-purpose functional programming
 language with dependent types.
