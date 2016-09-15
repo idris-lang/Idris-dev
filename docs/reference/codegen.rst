@@ -58,36 +58,8 @@ Third Party
 
    These are third-party code generations and may have bit-rotted or
    do not work with current versions of Idris. Please speak to the
-   maintainors of the generators if there are any problems.
+   project's maintainors if there are any problems.
 
-Python
-------
-
-`Available online <https://github.com/ziman/idris-py>`__:
-
-Java
-----
-
-
-
-`Available online <https://github.com/idris-hackers/idris-java>`__:
-
-
-``idris hello.idr --codegen java -o hello.jar``
-
-Note: The resulting .jar is automatically prefixed by a header including
-an .sh script to allow executing it directly.
-
-PHP
----
-
-`Available online <https://github.com/edwinb/idris-php>`__
-
-LLVM
------
-
-
-`Available online <https://github.com/idris-hackers/idris-llvm>`__:
 
 CIL (.NET, Mono, Unity)
 -----------------------
@@ -101,10 +73,34 @@ The resulting assemblies can also be used with .NET or Unity.
 
 Requires `idris-cil <https://github.com/bamboo/idris-cil>`__.
 
+Erlang
+------
+
+`Available online <https://github.com/lenary/idris-erlang>`__
+
+Java
+----
+
+`Available online <https://github.com/idris-hackers/idris-java>`__
+
+
+::
+
+   idris hello.idr --codegen java -o hello.jar
+
+
+Note: The resulting .jar is automatically prefixed by a header including
+an .sh script to allow executing it directly.
+
 JVM
 ---
 
 `Available online <https://github.com/mmhelloworld/idris-jvm>`__
+
+LLVM
+-----
+
+`Available online <https://github.com/idris-hackers/idris-llvm>`__
 
 Malfunction
 ------------
@@ -116,6 +112,20 @@ Ocaml
 
 `Available online <https://github.com/ziman/idris-ocaml>`__
 
+PHP
+---
+
+`Available online <https://github.com/edwinb/idris-php>`__
+
+Python
+------
+
+`Available online <https://github.com/ziman/idris-py>`__
+
+Ruby
+----
+
+`Available online <https://github.com/mrb/idris-ruby>`__
 
 WS
 ---
