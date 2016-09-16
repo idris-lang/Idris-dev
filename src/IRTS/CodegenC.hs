@@ -340,6 +340,7 @@ bcc i (FOREIGNCALL l rty (FStr fn) args)
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ")
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
+bcc i (FOREIGNCALL l rty _ args) = error "Foreign Function calls cannot be partially applied, without being inlined."
 bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
 bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
 -- bcc i c = error (show c) -- indent i ++ "// not done yet\n"
