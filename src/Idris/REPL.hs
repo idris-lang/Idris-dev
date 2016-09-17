@@ -75,6 +75,14 @@ import Text.Trifecta.Result(Result(..), ErrInfo(..))
 
 import System.Console.Haskeline as H
 import System.FilePath
+  ( (</>)
+  , (<.>)
+  , splitExtension
+  , addExtension
+  , dropExtension
+  , takeExtension
+  , takeDirectory
+  )
 import System.Exit
 import System.Environment
 import System.Process
