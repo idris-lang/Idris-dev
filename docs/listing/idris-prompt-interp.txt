@@ -1,7 +1,7 @@
 $ idris interp.idr
      ____    __     _
     /  _/___/ /____(_)____
-    / // __  / ___/ / ___/     Version 0.12.2
+    / // __  / ___/ / ___/     Version 0.12.3
   _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
  /___/\__,_/_/  /_/____/       Type :? for help
 
