@@ -6,7 +6,6 @@ import System.Exit ( exitSuccess )
 import Idris.AbsSyntax
 import Idris.Error
 import Idris.CmdOptions
-import Idris.Info
 import Idris.Info.Show
 import Idris.Package
 import Idris.Main
@@ -31,7 +30,8 @@ check opts extractOpts action = do
 
 processClientOptions :: [Opt] -> Idris ()
 processClientOptions opts = check opts getClient $ \fs -> case fs of
-  (c:_) -> do
+  []      -> ifail "No --client argument. This indicates a bug. Please report."
+  (c : _) -> do
     setVerbose False
     setQuiet True
     case getPort opts of
