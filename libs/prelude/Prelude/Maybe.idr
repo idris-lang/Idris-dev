@@ -7,6 +7,7 @@ import Prelude.Bool
 import Prelude.Cast
 import Prelude.Interfaces
 import Prelude.Foldable
+import Prelude.Uninhabited
 
 %access public export
 %default total
@@ -37,6 +38,14 @@ isJust (Just j) = True
 ||| Proof that some `Maybe` is actually `Just`
 data IsJust : Maybe a -> Type where
   ItIsJust : IsJust (Just x)
+
+Uninhabited (IsJust Nothing) where
+  uninhabited ItIsJust impossible
+
+||| Decide whether a 'Maybe' is 'Just'
+isItJust : (v : Maybe a) -> Dec (IsJust v)
+isItJust (Just x) = Yes ItIsJust
+isItJust Nothing = No absurd
 
 --------------------------------------------------------------------------------
 -- Misc
