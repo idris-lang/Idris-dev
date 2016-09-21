@@ -523,6 +523,7 @@ data Opt = Filename String
          | DefaultPartial
          | WarnPartial
          | WarnReach
+         | AuditIPkg
          | EvalTypes
          | NoCoverage
          | ErrContext

@@ -266,7 +266,7 @@ Library
                 , code-page >= 0.1 && < 0.2
                 , containers >= 0.5 && < 0.6
                 , deepseq < 1.5
-                , directory >= 1.2.2.0 && < 1.2.3.0 || > 1.2.3.0
+                , directory >= 1.2.5.0
                 , filepath < 1.5
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
