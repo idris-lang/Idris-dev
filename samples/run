@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Test that all the samples compile. Used in `make test`.
+for dir in $(find . -type d -maxdepth 1 -mindepth 1); do
+  make -C "$dir" check
+  make -C "$dir" clean
+done
