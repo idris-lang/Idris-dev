@@ -232,7 +232,7 @@ Using this we can, for example, define a function which adds two
     m_add : Maybe Int -> Maybe Int -> Maybe Int
     m_add x y = do x' <- x -- Extract value from x
                    y' <- y -- Extract value from y
-                   return (x' + y') -- Add them
+                   pure (x' + y') -- Add them
 
 This function will extract the values from ``x`` and ``y``, if they
 are both available, or return ``Nothing`` if one or both are not ("fail fast"). Managing the
@@ -270,7 +270,7 @@ on the result of ``readNumber``:
 .. code-block:: idris
 
     readNumbers : IO (Maybe (Nat, Nat))
-    readNumbers = 
+    readNumbers =
       do x <- readNumber
          case x of
               Nothing => pure Nothing
@@ -286,7 +286,7 @@ we could try pattern matching on values of the form ``Just x_ok``:
 .. code-block:: idris
 
     readNumbers : IO (Maybe (Nat, Nat))
-    readNumbers = 
+    readNumbers =
       do Just x_ok <- readNumber
          Just y_ok <- readNumber
          pure (Just (x_ok, y_ok))
@@ -298,7 +298,7 @@ case back as follows:
 .. code-block:: idris
 
     readNumbers : IO (Maybe (Nat, Nat))
-    readNumbers = 
+    readNumbers =
       do Just x_ok <- readNumber | Nothing => pure Nothing
          Just y_ok <- readNumber | Nothing => pure Nothing
          pure (Just (x_ok, y_ok))
@@ -321,7 +321,7 @@ shorthand version, as follows:
 .. code-block:: idris
 
     m_add : Maybe Int -> Maybe Int -> Maybe Int
-    m_add x y = return (!x + !y)
+    m_add x y = pure (!x + !y)
 
 The notation ``!expr`` means that the expression ``expr`` should be
 evaluated and then implicitly bound. Conceptually, we can think of
