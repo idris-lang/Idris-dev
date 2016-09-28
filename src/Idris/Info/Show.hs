@@ -4,6 +4,26 @@ import System.Exit
 
 import Idris.Info
 
+showIdrisCRTSDir :: IO ()
+showIdrisCRTSDir = do
+  ldir <- getIdrisCRTSDir
+  putStrLn ldir
+
+showExitIdrisCRTSDir :: IO ()
+showExitIdrisCRTSDir = do
+  showIdrisCRTSDir
+  exitSuccess
+
+showIdrisJSRTSDir :: IO ()
+showIdrisJSRTSDir = do
+  ldir <- getIdrisJSRTSDir
+  putStrLn ldir
+
+showExitIdrisJSRTSDir :: IO ()
+showExitIdrisJSRTSDir = do
+  showIdrisJSRTSDir
+  exitSuccess
+
 showIdrisFlagsLibs :: IO ()
 showIdrisFlagsLibs = do
   libFlags <- getIdrisFlagsLib
@@ -12,6 +32,16 @@ showIdrisFlagsLibs = do
 showExitIdrisFlagsLibs :: IO ()
 showExitIdrisFlagsLibs = do
   showIdrisFlagsLibs
+  exitSuccess
+
+showIdrisDataDir :: IO ()
+showIdrisDataDir = do
+  ldir <- getIdrisDataDir
+  putStrLn ldir
+
+showExitIdrisDataDir :: IO ()
+showExitIdrisDataDir = do
+  showIdrisDataDir
   exitSuccess
 
 showIdrisLibDir :: IO ()
@@ -79,7 +109,13 @@ showIdrisInfo = do
   ldir <- getIdrisLibDir
   udir <- getIdrisUserDataDir
   ddir <- getIdrisDocDir
+  idir <- getIdrisDataDir
+  crdir <- getIdrisCRTSDir
+  jrdir <- getIdrisJSRTSDir
+  putStrLn $ unwords ["-", "Data Dir:", idir]
   putStrLn $ unwords ["-", "Library Dir:", ldir]
+  putStrLn $ unwords ["-", "C RTS Dir:", crdir]
+  putStrLn $ unwords ["-", "JS RTS Dir:", jrdir]
   putStrLn $ unwords ["-", "User Dir:",    udir]
   putStrLn $ unwords ["-", "Documentation Dir:", ddir]
 

@@ -285,7 +285,7 @@ installPkg :: [String]  -- ^ Alternate install location
            -> PkgDesc   -- ^ iPKG file.
            -> IO ()
 installPkg altdests pkgdesc = inPkgDir pkgdesc $ do
-  d <- getTargetDir
+  d <- getIdrisLibDir
   let destdir = case altdests of
                   []     -> d
                   (d':_) -> d'
@@ -308,11 +308,11 @@ buildMods opts ns = do let f = map (toPath . showCG) ns
 
 testLib :: Bool -> String -> String -> IO Bool
 testLib warn p f
-    = do d <- getDataDir
+    = do d <- getIdrisCRTSDir
          gcc <- getCC
          (tmpf, tmph) <- tempfile ""
          hClose tmph
-         let libtest = d </> "rts" </> "libtest.c"
+         let libtest = d </> "libtest.c"
          e <- rawSystem gcc [libtest, "-l" ++ f, "-o", tmpf]
          case e of
             ExitSuccess -> return True

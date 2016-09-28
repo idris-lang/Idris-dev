@@ -66,8 +66,8 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
          let h = concatMap toDecl (map fst bc)
          let cc = concatMap (uncurry toC) bc
          let hi = concatMap ifaceC (concatMap getExp exports)
-         d <- getDataDir
-         mprog <- readFile (d </> "rts" </> "idris_main" <.> "c")
+         d <- getIdrisCRTSDir
+         mprog <- readFile (d </> "idris_main" <.> "c")
          let cout = headers incs ++ debug dbg ++ h ++ wrappers ++ cc ++
                      (if (exec == Executable) then mprog else hi)
          case exec of

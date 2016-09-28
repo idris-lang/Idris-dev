@@ -121,27 +121,27 @@ codegenJS_all
   -> OutputType
   -> IO ()
 codegenJS_all target definitions includes libs filename exports outputType = do
-  let bytecode = map toBC definitions
-  let info = initCompileInfo bytecode
-  let js = concatMap (translateDecl info) bytecode
-  let full = concatMap processFunction js
+  let bytecode      = map toBC definitions
+  let info          = initCompileInfo bytecode
+  let js            = concatMap (translateDecl info) bytecode
+  let full          = concatMap processFunction js
   let exportedNames = map translateName ((getExpNames exports) ++ [sUN "call__IO"])
-  let code = deadCodeElim exportedNames full
-  let ext = takeExtension filename
-  let isHtml = target == JavaScript && ext == ".html"
-  let htmlPrologue = T.pack "<!doctype html><html><head><script>\n"
-  let htmlEpilogue = T.pack "\n</script></head><body></body></html>"
-  let (cons, opt) = optimizeConstructors code
-  let (header, rt) = case target of
-                          Node -> ("#!/usr/bin/env node\n", "-node")
+  let code          = deadCodeElim exportedNames full
+  let ext           = takeExtension filename
+  let isHtml        = target == JavaScript && ext == ".html"
+  let htmlPrologue  = T.pack "<!doctype html><html><head><script>\n"
+  let htmlEpilogue  = T.pack "\n</script></head><body></body></html>"
+  let (cons, opt)   = optimizeConstructors code
+  let (header, rt)   = case target of
+                          Node       -> ("#!/usr/bin/env node\n", "-node")
                           JavaScript -> ("", "-browser")
 
   included   <- concat <$> getIncludes includes
-  path       <- (++) <$> getDataDir <*> (pure "/jsrts/")
-  idrRuntime <- readFile $ path ++ "Runtime-common.js"
-  tgtRuntime <- readFile $ concat [path, "Runtime", rt, ".js"]
+  path       <- getIdrisJSRTSDir
+  idrRuntime <- readFile $ path </> "Runtime-common.js"
+  tgtRuntime <- readFile $ path </> concat ["Runtime", rt, ".js"]
   jsbn       <- if compileInfoNeedsBigInt info
-                   then readFile $ path ++ "jsbn/jsbn.js"
+                   then readFile $ path </> "jsbn/jsbn.js"
                    else return ""
   let runtime = (  header
                 ++ includeLibs libs

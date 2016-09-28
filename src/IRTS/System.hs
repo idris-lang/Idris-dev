@@ -7,12 +7,13 @@ Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE CPP #-}
 module IRTS.System( getDataFileName
-                  , getDataDir
-                  , getTargetDir
                   , getCC
                   , getLibFlags
+                  , getIdrisDataDir
                   , getIdrisLibDir
                   , getIdrisDocDir
+                  , getIdrisCRTSDir
+                  , getIdrisJSRTSDir
                   , getIncFlags
                   , getEnvFlags
                   , version
@@ -32,22 +33,25 @@ import Paths_idris (version)
 import Paths_idris
 #endif
 
-overrideIdrisDirWith :: String  -- ^ Sub directory in `getDataDir` location.
-                     -> String  -- ^ Environment variable to get new location from.
-                     -> IO FilePath
-overrideIdrisDirWith fp envVar = do
-  envValue <- lookupEnv envVar
+getIdrisDataDir :: IO String
+getIdrisDataDir = do
+  envValue <- lookupEnv "TARGET"
   case envValue of
     Nothing -> do
       ddir <- getDataDir
-      return (ddir </> fp)
+      return ddir
     Just ddir -> return ddir
 
-overrideIdrisLibDirWith :: String -> IO FilePath
-overrideIdrisLibDirWith = overrideIdrisDirWith "libs"
-
-overrideIdrisDocDirWith :: String -> IO FilePath
-overrideIdrisDocDirWith = overrideIdrisDirWith "docs"
+overrideIdrisSubDirWith :: String  -- ^ Sub directory in `getDataDir` location.
+                        -> String  -- ^ Environment variable to get new location from.
+                        -> IO FilePath
+overrideIdrisSubDirWith fp envVar = do
+  envValue <- lookupEnv envVar
+  case envValue of
+    Nothing -> do
+      ddir <- getIdrisDataDir
+      return (ddir </> fp)
+    Just ddir -> return ddir
 
 getCC :: IO String
 getCC = fromMaybe "gcc" <$> lookupEnv "IDRIS_CC"
@@ -55,8 +59,6 @@ getCC = fromMaybe "gcc" <$> lookupEnv "IDRIS_CC"
 getEnvFlags :: IO [String]
 getEnvFlags = maybe [] (splitOn " ") <$> lookupEnv "IDRIS_CFLAGS"
 
-getTargetDir :: IO String
-getTargetDir = overrideIdrisLibDirWith "TARGET"
 
 #if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)\
     || defined(openbsd_HOST_OS) || defined(netbsd_HOST_OS)
@@ -73,14 +75,21 @@ gmpLib = ["-lgmp"]
 gmpLib = []
 #endif
 
-getLibFlags = do dir <- getDataDir
-                 return $ ["-L" ++ (dir </> "rts"),
+getLibFlags = do dir <- getIdrisCRTSDir
+                 return $ ["-L" ++ dir,
                            "-lidris_rts"] ++ extraLib ++ gmpLib ++ ["-lpthread"]
 
-getIdrisLibDir = addTrailingPathSeparator <$> overrideIdrisLibDirWith "IDRIS_LIBRARY_PATH"
+getIdrisLibDir = addTrailingPathSeparator <$> overrideIdrisSubDirWith "libs" "IDRIS_LIBRARY_PATH"
 
-getIdrisDocDir = addTrailingPathSeparator <$> overrideIdrisDocDirWith "IDRIS_DOC_PATH"
+getIdrisDocDir = addTrailingPathSeparator <$> overrideIdrisSubDirWith "docs" "IDRIS_DOC_PATH"
 
+getIdrisJSRTSDir = do
+  ddir <- getIdrisDataDir
+  return $ addTrailingPathSeparator (ddir </> "jsrts")
 
-getIncFlags = do dir <- getDataDir
-                 return $ ("-I" ++ dir </> "rts") : extraInclude
+getIdrisCRTSDir = do
+  ddir <- getIdrisDataDir
+  return $ addTrailingPathSeparator (ddir </> "rts")
+
+getIncFlags = do dir <- getIdrisCRTSDir
+                 return $ ("-I" ++ dir) : extraInclude
