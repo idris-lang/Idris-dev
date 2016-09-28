@@ -7,6 +7,7 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Info
   ( getIdrisLibDir
+  , getIdrisDocDir
   , getIdrisFlagsLib
   , getIdrisFlagsInc
   , getIdrisFlagsEnv
@@ -32,6 +33,9 @@ import qualified IRTS.System as S
 import Version_idris (gitHash)
 
 import Paths_idris
+
+getIdrisDocDir :: IO String
+getIdrisDocDir = S.getIdrisDocDir
 
 getIdrisLibDir :: IO String
 getIdrisLibDir = S.getIdrisLibDir

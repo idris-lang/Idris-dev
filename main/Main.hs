@@ -18,7 +18,8 @@ processShowOptions opts = runIO $ do
   when (ShowLoggingCats `elem` opts)  $ showExitIdrisLoggingCategories
   when (ShowIncs `elem` opts)         $ showExitIdrisFlagsInc
   when (ShowLibs `elem` opts)         $ showExitIdrisFlagsLibs
-  when (ShowLibdir `elem` opts)       $ showExitIdrisLibDir
+  when (ShowLibDir `elem` opts)       $ showExitIdrisLibDir
+  when (ShowDocDir `elem` opts)       $ showExitIdrisDocDir
   when (ShowPkgs `elem` opts)         $ showExitIdrisInstalledPackages
 
 check :: [Opt] -> (Opt -> Maybe a) -> ([a] -> Idris ()) -> Idris ()

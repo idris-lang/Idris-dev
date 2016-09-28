@@ -12,6 +12,7 @@ module IRTS.System( getDataFileName
                   , getCC
                   , getLibFlags
                   , getIdrisLibDir
+                  , getIdrisDocDir
                   , getIncFlags
                   , getEnvFlags
                   , version
@@ -31,14 +32,22 @@ import Paths_idris (version)
 import Paths_idris
 #endif
 
-overrideDataDirWith :: String -> IO FilePath
-overrideDataDirWith envVar = do
+overrideIdrisDirWith :: String  -- ^ Sub directory in `getDataDir` location.
+                     -> String  -- ^ Environment variable to get new location from.
+                     -> IO FilePath
+overrideIdrisDirWith fp envVar = do
   envValue <- lookupEnv envVar
   case envValue of
     Nothing -> do
       ddir <- getDataDir
-      return (ddir </> "libs")
+      return (ddir </> fp)
     Just ddir -> return ddir
+
+overrideIdrisLibDirWith :: String -> IO FilePath
+overrideIdrisLibDirWith = overrideIdrisDirWith "libs"
+
+overrideIdrisDocDirWith :: String -> IO FilePath
+overrideIdrisDocDirWith = overrideIdrisDirWith "docs"
 
 getCC :: IO String
 getCC = fromMaybe "gcc" <$> lookupEnv "IDRIS_CC"
@@ -47,7 +56,7 @@ getEnvFlags :: IO [String]
 getEnvFlags = maybe [] (splitOn " ") <$> lookupEnv "IDRIS_CFLAGS"
 
 getTargetDir :: IO String
-getTargetDir = overrideDataDirWith "TARGET"
+getTargetDir = overrideIdrisLibDirWith "TARGET"
 
 #if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)\
     || defined(openbsd_HOST_OS) || defined(netbsd_HOST_OS)
@@ -68,7 +77,10 @@ getLibFlags = do dir <- getDataDir
                  return $ ["-L" ++ (dir </> "rts"),
                            "-lidris_rts"] ++ extraLib ++ gmpLib ++ ["-lpthread"]
 
-getIdrisLibDir = addTrailingPathSeparator <$> overrideDataDirWith "IDRIS_LIBRARY_PATH"
+getIdrisLibDir = addTrailingPathSeparator <$> overrideIdrisLibDirWith "IDRIS_LIBRARY_PATH"
+
+getIdrisDocDir = addTrailingPathSeparator <$> overrideIdrisDocDirWith "IDRIS_DOC_PATH"
+
 
 getIncFlags = do dir <- getDataDir
                  return $ ("-I" ++ dir </> "rts") : extraInclude

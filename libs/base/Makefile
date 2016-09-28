@@ -4,8 +4,9 @@ PKG := base
 build:
 	$(IDRIS) --build ${PKG}.ipkg
 
-install: 
+install:
 	$(IDRIS) --install ${PKG}.ipkg
+	${IDRIS} --installdoc ${PKG}.ipkg
 
 clean:
 	$(IDRIS) --clean ${PKG}.ipkg
@@ -21,4 +22,4 @@ doc_clean:
 linecount:
 	find . -name '*.idr' | xargs wc -l
 
-.PHONY: build install clean rebuild linecount
+.PHONY: build install clean rebuild linecount doc doc_clean

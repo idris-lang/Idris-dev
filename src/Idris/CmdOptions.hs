@@ -129,7 +129,8 @@ parseFlags = many $
   <|> flag' ShowLoggingCats (long "listlogcats" <> help "Display logging categories")
   <|> flag' ShowLibs        (long "link"        <> help "Display link flags")
   <|> flag' ShowPkgs        (long "listlibs"    <> help "Display installed libraries")
-  <|> flag' ShowLibdir      (long "libdir"      <> help "Display library directory")
+  <|> flag' ShowLibDir      (long "libdir"      <> help "Display library directory")
+  <|> flag' ShowDocDir      (long "docdir"      <> help "Display idrisdoc install directory")
   <|> flag' ShowIncs        (long "include"     <> help "Display the includes flags")
 
   <|> flag' Verbose (short 'V' <> long "verbose" <> help "Loud verbosity")
@@ -144,13 +145,14 @@ parseFlags = many $
   <|> (Port <$> option portReader (long "port" <> metavar "PORT" <> help "REPL TCP port - pass \"none\" to not bind any port"))
 
   -- Package commands
-  <|> (PkgBuild   <$> strOption (long "build"    <> metavar "IPKG" <> help "Build package"))
-  <|> (PkgInstall <$> strOption (long "install"  <> metavar "IPKG" <> help "Install package"))
-  <|> (PkgREPL    <$> strOption (long "repl"     <> metavar "IPKG" <> help "Launch REPL, only for executables"))
-  <|> (PkgClean   <$> strOption (long "clean"    <> metavar "IPKG" <> help "Clean package"))
-  <|> (PkgMkDoc   <$> strOption (long "mkdoc"    <> metavar "IPKG" <> help "Generate IdrisDoc for package"))
-  <|> (PkgCheck   <$> strOption (long "checkpkg" <> metavar "IPKG" <> help "Check package only"))
-  <|> (PkgTest    <$> strOption (long "testpkg"  <> metavar "IPKG" <> help "Run tests for package"))
+  <|> (PkgBuild      <$> strOption (long "build"      <> metavar "IPKG" <> help "Build package"))
+  <|> (PkgInstall    <$> strOption (long "install"    <> metavar "IPKG" <> help "Install package"))
+  <|> (PkgREPL       <$> strOption (long "repl"       <> metavar "IPKG" <> help "Launch REPL, only for executables"))
+  <|> (PkgClean      <$> strOption (long "clean"      <> metavar "IPKG" <> help "Clean package"))
+  <|> (PkgDocBuild   <$> strOption (long "mkdoc"      <> metavar "IPKG" <> help "Generate IdrisDoc for package"))
+  <|> (PkgDocInstall <$> strOption (long "installdoc" <> metavar "IPKG" <> help "Install IdrisDoc for package"))
+  <|> (PkgCheck      <$> strOption (long "checkpkg"   <> metavar "IPKG" <> help "Check package only"))
+  <|> (PkgTest       <$> strOption (long "testpkg"    <> metavar "IPKG" <> help "Run tests for package"))
 
   -- Misc options
   <|> (BCAsm <$> strOption (long "bytecode"))

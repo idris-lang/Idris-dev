@@ -268,7 +268,6 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
          notice verbosity $ unwords ["Copying man page to", mandest]
          installOrdinaryFiles verbosity mandest [("man", "idris.1")]
 
-
       makeInstall src target =
          make verbosity [ "-C", src, "install" , "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
 

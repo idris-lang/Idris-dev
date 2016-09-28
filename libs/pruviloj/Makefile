@@ -9,6 +9,7 @@ clean:
 
 install:
 	$(IDRIS) --install ${PKG}.ipkg
+	${IDRIS} --installdoc ${PKG}.ipkg
 
 rebuild: clean build
 

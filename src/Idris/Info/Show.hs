@@ -24,6 +24,16 @@ showExitIdrisLibDir = do
   showIdrisLibDir
   exitSuccess
 
+showIdrisDocDir :: IO ()
+showIdrisDocDir = do
+  ldir <- getIdrisDocDir
+  putStrLn ldir
+
+showExitIdrisDocDir :: IO ()
+showExitIdrisDocDir = do
+  showIdrisDocDir
+  exitSuccess
+
 showIdrisFlagsInc :: IO ()
 showIdrisFlagsInc = do
   incFlags <- getIdrisFlagsInc
@@ -68,8 +78,10 @@ showIdrisInfo = do
   putStrLn "Paths:"
   ldir <- getIdrisLibDir
   udir <- getIdrisUserDataDir
+  ddir <- getIdrisDocDir
   putStrLn $ unwords ["-", "Library Dir:", ldir]
   putStrLn $ unwords ["-", "User Dir:",    udir]
+  putStrLn $ unwords ["-", "Documentation Dir:", ddir]
 
   putStrLn "Flags:"
   lflag <- getIdrisFlagsLib
