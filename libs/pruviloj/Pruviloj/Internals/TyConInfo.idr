@@ -1,4 +1,4 @@
-module Pruviloj.Derive.TyConInfo
+module Pruviloj.Internals.TyConInfo
 
 import Pruviloj.Core
 import Pruviloj.Internals
