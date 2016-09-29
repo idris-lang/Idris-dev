@@ -6,7 +6,11 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 module Idris.Info
-  ( getIdrisLibDir
+  ( getIdrisDataDir
+  , getIdrisCRTSDir
+  , getIdrisJSRTSDir
+  , getIdrisLibDir
+  , getIdrisDocDir
   , getIdrisFlagsLib
   , getIdrisFlagsInc
   , getIdrisFlagsEnv
@@ -32,6 +36,18 @@ import qualified IRTS.System as S
 import Version_idris (gitHash)
 
 import Paths_idris
+
+getIdrisDataDir :: IO String
+getIdrisDataDir = S.getIdrisDataDir
+
+getIdrisCRTSDir :: IO String
+getIdrisCRTSDir = S.getIdrisCRTSDir
+
+getIdrisJSRTSDir :: IO String
+getIdrisJSRTSDir = S.getIdrisJSRTSDir
+
+getIdrisDocDir :: IO String
+getIdrisDocDir = S.getIdrisDocDir
 
 getIdrisLibDir :: IO String
 getIdrisLibDir = S.getIdrisLibDir

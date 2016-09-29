@@ -2545,7 +2545,7 @@ getPkgDir (Pkg str) = Just str
 getPkgDir _ = Nothing
 
 getPkg :: Opt -> Maybe (Bool, String)
-getPkg (PkgBuild str) = Just (False, str)
+getPkg (PkgBuild   str) = Just (False, str)
 getPkg (PkgInstall str) = Just (True, str)
 getPkg _ = Nothing
 
@@ -2563,9 +2563,10 @@ getPkgCheck _              = Nothing
 
 -- | Returns None if given an Opt which is not PkgMkDoc
 --   Otherwise returns Just x, where x is the contents of PkgMkDoc
-getPkgMkDoc :: Opt          -- ^ Opt to extract
-            -> Maybe String -- ^ Result
-getPkgMkDoc (PkgMkDoc str) = Just str
+getPkgMkDoc :: Opt                  -- ^ Opt to extract
+            -> Maybe (Bool, String) -- ^ Result
+getPkgMkDoc (PkgDocBuild  str)  = Just (False,str)
+getPkgMkDoc (PkgDocInstall str) = Just (True,str)
 getPkgMkDoc _              = Nothing
 
 getPkgTest :: Opt          -- ^ the option to extract

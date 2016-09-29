@@ -34,5 +34,4 @@ doc_clean:
 	$(MAKE)	-C effects doc_clean
 	$(MAKE)	-C pruviloj doc_clean
 
-
 .PHONY: build install clean doc doc_clean

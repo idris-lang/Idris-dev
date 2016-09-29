@@ -492,7 +492,8 @@ data Opt = Filename String
          | IdemodeSocket
          | ShowAll
          | ShowLibs
-         | ShowLibdir
+         | ShowLibDir
+         | ShowDocDir
          | ShowIncs
          | ShowPkgs
          | ShowLoggingCats
@@ -524,7 +525,8 @@ data Opt = Filename String
          | PkgClean String
          | PkgCheck String
          | PkgREPL String
-         | PkgMkDoc String -- IdrisDoc
+         | PkgDocBuild String -- IdrisDoc
+         | PkgDocInstall String
          | PkgTest String
          | PkgIndex FilePath
          | WarnOnly

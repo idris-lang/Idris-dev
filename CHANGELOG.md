@@ -40,10 +40,14 @@
 
 * Idris' documentation system now displays the documentation for auto
   implicits in the output of `:doc`. This is tested for in `docs005`.
-
 * New command line flag `--info` that displays information about the installation.
-
 * New command line flag `--sourcepath <dir>` that allows adding directories to the source search path.
+* Allow 'installation' of a package's IdrisDoc documentation into a central location. The default location is the subdirectory `docs` of Idris' data directory.
+  * New flag `--installdoc <ipkg>` provided to install documentation
+  * New flag `--docdir` provided to show default documentation installation location.
+  * New environment variable `IDRIS_DOC_PATH` to allow specification of an alternative installation path for documentation.
+* Semantic meaning behind several environment variables has been clarified in documentation and code. See compilation section of the reference manual for more details.
+
 ## Miscellaneous updates
 
 * The test suite now uses [tasty-golden](https://hackage.haskell.org/package/tasty-golden). New tests must be registered in `test/TestData.hs`, as explained in the relevant `README.md`.
@@ -51,7 +55,7 @@
 
 ## UI Changes
 
-* The :e command can now handle an $EDITOR with arguments in it, like "emacs -nw" 
+* The :e command can now handle an $EDITOR with arguments in it, like "emacs -nw"
 
 
 # New in 0.12:

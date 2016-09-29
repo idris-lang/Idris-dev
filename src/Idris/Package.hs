@@ -190,10 +190,10 @@ cleanPkg copts fp = do
 --
 -- Issue number #1572 on the issue tracker
 --       https://github.com/idris-lang/Idris-dev/issues/1572
-documentPkg :: [Opt]    -- ^ Command line options.
-            -> FilePath -- ^ Path to ipkg file.
+documentPkg :: [Opt]           -- ^ Command line options.
+            -> (Bool,FilePath) -- ^ (Should we install?, Path to ipkg file).
             -> IO ()
-documentPkg copts fp = do
+documentPkg copts (install,fp) = do
   pkgdesc        <- parseDesc fp
   cd             <- getCurrentDirectory
   let pkgDir      = cd </> takeDirectory fp
@@ -223,7 +223,13 @@ documentPkg copts fp = do
           putStrLn $ pshow idrisInit err
           exitWith (ExitFailure 1)
         Right ist -> do
-          docRes <- generateDocs ist mods outputDir
+          iDocDir   <- getIdrisDocDir
+          pkgDocDir <- makeAbsolute (iDocDir </> pkgname pkgdesc)
+          let out_dir = if install then pkgDocDir else outputDir
+          when install $ do
+              putStrLn $ unwords ["Attempting to install IdrisDocs for", pkgname pkgdesc, "in:", out_dir]
+
+          docRes <- generateDocs ist mods out_dir
           case docRes of
             Right _  -> return ()
             Left msg -> do
@@ -279,7 +285,7 @@ installPkg :: [String]  -- ^ Alternate install location
            -> PkgDesc   -- ^ iPKG file.
            -> IO ()
 installPkg altdests pkgdesc = inPkgDir pkgdesc $ do
-  d <- getTargetDir
+  d <- getIdrisLibDir
   let destdir = case altdests of
                   []     -> d
                   (d':_) -> d'
@@ -302,11 +308,11 @@ buildMods opts ns = do let f = map (toPath . showCG) ns
 
 testLib :: Bool -> String -> String -> IO Bool
 testLib warn p f
-    = do d <- getDataDir
+    = do d <- getIdrisCRTSDir
          gcc <- getCC
          (tmpf, tmph) <- tempfile ""
          hClose tmph
-         let libtest = d </> "rts" </> "libtest.c"
+         let libtest = d </> "libtest.c"
          e <- rawSystem gcc [libtest, "-l" ++ f, "-o", tmpf]
          case e of
             ExitSuccess -> return True
@@ -416,14 +422,15 @@ mergeOptions copts popts =
     normaliseOpts = filter filtOpt
 
     filtOpt :: Opt -> Bool
-    filtOpt (PkgBuild   _) = False
-    filtOpt (PkgInstall _) = False
-    filtOpt (PkgClean   _) = False
-    filtOpt (PkgCheck   _) = False
-    filtOpt (PkgREPL    _) = False
-    filtOpt (PkgMkDoc   _) = False
-    filtOpt (PkgTest    _) = False
-    filtOpt _              = True
+    filtOpt (PkgBuild        _) = False
+    filtOpt (PkgInstall      _) = False
+    filtOpt (PkgClean        _) = False
+    filtOpt (PkgCheck        _) = False
+    filtOpt (PkgREPL         _) = False
+    filtOpt (PkgDocBuild     _) = False
+    filtOpt (PkgDocInstall   _) = False
+    filtOpt (PkgTest         _) = False
+    filtOpt _                   = True
 
     chkOpt :: Opt -> Either String Opt
     chkOpt o@(OLogging _)     = Right o

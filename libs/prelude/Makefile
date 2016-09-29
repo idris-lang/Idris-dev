@@ -4,8 +4,9 @@ PKG   := prelude
 build:
 	$(IDRIS) --build ${PKG}.ipkg
 
-install: 
+install:
 	$(IDRIS) --install ${PKG}.ipkg
+	${IDRIS} --installdoc ${PKG}.ipkg
 
 clean:
 	$(IDRIS) --clean ${PKG}.ipkg
