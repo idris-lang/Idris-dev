@@ -12,9 +12,9 @@ plus_comm Z m =
 
 -- Step case
 -- (S k + m = m + S k) <== plus_comm =
-plus_comm (S k) m =
-    rewrite ((k + m = m + k) <== plus_comm) in
-    rewrite ((S (m + k) = m + S k) <== plusSuccRightSucc) in
+plus_comm (S len) m =
+    rewrite ((len + m = m + len) <== plus_comm) in
+    rewrite ((S (m + len) = m + S len) <== plusSuccRightSucc) in
         Refl
 -- QED
 
@@ -29,7 +29,7 @@ append (x :: xs) ys ?= x :: append xs ys
 simple.append_lemma_2 = proof {
   intros;
   compute;
-  rewrite (plusSuccRightSucc m k);
+  rewrite (plusSuccRightSucc m len);
   trivial;
 }
 
@@ -39,4 +39,3 @@ simple.append_lemma_1 = proof {
   rewrite sym (plusZeroRightNeutral m);
   exact value;
 }
-
