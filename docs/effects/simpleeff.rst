@@ -495,8 +495,8 @@ values:
     Env = List (String, Integer)
 
     eval : Expr -> Eff Integer [EXCEPTION String, STATE Env]
-    eval (Val x) = return x
-    eval (Add l r) = return $ !(eval l) + !(eval r)
+    eval (Val x)   = pure x
+    eval (Add l r) = pure $ !(eval l) + !(eval r)
 
 Note that we are using ``!``-notation to avoid having to bind
 subexpressions in a ``do`` block. Next, we add a case for evaluating
@@ -506,7 +506,7 @@ subexpressions in a ``do`` block. Next, we add a case for evaluating
 
     eval (Var x) = case lookup x !get of
                         Nothing => raise $ "No such variable " ++ x
-                        Just val => return val
+                        Just val => pure val
 
 This retrieves the state (with ``get``, supported by the ``STATE Env``
 effect) and raises an exception if the variable is not in the
@@ -559,7 +559,7 @@ has been generated:
 
     eval (Random upper) = do val <- rndInt 0 upper
                              putStrLn (show val)
-                             return val
+                             pure val
 
 If we try this without extending the effects list, we would see an
 error something like the following:

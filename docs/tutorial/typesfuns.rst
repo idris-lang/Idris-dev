@@ -635,12 +635,12 @@ The syntax ``x <- iovalue`` executes the I/O operation ``iovalue``, of
 type ``IO a``, and puts the result, of type ``a`` into the variable
 ``x``. In this case, ``getLine`` returns an ``IO String``, so ``name``
 has type ``String``. Indentation is significant — each statement in
-the do block must begin in the same column. The ``return`` operation
+the do block must begin in the same column. The ``pure`` operation
 allows us to inject a value directly into an IO operation:
 
 .. code-block:: idris
 
-    return : a -> IO a
+    pure : a -> IO a
 
 As we will see later, ``do`` notation is more general than this, and
 can be overloaded.

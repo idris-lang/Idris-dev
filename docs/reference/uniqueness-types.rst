@@ -212,7 +212,7 @@ the following sort of bad program being implemented:
     foo xs = do let f = \x : Int => showU xs
                 putStrLn $ free xs
                 putStrLn $ f 42
-                return ()
+                pure ()
 
 Since ``lend`` is implicit, in practice for functions to lend and borrow
 values merely requires the argument to be marked as ``Borrowed``. We can

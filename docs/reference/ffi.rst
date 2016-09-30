@@ -361,4 +361,4 @@ timeouts:
       timeout <- jscall "setTimeout(%0, %1)"
                         (JsFn (() -> JS_IO ()) -> Int -> JS_IO Ptr)
                         (MkJsFn f) millis
-      return $ MkTimeout timeout
+      pure $ MkTimeout timeout
