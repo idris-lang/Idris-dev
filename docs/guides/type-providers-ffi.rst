@@ -53,8 +53,8 @@ actions. Let's write a simple one now:
       putStrLn "I'm sorry, I don't know how big size_t is. Can you tell me, in bytes?"
       resp <- getLine
       case readInt resp of
-         Just sizeTSize => return (Provide sizeTSize)
-         Nothing => return (Error "I'm sorry, I don't understand.")
+         Just sizeTSize => pure (Provide sizeTSize)
+         Nothing => pure (Error "I'm sorry, I don't understand.")
     -- the readInt function is left as an exercise
 
 We assume that whoever's compiling the library knows the size of
