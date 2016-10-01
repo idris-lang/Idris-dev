@@ -5,50 +5,46 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving, ConstraintKinds #-}
-{-# LANGUAGE PatternGuards, StandaloneDeriving                 #-}
+{-# LANGUAGE CPP, ConstraintKinds, GeneralizedNewtypeDeriving, PatternGuards,
+             StandaloneDeriving #-}
 #if !(MIN_VERSION_base(4,8,0))
 {-# LANGUAGE OverlappingInstances #-}
 #endif
 module Idris.Parser.Helpers where
 
-import Prelude hiding (pi)
-
-import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err)
-import Text.Parser.LookAhead
-import Text.Parser.Expression
-import qualified Text.Parser.Token as Tok
-import qualified Text.Parser.Char as Chr
-import qualified Text.Parser.Token.Highlight as Hi
-
 import Idris.AbsSyntax
-
-import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Core.TT
 import Idris.Delaborate (pprintErr)
 import Idris.Docstrings
 import Idris.Output (iWarn)
 
 import qualified Util.Pretty as Pretty (text)
 
+import Prelude hiding (pi)
+
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-
-import Data.Maybe
-import qualified Data.List.Split as Spl
-import Data.List
-import Data.Monoid
-import Data.Char
-import qualified Data.Map as M
-import qualified Data.HashSet as HS
-import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
-
-import System.FilePath
-
+import Data.Char
+import qualified Data.HashSet as HS
+import Data.List
+import qualified Data.List.Split as Spl
+import qualified Data.Map as M
+import Data.Maybe
+import Data.Monoid
+import qualified Data.Text as T
 import Debug.Trace
+import System.FilePath
+import qualified Text.Parser.Char as Chr
+import Text.Parser.Expression
+import Text.Parser.LookAhead
+import qualified Text.Parser.Token as Tok
+import qualified Text.Parser.Token.Highlight as Hi
+import Text.Trifecta hiding (Err, char, charLiteral, natural, span, string,
+                      stringLiteral, symbol, whiteSpace)
+import Text.Trifecta.Delta
 
 -- | Idris parser with state used during parsing
 type IdrisParser = StateT IState IdrisInnerParser

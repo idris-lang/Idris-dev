@@ -11,23 +11,22 @@ Maintainer  : The Idris Community.
 
 module Idris.IdeMode(parseMessage, convSExp, WhatDocs(..), IdeModeCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideModeEpoch, getLen, getNChar, sExpToString) where
 
-import Text.Printf
-import Numeric
-import Data.List
-import Data.Maybe (isJust)
+import Idris.Core.Binary
+import Idris.Core.TT
+
+import Control.Applicative hiding (Const)
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as Lazy
 import qualified Data.ByteString.UTF8 as UTF8
+import Data.List
+import Data.Maybe (isJust)
 import qualified Data.Text as T
+import Numeric
+import System.IO
+import Text.Printf
 import Text.Trifecta hiding (Err)
 import Text.Trifecta.Delta
-import System.IO
-
-import Idris.Core.TT
-import Idris.Core.Binary
-
-import Control.Applicative hiding (Const)
 
 getNChar :: Handle -> Int -> String -> IO (String)
 getNChar _ 0 s = return (reverse s)

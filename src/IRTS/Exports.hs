@@ -9,9 +9,9 @@ Maintainer  : The Idris Community.
 module IRTS.Exports(findExports, getExpNames) where
 
 import Idris.AbsSyntax
-import Idris.Core.TT
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
+import Idris.Core.TT
 import Idris.Error
 import IRTS.Lang
 

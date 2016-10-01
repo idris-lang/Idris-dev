@@ -5,16 +5,15 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards, DeriveFunctor, DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor, DeriveGeneric, PatternGuards #-}
 
 module IRTS.Lang where
 
-import Control.Monad.State hiding (lift)
-import Control.Applicative hiding (Const)
-
-import Idris.Core.TT
 import Idris.Core.CaseTree
+import Idris.Core.TT
 
+import Control.Applicative hiding (Const)
+import Control.Monad.State hiding (lift)
 import Data.List
 import Debug.Trace
 import GHC.Generics (Generic)
@@ -319,7 +318,7 @@ lsubst n new (LCon lv t cn args) = let args' = map (lsubst n new) args in
                                        LCon lv t cn args'
 lsubst n new (LOp op args) = let args' = map (lsubst n new) args in
                                  LOp op args'
-lsubst n new (LForeign fd rd args) 
+lsubst n new (LForeign fd rd args)
      = let args' = map (\(d, a) -> (d, lsubst n new a)) args in
            LForeign fd rd args'
 lsubst n new (LCase t e alts) = let e' = lsubst n new e

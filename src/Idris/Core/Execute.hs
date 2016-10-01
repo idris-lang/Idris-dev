@@ -6,47 +6,42 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE PatternGuards, ExistentialQuantification, CPP #-}
+{-# LANGUAGE CPP, ExistentialQuantification, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.Execute (execute) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import IRTS.Lang(FDesc(..), FType(..))
-
-import Idris.Primitives(Prim(..), primitives)
-
-import Idris.Core.TT
-import Idris.Core.Evaluate
 import Idris.Core.CaseTree
-
+import Idris.Core.Evaluate
+import Idris.Core.TT
 import Idris.Error
-
-import Debug.Trace
+import Idris.Primitives (Prim(..), primitives)
+import IRTS.Lang (FDesc(..), FType(..))
 
 import Util.DynamicLinker
 import Util.System
 
 import Control.Applicative hiding (Const)
 import Control.Exception
-import Control.Monad.Trans
-import Control.Monad.Trans.State.Strict
-import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Control.Monad hiding (forM)
-import Data.Maybe
+import Control.Monad.Trans
+import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
+import Control.Monad.Trans.State.Strict
 import Data.Bits
-import Data.Traversable (forM)
-import Data.Time.Clock.POSIX (getPOSIXTime)
 import qualified Data.Map as M
+import Data.Maybe
+import Data.Time.Clock.POSIX (getPOSIXTime)
+import Data.Traversable (forM)
+import Debug.Trace
+import System.IO
 
 #ifdef IDRIS_FFI
-import Foreign.LibFFI
 import Foreign.C.String
+import Foreign.LibFFI
 import Foreign.Marshal.Alloc (free)
 import Foreign.Ptr
 #endif
-
-import System.IO
 
 #ifndef IDRIS_FFI
 execute :: Term -> Idris Term

@@ -10,11 +10,10 @@ Maintainer  : The Idris Community.
 
 module Idris.Output where
 
-import Idris.Core.TT
-import Idris.Core.Evaluate (isDConName, isTConName, isFnName, normaliseAll)
-
 import Idris.AbsSyntax
-import Idris.Colours (hStartColourise, hEndColourise)
+import Idris.Colours (hEndColourise, hStartColourise)
+import Idris.Core.Evaluate (isDConName, isFnName, isTConName, normaliseAll)
+import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Docstrings
 import Idris.IdeMode
@@ -23,18 +22,16 @@ import Util.Pretty
 import Util.ScreenSize (getScreenWidth)
 import Util.System (isATTY)
 
-import Control.Monad.Trans.Except (ExceptT (ExceptT), runExceptT)
-
-import System.Console.Haskeline.MonadException
-  (MonadException (controlIO), RunIO (RunIO))
-import System.IO (stdout, Handle, hPutStrLn, hPutStr)
-import System.FilePath (replaceExtension)
-
 import Prelude hiding ((<$>))
 
+import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
 import Data.Char (isAlpha)
-import Data.List (nub, intersperse)
+import Data.List (intersperse, nub)
 import Data.Maybe (fromMaybe)
+import System.Console.Haskeline.MonadException (MonadException(controlIO),
+                                                RunIO(RunIO))
+import System.FilePath (replaceExtension)
+import System.IO (Handle, hPutStr, hPutStrLn, stdout)
 
 instance MonadException m => MonadException (ExceptT Err m) where
     controlIO f = ExceptT $ controlIO $ \(RunIO run) -> let

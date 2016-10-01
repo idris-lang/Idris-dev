@@ -5,14 +5,12 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, PatternGuards #-}
 module IRTS.JavaScript.AST where
 
-import Data.Word
 import Data.Char (isDigit)
-
 import qualified Data.Text as T
+import Data.Word
 
 data JSType = JSIntTy
             | JSStringTy

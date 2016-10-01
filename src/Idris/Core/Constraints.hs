@@ -7,12 +7,12 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Core.Constraints ( ucheck ) where
 
-import Idris.Core.TT ( TC(..), UExp(..), UConstraint(..), FC(..),
-                       ConstraintFC(..), Err'(..) )
+import Idris.Core.TT (ConstraintFC(..), Err'(..), FC(..), TC(..),
+                      UConstraint(..), UExp(..))
 
 import Control.Applicative
 import Control.Monad.State.Strict
-import Data.List ( partition )
+import Data.List (partition)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Debug.Trace

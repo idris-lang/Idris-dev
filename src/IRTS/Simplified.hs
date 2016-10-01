@@ -7,13 +7,13 @@ Maintainer  : The Idris Community.
 -}
 module IRTS.Simplified(simplifyDefs, SDecl(..), SExp(..), SAlt(..)) where
 
-import IRTS.Defunctionalise
-import Idris.Core.TT
 import Idris.Core.CaseTree
+import Idris.Core.TT
 import Idris.Core.Typecheck
-import Data.Maybe
-import Control.Monad.State
+import IRTS.Defunctionalise
 
+import Control.Monad.State
+import Data.Maybe
 import Debug.Trace
 
 data SExp = SV LVar

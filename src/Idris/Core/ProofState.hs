@@ -10,7 +10,7 @@ proofs, and some high level commands for introducing new theorems,
 evaluation/checking inside the proof system, etc.
 -}
 
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards #-}
 module Idris.Core.ProofState(
     ProofState(..), newProof, envAtFocus, goalAtFocus
   , Tactic(..), Goal(..), processTactic, nowElaboratingPS
@@ -18,19 +18,19 @@ module Idris.Core.ProofState(
   , keepGiven, getProvenance
   ) where
 
-import Idris.Core.Typecheck
 import Idris.Core.Evaluate
-import Idris.Core.TT
-import Idris.Core.Unify
 import Idris.Core.ProofTerm
-
-import Control.Monad.State.Strict
-import Control.Applicative hiding (empty)
-import Control.Arrow ((***))
-import Data.List
-import Debug.Trace
+import Idris.Core.TT
+import Idris.Core.Typecheck
+import Idris.Core.Unify
 
 import Util.Pretty hiding (fill)
+
+import Control.Applicative hiding (empty)
+import Control.Arrow ((***))
+import Control.Monad.State.Strict
+import Data.List
+import Debug.Trace
 
 data ProofState = PS { thname            :: Name,
                        holes             :: [Name], -- ^ holes still to be solved

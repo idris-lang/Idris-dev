@@ -5,57 +5,50 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.IdrisDoc (generateDocs) where
 
-import Idris.Core.TT (Name (..), sUN, SpecialName (..), OutputAnnotation (..),
-                      TextFormatting (..), txt, str, nsroot, constIsType, toAlist)
-import Idris.Core.Evaluate (ctxtAlist, Def (..), lookupDefAcc,
-                            Accessibility (..), isDConName, isFnName,
-                            isTConName)
-import Idris.Parser.Helpers (opChars)
 import Idris.AbsSyntax
+import Idris.Core.Evaluate (Accessibility(..), Def(..), ctxtAlist, isDConName,
+                            isFnName, isTConName, lookupDefAcc)
+import Idris.Core.TT (Name(..), OutputAnnotation(..), SpecialName(..),
+                      TextFormatting(..), constIsType, nsroot, sUN, str,
+                      toAlist, txt)
 import Idris.Docs
 import Idris.Docstrings (nullDocstring)
 import qualified Idris.Docstrings as Docstrings
-
+import Idris.Parser.Helpers (opChars)
 import IRTS.System (getDataFileName)
 
 import Control.Applicative ((<|>))
 import Control.Monad (forM_)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
-
-import Data.Maybe
-
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BS2
-import qualified Data.Text.Encoding as E
 import qualified Data.List as L
 import qualified Data.List.Split as LS
 import qualified Data.Map as M hiding ((!))
+import Data.Maybe
 import Data.Monoid (mempty)
 import qualified Data.Ord (compare)
 import qualified Data.Set as S
 import qualified Data.Text as T
-
+import qualified Data.Text.Encoding as E
+import System.Directory
+import System.FilePath
 import System.IO
 import System.IO.Error
-import System.FilePath
-import System.Directory
-
-import Text.PrettyPrint.Annotated.Leijen (displayDecorated, renderCompact)
-
-import Text.Blaze (toValue, contents)
-import Text.Blaze.Internal (MarkupM (Empty))
-import Text.Blaze.Html5 ((!), toHtml, preEscapedToHtml)
+import Text.Blaze (contents, toValue)
+import qualified Text.Blaze.Html.Renderer.String as R
+import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
+import Text.Blaze.Html5 (preEscapedToHtml, toHtml, (!))
 import qualified Text.Blaze.Html5 as H
 import Text.Blaze.Html5.Attributes as A
-import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
-import qualified Text.Blaze.Html.Renderer.String as R
+import Text.Blaze.Internal (MarkupM(Empty))
 import Text.Blaze.Renderer.String (renderMarkup)
+import Text.PrettyPrint.Annotated.Leijen (displayDecorated, renderCompact)
 
 -- ---------------------------------------------------------------- [ Public ]
 

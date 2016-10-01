@@ -5,23 +5,22 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards, ViewPatterns #-}
+{-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Elab.Rewrite(elabRewrite, elabRewriteLemma) where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import Idris.Delaborate
-import Idris.Error
-import Idris.Core.TT
 import Idris.Core.Elaborate
 import Idris.Core.Evaluate
+import Idris.Core.TT
+import Idris.Delaborate
 import Idris.Docstrings
+import Idris.Error
 
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
-
 import Debug.Trace
 
 elabRewrite :: (PTerm -> ElabD ()) -> IState ->

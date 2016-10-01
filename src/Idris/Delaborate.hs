@@ -13,23 +13,22 @@ module Idris.Delaborate (
   , pprintDelabTy, pprintErr, resugar
   ) where
 
-import Util.Pretty
-
 import Idris.AbsSyntax
-import Idris.Core.TT
 import Idris.Core.Evaluate
-import Idris.Docstrings (overview, renderDocstring, renderDocTerm)
+import Idris.Core.TT
+import Idris.Docstrings (overview, renderDocTerm, renderDocstring)
 import Idris.ErrReverse
+
+import Util.Pretty
 
 import Prelude hiding ((<$>))
 
-import Data.Generics.Uniplate.Data (transform)
-import Data.Maybe (mapMaybe)
-import Data.List (intersperse, nub)
-import qualified Data.Text as T
 import Control.Applicative (Alternative((<|>)))
 import Control.Monad.State
-
+import Data.Generics.Uniplate.Data (transform)
+import Data.List (intersperse, nub)
+import Data.Maybe (mapMaybe)
+import qualified Data.Text as T
 import Debug.Trace
 
 bugaddr = "https://github.com/idris-lang/Idris-dev/issues"
@@ -81,10 +80,10 @@ delabSugared ist tm = resugar ist $ delab ist tm
 
 -- | Delaborate a term without resugaring
 delab :: IState -> Term -> PTerm
-delab i tm = delab' i tm False False 
+delab i tm = delab' i tm False False
 
 delabMV :: IState -> Term -> PTerm
-delabMV i tm = delab' i tm False True 
+delabMV i tm = delab' i tm False True
 
 -- | Delaborate a term directly, leaving case applications as they are.
 -- We need this for interactive case splitting, where we need access to the
@@ -112,7 +111,7 @@ delabTy' :: IState -> [PArg] -- ^ implicit arguments to type, if any
 delabTy' ist imps tm fullname mvs docases = de [] imps tm
   where
     un = fileFC "(val)"
-    
+
     -- Special case for spotting applications of case functions
     -- (Normally the scrutinee is let-bound, but hole types get normalised,
     -- so they could appear in this form. The scrutinee is always added as
@@ -123,7 +122,7 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
           | docases
           , isCaseApp sc
           , (P _ cOp _, args@(_:_)) <- unApply sc
-          , Just caseblock <- delabCase env imps (last args) cOp args 
+          , Just caseblock <- delabCase env imps (last args) cOp args
                  = caseblock
 
     de env _ (App _ f a) = deFn env f [a]

@@ -10,19 +10,16 @@ module Idris.Imports(
   , ibcPathNoFallback, installedPackages, pkgIndex
   ) where
 
-import Control.Applicative ((<$>))
-import Data.List (isSuffixOf)
-
 import Idris.AbsSyntax
-import Idris.Error
-
 import Idris.Core.TT
-
+import Idris.Error
 import IRTS.System (getIdrisLibDir)
 
-import System.FilePath
-import System.Directory
+import Control.Applicative ((<$>))
 import Control.Monad.State.Strict
+import Data.List (isSuffixOf)
+import System.Directory
+import System.FilePath
 
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
     deriving (Show, Eq)

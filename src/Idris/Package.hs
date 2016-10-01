@@ -8,41 +8,37 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE CPP #-}
 module Idris.Package where
 
-import System.Process
-import System.Directory
-import System.Exit
-import System.IO
-import System.FilePath ((</>), addTrailingPathSeparator, takeFileName,
-                        takeDirectory, normalise, addExtension, hasExtension)
-import System.Directory (createDirectoryIfMissing, copyFile)
+import Idris.AbsSyntax
+import Idris.Core.TT
+import Idris.Error (ifail)
+import Idris.IBC
+import Idris.IdrisDoc
+import Idris.Imports
+import Idris.Main (idris, idrisMain)
+import Idris.Output (pshow)
+import Idris.Output
+import Idris.Package.Common
+import Idris.Package.Parser
+import Idris.Parser (loadModule)
+import Idris.REPL
+import IRTS.System
 
 import Util.System
 
 import Control.Monad
-import Control.Monad.Trans.State.Strict (execStateT)
 import Control.Monad.Trans.Except (runExceptT)
-
+import Control.Monad.Trans.State.Strict (execStateT)
+import Data.Either (partitionEithers)
 import Data.List
-import Data.List.Split(splitOn)
-import Data.Maybe(fromMaybe)
-import Data.Either(partitionEithers)
-
-import Idris.Core.TT
-import Idris.REPL
-import Idris.Parser (loadModule)
-import Idris.Output (pshow)
-import Idris.AbsSyntax
-import Idris.IdrisDoc
-import Idris.IBC
-import Idris.Output
-import Idris.Imports
-import Idris.Error (ifail)
-import Idris.Main (idrisMain, idris)
-
-import Idris.Package.Common
-import Idris.Package.Parser
-
-import IRTS.System
+import Data.List.Split (splitOn)
+import Data.Maybe (fromMaybe)
+import System.Directory
+import System.Directory (copyFile, createDirectoryIfMissing)
+import System.Exit
+import System.FilePath (addExtension, addTrailingPathSeparator, hasExtension,
+                        normalise, takeDirectory, takeFileName, (</>))
+import System.IO
+import System.Process
 
 -- To build a package:
 -- * read the package description

@@ -7,11 +7,11 @@ Maintainer  : The Idris Community.
 -}
 module IRTS.DumpBC where
 
+import Idris.Core.TT
+import IRTS.Bytecode
 import IRTS.Lang
 import IRTS.Simplified
-import Idris.Core.TT
 
-import IRTS.Bytecode
 import Data.List
 
 interMap :: [a] -> [b] -> (a -> [b]) -> [b]

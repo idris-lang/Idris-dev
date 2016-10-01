@@ -11,30 +11,26 @@ module Idris.REPL.Parser (
   , setOptions
   ) where
 
-import System.FilePath ((</>))
-import System.Console.ANSI (Color(..))
-
-import Idris.Colours
 import Idris.AbsSyntax
+import Idris.Colours
 import Idris.Core.TT
 import Idris.Help
 import qualified Idris.Parser as P
-
 import Idris.REPL.Commands
 
 import Control.Applicative
 import Control.Monad.State.Strict
-
-import Text.Parser.Combinators
-import Text.Parser.Char(anyChar,oneOf)
-import Text.Trifecta(Result, parseString)
-import Text.Trifecta.Delta
-
-import Debug.Trace
-import Data.List
-import Data.List.Split(splitOn)
-import Data.Char(isSpace, toLower)
 import qualified Data.ByteString.UTF8 as UTF8
+import Data.Char (isSpace, toLower)
+import Data.List
+import Data.List.Split (splitOn)
+import Debug.Trace
+import System.Console.ANSI (Color(..))
+import System.FilePath ((</>))
+import Text.Parser.Char (anyChar, oneOf)
+import Text.Parser.Combinators
+import Text.Trifecta (Result, parseString)
+import Text.Trifecta.Delta
 
 parseCmd :: IState -> String -> String -> Result (Either String Command)
 parseCmd i inputname = P.runparser pCmd i inputname . trim

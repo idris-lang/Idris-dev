@@ -5,8 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, BangPatterns,
-             PatternGuards, DeriveGeneric #-}
+{-# LANGUAGE BangPatterns, DeriveGeneric, FlexibleInstances,
+             MultiParamTypeClasses, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
@@ -21,21 +21,21 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt,
                 lookupTotal, lookupTotalExact, lookupInjectiveExact,
-                lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict, 
+                lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict,
                 isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse) where
 
-import Debug.Trace
-import Control.Applicative hiding (Const)
-import Control.Monad.State -- not Strict!
-import qualified Data.Binary as B
-import Data.Binary hiding (get, put)
-import Data.Maybe (listToMaybe)
-import GHC.Generics (Generic)
-
-import Idris.Core.TT
 import Idris.Core.CaseTree
+import Idris.Core.TT
+
+import Control.Applicative hiding (Const)
+import Control.Monad.State
+import Data.Binary hiding (get, put)
+import qualified Data.Binary as B
+import Data.Maybe (listToMaybe)
+import Debug.Trace
+import GHC.Generics (Generic)
 
 data EvalState = ES { limited :: [(Name, Int)],
                       nexthole :: Int,
@@ -687,7 +687,7 @@ convEq ctxt holes topx topy = ceq [] topx topy where
                                        caseeq ((x,y):ps) xdef ydef
                         _ -> return False
 
-    sameCase :: [(Name, Name)] -> Name -> Name -> [Term] -> [Term] -> 
+    sameCase :: [(Name, Name)] -> Name -> Name -> [Term] -> [Term] ->
                 StateT UCs TC Bool
     sameCase ps x y xargs yargs
           = case (lookupDef x ctxt, lookupDef y ctxt) of
@@ -697,7 +697,7 @@ convEq ctxt holes topx topy = ceq [] topx topy where
                   [CaseOp _ _ _ _ _ yd])
                        -> let (xin, xdef) = cases_compiletime xd
                               (yin, ydef) = cases_compiletime yd in
-                            do liftM2 (&&) 
+                            do liftM2 (&&)
                                   (do ok <- zipWithM (ceq ps)
                                               (drop (length xin) xargs)
                                               (drop (length yin) yargs)

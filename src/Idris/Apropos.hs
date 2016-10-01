@@ -8,12 +8,12 @@ Maintainer  : The Idris Community.
 module Idris.Apropos (apropos, aproposModules) where
 
 import Idris.AbsSyntax
-import Idris.Core.Evaluate (ctxtAlist, Def(..))
-import Idris.Core.TT (Name(..), Type, TT(..), NameType(..), Binder(..), Const(..),
-                      lookupCtxtExact, toAlist)
-import Idris.Docstrings (Docstring, DocTerm, containsText)
+import Idris.Core.Evaluate (Def(..), ctxtAlist)
+import Idris.Core.TT (Binder(..), Const(..), Name(..), NameType(..), TT(..),
+                      Type, lookupCtxtExact, toAlist)
+import Idris.Docstrings (DocTerm, Docstring, containsText)
 
-import Data.List (nub, nubBy, intersperse)
+import Data.List (intersperse, nub, nubBy)
 import qualified Data.Text as T
 
 -- | Find definitions that are relevant to all space-delimited components of

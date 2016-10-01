@@ -7,10 +7,10 @@ Maintainer  : The Idris Community.
 -}
 module Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort) where
 
-import Network hiding (socketPort)
-import Network.Socket hiding (sClose)
-import Network.BSD (getProtocolNumber)
 import Control.Exception (bracketOnError)
+import Network hiding (socketPort)
+import Network.BSD (getProtocolNumber)
+import Network.Socket hiding (sClose)
 
 -- Copied from upstream impl of listenOn
 -- bound to localhost interface instead of iNADDR_ANY

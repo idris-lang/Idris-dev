@@ -5,54 +5,48 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             DeriveDataTypeable, DeriveGeneric, TypeSynonymInstances,
-             PatternGuards #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
+             FlexibleInstances, MultiParamTypeClasses, PatternGuards,
+             TypeSynonymInstances #-}
 
 module Idris.AbsSyntaxTree where
 
-import Idris.Core.TT
-import Idris.Core.Evaluate
+import Idris.Colours
 import Idris.Core.Elaborate hiding (Tactic(..))
+import Idris.Core.Evaluate
+import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Docstrings
-import IRTS.Lang
 import IRTS.CodegenCommon
-import Util.Pretty
+import IRTS.Lang
 import Util.DynamicLinker
-
-import Idris.Colours
-
-import System.Console.Haskeline
-import System.IO
+import Util.Pretty
 
 import Prelude hiding ((<$>))
 
 import Control.Applicative ((<|>))
-
-import Control.Monad.Trans.State.Strict
-import Control.Monad.Trans.Except
 import qualified Control.Monad.Trans.Class as Trans (lift)
-
-import Data.Data (Data)
-import Data.Function (on)
-import Data.Generics.Uniplate.Data (universe, children)
-import Data.List hiding (group)
+import Control.Monad.Trans.Except
+import Control.Monad.Trans.State.Strict
 import Data.Char
-import qualified Data.Map.Strict as M
-import qualified Data.Text as T
+import Data.Data (Data)
 import Data.Either
-import qualified Data.Set as S
-import Data.Word (Word)
+import Data.Foldable (Foldable)
+import Data.Function (on)
+import Data.Generics.Uniplate.Data (children, universe)
+import Data.List hiding (group)
+import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
+import qualified Data.Set as S
+import qualified Data.Text as T
 import Data.Traversable (Traversable)
 import Data.Typeable
-import Data.Foldable (Foldable)
-import GHC.Generics (Generic)
-import Network.Socket(PortNumber)
-
+import Data.Word (Word)
 import Debug.Trace
-
+import GHC.Generics (Generic)
+import Network.Socket (PortNumber)
+import System.Console.Haskeline
+import System.IO
 import Text.PrettyPrint.Annotated.Leijen
 
 data ElabWhat = ETypes | EDefns | EAll

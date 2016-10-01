@@ -10,53 +10,49 @@ module Idris.Elab.Data(elabData) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
-import Idris.DSL
-import Idris.Error
-import Idris.Delaborate
-import Idris.Imports
-import Idris.Elab.Term
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.Providers
-import Idris.Primitives
-import Idris.Inliner
-import Idris.PartialEval
-import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
-import IRTS.Lang
-
-import Idris.Elab.Type
-import Idris.Elab.Utils
-import Idris.Elab.Rewrite
-import Idris.Elab.Value
-
-import Idris.Core.TT
+import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.Execute
+import Idris.Core.TT
 import Idris.Core.Typecheck
-import Idris.Core.CaseTree
-
+import Idris.Coverage
+import Idris.DataOpts
+import Idris.DeepSeq
+import Idris.Delaborate
 import Idris.Docstrings
+import Idris.DSL
+import Idris.Elab.Rewrite
+import Idris.Elab.Term
+import Idris.Elab.Type
+import Idris.Elab.Utils
+import Idris.Elab.Value
+import Idris.Error
+import Idris.Imports
+import Idris.Inliner
+import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
+import Idris.PartialEval
+import Idris.Primitives
+import Idris.Providers
+import IRTS.Lang
+
+import Util.Pretty
 
 import Prelude hiding (id, (.))
-import Control.Category
 
 import Control.Applicative hiding (Const)
+import Control.Category
 import Control.DeepSeq
 import Control.Monad
 import Control.Monad.State.Strict as State
+import Data.Char (isLetter, toLower)
 import Data.List
-import Data.Maybe
-import Debug.Trace
-
+import Data.List.Split (splitOn)
 import qualified Data.Map as Map
+import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Data.Char(isLetter, toLower)
-import Data.List.Split (splitOn)
-
-import Util.Pretty
+import Debug.Trace
 
 warnLC :: FC -> Name -> Idris ()
 warnLC fc n
@@ -289,7 +285,7 @@ addParamConstraints fc ps cty cons
                                                     then ULE avar cvar
                                                     else ULT avar cvar
                                        addConstraints fc (tv, [con])
-                                       addIBC (IBCConstraint fc con) 
+                                       addIBC (IBCConstraint fc con)
                   _ -> return ()
         constraintTy t = return ()
 

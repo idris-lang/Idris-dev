@@ -7,9 +7,9 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Elab.Quasiquote (extractUnquotes) where
 
+import Idris.AbsSyntax
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.TT
-import Idris.AbsSyntax
 
 
 extract1 :: Int -> (PTerm -> a) -> PTerm -> Elab' aux (a, [(Name, PTerm)])

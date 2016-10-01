@@ -11,23 +11,23 @@ Maintainer  : The Idris Community.
 #endif
 module Idris.Package.Parser where
 
-import Text.Trifecta hiding (span, charLiteral, natural, symbol, char, string, whiteSpace)
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import Idris.Core.TT
-import Idris.REPL
 import Idris.AbsSyntaxTree
-import Idris.Parser.Helpers hiding (stringLiteral)
 import Idris.CmdOptions
-
+import Idris.Core.TT
 import Idris.Package.Common
-
-import Control.Monad.State.Strict
-import Control.Applicative
-import System.FilePath (takeFileName, isValid)
-import Data.Maybe (isNothing, fromJust)
-import Data.List (union)
+import Idris.Parser.Helpers hiding (stringLiteral)
+import Idris.REPL
 
 import Util.System
+
+import Control.Applicative
+import Control.Monad.State.Strict
+import Data.List (union)
+import Data.Maybe (fromJust, isNothing)
+import System.FilePath (isValid, takeFileName)
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import Text.Trifecta hiding (char, charLiteral, natural, span, string, symbol,
+                      whiteSpace)
 
 type PParser = StateT PkgDesc IdrisInnerParser
 

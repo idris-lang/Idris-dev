@@ -19,19 +19,19 @@ module IRTS.System( getDataFileName
                   , version
                   ) where
 
-import Data.List.Split
-
-import Control.Applicative ((<$>))
-import Data.Maybe (fromMaybe)
-import System.FilePath ((</>), addTrailingPathSeparator)
-import System.Environment
-
 #ifdef FREESTANDING
-import Target_idris
 import Paths_idris (version)
+import Target_idris
 #else
 import Paths_idris
 #endif
+
+import Control.Applicative ((<$>))
+import Data.List.Split
+import Data.Maybe (fromMaybe)
+import System.Environment
+import System.FilePath (addTrailingPathSeparator, (</>))
+
 
 getIdrisDataDir :: IO String
 getIdrisDataDir = do

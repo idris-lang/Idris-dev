@@ -14,30 +14,29 @@ module Idris.Interactive(
   , makeLemma
   ) where
 
-import Idris.Core.TT
-import Idris.Core.Evaluate
-import Idris.CaseSplit
 import Idris.AbsSyntax
+import Idris.CaseSplit
+import Idris.Core.Evaluate
+import Idris.Core.TT
+import Idris.Delaborate
+import Idris.Elab.Term
+import Idris.Elab.Value
 import Idris.ElabDecls
 import Idris.Error
 import Idris.ErrReverse
-import Idris.Delaborate
-import Idris.Output
 import Idris.IdeMode hiding (IdeModeCommand(..))
-import Idris.Elab.Value
-import Idris.Elab.Term
+import Idris.Output
 
 import Util.Pretty
 import Util.System
 
-import System.FilePath
-import System.Directory
-import System.IO
 import Data.Char
-import Data.Maybe (fromMaybe)
 import Data.List (isSuffixOf)
-
+import Data.Maybe (fromMaybe)
 import Debug.Trace
+import System.Directory
+import System.FilePath
+import System.IO
 
 caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
 caseSplitAt fn updatefile l n

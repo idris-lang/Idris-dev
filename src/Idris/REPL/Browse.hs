@@ -10,17 +10,16 @@ Maintainer  : The Idris Community.
 
 module Idris.REPL.Browse (namespacesInNS, namesInNS) where
 
-import Control.Monad (filterM)
+import Idris.AbsSyntax (getContext)
+import Idris.AbsSyntaxTree (Idris)
+import Idris.Core.Evaluate (Accessibility(Hidden, Private), ctxtAlist,
+                            lookupDefAccExact)
+import Idris.Core.TT (Name(..))
 
+import Control.Monad (filterM)
 import Data.List (isSuffixOf, nub)
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T (unpack)
-
-import Idris.Core.Evaluate (ctxtAlist, Accessibility(Private, Hidden), lookupDefAccExact)
-import Idris.Core.TT (Name(..))
-
-import Idris.AbsSyntaxTree (Idris)
-import Idris.AbsSyntax (getContext)
 
 -- | Find the sub-namespaces of a given namespace. The components
 -- should be in display order rather than the order that they are in

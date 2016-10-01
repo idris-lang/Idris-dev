@@ -8,7 +8,6 @@ Maintainer  : The Idris Community.
 module IRTS.Inliner where
 
 import Idris.Core.TT
-
 import IRTS.Defunctionalise
 
 inline :: DDefs -> DDefs

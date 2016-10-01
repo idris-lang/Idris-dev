@@ -10,14 +10,12 @@ Maintainer  : The Idris Community.
 
 module Idris.DSL where
 
-import Data.Generics.Uniplate.Data (transform)
-
 import Idris.AbsSyntax
-
-import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Core.TT
 
 import Control.Monad.State.Strict
+import Data.Generics.Uniplate.Data (transform)
 import Debug.Trace
 
 debindApp :: SyntaxInfo -> PTerm -> PTerm

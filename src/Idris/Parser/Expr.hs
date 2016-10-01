@@ -9,6 +9,12 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE PatternGuards, TupleSections                #-}
 module Idris.Parser.Expr where
 
+import Idris.AbsSyntax
+import Idris.Parser.Helpers
+import Idris.Parser.Ops
+import Idris.DSL
+import Idris.Core.TT
+
 import Prelude hiding (pi)
 
 import Text.Trifecta.Delta
@@ -18,18 +24,9 @@ import Text.Parser.Expression
 import qualified Text.Parser.Token as Tok
 import qualified Text.Parser.Char as Chr
 import qualified Text.Parser.Token.Highlight as Hi
-
-import Idris.AbsSyntax
-import Idris.Parser.Helpers
-import Idris.Parser.Ops
-import Idris.DSL
-
-import Idris.Core.TT
-
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-
 import Data.Function (on)
 import Data.Maybe
 import qualified Data.List.Split as Spl
@@ -39,7 +36,6 @@ import Data.Char
 import qualified Data.HashSet as HS
 import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
-
 import Debug.Trace
 
 -- | Allow implicit type declarations

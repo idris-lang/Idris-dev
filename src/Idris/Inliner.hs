@@ -9,8 +9,8 @@ Maintainer  : The Idris Community.
 
 module Idris.Inliner(inlineDef, inlineTerm) where
 
-import Idris.Core.TT
 import Idris.AbsSyntax
+import Idris.Core.TT
 
 inlineDef :: IState -> [([Name], Term, Term)] -> [([Name], Term, Term)]
 inlineDef ist ds = map (\ (ns, lhs, rhs) -> (ns, lhs, inlineTerm ist rhs)) ds

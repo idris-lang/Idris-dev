@@ -8,6 +8,7 @@ Maintainer  : The Idris Community.
 module Idris.Unlit(unlit) where
 
 import Idris.Core.TT
+
 import Data.Char
 
 unlit :: FilePath -> String -> TC String

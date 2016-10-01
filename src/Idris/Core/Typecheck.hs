@@ -6,17 +6,17 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
+{-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
              PatternGuards #-}
 
 module Idris.Core.Typecheck where
 
-import Control.Monad.State
-import Debug.Trace
-import qualified Data.Vector.Unboxed as V (length)
-
-import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Core.TT
+
+import Control.Monad.State
+import qualified Data.Vector.Unboxed as V (length)
+import Debug.Trace
 
 -- To check conversion, normalise each term wrt the current environment.
 -- Since we haven't converted everything to de Bruijn indices yet, we'll have to
@@ -83,7 +83,7 @@ recheck_borrowing uniq_check bs tcns ctxt env tm orig
 check :: Context -> Env -> Raw -> TC (Term, Type)
 check ctxt env tm
      -- Holes allowed, so constraint namespace doesn't matter
-     = evalStateT (check' True [] ctxt env tm) (0, []) 
+     = evalStateT (check' True [] ctxt env tm) (0, [])
 
 check' :: Bool -> String -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
 check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top where
@@ -343,7 +343,7 @@ checkUnique borrowed ctxt env tm
                      StateT [(Name, (UniqueUse, Universe))] TC ()
     chkBinderName env n b
        = do let rawty = forgetEnv (map fst env) (binderTy b)
-            (_, kind) <- lift $ check ctxt env rawty 
+            (_, kind) <- lift $ check ctxt env rawty
             case kind of
                  UType UniqueType -> do ns <- get
                                         if n `elem` borrowed

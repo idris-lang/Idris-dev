@@ -10,45 +10,41 @@ module Idris.Prover (prover, showProof, showRunElab) where
 
 -- Hack for GHC 7.10 and earlier compat without CPP or warnings
 -- This exludes (<$>) as fmap, because wl-pprint uses it for newline
-import Prelude (Eq(..), Show(..),
-                Bool(..), Either(..), Maybe(..), String,
-                (.), ($), (++), (||), (&&),
-                concatMap, id, elem, error, fst, flip, foldl, foldr, init,
-                length, lines, map, not, null, repeat, reverse, tail, zip)
-
-import Idris.Core.Elaborate hiding (Tactic(..))
-import Idris.Core.TT
-import Idris.Core.Evaluate
-import Idris.Core.CaseTree
-import Idris.Core.Typecheck
-
-import Idris.Elab.Utils
-import Idris.Elab.Value
-import Idris.Elab.Term
+import Prelude (Bool(..), Either(..), Eq(..), Maybe(..), Show(..), String,
+                concatMap, elem, error, flip, foldl, foldr, fst, id, init,
+                length, lines, map, not, null, repeat, reverse, tail, zip, ($),
+                (&&), (++), (.), (||))
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import Idris.Delaborate
-import Idris.Docs (getDocs, pprintDocs, pprintConstDocs)
-import Idris.ElabDecls
-import Idris.Parser hiding (params)
-import Idris.Error
-import Idris.DataOpts
 import Idris.Completion
+import Idris.Core.CaseTree
+import Idris.Core.Elaborate hiding (Tactic(..))
+import Idris.Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Typecheck
+import Idris.DataOpts
+import Idris.Delaborate
+import Idris.Docs (getDocs, pprintConstDocs, pprintDocs)
+import Idris.Elab.Term
+import Idris.Elab.Utils
+import Idris.Elab.Value
+import Idris.ElabDecls
+import Idris.Error
 import qualified Idris.IdeMode as IdeMode
 import Idris.Output
+import Idris.Parser hiding (params)
 import Idris.TypeSearch (searchByType)
 
-import Text.Trifecta.Result(Result(..), ErrInfo(..))
+import Util.Pretty
 
-import System.IO (Handle, stdin, stdout, hPutStrLn)
+import Control.DeepSeq
+import Control.Monad.State.Strict
+import Debug.Trace
 import System.Console.Haskeline
 import System.Console.Haskeline.History
-import Control.Monad.State.Strict
-import Control.DeepSeq
-
-import Util.Pretty
-import Debug.Trace
+import System.IO (Handle, hPutStrLn, stdin, stdout)
+import Text.Trifecta.Result (ErrInfo(..), Result(..))
 
 -- | Launch the proof shell
 prover :: ElabInfo -> Bool -> Bool -> Name -> Idris ()

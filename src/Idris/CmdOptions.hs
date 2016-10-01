@@ -13,27 +13,24 @@ module Idris.CmdOptions
   , getPkgREPL, getPkgTest, getPort, getIBCSubDir
   ) where
 
+import Idris.AbsSyntax (getClient, getIBCSubDir, getPkg, getPkgCheck,
+                        getPkgClean, getPkgMkDoc, getPkgREPL, getPkgTest,
+                        getPort, opt)
 import Idris.AbsSyntaxTree
-import Idris.AbsSyntax (opt, getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc
-  , getPkgREPL, getPkgTest, getPort, getIBCSubDir)
--- import Idris.REPL
 import Idris.Info (getIdrisVersion)
-
+-- import Idris.REPL
 import IRTS.CodegenCommon
 
+import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Except (throwE)
+import Control.Monad.Trans.Reader (ask)
+import Data.Char
+import Data.Maybe
 import Options.Applicative
 import Options.Applicative.Arrows
 import Options.Applicative.Types (ReadM(..))
-import Control.Monad.Trans (lift)
-import Control.Monad.Trans.Reader (ask)
-import Control.Monad.Trans.Except (throwE)
-import Data.Char
-import Data.Maybe
-
-import Text.ParserCombinators.ReadP hiding (many, option)
-
 import Safe (lastMay)
-
+import Text.ParserCombinators.ReadP hiding (many, option)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 runArgParser :: IO [Opt]

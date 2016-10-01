@@ -9,11 +9,10 @@ module Idris.Directives(directiveAction) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
-import Idris.Imports
-import Idris.Output (sendHighlighting)
-
 import Idris.Core.Evaluate
 import Idris.Core.TT
+import Idris.Imports
+import Idris.Output (sendHighlighting)
 
 import Util.DynamicLinker
 

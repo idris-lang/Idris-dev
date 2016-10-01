@@ -6,31 +6,31 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE PatternGuards, CPP #-}
+{-# LANGUAGE CPP, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
 module Idris.Reflection where
 
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative ((<$>), (<*>), pure)
-import Prelude hiding (mapM)
-import Data.Traversable (mapM)
-#endif
-import Control.Monad (liftM, liftM2, liftM4)
-import Control.Monad.State.Strict (lift)
-import Data.Maybe (catMaybes)
-import Data.List ((\\), findIndex)
-import qualified Data.Text as T
-
 import Idris.Core.Elaborate (claim, fill, focus, getNameFrom, initElaborator,
                              movelast, runElab, solve)
-import Idris.Core.Evaluate (Def(TyDecl), initContext, lookupDefExact, lookupTyExact)
+import Idris.Core.Evaluate (Def(TyDecl), initContext, lookupDefExact,
+                            lookupTyExact)
 import Idris.Core.TT
 
-import Idris.AbsSyntaxTree (ArgOpt(..),ElabD, IState(tt_ctxt, idris_implicits,idris_datatypes, idris_patdefs),
-                            PArg'(..), PArg, PTactic, PTactic'(..), PTerm(..), Fixity (..),
+import Idris.AbsSyntaxTree (ArgOpt(..), ElabD, Fixity(..), IState(idris_datatypes, idris_implicits, idris_patdefs, tt_ctxt),
+                            PArg, PArg'(..), PTactic, PTactic'(..), PTerm(..),
                             initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
 
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative (pure, (<$>), (<*>))
+import Data.Traversable (mapM)
+import Prelude hiding (mapM)
+#endif
+import Control.Monad (liftM, liftM2, liftM4)
+import Control.Monad.State.Strict (lift)
+import Data.List (findIndex, (\\))
+import Data.Maybe (catMaybes)
+import qualified Data.Text as T
 
 data RErasure = RErased | RNotErased deriving Show
 

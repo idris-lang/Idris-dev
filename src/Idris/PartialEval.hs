@@ -14,14 +14,13 @@ module Idris.PartialEval(
   ) where
 
 import Idris.AbsSyntax
-import Idris.Delaborate
-
-import Idris.Core.TT
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
+import Idris.Core.TT
+import Idris.Delaborate
 
-import Control.Monad.State
 import Control.Applicative
+import Control.Monad.State
 import Data.Maybe
 import Debug.Trace
 

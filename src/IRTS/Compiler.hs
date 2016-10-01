@@ -5,55 +5,50 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards, TypeSynonymInstances, CPP #-}
+{-# LANGUAGE CPP, PatternGuards, TypeSynonymInstances #-}
 
 module IRTS.Compiler(compile, generate) where
-
-import IRTS.Lang
-import IRTS.LangOpts
-import IRTS.Defunctionalise
-import IRTS.Simplified
-import IRTS.CodegenCommon
-import IRTS.CodegenC
-import IRTS.DumpBC
-import IRTS.CodegenJavaScript
-import IRTS.Inliner
-import IRTS.Exports
-import IRTS.Portable
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
 import Idris.ASTUtils
+import Idris.Core.CaseTree
+import Idris.Core.Evaluate
+import Idris.Core.TT
 import Idris.Erasure
 import Idris.Error
 import Idris.Output
+import IRTS.CodegenC
+import IRTS.CodegenCommon
+import IRTS.CodegenJavaScript
+import IRTS.Defunctionalise
+import IRTS.DumpBC
+import IRTS.Exports
+import IRTS.Inliner
+import IRTS.Lang
+import IRTS.LangOpts
+import IRTS.Portable
+import IRTS.Simplified
 
-import Debug.Trace
-
-import Idris.Core.TT
-import Idris.Core.Evaluate
-import Idris.Core.CaseTree
-
-import Control.Category
 import Prelude hiding (id, (.))
 
 import Control.Applicative
+import Control.Category
 import Control.Monad.State
-
-import           Data.Maybe
-import           Data.List
-import           Data.Ord
-import           Data.IntSet (IntSet)
-import qualified Data.IntSet          as IS
-import qualified Data.Map             as M
-import qualified Data.Set             as S
-
-import System.Process
-import System.IO
-import System.Exit
+import Data.IntSet (IntSet)
+import qualified Data.IntSet as IS
+import Data.List
+import qualified Data.Map as M
+import Data.Maybe
+import Data.Ord
+import qualified Data.Set as S
+import Debug.Trace
 import System.Directory
 import System.Environment
-import System.FilePath ((</>), addTrailingPathSeparator)
+import System.Exit
+import System.FilePath (addTrailingPathSeparator, (</>))
+import System.IO
+import System.Process
 
 -- |  Compile to simplified forms and return CodegenInfo
 compile :: Codegen -> FilePath -> Maybe Term -> Idris CodegenInfo
