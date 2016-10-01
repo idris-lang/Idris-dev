@@ -1,7 +1,7 @@
 ||| Internal details of the library, not for public consumption.
 module Pruviloj.Internals
 
-
+import Language.Reflection.Utils
 import Pruviloj.Core
 import Pruviloj.Renamers
 
@@ -50,16 +50,6 @@ extractBinders (RBind n b tm) = let (bs, res) = extractBinders tm
 extractBinders tm = ([], tm)
 
 
-||| Get the type annotation from a binder
-getBinderTy : Binder t -> t
-getBinderTy (Lam t) = t
-getBinderTy (Pi t _) = t
-getBinderTy (Let t _) = t
-getBinderTy (Hole t) = t
-getBinderTy (GHole t) = t
-getBinderTy (Guess t _) = t
-getBinderTy (PVar t) = t
-getBinderTy (PVTy t) = t
 
 ||| Map a list `[x1, x2, ..., xn]` to `[(0, x1), (1, x2), ..., (n-1, xn)]`
 enumerate : List a -> List (Nat, a)
@@ -70,11 +60,11 @@ enumerate xs = enumerate' xs 0
 
 bindPats : List (TTName, Binder Raw) -> Raw -> Raw
 bindPats [] res = res
-bindPats ((n, b)::bs) res = RBind n (PVar (getBinderTy b)) $ bindPats bs res
+bindPats ((n, b)::bs) res = RBind n (PVar (binderTy b)) $ bindPats bs res
 
 bindPatTys : List (TTName, Binder Raw) -> Raw -> Raw
 bindPatTys [] res = res
-bindPatTys ((n, b)::bs) res = RBind n (PVTy (getBinderTy b)) $ bindPatTys bs res
+bindPatTys ((n, b)::bs) res = RBind n (PVTy (binderTy b)) $ bindPatTys bs res
 
 
 ||| Helper for elaborating pattern clauses. This helper takes care of
