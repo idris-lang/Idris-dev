@@ -10,9 +10,9 @@ Maintainer  : The Idris Community.
 
 module Idris.Core.DeepSeq where
 
-import Idris.Core.TT
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
+import Idris.Core.TT
 
 import Control.DeepSeq
 

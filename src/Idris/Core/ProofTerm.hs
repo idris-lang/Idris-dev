@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, PatternGuards #-}
+{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards #-}
 module Idris.Core.ProofTerm(
     ProofTerm, Goal(..), mkProofTerm, getProofTerm
   , resetProofTerm
@@ -16,9 +16,9 @@ module Idris.Core.ProofTerm(
   , goal, atHole
   ) where
 
-import Idris.Core.Typecheck
 import Idris.Core.Evaluate
 import Idris.Core.TT
+import Idris.Core.Typecheck
 
 import Control.Monad.State.Strict
 import Data.List

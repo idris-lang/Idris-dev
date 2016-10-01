@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveFunctor, PatternGuards, MultiWayIf #-}
+{-# LANGUAGE DeriveFunctor, MultiWayIf, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Docs (
     pprintDocs
@@ -15,19 +15,20 @@ module Idris.Docs (
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import Idris.Delaborate
-import Idris.Core.TT
 import Idris.Core.Evaluate
-import Idris.Docstrings (Docstring, emptyDocstring, noDocs, nullDocstring, renderDocstring, DocTerm, renderDocTerm, overview)
+import Idris.Core.TT
+import Idris.Delaborate
+import Idris.Docstrings (DocTerm, Docstring, emptyDocstring, noDocs,
+                         nullDocstring, overview, renderDocTerm,
+                         renderDocstring)
 
 import Util.Pretty
 
 import Prelude hiding ((<$>))
 
 import Control.Arrow (first)
-
-import Data.Maybe
 import Data.List
+import Data.Maybe
 import qualified Data.Text as T
 
 -- TODO: Only include names with public/export accessibility

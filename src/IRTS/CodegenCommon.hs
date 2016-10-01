@@ -8,11 +8,11 @@ Maintainer  : The Idris Community.
 -}
 module IRTS.CodegenCommon where
 
-import GHC.Generics (Generic)
-
 import Idris.Core.TT
-import IRTS.Simplified
 import IRTS.Defunctionalise
+import IRTS.Simplified
+
+import GHC.Generics (Generic)
 
 data DbgLevel = NONE | DEBUG | TRACE deriving Eq
 data OutputType = Raw | Object | Executable deriving (Eq, Show, Generic)

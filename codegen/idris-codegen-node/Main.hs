@@ -1,17 +1,16 @@
 module Main where
 
-import Idris.Core.TT
 import Idris.AbsSyntax
+import Idris.Core.TT
 import Idris.ElabDecls
 import Idris.Main
-
-import IRTS.Compiler
 import IRTS.CodegenJavaScript
+import IRTS.Compiler
+
+import Paths_idris
 
 import System.Environment
 import System.Exit
-
-import Paths_idris
 
 data Opts = Opts { inputs :: [FilePath]
                  , output :: FilePath

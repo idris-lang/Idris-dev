@@ -24,15 +24,15 @@ module IRTS.Defunctionalise(module IRTS.Defunctionalise
                           , module IRTS.Lang
                           ) where
 
-import IRTS.Lang
-import Idris.Core.TT
 import Idris.Core.CaseTree
+import Idris.Core.TT
+import IRTS.Lang
 
-import Debug.Trace
-import Data.Maybe
-import Data.List
 import Control.Monad
 import Control.Monad.State
+import Data.List
+import Data.Maybe
+import Debug.Trace
 
 data DExp = DV LVar
           | DApp Bool Name [DExp] -- True = tail call

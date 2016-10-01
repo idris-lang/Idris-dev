@@ -8,15 +8,15 @@ Maintainer  : The Idris Community.
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.Binary where
 
-import Control.Applicative ((<*>), (<$>))
-import Control.Monad (liftM2)
-import Control.DeepSeq (($!!))
+import Idris.Core.TT
 
+import Control.Applicative ((<$>), (<*>))
+import Control.DeepSeq (($!!))
+import Control.Monad (liftM2)
 import Data.Binary
-import Data.Vector.Binary
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
-import Idris.Core.TT
+import Data.Vector.Binary
 
 instance Binary ErrorReportPart where
   put (TextPart msg) = do putWord8 0 ; put msg

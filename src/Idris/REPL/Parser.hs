@@ -11,30 +11,26 @@ module Idris.REPL.Parser (
   , setOptions
   ) where
 
-import System.FilePath ((</>))
-import System.Console.ANSI (Color(..))
-
-import Idris.Colours
 import Idris.AbsSyntax
+import Idris.Colours
 import Idris.Core.TT
 import Idris.Help
 import qualified Idris.Parser as P
-
 import Idris.REPL.Commands
 
 import Control.Applicative
 import Control.Monad.State.Strict
-
-import Text.Parser.Combinators
-import Text.Parser.Char(anyChar,oneOf)
-import Text.Trifecta(Result, parseString)
-import Text.Trifecta.Delta
-
-import Debug.Trace
-import Data.List
-import Data.List.Split(splitOn)
-import Data.Char(isSpace, toLower)
 import qualified Data.ByteString.UTF8 as UTF8
+import Data.Char (isSpace, toLower)
+import Data.List
+import Data.List.Split (splitOn)
+import Debug.Trace
+import System.Console.ANSI (Color(..))
+import System.FilePath ((</>))
+import Text.Parser.Char (anyChar, oneOf)
+import Text.Parser.Combinators
+import Text.Trifecta (Result, parseString)
+import Text.Trifecta.Delta
 
 parseCmd :: IState -> String -> String -> Result (Either String Command)
 parseCmd i inputname = P.runparser pCmd i inputname . trim
@@ -214,8 +210,8 @@ cmd xs = try $ do
 noArgs :: Command -> String -> P.IdrisParser (Either String Command)
 noArgs cmd name = do
     let emptyArgs = do
-        eof
-        return (Right cmd)
+          eof
+          return (Right cmd)
 
     let failure = return (Left $ ":" ++ name ++ " takes no arguments")
 
@@ -229,17 +225,17 @@ eval = do
 exprArg :: (PTerm -> Command) -> String -> P.IdrisParser (Either String Command)
 exprArg cmd name = do
     let noArg = do
-        eof
-        return $ Left ("Usage is :" ++ name ++ " <expression>")
+          eof
+          return $ Left ("Usage is :" ++ name ++ " <expression>")
 
     let justOperator = do
-        (op, fc) <- P.operatorFC
-        eof
-        return $ Right $ cmd (PRef fc [] (sUN op))
+          (op, fc) <- P.operatorFC
+          eof
+          return $ Right $ cmd (PRef fc [] (sUN op))
 
     let properArg = do
-        t <- P.fullExpr defaultSyntax
-        return $ Right (cmd t)
+          t <- P.fullExpr defaultSyntax
+          return $ Right (cmd t)
     try noArg <|> try justOperator <|> properArg
 
 
@@ -279,10 +275,10 @@ optArg cmd name = do
             return $ Left ("Usage is :" ++ name ++ " <option>")
 
     let oneArg = do
-        o <- pOption
-        P.whiteSpace
-        eof
-        return (Right (cmd o))
+          o <- pOption
+          P.whiteSpace
+          eof
+          return (Right (cmd o))
 
     let failure = return $ Left "Unrecognized setting"
 
@@ -304,14 +300,14 @@ proofArg cmd name = do
 cmd_doc :: String -> P.IdrisParser (Either String Command)
 cmd_doc name = do
     let constant = do
-        c <- fmap fst P.constant
-        eof
-        return $ Right (DocStr (Right c) FullDocs)
+          c <- fmap fst P.constant
+          eof
+          return $ Right (DocStr (Right c) FullDocs)
 
     let pType = do
-        P.reserved "Type"
-        eof
-        return $ Right (DocStr (Left $ P.mkName ("Type", "")) FullDocs)
+          P.reserved "Type"
+          eof
+          return $ Right (DocStr (Left $ P.mkName ("Type", "")) FullDocs)
 
     let fnName = fnNameArg (\n -> DocStr (Left n) FullDocs) name
 
@@ -380,17 +376,17 @@ cmd_compile name = do
             bytecodeCodegen <|> viaCodegen
 
     let hasOneArg = do
-        i <- get
-        f <- fst <$> P.identifier
-        eof
-        return $ Right (Compile defaultCodegen f)
+          i <- get
+          f <- fst <$> P.identifier
+          eof
+          return $ Right (Compile defaultCodegen f)
 
     let hasTwoArgs = do
-        i <- get
-        codegen <- codegenOption
-        f <- fst <$> P.identifier
-        eof
-        return $ Right (Compile codegen f)
+          i <- get
+          codegen <- codegenOption
+          f <- fst <$> P.identifier
+          eof
+          return $ Right (Compile codegen f)
 
     let failure = return $ Left $ "Usage is :" ++ name ++ " [<codegen>] <filename>"
     try hasTwoArgs <|> try hasOneArg <|> failure

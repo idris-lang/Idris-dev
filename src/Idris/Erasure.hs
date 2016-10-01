@@ -12,32 +12,31 @@ module Idris.Erasure (performUsageAnalysis, mkFieldName) where
 import Idris.AbsSyntax
 import Idris.ASTUtils
 import Idris.Core.CaseTree
-import Idris.Core.TT
 import Idris.Core.Evaluate
-import Idris.Primitives
+import Idris.Core.TT
 import Idris.Error
+import Idris.Primitives
 
-import Debug.Trace
-import System.IO.Unsafe
-
-import Control.Category
 import Prelude hiding (id, (.))
 
-import Control.Arrow
 import Control.Applicative
+import Control.Arrow
+import Control.Category
 import Control.Monad.State
-import Data.Maybe
-import Data.List
-import qualified Data.Set as S
-import qualified Data.IntSet as IS
-import qualified Data.Map as M
-import qualified Data.IntMap as IM
-import Data.Set (Set)
-import Data.IntSet (IntSet)
-import Data.Map (Map)
 import Data.IntMap (IntMap)
+import qualified Data.IntMap as IM
+import Data.IntSet (IntSet)
+import qualified Data.IntSet as IS
+import Data.List
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Maybe
+import Data.Set (Set)
+import qualified Data.Set as S
 import Data.Text (pack)
 import qualified Data.Text as T
+import Debug.Trace
+import System.IO.Unsafe
 
 -- | UseMap maps names to the set of used (reachable) argument
 -- positions.

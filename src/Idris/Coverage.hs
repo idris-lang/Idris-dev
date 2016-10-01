@@ -8,22 +8,20 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE PatternGuards #-}
 module Idris.Coverage where
 
-import Idris.Core.TT
-import Idris.Core.Evaluate
-import Idris.Core.CaseTree
-
 import Idris.AbsSyntax
+import Idris.Core.CaseTree
+import Idris.Core.Evaluate
+import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Error
 import Idris.Output (iWarn, iputStrLn)
 
+import Control.Monad.State.Strict
 import Data.Char
-import Data.List
 import Data.Either
+import Data.List
 import Data.Maybe
 import Debug.Trace
-
-import Control.Monad.State.Strict
 
 -- | Generate a pattern from an 'impossible' LHS.
 --
@@ -213,7 +211,7 @@ genAll i (addPH, args)
 
     -- Merge patterns with placeholders in other patterns, to ensure we've
     -- covered all possible generated cases
-    -- e.g. if we have (True, _) (False, _) (_, True) (_, False) 
+    -- e.g. if we have (True, _) (False, _) (_, True) (_, False)
     -- we should merge these to get (True, True), (False, False)
     -- (False, True) and (True, False)
     mergePHs :: [PTerm] -> [PTerm]
@@ -224,7 +222,7 @@ genAll i (addPH, args)
 
     mergePH :: PTerm -> [PTerm] -> [PTerm]
     mergePH tm [] = []
-    mergePH tm (x : xs) 
+    mergePH tm (x : xs)
           | Just merged <- mergePTerm tm x = merged : mergePH tm xs
           | otherwise = mergePH tm xs
 

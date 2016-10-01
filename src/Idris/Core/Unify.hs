@@ -19,13 +19,13 @@ module Idris.Core.Unify(
   , unrecoverable
   ) where
 
-import Idris.Core.TT
 import Idris.Core.Evaluate
+import Idris.Core.TT
 
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Maybe
 import Data.List
+import Data.Maybe
 import Debug.Trace
 
 -- terms which need to be injective, with the things we're trying to unify

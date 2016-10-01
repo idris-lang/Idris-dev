@@ -1,8 +1,8 @@
 module Idris.REPL.Commands where
 
-import Idris.Core.TT
-import Idris.Colours
 import Idris.AbsSyntaxTree
+import Idris.Colours
+import Idris.Core.TT
 
 -- | REPL commands
 data Command = Quit

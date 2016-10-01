@@ -7,19 +7,16 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Elab.RunElab (elabRunElab) where
 
-import Idris.Elab.Term
-import Idris.Elab.Value (elabVal)
-
 import Idris.AbsSyntax
-import Idris.Error
-
-import Idris.Core.Elaborate hiding (Tactic (..))
+import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.Execute
 import Idris.Core.TT
 import Idris.Core.Typecheck
-
-import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
+import Idris.Elab.Term
+import Idris.Elab.Value (elabVal)
+import Idris.Error
+import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
 
 elabScriptTy :: Type
 elabScriptTy = App Complete (P Ref (sNS (sUN "Elab") ["Elab", "Reflection", "Language"]) Erased)

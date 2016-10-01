@@ -8,19 +8,17 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE OverloadedStrings #-}
 module IRTS.Portable (writePortable) where
 
-import Data.Aeson
-import qualified Data.ByteString.Lazy as B
-import qualified Data.Text as T
-
 import Idris.Core.CaseTree
 import Idris.Core.TT
-
 import IRTS.Bytecode
 import IRTS.CodegenCommon
 import IRTS.Defunctionalise
 import IRTS.Lang
 import IRTS.Simplified
 
+import Data.Aeson
+import qualified Data.ByteString.Lazy as B
+import qualified Data.Text as T
 import System.IO
 
 data CodegenFile = CGFile {

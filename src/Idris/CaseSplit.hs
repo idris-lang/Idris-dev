@@ -28,33 +28,29 @@ module Idris.CaseSplit(
   ) where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree (Idris, IState, PTerm)
-import Idris.ElabDecls
-import Idris.Delaborate
-import Idris.Parser
-import Idris.Parser.Helpers
-import Idris.Error
-import Idris.Output
-
-import Idris.Elab.Value
-import Idris.Elab.Term
-
+import Idris.AbsSyntaxTree (IState, Idris, PTerm)
+import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Core.Typecheck
-import Idris.Core.Evaluate
+import Idris.Delaborate
+import Idris.Elab.Term
+import Idris.Elab.Value
+import Idris.ElabDecls
+import Idris.Error
+import Idris.Output
+import Idris.Parser
+import Idris.Parser.Helpers
 
-import Data.Maybe
-import Data.Char
-import Data.List (isPrefixOf, isSuffixOf)
 import Control.Monad
 import Control.Monad.State.Strict
-
-import Text.Parser.Combinators
-import Text.Parser.Char(anyChar)
-import Text.Trifecta(Result(..), parseString)
-import Text.Trifecta.Delta
-
+import Data.Char
+import Data.List (isPrefixOf, isSuffixOf)
+import Data.Maybe
 import Debug.Trace
+import Text.Parser.Char (anyChar)
+import Text.Parser.Combinators
+import Text.Trifecta (Result(..), parseString)
+import Text.Trifecta.Delta
 
 -- | Given a variable to split, and a term application, return a list
 -- of variable updates, paired with a flag to say whether the given

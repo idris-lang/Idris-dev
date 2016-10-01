@@ -22,8 +22,8 @@ TT is the core language of Idris. The language has:
    * We have a simple collection of tactics which we use to elaborate source
      programs with implicit syntax into fully explicit terms.
 -}
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies, DeriveFunctor,
-             DeriveDataTypeable, DeriveGeneric, PatternGuards #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
+             FunctionalDependencies, MultiParamTypeClasses, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.TT(
     AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
@@ -51,40 +51,39 @@ module Idris.Core.TT(
   , uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm
   ) where
 
--- Work around AMP without CPP
-import Prelude (Eq(..), Show(..), Ord(..), Functor(..), Monad(..), String, Int,
-                Integer, Ordering(..), Maybe(..), Num(..), Bool(..), Enum(..),
-                Read(..), FilePath, Double, (&&), (||), ($), (.), div, error, flip,
-                fst, snd, not, mod, read, otherwise)
+import Util.Pretty hiding (Str)
 
-import Control.Applicative (Applicative (..), Alternative)
-import qualified Control.Applicative as A (Alternative (..))
+-- Work around AMP without CPP
+import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Functor(..), Int,
+                Integer, Maybe(..), Monad(..), Num(..), Ord(..), Ordering(..),
+                Read(..), Show(..), String, div, error, flip, fst, mod, not,
+                otherwise, read, snd, ($), (&&), (.), (||))
+
+import Control.Applicative (Alternative, Applicative(..))
+import qualified Control.Applicative as A (Alternative(..))
 import Control.DeepSeq (($!!))
 import Control.Monad.State.Strict
-import Control.Monad.Trans.Except (Except (..))
-import Debug.Trace
-import qualified Data.Map.Strict as Map
+import Control.Monad.Trans.Except (Except(..))
+import Data.Binary hiding (get, put)
+import qualified Data.Binary as B
 import Data.Char
 import Data.Data (Data)
-import Data.Monoid (mconcat)
-import Numeric (showIntAtBase)
-import qualified Data.Text as T
-import Data.List hiding (group, insert)
-import Data.Set(Set, member, fromList, insert)
-import Data.Maybe (listToMaybe)
 import Data.Foldable (Foldable)
+import Data.List hiding (group, insert)
+import qualified Data.Map.Strict as Map
+import Data.Maybe (listToMaybe)
+import Data.Monoid (mconcat)
+import Data.Set (Set, fromList, insert, member)
+import qualified Data.Text as T
 import Data.Traversable (Traversable)
 import Data.Typeable (Typeable)
 import Data.Vector.Unboxed (Vector)
 import qualified Data.Vector.Unboxed as V
-import qualified Data.Binary as B
-import Data.Binary hiding (get, put)
+import Debug.Trace
 import Foreign.Storable (sizeOf)
 import GHC.Generics (Generic)
-
-import Numeric.IEEE (IEEE (identicalIEEE))
-
-import Util.Pretty hiding (Str)
+import Numeric (showIntAtBase)
+import Numeric.IEEE (IEEE(identicalIEEE))
 
 data Option = TTypeInTType
             | CheckConv
@@ -941,7 +940,7 @@ instance Sized UExp where
   size _ = 1
 
 instance Show UExp where
-    show (UVar ns x) 
+    show (UVar ns x)
        | x < 26 = ns ++ "." ++ [toEnum (x + fromEnum 'a')]
        | otherwise = ns ++ "." ++ toEnum ((x `mod` 26) + fromEnum 'a') : show (x `div` 26)
     show (UVal x) = show x
@@ -1289,7 +1288,7 @@ substTerm old new = st where
   st (Bind x b sc) = Bind x (fmap st b) (st sc)
   st t = t
 
-  eqAlpha as (P _ x _) (P _ y _) 
+  eqAlpha as (P _ x _) (P _ y _)
        = x == y || (x, y) `elem` as || (y, x) `elem` as
   eqAlpha as (V x) (V y) = x == y
   eqAlpha as (Bind x xb xs) (Bind y yb ys)
@@ -1301,7 +1300,7 @@ substTerm old new = st where
        = eqAlpha as xt yt && eqAlpha as xv yv
   eqAlphaB as (Guess xt xv) (Guess yt yv)
        = eqAlpha as xt yt && eqAlpha as xv yv
-  eqAlphaB as bx by = eqAlpha as (binderTy bx) (binderTy by) 
+  eqAlphaB as bx by = eqAlpha as (binderTy bx) (binderTy by)
 
 -- | Return number of occurrences of V 0 or bound name i the term
 occurrences :: Eq n => n -> TT n -> Int

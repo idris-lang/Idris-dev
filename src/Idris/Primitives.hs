@@ -5,23 +5,21 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE RankNTypes, ScopedTypeVariables, PatternGuards #-}
+{-# LANGUAGE PatternGuards, RankNTypes, ScopedTypeVariables #-}
 
 module Idris.Primitives(primitives, Prim(..)) where
 
 import Idris.AbsSyntax
-
+import Idris.Core.Evaluate
+import Idris.Core.TT
 import IRTS.Lang
 
-import Idris.Core.TT
-import Idris.Core.Evaluate
 import Data.Bits
-import Data.Word
-import Data.Int
 import Data.Char
 import Data.Function (on)
+import Data.Int
 import qualified Data.Vector.Unboxed as V
-
+import Data.Word
 import Debug.Trace
 
 data Prim = Prim { p_name  :: Name,

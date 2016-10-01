@@ -6,9 +6,8 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Package.Common where
 
-import Idris.Core.TT (Name)
-
 import Idris.AbsSyntaxTree (Opt(..))
+import Idris.Core.TT (Name)
 
 -- | Description of an Idris package.
 data PkgDesc = PkgDesc {

@@ -12,20 +12,20 @@ module Idris.DeepSeq(
   , module Idris.Core.DeepSeq
   ) where
 
-import Idris.Core.DeepSeq
-import Idris.Docstrings
-import Idris.Core.TT
 import Idris.AbsSyntaxTree
 import Idris.Colours
+import Idris.Core.DeepSeq
+import Idris.Core.TT
+import Idris.Docstrings
+import qualified Idris.Docstrings as D
+import IRTS.CodegenCommon (OutputType(..))
 import IRTS.Lang (PrimFn(..))
-import IRTS.CodegenCommon (OutputType (..))
+
 import Util.DynamicLinker
 
-import Control.DeepSeq
-import Network.Socket(PortNumber)
-
 import qualified Cheapskate.Types as CT
-import qualified Idris.Docstrings as D
+import Control.DeepSeq
+import Network.Socket (PortNumber)
 
 -- These types don't have Generic instances
 instance NFData CT.Options where

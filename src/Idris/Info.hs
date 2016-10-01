@@ -24,19 +24,16 @@ module Idris.Info
   , getIdrisLoggingCategories
   ) where
 
-import System.FilePath
-import System.Directory
-import Data.Version
-
-import Idris.Imports (installedPackages)
 import Idris.AbsSyntax (loggingCatsStr)
-
+import Idris.Imports (installedPackages)
 import qualified IRTS.System as S
 
+import Paths_idris
 import Version_idris (gitHash)
 
-import Paths_idris
-
+import Data.Version
+import System.Directory
+import System.FilePath
 getIdrisDataDir :: IO String
 getIdrisDataDir = S.getIdrisDataDir
 

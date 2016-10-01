@@ -5,16 +5,16 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards, DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor, PatternGuards #-}
 
 module IRTS.LangOpts where
 
-import Control.Monad.State hiding (lift)
-import Control.Applicative hiding (Const)
-
-import IRTS.Lang
-import Idris.Core.TT
 import Idris.Core.CaseTree
+import Idris.Core.TT
+import IRTS.Lang
+
+import Control.Applicative hiding (Const)
+import Control.Monad.State hiding (lift)
 import Data.List
 import Debug.Trace
 

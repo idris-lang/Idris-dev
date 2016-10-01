@@ -14,24 +14,21 @@ module Idris.Docstrings (
   , renderHtml, annotCode, DocTerm(..), renderDocTerm, checkDocstring
   ) where
 
-import qualified Cheapskate as C
-import qualified Cheapskate.Types as CT
-import Cheapskate.Html (renderDoc)
+import Idris.Core.TT (Err, Name, OutputAnnotation(..), Term, TextFormatting(..))
 
 import Util.Pretty
 
-import Idris.Core.TT (OutputAnnotation(..), TextFormatting(..), Name, Term, Err)
-
 import Prelude hiding ((<$>))
 
-import qualified Data.Text as T
-import qualified Data.Foldable as F
+import qualified Cheapskate as C
+import Cheapskate.Html (renderDoc)
+import qualified Cheapskate.Types as CT
 import Data.Foldable (Foldable)
-import Data.Traversable (Traversable)
+import qualified Data.Foldable as F
 import qualified Data.Sequence as S
-
+import qualified Data.Text as T
+import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
-
 import Text.Blaze.Html (Html)
 
 -- | The various kinds of code samples that can be embedded in docs

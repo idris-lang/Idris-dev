@@ -44,15 +44,16 @@ module Idris.ASTUtils(
   , opts_idrisCmdline, repl_definitions
   ) where
 
-import Control.Category
-import Control.Applicative
-import Control.Monad.State.Class
-import Data.Maybe
+import Idris.AbsSyntaxTree
+import Idris.Core.Evaluate
+import Idris.Core.TT
+
 import Prelude hiding (id, (.))
 
-import Idris.Core.TT
-import Idris.Core.Evaluate
-import Idris.AbsSyntaxTree
+import Control.Applicative
+import Control.Category
+import Control.Monad.State.Class
+import Data.Maybe
 
 data Field rec fld = Field
     { fget :: rec -> fld

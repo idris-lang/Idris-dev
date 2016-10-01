@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ExistentialQuantification, CPP, ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ExistentialQuantification, ScopedTypeVariables #-}
 module Util.DynamicLinker ( ForeignFun(..)
                           , DynamicLib(..)
                           , tryLoadLib
@@ -14,21 +14,21 @@ module Util.DynamicLinker ( ForeignFun(..)
 
 #ifdef IDRIS_FFI
 import Foreign.LibFFI
-import Foreign.Ptr (Ptr(), nullPtr, FunPtr, nullFunPtr, castPtrToFunPtr)
+import Foreign.Ptr (FunPtr, Ptr(), castPtrToFunPtr, nullFunPtr, nullPtr)
 import System.Directory
 #ifndef mingw32_HOST_OS
-import Control.Exception (try, IOException, throwIO)
-import Data.Array (Array, inRange, bounds, (!))
+import Control.Exception (IOException, throwIO, try)
+import Data.Array (Array, bounds, inRange, (!))
 import Data.Functor ((<$>))
 import Data.Maybe (catMaybes)
-import System.Posix.DynamicLinker
 import System.FilePath.Posix ((</>))
+import System.Posix.DynamicLinker
 import Text.Regex.TDFA
 #else
-import qualified Control.Exception as Exception (catch, IOException)
+import qualified Control.Exception as Exception (IOException, catch)
+import System.FilePath.Windows ((</>))
 import System.Win32.DLL
 import System.Win32.Types
-import System.FilePath.Windows ((</>))
 type DL = HMODULE
 #endif
 

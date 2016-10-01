@@ -1,19 +1,21 @@
 module Main where
 
-import Idris.Core.TT
 import Idris.AbsSyntax
+import Idris.Core.TT
 import Idris.ElabDecls
 import Idris.Main
-import IRTS.Compiler
 import IRTS.CodegenC
+import IRTS.Compiler
 
-import System.Environment
-import System.Exit
-import Control.Monad
+import Util.System
 
 import Paths_idris
 
-import Util.System
+import Control.Monad
+import System.Environment
+import System.Exit
+
+
 
 data Opts = Opts { inputs :: [FilePath],
                    interface :: Bool,

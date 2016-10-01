@@ -8,27 +8,27 @@ Maintainer  : The Idris Community.
 module IRTS.CodegenC (codegenC) where
 
 import Idris.AbsSyntax
+import Idris.Core.TT
 import IRTS.Bytecode
+import IRTS.CodegenCommon
+import IRTS.Defunctionalise
 import IRTS.Lang
 import IRTS.Simplified
-import IRTS.Defunctionalise
 import IRTS.System
-import IRTS.CodegenCommon
-import Idris.Core.TT
+
 import Util.System
 
-import Numeric
-import Data.Char
-import Data.Bits
-import Data.List (intercalate, nubBy)
-import System.Process
-import System.Exit
-import System.IO
-import System.Directory
-import System.FilePath ((</>), (<.>))
 import Control.Monad
-
+import Data.Bits
+import Data.Char
+import Data.List (intercalate, nubBy)
 import Debug.Trace
+import Numeric
+import System.Directory
+import System.Exit
+import System.FilePath ((<.>), (</>))
+import System.IO
+import System.Process
 
 codegenC :: CodeGenerator
 codegenC ci = do codegenC' (simpleDecls ci)

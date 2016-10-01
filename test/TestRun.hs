@@ -1,27 +1,26 @@
 module Main where
 
+import TestData
+
 import Control.Monad
 import Data.Char (isLetter)
-import Data.Typeable
-import Data.Proxy
-import Data.List
 import qualified Data.IntMap as IMap
-
+import Data.List
+import Data.Proxy
+import Data.Typeable
+import Options.Applicative
 import System.Directory
 import System.Environment
 import System.Exit
-import System.Process
+import System.FilePath ((</>))
 import System.Info
 import System.IO
-import System.FilePath ((</>))
-import Options.Applicative
+import System.Process
 import Test.Tasty
 import Test.Tasty.Golden
-import Test.Tasty.Runners
-import Test.Tasty.Options
 import Test.Tasty.Ingredients.Rerun
-
-import TestData
+import Test.Tasty.Options
+import Test.Tasty.Runners
 
 --------------------------------------------------------------------- [ Config ]
 

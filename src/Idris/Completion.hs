@@ -7,28 +7,26 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Completion (replCompletion, proverCompletion) where
 
-import Idris.Core.Evaluate (definitions, ctxtAlist)
-import Idris.Core.TT
-
 import Idris.AbsSyntax (runIO)
 import Idris.AbsSyntaxTree
+import Idris.Colours
+import Idris.Core.Evaluate (ctxtAlist, definitions)
+import Idris.Core.TT
 import Idris.Help
 import Idris.Imports (installedPackages)
-import Idris.Colours
-import Idris.Parser.Helpers(opChars)
+import Idris.Parser.Expr (TacticArg(..))
 import qualified Idris.Parser.Expr (constants, tactics)
-import Idris.Parser.Expr (TacticArg (..))
+import Idris.Parser.Helpers (opChars)
 import Idris.REPL.Parser (allHelp, setOptions)
+
 import Control.Monad.State.Strict
-
+import Data.Char (toLower)
 import Data.List
-import Data.Maybe
-import Data.Char(toLower)
 import qualified Data.Map.Strict as Map
+import Data.Maybe
 import qualified Data.Text as T
-
-import System.Console.Haskeline
 import System.Console.ANSI (Color)
+import System.Console.Haskeline
 
 commands = [ n | (names, _, _) <- allHelp ++ extraHelp, n <- names ]
 

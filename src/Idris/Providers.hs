@@ -5,17 +5,17 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards, DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor, PatternGuards #-}
 module Idris.Providers (
     providerTy
   , getProvided
   , Provided(..)
   ) where
 
-import Idris.Core.TT
-import Idris.Core.Evaluate
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
+import Idris.Core.Evaluate
+import Idris.Core.TT
 import Idris.Error
 
 -- | Wrap a type provider in the type of type providers

@@ -5,53 +5,47 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, DeriveFunctor,
-             TypeSynonymInstances, PatternGuards #-}
+{-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
+             PatternGuards, TypeSynonymInstances #-}
 
 module Idris.AbsSyntax(
     module Idris.AbsSyntax
   , module Idris.AbsSyntaxTree
   ) where
 
-import Idris.Core.TT
-import Idris.Core.Evaluate
-import Idris.Core.Elaborate hiding (Tactic(..))
-import Idris.Core.Typecheck
 import Idris.AbsSyntaxTree
 import Idris.Colours
+import Idris.Core.Elaborate hiding (Tactic(..))
+import Idris.Core.Evaluate
+import Idris.Core.TT
+import Idris.Core.Typecheck
 import Idris.Docstrings
 import Idris.IdeMode hiding (Opt(..))
 import IRTS.CodegenCommon
-import Util.DynamicLinker
 
-import System.Console.Haskeline
-import System.IO
-import System.Directory (canonicalizePath, doesFileExist)
+import Util.DynamicLinker
+import Util.Pretty
+import Util.ScreenSize
+import Util.System
 
 import Control.Applicative
 import Control.Monad (liftM3)
 import Control.Monad.State
-
-import Data.List hiding (insert,union)
 import Data.Char
-import qualified Data.Text as T
 import Data.Either
+import Data.Generics.Uniplate.Data (descend, descendM)
+import Data.List hiding (insert, union)
 import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Set as S
+import qualified Data.Text as T
 import Data.Word (Word)
-
-import Data.Generics.Uniplate.Data (descend, descendM)
-
 import Debug.Trace
-
-import System.IO.Error(isUserError, ioeGetErrorString, tryIOError)
-
 import Network (PortID(PortNumber))
-
-import Util.Pretty
-import Util.ScreenSize
-import Util.System
+import System.Console.Haskeline
+import System.Directory (canonicalizePath, doesFileExist)
+import System.IO
+import System.IO.Error (ioeGetErrorString, isUserError, tryIOError)
 
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)

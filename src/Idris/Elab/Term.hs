@@ -11,26 +11,27 @@ module Idris.Elab.Term where
 
 import Idris.AbsSyntax
 import Idris.AbsSyntaxTree
-import Idris.DSL
-import Idris.Delaborate
-import Idris.Error
-import Idris.ProofSearch
-import Idris.Output (pshow)
-
 import Idris.Core.CaseTree (SC, SC'(STerm), findCalls, findUsedArgs)
 import Idris.Core.Elaborate hiding (Tactic(..))
-import Idris.Core.TT
 import Idris.Core.Evaluate
-import Idris.Core.Unify
 import Idris.Core.ProofTerm (getProofTerm)
-import Idris.Core.Typecheck (check, recheck, converts, isType)
+import Idris.Core.TT
+import Idris.Core.Typecheck (check, converts, isType, recheck)
+import Idris.Core.Unify
 import Idris.Core.WHNF (whnf)
-import Idris.Coverage (buildSCG, checkDeclTotality, checkPositive, genClauses, recoverableCoverage, validCoverageCase)
-import Idris.ErrReverse (errReverse)
+import Idris.Coverage (buildSCG, checkDeclTotality, checkPositive, genClauses,
+                       recoverableCoverage, validCoverageCase)
+import Idris.Delaborate
+import Idris.DSL
 import Idris.Elab.Quasiquote (extractUnquotes)
-import Idris.Elab.Utils
 import Idris.Elab.Rewrite
+import Idris.Elab.Utils
+import Idris.Error
+import Idris.ErrReverse (errReverse)
+import Idris.Output (pshow)
+import Idris.ProofSearch
 import Idris.Reflection
+
 import qualified Util.Pretty as U
 
 import Control.Applicative ((<$>))
@@ -39,10 +40,9 @@ import Control.Monad.State.Strict
 import Data.Foldable (for_)
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (mapMaybe, fromMaybe, catMaybes, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
 import qualified Data.Set as S
 import qualified Data.Text as T
-
 import Debug.Trace
 
 data ElabMode = ETyDecl | ETransLHS | ELHS | ERHS
@@ -878,7 +878,7 @@ elab ist info emode opts fn tm
                     ns <- apply (Var f) (map isph args)
 --                    trace ("ns is " ++ show ns) $ return ()
                     -- mark any interface arguments as injective
---                     when (not pattern) $ 
+--                     when (not pattern) $
                     mapM_ checkIfInjective (map snd ns)
                     unifyProblems -- try again with the new information,
                                   -- to help with disambiguation
@@ -916,7 +916,7 @@ elab ist info emode opts fn tm
                                  ivs' <- get_implementations
                                  -- Attempt to resolve any interfaces which have 'complete' types,
                                  -- i.e. no holes in them
-                                 when (not pattern || (e_inarg ina && not tcgen)) $ 
+                                 when (not pattern || (e_inarg ina && not tcgen)) $
                                     mapM_ (\n -> do focus n
                                                     g <- goal
                                                     env <- get_env
@@ -969,7 +969,7 @@ elab ist info emode opts fn tm
                                            ulog <- getUnifyLog
                                            probs <- get_probs
                                            inj <- get_inj
-                                           traceWhen ulog ("Injective now " ++ show args ++ "\nAll: " ++ show inj 
+                                           traceWhen ulog ("Injective now " ++ show args ++ "\nAll: " ++ show inj
                                                             ++ "\nProblems: " ++ qshow probs) $
                                              unifyProblems
                                            probs <- get_probs
@@ -1421,7 +1421,7 @@ elab ist info emode opts fn tm
     insertLazy ina t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = return t
     insertLazy ina t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Force" = return t
     insertLazy ina (PCoerced t) = return t
-    -- Don't add a delay to top level pattern variables, since they 
+    -- Don't add a delay to top level pattern variables, since they
     -- can be forced on the rhs if needed
     insertLazy ina t@(PPatvar _ _) | pattern && not (e_guarded ina) = return t
     insertLazy ina t =

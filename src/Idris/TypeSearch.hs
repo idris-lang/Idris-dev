@@ -13,38 +13,41 @@ module Idris.TypeSearch (
   , defaultScoreFunction
   ) where
 
-import Control.Applicative (Applicative (..), (<$>), (<*>), (<|>))
-import Control.Arrow       (first, second, (&&&), (***))
-import Control.Monad       (when, guard)
-
-import           Data.List   (find, partition, (\\))
-import           Data.Map    (Map)
-import qualified Data.Map    as M
-import           Data.Maybe  (catMaybes, fromMaybe, isJust, maybeToList, mapMaybe)
-import           Data.Monoid (Monoid (mempty, mappend))
-import           Data.Ord    (comparing)
-import qualified Data.PriorityQueue.FingerTree as Q
-import           Data.Set                           (Set)
-import qualified Data.Set                      as S
-import qualified Data.Text                     as T (pack, isPrefixOf)
-import           Data.Traversable                   (traverse)
-
-import Idris.AbsSyntax     (addUsingConstraints, addImpl, getIState, putIState, implicit, logLvl)
-import Idris.AbsSyntaxTree (interface_implementations, InterfaceInfo, defaultSyntax, eqTy, Idris
-                           , IState (idris_interfaces, idris_docstrings, tt_ctxt, idris_outputmode),
-                           implicitAllowed, OutputMode(..), PTerm, toplevel)
-import Idris.Core.Evaluate (Context (definitions), Def (Function, TyDecl, CaseOp), normaliseC)
-import Idris.Core.TT       hiding (score)
-import Idris.Core.Unify    (match_unify)
-import Idris.Delaborate    (delabTy)
-import Idris.Docstrings    (noDocs, overview)
-import Idris.Elab.Type     (elabType)
-import Idris.Output        (iputStrLn, iRenderOutput, iPrintResult, iRenderError, iRenderResult, prettyDocumentedIst)
+import Idris.AbsSyntax (addImpl, addUsingConstraints, getIState, implicit,
+                        logLvl, putIState)
+import Idris.AbsSyntaxTree (IState(idris_docstrings, idris_interfaces, idris_outputmode, tt_ctxt),
+                            Idris, InterfaceInfo, OutputMode(..), PTerm,
+                            defaultSyntax, eqTy, implicitAllowed,
+                            interface_implementations, toplevel)
+import Idris.Core.Evaluate (Context(definitions), Def(CaseOp, Function, TyDecl),
+                            normaliseC)
+import Idris.Core.TT hiding (score)
+import Idris.Core.Unify (match_unify)
+import Idris.Delaborate (delabTy)
+import Idris.Docstrings (noDocs, overview)
+import Idris.Elab.Type (elabType)
 import Idris.IBC
+import Idris.Output (iPrintResult, iRenderError, iRenderOutput, iRenderResult,
+                     iputStrLn, prettyDocumentedIst)
+
+import Util.Pretty (Doc, annotate, char, text, vsep, (<>))
 
 import Prelude hiding (pred)
 
-import Util.Pretty (text, char, vsep, (<>), Doc, annotate)
+import Control.Applicative (Applicative(..), (<$>), (<*>), (<|>))
+import Control.Arrow (first, second, (&&&), (***))
+import Control.Monad (guard, when)
+import Data.List (find, partition, (\\))
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
+import Data.Monoid (Monoid(mappend, mempty))
+import Data.Ord (comparing)
+import qualified Data.PriorityQueue.FingerTree as Q
+import Data.Set (Set)
+import qualified Data.Set as S
+import qualified Data.Text as T (isPrefixOf, pack)
+import Data.Traversable (traverse)
 
 searchByType :: [String] -> PTerm -> Idris ()
 searchByType pkgs pterm = do

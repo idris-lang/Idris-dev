@@ -12,41 +12,39 @@ module Idris.IBC (loadIBC, loadPkgIndex,
                   writeIBC, writePkgIndex,
                   hasValidIBCVersion, IBCPhase(..)) where
 
-import Idris.Core.Evaluate
-import Idris.Core.TT
+import Idris.AbsSyntax
 import Idris.Core.Binary
 import Idris.Core.CaseTree
-import Idris.AbsSyntax
-import Idris.Imports
-import Idris.Error
+import Idris.Core.Evaluate
+import Idris.Core.TT
 import Idris.DeepSeq
 import Idris.Delaborate
-import qualified Idris.Docstrings as D
 import Idris.Docstrings (Docstring)
+import qualified Idris.Docstrings as D
+import Idris.Error
+import Idris.Imports
 import Idris.Output
 import IRTS.System (getIdrisLibDir)
+
 import Paths_idris
 
 import qualified Cheapskate.Types as CT
-
-import Data.Binary
-import Data.Functor
-import Data.Vector.Binary
-import Data.List as L
-import Data.Maybe (catMaybes)
-import Data.ByteString.Lazy as B hiding (length, elem, map)
-import qualified Data.Text as T
-import qualified Data.Set as S
-
-import Control.Monad
+import Codec.Archive.Zip
 import Control.DeepSeq
+import Control.Monad
 import Control.Monad.State.Strict hiding (get, put)
 import qualified Control.Monad.State.Strict as ST
-import System.FilePath
-import System.Directory
-import Codec.Archive.Zip
-
+import Data.Binary
+import Data.ByteString.Lazy as B hiding (elem, length, map)
+import Data.Functor
+import Data.List as L
+import Data.Maybe (catMaybes)
+import qualified Data.Set as S
+import qualified Data.Text as T
+import Data.Vector.Binary
 import Debug.Trace
+import System.Directory
+import System.FilePath
 
 ibcVersion :: Word16
 ibcVersion = 149

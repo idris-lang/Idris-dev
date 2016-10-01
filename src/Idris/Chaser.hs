@@ -11,22 +11,21 @@ module Idris.Chaser(
   , ModuleTree(..)
   ) where
 
-import Idris.Core.TT
-import Idris.Parser
 import Idris.AbsSyntax
-import Idris.Imports
-import Idris.Unlit
+import Idris.Core.TT
 import Idris.Error
 import Idris.IBC
+import Idris.Imports
+import Idris.Parser
+import Idris.Unlit
 
-import System.FilePath
-import System.Directory
-import Data.Time.Clock
-import Control.Monad.Trans
 import Control.Monad.State
+import Control.Monad.Trans
 import Data.List
-
+import Data.Time.Clock
 import Debug.Trace
+import System.Directory
+import System.FilePath
 import Util.System (readSource, writeSource)
 
 data ModuleTree = MTree { mod_path :: IFileType,

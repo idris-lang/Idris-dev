@@ -13,46 +13,39 @@ module Idris.Main
   ) where
 
 import Idris.AbsSyntax
-import Idris.ModeCommon
-import Idris.REPL.Parser
+import Idris.Core.Execute (execute)
+import Idris.Core.TT
+import Idris.Elab.Term
+import Idris.Elab.Value
+import Idris.ElabDecls
 import Idris.Error
 import Idris.IBC
-import Idris.Parser hiding (indent)
-import Idris.Output
-
-import Idris.REPL.Commands
-import Idris.REPL
-
-import Idris.ElabDecls
-import Idris.Elab.Value
-import Idris.Elab.Term
 import Idris.Info
+import Idris.ModeCommon
+import Idris.Output
+import Idris.Parser hiding (indent)
+import Idris.REPL
+import Idris.REPL.Commands
+import Idris.REPL.Parser
+import IRTS.CodegenCommon
 
 import Util.System
 
-import Idris.Core.Execute (execute)
-import Idris.Core.TT
-
-import IRTS.CodegenCommon
+import Prelude hiding (id, (.), (<$>))
 
 import Control.Category
-import Prelude hiding ((<$>), (.), id)
-
-import Text.Trifecta.Result(Result(..), ErrInfo(..))
-
-import System.Console.Haskeline as H
-import System.FilePath
-import System.Exit
-import System.Directory
-import System.IO
+import Control.DeepSeq
 import Control.Monad
+import Control.Monad.Trans (lift)
 import Control.Monad.Trans.Except (runExceptT)
 import Control.Monad.Trans.State.Strict (execStateT)
-import Control.Monad.Trans ( lift )
 import Data.Maybe
-import Control.DeepSeq
-
-
+import System.Console.Haskeline as H
+import System.Directory
+import System.Exit
+import System.FilePath
+import System.IO
+import Text.Trifecta.Result (ErrInfo(..), Result(..))
 
 -- | How to run Idris programs.
 runMain :: Idris () -> IO ()

@@ -1,8 +1,8 @@
 module Idris.Info.Show where
 
-import System.Exit
-
 import Idris.Info
+
+import System.Exit
 
 showIdrisCRTSDir :: IO ()
 showIdrisCRTSDir = do

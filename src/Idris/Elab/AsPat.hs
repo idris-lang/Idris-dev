@@ -7,12 +7,11 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Elab.AsPat(desugarAs) where
 
-import Idris.Core.TT
 import Idris.AbsSyntax
+import Idris.Core.TT
 
 import Control.Applicative
 import Control.Monad.State.Strict
-
 import Data.Generics.Uniplate.Data (transformM)
 
 -- | Desugar by changing x@y on lhs to let x = y in ... or rhs

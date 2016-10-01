@@ -14,51 +14,47 @@ module Idris.Elab.Value(
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
-import Idris.DSL
-import Idris.Error
-import Idris.Delaborate
-import Idris.Imports
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.Providers
-import Idris.Primitives
-import Idris.Inliner
-import Idris.PartialEval
-import Idris.DeepSeq
-import Idris.Output (iputStrLn, pshow, iWarn, sendHighlighting)
-import IRTS.Lang
-
-import Idris.Elab.Utils
-import Idris.Elab.Term
-
-import Idris.Core.TT
+import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate hiding (Unchecked)
 import Idris.Core.Execute
+import Idris.Core.TT
 import Idris.Core.Typecheck
-import Idris.Core.CaseTree
-
+import Idris.Coverage
+import Idris.DataOpts
+import Idris.DeepSeq
+import Idris.Delaborate
 import Idris.Docstrings
+import Idris.DSL
+import Idris.Elab.Term
+import Idris.Elab.Utils
+import Idris.Error
+import Idris.Imports
+import Idris.Inliner
+import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
+import Idris.PartialEval
+import Idris.Primitives
+import Idris.Providers
+import IRTS.Lang
+
+import Util.Pretty (pretty, text)
 
 import Prelude hiding (id, (.))
-import Control.Category
 
 import Control.Applicative hiding (Const)
+import Control.Category
 import Control.DeepSeq
 import Control.Monad
 import Control.Monad.State.Strict as State
+import Data.Char (isLetter, toLower)
 import Data.List
-import Data.Maybe
-import qualified Data.Traversable as Traversable
-import Debug.Trace
-
+import Data.List.Split (splitOn)
 import qualified Data.Map as Map
+import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Data.Char(isLetter, toLower)
-import Data.List.Split (splitOn)
-
-import Util.Pretty(pretty, text)
+import qualified Data.Traversable as Traversable
+import Debug.Trace
 
 -- | Elaborate a value, returning any new bindings created (this will only
 -- happen if elaborating as a pattern clause)

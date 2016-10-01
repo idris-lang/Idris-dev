@@ -18,8 +18,8 @@ allows casing on arbitrary terms, here we choose to maintain the distinction
 in order to allow for better optimisation opportunities.
 
 -}
-{-# LANGUAGE PatternGuards, DeriveFunctor, TypeSynonymInstances,
-    DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor, DeriveGeneric, PatternGuards, TypeSynonymInstances
+             #-}
 
 module Idris.Core.CaseTree (
     CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo
@@ -31,11 +31,11 @@ module Idris.Core.CaseTree (
 import Idris.Core.TT
 
 import Control.Applicative hiding (Const)
-import Control.Monad.State
 import Control.Monad.Reader
-import Data.Maybe
+import Control.Monad.State
 import Data.List hiding (partition)
-import qualified Data.List(partition)
+import qualified Data.List (partition)
+import Data.Maybe
 import Debug.Trace
 import GHC.Generics (Generic)
 
@@ -169,9 +169,9 @@ findCalls' ignoreasserts sc topargs = nub $ nu' topargs sc where
                      | otherwise = [(n, [])] -- tmp
     nut ps fn@(App _ f a)
         | (P _ n _, args) <- unApply fn
-             = if ignoreasserts && n == sUN "assert_total" 
+             = if ignoreasserts && n == sUN "assert_total"
                   then []
-                  else if n `elem` ps 
+                  else if n `elem` ps
                           then nut ps f ++ nut ps a
                           else [(n, map argNames args)] ++ concatMap (nut ps) args
         | (P (TCon _ _) n _, _) <- unApply fn = []
@@ -249,7 +249,7 @@ data Phase = CompileTime | RunTime
 -- Work Right to Left
 
 simpleCase :: Bool -> SC -> Bool ->
-              Phase -> FC -> [Int] -> 
+              Phase -> FC -> [Int] ->
               [(Type, Bool)] -> -- (Argument type, whether it's canonical)
               [([Name], Term, Term)] ->
               ErasureInfo ->
@@ -431,12 +431,12 @@ partition xs = error $ "Partition " ++ show xs
 -- The first argument means [(Name, IsInaccessible)].
 
 order :: Phase -> [(Name, Bool)] -> [Clause] -> [Bool] -> ([Name], [Clause])
--- do nothing at compile time: FIXME (EB): Put this in after checking 
+-- do nothing at compile time: FIXME (EB): Put this in after checking
 -- implications for Franck's reflection work... see issue 3233
--- order CompileTime ns cs _ = (map fst ns, cs) 
+-- order CompileTime ns cs _ = (map fst ns, cs)
 order _ []  cs cans = ([], cs)
 order _ ns' [] cans = (map fst ns', [])
-order phase ns' cs cans 
+order phase ns' cs cans
     = let patnames = transpose (map (zip ns') (map (zip cans) (map fst cs)))
           -- only sort the arguments where there is no clash in
           -- constructor tags between families, the argument type is canonical,
@@ -444,7 +444,7 @@ order phase ns' cs cans
           -- clash, because otherwise we can't reliable make the
           -- case distinction on evaluation
           (patnames_ord, patnames_rest)
-                = Data.List.partition (noClash . map snd) patnames 
+                = Data.List.partition (noClash . map snd) patnames
           patnames_ord' = case phase of
                                CompileTime -> patnames_ord
                                -- reversing tends to make better case trees
@@ -460,7 +460,7 @@ order phase ns' cs cans
     rebuild patnames clause = (map (snd . snd) patnames, snd clause)
 
     noClash [] = True
-    noClash ((can, p) : ps) = can && not (any (clashPat p) (map snd ps)) 
+    noClash ((can, p) : ps) = can && not (any (clashPat p) (map snd ps))
                                   && noClash ps
 
     clashPat (PCon _ _ _ _) (PConst _) = True
@@ -471,7 +471,7 @@ order phase ns' cs cans
     clashPat _ _ = False
 
     -- this compares (+isInaccessible, -numberOfCases)
-    moreDistinct xs ys 
+    moreDistinct xs ys
         = compare (snd . fst . head $ xs, numNames [] (map snd ys))
                   (snd . fst . head $ ys, numNames [] (map snd xs))
 

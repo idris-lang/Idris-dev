@@ -8,13 +8,11 @@ Maintainer  : The Idris Community.
 module Idris.WhoCalls (whoCalls, callsWho) where
 
 import Idris.AbsSyntax
-
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
 
 import Data.List (nub)
-
 
 occurs :: Name -> Term -> Bool
 occurs n (P Bound _ _) = False

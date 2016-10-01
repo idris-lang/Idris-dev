@@ -1,16 +1,16 @@
 module Main where
 
-import Control.Monad ( when )
-import System.Exit ( exitSuccess )
-
 import Idris.AbsSyntax
-import Idris.Error
 import Idris.CmdOptions
+import Idris.Error
 import Idris.Info.Show
-import Idris.Package
 import Idris.Main
+import Idris.Package
 
-import Util.System ( setupBundledCC )
+import Util.System (setupBundledCC)
+
+import Control.Monad (when)
+import System.Exit (exitSuccess)
 
 processShowOptions :: [Opt] -> Idris ()
 processShowOptions opts = runIO $ do

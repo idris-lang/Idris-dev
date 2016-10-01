@@ -21,10 +21,11 @@ returns) are stored.
 module IRTS.Bytecode where
 
 
+import Idris.Core.TT
+import IRTS.Defunctionalise
 import IRTS.Lang
 import IRTS.Simplified
-import IRTS.Defunctionalise
-import Idris.Core.TT
+
 import Data.Maybe
 
 data Reg = RVal | L Int | T Int | Tmp
