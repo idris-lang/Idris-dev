@@ -17,6 +17,7 @@ module Idris.Info
   , getIdrisCC
   , getIdrisVersion
   , getIdrisVersionNoGit
+  , getIdrisUserConfigDir
   , getIdrisUserDataDir
   , getIdrisInitScript
   , getIdrisHistoryFile
@@ -68,9 +69,13 @@ getIdrisVersion = showVersion S.version ++ suffix
 getIdrisVersionNoGit = S.version
 
 
--- | Get the platform-specific, user-specific Idris dir
+-- | Get the platform-specific, user-specific Idris configuration dir
+getIdrisUserConfigDir :: IO FilePath
+getIdrisUserConfigDir = getXdgDirectory XdgConfig "idris"
+
+-- | Get the platform-specific, user-specific Idris data dir
 getIdrisUserDataDir :: IO FilePath
-getIdrisUserDataDir = getAppUserDataDirectory "idris"
+getIdrisUserDataDir = getXdgDirectory XdgData "idris"
 
 -- | Locate the platform-specific location for the init script
 getIdrisInitScript :: IO FilePath

@@ -107,6 +107,7 @@ showIdrisInfo = do
 
   putStrLn "Paths:"
   ldir <- getIdrisLibDir
+  cdir <- getIdrisUserConfigDir
   udir <- getIdrisUserDataDir
   ddir <- getIdrisDocDir
   idir <- getIdrisDataDir
@@ -116,7 +117,8 @@ showIdrisInfo = do
   putStrLn $ unwords ["-", "Library Dir:", ldir]
   putStrLn $ unwords ["-", "C RTS Dir:", crdir]
   putStrLn $ unwords ["-", "JS RTS Dir:", jrdir]
-  putStrLn $ unwords ["-", "User Dir:",    udir]
+  putStrLn $ unwords ["-", "User Data Config:", cdir]
+  putStrLn $ unwords ["-", "User Data Dir:", udir]
   putStrLn $ unwords ["-", "Documentation Dir:", ddir]
 
   putStrLn "Flags:"
