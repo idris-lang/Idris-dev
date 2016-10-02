@@ -371,8 +371,8 @@ elabPE info fc caller r =
     mkSpecialised specapp_in = do
         ist <- getIState
         ctxt <- getContext
-        let (specTy, specapp) = getSpecTy ist specapp_in
-        let (n, newnm, specdecl) = getSpecClause ist specapp
+        (specTy, specapp) <- getSpecTy ist specapp_in
+        let (n, newnm, specdecl) = getSpecClause ist specapp specTy
         let lhs = pe_app specdecl
         let rhs = pe_def specdecl
         let undef = case lookupDefExact newnm ctxt of
@@ -382,11 +382,12 @@ elabPE info fc caller r =
         idrisCatch
           (if (undef && all (concreteArg ist) (snd specapp)) then do
                 cgns <- getAllNames n
+                cgns_caller <- getAllNames caller
                 -- on the RHS of the new definition, we should reduce
                 -- everything that's not itself static (because we'll
                 -- want to be a PE version of those next)
                 let cgns' = filter (\x -> x /= n &&
-                                          notStatic ist x) cgns
+                                          notStatic ist x) (cgns ++ cgns_caller)
                 -- set small reduction limit on partial/productive things
                 let maxred = case lookupTotal n ctxt of
                                   [Total _] -> 65536
@@ -402,18 +403,19 @@ elabPE info fc caller r =
                                          (n, Just maxred) : specnames ++
                                              concat descs)]
                 logElab 3 $ "Specialising application: " ++ show specapp
-                              ++ " in " ++ show caller ++
-                              " with " ++ show opts
+                              ++ "\n in \n" ++ show caller ++
+                              "\n with \n" ++ show opts
+                              ++ "\nCalling: " ++ show cgns
                 logElab 3 $ "New name: " ++ show newnm
                 logElab 3 $ "PE definition type : " ++ (show specTy)
                             ++ "\n" ++ show opts
-                logElab 5 $ "PE definition " ++ show newnm ++ ":\n" ++
+                logElab 2 $ "PE definition " ++ show newnm ++ ":\n" ++
                              showSep "\n"
                                 (map (\ (lhs, rhs) ->
                                   (showTmImpls lhs ++ " = " ++
                                    showTmImpls rhs)) (pe_clauses specdecl))
 
-                logElab 2 $ show n ++ " transformation rule: " ++
+                logElab 5 $ show n ++ " transformation rule: " ++
                            showTmImpls rhs ++ " ==> " ++ showTmImpls lhs
 
                 elabType info defaultSyntax emptyDocstring [] fc opts newnm NoFC specTy
@@ -429,15 +431,17 @@ elabPE info fc caller r =
           -- if it doesn't work, just don't specialise. Could happen for lots
           -- of valid reasons (e.g. local variables in scope which can't be
           -- lifted out).
-          (\e -> do logElab 3 $ "Couldn't specialise: " ++ (pshow ist e)
+          (\e -> do logElab 5 $ "Couldn't specialise: " ++ (pshow ist e)
                     return [])
 
     hiddenToPH (PHidden _) = Placeholder
     hiddenToPH x = x
 
-    specName simpl (ImplicitS, tm)
+    specName simpl (ImplicitS _, tm)
         | (P Ref n _, _) <- unApply tm = Just (n, Just (if simpl then 1 else 0))
     specName simpl (ExplicitS, tm)
+        | (P Ref n _, _) <- unApply tm = Just (n, Just (if simpl then 1 else 0))
+    specName simpl (ConstraintS, tm) 
         | (P Ref n _, _) <- unApply tm = Just (n, Just (if simpl then 1 else 0))
     specName simpl _ = Nothing
 
@@ -459,7 +463,7 @@ elabPE info fc caller r =
                            Just s -> not (or s)
                            _ -> True
 
-    concreteArg ist (ImplicitS, tm) = concreteTm ist tm
+    concreteArg ist (ImplicitS _, tm) = concreteTm ist tm
     concreteArg ist (ExplicitS, tm) = concreteTm ist tm
     concreteArg ist _ = True
 
@@ -479,18 +483,18 @@ elabPE info fc caller r =
               [ty] -> let (specty_in, args') = specType args (explicitNames ty)
                           specty = normalise (tt_ctxt ist) [] (finalise specty_in)
                           t = mkPE_TyDecl ist args' (explicitNames specty) in
-                          (t, (n, args'))
+                          return (t, (n, args'))
 --                             (normalise (tt_ctxt ist) [] (specType args ty))
-              _ -> error "Can't happen (getSpecTy)"
+              _ -> ifail $ "Ambiguous name " ++ show n ++ " (getSpecTy)"
 
     -- get the clause of a specialised application
-    getSpecClause ist (n, args)
+    getSpecClause ist (n, args) specTy
        = let newnm = sUN ("PE_" ++ show (nsroot n) ++ "_" ++
                                qhash 5381 (showSep "_" (map showArg args))) in
                                -- UN (show n ++ show (map snd args)) in
-             (n, newnm, mkPE_TermDecl ist newnm n args)
+             (n, newnm, mkPE_TermDecl ist newnm n specTy args)
       where showArg (ExplicitS, n) = qshow n
-            showArg (ImplicitS, n) = qshow n
+            showArg (ImplicitS _, n) = qshow n
             showArg _ = ""
 
             qshow (Bind _ _ _) = "fn"

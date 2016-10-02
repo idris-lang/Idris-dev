@@ -192,6 +192,7 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
 
          let wbVals' = map (addParams prop_params) wbVals
 
+         logElab 5 ("Elaborating method bodies: " ++ show wbVals')
          mapM_ (rec_elabDecl info EAll info) wbVals'
 
          mapM_ (checkInjectiveDef fc (interface_methods ci)) (zip ds' wbVals')
@@ -472,7 +473,7 @@ checkInjectiveDef fc ns (PClauses _ _ n cs, PClauses _ _ elabn _)
     clookup n [] = Nothing
     clookup n ((n', d) : ds) | nsroot n == nsroot n' = Just d
                              | otherwise = Nothing
-checkInjectiveDef fc ns _ = return()
+checkInjectiveDef fc ns _ = return ()
 
 checkInjectiveArgs :: FC -> Name -> [Int] -> Maybe Type -> Idris ()
 checkInjectiveArgs fc n ds Nothing = return ()
