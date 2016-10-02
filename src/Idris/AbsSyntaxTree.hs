@@ -641,6 +641,7 @@ data FnOpt = Inlinable -- ^ always evaluate when simplifying
            -- | interface dictionary, eval only when a function
            -- argument, and further evaluation results.
            | Dictionary
+           | OverlappingDictionary -- ^ Interface dictionary which may overlap
            | Implicit                       -- ^ implicit coercion
            | NoImplicit                     -- ^ do not apply implicit coercions
            | CExport String                 -- ^ export, with a C name

@@ -93,10 +93,12 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          -- if the implementation type matches any of the implementations we have already,
          -- and it's not a named implementation, then it's overlapping, so report an error
          case expn of
-            Nothing -> do mapM_ (maybe (return ()) overlapping . findOverlapping ist (interface_determiners ci) (delab ist nty))
+            Nothing 
+               | OverlappingDictionary `notElem` opts ->
+                       do mapM_ (maybe (return ()) overlapping . findOverlapping ist (interface_determiners ci) (delab ist nty))
                                 (map fst $ interface_implementations ci)
                           addImplementation intImpl True n iname
-            Just _ -> addImplementation intImpl False n iname
+            _ -> addImplementation intImpl False n iname
     when (what /= ETypes && (not (null ds && not emptyinterface))) $ do
          -- Add the parent implementation names to the privileged set
          oldOpen <- addOpenImpl parents
@@ -255,6 +257,8 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
 
     findOverlapping i dets t n
      | SN (ParentN _ _) <- n = Nothing
+     | Just opts <- lookupCtxtExact n (idris_flags i),
+       OverlappingDictionary `elem` opts = Nothing
      | otherwise
         = case lookupTy n (tt_ctxt i) of
             [t'] -> let tret = getRetType t

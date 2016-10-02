@@ -691,6 +691,8 @@ fnOpt = do reservedHL "total"; return TotalFn
                     return Reflection
         <|> do try (lchar '%' *> reserved "hint");
                     return AutoHint
+        <|> do try (lchar '%' *> reserved "overlapping");
+                    return OverlappingDictionary
         <|> do lchar '%'; reserved "specialise";
                lchar '['; ns <- sepBy nameTimes (lchar ','); lchar ']';
                return $ Specialise ns
