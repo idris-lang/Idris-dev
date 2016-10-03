@@ -216,15 +216,74 @@ htmlhelp_basename = 'IdrisManualdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
+latex_title_page = r'''
+\begin{titlepage}
+    \vspace*{\fill}
+    \begin{center}
+        \includegraphics[width=0.25\textwidth]{idris-512x512.png}\par
+        \vspace{1cm}
+        {\huge\sffamily\bfseries Documentation for the Idris Language\par}
+        \vspace{1cm}
+        {\Large Version \version\par}
+    \end{center}
+    \vspace*{\fill}
+\end{titlepage}
+'''
+
 latex_elements = {
 # The paper size ('letterpaper' or 'a4paper').
 'papersize': 'a4paper',
+
+'fontpkg': '',
+'inputenc': '',
+'utf8extra': '',
+'releasename': 'Version',
 
 # The font size ('10pt', '11pt' or '12pt').
 'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-#'preamble': '',
+'preamble': r'''
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage{titlesec}
+%
+\usepackage{fancyhdr}
+\fancypagestyle{plain}{%
+  \renewcommand{\headrulewidth}{0pt}%
+  \fancyhf{}%
+  \fancyfoot[C]{\textsf{\thepage}}
+}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\textsf{\bfseries{v\version}}}
+\fancyhead[LO,RE]{\textsf{\bfseries\leftmark}}
+%\fancyhead[LO]{\textsf{\bfseries{\leftmark}}}
+%\fancyhead[RO]{\textsf{\bfseries{v\version}}}
+%\fancyhead[RE]{\textsf{\bfseries{\leftmark}}}
+%\fancyhead[LE]{\textsf{\bfseries{v\version}}}
+\fancyfoot[C]{\textsf{\thepage}}
+\renewcommand{\footrulewidth}{0pt}
+\renewcommand{\headrulewidth}{0pt}
+%
+\usepackage[font={small,it}]{caption}
+\titleformat{\section}
+  {\normalfont\sffamily\Large\bfseries\color{black}}
+  {\thesection}{1em}{}
+\titleformat{\subsection}
+  {\sffamily\large\bfseries\color{black}}
+  {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\sffamily\normalsize\bfseries\color{black}}
+  {\thesubsubsection}{1em}{}
+\titleformat{\paragraph}{\normalfont\normalsize\slshape}{\theparagraph}{1em}{}
+\setlength{\parskip}{1em}
+%
+\hypersetup{colorlinks = false}
+''',
+
+'maketitle': latex_title_page
 
 # Latex figure (float) alignment
 #'figure_align': 'htbp',
@@ -234,15 +293,16 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('tutorial/index',  'idris-tutorial.tex',  u'The Idris Tutorial',    u'The Idris Community', 'manual'),
-  ('guides/index',    'idris-guides.tex',    u'Idris Tutorial Series', u'The Idris Community', 'manual'),
-#  ('reference/index', 'idris-reference.tex', u'The Idris Reference',   u'The Idris Community', 'manual'),
-    ('effects/index',  'eff-tutorial.tex',  u'The Effects Tutorial',    u'The Idris Community', 'manual')
-    ]
+  ('index',  'idris.tex',  u'Documentation for the Idris Language',    u'The Idris Community', 'report')
+]
+
+
+latex_show_pagerefs = True
+latex_show_url = 'footnote'
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-#latex_logo = None
+latex_logo = '../icons/idris-512x512.png'
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.
