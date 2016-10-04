@@ -8,6 +8,7 @@ env:
 
 matrix:
   include:
+    - env: STYLISH=YES
     - os: osx
       env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
@@ -66,6 +67,7 @@ before_install:
         export ZCAT=gzcat;
         export PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig:$PKG_CONFIG_PATH;
     fi
+  - if [ -n "$STYLISH" ]; then ./check-stylish.sh; exit $?; fi
 
 install:
   - cabal --version
