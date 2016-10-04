@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}
 {-|
 Module      : Idris.Core.Constraints
 Description : Check universe constraints.
