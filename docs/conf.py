@@ -281,6 +281,7 @@ latex_elements = {
 \setlength{\parskip}{1em}
 %
 \hypersetup{colorlinks = false}
+\definecolor{VerbatimBorderColor}{rgb}{1,1,1}
 ''',
 
 'maketitle': latex_title_page
