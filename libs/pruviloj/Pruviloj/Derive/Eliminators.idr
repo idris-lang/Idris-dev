@@ -3,7 +3,7 @@ module Pruviloj.Derive.Eliminators
 import Language.Reflection.Utils
 import Data.Vect
 
-import Pruviloj.Core
+import public Pruviloj.Core
 import Pruviloj.Internals.TyConInfo
 import Pruviloj.Internals
 import Pruviloj.Renamers
