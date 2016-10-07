@@ -132,10 +132,10 @@ steps:
   # - records: {}
 
   # Replace tabs by spaces. This is disabled by default.
-  # - tabs:
+  - tabs:
   #     # Number of spaces to use for each tab. Default: 8, as specified by the
   #     # Haskell report.
-  #     spaces: 8
+      spaces: 8
 
   # Remove trailing whitespace
   - trailing_whitespace: {}
