@@ -38,7 +38,7 @@ module Idris.Core.TT(
   , bindingOf, bindTyArgs, caseName, constDocs, constIsType, deleteDefExact
   , discard, emptyContext, emptyFC, explicitNames, fc_end, fc_fname
   , fc_start, fcIn, fileFC, finalise, fmapMB, forget, forgetEnv
-  , freeNames, getArgTys, getRetTy, implicitable, instantiate, internalNS
+  , freeNames, getArgTys, getRetTy, substRetTy, implicitable, instantiate, internalNS
   , intTyName, isInjective, isTypeConst, lookupCtxt
   , lookupCtxtExact, lookupCtxtName, mapCtxt, mkApp, nativeTyWidth
   , nextName, noOccurrence, nsroot, occurrences
@@ -1448,6 +1448,14 @@ getRetTy (Bind n (PVar _) sc) = getRetTy sc
 getRetTy (Bind n (PVTy _) sc) = getRetTy sc
 getRetTy (Bind n (Pi _ _ _) sc)   = getRetTy sc
 getRetTy sc = sc
+
+-- | As getRetTy but substitutes names for de Bruijn indices
+substRetTy :: TT n -> TT n
+substRetTy (Bind n (PVar ty) sc) = substRetTy (substV (P Ref n ty) sc)
+substRetTy (Bind n (PVTy ty) sc) = substRetTy (substV (P Ref n ty) sc)
+substRetTy (Bind n (Pi _ ty _) sc) = substRetTy (substV (P Ref n ty) sc)
+substRetTy sc = sc
+   
 
 uniqueNameFrom :: [Name] -> [Name] -> Name
 uniqueNameFrom []           hs = uniqueName (nextName (sUN "x")) hs

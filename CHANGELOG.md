@@ -21,6 +21,16 @@
                         score->attempted $= (+1) } st
   ```
 
+* Implicit parameter to interfaces are now allowed. For example:
+
+  ```
+  interface Shows (ts : Vect k Type) where
+  shows : HVect ts -> Vect k String
+  ```
+  In this interface, `k` is an implicit parameter, but previously needed to
+  be explicit
+
+
 ## Library updates
 
 * The File Effect has been updated to take into account changes in

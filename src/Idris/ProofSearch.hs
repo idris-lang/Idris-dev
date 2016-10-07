@@ -525,8 +525,8 @@ findImplementations :: IState -> Term -> [Name]
 findImplementations ist t
     | (P _ n _, _) <- unApply (getRetTy t)
         = case lookupCtxt n (idris_interfaces ist) of
-            [CI _ _ _ _ _ ins _] ->
-              [n | (n, True) <- ins, accessible n]
+            [ci] -> let ins = interface_implementations ci in
+                        [n | (n, True) <- ins, accessible n]
             _ -> []
     | otherwise = []
   where accessible n = case lookupDefAccExact n False (tt_ctxt ist) of

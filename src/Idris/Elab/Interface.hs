@@ -62,10 +62,10 @@ elabInterface :: ElabInfo
               -> SyntaxInfo
               -> Docstring (Either Err PTerm)
               -> FC
-              -> [(Name, PTerm)]
+              -> [(Name, PTerm)] -- ^ Superclass constraints
               -> Name
               -> FC
-              -> [(Name, FC, PTerm)]
+              -> [(Name, FC, PTerm)] -- ^ Parameters
               -> [(Name, Docstring (Either Err PTerm))]
               -> [(Name, FC)]                 -- ^ determining params
               -> [PDecl]                      -- ^ interface body
@@ -74,7 +74,6 @@ elabInterface :: ElabInfo
               -> Idris ()
 elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     = do let cn = fromMaybe (SN (ImplementationCtorN tn)) (fst <$> mcn)
-         let tty = pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
          let constraint = PApp fc (PRef fc [] tn)
                                   (map (pexp . PRef fc []) (map (\(n, _, _) -> n) ps))
 
@@ -82,6 +81,20 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
               syn_in { using = addToUsing (using syn_in)
                                  [(pn, pt) | (pn, _, pt) <- ps]
                      }
+         
+         -- Calculate implicit parameters
+         ist <- getIState
+         let impps_ns = nub $ map (\n -> (n, emptyFC, Placeholder)) $
+                            concatMap (implicitNamesIn [] ist) 
+                                      (map (\ (_,_,x) -> x) ps)
+         let impps = filter (\ (n, _, _) -> 
+                               n `notElem` (map (\ (n, _, _) -> n) ps)) impps_ns
+
+         let tty = impbind (map (\(n, _, ty) -> (n, ty)) impps) $ 
+                     pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
+
+         logElab 5 $ "Implicit parameters are " ++ show impps
+         logElab 5 $ "Interface type is " ++ showTmImpls tty
 
          -- build data declaration
          let mdecls = filter tydecl ds -- method declarations
@@ -95,7 +108,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          mapM_ (checkConstraintName (map (\(x, _, _) -> x) ps)) constraintNames
 
          logElab 2 $ "Building methods " ++ show mnames
-         ims <- mapM (tdecl mnames) mdecls
+         ims <- mapM (tdecl impps mnames) mdecls
          defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint)
                       (filter clause ds)
          let (methods, imethods)
@@ -103,20 +116,23 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
 
          -- build implementation constructor type
-         let cty = impbind [(pn, pt) | (pn, _, pt) <- ps] $ conbind constraints
+         let cty = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
                                constraint
 
          let cons = [(cd, pDocs ++ mapMaybe memberDocs ds, cn, NoFC, cty, fc, [])]
          let ddecl = PDatadecl tn NoFC tty cons
 
-         logElab 5 $ "Interface data " ++ show (showDImp verbosePPOption ddecl)
+         logElab 5 $ "Interface " ++ show (showDImp verbosePPOption ddecl)
 
          -- Elaborate the data declaration
          elabData info (syn { no_imp = no_imp syn ++ mnames,
                               imp_methods = mnames }) doc pDocs fc [] ddecl
          dets <- findDets cn (map fst fds)
-         addInterface tn (CI cn (map nodoc imethods) defaults idecls (map (\(n, _, _) -> n) ps) [] dets)
+         addInterface tn (CI cn (map nodoc imethods) defaults idecls 
+                              (map (\(n, _, _) -> n) impps)
+                              (map (\(n, _, _) -> n) ps) 
+                              [] dets)
 
          -- for each constraint, build a top level function to chase it
          cfns <- mapM (cfun cn constraint syn (map fst imethods)) constraints
@@ -188,14 +204,14 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     getMName (PTy _ _ _ _ _ n nfc _) = nsroot n
     getMName (PData _ _ _ _ _ (PLaterdecl n nfc _)) = nsroot n
 
-    tdecl allmeths (PTy doc _ syn _ o n nfc t)
-           = do t' <- implicit' info syn (map (\(n, _, _) -> n) ps ++ allmeths) n t
+    tdecl impps allmeths (PTy doc _ syn _ o n nfc t)
+           = do t' <- implicit' info syn (map (\(n, _, _) -> n) (impps ++ ps) ++ allmeths) n t
                 logElab 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map (\(pn, _, _) -> pn) ps) Exp t')),
                          (n, (False, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
                                               (\ l s p -> Imp l s p Nothing True) t'))),
                          (n, (nfc, syn, o, t) ) )
-    tdecl allmeths (PData doc _ syn _ _ (PLaterdecl n nfc t))
+    tdecl impps allmeths (PData doc _ syn _ _ (PLaterdecl n nfc t))
            = do let o = []
                 t' <- implicit' info syn (map (\(n, _, _) -> n) ps ++ allmeths) n t
                 logElab 2 $ "Data method " ++ show n ++ " : " ++ showTmImpls t'
@@ -203,9 +219,9 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                          (n, (True, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
                                               (\ l s p -> Imp l s p Nothing True) t'))),
                          (n, (nfc, syn, o, t) ) )
-    tdecl allmeths (PData doc _ syn _ _ _)
+    tdecl impps allmeths (PData doc _ syn _ _ _)
          = ierror $ At fc (Msg "Data definitions not allowed in an interface declaration")
-    tdecl _ _ = ierror $ At fc (Msg "Not allowed in an interface declaration")
+    tdecl _ _ _ = ierror $ At fc (Msg "Not allowed in an interface declaration")
 
     -- Create default definitions
     defdecl mtys c d@(PClauses fc opts n cs) =

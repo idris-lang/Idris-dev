@@ -129,11 +129,17 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
                 = case lookupTyExact iname (tt_ctxt ist) of
                               Just ty -> (map (\n -> (n, getTypeIn ist n ty)) headVars, ty)
                               _ -> (zip headVars (repeat Placeholder), Erased)
-         logElab 3 $ "Head var types " ++ show headVarTypes ++ " from " ++ show ty
+
+         let impps = getImpParams ist (interface_impparams ci) 
+                          (snd (unApply (substRetTy ty)))
+         let iimpps = zip (interface_impparams ci) impps
+
+         logElab 5 $ "ImpPS: " ++ show impps ++ " --- " ++ show iimpps
+         logElab 5 $ "Head var types " ++ show headVarTypes ++ " from " ++ show ty
 
          let all_meths = map (nsroot . fst) (interface_methods ci)
          let mtys = map (\ (n, (inj, op, t)) ->
-                   let t_in = substMatchesShadow ips pnames t
+                   let t_in = substMatchesShadow (iimpps ++ ips) pnames t
                        mnamemap =
                           map (\n -> (n, PApp fc (PRef fc [] (decorate ns iname n))
                                               (map (toImp fc) headVars)))
@@ -142,7 +148,7 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
                        (decorate ns iname n,
                            op, coninsert cs pextra t', t'))
               (interface_methods ci)
-         logElab 3 (show (mtys, ips))
+         logElab 5 (show (mtys, (iimpps ++ ips)))
          logElab 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (interface_methods ci)))
          let ds_defs = insertDefaults ist iname (interface_defaults ci) ns ds
          logElab 3 ("After defaults: " ++ show ds_defs ++ "\n")
@@ -208,6 +214,8 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          addIBC (IBCImplementation intImpl (isNothing expn) n iname)
 
   where
+    getImpParams ist = zipWith (\n tm -> delab ist tm)
+
     intImpl = case ps of
                 [PConstant NoFC (AType (ATInt ITNative))] -> True
                 _ -> False

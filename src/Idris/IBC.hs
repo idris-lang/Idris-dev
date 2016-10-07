@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 149
+ibcVersion = 150
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -551,7 +551,7 @@ processInterfaces ar = do
         -- Don't lose implementations from previous IBCs, which
         -- could have loaded in any order
         let is = case lookupCtxtExact n (idris_interfaces i) of
-                    Just (CI _ _ _ _ _ ins _) -> ins
+                    Just ci -> interface_implementations ci
                     _ -> []
         let c' = c { interface_implementations = interface_implementations c ++ is }
         putIState (i { idris_interfaces = addDef n c' (idris_interfaces i) })) cs
@@ -2354,13 +2354,14 @@ instance (Binary t) => Binary (PArg' t) where
 
 
 instance Binary InterfaceInfo where
-        put (CI x1 x2 x3 x4 x5 _ x6)
+        put (CI x1 x2 x3 x4 x5 x6 _ x7)
           = do put x1
                put x2
                put x3
                put x4
                put x5
                put x6
+               put x7
         get
           = do x1 <- get
                x2 <- get
@@ -2368,7 +2369,8 @@ instance Binary InterfaceInfo where
                x4 <- get
                x5 <- get
                x6 <- get
-               return (CI x1 x2 x3 x4 x5 [] x6)
+               x7 <- get
+               return (CI x1 x2 x3 x4 x5 x6 [] x7)
 
 instance Binary RecordInfo where
         put (RI x1 x2 x3)

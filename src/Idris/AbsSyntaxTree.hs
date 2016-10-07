@@ -1399,6 +1399,7 @@ data InterfaceInfo = CI {
   , interface_methods                  :: [(Name, (Bool, FnOpts, PTerm))] -- ^ flag whether it's a "data" method
   , interface_defaults                 :: [(Name, (Name, PDecl))]         -- ^ method name -> default impl
   , interface_default_super_interfaces :: [PDecl]
+  , interface_impparams                :: [Name]
   , interface_params                   :: [Name]
   , interface_implementations          :: [(Name, Bool)] -- ^ the Bool is whether to include in implementation search, so named implementations are excluded
   , interface_determiners              :: [Int]
