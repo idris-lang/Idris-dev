@@ -680,13 +680,12 @@ app syn = do f <- simpleExpr syn
                                (PMatchApp fc ff)
                                (PRef fc [] (sMN 0 "match")))
                    <?> "matching application expression") <|>
-               (do
-                   fc <- getFC
+               (do fc <- getFC
                    i <- get
                    args <- many (do notEndApp; arg syn)
                    wargs <- if withAppAllowed syn && not (inPattern syn)
-                            then many (do notEndApp; reservedOp "|"; expr' syn)
-                            else return []
+                              then many (do notEndApp; reservedOp "|"; expr' syn)
+                              else return []
                    case args of
                      [] -> return f
                      _  -> return (withApp fc (flattenFromInt fc f args) wargs))
