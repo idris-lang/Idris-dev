@@ -59,16 +59,16 @@ implementation (DecEq t, DecEq (HVect ts)) => DecEq (HVect (t::ts)) where
       decEq (z::xs) (z::ys) | Yes Refl | No ctr = No (ctr . hvectInjective2)
     decEq (x::xs) (y::ys) | No ctr = No (ctr . hvectInjective1)
 
-interface Shows (k : Nat) (ts : Vect k Type) where
+interface Shows (ts : Vect k Type) where
   shows : HVect ts -> Vect k String
 
-implementation Shows Z [] where
+implementation Shows [] where
   shows [] = []
 
-implementation (Show t, Shows k ts) => Shows (S k) (t::ts) where
+implementation (Show t, Shows ts) => Shows (t::ts) where
   shows (x::xs) = show x :: shows xs
 
-implementation (Shows k ts) => Show (HVect ts) where
+implementation (Shows ts) => Show (HVect ts) where
   show xs = "[" ++ (pack . intercalate [','] . map unpack . toList $ shows xs) ++ "]"
 
 ||| Extract an arbitrary element of the correct type.
