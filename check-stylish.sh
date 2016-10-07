@@ -12,19 +12,14 @@ function fail_maybe_explain {
 
 if [ -n "$TRAVIS" ];
 then
-    # It takes a while to compile, let's not tax Travis' infrastructure for no
-    # reason. We can't cache it via cabsnap because that's based on the install-
-    # plan for Idris, which of course doesn't have stylish-haskell as a
-    # dependency.
-    STYLISH_EXE=$(mktemp)
-    wget -O $STYLISH_EXE "https://s3-us-west-2.amazonaws.com/idris-travis-binaries/stylish-haskell"
-    chmod +x $STYLISH_EXE
-else
-    STYLISH_EXE=stylish-haskell
+    mkdir -p ~/.local/bin
+    export PATH=$HOME/.local/bin:/opt/ghc/8.0.1/bin:$PATH
+    curl --retry 3 -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+    stack install --resolver lts-7.2 stylish-haskell --no-terminal
 fi
 
 
-find . -name \*.hs -and \( -not -name Setup.hs \) | xargs $STYLISH_EXE -i > stylish-out 2>&1
+find . -name \*.hs -and \( -not -name Setup.hs \) | xargs stylish-haskell -i > stylish-out 2>&1
 
 # It doesn't do exit codes properly, so we just check if it outputted anything.
 if [ -s stylish-out ];

@@ -9,6 +9,7 @@ env:
 matrix:
   include:
     - env: STYLISH=YES
+      addons: {apt: {packages: [ghc-8.0.1], sources: [hvr-ghc]}}
     - os: osx
       env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
@@ -43,6 +44,7 @@ cache:
   directories:
     - $HOME/.cabsnap
     - $HOME/.cabal/packages
+    - $HOME/.stack
 
 before_cache:
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
