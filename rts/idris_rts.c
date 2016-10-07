@@ -753,6 +753,12 @@ void* vmThread(VM* callvm, func f, VAL arg) {
     return vm;
 }
 
+void* idris_stopThread(VM* vm) {
+    close_vm(vm);
+    pthread_exit(NULL);
+    return NULL;
+}
+
 // VM is assumed to be a different vm from the one x lives on
 
 VAL doCopyTo(VM* vm, VAL x) {

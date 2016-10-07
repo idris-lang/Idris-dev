@@ -106,3 +106,9 @@ getMsgFrom {a} sender channel
              foreign FFI_C "idris_freeMsg" (Ptr -> IO ()) m
              pure (Just x)
 
+stopThread : IO a
+stopThread = do vm <- getMyVM
+                MkRaw res <- foreign FFI_C "idris_stopThread" (Ptr -> IO (Raw a)) vm
+                pure res
+
+

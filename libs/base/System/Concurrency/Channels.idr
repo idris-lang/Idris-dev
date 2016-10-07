@@ -61,3 +61,7 @@ export
 unsafeRecv : (expected : Type) -> Channel -> IO (Maybe expected)
 unsafeRecv a (MkConc pid ch_id) = getMsgFrom {a} pid ch_id
 
+||| Exit the thread immediately
+export
+stopThread : IO a
+stopThread = Raw.stopThread 

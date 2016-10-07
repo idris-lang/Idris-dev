@@ -309,6 +309,7 @@ void free_nullaries();
 void init_signals();
 
 void* vmThread(VM* callvm, func f, VAL arg);
+void* idris_stopThread(VM* vm);
 
 // Copy a structure to another vm's heap
 VAL copyTo(VM* newVM, VAL x);
