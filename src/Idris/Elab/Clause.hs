@@ -766,14 +766,17 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
             Error e -> ierror (At fc (CantUnify False (clhsty, Nothing) (crhsty, Nothing) e [] 0))
         i <- getIState
         checkInferred fc (delab' i crhs True True) rhs
-        -- if the function is declared '%error_reverse', or its type,
+        -- if the function is declared '%error_reverse',
         -- then we'll try running it in reverse to improve error messages
+        -- Also if the type is '%error_reverse' and the LHS is smaller than
+        -- the RHS
         let (ret_fam, _) = unApply (getRetTy crhsty)
         rev <- case ret_fam of
                     P _ rfamn _ ->
                         case lookupCtxt rfamn (idris_datatypes i) of
                              [TI _ _ dopts _ _] ->
-                                 return (DataErrRev `elem` dopts)
+                                 return (DataErrRev `elem` dopts &&
+                                         size clhs <= size crhs)
                              _ -> return False
                     _ -> return False
 
