@@ -49,6 +49,7 @@ data Docs' d = FunDoc (FunDoc' d)
              | InterfaceDoc Name d  -- interface docs
                             [FunDoc' d] -- method docs
                             [(Name, Maybe d)] -- parameters and their docstrings
+                            [PTerm] -- parameter constraints
                             [(Maybe Name, PTerm, (d, [(Name, d)]))] -- implementations: name for named implementations, the constraint term, the docs
                             [PTerm] -- sub interfaces
                             [PTerm] -- super interfaces
@@ -140,7 +141,7 @@ pprintDocs ist (DataDoc t args)
              if null args then text "No constructors."
              else nest 4 (text "Constructors:" <> line <>
                           vsep (map (pprintFDWithoutTotality ist False) args))
-pprintDocs ist (InterfaceDoc n doc meths params implementations sub_interfaces super_interfaces ctor)
+pprintDocs ist (InterfaceDoc n doc meths params constraints implementations sub_interfaces super_interfaces ctor)
            = nest 4 (text "Interface" <+> prettyName True (ppopt_impl ppo) [] n <>
                      if nullDocstring doc
                        then empty
@@ -233,10 +234,17 @@ pprintDocs ist (InterfaceDoc n doc meths params implementations sub_interfaces s
     isSubInterface (PPi _   _            _ _ pt)                                           = isSubInterface pt
     isSubInterface _                                                                       = False
 
+    prettyConstraints separateLine =
+      let separator = if separateLine then line else empty
+      in case constraints of
+          [] -> empty
+          [pt] -> pprintPTerm ppo params' [] infixes pt <+> text "=>" <> separator
+          _ -> parens (cat (punctuate (comma <> space) (map (pprintPTerm ppo params' [] infixes) constraints))) <+> text "=>" <> separator
+
     prettyParameters =
       if any (isJust . snd) params
-         then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
-         else hsep (punctuate comma (map (prettyName True False params' . fst) params))
+         then prettyConstraints True <> vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
+         else prettyConstraints False <+> hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
 pprintDocs ist (RecordDoc n doc ctor projs params)
   = nest 4 (text "Record" <+> prettyName True (ppopt_impl ppo) [] n <>
@@ -336,7 +344,7 @@ docInterface n ci
                      SN _ -> return Nothing
                      _    -> fmap Just $ docFun ctorN
        return $ InterfaceDoc
-                  n docstr mdocs params
+                  n docstr mdocs params (interface_constraints ci)
                   implementations' (map (\(_,tm,_) -> tm) sub_interfaces) super_interfaces
                   ctorDocs
   where
