@@ -19,8 +19,9 @@ unlit f s = do let s' = map ulLine (lines s)
 data LineType = Prog | Blank | Comm
 
 ulLine :: String -> (LineType, String)
-ulLine ('>':' ':xs)        = (Prog, xs)
-ulLine ('>':xs)            = (Prog, xs)
+ulLine ('>':' ':xs)        = (Prog, ' ':' ':xs) -- Replace with spaces, otherwise text position numbers will be bogus.
+ulLine ('>':xs)            = (Prog, ' '    :xs) -- The parser can deal with this, because /every/ (code) line is prefixed
+                                                -- with a '>'.
 ulLine xs | all isSpace xs = (Blank, "")
 -- make sure it's not a doc comment
           | otherwise      = (Comm, '-':'-':' ':'>':xs)
@@ -29,7 +30,7 @@ check :: FilePath -> Int -> [(LineType, String)] -> TC ()
 check f l (a:b:cs) = do chkAdj f l (fst a) (fst b)
                         check f (l+1) (b:cs)
 check f l [x] = return ()
-check f l [] = return ()
+check f l [ ] = return ()
 
 -- Issue #1593 on the issue checker.
 --
