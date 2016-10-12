@@ -57,6 +57,8 @@
   * New flag `--docdir` provided to show default documentation installation location.
   * New environment variable `IDRIS_DOC_PATH` to allow specification of an alternative installation path for documentation.
 * Semantic meaning behind several environment variables has been clarified in documentation and code. See compilation section of the reference manual for more details.
+* Interface parameter constraints are now printed in the output of `:doc`. This
+  is tested for in `docs006`.
 
 ## Miscellaneous updates
 
