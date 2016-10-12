@@ -1,0 +1,16 @@
+Interface Foo
+    interface
+
+Parameters:
+    t   -- some parameter
+
+Constraints:
+    Eq t
+
+Methods:
+    m : Foo t => t
+        member of interface
+        
+        The function is Total
+Implementations:
+    <no implementations>

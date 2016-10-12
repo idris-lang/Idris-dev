@@ -148,6 +148,11 @@ pprintDocs ist (InterfaceDoc n doc meths params constraints implementations sub_
                        else line <> renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
+
+             <> (if null constraints
+                 then empty
+                 else line <$> nest 4 (text "Constraints:" <$> prettyConstraints))
+
              <> line <$>
              nest 4 (text "Methods:" <$>
                       vsep (map (pprintFDWithTotality ist False) meths))
@@ -234,17 +239,13 @@ pprintDocs ist (InterfaceDoc n doc meths params constraints implementations sub_
     isSubInterface (PPi _   _            _ _ pt)                                           = isSubInterface pt
     isSubInterface _                                                                       = False
 
-    prettyConstraints separateLine =
-      let separator = if separateLine then line else empty
-      in case constraints of
-          [] -> empty
-          [pt] -> pprintPTerm ppo params' [] infixes pt <+> text "=>" <> separator
-          _ -> parens (cat (punctuate (comma <> space) (map (pprintPTerm ppo params' [] infixes) constraints))) <+> text "=>" <> separator
+    prettyConstraints =
+      cat (punctuate (comma <> space) (map (pprintPTerm ppo params' [] infixes) constraints))
 
     prettyParameters =
       if any (isJust . snd) params
-         then prettyConstraints True <> vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
-         else prettyConstraints False <+> hsep (punctuate comma (map (prettyName True False params' . fst) params))
+         then vsep (map (\(nm,md) -> prettyName True False params' nm <+> maybe empty (showDoc ist) md) params)
+         else hsep (punctuate comma (map (prettyName True False params' . fst) params))
 
 pprintDocs ist (RecordDoc n doc ctor projs params)
   = nest 4 (text "Record" <+> prettyName True (ppopt_impl ppo) [] n <>
