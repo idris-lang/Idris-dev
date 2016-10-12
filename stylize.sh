@@ -2,14 +2,6 @@
 
 set -e
 
-function fail_maybe_explain {
-    if [ -n "$TRAVIS" ];
-    then
-        echo "Run ./check-stylish.sh locally to stylize your files / debug this"
-    fi
-    exit 1
-}
-
 if [ -n "$TRAVIS" ];
 then
     mkdir -p ~/.local/bin
@@ -26,16 +18,21 @@ if [ -s stylish-out ];
 then
     echo "Stylish-haskell reported an error :("
     cat stylish-out
-    fail_maybe_explain
+    exit 1
 fi
 
 rm stylish-out
 
 if git status --porcelain|grep .; # true if there was any output
 then
-    echo "Running stylish-haskell changed 1 or more files :(";
-    fail_maybe_explain
+    echo "Git tree is dirty after stylizing.";
+    if [ -n "$TRAVIS" ];
+    then
+        echo "Since we're on Travis, this is a build failure."
+        echo "Run ./stylize.sh to stylize your tree and push the changes."
+        exit 1
+    fi
 else
-    echo "Stylish is happy :)";
+    echo "Stylish didn't change anything :)"
     exit 0;
 fi
