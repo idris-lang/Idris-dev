@@ -81,16 +81,16 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
               syn_in { using = addToUsing (using syn_in)
                                  [(pn, pt) | (pn, _, pt) <- ps]
                      }
-         
+
          -- Calculate implicit parameters
          ist <- getIState
          let impps_ns = nub $ map (\n -> (n, emptyFC, Placeholder)) $
-                            concatMap (implicitNamesIn [] ist) 
+                            concatMap (implicitNamesIn [] ist)
                                       (map (\ (_,_,x) -> x) ps)
-         let impps = filter (\ (n, _, _) -> 
+         let impps = filter (\ (n, _, _) ->
                                n `notElem` (map (\ (n, _, _) -> n) ps)) impps_ns
 
-         let tty = impbind (map (\(n, _, ty) -> (n, ty)) impps) $ 
+         let tty = impbind (map (\(n, _, ty) -> (n, ty)) impps) $
                      pibind (map (\(n, _, ty) -> (n, ty)) ps) (PType fc)
 
          logElab 5 $ "Implicit parameters are " ++ show impps
@@ -129,9 +129,9 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          elabData info (syn { no_imp = no_imp syn ++ mnames,
                               imp_methods = mnames }) doc pDocs fc [] ddecl
          dets <- findDets cn (map fst fds)
-         addInterface tn (CI cn (map nodoc imethods) defaults idecls 
+         addInterface tn (CI cn (map nodoc imethods) defaults idecls
                               (map (\(n, _, _) -> n) impps)
-                              (map (\(n, _, _) -> n) ps) 
+                              (map (\(n, _, _) -> n) ps)
                               [] dets)
 
          -- for each constraint, build a top level function to chase it

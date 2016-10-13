@@ -93,7 +93,7 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          -- if the implementation type matches any of the implementations we have already,
          -- and it's not a named implementation, then it's overlapping, so report an error
          case expn of
-            Nothing 
+            Nothing
                | OverlappingDictionary `notElem` opts ->
                        do mapM_ (maybe (return ()) overlapping . findOverlapping ist (interface_determiners ci) (delab ist nty))
                                 (map fst $ interface_implementations ci)
@@ -130,7 +130,7 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
                               Just ty -> (map (\n -> (n, getTypeIn ist n ty)) headVars, ty)
                               _ -> (zip headVars (repeat Placeholder), Erased)
 
-         let impps = getImpParams ist (interface_impparams ci) 
+         let impps = getImpParams ist (interface_impparams ci)
                           (snd (unApply (substRetTy ty)))
          let iimpps = zip (interface_impparams ci) impps
 

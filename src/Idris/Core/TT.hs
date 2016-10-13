@@ -1455,7 +1455,7 @@ substRetTy (Bind n (PVar ty) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy (Bind n (PVTy ty) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy (Bind n (Pi _ ty _) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy sc = sc
-   
+
 
 uniqueNameFrom :: [Name] -> [Name] -> Name
 uniqueNameFrom []           hs = uniqueName (nextName (sUN "x")) hs

@@ -276,7 +276,7 @@ mkPE_TermDecl :: IState
               -> [(PEArgType, Term)]
               -> PEDecl
 mkPE_TermDecl ist newname sname specty ns
-      {- We need to erase the *dynamic* arguments 
+      {- We need to erase the *dynamic* arguments
          where their *name* appears in the *type* of a later argument
          in specty.
          i.e. if a later dynamic argument depends on an earlier dynamic
@@ -285,12 +285,12 @@ mkPE_TermDecl ist newname sname specty ns
          on the RHS.
          -}
     = let deps = getDepNames (eraseRet specty)
-          lhs = eraseDeps deps $ 
+          lhs = eraseDeps deps $
                   PApp emptyFC (PRef emptyFC [] newname) (mkp ns)
           rhs = eraseDeps deps $
                   delab ist (mkApp (P Ref sname Erased) (map snd ns))
           patdef = -- trace (showTmImpls specty ++ "\n" ++ showTmImpls lhs ++ "\n"
-                   --      ++ showTmImpls rhs) $ 
+                   --      ++ showTmImpls rhs) $
                    lookupCtxtExact sname (idris_patdefs ist)
           newpats = case patdef of
                          Nothing -> PEDecl lhs rhs [(lhs, rhs)] True
@@ -305,7 +305,7 @@ mkPE_TermDecl ist newname sname specty ns
 
   -- Get names used in later arguments; assume we've called eraseRet so there's
   -- no names going to appear in return type
-  getDepNames (PPi _ n _ _ sc) 
+  getDepNames (PPi _ n _ _ sc)
         | n `elem` allNamesIn sc = n : getDepNames sc
         | otherwise = getDepNames sc
   getDepNames tm = []
@@ -337,7 +337,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
          | Just n <- imparg imp = (ImplicitS n, tm)
          | constrarg imp = (ConstraintS, tm)
          | otherwise = (ExplicitS, tm)
-    
+
     staticArg env False imp tm n
          | Just nm <- imparg imp = (ImplicitD nm, (P Ref (sUN (show n ++ "arg")) Erased))
          | constrarg imp = (ConstraintD, tm)
