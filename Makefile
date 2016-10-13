@@ -1,4 +1,4 @@
-.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib fast test_js test_c test test_clean lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs
+.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib fast test_js test_c stylize test test_clean lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs
 
 ARGS=
 TEST-JOBS=
@@ -24,7 +24,10 @@ pinstall: dist/setup-config
 build: dist/setup-config
 	$(CABAL) build $(CABALFLAGS)
 
-test: doc test_c
+test: doc test_c sylize
+
+stylize:
+	./stylize.sh
 
 test_c:
 	$(CABAL) test $(ARGS) --test-options \
