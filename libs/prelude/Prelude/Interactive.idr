@@ -89,6 +89,16 @@ putCharLn c = putStrLn (singleton c)
 getChar : IO Char
 getChar = map cast $ foreign FFI_C "getchar" (IO Int)
 
+||| Disables buffering in both stdin and stdout
+||| so that output is written immediately, and never stored in the buffer
+||| and the next input item is read and returned
+|||
+||| this is useful to circumvent problem with IO on some windows system
+||| where stdout output sometimes is only shown after prompted input from
+||| stdin
+disableBuffering : IO ()
+disableBuffering = foreign FFI_C "idris_disableBuffering" (IO ())
+
 ||| Get the command-line arguments that the program was called with.
 partial
 getArgs : IO (List String)
