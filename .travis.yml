@@ -12,8 +12,6 @@ matrix:
       env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
     - env: CABALVER="1.20" GHCVER="7.6.3" TESTS="test_c"
-      # separate caches for different compiler versions
-      # until https://github.com/travis-ci/travis-ci/issues/4393 is resolved
       compiler: ": #GHC 7.6.3"
       addons: {apt: {packages: [cabal-install-1.20,ghc-7.6.3,cppcheck,hscolour], sources: [hvr-ghc]}}
     - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="test_c"
