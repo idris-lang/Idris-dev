@@ -192,6 +192,7 @@ instance ToJSON PrimFn where
     toJSON LStrIndex = object ["LStrIndex" .= Null]
     toJSON LStrRev = object ["LStrRev" .= Null]
     toJSON LStrSubstr = object ["LStrSubstr" .= Null]
+    toJSON LNoBuffering = object ["LNoBuffering" .= Null]
     toJSON LReadStr = object ["LReadStr" .= Null]
     toJSON LWriteStr = object ["LWriteStr" .= Null]
     toJSON LSystemInfo = object ["LSystemInfo" .= Null]

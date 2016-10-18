@@ -434,6 +434,7 @@ prf = sUN "prim__readFile"
 pwf = sUN "prim__writeFile"
 prs = sUN "prim__readString"
 pws = sUN "prim__writeString"
+pnb = sUN "prim__noBuffering"
 pbm = sUN "prim__believe_me"
 pstdin = sUN "prim__stdin"
 pstdout = sUN "prim__stdout"
@@ -448,6 +449,11 @@ force = sUN "Force"
 -- them into ExecVal functions
 getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal, [ExecVal])
 getOp fn (_ : _ : x : xs) | fn == pbm = Just (return x, xs)
+getOp fn (_:xs)
+    | fn == pnb =
+              Just (do execIO $ hSetBuffering stdin NoBuffering
+                       execIO $ hSetBuffering stdout NoBuffering
+                       return (EConstant (I 0)), xs)
 getOp fn (_ : EConstant (Str n) : xs)
     | fn == pws =
               Just (do execIO $ putStr n

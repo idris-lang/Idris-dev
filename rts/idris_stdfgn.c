@@ -53,6 +53,11 @@ int fileSize(void* h) {
     }
 }
 
+int idris_noBuffering() {
+   setvbuf(stdin, NULL, _IONBF, 0); //turn off buffering
+   setvbuf(stdout, NULL, _IONBF, 0); //turn off buffering
+}
+
 int idris_writeStr(void* h, char* str) {
     FILE* f = (FILE*)h;
     if (fputs(str, f)) {
