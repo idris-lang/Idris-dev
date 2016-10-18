@@ -593,7 +593,7 @@ doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r +
 doOp v LStrLt [l,r] = v ++ "idris_strlt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v LStrEq [l,r] = v ++ "idris_streq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
-doOp v LNoBuffering [_] = v ++ "idris_noBuffering()"
+doOp v LNoBuffering _ = v ++ "idris_noBuffering()"
 doOp v LReadStr [_] = v ++ "idris_readStr(vm, stdin)"
 doOp v LWriteStr [_,s]
              = v ++ "MKINT((i_int)(idris_writeStr(stdout"
