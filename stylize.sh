@@ -11,7 +11,7 @@ then
 fi
 
 
-find . -name \*.hs -and \( -not -name Setup.hs \) | xargs stylish-haskell -i > stylish-out 2>&1
+find . -name \*.hs -and \( -not \( -name Setup.hs -or -path ./dist/\* \) \) | xargs stylish-haskell -i > stylish-out 2>&1
 
 # It doesn't do exit codes properly, so we just check if it outputted anything.
 if [ -s stylish-out ];

@@ -24,7 +24,7 @@ pinstall: dist/setup-config
 build: dist/setup-config
 	$(CABAL) build $(CABALFLAGS)
 
-test: doc test_c sylize
+test: doc test_c stylize
 
 stylize:
 	./stylize.sh
