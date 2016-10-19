@@ -167,7 +167,7 @@ removeOrphans list =
   in  filter ((flip S.notMember children) . (\(n, _, _) -> n)) list
 
   where names (Just (DataDoc _ fds))                  = map (\(FD n _ _ _ _) -> n) fds
-        names (Just (InterfaceDoc _ _ fds _ _ _ _ c)) = map (\(FD n _ _ _ _) -> n) fds ++ map (\(FD n _ _ _ _) -> n) (maybeToList c)
+        names (Just (InterfaceDoc _ _ fds _ _ _ _ _ c)) = map (\(FD n _ _ _ _) -> n) fds ++ map (\(FD n _ _ _ _) -> n) (maybeToList c)
         names _                                       = []
 
 -- | Whether a Name names something which should be documented
@@ -215,14 +215,14 @@ referredNss (n, Just d, _) =
       names  = concatMap (extractPTermNames) ts
   in  S.map getNs $ S.fromList names
 
-  where getFunDocs (FunDoc f)                      = [f]
-        getFunDocs (DataDoc f fs)                  = f:fs
-        getFunDocs (InterfaceDoc _ _ fs _ _ _ _ _) = fs
-        getFunDocs (RecordDoc _ _ f fs _)          = f:fs
-        getFunDocs (NamedImplementationDoc _ fd)         = [fd]
-        getFunDocs (ModDoc _ _)                    = []
-        types (FD _ _ args t _)                    = t:(map second args)
-        second (_, x, _, _)                        = x
+  where getFunDocs (FunDoc f)                        = [f]
+        getFunDocs (DataDoc f fs)                    = f:fs
+        getFunDocs (InterfaceDoc _ _ fs _ _ _ _ _ _) = fs
+        getFunDocs (RecordDoc _ _ f fs _)            = f:fs
+        getFunDocs (NamedImplementationDoc _ fd)     = [fd]
+        getFunDocs (ModDoc _ _)                      = []
+        types (FD _ _ args t _)                      = t:(map second args)
+        second (_, x, _, _)                          = x
 
 
 -- | Returns an NsDict of containing all known namespaces and their contents
@@ -576,7 +576,7 @@ createOtherDoc :: IState -- ^ Needed to determine the types of names
                -> H.Html -- ^ Resulting HTML
 createOtherDoc ist (FunDoc fd)                = createFunDoc ist fd
 
-createOtherDoc ist (InterfaceDoc n docstring fds _ _ _ _ c) = do
+createOtherDoc ist (InterfaceDoc n docstring fds _ _ _ _ _ c) = do
   H.dt ! (A.id $ toValue $ show n) $ do
     H.span ! class_ "word" $ do "interface"; nbsp
     H.span ! class_ "name type"

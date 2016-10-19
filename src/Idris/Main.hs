@@ -51,7 +51,9 @@ import Text.Trifecta.Result (ErrInfo(..), Result(..))
 runMain :: Idris () -> IO ()
 runMain prog = do res <- runExceptT $ execStateT prog idrisInit
                   case res of
-                       Left err -> putStrLn $ "Uncaught error: " ++ show err
+                       Left err -> do
+                         putStrLn $ "Uncaught error: " ++ show err
+                         exitFailure
                        Right _ -> return ()
 
 

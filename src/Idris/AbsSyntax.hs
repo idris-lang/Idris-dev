@@ -444,10 +444,10 @@ addImplementation :: Bool -- ^ whether the name is an Integer implementation
 addImplementation int res n i
     = do ist <- getIState
          case lookupCtxt n (idris_interfaces ist) of
-                [CI a b c d e f ins fds] ->
-                     do let cs = addDef n (CI a b c d e f (addI i ins) fds) (idris_interfaces ist)
+                [CI a b c d e f g ins fds] ->
+                     do let cs = addDef n (CI a b c d e f g (addI i ins) fds) (idris_interfaces ist)
                         putIState $ ist { idris_interfaces = cs }
-                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [] [(i, res)] []) (idris_interfaces ist)
+                _ -> do let cs = addDef n (CI (sMN 0 "none") [] [] [] [] [] [] [(i, res)] []) (idris_interfaces ist)
                         putIState $ ist { idris_interfaces = cs }
   where addI, insI :: Name -> [(Name, Bool)] -> [(Name, Bool)]
         addI i ins | int = (i, res) : ins

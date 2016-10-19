@@ -132,6 +132,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          addInterface tn (CI cn (map nodoc imethods) defaults idecls
                               (map (\(n, _, _) -> n) impps)
                               (map (\(n, _, _) -> n) ps)
+                              (map snd constraints)
                               [] dets)
 
          -- for each constraint, build a top level function to chase it
