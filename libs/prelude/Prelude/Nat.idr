@@ -376,12 +376,17 @@ gcd : Nat -> Nat -> Nat
 gcd a Z = a
 gcd a b = assert_total (gcd b (a `modNat` b))
 
-partial
+total
 lcm : Nat -> Nat -> Nat
-lcm _ Z = Z
-lcm Z _ = Z
-lcm x y = divNat (x * y) (gcd x y)
-
+lcm x y = case (x, y) of
+               (_, Z) => Z
+               (Z, _) => Z
+               _ => lcm' (x * y) (gcd x y)
+  where
+    lcm' : Nat -> Nat -> Nat
+    lcm' n m with (decEq m Z)
+      | Yes prf = Z
+      | No prf  = divNatNZ n m prf
 
 --------------------------------------------------------------------------------
 -- An informative comparison view
