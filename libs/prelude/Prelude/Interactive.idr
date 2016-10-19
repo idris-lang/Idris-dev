@@ -93,7 +93,7 @@ getChar = map cast $ foreign FFI_C "getchar" (IO Int)
 ||| so that output is written immediately, and never stored in the buffer
 ||| and the next input item is read and returned
 |||
-||| this is useful to circumvent problem with IO on some windows system
+||| this is useful to circumvent problem with IO on some Windows system
 ||| where stdout output sometimes is only shown after prompted input from
 ||| stdin
 disableBuffering : IO ()
