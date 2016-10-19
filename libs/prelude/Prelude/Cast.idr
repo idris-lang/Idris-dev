@@ -12,6 +12,11 @@ interface Cast from to where
     ||| @orig The original type.
     cast : (orig : from) -> to
 
+-- General casts
+
+instance Cast a a where
+    cast = id
+
 -- String casts
 
 Cast String Int where
