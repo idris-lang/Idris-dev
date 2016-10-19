@@ -100,6 +100,31 @@ implementation Cast ZZ Integer where
 implementation Cast Integer ZZ where
   cast = fromInteger
 
+private
+NonNeg : ZZ -> Type
+NonNeg (Pos n) = ()
+NonNeg (NegS n) = Void
+
+NegNotPos : {n:Nat} -> Type
+NegNotPos {n} = Not (Pos n = NegS n)
+
+zZtoNat : (x:ZZ) -> {auto p : NonNeg x} -> Nat
+zZtoNat x {p} with (x)
+  | Pos n = n
+  | NegS n = void p
+
+partial
+zZtoNat' : ZZ -> Nat
+zZtoNat' x with (x) | (Pos n) = n
+
+instance Enum ZZ where
+  pred x = subZ x 1
+  succ = plusZ 1
+  toNat = absZ -- zZtoNat'
+  fromNat = Pos
+
+instance Cast ZZ Nat where
+  cast = \x : ZZ => if x <= Pos Z then Z else absZ x
 
 --------------------------------------------------------------------------------
 -- Properties
