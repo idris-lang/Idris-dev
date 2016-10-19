@@ -89,13 +89,13 @@ putCharLn c = putStrLn (singleton c)
 getChar : IO Char
 getChar = map cast $ foreign FFI_C "getchar" (IO Int)
 
-||| Disables buffering in both stdin and stdout
-||| so that output is written immediately, and never stored in the buffer
+||| Disables buffering in both stdin and stdout:
+||| so that output is written immediately (never stored in the buffer)
 ||| and the next input item is read and returned
 |||
-||| this is useful to circumvent problem with IO on some Windows system
-||| where stdout output sometimes is only shown after prompted input from
-||| stdin
+||| this is useful to circumvent problems with IO on some Windows systems
+||| where stdout output right before a prompt is only shown after
+||| the input-line from stdin is produced
 disableBuffering : IO ()
 disableBuffering = foreign FFI_C "idris_disableBuffering" (IO ())
 
