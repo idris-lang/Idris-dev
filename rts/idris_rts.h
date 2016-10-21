@@ -394,6 +394,9 @@ extern char **__idris_argv;
 int idris_numArgs();
 const char *idris_getArg(int i);
 
+// disable stdin/stdout buffering
+void idris_disableBuffering();
+
 // Handle stack overflow.
 // Just reports an error and exits.
 

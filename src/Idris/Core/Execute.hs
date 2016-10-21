@@ -398,6 +398,12 @@ execForeign env ctxt arity ty fn xs onfail
                       show ptr ++
                       ". Are all cases covered?"
 
+    | Just (FFun "idris_disableBuffering" _ _) <- foreignFromTT arity ty fn xs
+       = do execIO $ hSetBuffering stdin NoBuffering
+            execIO $ hSetBuffering stdout NoBuffering
+            execApp env ctxt ioUnit (drop arity xs)
+
+
 -- Right now, there's no way to send command-line arguments to the executor,
 -- so just return 0.
 execForeign env ctxt arity ty fn xs onfail

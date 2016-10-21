@@ -1077,6 +1077,11 @@ const char* idris_getArg(int i) {
     return __idris_argv[i];
 }
 
+void idris_disableBuffering() {
+  setvbuf(stdin, NULL, _IONBF, 0);
+  setvbuf(stdout, NULL, _IONBF, 0);
+}
+
 void stackOverflow() {
   fprintf(stderr, "Stack overflow");
   exit(-1);
