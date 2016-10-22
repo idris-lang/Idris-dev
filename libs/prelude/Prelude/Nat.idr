@@ -310,9 +310,19 @@ fact (S n) = (S n) * fact n
 -- Division and modulus
 --------------------------------------------------------------------------------
 
+||| The proof that no successor of a natural number can be zero.
+|||
+||| ```idris example
+||| modNatNZ 10 3 SIsNotZ
+||| ```
 SIsNotZ : {x: Nat} -> (S x = Z) -> Void
 SIsNotZ Refl impossible
 
+||| Modulus function where the divisor is not zero.
+|||
+||| ```idris example
+||| modNatNZ 100 2 SIsNotZ
+||| ```
 modNatNZ : Nat -> (y: Nat) -> Not (y = Z) -> Nat
 modNatNZ left Z         p = void (p Refl)
 modNatNZ left (S right) _ = mod' left left right
@@ -329,6 +339,11 @@ partial
 modNat : Nat -> Nat -> Nat
 modNat left (S right) = modNatNZ left (S right) SIsNotZ
 
+||| Division where the divisor is not zero.
+|||
+||| ```idris example
+||| divNatNZ 100 2 SIsNotZ
+||| ```
 divNatNZ : Nat -> (y: Nat) -> Not (y = Z) -> Nat
 divNatNZ left Z         p = void (p Refl)
 divNatNZ left (S right) _ = div' left left right
