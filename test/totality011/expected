@@ -1,2 +1,2 @@
-totality011.lidr:22:1:
+totality011.lidr:22:3:
 Main.weCanOnlyGetOlder is not total as there are missing cases
