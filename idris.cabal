@@ -362,7 +362,7 @@ Test-suite regression-and-feature-tests
                , filepath
                , directory
                , haskeline >= 0.7
-               , optparse-applicative >= 0.11 && < 0.13
+               , optparse-applicative >= 0.11 && < 0.14
                , tagged
                , tasty >= 0.8
                , tasty-golden >= 2.0
