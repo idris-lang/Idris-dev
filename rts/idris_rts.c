@@ -748,9 +748,14 @@ void* vmThread(VM* callvm, func f, VAL arg) {
 
     callvm->processes++;
 
-    pthread_create(&t, &attr, runThread, td);
+    int ok = pthread_create(&t, &attr, runThread, td);
 //    usleep(100);
-    return vm;
+    if (ok == 0) {
+        return vm;
+    } else {
+        terminate(vm);
+        return NULL;
+    }
 }
 
 void* idris_stopThread(VM* vm) {
