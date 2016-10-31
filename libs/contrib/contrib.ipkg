@@ -25,4 +25,6 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
 
           Network.Cgi, Network.Socket,
 
-          System.Concurrency.Process
+          System.Concurrency.Process,
+
+          Data.Fin.Extra
