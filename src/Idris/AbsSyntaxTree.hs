@@ -1788,9 +1788,18 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       | Just n <- snat ppo d p e = depth d $ annotate (AnnData "Nat" "") (text (show n))
     prettySe d p bnd (PRef fc _ n) = prettyName True (ppopt_impl ppo) bnd n
     prettySe d p bnd (PLam fc n nfc ty sc) =
-      depth d . bracket p startPrec . group . align . hang 2 $
-      text "\\" <> prettyBindingOf n False <+> text "=>" <$>
-      prettySe (decD d) startPrec ((n, False):bnd) sc
+      let (ns, sc') = getLamNames [n] sc in
+          depth d . bracket p startPrec . group . align . hang 2 $
+          text "\\" <> prettyBindingsOf ns False <+> text "=>" <$>
+          prettySe (decD d) startPrec ((n, False):bnd) sc'
+      where
+        getLamNames acc (PLam fc n nfc ty sc) = getLamNames (n : acc) sc
+        getLamNames acc sc = (reverse acc, sc)
+
+        prettyBindingsOf [] t = text ""
+        prettyBindingsOf [n] t = prettyBindingOf n t
+        prettyBindingsOf (n : ns) t = prettyBindingOf n t <> text "," <+>
+                                      prettyBindingsOf ns t
     prettySe d p bnd (PLet fc n nfc ty v sc) =
       depth d . bracket p startPrec . group . align $
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe (decD d) startPrec bnd v) </>
