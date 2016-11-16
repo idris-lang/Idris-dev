@@ -10,7 +10,7 @@ because this gives us a language to build derived tactics out of the
 primitives.
 -}
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards #-}
+{-# LANGUAGE PatternGuards #-}
 module Idris.Core.Elaborate (
     module Idris.Core.Elaborate
   , module Idris.Core.ProofState

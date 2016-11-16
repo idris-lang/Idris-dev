@@ -313,13 +313,36 @@ Library
   if impl(ghc < 7.8.4)
      build-depends: tagsoup < 0.14.1
 
-  Extensions:     MultiParamTypeClasses
-                , DeriveFoldable
-                , DeriveTraversable
-                , FunctionalDependencies
-                , FlexibleContexts
-                , FlexibleInstances
-                , TemplateHaskell
+  Default-language: Haskell98
+
+  Default-extensions: MultiParamTypeClasses
+                    , FlexibleInstances
+                    , FlexibleContexts
+                    , DeriveFoldable
+                    , DeriveTraversable
+
+  Other-extensions: Arrows
+                  , BangPatterns
+                  , ConstraintKinds
+                  , CPP
+                  , DeriveDataTypeable
+                  , DeriveFunctor
+                  , DeriveGeneric
+                  , ExistentialQuantification
+                  , ForeignFunctionInterface
+                  , FunctionalDependencies
+                  , GeneralizedNewtypeDeriving
+                  , LambdaCase
+                  , MultiWayIf
+                  , OverlappingInstances
+                  , OverloadedStrings
+                  , PatternGuards
+                  , RankNTypes
+                  , ScopedTypeVariables
+                  , StandaloneDeriving
+                  , TupleSections
+                  , TypeSynonymInstances
+                  , ViewPatterns
 
   ghc-prof-options: -auto-all -caf-all
 
@@ -358,6 +381,8 @@ Executable idris
                 , haskeline >= 0.7
                 , transformers
 
+  Default-language: Haskell98
+
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
@@ -382,9 +407,10 @@ Test-suite regression-and-feature-tests
                , tasty-rerun >= 1.0.0
                , bytestring
                , transformers
-  if impl(ghc < 7.10)
-    Extensions: DeriveDataTypeable
 
+  Default-language: Haskell98
+
+  Default-extensions: DeriveDataTypeable
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -with-rtsopts=-N -funbox-strict-fields
@@ -399,6 +425,8 @@ Executable idris-codegen-c
                 , haskeline >= 0.7
                 , transformers
 
+  Default-language: Haskell98
+
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
@@ -412,6 +440,8 @@ Executable idris-codegen-javascript
                 , haskeline >= 0.7
                 , transformers
 
+  Default-language: Haskell98
+
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
@@ -424,6 +454,8 @@ Executable idris-codegen-node
                 , filepath
                 , haskeline >= 0.7
                 , transformers
+
+  Default-language: Haskell98
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
