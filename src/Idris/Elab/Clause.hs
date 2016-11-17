@@ -278,7 +278,16 @@ elabClauses info' fc opts n_in cs =
            -- Add the 'AllGuarded' flag if it's guaranteed that every
            -- 'Inf' argument will be guarded by constructors in the result
            -- (allows productivity check to go under this function)
-           checkIfGuarded n 
+           checkIfGuarded n
+           -- If this has %static arguments, cache the names of functions
+           -- it calls for partial evaluation later
+           ist <- getIState
+           let statics = case lookupCtxtExact n (idris_statics ist) of
+                              Just ns -> ns
+                              Nothing -> []
+           when (or statics) $ do getAllNames n
+                                  return ()
+
   where
     noMatch i cs tm = all (\x -> case trim_matchClause i (delab' i x True True) tm of
                                       Right _ -> False
@@ -384,12 +393,11 @@ elabPE info fc caller r =
         idrisCatch
           (if (undef && all (concreteArg ist) (snd specapp)) then do
                 cgns <- getAllNames n
-                cgns_caller <- getAllNames caller
                 -- on the RHS of the new definition, we should reduce
                 -- everything that's not itself static (because we'll
                 -- want to be a PE version of those next)
                 let cgns' = filter (\x -> x /= n &&
-                                          notStatic ist x) (cgns ++ cgns_caller)
+                                          notStatic ist x) cgns
                 -- set small reduction limit on partial/productive things
                 let maxred = case lookupTotal n ctxt of
                                   [Total _] -> 65536

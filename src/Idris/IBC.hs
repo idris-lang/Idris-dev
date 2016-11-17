@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 153
+ibcVersion = 154
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -943,14 +943,16 @@ instance Binary SizeChange where
                    _ -> error "Corrupted binary data for SizeChange"
 
 instance Binary CGInfo where
-        put (CGInfo x1 x2 x3)
+        put (CGInfo x1 x2 x3 x4)
           = do put x1
 --                put x3 -- Already used SCG info for totality check
-               put x3
+               put x2
+               put x4
         get
           = do x1 <- get
+               x2 <- get
                x3 <- get
-               return (CGInfo x1 [] x3)
+               return (CGInfo x1 x2 [] x3)
 
 instance Binary CaseType where
         put x = case x of

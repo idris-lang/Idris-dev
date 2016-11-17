@@ -321,9 +321,10 @@ type SCGEntry = (Name, [Maybe (Int, SizeChange)])
 type UsageReason = (Name, Int)  -- fn_name, its_arg_number
 
 data CGInfo = CGInfo {
-    calls   :: [Name]
-  , scg     :: [SCGEntry]
-  , usedpos :: [(Int, [UsageReason])]
+    calls    :: [Name] -- Immediate calls
+  , allCalls :: Maybe [Name] -- Calls and descendents (built as required, for PE)
+  , scg      :: [SCGEntry]
+  , usedpos  :: [(Int, [UsageReason])]
   } deriving (Show, Generic)
 {-!
 deriving instance Binary CGInfo
