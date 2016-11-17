@@ -372,6 +372,58 @@ checkAllCovering fc done top n | not (n `elem` done)
              x -> return () -- stop if total
 checkAllCovering _ _ _ _ = return ()
 
+-- | Check whether all 'Inf' arguments to the name end up guaranteed to be
+-- guarded by constructors (conservatively... maybe this can do better later).
+-- Essentially, all it does is check that every branch is a constructor application
+-- with no other function applications.
+--
+-- If so, set the 'AllGuarded' flag which can be used by the productivity check
+checkIfGuarded :: Name -> Idris ()
+checkIfGuarded n 
+   = do i <- get
+        let ctxt = tt_ctxt i
+        case lookupDefExact n ctxt of
+             Just (CaseOp _ ty _ _ _ cases) ->
+                  let gnames = fst (cases_compiletime cases) in
+                      if allGuarded gnames i (snd (cases_compiletime cases))
+                         then -- trace (show (n, gnames, ty, cases_compiletime cases)) $
+                              addFnOpt n AllGuarded
+                         else return ()
+             _ -> return ()
+  where
+    guard n ist = isConName n (tt_ctxt ist) || guardFlag n ist
+    guardFlag n ist = case lookupCtxtExact n (idris_flags ist) of
+                           Nothing -> False
+                           Just fs -> AllGuarded `elem` fs
+
+    -- Top level thing always needs to be a constructor application if 
+    -- the delayed things are going to be definitely guarded by this definition
+    allGuarded names i (STerm t) 
+          | (P _ fn _, args) <- unApply t,
+            guard fn i
+            = and (map (guardedTerm names i) args)
+          | otherwise = False
+    allGuarded names i (ProjCase _ alts) = and (map (guardedAlt names i) alts)
+    allGuarded names i (Case _ _ alts) = and (map (guardedAlt names i) alts)
+    allGuarded names i _ = True
+
+    guardedTerm names i (P _ v _) = v `elem` names || guard v i
+    guardedTerm names i (Bind n (Let t v) sc)
+          = guardedTerm names i v && guardedTerm names i sc
+    guardedTerm names i (Bind n b sc) = False
+    guardedTerm names i ap@(App _ _ _)
+          | (P _ fn _, args) <- unApply ap,
+            guard fn i || fn `elem` names
+                = and (map (guardedTerm names i) args)
+    guardedTerm names i (App _ f a) = False
+    guardedTerm names i tm = True
+    
+    guardedAlt names i (ConCase _ _ _ t) = allGuarded names i t
+    guardedAlt names i (FnCase _ _ t) = allGuarded names i t
+    guardedAlt names i (ConstCase _ t) = allGuarded names i t
+    guardedAlt names i (SucCase _ t) = allGuarded names i t
+    guardedAlt names i (DefaultCase t) = allGuarded names i t
+
 -- | Check if, in a given group of type declarations mut_ns, the
 -- constructor cn : ty is strictly positive, and update the context
 -- accordingly
@@ -605,7 +657,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
            = findCalls cases Delayed arg pvs pargs
      | (P _ n _, args) <- unApply ap,
        Delayed <- guarded,
-       isConName n (tt_ctxt ist)
+       isConName n (tt_ctxt ist) || allGuarded n ist
            = -- Still under a 'Delay' and constructor guarded, so check
              -- just the arguments to the constructor, remaining Delayed
              concatMap (\x -> findCalls cases guarded x pvs pargs) args
@@ -637,6 +689,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
         = let nguarded = case guarded of
                               Unguarded -> Unguarded
                               x -> if isConName n (tt_ctxt ist)
+                                       || allGuarded n ist
                                       then Guarded
                                       else Unguarded in
               mkChange n args pargs ++
@@ -647,7 +700,10 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
         = findCalls cases Unguarded f pvs pargs ++ findCalls cases Unguarded a pvs pargs
   findCalls cases guarded (Bind n (Let t v) e) pvs pargs
         = findCalls cases Unguarded t pvs pargs ++
-          findCalls cases Unguarded v pvs pargs ++ findCalls cases guarded e (n : pvs) pargs
+          findCalls cases Unguarded v pvs pargs ++ 
+          -- Substitute in the scope since this might reveal some useful
+          -- structure
+          findCalls cases guarded (substV v e) pvs pargs
   findCalls cases guarded (Bind n t e) pvs pargs
         = findCalls cases Unguarded (binderTy t) pvs pargs ++
           findCalls cases guarded e (n : pvs) pargs
@@ -756,6 +812,10 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
 
   patvars (Bind x (PVar _) sc) = x : patvars sc
   patvars _ = []
+
+  allGuarded n ist = case lookupCtxtExact n (idris_flags ist) of
+                          Nothing -> False
+                          Just fs -> AllGuarded `elem` fs
 
 checkSizeChange :: Name -> Idris Totality
 checkSizeChange n = do

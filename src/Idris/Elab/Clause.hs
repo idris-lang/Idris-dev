@@ -277,6 +277,10 @@ elabClauses info' fc opts n_in cs =
            -- all called functions, and fail if any of them are also
            -- 'Partial NotCovering'
            when (CoveringFn `elem` opts) $ checkAllCovering fc [] n n
+           -- Add the 'AllGuarded' flag if it's guaranteed that every
+           -- 'Inf' argument will be guarded by constructors in the result
+           -- (allows productivity check to go under this function)
+           checkIfGuarded n 
   where
     noMatch i cs tm = all (\x -> case trim_matchClause i (delab' i x True True) tm of
                                       Right _ -> False
@@ -546,6 +550,34 @@ findUnique ctxt env (Bind n b sc)
                  else findUnique ctxt ((n, b) : env) sc
 findUnique _ _ _ = []
 
+getUnfolds (UnfoldIface n ns : _) = Just (n, ns)
+getUnfolds (_ : xs) = getUnfolds xs
+getUnfolds [] = Nothing
+
+-- Unfold the given name, interface methdods, and any function which uses it as
+-- an argument directly. This is specifically for finding applications of
+-- interface dictionaries and inlining them both for totality checking and for
+-- a small performance gain.
+getNamesToUnfold :: Name -> [Name] -> Term -> [Name]
+getNamesToUnfold iname ms tm = nub $ iname : getNames Nothing tm ++ ms
+  where
+    getNames under fn@(App _ _ _)
+        | (f, args) <- unApply fn
+             = let under' = case f of
+                                 P _ fn _ -> Just fn
+                                 _ -> Nothing 
+                              in
+                   getNames under f ++ concatMap (getNames under') args
+    getNames (Just under) (P _ ref _)
+        = if ref == iname then [under] else []
+    getNames under (Bind n (Let t v) sc) 
+        = getNames Nothing t ++
+          getNames Nothing v ++
+          getNames Nothing sc
+    getNames under (Bind n b sc) = getNames Nothing (binderTy b) ++
+                                   getNames Nothing sc
+    getNames _ _ = []
+
 -- | Return the elaborated LHS/RHS, and the original LHS with implicits added
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
               Idris (Either Term (Term, Term), PTerm)
@@ -684,7 +716,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logElab 2 $ "RHS: " ++ show (map fst newargs_all) ++ " " ++ showTmImpls rhs
         ctxt <- getContext -- new context with where block added
         logElab 5 "STARTING CHECK"
-        ((rhs', defer, holes, is, probs, ctxt', newDecls, highlights, newGName), _) <-
+        ((rhsElab, defer, holes, is, probs, ctxt', newDecls, highlights, newGName), _) <-
            tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patRHS") clhsty initEState
                     (do pbinds ist lhs_tm
                         -- proof search can use explicitly written names
@@ -713,7 +745,20 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
         logElab 5 "DONE CHECK"
-        logElab 4 $ "---> " ++ show rhs'
+        logElab 3 $ "---> " ++ show rhsElab
+        ctxt <- getContext
+        
+        let rhs' = case getUnfolds opts of
+                        Just (n, ms) -> 
+                           let ns = getNamesToUnfold n ms rhsElab in
+                               unfold ctxt [] (map (\n -> (n, 1)) ns) rhsElab
+                        _ -> rhsElab
+        
+        when (not (null (getUnfolds opts))) $
+            logElab 1 $ "----- " ++ show (getUnfolds opts) ++
+                        "\nUnfolded " ++ show rhsElab ++ "\n" ++
+                        "to " ++ show rhs'
+
         when (not (null defer)) $ logElab 1 $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t,_)) -> (n, t)) defer)
 
@@ -880,7 +925,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let wval = rhs_trans info $ addImplBound i (map fst bargs) wval_in
         logElab 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
-        ((wval', defer, is, ctxt', newDecls, highlights, newGName), _) <-
+        ((wvalElab, defer, is, ctxt', newDecls, highlights, newGName), _) <-
             tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "withRHS")
                         (bindTyArgs PVTy bargs infP) initEState
                         (do pbinds i lhs_tm
@@ -902,7 +947,20 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
+
+        let wval' = case getUnfolds opts of
+                        Just (n, ms) -> 
+                           let ns = getNamesToUnfold n ms wvalElab in
+                             unfold ctxt [] (map (\n -> (n, 1)) ns) wvalElab
+                        _ -> wvalElab
+        
         logElab 5 ("Checked wval " ++ show wval')
+       
+        when (not (null (getUnfolds opts))) $
+            logElab 1 $ "----- " ++ show (getUnfolds opts) ++
+                        "\nUnfolded wval " ++ show wvalElab ++ "\n" ++
+                        "to " ++ show wval'
+
 
         ctxt <- getContext
         (cwval, cwvalty) <- recheckC (constraintNS info) fc id [] (getInferTerm wval')
@@ -973,9 +1031,13 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         wb <- mapM (mkAuxC mpn wname lhs (map fst bargs_pre) (map fst bargs_post))
                        withblock
         logElab 3 ("with block " ++ show wb)
-        -- propagate totality assertion to the new definitions
-        setFlags wname [Inlinable]
-        when (AssertTotal `elem` opts) $ setFlags wname [Inlinable, AssertTotal]
+        -- propagate totality assertion and unfold flags to the new definitions
+        let uflags = case getUnfolds opts of
+                          Just (n, ns) -> [UnfoldIface n ns]
+                          _ -> []
+        setFlags wname ([Inlinable] ++ uflags)
+        when (AssertTotal `elem` opts) $ 
+           setFlags wname ([Inlinable, AssertTotal] ++ uflags)
         i <- getIState
         let rhstrans' = updateWithTerm i mpn wname lhs (map fst bargs_pre) (map fst (bargs_post))
                              . rhs_trans info
@@ -995,7 +1057,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         logElab 5 ("New RHS " ++ showTmImpls rhs)
         ctxt <- getContext -- New context with block added
         i <- getIState
-        ((rhs', defer, is, ctxt', newDecls, highlights, newGName), _) <-
+        ((rhsElab, defer, is, ctxt', newDecls, highlights, newGName), _) <-
            tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "wpatRHS") clhsty initEState
                     (do pbinds i lhs_tm
                         setNextName
@@ -1005,9 +1067,23 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                         tt <- get_term
                         return (tt, d, is, ctxt', newDecls, highlights, newGName))
         setContext ctxt'
+        
         processTacticDecls info newDecls
         sendHighlighting highlights
         updateIState $ \i -> i { idris_name = newGName }
+        
+        ctxt <- getContext
+        let rhs' = case getUnfolds opts of
+                        Just (n, ms) -> 
+                           let ns = getNamesToUnfold n ms rhsElab in
+                             unfold ctxt [] (map (\n -> (n, 1)) ns) rhsElab
+                        _ -> rhsElab
+        
+        when (not (null (getUnfolds opts))) $
+            logElab 3 $ "----- " ++ show (getUnfolds opts) ++
+                        "\nUnfolded with RHS " ++ show rhsElab ++ "\n" ++
+                        "to " ++ show rhs'
+
 
         def' <- checkDef info fc iderr True defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'

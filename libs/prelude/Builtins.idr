@@ -160,7 +160,8 @@ par : Lazy a -> a -- Doesn't actually do anything yet. Maybe a 'Par a' type
 par (Delay x) = x
 
 ||| Assert to the totality checker that y is always structurally smaller than
-||| x (which is typically a pattern argument)
+||| x (which is typically a pattern argument, and *must* be in normal form
+||| for this to work)
 ||| @ x the larger value (typically a pattern argument)
 ||| @ y the smaller value (typically an argument to a recursive call)
 assert_smaller : (x : a) -> (y : b) -> b

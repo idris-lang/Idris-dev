@@ -328,7 +328,7 @@ toLower : String -> String
 toLower x with (strM x)
   toLower ""             | StrNil = ""
   toLower (strCons c cs) | (StrCons c cs) =
-    strCons (toLower c) (toLower (assert_smaller (strCons c cs) cs))
+    strCons (toLower c) (toLower (assert_smaller (prim__strCons c cs) cs))
 
 ||| Uppercases all characters in the string.
 |||
@@ -339,7 +339,7 @@ toUpper : String -> String
 toUpper x with (strM x)
   toUpper ""             | StrNil = ""
   toUpper (strCons c cs) | (StrCons c cs) =
-    strCons (toUpper c) (toUpper (assert_smaller (strCons c cs) cs ))
+    strCons (toUpper c) (toUpper (assert_smaller (prim__strCons c cs) cs ))
 
 --------------------------------------------------------------------------------
 -- Predicates

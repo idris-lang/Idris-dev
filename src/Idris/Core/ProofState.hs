@@ -651,7 +651,7 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                   Nothing -> x
        let t' = case t of
                     x@(Bind y (Pi _ s _) _) -> x
-                    _ -> hnf ctxt env t
+                    _ -> normalise ctxt env t
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
@@ -668,7 +668,7 @@ intro :: Maybe Name -> RunTactic
 intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = case t of
                     x@(Bind y (Pi _ s _) _) -> x
-                    _ -> hnf ctxt env t
+                    _ -> normalise ctxt env t
        case t' of
            Bind y (Pi _ s _) t ->
                let n = case mn of
@@ -825,7 +825,7 @@ patbind :: Name -> RunTactic
 patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = case t of
                     x@(Bind y (PVTy s) t) -> x
-                    _ -> hnf ctxt env t
+                    _ -> normalise ctxt env t
        case t' of
            Bind y (PVTy s) t -> let t' = updsubst y (P Bound n s) t in
                                     return $ Bind n (PVar s) (Bind x (Hole t') (P Bound x t'))
@@ -839,7 +839,7 @@ compute ctxt env t = return t
 
 hnf_compute :: RunTactic
 hnf_compute ctxt env (Bind x (Hole ty) sc) =
-    do let ty' = hnf ctxt env ty in
+    do let ty' = normalise ctxt env ty in
 --          trace ("HNF " ++ show (ty, ty')) $
            return $ Bind x (Hole ty') sc
 hnf_compute ctxt env t = return t

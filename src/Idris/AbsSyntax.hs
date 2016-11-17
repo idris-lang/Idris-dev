@@ -208,6 +208,13 @@ clear_totcheck  = do i <- getIState; putIState $ i { idris_totcheck = [] }
 setFlags :: Name -> [FnOpt] -> Idris ()
 setFlags n fs = do i <- getIState; putIState $ i { idris_flags = addDef n fs (idris_flags i) }
 
+addFnOpt :: Name -> FnOpt -> Idris ()
+addFnOpt n f = do i <- getIState
+                  let fls = case lookupCtxtExact n (idris_flags i) of
+                                 Nothing -> []
+                                 Just x -> x
+                  setFlags n (f : fls)
+
 setFnInfo :: Name -> FnInfo -> Idris ()
 setFnInfo n fs = do i <- getIState; putIState $ i { idris_fninfo = addDef n fs (idris_fninfo i) }
 

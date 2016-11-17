@@ -148,11 +148,14 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
                        (decorate ns iname n,
                            op, coninsert cs pextra t', t'))
               (interface_methods ci)
+
          logElab 5 (show (mtys, (iimpps ++ ips)))
          logElab 5 ("Before defaults: " ++ show ds ++ "\n" ++ show (map fst (interface_methods ci)))
          let ds_defs = insertDefaults ist iname (interface_defaults ci) ns ds
          logElab 3 ("After defaults: " ++ show ds_defs ++ "\n")
-         let ds' = reorderDefs (map fst (interface_methods ci)) ds_defs
+
+         let ds' = map (addUnfold iname (map fst (interface_methods ci))) $
+                    reorderDefs (map fst (interface_methods ci)) ds_defs
          logElab 1 ("Reordered: " ++ show ds' ++ "\n")
 
          mapM_ (warnMissing ds' ns iname) (map fst (interface_methods ci))
@@ -219,6 +222,12 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
     intImpl = case ps of
                 [PConstant NoFC (AType (ATInt ITNative))] -> True
                 _ -> False
+
+    addUnfold iname ms (PTy doc docs syn fc opts n fc' tm)
+       = PTy doc docs syn fc (UnfoldIface iname ms : opts) n fc' tm
+    addUnfold iname ms (PClauses fc opts n cs)
+       = PClauses fc (UnfoldIface iname ms : opts) n cs
+    addUnfold iname ms dec = dec
 
     mkiname n' ns ps' expn' =
         case expn' of

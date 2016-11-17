@@ -1,4 +1,3 @@
 totality013a.idr:5:3:
-Main.foo is possibly not total due to recursive path Main.mtot --> Main.mtot --> Main.mtot --> Main.mtot
-totality013a.idr:9:3:
-Main.mtot is possibly not total due to recursive path Main.mtot --> Main.mtot --> Main.mtot
+Main.foo is possibly not total due to recursive path Main.foo --> Main.mtot --> Main.mtot --> Main.mtot
+totality013a.idr:9:3:Main.mtot is possibly not total due to: Main.foo

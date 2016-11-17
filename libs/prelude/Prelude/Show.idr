@@ -46,7 +46,7 @@ interface Show ty where
   ||| @ x the value to convert
   partial
   show : (x : ty) -> String
-  show = showPrec Open
+  show x = showPrec Open x -- Eta expand to help totality checker
 
   ||| Convert a value to its `String` representation in a certain precedence
   ||| context.
@@ -63,7 +63,7 @@ interface Show ty where
   ||| @ x the value to convert
   partial
   showPrec : (d : Prec) -> (x : ty) -> String
-  showPrec _ = show
+  showPrec _ x = show x
 
 ||| Surround a `String` with parentheses depending on a condition.
 |||

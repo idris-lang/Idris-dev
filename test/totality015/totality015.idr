@@ -12,7 +12,7 @@ data ConsoleIO : Type -> Type where
      Do : Command a -> (a -> Inf (ConsoleIO b)) -> ConsoleIO b
 
 (>>=) : Command a -> (a -> Inf (ConsoleIO b)) -> ConsoleIO b
-(>>=) = Do
+(>>=) = Do 
 
 data Fuel = Dry | More (Lazy Fuel)
 

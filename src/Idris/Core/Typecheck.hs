@@ -116,7 +116,7 @@ check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top wh
            let fty' = case uniqueBinders (map fst env) (finalise fty) of
                         ty@(Bind x (Pi i s k) t) -> ty
                         _ -> uniqueBinders (map fst env)
-                                 $ case hnf ctxt env fty of
+                                 $ case normalise ctxt env fty of
                                      ty@(Bind x (Pi i s k) t) -> ty
                                      _ -> normalise ctxt env fty
            case fty' of
@@ -138,7 +138,7 @@ check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top wh
            let fty' = case uniqueBinders (map fst env) (finalise fty) of
                         ty@(Bind x (Pi i s k) t) -> ty
                         _ -> uniqueBinders (map fst env)
-                                 $ case hnf ctxt env fty of
+                                 $ case normalise ctxt env fty of
                                      ty@(Bind x (Pi i s k) t) -> ty
                                      _ -> normalise ctxt env fty
            (av, aty) <- chk u Nothing env a

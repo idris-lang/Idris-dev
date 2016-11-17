@@ -387,7 +387,7 @@ elab ist info emode opts fn tm
                           highlightSource fc' (AnnConst c)
     elab' ina fc (PQuote r)     = do fill r; solve
     elab' ina _ (PTrue fc _)   =
-       do hnf_compute
+       do compute
           g <- goal
           case g of
             TType _ -> elab' ina (Just fc) (PRef fc [] unitTy)
@@ -421,7 +421,7 @@ elab ist info emode opts fn tm
                     pexp l, pexp r]))
 
     elab' ina _ (PPair fc hls _ l r)
-        = do hnf_compute
+        = do compute
              g <- goal
              let (tc, _) = unApply g
              case g of
@@ -444,7 +444,7 @@ elab ist info emode opts fn tm
                 IsType -> asType
                 IsTerm -> asValue
                 TypeOrTerm ->
-                   do hnf_compute
+                   do compute
                       g <- goal
                       case g of
                          TType _ -> asType
@@ -2634,7 +2634,7 @@ runTac autoSolve ist perhapsFC fn tac
                           (value, _) <- get_type_val (Var letn)
                           ctxt <- get_context
                           env <- get_env
-                          let value' = hnf ctxt env value
+                          let value' = normalise ctxt env value
                           runTac autoSolve ist perhapsFC fn (Exact $ PQuote (reflect value'))
     runT (Fill v) = do attack -- let x = fill x in ...
                        tyn <- getNameFrom (sMN 0 "letty")

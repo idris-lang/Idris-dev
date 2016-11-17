@@ -11,7 +11,7 @@ Maintainer  : The Idris Community.
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 normaliseAll, normaliseBlocking, toValue, quoteTerm,
-                rt_simplify, simplify, specialise, hnf, convEq, convEq',
+                rt_simplify, simplify, specialise, unfold, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Injectivity, Totality(..), PReason(..), MetaInformation(..),
                 Context, initContext, ctxtAlist, next_tvar,
@@ -45,10 +45,10 @@ data EvalState = ES { limited :: [(Name, Int)],
 type Eval a = State EvalState a
 
 data EvalOpt = Spec
-             | HNF
-             | Simplify
+             | Simplify Bool -- ^ whether to expand lets or not
              | AtREPL
              | RunTT
+             | Unfold
   deriving (Show, Eq)
 
 initEval = ES [] 0 False
@@ -131,10 +131,7 @@ specialise ctxt env limits t
          (tm, limited st)
 
 -- | Like normalise, but we only reduce functions that are marked as okay to
--- inline (and probably shouldn't reduce lets?)
--- 20130908: now only used to reduce for totality checking. Inlining should
--- be done elsewhere.
-
+-- inline, and lets 
 simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t
    = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
@@ -146,7 +143,23 @@ simplify ctxt env t
                                            (sUN "prim__syntactic_eq", 0),
                                            (sUN "fork", 0)]
                                  (map finalEntry env) (finalise t)
-                                 [Simplify]
+                                 [Simplify True]
+                   quote 0 val) initEval
+
+-- | Like simplify, but we only reduce functions that are marked as okay to
+-- inline, and don't reduce lets 
+inline :: Context -> Env -> TT Name -> TT Name
+inline ctxt env t
+   = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
+                                           (sUN "force", 0),
+                                           (sUN "Force", 0),
+                                           (sUN "assert_smaller", 0),
+                                           (sUN "assert_total", 0),
+                                           (sUN "par", 0),
+                                           (sUN "prim__syntactic_eq", 0),
+                                           (sUN "fork", 0)]
+                                 (map finalEntry env) (finalise t)
+                                 [Simplify False]
                    quote 0 val) initEval
 
 -- | Simplify for run-time (i.e. basic inlining)
@@ -162,12 +175,19 @@ rt_simplify ctxt env t
                                  [RunTT]
                    quote 0 val) initEval
 
--- | Reduce a term to head normal form
-hnf :: Context -> Env -> TT Name -> TT Name
-hnf ctxt env t
-   = evalState (do val <- eval False ctxt []
-                                 (map finalEntry env)
-                                 (finalise t) [HNF]
+-- | Unfold the given names in a term, the given number of times in a stack.
+-- Preserves 'let'.
+-- This is primarily to support inlining of the given names, and can also
+-- help with partial evaluation by allowing a rescursive definition to be
+-- unfolded once only.
+-- Specifically used to unfold definitions using interfaces before going to
+-- the totality checker (otherwise mutually recursive definitions in
+-- implementations will not work...)
+unfold :: Context -> Env -> [(Name, Int)] -> TT Name -> TT Name
+unfold ctxt env ns t
+   = evalState (do val <- eval False ctxt ns
+                               (map finalEntry env) (finalise t)
+                               [Unfold]
                    quote 0 val) initEval
 
 
@@ -187,22 +207,25 @@ unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
 unbindEnv env tm = error "Impossible case occurred: couldn't unbind env."
 
 usable :: Bool -- specialising
+          -> Bool -- unfolding only
           -> Int -- Reduction depth limit (when simplifying/at REPL)
           -> Name -> [(Name, Int)] -> Eval (Bool, [(Name, Int)])
 -- usable _ _ ns@((MN 0 "STOP", _) : _) = return (False, ns)
-usable False depthlimit n [] = return (True, [])
-usable True depthlimit n ns
+usable False uf depthlimit n [] = return (True, [])
+usable True uf depthlimit n ns
   = do ES ls num b <- get
        if b then return (False, ns)
             else case lookup n ls of
                     Just 0 -> return (False, ns)
                     Just i -> return (True, ns)
                     _ -> return (False, ns)
-usable False depthlimit n ns
+usable False uf depthlimit n ns
   = case lookup n ns of
          Just 0 -> return (False, ns)
          Just i -> return $ (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
-         _ -> return $ (True, (n, depthlimit) : filter (\ (n', _) -> n/=n') ns)
+         _ -> return $ if uf 
+                          then (False, ns)
+                          else (True, (n, depthlimit) : filter (\ (n', _) -> n/=n') ns)
 
 
 fnCount :: Int -> Name -> Eval ()
@@ -231,10 +254,11 @@ eval :: Bool -> Context -> [(Name, Int)] -> Env -> TT Name ->
         [EvalOpt] -> Eval Value
 eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     spec = Spec `elem` opts
-    simpl = Simplify `elem` opts
+    simpl = Simplify True `elem` opts || Simplify False `elem` opts
+    simpl_inline = Simplify False `elem` opts
     runtime = RunTT `elem` opts
     atRepl = AtREPL `elem` opts
-    hnf = HNF `elem` opts
+    unfold = Unfold `elem` opts
 
     -- returns 'True' if the function should block
     -- normal evaluation should return false
@@ -243,7 +267,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
            = if always then False
                        else not (inl || dict) || elem n stk
        | simpl
-           = (not (inl || dict) || elem n stk)
+           = (not inl || elem n stk)
              || (n == sUN "prim__syntactic_eq")
        | otherwise = False
 
@@ -254,21 +278,21 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (P _ n ty)
         | Just (Let t v) <- lookup n genv = ev ntimes stk top env v
     ev ntimes_in stk top env (P Ref n ty)
-      | not top && hnf = liftM (VP Ref n) (ev ntimes stk top env ty)
-      | otherwise
          = do let limit = if simpl then 100 else 10000
-              (u, ntimes) <- usable spec limit n ntimes_in
-              let red = u && (tcReducible n ctxt || spec || atRepl || runtime
+              (u, ntimes) <- usable spec unfold limit n ntimes_in
+              let red = u && (tcReducible n ctxt || spec || atRepl 
+                                || runtime || unfold
                                 || sUN "assert_total" `elem` stk)
               if red then
-               do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
+               do let val = lookupDefAcc n (spec || unfold || atRepl || runtime) ctxt
                   case val of
                     [(Function _ tm, Public)] ->
                            ev ntimes (n:stk) True env tm
                     [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
                                               return $ VP nt n vty
                     [(CaseOp ci _ _ _ _ cd, acc)]
-                         | (acc == Public || acc == Hidden || sUN "assert_total" `elem` stk) &&
+                         | (acc == Public || acc == Hidden) &&
+--                                || sUN "assert_total" `elem` stk) &&
                              null (fst (cases_totcheck cd)) -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
@@ -281,12 +305,12 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                     _ -> liftM (VP Ref n) (ev ntimes stk top env ty)
                else liftM (VP Ref n) (ev ntimes stk top env ty)
     ev ntimes stk top env (P nt n ty)
-         = liftM (VP nt n) (ev ntimes stk top env ty)
+        = liftM (VP nt n) (ev ntimes stk top env ty)
     ev ntimes stk top env (V i)
-                     | i < length env && i >= 0 = return $ snd (env !! i)
-                     | otherwise      = return $ VV i
+        | i < length env && i >= 0 = return $ snd (env !! i)
+        | otherwise      = return $ VV i
     ev ntimes stk top env (Bind n (Let t v) sc)
-        | not runtime || occurrences n sc < 2
+        | (not (runtime || simpl_inline || unfold)) || occurrences n sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top ((n, v') : env) sc
                 wknV (-1) sc'
@@ -315,7 +339,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     -- block reduction immediately under codata (and not forced)
     ev ntimes stk top env
               (App _ (App _ (App _ d@(P _ (UN dly) _) l@(P _ (UN lco) _)) t) arg)
-       | dly == txt "Delay" && lco == txt "Infinite" && not simpl
+       | dly == txt "Delay" && lco == txt "Infinite" && not (unfold || simpl)
             = do let (f, _) = unApply arg
                  let ntimes' = case f of
                                     P _ fn _ -> (fn, 0) : ntimes
@@ -330,7 +354,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     -- Treat "assert_total" specially, as long as it's defined!
     ev ntimes stk top env (App _ (App _ (P _ n@(UN at) _) _) arg)
        | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl || runtime) ctxt,
-         at == txt "assert_total" && not simpl
+         at == txt "assert_total" && not (simpl || unfold)
             = ev ntimes (n : stk) top env arg
     ev ntimes stk top env (App _ f a)
            = do f' <- ev ntimes stk False env f
@@ -377,16 +401,13 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
               app <- apply ntimes stk top env a' as
               wknV 1 app
     apply ntimes_in stk top env f@(VP Ref n ty) args
-      | not top && hnf = case args of
-                            [] -> return f
-                            _ -> return $ unload env f args
-      | otherwise
          = do let limit = if simpl then 100 else 10000
-              (u, ntimes) <- usable spec limit n ntimes_in
-              let red = u && (tcReducible n ctxt || spec || atRepl || runtime
+              (u, ntimes) <- usable spec unfold limit n ntimes_in
+              let red = u && (tcReducible n ctxt || spec || atRepl 
+                                || unfold || runtime
                                 || sUN "assert_total" `elem` stk)
               if red then
-                 do let val = lookupDefAcc n (spec || atRepl || runtime) ctxt
+                 do let val = lookupDefAcc n (spec || unfold || atRepl || runtime) ctxt
                     case val of
                       [(CaseOp ci _ _ _ _ cd, acc)]
                            | acc == Public || acc == Hidden ->
@@ -975,7 +996,8 @@ simplifyCasedef n ei uctxt
                              pdef = map debind ps_in'
                          CaseDef args sc _ <- simpleCase False (STerm Erased) False CompileTime emptyFC [] atys pdef ei
                          return $ addDef n (CaseOp ci
-                                              ty atys ps_in' ps (cd { cases_totcheck = (args, sc) }),
+                                              ty atys ps_in' ps (cd { cases_totcheck = (args, sc),
+                                                                      cases_compiletime = (args, sc) }),
                                               inj, acc, tot, metainf) ctxt
 
                    _ -> return ctxt
@@ -989,7 +1011,7 @@ simplifyCasedef n ei uctxt
                                 (vs, x', y')
     debind (Left x)       = let (vs, x') = depat [] x in
                                 (vs, x', Impossible)
-    simpl (Right (x, y)) = Right (x, simplify uctxt [] y)
+    simpl (Right (x, y)) = Right (x, y) -- inline uctxt [] y)
     simpl t = t
 
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) ->

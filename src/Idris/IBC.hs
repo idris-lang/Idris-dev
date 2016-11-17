@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 151
+ibcVersion = 152
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -313,7 +313,10 @@ ibc i (IBCCG n) f = case lookupCtxtExact n (idris_callgraph i) of
                         _ -> ifail "IBC write failed"
 ibc i (IBCCoercion n) f = return f { ibc_coercions = n : ibc_coercions f }
 ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
-ibc i (IBCFlags n a) f = return f { ibc_flags = (n,a) : ibc_flags f }
+ibc i (IBCFlags n) f 
+    = case lookupCtxtExact n (idris_flags i) of
+           Just a -> return f { ibc_flags = (n,a): ibc_flags f }
+           _ -> ifail "IBC write failed"
 ibc i (IBCFnInfo n a) f = return f { ibc_fninfo = (n,a) : ibc_fninfo f }
 ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
 ibc i (IBCInjective n a) f = return f { ibc_injective = (n,a) : ibc_injective f }
@@ -1208,7 +1211,7 @@ instance Binary FnOpt where
                 AssertTotal -> putWord8 3
                 Specialise x -> do putWord8 4
                                    put x
-                Coinductive -> putWord8 5
+                AllGuarded -> putWord8 5
                 PartialFn -> putWord8 6
                 Implicit -> putWord8 7
                 Reflection -> putWord8 8
@@ -1223,6 +1226,9 @@ instance Binary FnOpt where
                 PEGenerated -> putWord8 16
                 StaticFn -> putWord8 17
                 OverlappingDictionary -> putWord8 18
+                UnfoldIface x ns -> do putWord8 19
+                                       put x
+                                       put ns
         get
           = do i <- getWord8
                case i of
@@ -1232,7 +1238,7 @@ instance Binary FnOpt where
                    3 -> return AssertTotal
                    4 -> do x <- get
                            return (Specialise x)
-                   5 -> return Coinductive
+                   5 -> return AllGuarded
                    6 -> return PartialFn
                    7 -> return Implicit
                    8 -> return Reflection
@@ -1247,6 +1253,9 @@ instance Binary FnOpt where
                    16 -> return PEGenerated
                    17 -> return StaticFn
                    18 -> return OverlappingDictionary
+                   19 -> do x <- get
+                            ns <- get
+                            return (UnfoldIface x ns)
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where
