@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 152
+ibcVersion = 153
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -660,10 +660,10 @@ processDefs ar = do
             r' <- update r
             return $ Right (l', r')
 
-        updateCD (CaseDefs (ts, t) (cs, c) (is, i) (rs, r)) = do
+        updateCD (CaseDefs (cs, c) (rs, r)) = do
             c' <- updateSC c
             r' <- updateSC r
-            return $ CaseDefs (cs, c') (cs, c') (cs, c') (rs, r')
+            return $ CaseDefs (cs, c') (rs, r')
 
         updateSC (Case t n alts) = do
             alts' <- mapM updateAlt alts
@@ -1039,14 +1039,13 @@ instance Binary CaseAlt where
                    _ -> error "Corrupted binary data for CaseAlt"
 
 instance Binary CaseDefs where
-        put (CaseDefs x1 x2 x3 x4)
-          = do -- don't need totality checked or inlined versions
+        put (CaseDefs x1 x2)
+          = do put x1
                put x2
-               put x4
         get
-          = do x2 <- get
-               x4 <- get
-               return (CaseDefs x2 x2 x2 x4)
+          = do x1 <- get
+               x2 <- get
+               return (CaseDefs x1 x2)
 
 instance Binary CaseInfo where
         put x@(CaseInfo x1 x2 x3) = do put x1

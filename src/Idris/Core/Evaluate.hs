@@ -271,7 +271,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
              || (n == sUN "prim__syntactic_eq")
        | otherwise = False
 
-    getCases cd | simpl = cases_totcheck cd
+    getCases cd | simpl = cases_compiletime cd
                 | runtime = cases_runtime cd
                 | otherwise = cases_compiletime cd
 
@@ -293,7 +293,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                     [(CaseOp ci _ _ _ _ cd, acc)]
                          | (acc == Public || acc == Hidden) &&
 --                                || sUN "assert_total" `elem` stk) &&
-                             null (fst (cases_totcheck cd)) -> -- unoptimised version
+                             null (fst (cases_compiletime cd)) -> -- unoptimised version
                        let (ns, tree) = getCases cd in
                          if blockSimplify ci n stk
                             then liftM (VP Ref n) (ev ntimes stk top env ty)
@@ -755,9 +755,7 @@ data Def = Function !Type !Term
 --                   [Name] SC -- Run time cae definitions
 
 data CaseDefs = CaseDefs {
-                  cases_totcheck :: !([Name], SC),
                   cases_compiletime :: !([Name], SC),
-                  cases_inlined :: !([Name], SC),
                   cases_runtime :: !([Name], SC)
                 }
   deriving Generic
@@ -785,11 +783,8 @@ instance Show Def where
     show (Operator ty _ _) = "Operator: " ++ show ty
     show (CaseOp (CaseInfo inlc inla inlr) ty atys ps_in ps cd)
       = let (ns, sc) = cases_compiletime cd
-            (ns_t, sc_t) = cases_totcheck cd
             (ns', sc') = cases_runtime cd in
           "Case: " ++ show ty ++ " " ++ show ps ++ "\n" ++
-                                        "TOTALITY CHECK TIME:\n\n" ++
-                                        show ns_t ++ " " ++ show sc_t ++ "\n\n" ++
                                         "COMPILE TIME:\n\n" ++
                                         show ns ++ " " ++ show sc ++ "\n\n" ++
                                         "RUN TIME:\n\n" ++
@@ -949,42 +944,37 @@ addCasedef :: Name -> ErasureInfo -> CaseInfo ->
               [(Type, Bool)] -> -- argument types, whether canonical
               [Int] ->  -- inaccessible arguments
               [Either Term (Term, Term)] ->
-              [([Name], Term, Term)] -> -- totality
               [([Name], Term, Term)] -> -- compile time
-              [([Name], Term, Term)] -> -- inlined
               [([Name], Term, Term)] -> -- run time
               Type -> Context -> TC Context
 addCasedef n ei ci@(CaseInfo inline alwaysInline tcdict)
            tcase covering reflect asserted argtys inacc
-           ps_in ps_tot ps_inl ps_ct ps_rt ty uctxt
+           ps_in ps_ct ps_rt ty uctxt
     = do let ctxt = definitions uctxt
              access = case lookupDefAcc n False uctxt of
                            [(_, acc)] -> acc
                            _ -> Public
-         totalityTime <- simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_tot ei
          compileTime <- simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_ct ei
-         inlined <- simpleCase tcase covering reflect CompileTime emptyFC inacc argtys ps_inl ei
          runtime <- simpleCase tcase covering reflect RunTime emptyFC inacc argtys ps_rt ei
-         ctxt' <- case (totalityTime, compileTime, inlined, runtime) of
-                    (CaseDef args_tot sc_tot _,
-                     CaseDef args_ct sc_ct _,
-                     CaseDef args_inl sc_inl _,
+         ctxt' <- case (compileTime, runtime) of
+                    ( CaseDef args_ct sc_ct _,
                      CaseDef args_rt sc_rt _) ->
                        let inl = alwaysInline -- tcdict
                            inlc = (inl || small n args_ct sc_ct) && (not asserted)
                            inlr = inl || small n args_rt sc_rt
-                           cdef = CaseDefs (args_tot, sc_tot)
-                                           (args_ct, sc_ct)
-                                           (args_inl, sc_inl)
+                           cdef = CaseDefs (args_ct, sc_ct)
                                            (args_rt, sc_rt)
                            op = (CaseOp (ci { case_inlinable = inlc })
-                                                ty argtys ps_in ps_tot cdef,
+                                                ty argtys ps_in ps_ct cdef,
                                  False, access, Unchecked, EmptyMI)
                        in return $ addDef n op ctxt
 --                    other -> tfail (Msg $ "Error adding case def: " ++ show other)
          return uctxt { definitions = ctxt' }
 
--- simplify a definition for totality checking
+-- simplify a definition by inlining
+-- (Note: This used to be for totality checking, and now it's actually a
+-- no-op, but I'm keeping it here because I'll be putting it back with some
+-- more carefully controlled inlining at some stage. --- EB)
 simplifyCasedef :: Name -> ErasureInfo -> Context -> TC Context
 simplifyCasedef n ei uctxt
    = do let ctxt = definitions uctxt
@@ -996,8 +986,7 @@ simplifyCasedef n ei uctxt
                              pdef = map debind ps_in'
                          CaseDef args sc _ <- simpleCase False (STerm Erased) False CompileTime emptyFC [] atys pdef ei
                          return $ addDef n (CaseOp ci
-                                              ty atys ps_in' ps (cd { cases_totcheck = (args, sc),
-                                                                      cases_compiletime = (args, sc) }),
+                                              ty atys ps_in' ps (cd { cases_compiletime = (args, sc) }),
                                               inj, acc, tot, metainf) ctxt
 
                    _ -> return ctxt

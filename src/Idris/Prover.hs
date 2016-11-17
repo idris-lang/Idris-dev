@@ -121,8 +121,6 @@ prove mode info opt ctxt lit n ty
                                 [] []  -- argtys, inaccArgs
                                 [Right (P Ref n ty, ptm)]
                                 [([], P Ref n ty, ptm)]
-                                [([], P Ref n ty, ptm)]
-                                [([], P Ref n ty, ptm)]
                                 [([], P Ref n ty, ptm')] ty
                                 ctxt
          setContext ctxt'

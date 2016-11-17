@@ -240,8 +240,6 @@ elabClauses info' fc opts n_in cs =
                                                    inacc
                                                    pats_pe
                                                    pdef
-                                                   pdef -- compile time
-                                                   pdef_inl -- inlined
                                                    pdef' ty
                                                    ctxt
                       setContext ctxt'

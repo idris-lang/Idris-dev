@@ -604,7 +604,7 @@ buildSCG (_, n) = do
    case lookupCtxt n (idris_callgraph ist) of
        [cg] -> case lookupDefExact n (tt_ctxt ist) of
            Just (CaseOp _ _ _ pats _ cd) ->
-             let (args, sc) = cases_totcheck cd in
+             let (args, sc) = cases_compiletime cd in
                do logCoverage 2 $ "Building SCG for " ++ show n ++ " from\n"
                                 ++ show pats ++ "\n" ++ show sc
                   let newscg = buildSCG' ist n (rights pats) args

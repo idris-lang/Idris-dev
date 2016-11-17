@@ -669,9 +669,9 @@ clearPTypes = do i <- get
    where pErase (CaseOp c t tys orig tot cds)
             = CaseOp c t tys orig [] (pErase' cds)
          pErase x = x
-         pErase' (CaseDefs _ (cs, c) _ rs)
+         pErase' (CaseDefs (cs, c) rs)
              = let c' = (cs, fmap pEraseType c) in
-                   CaseDefs c' c' c' rs
+                   CaseDefs c' rs
 
 checkUndefined :: FC -> Name -> Idris ()
 checkUndefined fc n

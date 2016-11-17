@@ -1941,8 +1941,6 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
                              clauses'
                              clauses'''
                              clauses'''
-                             clauses'''
-                             clauses'''
                              ty
                              ctxt
          set_context ctxt'
