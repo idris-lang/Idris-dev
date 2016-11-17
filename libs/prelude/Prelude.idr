@@ -156,8 +156,15 @@ natEnumFromTo n m = if n <= m
 total natEnumFromThenTo' : Nat -> Nat -> Nat -> List Nat
 natEnumFromThenTo' _ Z       _ = []
 natEnumFromThenTo' n (S inc) m = map (plus n . (* (S inc))) (natRange (S (divNatNZ (minus m n) (S inc) SIsNotZ)))
+
 total natEnumFromThenTo : Nat -> Nat -> Nat -> List Nat
-natEnumFromThenTo n next m = natEnumFromThenTo' n (minus next n) m
+natEnumFromThenTo n next m = if n == m then [n]
+                             else if n < m then natEnumFromThenTo' n (minus next n) m
+                             else case minus n next of
+                                  Z => []
+                                  S step => List.reverse . map (+ (modNatNZ (minus n m) (S step) SIsNotZ)) $ natEnumFromThenTo' m (minus n next) n
+    where modNatNZ : Nat -> (m : Nat) -> Not (m = 0) -> Nat
+          modNatNZ n m nz = minus n $ mult m $ divNatNZ n m nz
 
 interface Enum a where
   total pred : a -> a
@@ -197,8 +204,9 @@ Enum Integer where
           go' n (x :: xs) = n + cast x :: go' n xs
           go : Integer -> Integer -> List Integer
           go n m = go' n (natRange (S (cast {to = Nat} (m - n))))
-  enumFromThenTo _ 0   _ = []
-  enumFromThenTo n next m = go (natRange (S (divNatNZ (fromInteger (abs (m - n))) (S (fromInteger ((abs (next - n)) - 1))) SIsNotZ)))
+  enumFromThenTo n next m = if n == m then [n]
+                            else if next - n == 0 || next - n < 0 /= m - n < 0 then []
+                            else go (natRange (S (divNatNZ (fromInteger (abs (m - n))) (S (fromInteger ((abs (next - n)) - 1))) SIsNotZ)))
     where go : List Nat -> List Integer
           go [] = []
           go (x :: xs) = n + (cast x * (next - n)) :: go xs
@@ -217,8 +225,9 @@ Enum Int where
           go : Int -> Int -> List Int
           go n m = go' [] (cast {to = Nat} (m - n)) m
   enumFromThen n inc = n :: enumFromThen (inc + n) inc
-  enumFromThenTo _ 0   _ = []
-  enumFromThenTo n next m = go (natRange (S (divNatNZ (cast {to=Nat} (abs (m - n))) (S (cast {to=Nat} ((abs (next - n)) - 1))) SIsNotZ)))
+  enumFromThenTo n next m = if n == m then [n]
+                            else if next - n == 0 || next - n < 0 /= m - n < 0 then []
+                            else go (natRange (S (divNatNZ (cast {to=Nat} (abs (m - n))) (S (cast {to=Nat} ((abs (next - n)) - 1))) SIsNotZ)))
     where go : List Nat -> List Int
           go [] = []
           go (x :: xs) = n + (cast x * (next - n)) :: go xs
