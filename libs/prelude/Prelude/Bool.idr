@@ -35,3 +35,23 @@ not : Bool -> Bool
 not True = False
 not False = True
 
+||| A wrapper for Bool that specifies the semigroup and monoid implementations that use (&&)
+data All : Type where
+  GetAll : Bool -> All
+
+Semigroup All where
+  (GetAll left) <+> (GetAll right) = GetAll $ left && right
+
+Monoid All where
+  neutral = GetAll True
+
+||| A wrapper for Bool that specifies the semigroup and monoid implementations that use (&&)
+data Any : Type where
+  GetAny : Bool -> Any
+
+Semigroup Any where
+  (GetAny left) <+> (GetAny right) = GetAny $ left || right
+
+Monoid Any where
+  neutral = GetAny False
+
