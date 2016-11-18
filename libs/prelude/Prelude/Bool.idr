@@ -45,7 +45,7 @@ Semigroup All where
 Monoid All where
   neutral = GetAll True
 
-||| A wrapper for Bool that specifies the semigroup and monoid implementations that use (&&)
+||| A wrapper for Bool that specifies the semigroup and monoid implementations that use (||)
 data Any : Type where
   GetAny : Bool -> Any
 
