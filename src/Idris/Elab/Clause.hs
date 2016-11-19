@@ -191,7 +191,7 @@ elabClauses info' fc opts n_in cs =
                               -- Filter out the ones which match one of the
                               -- given cases (including impossible ones)
                               let clhs = map getLHS pdef_cov
-                              logElab 2 $ "Must be unreachable:\n" ++
+                              logElab 2 $ "Must be unreachable (" ++ show (length missing') ++ "):\n" ++
                                           showSep "\n" (map showTmImpls missing') ++
                                          "\nAgainst: " ++
                                           showSep "\n" (map (\t -> showTmImpls (delab ist t)) (map getLHS pdef))
@@ -566,6 +566,7 @@ checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- getIState
         let lhs = addImplPat i lhs_in
+        logLvl 10 $ "Trying missing case: " ++ show lhs
         -- if the LHS type checks, it is possible
         case elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
                             (erun fc (buildTC i info ELHS [] fname
@@ -801,10 +802,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                                unfold ctxt [] (map (\n -> (n, 1)) ns) rhsElab
                         _ -> rhsElab
         
-        when (not (null (getUnfolds opts))) $
-            logElab 1 $ "----- " ++ show (getUnfolds opts) ++
-                        "\nUnfolded " ++ show rhsElab ++ "\n" ++
-                        "to " ++ show rhs'
+        logElab 5 $ "----- " ++ show (getUnfolds opts) ++
+                    "\nUnfolded " ++ show rhsElab ++ "\n" ++
+                    "to " ++ show rhs'
 
         when (not (null defer)) $ logElab 1 $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t,_)) -> (n, t)) defer)
@@ -1004,11 +1004,9 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                         _ -> wvalElab
         
         logElab 5 ("Checked wval " ++ show wval')
-       
-        when (not (null (getUnfolds opts))) $
-            logElab 1 $ "----- " ++ show (getUnfolds opts) ++
-                        "\nUnfolded wval " ++ show wvalElab ++ "\n" ++
-                        "to " ++ show wval'
+        logElab 5 $ "----- " ++ show (getUnfolds opts) ++
+                    "\nUnfolded wval " ++ show wvalElab ++ "\n" ++
+                    "to " ++ show wval'
 
 
         ctxt <- getContext
@@ -1128,10 +1126,9 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                              unfold ctxt [] (map (\n -> (n, 1)) ns) rhsElab
                         _ -> rhsElab
         
-        when (not (null (getUnfolds opts))) $
-            logElab 3 $ "----- " ++ show (getUnfolds opts) ++
-                        "\nUnfolded with RHS " ++ show rhsElab ++ "\n" ++
-                        "to " ++ show rhs'
+        logElab 5 $ "----- " ++ show (getUnfolds opts) ++
+                    "\nUnfolded with RHS " ++ show rhsElab ++ "\n" ++
+                    "to " ++ show rhs'
 
 
         def' <- checkDef info fc iderr True defer
