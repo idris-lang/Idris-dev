@@ -209,6 +209,12 @@ genAll i (addPH, args)
           [] -> [Placeholder]
           xs -> ph xs
   where
+    -- Add a placeholder - this is to account for the case where an argument
+    -- has a dependent type calculated from another argument, to make sure that
+    -- all dependencies are covered. If they are, any generated case will
+    -- match given cases.
+    -- (Also this helps when checking, because if we eliminate the placeholder
+    -- quickly then lots of other cases get ruled out fast)
     ph ts = if addPH then Placeholder : ts else ts
 
     -- Merge patterns with placeholders in other patterns, to ensure we've

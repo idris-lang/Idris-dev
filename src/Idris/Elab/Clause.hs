@@ -187,7 +187,7 @@ elabClauses info' fc opts n_in cs =
                       then do -- Generate clauses from the given possible cases
                               missing <- genClauses fc n (map getLHS pdef_cov) cs_full
                               -- missing <- genMissing n scargs sc
-                              missing' <- filterM (checkPossible info fc True n) missing
+                              missing' <- checkPossibles info fc True n missing
                               -- Filter out the ones which match one of the
                               -- given cases (including impossible ones)
                               let clhs = map getLHS pdef_cov
@@ -566,7 +566,7 @@ checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- getIState
         let lhs = addImplPat i lhs_in
-        logLvl 10 $ "Trying missing case: " ++ show lhs
+        logLvl 10 $ "Trying missing case: " ++ showTmImpls lhs
         -- if the LHS type checks, it is possible
         case elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
                             (erun fc (buildTC i info ELHS [] fname
@@ -582,10 +582,37 @@ checkPossible info fc tcgen fname lhs_in
                        OK _ -> return True
                        err -> return False
             -- if it's a recoverable error, the case may become possible
-            Error err -> do logLvl 10 "Impossible case"
+            Error err -> do logLvl 10 $ "Impossible case " ++ show err
                             if tcgen then return (recoverableCoverage ctxt err)
                                   else return (validCoverageCase ctxt err ||
                                                  recoverableCoverage ctxt err)
+
+-- Filter out the terms which are not well type left hand sides. Whenever we
+-- eliminate one, also eliminate later ones which match it without checking,
+-- because they're obviously going to have the same result
+checkPossibles :: ElabInfo -> FC -> Bool -> Name -> [PTerm] -> Idris [PTerm]
+checkPossibles info fc tcgen fname (lhs : rest)
+   = do ok <- checkPossible info fc tcgen fname lhs
+        i <- getIState
+        -- Hypothesis: any we can remove will be within the next few, because
+        -- leftmost patterns tend to change less
+        -- Since the match could take a while if there's a lot of cases to
+        -- check, just remove from the next batch
+        let rest' = filter (\x -> not (qmatch x lhs)) (take 200 rest) ++ drop 200 rest
+        restpos <- checkPossibles info fc tcgen fname rest'
+        if not ok then return restpos else return (lhs : restpos)
+  where
+    qmatch _ Placeholder = True
+    qmatch (PApp _ f args) (PApp _ f' args')
+       | length args == length args'
+            = qmatch f f' && and (zipWith qmatch (map getTm args)
+                                                 (map getTm args'))
+    qmatch (PRef _ _ n) (PRef _ _ n') = n == n'
+    qmatch (PPair _ _ _ l r) (PPair _ _ _ l' r') = qmatch l l' && qmatch r r' 
+    qmatch (PDPair _ _ _ l t r) (PDPair _ _ _ l' t' r') 
+          = qmatch l l' && qmatch t t' && qmatch r r' 
+    qmatch x y = x == y
+checkPossibles _ _ _ _ [] = return []
 
 findUnique :: Context -> Env -> Term -> [Name]
 findUnique ctxt env (Bind n b sc)
