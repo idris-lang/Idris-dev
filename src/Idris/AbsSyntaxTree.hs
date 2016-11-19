@@ -586,7 +586,7 @@ instance Ord FixDecl where
 
 
 data Static = Static | Dynamic
-  deriving (Show, Eq, Data, Generic, Typeable)
+  deriving (Show, Eq, Ord, Data, Generic, Typeable)
 {-!
 deriving instance Binary Static
 !-}
@@ -609,7 +609,7 @@ data Plicity = Imp { pargopts  :: [ArgOpt]
                       , pstatic  :: Static
                       , pscript  :: PTerm
                       }
-             deriving (Show, Eq, Data, Generic, Typeable)
+             deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
 {-!
 deriving instance Binary Plicity
@@ -1040,7 +1040,7 @@ updateNs ns t = mapPT updateRef t
 data PunInfo = IsType
              | IsTerm
              | TypeOrTerm
-             deriving (Eq, Show, Data, Typeable, Generic)
+             deriving (Eq, Show, Ord, Data, Typeable, Generic)
 
 -- | High level language terms
 data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
@@ -1106,12 +1106,12 @@ data PTerm = PQuote Raw         -- ^ Inclusion of a core term into the
            | PConstSugar FC PTerm
              -- ^ A desugared constant. The FC is a precise source
              -- location that will be used to highlight it later.
-       deriving (Eq, Data, Typeable, Generic)
+       deriving (Eq, Ord, Data, Typeable, Generic)
 
 data PAltType = ExactlyOne Bool -- ^ flag sets whether delay is allowed
               | FirstSuccess
               | TryImplicit
-       deriving (Eq, Data, Generic, Typeable)
+       deriving (Eq, Ord, Data, Generic, Typeable)
 
 -- | Transform the FCs in a PTerm. The first function transforms the
 -- general-purpose FCs, and the second transforms those that are used
@@ -1230,7 +1230,7 @@ data PTactic' t = Intro [Name] | Intros | Focus Name
                 | TFail [ErrorReportPart]
                 | Qed | Abandon
                 | SourceFC
-    deriving (Show, Eq, Functor, Foldable, Traversable, Data, Generic, Typeable)
+    deriving (Show, Eq, Ord, Functor, Foldable, Traversable, Data, Generic, Typeable)
 {-!
 deriving instance Binary PTactic'
 !-}
@@ -1276,7 +1276,7 @@ data PDo' t = DoExp  FC t
             | DoBindP FC t t [(t,t)]
             | DoLet  FC Name FC t t   -- ^ second FC is precise name location
             | DoLetP FC t t
-    deriving (Eq, Functor, Data, Generic, Typeable)
+    deriving (Eq, Ord, Functor, Data, Generic, Typeable)
 {-!
 deriving instance Binary PDo'
 !-}
@@ -1316,13 +1316,13 @@ data PArg' t = PImp { priority    :: Int
                             , getScript :: t
                             , getTm     :: t
                             }
-             deriving (Show, Eq, Functor, Data, Generic, Typeable)
+             deriving (Show, Eq, Ord, Functor, Data, Generic, Typeable)
 
 data ArgOpt = AlwaysShow
             | HideDisplay
             | InaccessibleArg
             | UnknownImp
-            deriving (Show, Eq, Data, Generic, Typeable)
+            deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
 instance Sized a => Sized (PArg' a) where
   size (PImp p _ l nm trm)            = 1 + size nm + size trm

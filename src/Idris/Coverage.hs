@@ -96,7 +96,9 @@ genClauses fc n xs given
         let tryclauses = mkClauses parg all_args
         logCoverage 3 $ show (length tryclauses) ++ " initially to check"
         logCoverage 2 $ showSep "\n" (map (showTm i) tryclauses)
-        let new = filter (noMatch i) (nub tryclauses)
+
+        let xsdelab = map (\x -> stripUnmatchable i (delab' i x True True)) xs
+        let new = filter (noMatch i xsdelab) tryclauses
         logCoverage 2 $ show (length new) ++ " clauses to check for impossibility"
         logCoverage 4 $ "New clauses: \n" ++ showSep "\n" (map (showTm i) new)
 --           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses)
@@ -127,9 +129,9 @@ genClauses fc n xs given
 
         -- Return whether the given clause matches none of the input clauses
         -- (xs)
-        noMatch i tm = all (\x -> case matchClause i (stripUnmatchable i (delab' i x True True)) tm of
-                                       Right ms -> False
-                                       Left miss -> True) xs
+        noMatch i xs tm = all (\x -> case matchClause i x tm of
+                                          Right ms -> False
+                                          Left miss -> True) xs
 
 
         mergePlaceholders :: PTerm -> PTerm -> PTerm

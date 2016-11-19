@@ -582,7 +582,8 @@ checkPossible info fc tcgen fname lhs_in
                        OK _ -> return True
                        err -> return False
             -- if it's a recoverable error, the case may become possible
-            Error err -> if tcgen then return (recoverableCoverage ctxt err)
+            Error err -> do logLvl 10 "Impossible case"
+                            if tcgen then return (recoverableCoverage ctxt err)
                                   else return (validCoverageCase ctxt err ||
                                                  recoverableCoverage ctxt err)
 

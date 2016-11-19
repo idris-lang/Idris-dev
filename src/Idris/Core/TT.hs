@@ -234,7 +234,7 @@ data ErrorReportPart = TextPart String
                      | TermPart Term
                      | RawPart Raw
                      | SubReport [ErrorReportPart]
-                       deriving (Show, Eq, Data, Generic, Typeable)
+                       deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
 
 data Provenance = ExpectedType
@@ -242,7 +242,7 @@ data Provenance = ExpectedType
                 | InferredVal
                 | GivenVal
                 | SourceTerm Term
-  deriving (Show, Eq, Data, Generic, Typeable)
+  deriving (Show, Eq, Ord, Data, Generic, Typeable)
 {-!
 deriving instance Binary Err
 !-}
@@ -307,7 +307,7 @@ data Err' t
           | RunningElabScript (Err' t) -- ^ The error occurred during a top-level elaboration script
           | ElabScriptStaging Name
           | FancyMsg [ErrorReportPart]
-  deriving (Eq, Functor, Data, Generic, Typeable)
+  deriving (Eq, Ord, Functor, Data, Generic, Typeable)
 
 type Err = Err' Term
 
@@ -820,7 +820,7 @@ data Raw = Var Name
          | RType
          | RUType Universe
          | RConstant Const
-  deriving (Show, Eq, Data, Generic, Typeable)
+  deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
 instance Sized Raw where
   size (Var name) = 1
