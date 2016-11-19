@@ -1440,6 +1440,7 @@ deriving instance Binary FnInfo
 data OptInfo = Optimise {
     inaccessible :: [(Int,Name)]  -- includes names for error reporting
   , detaggable :: Bool
+  , forceable :: [Int] -- argument positions which are forced by other values
   } deriving (Show, Generic)
 {-!
 deriving instance Binary OptInfo
@@ -2564,5 +2565,5 @@ usedNamesIn vars ist tm = nub $ ni 0 [] tm
 getErasureInfo :: IState -> Name -> [Int]
 getErasureInfo ist n =
     case lookupCtxtExact n (idris_optimisation ist) of
-        Just (Optimise inacc detagg) -> map fst inacc
+        Just (Optimise inacc detag force) -> map fst inacc
         Nothing -> []

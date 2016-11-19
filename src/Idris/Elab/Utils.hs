@@ -438,7 +438,7 @@ setDetaggable n = do
     let opt = idris_optimisation ist
     case lookupCtxt n opt of
         [oi] -> putIState ist { idris_optimisation = addDef n oi { detaggable = True } opt }
-        _    -> putIState ist { idris_optimisation = addDef n (Optimise [] True) opt }
+        _    -> putIState ist { idris_optimisation = addDef n (Optimise [] True []) opt }
 
 displayWarnings :: EState -> Idris ()
 displayWarnings est

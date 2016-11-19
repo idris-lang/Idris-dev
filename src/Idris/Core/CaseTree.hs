@@ -36,6 +36,7 @@ import Control.Monad.State
 import Data.List hiding (partition)
 import qualified Data.List (partition)
 import Data.Maybe
+import qualified Data.Set as S
 import Debug.Trace
 import GHC.Generics (Generic)
 
@@ -153,33 +154,34 @@ findCalls :: SC -> [Name] -> [(Name, [[Name]])]
 findCalls = findCalls' False
 
 findCalls' :: Bool -> SC -> [Name] -> [(Name, [[Name]])]
-findCalls' ignoreasserts sc topargs = nub $ nu' topargs sc where
-    nu' ps (Case _ n alts) = nub (concatMap (nua (n : ps)) alts)
-    nu' ps (ProjCase t alts) = nub $ nut ps t ++ concatMap (nua ps) alts
-    nu' ps (STerm t)     = nub $ nut ps t
-    nu' ps _ = []
+findCalls' ignoreasserts sc topargs = S.toList $ nu' topargs sc where
+    nu' ps (Case _ n alts) = S.unions $ map (nua (n : ps)) alts
+    nu' ps (ProjCase t alts) = S.unions $ nut ps t : map (nua ps) alts
+    nu' ps (STerm t)     = nut ps t
+    nu' ps _ = S.empty
 
-    nua ps (ConCase n i args sc) = nub (nu' (ps ++ args) sc)
-    nua ps (FnCase n args sc) = nub (nu' (ps ++ args) sc)
+    nua ps (ConCase n i args sc) = nu' (ps ++ args) sc
+    nua ps (FnCase n args sc) = nu' (ps ++ args) sc
     nua ps (ConstCase _ sc) = nu' ps sc
     nua ps (SucCase _ sc) = nu' ps sc
     nua ps (DefaultCase sc) = nu' ps sc
 
-    nut ps (P _ n _) | n `elem` ps = []
-                     | otherwise = [(n, [])] -- tmp
+    nut ps (P _ n _) | n `elem` ps = S.empty
+                     | otherwise = S.singleton (n, [])
     nut ps fn@(App _ f a)
         | (P _ n _, args) <- unApply fn
              = if ignoreasserts && n == sUN "assert_total"
-                  then []
+                  then S.empty
                   else if n `elem` ps
-                          then nut ps f ++ nut ps a
-                          else [(n, map argNames args)] ++ concatMap (nut ps) args
-        | (P (TCon _ _) n _, _) <- unApply fn = []
-        | otherwise = nut ps f ++ nut ps a
-    nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
+                          then S.union (nut ps f) (nut ps a)
+                          else S.insert (n, map argNames args) 
+                                   (S.unions $ map (nut ps) args)
+        | (P (TCon _ _) n _, _) <- unApply fn = S.empty
+        | otherwise = S.union (nut ps f) (nut ps a)
+    nut ps (Bind n (Let t v) sc) = S.union (nut ps v) (nut (n:ps) sc)
     nut ps (Proj t _) = nut ps t
     nut ps (Bind n b sc) = nut (n:ps) sc
-    nut ps _ = []
+    nut ps _ = S.empty
 
     argNames tm = let ns = directUse tm in
                       filter (\x -> x `elem` ns) topargs

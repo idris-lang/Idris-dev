@@ -86,11 +86,16 @@ elabClauses info' fc opts n_in cs =
            cs_elab <- mapM (elabClause info opts)
                            (zip [0..] cs)
            ctxt <- getContext
-           -- pats_raw is the version we'll work with at compile time:
-           -- no simplification or PE
+           -- pats_raw is the basic type checked version, no PE or forcing
+           let optinfo = idris_optimisation ist
            let (pats_in, cs_full) = unzip cs_elab
            let pats_raw = map (simple_lhs ctxt) pats_in
+           -- We'll apply forcing to the left hand side here, so that we don't
+           -- do any unnecessary case splits
+           let pats_forced = map (force_lhs optinfo) pats_raw
+
            logElab 3 $ "Elaborated patterns:\n" ++ show pats_raw
+           logElab 5 $ "Forced patterns:\n" ++ show pats_forced
 
            solveDeferred fc n
 
@@ -109,9 +114,10 @@ elabClauses info' fc opts n_in cs =
            -- If the definition is specialisable, this reduces the
            -- RHS
            pe_tm <- doPartialEval ist tpats
+
            let pats_pe = if petrans
-                            then map (simple_lhs ctxt) pe_tm
-                            else pats_raw
+                            then map (force_lhs optinfo . simple_lhs ctxt) pe_tm
+                            else pats_forced
 
            let tcase = opt_typecase (idris_options ist)
 
@@ -138,11 +144,19 @@ elabClauses info' fc opts n_in cs =
 
            -- addCaseDef builds case trees from <pdef> and <pdef'>
 
-           -- pdef is the compile-time pattern definition.
-           -- This will get further inlined to help with totality checking.
-           let pdef = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $ map debind pats_raw
+           -- pdef is the compile-time pattern definition, after forcing
+           -- optimisation applied to LHS
+           let pdef = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $ 
+                          map debind pats_forced
+           -- pdef_cov is the pattern definition without forcing, which
+           -- we feed to the coverage checker (we need to know what the
+           -- programmer wrote before forcing erasure)
+           let pdef_cov
+                    = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $ 
+                          map debind pats_raw
            -- pdef_pe is the one which will get further optimised
-           -- for run-time, and, partially evaluated
+           -- for run-time, with no forcing optimisation of the LHS because
+           -- the affects erasure. Also, it's partially evaluated
            let pdef_pe = map debind pats_transformed
 
            logElab 5 $ "Initial typechecked patterns:\n" ++ show pats_raw
@@ -171,12 +185,12 @@ elabClauses info' fc opts n_in cs =
            pmissing <-
                    if cov && not (hasDefault pats_raw)
                       then do -- Generate clauses from the given possible cases
-                              missing <- genClauses fc n (map getLHS pdef) cs_full
+                              missing <- genClauses fc n (map getLHS pdef_cov) cs_full
                               -- missing <- genMissing n scargs sc
                               missing' <- filterM (checkPossible info fc True n) missing
                               -- Filter out the ones which match one of the
                               -- given cases (including impossible ones)
-                              let clhs = map getLHS pdef
+                              let clhs = map getLHS pdef_cov
                               logElab 2 $ "Must be unreachable:\n" ++
                                           showSep "\n" (map showTmImpls missing') ++
                                          "\nAgainst: " ++
@@ -228,6 +242,7 @@ elabClauses info' fc opts n_in cs =
            putIState (ist { idris_patdefs = addDef n (force pdef_pe, force pmissing)
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (inlinable opts) (dictionary opts)
+
            case lookupTyExact n ctxt of
                Just ty ->
                    do ctxt' <- do ctxt <- getContext
@@ -238,7 +253,7 @@ elabClauses info' fc opts n_in cs =
                                                    (AssertTotal `elem` opts)
                                                    atys
                                                    inacc
-                                                   pats_pe
+                                                   pats_forced
                                                    pdef
                                                    pdef' ty
                                                    ctxt
@@ -329,8 +344,12 @@ elabClauses info' fc opts n_in cs =
 
     -- Simplify the left hand side of a definition, to remove any lets
     -- that may have arisen during elaboration
-    simple_lhs ctxt (Right (x, y)) = Right (Idris.Core.Evaluate.simplify ctxt [] x, y)
+    simple_lhs ctxt (Right (x, y)) 
+        = Right (Idris.Core.Evaluate.simplify ctxt [] x, y)
     simple_lhs ctxt t = t
+
+    force_lhs opts (Right (x, y)) = Right (forceWith opts x, y)
+    force_lhs opts t = t
 
     simple_rt ctxt (p, x, y) = (p, x, force (uniqueBinders p
                                                 (rt_simplify ctxt [] y)))
@@ -353,6 +372,28 @@ elabClauses info' fc opts n_in cs =
                 Just ns -> case partial_eval (tt_ctxt ist) ns pats of
                                 Just t -> return t
                                 Nothing -> ierror (At fc (Msg "No specialisation achieved"))
+
+forceWith :: Ctxt OptInfo -> Term -> Term
+forceWith opts lhs = -- trace (show lhs ++ "\n==>\n" ++ show (force lhs) ++ "\n----") $
+                      force lhs
+  where
+    -- If there's forced arguments, erase them
+    force ap@(App _ _ _)
+       | (fn@(P _ c _), args) <- unApply ap,
+         Just copt <- lookupCtxtExact c opts
+            = let args' = eraseArg 0 (forceable copt) args in
+                  mkApp fn (map force args')
+    force (App t f a)
+       = App t (force f) (force a)
+    -- We might have pat bindings, so go under them
+    force (Bind n b sc) = Bind n b (force sc)
+    -- Everything else, leave it alone
+    force t = t
+
+    eraseArg i fs (n : ns) | i `elem` fs = Erased : eraseArg (i + 1) fs ns
+                           | otherwise = n : eraseArg (i + 1) fs ns
+    eraseArg i _ [] = []
+
 
 -- | Find 'static' applications in a term and partially evaluate them.
 -- Return any new transformation rules
@@ -667,7 +708,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                                then recheckC_borrowing False (PEGenerated `notElem` opts)
                                                        [] (constraintNS info) fc id [] lhs_tm
                                else return (lhs_tm, lhs_ty)
-        let clhs = Idris.Core.Evaluate.simplify ctxt [] clhs_c
+        let clhs = normalise ctxt [] clhs_c
         let borrowed = borrowedNames [] clhs
 
         -- These are the names we're not allowed to use on the RHS, because
@@ -925,7 +966,9 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let ret_ty = getRetTy (explicitNames (normalise ctxt [] lhs_ty))
         let static_names = getStaticNames i lhs_tm
         logElab 5 (show lhs_tm ++ "\n" ++ show static_names)
-        (clhs, clhsty) <- recheckC (constraintNS info) fc id [] lhs_tm
+        (clhs_c, clhsty) <- recheckC (constraintNS info) fc id [] lhs_tm
+        let clhs = normalise ctxt [] clhs_c
+
         logElab 5 ("Checked " ++ show clhs)
         let bargs = getPBtys (explicitNames (normalise ctxt [] lhs_tm))
         let wval = rhs_trans info $ addImplBound i (map fst bargs) wval_in

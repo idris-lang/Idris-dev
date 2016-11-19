@@ -41,7 +41,7 @@ module Idris.ASTUtils(
     Field(), cg_usedpos, ctxt_lookup, fgetState, fmodifyState
   , fputState, idris_fixities, ist_callgraph, ist_optimisation
   , known_interfaces, known_terms, opt_detaggable, opt_inaccessible
-  , opts_idrisCmdline, repl_definitions
+  , opt_forceable, opts_idrisCmdline, repl_definitions
   ) where
 
 import Idris.AbsSyntaxTree
@@ -111,6 +111,7 @@ ist_optimisation n =
       maybe_default Optimise
         { inaccessible = []
         , detaggable = False
+        , forceable = []
         }
     . ctxt_lookup n
     . Field idris_optimisation (\v ist -> ist{ idris_optimisation = v })
@@ -122,6 +123,8 @@ opt_inaccessible = Field inaccessible (\v opt -> opt{ inaccessible = v })
 opt_detaggable :: Field OptInfo Bool
 opt_detaggable = Field detaggable (\v opt -> opt{ detaggable = v })
 
+opt_forceable :: Field OptInfo [Int]
+opt_forceable = Field forceable (\v opt -> opt{ forceable = v })
 
 -- | callgraph record for the given (exact) name
 ist_callgraph :: Name -> Field IState CGInfo

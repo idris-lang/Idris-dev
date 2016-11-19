@@ -134,7 +134,7 @@ performUsageAnalysis startNames = do
 
     checkAccessibility :: Ctxt OptInfo -> (Name, IntMap (Set Reason)) -> Idris ()
     checkAccessibility opt (n, reachable)
-        | Just (Optimise inaccessible dt) <- lookupCtxtExact n opt
+        | Just (Optimise inaccessible dt force) <- lookupCtxtExact n opt
         , eargs@(_:_) <- [fmt n (S.toList rs) | (i,n) <- inaccessible, rs <- maybeToList $ IM.lookup i reachable]
         = warn $ show n ++ ": inaccessible arguments reachable:\n  " ++ intercalate "\n  " eargs
 

@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 154
+ibcVersion = 155
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -2396,13 +2396,15 @@ instance Binary RecordInfo where
                return (RI x1 x2 x3)
 
 instance Binary OptInfo where
-        put (Optimise x1 x2)
+        put (Optimise x1 x2 x3)
           = do put x1
                put x2
+               put x3
         get
           = do x1 <- get
                x2 <- get
-               return (Optimise x1 x2)
+               x3 <- get
+               return (Optimise x1 x2 x3)
 
 instance Binary FnInfo where
         put (FnInfo x1)

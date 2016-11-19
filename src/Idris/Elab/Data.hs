@@ -189,9 +189,13 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
 
          -- Check that the constructor type is, in fact, a part of the family being defined
          tyIs n cty'
+         let force = if tn == sUN "Delayed" 
+                        then [] -- TMP HACK! Totality checker needs this info
+                        else forceArgs ctxt cty'
 
          logElab 5 $ show fc ++ ":Constructor " ++ show n ++ " elaborated : " ++ show t
          logElab 5 $ "Inaccessible args: " ++ show inacc
+         logElab 5 $ "Forceable args: " ++ show force
          logElab 2 $ "---> " ++ show n ++ " : " ++ show cty
 
          -- Add to the context (this is temporary, so that later constructors
@@ -206,6 +210,7 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
          addDocStr n doc' argDocs'
          addIBC (IBCDoc n)
          fputState (opt_inaccessible . ist_optimisation n) inacc
+         fputState (opt_forceable . ist_optimisation n) force
          addIBC (IBCOpt n)
          return (n, cty)
   where
@@ -254,6 +259,47 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
     checkUniqueKind (UType AllTypes) _
         = tclift $ tfail (At fc (UniqueKindError AllTypes n))
     checkUniqueKind _ _ = return ()
+
+forceArgs :: Context -> Type -> [Int]
+forceArgs ctxt ty = forceFrom 0 ty
+  where
+    -- for each argument, substitute in MN pos "FF"
+    -- then when we look at the return type, if we see MN pos name
+    -- constructor guarded, then 'pos' is a forceable position
+    forceFrom :: Int -> Type -> [Int]
+    forceFrom i (Bind n (Pi _ _ _) sc)
+       = forceFrom (i + 1) (substV (P Ref (sMN i "FF") Erased) sc)
+    forceFrom i sc 
+        -- Go under the top level type application
+        -- We risk affecting erasure of more complex indices, so we'll only
+        -- mark something forced if *everything* which appears in an index
+        -- is forceable
+        -- (FIXME: Actually the real risk is if we erase something a programmer
+        -- definitely wants, which is particularly the case with 'views'.
+        -- So perhaps we need a way of marking that in the source?)
+        | (P _ ty _, args) <- unApply sc
+             = if null (concatMap (findNonForcePos True) args)
+                  then nub (concatMap findForcePos args)
+                  else []
+    forceFrom i sc = []
+
+    findForcePos (P _ (MN i ff) _)
+        | ff == txt "FF" = [i]
+    -- Only look under constructors in applications
+    findForcePos ap@(App _ f a)
+        | (P _ con _, args) <- unApply ap,
+          isDConName con ctxt 
+            = nub $ concatMap findForcePos args
+    findForcePos _ = []
+
+    findNonForcePos fok (P _ (MN i ff) _)
+        | ff == txt "FF" = if fok then [] else [i]
+    -- Look under non-constructors in applications for things which can't
+    -- be forced 
+    findNonForcePos fok ap@(App _ f a)
+        | (P _ con _, args) <- unApply ap
+            = nub $ concatMap (findNonForcePos (fok && isConName con ctxt)) args
+    findNonForcePos _ _ = []
 
 addParamConstraints :: FC -> [Int] -> Type -> [(Name, Type)] -> Idris ()
 addParamConstraints fc ps cty cons
