@@ -1,5 +1,7 @@
 import Data.Vect
 
+%default total
+  
 interface ArrayM where
   Array : (n : Nat) -> (a : Type) -> Type
   

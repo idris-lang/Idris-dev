@@ -566,7 +566,7 @@ checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- getIState
         let lhs = addImplPat i lhs_in
-        logLvl 10 $ "Trying missing case: " ++ showTmImpls lhs
+        logElab 10 $ "Trying missing case: " ++ showTmImpls lhs
         -- if the LHS type checks, it is possible
         case elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
                             (erun fc (buildTC i info ELHS [] fname
@@ -577,10 +577,17 @@ checkPossible info fc tcgen fname lhs_in
                   processTacticDecls info newDecls
                   sendHighlighting highlights
                   updateIState $ \i -> i { idris_name = newGName }
-                  let lhs_tm = orderPats (getInferTerm lhs')
-                  case recheck (constraintNS info) ctxt' [] (forget lhs_tm) lhs_tm of
-                       OK _ -> return True
-                       err -> return False
+                  let lhs_tm = normalise ctxt [] (orderPats (getInferTerm lhs'))
+                  let emptyPat = hasEmptyPat ctxt (idris_datatypes i) lhs_tm
+                  if emptyPat then 
+                     do logElab 10 $ "Empty type in pattern "
+                        return False
+                    else
+                      case recheck (constraintNS info) ctxt' [] (forget lhs_tm) lhs_tm of
+                           OK _ -> do logElab 10 $ "Valid"
+                                      return True
+                           err -> do logElab 10 $ "Conversion failure"
+                                     return False
             -- if it's a recoverable error, the case may become possible
             Error err -> do logLvl 10 $ "Impossible case " ++ show err
                             if tcgen then return (recoverableCoverage ctxt err)

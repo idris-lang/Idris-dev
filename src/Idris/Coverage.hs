@@ -280,22 +280,22 @@ genAll i (addPH, args)
     nc' o = o
 
     otherPats :: PTerm -> [PTerm]
-    otherPats o@(PRef fc hl n) = ph $ ops fc n [] o
-    otherPats o@(PApp _ (PRef fc hl n) xs) = ph $ ops fc n xs o
-    otherPats o@(PPair fc hls _ l r)
+    otherPats (PRef fc hl n) = ph $ ops fc n []
+    otherPats (PApp _ (PRef fc hl n) xs) = ph $ ops fc n xs
+    otherPats (PPair fc hls _ l r)
         = ph $ ops fc pairCon
                 ([pimp (sUN "A") Placeholder True,
                   pimp (sUN "B") Placeholder True] ++
-                 [pexp l, pexp r]) o
-    otherPats o@(PDPair fc hls p t _ v)
+                 [pexp l, pexp r])
+    otherPats (PDPair fc hls p t _ v)
         = ph $ ops fc sigmaCon
                 ([pimp (sUN "a") Placeholder True,
                   pimp (sUN "P") Placeholder True] ++
-                 [pexp t,pexp v]) o
+                 [pexp t,pexp v])
     otherPats o@(PConstant _ c) = ph [o, nextConst o]
     otherPats arg = return Placeholder
 
-    ops fc n xs o
+    ops fc n xs 
         | (TyDecl c@(DCon _ arity _) ty : _) <- lookupDef n (tt_ctxt i)
             = do xs' <- mapM otherPats (map getExpTm xs)
                  let p = resugar (PApp fc (PRef fc [] n) (zipWith upd xs' xs))
@@ -303,7 +303,7 @@ genAll i (addPH, args)
                  case lookupCtxt tyn (idris_datatypes i) of
                          (TI ns _ _ _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
                          _ -> [p]
-    ops fc n arg o = return Placeholder
+    ops fc n arg = return Placeholder
 
     getExpTm (PImp _ True _ _ _) = Placeholder -- machine inferred, no point!
     getExpTm t = getTm t

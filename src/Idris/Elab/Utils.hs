@@ -542,4 +542,32 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
                              return (App s f' a')
     getPats t = return t
 
+isEmpty :: Context -> Ctxt TypeInfo -> Type -> Bool
+isEmpty ctxt tyctxt ty
+    | (P _ tyname _, args) <- unApply (getRetTy ty),
+      Just tyinfo <- lookupCtxtExact tyname tyctxt
+      -- Compare all the constructor types against the type we need
+      -- If they *all* have an argument position where some constructor
+      -- clases with the needed type, then the type we're looking for must
+      -- be empty
+         = let neededty = getRetTy ty
+               contys = mapMaybe getConType (con_names tyinfo) in
+                 all (findClash neededty) contys
+  where
+    getConType n = do t <- lookupTyExact n ctxt
+                      return (getRetTy (normalise ctxt [] t))
 
+    findClash l r
+       | (P _ n _, _) <- unApply l,
+         (P _ n' _, _) <- unApply r,
+         isConName n ctxt && isConName n' ctxt, n /= n' 
+           = True
+    findClash (App _ f a) (App _ f' a') = findClash f f' || findClash a a'
+    findClash l r = False
+
+isEmpty ctxt tyinfo ty = False
+
+hasEmptyPat :: Context -> Ctxt TypeInfo -> Term -> Bool
+hasEmptyPat ctxt tyctxt (Bind n (PVar ty) sc)
+    = isEmpty ctxt tyctxt ty || hasEmptyPat ctxt tyctxt sc
+hasEmptyPat ctxt tyctxt _ = False
