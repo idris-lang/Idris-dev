@@ -51,6 +51,7 @@ import Idris.Prover
 import Idris.REPL.Browse (namesInNS, namespacesInNS)
 import Idris.REPL.Commands
 import Idris.REPL.Parser
+import Idris.Termination
 import Idris.TypeSearch (searchByType)
 import Idris.WhoCalls
 import IRTS.Compiler

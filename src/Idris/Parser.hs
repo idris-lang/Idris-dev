@@ -32,6 +32,7 @@ import Idris.Parser.Expr
 import Idris.Parser.Helpers
 import Idris.Parser.Ops
 import Idris.Providers
+import Idris.Termination
 import Idris.Unlit
 
 import Util.DynamicLinker

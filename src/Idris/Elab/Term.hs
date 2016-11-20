@@ -19,8 +19,7 @@ import Idris.Core.TT
 import Idris.Core.Typecheck (check, converts, isType, recheck)
 import Idris.Core.Unify
 import Idris.Core.WHNF (whnf)
-import Idris.Coverage (buildSCG, checkDeclTotality, checkPositive, genClauses,
-                       recoverableCoverage, validCoverageCase)
+import Idris.Coverage (genClauses, recoverableCoverage, validCoverageCase)
 import Idris.Delaborate
 import Idris.DSL
 import Idris.Elab.Quasiquote (extractUnquotes)
@@ -31,6 +30,7 @@ import Idris.ErrReverse (errReverse)
 import Idris.Output (pshow)
 import Idris.ProofSearch
 import Idris.Reflection
+import Idris.Termination(buildSCG, checkDeclTotality, checkPositive)
 
 import qualified Util.Pretty as U
 

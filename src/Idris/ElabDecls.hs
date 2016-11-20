@@ -45,6 +45,7 @@ import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
 import Idris.PartialEval
 import Idris.Primitives
 import Idris.Providers
+import Idris.Termination
 import IRTS.Lang
 
 import Util.Pretty (pretty, text)
