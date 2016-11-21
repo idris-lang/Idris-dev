@@ -5,7 +5,7 @@
 * `record` syntax now allows updating fields, including nested fields,
   by applying a function using the `$=` operator.  For example:
 
-  ```
+  ```idris
   record Score where
          constructor MkScore
          correct : Nat
@@ -23,9 +23,9 @@
 
 * Implicit parameter to interfaces are now allowed. For example:
 
-  ```
+  ```idris
   interface Shows (ts : Vect k Type) where
-  shows : HVect ts -> Vect k String
+    shows : HVect ts -> Vect k String
   ```
   In this interface, `k` is an implicit parameter, but previously needed to
   be explicit
