@@ -497,9 +497,18 @@ buildDepMap ci used externs ctx startNames
         Nothing -> error $ "Erasure/getArity: definition not found for " ++ show n
 
     -- convert applications of lambdas to lets
-    -- Note that this transformation preserves de bruijn numbering
+    -- note that this transformation preserves de bruijn numbering
     lamToLet :: Term -> Term
-    lamToLet (App _ (Bind n (Lam ty) tm) val) = Bind n (Let ty val) tm
+    lamToLet tm = lamToLet' args f
+      where
+        (f, args) = unApply tm
+
+    lamToLet' :: [Term] -> Term -> Term
+    lamToLet' (v:vs) (Bind n (Lam ty) tm) = Bind n (Let ty v) $ lamToLet' vs tm
+    lamToLet'    []  tm = tm
+    lamToLet'    vs  tm = error $
+        "Erasure.hs:lamToLet': unexpected input: "
+            ++ "vs = " ++ show vs ++ ", tm = " ++ show tm
 
     -- split "\x_i -> T(x_i)" into [x_i] and T
     unfoldLams :: Term -> ([Name], Term)
