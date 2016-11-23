@@ -1,4 +1,4 @@
-resolver: lts-7.0
+resolver: lts-7.10
 
 packages:
   - location: .
@@ -10,7 +10,7 @@ flags:
 
 extra-deps:
   - libffi-0.1
-
+  - safe-0.3.9
 nix:
   enable: false
   shell-file: stack-shell.nix
