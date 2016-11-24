@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Coverage
 Description : The coverage and totality checkers for Idris are in this module.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

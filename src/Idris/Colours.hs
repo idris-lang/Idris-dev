@@ -2,7 +2,7 @@
 {-|
 Module      : Idris.Colours
 Description : Support for colours within Idris.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

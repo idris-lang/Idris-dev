@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Provider
 Description : Code to elaborate type providers.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

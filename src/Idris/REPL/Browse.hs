@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.REPL.Browse
 Description : Browse the current namespace.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

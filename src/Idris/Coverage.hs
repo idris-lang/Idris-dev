@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Coverage
 Description : Clause generation for coverage checking
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

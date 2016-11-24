@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.CaseTree
 Description : Module to define and interact with case trees.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

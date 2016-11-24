@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Help
 Description : Utilities to aid with the REPL's HELP system.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

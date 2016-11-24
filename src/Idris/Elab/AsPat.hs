@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.AsPat
 Description : Code to elaborate pattern variables.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

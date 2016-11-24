@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Providers
 Description : Idris' 'Type Provider' implementation.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

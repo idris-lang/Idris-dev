@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.IdrisDoc
 Description : Generation of HTML documentation for Idris code
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

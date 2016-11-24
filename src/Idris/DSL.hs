@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.DSL
 Description : Code to deal with DSL blocks.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

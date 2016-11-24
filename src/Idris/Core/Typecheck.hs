@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.Typecheck
 Description : Idris' type checker.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
