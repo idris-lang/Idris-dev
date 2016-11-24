@@ -56,9 +56,9 @@ before_install:
   - env
   - if [[ $TRAVIS_OS_NAME == 'osx' ]];
     then
-        brew update; brew install ghc; brew install cabal-install;
-        brew install libffi; brew install pkg-config; brew install cppcheck;
-        brew install gnu-sed;
+        brew update;
+        brew outdated pkgconfig || brew install pkgconfig;
+        brew install ghc cabal-install libffi cppcheck gnu-sed;
         export PATH=$HOME/.cabal/bin:$PATH;
         export SED=gsed;
         export ZCAT=gzcat;
