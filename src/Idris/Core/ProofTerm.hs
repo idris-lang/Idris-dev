@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.ProofTerm
 Description : Proof term. implementation and utilities.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

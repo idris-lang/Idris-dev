@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Interface
 Description : Code to elaborate interfaces.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

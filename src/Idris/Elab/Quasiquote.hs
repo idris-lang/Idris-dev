@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Quasiquote
 Description : Code to elaborate quasiquotations.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Parser.Data
 Description : Parse Data declarations.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

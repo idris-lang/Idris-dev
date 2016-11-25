@@ -1,7 +1,7 @@
 {-|
 Module      : Util.System
 Description : Utilities for interacting with the system.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Util.DynamicLinker
 Description : Platform-specific dynamic linking support. Add new platforms to this file through conditional compilation.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

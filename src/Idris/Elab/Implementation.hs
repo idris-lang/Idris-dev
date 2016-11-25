@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Implementation
 Description : Code to elaborate instances.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

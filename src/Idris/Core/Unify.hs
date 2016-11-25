@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.Unify
 Description : Idris' unification code.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

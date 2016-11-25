@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.WhoCalls
 Description : Find function callers and callees.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

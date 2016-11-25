@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Output
 Description : Utilities to display Idris' internals and other informtation to the user.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

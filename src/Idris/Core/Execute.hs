@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.Execute
 Description : Execute Idris code and deal with FFI.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

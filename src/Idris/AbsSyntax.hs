@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.AbsSyntax
 Description : Provides Idris' core data definitions and utility code.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

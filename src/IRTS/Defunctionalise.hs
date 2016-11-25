@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.Defunctionalise
 Description : Defunctionalise Idris' IR.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

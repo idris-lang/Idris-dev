@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Chaser
 Description : Module chaser to determine cycles and import modules.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

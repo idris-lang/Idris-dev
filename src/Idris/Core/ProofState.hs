@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.ProofState
 Description : Proof state implementation.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

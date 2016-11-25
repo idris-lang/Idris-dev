@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.Lang
 Description : Internal representation of Idris' constructs.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

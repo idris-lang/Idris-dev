@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.ErrReverse
 Description : Utility to make errors readable using transformations.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

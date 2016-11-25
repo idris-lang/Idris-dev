@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.Inliner
 Description : Inline expressions.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

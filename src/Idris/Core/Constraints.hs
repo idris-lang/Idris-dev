@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.Constraints
 Description : Check universe constraints.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

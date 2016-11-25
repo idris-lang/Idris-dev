@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.Simplified
 Description : Simplified expressions, where functions/constructors can only be applied to variables.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

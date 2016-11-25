@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.ASTUtils
 Description : This implements just a few basic lens-like concepts to ease state updates. Similar to fclabels in approach, just without the extra dependency.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

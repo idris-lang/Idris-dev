@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.Portable
 Description : Serialise Idris' IR to JSON.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

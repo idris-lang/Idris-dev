@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Term
 Description : Code to elaborate terms.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

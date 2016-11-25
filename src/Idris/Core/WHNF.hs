@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.WHNF
 Description : Reduction to Weak Head Normal Form
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

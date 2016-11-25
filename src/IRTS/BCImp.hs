@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.BCImp
 Description : Bytecode for a register/variable based VM (e.g. for generating code in an imperative language where we let the language deal with GC)
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

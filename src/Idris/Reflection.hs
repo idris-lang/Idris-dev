@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Reflection
 Description : Code related to Idris's reflection system. This module contains quoters and unquoters along with some supporting datatypes.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

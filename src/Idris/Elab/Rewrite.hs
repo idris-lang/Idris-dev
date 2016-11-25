@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Rewrite
 Description : Code to elaborate rewrite rules.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.Evaluate
 Description : Evaluate Idris expressions.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

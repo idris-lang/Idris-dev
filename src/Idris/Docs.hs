@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Docs
 Description : Data structures and utilities to work with Idris Documentation.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

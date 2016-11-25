@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.Compiler
 Description : Coordinates the compilation process.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

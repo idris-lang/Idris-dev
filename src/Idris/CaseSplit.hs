@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.CaseSplit
 Description : Module to provide case split functionality.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

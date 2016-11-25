@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Type
 Description : Code to elaborate types.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
