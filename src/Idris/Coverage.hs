@@ -6,7 +6,8 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE PatternGuards #-}
-module Idris.Coverage where
+module Idris.Coverage(genClauses, validCoverageCase, recoverableCoverage,
+                      mkPatTm) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree
@@ -61,100 +62,267 @@ mkPatTm t = do i <- getIState
 --
 -- This will only work after the given clauses have been typechecked and the
 -- names are fully explicit!
-genClauses :: FC -> Name -> [Term] -> [PTerm] -> Idris [PTerm]
-genClauses fc n xs given
+genClauses :: FC -> Name -> [([Name], Term)] -> -- (Argument names, LHS) 
+              [PTerm] -> Idris [PTerm]
+-- No clauses (only valid via elab reflection). We should probably still do
+-- a check here somehow, e.g. that one of the arguments is an obviously
+-- empty type. In practice, this should only really be used for Void elimination.
+genClauses fc n lhs_tms [] = return [] 
+genClauses fc n lhs_tms given
    = do i <- getIState
-        let lhs_tms = map (\x -> flattenArgs $ delab' i x True True) xs
-        -- if a placeholder was given, don't bother generating cases for it
-        let lhs_tms' = zipWith mergePlaceholders lhs_tms
-                          (map (stripUnmatchable i) (map flattenArgs given))
-        let lhss = map pUnApply lhs_tms'
-        nty <- case lookupTyExact n (tt_ctxt i) of
-                    Just t -> return (normalise (tt_ctxt i) [] t)
-                    _ -> fail "Can't happen - genClauses, lookupTyExact"
+      
+        let lhs_given = zipWith removePlaceholders lhs_tms 
+                            (map (stripUnmatchable i) (map flattenArgs given))
 
-        let argss = transpose lhss
-        let all_args = map (genAll i) (zip (genPH i nty) argss)
-        logCoverage 5 $ "COVERAGE of " ++ show n
-        logCoverage 5 $ "using type " ++ show nty
-        logCoverage 5 $ "non-concrete args " ++ show (genPH i nty)
+        let givenpos = mergePos (map getGivenPos given)
 
-        logCoverage 5 $ show (lhs_tms, lhss)
-        logCoverage 5 $ "Args are: " ++ show argss
-        logCoverage 5 $ show (map length argss) ++ "\nAll args:\n" ++ show (map length all_args)
-        logCoverage 10 $ "All args are: " ++ show all_args
-        logCoverage 3 $ "Original: \n" ++
-             showSep "\n" (map (\t -> showTmImpls (delab' i t True True)) xs)
-        -- add an infinite supply of explicit arguments to update the possible
-        -- cases for (the return type may be variadic, or function type, so
-        -- there may be more case splitting that the idris_implicits record
-        -- suggests)
-        let parg = case lookupCtxt n (idris_implicits i) of
-                        (p : _) ->
-                          p ++ repeat (PExp 0 [] (sMN 0 "gcarg") Placeholder)
-                        _       -> repeat (pexp Placeholder)
-        let tryclauses = mkClauses parg all_args
-        logCoverage 3 $ show (length tryclauses) ++ " initially to check"
-        logCoverage 2 $ showSep "\n" (map (showTm i) tryclauses)
+        (cns, ctree_in) <- 
+                         case simpleCase False (UnmatchedCase "Undefined") False
+                              (CoverageCheck givenpos) emptyFC [] []
+                              lhs_given 
+                              (const []) of
+                           OK (CaseDef cns ctree_in _) ->
+                              return (cns, ctree_in)
+                           Error e -> tclift $ tfail $ At fc e
+            
+        let ctree = trimOverlapping (addMissingCons i ctree_in)
+        let (coveredas, missingas) = mkNewClauses (tt_ctxt i) n cns ctree
+        let covered = map (\t -> delab' i t True True) coveredas
+        let missing = filter (\x -> x `notElem` covered) $
+                          map (\t -> delab' i t True True) missingas
 
-        let xsdelab = map (\x -> stripUnmatchable i (delab' i x True True)) xs
-        let new = filter (noMatch i xsdelab) tryclauses
-        logCoverage 2 $ show (length new) ++ " clauses to check for impossibility"
-        logCoverage 4 $ "New clauses: \n" ++ showSep "\n" (map (showTm i) new)
---           ++ " from:\n" ++ showSep "\n" (map (showImp True) tryclauses)
-        return new
---         return (map (\t -> PClause n t [] PImpossible []) new)
-  where getLHS i term
-            | (f, args) <- unApply term = map (\t -> delab' i t True True) args
-            | otherwise = []
-
-        -- if an argument has a non-concrete type (i.e. it's a function
-        -- that calculates something from a previous argument) we'll also
-        -- need to generate a placeholder pattern for it since it could be
-        -- anything based on earlier values
-        genPH :: IState -> Type -> [Bool]
-        genPH ist (Bind n (Pi _ ty _) sc) = notConcrete ist ty : genPH ist sc
-        genPH ist ty = []
-
-        notConcrete ist t | (P _ n _, args) <- unApply t,
-                           not (isConName n (tt_ctxt ist)) = True
-        notConcrete _ _ = False
-
-        pUnApply (PApp _ f args) = map getTm args
-        pUnApply _ = []
-
+        logCoverage 5 $ "Coverage from case tree for " ++ show n ++ ": " ++ show ctree
+        logCoverage 2 $ show (length missing) ++ " missing clauses for " ++ show n
+        logCoverage 3 $ "Missing clauses:\n" ++ showSep "\n" 
+                              (map showTmImpls missing)
+        logCoverage 10 $ "Covered clauses:\n" ++ showSep "\n" 
+                              (map showTmImpls covered)
+        return missing
+    where
         flattenArgs (PApp fc (PApp _ f as) as')
              = flattenArgs (PApp fc f (as ++ as'))
         flattenArgs t = t
 
-        -- Return whether the given clause matches none of the input clauses
-        -- (xs)
-        noMatch i xs tm = all (\x -> case matchClause i x tm of
-                                          Right ms -> False
-                                          Left miss -> True) xs
+getGivenPos :: PTerm -> [Int]
+getGivenPos (PApp _ _ pargs) = getGiven 0 (map getTm pargs)
+  where
+    getGiven i (Placeholder : tms) = getGiven (i + 1) tms
+    getGiven i (_ : tms) = i : getGiven (i + 1) tms
+    getGiven i [] = []
+getGivenPos _ = []
+
+-- Return a list of Ints which are in every list
+mergePos :: [[Int]] -> [Int]
+mergePos [] = []
+mergePos [x] = x
+mergePos (x : xs) = intersect x (mergePos xs)
+
+removePlaceholders :: ([Name], Term) -> PTerm -> ([Name], Term, Term)
+removePlaceholders (ns, tm) ptm = (ns, tm, Erased) -- rp tm ptm, Erased)
+  where
+    rp tm Placeholder = Erased
+    rp tm (PApp _ pf pargs)
+       | (tf, targs) <- unApply tm
+           = let tf' = rp tf pf
+                 targs' = zipWith rp targs (map getTm pargs) in
+                 mkApp tf' targs'
+    rp tm (PPair _ _ _ pl pr)
+       | (tf, [tyl, tyr, tl, tr]) <- unApply tm
+           = let tl' = rp tl pl
+                 tr' = rp tr pr in
+                 mkApp tf [Erased, Erased, tl', tr'] 
+    rp tm (PDPair _ _ _ pl pt pr)
+       | (tf, [tyl, tyr, tl, tr]) <- unApply tm
+           = let tl' = rp tl pl
+                 tr' = rp tr pr in
+                 mkApp tf [Erased, Erased, tl', tr'] 
+    rp tm _ = tm
+
+mkNewClauses :: Context -> Name -> [Name] -> SC -> ([Term], [Term])
+mkNewClauses ctxt fn ns sc 
+     = (map (mkPlApp (P Ref fn Erased)) $
+            mkFromSC True (map (\n -> P Ref n Erased) ns) sc,
+        map (mkPlApp (P Ref fn Erased)) $
+            mkFromSC False (map (\n -> P Ref n Erased) ns) sc)
+  where
+    mkPlApp f args = mkApp f (map erasePs args)
+
+    erasePs ap@(App t f a) 
+        | (f, args) <- unApply ap = mkApp f (map erasePs args)
+    erasePs (P _ n _) | not (isConName n ctxt) = Erased
+    erasePs tm = tm
+
+    mkFromSC :: Bool -> [Term] -> SC -> [[Term]]
+    mkFromSC cov args (STerm _) = if cov then [args] else [] -- leaf of provided case
+    mkFromSC cov args (UnmatchedCase _) = if cov then [] else [args] -- leaf of missing case
+    mkFromSC cov args ImpossibleCase = []
+    mkFromSC cov args (Case _ x alts)
+       = concatMap (mkFromAlt cov args x) alts
+    mkFromSC cov args _ = [] -- Should never happen
+
+    mkFromAlt :: Bool -> [Term] -> Name -> CaseAlt -> [[Term]]
+    mkFromAlt cov args x (ConCase c t conargs sc)
+       = let argrep = mkApp (P (DCon t (length args) False) c Erased)
+                            (map (\n -> P Ref n Erased) conargs)
+             args' = map (subst x argrep) args in
+             mkFromSC cov args' sc
+    mkFromAlt cov args x (ConstCase c sc)
+       = let argrep = Constant c 
+             args' = map (subst x argrep) args in
+             mkFromSC cov args' sc
+    mkFromAlt cov args x (DefaultCase sc)
+       = mkFromSC cov args sc
+    mkFromAlt cov _ _ _ = []
+
+-- Modify the generated case tree (the case tree builder doesn't have access
+-- to the context, so can't do this itself).
+-- Replaces any missing cases with explicit cases for the missing constructors
+addMissingCons :: IState -> SC -> SC
+addMissingCons ist (Case t n alts) = Case t n (addMissingAlts n alts)
+  where
+    addMissingAlt :: CaseAlt -> CaseAlt
+    addMissingAlt (ConCase n i ns sc) = ConCase n i ns (addMissingCons ist sc)
+    addMissingAlt (FnCase n ns sc) = FnCase n ns (addMissingCons ist sc)
+    addMissingAlt (ConstCase c sc) = ConstCase c (addMissingCons ist sc)
+    addMissingAlt (SucCase n sc) = SucCase n (addMissingCons ist sc)
+    addMissingAlt (DefaultCase sc) = DefaultCase (addMissingCons ist sc)
+
+    -- TODO: deal with constants
+    addMissingAlts argn as 
+--          | any hasDefault as = map addMissingAlt as
+         | cons@(n:_) <- mapMaybe collectCons as,
+           Just tyn <- getConType n,
+           Just ti <- lookupCtxtExact tyn (idris_datatypes ist)
+             -- If we've fallen through on this argument earlier, then the
+             -- things which were matched in other cases earlier can't be missing
+             -- cases now
+             = let missing = con_names ti \\ cons in
+                   map addMissingAlt $ addCases missing as
+         | consts@(n:_) <- mapMaybe collectConsts as
+             = let missing = nub (map nextConst consts) \\ consts in
+                   map addMissingAlt $ addCons missing as
+    addMissingAlts n as = map addMissingAlt as
+
+    -- Add the constructors already ruled out for an argument (because
+    -- we've fallen through those cases)
+    addArgCons argn cons [] = [(argn, cons)]
+    addArgCons argn cons ((a, cs) : ms)
+         | a == argn = ((a, nub (cons ++ cs)) : ms)
+    addArgCons argn cons (m : ms) = m : addArgCons argn cons ms
 
 
-        mergePlaceholders :: PTerm -> PTerm -> PTerm
-        mergePlaceholders x Placeholder = Placeholder
-        mergePlaceholders (PApp fc f args) (PApp fc' f' args')
-            = PApp fc' f' (zipWith mergePArg args args')
-           where mergePArg x y = let xtm = mergePlaceholders (getTm x) (getTm y) in
-                                     x { getTm = xtm}
-        mergePlaceholders x _ = x
+    addCases missing [] = []
+    addCases missing (DefaultCase rhs : rest)
+       = mapMaybe (genMissingAlt rhs) missing ++ rest
+    addCases missing (c : rest) = c : addCases missing rest
 
-        mkClauses :: [PArg] -> [[PTerm]] -> [PTerm]
-        mkClauses parg args
-            | all (== [Placeholder]) args = []
-        mkClauses parg args
-            = do args' <- mkArg args
-                 let tm = PApp fc (PRef fc [] n) (zipWith upd args' parg)
-                 return tm
-          where
-            mkArg :: [[PTerm]] -> [[PTerm]]
-            mkArg [] = return []
-            mkArg (a : as) = do a' <- a
-                                as' <- mkArg as
-                                return (a':as')
+    addCons missing [] = []
+    addCons missing (DefaultCase rhs : rest)
+       = map (genMissingConAlt rhs) missing ++ rest
+    addCons missing (c : rest) = c : addCons missing rest
+
+    genMissingAlt rhs n
+         | Just (TyDecl (DCon tag arity _) ty) <- lookupDefExact n (tt_ctxt ist)
+             = Just $ ConCase n tag (map (\i -> sMN i "miss") [0..arity-1])
+                             rhs
+         | otherwise = Nothing
+
+    genMissingConAlt rhs n = ConstCase n rhs
+
+    collectCons (ConCase n i args sc) = Just n
+    collectCons _ = Nothing
+
+    collectConsts (ConstCase c sc) = Just c
+    collectConsts _ = Nothing
+
+    hasDefault (DefaultCase (UnmatchedCase _)) = False
+    hasDefault (DefaultCase _) = True
+    hasDefault _ = False
+
+    getConType n = do ty <- lookupTyExact n (tt_ctxt ist)
+                      case unApply (getRetTy (normalise (tt_ctxt ist) [] ty)) of
+                           (P _ tyn _, _) -> Just tyn
+                           _ -> Nothing
+    
+    -- for every constant in a term (at any level) take next one to make sure
+    -- that constants which are not explicitly handled are covered
+    nextConst (I c) = I (c + 1)
+    nextConst (BI c) = BI (c + 1)
+    nextConst (Fl c) = Fl (c + 1)
+    nextConst (B8 c) = B8 (c + 1)
+    nextConst (B16 c) = B16 (c + 1)
+    nextConst (B32 c) = B32 (c + 1)
+    nextConst (B64 c) = B64 (c + 1)
+    nextConst (Ch c) = Ch (chr $ ord c + 1)
+    nextConst (Str c) = Str (c ++ "'")
+    nextConst o = o
+
+addMissingCons ist sc = sc
+
+trimOverlapping :: SC -> SC
+trimOverlapping sc = trim [] [] sc
+  where
+    trim :: [(Name, (Name, [Name]))] -> -- Variable - constructor+args already matched
+            [(Name, [Name])] -> -- Variable - constructors which it can't be
+            SC -> SC
+    trim mustbes nots (Case t vn alts)
+       | Just (c, args) <- lookup vn mustbes
+            = Case t vn (trimAlts mustbes nots vn (substMatch (c, args) alts))
+--             = let alts' = filter (isConMatch c) alts in
+--                   Case t vn (trimAlts mustbes nots vn alts')
+       | Just cantbe <- lookup vn nots
+            = let alts' = filter (notConMatch cantbe) alts in
+                  Case t vn (trimAlts mustbes nots vn alts')
+       | otherwise = Case t vn (trimAlts mustbes nots vn alts)
+    trim cs nots sc = sc
+
+    trimAlts cs nots vn [] = []
+    trimAlts cs nots vn (ConCase cn t args sc : rest)
+        = ConCase cn t args (trim (addMatch vn (cn, args) cs) nots sc) :
+            trimAlts cs (addCantBe vn cn nots) vn rest
+    trimAlts cs nots vn (FnCase n ns sc : rest)
+        = FnCase n ns (trim cs nots sc) : trimAlts cs nots vn rest
+    trimAlts cs nots vn (ConstCase c sc : rest)
+        = ConstCase c (trim cs nots sc) : trimAlts cs nots vn rest
+    trimAlts cs nots vn (SucCase n sc : rest)
+        = SucCase n (trim cs nots sc) : trimAlts cs nots vn rest
+    trimAlts cs nots vn (DefaultCase sc : rest)
+        = DefaultCase (trim cs nots sc) : trimAlts cs nots vn rest
+
+    isConMatch c (ConCase cn t args sc) = c == cn
+    isConMatch _ _ = False
+
+    substMatch :: (Name, [Name]) -> [CaseAlt] -> [CaseAlt]
+    substMatch ca [] = []
+    substMatch (c,args) (ConCase cn t args' sc : _)
+        | c == cn = [ConCase c t args (substNames (zip args' args) sc)]
+    substMatch ca (_:cs) = substMatch ca cs
+
+    substNames [] sc = sc
+    substNames ((n, n') : ns) sc 
+       | not (missName n || missName n') = substNames ns (substSC n n' sc)
+       | otherwise = substNames ns sc
+
+    notConMatch cs (ConCase cn t args sc) = cn `notElem` cs
+    notConMatch cs _ = True
+
+    addMatch vn (cn, _) cs | missName vn || missName cn = cs
+    addMatch vn cn cs = (vn, cn) : cs
+
+    addCantBe :: Name -> Name -> [(Name, [Name])] -> [(Name, [Name])]
+    addCantBe vn cn nots | missName vn || missName cn = nots
+    addCantBe vn cn [] = [(vn, [cn])]
+    addCantBe vn cn ((n, cbs) : nots)
+          | vn == n = ((n, nub (cn : cbs)) : nots)
+          | otherwise = ((n, cbs) : addCantBe vn cn nots)
+
+    -- "miss" names are inserted by addMissingCons, and are treated as
+    -- placeholders throughout, so we need to make a note to treat them as
+    -- placeholders here too (otherwise we might substitute them and end up
+    -- matching on them, and that'd be a disaster because we don't take care
+    -- to make unique names...)
+    missName (MN i miss) = miss == txt "miss"
+    missName _ = False
 
 -- | Does this error result rule out a case as valid when coverage checking?
 validCoverageCase :: Context -> Err -> Bool
@@ -202,163 +370,4 @@ recoverableCoverage ctxt (At _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (Elaborating _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (ElaboratingArg _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage _ _ = False
-
-genAll :: IState -> (Bool, [PTerm]) -> [PTerm]
-genAll i (addPH, args)
-   = case filter (/=Placeholder) $ fnub $ mergePHs $ fnub (concatMap otherPats (fnub args)) of
-          [] -> [Placeholder]
-          xs -> ph xs
-  where
-    -- Add a placeholder - this is to account for the case where an argument
-    -- has a dependent type calculated from another argument, to make sure that
-    -- all dependencies are covered. If they are, any generated case will
-    -- match given cases.
-    -- (Also this helps when checking, because if we eliminate the placeholder
-    -- quickly then lots of other cases get ruled out fast)
-    ph ts = if addPH then Placeholder : ts else ts
-
-    -- Merge patterns with placeholders in other patterns, to ensure we've
-    -- covered all possible generated cases
-    -- e.g. if we have (True, _) (False, _) (_, True) (_, False)
-    -- we should merge these to get (True, True), (False, False)
-    -- (False, True) and (True, False)
-    mergePHs :: [PTerm] -> [PTerm]
-    mergePHs xs = mergePHs' xs xs
-
-    mergePHs' [] all = []
-    mergePHs' (x : xs) all = mergePH x all ++ mergePHs' xs all
-
-    mergePH :: PTerm -> [PTerm] -> [PTerm]
-    mergePH tm [] = []
-    mergePH tm (x : xs)
-          | Just merged <- mergePTerm tm x = merged : mergePH tm xs
-          | otherwise = mergePH tm xs
-
-    mergePTerm :: PTerm -> PTerm -> Maybe PTerm
-    mergePTerm x Placeholder = Just x
-    mergePTerm Placeholder x = Just x
-    mergePTerm tm@(PRef fc1 hl1 n1) (PRef fc2 hl2 n2)
-          | n1 == n2 = Just tm
-    mergePTerm (PPair fc1 hl1 p1 x1 y1) (PPair fc2 hl2 p2 x2 y2)
-          = do x <- mergePTerm x1 x2
-               y <- mergePTerm y1 y2
-               Just (PPair fc1 hl1 p1 x y)
-    mergePTerm (PDPair fc1 hl1 p1 x1 t1 y1) (PDPair fc2 hl2 p2 x2 t2 y2)
-          = do x <- mergePTerm x1 x2
-               y <- mergePTerm y1 y2
-               t <- mergePTerm t1 t2
-               Just (PDPair fc1 hl1 p1 x t y)
-    mergePTerm (PApp fc1 f1 args1) (PApp fc2 f2 args2)
-          = do fm <- mergePTerm f1 f2
-               margs <- mergeArgs args1 args2
-               Just (PApp fc1 fm margs)
-      where
-        mergeArgs [] [] = Just []
-        mergeArgs (a : as) (b : bs)
-                  = do ma_in <- mergePTerm (getTm a) (getTm b)
-                       let ma = a { getTm = ma_in }
-                       mas <- mergeArgs as bs
-                       Just (ma : mas)
-        mergeArgs _ _ = Nothing
-    mergePTerm x y | x == y = Just x
-                   | otherwise = Nothing
-
-    -- for every constant in a term (at any level) take next one to make sure
-    -- that constants which are not explicitly handled are covered
-    nextConst (PConstant fc c) = PConstant NoFC (nc' c)
-    nextConst o = o
-
-    nc' (I c) = I (c + 1)
-    nc' (BI c) = BI (c + 1)
-    nc' (Fl c) = Fl (c + 1)
-    nc' (B8 c) = B8 (c + 1)
-    nc' (B16 c) = B16 (c + 1)
-    nc' (B32 c) = B32 (c + 1)
-    nc' (B64 c) = B64 (c + 1)
-    nc' (Ch c) = Ch (chr $ ord c + 1)
-    nc' (Str c) = Str (c ++ "'")
-    nc' o = o
-
-    otherPats :: PTerm -> [PTerm]
-    otherPats (PRef fc hl n) = ph $ ops fc n []
-    otherPats (PApp _ (PRef fc hl n) xs) = ph $ ops fc n xs
-    otherPats (PPair fc hls _ l r)
-        = ph $ ops fc pairCon
-                ([pimp (sUN "A") Placeholder True,
-                  pimp (sUN "B") Placeholder True] ++
-                 [pexp l, pexp r])
-    otherPats (PDPair fc hls p t _ v)
-        = ph $ ops fc sigmaCon
-                ([pimp (sUN "a") Placeholder True,
-                  pimp (sUN "P") Placeholder True] ++
-                 [pexp t,pexp v])
-    otherPats o@(PConstant _ c) = ph [o, nextConst o]
-    otherPats arg = return Placeholder
-
-    ops fc n xs 
-        | (TyDecl c@(DCon _ arity _) ty : _) <- lookupDef n (tt_ctxt i)
-            = do xs' <- mapM otherPats (map getExpTm xs)
-                 let p = resugar (PApp fc (PRef fc [] n) (zipWith upd xs' xs))
-                 let tyn = getTy n (tt_ctxt i)
-                 case lookupCtxt tyn (idris_datatypes i) of
-                         (TI ns _ _ _ _ : _) -> p : map (mkPat fc) (ns \\ [n])
-                         _ -> [p]
-    ops fc n arg = return Placeholder
-
-    getExpTm (PImp _ True _ _ _) = Placeholder -- machine inferred, no point!
-    getExpTm t = getTm t
-
-    -- put it back to its original form
-    resugar (PApp _ (PRef fc hl n) [_,_,t,v])
-      | n == sigmaCon
-        = PDPair fc [] TypeOrTerm (getTm t) Placeholder (getTm v)
-    resugar (PApp _ (PRef fc hl n) [_,_,l,r])
-      | n == pairCon
-        = PPair fc [] IsTerm (getTm l) (getTm r)
-    resugar t = t
-
-    dropForce force (x : xs) i | i `elem` force
-        = upd Placeholder x : dropForce force xs (i + 1)
-    dropForce force (x : xs) i = x : dropForce force xs (i + 1)
-    dropForce _ [] _ = []
-
-
-    getTy n ctxt = case lookupTy n ctxt of
-                          (t : _) -> case unApply (getRetTy t) of
-                                        (P _ tyn _, _) -> tyn
-                                        x -> error $ "Can't happen getTy 1 " ++ show (n, x)
-                          _ -> error "Can't happen getTy 2"
-
-    mkPat fc x = case lookupCtxt x (idris_implicits i) of
-                      (pargs : _)
-                         -> PApp fc (PRef fc [] x) (map (upd Placeholder) pargs)
-                      _ -> error "Can't happen - genAll"
-
-    fnub :: [PTerm] -> [PTerm]
-    fnub xs = fnub' [] xs
-
-    fnub' :: [PTerm] -> [PTerm] -> [PTerm]
-    fnub' acc (x : xs) | x `qelem` acc = fnub' acc (filter (not.(quickEq x)) xs)
-                       | otherwise = fnub' (x : acc) xs
-    fnub' acc [] = acc
-
-    -- quick check for constructor equality
-    quickEq :: PTerm -> PTerm -> Bool
-    quickEq (PConstant _ n) (PConstant _ n') = n == n'
-    quickEq (PRef _ _ n) (PRef _ _ n') = n == n'
-    quickEq (PPair _ _ _ l r) (PPair _ _ _ l' r') = quickEq l l' && quickEq r r'
-    quickEq (PApp _ t as) (PApp _ t' as')
-        | length as == length as'
-           = quickEq t t' && and (zipWith quickEq (map getTm as) (map getTm as'))
-    quickEq Placeholder Placeholder = True
-    quickEq x y = False
-
-    qelem :: PTerm -> [PTerm] -> Bool
-    qelem x [] = False
-    qelem x (y : ys) | x `quickEq` y = True
-                     | otherwise = qelem x ys
-
-
-upd :: t -> PArg' t -> PArg' t
-upd p' p = p { getTm = p' }
 

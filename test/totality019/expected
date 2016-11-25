@@ -1,0 +1,2 @@
+totality019.idr:8:1:Main.testCov is not total as there are missing cases
+totality019.idr:12:1:Main.testCov' is not total as there are missing cases

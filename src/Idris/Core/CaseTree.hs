@@ -244,14 +244,18 @@ type CaseBuilder a = ReaderT ErasureInfo (State CS) a
 runCaseBuilder :: ErasureInfo -> CaseBuilder a -> (CS -> (a, CS))
 runCaseBuilder ei bld = runState $ runReaderT bld ei
 
-data Phase = CompileTime | RunTime
+data Phase = CoverageCheck [Int] -- list of positions explicitly given
+           | CompileTime 
+           | RunTime
     deriving (Show, Eq)
 
 -- Generate a simple case tree
 -- Work Right to Left
 
 simpleCase :: Bool -> SC -> Bool ->
-              Phase -> FC -> [Int] ->
+              Phase -> FC -> 
+              -- Following two can be empty lists when Phase = CoverageCheck
+              [Int] -> -- Inaccessible argument positions
               [(Type, Bool)] -> -- (Argument type, whether it's canonical)
               [([Name], Term, Term)] ->
               ErasureInfo ->
@@ -291,7 +295,7 @@ simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
           -- Check that all pattern variables are reachable by a case split
           -- Otherwise, they won't make sense on the RHS.
           chkAccessible (avs, l, c)
-               | phase == RunTime || reflect = return (l, c)
+               | phase /= CompileTime || reflect = return (l, c)
                | otherwise = do mapM_ (acc l) avs
                                 return (l, c)
 
@@ -438,6 +442,20 @@ order :: Phase -> [(Name, Bool)] -> [Clause] -> [Bool] -> ([Name], [Clause])
 -- order CompileTime ns cs _ = (map fst ns, cs)
 order _ []  cs cans = ([], cs)
 order _ ns' [] cans = (map fst ns', [])
+order (CoverageCheck pos) ns' cs cans 
+    = let ns_out = pick 0 [] (map fst ns')
+          cs_out = map pickClause cs in
+          (ns_out, cs_out)
+  where
+    pickClause (pats, def) = (pick 0 [] pats, def)
+
+    -- Order the list so that things in a position in 'pos' are in the first
+    -- part, then all the other things later. Otherwise preserve order.
+    pick i skipped [] = reverse skipped
+    pick i skipped (x : xs) 
+         | i `elem` pos = x : pick (i + 1) skipped xs
+         | otherwise    = pick (i + 1) (x : skipped) xs
+
 order phase ns' cs cans
     = let patnames = transpose (map (zip ns') (map (zip cans) (map fst cs)))
           -- only sort the arguments where there is no clash in

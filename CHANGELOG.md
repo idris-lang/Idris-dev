@@ -62,6 +62,7 @@
 
 ## Miscellaneous updates
 
+* New, faster, better, implementation of the coverage checker
 * The test suite now uses [tasty-golden](https://hackage.haskell.org/package/tasty-golden). New tests must be registered in `test/TestData.hs`, as explained in the relevant `README.md`.
 * Added OSX and Windows continous integration with Travis and Appveyor.
 

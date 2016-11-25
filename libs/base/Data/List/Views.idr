@@ -187,7 +187,7 @@ public export
 data VList : List a -> Type where
      VNil : VList []
      VOne : VList [x]
-     VCons : {x : a} -> {y : a} -> {xs : List a} -> 
+     VCons : {x : a} -> {y : a} -> .{xs : List a} -> 
              (rec : VList xs) -> VList (x :: xs ++ [y])
 
 total
