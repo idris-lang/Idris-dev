@@ -9,7 +9,7 @@ import Builtins
 
 %access public export
 
-||| Convert the number to its ASCII equivalent.
+||| Convert the number to its Unicode equivalent.
 chr : Int -> Char
 chr x = if (x >= 0 && x < 0x110000)
                 then assert_total (prim__intToChar x)
@@ -18,7 +18,7 @@ chr x = if (x >= 0 && x < 0x110000)
 Cast Int Char where
     cast = chr
 
-||| Return the ASCII representation of the character.
+||| Return the Unicode representation of the character.
 ord : Char -> Int
 ord x = prim__charToInt x
 
