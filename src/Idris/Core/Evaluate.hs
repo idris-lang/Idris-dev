@@ -11,7 +11,8 @@ Maintainer  : The Idris Community.
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 normaliseAll, normaliseBlocking, toValue, quoteTerm,
-                rt_simplify, simplify, specialise, unfold, convEq, convEq',
+                rt_simplify, simplify, inlineSmall,
+                specialise, unfold, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Injectivity, Totality(..), PReason(..), MetaInformation(..),
                 Context, initContext, ctxtAlist, next_tvar,
@@ -19,7 +20,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
-                mapDefCtxt,
+                mapDefCtxt, tcReducible,
                 lookupTotal, lookupTotalExact, lookupInjectiveExact,
                 lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict,
                 isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
@@ -148,16 +149,9 @@ simplify ctxt env t
 
 -- | Like simplify, but we only reduce functions that are marked as okay to
 -- inline, and don't reduce lets 
-inline :: Context -> Env -> TT Name -> TT Name
-inline ctxt env t
-   = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
-                                           (sUN "force", 0),
-                                           (sUN "Force", 0),
-                                           (sUN "assert_smaller", 0),
-                                           (sUN "assert_total", 0),
-                                           (sUN "par", 0),
-                                           (sUN "prim__syntactic_eq", 0),
-                                           (sUN "fork", 0)]
+inlineSmall :: Context -> Env -> TT Name -> TT Name
+inlineSmall ctxt env t
+   = evalState (do val <- eval False ctxt []
                                  (map finalEntry env) (finalise t)
                                  [Simplify False]
                    quote 0 val) initEval
@@ -284,13 +278,13 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                 || runtime || unfold
                                 || sUN "assert_total" `elem` stk)
               if red then
-               do let val = lookupDefAcc n (spec || unfold || atRepl || runtime) ctxt
+               do let val = lookupDefAccExact n (spec || unfold || atRepl || runtime) ctxt
                   case val of
-                    [(Function _ tm, Public)] ->
+                    Just (Function _ tm, Public) ->
                            ev ntimes (n:stk) True env tm
-                    [(TyDecl nt ty, _)] -> do vty <- ev ntimes stk True env ty
-                                              return $ VP nt n vty
-                    [(CaseOp ci _ _ _ _ cd, acc)]
+                    Just (TyDecl nt ty, _) -> do vty <- ev ntimes stk True env ty
+                                                 return $ VP nt n vty
+                    Just (CaseOp ci _ _ _ _ cd, acc)
                          | (acc == Public || acc == Hidden) &&
 --                                || sUN "assert_total" `elem` stk) &&
                              null (fst (cases_compiletime cd)) -> -- unoptimised version
@@ -353,7 +347,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  evApply ntimes' stk top env [l',t',arg'] d'
     -- Treat "assert_total" specially, as long as it's defined!
     ev ntimes stk top env (App _ (App _ (P _ n@(UN at) _) _) arg)
-       | [(CaseOp _ _ _ _ _ _, _)] <- lookupDefAcc n (spec || atRepl || runtime) ctxt,
+       | Just (CaseOp _ _ _ _ _ _, _) <- lookupDefAccExact n (spec || atRepl || runtime) ctxt,
          at == txt "assert_total" && not (simpl || unfold)
             = ev ntimes (n : stk) top env arg
     ev ntimes stk top env (App _ f a)
@@ -381,9 +375,9 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
           = apply ntimes stk top env f args
 
     reapply ntimes stk top env f@(VP Ref n ty) args
-       = let val = lookupDefAcc n (spec || atRepl || runtime) ctxt in
+       = let val = lookupDefAccExact n (spec || atRepl || runtime) ctxt in
          case val of
-              [(CaseOp ci _ _ _ _ cd, acc)] ->
+              Just (CaseOp ci _ _ _ _ cd, acc) ->
                  let (ns, tree) = getCases cd in
                      do c <- evCase ntimes n (n:stk) top env ns args tree
                         case c of
@@ -407,9 +401,9 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                 || unfold || runtime
                                 || sUN "assert_total" `elem` stk)
               if red then
-                 do let val = lookupDefAcc n (spec || unfold || atRepl || runtime) ctxt
+                 do let val = lookupDefAccExact n (spec || unfold || atRepl || runtime) ctxt
                     case val of
-                      [(CaseOp ci _ _ _ _ cd, acc)]
+                      Just (CaseOp ci _ _ _ _ cd, acc)
                            | acc == Public || acc == Hidden ->
                            -- unoptimised version
                        let (ns, tree) = getCases cd in
@@ -420,7 +414,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                                    case c of
                                       (Nothing, _) -> return $ unload env (VP Ref n ty) args
                                       (Just v, rest) -> evApply ntimes stk top env rest v
-                      [(Operator _ i op, _)]  ->
+                      Just (Operator _ i op, _)  ->
                         if (i <= length args)
                            then case op (take i args) of
                               Nothing -> return $ unload env (VP Ref n ty) args

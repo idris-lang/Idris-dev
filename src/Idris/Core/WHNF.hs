@@ -34,9 +34,9 @@ type Stack = [StackEntry]
 -- environment it was encountered in, so that when we quote back to a term
 -- we get the substitutions right.
 
-data WHNF = WDCon Int Int Bool Name (Type, WEnv) -- ^ data constructor
+data WHNF = WDCon Int Int Bool Name (Term, WEnv) -- ^ data constructor
           | WTCon Int Int Name (Type, WEnv) -- ^ type constructor
-          | WPRef Name (Type, WEnv) -- ^irreducible global (e.g. a postulate)
+          | WPRef Name (Term, WEnv) -- ^irreducible global (e.g. a postulate)
           | WBind Name (Binder Term) (Term, WEnv)
           | WApp WHNF (Term, WEnv)
           | WConstant Const
@@ -47,11 +47,19 @@ data WHNF = WDCon Int Int Bool Name (Type, WEnv) -- ^ data constructor
           | WImpossible
 
 -- | Reduce a *closed* term to weak head normal form.
-whnf :: Context -> Term -> Term
-whnf ctxt tm = quote (do_whnf ctxt (WEnv 0 []) tm)
+whnf :: Context -> Env -> Term -> Term
+whnf ctxt env tm = 
+   inlineSmall ctxt env $ -- reduce small things in body. This is primarily
+                          -- to get rid of any noisy "assert_smaller/assert_total"
+                          -- and evaluate any simple operators, which makes things
+                          -- easier to read.
+     quote (do_whnf ctxt (map finalEntry env) tm)
 
-do_whnf :: Context -> WEnv -> Term -> WHNF
-do_whnf ctxt env tm = eval env [] tm
+finalEntry :: (Name, Binder (TT Name)) -> (Name, Binder (TT Name))
+finalEntry (n, b) = (n, fmap finalise b)
+
+do_whnf :: Context -> Env -> Term -> WHNF
+do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
   where
     eval :: WEnv -> Stack -> Term -> WHNF
     eval wenv@(WEnv d env) stk (V i)
@@ -64,6 +72,8 @@ do_whnf ctxt env tm = eval env [] tm
     eval (WEnv d env) ((tm, tenv) : stk) (Bind n b sc)
          = eval (WEnv d ((tm, tenv) : env)) stk sc
 
+    eval env stk (P nt n ty) 
+         | Just (Let t v) <- lookup n genv = eval env stk v
     eval env stk (P nt n ty) = apply env nt n ty stk
     eval env stk (App _ f a) = eval env ((a, env) : stk) f
     eval env stk (Constant c) = unload (WConstant c) stk
@@ -77,26 +87,29 @@ do_whnf ctxt env tm = eval env [] tm
     eval env stk (UType u) = unload (WUType u) stk
 
     apply :: WEnv -> NameType -> Name -> Type -> Stack -> WHNF
-    apply env nt n ty stk
+    apply env nt n ty stk 
           = let wp = case nt of
                           DCon t a u -> WDCon t a u n (ty, env)
                           TCon t a -> WTCon t a n (ty, env)
                           Ref -> WPRef n (ty, env)
                           _ -> WPRef n (ty, env)
                         in
-            case lookupDefExact n ctxt of
-                 Just (CaseOp ci _ _ _ _ cd) ->
-                      let (ns, tree) = cases_compiletime cd in
-                          case evalCase env ns tree stk of
-                               Just w -> w
-                               Nothing -> unload wp stk
-                 Just (Operator _ i op) ->
+            if not (tcReducible n ctxt)
+               then unload wp stk
+               else case lookupDefAccExact n False ctxt of
+                         Just (CaseOp ci _ _ _ _ cd, acc) 
+                             | acc == Public || acc == Hidden ->
+                          let (ns, tree) = cases_compiletime cd in
+                              case evalCase env ns tree stk of
+                                   Just w -> w
+                                   Nothing -> unload wp stk
+                         Just (Operator _ i op, acc) ->
                           if i <= length stk
                              then case runOp env op (take i stk) (drop i stk) of
                                   Just v -> v
                                   Nothing -> unload wp stk
                              else unload wp stk
-                 _ -> unload wp stk
+                         _ -> unload wp stk
 
     unload :: WHNF -> Stack -> WHNF
     unload f [] = f
@@ -112,6 +125,8 @@ do_whnf ctxt env tm = eval env [] tm
                   -- aren't run on constants are themselves pretty ugly
                   -- (it's prim__believe_me and prim__syntacticEq, for
                   -- example) so let's not worry too much...
+                  -- We will need to deal with believe_me before dropping this
+                  -- into the type checker, though.
                   Just val -> Just $ eval env rest (quoteTerm val)
                   _ -> Nothing
 

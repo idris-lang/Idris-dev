@@ -2252,7 +2252,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
       = do ~[tm] <- tacTmArgs 1 tac args
            tm' <- reifyTT tm
            ctxt <- get_context
-           fmap fst . checkClosed . reflect $ whnf ctxt tm'
+           fmap fst . checkClosed . reflect $ whnf ctxt [] tm'
       | n == tacN "Prim__Converts"
       = do ~[env, tm1, tm2] <- tacTmArgs 3 tac args
            env' <- reifyEnv env

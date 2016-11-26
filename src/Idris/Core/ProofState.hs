@@ -23,6 +23,7 @@ import Idris.Core.ProofTerm
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.Unify
+import Idris.Core.WHNF
 
 import Util.Pretty hiding (fill)
 
@@ -839,7 +840,7 @@ compute ctxt env t = return t
 
 hnf_compute :: RunTactic
 hnf_compute ctxt env (Bind x (Hole ty) sc) =
-    do let ty' = normalise ctxt env ty in
+    do let ty' = whnf ctxt env ty in
 --          trace ("HNF " ++ show (ty, ty')) $
            return $ Bind x (Hole ty') sc
 hnf_compute ctxt env t = return t
