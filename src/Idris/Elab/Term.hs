@@ -18,7 +18,7 @@ import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.TT
 import Idris.Core.Typecheck (check, converts, isType, recheck)
 import Idris.Core.Unify
-import Idris.Core.WHNF (whnf)
+import Idris.Core.WHNF (whnf,whnfArgs)
 import Idris.Coverage (genClauses, recoverableCoverage, validCoverageCase)
 import Idris.Delaborate
 import Idris.DSL
@@ -498,11 +498,13 @@ elab ist info emode opts fn tm
               showHd x = getNameFrom (sMN 0 "_") -- We probably should do something better than this here
 
               doPrune as =
-                  do compute
+                  do compute -- to get 'Delayed' if it's there
                      ty <- goal
-                     let (tc, _) = unApply (unDelay ty)
+                     ctxt <- get_context
                      env <- get_env
-                     return $ pruneByType env tc (unDelay ty) ist as
+                     let ty' = unDelay ty
+                     let (tc, _) = unApply ty'
+                     return $ pruneByType env tc ty' ist as
 
               unDelay t | (P _ (UN l) _, [_, arg]) <- unApply t,
                           l == txt "Delayed" = unDelay arg

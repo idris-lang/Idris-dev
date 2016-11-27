@@ -20,6 +20,7 @@ import Debug.Trace
 -- | A stack entry consists of a term and the environment it is to be
 -- evaluated in (i.e. it's a thunk)
 type StackEntry = (Term, WEnv)
+
 data WEnv = WEnv Int -- number of free variables
                  [(Term, WEnv)]
   deriving Show
@@ -47,6 +48,9 @@ data WHNF = WDCon Int Int Bool Name (Term, WEnv) -- ^ data constructor
           | WErased
           | WImpossible
 
+-- NOTE: These aren't yet ready to be used in practice - there's still a
+-- bug or two in the handling of de Bruijn indices.
+
 -- | Reduce a term to weak head normal form.
 whnf :: Context -> Env -> Term -> Term
 whnf ctxt env tm = 
@@ -54,7 +58,7 @@ whnf ctxt env tm =
                           -- to get rid of any noisy "assert_smaller/assert_total"
                           -- and evaluate any simple operators, which makes things
                           -- easier to read.
-     quote (do_whnf ctxt (map finalEntry env) tm)
+     quote (do_whnf ctxt (map finalEntry env) (finalise tm))
 
 -- | Reduce a type so that all arguments are expanded, and all argument types
 -- are in weak head normal form
@@ -227,10 +231,13 @@ quote WImpossible = Impossible
 quoteEnv :: WEnv -> Term -> Term
 quoteEnv (WEnv d ws) tm = qe' d ws tm
   where
+    -- d is number of free variables in the external environment
+    -- (all bound in the scope of 'ws')
     qe' d ts (V i)
-        | i < d = V i
-        | otherwise = let (tm, env) = ts !! (i - d) in
-                          quoteEnv env tm
+        | (i - d) < length ts && (i - d) >= 0
+              = let (tm, env) = ts !! (i - d) in
+                    quoteEnv env tm
+        | otherwise = V i
     qe' d ts (Bind n b sc)
         = Bind n (fmap (qe' d ts) b) (qe' (d + 1) ts sc)
     qe' d ts (App c f a)
