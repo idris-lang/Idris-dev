@@ -24,6 +24,7 @@ import Idris.Core.ProofTerm (bound_in, bound_in_term, getProofTerm, mkProofTerm,
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.Unify
+import Idris.Core.WHNF
 
 import Util.Pretty hiding (fill)
 
@@ -578,7 +579,7 @@ prepare_apply fn imps =
        -- Count arguments to check if we need to normalise the type
        let usety = if argsOK (finalise ty) imps
                       then finalise ty
-                      else normalise ctxt env (finalise ty)
+                      else whnfArgs ctxt env (finalise ty)
        claims <- -- trace (show (fn, imps, ty, map fst env, normalise ctxt env (finalise ty))) $
                  mkClaims usety imps [] (map fst env)
        ES (p, a) s prev <- get
@@ -748,7 +749,7 @@ checkPiGoal n
             = do g <- goal
                  ctxt <- get_context
                  env <- get_env
-                 case (normalise ctxt env g) of
+                 case (whnf ctxt env g) of
                     Bind _ (Pi _ _ _) _ -> return ()
                     _ -> do a <- getNameFrom (sMN 0 "__pargTy")
                             b <- getNameFrom (sMN 0 "__pretTy")
@@ -823,7 +824,7 @@ dep_app fun arg str =
        focus s; attack;
        ctxt <- get_context
        env <- get_env
-       case normalise ctxt env fty of
+       case whnf ctxt env fty of
             -- if f gives a function type, unify our argument type with
             -- f's expected argument type
             Bind _ (Pi _ argty _) _ -> unifyGoal (forget argty)

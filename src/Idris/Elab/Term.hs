@@ -245,7 +245,7 @@ elab :: IState
 elab ist info emode opts fn tm
     = do let loglvl = opt_logLevel (idris_options ist)
          when (loglvl > 5) $ unifyLog True
-         compute -- expand type synonyms, etc
+         whnf_compute_args -- expand type synonyms, etc
          let fc = maybe "(unknown)"
          elabE initElabCtxt (elabFC info) tm -- (in argument, guarded, in type, in qquote)
          est <- getAux
@@ -387,7 +387,7 @@ elab ist info emode opts fn tm
                           highlightSource fc' (AnnConst c)
     elab' ina fc (PQuote r)     = do fill r; solve
     elab' ina _ (PTrue fc _)   =
-       do compute
+       do whnf_compute
           g <- goal
           case g of
             TType _ -> elab' ina (Just fc) (PRef fc [] unitTy)
@@ -421,7 +421,7 @@ elab ist info emode opts fn tm
                     pexp l, pexp r]))
 
     elab' ina _ (PPair fc hls _ l r)
-        = do compute
+        = do whnf_compute
              g <- goal
              let (tc, _) = unApply g
              case g of
@@ -444,7 +444,7 @@ elab ist info emode opts fn tm
                 IsType -> asType
                 IsTerm -> asValue
                 TypeOrTerm ->
-                   do compute
+                   do whnf_compute
                       g <- goal
                       case g of
                          TType _ -> asType
@@ -502,7 +502,7 @@ elab ist info emode opts fn tm
                      ty <- goal
                      ctxt <- get_context
                      env <- get_env
-                     let ty' = unDelay ty
+                     let ty' = normalise ctxt env (unDelay ty)
                      let (tc, _) = unApply ty'
                      return $ pruneByType env tc ty' ist as
 
@@ -534,7 +534,7 @@ elab ist info emode opts fn tm
                          (trySeq' deferr xs) True
     elab' ina fc (PAlternative ms TryImplicit (orig : alts)) = do
         env <- get_env
-        compute
+        whnf_compute
         ty <- goal
         let doelab = elab' ina fc orig
         tryCatch doelab
@@ -658,7 +658,7 @@ elab ist info emode opts fn tm
                do fty <- get_type (Var n) -- check for implicits
                   ctxt <- get_context
                   env <- get_env
-                  let a' = insertScopedImps fc (normalise ctxt env fty) []
+                  let a' = insertScopedImps fc (whnfArgs ctxt env fty) []
                   if null a'
                      then erun fc $
                             do apply (Var n) []

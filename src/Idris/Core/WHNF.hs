@@ -53,19 +53,28 @@ data WHNF = WDCon Int Int Bool Name (Term, WEnv) -- ^ data constructor
 
 -- | Reduce a term to weak head normal form.
 whnf :: Context -> Env -> Term -> Term
+-- whnf ctxt env tm = let res = whnf' ctxt env tm in
+--                        trace (show tm ++ "\n==>\n" ++ show res ++ "\n") res
 whnf ctxt env tm = 
    inlineSmall ctxt env $ -- reduce small things in body. This is primarily
                           -- to get rid of any noisy "assert_smaller/assert_total"
                           -- and evaluate any simple operators, which makes things
                           -- easier to read.
+     whnf' ctxt env tm
+whnf' ctxt env tm = 
      quote (do_whnf ctxt (map finalEntry env) (finalise tm))
 
 -- | Reduce a type so that all arguments are expanded, and all argument types
 -- are in weak head normal form
 whnfArgs :: Context -> Env -> Term -> Term
-whnfArgs ctxt env tm
-    = case whnf ctxt env tm of
-           Bind n b@(Pi _ ty _) sc -> Bind n b (whnfArgs ctxt ((n,b):env) sc)
+whnfArgs ctxt env tm = inlineSmall ctxt env $ finalise (whnfArgs' ctxt env tm)
+whnfArgs' ctxt env tm
+    = case whnf' ctxt env tm of
+           -- The assumption is that de Bruijn indices refer to local things
+           -- (so not in the external environment) so we need to instantiate
+           -- the name
+           Bind n b@(Pi _ ty _) sc -> Bind n b (whnfArgs' ctxt ((n,b):env) 
+                                           (instantiate (P Bound n ty) sc))
            res -> res
 
 finalEntry :: (Name, Binder (TT Name)) -> (Name, Binder (TT Name))
@@ -84,7 +93,8 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
     eval (WEnv d env) ((tm, tenv) : stk) (Bind n b@(Lam _) sc)
          = eval (WEnv d ((tm, tenv) : env)) stk sc
     eval wenv@(WEnv d env) stk (Bind n b sc) -- stk must be empty if well typed
-         = WBind n (fmap (eval wenv []) b) (sc, WEnv (d + 1) env)
+         =let n' = uniqueName n (map fst genv) in
+              WBind n' (fmap (eval wenv []) b) (sc, WEnv (d + 1) env)
 
     eval env stk (P nt n ty) 
          | Just (Let t v) <- lookup n genv = eval env stk v
