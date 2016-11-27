@@ -82,7 +82,8 @@ data Tactic = Attack
             | Compute
             | ComputeLet Name
             | Simplify
-            | HNF_Compute
+            | WHNF_Compute
+            | WHNF_ComputeArgs
             | EvalIn Raw
             | CheckIn Raw
             | Intro (Maybe Name)
@@ -838,12 +839,17 @@ compute ctxt env (Bind x (Hole ty) sc) =
     do return $ Bind x (Hole (normalise ctxt env ty)) sc
 compute ctxt env t = return t
 
-hnf_compute :: RunTactic
-hnf_compute ctxt env (Bind x (Hole ty) sc) =
+whnf_compute :: RunTactic
+whnf_compute ctxt env (Bind x (Hole ty) sc) =
     do let ty' = whnf ctxt env ty in
---          trace ("HNF " ++ show (ty, ty')) $
            return $ Bind x (Hole ty') sc
-hnf_compute ctxt env t = return t
+whnf_compute ctxt env t = return t
+
+whnf_compute_args :: RunTactic
+whnf_compute_args ctxt env (Bind x (Hole ty) sc) =
+    do let ty' = whnfArgs ctxt env ty in
+           return $ Bind x (Hole ty') sc
+whnf_compute_args ctxt env t = return t
 
 -- reduce let bindings only
 simplify :: RunTactic
@@ -1132,7 +1138,8 @@ process t h = tactic (Just h) (mktac t)
          mktac (StartUnify n)    = start_unify n
          mktac Compute           = compute
          mktac Simplify          = Idris.Core.ProofState.simplify
-         mktac HNF_Compute       = hnf_compute
+         mktac WHNF_Compute      = whnf_compute
+         mktac WHNF_ComputeArgs  = whnf_compute_args
          mktac (Intro n)         = intro n
          mktac (IntroTy ty n)    = introTy ty n
          mktac (Forall n i t)    = forall n i t

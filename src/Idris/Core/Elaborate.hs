@@ -422,8 +422,11 @@ computeLet n = processTactic' (ComputeLet n)
 simplify :: Elab' aux ()
 simplify = processTactic' Simplify
 
-hnf_compute :: Elab' aux ()
-hnf_compute = processTactic' HNF_Compute
+whnf_compute :: Elab' aux ()
+whnf_compute = processTactic' WHNF_Compute
+
+whnf_compute_args :: Elab' aux ()
+whnf_compute_args = processTactic' WHNF_ComputeArgs
 
 eval_in :: Raw -> Elab' aux ()
 eval_in t = processTactic' (EvalIn t)

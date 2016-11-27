@@ -8,7 +8,7 @@ Maintainer  : The Idris Community.
 
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Core.WHNF(whnf, WEnv) where
+module Idris.Core.WHNF(whnf, whnfArgs, WEnv) where
 
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate hiding (quote)
@@ -37,7 +37,8 @@ type Stack = [StackEntry]
 data WHNF = WDCon Int Int Bool Name (Term, WEnv) -- ^ data constructor
           | WTCon Int Int Name (Type, WEnv) -- ^ type constructor
           | WPRef Name (Term, WEnv) -- ^irreducible global (e.g. a postulate)
-          | WBind Name (Binder Term) (Term, WEnv)
+          | WV Int
+          | WBind Name (Binder WHNF) (Term, WEnv)
           | WApp WHNF (Term, WEnv)
           | WConstant Const
           | WProj WHNF Int
@@ -46,7 +47,7 @@ data WHNF = WDCon Int Int Bool Name (Term, WEnv) -- ^ data constructor
           | WErased
           | WImpossible
 
--- | Reduce a *closed* term to weak head normal form.
+-- | Reduce a term to weak head normal form.
 whnf :: Context -> Env -> Term -> Term
 whnf ctxt env tm = 
    inlineSmall ctxt env $ -- reduce small things in body. This is primarily
@@ -54,6 +55,14 @@ whnf ctxt env tm =
                           -- and evaluate any simple operators, which makes things
                           -- easier to read.
      quote (do_whnf ctxt (map finalEntry env) tm)
+
+-- | Reduce a type so that all arguments are expanded, and all argument types
+-- are in weak head normal form
+whnfArgs :: Context -> Env -> Term -> Term
+whnfArgs ctxt env tm
+    = case whnf ctxt env tm of
+           Bind n b@(Pi _ ty _) sc -> Bind n b (whnfArgs ctxt ((n,b):env) sc)
+           res -> res
 
 finalEntry :: (Name, Binder (TT Name)) -> (Name, Binder (TT Name))
 finalEntry (n, b) = (n, fmap finalise b)
@@ -65,12 +74,13 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
     eval wenv@(WEnv d env) stk (V i)
          | i < length env = let (tm, env') = env !! i in
                                 eval env' stk tm
-         | otherwise = error "Can't happen: WHNF scope error"
+         | otherwise = WV i
     eval wenv@(WEnv d env) stk (Bind n (Let t v) sc)
          = eval (WEnv d ((v, wenv) : env)) stk sc
-    eval (WEnv d env) [] (Bind n b sc) = WBind n b (sc, WEnv (d + 1) env)
-    eval (WEnv d env) ((tm, tenv) : stk) (Bind n b sc)
+    eval (WEnv d env) ((tm, tenv) : stk) (Bind n b@(Lam _) sc)
          = eval (WEnv d ((tm, tenv) : env)) stk sc
+    eval wenv@(WEnv d env) stk (Bind n b sc) -- stk must be empty if well typed
+         = WBind n (fmap (eval wenv []) b) (sc, WEnv (d + 1) env)
 
     eval env stk (P nt n ty) 
          | Just (Let t v) <- lookup n genv = eval env stk v
@@ -204,7 +214,8 @@ quote :: WHNF -> Term
 quote (WDCon t a u n (ty, env)) = P (DCon t a u) n (quoteEnv env ty)
 quote (WTCon t a n (ty, env)) = P (TCon t a) n (quoteEnv env ty)
 quote (WPRef n (ty, env)) = P Ref n (quoteEnv env ty)
-quote (WBind n ty (sc, env)) = Bind n ty (quoteEnv env sc)
+quote (WV i) = V i
+quote (WBind n b (sc, env)) = Bind n (fmap quote b) (quoteEnv env sc)
 quote (WApp f (a, env)) = App Complete (quote f) (quoteEnv env a)
 quote (WConstant c) = Constant c
 quote (WProj t i) = Proj (quote t) i
