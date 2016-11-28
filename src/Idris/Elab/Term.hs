@@ -45,7 +45,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Debug.Trace
 
-data ElabMode = ETyDecl | ETransLHS | ELHS | ERHS
+data ElabMode = ETyDecl | ETransLHS | ELHS | EImpossible | ERHS
   deriving Eq
 
 
@@ -143,7 +143,7 @@ build ist info emode opts fn tm
          if log /= ""
             then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
             else return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
-  where pattern = emode == ELHS
+  where pattern = emode == ELHS || emode == EImpossible
         tydecl = emode == ETyDecl
 
         mkPat = do hs <- get_holes
@@ -189,7 +189,7 @@ buildTC ist info emode opts fn ns tm
          if (log /= "")
             then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
             else return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
-  where pattern = emode == ELHS
+  where pattern = emode == ELHS || emode == EImpossible
 
 -- | return whether arguments of the given constructor name can be
 -- matched on. If they're polymorphic, no, unless the type has beed
@@ -259,9 +259,11 @@ elab ist info emode opts fn tm
                   mkPat
                   update_term liftPats)
   where
-    pattern = emode == ELHS
+    pattern = emode == ELHS || emode == EImpossible
+    eimpossible = emode == EImpossible
     intransform = emode == ETransLHS
     bindfree = emode == ETyDecl || emode == ELHS || emode == ETransLHS
+               || emode == EImpossible
     autoimpls = opt_autoimpls (idris_options ist)
 
     get_delayed_elab est =
@@ -332,13 +334,13 @@ elab ist info emode opts fn tm
                               pexp ct]))
 
     forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
-       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
+       | (P _ (UN ht) _, _) <- unApply (whnf (tt_ctxt ist) env t),
             ht == txt "Delayed" = notDelay orig
     forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
-       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
+       | (P _ (UN ht) _, _) <- unApply (whnf (tt_ctxt ist) env t'),
             ht == txt "Delayed" = notDelay orig
     forceErr orig env (InfiniteUnify _ t _)
-       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
+       | (P _ (UN ht) _, _) <- unApply (whnf (tt_ctxt ist) env t),
             ht == txt "Delayed" = notDelay orig
     forceErr orig env (Elaborating _ _ _ t) = forceErr orig env t
     forceErr orig env (ElaboratingArg _ _ _ t) = forceErr orig env t
@@ -498,13 +500,13 @@ elab ist info emode opts fn tm
               showHd x = getNameFrom (sMN 0 "_") -- We probably should do something better than this here
 
               doPrune as =
-                  do compute -- to get 'Delayed' if it's there
+                  do whnf_compute -- to get 'Delayed' if it's there
                      ty <- goal
                      ctxt <- get_context
                      env <- get_env
-                     let ty' = normalise ctxt env (unDelay ty)
+                     let ty' = whnf ctxt env (unDelay ty)
                      let (tc, _) = unApply ty'
-                     return $ pruneByType env tc ty' ist as
+                     return $ pruneByType eimpossible env tc ty' ist as
 
               unDelay t | (P _ (UN l) _, [_, arg]) <- unApply t,
                           l == txt "Delayed" = unDelay arg
@@ -566,7 +568,7 @@ elab ist info emode opts fn tm
         recoverableErr _ = True
 
         pruneAlts (CantUnify _ (inc, _) (outc, _) _ _ _) alts env
-            = case unApply (normalise (tt_ctxt ist) env inc) of
+            = case unApply (whnf (tt_ctxt ist) env inc) of
                    (P (TCon _ _) n _, _) -> filter (hasArg n env) alts
                    (Constant _, _) -> alts
                    _ -> filter isLend alts -- special case hack for 'Borrowed'
@@ -842,7 +844,7 @@ elab ist info emode opts fn tm
             let dataCon = isDConName f ctxt
             annot <- findHighlight f
             mapM_ checkKnownImplicit args_in
-            let args = insertScopedImps fc (normalise ctxt env fty) args_in
+            let args = insertScopedImps fc (whnfArgs ctxt env fty) args_in
             let unmatchableArgs = if pattern
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []
@@ -904,7 +906,7 @@ elab ist info emode opts fn tm
                                          return []
                                       Just rguess -> do
                                          gty <- get_type rguess
-                                         let ty_n = normalise ctxt env gty
+                                         let ty_n = whnf ctxt env gty
                                          return $ getReqImps ty_n
                               else return []
                     -- Now we find out how many implicits we needed at the
@@ -961,7 +963,7 @@ elab ist info emode opts fn tm
                 case lookup n env of
                      Nothing -> return ()
                      Just b ->
-                       case unApply (normalise (tt_ctxt ist) env (binderTy b)) of
+                       case unApply (whnf (tt_ctxt ist) env (binderTy b)) of
                             (P _ c _, args) ->
                                 case lookupCtxtExact c (idris_interfaces ist) of
                                    Nothing -> return ()
@@ -1627,11 +1629,11 @@ pruneAlt xs = map prune xs
 
 -- Rule out alternatives that don't return the same type as the head of the goal
 -- (If there are none left as a result, do nothing)
-pruneByType :: Env -> Term -> -- head of the goal
+pruneByType :: Bool -> Env -> Term -> -- head of the goal
                Type -> -- goal
                IState -> [PTerm] -> [PTerm]
 -- if an alternative has a locally bound name at the head, take it
-pruneByType env t goalty c as
+pruneByType imp env t goalty c as
    | Just a <- locallyBound as = [a]
   where
     locallyBound [] = Nothing
@@ -1647,7 +1649,7 @@ pruneByType env t goalty c as
     getName _ = Nothing
 
 -- 'n' is the name at the head of the goal type
-pruneByType env (P _ n _) goalty ist as
+pruneByType imp env (P _ n _) goalty ist as
 -- if the goal type is polymorphic, keep everything
    | Nothing <- lookupTyExact n ctxt = as
 -- if the goal type is a ?metavariable, keep everything
@@ -1679,12 +1681,13 @@ pruneByType env (P _ n _) goalty ist as
                Just ty -> case unApply (getRetTy ty) of
                             (P _ ctyn _, _) | isTConName ctyn ctxt && not (ctyn == f)
                                      -> False
-                            _ -> let ty' = normalise ctxt [] ty in
---                                    trace ("Trying " ++ show (getRetTy ty') ++ " for " ++ show goalty) $
+                            _ -> let ty' = whnf ctxt [] ty in
+--                                    trace ("Trying " ++ show f' ++ " : " ++ show (getRetTy ty') ++ " for " ++ show goalty
+--                                       ++ "\nMATCH: " ++ show (pat, matching (getRetTy ty') goalty)) $
                                      case unApply (getRetTy ty') of
                                           (V _, _) ->
                                               isPlausible ist var env n ty
-                                          _ -> matching (getRetTy ty') goalty
+                                          _ -> matchingTypes imp (getRetTy ty') goalty
                                                  || isCoercion (getRetTy ty') goalty
 -- May be useful to keep for debugging purposes for a bit:
 --                                                let res = matching (getRetTy ty') goalty in
@@ -1692,9 +1695,12 @@ pruneByType env (P _ n _) goalty ist as
 --                                                     ("Rejecting " ++ show (getRetTy ty', goalty)) res
                _ -> False
 
+    matchingTypes True = matchingHead
+    matchingTypes False = matching
+
     -- If the goal is a constructor, it must match the suggested function type
     matching (P _ ctyn _) (P _ n' _)
-         | isTConName n' ctxt = ctyn == n'
+         | isTConName n' ctxt && isTConName ctyn ctxt = ctyn == n'
          | otherwise = True
     -- Variables match anything
     matching (V _) _ = True
@@ -1705,13 +1711,27 @@ pruneByType env (P _ n _) goalty ist as
     matching (Bind n _ sc) _ = True
     matching _ (Bind n _ sc) = True
     -- If we hit a function name, it's a plausible match
-    matching (App _ (P _ f _) _) _ | not (isConName f ctxt) = True
-    matching _ (App _ (P _ f _) _) | not (isConName f ctxt) = True
-    -- Otherwise, match the rest of the structure
-    matching (App _ f a) (App _ f' a') = matching f f' && matching a a'
+    matching apl@(App _ _ _) apr@(App _ _ _)
+         | (P _ fl _, argsl) <- unApply apl,
+           (P _ fr _, argsr) <- unApply apr
+       = fl == fr && and (zipWith matching argsl argsr)
+           || (not (isConName fl ctxt && isConName fr ctxt))
+    -- If the application structures aren't easily comparable, it's a
+    -- plausible match
+    matching (App _ f a) (App _ f' a') = True
     matching (TType _) (TType _) = True
     matching (UType _) (UType _) = True
     matching l r = l == r
+
+    -- In impossible-case mode, only look at the heads (this is to account for
+    -- the non type-directed case with 'impossible' - we'd be ruling out
+    -- too much and wouldn't find the mismatch we're looking for)
+    matchingHead apl@(App _ _ _) apr@(App _ _ _)
+         | (P _ fl _, argsl) <- unApply apl,
+           (P _ fr _, argsr) <- unApply apr,
+           isConName fl ctxt && isConName fr ctxt
+       = fl == fr 
+    matchingHead _ _ = True
 
     -- Return whether there is a possible coercion between the return type
     -- of an alternative and the goal type
@@ -1737,7 +1757,7 @@ pruneByType env (P _ n _) goalty ist as
                        _ -> False
 
 
-pruneByType _ t _ _ as = as
+pruneByType _ _ t _ _ as = as
 
 -- Could the name feasibly be the return type?
 -- If there is an interface constraint on the return type, and no implementation
@@ -2882,8 +2902,8 @@ processTacticDecls info steps =
           let lhs = addImplPat ist lhs_in
           let fc = fileFC "elab_reflected_totality"
           case elaborate (constraintNS info) ctxt (idris_datatypes ist) (idris_name ist) (sMN 0 "refPatLHS") infP initEState
-                (erun fc (buildTC ist info ELHS [] fname (allNamesIn lhs_in)
-                                                         (infTerm lhs))) of
+                (erun fc (buildTC ist info EImpossible [] fname (allNamesIn lhs_in)
+                                                                (infTerm lhs))) of
             OK (ElabResult lhs' _ _ _ _ _ name', _) ->
               do -- not recursively calling here, because we don't
                  -- want to run infinitely many times

@@ -2,8 +2,8 @@ error005.idr:13:1:When checking right hand side of two with expected type
         Fin 2
 
 When checking argument prf to function Data.Fin.fromInteger:
-        When using 2 as a literal for a Fin 2 
-                2 is not strictly less than 2
+        When using 2 as a literal for a Fin (fromIntegerNat 2) 
+                2 is not strictly less than fromIntegerNat 2
 error005.idr:16:1:When checking right hand side of hahaha with expected type
         Fin n
 
@@ -14,18 +14,18 @@ error005.idr:22:1:When checking right hand side of notOk with expected type
         Fin (plus 2 n)
 
 When checking argument prf to function Data.Fin.fromInteger:
-        When using 2 as a literal for a Fin (S (S n)) 
-                2 is not strictly less than S (S n)
+        When using 2 as a literal for a Fin (plus (fromIntegerNat 2) n) 
+                2 is not strictly less than plus (fromIntegerNat 2) n
 error005.idr:23:24:When checking right hand side of b0rken with expected type
         Fin 3
 
 When checking argument prf to function Data.Fin.fromInteger:
-        When using n as a literal for a Fin 3 
-                Could not show that n is less than 3 because n is a bound
-                variable instead of a constant Integer
+        When using n as a literal for a Fin (fromIntegerNat 3) 
+                Could not show that n is less than fromIntegerNat 3 because n is
+                a bound variable instead of a constant Integer
 error005.idr:28:1:When checking right hand side of x with expected type
         Fin 4
 
 When checking argument prf to function Data.Fin.fromInteger:
-        When using 5 as a literal for a Fin 4 
-                5 is not strictly less than 4
+        When using 5 as a literal for a Fin (fromIntegerNat 4) 
+                5 is not strictly less than fromIntegerNat 4

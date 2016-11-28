@@ -575,7 +575,7 @@ checkPossible info fc tcgen fname lhs_in
         logElab 10 $ "Trying missing case: " ++ showTmImpls lhs
         -- if the LHS type checks, it is possible
         case elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
-                            (erun fc (buildTC i info ELHS [] fname
+                            (erun fc (buildTC i info EImpossible [] fname
                                                 (allNamesIn lhs_in)
                                                 (infTerm lhs))) of
             OK (ElabResult lhs' _ _ ctxt' newDecls highlights newGName, _) ->
