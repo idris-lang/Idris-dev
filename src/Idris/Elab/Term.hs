@@ -500,11 +500,11 @@ elab ist info emode opts fn tm
               showHd x = getNameFrom (sMN 0 "_") -- We probably should do something better than this here
 
               doPrune as =
-                  do whnf_compute -- to get 'Delayed' if it's there
+                  do compute -- to get 'Delayed' if it's there
                      ty <- goal
                      ctxt <- get_context
                      env <- get_env
-                     let ty' = whnf ctxt env (unDelay ty)
+                     let ty' = unDelay ty
                      let (tc, _) = unApply ty'
                      return $ pruneByType eimpossible env tc ty' ist as
 
