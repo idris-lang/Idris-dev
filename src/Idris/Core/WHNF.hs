@@ -39,7 +39,7 @@ data WHNF = WDCon Int Int Bool Name (Term, WEnv) -- ^ data constructor
           | WTCon Int Int Name (Type, WEnv) -- ^ type constructor
           | WPRef Name (Term, WEnv) -- ^irreducible global (e.g. a postulate)
           | WV Int
-          | WBind Name (Binder WHNF) (Term, WEnv)
+          | WBind Name (Binder (Term, WEnv)) (Term, WEnv)
           | WApp WHNF (Term, WEnv)
           | WConstant Const
           | WProj WHNF Int
@@ -64,8 +64,7 @@ whnf ctxt env tm =
 whnf' ctxt env tm = 
      quote (do_whnf ctxt (map finalEntry env) (finalise tm))
 
--- | Reduce a type so that all arguments are expanded, and all argument types
--- are in weak head normal form
+-- | Reduce a type so that all arguments are expanded
 whnfArgs :: Context -> Env -> Term -> Term
 whnfArgs ctxt env tm = inlineSmall ctxt env $ finalise (whnfArgs' ctxt env tm)
 whnfArgs' ctxt env tm
@@ -75,7 +74,7 @@ whnfArgs' ctxt env tm
            -- the name
            Bind n b@(Pi _ ty _) sc -> Bind n b (whnfArgs' ctxt ((n,b):env) 
                                            (instantiate (P Bound n ty) sc))
-           res -> res
+           res -> tm
 
 finalEntry :: (Name, Binder (TT Name)) -> (Name, Binder (TT Name))
 finalEntry (n, b) = (n, fmap finalise b)
@@ -94,7 +93,7 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
          = eval (WEnv d ((tm, tenv) : env)) stk sc
     eval wenv@(WEnv d env) stk (Bind n b sc) -- stk must be empty if well typed
          =let n' = uniqueName n (map fst genv) in
-              WBind n' (fmap (eval wenv []) b) (sc, WEnv (d + 1) env)
+              WBind n' (fmap (\t -> (t, wenv)) b) (sc, WEnv (d + 1) env)
 
     eval env stk (P nt n ty) 
          | Just (Let t v) <- lookup n genv = eval env stk v
@@ -229,7 +228,8 @@ quote (WDCon t a u n (ty, env)) = P (DCon t a u) n (quoteEnv env ty)
 quote (WTCon t a n (ty, env)) = P (TCon t a) n (quoteEnv env ty)
 quote (WPRef n (ty, env)) = P Ref n (quoteEnv env ty)
 quote (WV i) = V i
-quote (WBind n b (sc, env)) = Bind n (fmap quote b) (quoteEnv env sc)
+quote (WBind n b (sc, env)) = Bind n (fmap (\ (t, env) -> quoteEnv env t) b) 
+                                     (quoteEnv env sc)
 quote (WApp f (a, env)) = App Complete (quote f) (quoteEnv env a)
 quote (WConstant c) = Constant c
 quote (WProj t i) = Proj (quote t) i

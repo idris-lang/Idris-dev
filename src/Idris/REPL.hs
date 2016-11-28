@@ -1215,8 +1215,10 @@ process fn (WHNF t)
                     = do (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ERHS t
                          ctxt <- getContext
                          ist <- getIState
-                         let tm' = whnfArgs ctxt [] tm
-                         iPrintResult (show (delab ist tm'))
+                         let tm' = whnf ctxt [] tm
+                         let tmArgs' = whnfArgs ctxt [] tm
+                         iPrintResult $ "WHNF: " ++ (show (delab ist tm'))
+                         iPrintResult $ "WHNF args: " ++ (show (delab ist tmArgs'))
 process fn (TestInline t)
                            = do (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ERHS t
                                 ctxt <- getContext
