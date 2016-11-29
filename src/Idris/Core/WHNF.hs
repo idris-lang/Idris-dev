@@ -72,8 +72,9 @@ whnfArgs' ctxt env tm
            -- The assumption is that de Bruijn indices refer to local things
            -- (so not in the external environment) so we need to instantiate
            -- the name
-           Bind n b@(Pi _ ty _) sc -> Bind n b (whnfArgs' ctxt ((n,b):env) 
-                                           (instantiate (P Bound n ty) sc))
+           Bind n b@(Pi _ ty _) sc -> 
+                    Bind n b (whnfArgs' ctxt ((n,b):env) 
+                             (subst n (P Bound n ty) sc))
            res -> tm
 
 finalEntry :: (Name, Binder (TT Name)) -> (Name, Binder (TT Name))

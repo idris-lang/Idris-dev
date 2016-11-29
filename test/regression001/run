@@ -5,6 +5,9 @@ ${IDRIS:-idris} $@ --check \
     reg059.idr reg060.idr  reg061.idr reg062.idr reg063.idr \
     reg064.idr reg065.idr  reg066.idr reg071.idr reg074.idr
 
+${IDRIS:-idris} $@ --check \
+    eff001.idr -p effects
+
 ${IDRIS:-idris} $@ --check --nobuiltins reg047.idr
 
 ${IDRIS:-idris} $@ --check --nocolour \
