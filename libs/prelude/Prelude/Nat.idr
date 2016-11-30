@@ -396,12 +396,12 @@ log2 (S n) = log2NZ (S n) SIsNotZ
 gcd : (a: Nat) -> (b: Nat) -> {auto ok: NotBothZero a b} -> Nat
 gcd a Z = a
 gcd Z b = b
-gcd a (S b) = assert_total (gcd (S b) (a `modNat` (S b)))
+gcd a (S b) = assert_total $ gcd (S b) (modNatNZ a (S b) SIsNotZ)
 
 lcm : Nat -> Nat -> Nat
 lcm _ Z     = Z
 lcm Z _     = Z
-lcm a (S b) = assert_total (divNat (a * (S b)) (gcd a (S b)))
+lcm a (S b) = assert_total $ divNat (a * (S b)) (gcd a (S b))
 
 
 --------------------------------------------------------------------------------
