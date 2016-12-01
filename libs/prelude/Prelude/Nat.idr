@@ -93,7 +93,6 @@ hyper (S pn)   a (S pb) = hyper pn a (hyper (S pn) a pb)
 
 ||| Proofs that `n` or `m` is not equal to Z
 data NotBothZero : (n, m : Nat) -> Type where
-  NeitherIsZero  : NotBothZero (S n) (S m)
   LeftIsNotZero  : NotBothZero (S n) m
   RightIsNotZero : NotBothZero n     (S m)
 
@@ -393,9 +392,9 @@ log2 (S n) = log2NZ (S n) SIsNotZ
 --------------------------------------------------------------------------------
 -- GCD and LCM
 --------------------------------------------------------------------------------
-gcd : (a: Nat) -> (b: Nat) -> {auto ok: NotBothZero a b} -> Nat
-gcd a Z = a
-gcd Z b = b
+gcd : (a: Nat) -> (b: Nat) -> .{auto ok: NotBothZero a b} -> Nat
+gcd a Z     = a
+gcd Z b     = b
 gcd a (S b) = assert_total $ gcd (S b) (modNatNZ a (S b) SIsNotZ)
 
 lcm : Nat -> Nat -> Nat
