@@ -1273,7 +1273,7 @@ process fn (Missing n)
          case lookupCtxt n (idris_patdefs i) of
            [] -> iPrintError $ "Unknown name " ++ show n
            [(_, tms)] ->
-             iRenderResult (vsep (map (pprintPTerm ppOpts {ppopt_impl = True}
+             iRenderResult (vsep (map (pprintPTerm ppOpts 
                                                    []
                                                    []
                                                    (idris_infixes i))

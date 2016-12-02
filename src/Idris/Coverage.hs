@@ -152,27 +152,36 @@ mkNewClauses ctxt fn ns sc
     erasePs (P _ n _) | not (isConName n ctxt) = Erased
     erasePs tm = tm
 
-    mkFromSC :: Bool -> [Term] -> SC -> [[Term]]
-    mkFromSC cov args (STerm _) = if cov then [args] else [] -- leaf of provided case
-    mkFromSC cov args (UnmatchedCase _) = if cov then [] else [args] -- leaf of missing case
-    mkFromSC cov args ImpossibleCase = []
-    mkFromSC cov args (Case _ x alts)
-       = concatMap (mkFromAlt cov args x) alts
-    mkFromSC cov args _ = [] -- Should never happen
+    mkFromSC cov args sc = evalState (mkFromSC' cov args sc) []
 
-    mkFromAlt :: Bool -> [Term] -> Name -> CaseAlt -> [[Term]]
+    mkFromSC' :: Bool -> [Term] -> SC -> State [[Term]] [[Term]]
+    mkFromSC' cov args (STerm _) 
+        = if cov then return [args] else return [] -- leaf of provided case
+    mkFromSC' cov args (UnmatchedCase _) 
+        = if cov then return [] else return [args] -- leaf of missing case
+    mkFromSC' cov args ImpossibleCase = return []
+    mkFromSC' cov args (Case _ x alts)
+       = do done <- get
+            if (args `elem` done)
+               then return []
+               else do alts' <- mapM (mkFromAlt cov args x) alts 
+                       put (args : done)
+                       return (concat alts')
+    mkFromSC' cov args _ = return [] -- Should never happen
+
+    mkFromAlt :: Bool -> [Term] -> Name -> CaseAlt -> State [[Term]] [[Term]]
     mkFromAlt cov args x (ConCase c t conargs sc)
        = let argrep = mkApp (P (DCon t (length args) False) c Erased)
                             (map (\n -> P Ref n Erased) conargs)
              args' = map (subst x argrep) args in
-             mkFromSC cov args' sc
+             mkFromSC' cov args' sc
     mkFromAlt cov args x (ConstCase c sc)
        = let argrep = Constant c 
              args' = map (subst x argrep) args in
-             mkFromSC cov args' sc
+             mkFromSC' cov args' sc
     mkFromAlt cov args x (DefaultCase sc)
-       = mkFromSC cov args sc
-    mkFromAlt cov _ _ _ = []
+       = mkFromSC' cov args sc
+    mkFromAlt cov _ _ _ = return []
 
 -- Modify the generated case tree (the case tree builder doesn't have access
 -- to the context, so can't do this itself).
@@ -347,7 +356,7 @@ recoverableCoverage :: Context -> Err -> Bool
 recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
     = let topx' = normalise ctxt [] topx
           topy' = normalise ctxt [] topy in
-          r || checkRec topx' topy'
+          checkRec topx' topy'
   where -- different notion of recoverable than in unification, since we
         -- have no metavars -- just looking to see if a constructor is failing
         -- to unify with a function that may be reduced later
