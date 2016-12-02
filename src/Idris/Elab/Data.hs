@@ -278,7 +278,7 @@ forceArgs ctxt ty = forceFrom 0 ty
         -- definitely wants, which is particularly the case with 'views'.
         -- So perhaps we need a way of marking that in the source?)
         | (P _ ty _, args) <- unApply sc
-             = null (concatMap (findNonForcePos True) args)
+             = nub (concatMap findForcePos args)
     forceFrom i sc = []
 
     findForcePos (P _ (MN i ff) _)
