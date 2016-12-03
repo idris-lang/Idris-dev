@@ -189,16 +189,23 @@ mkNewClauses ctxt fn ns sc
 -- to the context, so can't do this itself).
 -- Replaces any missing cases with explicit cases for the missing constructors
 addMissingCons :: IState -> SC -> SC
-addMissingCons ist (Case t n alts) = Case t n (addMissingAlts n alts)
-  where
-    addMissingAlt :: CaseAlt -> CaseAlt
-    addMissingAlt (ConCase n i ns sc) = ConCase n i ns (addMissingCons ist sc)
-    addMissingAlt (FnCase n ns sc) = FnCase n ns (addMissingCons ist sc)
-    addMissingAlt (ConstCase c sc) = ConstCase c (addMissingCons ist sc)
-    addMissingAlt (SucCase n sc) = SucCase n (addMissingCons ist sc)
-    addMissingAlt (DefaultCase sc) = DefaultCase (addMissingCons ist sc)
+addMissingCons ist sc = evalState (addMissingConsSt ist sc) 0
 
-    -- TODO: deal with constants
+addMissingConsSt :: IState -> SC -> State Int SC
+addMissingConsSt ist (Case t n alts) = liftM (Case t n) (addMissingAlts n alts)
+  where
+    addMissingAlt :: CaseAlt -> State Int CaseAlt
+    addMissingAlt (ConCase n i ns sc) 
+         = liftM (ConCase n i ns) (addMissingConsSt ist sc)
+    addMissingAlt (FnCase n ns sc) 
+         = liftM (FnCase n ns) (addMissingConsSt ist sc)
+    addMissingAlt (ConstCase c sc) 
+         = liftM (ConstCase c) (addMissingConsSt ist sc)
+    addMissingAlt (SucCase n sc) 
+         = liftM (SucCase n) (addMissingConsSt ist sc)
+    addMissingAlt (DefaultCase sc) 
+         = liftM DefaultCase (addMissingConsSt ist sc)
+
     addMissingAlts argn as 
 --          | any hasDefault as = map addMissingAlt as
          | cons@(n:_) <- mapMaybe collectCons as,
@@ -208,24 +215,19 @@ addMissingCons ist (Case t n alts) = Case t n (addMissingAlts n alts)
              -- things which were matched in other cases earlier can't be missing
              -- cases now
              = let missing = con_names ti \\ cons in
-                   map addMissingAlt $ addCases missing as
+                   do as' <- addCases missing as
+                      mapM addMissingAlt as'
          | consts@(n:_) <- mapMaybe collectConsts as
              = let missing = nub (map nextConst consts) \\ consts in
-                   map addMissingAlt $ addCons missing as
-    addMissingAlts n as = map addMissingAlt as
+                   mapM addMissingAlt (addCons missing as)
+    addMissingAlts n as = mapM addMissingAlt as
 
-    -- Add the constructors already ruled out for an argument (because
-    -- we've fallen through those cases)
-    addArgCons argn cons [] = [(argn, cons)]
-    addArgCons argn cons ((a, cs) : ms)
-         | a == argn = ((a, nub (cons ++ cs)) : ms)
-    addArgCons argn cons (m : ms) = m : addArgCons argn cons ms
-
-
-    addCases missing [] = []
+    addCases missing [] = return []
     addCases missing (DefaultCase rhs : rest)
-       = mapMaybe (genMissingAlt rhs) missing ++ rest
-    addCases missing (c : rest) = c : addCases missing rest
+       = do missing' <- mapM (genMissingAlt rhs) missing
+            return (mapMaybe id missing' ++ rest)
+    addCases missing (c : rest) 
+       = liftM (c :) $ addCases missing rest
 
     addCons missing [] = []
     addCons missing (DefaultCase rhs : rest)
@@ -234,9 +236,11 @@ addMissingCons ist (Case t n alts) = Case t n (addMissingAlts n alts)
 
     genMissingAlt rhs n
          | Just (TyDecl (DCon tag arity _) ty) <- lookupDefExact n (tt_ctxt ist)
-             = Just $ ConCase n tag (map (\i -> sMN i "miss") [0..arity-1])
-                             rhs
-         | otherwise = Nothing
+             = do name <- get
+                  put (name + arity)
+                  let args = map (name +) [0..arity-1]
+                  return $ Just $ ConCase n tag (map (\i -> sMN i "m") args) rhs
+         | otherwise = return Nothing
 
     genMissingConAlt rhs n = ConstCase n rhs
 
@@ -268,7 +272,7 @@ addMissingCons ist (Case t n alts) = Case t n (addMissingAlts n alts)
     nextConst (Str c) = Str (c ++ "'")
     nextConst o = o
 
-addMissingCons ist sc = sc
+addMissingConsSt ist sc = return sc
 
 trimOverlapping :: SC -> SC
 trimOverlapping sc = trim [] [] sc
@@ -279,8 +283,6 @@ trimOverlapping sc = trim [] [] sc
     trim mustbes nots (Case t vn alts)
        | Just (c, args) <- lookup vn mustbes
             = Case t vn (trimAlts mustbes nots vn (substMatch (c, args) alts))
---             = let alts' = filter (isConMatch c) alts in
---                   Case t vn (trimAlts mustbes nots vn alts')
        | Just cantbe <- lookup vn nots
             = let alts' = filter (notConMatch cantbe) alts in
                   Case t vn (trimAlts mustbes nots vn alts')
@@ -311,29 +313,18 @@ trimOverlapping sc = trim [] [] sc
 
     substNames [] sc = sc
     substNames ((n, n') : ns) sc 
-       | not (missName n || missName n') = substNames ns (substSC n n' sc)
-       | otherwise = substNames ns sc
+       = substNames ns (substSC n n' sc)
 
     notConMatch cs (ConCase cn t args sc) = cn `notElem` cs
     notConMatch cs _ = True
 
-    addMatch vn (cn, _) cs | missName vn || missName cn = cs
     addMatch vn cn cs = (vn, cn) : cs
 
     addCantBe :: Name -> Name -> [(Name, [Name])] -> [(Name, [Name])]
-    addCantBe vn cn nots | missName vn || missName cn = nots
     addCantBe vn cn [] = [(vn, [cn])]
     addCantBe vn cn ((n, cbs) : nots)
           | vn == n = ((n, nub (cn : cbs)) : nots)
           | otherwise = ((n, cbs) : addCantBe vn cn nots)
-
-    -- "miss" names are inserted by addMissingCons, and are treated as
-    -- placeholders throughout, so we need to make a note to treat them as
-    -- placeholders here too (otherwise we might substitute them and end up
-    -- matching on them, and that'd be a disaster because we don't take care
-    -- to make unique names...)
-    missName (MN i miss) = miss == txt "miss"
-    missName _ = False
 
 -- | Does this error result rule out a case as valid when coverage checking?
 validCoverageCase :: Context -> Err -> Bool
