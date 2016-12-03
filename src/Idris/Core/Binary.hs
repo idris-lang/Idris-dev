@@ -639,6 +639,7 @@ instance {- (Binary n) => -} Binary (TT Name) where
                 TType x1 -> do putWord8 7
                                put x1
                 Impossible -> putWord8 8
+                Inferred x1 -> put x1 -- drop the 'Inferred'
                 UType x1 -> do putWord8 10
                                put x1
         get

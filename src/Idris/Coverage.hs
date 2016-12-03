@@ -73,7 +73,8 @@ genClauses fc n lhs_tms given
       
         let lhs_given = zipWith removePlaceholders lhs_tms 
                             (map (stripUnmatchable i) (map flattenArgs given))
-
+        
+        logCoverage 5 $ "Building coverage tree for:\n" ++ showSep "\n" (map show (lhs_given))
         let givenpos = mergePos (map getGivenPos given)
 
         (cns, ctree_in) <- 
@@ -118,9 +119,10 @@ mergePos [x] = x
 mergePos (x : xs) = intersect x (mergePos xs)
 
 removePlaceholders :: ([Name], Term) -> PTerm -> ([Name], Term, Term)
-removePlaceholders (ns, tm) ptm = (ns, tm, Erased) -- rp tm ptm, Erased)
+removePlaceholders (ns, tm) ptm = (ns, rp tm ptm, Erased)
   where
-    rp tm Placeholder = Erased
+    rp Erased Placeholder = Erased
+    rp tm Placeholder = Inferred tm
     rp tm (PApp _ pf pargs)
        | (tf, targs) <- unApply tm
            = let tf' = rp tf pf

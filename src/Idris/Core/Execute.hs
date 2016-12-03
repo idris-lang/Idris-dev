@@ -212,6 +212,7 @@ doExec env ctxt (Proj tm i) = let (x, xs) = unApply tm in
                               doExec env ctxt ((x:xs) !! i)
 doExec env ctxt Erased = return EErased
 doExec env ctxt Impossible = fail "Tried to execute an impossible case"
+doExec env ctxt (Inferred t) = doExec env ctxt t
 doExec env ctxt (TType u) = return (EType u)
 doExec env ctxt (UType u) = return (EUType u)
 

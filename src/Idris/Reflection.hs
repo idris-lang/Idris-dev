@@ -491,6 +491,9 @@ reflectTTQuotePattern unq Erased
 reflectTTQuotePattern unq Impossible
   = lift . tfail . InternalMsg $
       "Phase error! The Impossible constructor is for optimization only and should not have been reflected during elaboration."
+reflectTTQuotePattern unq (Inferred t)
+  = lift . tfail . InternalMsg $
+      "Phase error! The Inferred constructor is for coverage checking only and should not have been reflected during elaboration."
 reflectTTQuotePattern unq (TType exp)
   = do ue <- getNameFrom (sMN 0 "uexp")
        claim ue (Var (sNS (sUN "TTUExp") ["Reflection", "Language"]))
@@ -654,6 +657,8 @@ reflectTTQuote _   (Proj _ _) =
 reflectTTQuote unq Erased = Var (reflm "Erased")
 reflectTTQuote _   Impossible =
   error "Phase error! The Impossible constructor is for optimization only and should not have been reflected during elaboration."
+reflectTTQuote _   (Inferred tm) =
+  error "Phase error! The Inferred constructor is for coverage checking only and should not have been reflected during elaboration."
 
 reflectRawQuote :: [Name] -> Raw -> Raw
 reflectRawQuote unq (Var n)

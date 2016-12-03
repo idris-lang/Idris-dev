@@ -349,6 +349,7 @@ isConstType _ _ = False
 
 data Pat = PCon Bool Name Int [Pat]
          | PConst Const
+         | PInferred Pat
          | PV Name Type
          | PSuc Pat -- special case for n+1 on Integer
          | PReflected Name [Pat]
@@ -387,6 +388,7 @@ toPat reflect tc = map $ toPat' []
 
     toPat' []   (P Bound n ty) = PV n ty
     toPat' args (App _ f a)    = toPat' (a : args) f
+    toPat' args (Inferred tm)  = PInferred (toPat' args tm)
     toPat' [] (Constant x) | isTypeConst x = PTyPat
                            | otherwise     = PConst x
 
@@ -502,6 +504,41 @@ order phase ns' cs cans
     numNames xs (_ : ps) = numNames xs ps
     numNames xs [] = length xs
 
+-- Reorder the patterns in the clause so that the PInferred patterns come
+-- last. Also strip 'PInferred' from the top level patterns so that we can
+-- go ahead and match.
+orderByInf :: [Name] -> [Clause] -> ([Name], [Clause])
+orderByInf vs cs = let alwaysInf = getInf cs in
+                       (selectInf alwaysInf vs,
+                        map deInf (map (selectExp alwaysInf) cs))
+  where
+    getInf [] = []
+    getInf [(pats, def)] = infPos 0 pats
+    getInf ((pats, def) : cs) = infPos 0 pats `intersect` getInf cs
+
+    selectExp :: [Int] -> Clause -> Clause
+    selectExp infs (pats, def)
+         = let (notInf, inf) = splitPats 0 infs [] [] pats in
+               (notInf ++ inf, def)
+
+    selectInf :: [Int] -> [a] -> [a]
+    selectInf infs ns = let (notInf, inf) = splitPats 0 infs [] [] ns in
+                            notInf ++ inf
+
+    splitPats i infpos notInf inf [] = (reverse notInf, reverse inf)
+    splitPats i infpos notInf inf (p : ps)
+         | i `elem` infpos = splitPats (i + 1) infpos notInf (p : inf) ps
+         | otherwise = splitPats (i + 1) infpos (p : notInf) inf ps
+
+    infPos i [] = []
+    infPos i (PInferred p : ps) = i : infPos (i + 1) ps
+    infPos i (_ : ps) = infPos (i + 1) ps
+
+    deInf (pats, def) = (map deInfPat pats, def)
+
+    deInfPat (PInferred p) = p
+    deInfPat p = p
+
 match :: [Name] -> [Clause] -> SC -- error case
                             -> CaseBuilder SC
 match [] (([], ret) : xs) err
@@ -510,8 +547,9 @@ match [] (([], ret) : xs) err
          case snd ret of
             Impossible -> return ImpossibleCase
             tm -> return $ STerm tm -- run out of arguments
-match vs cs err = do let ps = partition cs
-                     mixture vs ps err
+match vs cs err = do let (vs', de_inf) = orderByInf vs cs
+                         ps = partition de_inf
+                     mixture vs' ps err
 
 mixture :: [Name] -> [Partition] -> SC -> CaseBuilder SC
 mixture vs [] err = return err

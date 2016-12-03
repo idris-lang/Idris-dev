@@ -1008,6 +1008,9 @@ data TT n = P NameType n (TT n) -- ^ named references with type
                              -- (-1) is a special case for 'subtract one from BI'
           | Erased -- ^ an erased term
           | Impossible -- ^ special case for totality checking
+          | Inferred (TT n) -- ^ For building case trees when coverage checkimg only.
+                            -- Marks a term as being inferred by the machine, rather than
+                            -- given by the programmer
           | TType UExp -- ^ the type of types at some level
           | UType Universe -- ^ Uniqueness type universe (disjoint from TType)
   deriving (Ord, Functor, Data, Generic, Typeable)
@@ -1055,6 +1058,7 @@ instance Sized a => Sized (TT a) where
   size (TType u) = 1 + size u
   size (Proj a _) = 1 + size a
   size Impossible = 1
+  size (Inferred t) = size t
   size (UType u) = 1 + size u
 
 instance Pretty a o => Pretty (TT a) o where
@@ -1379,6 +1383,7 @@ termSmallerThan x (V i) = True
 termSmallerThan x (Constant c) = True
 termSmallerThan x Erased = True
 termSmallerThan x Impossible = True
+termSmallerThan x (Inferred t) = termSmallerThan x t
 termSmallerThan x (TType u) = True
 termSmallerThan x (UType u) = True
 
@@ -1421,6 +1426,7 @@ safeForgetEnv env (UType u) = Just $ RUType u
 safeForgetEnv env Erased    = Just $ RConstant Forgot
 safeForgetEnv env (Proj tm i) = error "Don't know how to forget a projection"
 safeForgetEnv env Impossible = error "Don't know how to forget Impossible"
+safeForgetEnv env (Inferred t) = safeForgetEnv env t
 
 -- | Introduce a 'Bind' into the given term for each element of the
 -- given list of (name, binder) pairs.
@@ -1583,6 +1589,7 @@ prettyEnv env t = prettyEnv' env t False
     prettySe p env Erased debug = text "[_]"
     prettySe p env (TType i) debug = text "Type" <+> (text . show $ i)
     prettySe p env Impossible debug = text "Impossible"
+    prettySe p env (Inferred tm) debug = text "<" <+> prettySe p env tm debug <+> text ">"
     prettySe p env (UType u) debug = text (show u)
 
     -- Render a `Binder` and its name
@@ -1628,6 +1635,7 @@ showEnv' env t dbg = se 10 env t where
     se p env (Constant c) = show c
     se p env Erased = "[__]"
     se p env Impossible = "[impossible]"
+    se p env (Inferred t) = "<" ++ se p env t ++ ">"
     se p env (TType i) = "Type " ++ show i
     se p env (UType u) = show u
 
@@ -1736,6 +1744,7 @@ pprintTT bound tm = pp startPrec bound tm
       text "!" <> text (show i)
     pp p bound Erased = text "<<<erased>>>"
     pp p bound Impossible = text "<<<impossible>>>"
+    pp p bound (Inferred t) = text "<" <+> pp p bound t <+> text ">"
     pp p bound (TType ue) = annotate (AnnType "Type" "The type of types") $
                             text "Type"
     pp p bound (UType u) = text (show u)

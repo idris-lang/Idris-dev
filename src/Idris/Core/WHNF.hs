@@ -107,6 +107,7 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
 
     eval env stk Erased = unload WErased stk
     eval env stk Impossible = unload WImpossible stk
+    eval env stk (Inferred tm) = eval env stk tm
     eval env stk (TType u) = unload (WType u) stk
     eval env stk (UType u) = unload (WUType u) stk
 
