@@ -152,7 +152,6 @@ generateToolchainModule verbosity srcDir toolDir = do
     rewriteFile toolPath (commonContent ++ toolContent)
 
 idrisConfigure _ flags _ local = do
-    configureRTS
     generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
     if isFreestanding $ configFlags local
         then do
@@ -168,12 +167,6 @@ idrisConfigure _ flags _ local = do
     where
       verbosity = S.fromFlag $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
-
-      -- This is a hack. I don't know how to tell cabal that a data file needs
-      -- installing but shouldn't be in the distribution. And it won't make the
-      -- distribution if it's not there, so instead I just delete
-      -- the file after configure.
-      configureRTS = make verbosity ["-C", "rts", "clean"]
 
 idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
@@ -227,7 +220,6 @@ idrisPreBuild args flags = do
 
 idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
       buildStdLib
-      buildRTS
    where
       verbosity = S.fromFlag $ S.buildVerbosity flags
 
@@ -237,18 +229,11 @@ idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
          where
             makeBuild dir = make verbosity [ "-C", dir, "build" , "IDRIS=" ++ idrisCmd local]
 
-      buildRTS = make verbosity (["-C", "rts", "build"] ++
-                                   gmpflag (usesGMP (configFlags local)))
-
-      gmpflag False = []
-      gmpflag True = ["GMP=-DIDRIS_GMP"]
-
 -- -----------------------------------------------------------------------------
 -- Copy/Install
 
 idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ do
       installStdLib
-      installRTS
       installManPage
    where
       target = datadir $ L.absoluteInstallDirs pkg local copy
@@ -257,11 +242,6 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
         let target' = target -- </> "libs"
         putStrLn $ "Installing libraries in " ++ target'
         makeInstall "libs" target'
-
-      installRTS = do
-         let target' = target </> "rts"
-         putStrLn $ "Installing run time system in " ++ target'
-         makeInstall "rts" target'
 
       installManPage = do
          let mandest = mandir (L.absoluteInstallDirs pkg local copy) ++ "/man1"
