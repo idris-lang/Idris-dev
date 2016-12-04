@@ -13,10 +13,35 @@ import Idris.Info.Show
 import Idris.Main
 import Idris.Package
 
-import Util.System (setupBundledCC)
-
-import Util.System ( setupBundledCC )
 import System.Exit ( ExitCode(..), exitWith)
+
+#ifdef FREESTANDING
+import Data.List (intercalate)
+import System.Directory (doesDirectoryExist)
+import System.Environment (getEnv, getExecutablePath, setEnv)
+import System.FilePath (dropFileName, isAbsolute, searchPathSeparator)
+import Tools_idris
+#endif
+
+setupBundledCC :: IO()
+#ifdef FREESTANDING
+setupBundledCC = when hasBundledToolchain
+                    $ do
+                        exePath <- getExecutablePath
+                        path <- getEnv "PATH"
+                        tcDir <- return getToolchainDir
+                        absolute <- return $ isAbsolute tcDir
+                        target <- return $
+                                    if absolute
+                                       then tcDir
+                                       else dropFileName exePath ++ tcDir
+                        present <- doesDirectoryExist target
+                        when present $ do
+                          newPath <- return $ intercalate [searchPathSeparator] [target, path]
+                          setEnv "PATH" newPath
+#else
+setupBundledCC = return ()
+#endif
 
 processShowOptions :: [Opt] -> Idris ()
 processShowOptions opts = runIO $ do
