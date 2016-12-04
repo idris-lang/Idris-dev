@@ -52,29 +52,6 @@ Data-files:            idrisdoc/styles.css
                        jsrts/Runtime-node.js
                        jsrts/jsbn/jsbn.js
                        jsrts/jsbn/LICENSE
-                       rts/arduino/idris_main.c
-                       rts/idris_bitstring.c
-                       rts/idris_bitstring.h
-                       rts/idris_gc.c
-                       rts/idris_gc.h
-                       rts/idris_gmp.c
-                       rts/idris_gmp.h
-                       rts/idris_heap.c
-                       rts/idris_heap.h
-                       rts/idris_main.c
-                       rts/idris_net.c
-                       rts/idris_net.h
-                       rts/idris_opts.c
-                       rts/idris_opts.h
-                       rts/idris_rts.c
-                       rts/idris_rts.h
-                       rts/idris_stats.c
-                       rts/idris_stats.h
-                       rts/idris_stdfgn.c
-                       rts/idris_stdfgn.h
-                       rts/mini-gmp.c
-                       rts/mini-gmp.h
-                       rts/libtest.c
 
 Extra-doc-files:
                        CHANGELOG.md
@@ -128,187 +105,24 @@ Flag execonly
   Default:      False
   manual:       True
 
+Flag codegen_C
+  Description:  Builds the C RTS and code generator within the main executable
+  Default:      False
+  manual:       True
+
 Library
   hs-source-dirs: src
   Exposed-modules:
-                  Idris.Core.Binary
-                , Idris.Core.CaseTree
-                , Idris.Core.Constraints
-                , Idris.Core.DeepSeq
-                , Idris.Core.Elaborate
-                , Idris.Core.Evaluate
-                , Idris.Core.Execute
-                , Idris.Core.ProofState
-                , Idris.Core.ProofTerm
-                , Idris.Core.TT
-                , Idris.Core.Typecheck
-                , Idris.Core.Unify
-                , Idris.Core.WHNF
-
-                , Idris.Elab.Utils
-                , Idris.Elab.Type
-                , Idris.Elab.AsPat
-                , Idris.Elab.Clause
-                , Idris.Elab.Data
-                , Idris.Elab.Record
-                , Idris.Elab.Interface
-                , Idris.Elab.Implementation
-                , Idris.Elab.Provider
-                , Idris.Elab.RunElab
-                , Idris.Elab.Transform
-                , Idris.Elab.Value
-                , Idris.Elab.Term
-                , Idris.Elab.Quasiquote
-                , Idris.Elab.Rewrite
-
-                , Idris.REPL.Browse
-
-                , Idris.AbsSyntax
-                , Idris.AbsSyntaxTree
-                , Idris.Apropos
-                , Idris.ASTUtils
-                , Idris.CaseSplit
-                , Idris.Chaser
-                , Idris.Colours
-                , Idris.Completion
-                , Idris.Coverage
-                , Idris.DSL
-                , Idris.DataOpts
-                , Idris.DeepSeq
-                , Idris.Delaborate
-                , Idris.Directives
-                , Idris.Docs
-                , Idris.Docstrings
-                , Idris.ElabDecls
-                , Idris.Erasure
-                , Idris.Error
-                , Idris.ErrReverse
-                , Idris.Help
-                , Idris.IBC
-                , Idris.IdeMode
-                , Idris.IdrisDoc
-                , Idris.Imports
-                , Idris.Info
-                , Idris.Info.Show
-                , Idris.Inliner
-                , Idris.Interactive
-                , Idris.Output
-                , Idris.Main
-                , Idris.ModeCommon
-                , Idris.Parser
-                , Idris.Parser.Helpers
-                , Idris.Parser.Ops
-                , Idris.Parser.Expr
-                , Idris.Parser.Data
-                , Idris.PartialEval
-                , Idris.Primitives
-                , Idris.ProofSearch
-                , Idris.Prover
-                , Idris.Providers
-                , Idris.Reflection
-                , Idris.REPL
-                , Idris.REPL.Parser
-                , Idris.REPL.Commands
-                , Idris.Termination
-                , Idris.Transforms
-                , Idris.TypeSearch
-                , Idris.Unlit
-                , Idris.WhoCalls
-                , Idris.CmdOptions
-
-                , IRTS.BCImp
-                , IRTS.Bytecode
-                , IRTS.CodegenC
-                , IRTS.CodegenCommon
-                , IRTS.CodegenJavaScript
-                , IRTS.Exports
-                , IRTS.JavaScript.AST
-                , IRTS.Compiler
-                , IRTS.Defunctionalise
-                , IRTS.DumpBC
-                , IRTS.Inliner
-                , IRTS.Lang
-                , IRTS.LangOpts
-                , IRTS.Portable
-                , IRTS.Simplified
-                , IRTS.System
-
+                  IRTS.System
                 , Idris.Package
-                , Idris.Package.Common
-
-                , Util.DynamicLinker
-                , Util.ScreenSize
-                , Util.System
-
   Other-modules:
-                  Util.Pretty
-                , Util.Net
-
-                , Idris.Package.Parser
-
                 -- Auto Generated
                 , Paths_idris
                 , Version_idris
                 , Tools_idris
 
-  Build-depends:  base >=4 && <5
-                , aeson >= 0.6 && < 1.1
-                , annotated-wl-pprint >= 0.7 && < 0.8
-                , ansi-terminal < 0.7
-                , ansi-wl-pprint < 0.7
-                , array >= 0.4.0.1 && < 0.6
-                , base64-bytestring < 1.1
-                , binary >= 0.7 && < 0.9
-                , blaze-html >= 0.6.1.3 && < 0.9
-                , blaze-markup >= 0.5.2.1 && < 0.8
-                , bytestring < 0.11
-                , cheapskate < 0.2
-                , containers >= 0.5 && < 0.6
-                , deepseq < 1.5
-                , directory >= 1.2.2.0 && < 1.2.3.0 || > 1.2.3.0
-                , filepath < 1.5
-                , fingertree >= 0.1 && < 0.2
-                , haskeline >= 0.7 && < 0.8
-                , ieee754 >= 0.7 && < 0.8
-                , mtl >= 2.1 && < 2.3
-                , network < 2.7
-                , optparse-applicative >= 0.11 && < 0.14
-                , parsers >= 0.9 && < 0.13
-                , pretty < 1.2
-                , regex-tdfa >= 1.2
-                , split < 0.3
-                , terminal-size < 0.4
-                , text >=1.2.1.0 && < 1.3
-                , time >= 1.4 && < 1.7
-                , transformers < 0.6
-                , transformers-compat >= 0.3
-                , trifecta >= 1.6 && < 1.7
-                , uniplate >=1.6 && < 1.7
-                , unordered-containers < 0.3
-                , utf8-string < 1.1
-                , vector < 0.12
-                , vector-binary-instances < 0.3
-                , zip-archive > 0.2.3.5 && < 0.4
-                , safe == 0.3.9
-                , fsnotify >= 0.2 && < 2.2
-                , async < 2.2
-
-
-  -- zlib >= 0.6.1 is broken with GHC < 7.10.3
-  -- Travis is broken for 7.6 and 7.8 with a newer process
-  if impl(ghc < 7.10.3)
-     build-depends: zlib < 0.6.1
-                  , process < 1.3
-  else
-     build-depends: process < 1.5
-
-  Extensions:     MultiParamTypeClasses
-                , DeriveFoldable
-                , DeriveTraversable
-                , FunctionalDependencies
-                , FlexibleContexts
-                , FlexibleInstances
-                , TemplateHaskell
+  Build-depends:  base
+                , idris-core
 
   ghc-prof-options: -auto-all -caf-all
 
@@ -334,6 +148,8 @@ Library
      cpp-options:   -DFREESTANDING
   if flag(CI)
      ghc-options:   -Werror
+  if flag(codegen_C)
+     build-depends: idris-codegen-c
 
 Executable idris
   Main-is:        Main.hs
@@ -376,19 +192,6 @@ Test-suite regression-and-feature-tests
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -with-rtsopts=-N -funbox-strict-fields
-
-Executable idris-codegen-c
-  Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-codegen-c
-
-  Build-depends:  idris
-                , base
-                , filepath
-                , haskeline >= 0.7
-                , transformers
-
-  ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
 Executable idris-codegen-javascript
   Main-is:        Main.hs
