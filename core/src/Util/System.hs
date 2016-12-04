@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE ForeignFunctionInterface #-}
 module Util.System( tempfile
                   , withTempdir
                   , rmFile
@@ -14,7 +14,6 @@ module Util.System( tempfile
                   , writeSource
                   , writeSourceText
                   , readSource
-                  , setupBundledCC
                   , isATTY
                   ) where
 
@@ -29,14 +28,6 @@ import System.FilePath (normalise, (</>))
 import System.Info
 import System.IO
 import System.IO.Error
-
-#ifdef FREESTANDING
-import Data.List (intercalate)
-import System.Directory (doesDirectoryExist)
-import System.Environment (getEnv, getExecutablePath, setEnv)
-import System.FilePath (dropFileName, isAbsolute, searchPathSeparator)
-import Tools_idris
-#endif
 
 catchIO :: IO a -> (IOError -> IO a) -> IO a
 catchIO = CE.catch
@@ -93,22 +84,3 @@ rmFile f = do
             | otherwise = putStrLn $ "WARNING: Cannot remove file "
                           ++ f ++ ", Error msg:" ++ show e
 
-setupBundledCC :: IO()
-#ifdef FREESTANDING
-setupBundledCC = when hasBundledToolchain
-                    $ do
-                        exePath <- getExecutablePath
-                        path <- getEnv "PATH"
-                        tcDir <- return getToolchainDir
-                        absolute <- return $ isAbsolute tcDir
-                        target <- return $
-                                    if absolute
-                                       then tcDir
-                                       else dropFileName exePath ++ tcDir
-                        present <- doesDirectoryExist target
-                        when present $ do
-                          newPath <- return $ intercalate [searchPathSeparator] [target, path]
-                          setEnv "PATH" newPath
-#else
-setupBundledCC = return ()
-#endif
