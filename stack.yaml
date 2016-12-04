@@ -1,12 +1,17 @@
 resolver: lts-7.10
 
 packages:
-  - location: .
+  - location : .
+  - location : core
+    extra-dep: true
+  - location : codegen/idris-codegen-c
+    extra-dep: true
 
 flags:
   idris:
-    FFI: true
-    GMP: true
+    FFI:       true
+    GMP:       true
+    codegen_C: false
 
 extra-deps:
   - libffi-0.1
