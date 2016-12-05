@@ -4,8 +4,7 @@ Description : Entry Point for the Idris REPL and CLI.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
-             PatternGuards #-}
+{-# LANGUAGE CPP, DeriveFunctor, PatternGuards #-}
 module Idris.REPL
   ( idemodeStart
   , startServer

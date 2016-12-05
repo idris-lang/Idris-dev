@@ -5,8 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
-             PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE DeriveFunctor, PatternGuards, TypeSynonymInstances #-}
 
 module Idris.AbsSyntax(
     module Idris.AbsSyntax

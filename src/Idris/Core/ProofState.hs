@@ -10,7 +10,7 @@ proofs, and some high level commands for introducing new theorems,
 evaluation/checking inside the proof system, etc.
 -}
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards #-}
+{-# LANGUAGE PatternGuards #-}
 module Idris.Core.ProofState(
     ProofState(..), newProof, envAtFocus, goalAtFocus
   , Tactic(..), Goal(..), processTactic, nowElaboratingPS
