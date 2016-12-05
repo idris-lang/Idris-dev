@@ -61,7 +61,8 @@ time : IO Integer
 time = do MkRaw t <- foreign FFI_C "idris_time" (IO (Raw Integer))
           pure t
 
-usleep : (i: Int) -> { auto p: (i > 0 && i <= 1000000) = True } ->  IO ()
+||| Specify interval to sleep for, must be in range [0, 1000000]
+usleep : (i : Int) -> { auto prf : (i > 0 && i <= 1000000) = True } -> IO ()
 usleep i = foreign FFI_C "usleep" (Int -> IO ()) i
 
 system : String -> IO Int
