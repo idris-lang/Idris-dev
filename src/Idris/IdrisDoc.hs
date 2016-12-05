@@ -19,7 +19,7 @@ import Idris.Docs
 import Idris.Docstrings (nullDocstring)
 import qualified Idris.Docstrings as Docstrings
 import Idris.Parser.Helpers (opChars)
-import IRTS.System (getDataFileName)
+import IRTS.System (getIdrisDataFileByName)
 
 import Control.Applicative ((<|>))
 import Control.Monad (forM_)
@@ -708,5 +708,5 @@ copyDependencies :: FilePath -- ^ The base directory to which
                              --   dependencies should be written
                  -> IO ()
 copyDependencies dir =
-  do styles <- getDataFileName $ "idrisdoc" </> "styles.css"
+  do styles <- getIdrisDataFileByName $ "idrisdoc" </> "styles.css"
      copyFile styles (dir </> "styles.css")

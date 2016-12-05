@@ -22,6 +22,7 @@ module Idris.Info
   , getIdrisHistoryFile
   , getIdrisInstalledPackages
   , getIdrisLoggingCategories
+  , getIdrisDataFileByName
   ) where
 
 import Idris.AbsSyntax (loggingCatsStr)
@@ -34,6 +35,7 @@ import Version_idris (gitHash)
 import Data.Version
 import System.Directory
 import System.FilePath
+
 getIdrisDataDir :: IO String
 getIdrisDataDir = S.getIdrisDataDir
 
@@ -88,3 +90,6 @@ getIdrisInstalledPackages = installedPackages
 
 getIdrisLoggingCategories :: IO [String]
 getIdrisLoggingCategories = return $ words loggingCatsStr
+
+getIdrisDataFileByName :: String -> IO FilePath
+getIdrisDataFileByName = S.getIdrisDataFileByName
