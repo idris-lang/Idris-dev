@@ -166,11 +166,7 @@ parseFlags = many $
 
   <|> (UseCodegen . parseCodegen) <$> strOption (long "codegen"
                                               <> metavar "TARGET"
-                                              <> help "Select code generator: C, Javascript, Node and bytecode are bundled with Idris")
-
-  <|> ((UseCodegen . Via JSONFormat) <$> strOption (long "portable-codegen"
-                                                 <> metavar "TARGET"
-                                                 <> help "Pass the name of the code generator. This option is for codegens that take JSON formatted IR."))
+                                              <> help "Select code generator: C, Javascript, Node and bytecode are available by default. Others can be enabled with cabal flags.")
 
   <|> (CodegenArgs <$> strOption (long "cg-opt"
                                <> metavar "ARG"
@@ -237,7 +233,7 @@ preProcOpts []                = []
 
 parseCodegen :: String -> Codegen
 parseCodegen "bytecode" = Bytecode
-parseCodegen cg         = Via IBCFormat (map toLower cg)
+parseCodegen cg         = Via (map toLower cg)
 
 parseLogCats :: Monad m => String -> m [LogCat]
 parseLogCats s =

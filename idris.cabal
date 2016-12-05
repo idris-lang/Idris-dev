@@ -47,11 +47,6 @@ Build-type:     Custom
 Tested-With:    GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
 
 Data-files:            idrisdoc/styles.css
-                       jsrts/Runtime-browser.js
-                       jsrts/Runtime-common.js
-                       jsrts/Runtime-node.js
-                       jsrts/jsbn/jsbn.js
-                       jsrts/jsbn/LICENSE
 
 Extra-doc-files:
                        CHANGELOG.md
@@ -75,11 +70,6 @@ source-repository head
 
 Flag FFI
   Description:  Build support for libffi
-  Default:      False
-  manual:       True
-
-Flag GMP
-  Description:  Use GMP for Integers
   Default:      False
   manual:       True
 
@@ -110,6 +100,11 @@ Flag codegen_C
   Default:      False
   manual:       True
 
+Flag codegen_JavaScript
+  Description:  Builds the JavaScript RTS and code generator within the main executable
+  Default:      False
+  manual:       True
+
 Library
   hs-source-dirs: src
   Exposed-modules:
@@ -117,8 +112,7 @@ Library
                 , Idris.Package
   Other-modules:
                 -- Auto Generated
-                , Paths_idris
-                , Version_idris
+                  Paths_idris
                 , Tools_idris
 
   Build-depends:  base
@@ -139,10 +133,6 @@ Library
   if flag(FFI)
      build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_FFI
-  if flag(GMP)
-     build-depends: libffi < 0.2
-     extra-libraries: gmp
-     cpp-options:   -DIDRIS_GMP
   if flag(freestanding)
      other-modules: Target_idris
      cpp-options:   -DFREESTANDING
@@ -150,10 +140,12 @@ Library
      ghc-options:   -Werror
   if flag(codegen_C)
      build-depends: idris-codegen-c
+  if flag(codegen_JavaScript)
+     build-depends: idris-codegen-javascript
 
 Executable idris
   Main-is:        Main.hs
-  hs-source-dirs: main
+  hs-source-dirs: src
 
   Build-depends:  idris
                 , base
@@ -189,32 +181,6 @@ Test-suite regression-and-feature-tests
   if impl(ghc < 7.10)
     Extensions: DeriveDataTypeable
 
-
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -with-rtsopts=-N -funbox-strict-fields
 
-Executable idris-codegen-javascript
-  Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-codegen-javascript
-
-  Build-depends:  idris
-                , base
-                , filepath
-                , haskeline >= 0.7
-                , transformers
-
-  ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields
-
-Executable idris-codegen-node
-  Main-is:        Main.hs
-  hs-source-dirs: codegen/idris-codegen-node
-
-  Build-depends:  idris
-                , base
-                , filepath
-                , haskeline >= 0.7
-                , transformers
-
-  ghc-prof-options: -auto-all -caf-all
-  ghc-options:      -threaded -rtsopts -funbox-strict-fields

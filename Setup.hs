@@ -96,27 +96,6 @@ idrisClean _ flags _ _ = cleanStdLib
 -- -----------------------------------------------------------------------------
 -- Configure
 
-gitHash :: IO String
-gitHash = do h <- Control.Exception.catch (readProcess "git" ["rev-parse", "--short", "HEAD"] "")
-                  (\e -> let e' = (e :: SomeException) in return "PRE")
-             return $ takeWhile (/= '\n') h
-
--- Put the Git hash into a module for use in the program
--- For release builds, just put the empty string in the module
-generateVersionModule verbosity dir release = do
-    hash <- gitHash
-    let versionModulePath = dir </> "Version_idris" Px.<.> "hs"
-    putStrLn $ "Generating " ++ versionModulePath ++
-             if release then " for release" else " for prerelease " ++ hash
-    createDirectoryIfMissingVerbose verbosity True dir
-    rewriteFile versionModulePath (versionModuleContents hash)
-
-  where versionModuleContents h = "module Version_idris where\n\n" ++
-                                  "gitHash :: String\n" ++
-                                  if release
-                                    then "gitHash = \"\"\n"
-                                    else "gitHash = \"git:" ++ h ++ "\"\n"
-
 -- Generate a module that contains the lib path for a freestanding Idris
 generateTargetModule verbosity dir targetDir = do
     let absPath = isAbsolute targetDir
@@ -152,7 +131,11 @@ generateToolchainModule verbosity srcDir toolDir = do
     rewriteFile toolPath (commonContent ++ toolContent)
 
 idrisConfigure _ flags _ local = do
-    generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
+#if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)\
+    || defined(openbsd_HOST_OS) || defined(netbsd_HOST_OS)
+    registerLibFlag "-L/usr/local/lib" 90
+    registerIncFlag "-I/usr/local/include" 90
+#endif
     if isFreestanding $ configFlags local
         then do
                 toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
@@ -166,12 +149,10 @@ idrisConfigure _ flags _ local = do
                 generateToolchainModule verbosity (autogenModulesDir local) Nothing
     where
       verbosity = S.fromFlag $ S.configVerbosity flags
-      version   = pkgVersion . package $ localPkgDescr local
 
 idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
   let verb = S.fromFlag (S.sDistVerbosity flags)
-  generateVersionModule verb "src" True
   generateTargetModule verb "src" "./libs"
   generateToolchainModule verb "src" Nothing
   preSDist simpleUserHooks args flags
@@ -188,11 +169,9 @@ idrisSDist sdist pkgDesc bi hooks flags = do
       gitFiles = liftM lines (readProcess "git" ["ls-files"] "")
 
 idrisPostSDist args flags desc lbi = do
-  Control.Exception.catch (do let file = "src" </> "Version_idris" Px.<.> "hs"
-                              let targetFile = "src" </> "Target_idris" Px.<.> "hs"
+  Control.Exception.catch (do let targetFile = "src" </> "Target_idris" Px.<.> "hs"
                               putStrLn $ "Removing generated modules:\n "
-                                        ++ file ++ "\n" ++ targetFile
-                              removeFile file
+                                        ++ targetFile
                               removeFile targetFile)
              (\e -> let e' = (e :: SomeException) in return ())
   postSDist simpleUserHooks args flags desc lbi
@@ -200,11 +179,12 @@ idrisPostSDist args flags desc lbi = do
 -- -----------------------------------------------------------------------------
 -- Build
 
-getVersion :: Args -> S.BuildFlags -> IO HookedBuildInfo
+{-getVersion :: Args -> S.BuildFlags -> IO HookedBuildInfo
 getVersion args flags = do
       hash <- gitHash
       let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
       return (Just buildinfo, [])
+-}
 
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS

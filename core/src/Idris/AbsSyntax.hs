@@ -53,7 +53,7 @@ getContext = do i <- getIState; return (tt_ctxt i)
 forCodegen :: Codegen -> [(Codegen, a)] -> [a]
 forCodegen tgt xs = [x | (tgt', x) <- xs, eqLang tgt tgt']
     where
-        eqLang (Via _ x) (Via _ y) = x == y
+        eqLang (Via x) (Via y) = x == y
         eqLang Bytecode Bytecode = True
         eqLang _ _ = False
 

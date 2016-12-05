@@ -144,8 +144,19 @@ generateToolchainModule verbosity srcDir toolDir = do
     createDirectoryIfMissingVerbose verbosity True srcDir
     rewriteFile toolPath (commonContent ++ toolContent)
 
+getIdrisCRTSDir = do
+  ddir <- getIdrisDataDir
+  return $ addTrailingPathSeparator (ddir </> "rts")
+
 idrisConfigure _ flags _ local = do
     configureRTS
+    dir <- getIdrisCRTSDir
+    registerIncFlag ("-I" ++ dir) 80
+    registerLibFlag ("-L" ++ dir) 80
+    registerLibFlag "-lidris_rts" 81
+    if usesGMP (configFlags local) then registerLibFlag "-lgmp" 99 else return ()
+    registerLibFlag "-lpthread" 100
+    registerInfoString "C RTS Dir" dir
     generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
     if isFreestanding $ configFlags local
         then do

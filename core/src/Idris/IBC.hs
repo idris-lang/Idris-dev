@@ -26,8 +26,6 @@ import Idris.Imports
 import Idris.Output
 import IRTS.System (getIdrisLibDir)
 
-import Paths_idris
-
 import qualified Cheapskate.Types as CT
 import Codec.Archive.Zip
 import Control.DeepSeq
@@ -47,7 +45,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 155
+ibcVersion = 156
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -2517,25 +2515,13 @@ instance Binary SSymbol where
 instance Binary Codegen where
         put x
           = case x of
-                Via ir str -> do putWord8 0
-                                 put ir
-                                 put str
+                Via str -> do putWord8 0
+                              put str
                 Bytecode -> putWord8 1
         get
           = do i <- getWord8
                case i of
                   0 -> do x1 <- get
-                          x2 <- get
-                          return (Via x1 x2)
+                          return (Via x1)
                   1 -> return Bytecode
                   _ -> error  "Corrupted binary data for Codegen"
-
-instance Binary IRFormat where
-    put x = case x of
-                IBCFormat -> putWord8 0
-                JSONFormat -> putWord8 1
-    get = do i <- getWord8
-             case i of
-                0 -> return IBCFormat
-                1 -> return JSONFormat
-                _ -> error  "Corrupted binary data for IRFormat"

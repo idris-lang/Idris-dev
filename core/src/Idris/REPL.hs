@@ -61,7 +61,7 @@ import Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort)
 import Util.Pretty hiding ((</>))
 import Util.System
 
-import Version_idris (gitHash)
+import IRTS.System (gitHash)
 
 import Prelude hiding (id, (.), (<$>))
 

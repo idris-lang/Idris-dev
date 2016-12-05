@@ -87,7 +87,7 @@ idrisMain opts =
                               Object else Executable
                      xs -> last xs
        let cgn = case opt getCodegen opts of
-                   [] -> Via IBCFormat "c"
+                   [] -> Via "c"
                    xs -> last xs
        let cgFlags = opt getCodegenArgs opts
 

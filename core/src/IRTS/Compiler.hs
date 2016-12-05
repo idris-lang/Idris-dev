@@ -18,9 +18,7 @@ import Idris.Core.TT
 import Idris.Erasure
 import Idris.Error
 import Idris.Output
-import IRTS.CodegenC
 import IRTS.CodegenCommon
-import IRTS.CodegenJavaScript
 import IRTS.Defunctionalise
 import IRTS.DumpBC
 import IRTS.Exports
@@ -29,6 +27,7 @@ import IRTS.Lang
 import IRTS.LangOpts
 import IRTS.Portable
 import IRTS.Simplified
+import IRTS.System
 
 import Prelude hiding (id, (.))
 
@@ -129,22 +128,7 @@ compile codegen f mtm
 generate :: Codegen -> FilePath -> CodegenInfo -> IO ()
 generate codegen mainmod ir
   = case codegen of
-       -- Built-in code generators (FIXME: lift these out!)
-       Via _ "c" -> codegenC ir
-       -- Any external code generator
-       Via fm cg -> do input <- case fm of
-                                    IBCFormat -> return mainmod
-                                    JSONFormat -> do
-                                        tempdir <- getTemporaryDirectory
-                                        (fn, h) <- openTempFile tempdir "idris-cg.json"
-                                        writePortable h ir
-                                        hClose h
-                                        return fn
-                       let cmd = "idris-codegen-" ++ cg
-                           args = [input, "-o", outputFile ir] ++ compilerFlags ir
-                       exit <- rawSystem cmd args
-                       when (exit /= ExitSuccess) $
-                            putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
+       Via name -> getCodeGenerator name >>= maybe (return ()) ($ ir)
        Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
 
 irMain :: TT Name -> Idris LDecl

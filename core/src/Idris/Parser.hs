@@ -39,8 +39,6 @@ import Util.DynamicLinker
 import qualified Util.Pretty as P
 import Util.System (readSource, writeSource)
 
-import Paths_idris
-
 import Prelude hiding (pi)
 
 import Control.Applicative hiding (Const)
@@ -1314,7 +1312,7 @@ Codegen ::= 'C'
 -}
 codegen_ :: IdrisParser Codegen
 codegen_ = do n <- fst <$> identifier
-              return (Via IBCFormat (map toLower n))
+              return (Via (map toLower n))
        <|> do reserved "Bytecode"; return Bytecode
        <?> "code generation language"
 

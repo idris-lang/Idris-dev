@@ -7,8 +7,6 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Info
   ( getIdrisDataDir
-  , getIdrisCRTSDir
-  , getIdrisJSRTSDir
   , getIdrisLibDir
   , getIdrisDocDir
   , getIdrisFlagsLib
@@ -28,20 +26,11 @@ import Idris.AbsSyntax (loggingCatsStr)
 import Idris.Imports (installedPackages)
 import qualified IRTS.System as S
 
-import Paths_idris
-import Version_idris (gitHash)
-
 import Data.Version
-import System.Directory
 import System.FilePath
+
 getIdrisDataDir :: IO String
 getIdrisDataDir = S.getIdrisDataDir
-
-getIdrisCRTSDir :: IO String
-getIdrisCRTSDir = S.getIdrisCRTSDir
-
-getIdrisJSRTSDir :: IO String
-getIdrisJSRTSDir = S.getIdrisJSRTSDir
 
 getIdrisDocDir :: IO String
 getIdrisDocDir = S.getIdrisDocDir
@@ -63,25 +52,18 @@ getIdrisCC = S.getCC
 
 getIdrisVersion = showVersion S.version ++ suffix
   where
-    suffix = if gitHash =="" then "" else "-" ++ gitHash
+    suffix = if S.gitHash =="" then "" else "-" ++ S.gitHash
 
 getIdrisVersionNoGit = S.version
 
-
--- | Get the platform-specific, user-specific Idris dir
 getIdrisUserDataDir :: IO FilePath
-getIdrisUserDataDir = getAppUserDataDirectory "idris"
+getIdrisUserDataDir = S.getIdrisUserDataDir
 
--- | Locate the platform-specific location for the init script
 getIdrisInitScript :: IO FilePath
-getIdrisInitScript = do
-  idrisDir <- getIdrisUserDataDir
-  return $ idrisDir </> "repl" </> "init"
+getIdrisInitScript = S.getIdrisInitScript
 
 getIdrisHistoryFile :: IO FilePath
-getIdrisHistoryFile = do
-  udir <- getIdrisUserDataDir
-  return (udir </> "repl" </> "history")
+getIdrisHistoryFile = S.getIdrisHistoryFile
 
 getIdrisInstalledPackages :: IO [String]
 getIdrisInstalledPackages = installedPackages

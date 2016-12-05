@@ -1,28 +1,9 @@
 module Idris.Info.Show where
 
 import Idris.Info
+import IRTS.System (getInfoStrings)
 
 import System.Exit
-
-showIdrisCRTSDir :: IO ()
-showIdrisCRTSDir = do
-  ldir <- getIdrisCRTSDir
-  putStrLn ldir
-
-showExitIdrisCRTSDir :: IO ()
-showExitIdrisCRTSDir = do
-  showIdrisCRTSDir
-  exitSuccess
-
-showIdrisJSRTSDir :: IO ()
-showIdrisJSRTSDir = do
-  ldir <- getIdrisJSRTSDir
-  putStrLn ldir
-
-showExitIdrisJSRTSDir :: IO ()
-showExitIdrisJSRTSDir = do
-  showIdrisJSRTSDir
-  exitSuccess
 
 showIdrisFlagsLibs :: IO ()
 showIdrisFlagsLibs = do
@@ -110,12 +91,8 @@ showIdrisInfo = do
   udir <- getIdrisUserDataDir
   ddir <- getIdrisDocDir
   idir <- getIdrisDataDir
-  crdir <- getIdrisCRTSDir
-  jrdir <- getIdrisJSRTSDir
   putStrLn $ unwords ["-", "Data Dir:", idir]
   putStrLn $ unwords ["-", "Library Dir:", ldir]
-  putStrLn $ unwords ["-", "C RTS Dir:", crdir]
-  putStrLn $ unwords ["-", "JS RTS Dir:", jrdir]
   putStrLn $ unwords ["-", "User Dir:",    udir]
   putStrLn $ unwords ["-", "Documentation Dir:", ddir]
 
@@ -135,6 +112,10 @@ showIdrisInfo = do
   iscript <- getIdrisInitScript
   putStrLn $ unwords (["-", "History File:",    hfile])
   putStrLn $ unwords (["-", "REPL Init Script", iscript])
+
+  putStrLn "Bundeled packages:"
+  strs <- getInfoStrings
+  mapM_ (\(name, val) -> putStrLn $ unwords ["-", name ++ ":", val]) strs
 
 
 showExitIdrisInfo :: IO ()
