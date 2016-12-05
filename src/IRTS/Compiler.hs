@@ -53,7 +53,9 @@ import System.Process
 -- |  Compile to simplified forms and return CodegenInfo
 compile :: Codegen -> FilePath -> Maybe Term -> Idris CodegenInfo
 compile codegen f mtm
-   = do checkMVs  -- check for undefined metavariables
+   = do v <- verbose
+        when v $ iputStrLn "Compiling Output."
+        checkMVs  -- check for undefined metavariables
         checkTotality -- refuse to compile if there are totality problems
         exports <- findExports
         let rootNames = case mtm of
@@ -108,7 +110,7 @@ compile codegen f mtm
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
-        logCodeGen 1 "Building output"
+        when v $ iputStrLn "Generating Code."
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags
