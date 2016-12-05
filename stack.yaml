@@ -6,12 +6,16 @@ packages:
     extra-dep: true
   - location : codegen/idris-codegen-c
     extra-dep: true
+  - location : codegen/idris-codegen-javascript
+    extra-dep: true
 
 flags:
   idris:
-    FFI:       true
-    GMP:       true
-    codegen_C: false
+    FFI               : true
+    codegen_C         : false
+    codegen_JavaScript: false
+  idris-codegen-c:
+    GMP: true
 
 extra-deps:
   - libffi-0.1
