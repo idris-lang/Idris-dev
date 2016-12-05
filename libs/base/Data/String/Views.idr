@@ -1,5 +1,7 @@
 module Data.String.Views
 
+%access public export
+
 ||| View for traversing a String one character at a time
 data StrList : String -> Type where
      SNil  : StrList ""
