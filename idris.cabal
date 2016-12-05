@@ -289,7 +289,7 @@ Library
                 , vector < 0.12
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.4
-                , safe == 0.3.9
+                , safe >= 0.3.9
                 , fsnotify >= 0.2 && < 2.2
                 , async < 2.2
 
