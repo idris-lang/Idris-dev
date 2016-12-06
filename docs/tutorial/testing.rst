@@ -27,6 +27,8 @@ For example, lets take the following list of functions that are defined in a mod
 .. code-block:: idris
 
     module Maths.NumOps
+    
+    %access export -- to make functions under test visible
 
     double : Num a => a -> a
     double a = a + a
