@@ -12,9 +12,8 @@ error : {default (%runElab sourceLocation) loc : SourceLocation} ->
         (message : String) ->
         a
 error {loc = FileLoc filename (line, col) _} message =
-  believe_me . unsafePerformIO $ 
+  unsafePerformIO $
     do let place = filename ++ " line " ++ show line ++ " column " ++ show col
        let message' = place ++ ": " ++ message
        putStrLn message'
        exit 1
-
