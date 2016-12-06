@@ -10,6 +10,14 @@
   + `FirstClassReflection`, which must be enabled to define a `%reflection`
     function
 
+## Tool Updates
+
++ Output from verbose Idris has been updated to more accurately reflect 
+  its progress through the compiler. Idris, when verbose, will report
+  explicitly: Type Checking; Totality Checking; IBC Generation; 
+  Compiling; and Code Generation.
+  
+
 ## Library Updates
 
 + Terminating programs has been improved with more appropriate
