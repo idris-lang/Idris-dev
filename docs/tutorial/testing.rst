@@ -27,6 +27,8 @@ For example, lets take the following list of functions that are defined in a mod
 .. code-block:: idris
 
     module Maths.NumOps
+    
+    %access export -- to make functions under test visible
 
     double : Num a => a -> a
     double a = a + a
@@ -42,6 +44,8 @@ A simple test module, with a qualified name of ``Test.NumOps`` can be declared a
     module Test.NumOps
 
     import Maths.NumOps
+    
+    %access export  -- to make the test functions visible
 
     assertEq : Eq a => (given : a) -> (expected : a) -> IO ()
     assertEq g e = if g == e
