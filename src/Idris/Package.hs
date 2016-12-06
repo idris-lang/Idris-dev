@@ -145,7 +145,7 @@ replPkg copts fp = do
     case mergeOptions copts (idris_opts pkgdesc) of
       Left emsg  -> ifail emsg
       Right opts -> do
-  
+
         putIState orig
         dir <- runIO getCurrentDirectory
         runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
@@ -266,7 +266,8 @@ testPkg copts fp = do
             exitWith (ExitFailure 1)
           Right opts -> do
             m_ist    <- idris opts
-            exitCode <- rawSystem tmpn' []
+            let texe = if isWindows then addExtension tmpn' ".exe" else tmpn'
+            exitCode <- rawSystem texe []
             return (m_ist, exitCode)
       case m_ist of
         Nothing  -> exitWith (ExitFailure 1)
