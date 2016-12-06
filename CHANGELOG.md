@@ -1,3 +1,11 @@
+# New in 0.999
+
+## Library Updates
+
++ Terminating programs has been improved with more appropriate
+  functions (`exitWith`, `exitFailure`, and `exitSuccess`) and a data
+  structure (`ExitCode`) to capture a program's return code.
+
 # New in 0.99:
 
 ## Language updates
