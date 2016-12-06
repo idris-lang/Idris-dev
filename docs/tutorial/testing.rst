@@ -42,6 +42,8 @@ A simple test module, with a qualified name of ``Test.NumOps`` can be declared a
     module Test.NumOps
 
     import Maths.NumOps
+    
+    %access export  -- to make the test functions visible
 
     assertEq : Eq a => (given : a) -> (expected : a) -> IO ()
     assertEq g e = if g == e
