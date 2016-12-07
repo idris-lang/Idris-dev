@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Main where
 
 import System.Exit ( ExitCode(..), exitWith, exitSuccess )
@@ -22,6 +24,8 @@ import System.Environment (getEnv, getExecutablePath, setEnv)
 import System.FilePath (dropFileName, isAbsolute, searchPathSeparator)
 import Tools_idris
 #endif
+
+import Environment_idris
 
 setupBundledCC :: IO()
 #ifdef FREESTANDING
@@ -106,5 +110,6 @@ runIdris opts = do
 -- on with the REPL.
 main :: IO ()
 main = do
+  initIdrisEnvironment
   opts <- runArgParser
   runMain (runIdris opts)

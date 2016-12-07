@@ -51,15 +51,9 @@ make verbosity =
 #ifdef mingw32_HOST_OS
 windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "windres"
 #endif
+
 -- -----------------------------------------------------------------------------
 -- Flags
-
-usesGMP :: S.ConfigFlags -> Bool
-usesGMP flags =
-  case lookup (FlagName "gmp") (S.configConfigurationsFlags flags) of
-    Just True -> True
-    Just False -> False
-    Nothing -> False
 
 execOnly :: S.ConfigFlags -> Bool
 execOnly flags =
@@ -68,19 +62,19 @@ execOnly flags =
     Just False -> False
     Nothing -> False
 
-isRelease :: S.ConfigFlags -> Bool
-isRelease flags =
-    case lookup (FlagName "release") (S.configConfigurationsFlags flags) of
-      Just True -> True
-      Just False -> False
-      Nothing -> False
-
 isFreestanding :: S.ConfigFlags -> Bool
 isFreestanding flags =
   case lookup (FlagName "freestanding") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
+
+flagDef :: String -> S.ConfigFlags -> Bool
+flagDef flag flags =
+  case lookup (FlagName flag) (S.configConfigurationsFlags flags) of
+    Just True  -> True
+    Just False -> False
+    Nothing    -> False
 
 -- -----------------------------------------------------------------------------
 -- Clean
@@ -130,12 +124,45 @@ generateToolchainModule verbosity srcDir toolDir = do
     createDirectoryIfMissingVerbose verbosity True srcDir
     rewriteFile toolPath (commonContent ++ toolContent)
 
-idrisConfigure _ flags _ local = do
+-- Generates a module that initializes the IRTS.System environment (paths, flags, etc)
+-- and registers all 3rd party bundled packages (codegens, etc).
+-- initIdrisEnvironment should be called once, somewhere close to the start of main.
+generateEnvironmentModule verbosity srcDir fs = do
+  let header = "module Environment_idris where\n\n"
+            ++ "import qualified IRTS.System as S\n\n"
+            ++ if flagDef "freestanding" fs
+               then "import Paths_idris (version)\n\n"
+                 ++ "import Target_idris\n"
+               else "import Paths_idris\n\n"
+  let regfn = "initIdrisEnvironment = do\n"
+           ++ "  dir <- getDataDir\n"
+           ++ "  S.registerDataPaths dir getDataFileName\n"
+  let plugins = []
+        ++ if flagDef "codegen_C" fs
+             then [("Codegen.C.Register", "register")] else []
+        ++ if flagDef "codegen_JavaScript" fs
+             then [("Codegen.JavaScript.Register", "register")] else []
+  let imps = fst . foldl (\(acc, n) s ->
+                    (acc ++ "import qualified " ++ s ++ " as P" ++ show n ++ "\n", n + 1))
+                    ("", 1)
+           . map fst $ plugins
+  let regs = fst . foldl (\(acc, n) s ->
+                    (acc ++ "  P" ++ show n ++ "." ++ s ++ "\n", n + 1))
+                    ("", 1)
+           . map snd $ plugins
 #if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)\
     || defined(openbsd_HOST_OS) || defined(netbsd_HOST_OS)
-    registerLibFlag "-L/usr/local/lib" 90
-    registerIncFlag "-I/usr/local/include" 90
+  let flags = "  S.registerLibFlag \"-L/usr/local/lib\" 90\n"
+           ++ "  S.registerIncFlag \"-I/usr/local/include\" 90\n"
+#else
+  let flags = ""
 #endif
+  createDirectoryIfMissingVerbose verbosity True srcDir
+  let path = srcDir </> "Environment_idris" Px.<.> "hs"
+  rewriteFile path $ header ++ imps ++ regfn ++ flags ++ regs
+
+idrisConfigure _ flags _ local = do
+    generateEnvironmentModule verbosity (autogenModulesDir local) (configFlags local)
     if isFreestanding $ configFlags local
         then do
                 toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
@@ -198,8 +225,8 @@ idrisPreBuild args flags = do
         return (Nothing, [])
 #endif
 
-idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
-      buildStdLib
+idrisBuild _ flags _ local = do
+     unless (execOnly (configFlags local)) buildStdLib
    where
       verbosity = S.fromFlag $ S.buildVerbosity flags
 

@@ -366,7 +366,7 @@ cmd_pprint name = do
 
 cmd_compile :: String -> P.IdrisParser (Either String Command)
 cmd_compile name = do
-    let defaultCodegen = Via "c"
+    let defaultCodegen = Via "C"
 
     let codegenOption :: P.IdrisParser Codegen
         codegenOption = do

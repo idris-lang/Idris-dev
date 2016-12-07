@@ -16,8 +16,7 @@ module IRTS.System( getDataFileName
                   , getEnvFlags
                   , version
                   , gitHash
-                  , IdrisEnvironment (..)
-                  , initIdrisEnvironment
+                  , registerDataPaths
                   , registerCodeGenerator
                   , getCodeGenerator
                   , FlagPriority
@@ -58,14 +57,16 @@ data IdrisEnvironment = IdrisEnvironment
   , infoStrings       :: [(String, String)]
   }
 
-undef = error "Idris environment is uninitialized!"
+undef = error "IRTS.System: Idris environment is uninitialized!"
 
 idrisEnv :: MVar IdrisEnvironment
 idrisEnv = unsafePerformIO . newMVar $
   IdrisEnvironment undef (const $ return undef) [] [] [] []
 
-initIdrisEnvironment :: IdrisEnvironment -> IO ()
-initIdrisEnvironment env = putMVar idrisEnv env
+registerDataPaths :: String -> (FilePath -> IO FilePath) -> IO ()
+registerDataPaths dd dfn = do
+  env <- takeMVar idrisEnv
+  putMVar idrisEnv $ env { dataDir = dd, getDataFileNameFn = dfn }
 
 registerCodeGenerator :: String -> CodeGenerator -> IO ()
 registerCodeGenerator name cg = do

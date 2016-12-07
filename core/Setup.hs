@@ -22,9 +22,6 @@ import System.Directory
 import qualified System.FilePath.Posix as Px
 import System.Process
 
--- -----------------------------------------------------------------------------
--- Flags
-
 isRelease :: S.ConfigFlags -> Bool
 isRelease flags =
     case lookup (FlagName "release") (S.configConfigurationsFlags flags) of
