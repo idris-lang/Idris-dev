@@ -184,7 +184,8 @@ ppOption opt = PPOption {
 ppOptionIst :: IState -> PPOption
 ppOptionIst = ppOption . idris_options
 
-data LanguageExt = TypeProviders | ErrorReflection
+data LanguageExt = TypeProviders | ErrorReflection | UniquenessTypes
+                 | DSLNotation   | ElabReflection  | FCReflection
   deriving (Show, Eq, Read, Ord, Generic)
 
 -- | The output mode in use

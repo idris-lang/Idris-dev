@@ -1,3 +1,17 @@
+# New in 0.99.1:
+
+## Language updates
+
+* New language extensions, in addition to the existing `TypeProviders` and
+  `ErrorReflection`:
+  + `ElabReflection`, which must be enabled to use `%runElab`
+  + `UniquenessTypes`, which must be enabled to use `UniqueType`
+  + `DSLNotation`, which must be enabled to define a `dsl` block
+  + `FirstClassReflection`, which must be enabled to define a `%reflection`
+    function
+
+
+
 # New in 0.99:
 
 ## Language updates

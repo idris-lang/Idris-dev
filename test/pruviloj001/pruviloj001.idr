@@ -5,6 +5,7 @@ import Pruviloj
 import Pruviloj.Induction
 
 %default total
+%language ElabReflection
 
 ||| Try some simplification and rewriting heuristics, then attempt to
 ||| solve the goal

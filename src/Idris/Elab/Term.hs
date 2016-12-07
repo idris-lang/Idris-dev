@@ -295,7 +295,7 @@ elab ist info emode opts fn tm
 
     -- | elabE elaborates an expression, possibly wrapping implicit coercions
     -- and forces/delays.  If you make a recursive call in elab', it is
-    -- normally correct to call elabE - the ones that don't are desugarings
+    -- normally correct to call elabE - the ones that don't are `desugarings
     -- typically
     elabE :: ElabCtxt -> Maybe FC -> PTerm -> ElabD ()
     elabE ina fc' t =
@@ -372,7 +372,10 @@ elab ist info emode opts fn tm
          solve
          highlightSource fc' (AnnType "Type" "The type of types")
     elab' ina fc (PUniverse fc' u)   =
-      do apply (RUType u) []
+      do unless (UniquenessTypes `elem` idris_language_extensions ist
+                  || e_qq ina) $
+           lift $ tfail $ At fc' (Msg "You must turn on the UniquenessTypes extension to use UniqueType or AnyType")
+         apply (RUType u) []
          solve
          highlightSource fc' (AnnType (show u) "The type of unique types")
 --  elab' (_,_,inty) (PConstant c)
@@ -1278,7 +1281,9 @@ elab ist info emode opts fn tm
                                    dotterm
                                    elab' ina fc t
     elab' ina fc (PRunElab fc' tm ns) =
-      do attack
+      do unless (ElabReflection `elem` idris_language_extensions ist) $
+           lift $ tfail $ At fc' (Msg "You must turn on the ElabReflection extension to use %runElab")
+         attack
          n <- getNameFrom (sMN 0 "tacticScript")
          let scriptTy = RApp (Var (sNS (sUN "Elab")
                                   ["Elab", "Reflection", "Language"]))

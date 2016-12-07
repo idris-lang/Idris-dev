@@ -4,6 +4,7 @@ import Decidable.Equality
 
 %access public export
 %default total
+%language FirstClassReflection
 
 using (xs : List a, ys : List a, G : List (List a))
 

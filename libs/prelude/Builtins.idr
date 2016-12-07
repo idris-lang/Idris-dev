@@ -2,6 +2,7 @@
 
 %access public export
 %default total
+%language UniquenessTypes
 
 ||| The canonical single-element type, also known as the trivially
 ||| true proposition.

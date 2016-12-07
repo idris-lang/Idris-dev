@@ -75,6 +75,8 @@ elabClauses info' fc opts n_in cs =
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
          let reflect = Reflection `elem` opts
+         when (reflect && FCReflection `notElem` idris_language_extensions ist) $
+           ierror $ At fc (Msg "You must turn on the FirstClassReflection extension to use %reflection")
          checkUndefined n ctxt
          unless (length tys > 1) $ do
            fty <- case tys of

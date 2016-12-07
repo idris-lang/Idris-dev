@@ -37,6 +37,8 @@ import public Language.Reflection.Errors
 %access public export
 %default total
 
+%language ElabReflection
+
 -- Things that can't be elsewhere for import cycle reasons
 -- See comment after declaration of void in Builtins.idr
 -- for explanation of this definition's location

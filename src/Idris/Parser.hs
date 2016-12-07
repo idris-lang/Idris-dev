@@ -1429,6 +1429,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)
        <|> (reserved "ErrorReflection" >> return ErrorReflection)
+       <|> (reserved "UniquenessTypes" >> return UniquenessTypes)
+       <|> (reserved "DSLNotation" >> return DSLNotation)
+       <|> (reserved "ElabReflection" >> return ElabReflection)
+       <|> (reserved "FirstClassReflection" >> return FCReflection)
 
 {-| Parses a totality
 

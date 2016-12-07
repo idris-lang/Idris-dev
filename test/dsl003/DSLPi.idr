@@ -3,6 +3,8 @@ module DSLPi
 import Data.Fin
 import Data.Vect
 
+%language DSLNotation
+
 data Ty = BOOL | INT | UNIT | ARR Ty Ty
 
 arr_ : _ -> Ty -> Ty -> Ty
