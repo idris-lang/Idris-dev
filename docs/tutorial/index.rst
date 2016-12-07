@@ -24,7 +24,6 @@ This is the Idris Tutorial. It will teach you about programming in the Idris Lan
    interfaces
    modules
    packages
-   testing
    interp
    views
    theorems
