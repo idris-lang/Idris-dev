@@ -111,6 +111,11 @@ The following option is available:
 
 .. IMPORTANT::
   The modules containing the test functions must also be added to the list of modules.
+  
+Comments
+---------
+
+Package files support comments using the standard Idris singleline ``--`` and multiline ``{- -}`` format.
 
 Using Package files
 ===================
