@@ -273,7 +273,7 @@ That is, ``{x}`` behaves like ``{x=x}``.
 
 
 Existence of an implementation
-========================
+==============================
 
 In order to show that an implementation of some interface is defined for some
 type, one could use the ``%implementation`` keyword:
