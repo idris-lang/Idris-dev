@@ -1,0 +1,9 @@
+package maths
+
+sourcedir = src
+
+modules = NumOps
+        , Test
+
+tests = Test.testDouble
+      , Test.testTriple

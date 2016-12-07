@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE CPP #-}
-module IRTS.System( getDataFileName
+module IRTS.System( getIdrisDataFileByName
                   , getCC
                   , getLibFlags
                   , getIdrisDataDir
@@ -41,6 +41,11 @@ getIdrisDataDir = do
       ddir <- getDataDir
       return ddir
     Just ddir -> return ddir
+
+getIdrisDataFileByName :: String -> IO FilePath
+getIdrisDataFileByName fn = do
+  dir <- getIdrisDataDir
+  return $ dir </> fn
 
 overrideIdrisSubDirWith :: String  -- ^ Sub directory in `getDataDir` location.
                         -> String  -- ^ Environment variable to get new location from.
