@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 {-|
 Module      : IRTS.CodegenC
 Description : The default code generator for Idris, generating C code.
@@ -5,6 +7,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 module IRTS.CodegenC (codegenC) where
 
 import Idris.AbsSyntax
@@ -26,9 +29,25 @@ import Debug.Trace
 import Numeric
 import System.Directory
 import System.Exit
-import System.FilePath ((<.>), (</>))
+import System.FilePath (addTrailingPathSeparator, (<.>), (</>))
 import System.IO
 import System.Process
+
+getRTSDir = do
+  ddir <- getIdrisDataDir
+  return $ addTrailingPathSeparator (ddir </> "rts")
+
+register = do
+  dir <- getRTSDir
+  registerIncFlag ("-I" ++ dir) 80
+  registerLibFlag ("-L" ++ dir) 80
+  registerLibFlag "-lidris_rts" 81
+#ifdef IDRIS_GMP
+  registerLibFlag "-lgmp" 99
+#endif
+  registerLibFlag "-lpthread" 100
+  registerInfoString "C RTS Dir" dir
+  registerCodeGenerator "C" codegenC
 
 codegenC :: CodeGenerator
 codegenC ci = do codegenC' (simpleDecls ci)
@@ -66,7 +85,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
          let h = concatMap toDecl (map fst bc)
          let cc = concatMap (uncurry toC) bc
          let hi = concatMap ifaceC (concatMap getExp exports)
-         d <- getIdrisCRTSDir
+         d <- getRTSDir
          mprog <- readFile (d </> "idris_main" <.> "c")
          let cout = headers incs ++ debug dbg ++ h ++ wrappers ++ cc ++
                      (if (exec == Executable) then mprog else hi)

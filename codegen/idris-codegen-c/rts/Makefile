@@ -1,4 +1,4 @@
-include ../config.mk
+include ../../../config.mk
 
 OBJS = idris_rts.o idris_heap.o idris_gc.o idris_gmp.o idris_bitstring.o \
        idris_opts.o idris_stats.o idris_utf8.o idris_stdfgn.o mini-gmp.o \

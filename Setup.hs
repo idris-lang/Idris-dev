@@ -139,7 +139,7 @@ generateEnvironmentModule verbosity srcDir fs = do
            ++ "  S.registerDataPaths dir getDataFileName\n"
   let plugins = []
         ++ if flagDef "codegen_C" fs
-             then [("Codegen.C.Register", "register")] else []
+             then [("IRTS.CodegenC", "register")] else []
         ++ if flagDef "codegen_JavaScript" fs
              then [("Codegen.JavaScript.Register", "register")] else []
   let imps = fst . foldl (\(acc, n) s ->

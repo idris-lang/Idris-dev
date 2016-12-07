@@ -91,7 +91,7 @@ Flag CI
   manual:       True
 
 Flag execonly
-  Description:  Build executables only, skip the libraries and RTS
+  Description:  Build executables only, skip the libraries
   Default:      False
   manual:       True
 
@@ -167,8 +167,7 @@ Test-suite regression-and-feature-tests
      cpp-options:   -DFREESTANDING
   if flag(CI)
      ghc-options:   -Werror
-  if flag(codegen_C)
-     build-depends: idris-codegen-c
+  build-depends: idris-codegen-c
   if flag(codegen_JavaScript)
      build-depends: idris-codegen-javascript
 
