@@ -120,7 +120,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_showimp    = False
                       , opt_errContext = False
                       , opt_repl       = True
-                      , opt_verbose    = True
+                      , opt_verbose    = False
                       , opt_nobanner   = False
                       , opt_quiet      = False
                       , opt_codegen    = Via IBCFormat "c"
