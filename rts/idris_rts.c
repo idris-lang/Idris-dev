@@ -595,6 +595,11 @@ VAL idris_readStr(VM* vm, FILE* h) {
     return ret;
 }
 
+void idris_crash(char* msg) {
+    fprintf(stderr, "%s\n", msg);
+    exit(1);
+}
+
 VAL idris_strHead(VM* vm, VAL str) {
     return idris_strIndex(vm, str, 0);
 }

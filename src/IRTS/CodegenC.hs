@@ -617,6 +617,7 @@ doOp v (LIntCh ITNative) args = v ++ creg (last args)
 doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
 
 doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
+doOp v LCrash [x] = "idris_crash(GETSTR(" ++ creg x ++ "))"
 doOp v LNoOp args = v ++ creg (last args)
 
 -- Pointer primitives (declared as %extern in Builtins.idr)

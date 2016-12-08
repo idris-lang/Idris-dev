@@ -178,6 +178,10 @@ assert_total x = x
 assert_unreachable : a
 -- compiled as primitive
 
+||| Abort immediately with an error message
+idris_crash : String -> a
+-- compiled as primitive
+
 ||| Subvert the type checker. This function is abstract, so it will not reduce in
 ||| the type checker. Use it with care - it can result in segfaults or worse!
 export 

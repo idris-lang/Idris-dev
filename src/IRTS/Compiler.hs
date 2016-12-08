@@ -260,6 +260,11 @@ irTerm top vs env tm@(App _ f a) = do
         | u == txt "assert_unreachable"
         -> return $ LError $ "ABORT: Reached an unreachable case in " ++ show top
 
+    (P _ (UN u) _, [_, msg])
+        | u == txt "idris_crash"
+        -> do msg' <- irTerm top vs env msg
+              return $ LOp LCrash [msg']
+
     -- TMP HACK - until we get inlining.
     (P _ (UN r) _, [_, _, _, _, _, arg])
         | r == txt "replace"
