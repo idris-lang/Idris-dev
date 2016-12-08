@@ -8,7 +8,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-module IRTS.CodegenC (codegenC) where
+module IRTS.CodegenC (codegenC, register) where
 
 import Idris.AbsSyntax
 import Idris.Core.TT
@@ -47,7 +47,7 @@ register = do
 #endif
   registerLibFlag "-lpthread" 100
   registerInfoString "C RTS Dir" dir
-  registerCodeGenerator "C" codegenC
+  registerCodeGenerator "c" codegenC
 
 codegenC :: CodeGenerator
 codegenC ci = do codegenC' (simpleDecls ci)

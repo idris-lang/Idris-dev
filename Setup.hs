@@ -69,9 +69,9 @@ isFreestanding flags =
     Just False -> False
     Nothing -> False
 
-flagDef :: String -> S.ConfigFlags -> Bool
+flagDef :: String -> FlagAssignment -> Bool
 flagDef flag flags =
-  case lookup (FlagName flag) (S.configConfigurationsFlags flags) of
+  case lookup (FlagName flag) flags of
     Just True  -> True
     Just False -> False
     Nothing    -> False
@@ -134,13 +134,13 @@ generateEnvironmentModule verbosity srcDir fs = do
                then "import Paths_idris (version)\n\n"
                  ++ "import Target_idris\n"
                else "import Paths_idris\n\n"
-  let regfn = "initIdrisEnvironment = do\n"
+  let regfn = "\ninitIdrisEnvironment = do\n"
            ++ "  dir <- getDataDir\n"
            ++ "  S.registerDataPaths dir getDataFileName\n"
   let plugins = []
-        ++ if flagDef "codegen_C" fs
+        ++ if flagDef "codegen_c" fs
              then [("IRTS.CodegenC", "register")] else []
-        ++ if flagDef "codegen_JavaScript" fs
+        ++ if flagDef "codegen_javascript" fs
              then [("Codegen.JavaScript.Register", "register")] else []
   let imps = fst . foldl (\(acc, n) s ->
                     (acc ++ "import qualified " ++ s ++ " as P" ++ show n ++ "\n", n + 1))
@@ -162,7 +162,8 @@ generateEnvironmentModule verbosity srcDir fs = do
   rewriteFile path $ header ++ imps ++ regfn ++ flags ++ regs
 
 idrisConfigure _ flags _ local = do
-    generateEnvironmentModule verbosity (autogenModulesDir local) (configFlags local)
+    generateEnvironmentModule verbosity (autogenModulesDir local)
+                                        (S.configConfigurationsFlags $ configFlags local)
     if isFreestanding $ configFlags local
         then do
                 toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
