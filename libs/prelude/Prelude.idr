@@ -146,9 +146,14 @@ natRange n = List.reverse (go n)
   where go Z = []
         go (S n) = n :: go n
 
+
 -- predefine Nat versions of Enum, so we can use them in the default impls
+countFrom : Num n => n -> n -> Stream n
+countFrom start diff = start :: countFrom (start + diff) diff
+
 total natEnumFromThen : Nat -> Nat -> Stream Nat
-natEnumFromThen n next = n :: natEnumFromThen next (minus next n)
+natEnumFromThen n next = countFrom n (minus next n)
+
 total natEnumFromTo : Nat -> Nat -> List Nat
 natEnumFromTo n m = if n <= m
                     then go n m
@@ -197,7 +202,7 @@ Enum Integer where
   succ n = n + 1
   toNat n = cast n
   fromNat n = cast n
-  enumFromThen n inc = n :: enumFromThen (inc + n) inc
+  enumFromThen n inc = countFrom n (inc - n)
   enumFromTo n m = if n <= m
                    then go n m
                    else List.reverse $ go m n
@@ -226,7 +231,8 @@ Enum Int where
           go' acc (S k) m = go' (m :: acc) k (m - 1)
           go : Int -> Int -> List Int
           go n m = go' [] (cast {to = Nat} (m - n)) m
-  enumFromThen n inc = n :: enumFromThen (inc + n) inc
+  enumFromThen n inc = countFrom n (inc - n)
+
   enumFromThenTo n next m = if n == m then [n]
                             else if next - n == 0 || next - n < 0 /= m - n < 0 then []
                             else go (natRange (S (divNatNZ (cast {to=Nat} (abs (m - n))) (S (cast {to=Nat} ((abs (next - n)) - 1))) SIsNotZ)))
