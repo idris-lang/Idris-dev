@@ -179,8 +179,10 @@ assert_unreachable : a
 -- compiled as primitive
 
 ||| Abort immediately with an error message
-idris_crash : String -> a
+idris_crash : (msg : String) -> a
 -- compiled as primitive
+
+%used idris_crash msg
 
 ||| Subvert the type checker. This function is abstract, so it will not reduce in
 ||| the type checker. Use it with care - it can result in segfaults or worse!
