@@ -70,7 +70,7 @@ implementation Neg a => Num (Complex a) where
     (*) (a:+b) (c:+d) = ((a*c-b*d):+(b*c+a*d))
     fromInteger x = (fromInteger x:+0)
 
--- We can't do "implementation Neg a => Num (Complex a)" because
+-- We can't do "implementation Neg a => Neg (Complex a)" because
 -- we need "abs" which needs "magnitude" which needs "sqrt" which needs Double
 implementation Neg (Complex Double) where
     negate = map negate
