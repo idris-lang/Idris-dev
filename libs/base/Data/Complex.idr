@@ -63,15 +63,16 @@ conjugate (r:+i) = (r :+ (0-i))
 implementation Functor Complex where
     map f (r :+ i) = f r :+ f i
 
--- We can't do "implementation Num a => Num (Complex a)" because
--- we need "abs" which needs "magnitude" which needs "sqrt" which needs Double
-implementation Num (Complex Double) where
+-- We can do "implementation Neg a => Num (Complex a)" because
+-- we don't need "abs", only (-)
+implementation Neg a => Num (Complex a) where
     (+) (a:+b) (c:+d) = ((a+c):+(b+d))
     (*) (a:+b) (c:+d) = ((a*c-b*d):+(b*c+a*d))
     fromInteger x = (fromInteger x:+0)
 
+-- We can't do "implementation Neg a => Num (Complex a)" because
+-- we need "abs" which needs "magnitude" which needs "sqrt" which needs Double
 implementation Neg (Complex Double) where
     negate = map negate
     (-) (a:+b) (c:+d) = ((a-c):+(b-d))
     abs (a:+b) = (magnitude (a:+b):+0)
-
