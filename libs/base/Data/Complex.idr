@@ -76,3 +76,10 @@ implementation Neg (Complex Double) where
     negate = map negate
     (-) (a:+b) (c:+d) = ((a-c):+(b-d))
     abs (a:+b) = (magnitude (a:+b):+0)
+
+-- As soon as abs moves out of Neg (issue #3500), the following would become a
+-- valid instance:
+
+-- implementation Neg a => Neg (Complex a) where
+--     negate = map negate
+--     (-) (a:+b) (c:+d) = ((a-c):+(b-d))
