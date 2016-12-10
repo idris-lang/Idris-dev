@@ -92,7 +92,7 @@ forms. For example, a ``for`` loop binds a variable on each iteration:
 
 .. code-block:: idris
 
-    syntax for {x} in [xs] ":" [body] = forLoop xs (\x => body)
+    syntax for {x} "in" [xs] ":" [body] = forLoop xs (\x => body)
 
     main : IO ()
     main = do for x in [1..10]:
