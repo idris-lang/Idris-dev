@@ -2472,6 +2472,8 @@ implicitNamesIn uvars ist tm
     ni 0 env (PIfThenElse _ c t f)            = mapM_ (ni 0 env) [c, t, f]
     ni 0 env (PLam fc n _ ty sc)              = do ni 0 env ty; ni 0 (n:env) sc
     ni 0 env (PPi p n _ ty sc)                = do ni 0 env ty; ni 0 (n:env) sc
+    ni 0 env (PLet fc n _ ty val sc)          = do ni 0 env ty; 
+                                                   ni 0 env val; ni 0 (n:env) sc
     ni 0 env (PRewrite _ _ l r _)             = do ni 0 env l; ni 0 env r
     ni 0 env (PTyped l r)                     = do ni 0 env l; ni 0 env r
     ni 0 env (PPair _ _ _ l r)                = do ni 0 env l; ni 0 env r
