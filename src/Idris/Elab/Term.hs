@@ -705,14 +705,14 @@ elab ist info emode opts fn tm
                solve
                highlightSource nfc (AnnBoundName n False)
     elab' ina fc (PPi p n nfc Placeholder sc)
-          = do attack; arg n (is_scoped p) (sMN 0 "ty")
+          = do attack; arg n (is_scoped p) (sMN 0 "phTy")
                addAutoBind p n
                addPSname n -- okay for proof search
                elabE (ina { e_inarg = True, e_intype = True }) fc sc
                solve
                highlightSource nfc (AnnBoundName n False)
     elab' ina fc (PPi p n nfc ty sc)
-          = do attack; tyn <- getNameFrom (sMN 0 "ty")
+          = do attack; tyn <- getNameFrom (sMN 0 "piTy")
                claim tyn RType
                n' <- case n of
                         MN _ _ -> unique_hole n

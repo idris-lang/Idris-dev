@@ -4,9 +4,9 @@ a is not an implicit argument of Prelude.Interfaces./
 Usage is :doc <functionname>
 Usage is :wc <functionname>
 Usage is :printdef <functionname>
-pat {ty504} : Type toplevel.u. pat {__interface505} : Prelude.Interfaces.Fractional {ty504}. Prelude.Interfaces./ {ty504} {__interface505}
+pat {ty503} : Type toplevel.u. pat {__interface504} : Prelude.Interfaces.Fractional {ty503}. Prelude.Interfaces./ {ty503} {__interface504}
 
- : pty {ty504} : Type toplevel.u. pty {__interface505} : Prelude.Interfaces.Fractional {ty504}. {ty504} -> {ty504} -> {ty504}
+ : pty {ty503} : Type toplevel.u. pty {__interface504} : Prelude.Interfaces.Fractional {ty503}. {ty503} -> {ty503} -> {ty503}
 (input):1:1: error: expected: ":",
     dependent type signature,
     end of input
