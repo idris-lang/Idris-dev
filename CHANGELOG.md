@@ -12,7 +12,7 @@
 
 ## Tool Updates
 
-+ Output from verbose Idris has been updated to more accurately reflect 
++ Idris' logging output has been updated to more accurately reflect 
   its progress through the compiler. Idris, when verbose, will report
   explicitly: Type Checking; Totality Checking; IBC Generation; 
   Compiling; and Code Generation.

@@ -52,9 +52,8 @@ import System.Process
 
 -- |  Compile to simplified forms and return CodegenInfo
 compile :: Codegen -> FilePath -> Maybe Term -> Idris CodegenInfo
-compile codegen f mtm
-   = do v <- verbose
-        when v $ iputStrLn "Compiling Output."
+compile codegen f mtm = do
+        logCodeGen 1 "Compiling Output."
         checkMVs  -- check for undefined metavariables
         checkTotality -- refuse to compile if there are totality problems
         exports <- findExports
@@ -110,7 +109,7 @@ compile codegen f mtm
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
-        when v $ iputStrLn "Generating Code."
+        logCodeGen 1 "Generating Code."
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags

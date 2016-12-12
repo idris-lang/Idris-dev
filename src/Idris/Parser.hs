@@ -1803,7 +1803,7 @@ loadSource lidr f toline
                                   setContext ctxt')
                            (map snd (idris_totcheck i))
                   -- build size change graph from simplified definitions
-                  when v $ iputStrLn $ "Totality checking " ++ f
+                  logLvl 1 $ "Totality checking " ++ f
                   i <- getIState
                   mapM_ buildSCG (idris_totcheck i)
                   mapM_ checkDeclTotality (idris_totcheck i)
