@@ -23,9 +23,21 @@ import System.Directory (doesDirectoryExist)
 import System.Environment (getEnv, getExecutablePath, setEnv)
 import System.FilePath (dropFileName, isAbsolute, searchPathSeparator)
 import Tools_idris
+import Target_idris
+import Paths_idris (version)
+#else
+import Paths_idris
 #endif
 
-import Environment_idris
+import qualified IRTS.System as S
+import System.FilePath ((</>))
+
+#ifdef CODEGEN_C
+import qualified IRTS.CodegenC as C_C
+#endif
+#ifdef CODEGEN_JS
+import qualified IRTS.CodegenJavaScript as C_JS
+#endif
 
 setupBundledCC :: IO()
 #ifdef FREESTANDING
@@ -105,6 +117,26 @@ runIdris opts = do
   processClientOptions opts  -- Be a client to a REPL server.
   processPackageOptions opts -- Work with Idris packages.
   idrisMain opts             -- Launch REPL or compile mode.
+
+-- | Initializes paths and codegens so they are available in idris-core.
+initIdrisEnvironment :: IO ()
+initIdrisEnvironment = do
+  dir <- getDataDir
+  let libs     = dir </> "libs"
+  let docs     = dir </> "docs"
+  let idrisdoc = dir </> "idrisdoc"
+  S.registerDataPaths libs docs idrisdoc
+#if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)\
+    || defined(openbsd_HOST_OS) || defined(netbsd_HOST_OS)
+  S.registerLibFlag "-L/usr/local/lib" 90
+  S.registerIncFlag "-I/usr/local/include" 90
+#endif
+#ifdef CODEGEN_C
+  C_C.register
+#endif
+#ifdef CODEGEN_JS
+  C_JS.register
+#endif
 
 -- Main program reads command line options, parses the main program, and gets
 -- on with the REPL.

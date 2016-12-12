@@ -44,11 +44,6 @@ Source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
 
-Flag FFI
-  description:  Build support for libffi
-  default:      False
-  manual:       True
-
 Flag GMP
   description:  Use GMP for Integers
   default:      False
@@ -64,6 +59,7 @@ Library
   exposed-modules:
                   IRTS.CodegenC
   other-modules:
+               -- Auto Generated
                   Paths_idris_codegen_c
 
   build-depends:  base >=4 && <5
@@ -84,9 +80,6 @@ Library
      build-depends: unix < 2.8
   if os(windows)
      build-depends: Win32 < 2.4
-  if flag(FFI)
-     build-depends: libffi < 0.2
-     cpp-options:   -DIDRIS_FFI
   if flag(GMP)
      build-depends: libffi < 0.2
      extra-libraries: gmp

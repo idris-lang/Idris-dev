@@ -69,13 +69,6 @@ isFreestanding flags =
     Just False -> False
     Nothing -> False
 
-flagDef :: String -> FlagAssignment -> Bool
-flagDef flag flags =
-  case lookup (FlagName flag) flags of
-    Just True  -> True
-    Just False -> False
-    Nothing    -> False
-
 -- -----------------------------------------------------------------------------
 -- Clean
 
@@ -120,50 +113,7 @@ generateToolchainModule verbosity srcDir toolDir = do
     createDirectoryIfMissingVerbose verbosity True srcDir
     rewriteFile toolPath (commonContent ++ toolContent)
 
--- Generates a module that initializes the IRTS.System environment (paths, flags, etc)
--- and registers all 3rd party bundled packages (codegens, etc).
--- initIdrisEnvironment should be called once, somewhere close to the start of main.
-generateEnvironmentModule verbosity srcDir fs = do
-  let header = "module Environment_idris where\n\n"
-            ++ "import qualified IRTS.System as S\n"
-            ++ "import System.FilePath ((</>))\n\n"
-            ++ if flagDef "freestanding" fs
-               then "import Paths_idris (version)\n\n"
-                 ++ "import Target_idris\n"
-               else "import Paths_idris\n\n"
-  let regfn = "\ninitIdrisEnvironment = do\n"
-           ++ "  dir <- getDataDir\n"
-           ++ "  let libs     = dir </> \"libs\"\n"
-           ++ "  let docs     = dir </> \"docs\"\n"
-           ++ "  let idrisdoc = dir </> \"idrisdoc\"\n"
-           ++ "  S.registerDataPaths libs docs idrisdoc\n"
-  let plugins = []
-        ++ (if flagDef "codegen_c" fs
-            then [("IRTS.CodegenC", "register")] else [])
-        ++ (if flagDef "codegen_javascript" fs
-            then [("IRTS.CodegenJavaScript", "register")] else [])
-  let imps = fst . foldl (\(acc, n) s ->
-                    (acc ++ "import qualified " ++ s ++ " as P" ++ show n ++ "\n", n + 1))
-                    ("", 1)
-           . map fst $ plugins
-  let regs = fst . foldl (\(acc, n) s ->
-                    (acc ++ "  P" ++ show n ++ "." ++ s ++ "\n", n + 1))
-                    ("", 1)
-           . map snd $ plugins
-#if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)\
-    || defined(openbsd_HOST_OS) || defined(netbsd_HOST_OS)
-  let flags = "  S.registerLibFlag \"-L/usr/local/lib\" 90\n"
-           ++ "  S.registerIncFlag \"-I/usr/local/include\" 90\n"
-#else
-  let flags = ""
-#endif
-  createDirectoryIfMissingVerbose verbosity True srcDir
-  let path = srcDir </> "Environment_idris" Px.<.> "hs"
-  rewriteFile path $ header ++ imps ++ regfn ++ flags ++ regs
-
 idrisConfigure _ flags _ local = do
-    generateEnvironmentModule verbosity (autogenModulesDir local)
-                                        (S.configConfigurationsFlags $ configFlags local)
     if isFreestanding $ configFlags local
         then do
                 toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"

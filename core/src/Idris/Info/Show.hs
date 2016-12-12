@@ -113,7 +113,7 @@ showIdrisInfo = do
   putStrLn $ unwords (["-", "History File:",    hfile])
   putStrLn $ unwords (["-", "REPL Init Script", iscript])
 
-  putStrLn "Bundeled packages:"
+  putStrLn "Bundled packages:"
   strs <- getInfoStrings
   mapM_ (\(name, val) -> putStrLn $ unwords ["-", name ++ ":", val]) strs
 

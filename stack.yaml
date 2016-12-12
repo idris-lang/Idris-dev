@@ -11,12 +11,7 @@ packages:
 
 flags:
   idris-core:
-    FFI               : true
-  idris:
-    FFI               : true
-    codegen_C         : true
-    codegen_JavaScript: true
-    execonly          : false
+    FFI: true
   idris-codegen-c:
     GMP: true
 
