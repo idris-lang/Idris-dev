@@ -6,12 +6,12 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-module IRTS.System( getDataFileName
-                  , getCC
+module IRTS.System( getCC
                   , getLibFlags
-                  , getIdrisDataDir
                   , getIdrisLibDir
                   , getIdrisDocDir
+                  , getIdrisIdrisdocDir
+                  , getCfilesDir
                   , getIncFlags
                   , getEnvFlags
                   , version
@@ -30,6 +30,7 @@ module IRTS.System( getDataFileName
                   ) where
 
 import Paths_idris_core (version)
+import qualified Paths_idris_core as P
 import Version_idris_core (gitHash)
 
 import Control.Applicative ((<$>))
@@ -49,24 +50,25 @@ import IRTS.CodegenCommon (CodeGenerator)
 type FlagPriority = Int
 
 data IdrisEnvironment = IdrisEnvironment
-  { dataDir           :: String
-  , getDataFileNameFn :: FilePath -> IO FilePath
-  , codegens          :: [(String, CodeGenerator)]
-  , incFlags          :: [(FlagPriority, String)]
-  , libFlags          :: [(FlagPriority, String)]
-  , infoStrings       :: [(String, String)]
+  { libsDir     :: FilePath
+  , docsDir     :: FilePath
+  , idrisdocDir :: FilePath
+  , codegens    :: [(String, CodeGenerator)]
+  , incFlags    :: [(FlagPriority, String)]
+  , libFlags    :: [(FlagPriority, String)]
+  , infoStrings :: [(String, String)]
   }
 
-undef = error "IRTS.System: Idris environment is uninitialized!"
+undef = error "IRTS.System: Idris environment is not initialized!"
 
 idrisEnv :: MVar IdrisEnvironment
 idrisEnv = unsafePerformIO . newMVar $
-  IdrisEnvironment undef (const $ return undef) [] [] [] []
+  IdrisEnvironment undef undef undef [] [] [] []
 
-registerDataPaths :: String -> (FilePath -> IO FilePath) -> IO ()
-registerDataPaths dd dfn = do
+registerDataPaths :: FilePath -> FilePath -> FilePath -> IO ()
+registerDataPaths libs docs idrisdoc = do
   env <- takeMVar idrisEnv
-  putMVar idrisEnv $ env { dataDir = dd, getDataFileNameFn = dfn }
+  putMVar idrisEnv $ env { libsDir = libs, docsDir = docs, idrisdocDir = idrisdoc }
 
 registerCodeGenerator :: String -> CodeGenerator -> IO ()
 registerCodeGenerator name cg = do
@@ -99,10 +101,32 @@ getIncFlags :: IO [String]
 getIncFlags = do env <- readMVar idrisEnv
                  return . map snd . sortBy (compare `on` fst) $ incFlags env
 
-getDataFileName :: FilePath -> IO FilePath
-getDataFileName fp = do
+getIdrisIdrisdocDir :: IO FilePath
+getIdrisIdrisdocDir = do
   env <- readMVar idrisEnv
-  getDataFileNameFn env fp
+  return $ idrisdocDir env
+
+overrideWith :: (IdrisEnvironment -> FilePath)  -- ^ IdrisEnvironment getter.
+             -> String -- ^ Subdir of TARGET, if set.
+             -> String -- ^ Environment variable to get new location from.
+             -> IO FilePath
+overrideWith getter sub envVar = do
+  envValue <- lookupEnv envVar
+  case envValue of
+    Nothing -> do
+      target <- lookupEnv "TARGET"
+      case target of
+        Nothing -> do
+          env <- readMVar idrisEnv
+          return $ getter env
+        Just ddir -> return $ ddir </> sub
+    Just ddir -> return ddir
+
+getIdrisLibDir :: IO FilePath
+getIdrisLibDir = addTrailingPathSeparator <$> overrideWith libsDir "libs" "IDRIS_LIBRARY_PATH"
+
+getIdrisDocDir :: IO FilePath
+getIdrisDocDir = addTrailingPathSeparator <$> overrideWith docsDir "docs" "IDRIS_DOC_PATH"
 
 registerInfoString :: String -> String -> IO ()
 registerInfoString name val = do
@@ -113,32 +137,6 @@ getInfoStrings :: IO [(String, String)]
 getInfoStrings = do
   env <- readMVar idrisEnv
   return $ infoStrings env
-
-getIdrisDataDir :: IO String
-getIdrisDataDir = do
-  envValue <- lookupEnv "TARGET"
-  case envValue of
-    Nothing -> do
-      env <- readMVar idrisEnv
-      return $ dataDir env
-    Just ddir -> return ddir
-
-overrideIdrisSubDirWith :: String  -- ^ Sub directory in `getDataDir` location.
-                        -> String  -- ^ Environment variable to get new location from.
-                        -> IO FilePath
-overrideIdrisSubDirWith fp envVar = do
-  envValue <- lookupEnv envVar
-  case envValue of
-    Nothing -> do
-      ddir <- getIdrisDataDir
-      return (ddir </> fp)
-    Just ddir -> return ddir
-
-getIdrisLibDir :: IO FilePath
-getIdrisLibDir = addTrailingPathSeparator <$> overrideIdrisSubDirWith "libs" "IDRIS_LIBRARY_PATH"
-
-getIdrisDocDir :: IO FilePath
-getIdrisDocDir = addTrailingPathSeparator <$> overrideIdrisSubDirWith "docs" "IDRIS_DOC_PATH"
 
 getCC :: IO String
 getCC = fromMaybe "gcc" <$> lookupEnv "IDRIS_CC"
@@ -157,3 +155,11 @@ getIdrisHistoryFile :: IO FilePath
 getIdrisHistoryFile = do
   udir <- getIdrisUserDataDir
   return (udir </> "repl" </> "history")
+
+getCfilesDir :: IO FilePath
+getCfilesDir = do
+  target <- lookupEnv "TARGET"
+  dir <- case target of
+    Nothing -> P.getDataDir
+    Just ddir -> return ddir
+  return $ addTrailingPathSeparator (dir </> "cfiles")

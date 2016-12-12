@@ -33,8 +33,10 @@ import System.FilePath (addTrailingPathSeparator, (<.>), (</>))
 import System.IO
 import System.Process
 
+import Paths_idris_codegen_c
+
 getRTSDir = do
-  ddir <- getIdrisDataDir
+  ddir <- getDataDir
   return $ addTrailingPathSeparator (ddir </> "rts")
 
 register = do

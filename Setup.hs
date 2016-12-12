@@ -107,10 +107,6 @@ generateTargetModule verbosity dir targetDir = do
                                              "   expath <- getExecutablePath\n" ++
                                              "   execDir <- return $ dropFileName expath\n" ++
                                              "   return $ execDir ++ \"" ++ td ++ "\"\n"
-                                    ++ "getDataFileName :: FilePath -> IO FilePath\n"
-                                    ++ "getDataFileName name = do\n"
-                                    ++ "   dir <- getDataDir\n"
-                                    ++ "   return (dir ++ \"/\" ++ name)"
 
 -- a module that has info about existence and location of a bundled toolchain
 generateToolchainModule verbosity srcDir toolDir = do
@@ -129,14 +125,18 @@ generateToolchainModule verbosity srcDir toolDir = do
 -- initIdrisEnvironment should be called once, somewhere close to the start of main.
 generateEnvironmentModule verbosity srcDir fs = do
   let header = "module Environment_idris where\n\n"
-            ++ "import qualified IRTS.System as S\n\n"
+            ++ "import qualified IRTS.System as S\n"
+            ++ "import System.FilePath ((</>))\n\n"
             ++ if flagDef "freestanding" fs
                then "import Paths_idris (version)\n\n"
                  ++ "import Target_idris\n"
                else "import Paths_idris\n\n"
   let regfn = "\ninitIdrisEnvironment = do\n"
            ++ "  dir <- getDataDir\n"
-           ++ "  S.registerDataPaths dir getDataFileName\n"
+           ++ "  let libs     = dir </> \"libs\"\n"
+           ++ "  let docs     = dir </> \"docs\"\n"
+           ++ "  let idrisdoc = dir </> \"idrisdoc\"\n"
+           ++ "  S.registerDataPaths libs docs idrisdoc\n"
   let plugins = []
         ++ if flagDef "codegen_c" fs
              then [("IRTS.CodegenC", "register")] else []

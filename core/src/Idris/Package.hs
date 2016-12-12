@@ -305,10 +305,6 @@ buildMods opts ns = do let f = map (toPath . showCG) ns
                        idris (map Filename f ++ opts)
     where toPath n = foldl1' (</>) $ splitOn "." n
 
-getCfilesDir = do
-  ddir <- getIdrisDataDir
-  return $ addTrailingPathSeparator (ddir </> "cfiles")
-
 testLib :: Bool -> String -> String -> IO Bool
 testLib warn p f
     = do d <- getCfilesDir
