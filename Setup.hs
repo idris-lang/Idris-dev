@@ -138,10 +138,10 @@ generateEnvironmentModule verbosity srcDir fs = do
            ++ "  let idrisdoc = dir </> \"idrisdoc\"\n"
            ++ "  S.registerDataPaths libs docs idrisdoc\n"
   let plugins = []
-        ++ if flagDef "codegen_c" fs
-             then [("IRTS.CodegenC", "register")] else []
-        ++ if flagDef "codegen_javascript" fs
-             then [("Codegen.JavaScript.Register", "register")] else []
+        ++ (if flagDef "codegen_c" fs
+            then [("IRTS.CodegenC", "register")] else [])
+        ++ (if flagDef "codegen_javascript" fs
+            then [("IRTS.CodegenJavaScript", "register")] else [])
   let imps = fst . foldl (\(acc, n) s ->
                     (acc ++ "import qualified " ++ s ++ " as P" ++ show n ++ "\n", n + 1))
                     ("", 1)

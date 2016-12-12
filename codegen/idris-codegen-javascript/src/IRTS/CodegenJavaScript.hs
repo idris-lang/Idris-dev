@@ -9,6 +9,7 @@ Maintainer  : The Idris Community.
 module IRTS.CodegenJavaScript (codegenJavaScript
                              , codegenNode
                              , JSTarget(..)
+                             , register
                              ) where
 
 import Idris.AbsSyntax hiding (TypeCase)
@@ -41,6 +42,17 @@ import System.Directory
 import System.FilePath
 import System.IO
 
+import Paths_idris_codegen_javascript
+
+getRTSDir = do
+  ddir <- getDataDir
+  return $ addTrailingPathSeparator (ddir </> "jsrts")
+
+register = do
+  registerCodeGenerator "javascript" codegenJavaScript
+  registerCodeGenerator "node"       codegenNode
+  dir <- getRTSDir
+  registerInfoString "JavaScript RTS Dir" dir
 
 data CompileInfo = CompileInfo { compileInfoApplyCases  :: [Int]
                                , compileInfoEvalCases   :: [Int]
@@ -134,7 +146,7 @@ codegenJS_all target definitions includes libs filename exports outputType = do
                           JavaScript -> ("", "-browser")
 
   included   <- concat <$> getIncludes includes
-  path       <- getIdrisJSRTSDir
+  path       <- getRTSDir
   idrRuntime <- readFile $ path </> "Runtime-common.js"
   tgtRuntime <- readFile $ path </> concat ["Runtime", rt, ".js"]
   jsbn       <- if compileInfoNeedsBigInt info

@@ -14,8 +14,9 @@ flags:
     FFI               : true
   idris:
     FFI               : true
-    codegen_C         : false
-    codegen_JavaScript: false
+    codegen_C         : true
+    codegen_JavaScript: true
+    execonly          : false
   idris-codegen-c:
     GMP: true
 
