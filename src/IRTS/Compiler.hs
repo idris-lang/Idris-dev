@@ -54,6 +54,7 @@ import System.Process
 compile :: Codegen -> FilePath -> Maybe Term -> Idris CodegenInfo
 compile codegen f mtm = do
         logCodeGen 1 "Compiling Output."
+        iReport 2 "Compiling Output."
         checkMVs  -- check for undefined metavariables
         checkTotality -- refuse to compile if there are totality problems
         exports <- findExports
@@ -90,9 +91,11 @@ compile codegen f mtm = do
         let ctxtIn = addAlist tagged emptyContext
 
         logCodeGen 1 "Defunctionalising"
+        iReport 3 "Defunctionalising"
         let defuns_in = defunctionalise nexttag ctxtIn
         logCodeGen 5 $ show defuns_in
         logCodeGen 1 "Inlining"
+        iReport 3 "Inlining"
         let defuns = inline defuns_in
         logCodeGen 5 $ show defuns
         logCodeGen 1 "Resolving variables for CG"
@@ -110,6 +113,7 @@ compile codegen f mtm = do
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
         logCodeGen 1 "Generating Code."
+        iReport 2 "Generating Code."
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags

@@ -385,7 +385,7 @@ allNames ns n = do i <- getIState
                    case getCGAllNames i n of
                         Just ns -> return ns
                         Nothing -> case lookupCtxtExact n (idris_callgraph i) of
-                                        Just ci -> 
+                                        Just ci ->
                                           do more <- mapM (allNames (n:ns)) (calls ci)
                                              let ns' = nub (n : concat more)
                                              addCGAllNames i n ns'
@@ -1024,17 +1024,31 @@ targetCPU :: Idris String
 targetCPU = do i <- getIState
                return (opt_cpu (idris_options i))
 
-verbose :: Idris Bool
-verbose = do i <- getIState
-             -- Quietness overrides verbosity
-             return (not (opt_quiet (idris_options i)) &&
-                     opt_verbose (idris_options i))
+verbose :: Idris Int
+verbose = do
+  i <- getIState
+  -- Quietness overrides verbosity
+  let quiet = opt_quiet   $ idris_options i
+  if quiet
+    then return $ 0
+    else return $ (opt_verbose $ idris_options i)
 
-setVerbose :: Bool -> Idris ()
-setVerbose t = do i <- getIState
-                  let opts = idris_options i
-                  let opt' = opts { opt_verbose = t }
-                  putIState $ i { idris_options = opt' }
+setVerbose :: Int -> Idris ()
+setVerbose t = do
+  i <- getIState
+  let opts = idris_options i
+  let opt' = opts { opt_verbose = t }
+  putIState $ i { idris_options = opt' }
+
+iReport :: Int -> String -> Idris ()
+iReport level msg = do
+  verbosity <- verbose
+  i <- getIState
+  when (level <= verbosity) $
+    case idris_outputmode i of
+      RawOutput h -> runIO $ hPutStrLn h msg
+      IdeMode n h -> runIO . hPutStrLn h $ convSExp "write-string" msg n
+  return ()
 
 typeInType :: Idris Bool
 typeInType = do i <- getIState

@@ -71,14 +71,14 @@ buildPkg copts warnonly (install, fp) = do
       make (makefile pkgdesc)
       case (execout pkgdesc) of
         Nothing -> do
-          case mergeOptions copts (idx : NoREPL : Verbose : idris_opts pkgdesc) of
+          case mergeOptions copts (idx : NoREPL : Verbose 1 : idris_opts pkgdesc) of
             Left emsg -> do
               putStrLn emsg
               exitWith (ExitFailure 1)
             Right opts -> buildMods opts (modules pkgdesc)
         Just o -> do
           let exec = dir </> o
-          case mergeOptions copts (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc) of
+          case mergeOptions copts (idx : NoREPL : Verbose 1 : Output exec : idris_opts pkgdesc) of
             Left emsg -> do
               putStrLn emsg
               exitWith (ExitFailure 1)
@@ -115,7 +115,7 @@ checkPkg copts warnonly quit fpath = do
     res <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
 
-      case mergeOptions copts (NoREPL : Verbose : idris_opts pkgdesc) of
+      case mergeOptions copts (NoREPL : Verbose 1 : idris_opts pkgdesc) of
         Left emsg -> do
           putStrLn emsg
           exitWith (ExitFailure 1)
@@ -195,7 +195,7 @@ documentPkg copts (install,fp) = do
   cd             <- getCurrentDirectory
   let pkgDir      = cd </> takeDirectory fp
       outputDir   = cd </> pkgname pkgdesc ++ "_doc"
-      popts       = NoREPL : Verbose : idris_opts pkgdesc
+      popts       = NoREPL : Verbose 1 : idris_opts pkgdesc
       mods        = modules pkgdesc
       fs          = map (foldl1' (</>) . splitOn "." . showCG) mods
   setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
@@ -259,7 +259,7 @@ testPkg copts fp = do
         hClose tmph
         (tmpn', tmph') <- tempfile ""
         hClose tmph'
-        let popts = (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
+        let popts = (Filename tmpn : NoREPL : Verbose 1 : Output tmpn' : idris_opts pkgdesc)
         case mergeOptions copts popts of
           Left emsg -> do
             putStrLn emsg
@@ -442,6 +442,7 @@ mergeOptions copts popts =
     chkOpt o@(IBCSubDir _)    = Right o
     chkOpt o@(ImportDir _ )   = Right o
     chkOpt o@(UseCodegen _)   = Right o
+    chkOpt o@(Verbose _)      = Right o
     chkOpt o                  = Left (unwords ["\t", show o, "\n"])
 
     genErrMsg :: [String] -> String
