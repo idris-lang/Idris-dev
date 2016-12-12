@@ -1,8 +1,4 @@
 Type checking ./base001.idr
-Totality checking ./base001.idr
-Writing IBC for: "./base001.ibc"
-Compiling Output.
-Generating Code.
 exit1: Executing cmd 'exit 1'
 exit1: raw exitStatus = 256
 exit1: WEXITSTATUS(exitStatus) = 1
