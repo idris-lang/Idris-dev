@@ -1,6 +1,6 @@
 module System
 
-import Data.So
+import public Data.So
 
 %include C "unistd.h"
 %default partial
