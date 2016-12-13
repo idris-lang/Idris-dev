@@ -142,14 +142,10 @@ addImported pub f
           putIState $ i { idris_imported = nub $ (f, pub) : idris_imported i }
 
 addLangExt :: LanguageExt -> Idris ()
-addLangExt TypeProviders = do i <- getIState
-                              putIState $ i {
-                                idris_language_extensions = TypeProviders : idris_language_extensions i
-                              }
-addLangExt ErrorReflection = do i <- getIState
-                                putIState $ i {
-                                  idris_language_extensions = ErrorReflection : idris_language_extensions i
-                                }
+addLangExt e = do i <- getIState
+                  putIState $ i {
+                    idris_language_extensions = e : idris_language_extensions i
+                  }
 
 -- | Transforms are organised by the function being applied on the lhs
 -- of the transform, to make looking up appropriate transforms quicker

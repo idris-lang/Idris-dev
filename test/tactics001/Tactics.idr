@@ -4,7 +4,7 @@ import Language.Reflection.Elab
 
 import Data.Vect
 
-
+%language ElabReflection
 %default total
 
 -- Test that basic proofs with new-style tactics work

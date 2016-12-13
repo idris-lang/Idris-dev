@@ -17,7 +17,7 @@ implementation Handler (Exception a) List where
 
 implementation Show a => Handler (Exception a) IO where
      handle _ (Raise e) k = do printLn e
-                               believe_me (exit 1)
+                               (exit 1)
 
 implementation Handler (Exception a) (IOExcept a) where
      handle _ (Raise e) k = ioe_fail e
@@ -30,4 +30,3 @@ EXCEPTION t = MkEff () (Exception t)
 
 raise : a -> Eff b [EXCEPTION a]
 raise err = call $ Raise err
-

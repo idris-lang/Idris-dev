@@ -1,3 +1,4 @@
+%language UniquenessTypes
 
 data UList : Type -> UniqueType where
      UNil : UList a

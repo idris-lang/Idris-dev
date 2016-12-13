@@ -364,6 +364,9 @@ VAL idris_pokeDouble(VAL ptr, VAL offset, VAL data);
 VAL idris_peekSingle(VM* vm, VAL ptr, VAL offset);
 VAL idris_pokeSingle(VAL ptr, VAL offset, VAL data);
 
+// Crash with a message (used for partial primitives)
+void idris_crash(char* msg);
+
 // String primitives
 VAL idris_concat(VM* vm, VAL l, VAL r);
 VAL idris_strlt(VM* vm, VAL l, VAL r);

@@ -52,8 +52,9 @@ import System.Process
 
 -- |  Compile to simplified forms and return CodegenInfo
 compile :: Codegen -> FilePath -> Maybe Term -> Idris CodegenInfo
-compile codegen f mtm
-   = do checkMVs  -- check for undefined metavariables
+compile codegen f mtm = do
+        logCodeGen 1 "Compiling Output."
+        checkMVs  -- check for undefined metavariables
         checkTotality -- refuse to compile if there are totality problems
         exports <- findExports
         let rootNames = case mtm of
@@ -108,7 +109,7 @@ compile codegen f mtm
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
-        logCodeGen 1 "Building output"
+        logCodeGen 1 "Generating Code."
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags
@@ -257,6 +258,11 @@ irTerm top vs env tm@(App _ f a) = do
     (P _ (UN u) _, _)
         | u == txt "assert_unreachable"
         -> return $ LError $ "ABORT: Reached an unreachable case in " ++ show top
+
+    (P _ (UN u) _, [_, msg])
+        | u == txt "idris_crash"
+        -> do msg' <- irTerm top vs env msg
+              return $ LOp LCrash [msg']
 
     -- TMP HACK - until we get inlining.
     (P _ (UN r) _, [_, _, _, _, _, arg])

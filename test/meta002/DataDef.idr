@@ -1,5 +1,7 @@
 module DataDef
 
+%language ElabReflection
+
 foo : Elab ()
 foo = do declareDatatype $ Declare `{{DataDef.N}} [MkFunArg `{{n}} `(Nat) Explicit NotErased] `(Type)
          defineDatatype $ DefineDatatype `{{DataDef.N}} [

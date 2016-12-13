@@ -1,6 +1,8 @@
 import IOu
 
-data Result : (a : Type) -> (a -> Type) -> Type* where
+%language UniquenessTypes
+
+data Result : (a : Type) -> (a -> Type) -> AnyType where
      Res : {k : a -> Type} -> (val : a) -> k val -> Result a k
 
 

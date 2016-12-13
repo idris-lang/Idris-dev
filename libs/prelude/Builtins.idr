@@ -2,6 +2,7 @@
 
 %access public export
 %default total
+%language UniquenessTypes
 
 ||| The canonical single-element type, also known as the trivially
 ||| true proposition.
@@ -176,6 +177,12 @@ assert_total x = x
 ||| is unreachable
 assert_unreachable : a
 -- compiled as primitive
+
+||| Abort immediately with an error message
+idris_crash : (msg : String) -> a
+-- compiled as primitive
+
+%used idris_crash msg
 
 ||| Subvert the type checker. This function is abstract, so it will not reduce in
 ||| the type checker. Use it with care - it can result in segfaults or worse!

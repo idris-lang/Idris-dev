@@ -170,10 +170,10 @@ updateSolvedTerm' xs x = updateSolved' xs x where
                    _ -> let (t', _) = updateSolved' xs t in
                             (updsubst n v t', True)
     updateSolved' xs tm@(Bind n b t)
-        | otherwise = let (t', ut) = updateSolved' xs t
-                          (b', ub) = updateSolvedB' xs b in
-                          if ut || ub then (Bind n b' t', True)
-                                      else (tm, False)
+        = let (t', ut) = updateSolved' xs t
+              (b', ub) = updateSolvedB' xs b in
+              if ut || ub then (Bind n b' t', True)
+                          else (tm, False)
     updateSolved' xs t@(App Complete f a) = (t, False)
     updateSolved' xs t@(App s f a)
         = let (f', uf) = updateSolved' xs f

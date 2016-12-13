@@ -1,5 +1,7 @@
 module IOu
 
+%language UniquenessTypes
+
 -------- An IO type supporting possibly unique values
 
 data IOu : AnyType -> AnyType where

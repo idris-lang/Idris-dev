@@ -2,6 +2,8 @@ import IOu
 
 import Data.Vect
 
+%language UniquenessTypes
+
 data Result : (a : AnyType) -> (a -> AnyType) -> AnyType where
      Res : {k : a -> AnyType} -> (val : a) -> (h : k val) -> Result a k
 

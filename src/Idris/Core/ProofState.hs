@@ -1002,6 +1002,18 @@ updateProblems ps updates probs = rec 10 updates probs
              (x', y', newx || newy,
                   updateEnv ns env, updateError ns err, fc, fa)
 
+orderUpdateSolved :: [(Name, Term)] -> ProofTerm -> (ProofTerm, [Name])
+orderUpdateSolved ns tm = update [] ns tm 
+  where
+    update done [] t = (t, done)
+    update done ((n, P _ n' _) : ns) t | n == n' = update done ns t
+    update done (n : ns) t = update (fst n : done)
+                                    (map (updateMatch n) ns)
+                                    (updateSolved [n] t)
+    
+    -- Update the later solutions too
+    updateMatch n (x, tm) = (x, updateSolvedTerm [n] tm)
+
 -- attempt to solve remaining problems with match_unify
 matchProblems :: Bool -> ProofState -> [(Name, TT Name)] -> Fails
                     -> ([(Name, TT Name)], Fails)
@@ -1065,30 +1077,25 @@ processTactic (ComputeLet n) ps
                                          (getProofTerm (pterm ps)) }, "")
 processTactic UnifyProblems ps
     = do let (ns', probs') = updateProblems ps [] (map setReady (problems ps))
-             pterm' = orderUpdateSolved ns' (pterm ps)
-         traceWhen (unifylog ps) ("(UnifyProblems) Dropping holes: " ++ show (map fst ns')) $
+             (pterm', dropped) = orderUpdateSolved ns' (pterm ps)
+         traceWhen (unifylog ps) ("(UnifyProblems) Dropping holes: " ++ show dropped) $
           return (ps { pterm = pterm', solved = Nothing, problems = probs',
                        previous = Just ps, plog = "",
                        notunified = updateNotunified ns' (notunified ps),
-                       recents = recents ps ++ map fst ns',
+                       recents = recents ps ++ dropped,
                        dotted = filter (notIn ns') (dotted ps),
-                       holes = holes ps \\ (map fst ns') }, plog ps)
+                       holes = holes ps \\ dropped }, plog ps)
    where notIn ns (h, _) = h `notElem` map fst ns
-         orderUpdateSolved [] t = t
-         orderUpdateSolved (n : ns) t = orderUpdateSolved ns (updateSolved [n] t)
 processTactic (MatchProblems all) ps
     = do let (ns', probs') = matchProblems all ps [] (map setReady (problems ps))
              (ns'', probs'') = matchProblems all ps ns' probs'
-             pterm' = orderUpdateSolved ns'' (resetProofTerm (pterm ps))
-         traceWhen (unifylog ps) ("(MatchProblems) Dropping holes: " ++ show ns'') $
+             (pterm', dropped) = orderUpdateSolved ns'' (resetProofTerm (pterm ps))
+         traceWhen (unifylog ps) ("(MatchProblems) Dropping holes: " ++ show dropped) $
           return (ps { pterm = pterm', solved = Nothing, problems = probs'',
                        previous = Just ps, plog = "",
                        notunified = updateNotunified ns'' (notunified ps),
-                       recents = recents ps ++ map fst ns'',
-                       holes = holes ps \\ (map fst ns'') }, plog ps)
-  where
-    orderUpdateSolved [] t = t
-    orderUpdateSolved (n : ns) t = orderUpdateSolved ns (updateSolved [n] t)
+                       recents = recents ps ++ dropped, 
+                       holes = holes ps \\ dropped }, plog ps)
 processTactic t ps
     = case holes ps of
         [] -> case t of

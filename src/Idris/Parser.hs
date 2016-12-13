@@ -1429,6 +1429,10 @@ directive syn = do try (lchar '%' *> reserved "lib")
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)
        <|> (reserved "ErrorReflection" >> return ErrorReflection)
+       <|> (reserved "UniquenessTypes" >> return UniquenessTypes)
+       <|> (reserved "DSLNotation" >> return DSLNotation)
+       <|> (reserved "ElabReflection" >> return ElabReflection)
+       <|> (reserved "FirstClassReflection" >> return FCReflection)
 
 {-| Parses a totality
 
@@ -1799,7 +1803,7 @@ loadSource lidr f toline
                                   setContext ctxt')
                            (map snd (idris_totcheck i))
                   -- build size change graph from simplified definitions
-                  logLvl 1 "Totality checking"
+                  logLvl 1 $ "Totality checking " ++ f
                   i <- getIState
                   mapM_ buildSCG (idris_totcheck i)
                   mapM_ checkDeclTotality (idris_totcheck i)
@@ -1822,7 +1826,7 @@ loadSource lidr f toline
 
                   logLvl 1 ("Finished " ++ f)
                   ibcsd <- valIBCSubDir i
-                  logLvl 1 "Universe checking"
+                  logLvl 1 $ "Universe checking " ++ f
                   iucheck
                   let ibc = ibcPathNoFallback ibcsd f
                   i <- getIState

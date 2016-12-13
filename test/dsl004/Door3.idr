@@ -1,5 +1,7 @@
 import IOu
 
+%language UniquenessTypes
+
 data DoorState = OPEN | CLOSED
 
 data DoorH : DoorState -> UniqueType where

@@ -2,6 +2,8 @@ import Data.Fin
 import Language.Reflection.Utils
 import Pruviloj.Core
 
+%language ElabReflection
+
 rename : TTName -> TTName -> Raw -> Raw
 rename old new (RBind name b body) = RBind name (map (rename old new) b) (rename old new body)
 rename old new (RApp f arg) = RApp (rename old new f) (rename old new arg)

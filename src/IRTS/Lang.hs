@@ -92,6 +92,8 @@ data PrimFn = LPlus ArithTy | LMinus ArithTy | LTimes ArithTy
             | LPar -- evaluate argument anywhere, possibly on another
                    -- core or another machine. 'id' is a valid implementation
             | LExternal Name
+            | LCrash
+
             | LNoOp
   deriving (Show, Eq, Generic)
 

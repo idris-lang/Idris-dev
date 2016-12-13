@@ -1,3 +1,29 @@
+# New in 0.99.1:
+
+## Language updates
+
+* New language extensions, in addition to the existing `TypeProviders` and
+  `ErrorReflection`:
+  + `ElabReflection`, which must be enabled to use `%runElab`
+  + `UniquenessTypes`, which must be enabled to use `UniqueType`
+  + `DSLNotation`, which must be enabled to define a `dsl` block
+  + `FirstClassReflection`, which must be enabled to define a `%reflection`
+    function
+
+## Tool Updates
+
++ Idris' logging output has been updated to more accurately reflect 
+  its progress through the compiler. Idris, when verbose, will report
+  explicitly: Type Checking; Totality Checking; IBC Generation; 
+  Compiling; and Code Generation.
+  
+
+## Library Updates
+
++ Terminating programs has been improved with more appropriate
+  functions (`exitWith`, `exitFailure`, and `exitSuccess`) and a data
+  structure (`ExitCode`) to capture a program's return code.
+
 # New in 0.99:
 
 ## Language updates

@@ -97,7 +97,7 @@ external ``C`` libraries, the following options are available:
   which must be present for the package to be usable.
 
 + ``objs = <objs>``, which takes a comma separated list of additional
-  files to be installed (object files, headers), perhaps generated 
+  files to be installed (object files, headers), perhaps generated
   by the ``Makefile``.
 
 Testing
@@ -111,6 +111,11 @@ The following option is available:
 
 .. IMPORTANT::
   The modules containing the test functions must also be added to the list of modules.
+
+Comments
+---------
+
+Package files support comments using the standard Idris singleline ``--`` and multiline ``{- -}`` format.
 
 Using Package files
 ===================
@@ -126,6 +131,8 @@ Given an Idris package file ``text.ipkg`` it can be used with the Idris compiler
   executable files generated when building.
 
 + ``idris --mkdoc test.ipkg`` will build HTML documentation for your package in the folder ``test_doc`` in your project's root directory.
+
++ ``idris --installdoc test.ipkg`` will install the packages documentation into Idris' central documentation folder located at ``idris --docdir``.
 
 + ``idris --checkpkg test.ipkg`` will type check all modules in the package only. This differs from build that type checks **and** generates code.
 

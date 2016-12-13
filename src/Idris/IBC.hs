@@ -220,7 +220,8 @@ writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArch
 
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
-    = do logIBC 1 $ "Writing ibc " ++ show f
+    = do
+         logIBC 1 $ "Writing IBC for: " ++ show f
          i <- getIState
 --          case (Data.List.map fst (idris_metavars i)) \\ primDefs of
 --                 (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"
@@ -313,7 +314,7 @@ ibc i (IBCCG n) f = case lookupCtxtExact n (idris_callgraph i) of
                         _ -> ifail "IBC write failed"
 ibc i (IBCCoercion n) f = return f { ibc_coercions = n : ibc_coercions f }
 ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
-ibc i (IBCFlags n) f 
+ibc i (IBCFlags n) f
     = case lookupCtxtExact n (idris_flags i) of
            Just a -> return f { ibc_flags = (n,a): ibc_flags f }
            _ -> ifail "IBC write failed"

@@ -75,6 +75,8 @@ elabClauses info' fc opts n_in cs =
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
          let reflect = Reflection `elem` opts
+         when (reflect && FCReflection `notElem` idris_language_extensions ist) $
+           ierror $ At fc (Msg "You must turn on the FirstClassReflection extension to use %reflection")
          checkUndefined n ctxt
          unless (length tys > 1) $ do
            fty <- case tys of
@@ -1025,7 +1027,12 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
 
         logElab 5 ("Checked " ++ show clhs)
         let bargs = getPBtys (explicitNames (normalise ctxt [] lhs_tm))
-        let wval = rhs_trans info $ addImplBound i (map fst bargs) wval_in
+        wval <- case wval_in of
+                     Placeholder -> ierror $ At fc $
+                          Msg "No expression for the with block to inspect.\nYou need to replace the _ with an expression."
+                     _ -> return $
+                            rhs_trans info $ 
+                              addImplBound i (map fst bargs) wval_in
         logElab 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
         ((wvalElab, defer, is, ctxt', newDecls, highlights, newGName), _) <-

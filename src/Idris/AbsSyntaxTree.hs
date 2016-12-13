@@ -120,7 +120,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_showimp    = False
                       , opt_errContext = False
                       , opt_repl       = True
-                      , opt_verbose    = True
+                      , opt_verbose    = False
                       , opt_nobanner   = False
                       , opt_quiet      = False
                       , opt_codegen    = Via IBCFormat "c"
@@ -184,7 +184,8 @@ ppOption opt = PPOption {
 ppOptionIst :: IState -> PPOption
 ppOptionIst = ppOption . idris_options
 
-data LanguageExt = TypeProviders | ErrorReflection
+data LanguageExt = TypeProviders | ErrorReflection | UniquenessTypes
+                 | DSLNotation   | ElabReflection  | FCReflection
   deriving (Show, Eq, Read, Ord, Generic)
 
 -- | The output mode in use
@@ -335,6 +336,7 @@ primDefs = [ sUN "unsafePerformPrimIO"
            , sUN "mkForeignPrim"
            , sUN "void"
            , sUN "assert_unreachable"
+           , sUN "idris_crash"
            ]
 
 -- information that needs writing for the current module's .ibc file
@@ -2470,6 +2472,8 @@ implicitNamesIn uvars ist tm
     ni 0 env (PIfThenElse _ c t f)            = mapM_ (ni 0 env) [c, t, f]
     ni 0 env (PLam fc n _ ty sc)              = do ni 0 env ty; ni 0 (n:env) sc
     ni 0 env (PPi p n _ ty sc)                = do ni 0 env ty; ni 0 (n:env) sc
+    ni 0 env (PLet fc n _ ty val sc)          = do ni 0 env ty; 
+                                                   ni 0 env val; ni 0 (n:env) sc
     ni 0 env (PRewrite _ _ l r _)             = do ni 0 env l; ni 0 env r
     ni 0 env (PTyped l r)                     = do ni 0 env l; ni 0 env r
     ni 0 env (PPair _ _ _ l r)                = do ni 0 env l; ni 0 env r

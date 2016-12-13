@@ -72,6 +72,16 @@ data Value = VP NameType Name Value
 --            | VLazy Env [Value] Term
            | VTmp Int
 
+canonical :: Value -> Bool
+canonical (VP (DCon _ _ _) _ _) = True
+canonical (VApp f a) = canonical f
+canonical (VConstant _) = True
+canonical (VType _) = True
+canonical (VUType _) = True
+canonical VErased = True
+canonical _ = False
+
+
 instance Show Value where
     show x = show $ evalState (quote 100 x) initEval
 
@@ -254,6 +264,8 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     atRepl = AtREPL `elem` opts
     unfold = Unfold `elem` opts
 
+    noFree = all canonical . map snd
+
     -- returns 'True' if the function should block
     -- normal evaluation should return false
     blockSimplify (CaseInfo inl always dict) n stk
@@ -274,11 +286,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes_in stk top env (P Ref n ty)
          = do let limit = if simpl then 100 else 10000
               (u, ntimes) <- usable spec unfold limit n ntimes_in
-              let red = u && (tcReducible n ctxt || spec || atRepl 
+              let red = u && (tcReducible n ctxt || spec || (atRepl && noFree env)
                                 || runtime || unfold
                                 || sUN "assert_total" `elem` stk)
               if red then
-               do let val = lookupDefAccExact n (spec || unfold || atRepl || runtime) ctxt
+               do let val = lookupDefAccExact n (spec || unfold || (atRepl && noFree env) || runtime) ctxt
                   case val of
                     Just (Function _ tm, Public) ->
                            ev ntimes (n:stk) True env tm
@@ -347,7 +359,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                  evApply ntimes' stk top env [l',t',arg'] d'
     -- Treat "assert_total" specially, as long as it's defined!
     ev ntimes stk top env (App _ (App _ (P _ n@(UN at) _) _) arg)
-       | Just (CaseOp _ _ _ _ _ _, _) <- lookupDefAccExact n (spec || atRepl || runtime) ctxt,
+       | Just (CaseOp _ _ _ _ _ _, _) <- lookupDefAccExact n (spec || (atRepl && noFree env)|| runtime) ctxt,
          at == txt "assert_total" && not (simpl || unfold)
             = ev ntimes (n : stk) top env arg
     ev ntimes stk top env (App _ f a)
@@ -376,7 +388,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
           = apply ntimes stk top env f args
 
     reapply ntimes stk top env f@(VP Ref n ty) args
-       = let val = lookupDefAccExact n (spec || atRepl || runtime) ctxt in
+       = let val = lookupDefAccExact n (spec || (atRepl && noFree env) || runtime) ctxt in
          case val of
               Just (CaseOp ci _ _ _ _ cd, acc) ->
                  let (ns, tree) = getCases cd in
@@ -398,11 +410,11 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     apply ntimes_in stk top env f@(VP Ref n ty) args
          = do let limit = if simpl then 100 else 10000
               (u, ntimes) <- usable spec unfold limit n ntimes_in
-              let red = u && (tcReducible n ctxt || spec || atRepl 
+              let red = u && (tcReducible n ctxt || spec || (atRepl && noFree env)
                                 || unfold || runtime
                                 || sUN "assert_total" `elem` stk)
               if red then
-                 do let val = lookupDefAccExact n (spec || unfold || atRepl || runtime) ctxt
+                 do let val = lookupDefAccExact n (spec || unfold || (atRepl && noFree env) || runtime) ctxt
                     case val of
                       Just (CaseOp ci _ _ _ _ cd, acc)
                            | acc == Public || acc == Hidden ->

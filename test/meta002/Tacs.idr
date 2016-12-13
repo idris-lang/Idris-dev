@@ -16,6 +16,7 @@ import Language.Reflection.Utils
 import Pruviloj.Core
 
 %default total
+%language ElabReflection
 
 -- Tactics can now query the elaborator and bind variables
 

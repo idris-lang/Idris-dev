@@ -284,6 +284,8 @@ elabDecl' what info (PRecord doc rsyn fc opts name nfc ps pdocs fs cname cdoc cs
 -}
 elabDecl' _ info (PDSL n dsl)
     = do i <- getIState
+         unless (DSLNotation `elem` idris_language_extensions i) $
+           ifail "You must turn on the DSLNotation extension to use a dsl block"
          putIState (i { idris_dsls = addDef n dsl (idris_dsls i) })
          addIBC (IBCDSL n)
 elabDecl' what info (PDirective i)
@@ -296,6 +298,9 @@ elabDecl' what info (PTransform fc safety old new)
     = do elabTransform info fc safety old new
          return ()
 elabDecl' what info (PRunElabDecl fc script ns)
-    = do elabRunElab info fc script ns
+    = do i <- getIState
+         unless (ElabReflection `elem` idris_language_extensions i) $
+           ierror $ At fc (Msg "You must turn on the ElabReflection extension to use %runElab")
+         elabRunElab info fc script ns
          return ()
 elabDecl' _ _ _ = return () -- skipped this time
