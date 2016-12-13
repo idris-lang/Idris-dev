@@ -5,10 +5,32 @@ Code Generation Targets
 ``Idris`` has been designed such that the compiler can generate code for
 different backends upon request. By default ``Idris`` generates a ``C``
 backend when generating an executable. Included within the standard Idris installation are backends for Javascript and Node.js.
+There are two types of code generators: embedded and external.
 
-However, there are third-party code generators out there.  Below we
+External codegens are processes that are spawned by the `idris` process.
+They are suited for batch mode compilation of an entire package.
+The IR can be passed to them in either IBC or Json format, depending
+on which command line flag was used, `--codegen-ibc` or `--codegen-json`
+(most current ones use IBC).
+
+Embedded codegens are bundled as package dependencies to the `idris`
+frontend, and are available when using the command line flag `--codegen`,
+or interactively in the REPL and IDE mode.
+They remove the overhead of loading prelude and other IBC files when
+those have been already loaded in the `idris` process, and can significantly
+increase speed when compiling from the REPL or IDE mode.
+All default codegens are embedded.
+
+There are third-party code generators out there.  Below we
 describe some of these backends and how you can use them when
-compiling your ``Idris`` code. If you want to write your own codegen for your language there is a `stub project on GitHub <https://github.com/idris-lang/idris-emptycg>`__ that can help point you in the right direction.
+compiling your ``Idris`` code.
+If you want to write your own external codegen for your language there is a
+`stub project on GitHub <https://github.com/idris-lang/idris-emptycg>`__
+that can help point you in the right direction.
+For embedded codegens look into how the packages `idris-codegen-c` and
+`idris-codegen-javascript` are built, and create a fork of the `idris` package
+where you add an extra `build-depends` line in the cabal file to your codegen package,
+and `register` call in `Main.hs` similar to the ones in the `idris` package.
 
 Official Backends
 ==================
@@ -66,7 +88,7 @@ CIL (.NET, Mono, Unity)
 
 ::
 
-    idris --codegen cil Main.idr -o HelloWorld.exe \
+    idris --codegen-ibc cil Main.idr -o HelloWorld.exe \
       && mono HelloWorld.exe
 
 The resulting assemblies can also be used with .NET or Unity.
@@ -86,7 +108,7 @@ Java
 
 ::
 
-   idris hello.idr --codegen java -o hello.jar
+   idris hello.idr --codegen-ibc java -o hello.jar
 
 
 Note: The resulting .jar is automatically prefixed by a header including

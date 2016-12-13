@@ -83,8 +83,13 @@ should not necessarily be seen as production ready nor for industrial use.
   --testpkg IPKG           Run tests for package
   -S,--codegenonly         Do no further compilation of code generator output
   -c,--compileonly         Compile to object files rather than an executable
-  --codegen TARGET         Select code generator: C, Javascript, Node and
-                           bytecode are bundled with Idris
+  --codegen TARGET         Select embedded code generator: C, JavaScript, Node
+                           and bytecode are available by default, while others
+                           can be enabled with cabal flags
+  --codegen-json TARGET    Pass the name of an external code generator
+                           that takes JSON formatted IR
+  --codegen-ibc TARGET     Pass the name of an external code generator
+                           that takes IBC formatted IR
   --cg-opt ARG             Arguments to pass to code generator
   -e,--eval EXPR           Evaluate an expression without loading the REPL
   --execute                Execute as idris
