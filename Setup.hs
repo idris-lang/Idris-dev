@@ -157,13 +157,6 @@ idrisPostSDist args flags desc lbi = do
 -- -----------------------------------------------------------------------------
 -- Build
 
-{-getVersion :: Args -> S.BuildFlags -> IO HookedBuildInfo
-getVersion args flags = do
-      hash <- gitHash
-      let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
-      return (Just buildinfo, [])
--}
-
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
         createDirectoryIfMissingVerbose verbosity True dir

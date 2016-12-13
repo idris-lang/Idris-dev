@@ -79,7 +79,7 @@ install:
   # causing cabal's default configuration (jobs: $ncpus)
   # to run into the GHC #9221 bug which can result in longer build-times.
   - $SED -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
-  - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
+  - cabal install --constraint="idris-core +FFI" --only-dependencies --enable-tests --dry -v > installplan.txt
   - $SED -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
   # check whether current requested install-plan matches cached package-db snapshot
   - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
@@ -92,7 +92,7 @@ install:
       echo "cabal build-cache MISS";
       rm -rf $HOME/.cabsnap;
       mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-      cabal install -f FFI --only-dependencies --enable-tests;
+      cabal install --constraint="idris-core +FFI" --only-dependencies --enable-tests;
     fi
   # snapshot package-db on cache miss
   - if [ ! -d $HOME/.cabsnap ];
@@ -112,7 +112,7 @@ before_script:
 script:
 ###
   - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
-  - cabal configure -f FFI -f CI --enable-tests
+  - cabal configure --constraint="idris-core +FFI" -f CI --constraint="idris-core +CI" --constraint="idris-codegen-c +CI" --constraint="idris-codegen-javascript +CI" --enable-tests
   - echo -en 'travis_fold:end:script.configure\\r'
 ###
   - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'

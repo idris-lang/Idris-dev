@@ -1,1 +1,1 @@
-CABALFLAGS += -f GMP  -f FFI --disable-documentation --disable-profiling --disable-library-profiling
+CABALFLAGS += --constraint="idris-codegen-c +GMP" --constraint="idris-core +FFI" --disable-documentation --disable-profiling --disable-library-profiling

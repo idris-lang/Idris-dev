@@ -8,7 +8,7 @@ include config.mk
 -include custom.mk
 
 ifdef CI
-CABALFLAGS += -f CI
+CABALFLAGS += -f CI --constraint="idris-core +CI" --constraint="idris-codegen-c +CI" --constraint="idris-codegen-javascript +CI"
 ifndef APPVEYOR
 TEST-ARGS += --color always
 endif

@@ -21,6 +21,6 @@ environment:
   MSYSTEM: MINGW64
   MSYS2_PATH_TYPE: inherit
 build_script:
-- ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal install -fffi -j4 --enable-tests"
+- ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal install --constraint=\"idris-core +FFI\" -j4 --enable-tests"
 test_script:
 - ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && make test_c"
