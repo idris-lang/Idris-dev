@@ -68,13 +68,6 @@ Source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
 
--- This flag determines whether to show Git hashes in version strings
--- Defaults to True because Hackage is a source release
-Flag release
-  description:  This is an official release
-  default:      False
-  manual:       True
-
 Flag freestanding
   description:  Build an Idris that doesn't use cabal
   default:      False
