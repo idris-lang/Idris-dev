@@ -221,7 +221,8 @@ writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArch
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
     = do
-         logIBC 1 $ "Writing IBC for: " ++ show f
+         logIBC  1 $ "Writing IBC for: " ++ show f
+         iReport 2 $ "Writing IBC for: " ++ show f
          i <- getIState
 --          case (Data.List.map fst (idris_metavars i)) \\ primDefs of
 --                 (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"

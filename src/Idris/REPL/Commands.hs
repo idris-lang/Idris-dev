@@ -32,6 +32,7 @@ data Command = Quit
              | Universes
              | LogLvl Int
              | LogCategory [LogCat]
+             | Verbosity Int
              | Spec PTerm
              | WHNF PTerm
              | TestInline PTerm

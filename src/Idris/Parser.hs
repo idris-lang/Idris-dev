@@ -1700,6 +1700,7 @@ loadSource' lidr r maxline
 loadSource :: Bool -> FilePath -> Maybe Int -> Idris ()
 loadSource lidr f toline
              = do logParser 1 ("Reading " ++ f)
+                  iReport   2 ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
                   file_in <- runIO $ readSource f
@@ -1787,8 +1788,7 @@ loadSource lidr f toline
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))
                   -- Now add all the declarations to the context
-                  v <- verbose
-                  when v $ iputStrLn $ "Type checking " ++ f
+                  iReport 1 $ "Type checking " ++ f
                   -- we totality check after every Mutual block, so if
                   -- anything is a single definition, wrap it in a
                   -- mutual block on its own
@@ -1803,6 +1803,7 @@ loadSource lidr f toline
                                   setContext ctxt')
                            (map snd (idris_totcheck i))
                   -- build size change graph from simplified definitions
+                  iReport 3 $ "Totality checking " ++ f
                   logLvl 1 $ "Totality checking " ++ f
                   i <- getIState
                   mapM_ buildSCG (idris_totcheck i)
@@ -1826,7 +1827,8 @@ loadSource lidr f toline
 
                   logLvl 1 ("Finished " ++ f)
                   ibcsd <- valIBCSubDir i
-                  logLvl 1 $ "Universe checking " ++ f
+                  logLvl  1 $ "Universe checking " ++ f
+                  iReport 3 $ "Universe checking " ++ f
                   iucheck
                   let ibc = ibcPathNoFallback ibcsd f
                   i <- getIState

@@ -194,7 +194,7 @@ processNetCmd orig i h fn cmd
            setErrContext True
            setOutH h
            setQuiet True
-           setVerbose False
+           setVerbose 0
            mods <- loadInputs [f] toline
            ist <- getIState
            return (ist, f)
@@ -1273,7 +1273,7 @@ process fn (Missing n)
          case lookupCtxt n (idris_patdefs i) of
            [] -> iPrintError $ "Unknown name " ++ show n
            [(_, tms)] ->
-             iRenderResult (vsep (map (pprintPTerm ppOpts 
+             iRenderResult (vsep (map (pprintPTerm ppOpts
                                                    []
                                                    []
                                                    (idris_infixes i))
@@ -1538,4 +1538,3 @@ replSettings :: Maybe FilePath -> Settings Idris
 replSettings hFile = setComplete replCompletion $ defaultSettings {
                        historyFile = hFile
                      }
-

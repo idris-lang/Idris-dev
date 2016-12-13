@@ -39,7 +39,7 @@ processClientOptions :: [Opt] -> Idris ()
 processClientOptions opts = check opts getClient $ \fs -> case fs of
   []      -> ifail "No --client argument. This indicates a bug. Please report."
   (c : _) -> do
-    setVerbose False
+    setVerbose 0
     setQuiet True
     case getPort opts of
       Just  DontListen       -> ifail "\"--client\" and \"--port none\" are incompatible"

@@ -12,11 +12,12 @@
 
 ## Tool Updates
 
-+ Idris' logging output has been updated to more accurately reflect 
-  its progress through the compiler. Idris, when verbose, will report
-  explicitly: Type Checking; Totality Checking; IBC Generation; 
-  Compiling; and Code Generation.
-  
++ Idris' output has been updated to more accurately reflect its
+  progress through the compiler i.e. Type Checking; Totality Checking;
+  IBC Generation; Compiling; and Code Generation. To control the
+  loudness of the reporting three verbosity levels are introduced:
+  `--V0`, `--V1`, and `--V2`. The old aliases of `-V` and `--verbose`
+  persist.
 
 ## Library Updates
 

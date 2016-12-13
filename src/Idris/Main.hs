@@ -68,7 +68,6 @@ idrisMain opts =
        let nobanner = NoBanner `elem` opts
        let idesl = Idemode `elem` opts || IdemodeSocket `elem` opts
        let runrepl = not (NoREPL `elem` opts)
-       let verbose = runrepl || Verbose `elem` opts
        let output = opt getOutput opts
        let ibcsubdir = opt getIBCSubDir opts
        let importdirs = opt getImportDir opts
@@ -116,13 +115,16 @@ idrisMain opts =
        mapM_ addLangExt (opt getLanguageExt opts)
        setREPL runrepl
        setQuiet (quiet || isJust script || not (null immediate))
-       setVerbose verbose
+
        setCmdLine opts
        setOutputTy outty
        setNoBanner nobanner
        setCodegen cgn
        mapM_ (addFlag cgn) cgFlags
        mapM_ makeOption opts
+       vlevel <- verbose
+       when (runrepl && vlevel == 0) $ setVerbose 1
+
        -- if we have the --bytecode flag, drop into the bytecode assembler
        case bcs of
          [] -> return ()
@@ -215,6 +217,7 @@ idrisMain opts =
   where
     makeOption (OLogging i)  = setLogLevel i
     makeOption (OLogCats cs) = setLogCats cs
+    makeOption (Verbose v)   = setVerbose v
     makeOption TypeCase      = setTypeCase True
     makeOption TypeInType    = setTypeInType True
     makeOption NoCoverage    = setCoverage False
