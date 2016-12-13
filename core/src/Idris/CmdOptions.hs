@@ -166,11 +166,19 @@ parseFlags = many $
 
   <|> (UseCodegen . parseCodegen) <$> strOption (long "codegen"
                                               <> metavar "TARGET"
-                                              <> help "Select code generator: C, Javascript, Node and bytecode are available by default. Others can be enabled with cabal flags.")
+                                              <> help "Select embedded code generator: C, JavaScript, Node and bytecode are available by default, while others can be enabled with cabal flags")
+
+  <|> ((UseCodegen . ViaExternal JSONFormat) <$> strOption (long "codegen-json"
+                                                 <> metavar "TARGET"
+                                                 <> help "Pass the name of an external code generator that takes JSON formatted IR"))
+
+  <|> ((UseCodegen . ViaExternal IBCFormat) <$> strOption (long "codegen-ibc"
+                                                 <> metavar "TARGET"
+                                                 <> help "Pass the name of an external code generator that takes IBC formatted IR"))
 
   <|> (CodegenArgs <$> strOption (long "cg-opt"
                                <> metavar "ARG"
-                               <> help "Arguments to pass to code generator"))
+                               <> help "Arguments to pass to an external code generator"))
 
   <|> (EvalExpr <$> strOption (long "eval" <> short 'e' <> metavar "EXPR" <> help "Evaluate an expression without loading the REPL"))
 
@@ -233,7 +241,7 @@ preProcOpts []                = []
 
 parseCodegen :: String -> Codegen
 parseCodegen "bytecode" = Bytecode
-parseCodegen cg         = Via (map toLower cg)
+parseCodegen cg         = ViaEmbedded (map toLower cg)
 
 parseLogCats :: Monad m => String -> m [LogCat]
 parseLogCats s =

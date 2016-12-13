@@ -123,7 +123,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_verbose    = True
                       , opt_nobanner   = False
                       , opt_quiet      = False
-                      , opt_codegen    = Via "c"
+                      , opt_codegen    = ViaEmbedded "c"
                       , opt_outputTy   = Executable
                       , opt_ibcsubdir  = ""
                       , opt_importdirs = []
@@ -419,9 +419,12 @@ throwError = Trans.lift . throwE
 
 -- Commands in the REPL
 
-data Codegen = Via String
+data Codegen = ViaExternal IRFormat String
+             | ViaEmbedded String
              | Bytecode
     deriving (Show, Eq, Generic)
+
+data IRFormat = IBCFormat | JSONFormat deriving (Show, Eq, Generic)
 
 data HowMuchDocs = FullDocs | OverviewDocs
 

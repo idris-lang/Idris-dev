@@ -366,13 +366,15 @@ cmd_pprint name = do
 
 cmd_compile :: String -> P.IdrisParser (Either String Command)
 cmd_compile name = do
-    let defaultCodegen = Via "c"
+    let defaultCodegen = ViaEmbedded "c"
 
     let codegenOption :: P.IdrisParser Codegen
         codegenOption = do
             let bytecodeCodegen = discard (P.symbol "bytecode") *> return Bytecode
                 viaCodegen = do x <- fst <$> P.identifier
-                                return (Via (map toLower x))
+-- TODO: Only embedded codegens are supported here.
+-- Even before refactoring, IBCFormat was baked in.
+                                return (ViaEmbedded (map toLower x))
             bytecodeCodegen <|> viaCodegen
 
     let hasOneArg = do

@@ -75,6 +75,7 @@ instance NFData DocTerm
 instance NFData SizeChange
 instance NFData FnInfo
 instance NFData Codegen
+instance NFData IRFormat
 instance NFData LogCat
 instance NFData CGInfo
 instance NFData Fixity

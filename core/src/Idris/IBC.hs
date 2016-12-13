@@ -2515,13 +2515,29 @@ instance Binary SSymbol where
 instance Binary Codegen where
         put x
           = case x of
-                Via str -> do putWord8 0
-                              put str
-                Bytecode -> putWord8 1
+                ViaEmbedded str -> do putWord8 0
+                                      put str
+                ViaExternal ir str -> do putWord8 1
+                                         put ir
+                                         put str
+                Bytecode -> putWord8 2
         get
           = do i <- getWord8
                case i of
                   0 -> do x1 <- get
-                          return (Via x1)
-                  1 -> return Bytecode
+                          return (ViaEmbedded x1)
+                  1 -> do x1 <- get
+                          x2 <- get
+                          return (ViaExternal x1 x2)
+                  2 -> return Bytecode
                   _ -> error  "Corrupted binary data for Codegen"
+
+instance Binary IRFormat where
+    put x = case x of
+                IBCFormat -> putWord8 0
+                JSONFormat -> putWord8 1
+    get = do i <- getWord8
+             case i of
+                0 -> return IBCFormat
+                1 -> return JSONFormat
+                _ -> error  "Corrupted binary data for IRFormat"

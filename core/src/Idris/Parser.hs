@@ -1312,7 +1312,9 @@ Codegen ::= 'C'
 -}
 codegen_ :: IdrisParser Codegen
 codegen_ = do n <- fst <$> identifier
-              return (Via (map toLower n))
+-- TODO: External codegens are not supported here.
+-- But even before the refactoring, IBCFormat was baked in, so this was incomplete.
+              return (ViaEmbedded (map toLower n))
        <|> do reserved "Bytecode"; return Bytecode
        <?> "code generation language"
 
