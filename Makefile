@@ -3,6 +3,7 @@
 ARGS=
 TEST-JOBS=
 TEST-ARGS=
+PACKAGES=. ./core ./codegen/idris-codegen-c ./codegen/idris-codegen-javascript
 
 include config.mk
 -include custom.mk
@@ -15,14 +16,14 @@ endif
 endif
 
 install:
-	$(CABAL) install $(CABALFLAGS)
+	$(CABAL) install $(CABALFLAGS) $(PACKAGES)
 
 pinstall: CABALFLAGS += --enable-executable-profiling
 pinstall: dist/setup-config
-	$(CABAL) install $(CABALFLAGS)
+	$(CABAL) install $(CABALFLAGS) $(PACKAGES)
 
 build: dist/setup-config
-	$(CABAL) build $(CABALFLAGS)
+	$(CABAL) build $(CABALFLAGS) $(PACKAGES)
 
 test: doc test_c
 
@@ -46,10 +47,10 @@ lib_clean:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris RTS=../../dist/build/rts/libidris_rts clean
 
 relib: lib_clean
-	$(CABAL) install $(CABALFLAGS)
+	$(CABAL) install $(CABALFLAGS) $(PACKAGES)
 
 linecount:
-	wc -l src/Idris/*.hs src/Idris/Elab/*.hs src/Idris/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs src/Util/*.hs
+	wc -l core/src/Idris/*.hs core/src/Idris/Elab/*.hs core/src/Idris/Core/*.hs core/src/IRTS/*.hs core/src/Pkg/*.hs core/src/Util/*.hs
 
 #Note: this doesn't yet link to Hackage properly
 doc: dist/setup-config
@@ -73,7 +74,7 @@ user_doc_pdf:
 	$(MAKE) -C docs latexpdf
 
 fast:
-	$(CABAL) install $(CABALFLAGS) --ghc-option=-O0
+	$(CABAL) install $(CABALFLAGS) --ghc-option=-O0 $(PACKAGES)
 
 dist/setup-config:
 	$(CABAL) configure $(CABALFLAGS)
