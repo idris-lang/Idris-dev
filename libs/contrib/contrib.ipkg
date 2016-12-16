@@ -24,7 +24,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
 
           Decidable.Decidable, Decidable.Order,
 
-          Network.Cgi, Network.Socket,
+          Network.Cgi, Network.Socket.Types, Network.Socket.Raw, Network.Socket,
 
           System.Concurrency.Process,
 
