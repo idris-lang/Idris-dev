@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 156
+ibcVersion = 157
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -1328,26 +1328,30 @@ instance Binary Static where
 instance Binary Plicity where
         put x
           = case x of
-                Imp x1 x2 x3 x4 _ ->
+                Imp x1 x2 x3 x4 _ x5 ->
                              do putWord8 0
                                 put x1
                                 put x2
                                 put x3
                                 put x4
-                Exp x1 x2 x3 ->
+                                put x5
+                Exp x1 x2 x3 x4 ->
                              do putWord8 1
                                 put x1
                                 put x2
                                 put x3
-                Constraint x1 x2 ->
+                                put x4
+                Constraint x1 x2 x3 ->
                                     do putWord8 2
                                        put x1
                                        put x2
-                TacImp x1 x2 x3 ->
+                                       put x3
+                TacImp x1 x2 x3 x4 ->
                                    do putWord8 3
                                       put x1
                                       put x2
                                       put x3
+                                      put x4
         get
           = do i <- getWord8
                case i of
@@ -1355,18 +1359,22 @@ instance Binary Plicity where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (Imp x1 x2 x3 x4 False)
+                           x5 <- get
+                           return (Imp x1 x2 x3 x4 False x5)
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (Exp x1 x2 x3)
+                           x4 <- get
+                           return (Exp x1 x2 x3 x4)
                    2 -> do x1 <- get
                            x2 <- get
-                           return (Constraint x1 x2)
+                           x3 <- get
+                           return (Constraint x1 x2 x3)
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (TacImp x1 x2 x3)
+                           x4 <- get
+                           return (TacImp x1 x2 x3 x4)
                    _ -> error "Corrupted binary data for Plicity"
 
 

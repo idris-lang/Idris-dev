@@ -1306,8 +1306,8 @@ expandParams dec ps ns infs tm = en 0 tm
 
     nseq x y = nsroot x == nsroot y
 
-    enTacImp ql (TacImp aos st scr)  = TacImp aos st (en ql scr)
-    enTacImp ql other                = other
+    enTacImp ql (TacImp aos st scr rig) = TacImp aos st (en ql scr) rig
+    enTacImp ql other                   = other
 
 expandParamsD :: Bool -> -- True = RHS only
                  IState ->
@@ -1511,8 +1511,8 @@ addStatics n tm ptm =
     -- if a name appears in an interface or tactic implicit index, it doesn't
     -- affect its 'uniquely inferrable' from a static status since these are
     -- resolved by searching.
-    searchArg (Constraint _ _) = True
-    searchArg (TacImp _ _ _) = True
+    searchArg (Constraint _ _ _) = True
+    searchArg (TacImp _ _ _ _) = True
     searchArg _ = False
 
     staticList sts (Bind n (Pi _ _ _ _) sc) = (n `elem` sts) : staticList sts sc
@@ -1547,14 +1547,14 @@ addUsingConstraints syn fc t
          -- if all of args in ns, then add it
          doAdd (UConstraint c args : cs) ns t
              | all (\n -> elem n ns) args
-                   = PPi (Constraint [] Dynamic) (sMN 0 "cu") NoFC
+                   = PPi (Constraint [] Dynamic RigW) (sMN 0 "cu") NoFC
                          (mkConst c args) (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc [] c)
                            (map (PExp 0 [] (sMN 0 "carg") . PRef fc []) args)
 
-         getConstraints (PPi (Constraint _ _) _ _ c sc)
+         getConstraints (PPi (Constraint _ _ _) _ _ c sc)
              = getcapp c ++ getConstraints sc
          getConstraints (PPi _ _ _ c sc) = getConstraints sc
          getConstraints _ = []
@@ -1628,17 +1628,17 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
         getImps (Bind n (Pi _ _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
-            argInfo n (Imp opt _ _ _ _) Placeholder
+            argInfo n (Imp opt _ _ _ _ _) Placeholder
                    = (True, PImp 0 True opt n Placeholder)
-            argInfo n (Imp opt _ _ _ _) t'
+            argInfo n (Imp opt _ _ _ _ _) t'
                    = (False, PImp (getPriority i t') True opt n t')
-            argInfo n (Exp opt _ _) t'
+            argInfo n (Exp opt _ _ _) t'
                    = (InaccessibleArg `elem` opt,
                           PExp (getPriority i t') opt n t')
-            argInfo n (Constraint opt _) t'
+            argInfo n (Constraint opt _ _) t'
                    = (InaccessibleArg `elem` opt,
                           PConstraint 10 opt n t')
-            argInfo n (TacImp opt _ scr) t'
+            argInfo n (TacImp opt _ scr _) t'
                    = (InaccessibleArg `elem` opt,
                           PTacImplicit 10 opt n scr t')
         getImps (Bind n (Pi _ _ t _) sc) imps = impBind n t : getImps sc imps
@@ -1724,13 +1724,13 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
        = do (decls, ns) <- get
             let isn = nub (implNamesIn uvars ty)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi (Imp l _ _ _ _) n _ ty sc)
+    imps top env (PPi (Imp l _ _ _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]
              (decls , ns) <- get
              put (PImp (getPriority ist ty) True l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Exp l _ _) n _ ty sc)
+    imps top env (PPi (Exp l _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -1738,7 +1738,7 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PExp (getPriority ist ty) l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Constraint l _) n _ ty sc)
+    imps top env (PPi (Constraint l _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -1746,7 +1746,7 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PConstraint 10 l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (TacImp l _ scr) n _ ty sc)
+    imps top env (PPi (TacImp l _ scr _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])

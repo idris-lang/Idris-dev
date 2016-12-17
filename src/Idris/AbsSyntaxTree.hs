@@ -599,17 +599,21 @@ data Plicity = Imp { pargopts  :: [ArgOpt]
                    , pparam    :: Bool
                    , pscoped   :: Maybe ImplicitInfo -- ^ Nothing, if top level
                    , pinsource :: Bool               -- ^ Explicitly written in source
+                   , pcount    :: RigCount
                    }
              | Exp { pargopts :: [ArgOpt]
                    , pstatic  :: Static
                    , pparam   :: Bool -- ^ this is a param (rather than index)
+                   , pcount    :: RigCount
                    }
              | Constraint { pargopts :: [ArgOpt]
-                         ,  pstatic :: Static
+                          , pstatic :: Static
+                          , pcount    :: RigCount
                          }
              | TacImp { pargopts :: [ArgOpt]
                       , pstatic  :: Static
                       , pscript  :: PTerm
+                      , pcount    :: RigCount
                       }
              deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
@@ -618,24 +622,24 @@ deriving instance Binary Plicity
 !-}
 
 is_scoped :: Plicity -> Maybe ImplicitInfo
-is_scoped (Imp _ _ _ s _) = s
-is_scoped _               = Nothing
+is_scoped (Imp _ _ _ s _ _) = s
+is_scoped _                 = Nothing
 
 -- Top level implicit
-impl              = Imp [] Dynamic False (Just (Impl False True False)) False
+impl              = Imp [] Dynamic False (Just (Impl False True False)) False RigW
 -- Machine generated top level implicit
-impl_gen          = Imp [] Dynamic False (Just (Impl False True True)) False
+impl_gen          = Imp [] Dynamic False (Just (Impl False True True)) False RigW
 
 -- Scoped implicits
-forall_imp        = Imp [] Dynamic False (Just (Impl False False True)) False
-forall_constraint = Imp [] Dynamic False (Just (Impl True False True)) False
+forall_imp        = Imp [] Dynamic False (Just (Impl False False True)) False RigW
+forall_constraint = Imp [] Dynamic False (Just (Impl True False True)) False RigW
 
-expl              = Exp [] Dynamic False
-expl_param        = Exp [] Dynamic True
+expl              = Exp [] Dynamic False RigW
+expl_param        = Exp [] Dynamic True RigW
 
-constraint        = Constraint [] Static
+constraint        = Constraint [] Static RigW
 
-tacimpl t         = TacImp [] Dynamic t
+tacimpl t         = TacImp [] Dynamic t RigW
 
 data FnOpt = Inlinable -- ^ always evaluate when simplifying
            | TotalFn | PartialFn | CoveringFn
@@ -1815,7 +1819,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       depth d . bracket p startPrec . group . align $
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe (decD d) startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe (decD d) startPrec ((n, False):bnd) sc)
-    prettySe d p bnd (PPi (Exp l s _) n _ ty sc)
+    prettySe d p bnd (PPi (Exp l s _ rig) n _ ty sc)
       | n `elem` allNamesIn sc || ppopt_impl ppo && uname n || n `elem` docArgs
           || ppopt_pinames ppo && uname n =
           depth d . bracket p startPrec . group $
@@ -1835,7 +1839,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
           case s of
             Static -> text "%static" <> space
             _      -> empty
-    prettySe d p bnd (PPi (Imp l s _ fa _) n _ ty sc)
+    prettySe d p bnd (PPi (Imp l s _ fa _ rig) n _ ty sc)
       | ppopt_impl ppo =
           depth d . bracket p startPrec $
           lbrace <> prettyBindingOf n True <+> colon <+> prettySe (decD d) startPrec bnd ty <> rbrace <+>
@@ -1846,13 +1850,13 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
           case s of
             Static -> text "%static" <> space
             _      -> empty
-    prettySe d p bnd (PPi (Constraint _ _) n _ ty sc) =
+    prettySe d p bnd (PPi (Constraint _ _ rig) n _ ty sc) =
       depth d . bracket p startPrec $
       prettySe (decD d) (startPrec + 1) bnd ty <+> text "=>" </> prettySe (decD d) startPrec ((n, True):bnd) sc
-    prettySe d p bnd (PPi (TacImp _ _ (PTactics [ProofSearch{}])) n _ ty sc) =
+    prettySe d p bnd (PPi (TacImp _ _ (PTactics [ProofSearch{}]) rig) n _ ty sc) =
       lbrace <> kwd "auto" <+> pretty n <+> colon <+> prettySe (decD d) startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
-    prettySe d p bnd (PPi (TacImp _ _ s) n _ ty sc) =
+    prettySe d p bnd (PPi (TacImp _ _ s rig) n _ ty sc) =
       depth d . bracket p startPrec $
       lbrace <> kwd "default" <+> prettySe (decD d) (funcAppPrec + 1) bnd s <+> pretty n <+> colon <+> prettySe (decD d) startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
@@ -2380,7 +2384,7 @@ allNamesIn tm = nub $ ni 0 [] tm
     ni i env (PUnquote tm)        = ni (i - 1) env tm
     ni i env tm                   = concatMap (ni i env) (children tm)
 
-    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp i env (TacImp _ _ scr _) = ni i env scr
     niTacImp _ _ _                  = []
 
 
@@ -2416,7 +2420,7 @@ boundNamesIn tm = S.toList (ni 0 S.empty tm)
     niTms i set []        = set
     niTms i set (x : xs)  = niTms i (ni i set x) xs
 
-    niTacImp i set (TacImp _ _ scr) = ni i set scr
+    niTacImp i set (TacImp _ _ scr _) = ni i set scr
     niTacImp i set _                = set
 
 -- Return names which are valid implicits in the given term (type).
@@ -2527,7 +2531,7 @@ namesIn uvars ist tm = nub $ ni 0 [] tm
 
     ni i env tm                     = concatMap (ni i env) (children tm)
 
-    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp i env (TacImp _ _ scr _) = ni i env scr
     niTacImp _ _ _                  = []
 
 -- Return which of the given names are used in the given term.
@@ -2562,7 +2566,7 @@ usedNamesIn vars ist tm = nub $ ni 0 [] tm
 
     ni i env tm                     = concatMap (ni i env) (children tm)
 
-    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp i env (TacImp _ _ scr _) = ni i env scr
     niTacImp _ _ _                = []
 
 -- Return the list of inaccessible (= dotted) positions for a name.

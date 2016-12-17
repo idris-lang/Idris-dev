@@ -261,8 +261,8 @@ updateSynMatch = update
     updTactic ns (TDocStr (Left n)) = TDocStr . Left . fst $ updateB ns (n, NoFC)
     updTactic ns t = fmap (update ns) t
 
-    updTacImp ns (TacImp o st scr)  = TacImp o st (update ns scr)
-    updTacImp _  x                  = x
+    updTacImp ns (TacImp o st scr r) = TacImp o st (update ns scr) r
+    updTacImp _  x                   = x
 
     dropn :: Name -> [(Name, a)] -> [(Name, a)]
     dropn n [] = []
@@ -1072,7 +1072,7 @@ Pi' ::=
 
 bindsymbol opts st syn
      = do symbol "->"
-          return (Exp opts st False)
+          return (Exp opts st False RigW)
 
 explicitPi opts st syn
    = do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
@@ -1089,7 +1089,7 @@ autoImplicit opts st syn
         sc <- expr (allowConstr syn)
         highlightP kw AnnKeyword
         return (bindList (PPi
-          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]))) xt sc)
+          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]) RigW)) xt sc)
 
 defaultImplicit opts st syn = do
    kw <- reservedFC "default"
@@ -1102,7 +1102,7 @@ defaultImplicit opts st syn = do
    symbol "->"
    sc <- expr (allowConstr syn)
    highlightP kw AnnKeyword
-   return (bindList (PPi (TacImp [] Dynamic script)) xt sc)
+   return (bindList (PPi (TacImp [] Dynamic script RigW)) xt sc)
 
 normalImplicit opts st syn = do
    xt <- typeDeclList syn <* lchar '}'
@@ -1111,10 +1111,10 @@ normalImplicit opts st syn = do
    sc <- expr syn
    let (im,cl)
           = if implicitAllowed syn
-               then (Imp opts st False (Just (Impl False True False)) True,
+               then (Imp opts st False (Just (Impl False True False)) True RigW,
                       constraint)
-               else (Imp opts st False (Just (Impl False False False)) True,
-                     Imp opts st False (Just (Impl True False False)) True)
+               else (Imp opts st False (Just (Impl False False False)) True RigW,
+                     Imp opts st False (Just (Impl True False False)) True RigW)
    return (bindList (PPi im) xt
            (bindList (PPi cl) cs sc))
 
@@ -1123,7 +1123,7 @@ constraintPi opts st syn =
       sc <- expr syn
       if implicitAllowed syn
          then return (bindList (PPi constraint) cs sc)
-         else return (bindList (PPi (Imp opts st False (Just (Impl True False False)) True))
+         else return (bindList (PPi (Imp opts st False (Just (Impl True False False)) True RigW))
                                cs sc)
 
 implicitPi opts st syn =

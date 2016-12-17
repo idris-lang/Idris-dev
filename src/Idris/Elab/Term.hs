@@ -1587,7 +1587,7 @@ elab ist info emode opts fn tm
       fail $ "Can't elaborate these args: " ++ show arg ++ " " ++ show hole
 
     addAutoBind :: Plicity -> Name -> ElabD ()
-    addAutoBind (Imp _ _ _ _ False) n
+    addAutoBind (Imp _ _ _ _ False _) n
          = updateAux (\est -> est { auto_binds = n : auto_binds est })
     addAutoBind _ _ = return ()
 

@@ -408,14 +408,14 @@ getClause l fn un fp
                       return (showLHSName un ++ " " ++ ap ++ "= ?"
                                       ++ showRHSName un ++ "_rhs")
    where mkApp :: IState -> PTerm -> [Name] -> String
-         mkApp i (PPi (Exp _ _ False) (MN _ _) _ ty sc) used
+         mkApp i (PPi (Exp _ _ False _) (MN _ _) _ ty sc) used
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used)
-         mkApp i (PPi (Exp _ _ False) (UN n) _ ty sc) used
+         mkApp i (PPi (Exp _ _ False _) (UN n) _ ty sc) used
             | thead n == '_'
                = let n = getNameFrom i used ty in
                      show n ++ " " ++ mkApp i sc (n : used)
-         mkApp i (PPi (Exp _ _ False) n _ _ sc) used
+         mkApp i (PPi (Exp _ _ False _) n _ _ sc) used
                = show n ++ " " ++ mkApp i sc (n : used)
          mkApp i (PPi _ _ _ _ sc) used = mkApp i sc used
          mkApp i _ _ = ""

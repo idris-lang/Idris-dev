@@ -460,10 +460,10 @@ in_name n = n
 
 -- | Creates a PArg with a given plicity, name, and term.
 asArg :: Plicity -> Name -> PTerm -> PArg
-asArg (Imp os _ _ _ _) n t = PImp 0 False os n t
-asArg (Exp os _ _) n t = PExp 0 os n t
-asArg (Constraint os _) n t = PConstraint 0 os n t
-asArg (TacImp os _ s) n t = PTacImplicit 0 os n s t
+asArg (Imp os _ _ _ _ _) n t = PImp 0 False os n t
+asArg (Exp os _ _ _) n t = PExp 0 os n t
+asArg (Constraint os _ _) n t = PConstraint 0 os n t
+asArg (TacImp os _ s _) n t = PTacImplicit 0 os n s t
 
 -- | Machine name "rec".
 recName :: Name
