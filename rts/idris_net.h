@@ -73,5 +73,6 @@ void idrnet_free_recvfrom_struct(void* res_struct);
 int idrnet_getaddrinfo(struct addrinfo** address_res, char* host, 
     int port, int family, int socket_type);
 
+int idrnet_geteagain();
 
 #endif
