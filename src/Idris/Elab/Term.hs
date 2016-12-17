@@ -705,7 +705,13 @@ elab ist info emode opts fn tm
                solve
                highlightSource nfc (AnnBoundName n False)
     elab' ina fc (PPi p n nfc Placeholder sc)
-          = do attack; arg n (is_scoped p) (sMN 0 "phTy")
+          = do attack; 
+               case pcount p of
+                    RigW -> return ()
+                    _ -> unless (LinearTypes `elem` idris_language_extensions ist
+                                       || e_qq ina) $
+                           lift $ tfail $ At nfc (Msg "You must turn on the LinearTypes extension to use a linear argument")
+               arg n (pcount p) (is_scoped p) (sMN 0 "phTy")
                addAutoBind p n
                addPSname n -- okay for proof search
                elabE (ina { e_inarg = True, e_intype = True }) fc sc
@@ -717,7 +723,12 @@ elab ist info emode opts fn tm
                n' <- case n of
                         MN _ _ -> unique_hole n
                         _ -> return n
-               forall n' (is_scoped p) (Var tyn)
+               case pcount p of
+                    RigW -> return ()
+                    _ -> unless (LinearTypes `elem` idris_language_extensions ist
+                                       || e_qq ina) $
+                           lift $ tfail $ At nfc (Msg "You must turn on the LinearTypes extension to use a linear argument")
+               forall n' (pcount p) (is_scoped p) (Var tyn)
                addAutoBind p n'
                addPSname n' -- okay for proof search
                focus tyn
@@ -2250,7 +2261,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
       = do ~[n, ty] <- tacTmArgs 2 tac args
            n' <- reifyTTName n
            ty' <- reifyRaw ty
-           forall n' Nothing ty'
+           forall n' RigW Nothing ty'
            returnUnit
       | n == tacN "Prim__PatVar"
       = do ~[n] <- tacTmArgs 1 tac args

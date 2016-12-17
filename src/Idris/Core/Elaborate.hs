@@ -441,8 +441,8 @@ intro n = processTactic' (Intro n)
 introTy :: Raw -> Maybe Name -> Elab' aux ()
 introTy ty n = processTactic' (IntroTy ty n)
 
-forall :: Name -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
-forall n i t = processTactic' (Forall n i t)
+forall :: Name -> RigCount -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
+forall n r i t = processTactic' (Forall n r i t)
 
 letbind :: Name -> Raw -> Raw -> Elab' aux ()
 letbind n t v = processTactic' (LetBind n t v)
@@ -845,11 +845,11 @@ dep_app fun arg str =
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
-arg :: Name -> Maybe ImplicitInfo -> Name -> Elab' aux ()
-arg n i tyhole = do ty <- unique_hole tyhole
-                    claim ty RType
-                    movelast ty
-                    forall n i (Var ty)
+arg :: Name -> RigCount -> Maybe ImplicitInfo -> Name -> Elab' aux ()
+arg n r i tyhole = do ty <- unique_hole tyhole
+                      claim ty RType
+                      movelast ty
+                      forall n r i (Var ty)
 
 -- try a tactic, if it adds any unification problem, return an error
 no_errors :: Elab' aux () -> Maybe Err -> Elab' aux ()

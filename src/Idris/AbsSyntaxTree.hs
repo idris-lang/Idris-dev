@@ -186,6 +186,7 @@ ppOptionIst = ppOption . idris_options
 
 data LanguageExt = TypeProviders | ErrorReflection | UniquenessTypes
                  | DSLNotation   | ElabReflection  | FCReflection
+                 | LinearTypes
   deriving (Show, Eq, Read, Ord, Generic)
 
 -- | The output mode in use
@@ -1820,6 +1821,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe (decD d) startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe (decD d) startPrec ((n, False):bnd) sc)
     prettySe d p bnd (PPi (Exp l s _ rig) n _ ty sc)
+      | Rig1 <- rig = 
+          depth d . bracket p startPrec . group $
+          enclose lparen rparen (group . align $ text "1" <+> prettyBindingOf n False <+> colon <+> prettySe (decD d) startPrec bnd ty) <+>
+          st <> text "->" <$> prettySe (decD d) startPrec ((n, False):bnd) sc
       | n `elem` allNamesIn sc || ppopt_impl ppo && uname n || n `elem` docArgs
           || ppopt_pinames ppo && uname n =
           depth d . bracket p startPrec . group $

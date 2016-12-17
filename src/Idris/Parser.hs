@@ -763,7 +763,7 @@ Params ::=
 params :: SyntaxInfo -> IdrisParser [PDecl]
 params syn =
     do reservedHL "parameters"; lchar '('; ns <- typeDeclList syn; lchar ')'
-       let ns' = [(n, ty) | (n, _, ty) <- ns]
+       let ns' = [(n, ty) | (_, n, _, ty) <- ns]
        openBlock
        let pvars = syn_params syn
        ds <- many (decl syn { syn_params = pvars ++ ns' })
@@ -903,7 +903,7 @@ interface_ syn = do (doc, argDocs, acc)
                                  return (doc, argDocs, acc))
                     fc <- getFC
                     cons <- constraintList syn
-                    let cons' = [(c, ty) | (c, _, ty) <- cons]
+                    let cons' = [(c, ty) | (_, c, _, ty) <- cons]
                     (n_in, nfc) <- fnName
                     let n = expandNS syn n_in
                     cs <- many carg
@@ -953,11 +953,11 @@ implementation kwopt syn
                         fc <- getFC
                         en <- optional implementationName
                         cs <- constraintList syn
-                        let cs' = [(c, ty) | (c, _, ty) <- cs]
+                        let cs' = [(c, ty) | (_, c, _, ty) <- cs]
                         (cn, cnfc) <- fnName
                         args <- many (simpleExpr syn)
                         let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
-                        let t = bindList (PPi constraint) cs sc
+                        let t = bindList (\r -> PPi constraint { pcount = r }) cs sc
                         pnames <- implementationUsing
                         ds <- implementationBlock syn
                         return [PImplementation doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
@@ -1430,6 +1430,7 @@ pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)
        <|> (reserved "ErrorReflection" >> return ErrorReflection)
        <|> (reserved "UniquenessTypes" >> return UniquenessTypes)
+       <|> (reserved "LinearTypes" >> return LinearTypes)
        <|> (reserved "DSLNotation" >> return DSLNotation)
        <|> (reserved "ElabReflection" >> return ElabReflection)
        <|> (reserved "FirstClassReflection" >> return FCReflection)

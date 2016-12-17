@@ -914,7 +914,7 @@ TypeExpr ::= ConstraintList? Expr;
 typeExpr :: SyntaxInfo -> IdrisParser PTerm
 typeExpr syn = do cs <- if implicitAllowed syn then constraintList syn else return []
                   sc <- expr (allowConstr syn)
-                  return (bindList (PPi constraint) cs sc)
+                  return (bindList (\r -> PPi (constraint { pcount = r })) cs sc)
                <?> "type signature"
 
 {- | Parses a lambda expression
@@ -941,7 +941,7 @@ lambda syn = do lchar '\\' <?> "lambda expression"
                 ((do xt <- try $ tyOptDeclList (disallowImp syn)
                      fc <- getFC
                      sc <- lambdaTail
-                     return (bindList (PLam fc) xt sc))
+                     return (bindList (\r -> PLam fc) xt sc))
                  <|>
                  (do ps <- sepBy (do fc <- getFC
                                      e <- simpleExpr (disallowImp (syn { inPattern = True }))
@@ -1078,7 +1078,7 @@ explicitPi opts st syn
    = do xt <- try (lchar '(' *> typeDeclList syn <* lchar ')')
         binder <- bindsymbol opts st syn
         sc <- expr (allowConstr syn)
-        return (bindList (PPi binder) xt sc)
+        return (bindList (\r -> PPi (binder { pcount = r })) xt sc)
 
 autoImplicit opts st syn
    = do kw <- reservedFC "auto"
@@ -1088,8 +1088,8 @@ autoImplicit opts st syn
         symbol "->"
         sc <- expr (allowConstr syn)
         highlightP kw AnnKeyword
-        return (bindList (PPi
-          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]) RigW)) xt sc)
+        return (bindList (\r -> PPi
+          (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]) r)) xt sc)
 
 defaultImplicit opts st syn = do
    kw <- reservedFC "default"
@@ -1102,7 +1102,7 @@ defaultImplicit opts st syn = do
    symbol "->"
    sc <- expr (allowConstr syn)
    highlightP kw AnnKeyword
-   return (bindList (PPi (TacImp [] Dynamic script RigW)) xt sc)
+   return (bindList (\r -> PPi (TacImp [] Dynamic script r)) xt sc)
 
 normalImplicit opts st syn = do
    xt <- typeDeclList syn <* lchar '}'
@@ -1115,15 +1115,15 @@ normalImplicit opts st syn = do
                       constraint)
                else (Imp opts st False (Just (Impl False False False)) True RigW,
                      Imp opts st False (Just (Impl True False False)) True RigW)
-   return (bindList (PPi im) xt
-           (bindList (PPi cl) cs sc))
+   return (bindList (\r -> PPi (im { pcount = r })) xt
+           (bindList (\r -> PPi (cl { pcount = r })) cs sc))
 
 constraintPi opts st syn =
    do cs <- constraintList1 syn
       sc <- expr syn
       if implicitAllowed syn
-         then return (bindList (PPi constraint) cs sc)
-         else return (bindList (PPi (Imp opts st False (Just (Impl True False False)) True RigW))
+         then return (bindList (\r -> PPi constraint { pcount = r }) cs sc)
+         else return (bindList (\r -> PPi (Imp opts st False (Just (Impl True False False)) True r))
                                cs sc)
 
 implicitPi opts st syn =
@@ -1181,11 +1181,11 @@ ConstraintList ::=
   ;
 @
 -}
-constraintList :: SyntaxInfo -> IdrisParser [(Name, FC, PTerm)]
+constraintList :: SyntaxInfo -> IdrisParser [(RigCount, Name, FC, PTerm)]
 constraintList syn = try (constraintList1 syn)
                      <|> return []
 
-constraintList1 :: SyntaxInfo -> IdrisParser [(Name, FC, PTerm)]
+constraintList1 :: SyntaxInfo -> IdrisParser [(RigCount, Name, FC, PTerm)]
 constraintList1 syn = try (do lchar '('
                               tys <- sepBy1 nexpr (lchar ',')
                               lchar ')'
@@ -1193,13 +1193,13 @@ constraintList1 syn = try (do lchar '('
                               return tys)
                   <|> try (do t <- opExpr (disallowImp syn)
                               reservedOp "=>"
-                              return [(defname, NoFC, t)])
+                              return [(RigW, defname, NoFC, t)])
                   <?> "type constraint list"
   where nexpr = try (do (n, fc) <- name; lchar ':'
                         e <- expr (disallowImp syn)
-                        return (n, fc, e))
+                        return (RigW, n, fc, e))
                 <|> do e <- expr (disallowImp syn)
-                       return (defname, NoFC, e)
+                       return (RigW, defname, NoFC, e)
         defname = sMN 0 "constraint"
 
 {- | Parses a type declaration list
@@ -1217,16 +1217,18 @@ FunctionSignatureList ::=
   ;
 @
 -}
-typeDeclList :: SyntaxInfo -> IdrisParser [(Name, FC, PTerm)]
-typeDeclList syn = try (sepBy1 (do (x, xfc) <- fnName
+typeDeclList :: SyntaxInfo -> IdrisParser [(RigCount, Name, FC, PTerm)]
+typeDeclList syn = try (sepBy1 (do rig <- option RigW (do lchar '1'
+                                                          return Rig1)
+                                   (x, xfc) <- fnName
                                    lchar ':'
                                    t <- typeExpr (disallowImp syn)
-                                   return (x, xfc, t))
+                                   return (rig, x, xfc, t))
                            (lchar ','))
                    <|> do ns <- sepBy1 name (lchar ',')
                           lchar ':'
                           t <- typeExpr (disallowImp syn)
-                          return (map (\(x, xfc) -> (x, xfc, t)) ns)
+                          return (map (\(x, xfc) -> (RigW, x, xfc, t)) ns)
                    <?> "type declaration list"
 
 {- | Parses a type declaration list with optional parameters
@@ -1241,11 +1243,11 @@ TypeOptDeclList ::=
 NameOrPlaceHolder ::= Name | '_';
 @
 -}
-tyOptDeclList :: SyntaxInfo -> IdrisParser [(Name, FC, PTerm)]
+tyOptDeclList :: SyntaxInfo -> IdrisParser [(RigCount, Name, FC, PTerm)]
 tyOptDeclList syn = sepBy1 (do (x, fc) <- nameOrPlaceholder
                                t <- option Placeholder (do lchar ':'
                                                            expr syn)
-                               return (x, fc, t))
+                               return (RigW, x, fc, t))
                            (lchar ',')
                     <?> "type declaration list"
     where  nameOrPlaceholder :: IdrisParser (Name, FC)
