@@ -99,7 +99,7 @@ setNextName :: Elab' aux ()
 setNextName = do env <- get_env
                  ES (p, a) s e <- get
                  let pargs = map fst (getArgTys (ptype p))
-                 initNextNameFrom (pargs ++ map fst env)
+                 initNextNameFrom (pargs ++ map fstEnv env)
 
 initNextNameFrom :: [Name] -> Elab' aux ()
 initNextNameFrom ns = do ES (p, a) s e <- get
@@ -468,7 +468,7 @@ patvar :: Name -> Elab' aux ()
 patvar n@(SN _) = do apply (Var n) []; solve
 patvar n = do env <- get_env
               hs <- get_holes
-              if (n `elem` map fst env) then do apply (Var n) []; solve
+              if (n `elem` map fstEnv env) then do apply (Var n) []; solve
                 else do n' <- case hs of
                                    (h : hs) -> if n == h then return n
                                                   else unique_hole n
@@ -481,7 +481,7 @@ patvar' :: Name -> Elab' aux ()
 patvar' n@(SN _) = do apply (Var n) [] ; solve
 patvar' n = do env <- get_env
                hs <- get_holes
-               if (n `elem` map fst env) then do apply (Var n) [] ; solve
+               if (n `elem` map fstEnv env) then do apply (Var n) [] ; solve
                   else processTactic' (PatVar n)
 
 patbind :: Name -> Elab' aux ()
@@ -580,7 +580,7 @@ prepare_apply fn imps =
                       then finalise ty
                       else whnfArgs ctxt env (finalise ty)
        claims <- -- trace (show (fn, imps, ty, map fst env, normalise ctxt env (finalise ty))) $
-                 mkClaims usety imps [] (map fst env)
+                 mkClaims usety imps [] (map fstEnv env)
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)
@@ -604,7 +604,7 @@ prepare_apply fn imps =
 --            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
            env <- get_env
-           claim n (forgetEnv (map fst env) t)
+           claim n (forgetEnv (map fstEnv env) t)
            when i (movelast n)
            mkClaims sc' is ((n', n) : claims) hs
     mkClaims t [] claims _ = return $! (reverse claims)
@@ -869,7 +869,7 @@ no_errors tac err
                case reverse ps' of
                     ((x, y, _, env, inerr, while, _) : _) ->
                        let (xp, yp) = getProvenance inerr
-                           env' = map (\(x, b) -> (x, binderTy b)) env in
+                           env' = map (\(x, rig, b) -> (x, binderTy b)) env in
                                   lift $ tfail $
                                          case err of
                                               Nothing -> CantUnify False (x, xp) (y, yp) inerr env' 0
@@ -1013,7 +1013,7 @@ debugElaborator msg = do ps <- fmap proof get
         getHoleInfo h = do focus h
                            g <- goal
                            env <- get_env
-                           return (h, g, env)
+                           return (h, g, envBinders env)
 
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, _, _, _, _, _) -> (x, y)) fs)

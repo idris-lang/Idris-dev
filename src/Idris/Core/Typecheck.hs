@@ -25,7 +25,7 @@ import Debug.Trace
 
 convertsC :: Context -> Env -> Term -> Term -> StateT UCs TC ()
 convertsC ctxt env x y =
-    do let hs = map fst (filter isHole env)
+    do let hs = map fstEnv (filter isHole env)
        c1 <- convEq ctxt hs x y
        if c1 then return ()
          else
@@ -38,7 +38,7 @@ convertsC ctxt env x y =
 
 converts :: Context -> Env -> Term -> Term -> TC ()
 converts ctxt env x y
-     = let hs = map fst (filter isHole env) in
+     = let hs = map fstEnv (filter isHole env) in
        case convEq' ctxt hs x y of
           OK True -> return ()
           _ -> case convEq' ctxt hs (finalise (normalise ctxt env x))
@@ -48,10 +48,10 @@ converts ctxt env x y
                            (finalise (normalise ctxt env x))
                            (finalise (normalise ctxt env y)) (errEnv env))
 
-isHole (n, Hole _) = True
+isHole (n, _, Hole _) = True
 isHole _ = False
 
-errEnv = map (\(x, b) -> (x, binderTy b))
+errEnv = map (\(x, _, b) -> (x, binderTy b))
 
 isType :: Context -> Env -> Term -> TC ()
 isType ctxt env tm = isType' (normalise ctxt env tm)
@@ -113,9 +113,9 @@ check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top wh
   chk u lvl env ap@(RApp f RType) | not holes
     -- special case to reduce constraintss
       = do (fv, fty) <- chk u Nothing env f
-           let fty' = case uniqueBinders (map fst env) (finalise fty) of
+           let fty' = case uniqueBinders (map fstEnv env) (finalise fty) of
                         ty@(Bind x (Pi i s k) t) -> ty
-                        _ -> uniqueBinders (map fst env)
+                        _ -> uniqueBinders (map fstEnv env)
                                  $ case normalise ctxt env fty of
                                      ty@(Bind x (Pi i s k) t) -> ty
                                      _ -> normalise ctxt env fty
@@ -135,9 +135,9 @@ check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top wh
              t -> lift $ tfail $ NonFunctionType fv fty
   chk u lvl env ap@(RApp f a)
       = do (fv, fty) <- chk u Nothing env f
-           let fty' = case uniqueBinders (map fst env) (finalise fty) of
+           let fty' = case uniqueBinders (map fstEnv env) (finalise fty) of
                         ty@(Bind x (Pi i s k) t) -> ty
-                        _ -> uniqueBinders (map fst env)
+                        _ -> uniqueBinders (map fstEnv env)
                                  $ case normalise ctxt env fty of
                                      ty@(Bind x (Pi i s k) t) -> ty
                                      _ -> normalise ctxt env fty
@@ -186,7 +186,8 @@ check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top wh
            let maxu = case lvl of
                            Nothing -> UVar tcns v
                            Just v' -> v'
-           (tv, tt) <- chk st (Just maxu) ((n, Pi i sv kv) : env) t
+           -- TODO: Get RigCount from Pi
+           (tv, tt) <- chk st (Just maxu) ((n, Rig0, Pi i sv kv) : env) t
 
 --            convertsC ctxt env st (TType maxu)
 --            convertsC ctxt env tt (TType maxu)
@@ -200,11 +201,11 @@ check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top wh
                                           put (v, ULE su maxu :
                                                   ULE tu maxu : cs)
                     let k' = TType (UVar tcns v) `smaller` st `smaller` kv `smaller` u
-                    return (Bind n (Pi i (uniqueBinders (map fst env) sv) k')
+                    return (Bind n (Pi i (uniqueBinders (map fstEnv env) sv) k')
                               (pToV n tv), k')
                 (un, un') ->
                    let k' = st `smaller` kv `smaller` un `smaller` un' `smaller` u in
-                    return (Bind n (Pi i (uniqueBinders (map fst env) sv) k')
+                    return (Bind n (Pi i (uniqueBinders (map fstEnv env) sv) k')
                                 (pToV n tv), k')
 
       where mkUniquePi kv (Bind n (Pi i s k) sc)
@@ -224,7 +225,8 @@ check' holes tcns ctxt env top = chk (TType (UVar tcns (-5))) Nothing env top wh
 
   chk u lvl env (RBind n b sc)
       = do (b', bt') <- checkBinder b
-           (scv, sct) <- chk (smaller bt' u) Nothing ((n, b'):env) sc
+           -- TODO: Get RigCount from binder (Pi or Pattern?)
+           (scv, sct) <- chk (smaller bt' u) Nothing ((n, Rig0, b'):env) sc
            discharge n b' bt' (pToV n scv) (pToV n sct)
     where checkBinder (Lam t)
             = do (tv, tt) <- chk u Nothing env t
@@ -316,7 +318,7 @@ checkUnique borrowed ctxt env tm
     isVar _ = False
 
     chkBinders :: Env -> Term -> StateT [(Name, (UniqueUse, Universe))] TC ()
-    chkBinders env (V i) | length env > i = chkName (fst (env!!i))
+    chkBinders env (V i) | length env > i = chkName (fstEnv (env!!i))
     chkBinders env (P _ n _) = chkName n
     -- 'lending' a unique or nulltype variable doesn't count as a use,
     -- but we still can't lend something that's already been used.
@@ -336,13 +338,13 @@ checkUnique borrowed ctxt env tm
             case b of
                  Let t v -> chkBinders env v
                  _ -> return ()
-            chkBinders ((n, b) : env) t
+            chkBinders ((n, Rig0, b) : env) t
     chkBinders env t = return ()
 
     chkBinderName :: Env -> Name -> Binder Term ->
                      StateT [(Name, (UniqueUse, Universe))] TC ()
     chkBinderName env n b
-       = do let rawty = forgetEnv (map fst env) (binderTy b)
+       = do let rawty = forgetEnv (map fstEnv env) (binderTy b)
             (_, kind) <- lift $ check ctxt env rawty
             case kind of
                  UType UniqueType -> do ns <- get

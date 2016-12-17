@@ -292,13 +292,13 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
   where
     getUniq :: Env -> [(Name, Bool)] -> Term -> State [Name] ()
     getUniq env us (Bind n b sc)
-       = let uniq = case check ctxt env (forgetEnv (map fst env) (binderTy b)) of
+       = let uniq = case check ctxt env (forgetEnv (map fstEnv env) (binderTy b)) of
                          OK (_, UType UniqueType) -> True
                          OK (_, UType NullType) -> True
                          OK (_, UType AllTypes) -> True
                          _ -> False in
              do getUniqB env us b
-                getUniq ((n,b):env) ((n, uniq):us) sc
+                getUniq ((n, Rig0, b):env) ((n, uniq):us) sc
     getUniq env us (App _ f a) = do getUniq env us f; getUniq env us a
     getUniq env us (V i)
        | i < length us = if snd (us!!i) then use (fst (us!!i)) else return ()

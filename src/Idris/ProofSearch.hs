@@ -49,7 +49,7 @@ trivialHoles psnames ok elab ist
                 return ()) True
       where
         tryAll []     = fail "No trivial solution"
-        tryAll ((x, b):xs)
+        tryAll ((x, _, b):xs)
            = do -- if type of x has any holes in it, move on
                 hs <- get_holes
                 let badhs = hs -- filter (flip notElem holesOK) hs
@@ -85,7 +85,7 @@ trivialTCs ok elab ist
                 return ()) True
       where
         tryAll []     = fail "No trivial solution"
-        tryAll ((x, b):xs)
+        tryAll ((x, _, b):xs)
            = do -- if type of x has any holes in it, move on
                 hs <- get_holes
                 let badhs = hs -- filter (flip notElem holesOK) hs
@@ -123,7 +123,7 @@ cantSolveGoal :: ElabD a
 cantSolveGoal = do g <- goal
                    env <- get_env
                    lift $ tfail $
-                      CantSolveGoal g (map (\(n,b) -> (n, binderTy b)) env)
+                      CantSolveGoal g (map (\(n,_,b) -> (n, binderTy b)) env)
 
 proofSearch :: Bool -- ^ recursive search (False for 'refine')
             -> Bool -- ^ invoked from a tactic proof. If so, making new metavariables is meaningless, and there should be an error reported instead.
@@ -300,7 +300,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
              tryLocals d locs tys env
 
     tryLocals d locs tys [] = fail "Locals failed"
-    tryLocals d locs tys ((x, t) : xs)
+    tryLocals d locs tys ((x, _, t) : xs)
        | x `elem` locs || x `notElem` psnames = tryLocals d locs tys xs
        | otherwise = try' (tryLocal d (x : locs) tys x t)
                           (tryLocals d locs tys xs) True

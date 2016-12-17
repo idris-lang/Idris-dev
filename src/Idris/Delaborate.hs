@@ -527,13 +527,13 @@ pprintErr' i (ElabScriptDebug msg tm holes) =
   indented (vsep (map ppHole holes)) <> line <> line <>
   text "Term: " <> indented (pprintTT [] tm)
 
-  where ppHole :: (Name, Type, Env) -> Doc OutputAnnotation
+  where ppHole :: (Name, Type, [(Name, Binder Type)]) -> Doc OutputAnnotation
         ppHole (hn, goal, env) =
           ppAssumptions [] (reverse env) <>
           text "----------------------------------" <> line <>
           bindingOf hn False <+> text ":" <+>
           pprintTT (map fst (reverse env)) goal <> line
-        ppAssumptions :: [Name] -> Env -> Doc OutputAnnotation
+        ppAssumptions :: [Name] -> [(Name, Binder Type)] -> Doc OutputAnnotation
         ppAssumptions ns [] = empty
         ppAssumptions ns ((n, b) : rest) =
           bindingOf n False <+>

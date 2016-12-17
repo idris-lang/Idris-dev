@@ -82,8 +82,8 @@ assumptionNames e
   = case envAtFocus (proof e) of
          OK env -> names env
   where names [] = []
-        names ((MN _ _, _) : bs) = names bs
-        names ((n, _) : bs) = show n : names bs
+        names ((MN _ _, _, _) : bs) = names bs
+        names ((n, _, _) : bs) = show n : names bs
 
 prove :: Bool -> ElabInfo -> Ctxt OptInfo -> Context -> Bool -> Name -> Type -> Idris ()
 prove mode info opt ctxt lit n ty
@@ -174,18 +174,18 @@ dumpState ist inElab menv ps | (h : hs) <- holes ps = do
                     delab ist t
 
     assumptionNames :: Env -> [Name]
-    assumptionNames = map fst
+    assumptionNames = map fstEnv
 
     prettyPs :: Bool -> Binder Type -> [(Name, Bool)] -> Env -> Doc OutputAnnotation
     prettyPs all g bnd [] = empty
-    prettyPs all g bnd ((n@(MN _ r), _) : bs)
+    prettyPs all g bnd ((n@(MN _ r), _, _) : bs)
         | not all && r == txt "rewrite_rule" = prettyPs all g ((n, False):bnd) bs
-    prettyPs all g bnd ((n@(MN _ _), _) : bs)
+    prettyPs all g bnd ((n@(MN _ _), _, _) : bs)
         | not (all || n `elem` freeEnvNames bs || n `elem` goalNames g) = prettyPs all g bnd bs
-    prettyPs all g bnd ((n, Let t v) : bs) =
+    prettyPs all g bnd ((n, _, Let t v) : bs) =
       line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
         align (tPretty bnd t) <> prettyPs all g ((n, False):bnd) bs
-    prettyPs all g bnd ((n, b) : bs) =
+    prettyPs all g bnd ((n, _, b) : bs) =
       line <> bindingOf n False <+> colon <+>
       align (tPretty bnd (binderTy b)) <> prettyPs all g ((n, False):bnd) bs
 
@@ -227,7 +227,7 @@ dumpState ist inElab menv ps | (h : hs) <- holes ps = do
         nest nestingSize (align . cat . punctuate (text ",") . map (`bindingOf` False) $ hs)
 
     freeEnvNames :: Env -> [Name]
-    freeEnvNames = concatMap (\(n, b) -> freeNames (Bind n b Erased))
+    freeEnvNames = concatMap (\(n, _, b) -> freeNames (Bind n b Erased))
 
 lifte :: ElabState EState -> ElabD a -> Idris a
 lifte st e = do (v, _) <- elabStep st e
@@ -468,7 +468,7 @@ ploop fn d prompt prf e h
                              (ploop fn d prompt prf e h')
 
 
-envCtxt env ctxt = foldl (\c (n, b) -> addTyDecl n Bound (binderTy b) c) ctxt env
+envCtxt env ctxt = foldl (\c (n, _, b) -> addTyDecl n Bound (binderTy b) c) ctxt env
 
 checkNameType :: ElabState EState -> [String] -> Name -> Idris (Bool, ElabState EState, Bool, [String], Either Err (Idris ()))
 checkNameType e prf n = do
@@ -478,7 +478,7 @@ checkNameType e prf n = do
     idrisCatch (do
         let OK env = envAtFocus (proof e)
             ctxt'  = envCtxt env ctxt
-            bnd    = map (\x -> (fst x, False)) env
+            bnd    = map (\x -> (fstEnv x, False)) env
             ist'   = ist { tt_ctxt = ctxt' }
         putIState ist'
         -- Unlike the REPL, metavars have no special treatment, to
@@ -505,7 +505,7 @@ checkType e prf t = do
             action = case tm of
               TType _ ->
                 iPrintTermWithType (prettyImp ppo (PType emptyFC)) type1Doc
-              _ -> let bnd = map (\x -> (fst x, False)) env in
+              _ -> let bnd = map (\x -> (fstEnv x, False)) env in
                    iPrintTermWithType (pprintPTerm ppo bnd [] infixes (delab ist tm))
                                        (pprintPTerm ppo bnd [] infixes (delab ist ty))
         putIState ist
@@ -522,7 +522,7 @@ evalTerm e prf t = withErrorReflection $
          let OK env = envAtFocus (proof e)
              ctxt'  = envCtxt env ctxt
              ist'   = ist { tt_ctxt = ctxt' }
-             bnd    = map (\x -> (fst x, False)) env
+             bnd    = map (\x -> (fstEnv x, False)) env
          putIState ist'
          (tm, ty) <- elabVal (recinfo proverfc) ERHS t
          let tm'     = force (normaliseAll ctxt' env tm)

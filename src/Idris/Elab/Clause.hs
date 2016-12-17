@@ -644,14 +644,14 @@ checkPossibles _ _ _ _ [] = return []
 
 findUnique :: Context -> Env -> Term -> [Name]
 findUnique ctxt env (Bind n b sc)
-   = let rawTy = forgetEnv (map fst env) (binderTy b)
+   = let rawTy = forgetEnv (map fstEnv env) (binderTy b)
          uniq = case check ctxt env rawTy of
                      OK (_, UType UniqueType) -> True
                      OK (_, UType NullType) -> True
                      OK (_, UType AllTypes) -> True
                      _ -> False in
-         if uniq then n : findUnique ctxt ((n, b) : env) sc
-                 else findUnique ctxt ((n, b) : env) sc
+         if uniq then n : findUnique ctxt ((n, Rig0, b) : env) sc
+                 else findUnique ctxt ((n, Rig0, b) : env) sc
 findUnique _ _ _ = []
 
 getUnfolds (UnfoldIface n ns : _) = Just (n, ns)

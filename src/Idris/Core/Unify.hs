@@ -210,7 +210,7 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
 renameBinders env (x, t) = (x, renameBindersTm env t)
 
 renameBindersTm :: Env -> TT Name -> TT Name
-renameBindersTm env tm = uniqueBinders (map fst env) tm
+renameBindersTm env tm = uniqueBinders (map fstEnv env) tm
   where
     uniqueBinders env (Bind n b sc)
         | n `elem` env
@@ -370,7 +370,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
             = case compare (envPos 0 x env) (envPos 0 y env) of
                    LT -> do sc 1; checkCycle bnames (x, ty)
                    _ -> do sc 1; checkCycle bnames (y, tx)
-       where envPos i n ((n',_):env) | n == n' = i
+       where envPos i n ((n',_,_):env) | n == n' = i
              envPos i n (_:env) = envPos (i+1) n env
              envPos _ _ _ = 100000
     un' env fn bnames xtm@(P _ x _) tm
@@ -424,7 +424,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
         = -- trace ("PATTERN RULE SOLVE: " ++ show (mv, tm, env, bindLams args (substEnv env tm))) $
           checkCycle bnames (mv, eta [] $ bindLams args (substEnv env tm))
       where rigid (V i) = True
-            rigid (P _ t _) = t `elem` map fst env &&
+            rigid (P _ t _) = t `elem` map fstEnv env &&
                               not (holeIn env t || t `elem` holes)
             rigid _ = False
 
@@ -450,14 +450,14 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
             bindLams [] tm = tm
             bindLams (a : as) tm = bindLam a (bindLams as tm)
 
-            bindLam (V i) tm = Bind (fst (env !! i))
-                                    (Lam (binderTy (snd (env !! i))))
+            bindLam (V i) tm = Bind (fstEnv (env !! i))
+                                    (Lam (binderTy (sndEnv (env !! i))))
                                     tm
             bindLam (P _ n ty) tm = Bind n (Lam ty) tm
             bindLam _ tm = error "Can't happen [non rigid bindLam]"
 
             substEnv [] tm = tm
-            substEnv ((n, t) : env) tm
+            substEnv ((n, _, t) : env) tm
                 = substEnv env (substV (P Bound n (binderTy t)) tm)
 
             -- remove any unnecessary lambdas (helps with interface
@@ -508,7 +508,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     un' env fn bnames (Bind x bx sx) (Bind y by sy)
         | sameBinder bx by
            = do h1 <- uB env bnames bx by
-                h2 <- un' ((x, bx) : env) False (((x,y),binderTy bx):bnames) sx sy
+                h2 <- un' ((x, Rig0, bx) : env) False (((x,y),binderTy bx):bnames) sx sy
                 combine env bnames h1 h2
       where sameBinder (Lam _) (Lam _) = True
             sameBinder (Pi i _ _) (Pi i' _ _) = True
@@ -606,7 +606,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                          P _ x _ -> x `elem` holes || patIn env x
                          _ -> False
             inenv t = case t of
-                           P _ x _ -> x `elem` (map fst env)
+                           P _ x _ -> x `elem` (map fstEnv env)
                            _ -> False
 
             notFn t = injective t || metavar t || inenv t
@@ -770,17 +770,17 @@ recoverable (Bind _ (Lam _) sc) f = recoverable sc f
 recoverable f (Bind _ (Lam _) sc) = recoverable f sc
 recoverable x y = True
 
-errEnv :: [(a, Binder b)] -> [(a, b)]
-errEnv = map (\(x, b) -> (x, binderTy b))
+errEnv :: [(a, r, Binder b)] -> [(a, b)]
+errEnv = map (\(x, _, b) -> (x, binderTy b))
 
 holeIn :: Env -> Name -> Bool
-holeIn env n = case lookup n env of
+holeIn env n = case lookupBinder n env of
                     Just (Hole _) -> True
                     Just (Guess _ _) -> True
                     _ -> False
 
 patIn :: Env -> Name -> Bool
-patIn env n = case lookup n env of
+patIn env n = case lookupBinder n env of
                     Just (PVar _) -> True
                     Just (PVTy _) -> True
                     _ -> False

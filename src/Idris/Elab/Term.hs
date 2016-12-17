@@ -227,7 +227,7 @@ goal_polymorphic =
    do ty <- goal
       case ty of
            P _ n _ -> do env <- get_env
-                         case lookup n env of
+                         case lookupBinder n env of
                               Nothing -> return False
                               _ -> return True
            _ -> return False
@@ -351,7 +351,7 @@ elab ist info emode opts fn tm
     notDelay _ = True
 
     local f = do e <- get_env
-                 return (f `elem` map fst e)
+                 return (f `elem` map fstEnv e)
 
     -- | Is a constant a type?
     constType :: Const -> Bool
@@ -760,7 +760,7 @@ elab ist info emode opts fn tm
                          (ivs' \\ ivs)
                -- HACK: If the name leaks into its type, it may leak out of
                -- scope outside, so substitute in the outer scope.
-               expandLet n (case lookup n env of
+               expandLet n (case lookupBinder n env of
                                  Just (Let t v) -> v
                                  other -> error ("Value not a let binding: " ++ show other))
                solve
@@ -813,7 +813,7 @@ elab ist info emode opts fn tm
              fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi Nothing xt RType) (fnTy xs ret)
 
              localVar env (PRef _ _ x)
-                           = case lookup x env of
+                           = case lookupBinder x env of
                                   Just _ -> Just x
                                   _ -> Nothing
              localVar env _ = Nothing
@@ -856,7 +856,7 @@ elab ist info emode opts fn tm
                           && isTConName f (tt_ctxt ist)) $
               lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
 --             trace (show (f, args_in, args)) $
-            if (f `elem` map fst env && length args == 1 && length args_in == 1)
+            if (f `elem` map fstEnv env && length args == 1 && length args_in == 1)
                then -- simple app, as below
                     do simple_app False
                                   (elabE (ina { e_isfn = True }) (Just fc) (PRef ffc hls f))
@@ -904,7 +904,7 @@ elab ist info emode opts fn tm
                     imp <- if (e_isfn ina) then
                               do guess <- get_guess
                                  env <- get_env
-                                 case safeForgetEnv (map fst env) guess of
+                                 case safeForgetEnv (map fstEnv env) guess of
                                       Nothing ->
                                          return []
                                       Just rguess -> do
@@ -963,7 +963,7 @@ elab ist info emode opts fn tm
 
             checkIfInjective n = do
                 env <- get_env
-                case lookup n env of
+                case lookupBinder n env of
                      Nothing -> return ()
                      Just b ->
                        case unApply (whnf (tt_ctxt ist) env (binderTy b)) of
@@ -1079,13 +1079,13 @@ elab ist info emode opts fn tm
              -- unnecessarily (can only do this for unique things, since we
              -- assume they don't appear implicitly in types)
              ptm <- get_term
-             let inOpts = (filter (/= scvn) (map fst args)) \\ (concatMap (\x -> allNamesIn (snd x)) opts)
+             let inOpts = (filter (/= scvn) (map fstEnv args)) \\ (concatMap (\x -> allNamesIn (snd x)) opts)
 
              let argsDropped = filter (isUnique envU)
                                    (nub $ allNamesIn scr ++ inApp ptm ++
                                     inOpts)
 
-             let args' = filter (\(n, _) -> n `notElem` argsDropped) args
+             let args' = filter (\(n, _, _) -> n `notElem` argsDropped) args
 
              attack
              cname' <- defer argsDropped (mkN (mkCaseName fc fn))
@@ -1136,8 +1136,8 @@ elab ist info emode opts fn tm
                                      Just u -> u
                                      _ -> False
 
-              getKind env (n, _)
-                  = case lookup n env of
+              getKind env (n, _, _)
+                  = case lookupBinder n env of
                          Nothing -> return (n, False) -- can't happen, actually...
                          Just b ->
                             do ty <- get_type (forget (binderTy b))
@@ -1220,13 +1220,13 @@ elab ist info emode opts fn tm
              loadState
              updateAux (\aux -> aux { highlighting = hs })
 
-             let quoted = fmap (explicitNames . binderVal) $ lookup nTm env
+             let quoted = fmap (explicitNames . binderVal) $ lookupBinder nTm env
                  isRaw = case unApply (normaliseAll ctxt env finalTy) of
                            (P _ n _, []) | n == reflm "Raw" -> True
                            _ -> False
              case quoted of
                Just q -> do ctxt <- get_context
-                            (q', _, _) <- lift $ recheck (constraintNS info) ctxt [(uq, Lam Erased) | uq <- unquoteNames] (forget q) q
+                            (q', _, _) <- lift $ recheck (constraintNS info) ctxt [(uq, Rig0, Lam Erased) | uq <- unquoteNames] (forget q) q
                             if pattern
                               then if isRaw
                                       then reflectRawQuotePattern unquoteNames (forget q')
@@ -1255,7 +1255,7 @@ elab ist info emode opts fn tm
     elab' ina fc (PQuoteName n True nfc) =
       do ctxt <- get_context
          env <- get_env
-         case lookup n env of
+         case lookupBinder n env of
            Just _ -> do fill $ reflectName n
                         solve
                         highlightSource nfc (AnnBoundName n False)
@@ -1324,7 +1324,7 @@ elab ist info emode opts fn tm
          env <- get_env
          ctxt <- get_context
          let v = fmap (normaliseAll ctxt env . finalise . binderVal)
-                      (lookup n env)
+                      (lookupBinder n env)
          loadState -- we have the highlighting - re-elaborate the value
          elab' ina fc tm
          case v of
@@ -1347,9 +1347,9 @@ elab ist info emode opts fn tm
     delayElab pri t
        = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [(pri, t)] })
 
-    isScr :: PTerm -> (Name, Binder Term) -> (Name, (Bool, Binder Term))
-    isScr (PRef _ _ n) (n', b) = (n', (n == n', b))
-    isScr _ (n', b) = (n', (False, b))
+    isScr :: PTerm -> (Name, RigCount, Binder Term) -> (Name, (Bool, Binder Term))
+    isScr (PRef _ _ n) (n', _, b) = (n', (n == n', b))
+    isScr _ (n', _, b) = (n', (False, b))
 
     caseBlock :: FC -> Name
                  -> PTerm -- original scrutinee
@@ -1449,8 +1449,8 @@ elab ist info emode opts fn tm
         mkDelay env (PAlternative ms b xs) = PAlternative ms b (map (mkDelay env) xs)
         mkDelay env t
             = let fc = fileFC "Delay" in
-                  addImplBound ist (map fst env) (PApp fc (PRef fc [] (sUN "Delay"))
-                                                 [pexp t])
+                  addImplBound ist (map fstEnv env) (PApp fc (PRef fc [] (sUN "Delay"))
+                                                    [pexp t])
 
 
     -- Don't put implicit coercions around applications which are marked
@@ -1475,7 +1475,7 @@ elab ist info emode opts fn tm
        case fullApp tm of
             -- if f is global, leave it alone because we've already
             -- expanded it to the right arity
-            PApp fc ftm@(PRef _ _ f) args | Just aty <- lookup f env ->
+            PApp fc ftm@(PRef _ _ f) args | Just aty <- lookupBinder f env ->
                do let a = length (getArgTys (normalise (tt_ctxt ist) env (binderTy aty)))
                   return (mkPApp fc a ftm args)
             _ -> return tm
@@ -1528,7 +1528,7 @@ elab ist info emode opts fn tm
          mkCoerce env (PAlternative ms aty tms) n
              = PAlternative ms aty (map (\t -> mkCoerce env t n) tms)
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in
-                                addImplBound ist (map fst env)
+                                addImplBound ist (map fstEnv env)
                                   (PApp fc (PRef fc [] n) [pexp (PCoerced t)])
 
     -- | Elaborate the arguments to a function
@@ -1647,7 +1647,7 @@ pruneByType imp env t goalty c as
     locallyBound [] = Nothing
     locallyBound (t:ts)
        | Just n <- getName t,
-         n `elem` map fst env = Just t
+         n `elem` map fstEnv env = Just t
        | otherwise = locallyBound ts
     getName (PRef _ _ n) = Just n
     getName (PApp _ (PRef _ _ (UN l)) [_, _, arg]) -- ignore Delays
@@ -1800,7 +1800,7 @@ isPlausible ist var env n ty
 findHighlight :: Name -> ElabD OutputAnnotation
 findHighlight n = do ctxt <- get_context
                      env <- get_env
-                     case lookup n env of
+                     case lookupBinder n env of
                        Just _ -> return $ AnnBoundName n False
                        Nothing -> case lookupTyExact n ctxt of
                                     Just _ -> return $ AnnName n Nothing Nothing Nothing
@@ -1820,7 +1820,7 @@ solveAuto ist fn ambigok (n, failc)
                         when (not isg) $
                           proofSearch' ist True ambigok 100 True Nothing fn [] [])
              (lift $ Error (addLoc failc
-                   (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env))))
+                   (CantSolveGoal g (map (\(n, _, b) -> (n, binderTy b)) env))))
         return ()
   where addLoc (FailContext fc f x : prev) err
            = At fc (ElaboratingArg f x
@@ -1893,7 +1893,7 @@ case_ ind autoSolve ist fn tm = do
   focus valn
   elab ist toplevel ERHS [] (sMN 0 "tac") tm
   env <- get_env
-  let (Just binding) = lookup letn env
+  let (Just binding) = lookupBinder letn env
   let val = binderVal binding
   if ind then induction (forget val)
          else casetac (forget val)
@@ -2456,11 +2456,11 @@ runTac :: Bool -> IState -> Maybe FC -> Name -> PTactic -> ElabD ()
 runTac autoSolve ist perhapsFC fn tac
     = do env <- get_env
          g <- goal
-         let tac' = fmap (addImplBound ist (map fst env)) tac
+         let tac' = fmap (addImplBound ist (map fstEnv env)) tac
          if autoSolve
             then runT tac'
             else no_errors (runT tac')
-                   (Just (CantSolveGoal g (map (\(n, b) -> (n, binderTy b)) env)))
+                   (Just (CantSolveGoal g (map (\(n, _, b) -> (n, binderTy b)) env)))
   where
     runT (Intro []) = do g <- goal
                          attack; intro (bname g)
@@ -2490,7 +2490,7 @@ runTac autoSolve ist perhapsFC fn tac
              tryAll tacs
              when autoSolve solveAll
        where envArgs n = do e <- get_env
-                            case lookup n e of
+                            case lookupBinder n e of
                                Just t -> return $ map (const False)
                                                       (getArgTys (binderTy t))
                                _ -> return []
@@ -2508,7 +2508,7 @@ runTac autoSolve ist perhapsFC fn tac
        where isImp (PImp _ _ _ _ _) = True
              isImp _ = False
              envArgs n = do e <- get_env
-                            case lookup n e of
+                            case lookupBinder n e of
                                Just t -> return $ map (const False)
                                                       (getArgTys (binderTy t))
                                _ -> return []

@@ -804,7 +804,7 @@ reflectUExp (UVal i) = reflCall "UVal" [RConstant (I i)]
 
 -- | Reflect the environment of a proof into a List (TTName, Binder TT)
 reflectEnv :: Env -> Raw
-reflectEnv = foldr consToEnvList emptyEnvList
+reflectEnv = foldr consToEnvList emptyEnvList . envBinders
   where
     consToEnvList :: (Name, Binder Term) -> Raw -> Raw
     consToEnvList (n, b) l
@@ -823,8 +823,10 @@ reflectEnv = foldr consToEnvList emptyEnvList
     emptyEnvList = raw_apply (Var (sNS (sUN "Nil") ["List", "Prelude"]))
                              [envTupleType]
 
+-- Reflected environments don't get the RigCount (for the moment, at least)
 reifyEnv :: Term -> ElabD Env
-reifyEnv = reifyList (reifyPair reifyTTName (reifyTTBinder reifyTT (reflm "TT")))
+reifyEnv tm = do preEnv <- reifyList (reifyPair reifyTTName (reifyTTBinder reifyTT (reflm "TT"))) tm
+                 return $ map (\(n, b) -> (n, Rig0, b)) preEnv
 
 -- | Reflect an error into the internal datatype of Idris -- TODO
 rawBool :: Bool -> Raw

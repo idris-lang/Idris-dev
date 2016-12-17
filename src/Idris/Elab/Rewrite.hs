@@ -77,7 +77,7 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
                         let pred = PLam fc rname fc Placeholder
                                         (delab ist pred_tt)
                         let rewrite = stripImpls $
-                                        addImplBound ist (map fst env) (PApp fc (PRef fc [] substfn)
+                                        addImplBound ist (map fstEnv env) (PApp fc (PRef fc [] substfn)
                                               [pexp pred, pexp rule, pexp sc])
 --                         trace ("LHS: " ++ show l ++ "\n" ++
 --                                "RHS: " ++ show r ++ "\n" ++

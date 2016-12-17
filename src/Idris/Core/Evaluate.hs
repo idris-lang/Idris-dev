@@ -197,13 +197,13 @@ unfold ctxt env ns t
 
 -- unbindEnv env (quote 0 (eval ctxt (bindEnv env t)))
 
-finalEntry :: (Name, Binder (TT Name)) -> (Name, Binder (TT Name))
-finalEntry (n, b) = (n, fmap finalise b)
+finalEntry :: (Name, RigCount, Binder (TT Name)) -> (Name, RigCount, Binder (TT Name))
+finalEntry (n, r, b) = (n, r, fmap finalise b)
 
 bindEnv :: EnvTT n -> TT n -> TT n
 bindEnv [] tm = tm
-bindEnv ((n, Let t v):bs) tm = Bind n (NLet t v) (bindEnv bs tm)
-bindEnv ((n, b):bs)       tm = Bind n b (bindEnv bs tm)
+bindEnv ((n, r, Let t v):bs) tm = Bind n (NLet t v) (bindEnv bs tm)
+bindEnv ((n, r, b):bs)       tm = Bind n b (bindEnv bs tm)
 
 unbindEnv :: EnvTT n -> TT n -> TT n
 unbindEnv [] tm = tm
@@ -282,7 +282,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 | otherwise = cases_compiletime cd
 
     ev ntimes stk top env (P _ n ty)
-        | Just (Let t v) <- lookup n genv = ev ntimes stk top env v
+        | Just (Let t v) <- lookupBinder n genv = ev ntimes stk top env v
     ev ntimes_in stk top env (P Ref n ty)
          = do let limit = if simpl then 100 else 10000
               (u, ntimes) <- usable spec unfold limit n ntimes_in
@@ -337,7 +337,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 return $ VBind True n (Let t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n b sc)
            = do b' <- vbind env b
-                let n' = uniqueName n (map fst genv ++ map fst env)
+                let n' = uniqueName n (map fstEnv genv ++ map fst env)
                 return $ VBind True -- (vinstances 0 sc < 2)
                                n' b' (\x -> ev ntimes stk False ((n', x):env) sc)
        where vbind env t
@@ -1181,7 +1181,7 @@ lookupVal n ctxt
           _ -> []
 
 lookupTyEnv :: Name -> Env -> Maybe (Int, Type)
-lookupTyEnv n env = li n 0 env where
+lookupTyEnv n env = li n 0 (envBinders env) where
   li n i []           = Nothing
   li n i ((x, b): xs)
              | n == x = Just (i, binderTy b)

@@ -129,12 +129,12 @@ instance Show ProofState where
                 ") -------\n  " ++
                 show h ++ " : " ++ showG wkenv (goalType g) ++ "\n"
          where showPs env [] = ""
-               showPs env ((n, Let t v):bs)
+               showPs env ((n, _, Let t v):bs)
                    = "  " ++ show n ++ " : " ++
                      showEnv env ({- normalise ctxt env -} t) ++ "   =   " ++
                      showEnv env ({- normalise ctxt env -} v) ++
                      "\n" ++ showPs env bs
-               showPs env ((n, b):bs)
+               showPs env ((n, _, b):bs)
                    = "  " ++ show n ++ " : " ++
                      showEnv env ({- normalise ctxt env -} (binderTy b)) ++
                      "\n" ++ showPs env bs
@@ -160,18 +160,18 @@ instance Pretty ProofState OutputAnnotation where
       prettyGoal ps b = prettyEnv ps $ binderTy b
 
       prettyPs env [] = empty
-      prettyPs env ((n, Let t v):bs) =
+      prettyPs env ((n, _, Let t v):bs) =
         nest nestingSize (pretty n <+> colon <+>
         prettyEnv env t <+> text "=" <+> prettyEnv env v <+>
         nest nestingSize (prettyPs env bs))
-      prettyPs env ((n, b):bs) =
+      prettyPs env ((n, _, b):bs) =
         nest nestingSize (pretty n <+> colon <+> prettyEnv env (binderTy b) <+>
         nest nestingSize (prettyPs env bs))
 
 holeName i = sMN i "hole"
 
 qshow :: Fails -> String
-qshow fs = show (map (\ (x, y, hs, env, _, _, t) -> (t, map fst env, x, y, hs)) fs)
+qshow fs = show (map (\ (x, y, hs, env, _, _, t) -> (t, map fstEnv env, x, y, hs)) fs)
 
 match_unify' :: Context -> Env ->
                 (TT Name, Maybe Provenance) ->
@@ -363,7 +363,7 @@ computeLet ctxt n tm = cl [] tm where
    cl env (Bind n' (Let t v) sc)
        | n' == n = let v' = normalise ctxt env v in
                        Bind n' (Let t v') sc
-   cl env (Bind n' b sc) = Bind n' (fmap (cl env) b) (cl ((n, b):env) sc)
+   cl env (Bind n' b sc) = Bind n' (fmap (cl env) b) (cl ((n, Rig0, b):env) sc)
    cl env (App s f a) = App s (cl env f) (cl env a)
    cl env t = t
 
@@ -463,7 +463,7 @@ setinj n ctxt env (Bind x b sc)
 
 defer :: [Name] -> Name -> RunTactic
 defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
-    do let env' = filter (\(n, t) -> n `notElem` dropped) env
+    do let env' = filter (\(n, _, t) -> n `notElem` dropped) env
        action (\ps -> let hs = holes ps in
                           ps { usedns = n : usedns ps,
                                holes = hs \\ [x] })
@@ -472,9 +472,9 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
   where
     mkTy []           t = t
-    mkTy ((n,b) : bs) t = Bind n (Pi Nothing (binderTy b) (TType (UVar [] 0))) (mkTy bs t)
+    mkTy ((n,rig,b) : bs) t = Bind n (Pi Nothing (binderTy b) (TType (UVar [] 0))) (mkTy bs t)
 
-    getP (n, b) = P Bound n (binderTy b)
+    getP (n, rig, b) = P Bound n (binderTy b)
 defer dropped n ctxt env _ = fail "Can't defer a non-hole focus."
 
 -- as defer, but build the type and application explicitly
@@ -488,7 +488,7 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
        return (Bind n (GHole 0 [] fty)
                       (mkApp (P Ref n ty) (map getP args)))
   where
-    getP n = case lookup n env of
+    getP n = case lookupBinder n env of
                   Just b -> P Bound n (binderTy b)
                   Nothing -> error ("deferType can't find " ++ show n)
 deferType _ _ _ _ _ _ = fail "Can't defer a non-hole focus."
@@ -914,8 +914,8 @@ keepGiven du (u : us) hs = keepGiven du us hs
 
 updateEnv [] e = e
 updateEnv ns [] = []
-updateEnv ns ((n, b) : env)
-   = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns env
+updateEnv ns ((n, rig, b) : env)
+   = (n, rig, fmap (updateSolvedTerm ns) b) : updateEnv ns env
 
 updateProv ns (SourceTerm t) = SourceTerm $ updateSolvedTerm ns t
 updateProv ns p = p

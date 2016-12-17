@@ -31,7 +31,7 @@ module Idris.Core.TT(
   , Env(..), EnvTT(..), Err(..), Err'(..), ErrorReportPart(..)
   , FC(..), FC'(..), ImplicitInfo(..), IntTy(..), Name(..)
   , NameOutput(..), NameType(..), NativeTy(..), OutputAnnotation(..)
-  , Provenance(..), Raw(..), SpecialName(..), TC(..), Term(..)
+  , Provenance(..), Raw(..), RigCount(..), SpecialName(..), TC(..), Term(..)
   , TermSize(..), TextFormatting(..), TT(..),Type(..), TypeInfo(..)
   , UConstraint(..), UCs(..), UExp(..), Universe(..)
   , addAlist, addBinder, addDef, allTTNames, arity, bindAll
@@ -49,6 +49,7 @@ module Idris.Core.TT(
   , substV, sUN, tcname, termSmallerThan, tfail, thead, tnull
   , toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName
   , uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm
+  , fstEnv, rigEnv, sndEnv, lookupBinder, envBinders
   ) where
 
 import Util.Pretty hiding (Str)
@@ -1064,7 +1065,19 @@ instance Sized a => Sized (TT a) where
 instance Pretty a o => Pretty (TT a) o where
   pretty _ = text "test"
 
-type EnvTT n = [(n, Binder (TT n))]
+data RigCount = Rig0 | Rig1 | RigW
+  deriving (Show, Eq, Ord, Data, Generic, Typeable)
+
+type EnvTT n = [(n, RigCount, Binder (TT n))]
+
+fstEnv (n, c, b) = n
+rigEnv (n, c, b) = c
+sndEnv (n, c, b) = b
+
+envBinders = map (\(n, _, b) -> (n, b))
+
+lookupBinder :: Eq n => n -> EnvTT n -> Maybe (Binder (TT n))
+lookupBinder n = lookup n . envBinders
 
 data Datatype n = Data { d_typename :: n,
                          d_typetag  :: Int,
@@ -1572,15 +1585,15 @@ prettyEnv env t = prettyEnv' env t False
     prettySe p env (V i) debug
       | i < length env =
         if debug then
-          text . show . fst $ env!!i
+          text . show . fstEnv $ env!!i
         else
           lbracket <+> text (show i) <+> rbracket
       | otherwise      = text "unbound" <+> text (show i) <+> text "!"
     prettySe p env (Bind n b@(Pi _ t _) sc) debug
       | noOccurrence n sc && not debug =
-          bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, b):env) sc debug
+          bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, Rig0, b):env) sc debug
     prettySe p env (Bind n b sc) debug =
-      bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, b):env) sc debug
+      bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, Rig0, b):env) sc debug
     prettySe p env (App _ f a) debug =
       bracket p 1 $ prettySe 1 env f debug <+> prettySe 0 env a debug
     prettySe p env (Proj x i) debug =
@@ -1620,16 +1633,16 @@ showEnv' env t dbg = se 10 env t where
     se p env (P nt n t) = show n
                             ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
     se p env (V i) | i < length env && i >= 0
-                                    = (show $ fst $ env!!i) ++
+                                    = (show $ fstEnv $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
     se p env (Bind n b@(Pi (Just _) t k) sc)
-         = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
+         = bracket p 2 $ sb env n b ++ se 10 ((n,Rig0,b):env) sc
     se p env (Bind n b@(Pi _ t k) sc)
-        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ arrow k ++ se 10 ((n,b):env) sc
+        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ arrow k ++ se 10 ((n,Rig0,b):env) sc
        where arrow (TType _) = " -> "
              arrow u = " [" ++ show u ++ "] -> "
-    se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
+    se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,Rig0,b):env) sc
     se p env (App _ f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Proj x i) = se 1 env x ++ "!" ++ show i
     se p env (Constant c) = show c
@@ -1686,14 +1699,14 @@ weakenTm i t = wk i 0 t
 weakenEnv :: EnvTT n -> EnvTT n
 weakenEnv env = wk (length env - 1) env
   where wk i [] = []
-        wk i ((n, b) : bs) = (n, weakenTmB i b) : wk (i - 1) bs
+        wk i ((n, c, b) : bs) = (n, c, weakenTmB i b) : wk (i - 1) bs
         weakenTmB i (Let   t v) = Let (weakenTm i t) (weakenTm i v)
         weakenTmB i (Guess t v) = Guess (weakenTm i t) (weakenTm i v)
         weakenTmB i t           = t { binderTy = weakenTm i (binderTy t) }
 
 -- | Weaken every term in the environment by the given amount
 weakenTmEnv :: Int -> EnvTT n -> EnvTT n
-weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
+weakenTmEnv i = map (\ (n, c, b) -> (n, c, fmap (weakenTm i) b))
 
 refsIn :: TT Name -> [Name]
 refsIn (P _ n _) = [n]

@@ -73,12 +73,13 @@ whnfArgs' ctxt env tm
            -- (so not in the external environment) so we need to instantiate
            -- the name
            Bind n b@(Pi _ ty _) sc -> 
-                    Bind n b (whnfArgs' ctxt ((n,b):env) 
+                    -- TODO: Get RigCount from Pi
+                    Bind n b (whnfArgs' ctxt ((n,Rig0,b):env) 
                              (subst n (P Bound n ty) sc))
            res -> tm
 
-finalEntry :: (Name, Binder (TT Name)) -> (Name, Binder (TT Name))
-finalEntry (n, b) = (n, fmap finalise b)
+finalEntry :: (Name, RigCount, Binder (TT Name)) -> (Name, RigCount, Binder (TT Name))
+finalEntry (n, r, b) = (n, r, fmap finalise b)
 
 do_whnf :: Context -> Env -> Term -> WHNF
 do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
@@ -93,11 +94,11 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
     eval (WEnv d env) ((tm, tenv) : stk) (Bind n b@(Lam _) sc)
          = eval (WEnv d ((tm, tenv) : env)) stk sc
     eval wenv@(WEnv d env) stk (Bind n b sc) -- stk must be empty if well typed
-         =let n' = uniqueName n (map fst genv) in
+         =let n' = uniqueName n (map fstEnv genv) in
               WBind n' (fmap (\t -> (t, wenv)) b) (sc, WEnv (d + 1) env)
 
     eval env stk (P nt n ty) 
-         | Just (Let t v) <- lookup n genv = eval env stk v
+         | Just (Let t v) <- lookupBinder n genv = eval env stk v
     eval env stk (P nt n ty) = apply env nt n ty stk
     eval env stk (App _ f a) = eval env ((a, env) : stk) f
     eval env stk (Constant c) = unload (WConstant c) stk
