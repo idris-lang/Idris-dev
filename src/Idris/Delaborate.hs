@@ -137,26 +137,26 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
                                   _ -> PRef un [] n
     de env _ (Bind n (Lam ty) sc)
           = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
-    de env (_ : is) (Bind n (Pi (Just impl) ty _) sc)
+    de env (_ : is) (Bind n (Pi rig (Just impl) ty _) sc)
        | toplevel_imp impl -- information in 'imps' repeated
           = PPi (Imp [] Dynamic False (Just impl) False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env is (Bind n (Pi (Just impl) ty _) sc)
+    de env is (Bind n (Pi rig (Just impl) ty _) sc)
        | tcimplementation impl
           = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
        | otherwise
           = PPi (Imp [] Dynamic False (Just impl) False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env ((PImp { argopts = opts }):is) (Bind n (Pi _ ty _) sc)
+    de env ((PImp { argopts = opts }):is) (Bind n (Pi rig _ ty _) sc)
           = PPi (Imp opts Dynamic False Nothing False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (PConstraint _ _ _ _:is) (Bind n (Pi _ ty _) sc)
+    de env (PConstraint _ _ _ _:is) (Bind n (Pi rig _ ty _) sc)
           = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi _ ty _) sc)
+    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi rig _ ty _) sc)
           = PPi (tacimpl tac) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (plic:is) (Bind n (Pi _ ty _) sc)
+    de env (plic:is) (Bind n (Pi rig _ ty _) sc)
           = PPi (Exp (argopts plic) Dynamic False)
                 n NoFC
                 (de env [] ty)
                 (de ((n,n):env) is sc)
-    de env [] (Bind n (Pi _ ty _) sc)
+    de env [] (Bind n (Pi rig _ ty _) sc)
           = PPi expl n NoFC (de env [] ty) (de ((n,n):env) [] sc)
 
     de env imps (Bind n (Let ty val) sc)
@@ -339,9 +339,9 @@ pprintErr' i (CantConvert x_in y_in env) =
   indented (annTm y_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
                y)) <>
   if (opt_errContext (idris_options i)) then line <> text "Conversion failure" <$>  showSc i env else empty
-    where flagUnique (Bind n (Pi i t k@(UType u)) sc)
+    where flagUnique (Bind n (Pi rig i t k@(UType u)) sc)
               = App Complete (P Ref (sUN (show u)) Erased)
-                    (Bind n (Pi i (flagUnique t) k) (flagUnique sc))
+                    (Bind n (Pi rig i (flagUnique t) k) (flagUnique sc))
           flagUnique (App s f a) = App s (flagUnique f) (flagUnique a)
           flagUnique (Bind n b sc) = Bind n (fmap flagUnique b) (flagUnique sc)
           flagUnique t = t

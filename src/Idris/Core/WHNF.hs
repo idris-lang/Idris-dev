@@ -72,9 +72,8 @@ whnfArgs' ctxt env tm
            -- The assumption is that de Bruijn indices refer to local things
            -- (so not in the external environment) so we need to instantiate
            -- the name
-           Bind n b@(Pi _ ty _) sc -> 
-                    -- TODO: Get RigCount from Pi
-                    Bind n b (whnfArgs' ctxt ((n,Rig0,b):env) 
+           Bind n b@(Pi rig _ ty _) sc -> 
+                    Bind n b (whnfArgs' ctxt ((n, rig, b):env) 
                              (subst n (P Bound n ty) sc))
            res -> tm
 

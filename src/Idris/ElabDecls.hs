@@ -116,9 +116,9 @@ elabPrims = do i <- getIState
 
           p_believeMe [_,_,x] = Just x
           p_believeMe _ = Nothing
-          believeTy = Bind (sUN "a") (Pi Nothing (TType (UVar [] (-2))) (TType (UVar [] (-1))))
-                       (Bind (sUN "b") (Pi Nothing (TType (UVar [] (-2))) (TType (UVar [] (-1))))
-                         (Bind (sUN "x") (Pi Nothing (V 1) (TType (UVar [] (-1)))) (V 1)))
+          believeTy = Bind (sUN "a") (Pi RigW Nothing (TType (UVar [] (-2))) (TType (UVar [] (-1))))
+                       (Bind (sUN "b") (Pi RigW Nothing (TType (UVar [] (-2))) (TType (UVar [] (-1))))
+                         (Bind (sUN "x") (Pi RigW Nothing (V 1) (TType (UVar [] (-1)))) (V 1)))
           elabBelieveMe
              = do let prim__believe_me = sUN "prim__believe_me"
                   updateContext (addOperator prim__believe_me believeTy 3 p_believeMe)
@@ -141,10 +141,10 @@ elabPrims = do i <- getIState
           vnNothing = VP (DCon 0 1 False) (sNS (sUN "Nothing") ["Maybe", "Prelude"]) VErased
           vnRefl = VP (DCon 0 2 False) eqCon VErased
 
-          synEqTy = Bind (sUN "a") (Pi Nothing (TType (UVar [] (-3))) (TType (UVar [] (-2))))
-                     (Bind (sUN "b") (Pi Nothing (TType (UVar [] (-3))) (TType (UVar [] (-2))))
-                      (Bind (sUN "x") (Pi Nothing (V 1) (TType (UVar [] (-2))))
-                       (Bind (sUN "y") (Pi Nothing (V 1) (TType (UVar [] (-2))))
+          synEqTy = Bind (sUN "a") (Pi RigW Nothing (TType (UVar [] (-3))) (TType (UVar [] (-2))))
+                     (Bind (sUN "b") (Pi RigW Nothing (TType (UVar [] (-3))) (TType (UVar [] (-2))))
+                      (Bind (sUN "x") (Pi RigW Nothing (V 1) (TType (UVar [] (-2))))
+                       (Bind (sUN "y") (Pi RigW Nothing (V 1) (TType (UVar [] (-2))))
                          (mkApp nMaybe [mkApp (P (TCon 0 4) eqTy Erased)
                                                [V 3, V 2, V 1, V 0]]))))
           elabSynEq

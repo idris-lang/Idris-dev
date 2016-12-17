@@ -329,12 +329,12 @@ elabClauses info' fc opts n_in cs =
     debind (Left x)       = let (vs, x') = depat [] x in
                                 (vs, x', Impossible)
 
-    depat acc (Bind n (PVar t) sc) = depat ((n, t) : acc) (instantiate (P Bound n t) sc)
+    depat acc (Bind n (PVar rig t) sc) = depat ((n, t) : acc) (instantiate (P Bound n t) sc)
     depat acc x = (acc, x)
 
 
-    getPVs (Bind x (PVar _) tm) = let (vs, tm') = getPVs tm
-                                  in (x:vs, tm')
+    getPVs (Bind x (PVar rig _) tm) = let (vs, tm') = getPVs tm
+                                          in (x:vs, tm')
     getPVs tm = ([], tm)
 
     isPatVar vs (P Bound n _) = n `elem` vs
@@ -529,7 +529,7 @@ elabPE info fc caller r =
              _ -> True
     concreteTm ist (Constant _) = True
     concreteTm ist (Bind n (Lam _) sc) = True
-    concreteTm ist (Bind n (Pi _ _ _) sc) = True
+    concreteTm ist (Bind n (Pi _ _ _ _) sc) = True
     concreteTm ist (Bind n (Let _ _) sc) = concreteTm ist sc
     concreteTm ist _ = False
 
@@ -1106,7 +1106,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let wargname = sMN windex "warg"
 
         logElab 5 ("Abstract over " ++ show wargval ++ " in " ++ show wargtype)
-        let wtype = bindTyArgs (flip (Pi Nothing) (TType (UVar [] 0))) (bargs_pre ++
+        let wtype = bindTyArgs (flip (Pi RigW Nothing) (TType (UVar [] 0))) (bargs_pre ++
                      (wargname, wargtype) :
                      map (abstract wargname wargval wargtype) bargs_post ++
                      case mpn of
@@ -1200,7 +1200,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         (crhs, crhsty) <- recheckC (constraintNS info) fc id [] rhs'
         return (Right (clhs, crhs), lhs)
   where
-    getImps (Bind n (Pi _ _ _) t) = pexp Placeholder : getImps t
+    getImps (Bind n (Pi _ _ _ _) t) = pexp Placeholder : getImps t
     getImps _ = []
 
     mkAuxC pn wname lhs ns ns' (PClauses fc o n cs)
@@ -1299,13 +1299,13 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
          -- This is something of a hack, because matching on the top level
          -- application won't find this information for us
          addResolvesArgs :: FC -> Term -> [PArg] -> [PArg]
-         addResolvesArgs fc (Bind n (Pi _ ty _) sc) (a : args)
+         addResolvesArgs fc (Bind n (Pi _ _ ty _) sc) (a : args)
              | (P _ cn _, _) <- unApply ty,
                getTm a == Placeholder
                  = case lookupCtxtExact cn (idris_interfaces ist) of
                         Just _ -> a { getTm = PResolveTC fc } : addResolvesArgs fc sc args
                         Nothing -> a : addResolvesArgs fc sc args
-         addResolvesArgs fc (Bind n (Pi _ ty _) sc) (a : args)
+         addResolvesArgs fc (Bind n (Pi _ _ ty _) sc) (a : args)
                  = a : addResolvesArgs fc sc args
          addResolvesArgs fc _ args = args
 

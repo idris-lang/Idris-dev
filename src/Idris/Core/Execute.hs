@@ -92,13 +92,13 @@ toTT (EBind n b body) = do n' <- newN n
                            b' <- fixBinder b
                            Bind n' b' <$> toTT body'
     where fixBinder (Lam t)       = Lam     <$> toTT t
-          fixBinder (Pi i t k)    = Pi i    <$> toTT t <*> toTT k
+          fixBinder (Pi rig i t k) = Pi rig i <$> toTT t <*> toTT k
           fixBinder (Let t1 t2)   = Let     <$> toTT t1 <*> toTT t2
           fixBinder (NLet t1 t2)  = NLet    <$> toTT t1 <*> toTT t2
           fixBinder (Hole t)      = Hole    <$> toTT t
           fixBinder (GHole i ns t) = GHole i ns <$> toTT t
           fixBinder (Guess t1 t2) = Guess   <$> toTT t1 <*> toTT t2
-          fixBinder (PVar t)      = PVar    <$> toTT t
+          fixBinder (PVar rig t)  = PVar rig <$> toTT t
           fixBinder (PVTy t)      = PVTy    <$> toTT t
           newN n = do (ExecState hs ns) <- lift get
                       let n' = uniqueName n ns

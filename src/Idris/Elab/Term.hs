@@ -201,7 +201,7 @@ getUnmatchable ctxt n | isDConName n ctxt && n /= inferCon
           Nothing -> []
           Just ty -> checkArgs [] [] ty
   where checkArgs :: [Name] -> [[Name]] -> Type -> [Bool]
-        checkArgs env ns (Bind n (Pi _ t _) sc)
+        checkArgs env ns (Bind n (Pi _ _ t _) sc)
             = let env' = case t of
                               TType _ -> n : env
                               _ -> env in
@@ -810,7 +810,7 @@ elab ist info emode opts fn tm
                                        ans <- claimArgTys env xs
                                        return ((aval, (True, (Var an))) : ans)
              fnTy [] ret  = forget ret
-             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi Nothing xt RType) (fnTy xs ret)
+             fnTy ((x, (_, xt)) : xs) ret = RBind x (Pi RigW Nothing xt RType) (fnTy xs ret)
 
              localVar env (PRef _ _ x)
                            = case lookupBinder x env of
@@ -957,7 +957,7 @@ elab ist info emode opts fn tm
                     = lift $ tfail $ UnknownImplicit (pname imp) f
             checkKnownImplicit _ = return ()
 
-            getReqImps (Bind x (Pi (Just i) ty _) sc)
+            getReqImps (Bind x (Pi _ (Just i) ty _) sc)
                  = i : getReqImps sc
             getReqImps _ = []
 
@@ -1484,12 +1484,12 @@ elab ist info emode opts fn tm
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
     fullApp x = x
 
-    insertScopedImps fc (Bind n (Pi im@(Just i) _ _) sc) xs
+    insertScopedImps fc (Bind n (Pi _ im@(Just i) _ _) sc) xs
       | tcimplementation i && not (toplevel_imp i)
           = pimp n (PResolveTC fc) True : insertScopedImps fc sc xs
       | not (toplevel_imp i)
           = pimp n Placeholder True : insertScopedImps fc sc xs
-    insertScopedImps fc (Bind n (Pi _ _ _) sc) (x : xs)
+    insertScopedImps fc (Bind n (Pi _ _ _ _) sc) (x : xs)
         = x : insertScopedImps fc sc xs
     insertScopedImps _ _ xs = xs
 
@@ -1500,7 +1500,7 @@ elab ist info emode opts fn tm
            addLam ty' t
       where
         -- just one level at a time
-        addLam (Bind n (Pi (Just _) _ _) sc) t =
+        addLam (Bind n (Pi _ (Just _) _ _) sc) t =
                  do impn <- unique_hole n -- (sMN 0 "scoped_imp")
                     if e_isfn ina -- apply to an implicit immediately
                        then return (PApp emptyFC
@@ -1782,7 +1782,7 @@ isPlausible ist var env n ty
    where
      collectConstraints :: [Name] -> [(Term, [Name])] -> Type ->
                                      (Maybe Name, [(Term, [Name])])
-     collectConstraints env tcs (Bind n (Pi _ ty _) sc)
+     collectConstraints env tcs (Bind n (Pi _ _ ty _) sc)
          = let tcs' = case unApply ty of
                            (P _ c _, _) ->
                                case lookupCtxtExact c (idris_interfaces ist) of
@@ -1916,7 +1916,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
     returnUnit = return $ P (DCon 0 0 False) unitCon (P (TCon 0 0) unitTy Erased)
 
     patvars :: [(Name, Term)] -> Term -> ([(Name, Term)], Term)
-    patvars ns (Bind n (PVar t) sc) = patvars ((n, t) : ns) (instantiate (P Bound n t) sc)
+    patvars ns (Bind n (PVar _ t) sc) = patvars ((n, t) : ns) (instantiate (P Bound n t) sc)
     patvars ns tm                   = (ns, tm)
 
     pullVars :: (Term, Term) -> ([(Name, Term)], Term, Term)
@@ -1985,7 +1985,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
 
     -- | Add another argument to a Pi
     mkPi :: RFunArg -> Raw -> Raw
-    mkPi arg rTy = RBind (argName arg) (Pi Nothing (argTy arg) (RUType AllTypes)) rTy
+    mkPi arg rTy = RBind (argName arg) (Pi RigW Nothing (argTy arg) (RUType AllTypes)) rTy
 
     mustBeType ctxt tm ty =
       case normaliseAll ctxt [] (finalise ty) of
@@ -2042,7 +2042,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
                       _ -> n
 
         getRetTy :: Type -> Type
-        getRetTy (Bind _ (Pi _ _ _) sc) = getRetTy sc
+        getRetTy (Bind _ (Pi _ _ _ _) sc) = getRetTy sc
         getRetTy ty = ty
 
     elabScriptStuck :: Term -> ElabD a
@@ -2617,9 +2617,9 @@ runTac autoSolve ist perhapsFC fn tac
         where tacticTy = Var (reflm "Tactic")
               listTy = Var (sNS (sUN "List") ["List", "Prelude"])
               scriptTy = (RBind (sMN 0 "__pi_arg")
-                                (Pi Nothing (RApp listTy envTupleType) RType)
+                                (Pi RigW Nothing (RApp listTy envTupleType) RType)
                                     (RBind (sMN 1 "__pi_arg")
-                                           (Pi Nothing (Var $ reflm "TT") RType) tacticTy))
+                                           (Pi RigW Nothing (Var $ reflm "TT") RType) tacticTy))
     runT (ByReflection tm) -- run the reflection function 'tm' on the
                            -- goal, then apply the resulting reflected Tactic
         = do tgoal <- goal

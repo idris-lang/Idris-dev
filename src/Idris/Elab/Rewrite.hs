@@ -156,10 +156,10 @@ data ParamInfo = Index
 
 getParamInfo :: Type -> [PArg] -> Int -> [Int] -> [ParamInfo]
 -- Skip the top level implicits, we just need the explicit ones
-getParamInfo (Bind n (Pi _ _ _) sc) (PExp{} : is) i ps
+getParamInfo (Bind n (Pi _ _ _ _) sc) (PExp{} : is) i ps
     | i `elem` ps = Param : getParamInfo sc is (i + 1) ps
     | otherwise = Index : getParamInfo sc is (i + 1) ps
-getParamInfo (Bind n (Pi _ _ _) sc) (_ : is) i ps
+getParamInfo (Bind n (Pi _ _ _ _) sc) (_ : is) i ps
     | i `elem` ps = ImplicitParam : getParamInfo sc is (i + 1) ps
     | otherwise = ImplicitIndex : getParamInfo sc is (i + 1) ps
 getParamInfo _ _ _ _ = []
@@ -249,13 +249,13 @@ mkLemma info lemma tcon ps ty =
     mkArgs _ _ _ = []
 
     bindIdxs ist [] ty is tm = tm
-    bindIdxs ist (Param : pinfo) (Bind n (Pi _ ty _) sc) is tm
+    bindIdxs ist (Param : pinfo) (Bind n (Pi _ _ ty _) sc) is tm
          = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
-    bindIdxs ist (Index : pinfo) (Bind n (Pi _ ty _) sc) (i : is) tm
+    bindIdxs ist (Index : pinfo) (Bind n (Pi _ _ ty _) sc) (i : is) tm
         = PPi forall_imp i fc (delab ist ty)
                (bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm)
-    bindIdxs ist (ImplicitParam : pinfo) (Bind n (Pi _ ty _) sc) is tm
+    bindIdxs ist (ImplicitParam : pinfo) (Bind n (Pi _ _ ty _) sc) is tm
         = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
-    bindIdxs ist (ImplicitIndex : pinfo) (Bind n (Pi _ ty _) sc) (i : is) tm
+    bindIdxs ist (ImplicitIndex : pinfo) (Bind n (Pi _ _ ty _) sc) (i : is) tm
         = bindIdxs ist pinfo (instantiate (P Bound n ty) sc) is tm
     bindIdxs _ _ _ _ tm = tm

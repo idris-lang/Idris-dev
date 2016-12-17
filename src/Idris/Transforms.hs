@@ -86,7 +86,7 @@ applyRule (lhs, rhs) tm
 -- (In general, this would not be true, but when we elaborate transformation
 -- rules we mangle the names so that it is true. While this feels a bit
 -- hacky, it's much easier to think about than mangling de Bruijn indices).
-  where depat ms (Bind n (PVar t) sc)
+  where depat ms (Bind n (PVar _ t) sc)
           = case lookup n ms of
                  Just tm -> depat ms (subst n tm sc)
                  _ -> depat ms sc -- no occurrence? Shouldn't happen
@@ -95,7 +95,7 @@ applyRule (lhs, rhs) tm
 matchTerm :: Term -> Term -> Maybe [(Name, Term)]
 matchTerm lhs tm = matchVars [] lhs tm
    where
-      matchVars acc (Bind n (PVar t) sc) tm
+      matchVars acc (Bind n (PVar _ t) sc) tm
            = matchVars (n : acc) (instantiate (P Bound n t) sc) tm
       matchVars acc sc tm
           = -- trace (show acc ++ ": " ++ show (sc, tm)) $

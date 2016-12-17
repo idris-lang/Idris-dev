@@ -392,7 +392,7 @@ claimFn n bn argty ctxt env t@(Bind x (Hole retty) sc) =
        lift $ isType ctxt env tyt
        action (\ps -> let (g:gs) = holes ps in
                           ps { holes = g : n : gs } )
-       return $ Bind n (Hole (Bind bn (Pi Nothing tyv tyt) retty)) t
+       return $ Bind n (Hole (Bind bn (Pi RigW Nothing tyv tyt) retty)) t
 claimFn _ _ _ ctxt env _ = fail "Can't make function type here"
 
 reorder_claims :: RunTactic
@@ -472,7 +472,7 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
   where
     mkTy []           t = t
-    mkTy ((n,rig,b) : bs) t = Bind n (Pi Nothing (binderTy b) (TType (UVar [] 0))) (mkTy bs t)
+    mkTy ((n,rig,b) : bs) t = Bind n (Pi RigW Nothing (binderTy b) (TType (UVar [] 0))) (mkTy bs t)
 
     getP (n, rig, b) = P Bound n (binderTy b)
 defer dropped n ctxt env _ = fail "Can't defer a non-hole focus."
@@ -541,7 +541,7 @@ fill guess ctxt env (Bind x (Hole ty) sc) =
     -- some expected types show up commonly in errors and indicate a
     -- specific problem.
     --   argTy -> retTy suggests a function applied to too many arguments
-    chkPurpose val (Bind _ (Pi _ (P _ (MN _ _) _) _) (P _ (MN _ _) _))
+    chkPurpose val (Bind _ (Pi _ _ (P _ (MN _ _) _) _) (P _ (MN _ _) _))
                    = TooManyArgs val
     chkPurpose _ _ = ExpectedType
 fill _ _ _ _ = fail "Can't fill here."
@@ -652,12 +652,12 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                   Just name -> name
                   Nothing -> x
        let t' = case t of
-                    x@(Bind y (Pi _ s _) _) -> x
+                    x@(Bind y (Pi _ _ s _) _) -> x
                     _ -> normalise ctxt env t
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
-           Bind y (Pi _ s _) t -> let t' = updsubst y (P Bound n s) t in
+           Bind y (Pi _ _ s _) t -> let t' = updsubst y (P Bound n s) t in
                                       do ns <- unify' ctxt env (s, Nothing) (tyv, Nothing)
                                          ps <- get
                                          let (uh, uns) = unified ps
@@ -669,10 +669,10 @@ introTy ty n ctxt env _ = fail "Can't introduce here."
 intro :: Maybe Name -> RunTactic
 intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = case t of
-                    x@(Bind y (Pi _ s _) _) -> x
+                    x@(Bind y (Pi _ _ s _) _) -> x
                     _ -> normalise ctxt env t
        case t' of
-           Bind y (Pi _ s _) t ->
+           Bind y (Pi _ _ s _) t ->
                let n = case mn of
                       Just name -> name
                       Nothing -> y
@@ -689,7 +689,7 @@ forall n impl ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
        unify' ctxt env (tyt, Nothing) (TType (UVar [] 0), Nothing)
        unify' ctxt env (t, Nothing) (TType (UVar [] 0), Nothing)
-       return $ Bind n (Pi impl tyv (TType (UVar [] 0))) (Bind x (Hole t) (P Bound x t))
+       return $ Bind n (Pi RigW impl tyv (TType (UVar [] 0))) (Bind x (Hole t) (P Bound x t))
 forall n impl ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
@@ -702,7 +702,7 @@ patvar n ctxt env (Bind x (Hole t) sc) =
                                           (notunified ps),
                            injective = addInj n x (injective ps)
                          })
-       return $ Bind n (PVar t) (updsubst x (P Bound n t) sc)
+       return $ Bind n (PVar RigW t) (updsubst x (P Bound n t) sc)
   where addInj n x ps | x `elem` ps = n : ps
                       | otherwise = ps
 patvar n ctxt env tm = fail $ "Can't add pattern var at " ++ show tm
@@ -830,7 +830,7 @@ patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     _ -> normalise ctxt env t
        case t' of
            Bind y (PVTy s) t -> let t' = updsubst y (P Bound n s) t in
-                                    return $ Bind n (PVar s) (Bind x (Hole t') (P Bound x t'))
+                                    return $ Bind n (PVar RigW s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to pattern bind"
 patbind n ctxt env _ = fail "Can't pattern bind here"
 

@@ -418,7 +418,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
         -- | Split a function type into a pair of premises, conclusion.
         -- Each maintains both the original and delaborated versions.
         splitPi :: IState -> Type -> ([(Name, Type, PTerm)], Type, PTerm)
-        splitPi ist (Bind n (Pi _ t _) rest) =
+        splitPi ist (Bind n (Pi _ _ t _) rest) =
           let (hs, c, pc) = splitPi ist rest in
             ((n, t, delabTy' ist [] t False False True):hs,
              c, delabTy' ist [] c False False True)

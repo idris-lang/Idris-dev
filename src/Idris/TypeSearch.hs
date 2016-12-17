@@ -142,7 +142,7 @@ computeDagP removePred t = (reverse (map f arguments), reverse theRemovedArgs , 
   (arguments, theRemovedArgs, retTy) = go [] [] t
 
   -- NOTE : args are in reverse order
-  go args removedArgs (Bind n (Pi _ ty _) sc) = let arg = (n, ty) in
+  go args removedArgs (Bind n (Pi _ _ ty _) sc) = let arg = (n, ty) in
     if removePred ty
       then go args (arg : removedArgs) sc
       else go (arg : args) removedArgs sc
@@ -439,7 +439,7 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
   unifyQueue state [] = return state
   unifyQueue state ((ty1, ty2) : queue) = do
     --trace ("go: \n" ++ show state) True `seq` return ()
-    res <- tcToMaybe $ match_unify ctxt [ (n, Rig0, Pi Nothing ty (TType (UVar [] 0))) | (n, ty) <- holes state]
+    res <- tcToMaybe $ match_unify ctxt [ (n, RigW, Pi RigW Nothing ty (TType (UVar [] 0))) | (n, ty) <- holes state]
                                    (ty1, Nothing)
                                    (ty2, Nothing) [] (map fst $ holes state) []
     (state', queueAdditions) <- resolveUnis res state

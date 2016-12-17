@@ -212,7 +212,7 @@ argTys ist (PRef fc hls n)
            [ty] -> let ty' = normalise (tt_ctxt ist) [] ty in
                        map (tyName . snd) (getArgTys ty') ++ repeat Nothing
            _ -> repeat Nothing
-  where tyName (Bind _ (Pi _ _ _) _) = Just (sUN "->")
+  where tyName (Bind _ (Pi _ _ _ _) _) = Just (sUN "->")
         tyName t | (P _ d _, [_, ty]) <- unApply t,
                    d == sUN "Delayed" = tyName ty
                  | (P _ n _, _) <- unApply t = Just n

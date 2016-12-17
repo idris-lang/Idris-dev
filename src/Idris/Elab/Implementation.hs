@@ -516,6 +516,6 @@ checkInjectiveArgs fc n ds (Just ty)
     isInj i (Bind n b sc) = isInj i sc
     isInj _ _ = True
 
-    instantiateRetTy (Bind n (Pi _ _ _) sc)
+    instantiateRetTy (Bind n (Pi _ _ _ _) sc)
        = substV (P Bound n Erased) (instantiateRetTy sc)
     instantiateRetTy t = t

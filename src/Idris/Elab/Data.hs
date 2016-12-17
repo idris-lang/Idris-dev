@@ -267,7 +267,7 @@ forceArgs ctxt ty = forceFrom 0 ty
     -- then when we look at the return type, if we see MN pos name
     -- constructor guarded, then 'pos' is a forceable position
     forceFrom :: Int -> Type -> [Int]
-    forceFrom i (Bind n (Pi _ _ _) sc)
+    forceFrom i (Bind n (Pi _ _ _ _) sc)
        = forceFrom (i + 1) (substV (P Ref (sMN i "FF") Erased) sc)
     forceFrom i sc 
         -- Go under the top level type application
@@ -310,7 +310,7 @@ addParamConstraints fc ps cty cons
   where
     getParamNames (n, ty) = (ty, getPs ty)
 
-    getPs (Bind n (Pi _ _ _) sc)
+    getPs (Bind n (Pi _ _ _ _) sc)
        = getPs (substV (P Ref n Erased) sc)
     getPs t | (f, args) <- unApply t
        = paramArgs 0 args
@@ -321,7 +321,7 @@ addParamConstraints fc ps cty cons
 
     addConConstraint ps cvar (ty, pnames) = constraintTy ty
       where
-        constraintTy (Bind n (Pi _ ty _) sc)
+        constraintTy (Bind n (Pi _ _ ty _) sc)
            = case getRetTy ty of
                   TType avar -> do tit <- typeInType
                                    when (not tit) $ do

@@ -520,7 +520,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
         | Just v <- findDefault alts      = return $ Just (amap, v)
     chooseAlt env _ (VP _ n _, args) alts amap
         | Just (ns, sc) <- findFn n alts  = return $ Just (updateAmap (zip ns args) amap, sc)
-    chooseAlt env _ (VBind _ _ (Pi i s k) t, []) alts amap
+    chooseAlt env _ (VBind _ _ (Pi _ i s k) t, []) alts amap
         | Just (ns, sc) <- findFn (sUN "->") alts
            = do t' <- t (VV 0) -- we know it's not in scope or it's not a pattern
                 return $ Just (updateAmap (zip ns [s, t']) amap, sc)
@@ -645,8 +645,8 @@ convEq ctxt holes topx topy = ceq [] topx topy where
     ceq ps (Bind n (Lam t) (App _ x (P Bound n' _))) y
         | n == n' = ceq ps x y
 
-    ceq ps (Bind n (PVar t) sc) y = ceq ps sc y
-    ceq ps x (Bind n (PVar t) sc) = ceq ps x sc
+    ceq ps (Bind n (PVar _ t) sc) y = ceq ps sc y
+    ceq ps x (Bind n (PVar _ t) sc) = ceq ps x sc
     ceq ps (Bind n (PVTy t) sc) y = ceq ps sc y
     ceq ps x (Bind n (PVTy t) sc) = ceq ps x sc
 
@@ -662,7 +662,7 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         where
             ceqB ps (Let v t) (Let v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
-            ceqB ps (Pi i v t) (Pi i' v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
+            ceqB ps (Pi r i v t) (Pi r' i' v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
     -- Special case for 'case' blocks - size of scope causes complications,
     -- we only want to check the blocks themselves are valid and identical
@@ -999,7 +999,7 @@ simplifyCasedef n ei uctxt
                    _ -> return ctxt
         return uctxt { definitions = ctxt' }
   where
-    depat acc (Bind n (PVar t) sc)
+    depat acc (Bind n (PVar _ t) sc)
         = depat (n : acc) (instantiate (P Bound n t) sc)
     depat acc x = (acc, x)
     debind (Right (x, y)) = let (vs, x') = depat [] x

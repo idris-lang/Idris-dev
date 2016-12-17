@@ -376,7 +376,7 @@ findDets n ns =
             Just ty -> getDetPos 0 ns ty
             Nothing -> []
   where
-    getDetPos i ns (Bind n (Pi _ _ _) sc)
+    getDetPos i ns (Bind n (Pi _ _ _ _) sc)
        | n `elem` ns = i : getDetPos (i + 1) ns sc
        | otherwise = getDetPos (i + 1) ns sc
     getDetPos _ _ _ = []

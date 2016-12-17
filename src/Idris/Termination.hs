@@ -112,13 +112,13 @@ checkPositive mut_ns (cn, ty')
   where
     args t = [0..length (getArgTys t)-1]
 
-    cp i (Bind n (Pi _ aty _) sc)
+    cp i (Bind n (Pi _ _ aty _) sc)
          = posArg i aty && cp i sc
     cp i t | (P _ n' _ , args) <- unApply t,
              n' `elem` mut_ns = all noRec args
     cp i _ = True
 
-    posArg ist (Bind _ (Pi _ nty _) sc) = noRec nty && posArg ist sc
+    posArg ist (Bind _ (Pi _ _ nty _) sc) = noRec nty && posArg ist sc
     posArg ist t = posParams ist t
 
     noRec arg = all (\x -> x `notElem` mut_ns) (allTTNames arg)
@@ -429,8 +429,8 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
      = case lookupTy n (tt_ctxt ist) of
             [ty] -> expand 0 (normalise (tt_ctxt ist) [] ty) args
             _ -> args
-     where expand i (Bind n (Pi _ _ _) sc) (x : xs) = x : expand (i + 1) sc xs
-           expand i (Bind n (Pi _ _ _) sc) [] = Just (i, Same) : expand (i + 1) sc []
+     where expand i (Bind n (Pi _ _ _ _) sc) (x : xs) = x : expand (i + 1) sc xs
+           expand i (Bind n (Pi _ _ _ _) sc) [] = Just (i, Same) : expand (i + 1) sc []
            expand i _ xs = xs
 
   mkChange n args pargs = [(n, expandToArity n (sizes args))]
@@ -476,10 +476,10 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
               (nty == nty' || any (== nty') muts) && not co
       isInductive _ _ = False
 
-  dePat (Bind x (PVar ty) sc) = dePat (instantiate (P Bound x ty) sc)
+  dePat (Bind x (PVar _ ty) sc) = dePat (instantiate (P Bound x ty) sc)
   dePat t = t
 
-  patvars (Bind x (PVar _) sc) = x : patvars sc
+  patvars (Bind x (PVar _ _) sc) = x : patvars sc
   patvars _ = []
 
   allGuarded n ist = case lookupCtxtExact n (idris_flags ist) of

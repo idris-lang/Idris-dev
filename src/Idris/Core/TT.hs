@@ -854,7 +854,8 @@ deriving instance Binary ImplicitInfo
 -- of the 'Bind' constructor for the 'TT' type.
 data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
                 -- ^ A function binding
-              | Pi    { binderImpl :: Maybe ImplicitInfo,
+              | Pi    { binderCount :: RigCount,
+                        binderImpl :: Maybe ImplicitInfo,
                         binderTy  :: !b,
                         binderKind :: !b }
                 -- ^ A binding that occurs in a function type
@@ -886,7 +887,8 @@ data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}
                 -- substituted - the guess is to keep it
                 -- computationally inert while working on other things
                 -- if necessary.
-              | PVar  { binderTy  :: !b }
+              | PVar  { binderCount :: RigCount,
+                        binderTy  :: !b }
                 -- ^ A pattern variable (these are bound around terms
                 -- that make up pattern-match clauses)
               | PVTy  { binderTy  :: !b }
@@ -898,13 +900,13 @@ deriving instance Binary Binder
 
 instance Sized a => Sized (Binder a) where
   size (Lam ty) = 1 + size ty
-  size (Pi _ ty _) = 1 + size ty
+  size (Pi _ _ ty _) = 1 + size ty
   size (Let ty val) = 1 + size ty + size val
   size (NLet ty val) = 1 + size ty + size val
   size (Hole ty) = 1 + size ty
   size (GHole _ _ ty) = 1 + size ty
   size (Guess ty val) = 1 + size ty + size val
-  size (PVar ty) = 1 + size ty
+  size (PVar _ ty) = 1 + size ty
   size (PVTy ty) = 1 + size ty
 
 fmapMB :: Monad m => (a -> m b) -> Binder a -> m (Binder b)
@@ -912,10 +914,10 @@ fmapMB f (Let t v)   = liftM2 Let (f t) (f v)
 fmapMB f (NLet t v)  = liftM2 NLet (f t) (f v)
 fmapMB f (Guess t v) = liftM2 Guess (f t) (f v)
 fmapMB f (Lam t)     = liftM Lam (f t)
-fmapMB f (Pi i t k)  = liftM2 (Pi i) (f t) (f k)
+fmapMB f (Pi c i t k)  = liftM2 (Pi c i) (f t) (f k)
 fmapMB f (Hole t)    = liftM Hole (f t)
 fmapMB f (GHole i ns t) = liftM (GHole i ns) (f t)
-fmapMB f (PVar t)    = liftM PVar (f t)
+fmapMB f (PVar c t)    = liftM (PVar c) (f t)
 fmapMB f (PVTy t)    = liftM PVTy (f t)
 
 raw_apply :: Raw -> [Raw] -> Raw
@@ -1127,7 +1129,7 @@ isInjective (P (DCon _ _ _) _ _) = True
 isInjective (P (TCon _ _) _ _) = True
 isInjective (Constant _)       = True
 isInjective (TType x)          = True
-isInjective (Bind _ (Pi _ _ _) sc) = True
+isInjective (Bind _ (Pi _ _ _ _) sc) = True
 isInjective (App _ f a)        = isInjective f
 isInjective _                  = False
 
@@ -1361,7 +1363,7 @@ freeNames t = nub $ freeNames' t
 
 -- | Return the arity of a (normalised) type
 arity :: TT n -> Int
-arity (Bind n (Pi _ t _) sc) = 1 + arity sc
+arity (Bind n (Pi _ _ t _) sc) = 1 + arity sc
 arity _ = 0
 
 -- | Deconstruct an application; returns the function and a list of arguments
@@ -1457,22 +1459,22 @@ bindTyArgs b xs = bindAll (map (\ (n, ty) -> (n, b ty)) xs)
 -- | Return a list of pairs of the names of the outermost 'Pi'-bound
 -- variables in the given term, together with their types.
 getArgTys :: TT n -> [(n, TT n)]
-getArgTys (Bind n (PVar _) sc) = getArgTys sc
+getArgTys (Bind n (PVar _ _) sc) = getArgTys sc
 getArgTys (Bind n (PVTy _) sc) = getArgTys sc
-getArgTys (Bind n (Pi _ t _) sc) = (n, t) : getArgTys sc
+getArgTys (Bind n (Pi _ _ t _) sc) = (n, t) : getArgTys sc
 getArgTys _ = []
 
 getRetTy :: TT n -> TT n
-getRetTy (Bind n (PVar _) sc) = getRetTy sc
+getRetTy (Bind n (PVar _ _) sc) = getRetTy sc
 getRetTy (Bind n (PVTy _) sc) = getRetTy sc
-getRetTy (Bind n (Pi _ _ _) sc)   = getRetTy sc
+getRetTy (Bind n (Pi _ _ _ _) sc)   = getRetTy sc
 getRetTy sc = sc
 
 -- | As getRetTy but substitutes names for de Bruijn indices
 substRetTy :: TT n -> TT n
-substRetTy (Bind n (PVar ty) sc) = substRetTy (substV (P Ref n ty) sc)
+substRetTy (Bind n (PVar _ ty) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy (Bind n (PVTy ty) sc) = substRetTy (substV (P Ref n ty) sc)
-substRetTy (Bind n (Pi _ ty _) sc) = substRetTy (substV (P Ref n ty) sc)
+substRetTy (Bind n (Pi _ _ ty _) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy sc = sc
    
 
@@ -1589,7 +1591,7 @@ prettyEnv env t = prettyEnv' env t False
         else
           lbracket <+> text (show i) <+> rbracket
       | otherwise      = text "unbound" <+> text (show i) <+> text "!"
-    prettySe p env (Bind n b@(Pi _ t _) sc) debug
+    prettySe p env (Bind n b@(Pi _ _ t _) sc) debug
       | noOccurrence n sc && not debug =
           bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, Rig0, b):env) sc debug
     prettySe p env (Bind n b sc) debug =
@@ -1609,8 +1611,11 @@ prettyEnv env t = prettyEnv' env t False
     prettySb env n (Lam t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
     prettySb env n (GHole _ _ t) = prettyB env "?gdefer" "." n t
-    prettySb env n (Pi _ t _) = prettyB env "(" ") ->" n t
-    prettySb env n (PVar t) = prettyB env "pat" "." n t
+    prettySb env n (Pi Rig0 _ t _) = prettyB env "(" ") ->" n t
+    prettySb env n (Pi Rig1 _ t _) = prettyB env "(" ") -o" n t
+    prettySb env n (Pi RigW _ t _) = prettyB env "(" ") ->" n t
+    prettySb env n (PVar Rig1 t) = prettyB env "pat 1 " "." n t
+    prettySb env n (PVar _ t) = prettyB env "pat" "." n t
     prettySb env n (PVTy t) = prettyB env "pty" "." n t
     prettySb env n (Let t v) = prettyBv env "let" "in" n t v
     prettySb env n (NLet t v) = prettyBv env "nlet" "in" n t v
@@ -1636,12 +1641,13 @@ showEnv' env t dbg = se 10 env t where
                                     = (show $ fstEnv $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
-    se p env (Bind n b@(Pi (Just _) t k) sc)
-         = bracket p 2 $ sb env n b ++ se 10 ((n,Rig0,b):env) sc
-    se p env (Bind n b@(Pi _ t k) sc)
-        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ arrow k ++ se 10 ((n,Rig0,b):env) sc
-       where arrow (TType _) = " -> "
-             arrow u = " [" ++ show u ++ "] -> "
+    se p env (Bind n b@(Pi rig (Just _) t k) sc)
+         = bracket p 2 $ sb env n b ++ se 10 ((n, rig, b):env) sc
+    se p env (Bind n b@(Pi rig _ t k) sc)
+        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ arrow rig ++ se 10 ((n,Rig0,b):env) sc
+       where arrow Rig0 = " -> "
+             arrow Rig1 = " -o "
+             arrow RigW = " -> "
     se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,Rig0,b):env) sc
     se p env (App _ f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Proj x i) = se 1 env x ++ "!" ++ show i
@@ -1655,9 +1661,12 @@ showEnv' env t dbg = se 10 env t where
     sb env n (Lam t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
     sb env n (GHole i ns t) = showb env "?defer " ". " n t
-    sb env n (Pi (Just _) t _)   = showb env "{" "} -> " n t
-    sb env n (Pi _ t _)   = showb env "(" ") -> " n t
-    sb env n (PVar t) = showb env "pat " ". " n t
+    sb env n (Pi Rig1 (Just _) t _)   = showb env "{" "} -o " n t
+    sb env n (Pi _ (Just _) t _)   = showb env "{" "} -> " n t
+    sb env n (Pi Rig1 _ t _)   = showb env "(" ") -0 " n t
+    sb env n (Pi _ _ t _)   = showb env "(" ") -> " n t
+    sb env n (PVar Rig1 t) = showb env "pat 1 " ". " n t
+    sb env n (PVar _ t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t
     sb env n (Let t v)   = showbv env "let " " in " n t v
     sb env n (NLet t v)   = showbv env "nlet " " in " n t v
@@ -1765,13 +1774,13 @@ pprintTT bound tm = pp startPrec bound tm
     ppb p bound n (Lam ty) sc =
       bracket p startPrec . group . align . hang 2 $
       text "λ" <+> bindingOf n False <+> text "." <> line <> sc
-    ppb p bound n (Pi _ ty k) sc =
+    ppb p bound n (Pi rig _ ty k) sc =
       bracket p startPrec . group . align $
       lparen <> (bindingOf n False) <+> colon <+>
       (group . align) (pp startPrec bound ty) <>
-      rparen <+> mkArrow k <> line <> sc
-        where mkArrow (UType UniqueType) = text "⇴"
-              mkArrow (UType NullType) = text "⥛"
+      rparen <+> mkArrow rig <> line <> sc
+        where mkArrow Rig1 = text "⇴"
+              mkArrow Rig0 = text "⥛"
               mkArrow _ = text "→"
     ppb p bound n (Let ty val) sc =
       bracket p startPrec . group . align $
@@ -1800,7 +1809,7 @@ pprintTT bound tm = pp startPrec bound tm
       text "?" <> bindingOf n False <+>
       text "≈" <+> pp startPrec bound val <+>
       text "." <> line <> sc
-    ppb p bound n (PVar ty) sc =
+    ppb p bound n (PVar _ ty) sc =
       bracket p startPrec . group . align . hang 2 $
       annotate AnnKeyword (text "pat") <+>
       bindingOf n False <+> colon <+> pp startPrec bound ty <+>
@@ -1853,8 +1862,8 @@ pprintRaw bound (RBind n b body) =
   where
     ppb (Lam ty) = enclose lparen rparen . group . align . hang 2 $
                    text "Lam" <$> pprintRaw bound ty
-    ppb (Pi _ ty k) = enclose lparen rparen . group . align . hang 2 $
-                      vsep [text "Pi", pprintRaw bound ty, pprintRaw bound k]
+    ppb (Pi _ _ ty k) = enclose lparen rparen . group . align . hang 2 $
+                        vsep [text "Pi", pprintRaw bound ty, pprintRaw bound k]
     ppb (Let ty v) = enclose lparen rparen . group . align . hang 2 $
                      vsep [text "Let", pprintRaw bound ty, pprintRaw bound v]
     ppb (NLet ty v) = enclose lparen rparen . group . align . hang 2 $
@@ -1865,8 +1874,8 @@ pprintRaw bound (RBind n b body) =
                          text "GHole" <$> pprintRaw bound ty
     ppb (Guess ty v) = enclose lparen rparen . group . align . hang 2 $
                        vsep [text "Guess", pprintRaw bound ty, pprintRaw bound v]
-    ppb (PVar ty) = enclose lparen rparen . group . align . hang 2 $
-                    text "PVar" <$> pprintRaw bound ty
+    ppb (PVar _ ty) = enclose lparen rparen . group . align . hang 2 $
+                      text "PVar" <$> pprintRaw bound ty
     ppb (PVTy ty) = enclose lparen rparen . group . align . hang 2 $
                     text "PVTy" <$> pprintRaw bound ty
 pprintRaw bound (RApp f x) =

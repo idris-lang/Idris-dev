@@ -490,6 +490,19 @@ instance Binary Raw where
                            return (RUType x1)
                    _ -> error "Corrupted binary data for Raw"
 
+instance Binary RigCount where
+        put x = case x of
+                     Rig0 -> putWord8 0
+                     Rig1 -> putWord8 1
+                     RigW -> putWord8 2
+        get = do i <- getWord8
+                 case i of
+                     0 -> return Rig0
+                     1 -> return Rig1
+                     2 -> return RigW
+                     _ -> error "Corrupted binary data for RigCount"
+
+
 instance Binary ImplicitInfo where
         put x
           = case x of
@@ -504,10 +517,11 @@ instance (Binary b) => Binary (Binder b) where
           = case x of
                 Lam x1 -> do putWord8 0
                              put x1
-                Pi x1 x2 x3 -> do putWord8 1
-                                  put x1
-                                  put x2
-                                  put x3
+                Pi x1 x2 x3 x4 -> do putWord8 1
+                                     put x1
+                                     put x2
+                                     put x3
+                                     put x4
                 Let x1 x2 -> do putWord8 2
                                 put x1
                                 put x2
@@ -523,8 +537,9 @@ instance (Binary b) => Binary (Binder b) where
                 Guess x1 x2 -> do putWord8 6
                                   put x1
                                   put x2
-                PVar x1 -> do putWord8 7
-                              put x1
+                PVar x1 x2 -> do putWord8 7
+                                 put x1
+                                 put x2
                 PVTy x1 -> do putWord8 8
                               put x1
         get
@@ -535,7 +550,8 @@ instance (Binary b) => Binary (Binder b) where
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (Pi x1 x2 x3)
+                           x4 <- get
+                           return (Pi x1 x2 x3 x4)
                    2 -> do x1 <- get
                            x2 <- get
                            return (Let x1 x2)
@@ -552,7 +568,8 @@ instance (Binary b) => Binary (Binder b) where
                            x2 <- get
                            return (Guess x1 x2)
                    7 -> do x1 <- get
-                           return (PVar x1)
+                           x2 <- get
+                           return (PVar x1 x2)
                    8 -> do x1 <- get
                            return (PVTy x1)
                    _ -> error "Corrupted binary data for Binder"

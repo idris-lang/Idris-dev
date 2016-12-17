@@ -346,7 +346,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
         TermPart ty,
         TextPart "using proof search, but proof search only works on datatypes with constructors."] ++
        case ty of
-         (Bind _ (Pi _ _ _) _) -> [TextPart "In particular, function types are not supported."]
+         (Bind _ (Pi _ _ _ _) _) -> [TextPart "In particular, function types are not supported."]
          _ -> []
 
 -- | Resolve interfaces. This will only pick up 'normal'
@@ -475,9 +475,9 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
 
     introImps = do g <- goal
                    case g of
-                        (Bind _ (Pi _ _ _) sc) -> do attack; intro Nothing
-                                                     num <- introImps
-                                                     return (num + 1)
+                        (Bind _ (Pi _ _ _ _) sc) -> do attack; intro Nothing
+                                                       num <- introImps
+                                                       return (num + 1)
                         _ -> return 0
 
     solven n = replicateM_ n solve

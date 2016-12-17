@@ -33,7 +33,7 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
     -- Assume pattern bindings match in l and r (if they don't just treat
     -- the rule as invalid and return t)
 
-    applyNames ns t (Bind n (PVar ty) scl) (Bind n' (PVar ty') scr)
+    applyNames ns t (Bind n (PVar _ ty) scl) (Bind n' (PVar _ ty') scr)
        | n == n' = applyNames (n : ns) t (instantiate (P Ref n ty) scl)
                                          (instantiate (P Ref n' ty') scr)
        | otherwise = t

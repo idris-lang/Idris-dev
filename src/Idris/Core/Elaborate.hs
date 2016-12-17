@@ -327,7 +327,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
         isInj ctxt (App _ f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
-        isInj ctxt (Bind _ (Pi _ _ _) sc) = True
+        isInj ctxt (Bind _ (Pi _ _ _ _) sc) = True
         isInj ctxt _ = False
 
 -- | get implementation argument names
@@ -589,7 +589,7 @@ prepare_apply fn imps =
        return $! claims
   where
     argsOK :: Type -> [a] -> Bool
-    argsOK (Bind n (Pi _ _ _) sc) (i : is) = argsOK sc is
+    argsOK (Bind n (Pi _ _ _ _) sc) (i : is) = argsOK sc is
     argsOK _ (i : is) = False
     argsOK _ [] = True
 
@@ -598,7 +598,7 @@ prepare_apply fn imps =
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi _ t_in _) sc) (i : is) claims hs =
+    mkClaims (Bind n' (Pi _ _ t_in _) sc) (i : is) claims hs =
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
@@ -712,7 +712,7 @@ apply_elab n args =
     priOrder _ Nothing = GT
     priOrder (Just (x, _)) (Just (y, _)) = compare x y
 
-    doClaims (Bind n' (Pi _ t _) sc) (i : is) claims =
+    doClaims (Bind n' (Pi _ _ t _) sc) (i : is) claims =
         do n <- unique_hole (mkMN n')
            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
@@ -749,13 +749,13 @@ checkPiGoal n
                  ctxt <- get_context
                  env <- get_env
                  case (whnf ctxt env g) of
-                    Bind _ (Pi _ _ _) _ -> return ()
+                    Bind _ (Pi _ _ _ _) _ -> return ()
                     _ -> do a <- getNameFrom (sMN 0 "__pargTy")
                             b <- getNameFrom (sMN 0 "__pretTy")
                             f <- getNameFrom (sMN 0 "pf")
                             claim a RType
                             claim b RType
-                            claim f (RBind n (Pi Nothing (Var a) RType) (Var b))
+                            claim f (RBind n (Pi RigW Nothing (Var a) RType) (Var b))
                             movelast a
                             movelast b
                             fill (Var f)
@@ -775,7 +775,7 @@ infer_app infer fun arg str =
        s <- getNameFrom (sMN 0 "is")
        claim a RType
        claim b RType
-       claim f (RBind (sMN 0 "_aX") (Pi Nothing (Var a) RType) (Var b))
+       claim f (RBind (sMN 0 "_aX") (Pi RigW Nothing (Var a) RType) (Var b))
        tm <- get_term
        start_unify s
        -- if 'infer' is set, we're assuming it's a simply typed application
@@ -826,7 +826,7 @@ dep_app fun arg str =
        case whnf ctxt env fty of
             -- if f gives a function type, unify our argument type with
             -- f's expected argument type
-            Bind _ (Pi _ argty _) _ -> unifyGoal (forget argty)
+            Bind _ (Pi _ _ argty _) _ -> unifyGoal (forget argty)
             -- Can't infer a type for 'f', so fail here (and drop back to
             -- simply typed application where we infer the type for f)
             _ -> fail "Can't make type"
