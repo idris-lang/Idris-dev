@@ -155,7 +155,7 @@ total lteAntisymetric : {n : Nat} -> {m : Nat} -> LTE n m -> LTE m n -> n = m
 lteAntisymetric {n = Z} {m = Z} LTEZero LTEZero = Refl
 lteAntisymetric {n = (S j)} {m = (S k)} (LTESucc x) (LTESucc y) =
   let inductiveHypothesis = lteAntisymetric {n = j} {m = k} x y
-  in eqSucc j k inductiveHypothesis
+  in cong inductiveHypothesis
 
 total lteAddRight : (n : Nat) -> LTE n (plus n m)
 lteAddRight Z = LTEZero
