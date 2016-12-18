@@ -299,7 +299,7 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
                          OK (_, UType AllTypes) -> True
                          _ -> False in
              do getUniqB env us b
-                getUniq ((n, Rig0, b):env) ((n, uniq):us) sc
+                getUniq ((n, RigW, b):env) ((n, uniq):us) sc
     getUniq env us (App _ f a) = do getUniq env us f; getUniq env us a
     getUniq env us (V i)
        | i < length us = if snd (us!!i) then use (fst (us!!i)) else return ()
@@ -574,7 +574,7 @@ hasEmptyPat ctxt tyctxt (Bind n (PVar _ ty) sc)
 hasEmptyPat ctxt tyctxt _ = False
 
 -- Find names which are applied to a function in a Rig1 position
-findLinear :: IState -> [Name] -> Term -> [Name]
+findLinear :: IState -> [Name] -> Term -> [(Name, RigCount)]
 findLinear ist env tm | (P _ f _, args) <- unApply tm,
                         f `notElem` env,
                         Just ty_in <- lookupTyExact f (tt_ctxt ist)
@@ -582,7 +582,8 @@ findLinear ist env tm | (P _ f _, args) <- unApply tm,
           nub $ concatMap (findLinear ist env) args ++ findLinArg ty args
   where
     findLinArg (Bind n (Pi c _ _ _) sc) (P _ a _ : as)
-         | Rig1 <- c = a : findLinArg sc as
+         | Rig0 <- c = (a, c) : findLinArg sc as
+         | Rig1 <- c = (a, c) : findLinArg sc as
     findLinArg (Bind n (Pi _ _ _ _) sc) (a : as) = findLinArg sc as
     findLinArg _ _ = []
 findLinear ist env (App _ f a) 
@@ -590,10 +591,26 @@ findLinear ist env (App _ f a)
 findLinear ist env (Bind n b sc) = findLinear ist (n : env) sc
 findLinear ist _ _ = []
 
-setLinear :: [Name] -> Term -> Term
+setLinear :: [(Name, RigCount)] -> Term -> Term
 setLinear ns (Bind n b@(PVar r t) sc) 
-   | n `elem` ns = Bind n (PVar Rig1 t) (setLinear ns sc)
+   | Just r <- lookup n ns = Bind n (PVar r t) (setLinear ns sc)
    | otherwise = Bind n b (setLinear ns sc)
 setLinear ns tm = tm
+
+-- Assume type is at least in whnfArgs form
+linearCheck :: FC -> Type -> Idris ()
+linearCheck fc t = do ist <- getIState
+                      checkArgs ist t
+  where 
+    checkArgs ist (Bind n (Pi RigW _ ty _) sc)
+        | (P _ f _, _) <- unApply ty
+            = case lookupCtxtExact f (idris_datatypes ist) of
+                   Just ti | linear_con ti ->
+                        ierror $ At fc $
+                           Msg $ show ty ++ " has a linear constructor, so must have count <= 1"
+                   _ -> return ()
+    checkArgs ist (Bind n (Pi _ _ _ _) sc) 
+          = checkArgs ist (substV (P Bound n Erased) sc)
+    checkArgs ist _ = return ()
 
 

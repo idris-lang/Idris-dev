@@ -114,7 +114,7 @@ toTT (EConstant c) = return (Constant c)
 toTT (EThunk ctxt env tm) = do env' <- mapM toBinder env
                                return $ normalise ctxt env' tm
   where toBinder (n, v) = do v' <- toTT v
-                             return (n, Rig0, Let Erased v')
+                             return (n, RigW, Let Erased v')
 toTT (EHandle _) = execFail $ Msg "Can't convert handles back to TT after execution."
 toTT (EPtr ptr) = execFail $ Msg "Can't convert pointers back to TT after execution."
 

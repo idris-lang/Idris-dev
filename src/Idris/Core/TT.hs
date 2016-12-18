@@ -1126,7 +1126,9 @@ data TypeInfo = TI { con_names :: [Name],
                      codata :: Bool,
                      data_opts :: DataOpts,
                      param_pos :: [Int],
-                     mutual_types :: [Name] }
+                     mutual_types :: [Name],
+                     linear_con :: Bool -- is there a linear argument?
+                   }
     deriving (Show, Generic)
 {-!
 deriving instance Binary TypeInfo
@@ -1691,6 +1693,7 @@ showEnv' env t dbg = se 10 env t where
     sb env n (Pi _ (Just _) t _)   = showb env "{" "} -> " n t
     sb env n (Pi Rig1 _ t _)   = showb env "(" ") -0 " n t
     sb env n (Pi _ _ t _)   = showb env "(" ") -> " n t
+    sb env n (PVar Rig0 t) = showb env "pat 0 " ". " n t
     sb env n (PVar Rig1 t) = showb env "pat 1 " ". " n t
     sb env n (PVar _ t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t

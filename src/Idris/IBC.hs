@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 158
+ibcVersion = 159
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -2424,17 +2424,19 @@ instance Binary FnInfo where
                return (FnInfo x1)
 
 instance Binary TypeInfo where
-        put (TI x1 x2 x3 x4 x5) = do put x1
-                                     put x2
-                                     put x3
-                                     put x4
-                                     put x5
+        put (TI x1 x2 x3 x4 x5 x6) = do put x1
+                                        put x2
+                                        put x3
+                                        put x4
+                                        put x5
+                                        put x6
         get = do x1 <- get
                  x2 <- get
                  x3 <- get
                  x4 <- get
                  x5 <- get
-                 return (TI x1 x2 x3 x4 x5)
+                 x6 <- get
+                 return (TI x1 x2 x3 x4 x5 x6)
 
 instance Binary SynContext where
         put x

@@ -181,6 +181,10 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          let nty' = normalise ctxt [] nty
          logElab 2 $ "Rechecked to " ++ show nty'
 
+         -- If we use any types with linear constructor arguments, we'd better
+         -- make sure they are use-once
+         linearCheck fc nty'
+
          -- Add function name to internals (used for making :addclause know
          -- the name unambiguously)
          i <- getIState
@@ -192,7 +196,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          let (fam, _) = unApply (getRetTy nty')
          let corec = case fam of
                         P _ rcty _ -> case lookupCtxt rcty (idris_datatypes i) of
-                                        [TI _ True _ _ _] -> True
+                                        [TI _ True _ _ _ _] -> True
                                         _ -> False
                         _ -> False
          -- Productivity checking now via checking for guarded 'Delay'

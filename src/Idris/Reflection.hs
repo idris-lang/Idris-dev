@@ -826,7 +826,7 @@ reflectEnv = foldr consToEnvList emptyEnvList . envBinders
 -- Reflected environments don't get the RigCount (for the moment, at least)
 reifyEnv :: Term -> ElabD Env
 reifyEnv tm = do preEnv <- reifyList (reifyPair reifyTTName (reifyTTBinder reifyTT (reflm "TT"))) tm
-                 return $ map (\(n, b) -> (n, Rig0, b)) preEnv
+                 return $ map (\(n, b) -> (n, RigW, b)) preEnv
 
 -- | Reflect an error into the internal datatype of Idris -- TODO
 rawBool :: Bool -> Raw

@@ -119,6 +119,7 @@ check' holes tcns ctxt env top
       | otherwise = do lift $ tfail $ NoSuchVariable n
     where rigSafe True _    _    n = Nothing
           rigSafe _    Rig1 RigW n = Just ("Trying to use linear name " ++ show n ++ " in non-linear context")
+          rigSafe _    Rig0 RigW n = Just ("Trying to use irrelevant name " ++ show n ++ " in relevant context")
           rigSafe _    _    _    n = Nothing
 
           used Rig0 n = []
@@ -263,9 +264,10 @@ check' holes tcns ctxt env top
                  return (Lam rig tv, tt, [])
           checkBinder (Let t v)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
-                 -- May have multiple uses, check at RigW.
+                 -- May have multiple uses, check at RigW 
+                 -- (or rather, like an application of a lambda, multiply)
                  -- (Consider: adding a single use let?)
-                 (vv, vt, vns) <- chk RigW u Nothing env v
+                 (vv, vt, vns) <- chk (rigMult rigc RigW) u Nothing env v
                  let tv' = normalise ctxt env tv
                  convertsC ctxt env vt tv
                  convType tcns ctxt env tt

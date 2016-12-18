@@ -104,7 +104,8 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
          -- TI contains information about mutually declared types - this will
          -- be updated when the mutual block is complete
          putIState (i { idris_datatypes =
-                          addDef n (TI (map fst cons) codata opts params [n])
+                          addDef n (TI (map fst cons) codata opts params [n]
+                                             (any linearArg (map snd cons)))
                                              (idris_datatypes i) })
          addIBC (IBCDef n)
          addIBC (IBCData n)
@@ -172,6 +173,10 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
                        inblock = newb,
                        liftname = id -- Is this appropriate?
                      }
+
+        linearArg (Bind n (Pi Rig1 _ _ _) sc) = True
+        linearArg (Bind n (Pi _ _ _ _) sc) = linearArg sc
+        linearArg _ = False
 
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
            Type -> -- for unique kind checking

@@ -185,7 +185,7 @@ checkTotality path fc n
                             case unApply (getRetTy ty) of
                               (P _ tyn _, _) -> do
                                  let ms = case lookupCtxt tyn (idris_datatypes i) of
-                                       [TI _ _ _ _ xs@(_:_)] -> xs
+                                       [TI _ _ _ _ xs@(_:_) _] -> xs
                                        ts -> [tyn]
                                  checkPositive ms (n, ty)
                               _-> return $ Total []
@@ -471,7 +471,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
 
       isInductive (P _ nty _) (P _ nty' _) =
           let (co, muts) = case lookupCtxt nty (idris_datatypes ist) of
-                                [TI _ x _ _ muts] -> (x, muts)
+                                [TI _ x _ _ muts _] -> (x, muts)
                                 _ -> (False, []) in
               (nty == nty' || any (== nty') muts) && not co
       isInductive _ _ = False

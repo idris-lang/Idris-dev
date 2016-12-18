@@ -650,8 +650,8 @@ findUnique ctxt env (Bind n b sc)
                      OK (_, UType NullType) -> True
                      OK (_, UType AllTypes) -> True
                      _ -> False in
-         if uniq then n : findUnique ctxt ((n, Rig0, b) : env) sc
-                 else findUnique ctxt ((n, Rig0, b) : env) sc
+         if uniq then n : findUnique ctxt ((n, RigW, b) : env) sc
+                 else findUnique ctxt ((n, RigW, b) : env) sc
 findUnique _ _ _ = []
 
 getUnfolds (UnfoldIface n ns : _) = Just (n, ns)
@@ -922,7 +922,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         rev <- case ret_fam of
                     P _ rfamn _ ->
                         case lookupCtxt rfamn (idris_datatypes i) of
-                             [TI _ _ dopts _ _] ->
+                             [TI _ _ dopts _ _ _] ->
                                  return (DataErrRev `elem` dopts &&
                                          size clhs <= size crhs)
                              _ -> return False

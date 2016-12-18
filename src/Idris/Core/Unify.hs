@@ -508,7 +508,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     un' env fn bnames (Bind x bx sx) (Bind y by sy)
         | sameBinder bx by
            = do h1 <- uB env bnames bx by
-                h2 <- un' ((x, Rig0, bx) : env) False (((x,y),binderTy bx):bnames) sx sy
+                h2 <- un' ((x, RigW, bx) : env) False (((x,y),binderTy bx):bnames) sx sy
                 combine env bnames h1 h2
       where sameBinder (Lam _ _) (Lam _ _) = True
             sameBinder (Pi _ i _ _) (Pi _ i' _ _) = True

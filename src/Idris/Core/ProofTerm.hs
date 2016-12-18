@@ -84,7 +84,7 @@ findHole n env t = fh' env Top t where
       | Just (p, env', tm) <- fh' env path f = Just (AppL s p a, env', tm)
   fh' env path (Bind x b sc)
       | Just (bp, env', tm) <- fhB env path b = Just (InBind x bp sc, env', tm)
-      | Just (p, env', tm) <- fh' ((x,Rig0,b):env) path sc = Just (InScope x b p, env', tm)
+      | Just (p, env', tm) <- fh' ((x,RigW,b):env) path sc = Just (InScope x b p, env', tm)
   fh' _ _ _ = Nothing
 
   fhB env path (Let t v)
@@ -297,10 +297,10 @@ goal h pt@(PT path env sub ups)
     g env (Bind n b@(Guess _ _) sc)
                         | same h n = return $ GD env b
                         | otherwise
-                           = gb env b `mplus` g ((n, Rig0, b):env) sc
+                           = gb env b `mplus` g ((n, RigW, b):env) sc
     g env (Bind n b sc) | hole b && same h n = return $ GD env b
                         | otherwise
-                           = g ((n, Rig0, b):env) sc `mplus` gb env b
+                           = g ((n, RigW, b):env) sc `mplus` gb env b
     g env (App Complete f a) = fail "Can't find hole"
     g env (App _ f a) = g env a `mplus` g env f
     g env t           = fail "Can't find hole"
@@ -338,12 +338,12 @@ atHole h f c e pt -- @(PT path env sub)
             = do -- binder first
                  (b', u) <- ulift2 f c env Guess t v
                  if u then return (Bind n b' sc, True)
-                      else do (sc', u) <- atH f c ((n, Rig0, b) : env) sc
+                      else do (sc', u) <- atH f c ((n, RigW, b) : env) sc
                               return (Bind n b' sc', u)
     atH f c env binder@(Bind n b sc)
         | hole b && same h n = updated (f c env binder)
         | otherwise -- scope first
-            = do (sc', u) <- atH f c ((n, Rig0, b) : env) sc
+            = do (sc', u) <- atH f c ((n, RigW, b) : env) sc
                  if u then return (Bind n b sc', True)
                       else do (b', u) <- atHb f c env b
                               return (Bind n b' sc', u)

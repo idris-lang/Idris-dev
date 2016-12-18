@@ -1242,7 +1242,7 @@ elab ist info emode opts fn tm
                            _ -> False
              case quoted of
                Just q -> do ctxt <- get_context
-                            (q', _, _) <- lift $ recheck (constraintNS info) ctxt [(uq, Rig0, Lam Rig0 Erased) | uq <- unquoteNames] (forget q) q
+                            (q', _, _) <- lift $ recheck (constraintNS info) ctxt [(uq, RigW, Lam RigW Erased) | uq <- unquoteNames] (forget q) q
                             if pattern
                               then if isRaw
                                       then reflectRawQuotePattern unquoteNames (forget q')
@@ -2831,7 +2831,7 @@ processTacticDecls info steps =
          mapM_ (addIBC . IBCDef . cn) ctors
          ctxt <- getContext
          let params = findParams tyn (normalise ctxt [] tyconTy) (map cty ctors)
-         let typeInfo = TI (map cn ctors) False [] params []
+         let typeInfo = TI (map cn ctors) False [] params [] False
          -- implicit precondition to IBCData is that idris_datatypes on the IState is populated.
          -- otherwise writing the IBC just fails silently!
          updateIState $ \i -> i { idris_datatypes =

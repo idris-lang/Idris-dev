@@ -1517,7 +1517,7 @@ pprintDef asCore n =
         ppMissing _ = empty
 
         ppTy :: Bool -> IState -> (Name, TypeInfo) -> Doc OutputAnnotation
-        ppTy amb ist (n, TI constructors isCodata _ _ _)
+        ppTy amb ist (n, TI constructors isCodata _ _ _ _)
           = kwd key <+> prettyName True amb [] n <+> colon <+>
             align (pprintDelabTy ist n) <+> kwd "where" <$>
             indent 2 (vsep (map (ppCon False ist) constructors))
