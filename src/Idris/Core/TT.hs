@@ -49,7 +49,8 @@ module Idris.Core.TT(
   , substV, sUN, tcname, termSmallerThan, tfail, thead, tnull
   , toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName
   , uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm
-  , fstEnv, rigEnv, sndEnv, lookupBinder, envBinders
+  , rigPlus, rigMult, fstEnv, rigEnv, sndEnv, lookupBinder, envBinders
+  , envZero
   ) where
 
 import Util.Pretty hiding (Str)
@@ -1070,6 +1071,28 @@ instance Pretty a o => Pretty (TT a) o where
 data RigCount = Rig0 | Rig1 | RigW
   deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
+rigPlus :: RigCount -> RigCount -> RigCount
+rigPlus Rig0 Rig0 = Rig0
+rigPlus Rig0 Rig1 = Rig1
+rigPlus Rig0 RigW = RigW
+rigPlus Rig1 Rig0 = Rig1
+rigPlus Rig1 Rig1 = RigW
+rigPlus Rig1 RigW = RigW
+rigPlus RigW Rig0 = RigW
+rigPlus RigW Rig1 = RigW
+rigPlus RigW RigW = RigW
+
+rigMult :: RigCount -> RigCount -> RigCount
+rigMult Rig0 Rig0 = Rig0
+rigMult Rig0 Rig1 = Rig0
+rigMult Rig0 RigW = Rig0
+rigMult Rig1 Rig0 = Rig0
+rigMult Rig1 Rig1 = Rig1
+rigMult Rig1 RigW = RigW
+rigMult RigW Rig0 = Rig0
+rigMult RigW Rig1 = RigW
+rigMult RigW RigW = RigW
+
 type EnvTT n = [(n, RigCount, Binder (TT n))]
 
 fstEnv (n, c, b) = n
@@ -1077,6 +1100,7 @@ rigEnv (n, c, b) = c
 sndEnv (n, c, b) = b
 
 envBinders = map (\(n, _, b) -> (n, b))
+envZero = map (\(n, _, b) -> (n, Rig0, b))
 
 lookupBinder :: Eq n => n -> EnvTT n -> Maybe (Binder (TT n))
 lookupBinder n = lookup n . envBinders

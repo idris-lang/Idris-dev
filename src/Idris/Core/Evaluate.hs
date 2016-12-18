@@ -1180,11 +1180,11 @@ lookupVal n ctxt
           (TyDecl nt ty) -> return (VP nt n (veval ctxt [] ty))
           _ -> []
 
-lookupTyEnv :: Name -> Env -> Maybe (Int, Type)
-lookupTyEnv n env = li n 0 (envBinders env) where
+lookupTyEnv :: Name -> Env -> Maybe (Int, RigCount, Type)
+lookupTyEnv n env = li n 0 env where
   li n i []           = Nothing
-  li n i ((x, b): xs)
-             | n == x = Just (i, binderTy b)
+  li n i ((x, r, b): xs)
+             | n == x = Just (i, r, binderTy b)
              | otherwise = li n (i+1) xs
 
 -- | Create a unique name given context and other existing names
