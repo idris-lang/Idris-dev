@@ -530,9 +530,9 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
                                             k' <- getPats k
                                             sc' <- getPats sc
                                             return (Bind n (Pi rig i t' k') sc')
-    getPats (Bind n (Lam t) sc) = do t' <- getPats t
-                                     sc' <- getPats sc
-                                     return (Bind n (Lam t') sc')
+    getPats (Bind n (Lam r t) sc) = do t' <- getPats t
+                                       sc' <- getPats sc
+                                       return (Bind n (Lam r t') sc')
     getPats (Bind n (Hole t) sc) = do t' <- getPats t
                                       sc' <- getPats sc
                                       return (Bind n (Hole t') sc')

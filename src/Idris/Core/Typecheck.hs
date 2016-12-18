@@ -226,8 +226,8 @@ check' holes tcns ctxt env top
       where mkUniquePi kv (Bind n (Pi rig i s k) sc)
                     = let k' = smaller kv k in
                           Bind n (Pi rig i s k') (mkUniquePi k' sc)
-            mkUniquePi kv (Bind n (Lam t) sc)
-                    = Bind n (Lam (mkUniquePi kv t)) (mkUniquePi kv sc)
+            mkUniquePi kv (Bind n (Lam rig t) sc)
+                    = Bind n (Lam rig (mkUniquePi kv t)) (mkUniquePi kv sc)
             mkUniquePi kv (Bind n (Let t v) sc)
                     = Bind n (Let (mkUniquePi kv t) v) (mkUniquePi kv sc)
             mkUniquePi kv t = t
@@ -245,6 +245,7 @@ check' holes tcns ctxt env top
            discharge n b' bt' (pToV n scv) (pToV n sct) (bns ++ scns)
     where getCount (Pi rig _ _ _) = rigMult rigc rig
           getCount (PVar rig _) = rigMult rigc rig
+          getCount (Lam rig _) = rigMult rigc rig
           getCount _ = rigMult rigc RigW
 
           checkUsageOK Rig0 _ = return ()
@@ -255,11 +256,11 @@ check' holes tcns ctxt env top
                        else lift $ tfail $ Msg $ "There are " ++ (show used) ++ 
                               " uses of linear name " ++ show n
 
-          checkBinder (Lam t)
+          checkBinder (Lam rig t)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
                  let tv' = normalise ctxt env tv
                  convType tcns ctxt env tt
-                 return (Lam tv, tt, [])
+                 return (Lam rig tv, tt, [])
           checkBinder (Let t v)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
                  -- May have multiple uses, check at RigW.
@@ -310,8 +311,8 @@ check' holes tcns ctxt env top
                  convType tcns ctxt env tt
                  return (PVTy tv, tt, [])
 
-          discharge n (Lam t) bt scv sct ns
-            = return (Bind n (Lam t) scv, Bind n (Pi RigW Nothing t bt) sct, ns)
+          discharge n (Lam r t) bt scv sct ns
+            = return (Bind n (Lam r t) scv, Bind n (Pi r Nothing t bt) sct, ns)
           discharge n (Pi r i t k) bt scv sct ns
             = return (Bind n (Pi r i t k) scv, sct, ns)
           discharge n (Let t v) bt scv sct ns

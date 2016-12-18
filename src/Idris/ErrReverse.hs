@@ -70,7 +70,7 @@ errReverse ist t = rewrite 5 t -- (elideLambdas t)
     -- it as it won't be very enlightening.
 
     elideLambdas (App s f a) = App s (elideLambdas f) (elideLambdas a)
-    elideLambdas (Bind n (Lam t) sc)
+    elideLambdas (Bind n (Lam _ t) sc)
        | size sc > 200 = P Ref (sUN "...") Erased
     elideLambdas (Bind n b sc)
        = Bind n (fmap elideLambdas b) (elideLambdas sc)

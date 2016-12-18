@@ -314,7 +314,7 @@ reifyTTBinder _ _ t = fail ("Unknown reflection binder: " ++ show t)
 
 reifyTTBinderApp :: (Term -> ElabD a) -> Name -> [Term] -> ElabD (Binder a)
 reifyTTBinderApp reif f [t]
-                      | f == reflm "Lam" = liftM Lam (reif t)
+                      | f == reflm "Lam" = liftM (Lam RigW) (reif t)
 reifyTTBinderApp reif f [t, k]
                       | f == reflm "Pi" = liftM2 (Pi RigW Nothing) (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
@@ -577,7 +577,7 @@ reflectRawQuotePattern unq (RConstant c) =
      fill (reflectConstant c); solve
 
 reflectBinderQuotePattern :: ([Name] -> a -> ElabD ()) -> Raw -> [Name] -> Binder a -> ElabD ()
-reflectBinderQuotePattern q ty unq (Lam t)
+reflectBinderQuotePattern q ty unq (Lam _ t)
    = do t' <- claimTy (sMN 0 "ty") ty; movelast t'
         fill $ reflCall "Lam" [ty, Var t']
         solve
@@ -749,7 +749,7 @@ reflectBinder :: Binder Term -> Raw
 reflectBinder = reflectBinderQuote reflectTTQuote (reflm "TT") []
 
 reflectBinderQuote :: ([Name] -> a -> Raw) -> Name -> [Name] -> Binder a -> Raw
-reflectBinderQuote q ty unq (Lam t)
+reflectBinderQuote q ty unq (Lam _ t)
    = reflCall "Lam" [Var ty, q unq t]
 reflectBinderQuote q ty unq (Pi _ _ t k)
    = reflCall "Pi" [Var ty, q unq t, q unq k]

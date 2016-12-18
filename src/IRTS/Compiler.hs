@@ -473,7 +473,7 @@ irTerm top vs env (V i)
     | i >= 0 && i < length env = return $ LV (Glob (env!!i))
     | otherwise = ifail $ "bad de bruijn index: " ++ show i
 
-irTerm top vs env (Bind n (Lam _) sc) = LLam [n'] <$> irTerm top vs (n':env) sc
+irTerm top vs env (Bind n (Lam _ _) sc) = LLam [n'] <$> irTerm top vs (n':env) sc
   where
     n' = uniqueName n env
 

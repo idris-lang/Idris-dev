@@ -140,7 +140,7 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
     uB bnames (Let tx vx) (Let ty vy) = do h1 <- un bnames tx ty
                                            h2 <- un bnames vx vy
                                            combine bnames h1 h2
-    uB bnames (Lam tx) (Lam ty) = un bnames tx ty
+    uB bnames (Lam _ tx) (Lam _ ty) = un bnames tx ty
     uB bnames (Pi r i tx _) (Pi r' i' ty _) = un bnames tx ty
     uB bnames x y = do UI s f <- get
                        let r = recoverable (normalise ctxt env (binderTy x))
@@ -204,7 +204,7 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
     bind i ns tm
       | i < 0 = tm
       | otherwise = let ((x,y),ty) = ns!!i in
-                        App MaybeHoles (Bind y (Lam ty) (bind (i-1) ns tm))
+                        App MaybeHoles (Bind y (Lam RigW ty) (bind (i-1) ns tm))
                             (P Bound x ty)
 
 renameBinders env (x, t) = (x, renameBindersTm env t)
@@ -451,9 +451,9 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
             bindLams (a : as) tm = bindLam a (bindLams as tm)
 
             bindLam (V i) tm = Bind (fstEnv (env !! i))
-                                    (Lam (binderTy (sndEnv (env !! i))))
+                                    (Lam RigW (binderTy (sndEnv (env !! i))))
                                     tm
-            bindLam (P _ n ty) tm = Bind n (Lam ty) tm
+            bindLam (P _ n ty) tm = Bind n (Lam RigW ty) tm
             bindLam _ tm = error "Can't happen [non rigid bindLam]"
 
             substEnv [] tm = tm
@@ -462,12 +462,12 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 
             -- remove any unnecessary lambdas (helps with interface
             -- resolution later).
-            eta ks (Bind n (Lam ty) sc) = eta ((n, ty) : ks) sc
+            eta ks (Bind n (Lam r ty) sc) = eta ((n, r, ty) : ks) sc
             eta ks t = rebind ks t
 
-            rebind ((n, ty) : ks) (App _ f (P _ n' _))
+            rebind ((n, r, ty) : ks) (App _ f (P _ n' _))
                 | n == n' = eta ks f
-            rebind ((n, ty) : ks) t = rebind ks (Bind n (Lam ty) t)
+            rebind ((n, r, ty) : ks) t = rebind ks (Bind n (Lam r ty) t)
             rebind _ t = t
 
     un' env fn bnames appx@(App _ _ _) appy@(App _ _ _)
@@ -475,13 +475,13 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 --         = uplus (unApp fn bnames appx appy)
 --                 (unifyTmpFail appx appy) -- take the whole lot
 
-    un' env fn bnames x (Bind n (Lam t) (App _ y (P Bound n' _)))
+    un' env fn bnames x (Bind n (Lam _ t) (App _ y (P Bound n' _)))
         | n == n' = un' env False bnames x y
-    un' env fn bnames (Bind n (Lam t) (App _ x (P Bound n' _))) y
+    un' env fn bnames (Bind n (Lam _ t) (App _ x (P Bound n' _))) y
         | n == n' = un' env False bnames x y
-    un' env fn bnames x (Bind n (Lam t) (App _ y (V 0)))
+    un' env fn bnames x (Bind n (Lam _ t) (App _ y (V 0)))
         = un' env False bnames x y
-    un' env fn bnames (Bind n (Lam t) (App _ x (V 0))) y
+    un' env fn bnames (Bind n (Lam _ t) (App _ x (V 0))) y
         = un' env False bnames x y
 --     un' env fn bnames (Bind x (PVar _) sx) (Bind y (PVar _) sy)
 --         = un' env False ((x,y):bnames) sx sy
@@ -494,14 +494,14 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     un' env fn bnames (App _ f x) (Bind n (Pi r i t k) y)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' env False bnames x y
-             uf <- un' env False bnames f (Bind (sMN 0 "uv") (Lam (TType (UVar [] 0)))
+             uf <- un' env False bnames f (Bind (sMN 0 "uv") (Lam RigW (TType (UVar [] 0)))
                                       (Bind n (Pi r i t k) (V 1)))
              combine env bnames ux uf
 
     un' env fn bnames (Bind n (Pi r i t k) y) (App _ f x)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' env False bnames y x
-             uf <- un' env False bnames (Bind (sMN 0 "uv") (Lam (TType (UVar [] 0)))
+             uf <- un' env False bnames (Bind (sMN 0 "uv") (Lam RigW (TType (UVar [] 0)))
                                     (Bind n (Pi r i t k) (V 1))) f
              combine env bnames ux uf
 
@@ -510,7 +510,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
            = do h1 <- uB env bnames bx by
                 h2 <- un' ((x, Rig0, bx) : env) False (((x,y),binderTy bx):bnames) sx sy
                 combine env bnames h1 h2
-      where sameBinder (Lam _) (Lam _) = True
+      where sameBinder (Lam _ _) (Lam _ _) = True
             sameBinder (Pi _ i _ _) (Pi _ i' _ _) = True
             sameBinder _ _ = False -- never unify holes/guesses/etc
     un' env fn bnames x y
@@ -642,7 +642,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
              h2 <- un' env False bnames vx vy
              sc 1
              combine env bnames h1 h2
-    uB env bnames (Lam tx) (Lam ty) = do sc 1; un' env False bnames tx ty
+    uB env bnames (Lam _ tx) (Lam _ ty) = do sc 1; un' env False bnames tx ty
     uB env bnames (Pi _ _ tx _) (Pi _ _ ty _) = do sc 1; un' env False bnames tx ty
     uB env bnames (Hole tx) (Hole ty) = un' env False bnames tx ty
     uB env bnames (PVar _ tx) (PVar _ ty) = un' env False bnames tx ty
@@ -679,7 +679,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     bind i ns tm
       | i < 0 = tm
       | otherwise = let ((x,y),ty) = ns!!i in
-                        App MaybeHoles (Bind y (Lam ty) (bind (i-1) ns tm))
+                        App MaybeHoles (Bind y (Lam RigW ty) (bind (i-1) ns tm))
                             (P Bound x ty)
 
     combine env bnames as [] = return as
@@ -766,8 +766,8 @@ recoverable (Bind _ (Pi _ _ _ _) sc) f
     | (Constant _) <- f = False
     | TType _ <- f = False
     | UType _ <- f = False
-recoverable (Bind _ (Lam _) sc) f = recoverable sc f
-recoverable f (Bind _ (Lam _) sc) = recoverable f sc
+recoverable (Bind _ (Lam _ _) sc) f = recoverable sc f
+recoverable f (Bind _ (Lam _ _) sc) = recoverable f sc
 recoverable x y = True
 
 errEnv :: [(a, r, Binder b)] -> [(a, b)]

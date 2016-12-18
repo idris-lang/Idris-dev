@@ -515,8 +515,9 @@ instance Binary ImplicitInfo where
 instance (Binary b) => Binary (Binder b) where
         put x
           = case x of
-                Lam x1 -> do putWord8 0
-                             put x1
+                Lam x1 x2 -> do putWord8 0
+                                put x1
+                                put x2
                 Pi x1 x2 x3 x4 -> do putWord8 1
                                      put x1
                                      put x2
@@ -546,7 +547,8 @@ instance (Binary b) => Binary (Binder b) where
           = do i <- getWord8
                case i of
                    0 -> do x1 <- get
-                           return (Lam x1)
+                           x2 <- get
+                           return (Lam x1 x2)
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get

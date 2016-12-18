@@ -1242,7 +1242,7 @@ elab ist info emode opts fn tm
                            _ -> False
              case quoted of
                Just q -> do ctxt <- get_context
-                            (q', _, _) <- lift $ recheck (constraintNS info) ctxt [(uq, Rig0, Lam Erased) | uq <- unquoteNames] (forget q) q
+                            (q', _, _) <- lift $ recheck (constraintNS info) ctxt [(uq, Rig0, Lam Rig0 Erased) | uq <- unquoteNames] (forget q) q
                             if pattern
                               then if isRaw
                                       then reflectRawQuotePattern unquoteNames (forget q')

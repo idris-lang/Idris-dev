@@ -103,7 +103,7 @@ applyDataOptRT n tag arity uniq args
     satArgs n = map (\i -> sMN i "sat") [1..n]
 
     bind [] tm = tm
-    bind (n:ns) tm = Bind n (Lam Erased) (pToV n (bind ns tm))
+    bind (n:ns) tm = Bind n (Lam RigW Erased) (pToV n (bind ns tm))
 
     -- Nat special cases
     -- TODO: Would be nice if this was configurable in idris source!

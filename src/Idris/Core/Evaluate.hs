@@ -403,7 +403,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
             = reapply ntimes stk top env f (a : args)
     reapply ntimes stk top env v args = return v
 
-    apply ntimes stk top env (VBind True n (Lam t) sc) (a:as)
+    apply ntimes stk top env (VBind True n (Lam _ t) sc) (a:as)
          = do a' <- sc a
               app <- apply ntimes stk top env a' as
               wknV 1 app
@@ -636,13 +636,13 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         | x `elem` holes || y `elem` holes = return True
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
-    ceq ps x (Bind n (Lam t) (App _ y (V 0)))
+    ceq ps x (Bind n (Lam _ t) (App _ y (V 0)))
           = ceq ps x (substV (P Bound n t) y)
-    ceq ps (Bind n (Lam t) (App _ x (V 0))) y
+    ceq ps (Bind n (Lam _ t) (App _ x (V 0))) y
           = ceq ps (substV (P Bound n t) x) y
-    ceq ps x (Bind n (Lam t) (App _ y (P Bound n' _)))
+    ceq ps x (Bind n (Lam _ t) (App _ y (P Bound n' _)))
         | n == n' = ceq ps x y
-    ceq ps (Bind n (Lam t) (App _ x (P Bound n' _))) y
+    ceq ps (Bind n (Lam _ t) (App _ x (P Bound n' _))) y
         | n == n' = ceq ps x y
 
     ceq ps (Bind n (PVar _ t) sc) y = ceq ps sc y

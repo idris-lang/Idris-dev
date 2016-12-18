@@ -90,7 +90,7 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
          | otherwise = WV i
     eval wenv@(WEnv d env) stk (Bind n (Let t v) sc)
          = eval (WEnv d ((v, wenv) : env)) stk sc
-    eval (WEnv d env) ((tm, tenv) : stk) (Bind n b@(Lam _) sc)
+    eval (WEnv d env) ((tm, tenv) : stk) (Bind n b@(Lam _ _) sc)
          = eval (WEnv d ((tm, tenv) : env)) stk sc
     eval wenv@(WEnv d env) stk (Bind n b sc) -- stk must be empty if well typed
          =let n' = uniqueName n (map fstEnv genv) in

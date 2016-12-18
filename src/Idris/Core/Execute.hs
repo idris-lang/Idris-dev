@@ -91,7 +91,7 @@ toTT (EBind n b body) = do n' <- newN n
                            body' <- body $ EP Bound n' EErased
                            b' <- fixBinder b
                            Bind n' b' <$> toTT body'
-    where fixBinder (Lam t)       = Lam     <$> toTT t
+    where fixBinder (Lam rig t)    = Lam rig  <$> toTT t
           fixBinder (Pi rig i t k) = Pi rig i <$> toTT t <*> toTT k
           fixBinder (Let t1 t2)   = Let     <$> toTT t1 <*> toTT t2
           fixBinder (NLet t1 t2)  = NLet    <$> toTT t1 <*> toTT t2

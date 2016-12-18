@@ -135,7 +135,7 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
                             = case lookup n (idris_metavars ist) of
                                   Just (Just _, mi, _, _, _) -> mkMVApp n []
                                   _ -> PRef un [] n
-    de env _ (Bind n (Lam ty) sc)
+    de env _ (Bind n (Lam _ ty) sc)
           = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
     de env (_ : is) (Bind n (Pi rig (Just impl) ty _) sc)
        | toplevel_imp impl -- information in 'imps' repeated
@@ -188,7 +188,7 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
     deFn env (P _ n _) [l,r]
          | n == pairTy    = PPair un [] IsType (de env [] l) (de env [] r)
          | n == sUN "lazy" = de env [] r -- TODO: Fix string based matching
-    deFn env (P _ n _) [ty, Bind x (Lam _) r]
+    deFn env (P _ n _) [ty, Bind x (Lam _ _) r]
          | n == sigmaTy
                = PDPair un [] IsType (PRef un [] x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))

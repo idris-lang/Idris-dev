@@ -657,12 +657,12 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
        (tyv, tyt) <- lift $ check ctxt env ty
 --        ns <- lift $ unify ctxt env tyv t'
        case t' of
-           Bind y (Pi _ _ s _) t -> let t' = updsubst y (P Bound n s) t in
-                                      do ns <- unify' ctxt env (s, Nothing) (tyv, Nothing)
-                                         ps <- get
-                                         let (uh, uns) = unified ps
---                                          put (ps { unified = (uh, uns ++ ns) })
-                                         return $ Bind n (Lam tyv) (Bind x (Hole t') (P Bound x t'))
+           Bind y (Pi rig _ s _) t -> let t' = updsubst y (P Bound n s) t in
+                                        do ns <- unify' ctxt env (s, Nothing) (tyv, Nothing)
+                                           ps <- get
+                                           let (uh, uns) = unified ps
+--                                            put (ps { unified = (uh, uns ++ ns) })
+                                           return $ Bind n (Lam rig tyv) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 introTy ty n ctxt env _ = fail "Can't introduce here."
 
@@ -672,7 +672,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     x@(Bind y (Pi _ _ s _) _) -> x
                     _ -> normalise ctxt env t
        case t' of
-           Bind y (Pi _ _ s _) t ->
+           Bind y (Pi rig _ s _) t ->
                let n = case mn of
                       Just name -> name
                       Nothing -> y
@@ -680,7 +680,7 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                -- because we want to substitute even in portions of
                -- terms that we know do not contain holes.
                    t' = subst y (P Bound n s) t
-               in return $ Bind n (Lam s) (Bind x (Hole t') (P Bound x t'))
+               in return $ Bind n (Lam rig s) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
 
@@ -725,7 +725,7 @@ rewrite tm ctxt env (Bind x (Hole t) xp@(P _ x' _)) | x == x' =
        let tmt' = normalise ctxt env tmt
        case unApply tmt' of
          (P _ (UN q) _, [lt,rt,l,r]) | q == txt "=" ->
-            do let p = Bind rname (Lam lt) (mkP (P Bound rname lt) r l t)
+            do let p = Bind rname (Lam RigW lt) (mkP (P Bound rname lt) r l t)
                let newt = mkP l r l t
                let sc = forget $ (Bind x (Hole newt)
                                        (mkApp (P Ref (sUN "replace") (TType (UVal 0)))
@@ -785,7 +785,7 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
                          Var nm -> uniqueNameCtxt ctxt nm currentNames
                          _ -> uniqueNameCtxt ctxt (sMN 0 "iv") currentNames
              let tmvar = P Bound tmnm tmt'
-             prop <- replaceIndicies indxnames indicies $ Bind tmnm (Lam tmt') (mkP tmvar tmv tmvar t)
+             prop <- replaceIndicies indxnames indicies $ Bind tmnm (Lam RigW tmt') (mkP tmvar tmv tmvar t)
              consargs' <- query (\ps -> map (flip (uniqueNameCtxt (context ps)) (holes ps ++ allTTNames (getProofTerm (pterm ps))) *** uniqueBindersCtxt (context ps) (holes ps ++ allTTNames (getProofTerm (pterm ps)))) consargs)
              let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (tacn tnm)) (TType (UVal 0)))
                                                         (params ++ [prop] ++ map makeConsArg consargs' ++ indicies ++ [tmv])))
@@ -812,7 +812,7 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           makeIndexNames = foldr (\_ nms -> (uniqueNameCtxt ctxt (sMN 0 "idx") nms):nms) []
           replaceIndicies idnms idxs prop = foldM (\t (idnm, idx) -> do (idxv, idxt) <- lift $ check ctxt env (forget idx)
                                                                         let var = P Bound idnm idxt
-                                                                        return $ Bind idnm (Lam idxt) (mkP var idxv var t)) prop $ zip idnms idxs
+                                                                        return $ Bind idnm (Lam RigW idxt) (mkP var idxv var t)) prop $ zip idnms idxs
 casetac tm induction ctxt env _ = fail $ "Can't do " ++ (if induction then "induction" else "case analysis") ++ " here"
 
 

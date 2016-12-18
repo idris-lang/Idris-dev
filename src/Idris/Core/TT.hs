@@ -853,7 +853,8 @@ deriving instance Binary ImplicitInfo
 -- | All binding forms are represented in a uniform fashion. This type only represents
 -- the types of bindings (and their values, if any); the attached identifiers are part
 -- of the 'Bind' constructor for the 'TT' type.
-data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
+data Binder b = Lam   { binderCount :: RigCount,
+                        binderTy  :: !b {-^ type annotation for bound variable-}}
                 -- ^ A function binding
               | Pi    { binderCount :: RigCount,
                         binderImpl :: Maybe ImplicitInfo,
@@ -900,7 +901,7 @@ deriving instance Binary Binder
 !-}
 
 instance Sized a => Sized (Binder a) where
-  size (Lam ty) = 1 + size ty
+  size (Lam _ ty) = 1 + size ty
   size (Pi _ _ ty _) = 1 + size ty
   size (Let ty val) = 1 + size ty + size val
   size (NLet ty val) = 1 + size ty + size val
@@ -914,8 +915,8 @@ fmapMB :: Monad m => (a -> m b) -> Binder a -> m (Binder b)
 fmapMB f (Let t v)   = liftM2 Let (f t) (f v)
 fmapMB f (NLet t v)  = liftM2 NLet (f t) (f v)
 fmapMB f (Guess t v) = liftM2 Guess (f t) (f v)
-fmapMB f (Lam t)     = liftM Lam (f t)
-fmapMB f (Pi c i t k)  = liftM2 (Pi c i) (f t) (f k)
+fmapMB f (Lam c t)   = liftM (Lam c) (f t)
+fmapMB f (Pi c i t k) = liftM2 (Pi c i) (f t) (f k)
 fmapMB f (Hole t)    = liftM Hole (f t)
 fmapMB f (GHole i ns t) = liftM (GHole i ns) (f t)
 fmapMB f (PVar c t)    = liftM (PVar c) (f t)
@@ -1632,7 +1633,7 @@ prettyEnv env t = prettyEnv' env t False
     prettySe p env (UType u) debug = text (show u)
 
     -- Render a `Binder` and its name
-    prettySb env n (Lam t) = prettyB env "λ" "=>" n t
+    prettySb env n (Lam _ t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
     prettySb env n (GHole _ _ t) = prettyB env "?gdefer" "." n t
     prettySb env n (Pi Rig0 _ t _) = prettyB env "(" ") ->" n t
@@ -1682,7 +1683,8 @@ showEnv' env t dbg = se 10 env t where
     se p env (TType i) = "Type " ++ show i
     se p env (UType u) = show u
 
-    sb env n (Lam t)  = showb env "\\ " " => " n t
+    sb env n (Lam Rig1 t)  = showb env "\\ 1 " " => " n t
+    sb env n (Lam _ t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
     sb env n (GHole i ns t) = showb env "?defer " ". " n t
     sb env n (Pi Rig1 (Just _) t _)   = showb env "{" "} -o " n t
@@ -1795,7 +1797,7 @@ pprintTT bound tm = pp startPrec bound tm
                             text "Type"
     pp p bound (UType u) = text (show u)
 
-    ppb p bound n (Lam ty) sc =
+    ppb p bound n (Lam rig ty) sc =
       bracket p startPrec . group . align . hang 2 $
       text "λ" <+> bindingOf n False <+> text "." <> line <> sc
     ppb p bound n (Pi rig _ ty k) sc =
@@ -1884,8 +1886,8 @@ pprintRaw bound (RBind n b body) =
        , ppb b
        , pprintRaw (n:bound) body]
   where
-    ppb (Lam ty) = enclose lparen rparen . group . align . hang 2 $
-                   text "Lam" <$> pprintRaw bound ty
+    ppb (Lam _ ty) = enclose lparen rparen . group . align . hang 2 $
+                     text "Lam" <$> pprintRaw bound ty
     ppb (Pi _ _ ty k) = enclose lparen rparen . group . align . hang 2 $
                         vsep [text "Pi", pprintRaw bound ty, pprintRaw bound k]
     ppb (Let ty v) = enclose lparen rparen . group . align . hang 2 $

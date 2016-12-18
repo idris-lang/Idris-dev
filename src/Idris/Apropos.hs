@@ -72,7 +72,7 @@ instance Apropos Def where
   isApropos str (CaseOp _ ty ty' _ _ _) = isApropos str ty
 
 instance Apropos (Binder (TT Name)) where
-  isApropos str (Lam ty)      = str == T.pack "\\" || isApropos str ty
+  isApropos str (Lam _ ty)    = str == T.pack "\\" || isApropos str ty
   isApropos str (Pi _ _ ty _) = str == T.pack "->" || isApropos str ty
   isApropos str (Let ty val)  = str == T.pack "let" || isApropos str ty || isApropos str val
   isApropos str (NLet ty val) = str == T.pack "let" || isApropos str ty || isApropos str val

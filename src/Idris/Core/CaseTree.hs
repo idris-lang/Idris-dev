@@ -823,7 +823,7 @@ prune proj (Case up n alts) = case alts' of
 prune _ t = t
 
 stripLambdas :: CaseDef -> CaseDef
-stripLambdas (CaseDef ns (STerm (Bind x (Lam _) sc)) tm)
+stripLambdas (CaseDef ns (STerm (Bind x (Lam _ _) sc)) tm)
     = stripLambdas (CaseDef (ns ++ [x]) (STerm (instantiate (P Bound x Erased) sc)) tm)
 stripLambdas x = x
 
