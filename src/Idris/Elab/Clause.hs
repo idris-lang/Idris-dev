@@ -848,7 +848,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
-        logElab 5 "DONE CHECK"
+        logElab 3 "DONE CHECK"
         logElab 3 $ "---> " ++ show rhsElab
         ctxt <- getContext
         

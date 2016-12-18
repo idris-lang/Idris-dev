@@ -11,6 +11,7 @@ module Idris.Elab.Utils where
 import Idris.AbsSyntax
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
+import Idris.Core.WHNF
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.DeepSeq
@@ -184,8 +185,8 @@ decorateid decorate (PClauses f o n cs)
 
 -- if 't' is an interface application, assume its arguments are injective
 pbinds :: IState -> Term -> ElabD ()
-pbinds i (Bind n (PVar _ t) sc)
-    = do attack; patbind n
+pbinds i (Bind n (PVar rig t) sc)
+    = do attack; patbind n rig
          env <- get_env
          case unApply (normalise (tt_ctxt i) env t) of
               (P _ c _, args) -> case lookupCtxt c (idris_interfaces i) of
@@ -571,3 +572,28 @@ hasEmptyPat :: Context -> Ctxt TypeInfo -> Term -> Bool
 hasEmptyPat ctxt tyctxt (Bind n (PVar _ ty) sc)
     = isEmpty ctxt tyctxt ty || hasEmptyPat ctxt tyctxt sc
 hasEmptyPat ctxt tyctxt _ = False
+
+-- Find names which are applied to a function in a Rig1 position
+findLinear :: IState -> [Name] -> Term -> [Name]
+findLinear ist env tm | (P _ f _, args) <- unApply tm,
+                        f `notElem` env,
+                        Just ty_in <- lookupTyExact f (tt_ctxt ist)
+    = let ty = whnfArgs (tt_ctxt ist) [] ty_in in
+          nub $ concatMap (findLinear ist env) args ++ findLinArg ty args
+  where
+    findLinArg (Bind n (Pi c _ _ _) sc) (P _ a _ : as)
+         | Rig1 <- c = a : findLinArg sc as
+    findLinArg (Bind n (Pi _ _ _ _) sc) (a : as) = findLinArg sc as
+    findLinArg _ _ = []
+findLinear ist env (App _ f a) 
+    = nub $ findLinear ist env f ++ findLinear ist env a    
+findLinear ist env (Bind n b sc) = findLinear ist (n : env) sc
+findLinear ist _ _ = []
+
+setLinear :: [Name] -> Term -> Term
+setLinear ns (Bind n b@(PVar r t) sc) 
+   | n `elem` ns = Bind n (PVar Rig1 t) (setLinear ns sc)
+   | otherwise = Bind n b (setLinear ns sc)
+setLinear ns tm = tm
+
+

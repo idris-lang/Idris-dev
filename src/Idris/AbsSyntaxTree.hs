@@ -1821,6 +1821,10 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe (decD d) startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe (decD d) startPrec ((n, False):bnd) sc)
     prettySe d p bnd (PPi (Exp l s _ rig) n _ ty sc)
+      | Rig0 <- rig = 
+          depth d . bracket p startPrec . group $
+          enclose lparen rparen (group . align $ text "0" <+> prettyBindingOf n False <+> colon <+> prettySe (decD d) startPrec bnd ty) <+>
+          st <> text "->" <$> prettySe (decD d) startPrec ((n, False):bnd) sc
       | Rig1 <- rig = 
           depth d . bracket p startPrec . group $
           enclose lparen rparen (group . align $ text "1" <+> prettyBindingOf n False <+> colon <+> prettySe (decD d) startPrec bnd ty) <+>
@@ -1847,10 +1851,14 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PPi (Imp l s _ fa _ rig) n _ ty sc)
       | ppopt_impl ppo =
           depth d . bracket p startPrec $
-          lbrace <> prettyBindingOf n True <+> colon <+> prettySe (decD d) startPrec bnd ty <> rbrace <+>
+          lbrace <> showRig rig n <+> colon <+> prettySe (decD d) startPrec bnd ty <> rbrace <+>
           st <> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
       | otherwise = depth d $ prettySe (decD d) startPrec ((n, True):bnd) sc
       where
+        showRig Rig0 n = text "0" <+> prettyBindingOf n True
+        showRig Rig1 n = text "1" <+> prettyBindingOf n True
+        showRig _ n = prettyBindingOf n True
+
         st =
           case s of
             Static -> text "%static" <> space

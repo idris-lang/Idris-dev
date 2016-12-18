@@ -1218,8 +1218,7 @@ FunctionSignatureList ::=
 @
 -}
 typeDeclList :: SyntaxInfo -> IdrisParser [(RigCount, Name, FC, PTerm)]
-typeDeclList syn = try (sepBy1 (do rig <- option RigW (do lchar '1'
-                                                          return Rig1)
+typeDeclList syn = try (sepBy1 (do rig <- option RigW rigCount
                                    (x, xfc) <- fnName
                                    lchar ':'
                                    t <- typeExpr (disallowImp syn)
@@ -1230,6 +1229,9 @@ typeDeclList syn = try (sepBy1 (do rig <- option RigW (do lchar '1'
                           t <- typeExpr (disallowImp syn)
                           return (map (\(x, xfc) -> (RigW, x, xfc, t)) ns)
                    <?> "type declaration list"
+  where
+    rigCount = do lchar '1'; return Rig1
+           <|> do lchar '0'; return Rig0
 
 {- | Parses a type declaration list with optional parameters
 @

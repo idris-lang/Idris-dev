@@ -484,8 +484,8 @@ patvar' n = do env <- get_env
                if (n `elem` map fstEnv env) then do apply (Var n) [] ; solve
                   else processTactic' (PatVar n)
 
-patbind :: Name -> Elab' aux ()
-patbind n = processTactic' (PatBind n)
+patbind :: Name -> RigCount -> Elab' aux ()
+patbind n r = processTactic' (PatBind n r)
 
 focus :: Name -> Elab' aux ()
 focus n = processTactic' (Focus n)

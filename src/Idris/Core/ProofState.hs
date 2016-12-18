@@ -96,7 +96,7 @@ data Tactic = Attack
             | CaseTac Raw
             | Equiv Raw
             | PatVar Name
-            | PatBind Name
+            | PatBind Name RigCount
             | Focus Name
             | Defer [Name] Name
             | DeferType Name Raw [Name]
@@ -823,16 +823,16 @@ equiv tm ctxt env (Bind x (Hole t) sc) =
        return $ Bind x (Hole tmv) sc
 equiv tm ctxt env _ = fail "Can't equiv here"
 
-patbind :: Name -> RunTactic
-patbind n ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+patbind :: Name -> RigCount -> RunTactic
+patbind n rig ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do let t' = case t of
                     x@(Bind y (PVTy s) t) -> x
                     _ -> normalise ctxt env t
        case t' of
            Bind y (PVTy s) t -> let t' = updsubst y (P Bound n s) t in
-                                    return $ Bind n (PVar RigW s) (Bind x (Hole t') (P Bound x t'))
+                                    return $ Bind n (PVar rig s) (Bind x (Hole t') (P Bound x t'))
            _ -> fail "Nothing to pattern bind"
-patbind n ctxt env _ = fail "Can't pattern bind here"
+patbind n _ ctxt env _ = fail "Can't pattern bind here"
 
 compute :: RunTactic
 compute ctxt env (Bind x (Hole ty) sc) =
@@ -1157,7 +1157,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (CaseTac t)       = casetac t False
          mktac (Equiv t)         = equiv t
          mktac (PatVar n)        = patvar n
-         mktac (PatBind n)       = patbind n
+         mktac (PatBind n rig)   = patbind n rig
          mktac (CheckIn r)       = check_in r
          mktac (EvalIn r)        = eval_in r
          mktac (Focus n)         = focus n

@@ -251,13 +251,18 @@ elab ist info emode opts fn tm
          est <- getAux
          sequence_ (get_delayed_elab est)
          end_unify
+         when (pattern || intransform) $
+              -- convert remaining holes to pattern vars
+              do unify_all
+                 matchProblems False -- only the ones we matched earlier
+                 unifyProblems
+                 mkPat
+                 update_term liftPats
          ptm <- get_term
-         when (pattern || intransform) -- convert remaining holes to pattern vars
-              (do unify_all
-                  matchProblems False -- only the ones we matched earlier
-                  unifyProblems
-                  mkPat
-                  update_term liftPats)
+         when pattern $
+              -- Look for Rig1 (linear) pattern bindings
+              do let pnms = findLinear ist [] ptm
+                 update_term (setLinear pnms)
   where
     pattern = emode == ELHS || emode == EImpossible
     eimpossible = emode == EImpossible
@@ -710,7 +715,7 @@ elab ist info emode opts fn tm
                     RigW -> return ()
                     _ -> unless (LinearTypes `elem` idris_language_extensions ist
                                        || e_qq ina) $
-                           lift $ tfail $ At nfc (Msg "You must turn on the LinearTypes extension to use a linear argument")
+                           lift $ tfail $ At nfc (Msg "You must turn on the LinearTypes extension to use a count")
                arg n (pcount p) (is_scoped p) (sMN 0 "phTy")
                addAutoBind p n
                addPSname n -- okay for proof search
@@ -2271,7 +2276,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
       | n == tacN "Prim__PatBind"
       = do ~[n] <- tacTmArgs 1 tac args
            n' <- reifyTTName n
-           patbind n'
+           patbind n' RigW
            returnUnit
       | n == tacN "Prim__LetBind"
       = do ~[n, ty, tm] <- tacTmArgs 3 tac args
