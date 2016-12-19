@@ -584,7 +584,8 @@ findLinear ist env tm | (P _ f _, args) <- unApply tm,
     findLinArg (Bind n (Pi c _ _ _) sc) (P _ a _ : as)
          | Rig0 <- c = (a, c) : findLinArg sc as
          | Rig1 <- c = (a, c) : findLinArg sc as
-    findLinArg (Bind n (Pi _ _ _ _) sc) (a : as) = findLinArg sc as
+    findLinArg (Bind n (Pi _ _ _ _) sc) (a : as) 
+          = findLinArg (whnf (tt_ctxt ist) [] (substV a sc)) as
     findLinArg _ _ = []
 findLinear ist env (App _ f a) 
     = nub $ findLinear ist env f ++ findLinear ist env a    
