@@ -151,7 +151,7 @@ lteTransitive LTEZero y = LTEZero
 lteTransitive (LTESucc x) (LTESucc y) = LTESucc (lteTransitive x y)
 
 ||| `LTE` is antisymetric
-total lteAntisymetric : {n : Nat} -> {m : Nat} -> LTE n m -> LTE m n -> n = m
+total lteAntisymetric : LTE n m -> LTE m n -> n = m
 lteAntisymetric {n = Z} {m = Z} LTEZero LTEZero = Refl
 lteAntisymetric {n = (S j)} {m = (S k)} (LTESucc x) (LTESucc y) =
   let inductiveHypothesis = lteAntisymetric {n = j} {m = k} x y
