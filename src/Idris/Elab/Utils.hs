@@ -598,25 +598,6 @@ setLinear ns (Bind n b@(PVar r t) sc)
    | otherwise = Bind n b (setLinear ns sc)
 setLinear ns tm = tm
 
--- Assume type is at least in whnfArgs form
-linearCheck :: FC -> Type -> Idris ()
-linearCheck fc t = do ist <- getIState
-                      checkArgs ist t
-  where
-    checkNameOK ist f 
-       = case lookupRigCountExact f (tt_ctxt ist) of
-              Just Rig1 ->
-                  ierror $ At fc $
-                       Msg $ show f ++ " can only appear in a linear binding"
-              _ -> return ()
-
-    checkArgs ist (Bind n (Pi RigW _ ty _) sc)
-        = do mapM_ (checkNameOK ist) (allTTNames ty)
-             checkArgs ist (substV (P Bound n Erased) sc)
-    checkArgs ist (Bind n (Pi _ _ _ _) sc) 
-          = checkArgs ist (substV (P Bound n Erased) sc)
-    checkArgs ist _ = return ()
-
 linearArg :: Type -> Bool
 linearArg (Bind n (Pi Rig1 _ _ _) sc) = True
 linearArg (Bind n (Pi _ _ _ _) sc) = linearArg sc

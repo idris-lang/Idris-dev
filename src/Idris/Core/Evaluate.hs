@@ -27,7 +27,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict,
                 isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
-                isUniverse) where
+                isUniverse, linearCheck, linearCheckArg) where
 
 import Idris.Core.CaseTree
 import Idris.Core.TT
@@ -1173,6 +1173,33 @@ lookupRigCountExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
 lookupInjectiveExact :: Name -> Context -> Maybe Injectivity
 lookupInjectiveExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
   where mkt (d, _, inj, a, t, m) = inj
+
+-- Assume type is at least in whnfArgs form
+linearCheck :: Context -> Type -> TC ()
+linearCheck ctxt t = checkArgs t
+  where
+    checkArgs (Bind n (Pi RigW _ ty _) sc)
+        = do linearCheckArg ctxt ty
+             checkArgs (substV (P Bound n Erased) sc)
+    checkArgs (Bind n (Pi _ _ _ _) sc) 
+          = checkArgs (substV (P Bound n Erased) sc)
+    checkArgs _ = return ()
+
+linearCheckArg :: Context -> Type -> TC ()
+linearCheckArg ctxt ty = mapM_ checkNameOK (allTTNames ty)
+  where
+    checkNameOK f 
+       = case lookupRigCountExact f ctxt of
+              Just Rig1 ->
+                  tfail $ Msg $ show f ++ " can only appear in a linear binding"
+              _ -> return ()
+
+    checkArgs (Bind n (Pi RigW _ ty _) sc)
+        = do mapM_ checkNameOK (allTTNames ty)
+             checkArgs (substV (P Bound n Erased) sc)
+    checkArgs (Bind n (Pi _ _ _ _) sc) 
+          = checkArgs (substV (P Bound n Erased) sc)
+    checkArgs _ = return ()
 
 -- Check if a name is reducible in the type checker. Partial definitions
 -- are not reducible (so treated as a constant)

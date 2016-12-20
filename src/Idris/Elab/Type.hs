@@ -136,7 +136,7 @@ buildType info syn fc opts n ty' = do
          
          -- If we use any types with linear constructor arguments, we'd better
          -- make sure they are use-once
-         linearCheck fc (whnfArgs ctxt [] cty)
+         tcliftAt fc $ linearCheck ctxt (whnfArgs ctxt [] cty)
 
          return (cty, ckind, ty, inacc)
   where

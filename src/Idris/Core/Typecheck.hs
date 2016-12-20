@@ -12,6 +12,7 @@ Maintainer  : The Idris Community.
 module Idris.Core.Typecheck where
 
 import Idris.Core.Evaluate
+import Idris.Core.WHNF
 import Idris.Core.TT
 
 import Control.Monad.State
@@ -197,6 +198,8 @@ check' holes tcns ctxt env top
           constType _       = TType (UVal 0)
   chk rigc u lvl env (RBind n (Pi rig i s k) t)
       = do (sv, st, sns) <- chk Rig0 u Nothing (envZero env) s
+           when (rig == RigW) $ 
+                lift $ linearCheckArg ctxt (normalise ctxt env sv)
            (v, cs) <- get
            (kv, kt, _) <- chk Rig0 u Nothing (envZero env) k -- no need to validate these constraints, they are independent
            put (v+1, cs)
@@ -242,6 +245,8 @@ check' holes tcns ctxt env top
   chk rigc u lvl env (RBind n b sc)
       = do (b', bt', bns) <- checkBinder b
            (scv, sct, scns) <- chk rigc (smaller bt' u) Nothing ((n, getCount b, b'):env) sc
+           when (getCount b == RigW) $
+             lift $ linearCheckArg ctxt (normalise ctxt env (binderTy b'))
            checkUsageOK (getCount b) scns
            discharge n b' bt' (pToV n scv) (pToV n sct) (bns ++ scns)
     where getCount (Pi rig _ _ _) = rigMult rigc rig
