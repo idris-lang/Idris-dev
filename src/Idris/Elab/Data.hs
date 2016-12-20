@@ -120,6 +120,9 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
          -- TMP HACK! Make this a data option
          updateContext (addDatatype (Data n ttag cty unique cons))
          updateContext (setMetaInformation n metainf)
+         when (any linearArg (map snd cons)) $
+            updateContext (setRigCount n Rig1)
+
          mapM_ totcheck (zip (repeat fc) (map fst cons))
 --          mapM_ (checkPositive n) cons
 
@@ -173,10 +176,6 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
                        inblock = newb,
                        liftname = id -- Is this appropriate?
                      }
-
-        linearArg (Bind n (Pi Rig1 _ _ _) sc) = True
-        linearArg (Bind n (Pi _ _ _ _) sc) = linearArg sc
-        linearArg _ = False
 
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
            Type -> -- for unique kind checking

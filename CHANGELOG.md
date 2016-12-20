@@ -2,13 +2,21 @@
 
 ## Language updates
 
-* New language extensions, in addition to the existing `TypeProviders` and
-  `ErrorReflection`:
+* Language pragmas now required for the less stable existing features, in
+  addition to the existing `TypeProviders` and `ErrorReflection`:
   + `ElabReflection`, which must be enabled to use `%runElab`
   + `UniquenessTypes`, which must be enabled to use `UniqueType`
   + `DSLNotation`, which must be enabled to define a `dsl` block
   + `FirstClassReflection`, which must be enabled to define a `%reflection`
     function
+
+* New language extension `LinearTypes`:
+  + This allows adding a /multiplicity/ to a binder which says how often it
+    is allowed to be used; either 0 or 1 (if unstated, multiplicity is "many")
+  + The typing rules follow Conor McBride's paper "I Got Plenty o' Nuttin'"
+  + This is highly experimental, unfinished, not at all polished. and there
+    are still lots of details to sort out. Some features don't quite work
+    properly yet. But it is there to play with for the brave!
 
 ## Tool Updates
 

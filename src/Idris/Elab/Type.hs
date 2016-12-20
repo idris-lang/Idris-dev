@@ -16,6 +16,7 @@ import Idris.ASTUtils
 import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
+import Idris.Core.WHNF
 import Idris.Core.Execute
 import Idris.Core.TT
 import Idris.Core.Typecheck
@@ -132,6 +133,10 @@ buildType info syn fc opts n ty' = do
              let fninfo = FnInfo (param_pos 0 pnames cty)
              setFnInfo n fninfo
              addIBC (IBCFnInfo n fninfo)
+         
+         -- If we use any types with linear constructor arguments, we'd better
+         -- make sure they are use-once
+         linearCheck fc (whnfArgs ctxt [] cty)
 
          return (cty, ckind, ty, inacc)
   where
@@ -180,10 +185,6 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          logElab 2 $ "Rechecked to " ++ show nty
          let nty' = normalise ctxt [] nty
          logElab 2 $ "Rechecked to " ++ show nty'
-
-         -- If we use any types with linear constructor arguments, we'd better
-         -- make sure they are use-once
-         linearCheck fc nty'
 
          -- Add function name to internals (used for making :addclause know
          -- the name unambiguously)

@@ -111,11 +111,11 @@ check' holes tcns ctxt env top
                     Just msg -> lift $ tfail $ Msg msg
       -- If we're elaborating, we don't want the private names; if we're
       -- checking an already elaborated term, we do
-      | [P nt n' ty] <- lookupP_all (not holes) False n ctxt
-             = return (P nt n' ty, ty, [])
-      -- If the names are ambiguous, require it to be fully qualified
       | [P nt n' ty] <- lookupP_all (not holes) True n ctxt
              = return (P nt n' ty, ty, [])
+--       -- If the names are ambiguous, require it to be fully qualified
+--       | [P nt n' ty] <- lookupP_all (not holes) True n ctxt
+--              = return (P nt n' ty, ty, [])
       | otherwise = do lift $ tfail $ NoSuchVariable n
     where rigSafe True _    _    n = Nothing
           rigSafe _    Rig1 RigW n = Just ("Trying to use linear name " ++ show n ++ " in non-linear context")

@@ -14,6 +14,7 @@ import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.Execute
+import Idris.Core.WHNF
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Coverage
@@ -286,6 +287,10 @@ elabClauses info' fc opts n_in cs =
                                       Just Public -> mapM_ (checkVisibility fc n Public Public) calls
                                       _ -> return ()
                                  addCalls n calls
+                                 let rig = if linearArg (whnfArgs ctxt [] ty) 
+                                              then Rig1 
+                                              else RigW
+                                 updateContext (setRigCount n (minRig ctxt rig calls))
                                  addIBC (IBCCG n)
                           _ -> return ()
                       return ()
@@ -377,6 +382,12 @@ elabClauses info' fc opts n_in cs =
                 Just ns -> case partial_eval (tt_ctxt ist) ns pats of
                                 Just t -> return t
                                 Nothing -> ierror (At fc (Msg "No specialisation achieved"))
+
+    minRig :: Context -> RigCount -> [Name] -> RigCount
+    minRig c minr [] = minr
+    minRig c minr (r : rs) = case lookupRigCountExact r c of
+                                  Nothing -> minRig c minr rs
+                                  Just rc -> minRig c (min minr rc) rs
 
 forceWith :: Ctxt OptInfo -> Term -> Term
 forceWith opts lhs = -- trace (show lhs ++ "\n==>\n" ++ show (force lhs) ++ "\n----") $

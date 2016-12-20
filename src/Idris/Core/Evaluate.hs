@@ -16,12 +16,14 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 Def(..), CaseInfo(..), CaseDefs(..),
                 Accessibility(..), Injectivity, Totality(..), PReason(..), MetaInformation(..),
                 Context, initContext, ctxtAlist, next_tvar,
-                addToCtxt, setAccess, setInjective, setTotal, setMetaInformation, addCtxtDef, addTyDecl,
+                addToCtxt, setAccess, setInjective, setTotal, setRigCount,
+                setMetaInformation, addCtxtDef, addTyDecl,
                 addDatatype, addCasedef, simplifyCasedef, addOperator,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt, tcReducible,
                 lookupTotal, lookupTotalExact, lookupInjectiveExact,
+                lookupRigCount, lookupRigCountExact,
                 lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict,
                 isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
@@ -866,9 +868,11 @@ data MetaInformation =
 
 -- | Contexts used for global definitions and for proof state. They contain
 -- universe constraints and existing definitions.
+-- Also store maximum RigCount of the name (can't bind a name at multiplicity
+-- 1 in a RigW, for example)
 data Context = MkContext {
                   next_tvar       :: Int,
-                  definitions     :: Ctxt (Def, Injectivity, Accessibility, Totality, MetaInformation)
+                  definitions     :: Ctxt (Def, RigCount, Injectivity, Accessibility, Totality, MetaInformation)
                 } deriving (Show, Generic)
 
 
@@ -878,53 +882,59 @@ initContext = MkContext 0 emptyContext
 
 mapDefCtxt :: (Def -> Def) -> Context -> Context
 mapDefCtxt f (MkContext t !defs) = MkContext t (mapCtxt f' defs)
-   where f' (!d, i, a, t, m) = f' (f d, i, a, t, m)
+   where f' (!d, r, i, a, t, m) = f' (f d, r, i, a, t, m)
 
 -- | Get the definitions from a context
 ctxtAlist :: Context -> [(Name, Def)]
-ctxtAlist ctxt = map (\(n, (d, i, a, t, m)) -> (n, d)) $ toAlist (definitions ctxt)
+ctxtAlist ctxt = map (\(n, (d, r, i, a, t, m)) -> (n, d)) $ toAlist (definitions ctxt)
 
 veval ctxt env t = evalState (eval False ctxt [] env t []) initEval
 
 addToCtxt :: Name -> Term -> Type -> Context -> Context
 addToCtxt n tm ty uctxt
     = let ctxt = definitions uctxt
-          !ctxt' = addDef n (Function ty tm, False, Public, Unchecked, EmptyMI) ctxt in
+          !ctxt' = addDef n (Function ty tm, RigW, False, Public, Unchecked, EmptyMI) ctxt in
           uctxt { definitions = ctxt' }
 
 setAccess :: Name -> Accessibility -> Context -> Context
 setAccess n a uctxt
     = let ctxt = definitions uctxt
-          !ctxt' = updateDef n (\ (d, i, _, t, m) -> (d, i, a, t, m)) ctxt in
+          !ctxt' = updateDef n (\ (d, r, i, _, t, m) -> (d, r, i, a, t, m)) ctxt in
           uctxt { definitions = ctxt' }
 
 setInjective :: Name -> Injectivity -> Context -> Context
 setInjective n i uctxt
     = let ctxt = definitions uctxt
-          !ctxt' = updateDef n (\ (d, _, a, t, m) -> (d, i, a, t, m)) ctxt in
+          !ctxt' = updateDef n (\ (d, r, _, a, t, m) -> (d, r, i, a, t, m)) ctxt in
           uctxt { definitions = ctxt' }
 
 setTotal :: Name -> Totality -> Context -> Context
 setTotal n t uctxt
     = let ctxt = definitions uctxt
-          !ctxt' = updateDef n (\ (d, i, a, _, m) -> (d, i, a, t, m)) ctxt in
+          !ctxt' = updateDef n (\ (d, r, i, a, _, m) -> (d, r, i, a, t, m)) ctxt in
+          uctxt { definitions = ctxt' }
+
+setRigCount :: Name -> RigCount -> Context -> Context
+setRigCount n rc uctxt
+    = let ctxt = definitions uctxt
+          !ctxt' = updateDef n (\ (d, _, i, a, t, m) -> (d, rc, i, a, t, m)) ctxt in
           uctxt { definitions = ctxt' }
 
 setMetaInformation :: Name -> MetaInformation -> Context -> Context
 setMetaInformation n m uctxt
     = let ctxt = definitions uctxt
-          !ctxt' = updateDef n (\ (d, i, a, t, _) -> (d, i, a, t, m)) ctxt in
+          !ctxt' = updateDef n (\ (d, r, i, a, t, _) -> (d, r, i, a, t, m)) ctxt in
           uctxt { definitions = ctxt' }
 
 addCtxtDef :: Name -> Def -> Context -> Context
 addCtxtDef n d c = let ctxt = definitions c
-                       !ctxt' = addDef n (d, False, Public, Unchecked, EmptyMI) $! ctxt in
+                       !ctxt' = addDef n (d, RigW, False, Public, Unchecked, EmptyMI) $! ctxt in
                        c { definitions = ctxt' }
 
 addTyDecl :: Name -> NameType -> Type -> Context -> Context
 addTyDecl n nt ty uctxt
     = let ctxt = definitions uctxt
-          !ctxt' = addDef n (TyDecl nt ty, False, Public, Unchecked, EmptyMI) ctxt in
+          !ctxt' = addDef n (TyDecl nt ty, RigW, False, Public, Unchecked, EmptyMI) ctxt in
           uctxt { definitions = ctxt' }
 
 addDatatype :: Datatype Name -> Context -> Context
@@ -932,14 +942,14 @@ addDatatype (Data n tag ty unique cons) uctxt
     = let ctxt = definitions uctxt
           ty' = normalise uctxt [] ty
           !ctxt' = addCons 0 cons (addDef n
-                     (TyDecl (TCon tag (arity ty')) ty, True, Public, Unchecked, EmptyMI) ctxt) in
+                     (TyDecl (TCon tag (arity ty')) ty, RigW, True, Public, Unchecked, EmptyMI) ctxt) in
           uctxt { definitions = ctxt' }
   where
     addCons tag [] ctxt = ctxt
     addCons tag ((n, ty) : cons) ctxt
         = let ty' = normalise uctxt [] ty in
               addCons (tag+1) cons (addDef n
-                  (TyDecl (DCon tag (arity ty') unique) ty, True, Public, Unchecked, EmptyMI) ctxt)
+                  (TyDecl (DCon tag (arity ty') unique) ty, RigW, True, Public, Unchecked, EmptyMI) ctxt)
 
 -- FIXME: Too many arguments! Refactor all these Bools.
 --
@@ -973,7 +983,7 @@ addCasedef n ei ci@(CaseInfo inline alwaysInline tcdict)
                                            (args_rt, sc_rt)
                            op = (CaseOp (ci { case_inlinable = inlc })
                                                 ty argtys ps_in ps_ct cdef,
-                                 False, access, Unchecked, EmptyMI)
+                                 RigW, False, access, Unchecked, EmptyMI)
                        in return $ addDef n op ctxt
 --                    other -> tfail (Msg $ "Error adding case def: " ++ show other)
          return uctxt { definitions = ctxt' }
@@ -986,15 +996,15 @@ simplifyCasedef :: Name -> ErasureInfo -> Context -> TC Context
 simplifyCasedef n ei uctxt
    = do let ctxt = definitions uctxt
         ctxt' <- case lookupCtxt n ctxt of
-                   [(CaseOp ci ty atys [] ps _, inj, acc, tot, metainf)] ->
+                   [(CaseOp ci ty atys [] ps _, rc, inj, acc, tot, metainf)] ->
                       return ctxt -- nothing to simplify (or already done...)
-                   [(CaseOp ci ty atys ps_in ps cd, inj, acc, tot, metainf)] ->
+                   [(CaseOp ci ty atys ps_in ps cd, rc, inj, acc, tot, metainf)] ->
                       do let ps_in' = map simpl ps_in
                              pdef = map debind ps_in'
                          CaseDef args sc _ <- simpleCase False (STerm Erased) False CompileTime emptyFC [] atys pdef ei
                          return $ addDef n (CaseOp ci
                                               ty atys ps_in' ps (cd { cases_compiletime = (args, sc) }),
-                                              inj, acc, tot, metainf) ctxt
+                                              rc, inj, acc, tot, metainf) ctxt
 
                    _ -> return ctxt
         return uctxt { definitions = ctxt' }
@@ -1014,10 +1024,10 @@ addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) ->
                Context -> Context
 addOperator n ty a op uctxt
     = let ctxt = definitions uctxt
-          ctxt' = addDef n (Operator ty a op, False, Public, Unchecked, EmptyMI) ctxt in
+          ctxt' = addDef n (Operator ty a op, RigW, False, Public, Unchecked, EmptyMI) ctxt in
           uctxt { definitions = ctxt' }
 
-tfst (a, _, _, _, _) = a
+tfst (a, _, _, _, _, _) = a
 
 lookupNames :: Name -> Context -> [Name]
 lookupNames n ctxt
@@ -1103,10 +1113,10 @@ lookupP_all :: Bool -> Bool -> Name -> Context -> [Term]
 lookupP_all all exact n ctxt
    = do (n', def) <- names
         p <- case def of
-          (Function ty tm, inj, a, _, _)      -> return (P Ref n' ty, a)
-          (TyDecl nt ty, _, a, _, _)        -> return (P nt n' ty, a)
-          (CaseOp _ ty _ _ _ _, inj, a, _, _) -> return (P Ref n' ty, a)
-          (Operator ty _ _, inj, a, _, _)     -> return (P Ref n' ty, a)
+          (Function ty tm, _, inj, a, _, _)      -> return (P Ref n' ty, a)
+          (TyDecl nt ty, _, _, a, _, _)        -> return (P nt n' ty, a)
+          (CaseOp _ ty _ _ _ _, _, inj, a, _, _) -> return (P Ref n' ty, a)
+          (Operator ty _ _, _, inj, a, _, _)     -> return (P Ref n' ty, a)
         case snd p of
           Hidden -> if all then return (fst p) else []
           Private -> if all then return (fst p) else []
@@ -1133,28 +1143,36 @@ lookupDefAcc :: Name -> Bool -> Context ->
 lookupDefAcc n mkpublic ctxt
     = map mkp $ lookupCtxt n (definitions ctxt)
   -- io_bind a special case for REPL prettiness
-  where mkp (d, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_pure"))
-                                   then (d, Public) else (d, a)
+  where mkp (d, _, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_pure"))
+                                      then (d, Public) else (d, a)
 
 lookupDefAccExact :: Name -> Bool -> Context ->
                      Maybe (Def, Accessibility)
 lookupDefAccExact n mkpublic ctxt
     = fmap mkp $ lookupCtxtExact n (definitions ctxt)
   -- io_bind a special case for REPL prettiness
-  where mkp (d, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_pure"))
-                                   then (d, Public) else (d, a)
+  where mkp (d, _, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_pure"))
+                                      then (d, Public) else (d, a)
 
 lookupTotal :: Name -> Context -> [Totality]
 lookupTotal n ctxt = map mkt $ lookupCtxt n (definitions ctxt)
-  where mkt (d, inj, a, t, m) = t
+  where mkt (d, _, inj, a, t, m) = t
 
 lookupTotalExact :: Name -> Context -> Maybe Totality
 lookupTotalExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
-  where mkt (d, inj, a, t, m) = t
+  where mkt (d, _, inj, a, t, m) = t
+
+lookupRigCount :: Name -> Context -> [Totality]
+lookupRigCount n ctxt = map mkt $ lookupCtxt n (definitions ctxt)
+  where mkt (d, _, inj, a, t, m) = t
+
+lookupRigCountExact :: Name -> Context -> Maybe RigCount
+lookupRigCountExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
+  where mkt (d, rc, inj, a, t, m) = rc
 
 lookupInjectiveExact :: Name -> Context -> Maybe Injectivity
 lookupInjectiveExact n ctxt = fmap mkt $ lookupCtxtExact n (definitions ctxt)
-  where mkt (d, inj, a, t, m) = inj
+  where mkt (d, _, inj, a, t, m) = inj
 
 -- Check if a name is reducible in the type checker. Partial definitions
 -- are not reducible (so treated as a constant)
@@ -1166,10 +1184,10 @@ tcReducible n ctxt = case lookupTotalExact n ctxt of
 
 lookupMetaInformation :: Name -> Context -> [MetaInformation]
 lookupMetaInformation n ctxt = map mkm $ lookupCtxt n (definitions ctxt)
-  where mkm (d, inj, a, t, m) = m
+  where mkm (d, _, inj, a, t, m) = m
 
 lookupNameTotal :: Name -> Context -> [(Name, Totality)]
-lookupNameTotal n = map (\(n, (_, _, _, t, _)) -> (n, t)) . lookupCtxtName n . definitions
+lookupNameTotal n = map (\(n, (_, _, _, _, t, _)) -> (n, t)) . lookupCtxtName n . definitions
 
 
 lookupVal :: Name -> Context -> [Value]

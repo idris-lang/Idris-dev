@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 159
+ibcVersion = 160
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.

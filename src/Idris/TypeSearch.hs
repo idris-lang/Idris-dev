@@ -104,8 +104,8 @@ searchPred istate ty1 = matcher where
   matcher = matchTypesBulk istate maxScore ty1
 
 
-typeFromDef :: (Def, i, b, c, d) -> Maybe Type
-typeFromDef (def, _, _, _, _) = get def where
+typeFromDef :: (Def, r, i, b, c, d) -> Maybe Type
+typeFromDef (def, _, _, _, _, _) = get def where
   get :: Def -> Maybe Type
   get (Function ty _) = Just ty
   get (TyDecl _ ty) = Just ty

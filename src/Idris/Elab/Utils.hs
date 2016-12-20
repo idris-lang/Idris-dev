@@ -602,16 +602,24 @@ setLinear ns tm = tm
 linearCheck :: FC -> Type -> Idris ()
 linearCheck fc t = do ist <- getIState
                       checkArgs ist t
-  where 
+  where
+    checkNameOK ist f 
+       = case lookupRigCountExact f (tt_ctxt ist) of
+              Just Rig1 ->
+                  ierror $ At fc $
+                       Msg $ show f ++ " can only appear in a linear binding"
+              _ -> return ()
+
     checkArgs ist (Bind n (Pi RigW _ ty _) sc)
-        | (P _ f _, _) <- unApply ty
-            = case lookupCtxtExact f (idris_datatypes ist) of
-                   Just ti | linear_con ti ->
-                        ierror $ At fc $
-                           Msg $ show ty ++ " has a linear constructor, so must have count <= 1"
-                   _ -> return ()
+        = do mapM_ (checkNameOK ist) (allTTNames ty)
+             checkArgs ist (substV (P Bound n Erased) sc)
     checkArgs ist (Bind n (Pi _ _ _ _) sc) 
           = checkArgs ist (substV (P Bound n Erased) sc)
     checkArgs ist _ = return ()
+
+linearArg :: Type -> Bool
+linearArg (Bind n (Pi Rig1 _ _ _) sc) = True
+linearArg (Bind n (Pi _ _ _ _) sc) = linearArg sc
+linearArg _ = False
 
 
