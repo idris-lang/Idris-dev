@@ -107,11 +107,17 @@ runTest path flags = do
       normalise [] = []
 
 main :: IO ()
-main =
-  defaultMainWithIngredients ingredients $
-    askOption $ \(NodeOpt node) ->
-      let (codegen, flags) = if node then (JS, ["--codegen", "node"])
-                                     else (C , [])
-       in
-        mkGoldenTests (testFamiliesForCodegen codegen)
-                    (flags ++ idrisFlags)
+main = do
+  node <- findExecutable "node"
+  case node of
+    Nothing -> do
+      putStrLn "For running the test suite against Node, node must be installed."
+      exitFailure
+    Just _  -> do
+      defaultMainWithIngredients ingredients $
+        askOption $ \(NodeOpt node) ->
+          let (codegen, flags) = if node then (JS, ["--codegen", "node"])
+                                         else (C , [])
+           in
+            mkGoldenTests (testFamiliesForCodegen codegen)
+                        (flags ++ idrisFlags)
