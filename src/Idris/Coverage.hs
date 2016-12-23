@@ -349,10 +349,29 @@ recoverableCoverage :: Context -> Err -> Bool
 recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
     = let topx' = normalise ctxt [] topx
           topy' = normalise ctxt [] topy in
-          checkRec topx' topy'
+          evalState (checkRec topx' topy') []
   where -- different notion of recoverable than in unification, since we
         -- have no metavars -- just looking to see if a constructor is failing
-        -- to unify with a function that may be reduced later
+        -- to unify with a function that may be reduced later, or if any
+        -- variables need to have two different constructor forms
+
+        -- The state is a mapping of name to what it has failed to unify
+        -- with
+        checkRec :: Term -> Term -> State [(Name, Term)] Bool
+        checkRec (P Bound x _) tm 
+           | (P yt _ _, _) <- unApply tm,
+             conType yt = do nmap <- get
+                             case lookup x nmap of
+                                  Nothing -> do put ((x, tm) : nmap)
+                                                return True
+                                  Just y' -> checkRec tm y'
+        checkRec tm (P Bound y _) 
+           | (P xt _ _, _) <- unApply tm,
+             conType xt = do nmap <- get
+                             case lookup y nmap of
+                                  Nothing -> do put ((y, tm) : nmap)
+                                                return True
+                                  Just x' -> checkRec tm x'
         checkRec (App _ f a) p@(P _ _ _) = checkRec f p
         checkRec p@(P _ _ _) (App _ f a) = checkRec p f
         checkRec fa@(App _ _ _) fa'@(App _ _ _)
@@ -360,13 +379,29 @@ recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
               (f', as') <- unApply fa'
                  = if (length as /= length as')
                       then checkRec f f'
-                      else checkRec f f' && and (zipWith checkRec as as')
-        checkRec (P xt x _) (P yt y _) = x == y || ntRec xt yt
-        checkRec _ _ = False
+                      else checkRecs (f : as) (f' : as') 
+          where
+            checkRecs [] [] = return True
+            checkRecs (a : as) (b : bs) = do aok <- checkRec a b
+                                             asok <- checkRecs as bs
+                                             return (aok && asok)
+        checkRec (P xt x _) (P yt y _) 
+           | x == y = return True
+           | ntRec xt yt = return True
+        checkRec _ _ = return False
 
+        conType (DCon _ _ _) = True
+        conType (TCon _ _) = True
+        conType _ = False
+
+        -- If either name is a reference or a bound variable, then further
+        -- development may fix the error, so consider it recoverable.
+        -- If both names are constructors, and the name is different, then
+        -- it's not recoverable
         ntRec x y | Ref <- x = True
                   | Ref <- y = True
-                  | (Bound, Bound) <- (x, y) = True
+                  | Bound <- x = True
+                  | Bound <- y = True
                   | otherwise = False -- name is different, unrecoverable
 recoverableCoverage ctxt (At _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (Elaborating _ _ _ e) = recoverableCoverage ctxt e

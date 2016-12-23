@@ -225,5 +225,3 @@ vList xs with (splitBalanced xs)
   vList (ys ++ zs) | (MkSplitBal prf) 
         = toVList ys (snocList zs) prf
 
-
-
