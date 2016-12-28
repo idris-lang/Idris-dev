@@ -191,7 +191,7 @@ void* idris_alloc(size_t size) {
     Closure* cl = (Closure*) allocate(sizeof(Closure)+size, 0);
     SETTY(cl, CT_RAWDATA);
     cl->info.size = size;
-    return (void*)cl+sizeof(Closure);
+    return (void*)((char *)cl+sizeof(Closure));
 }
 
 void* idris_realloc(void* old, size_t old_size, size_t size) {
@@ -449,36 +449,36 @@ void idris_poke(void* ptr, i_int offset, uint8_t data) {
 
 
 VAL idris_peekPtr(VM* vm, VAL ptr, VAL offset) {
-    void** addr = GETPTR(ptr) + GETINT(offset);
+    void** addr = (void **)((char *)GETPTR(ptr) + GETINT(offset));
     return MKPTR(vm, *addr);
 }
 
 VAL idris_pokePtr(VAL ptr, VAL offset, VAL data) {
-    void** addr = GETPTR(ptr) + GETINT(offset);
+    void** addr = (void **)((char *)GETPTR(ptr) + GETINT(offset));
     *addr = GETPTR(data);
     return MKINT(0);
 }
 
 VAL idris_peekDouble(VM* vm, VAL ptr, VAL offset) {
-    return MKFLOAT(vm, *(double*)(GETPTR(ptr) + GETINT(offset)));
+    return MKFLOAT(vm, *(double*)((char *)GETPTR(ptr) + GETINT(offset)));
 }
 
 VAL idris_pokeDouble(VAL ptr, VAL offset, VAL data) {
-    *(double*)(GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
+    *(double*)((char *)GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
     return MKINT(0);
 }
 
 VAL idris_peekSingle(VM* vm, VAL ptr, VAL offset) {
-    return MKFLOAT(vm, *(float*)(GETPTR(ptr) + GETINT(offset)));
+    return MKFLOAT(vm, *(float*)((char *)GETPTR(ptr) + GETINT(offset)));
 }
 
 VAL idris_pokeSingle(VAL ptr, VAL offset, VAL data) {
-    *(float*)(GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
+    *(float*)((char *)GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
     return MKINT(0);
 }
 
 void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size) {
-    memmove(dest + dest_offset, src + src_offset, size);
+    memmove((char *)dest + dest_offset, (char *)src + src_offset, size);
 }
 
 VAL idris_castIntStr(VM* vm, VAL i) {
