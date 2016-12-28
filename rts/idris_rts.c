@@ -70,7 +70,7 @@ VM* init_vm(int stack_size, size_t heap_size,
     return vm;
 }
 
-VM* idris_vm() {
+VM* idris_vm(void) {
     VM* vm = init_vm(4096000, 4096000, 1);
     init_threadkeys();
     init_threaddata(vm);
@@ -95,12 +95,12 @@ void close_vm(VM* vm) {
 }
 
 #ifdef HAS_PTHREAD
-void create_key() {
+void create_key(void) {
     pthread_key_create(&vm_key, (void*)free_key);
 }
 #endif
 
-void init_threadkeys() {
+void init_threadkeys(void) {
 #ifdef HAS_PTHREAD
     static pthread_once_t key_once = PTHREAD_ONCE_INIT;
     pthread_once(&key_once, create_key);
@@ -113,7 +113,7 @@ void init_threaddata(VM *vm) {
 #endif
 }
 
-void init_signals() {
+void init_signals(void) {
 #if (__linux__ || __APPLE__ || __FreeBSD__ || __DragonFly__)
     signal(SIGPIPE, SIG_IGN);
 #endif
@@ -173,7 +173,7 @@ void idris_requireAlloc(size_t size) {
 #endif
 }
 
-void idris_doneAlloc() {
+void idris_doneAlloc(void) {
 #ifdef HAS_PTHREAD
     VM* vm = pthread_getspecific(vm_key);
     int lock = vm->processes > 0;
@@ -1046,7 +1046,7 @@ void idris_freeMsg(Msg* msg) {
     free(msg);
 }
 
-int idris_errno() {
+int idris_errno(void) {
     return errno;
 }
 
@@ -1056,7 +1056,7 @@ char* idris_showerror(int err) {
 
 VAL* nullary_cons;
 
-void init_nullaries() {
+void init_nullaries(void) {
     int i;
     VAL cl;
     nullary_cons = malloc(256 * sizeof(VAL));
@@ -1068,7 +1068,7 @@ void init_nullaries() {
     }
 }
 
-void free_nullaries() {
+void free_nullaries(void) {
     int i;
     for(i = 0; i < 256; ++i) {
         free(nullary_cons[i]);
@@ -1079,7 +1079,7 @@ void free_nullaries() {
 int __idris_argc;
 char **__idris_argv;
 
-int idris_numArgs() {
+int idris_numArgs(void) {
     return __idris_argc;
 }
 
@@ -1087,12 +1087,12 @@ const char* idris_getArg(int i) {
     return __idris_argv[i];
 }
 
-void idris_disableBuffering() {
+void idris_disableBuffering(void) {
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
 }
 
-void stackOverflow() {
+void stackOverflow(void) {
   fprintf(stderr, "Stack overflow");
   exit(-1);
 }

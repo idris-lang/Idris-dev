@@ -14,7 +14,7 @@
 // much space is needed (or find another way of preventing copying)
 #define IDRIS_MAXGMP 65536
 
-void init_gmpalloc() {
+void init_gmpalloc(void) {
     mp_set_memory_functions(idris_alloc, idris_realloc, idris_free);
 }
 
