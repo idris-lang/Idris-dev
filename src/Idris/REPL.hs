@@ -396,10 +396,15 @@ runIdeModeCommand h id orig fn mods (IdeMode.SetOpt IdeMode.ErrContext b) =
      runIO . hPutStrLn h $ IdeMode.convSExp "return" msg id
 runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
   do ist <- getIState
-     let mvs = reverse $ map fst (idris_metavars ist) \\ primDefs
+     let mvs = reverse $ [ (n, i)
+                         | (n, (_, i, _, _, _)) <- idris_metavars ist
+                         , not (n `elem` primDefs)
+                         ]
      let ppo = ppOptionIst ist
      -- splitMvs is a list of pairs of names and their split types
-     let splitMvs = mapSnd (splitPi ist) (mvTys ist mvs)
+     let splitMvs = [ (n, (premises, concl, tm))
+                    | (n, i, ty) <- mvTys ist mvs
+                    , let (premises, concl, tm) = splitPi ist i ty]
      -- mvOutput is the pretty-printed version ready for conversion to SExpr
      let mvOutput = map (\(n, (hs, c)) -> (n, hs, c)) $
                     mapPair show
@@ -413,20 +418,24 @@ runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
      runIO . hPutStrLn h $
        IdeMode.convSExp "return" (IdeMode.SymbolAtom "ok", mvOutput) id
   where mapPair f g xs = zip (map (f . fst) xs) (map (g . snd) xs)
-        mapSnd f xs = zip (map fst xs) (map (f . snd) xs)
+        firstOfThree (x, y, z) = x
+        mapThird f xs = map (\(x, y, z) -> (x, y, f z)) xs
 
         -- | Split a function type into a pair of premises, conclusion.
         -- Each maintains both the original and delaborated versions.
-        splitPi :: IState -> Type -> ([(Name, Type, PTerm)], Type, PTerm)
-        splitPi ist (Bind n (Pi _ _ t _) rest) =
-          let (hs, c, pc) = splitPi ist rest in
+        splitPi :: IState -> Int -> Type -> ([(Name, Type, PTerm)], Type, PTerm)
+        splitPi ist i (Bind n (Pi _ _ t _) rest) | i > 0 =
+          let (hs, c, pc) = splitPi ist (i - 1) rest in
             ((n, t, delabTy' ist [] t False False True):hs,
              c, delabTy' ist [] c False False True)
-        splitPi ist tm = ([], tm, delabTy' ist [] tm False False True)
+        splitPi ist i tm = ([], tm, delabTy' ist [] tm False False True)
 
         -- | Get the types of a list of metavariable names
-        mvTys :: IState -> [Name] -> [(Name, Type)]
-        mvTys ist = mapSnd vToP . mapMaybe (flip lookupTyNameExact (tt_ctxt ist))
+        mvTys :: IState -> [(Name, Int)] -> [(Name, Int, Type)]
+        mvTys ist mvs = [ (n, i, ty)
+                        | (n, i) <- mvs
+                        , ty <- maybeToList (fmap (vToP . snd) (lookupTyNameExact n (tt_ctxt ist)))
+                        ]
 
         -- | Show a type and its corresponding PTerm in a format suitable
         -- for the IDE - that is, pretty-printed and annotated.
