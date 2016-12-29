@@ -2,6 +2,7 @@ module Control.Isomorphism
 
 import Syntax.PreorderReasoning
 import Data.Fin
+import Control.Category
 
 %default total
 %access public export
@@ -31,6 +32,10 @@ isoTrans (MkIso to from toFrom fromTo) (MkIso to' from' toFrom' fromTo') =
         (\x => (from (from' (to' (to x))))  ={ cong (fromTo' (to x)) }=
                (from (to x))                ={ fromTo x              }=
                x                            QED)
+
+Category Iso where
+  id = isoRefl
+  (.) = flip isoTrans
 
 ||| Isomorphism is symmetric
 isoSym : Iso a b -> Iso b a
