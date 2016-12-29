@@ -132,7 +132,9 @@ induction subj =
        (_, ty) <- check !getEnv subj
        ty' <- forget ty
        case headName ty' of
-         Nothing => fail [TermPart ty, TextPart "is not an inductive family"]
+         Nothing =>
+           fail [TermPart ty,
+                 TextPart "is not a datatype declared with the data keyword"]
          Just fam =>
            do let elim = elimN fam
               (_,_,elimTy) <- (lookupTyExact elim) <|> (do deriveElim fam elim
