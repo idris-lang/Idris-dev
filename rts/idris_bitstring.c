@@ -823,37 +823,37 @@ VAL idris_b64T32(VM *vm, VAL a) {
 }
 
 VAL idris_peekB8(VM* vm, VAL ptr, VAL offset) {
-    return MKB8(vm, *(uint8_t*)(GETPTR(ptr) + GETINT(offset)));
+    return MKB8(vm, *(uint8_t*)((char *)GETPTR(ptr) + GETINT(offset)));
 }
 
 VAL idris_pokeB8(VAL ptr, VAL offset, VAL data) {
-    *(uint8_t*)(GETPTR(ptr) + GETINT(offset)) = GETBITS8(data);
+    *(uint8_t*)((char *)GETPTR(ptr) + GETINT(offset)) = GETBITS8(data);
     return MKINT(0);
 }
 
 VAL idris_peekB16(VM* vm, VAL ptr, VAL offset) {
-    return MKB16(vm, *(uint16_t*)(GETPTR(ptr) + GETINT(offset)));
+    return MKB16(vm, *(uint16_t*)((char *)GETPTR(ptr) + GETINT(offset)));
 }
 
 VAL idris_pokeB16(VAL ptr, VAL offset, VAL data) {
-    *(uint16_t*)(GETPTR(ptr) + GETINT(offset)) = GETBITS16(data);
+    *(uint16_t*)((char *)GETPTR(ptr) + GETINT(offset)) = GETBITS16(data);
     return MKINT(0);
 }
 
 VAL idris_peekB32(VM* vm, VAL ptr, VAL offset) {
-    return MKB32(vm, *(uint32_t*)(GETPTR(ptr) + GETINT(offset)));
+    return MKB32(vm, *(uint32_t*)((char *)GETPTR(ptr) + GETINT(offset)));
 }
 
 VAL idris_pokeB32(VAL ptr, VAL offset, VAL data) {
-    *(uint32_t*)(GETPTR(ptr) + GETINT(offset)) = GETBITS32(data);
+    *(uint32_t*)((char *)GETPTR(ptr) + GETINT(offset)) = GETBITS32(data);
     return MKINT(0);
 }
 
 VAL idris_peekB64(VM* vm, VAL ptr, VAL offset) {
-    return MKB64(vm, *(uint64_t*)(GETPTR(ptr) + GETINT(offset)));
+    return MKB64(vm, *(uint64_t*)((char *)GETPTR(ptr) + GETINT(offset)));
 }
 
 VAL idris_pokeB64(VAL ptr, VAL offset, VAL data) {
-    *(uint64_t*)(GETPTR(ptr) + GETINT(offset)) = GETBITS64(data);
+    *(uint64_t*)((char *)GETPTR(ptr) + GETINT(offset)) = GETBITS64(data);
     return MKINT(0);
 }

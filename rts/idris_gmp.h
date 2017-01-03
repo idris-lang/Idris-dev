@@ -8,7 +8,7 @@
 #endif
 
 // Set memory allocation functions
-void init_gmpalloc();
+void init_gmpalloc(void);
 
 VAL MKBIGI(int val);
 VAL MKBIGC(VM* vm, char* bigint);
