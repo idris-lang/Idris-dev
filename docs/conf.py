@@ -33,7 +33,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 # ones.
 extensions = [
     'sphinx.ext.todo',
-    'sphinx.ext.imgmath',
+    'sphinx.ext.pngmath', # imgmath is not supported on readthedocs.
     'sphinx.ext.ifconfig',
 ]
 
