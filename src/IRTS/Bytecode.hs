@@ -18,18 +18,17 @@ RVal is a register in which computed values (essentially, what a function
 returns) are stored.
 
 -}
+
 module IRTS.Bytecode where
 
-
+import Data.Maybe
 import Idris.Core.TT
 import IRTS.Defunctionalise
-import IRTS.Lang
 import IRTS.Simplified
 
-import Data.Maybe
 
 data Reg = RVal | L Int | T Int | Tmp
-   deriving (Show, Eq)
+  deriving (Show, Eq)
 
 data BC =
     -- | reg1 = reg2
@@ -113,11 +112,12 @@ data BC =
   deriving Show
 
 toBC :: (Name, SDecl) -> (Name, [BC])
-toBC (n, SFun n' args locs exp)
-   = (n, reserve locs ++ bc RVal exp True)
+toBC (nm, SFun _ _ locs e)
+   = (nm, reserve locs ++ bc RVal e True)
   where reserve 0 = []
         reserve n = [RESERVE n, ADDTOP n]
 
+clean :: Bool -> [BC]
 clean True  = [TOPBASE 0, REBASE]
 clean False = []
 
@@ -133,7 +133,7 @@ bc reg (SApp False f vs) r =
    where
       ret      = assign reg RVal ++ clean r
       argCount = length vs
-bc reg (SApp True f vs) r
+bc _   (SApp True f vs) _
     = RESERVE (length vs) : moveReg 0 vs
       ++ [SLIDE (length vs), TOPBASE (length vs), TAILCALL f]
 bc reg (SForeign t fname args) r
@@ -152,40 +152,48 @@ bc reg (SProj (Loc l) i) r = PROJECTINTO reg (L l) i : clean r
 bc reg (SConst i) r = ASSIGNCONST reg i : clean r
 bc reg (SOp p vs) r = OP reg p (map getL vs) : clean r
     where getL (Loc x) = L x
-bc reg (SError str) r = [ERROR str]
+bc _   (SError s) _ = [ERROR s]
 bc reg SNothing r = NULL reg : clean r
-bc reg (SCase up (Loc l) alts) r
+bc reg (SCase _ (Loc l) alts) r
    | isConst alts = constCase reg (L l) alts r
    | otherwise = conCase True reg (L l) alts r
 bc reg (SChkCase (Loc l) alts) r
    = conCase False reg (L l) alts r
-bc reg t r = error $ "Can't compile " ++ show t
+bc _   t _ = error $ "Can't compile " ++ show t
 
+isConst :: [SAlt] -> Bool
 isConst [] = False
-isConst (SConstCase _ _ : xs) = True
-isConst (SConCase _ _ _ _ _ : xs) = False
-isConst (_ : xs) = False
+isConst (SConstCase _ _ : _) = True
+isConst (SConCase _ _ _ _ _ : _) = False
+isConst (_ : _) = False
 
-moveReg off [] = []
+moveReg :: Int -> [LVar] -> [BC]
+moveReg _   [] = []
 moveReg off (Loc x : xs) = assign (T off) (L x) ++ moveReg (off + 1) xs
 
+assign :: Reg -> Reg -> [BC]
 assign r1 r2 | r1 == r2 = []
              | otherwise = [ASSIGN r1 r2]
 
+conCase :: Bool -> Reg -> Reg -> [SAlt] -> Bool -> [BC]
 conCase safe reg l xs r = [CASE safe l (mapMaybe (caseAlt l reg r) xs)
                                 (defaultAlt reg xs r)]
 
+constCase :: Reg -> Reg -> [SAlt] -> Bool -> [BC]
 constCase reg l xs r = [CONSTCASE l (mapMaybe (constAlt l reg r) xs)
                                (defaultAlt reg xs r)]
 
+caseAlt :: Reg -> Reg -> Bool -> SAlt -> Maybe (Int, [BC])
 caseAlt l reg r (SConCase lvar tag _ args e)
     = Just (tag, PROJECT l lvar (length args) : bc reg e r)
-caseAlt l reg r _ = Nothing
+caseAlt _ _   _ _ = Nothing
 
-constAlt l reg r (SConstCase c e)
+constAlt :: t -> Reg -> Bool -> SAlt -> Maybe (Const, [BC])
+constAlt _ reg r (SConstCase c e)
     = Just (c, bc reg e r)
-constAlt l reg r _ = Nothing
+constAlt _ _   _ _ = Nothing
 
-defaultAlt reg [] r = Nothing
+defaultAlt :: Reg -> [SAlt] -> Bool -> Maybe [BC]
+defaultAlt _   [] _ = Nothing
 defaultAlt reg (SDefaultCase e : _) r = Just (bc reg e r)
 defaultAlt reg (_ : xs) r = defaultAlt reg xs r

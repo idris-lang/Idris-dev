@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-module IRTS.Inliner where
+module IRTS.Inliner(inline) where
 
 import Idris.Core.TT
 import IRTS.Defunctionalise
@@ -16,12 +16,11 @@ inline xs = let sep = toAlist xs
                 addAlist inls emptyContext
 
 inl :: DDefs -> (Name, DDecl) -> (Name, DDecl)
-inl ds d@(n, DFun n' args exp)
-    = case evalD ds exp of
+inl ds d@(n, DFun n' args body)
+    = case evalD ds body of
            Just exp' -> (n, DFun n' args exp')
            _ -> d
-inl ds d = d
-
-evalD _ e = ev e
   where
-    ev e = Just e
+    evalD _ e = ev e
+    ev e      = Just e
+inl _  d = d
