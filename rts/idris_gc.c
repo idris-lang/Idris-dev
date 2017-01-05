@@ -73,7 +73,16 @@ VAL copy(VM* vm, VAL x) {
 void cheney(VM *vm) {
     int i;
     int ar;
-    char* scan = vm->heap.heap;
+    char* scan = NULL;
+	
+#ifdef FORCE_ALIGNMENT
+    if (((i_int)(vm->heap.heap)&1) == 1) {
+       scan = vm->heap.heap + 1;
+    } else
+#endif
+    {
+        scan = vm->heap.heap;
+    }	
 
     while(scan < vm->heap.next) {
        size_t inc = *((size_t*)scan);
