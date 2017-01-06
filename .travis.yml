@@ -35,6 +35,11 @@ matrix:
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+  allow_failures:
+    - os: osx
+      env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
+      compiler: ": #GHC 8.0.1"
+  fast-finish: true
 
 cache:
   directories:
@@ -56,7 +61,6 @@ before_install:
   - env
   - if [[ $TRAVIS_OS_NAME == 'osx' ]];
     then
-        brew update;
         brew outdated pkgconfig || brew install pkgconfig;
         brew install ghc cabal-install libffi cppcheck gnu-sed;
         export PATH=$HOME/.cabal/bin:$PATH;
