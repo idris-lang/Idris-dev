@@ -33,6 +33,9 @@
   functions (`exitWith`, `exitFailure`, and `exitSuccess`) and a data
   structure (`ExitCode`) to capture a program's return code.
 
++ Casting a `String` to an `Int`, `Integer` or a `Double` now ignores leading
+  and trailing whitespace. Previously only leading whitespace was ignored.
+
 # New in 0.99:
 
 ## Language updates
