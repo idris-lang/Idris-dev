@@ -20,6 +20,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Data.Heap,
           Data.SortedMap, Data.SortedSet,
           Data.CoList, Data.Storable,
+	  Data.List.Zipper,
 
           Decidable.Decidable, Decidable.Order,
 
