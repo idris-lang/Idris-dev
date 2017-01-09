@@ -98,7 +98,7 @@ typedef struct {
 
 void alloc_heap(Heap * heap, size_t heap_size, size_t growth, char * old);
 void free_heap(Heap * heap);
-
+char* aligned_heap_pointer(char * heap);
 
 #ifdef IDRIS_DEBUG
 void heap_check_all(Heap * heap);
