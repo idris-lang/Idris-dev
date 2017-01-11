@@ -24,6 +24,7 @@ import Idris.Core.ProofTerm (bound_in, bound_in_term, getProofTerm, mkProofTerm,
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.Unify
+import Idris.Core.WHNF
 
 import Util.Pretty hiding (fill)
 
@@ -98,7 +99,7 @@ setNextName :: Elab' aux ()
 setNextName = do env <- get_env
                  ES (p, a) s e <- get
                  let pargs = map fst (getArgTys (ptype p))
-                 initNextNameFrom (pargs ++ map fst env)
+                 initNextNameFrom (pargs ++ map fstEnv env)
 
 initNextNameFrom :: [Name] -> Elab' aux ()
 initNextNameFrom ns = do ES (p, a) s e <- get
@@ -326,7 +327,7 @@ checkInjective (tm, l, r) = do ctxt <- get_context
         isInj ctxt (App _ f a) = isInj ctxt f
         isInj ctxt (Constant _) = True
         isInj ctxt (TType _) = True
-        isInj ctxt (Bind _ (Pi _ _ _) sc) = True
+        isInj ctxt (Bind _ (Pi _ _ _ _) sc) = True
         isInj ctxt _ = False
 
 -- | get implementation argument names
@@ -422,8 +423,11 @@ computeLet n = processTactic' (ComputeLet n)
 simplify :: Elab' aux ()
 simplify = processTactic' Simplify
 
-hnf_compute :: Elab' aux ()
-hnf_compute = processTactic' HNF_Compute
+whnf_compute :: Elab' aux ()
+whnf_compute = processTactic' WHNF_Compute
+
+whnf_compute_args :: Elab' aux ()
+whnf_compute_args = processTactic' WHNF_ComputeArgs
 
 eval_in :: Raw -> Elab' aux ()
 eval_in t = processTactic' (EvalIn t)
@@ -437,8 +441,8 @@ intro n = processTactic' (Intro n)
 introTy :: Raw -> Maybe Name -> Elab' aux ()
 introTy ty n = processTactic' (IntroTy ty n)
 
-forall :: Name -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
-forall n i t = processTactic' (Forall n i t)
+forall :: Name -> RigCount -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
+forall n r i t = processTactic' (Forall n r i t)
 
 letbind :: Name -> Raw -> Raw -> Elab' aux ()
 letbind n t v = processTactic' (LetBind n t v)
@@ -459,18 +463,17 @@ equiv :: Raw -> Elab' aux ()
 equiv tm = processTactic' (Equiv tm)
 
 -- | Turn the current hole into a pattern variable with the provided
--- name, made unique if MN
+-- name, made unique if not the same as the head of the hole queue
 patvar :: Name -> Elab' aux ()
 patvar n@(SN _) = do apply (Var n) []; solve
 patvar n = do env <- get_env
               hs <- get_holes
-              if (n `elem` map fst env) then do apply (Var n) []; solve
-                else do n' <- case n of
-                                    UN _ -> return $! n
-                                    MN _ _ -> unique_hole n
-                                    NS _ _ -> return $! n
-                                    x -> return $! n
-                        processTactic' (PatVar n')
+              if (n `elem` map fstEnv env) then do apply (Var n) []; solve
+                else do n' <- case hs of
+                                   (h : hs) -> if n == h then return n
+                                                  else unique_hole n
+                                   _ -> unique_hole n
+                        processTactic' (PatVar n)
 
 -- | Turn the current hole into a pattern variable with the provided
 -- name, but don't make MNs unique.
@@ -478,11 +481,11 @@ patvar' :: Name -> Elab' aux ()
 patvar' n@(SN _) = do apply (Var n) [] ; solve
 patvar' n = do env <- get_env
                hs <- get_holes
-               if (n `elem` map fst env) then do apply (Var n) [] ; solve
+               if (n `elem` map fstEnv env) then do apply (Var n) [] ; solve
                   else processTactic' (PatVar n)
 
-patbind :: Name -> Elab' aux ()
-patbind n = processTactic' (PatBind n)
+patbind :: Name -> RigCount -> Elab' aux ()
+patbind n r = processTactic' (PatBind n r)
 
 focus :: Name -> Elab' aux ()
 focus n = processTactic' (Focus n)
@@ -575,9 +578,9 @@ prepare_apply fn imps =
        -- Count arguments to check if we need to normalise the type
        let usety = if argsOK (finalise ty) imps
                       then finalise ty
-                      else normalise ctxt env (finalise ty)
+                      else whnfArgs ctxt env (finalise ty)
        claims <- -- trace (show (fn, imps, ty, map fst env, normalise ctxt env (finalise ty))) $
-                 mkClaims usety imps [] (map fst env)
+                 mkClaims usety imps [] (map fstEnv env)
        ES (p, a) s prev <- get
        -- reverse the claims we made so that args go left to right
        let n = length (filter not imps)
@@ -586,7 +589,7 @@ prepare_apply fn imps =
        return $! claims
   where
     argsOK :: Type -> [a] -> Bool
-    argsOK (Bind n (Pi _ _ _) sc) (i : is) = argsOK sc is
+    argsOK (Bind n (Pi _ _ _ _) sc) (i : is) = argsOK sc is
     argsOK _ (i : is) = False
     argsOK _ [] = True
 
@@ -595,13 +598,13 @@ prepare_apply fn imps =
              -> [(Name, Name)] -- ^ Accumulator for produced claims
              -> [Name] -- ^ Hypotheses
              -> Elab' aux [(Name, Name)] -- ^ The names of the arguments and their holes, resp.
-    mkClaims (Bind n' (Pi _ t_in _) sc) (i : is) claims hs =
+    mkClaims (Bind n' (Pi _ _ t_in _) sc) (i : is) claims hs =
         do let t = rebind hs t_in
            n <- getNameFrom (mkMN n')
 --            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
            env <- get_env
-           claim n (forgetEnv (map fst env) t)
+           claim n (forgetEnv (map fstEnv env) t)
            when i (movelast n)
            mkClaims sc' is ((n', n) : claims) hs
     mkClaims t [] claims _ = return $! (reverse claims)
@@ -709,7 +712,7 @@ apply_elab n args =
     priOrder _ Nothing = GT
     priOrder (Just (x, _)) (Just (y, _)) = compare x y
 
-    doClaims (Bind n' (Pi _ t _) sc) (i : is) claims =
+    doClaims (Bind n' (Pi _ _ t _) sc) (i : is) claims =
         do n <- unique_hole (mkMN n')
            when (null claims) (start_unify n)
            let sc' = instantiate (P Bound n t) sc
@@ -745,14 +748,14 @@ checkPiGoal n
             = do g <- goal
                  ctxt <- get_context
                  env <- get_env
-                 case (normalise ctxt env g) of
-                    Bind _ (Pi _ _ _) _ -> return ()
+                 case (whnf ctxt env g) of
+                    Bind _ (Pi _ _ _ _) _ -> return ()
                     _ -> do a <- getNameFrom (sMN 0 "__pargTy")
                             b <- getNameFrom (sMN 0 "__pretTy")
                             f <- getNameFrom (sMN 0 "pf")
                             claim a RType
                             claim b RType
-                            claim f (RBind n (Pi Nothing (Var a) RType) (Var b))
+                            claim f (RBind n (Pi RigW Nothing (Var a) RType) (Var b))
                             movelast a
                             movelast b
                             fill (Var f)
@@ -772,7 +775,7 @@ infer_app infer fun arg str =
        s <- getNameFrom (sMN 0 "is")
        claim a RType
        claim b RType
-       claim f (RBind (sMN 0 "_aX") (Pi Nothing (Var a) RType) (Var b))
+       claim f (RBind (sMN 0 "_aX") (Pi RigW Nothing (Var a) RType) (Var b))
        tm <- get_term
        start_unify s
        -- if 'infer' is set, we're assuming it's a simply typed application
@@ -820,10 +823,10 @@ dep_app fun arg str =
        focus s; attack;
        ctxt <- get_context
        env <- get_env
-       case normalise ctxt env fty of
+       case whnf ctxt env fty of
             -- if f gives a function type, unify our argument type with
             -- f's expected argument type
-            Bind _ (Pi _ argty _) _ -> unifyGoal (forget argty)
+            Bind _ (Pi _ _ argty _) _ -> unifyGoal (forget argty)
             -- Can't infer a type for 'f', so fail here (and drop back to
             -- simply typed application where we infer the type for f)
             _ -> fail "Can't make type"
@@ -842,11 +845,11 @@ dep_app fun arg str =
 
 -- Abstract over an argument of unknown type, giving a name for the hole
 -- which we'll fill with the argument type too.
-arg :: Name -> Maybe ImplicitInfo -> Name -> Elab' aux ()
-arg n i tyhole = do ty <- unique_hole tyhole
-                    claim ty RType
-                    movelast ty
-                    forall n i (Var ty)
+arg :: Name -> RigCount -> Maybe ImplicitInfo -> Name -> Elab' aux ()
+arg n r i tyhole = do ty <- unique_hole tyhole
+                      claim ty RType
+                      movelast ty
+                      forall n r i (Var ty)
 
 -- try a tactic, if it adds any unification problem, return an error
 no_errors :: Elab' aux () -> Maybe Err -> Elab' aux ()
@@ -866,7 +869,7 @@ no_errors tac err
                case reverse ps' of
                     ((x, y, _, env, inerr, while, _) : _) ->
                        let (xp, yp) = getProvenance inerr
-                           env' = map (\(x, b) -> (x, binderTy b)) env in
+                           env' = map (\(x, rig, b) -> (x, binderTy b)) env in
                                   lift $ tfail $
                                          case err of
                                               Nothing -> CantUnify False (x, xp) (y, yp) inerr env' 0
@@ -1010,7 +1013,7 @@ debugElaborator msg = do ps <- fmap proof get
         getHoleInfo h = do focus h
                            g <- goal
                            env <- get_env
-                           return (h, g, env)
+                           return (h, g, envBinders env)
 
 qshow :: Fails -> String
 qshow fs = show (map (\ (x, y, _, _, _, _, _) -> (x, y)) fs)

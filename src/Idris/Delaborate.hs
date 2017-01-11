@@ -135,29 +135,29 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
                             = case lookup n (idris_metavars ist) of
                                   Just (Just _, mi, _, _, _) -> mkMVApp n []
                                   _ -> PRef un [] n
-    de env _ (Bind n (Lam ty) sc)
+    de env _ (Bind n (Lam _ ty) sc)
           = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
-    de env (_ : is) (Bind n (Pi (Just impl) ty _) sc)
+    de env (_ : is) (Bind n (Pi rig (Just impl) ty _) sc)
        | toplevel_imp impl -- information in 'imps' repeated
-          = PPi (Imp [] Dynamic False (Just impl) False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env is (Bind n (Pi (Just impl) ty _) sc)
+          = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC (de env [] ty) (de ((n,n):env) is sc)
+    de env is (Bind n (Pi rig (Just impl) ty _) sc)
        | tcimplementation impl
           = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
        | otherwise
-          = PPi (Imp [] Dynamic False (Just impl) False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env ((PImp { argopts = opts }):is) (Bind n (Pi _ ty _) sc)
-          = PPi (Imp opts Dynamic False Nothing False) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (PConstraint _ _ _ _:is) (Bind n (Pi _ ty _) sc)
-          = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi _ ty _) sc)
-          = PPi (tacimpl tac) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (plic:is) (Bind n (Pi _ ty _) sc)
-          = PPi (Exp (argopts plic) Dynamic False)
+          = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC (de env [] ty) (de ((n,n):env) is sc)
+    de env ((PImp { argopts = opts }):is) (Bind n (Pi rig _ ty _) sc)
+          = PPi (Imp opts Dynamic False Nothing False rig) n NoFC (de env [] ty) (de ((n,n):env) is sc)
+    de env (PConstraint _ _ _ _:is) (Bind n (Pi rig _ ty _) sc)
+          = PPi (constraint { pcount = rig}) n NoFC (de env [] ty) (de ((n,n):env) is sc)
+    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi rig _ ty _) sc)
+          = PPi ((tacimpl tac) { pcount = rig }) n NoFC (de env [] ty) (de ((n,n):env) is sc)
+    de env (plic:is) (Bind n (Pi rig _ ty _) sc)
+          = PPi (Exp (argopts plic) Dynamic False rig)
                 n NoFC
                 (de env [] ty)
                 (de ((n,n):env) is sc)
-    de env [] (Bind n (Pi _ ty _) sc)
-          = PPi expl n NoFC (de env [] ty) (de ((n,n):env) [] sc)
+    de env [] (Bind n (Pi rig _ ty _) sc)
+          = PPi (expl { pcount = rig }) n NoFC (de env [] ty) (de ((n,n):env) [] sc)
 
     de env imps (Bind n (Let ty val) sc)
           | docases
@@ -173,6 +173,7 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
     de env _ (Proj _ _) = error "Delaboration got run-time-only Proj!"
     de env _ Erased = Placeholder
     de env _ Impossible = Placeholder
+    de env _ (Inferred t) = Placeholder
     de env _ (TType i) = PType un
     de env _ (UType u) = PUniverse un u
 
@@ -187,7 +188,7 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
     deFn env (P _ n _) [l,r]
          | n == pairTy    = PPair un [] IsType (de env [] l) (de env [] r)
          | n == sUN "lazy" = de env [] r -- TODO: Fix string based matching
-    deFn env (P _ n _) [ty, Bind x (Lam _) r]
+    deFn env (P _ n _) [ty, Bind x (Lam _ _) r]
          | n == sigmaTy
                = PDPair un [] IsType (PRef un [] x) (de env [] ty)
                            (de ((x,x):env) [] (instantiate (P Bound x ty) r))
@@ -338,9 +339,9 @@ pprintErr' i (CantConvert x_in y_in env) =
   indented (annTm y_ns (pprintTerm' i (map (\ (n, b) -> (n, False)) env)
                y)) <>
   if (opt_errContext (idris_options i)) then line <> text "Conversion failure" <$>  showSc i env else empty
-    where flagUnique (Bind n (Pi i t k@(UType u)) sc)
+    where flagUnique (Bind n (Pi rig i t k@(UType u)) sc)
               = App Complete (P Ref (sUN (show u)) Erased)
-                    (Bind n (Pi i (flagUnique t) k) (flagUnique sc))
+                    (Bind n (Pi rig i (flagUnique t) k) (flagUnique sc))
           flagUnique (App s f a) = App s (flagUnique f) (flagUnique a)
           flagUnique (Bind n b sc) = Bind n (fmap flagUnique b) (flagUnique sc)
           flagUnique t = t
@@ -526,13 +527,13 @@ pprintErr' i (ElabScriptDebug msg tm holes) =
   indented (vsep (map ppHole holes)) <> line <> line <>
   text "Term: " <> indented (pprintTT [] tm)
 
-  where ppHole :: (Name, Type, Env) -> Doc OutputAnnotation
+  where ppHole :: (Name, Type, [(Name, Binder Type)]) -> Doc OutputAnnotation
         ppHole (hn, goal, env) =
           ppAssumptions [] (reverse env) <>
           text "----------------------------------" <> line <>
           bindingOf hn False <+> text ":" <+>
           pprintTT (map fst (reverse env)) goal <> line
-        ppAssumptions :: [Name] -> Env -> Doc OutputAnnotation
+        ppAssumptions :: [Name] -> [(Name, Binder Type)] -> Doc OutputAnnotation
         ppAssumptions ns [] = empty
         ppAssumptions ns ((n, b) : rest) =
           bindingOf n False <+>

@@ -31,7 +31,7 @@ module Idris.Core.TT(
   , Env(..), EnvTT(..), Err(..), Err'(..), ErrorReportPart(..)
   , FC(..), FC'(..), ImplicitInfo(..), IntTy(..), Name(..)
   , NameOutput(..), NameType(..), NativeTy(..), OutputAnnotation(..)
-  , Provenance(..), Raw(..), SpecialName(..), TC(..), Term(..)
+  , Provenance(..), Raw(..), RigCount(..), SpecialName(..), TC(..), Term(..)
   , TermSize(..), TextFormatting(..), TT(..),Type(..), TypeInfo(..)
   , UConstraint(..), UCs(..), UExp(..), Universe(..)
   , addAlist, addBinder, addDef, allTTNames, arity, bindAll
@@ -49,6 +49,8 @@ module Idris.Core.TT(
   , substV, sUN, tcname, termSmallerThan, tfail, thead, tnull
   , toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName
   , uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm
+  , rigPlus, rigMult, fstEnv, rigEnv, sndEnv, lookupBinder, envBinders
+  , envZero
   ) where
 
 import Util.Pretty hiding (Str)
@@ -851,9 +853,11 @@ deriving instance Binary ImplicitInfo
 -- | All binding forms are represented in a uniform fashion. This type only represents
 -- the types of bindings (and their values, if any); the attached identifiers are part
 -- of the 'Bind' constructor for the 'TT' type.
-data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}}
+data Binder b = Lam   { binderCount :: RigCount,
+                        binderTy  :: !b {-^ type annotation for bound variable-}}
                 -- ^ A function binding
-              | Pi    { binderImpl :: Maybe ImplicitInfo,
+              | Pi    { binderCount :: RigCount,
+                        binderImpl :: Maybe ImplicitInfo,
                         binderTy  :: !b,
                         binderKind :: !b }
                 -- ^ A binding that occurs in a function type
@@ -885,7 +889,8 @@ data Binder b = Lam   { binderTy  :: !b {-^ type annotation for bound variable-}
                 -- substituted - the guess is to keep it
                 -- computationally inert while working on other things
                 -- if necessary.
-              | PVar  { binderTy  :: !b }
+              | PVar  { binderCount :: RigCount,
+                        binderTy  :: !b }
                 -- ^ A pattern variable (these are bound around terms
                 -- that make up pattern-match clauses)
               | PVTy  { binderTy  :: !b }
@@ -896,25 +901,25 @@ deriving instance Binary Binder
 !-}
 
 instance Sized a => Sized (Binder a) where
-  size (Lam ty) = 1 + size ty
-  size (Pi _ ty _) = 1 + size ty
+  size (Lam _ ty) = 1 + size ty
+  size (Pi _ _ ty _) = 1 + size ty
   size (Let ty val) = 1 + size ty + size val
   size (NLet ty val) = 1 + size ty + size val
   size (Hole ty) = 1 + size ty
   size (GHole _ _ ty) = 1 + size ty
   size (Guess ty val) = 1 + size ty + size val
-  size (PVar ty) = 1 + size ty
+  size (PVar _ ty) = 1 + size ty
   size (PVTy ty) = 1 + size ty
 
 fmapMB :: Monad m => (a -> m b) -> Binder a -> m (Binder b)
 fmapMB f (Let t v)   = liftM2 Let (f t) (f v)
 fmapMB f (NLet t v)  = liftM2 NLet (f t) (f v)
 fmapMB f (Guess t v) = liftM2 Guess (f t) (f v)
-fmapMB f (Lam t)     = liftM Lam (f t)
-fmapMB f (Pi i t k)  = liftM2 (Pi i) (f t) (f k)
+fmapMB f (Lam c t)   = liftM (Lam c) (f t)
+fmapMB f (Pi c i t k) = liftM2 (Pi c i) (f t) (f k)
 fmapMB f (Hole t)    = liftM Hole (f t)
 fmapMB f (GHole i ns t) = liftM (GHole i ns) (f t)
-fmapMB f (PVar t)    = liftM PVar (f t)
+fmapMB f (PVar c t)    = liftM (PVar c) (f t)
 fmapMB f (PVTy t)    = liftM PVTy (f t)
 
 raw_apply :: Raw -> [Raw] -> Raw
@@ -1008,6 +1013,9 @@ data TT n = P NameType n (TT n) -- ^ named references with type
                              -- (-1) is a special case for 'subtract one from BI'
           | Erased -- ^ an erased term
           | Impossible -- ^ special case for totality checking
+          | Inferred (TT n) -- ^ For building case trees when coverage checkimg only.
+                            -- Marks a term as being inferred by the machine, rather than
+                            -- given by the programmer
           | TType UExp -- ^ the type of types at some level
           | UType Universe -- ^ Uniqueness type universe (disjoint from TType)
   deriving (Ord, Functor, Data, Generic, Typeable)
@@ -1055,12 +1063,48 @@ instance Sized a => Sized (TT a) where
   size (TType u) = 1 + size u
   size (Proj a _) = 1 + size a
   size Impossible = 1
+  size (Inferred t) = size t
   size (UType u) = 1 + size u
 
 instance Pretty a o => Pretty (TT a) o where
   pretty _ = text "test"
 
-type EnvTT n = [(n, Binder (TT n))]
+data RigCount = Rig0 | Rig1 | RigW
+  deriving (Show, Eq, Ord, Data, Generic, Typeable)
+
+rigPlus :: RigCount -> RigCount -> RigCount
+rigPlus Rig0 Rig0 = Rig0
+rigPlus Rig0 Rig1 = Rig1
+rigPlus Rig0 RigW = RigW
+rigPlus Rig1 Rig0 = Rig1
+rigPlus Rig1 Rig1 = RigW
+rigPlus Rig1 RigW = RigW
+rigPlus RigW Rig0 = RigW
+rigPlus RigW Rig1 = RigW
+rigPlus RigW RigW = RigW
+
+rigMult :: RigCount -> RigCount -> RigCount
+rigMult Rig0 Rig0 = Rig0
+rigMult Rig0 Rig1 = Rig0
+rigMult Rig0 RigW = Rig0
+rigMult Rig1 Rig0 = Rig0
+rigMult Rig1 Rig1 = Rig1
+rigMult Rig1 RigW = RigW
+rigMult RigW Rig0 = Rig0
+rigMult RigW Rig1 = RigW
+rigMult RigW RigW = RigW
+
+type EnvTT n = [(n, RigCount, Binder (TT n))]
+
+fstEnv (n, c, b) = n
+rigEnv (n, c, b) = c
+sndEnv (n, c, b) = b
+
+envBinders = map (\(n, _, b) -> (n, b))
+envZero = map (\(n, _, b) -> (n, Rig0, b))
+
+lookupBinder :: Eq n => n -> EnvTT n -> Maybe (Binder (TT n))
+lookupBinder n = lookup n . envBinders
 
 data Datatype n = Data { d_typename :: n,
                          d_typetag  :: Int,
@@ -1082,7 +1126,9 @@ data TypeInfo = TI { con_names :: [Name],
                      codata :: Bool,
                      data_opts :: DataOpts,
                      param_pos :: [Int],
-                     mutual_types :: [Name] }
+                     mutual_types :: [Name],
+                     linear_con :: Bool -- is there a linear argument?
+                   }
     deriving (Show, Generic)
 {-!
 deriving instance Binary TypeInfo
@@ -1110,7 +1156,7 @@ isInjective (P (DCon _ _ _) _ _) = True
 isInjective (P (TCon _ _) _ _) = True
 isInjective (Constant _)       = True
 isInjective (TType x)          = True
-isInjective (Bind _ (Pi _ _ _) sc) = True
+isInjective (Bind _ (Pi _ _ _ _) sc) = True
 isInjective (App _ f a)        = isInjective f
 isInjective _                  = False
 
@@ -1344,7 +1390,7 @@ freeNames t = nub $ freeNames' t
 
 -- | Return the arity of a (normalised) type
 arity :: TT n -> Int
-arity (Bind n (Pi _ t _) sc) = 1 + arity sc
+arity (Bind n (Pi _ _ t _) sc) = 1 + arity sc
 arity _ = 0
 
 -- | Deconstruct an application; returns the function and a list of arguments
@@ -1379,6 +1425,7 @@ termSmallerThan x (V i) = True
 termSmallerThan x (Constant c) = True
 termSmallerThan x Erased = True
 termSmallerThan x Impossible = True
+termSmallerThan x (Inferred t) = termSmallerThan x t
 termSmallerThan x (TType u) = True
 termSmallerThan x (UType u) = True
 
@@ -1421,6 +1468,7 @@ safeForgetEnv env (UType u) = Just $ RUType u
 safeForgetEnv env Erased    = Just $ RConstant Forgot
 safeForgetEnv env (Proj tm i) = error "Don't know how to forget a projection"
 safeForgetEnv env Impossible = error "Don't know how to forget Impossible"
+safeForgetEnv env (Inferred t) = safeForgetEnv env t
 
 -- | Introduce a 'Bind' into the given term for each element of the
 -- given list of (name, binder) pairs.
@@ -1438,22 +1486,22 @@ bindTyArgs b xs = bindAll (map (\ (n, ty) -> (n, b ty)) xs)
 -- | Return a list of pairs of the names of the outermost 'Pi'-bound
 -- variables in the given term, together with their types.
 getArgTys :: TT n -> [(n, TT n)]
-getArgTys (Bind n (PVar _) sc) = getArgTys sc
+getArgTys (Bind n (PVar _ _) sc) = getArgTys sc
 getArgTys (Bind n (PVTy _) sc) = getArgTys sc
-getArgTys (Bind n (Pi _ t _) sc) = (n, t) : getArgTys sc
+getArgTys (Bind n (Pi _ _ t _) sc) = (n, t) : getArgTys sc
 getArgTys _ = []
 
 getRetTy :: TT n -> TT n
-getRetTy (Bind n (PVar _) sc) = getRetTy sc
+getRetTy (Bind n (PVar _ _) sc) = getRetTy sc
 getRetTy (Bind n (PVTy _) sc) = getRetTy sc
-getRetTy (Bind n (Pi _ _ _) sc)   = getRetTy sc
+getRetTy (Bind n (Pi _ _ _ _) sc)   = getRetTy sc
 getRetTy sc = sc
 
 -- | As getRetTy but substitutes names for de Bruijn indices
 substRetTy :: TT n -> TT n
-substRetTy (Bind n (PVar ty) sc) = substRetTy (substV (P Ref n ty) sc)
+substRetTy (Bind n (PVar _ ty) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy (Bind n (PVTy ty) sc) = substRetTy (substV (P Ref n ty) sc)
-substRetTy (Bind n (Pi _ ty _) sc) = substRetTy (substV (P Ref n ty) sc)
+substRetTy (Bind n (Pi _ _ ty _) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy sc = sc
    
 
@@ -1566,15 +1614,15 @@ prettyEnv env t = prettyEnv' env t False
     prettySe p env (V i) debug
       | i < length env =
         if debug then
-          text . show . fst $ env!!i
+          text . show . fstEnv $ env!!i
         else
           lbracket <+> text (show i) <+> rbracket
       | otherwise      = text "unbound" <+> text (show i) <+> text "!"
-    prettySe p env (Bind n b@(Pi _ t _) sc) debug
+    prettySe p env (Bind n b@(Pi _ _ t _) sc) debug
       | noOccurrence n sc && not debug =
-          bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, b):env) sc debug
+          bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, Rig0, b):env) sc debug
     prettySe p env (Bind n b sc) debug =
-      bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, b):env) sc debug
+      bracket p 2 $ prettySb env n b debug <> prettySe 10 ((n, Rig0, b):env) sc debug
     prettySe p env (App _ f a) debug =
       bracket p 1 $ prettySe 1 env f debug <+> prettySe 0 env a debug
     prettySe p env (Proj x i) debug =
@@ -1583,14 +1631,18 @@ prettyEnv env t = prettyEnv' env t False
     prettySe p env Erased debug = text "[_]"
     prettySe p env (TType i) debug = text "Type" <+> (text . show $ i)
     prettySe p env Impossible debug = text "Impossible"
+    prettySe p env (Inferred tm) debug = text "<" <+> prettySe p env tm debug <+> text ">"
     prettySe p env (UType u) debug = text (show u)
 
     -- Render a `Binder` and its name
-    prettySb env n (Lam t) = prettyB env "λ" "=>" n t
+    prettySb env n (Lam _ t) = prettyB env "λ" "=>" n t
     prettySb env n (Hole t) = prettyB env "?defer" "." n t
     prettySb env n (GHole _ _ t) = prettyB env "?gdefer" "." n t
-    prettySb env n (Pi _ t _) = prettyB env "(" ") ->" n t
-    prettySb env n (PVar t) = prettyB env "pat" "." n t
+    prettySb env n (Pi Rig0 _ t _) = prettyB env "(" ") ->" n t
+    prettySb env n (Pi Rig1 _ t _) = prettyB env "(" ") -o" n t
+    prettySb env n (Pi RigW _ t _) = prettyB env "(" ") ->" n t
+    prettySb env n (PVar Rig1 t) = prettyB env "pat 1 " "." n t
+    prettySb env n (PVar _ t) = prettyB env "pat" "." n t
     prettySb env n (PVTy t) = prettyB env "pty" "." n t
     prettySb env n (Let t v) = prettyBv env "let" "in" n t v
     prettySb env n (NLet t v) = prettyBv env "nlet" "in" n t v
@@ -1613,30 +1665,37 @@ showEnv' env t dbg = se 10 env t where
     se p env (P nt n t) = show n
                             ++ if dbg then "{" ++ show nt ++ " : " ++ se 10 env t ++ "}" else ""
     se p env (V i) | i < length env && i >= 0
-                                    = (show $ fst $ env!!i) ++
+                                    = (show $ fstEnv $ env!!i) ++
                                       if dbg then "{" ++ show i ++ "}" else ""
                    | otherwise = "!!V " ++ show i ++ "!!"
-    se p env (Bind n b@(Pi (Just _) t k) sc)
-         = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
-    se p env (Bind n b@(Pi _ t k) sc)
-        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ arrow k ++ se 10 ((n,b):env) sc
-       where arrow (TType _) = " -> "
-             arrow u = " [" ++ show u ++ "] -> "
-    se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,b):env) sc
+    se p env (Bind n b@(Pi rig (Just _) t k) sc)
+         = bracket p 2 $ sb env n b ++ se 10 ((n, rig, b):env) sc
+    se p env (Bind n b@(Pi rig _ t k) sc)
+        | noOccurrence n sc && not dbg = bracket p 2 $ se 1 env t ++ arrow rig ++ se 10 ((n,Rig0,b):env) sc
+       where arrow Rig0 = " -> "
+             arrow Rig1 = " -o "
+             arrow RigW = " -> "
+    se p env (Bind n b sc) = bracket p 2 $ sb env n b ++ se 10 ((n,Rig0,b):env) sc
     se p env (App _ f a) = bracket p 1 $ se 1 env f ++ " " ++ se 0 env a
     se p env (Proj x i) = se 1 env x ++ "!" ++ show i
     se p env (Constant c) = show c
     se p env Erased = "[__]"
     se p env Impossible = "[impossible]"
+    se p env (Inferred t) = "<" ++ se p env t ++ ">"
     se p env (TType i) = "Type " ++ show i
     se p env (UType u) = show u
 
-    sb env n (Lam t)  = showb env "\\ " " => " n t
+    sb env n (Lam Rig1 t)  = showb env "\\ 1 " " => " n t
+    sb env n (Lam _ t)  = showb env "\\ " " => " n t
     sb env n (Hole t) = showb env "? " ". " n t
     sb env n (GHole i ns t) = showb env "?defer " ". " n t
-    sb env n (Pi (Just _) t _)   = showb env "{" "} -> " n t
-    sb env n (Pi _ t _)   = showb env "(" ") -> " n t
-    sb env n (PVar t) = showb env "pat " ". " n t
+    sb env n (Pi Rig1 (Just _) t _)   = showb env "{" "} -o " n t
+    sb env n (Pi _ (Just _) t _)   = showb env "{" "} -> " n t
+    sb env n (Pi Rig1 _ t _)   = showb env "(" ") -0 " n t
+    sb env n (Pi _ _ t _)   = showb env "(" ") -> " n t
+    sb env n (PVar Rig0 t) = showb env "pat 0 " ". " n t
+    sb env n (PVar Rig1 t) = showb env "pat 1 " ". " n t
+    sb env n (PVar _ t) = showb env "pat " ". " n t
     sb env n (PVTy t) = showb env "pty " ". " n t
     sb env n (Let t v)   = showbv env "let " " in " n t v
     sb env n (NLet t v)   = showbv env "nlet " " in " n t v
@@ -1678,14 +1737,14 @@ weakenTm i t = wk i 0 t
 weakenEnv :: EnvTT n -> EnvTT n
 weakenEnv env = wk (length env - 1) env
   where wk i [] = []
-        wk i ((n, b) : bs) = (n, weakenTmB i b) : wk (i - 1) bs
+        wk i ((n, c, b) : bs) = (n, c, weakenTmB i b) : wk (i - 1) bs
         weakenTmB i (Let   t v) = Let (weakenTm i t) (weakenTm i v)
         weakenTmB i (Guess t v) = Guess (weakenTm i t) (weakenTm i v)
         weakenTmB i t           = t { binderTy = weakenTm i (binderTy t) }
 
 -- | Weaken every term in the environment by the given amount
 weakenTmEnv :: Int -> EnvTT n -> EnvTT n
-weakenTmEnv i = map (\ (n, b) -> (n, fmap (weakenTm i) b))
+weakenTmEnv i = map (\ (n, c, b) -> (n, c, fmap (weakenTm i) b))
 
 refsIn :: TT Name -> [Name]
 refsIn (P _ n _) = [n]
@@ -1736,20 +1795,21 @@ pprintTT bound tm = pp startPrec bound tm
       text "!" <> text (show i)
     pp p bound Erased = text "<<<erased>>>"
     pp p bound Impossible = text "<<<impossible>>>"
+    pp p bound (Inferred t) = text "<" <+> pp p bound t <+> text ">"
     pp p bound (TType ue) = annotate (AnnType "Type" "The type of types") $
                             text "Type"
     pp p bound (UType u) = text (show u)
 
-    ppb p bound n (Lam ty) sc =
+    ppb p bound n (Lam rig ty) sc =
       bracket p startPrec . group . align . hang 2 $
       text "λ" <+> bindingOf n False <+> text "." <> line <> sc
-    ppb p bound n (Pi _ ty k) sc =
+    ppb p bound n (Pi rig _ ty k) sc =
       bracket p startPrec . group . align $
       lparen <> (bindingOf n False) <+> colon <+>
       (group . align) (pp startPrec bound ty) <>
-      rparen <+> mkArrow k <> line <> sc
-        where mkArrow (UType UniqueType) = text "⇴"
-              mkArrow (UType NullType) = text "⥛"
+      rparen <+> mkArrow rig <> line <> sc
+        where mkArrow Rig1 = text "⇴"
+              mkArrow Rig0 = text "⥛"
               mkArrow _ = text "→"
     ppb p bound n (Let ty val) sc =
       bracket p startPrec . group . align $
@@ -1778,7 +1838,7 @@ pprintTT bound tm = pp startPrec bound tm
       text "?" <> bindingOf n False <+>
       text "≈" <+> pp startPrec bound val <+>
       text "." <> line <> sc
-    ppb p bound n (PVar ty) sc =
+    ppb p bound n (PVar _ ty) sc =
       bracket p startPrec . group . align . hang 2 $
       annotate AnnKeyword (text "pat") <+>
       bindingOf n False <+> colon <+> pp startPrec bound ty <+>
@@ -1829,10 +1889,10 @@ pprintRaw bound (RBind n b body) =
        , ppb b
        , pprintRaw (n:bound) body]
   where
-    ppb (Lam ty) = enclose lparen rparen . group . align . hang 2 $
-                   text "Lam" <$> pprintRaw bound ty
-    ppb (Pi _ ty k) = enclose lparen rparen . group . align . hang 2 $
-                      vsep [text "Pi", pprintRaw bound ty, pprintRaw bound k]
+    ppb (Lam _ ty) = enclose lparen rparen . group . align . hang 2 $
+                     text "Lam" <$> pprintRaw bound ty
+    ppb (Pi _ _ ty k) = enclose lparen rparen . group . align . hang 2 $
+                        vsep [text "Pi", pprintRaw bound ty, pprintRaw bound k]
     ppb (Let ty v) = enclose lparen rparen . group . align . hang 2 $
                      vsep [text "Let", pprintRaw bound ty, pprintRaw bound v]
     ppb (NLet ty v) = enclose lparen rparen . group . align . hang 2 $
@@ -1843,8 +1903,8 @@ pprintRaw bound (RBind n b body) =
                          text "GHole" <$> pprintRaw bound ty
     ppb (Guess ty v) = enclose lparen rparen . group . align . hang 2 $
                        vsep [text "Guess", pprintRaw bound ty, pprintRaw bound v]
-    ppb (PVar ty) = enclose lparen rparen . group . align . hang 2 $
-                    text "PVar" <$> pprintRaw bound ty
+    ppb (PVar _ ty) = enclose lparen rparen . group . align . hang 2 $
+                      text "PVar" <$> pprintRaw bound ty
     ppb (PVTy ty) = enclose lparen rparen . group . align . hang 2 $
                     text "PVTy" <$> pprintRaw bound ty
 pprintRaw bound (RApp f x) =

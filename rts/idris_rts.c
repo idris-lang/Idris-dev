@@ -70,7 +70,7 @@ VM* init_vm(int stack_size, size_t heap_size,
     return vm;
 }
 
-VM* idris_vm() {
+VM* idris_vm(void) {
     VM* vm = init_vm(4096000, 4096000, 1);
     init_threadkeys();
     init_threaddata(vm);
@@ -95,12 +95,12 @@ void close_vm(VM* vm) {
 }
 
 #ifdef HAS_PTHREAD
-void create_key() {
+void create_key(void) {
     pthread_key_create(&vm_key, (void*)free_key);
 }
 #endif
 
-void init_threadkeys() {
+void init_threadkeys(void) {
 #ifdef HAS_PTHREAD
     static pthread_once_t key_once = PTHREAD_ONCE_INIT;
     pthread_once(&key_once, create_key);
@@ -113,7 +113,7 @@ void init_threaddata(VM *vm) {
 #endif
 }
 
-void init_signals() {
+void init_signals(void) {
 #if (__linux__ || __APPLE__ || __FreeBSD__ || __DragonFly__)
     signal(SIGPIPE, SIG_IGN);
 #endif
@@ -173,7 +173,7 @@ void idris_requireAlloc(size_t size) {
 #endif
 }
 
-void idris_doneAlloc() {
+void idris_doneAlloc(void) {
 #ifdef HAS_PTHREAD
     VM* vm = pthread_getspecific(vm_key);
     int lock = vm->processes > 0;
@@ -191,7 +191,7 @@ void* idris_alloc(size_t size) {
     Closure* cl = (Closure*) allocate(sizeof(Closure)+size, 0);
     SETTY(cl, CT_RAWDATA);
     cl->info.size = size;
-    return (void*)cl+sizeof(Closure);
+    return (void*)((char *)cl+sizeof(Closure));
 }
 
 void* idris_realloc(void* old, size_t old_size, size_t size) {
@@ -449,36 +449,36 @@ void idris_poke(void* ptr, i_int offset, uint8_t data) {
 
 
 VAL idris_peekPtr(VM* vm, VAL ptr, VAL offset) {
-    void** addr = GETPTR(ptr) + GETINT(offset);
+    void** addr = (void **)((char *)GETPTR(ptr) + GETINT(offset));
     return MKPTR(vm, *addr);
 }
 
 VAL idris_pokePtr(VAL ptr, VAL offset, VAL data) {
-    void** addr = GETPTR(ptr) + GETINT(offset);
+    void** addr = (void **)((char *)GETPTR(ptr) + GETINT(offset));
     *addr = GETPTR(data);
     return MKINT(0);
 }
 
 VAL idris_peekDouble(VM* vm, VAL ptr, VAL offset) {
-    return MKFLOAT(vm, *(double*)(GETPTR(ptr) + GETINT(offset)));
+    return MKFLOAT(vm, *(double*)((char *)GETPTR(ptr) + GETINT(offset)));
 }
 
 VAL idris_pokeDouble(VAL ptr, VAL offset, VAL data) {
-    *(double*)(GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
+    *(double*)((char *)GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
     return MKINT(0);
 }
 
 VAL idris_peekSingle(VM* vm, VAL ptr, VAL offset) {
-    return MKFLOAT(vm, *(float*)(GETPTR(ptr) + GETINT(offset)));
+    return MKFLOAT(vm, *(float*)((char *)GETPTR(ptr) + GETINT(offset)));
 }
 
 VAL idris_pokeSingle(VAL ptr, VAL offset, VAL data) {
-    *(float*)(GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
+    *(float*)((char *)GETPTR(ptr) + GETINT(offset)) = GETFLOAT(data);
     return MKINT(0);
 }
 
 void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i_int size) {
-    memmove(dest + dest_offset, src + src_offset, size);
+    memmove((char *)dest + dest_offset, (char *)src + src_offset, size);
 }
 
 VAL idris_castIntStr(VM* vm, VAL i) {
@@ -593,6 +593,11 @@ VAL idris_readStr(VM* vm, FILE* h) {
     }
     free(buffer);
     return ret;
+}
+
+void idris_crash(char* msg) {
+    fprintf(stderr, "%s\n", msg);
+    exit(1);
 }
 
 VAL idris_strHead(VM* vm, VAL str) {
@@ -1041,7 +1046,7 @@ void idris_freeMsg(Msg* msg) {
     free(msg);
 }
 
-int idris_errno() {
+int idris_errno(void) {
     return errno;
 }
 
@@ -1051,7 +1056,7 @@ char* idris_showerror(int err) {
 
 VAL* nullary_cons;
 
-void init_nullaries() {
+void init_nullaries(void) {
     int i;
     VAL cl;
     nullary_cons = malloc(256 * sizeof(VAL));
@@ -1063,7 +1068,7 @@ void init_nullaries() {
     }
 }
 
-void free_nullaries() {
+void free_nullaries(void) {
     int i;
     for(i = 0; i < 256; ++i) {
         free(nullary_cons[i]);
@@ -1074,7 +1079,7 @@ void free_nullaries() {
 int __idris_argc;
 char **__idris_argv;
 
-int idris_numArgs() {
+int idris_numArgs(void) {
     return __idris_argc;
 }
 
@@ -1082,12 +1087,12 @@ const char* idris_getArg(int i) {
     return __idris_argv[i];
 }
 
-void idris_disableBuffering() {
+void idris_disableBuffering(void) {
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
 }
 
-void stackOverflow() {
+void stackOverflow(void) {
   fprintf(stderr, "Stack overflow");
   exit(-1);
 }

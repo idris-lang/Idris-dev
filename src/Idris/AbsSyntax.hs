@@ -142,14 +142,10 @@ addImported pub f
           putIState $ i { idris_imported = nub $ (f, pub) : idris_imported i }
 
 addLangExt :: LanguageExt -> Idris ()
-addLangExt TypeProviders = do i <- getIState
-                              putIState $ i {
-                                idris_language_extensions = TypeProviders : idris_language_extensions i
-                              }
-addLangExt ErrorReflection = do i <- getIState
-                                putIState $ i {
-                                  idris_language_extensions = ErrorReflection : idris_language_extensions i
-                                }
+addLangExt e = do i <- getIState
+                  putIState $ i {
+                    idris_language_extensions = e : idris_language_extensions i
+                  }
 
 -- | Transforms are organised by the function being applied on the lhs
 -- of the transform, to make looking up appropriate transforms quicker
@@ -389,7 +385,7 @@ allNames ns n = do i <- getIState
                    case getCGAllNames i n of
                         Just ns -> return ns
                         Nothing -> case lookupCtxtExact n (idris_callgraph i) of
-                                        Just ci -> 
+                                        Just ci ->
                                           do more <- mapM (allNames (n:ns)) (calls ci)
                                              let ns' = nub (n : concat more)
                                              addCGAllNames i n ns'
@@ -1028,17 +1024,31 @@ targetCPU :: Idris String
 targetCPU = do i <- getIState
                return (opt_cpu (idris_options i))
 
-verbose :: Idris Bool
-verbose = do i <- getIState
-             -- Quietness overrides verbosity
-             return (not (opt_quiet (idris_options i)) &&
-                     opt_verbose (idris_options i))
+verbose :: Idris Int
+verbose = do
+  i <- getIState
+  -- Quietness overrides verbosity
+  let quiet = opt_quiet   $ idris_options i
+  if quiet
+    then return $ 0
+    else return $ (opt_verbose $ idris_options i)
 
-setVerbose :: Bool -> Idris ()
-setVerbose t = do i <- getIState
-                  let opts = idris_options i
-                  let opt' = opts { opt_verbose = t }
-                  putIState $ i { idris_options = opt' }
+setVerbose :: Int -> Idris ()
+setVerbose t = do
+  i <- getIState
+  let opts = idris_options i
+  let opt' = opts { opt_verbose = t }
+  putIState $ i { idris_options = opt' }
+
+iReport :: Int -> String -> Idris ()
+iReport level msg = do
+  verbosity <- verbose
+  i <- getIState
+  when (level <= verbosity) $
+    case idris_outputmode i of
+      RawOutput h -> runIO $ hPutStrLn h msg
+      IdeMode n h -> runIO . hPutStrLn h $ convSExp "write-string" msg n
+  return ()
 
 typeInType :: Idris Bool
 typeInType = do i <- getIState
@@ -1296,8 +1306,8 @@ expandParams dec ps ns infs tm = en 0 tm
 
     nseq x y = nsroot x == nsroot y
 
-    enTacImp ql (TacImp aos st scr)  = TacImp aos st (en ql scr)
-    enTacImp ql other                = other
+    enTacImp ql (TacImp aos st scr rig) = TacImp aos st (en ql scr) rig
+    enTacImp ql other                   = other
 
 expandParamsD :: Bool -> -- True = RHS only
                  IState ->
@@ -1465,10 +1475,10 @@ addStatics n tm ptm =
        putIState $ i { idris_statics = addDef n stpos (idris_statics i) }
        addIBC (IBCStatic n)
   where
-    initStatics (Bind n (Pi _ ty _) sc) (PPi p n' fc t s)
+    initStatics (Bind n (Pi _ _ ty _) sc) (PPi p n' fc t s)
             | n /= n' = let (static, dynamic) = initStatics sc (PPi p n' fc t s) in
                             (static, (n, ty) : dynamic)
-    initStatics (Bind n (Pi _ ty _) sc) (PPi p n' fc _ s)
+    initStatics (Bind n (Pi _ _ ty _) sc) (PPi p n' fc _ s)
             = let (static, dynamic) = initStatics (instantiate (P Bound n ty) sc) s in
                   if pstatic p == Static then ((n, ty) : static, dynamic)
                     else if (not (searchArg p))
@@ -1484,16 +1494,16 @@ addStatics n tm ptm =
             getNamePos i ps (P _ n _ : as)
                  | i `elem` ps = n : getNamePos (i + 1) ps as
             getNamePos i ps (_ : as) = getNamePos (i + 1) ps as
-    getParamNames ist (Bind t (Pi _ (P _ n _) _) sc)
+    getParamNames ist (Bind t (Pi _ _ (P _ n _) _) sc)
        = n : getParamNames ist sc
     getParamNames ist _ = []
 
-    getNamesFrom i ps (Bind n (Pi _ _ _) sc)
+    getNamesFrom i ps (Bind n (Pi _ _ _ _) sc)
        | i `elem` ps = n : getNamesFrom (i + 1) ps sc
        | otherwise = getNamesFrom (i + 1) ps sc
     getNamesFrom i ps sc = []
 
-    freeArgNames (Bind n (Pi _ ty _) sc)
+    freeArgNames (Bind n (Pi _ _ ty _) sc)
           = nub $ freeNames ty ++ freeNames sc -- treat '->' as fn here
     freeArgNames tm = let (_, args) = unApply tm in
                           concatMap freeNames args
@@ -1501,11 +1511,11 @@ addStatics n tm ptm =
     -- if a name appears in an interface or tactic implicit index, it doesn't
     -- affect its 'uniquely inferrable' from a static status since these are
     -- resolved by searching.
-    searchArg (Constraint _ _) = True
-    searchArg (TacImp _ _ _) = True
+    searchArg (Constraint _ _ _) = True
+    searchArg (TacImp _ _ _ _) = True
     searchArg _ = False
 
-    staticList sts (Bind n (Pi _ _ _) sc) = (n `elem` sts) : staticList sts sc
+    staticList sts (Bind n (Pi _ _ _ _) sc) = (n `elem` sts) : staticList sts sc
     staticList _ _ = []
 
 -- Dealing with implicit arguments
@@ -1537,14 +1547,14 @@ addUsingConstraints syn fc t
          -- if all of args in ns, then add it
          doAdd (UConstraint c args : cs) ns t
              | all (\n -> elem n ns) args
-                   = PPi (Constraint [] Dynamic) (sMN 0 "cu") NoFC
+                   = PPi (Constraint [] Dynamic RigW) (sMN 0 "cu") NoFC
                          (mkConst c args) (doAdd cs ns t)
              | otherwise = doAdd cs ns t
 
          mkConst c args = PApp fc (PRef fc [] c)
                            (map (PExp 0 [] (sMN 0 "carg") . PRef fc []) args)
 
-         getConstraints (PPi (Constraint _ _) _ _ c sc)
+         getConstraints (PPi (Constraint _ _ _) _ _ c sc)
              = getcapp c ++ getConstraints sc
          getConstraints (PPi _ _ _ c sc) = getConstraints sc
          getConstraints _ = []
@@ -1613,25 +1623,25 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
         scopedimpl (Just i) = not (toplevel_imp i)
         scopedimpl _ = False
 
-        getImps (Bind n (Pi i _ _) sc) imps
+        getImps (Bind n (Pi _ i _ _) sc) imps
              | scopedimpl i = getImps sc imps
-        getImps (Bind n (Pi _ t _) sc) imps
+        getImps (Bind n (Pi _ _ t _) sc) imps
             | Just (p, t') <- lookup n imps = argInfo n p t' : getImps sc imps
          where
-            argInfo n (Imp opt _ _ _ _) Placeholder
+            argInfo n (Imp opt _ _ _ _ _) Placeholder
                    = (True, PImp 0 True opt n Placeholder)
-            argInfo n (Imp opt _ _ _ _) t'
+            argInfo n (Imp opt _ _ _ _ _) t'
                    = (False, PImp (getPriority i t') True opt n t')
-            argInfo n (Exp opt _ _) t'
+            argInfo n (Exp opt _ _ _) t'
                    = (InaccessibleArg `elem` opt,
                           PExp (getPriority i t') opt n t')
-            argInfo n (Constraint opt _) t'
+            argInfo n (Constraint opt _ _) t'
                    = (InaccessibleArg `elem` opt,
                           PConstraint 10 opt n t')
-            argInfo n (TacImp opt _ scr) t'
+            argInfo n (TacImp opt _ scr _) t'
                    = (InaccessibleArg `elem` opt,
                           PTacImplicit 10 opt n scr t')
-        getImps (Bind n (Pi _ t _) sc) imps = impBind n t : getImps sc imps
+        getImps (Bind n (Pi _ _ t _) sc) imps = impBind n t : getImps sc imps
            where impBind n t = (True, PImp 1 True [] n Placeholder)
         getImps sc tm = []
 
@@ -1714,13 +1724,13 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
        = do (decls, ns) <- get
             let isn = nub (implNamesIn uvars ty)
             put (decls, nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
-    imps top env (PPi (Imp l _ _ _ _) n _ ty sc)
+    imps top env (PPi (Imp l _ _ _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty) `dropAll` [n]
              (decls , ns) <- get
              put (PImp (getPriority ist ty) True l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Exp l _ _) n _ ty sc)
+    imps top env (PPi (Exp l _ _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -1728,7 +1738,7 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PExp (getPriority ist ty) l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (Constraint l _) n _ ty sc)
+    imps top env (PPi (Constraint l _ _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -1736,7 +1746,7 @@ implicitise auto syn ignore ist tm = -- trace ("INCOMING " ++ showImp True tm) $
              put (PConstraint 10 l n Placeholder : decls,
                   nub (ns ++ (isn `dropAll` (env ++ map fst (getImps decls)))))
              imps True (n:env) sc
-    imps top env (PPi (TacImp l _ scr) n _ ty sc)
+    imps top env (PPi (TacImp l _ scr _) n _ ty sc)
         = do let isn = nub (implNamesIn uvars ty ++ case sc of
                             (PRef _ _ x) -> namesIn uvars ist sc `dropAll` [n]
                             _ -> [])
@@ -2136,7 +2146,7 @@ stripUnmatchable :: IState -> PTerm -> PTerm
 stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su :: PTerm -> PTerm
     su tm@(PRef fc hl f)
-       | (Bind n (Pi _ t _) sc :_) <- lookupTy f (tt_ctxt i)
+       | (Bind n (Pi _ _ t _) sc :_) <- lookupTy f (tt_ctxt i)
           = Placeholder
        | (TType _ : _) <- lookupTy f (tt_ctxt i),
          not (implicitable f)

@@ -314,9 +314,9 @@ reifyTTBinder _ _ t = fail ("Unknown reflection binder: " ++ show t)
 
 reifyTTBinderApp :: (Term -> ElabD a) -> Name -> [Term] -> ElabD (Binder a)
 reifyTTBinderApp reif f [t]
-                      | f == reflm "Lam" = liftM Lam (reif t)
+                      | f == reflm "Lam" = liftM (Lam RigW) (reif t)
 reifyTTBinderApp reif f [t, k]
-                      | f == reflm "Pi" = liftM2 (Pi Nothing) (reif t) (reif k)
+                      | f == reflm "Pi" = liftM2 (Pi RigW Nothing) (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Let" = liftM2 Let (reif x) (reif y)
 reifyTTBinderApp reif f [t]
@@ -326,7 +326,7 @@ reifyTTBinderApp reif f [t]
 reifyTTBinderApp reif f [x, y]
                       | f == reflm "Guess" = liftM2 Guess (reif x) (reif y)
 reifyTTBinderApp reif f [t]
-                      | f == reflm "PVar" = liftM PVar (reif t)
+                      | f == reflm "PVar" = liftM (PVar RigW) (reif t)
 reifyTTBinderApp reif f [t]
                       | f == reflm "PVTy" = liftM PVTy (reif t)
 reifyTTBinderApp _ f args = fail ("Unknown reflection binder: " ++ show (f, args))
@@ -491,6 +491,9 @@ reflectTTQuotePattern unq Erased
 reflectTTQuotePattern unq Impossible
   = lift . tfail . InternalMsg $
       "Phase error! The Impossible constructor is for optimization only and should not have been reflected during elaboration."
+reflectTTQuotePattern unq (Inferred t)
+  = lift . tfail . InternalMsg $
+      "Phase error! The Inferred constructor is for coverage checking only and should not have been reflected during elaboration."
 reflectTTQuotePattern unq (TType exp)
   = do ue <- getNameFrom (sMN 0 "uexp")
        claim ue (Var (sNS (sUN "TTUExp") ["Reflection", "Language"]))
@@ -574,12 +577,12 @@ reflectRawQuotePattern unq (RConstant c) =
      fill (reflectConstant c); solve
 
 reflectBinderQuotePattern :: ([Name] -> a -> ElabD ()) -> Raw -> [Name] -> Binder a -> ElabD ()
-reflectBinderQuotePattern q ty unq (Lam t)
+reflectBinderQuotePattern q ty unq (Lam _ t)
    = do t' <- claimTy (sMN 0 "ty") ty; movelast t'
         fill $ reflCall "Lam" [ty, Var t']
         solve
         focus t'; q unq t
-reflectBinderQuotePattern q ty unq (Pi _ t k)
+reflectBinderQuotePattern q ty unq (Pi _ _ t k)
    = do t' <- claimTy (sMN 0 "ty") ty; movelast t'
         k' <- claimTy (sMN 0 "k") ty; movelast k';
         fill $ reflCall "Pi" [ty, Var t', Var k']
@@ -616,7 +619,7 @@ reflectBinderQuotePattern q ty unq (Guess x y)
         solve
         focus x'; q unq x
         focus y'; q unq y
-reflectBinderQuotePattern q ty unq (PVar t)
+reflectBinderQuotePattern q ty unq (PVar _ t)
    = do t' <- claimTy (sMN 0 "ty") ty; movelast t'
         fill $ reflCall "PVar" [ty, Var t']
         solve
@@ -654,6 +657,8 @@ reflectTTQuote _   (Proj _ _) =
 reflectTTQuote unq Erased = Var (reflm "Erased")
 reflectTTQuote _   Impossible =
   error "Phase error! The Impossible constructor is for optimization only and should not have been reflected during elaboration."
+reflectTTQuote _   (Inferred tm) =
+  error "Phase error! The Inferred constructor is for coverage checking only and should not have been reflected during elaboration."
 
 reflectRawQuote :: [Name] -> Raw -> Raw
 reflectRawQuote unq (Var n)
@@ -744,9 +749,9 @@ reflectBinder :: Binder Term -> Raw
 reflectBinder = reflectBinderQuote reflectTTQuote (reflm "TT") []
 
 reflectBinderQuote :: ([Name] -> a -> Raw) -> Name -> [Name] -> Binder a -> Raw
-reflectBinderQuote q ty unq (Lam t)
+reflectBinderQuote q ty unq (Lam _ t)
    = reflCall "Lam" [Var ty, q unq t]
-reflectBinderQuote q ty unq (Pi _ t k)
+reflectBinderQuote q ty unq (Pi _ _ t k)
    = reflCall "Pi" [Var ty, q unq t, q unq k]
 reflectBinderQuote q ty unq (Let x y)
    = reflCall "Let" [Var ty, q unq x, q unq y]
@@ -758,7 +763,7 @@ reflectBinderQuote q ty unq (GHole _ _ t)
    = reflCall "GHole" [Var ty, q unq t]
 reflectBinderQuote q ty unq (Guess x y)
    = reflCall "Guess" [Var ty, q unq x, q unq y]
-reflectBinderQuote q ty unq (PVar t)
+reflectBinderQuote q ty unq (PVar _ t)
    = reflCall "PVar" [Var ty, q unq t]
 reflectBinderQuote q ty unq (PVTy t)
    = reflCall "PVTy" [Var ty, q unq t]
@@ -799,7 +804,7 @@ reflectUExp (UVal i) = reflCall "UVal" [RConstant (I i)]
 
 -- | Reflect the environment of a proof into a List (TTName, Binder TT)
 reflectEnv :: Env -> Raw
-reflectEnv = foldr consToEnvList emptyEnvList
+reflectEnv = foldr consToEnvList emptyEnvList . envBinders
   where
     consToEnvList :: (Name, Binder Term) -> Raw -> Raw
     consToEnvList (n, b) l
@@ -818,8 +823,10 @@ reflectEnv = foldr consToEnvList emptyEnvList
     emptyEnvList = raw_apply (Var (sNS (sUN "Nil") ["List", "Prelude"]))
                              [envTupleType]
 
+-- Reflected environments don't get the RigCount (for the moment, at least)
 reifyEnv :: Term -> ElabD Env
-reifyEnv = reifyList (reifyPair reifyTTName (reifyTTBinder reifyTT (reflm "TT")))
+reifyEnv tm = do preEnv <- reifyList (reifyPair reifyTTName (reifyTTBinder reifyTT (reflm "TT"))) tm
+                 return $ map (\(n, b) -> (n, RigW, b)) preEnv
 
 -- | Reflect an error into the internal datatype of Idris -- TODO
 rawBool :: Bool -> Raw
@@ -1083,7 +1090,7 @@ reflectList ty (x:xs) = RApp (RApp (RApp (Var (sNS (sUN "::") ["List", "Prelude"
 -- come from a lookup in idris_implicits on IState.
 getArgs :: [PArg] -> Raw -> ([RFunArg], Raw)
 getArgs []     r = ([], r)
-getArgs (a:as) (RBind n (Pi _ ty _) sc) =
+getArgs (a:as) (RBind n (Pi _ _ ty _) sc) =
   let (args, res) = getArgs as sc
       erased = if InaccessibleArg `elem` argopts a then RErased else RNotErased
       arg' = case a of
@@ -1114,7 +1121,7 @@ buildFunDefns ist n =
         mkFunClause ([], lhs, rhs) = RMkFunClause lhs rhs
         mkFunClause (((n, ty) : ns), lhs, rhs) = mkFunClause (ns, bind lhs, bind rhs) where
           bind Impossible = Impossible
-          bind tm = Bind n (PVar ty) tm
+          bind tm = Bind n (PVar RigW ty) tm
 
 -- | Build the reflected datatype definition(s) that correspond(s) to
 -- a provided unqualified name

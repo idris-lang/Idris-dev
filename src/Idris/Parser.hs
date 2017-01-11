@@ -763,7 +763,7 @@ Params ::=
 params :: SyntaxInfo -> IdrisParser [PDecl]
 params syn =
     do reservedHL "parameters"; lchar '('; ns <- typeDeclList syn; lchar ')'
-       let ns' = [(n, ty) | (n, _, ty) <- ns]
+       let ns' = [(n, ty) | (_, n, _, ty) <- ns]
        openBlock
        let pvars = syn_params syn
        ds <- many (decl syn { syn_params = pvars ++ ns' })
@@ -903,7 +903,7 @@ interface_ syn = do (doc, argDocs, acc)
                                  return (doc, argDocs, acc))
                     fc <- getFC
                     cons <- constraintList syn
-                    let cons' = [(c, ty) | (c, _, ty) <- cons]
+                    let cons' = [(c, ty) | (_, c, _, ty) <- cons]
                     (n_in, nfc) <- fnName
                     let n = expandNS syn n_in
                     cs <- many carg
@@ -953,11 +953,11 @@ implementation kwopt syn
                         fc <- getFC
                         en <- optional implementationName
                         cs <- constraintList syn
-                        let cs' = [(c, ty) | (c, _, ty) <- cs]
+                        let cs' = [(c, ty) | (_, c, _, ty) <- cs]
                         (cn, cnfc) <- fnName
                         args <- many (simpleExpr syn)
                         let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
-                        let t = bindList (PPi constraint) cs sc
+                        let t = bindList (\r -> PPi constraint { pcount = r }) cs sc
                         pnames <- implementationUsing
                         ds <- implementationBlock syn
                         return [PImplementation doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
@@ -1429,6 +1429,11 @@ directive syn = do try (lchar '%' *> reserved "lib")
 pLangExt :: IdrisParser LanguageExt
 pLangExt = (reserved "TypeProviders" >> return TypeProviders)
        <|> (reserved "ErrorReflection" >> return ErrorReflection)
+       <|> (reserved "UniquenessTypes" >> return UniquenessTypes)
+       <|> (reserved "LinearTypes" >> return LinearTypes)
+       <|> (reserved "DSLNotation" >> return DSLNotation)
+       <|> (reserved "ElabReflection" >> return ElabReflection)
+       <|> (reserved "FirstClassReflection" >> return FCReflection)
 
 {-| Parses a totality
 
@@ -1696,6 +1701,7 @@ loadSource' lidr r maxline
 loadSource :: Bool -> FilePath -> Maybe Int -> Idris ()
 loadSource lidr f toline
              = do logParser 1 ("Reading " ++ f)
+                  iReport   2 ("Reading " ++ f)
                   i <- getIState
                   let def_total = default_total i
                   file_in <- runIO $ readSource f
@@ -1783,8 +1789,7 @@ loadSource lidr f toline
                   logLvl 10 (show (toAlist (idris_implicits i)))
                   logLvl 3 (show (idris_infixes i))
                   -- Now add all the declarations to the context
-                  v <- verbose
-                  when v $ iputStrLn $ "Type checking " ++ f
+                  iReport 1 $ "Type checking " ++ f
                   -- we totality check after every Mutual block, so if
                   -- anything is a single definition, wrap it in a
                   -- mutual block on its own
@@ -1799,7 +1804,8 @@ loadSource lidr f toline
                                   setContext ctxt')
                            (map snd (idris_totcheck i))
                   -- build size change graph from simplified definitions
-                  logLvl 1 "Totality checking"
+                  iReport 3 $ "Totality checking " ++ f
+                  logLvl 1 $ "Totality checking " ++ f
                   i <- getIState
                   mapM_ buildSCG (idris_totcheck i)
                   mapM_ checkDeclTotality (idris_totcheck i)
@@ -1822,7 +1828,8 @@ loadSource lidr f toline
 
                   logLvl 1 ("Finished " ++ f)
                   ibcsd <- valIBCSubDir i
-                  logLvl 1 "Universe checking"
+                  logLvl  1 $ "Universe checking " ++ f
+                  iReport 3 $ "Universe checking " ++ f
                   iucheck
                   let ibc = ibcPathNoFallback ibcsd f
                   i <- getIState

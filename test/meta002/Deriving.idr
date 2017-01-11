@@ -1,6 +1,8 @@
 ||| Test some deriving features
 module Deriving
 
+%language ElabReflection
+
 -- NB: test disabled due to excess memory consumption
 
 import Pruviloj

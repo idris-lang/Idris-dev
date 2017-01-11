@@ -1,6 +1,6 @@
-***********************
-Compilation and Logging
-***********************
+************************************
+Compilation, Logging, and Reporting
+************************************
 
 This section provides information about the Idris compilation process, and
 provides details over how you can follow the process through logging.
@@ -41,11 +41,27 @@ With Idris you can ask it to terminate the compilation process after type checki
 
 Use of this option will still result in the generation of the Idris binary ``.ibc`` files, and is suitable if you do not wish to generate code from one of the supported backends.
 
-Logging Output
-==============
+Reporting Compilation Process
+=============================
 
-The internal operation of Idris is captured using a category based logger.
-Currently, the logging infrastructure has support for the following categories:
+During compilation the reporting of Idris' progress can be controlled
+by setting a verbosity level.
+
++ ``-V``, or alternatively ``--verbose`` and ``--V0``, will report which file Idris is currently type checking.
++ ``--V1`` will additionally report: Parsing, IBC Generation, and Code
+  Generation.
++ ``--V2`` will additionally report: Totality Checking, Universe
+  Checking, and the individual steps prior to code generation.
+
+
+By default Idris' progress reporting is set to quiet-``-q``, or ``--quiet``.
+
+Logging Internal Operation
+===========================
+
+For those that develop on the Idris compiler, the internal operation
+of Idris is captured using a category based logger. Currently, the
+logging infrastructure has support for the following categories:
 
 + Parser
 + Elaborator

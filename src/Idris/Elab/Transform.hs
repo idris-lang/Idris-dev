@@ -114,11 +114,11 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          return (clhs_tm, crhs_tm)
 
   where
-    depat (Bind n (PVar t) sc) = depat (instantiate (P Bound n t) sc)
+    depat (Bind n (PVar _ t) sc) = depat (instantiate (P Bound n t) sc)
     depat x = x
 
-    renamepats (n' : ns) (Bind n (PVar t) sc)
-       = Bind n' (PVar t) (renamepats ns sc) -- all Vs
+    renamepats (n' : ns) (Bind n (PVar rig t) sc)
+       = Bind n' (PVar rig t) (renamepats ns sc) -- all Vs
     renamepats _ sc = sc
 
     -- names for transformation variables. Need to ensure these don't clash

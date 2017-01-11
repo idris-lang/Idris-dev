@@ -11,6 +11,7 @@ module Idris.Elab.Utils where
 import Idris.AbsSyntax
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
+import Idris.Core.WHNF
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.DeepSeq
@@ -103,7 +104,7 @@ checkAddDef add toplvl info fc mkerr definable ((n, (i, top, t, psns)) : ns)
 -- | Get the list of (index, name) of inaccessible arguments from an elaborated
 -- type
 inaccessibleImps :: Int -> Type -> [Bool] -> [(Int, Name)]
-inaccessibleImps i (Bind n (Pi _ t _) sc) (inacc : ins)
+inaccessibleImps i (Bind n (Pi _ _ t _) sc) (inacc : ins)
     | inacc = (i, n) : inaccessibleImps (i + 1) sc ins
     | otherwise = inaccessibleImps (i + 1) sc ins
 inaccessibleImps _ _ _ = []
@@ -184,8 +185,8 @@ decorateid decorate (PClauses f o n cs)
 
 -- if 't' is an interface application, assume its arguments are injective
 pbinds :: IState -> Term -> ElabD ()
-pbinds i (Bind n (PVar t) sc)
-    = do attack; patbind n
+pbinds i (Bind n (PVar rig t) sc)
+    = do attack; patbind n rig
          env <- get_env
          case unApply (normalise (tt_ctxt i) env t) of
               (P _ c _, args) -> case lookupCtxt c (idris_interfaces i) of
@@ -198,26 +199,26 @@ pbinds i (Bind n (PVar t) sc)
         setinjArg _ = return ()
 pbinds i tm = return ()
 
-pbty (Bind n (PVar t) sc) tm = Bind n (PVTy t) (pbty sc tm)
+pbty (Bind n (PVar _ t) sc) tm = Bind n (PVTy t) (pbty sc tm)
 pbty _ tm = tm
 
-getPBtys (Bind n (PVar t) sc) = (n, t) : getPBtys sc
+getPBtys (Bind n (PVar _ t) sc) = (n, t) : getPBtys sc
 getPBtys (Bind n (PVTy t) sc) = (n, t) : getPBtys sc
 getPBtys _ = []
 
-psolve (Bind n (PVar t) sc) = do solve; psolve sc
+psolve (Bind n (PVar _ t) sc) = do solve; psolve sc
 psolve tm = return ()
 
-pvars ist (Bind n (PVar t) sc) = (n, delab ist t) : pvars ist sc
+pvars ist (Bind n (PVar _ t) sc) = (n, delab ist t) : pvars ist sc
 pvars ist _ = []
 
-getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi _ t _) sc)
+getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi _ _ t _) sc)
     = nub $ getFixedInType i env [] t ++
             getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
             ++ case unApply t of
                     (P _ n _, _) -> if n `elem` env then [n] else []
                     _ -> []
-getFixedInType i env (_ : is) (Bind n (Pi _ t _) sc)
+getFixedInType i env (_ : is) (Bind n (Pi _ _ t _) sc)
     = getFixedInType i (n : env) is (instantiate (P Bound n t) sc)
 getFixedInType i env is tm@(App _ f a)
     | (P _ tn _, args) <- unApply tm
@@ -231,7 +232,7 @@ getFixedInType i env is tm@(App _ f a)
                         getFixedInType i env is a
 getFixedInType i _ _ _ = []
 
-getFlexInType i env ps (Bind n (Pi _ t _) sc)
+getFlexInType i env ps (Bind n (Pi _ _ t _) sc)
     = nub $ (if (not (n `elem` ps)) then getFlexInType i env ps t else []) ++
             getFlexInType i (n : env) ps (instantiate (P Bound n t) sc)
 
@@ -260,7 +261,7 @@ getParamsInType i env ps t = let fix = getFixedInType i env ps t
                                  flex = getFlexInType i env fix t in
                                  [x | x <- fix, not (x `elem` flex)]
 
-getTCinj i (Bind n (Pi _ t _) sc)
+getTCinj i (Bind n (Pi _ _ t _) sc)
     = getTCinj i t ++ getTCinj i (instantiate (P Bound n t) sc)
 getTCinj i ap@(App _ f a)
     | (P _ n _, args) <- unApply ap,
@@ -292,13 +293,13 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
   where
     getUniq :: Env -> [(Name, Bool)] -> Term -> State [Name] ()
     getUniq env us (Bind n b sc)
-       = let uniq = case check ctxt env (forgetEnv (map fst env) (binderTy b)) of
+       = let uniq = case check ctxt env (forgetEnv (map fstEnv env) (binderTy b)) of
                          OK (_, UType UniqueType) -> True
                          OK (_, UType NullType) -> True
                          OK (_, UType AllTypes) -> True
                          _ -> False in
              do getUniqB env us b
-                getUniq ((n,b):env) ((n, uniq):us) sc
+                getUniq ((n, RigW, b):env) ((n, uniq):us) sc
     getUniq env us (App _ f a) = do getUniq env us f; getUniq env us a
     getUniq env us (V i)
        | i < length us = if snd (us!!i) then use (fst (us!!i)) else return ()
@@ -310,14 +311,14 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
 
     getUniqB env us (Let t v) = getUniq env us v
     getUniqB env us (Guess t v) = getUniq env us v
---     getUniqB env us (Pi t v) = do getUniq env us t; getUniq env us v
+--     getUniqB env us (Pi _ _ t v) = do getUniq env us t; getUniq env us v
     getUniqB env us (NLet t v) = getUniq env us v
     getUniqB env us b = return () -- getUniq env us (binderTy b)
 
 -- In a functional application, return the names which are used
 -- directly in a static position
 getStaticNames :: IState -> Term -> [Name]
-getStaticNames ist (Bind n (PVar _) sc)
+getStaticNames ist (Bind n (PVar _ _) sc)
     = getStaticNames ist (instantiate (P Bound n Erased) sc)
 getStaticNames ist tm
     | (P _ fn _, args) <- unApply tm
@@ -331,7 +332,7 @@ getStaticNames ist tm
 getStaticNames _ _ = []
 
 getStatics :: [Name] -> Term -> [Bool]
-getStatics ns (Bind n (Pi _ _ _) t)
+getStatics ns (Bind n (Pi _ _ _ _) t)
     | n `elem` ns = True : getStatics ns t
     | otherwise = False : getStatics ns t
 getStatics _ _ = []
@@ -407,7 +408,7 @@ findParams tyn famty ts =
     getDataApp f@(App _ _ _)
         | (P _ d _, args) <- unApply f
                = if (d == tyn) then [mParam args args] else []
-    getDataApp (Bind n (Pi _ t _) sc)
+    getDataApp (Bind n (Pi _ _ t _) sc)
         = getDataApp t ++ getDataApp (instantiate (P Bound n t) sc)
     getDataApp _ = []
 
@@ -478,9 +479,9 @@ orderPats tm = op [] tm
   where
     op [] (App s f a) = App s f (op [] a) -- for Infer terms
 
-    op ps (Bind n (PVar t) sc) = op ((n, PVar t) : ps) sc
+    op ps (Bind n (PVar r t) sc) = op ((n, PVar r t) : ps) sc
     op ps (Bind n (Hole t) sc) = op ((n, Hole t) : ps) sc
-    op ps (Bind n (Pi i t k) sc) = op ((n, Pi i t k) : ps) sc
+    op ps (Bind n (Pi rig i t k) sc) = op ((n, Pi rig i t k) : ps) sc
     op ps sc = bindAll (sortP ps) sc
 
     -- Keep explicit Pi in the same order, insert others as necessary,
@@ -488,8 +489,8 @@ orderPats tm = op [] tm
     sortP ps = let (exps, imps) = partition isExp ps in
                pick (reverse exps) imps
 
-    isExp (_, Pi Nothing _ _) = True
-    isExp (_, Pi (Just i) _ _) = toplevel_imp i && not (machine_gen i)
+    isExp (_, Pi rig Nothing _ _) = True
+    isExp (_, Pi rig (Just i) _ _) = toplevel_imp i && not (machine_gen i)
     isExp _ = False
 
     pick acc [] = acc
@@ -510,13 +511,13 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
   where
     bindPats []          tm = tm
     bindPats ((n, t):ps) tm
-         | n `notElem` map fst ps = Bind n (PVar t) (bindPats ps tm)
+         | n `notElem` map fst ps = Bind n (PVar RigW t) (bindPats ps tm)
          | otherwise = bindPats ps tm
 
     getPats :: Term -> State [(Name, Type)] Term
-    getPats (Bind n (PVar t) sc) = do ps <- get
-                                      put ((n, t) : ps)
-                                      getPats sc
+    getPats (Bind n (PVar _ t) sc) = do ps <- get
+                                        put ((n, t) : ps)
+                                        getPats sc
     getPats (Bind n (Guess t v) sc) = do t' <- getPats t
                                          v' <- getPats v
                                          sc' <- getPats sc
@@ -525,13 +526,13 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
                                        v' <- getPats v
                                        sc' <- getPats sc
                                        return (Bind n (Let t' v') sc')
-    getPats (Bind n (Pi i t k) sc) = do t' <- getPats t
-                                        k' <- getPats k
-                                        sc' <- getPats sc
-                                        return (Bind n (Pi i t' k') sc')
-    getPats (Bind n (Lam t) sc) = do t' <- getPats t
-                                     sc' <- getPats sc
-                                     return (Bind n (Lam t') sc')
+    getPats (Bind n (Pi rig i t k) sc) = do t' <- getPats t
+                                            k' <- getPats k
+                                            sc' <- getPats sc
+                                            return (Bind n (Pi rig i t' k') sc')
+    getPats (Bind n (Lam r t) sc) = do t' <- getPats t
+                                       sc' <- getPats sc
+                                       return (Bind n (Lam r t') sc')
     getPats (Bind n (Hole t) sc) = do t' <- getPats t
                                       sc' <- getPats sc
                                       return (Bind n (Hole t') sc')
@@ -568,6 +569,38 @@ isEmpty ctxt tyctxt ty
 isEmpty ctxt tyinfo ty = False
 
 hasEmptyPat :: Context -> Ctxt TypeInfo -> Term -> Bool
-hasEmptyPat ctxt tyctxt (Bind n (PVar ty) sc)
+hasEmptyPat ctxt tyctxt (Bind n (PVar _ ty) sc)
     = isEmpty ctxt tyctxt ty || hasEmptyPat ctxt tyctxt sc
 hasEmptyPat ctxt tyctxt _ = False
+
+-- Find names which are applied to a function in a Rig1 position
+findLinear :: IState -> [Name] -> Term -> [(Name, RigCount)]
+findLinear ist env tm | (P _ f _, args) <- unApply tm,
+                        f `notElem` env,
+                        Just ty_in <- lookupTyExact f (tt_ctxt ist)
+    = let ty = whnfArgs (tt_ctxt ist) [] ty_in in
+          nub $ concatMap (findLinear ist env) args ++ findLinArg ty args
+  where
+    findLinArg (Bind n (Pi c _ _ _) sc) (P _ a _ : as)
+         | Rig0 <- c = (a, c) : findLinArg sc as
+         | Rig1 <- c = (a, c) : findLinArg sc as
+    findLinArg (Bind n (Pi _ _ _ _) sc) (a : as) 
+          = findLinArg (whnf (tt_ctxt ist) [] (substV a sc)) as
+    findLinArg _ _ = []
+findLinear ist env (App _ f a) 
+    = nub $ findLinear ist env f ++ findLinear ist env a    
+findLinear ist env (Bind n b sc) = findLinear ist (n : env) sc
+findLinear ist _ _ = []
+
+setLinear :: [(Name, RigCount)] -> Term -> Term
+setLinear ns (Bind n b@(PVar r t) sc) 
+   | Just r <- lookup n ns = Bind n (PVar r t) (setLinear ns sc)
+   | otherwise = Bind n b (setLinear ns sc)
+setLinear ns tm = tm
+
+linearArg :: Type -> Bool
+linearArg (Bind n (Pi Rig1 _ _ _) sc) = True
+linearArg (Bind n (Pi _ _ _ _) sc) = linearArg sc
+linearArg _ = False
+
+

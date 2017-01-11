@@ -455,9 +455,9 @@ getFC = do s <- position
 
 {-* Syntax helpers-}
 -- | Bind constraints to term
-bindList :: (Name -> FC -> PTerm -> PTerm -> PTerm) -> [(Name, FC, PTerm)] -> PTerm -> PTerm
-bindList b []              sc = sc
-bindList b ((n, fc, t):bs) sc = b n fc t (bindList b bs sc)
+bindList :: (RigCount -> Name -> FC -> PTerm -> PTerm -> PTerm) -> [(RigCount, Name, FC, PTerm)] -> PTerm -> PTerm
+bindList b []                 sc = sc
+bindList b ((r, n, fc, t):bs) sc = b r n fc t (bindList b bs sc)
 
 {- | @commaSeparated p@ parses one or more occurences of `p`,
      separated by commas and optional whitespace. -}

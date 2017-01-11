@@ -4,6 +4,8 @@ import Data.Fin
 import Language.Reflection.Elab
 import Language.Reflection.Utils
 
+%language ElabReflection
+
 -- Test various features of reflected elaboration, including looking
 -- up datatypes, defining functions, and totality checking
 

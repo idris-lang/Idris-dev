@@ -3,6 +3,8 @@ module Main
 import Data.Vect
 import Data.Fin
 
+%language DSLNotation
+
 data Ty = TyInt | TyBool| TyFun Ty Ty
 
 interpTy : Ty -> Type

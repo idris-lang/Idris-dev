@@ -45,7 +45,8 @@ foldl1 f (x::xs) = foldl f x xs
 ||| ```
 partial
 strHead : String -> Char
-strHead = prim__strHead
+strHead "" = idris_crash "Prelude.Strings: attempt to take the head of an empty string"
+strHead x = prim__strHead x
 
 ||| Returns the characters specified after the head of the string.
 |||
@@ -59,7 +60,8 @@ strHead = prim__strHead
 ||| ```
 partial
 strTail : String -> String
-strTail = prim__strTail
+strTail "" = idris_crash "Prelude.Strings: attempt to take the tail of an empty string"
+strTail xs = prim__strTail xs
 
 ||| Adds a character to the front of the specified string.
 |||
@@ -72,6 +74,18 @@ strTail = prim__strTail
 strCons : Char -> String -> String
 strCons = prim__strCons
 
+||| Returns the length of the string.
+|||
+||| ```idris example
+||| length ""
+||| ```
+||| ```idris example
+||| length "ABC"
+||| ```
+length : String -> Nat
+length = fromInteger . prim__zextInt_BigInt . prim_lenString
+
+
 ||| Returns the nth character (starting from 0) of the specified string.
 |||
 ||| Precondition: '0 < i < length s' for 'strIndex s i'.
@@ -81,7 +95,9 @@ strCons = prim__strCons
 ||| ```
 partial
 strIndex : String -> Int -> Char
-strIndex = prim__strIndex
+strIndex x i = if (i < 0 || i >= cast (length x))
+                  then idris_crash "Prelude.Strings: String index out of bounds"
+                  else prim__strIndex x i
 
 ||| Reverses the elements within a String.
 |||
@@ -296,17 +312,6 @@ unlines' (l::ls) = l ++ '\n' :: unlines' ls
 ||| ```
 unlines : List String -> String
 unlines = pack . unlines' . map unpack
-
-||| Returns the length of the string.
-|||
-||| ```idris example
-||| length ""
-||| ```
-||| ```idris example
-||| length "ABC"
-||| ```
-length : String -> Nat
-length = fromInteger . prim__zextInt_BigInt . prim_lenString
 
 ||| Returns a substring of a given string
 |||

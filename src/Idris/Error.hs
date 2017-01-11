@@ -79,6 +79,12 @@ tclift (Error err@(At fc e)) = do setErrSpan fc; throwError err
 tclift (Error err@(UniverseError fc _ _ _ _)) = do setErrSpan fc; throwError err
 tclift (Error err) = throwError err
 
+tcliftAt :: FC -> TC a -> Idris a
+tcliftAt fc (OK v) = return v
+tcliftAt fc (Error err@(At _ e)) = do setErrSpan fc; throwError err
+tcliftAt fc (Error err@(UniverseError _ _ _ _ _)) = do setErrSpan fc; throwError err
+tcliftAt fc (Error err) = do setErrSpan fc; throwError (At fc err)
+
 tctry :: TC a -> TC a -> Idris a
 tctry tc1 tc2
     = case tc1 of

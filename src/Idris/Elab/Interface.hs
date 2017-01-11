@@ -210,7 +210,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                 logElab 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map (\(pn, _, _) -> pn) ps) Exp t')),
                          (n, (False, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
-                                              (\ l s p -> Imp l s p Nothing True) t'))),
+                                              (\ l s p r -> Imp l s p Nothing True r) t'))),
                          (n, (nfc, syn, o, t) ) )
     tdecl impps allmeths (PData doc _ syn _ _ (PLaterdecl n nfc t))
            = do let o = []
@@ -218,7 +218,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                 logElab 2 $ "Data method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map (\(pn, _, _) -> pn) ps) Exp t')),
                          (n, (True, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
-                                              (\ l s p -> Imp l s p Nothing True) t'))),
+                                              (\ l s p r -> Imp l s p Nothing True r) t'))),
                          (n, (nfc, syn, o, t) ) )
     tdecl impps allmeths (PData doc _ syn _ _ _)
          = ierror $ At fc (Msg "Data definitions not allowed in an interface declaration")
@@ -294,9 +294,9 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              return [PTy doc [] syn fc o m mfc ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
 
-    getMArgs (PPi (Imp _ _ _ _ _) n _ ty sc) = IA n : getMArgs sc
-    getMArgs (PPi (Exp _ _ _) n _ ty sc) = EA n : getMArgs sc
-    getMArgs (PPi (Constraint _ _) n _ ty sc) = CA : getMArgs sc
+    getMArgs (PPi (Imp _ _ _ _ _ _) n _ ty sc) = IA n : getMArgs sc
+    getMArgs (PPi (Exp _ _ _ _) n _ ty sc) = EA n : getMArgs sc
+    getMArgs (PPi (Constraint _ _ _) n _ ty sc) = CA : getMArgs sc
     getMArgs _ = []
 
     getMeth :: [Name] -> [Name] -> Name -> PTerm
@@ -337,9 +337,9 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
        addC _ _ tm = tm
 
     -- make arguments explicit and don't bind interface parameters
-    toExp ns e (PPi (Imp l s p _ _) n fc ty sc)
+    toExp ns e (PPi (Imp l s p _ _ r) n fc ty sc)
         | n `elem` ns = toExp ns e sc
-        | otherwise = PPi (e l s p) n fc ty (toExp ns e sc)
+        | otherwise = PPi (e l s p r) n fc ty (toExp ns e sc)
     toExp ns e (PPi p n fc ty sc) = PPi p n fc ty (toExp ns e sc)
     toExp ns e sc = sc
 
@@ -376,7 +376,7 @@ findDets n ns =
             Just ty -> getDetPos 0 ns ty
             Nothing -> []
   where
-    getDetPos i ns (Bind n (Pi _ _ _) sc)
+    getDetPos i ns (Bind n (Pi _ _ _ _) sc)
        | n `elem` ns = i : getDetPos (i + 1) ns sc
        | otherwise = getDetPos (i + 1) ns sc
     getDetPos _ _ _ = []

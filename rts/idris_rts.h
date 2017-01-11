@@ -161,11 +161,11 @@ Stats terminate(VM* vm);
 
 // Create a new VM, set up everything with sensible defaults (use when
 // calling Idris from C)
-VM* idris_vm();
+VM* idris_vm(void);
 void close_vm(VM* vm);
 
 // Set up key for thread-local data - called once from idris_main
-void init_threadkeys();
+void init_threadkeys(void);
 
 // Functions all take a pointer to their VM, and previous stack base,
 // and return nothing.
@@ -278,7 +278,7 @@ void* allocate(size_t size, int outerlock);
 // may take a lock if other threads are running).
 
 void idris_requireAlloc(size_t size);
-void idris_doneAlloc();
+void idris_doneAlloc(void);
 
 // public interface to allocation (note that this may move other pointers
 // if allocating beyond the limits given by idris_requireAlloc!)
@@ -299,14 +299,14 @@ void idris_free(void* ptr, size_t size);
 
 #define NULL_CON(x) nullary_cons[x]
 
-int idris_errno();
+int idris_errno(void);
 char* idris_showerror(int err);
 
 extern VAL* nullary_cons;
-void init_nullaries();
-void free_nullaries();
+void init_nullaries(void);
+void free_nullaries(void);
 
-void init_signals();
+void init_signals(void);
 
 void* vmThread(VM* callvm, func f, VAL arg);
 void* idris_stopThread(VM* vm);
@@ -364,6 +364,9 @@ VAL idris_pokeDouble(VAL ptr, VAL offset, VAL data);
 VAL idris_peekSingle(VM* vm, VAL ptr, VAL offset);
 VAL idris_pokeSingle(VAL ptr, VAL offset, VAL data);
 
+// Crash with a message (used for partial primitives)
+void idris_crash(char* msg);
+
 // String primitives
 VAL idris_concat(VM* vm, VAL l, VAL r);
 VAL idris_strlt(VM* vm, VAL l, VAL r);
@@ -391,16 +394,16 @@ VAL idris_systemInfo(VM* vm, VAL index);
 extern int __idris_argc;
 extern char **__idris_argv;
 
-int idris_numArgs();
+int idris_numArgs(void);
 const char *idris_getArg(int i);
 
 // disable stdin/stdout buffering
-void idris_disableBuffering();
+void idris_disableBuffering(void);
 
 // Handle stack overflow.
 // Just reports an error and exits.
 
-void stackOverflow();
+void stackOverflow(void);
 
 // I think these names are nicer for an API...
 

@@ -40,6 +40,7 @@ instance NFData ConstraintFC
 instance NFData Err
 instance NFData ErrorReportPart
 instance NFData ImplicitInfo
+instance NFData RigCount
 instance (NFData b) => NFData (Binder b)
 instance NFData UExp
 instance NFData NameType

@@ -1,8 +1,8 @@
-Reflect.idr:174:21-26:
+Reflect.idr:175:21-26:
 This style of tactic proof is deprecated. See %runElab for the replacement.
-Reflect.idr:183:21-26:
+Reflect.idr:184:21-26:
 This style of tactic proof is deprecated. See %runElab for the replacement.
-Reflect.idr:191:15-20:
+Reflect.idr:192:15-20:
 This style of tactic proof is deprecated. See %runElab for the replacement.
 test030a.idr:12:26-14:1:
 When checking right hand side of testReflect1 with expected type

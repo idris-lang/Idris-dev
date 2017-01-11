@@ -140,8 +140,8 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
     uB bnames (Let tx vx) (Let ty vy) = do h1 <- un bnames tx ty
                                            h2 <- un bnames vx vy
                                            combine bnames h1 h2
-    uB bnames (Lam tx) (Lam ty) = un bnames tx ty
-    uB bnames (Pi i tx _) (Pi i' ty _) = un bnames tx ty
+    uB bnames (Lam _ tx) (Lam _ ty) = un bnames tx ty
+    uB bnames (Pi r i tx _) (Pi r' i' ty _) = un bnames tx ty
     uB bnames x y = do UI s f <- get
                        let r = recoverable (normalise ctxt env (binderTy x))
                                            (normalise ctxt env (binderTy y))
@@ -204,13 +204,13 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
     bind i ns tm
       | i < 0 = tm
       | otherwise = let ((x,y),ty) = ns!!i in
-                        App MaybeHoles (Bind y (Lam ty) (bind (i-1) ns tm))
+                        App MaybeHoles (Bind y (Lam RigW ty) (bind (i-1) ns tm))
                             (P Bound x ty)
 
 renameBinders env (x, t) = (x, renameBindersTm env t)
 
 renameBindersTm :: Env -> TT Name -> TT Name
-renameBindersTm env tm = uniqueBinders (map fst env) tm
+renameBindersTm env tm = uniqueBinders (map fstEnv env) tm
   where
     uniqueBinders env (Bind n b sc)
         | n `elem` env
@@ -370,7 +370,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
             = case compare (envPos 0 x env) (envPos 0 y env) of
                    LT -> do sc 1; checkCycle bnames (x, ty)
                    _ -> do sc 1; checkCycle bnames (y, tx)
-       where envPos i n ((n',_):env) | n == n' = i
+       where envPos i n ((n',_,_):env) | n == n' = i
              envPos i n (_:env) = envPos (i+1) n env
              envPos _ _ _ = 100000
     un' env fn bnames xtm@(P _ x _) tm
@@ -424,7 +424,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
         = -- trace ("PATTERN RULE SOLVE: " ++ show (mv, tm, env, bindLams args (substEnv env tm))) $
           checkCycle bnames (mv, eta [] $ bindLams args (substEnv env tm))
       where rigid (V i) = True
-            rigid (P _ t _) = t `elem` map fst env &&
+            rigid (P _ t _) = t `elem` map fstEnv env &&
                               not (holeIn env t || t `elem` holes)
             rigid _ = False
 
@@ -450,24 +450,24 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
             bindLams [] tm = tm
             bindLams (a : as) tm = bindLam a (bindLams as tm)
 
-            bindLam (V i) tm = Bind (fst (env !! i))
-                                    (Lam (binderTy (snd (env !! i))))
+            bindLam (V i) tm = Bind (fstEnv (env !! i))
+                                    (Lam RigW (binderTy (sndEnv (env !! i))))
                                     tm
-            bindLam (P _ n ty) tm = Bind n (Lam ty) tm
+            bindLam (P _ n ty) tm = Bind n (Lam RigW ty) tm
             bindLam _ tm = error "Can't happen [non rigid bindLam]"
 
             substEnv [] tm = tm
-            substEnv ((n, t) : env) tm
+            substEnv ((n, _, t) : env) tm
                 = substEnv env (substV (P Bound n (binderTy t)) tm)
 
             -- remove any unnecessary lambdas (helps with interface
             -- resolution later).
-            eta ks (Bind n (Lam ty) sc) = eta ((n, ty) : ks) sc
+            eta ks (Bind n (Lam r ty) sc) = eta ((n, r, ty) : ks) sc
             eta ks t = rebind ks t
 
-            rebind ((n, ty) : ks) (App _ f (P _ n' _))
+            rebind ((n, r, ty) : ks) (App _ f (P _ n' _))
                 | n == n' = eta ks f
-            rebind ((n, ty) : ks) t = rebind ks (Bind n (Lam ty) t)
+            rebind ((n, r, ty) : ks) t = rebind ks (Bind n (Lam r ty) t)
             rebind _ t = t
 
     un' env fn bnames appx@(App _ _ _) appy@(App _ _ _)
@@ -475,13 +475,13 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 --         = uplus (unApp fn bnames appx appy)
 --                 (unifyTmpFail appx appy) -- take the whole lot
 
-    un' env fn bnames x (Bind n (Lam t) (App _ y (P Bound n' _)))
+    un' env fn bnames x (Bind n (Lam _ t) (App _ y (P Bound n' _)))
         | n == n' = un' env False bnames x y
-    un' env fn bnames (Bind n (Lam t) (App _ x (P Bound n' _))) y
+    un' env fn bnames (Bind n (Lam _ t) (App _ x (P Bound n' _))) y
         | n == n' = un' env False bnames x y
-    un' env fn bnames x (Bind n (Lam t) (App _ y (V 0)))
+    un' env fn bnames x (Bind n (Lam _ t) (App _ y (V 0)))
         = un' env False bnames x y
-    un' env fn bnames (Bind n (Lam t) (App _ x (V 0))) y
+    un' env fn bnames (Bind n (Lam _ t) (App _ x (V 0))) y
         = un' env False bnames x y
 --     un' env fn bnames (Bind x (PVar _) sx) (Bind y (PVar _) sy)
 --         = un' env False ((x,y):bnames) sx sy
@@ -491,27 +491,27 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     -- f D unifies with t -> D. This is dubious, but it helps with
     -- interface resolution for interfaces over functions.
 
-    un' env fn bnames (App _ f x) (Bind n (Pi i t k) y)
+    un' env fn bnames (App _ f x) (Bind n (Pi r i t k) y)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' env False bnames x y
-             uf <- un' env False bnames f (Bind (sMN 0 "uv") (Lam (TType (UVar [] 0)))
-                                      (Bind n (Pi i t k) (V 1)))
+             uf <- un' env False bnames f (Bind (sMN 0 "uv") (Lam RigW (TType (UVar [] 0)))
+                                      (Bind n (Pi r i t k) (V 1)))
              combine env bnames ux uf
 
-    un' env fn bnames (Bind n (Pi i t k) y) (App _ f x)
+    un' env fn bnames (Bind n (Pi r i t k) y) (App _ f x)
       | noOccurrence n y && injectiveApp f
         = do ux <- un' env False bnames y x
-             uf <- un' env False bnames (Bind (sMN 0 "uv") (Lam (TType (UVar [] 0)))
-                                    (Bind n (Pi i t k) (V 1))) f
+             uf <- un' env False bnames (Bind (sMN 0 "uv") (Lam RigW (TType (UVar [] 0)))
+                                    (Bind n (Pi r i t k) (V 1))) f
              combine env bnames ux uf
 
     un' env fn bnames (Bind x bx sx) (Bind y by sy)
         | sameBinder bx by
            = do h1 <- uB env bnames bx by
-                h2 <- un' ((x, bx) : env) False (((x,y),binderTy bx):bnames) sx sy
+                h2 <- un' ((x, RigW, bx) : env) False (((x,y),binderTy bx):bnames) sx sy
                 combine env bnames h1 h2
-      where sameBinder (Lam _) (Lam _) = True
-            sameBinder (Pi i _ _) (Pi i' _ _) = True
+      where sameBinder (Lam _ _) (Lam _ _) = True
+            sameBinder (Pi _ i _ _) (Pi _ i' _ _) = True
             sameBinder _ _ = False -- never unify holes/guesses/etc
     un' env fn bnames x y
         | OK True <- convEq' ctxt holes x y = do sc 1; return []
@@ -606,7 +606,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                          P _ x _ -> x `elem` holes || patIn env x
                          _ -> False
             inenv t = case t of
-                           P _ x _ -> x `elem` (map fst env)
+                           P _ x _ -> x `elem` (map fstEnv env)
                            _ -> False
 
             notFn t = injective t || metavar t || inenv t
@@ -642,10 +642,10 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
              h2 <- un' env False bnames vx vy
              sc 1
              combine env bnames h1 h2
-    uB env bnames (Lam tx) (Lam ty) = do sc 1; un' env False bnames tx ty
-    uB env bnames (Pi _ tx _) (Pi _ ty _) = do sc 1; un' env False bnames tx ty
+    uB env bnames (Lam _ tx) (Lam _ ty) = do sc 1; un' env False bnames tx ty
+    uB env bnames (Pi _ _ tx _) (Pi _ _ ty _) = do sc 1; un' env False bnames tx ty
     uB env bnames (Hole tx) (Hole ty) = un' env False bnames tx ty
-    uB env bnames (PVar tx) (PVar ty) = un' env False bnames tx ty
+    uB env bnames (PVar _ tx) (PVar _ ty) = un' env False bnames tx ty
     uB env bnames x y
                   = do UI s f <- get
                        let r = recoverable (normalise ctxt env (binderTy x))
@@ -679,7 +679,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     bind i ns tm
       | i < 0 = tm
       | otherwise = let ((x,y),ty) = ns!!i in
-                        App MaybeHoles (Bind y (Lam ty) (bind (i-1) ns tm))
+                        App MaybeHoles (Bind y (Lam RigW ty) (bind (i-1) ns tm))
                             (P Bound x ty)
 
     combine env bnames as [] = return as
@@ -754,33 +754,33 @@ recoverable (App _ f a) (App _ f' a')
     | f == f' = recoverable a a'
 recoverable (App _ f a) (App _ f' a')
     = recoverable f f' -- && recoverable a a'
-recoverable f (Bind _ (Pi _ _ _) sc)
+recoverable f (Bind _ (Pi _ _ _ _) sc)
     | (P (DCon _ _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
     | (Constant _) <- f = False
     | TType _ <- f = False
     | UType _ <- f = False
-recoverable (Bind _ (Pi _ _ _) sc) f
+recoverable (Bind _ (Pi _ _ _ _) sc) f
     | (P (DCon _ _ _) _ _, _) <- unApply f = False
     | (P (TCon _ _) _ _, _) <- unApply f = False
     | (Constant _) <- f = False
     | TType _ <- f = False
     | UType _ <- f = False
-recoverable (Bind _ (Lam _) sc) f = recoverable sc f
-recoverable f (Bind _ (Lam _) sc) = recoverable f sc
+recoverable (Bind _ (Lam _ _) sc) f = recoverable sc f
+recoverable f (Bind _ (Lam _ _) sc) = recoverable f sc
 recoverable x y = True
 
-errEnv :: [(a, Binder b)] -> [(a, b)]
-errEnv = map (\(x, b) -> (x, binderTy b))
+errEnv :: [(a, r, Binder b)] -> [(a, b)]
+errEnv = map (\(x, _, b) -> (x, binderTy b))
 
 holeIn :: Env -> Name -> Bool
-holeIn env n = case lookup n env of
+holeIn env n = case lookupBinder n env of
                     Just (Hole _) -> True
                     Just (Guess _ _) -> True
                     _ -> False
 
 patIn :: Env -> Name -> Bool
-patIn env n = case lookup n env of
-                    Just (PVar _) -> True
+patIn env n = case lookupBinder n env of
+                    Just (PVar _ _) -> True
                     Just (PVTy _) -> True
                     _ -> False

@@ -1,5 +1,11 @@
 module Main where
 
+import System.Exit ( ExitCode(..), exitWith, exitSuccess )
+
+import Control.Monad ( unless, when, (>=>) )
+import Data.Maybe    ( fromMaybe )
+import Data.Foldable ( foldrM )
+
 import Idris.AbsSyntax
 import Idris.CmdOptions
 import Idris.Error
@@ -9,8 +15,8 @@ import Idris.Package
 
 import Util.System (setupBundledCC)
 
-import Control.Monad (when)
-import System.Exit (exitSuccess)
+import Util.System ( setupBundledCC )
+import System.Exit ( ExitCode(..), exitWith)
 
 processShowOptions :: [Opt] -> Idris ()
 processShowOptions opts = runIO $ do
@@ -33,7 +39,7 @@ processClientOptions :: [Opt] -> Idris ()
 processClientOptions opts = check opts getClient $ \fs -> case fs of
   []      -> ifail "No --client argument. This indicates a bug. Please report."
   (c : _) -> do
-    setVerbose False
+    setVerbose 0
     setQuiet True
     case getPort opts of
       Just  DontListen       -> ifail "\"--client\" and \"--port none\" are incompatible"
@@ -49,7 +55,13 @@ processPackageOptions opts = do
   check opts getPkgMkDoc $ \fs -> runIO $ do
     mapM_ (documentPkg opts) fs
   check opts getPkgTest $ \fs -> runIO $ do
-    mapM_ (testPkg opts) fs
+
+    codes <- mapM (testPkg opts) fs
+    -- check if any of the tests exited with an exit code other
+    -- than zero; if they did, exit with exit code 1
+    unless (null $ filter (/= ExitSuccess) codes) $
+       exitWith (ExitFailure 1)
+
   check opts getPkg $ \fs -> runIO $ do
     mapM_ (buildPkg opts (WarnOnly `elem` opts)) fs
   check opts getPkgREPL $ \fs -> case fs of

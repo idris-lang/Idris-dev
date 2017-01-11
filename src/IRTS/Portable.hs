@@ -29,7 +29,7 @@ data CodegenFile = CGFile {
 
 -- Update the version when the format changes
 formatVersion :: Int
-formatVersion = 1
+formatVersion = 2
 
 writePortable :: Handle -> CodegenInfo -> IO ()
 writePortable file ci = do
@@ -236,13 +236,13 @@ instance ToJSON SExp where
     toJSON (SApp tail name exps) = object ["SApp" .= (tail, name, exps)]
     toJSON (SLet lv a b) = object ["SLet" .= (lv, a, b)]
     toJSON (SUpdate lv exp) = object ["SUpdate" .= (lv, exp)]
-    toJSON (SProj lv i) = object ["DProj" .= (lv, i)]
+    toJSON (SProj lv i) = object ["SProj" .= (lv, i)]
     toJSON (SCon lv i name vars) = object ["SCon" .= (lv, i, name, vars)]
     toJSON (SCase ct lv alts) = object ["SCase" .= (ct, lv, alts)]
-    toJSON (SChkCase lv alts) = object ["DChkCase" .= (lv, alts)]
+    toJSON (SChkCase lv alts) = object ["SChkCase" .= (lv, alts)]
     toJSON (SConst c) = object ["SConst" .= c]
     toJSON (SForeign fd ret exps) = object ["SForeign" .= (fd, ret, exps)]
-    toJSON (SOp prim vars) = object ["DOp" .= (prim, vars)]
+    toJSON (SOp prim vars) = object ["SOp" .= (prim, vars)]
     toJSON SNothing = object ["SNothing" .= Null]
     toJSON (SError s) = object ["SError" .= s]
 

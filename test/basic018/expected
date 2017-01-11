@@ -8,7 +8,7 @@ basic018.idr:13:6:When checking right hand side of test with expected type
 Type mismatch between
         42 = 42 (Type of Refl)
 and
-        thing = 42 (Expected type)
+        thing = S (fromIntegerNat 41) (Expected type)
 
 Specifically:
         Type mismatch between

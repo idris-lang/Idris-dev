@@ -118,6 +118,7 @@ parserCommandsForHelp =
   , (["pp", "pprint"], (SeqArgs OptionArg (SeqArgs NumberArg NameArg))
     , "Pretty prints an Idris function in either LaTeX or HTML and for a specified width."
     , cmd_pprint)
+  , (["verbosity"], NumberArg, "Set verbosity level", cmd_verb)
   ]
   where optionsList = intercalate ", " $ map fst setOptions
 
@@ -146,7 +147,7 @@ parserCommands =
   , proofArgCmd ["mc", "makecase"] MakeCase
       ":mc <line> <name> adds a case block for the definition of the metavariable on the line"
   , proofArgCmd ["ml", "makelemma"] MakeLemma "?"
-  , (["log"], NumberArg, "Set logging verbosity level", cmd_log)
+  , (["log"], NumberArg, "Set logging level", cmd_log)
   , ( ["logcats"]
     , ManyArgs NameArg
     , "Set logging categories"
@@ -404,6 +405,12 @@ cmd_log name = do
     i <- fmap (fromIntegral . fst) P.natural
     eof
     return (Right (LogLvl i))
+
+cmd_verb :: String -> P.IdrisParser (Either String Command)
+cmd_verb name = do
+    i <- fmap (fromIntegral . fst) P.natural
+    eof
+    return (Right (Verbosity i))
 
 cmd_cats :: String -> P.IdrisParser (Either String Command)
 cmd_cats name = do

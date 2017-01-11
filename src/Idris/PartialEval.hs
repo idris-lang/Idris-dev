@@ -97,37 +97,37 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
   where
     -- Specialise static argument in type by let-binding provided value instead
     -- of expecting it as a function argument
-    st ((ExplicitS, v) : xs) (Bind n (Pi _ t _) sc)
+    st ((ExplicitS, v) : xs) (Bind n (Pi _ _ t _) sc)
          = Bind n (Let t v) (st xs sc)
-    st ((ImplicitS _, v) : xs) (Bind n (Pi _ t _) sc)
+    st ((ImplicitS _, v) : xs) (Bind n (Pi _ _ t _) sc)
          = Bind n (Let t v) (st xs sc)
-    st ((ConstraintS, v) : xs) (Bind n (Pi _ t _) sc)
+    st ((ConstraintS, v) : xs) (Bind n (Pi _ _ t _) sc)
          = Bind n (Let t v) (st xs sc)
     -- Erase argument from function type
-    st ((UnifiedD, _) : xs) (Bind n (Pi _ t _) sc)
+    st ((UnifiedD, _) : xs) (Bind n (Pi _ _ t _) sc)
          = st xs sc
     -- Keep types as is
-    st (_ : xs) (Bind n (Pi i t k) sc)
-         = Bind n (Pi i t k) (st xs sc)
+    st (_ : xs) (Bind n (Pi rig i t k) sc)
+         = Bind n (Pi rig i t k) (st xs sc)
     st _ t = t
 
     -- Erase implicit dynamic argument if existing argument shares it value,
     -- by substituting the value of previous argument
-    unifyEq (imp@(ImplicitD _, v) : xs) (Bind n (Pi i t k) sc)
+    unifyEq (imp@(ImplicitD _, v) : xs) (Bind n (Pi rig i t k) sc)
          = do amap <- get
               case lookup imp amap of
                    Just n' ->
                         do put (amap ++ [((UnifiedD, Erased), n)])
                            sc' <- unifyEq xs (subst n (P Bound n' Erased) sc)
-                           return (Bind n (Pi i t k) sc') -- erase later
+                           return (Bind n (Pi rig i t k) sc') -- erase later
                    _ -> do put (amap ++ [(imp, n)])
                            sc' <- unifyEq xs sc
-                           return (Bind n (Pi i t k) sc')
-    unifyEq (x : xs) (Bind n (Pi i t k) sc)
+                           return (Bind n (Pi rig i t k) sc')
+    unifyEq (x : xs) (Bind n (Pi rig i t k) sc)
          = do args <- get
               put (args ++ [(x, n)])
               sc' <- unifyEq xs sc
-              return (Bind n (Pi i t k) sc')
+              return (Bind n (Pi rig i t k) sc')
     unifyEq xs t = do args <- get
                       put (args ++ (zip xs (repeat (sUN "_"))))
                       return t
@@ -141,13 +141,13 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
 mkPE_TyDecl :: IState -> [(PEArgType, Term)] -> Type -> PTerm
 mkPE_TyDecl ist args ty = mkty args ty
   where
-    mkty ((ExplicitD, v) : xs) (Bind n (Pi _ t k) sc)
+    mkty ((ExplicitD, v) : xs) (Bind n (Pi rig _ t k) sc)
        = PPi expl n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
-    mkty ((ConstraintD, v) : xs) (Bind n (Pi _ t k) sc)
+    mkty ((ConstraintD, v) : xs) (Bind n (Pi rig _ t k) sc)
          | concreteInterface ist t = mkty xs sc
          | interfaceConstraint ist t
              = PPi constraint n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
-    mkty ((ImplicitD _, v) : xs) (Bind n (Pi _ t k) sc)
+    mkty ((ImplicitD _, v) : xs) (Bind n (Pi rig _ t k) sc)
          = PPi impl n NoFC (delab ist (generaliseIn t)) (mkty xs sc)
 
     mkty (_ : xs) t

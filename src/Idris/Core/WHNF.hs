@@ -8,7 +8,7 @@ Maintainer  : The Idris Community.
 
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Core.WHNF(whnf, WEnv) where
+module Idris.Core.WHNF(whnf, whnfArgs, WEnv) where
 
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate hiding (quote)
@@ -20,6 +20,7 @@ import Debug.Trace
 -- | A stack entry consists of a term and the environment it is to be
 -- evaluated in (i.e. it's a thunk)
 type StackEntry = (Term, WEnv)
+
 data WEnv = WEnv Int -- number of free variables
                  [(Term, WEnv)]
   deriving Show
@@ -34,10 +35,11 @@ type Stack = [StackEntry]
 -- environment it was encountered in, so that when we quote back to a term
 -- we get the substitutions right.
 
-data WHNF = WDCon Int Int Bool Name (Type, WEnv) -- ^ data constructor
+data WHNF = WDCon Int Int Bool Name (Term, WEnv) -- ^ data constructor
           | WTCon Int Int Name (Type, WEnv) -- ^ type constructor
-          | WPRef Name (Type, WEnv) -- ^irreducible global (e.g. a postulate)
-          | WBind Name (Binder Term) (Term, WEnv)
+          | WPRef Name (Term, WEnv) -- ^irreducible global (e.g. a postulate)
+          | WV Int
+          | WBind Name (Binder (Term, WEnv)) (Term, WEnv)
           | WApp WHNF (Term, WEnv)
           | WConstant Const
           | WProj WHNF Int
@@ -46,24 +48,56 @@ data WHNF = WDCon Int Int Bool Name (Type, WEnv) -- ^ data constructor
           | WErased
           | WImpossible
 
--- | Reduce a *closed* term to weak head normal form.
-whnf :: Context -> Term -> Term
-whnf ctxt tm = quote (do_whnf ctxt (WEnv 0 []) tm)
+-- NOTE: These aren't yet ready to be used in practice - there's still a
+-- bug or two in the handling of de Bruijn indices.
 
-do_whnf :: Context -> WEnv -> Term -> WHNF
-do_whnf ctxt env tm = eval env [] tm
+-- | Reduce a term to weak head normal form.
+whnf :: Context -> Env -> Term -> Term
+-- whnf ctxt env tm = let res = whnf' ctxt env tm in
+--                        trace (show tm ++ "\n==>\n" ++ show res ++ "\n") res
+whnf ctxt env tm = 
+   inlineSmall ctxt env $ -- reduce small things in body. This is primarily
+                          -- to get rid of any noisy "assert_smaller/assert_total"
+                          -- and evaluate any simple operators, which makes things
+                          -- easier to read.
+     whnf' ctxt env tm
+whnf' ctxt env tm = 
+     quote (do_whnf ctxt (map finalEntry env) (finalise tm))
+
+-- | Reduce a type so that all arguments are expanded
+whnfArgs :: Context -> Env -> Term -> Term
+whnfArgs ctxt env tm = inlineSmall ctxt env $ finalise (whnfArgs' ctxt env tm)
+whnfArgs' ctxt env tm
+    = case whnf' ctxt env tm of
+           -- The assumption is that de Bruijn indices refer to local things
+           -- (so not in the external environment) so we need to instantiate
+           -- the name
+           Bind n b@(Pi rig _ ty _) sc -> 
+                    Bind n b (whnfArgs' ctxt ((n, rig, b):env) 
+                             (subst n (P Bound n ty) sc))
+           res -> tm
+
+finalEntry :: (Name, RigCount, Binder (TT Name)) -> (Name, RigCount, Binder (TT Name))
+finalEntry (n, r, b) = (n, r, fmap finalise b)
+
+do_whnf :: Context -> Env -> Term -> WHNF
+do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
   where
     eval :: WEnv -> Stack -> Term -> WHNF
     eval wenv@(WEnv d env) stk (V i)
          | i < length env = let (tm, env') = env !! i in
                                 eval env' stk tm
-         | otherwise = error "Can't happen: WHNF scope error"
+         | otherwise = WV i
     eval wenv@(WEnv d env) stk (Bind n (Let t v) sc)
          = eval (WEnv d ((v, wenv) : env)) stk sc
-    eval (WEnv d env) [] (Bind n b sc) = WBind n b (sc, WEnv (d + 1) env)
-    eval (WEnv d env) ((tm, tenv) : stk) (Bind n b sc)
+    eval (WEnv d env) ((tm, tenv) : stk) (Bind n b@(Lam _ _) sc)
          = eval (WEnv d ((tm, tenv) : env)) stk sc
+    eval wenv@(WEnv d env) stk (Bind n b sc) -- stk must be empty if well typed
+         =let n' = uniqueName n (map fstEnv genv) in
+              WBind n' (fmap (\t -> (t, wenv)) b) (sc, WEnv (d + 1) env)
 
+    eval env stk (P nt n ty) 
+         | Just (Let t v) <- lookupBinder n genv = eval env stk v
     eval env stk (P nt n ty) = apply env nt n ty stk
     eval env stk (App _ f a) = eval env ((a, env) : stk) f
     eval env stk (Constant c) = unload (WConstant c) stk
@@ -73,30 +107,34 @@ do_whnf ctxt env tm = eval env [] tm
 
     eval env stk Erased = unload WErased stk
     eval env stk Impossible = unload WImpossible stk
+    eval env stk (Inferred tm) = eval env stk tm
     eval env stk (TType u) = unload (WType u) stk
     eval env stk (UType u) = unload (WUType u) stk
 
     apply :: WEnv -> NameType -> Name -> Type -> Stack -> WHNF
-    apply env nt n ty stk
+    apply env nt n ty stk 
           = let wp = case nt of
                           DCon t a u -> WDCon t a u n (ty, env)
                           TCon t a -> WTCon t a n (ty, env)
                           Ref -> WPRef n (ty, env)
                           _ -> WPRef n (ty, env)
                         in
-            case lookupDefExact n ctxt of
-                 Just (CaseOp ci _ _ _ _ cd) ->
-                      let (ns, tree) = cases_compiletime cd in
-                          case evalCase env ns tree stk of
-                               Just w -> w
-                               Nothing -> unload wp stk
-                 Just (Operator _ i op) ->
+            if not (tcReducible n ctxt)
+               then unload wp stk
+               else case lookupDefAccExact n False ctxt of
+                         Just (CaseOp ci _ _ _ _ cd, acc) 
+                             | acc == Public || acc == Hidden ->
+                          let (ns, tree) = cases_compiletime cd in
+                              case evalCase env ns tree stk of
+                                   Just w -> w
+                                   Nothing -> unload wp stk
+                         Just (Operator _ i op, acc) ->
                           if i <= length stk
                              then case runOp env op (take i stk) (drop i stk) of
                                   Just v -> v
                                   Nothing -> unload wp stk
                              else unload wp stk
-                 _ -> unload wp stk
+                         _ -> unload wp stk
 
     unload :: WHNF -> Stack -> WHNF
     unload f [] = f
@@ -112,6 +150,8 @@ do_whnf ctxt env tm = eval env [] tm
                   -- aren't run on constants are themselves pretty ugly
                   -- (it's prim__believe_me and prim__syntacticEq, for
                   -- example) so let's not worry too much...
+                  -- We will need to deal with believe_me before dropping this
+                  -- into the type checker, though.
                   Just val -> Just $ eval env rest (quoteTerm val)
                   _ -> Nothing
 
@@ -189,7 +229,9 @@ quote :: WHNF -> Term
 quote (WDCon t a u n (ty, env)) = P (DCon t a u) n (quoteEnv env ty)
 quote (WTCon t a n (ty, env)) = P (TCon t a) n (quoteEnv env ty)
 quote (WPRef n (ty, env)) = P Ref n (quoteEnv env ty)
-quote (WBind n ty (sc, env)) = Bind n ty (quoteEnv env sc)
+quote (WV i) = V i
+quote (WBind n b (sc, env)) = Bind n (fmap (\ (t, env) -> quoteEnv env t) b) 
+                                     (quoteEnv env sc)
 quote (WApp f (a, env)) = App Complete (quote f) (quoteEnv env a)
 quote (WConstant c) = Constant c
 quote (WProj t i) = Proj (quote t) i
@@ -201,10 +243,13 @@ quote WImpossible = Impossible
 quoteEnv :: WEnv -> Term -> Term
 quoteEnv (WEnv d ws) tm = qe' d ws tm
   where
+    -- d is number of free variables in the external environment
+    -- (all bound in the scope of 'ws')
     qe' d ts (V i)
-        | i < d = V i
-        | otherwise = let (tm, env) = ts !! (i - d) in
-                          quoteEnv env tm
+        | (i - d) < length ts && (i - d) >= 0
+              = let (tm, env) = ts !! (i - d) in
+                    quoteEnv env tm
+        | otherwise = V i
     qe' d ts (Bind n b sc)
         = Bind n (fmap (qe' d ts) b) (qe' (d + 1) ts sc)
     qe' d ts (App c f a)

@@ -71,14 +71,14 @@ buildPkg copts warnonly (install, fp) = do
       make (makefile pkgdesc)
       case (execout pkgdesc) of
         Nothing -> do
-          case mergeOptions copts (idx : NoREPL : Verbose : idris_opts pkgdesc) of
+          case mergeOptions copts (idx : NoREPL : Verbose 1 : idris_opts pkgdesc) of
             Left emsg -> do
               putStrLn emsg
               exitWith (ExitFailure 1)
             Right opts -> buildMods opts (modules pkgdesc)
         Just o -> do
           let exec = dir </> o
-          case mergeOptions copts (idx : NoREPL : Verbose : Output exec : idris_opts pkgdesc) of
+          case mergeOptions copts (idx : NoREPL : Verbose 1 : Output exec : idris_opts pkgdesc) of
             Left emsg -> do
               putStrLn emsg
               exitWith (ExitFailure 1)
@@ -115,7 +115,7 @@ checkPkg copts warnonly quit fpath = do
     res <- inPkgDir pkgdesc $ do
       make (makefile pkgdesc)
 
-      case mergeOptions copts (NoREPL : Verbose : idris_opts pkgdesc) of
+      case mergeOptions copts (NoREPL : Verbose 1 : idris_opts pkgdesc) of
         Left emsg -> do
           putStrLn emsg
           exitWith (ExitFailure 1)
@@ -145,6 +145,7 @@ replPkg copts fp = do
     case mergeOptions copts (idris_opts pkgdesc) of
       Left emsg  -> ifail emsg
       Right opts -> do
+
         putIState orig
         dir <- runIO getCurrentDirectory
         runIO $ setCurrentDirectory $ dir </> sourcedir pkgdesc
@@ -194,7 +195,7 @@ documentPkg copts (install,fp) = do
   cd             <- getCurrentDirectory
   let pkgDir      = cd </> takeDirectory fp
       outputDir   = cd </> pkgname pkgdesc ++ "_doc"
-      popts       = NoREPL : Verbose : idris_opts pkgdesc
+      popts       = NoREPL : Verbose 1 : idris_opts pkgdesc
       mods        = modules pkgdesc
       fs          = map (foldl1' (</>) . splitOn "." . showCG) mods
   setCurrentDirectory $ pkgDir </> sourcedir pkgdesc
@@ -237,42 +238,45 @@ documentPkg copts (install,fp) = do
 -- | Build a package with a sythesized main function that runs the tests
 testPkg :: [Opt]     -- ^ Command line options.
         -> FilePath  -- ^ Path to ipkg file.
-        -> IO ()
+        -> IO ExitCode
 testPkg copts fp = do
   pkgdesc <- parseDesc fp
   ok <- mapM (testLib True (pkgname pkgdesc)) (libdeps pkgdesc)
-  when (and ok) $ do
-    m_ist <- inPkgDir pkgdesc $ do
-      make (makefile pkgdesc)
-      -- Get a temporary file to save the tests' source in
-      (tmpn, tmph) <- tempfile ".idr"
-      hPutStrLn tmph $
-          "module Test_______\n" ++
-          concat ["import " ++ show m ++ "\n" | m <- modules pkgdesc]
-              ++ "namespace Main\n"
-              ++ "  main : IO ()\n"
-              ++ "  main = do "
-              ++ concat [ show t ++ "\n            "
-                        | t <- idris_tests pkgdesc]
-      hClose tmph
-      (tmpn', tmph') <- tempfile ""
-      hClose tmph'
-      let popts = (Filename tmpn : NoREPL : Verbose : Output tmpn' : idris_opts pkgdesc)
-      case mergeOptions copts popts of
-        Left emsg -> do
-          putStrLn emsg
-          exitWith (ExitFailure 1)
-        Right opts -> do
-          m_ist <- idris opts
-          rawSystem tmpn' []
-          return m_ist
-    case m_ist of
-      Nothing  -> exitWith (ExitFailure 1)
-      Just ist -> do
-        -- Quit with error code if problem building
-        case errSpan ist of
-          Just _ -> exitWith (ExitFailure 1)
-          _      -> return ()
+  if and ok
+    then do
+      (m_ist, exitCode) <- inPkgDir pkgdesc $ do
+        make (makefile pkgdesc)
+        -- Get a temporary file to save the tests' source in
+        (tmpn, tmph) <- tempfile ".idr"
+        hPutStrLn tmph $
+            "module Test_______\n" ++
+            concat ["import " ++ show m ++ "\n" | m <- modules pkgdesc]
+                ++ "namespace Main\n"
+                ++ "  main : IO ()\n"
+                ++ "  main = do "
+                ++ concat [ show t ++ "\n            "
+                          | t <- idris_tests pkgdesc]
+        hClose tmph
+        (tmpn', tmph') <- tempfile ""
+        hClose tmph'
+        let popts = (Filename tmpn : NoREPL : Verbose 1 : Output tmpn' : idris_opts pkgdesc)
+        case mergeOptions copts popts of
+          Left emsg -> do
+            putStrLn emsg
+            exitWith (ExitFailure 1)
+          Right opts -> do
+            m_ist    <- idris opts
+            let texe = if isWindows then addExtension tmpn' ".exe" else tmpn'
+            exitCode <- rawSystem texe []
+            return (m_ist, exitCode)
+      case m_ist of
+        Nothing  -> exitWith (ExitFailure 1)
+        Just ist -> do
+          -- Quit with error code if problem building
+          case errSpan ist of
+            Just _ -> exitWith (ExitFailure 1)
+            _      -> return exitCode
+    else return (ExitFailure 1)
 
 --  ----------------------------------------------------------- [ Installation ]
 
@@ -438,6 +442,7 @@ mergeOptions copts popts =
     chkOpt o@(IBCSubDir _)    = Right o
     chkOpt o@(ImportDir _ )   = Right o
     chkOpt o@(UseCodegen _)   = Right o
+    chkOpt o@(Verbose _)      = Right o
     chkOpt o                  = Left (unwords ["\t", show o, "\n"])
 
     genErrMsg :: [String] -> String

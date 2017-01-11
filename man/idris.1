@@ -1,6 +1,6 @@
 .\" Manpage for Idris.
 .\" Contact <> to correct errors or typos.
-.TH man 1 "25 March 2016" "0.12.3" "Idris man page"
+.TH man 1 "28 November 2016" "0.99" "Idris man page"
 .SH NAME
 idris -\ a general purpose pure functional programming language with dependent types.
 .SH SYNOPSIS
@@ -13,17 +13,29 @@ specified precisely in the type. It is compiled, with eager
 evaluation. Its features are influenced by Haskell and ML.
 
 + Full dependent types with dependent pattern matching
+
 + Simple case expressions, where-clauses, with-rule
+
 + Pattern matching let- and lambda-bindings
+
 + Overloading via Interfaces (Type class-like), Monad comprehensions
+
 + do-notation, idiom brackets
+
 + Syntactic conveniences for lists, tuples, dependent pairs
+
 + Totality checking
+
 + Coinductive types
+
 + Indentation significant syntax, Extensible syntax
+
 + Tactic based theorem proving (influenced by Coq)
+
 + Cumulative universes
+
 + Simple Foreign Function Interface
+
 + Hugs style interactive environment
 
 It is important to note that Idris is first and foremost a research tool
@@ -56,7 +68,9 @@ should not necessarily be seen as production ready nor for industrial use.
   --listlibs               Display installed libraries
   --libdir                 Display library directory
   --include                Display the includes flags
-  -V,--verbose             Loud verbosity
+  --V2                     Loudest verbosity
+  --V1                     Louder verbosity
+  -V, --V0, --verbose      Loud verbosity
   --ibcsubdir FILE         Write IBC files into sub directory
   -i,--idrispath ARG       Add directory to the list of import paths
   --sourcepath ARG         Add directory to the list of source search paths

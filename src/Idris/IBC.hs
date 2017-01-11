@@ -47,7 +47,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 155
+ibcVersion = 160
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -220,7 +220,9 @@ writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArch
 
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
-    = do logIBC 1 $ "Writing ibc " ++ show f
+    = do
+         logIBC  1 $ "Writing IBC for: " ++ show f
+         iReport 2 $ "Writing IBC for: " ++ show f
          i <- getIState
 --          case (Data.List.map fst (idris_metavars i)) \\ primDefs of
 --                 (_:_) -> ifail "Can't write ibc when there are unsolved metavariables"
@@ -313,7 +315,7 @@ ibc i (IBCCG n) f = case lookupCtxtExact n (idris_callgraph i) of
                         _ -> ifail "IBC write failed"
 ibc i (IBCCoercion n) f = return f { ibc_coercions = n : ibc_coercions f }
 ibc i (IBCAccess n a) f = return f { ibc_access = (n,a) : ibc_access f }
-ibc i (IBCFlags n) f 
+ibc i (IBCFlags n) f
     = case lookupCtxtExact n (idris_flags i) of
            Just a -> return f { ibc_flags = (n,a): ibc_flags f }
            _ -> ifail "IBC write failed"
@@ -1326,26 +1328,30 @@ instance Binary Static where
 instance Binary Plicity where
         put x
           = case x of
-                Imp x1 x2 x3 x4 _ ->
+                Imp x1 x2 x3 x4 _ x5 ->
                              do putWord8 0
                                 put x1
                                 put x2
                                 put x3
                                 put x4
-                Exp x1 x2 x3 ->
+                                put x5
+                Exp x1 x2 x3 x4 ->
                              do putWord8 1
                                 put x1
                                 put x2
                                 put x3
-                Constraint x1 x2 ->
+                                put x4
+                Constraint x1 x2 x3 ->
                                     do putWord8 2
                                        put x1
                                        put x2
-                TacImp x1 x2 x3 ->
+                                       put x3
+                TacImp x1 x2 x3 x4 ->
                                    do putWord8 3
                                       put x1
                                       put x2
                                       put x3
+                                      put x4
         get
           = do i <- getWord8
                case i of
@@ -1353,18 +1359,22 @@ instance Binary Plicity where
                            x2 <- get
                            x3 <- get
                            x4 <- get
-                           return (Imp x1 x2 x3 x4 False)
+                           x5 <- get
+                           return (Imp x1 x2 x3 x4 False x5)
                    1 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (Exp x1 x2 x3)
+                           x4 <- get
+                           return (Exp x1 x2 x3 x4)
                    2 -> do x1 <- get
                            x2 <- get
-                           return (Constraint x1 x2)
+                           x3 <- get
+                           return (Constraint x1 x2 x3)
                    3 -> do x1 <- get
                            x2 <- get
                            x3 <- get
-                           return (TacImp x1 x2 x3)
+                           x4 <- get
+                           return (TacImp x1 x2 x3 x4)
                    _ -> error "Corrupted binary data for Plicity"
 
 
@@ -2414,17 +2424,19 @@ instance Binary FnInfo where
                return (FnInfo x1)
 
 instance Binary TypeInfo where
-        put (TI x1 x2 x3 x4 x5) = do put x1
-                                     put x2
-                                     put x3
-                                     put x4
-                                     put x5
+        put (TI x1 x2 x3 x4 x5 x6) = do put x1
+                                        put x2
+                                        put x3
+                                        put x4
+                                        put x5
+                                        put x6
         get = do x1 <- get
                  x2 <- get
                  x3 <- get
                  x4 <- get
                  x5 <- get
-                 return (TI x1 x2 x3 x4 x5)
+                 x6 <- get
+                 return (TI x1 x2 x3 x4 x5 x6)
 
 instance Binary SynContext where
         put x

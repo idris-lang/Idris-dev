@@ -13,7 +13,7 @@ import Language.Reflection.Utils
 import Pruviloj
 
 %default total
-
+%language ElabReflection
 
 
 ||| Function arguments as provided at the application site

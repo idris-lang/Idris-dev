@@ -134,7 +134,9 @@ parseFlags = many $
   <|> flag' ShowDocDir      (long "docdir"      <> help "Display idrisdoc install directory")
   <|> flag' ShowIncs        (long "include"     <> help "Display the includes flags")
 
-  <|> flag' Verbose (short 'V' <> long "verbose" <> help "Loud verbosity")
+  <|> flag' (Verbose 3) (long "V2" <> help "Loudest verbosity")
+  <|> flag' (Verbose 2) (long "V1" <> help "Louder verbosity")
+  <|> flag' (Verbose 1) (short 'V' <> long "V0" <>long "verbose" <> help "Loud verbosity")
 
   <|> (IBCSubDir <$> strOption (long "ibcsubdir" <> metavar "FILE" <> help "Write IBC files into sub directory"))
   <|> (ImportDir <$> strOption (short 'i' <> long "idrispath" <> help "Add directory to the list of import paths"))

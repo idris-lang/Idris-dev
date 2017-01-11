@@ -617,6 +617,7 @@ doOp v (LIntCh ITNative) args = v ++ creg (last args)
 doOp v (LIntCh ITChar) args = doOp v (LIntCh ITNative) args
 
 doOp v LSystemInfo [x] = v ++ "idris_systemInfo(vm, " ++ creg x ++ ")"
+doOp v LCrash [x] = "idris_crash(GETSTR(" ++ creg x ++ "))"
 doOp v LNoOp args = v ++ creg (last args)
 
 -- Pointer primitives (declared as %extern in Builtins.idr)
@@ -673,7 +674,7 @@ doOp v (LExternal pk) [] | pk == sUN "prim__sizeofPtr"
 doOp v (LExternal mpt) [p] | mpt == sUN "prim__asPtr"
     = v ++ "MKPTR(vm, GETMPTR("++ creg p ++"))"
 doOp v (LExternal offs) [p, n] | offs == sUN "prim__ptrOffset"
-    = v ++ "MKPTR(vm, GETPTR(" ++ creg p ++ ") + GETINT(" ++ creg n ++ "))"
+    = v ++ "MKPTR(vm, (void *)((char *)GETPTR(" ++ creg p ++ ") + GETINT(" ++ creg n ++ ")))"
 doOp _ op args = error $ "doOp not implemented (" ++ show (op, args) ++ ")"
 
 

@@ -1,5 +1,7 @@
 module System
 
+import Data.So
+
 %include C "unistd.h"
 %default partial
 %access public export
@@ -52,11 +54,41 @@ getEnvironment = getAllPairs 0 []
          then pure $ reverse $ map splitEq acc
          else getAllPairs (n + 1) (envPair :: acc)
 
-||| Quit with a particular exit code
-exit : Int -> IO ()
-exit code = foreign FFI_C "exit" (Int -> IO ()) code
+||| Programs can either terminate successfully, or end in a caught
+||| failure.
+data ExitCode : Type where
+  ||| Terminate successfully.
+  ExitSuccess : ExitCode
+  ||| Program terminated for some prescribed reason.
+  |||
+  ||| @errNo A non-zero numerical value indicating failure.
+  ||| @prf   Proof that the int value is non-zero.
+  ExitFailure : (errNo    : Int)
+             -> {auto prf : So (not $ errNo == 0)}
+             -> ExitCode
 
-||| Get the numbers of seconds since 1st January 1970, 00:00 UTC 
+||| Quit with a particular exit code
+exit : Int -> IO a
+exit code = believe_me $ foreign FFI_C "exit" (Int -> IO ()) code
+
+||| Terminate the program with an `ExitCode`. This code indicates the
+||| success of the program's execution, and returns the success code
+||| to the program's caller.
+|||
+||| @code The `ExitCode` for program.
+exitWith : (code : ExitCode) -> IO a
+exitWith ExitSuccess         = exit 0
+exitWith (ExitFailure errNo) = exit errNo
+
+||| Exit the program indicating failure.
+exitFailure : IO a
+exitFailure = exitWith (ExitFailure 1)
+
+||| Exit the program after a successful run.
+exitSuccess : IO a
+exitSuccess = exitWith ExitSuccess
+
+||| Get the numbers of seconds since 1st January 1970, 00:00 UTC
 time : IO Integer
 time = do MkRaw t <- foreign FFI_C "idris_time" (IO (Raw Integer))
           pure t
@@ -66,4 +98,3 @@ usleep i = foreign FFI_C "usleep" (Int -> IO ()) i
 
 system : String -> IO Int
 system cmd = foreign FFI_C "system" (String -> IO Int) cmd
-

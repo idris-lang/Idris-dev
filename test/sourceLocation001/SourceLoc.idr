@@ -6,6 +6,7 @@ import Language.Reflection
 import Language.Reflection.Utils
 
 %default total
+%language DSLNotation
 
 ||| A "function" that returns where it is called in the source
 getLoc : {default tactics { sourceLocation } x : SourceLocation} -> SourceLocation

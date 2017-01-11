@@ -14,6 +14,7 @@ import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.Execute
+import Idris.Core.WHNF
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Coverage
@@ -75,6 +76,8 @@ elabClauses info' fc opts n_in cs =
          -- Check n actually exists, with no definition yet
          let tys = lookupTy n ctxt
          let reflect = Reflection `elem` opts
+         when (reflect && FCReflection `notElem` idris_language_extensions ist) $
+           ierror $ At fc (Msg "You must turn on the FirstClassReflection extension to use %reflection")
          checkUndefined n ctxt
          unless (length tys > 1) $ do
            fty <- case tys of
@@ -186,12 +189,14 @@ elabClauses info' fc opts n_in cs =
            pmissing <-
                    if cov && not (hasDefault pats_raw)
                       then do -- Generate clauses from the given possible cases
-                              missing <- genClauses fc n (map getLHS pdef_cov) cs_full
+                              missing <- genClauses fc n 
+                                                 (map (\ (ns,tm,_) -> (ns, tm)) pdef)
+                                                 cs_full
                               -- missing <- genMissing n scargs sc
                               missing' <- checkPossibles info fc True n missing
                               -- Filter out the ones which match one of the
                               -- given cases (including impossible ones)
-                              let clhs = map getLHS pdef_cov
+                              let clhs = map getLHS pdef
                               logElab 2 $ "Must be unreachable (" ++ show (length missing') ++ "):\n" ++
                                           showSep "\n" (map showTmImpls missing') ++
                                          "\nAgainst: " ++
@@ -201,7 +206,7 @@ elabClauses info' fc opts n_in cs =
                               -- unification may force a variable to take a
                               -- particular form, rather than force a case
                               -- to be impossible.
-                              return (filter (noMatch ist clhs) missing')
+                              return missing' -- (filter (noMatch ist clhs) missing')
                       else return []
            let pcover = null pmissing
 
@@ -282,6 +287,10 @@ elabClauses info' fc opts n_in cs =
                                       Just Public -> mapM_ (checkVisibility fc n Public Public) calls
                                       _ -> return ()
                                  addCalls n calls
+                                 let rig = if linearArg (whnfArgs ctxt [] ty) 
+                                              then Rig1 
+                                              else RigW
+                                 updateContext (setRigCount n (minRig ctxt rig calls))
                                  addIBC (IBCCG n)
                           _ -> return ()
                       return ()
@@ -325,12 +334,12 @@ elabClauses info' fc opts n_in cs =
     debind (Left x)       = let (vs, x') = depat [] x in
                                 (vs, x', Impossible)
 
-    depat acc (Bind n (PVar t) sc) = depat ((n, t) : acc) (instantiate (P Bound n t) sc)
+    depat acc (Bind n (PVar rig t) sc) = depat ((n, t) : acc) (instantiate (P Bound n t) sc)
     depat acc x = (acc, x)
 
 
-    getPVs (Bind x (PVar _) tm) = let (vs, tm') = getPVs tm
-                                  in (x:vs, tm')
+    getPVs (Bind x (PVar rig _) tm) = let (vs, tm') = getPVs tm
+                                          in (x:vs, tm')
     getPVs tm = ([], tm)
 
     isPatVar vs (P Bound n _) = n `elem` vs
@@ -373,6 +382,12 @@ elabClauses info' fc opts n_in cs =
                 Just ns -> case partial_eval (tt_ctxt ist) ns pats of
                                 Just t -> return t
                                 Nothing -> ierror (At fc (Msg "No specialisation achieved"))
+
+    minRig :: Context -> RigCount -> [Name] -> RigCount
+    minRig c minr [] = minr
+    minRig c minr (r : rs) = case lookupRigCountExact r c of
+                                  Nothing -> minRig c minr rs
+                                  Just rc -> minRig c (min minr rc) rs
 
 forceWith :: Ctxt OptInfo -> Term -> Term
 forceWith opts lhs = -- trace (show lhs ++ "\n==>\n" ++ show (force lhs) ++ "\n----") $
@@ -524,8 +539,8 @@ elabPE info fc caller r =
              [] -> False
              _ -> True
     concreteTm ist (Constant _) = True
-    concreteTm ist (Bind n (Lam _) sc) = True
-    concreteTm ist (Bind n (Pi _ _ _) sc) = True
+    concreteTm ist (Bind n (Lam _ _) sc) = True
+    concreteTm ist (Bind n (Pi _ _ _ _) sc) = True
     concreteTm ist (Bind n (Let _ _) sc) = concreteTm ist sc
     concreteTm ist _ = False
 
@@ -562,7 +577,10 @@ elabPE info fc caller r =
             qhash hash (x:xs) = qhash (hash * 33 + fromIntegral(fromEnum x)) xs
 
 -- | Checks if the clause is a possible left hand side.
-checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris Bool
+-- NOTE: A lot of this is repeated for reflected definitions in Idris.Elab.Term
+-- One day, these should be merged, but until then remember that if you edit
+-- this you might need to edit the other version...
+checkPossible :: ElabInfo -> FC -> Bool -> Name -> PTerm -> Idris (Maybe PTerm)
 checkPossible info fc tcgen fname lhs_in
    = do ctxt <- getContext
         i <- getIState
@@ -570,7 +588,7 @@ checkPossible info fc tcgen fname lhs_in
         logElab 10 $ "Trying missing case: " ++ showTmImpls lhs
         -- if the LHS type checks, it is possible
         case elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
-                            (erun fc (buildTC i info ELHS [] fname
+                            (erun fc (buildTC i info EImpossible [] fname
                                                 (allNamesIn lhs_in)
                                                 (infTerm lhs))) of
             OK (ElabResult lhs' _ _ ctxt' newDecls highlights newGName, _) ->
@@ -582,18 +600,29 @@ checkPossible info fc tcgen fname lhs_in
                   let emptyPat = hasEmptyPat ctxt (idris_datatypes i) lhs_tm
                   if emptyPat then 
                      do logElab 10 $ "Empty type in pattern "
-                        return False
+                        return Nothing
                     else
                       case recheck (constraintNS info) ctxt' [] (forget lhs_tm) lhs_tm of
-                           OK _ -> do logElab 10 $ "Valid"
-                                      return True
+                           OK (tm, _, _) -> 
+                                    do logElab 10 $ "Valid " ++ show tm ++ "\n"
+                                                 ++ " from " ++ show lhs
+                                       return (Just (delab' i tm True True))
                            err -> do logElab 10 $ "Conversion failure"
-                                     return False
+                                     return Nothing
             -- if it's a recoverable error, the case may become possible
-            Error err -> do logLvl 10 $ "Impossible case " ++ show err
-                            if tcgen then return (recoverableCoverage ctxt err)
-                                  else return (validCoverageCase ctxt err ||
+            Error err -> do logLvl 10 $ "Impossible case " ++ (pshow i err)
+                            -- tcgen means that it was generated by genClauses,
+                            -- so only looking for an error. Otherwise, it
+                            -- needs to be the right kind of error (a type mismatch
+                            -- in the same family).
+                            if tcgen then returnTm i err (recoverableCoverage ctxt err)
+                                  else returnTm i err (validCoverageCase ctxt err ||
                                                  recoverableCoverage ctxt err)
+  where returnTm i err True = do logLvl 10 $ "Possibly resolvable error on " ++ 
+                                    pshow i (fmap (normalise (tt_ctxt i) []) err)
+                                              ++ " on " ++ showTmImpls lhs_in
+                                 return $ Just lhs_in
+        returnTm i err False = return $ Nothing
 
 -- Filter out the terms which are not well type left hand sides. Whenever we
 -- eliminate one, also eliminate later ones which match it without checking,
@@ -608,7 +637,9 @@ checkPossibles info fc tcgen fname (lhs : rest)
         -- check, just remove from the next batch
         let rest' = filter (\x -> not (qmatch x lhs)) (take 200 rest) ++ drop 200 rest
         restpos <- checkPossibles info fc tcgen fname rest'
-        if not ok then return restpos else return (lhs : restpos)
+        case ok of 
+             Nothing -> return restpos 
+             Just lhstm -> return (lhstm : restpos)
   where
     qmatch _ Placeholder = True
     qmatch (PApp _ f args) (PApp _ f' args')
@@ -624,14 +655,14 @@ checkPossibles _ _ _ _ [] = return []
 
 findUnique :: Context -> Env -> Term -> [Name]
 findUnique ctxt env (Bind n b sc)
-   = let rawTy = forgetEnv (map fst env) (binderTy b)
+   = let rawTy = forgetEnv (map fstEnv env) (binderTy b)
          uniq = case check ctxt env rawTy of
                      OK (_, UType UniqueType) -> True
                      OK (_, UType NullType) -> True
                      OK (_, UType AllTypes) -> True
                      _ -> False in
-         if uniq then n : findUnique ctxt ((n, b) : env) sc
-                 else findUnique ctxt ((n, b) : env) sc
+         if uniq then n : findUnique ctxt ((n, RigW, b) : env) sc
+                 else findUnique ctxt ((n, RigW, b) : env) sc
 findUnique _ _ _ = []
 
 getUnfolds (UnfoldIface n ns : _) = Just (n, ns)
@@ -671,12 +702,12 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
         let lhs = addImpl [] i lhs_in
         b <- checkPossible info fc tcgen fname lhs_in
         case b of
-            True -> tclift $ tfail (At fc
-                                (Msg $ show lhs_in ++ " is a valid case"))
-            False -> do ptm <- mkPatTm lhs_in
-                        logElab 5 $ "Elaborated impossible case " ++ showTmImpls lhs ++
-                                    "\n" ++ show ptm
-                        return (Left ptm, lhs)
+            Just _ -> tclift $ tfail (At fc
+                                 (Msg $ show lhs_in ++ " is a valid case"))
+            Nothing -> do ptm <- mkPatTm lhs_in
+                          logElab 5 $ "Elaborated impossible case " ++ showTmImpls lhs ++
+                                      "\n" ++ show ptm
+                          return (Left ptm, lhs)
 elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock)
    = do let tcgen = Dictionary `elem` opts
         push_estack fname False
@@ -828,7 +859,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         when inf $ addTyInfConstraints fc (map (\(x,y,_,_,_,_,_) -> (x,y)) probs)
 
-        logElab 5 "DONE CHECK"
+        logElab 3 "DONE CHECK"
         logElab 3 $ "---> " ++ show rhsElab
         ctxt <- getContext
         
@@ -902,7 +933,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         rev <- case ret_fam of
                     P _ rfamn _ ->
                         case lookupCtxt rfamn (idris_datatypes i) of
-                             [TI _ _ dopts _ _] ->
+                             [TI _ _ dopts _ _ _] ->
                                  return (DataErrRev `elem` dopts &&
                                          size clhs <= size crhs)
                              _ -> return False
@@ -1007,7 +1038,12 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
 
         logElab 5 ("Checked " ++ show clhs)
         let bargs = getPBtys (explicitNames (normalise ctxt [] lhs_tm))
-        let wval = rhs_trans info $ addImplBound i (map fst bargs) wval_in
+        wval <- case wval_in of
+                     Placeholder -> ierror $ At fc $
+                          Msg "No expression for the with block to inspect.\nYou need to replace the _ with an expression."
+                     _ -> return $
+                            rhs_trans info $ 
+                              addImplBound i (map fst bargs) wval_in
         logElab 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
         ((wvalElab, defer, is, ctxt', newDecls, highlights, newGName), _) <-
@@ -1081,7 +1117,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         let wargname = sMN windex "warg"
 
         logElab 5 ("Abstract over " ++ show wargval ++ " in " ++ show wargtype)
-        let wtype = bindTyArgs (flip (Pi Nothing) (TType (UVar [] 0))) (bargs_pre ++
+        let wtype = bindTyArgs (flip (Pi RigW Nothing) (TType (UVar [] 0))) (bargs_pre ++
                      (wargname, wargtype) :
                      map (abstract wargname wargval wargtype) bargs_post ++
                      case mpn of
@@ -1175,7 +1211,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         (crhs, crhsty) <- recheckC (constraintNS info) fc id [] rhs'
         return (Right (clhs, crhs), lhs)
   where
-    getImps (Bind n (Pi _ _ _) t) = pexp Placeholder : getImps t
+    getImps (Bind n (Pi _ _ _ _) t) = pexp Placeholder : getImps t
     getImps _ = []
 
     mkAuxC pn wname lhs ns ns' (PClauses fc o n cs)
@@ -1274,13 +1310,13 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
          -- This is something of a hack, because matching on the top level
          -- application won't find this information for us
          addResolvesArgs :: FC -> Term -> [PArg] -> [PArg]
-         addResolvesArgs fc (Bind n (Pi _ ty _) sc) (a : args)
+         addResolvesArgs fc (Bind n (Pi _ _ ty _) sc) (a : args)
              | (P _ cn _, _) <- unApply ty,
                getTm a == Placeholder
                  = case lookupCtxtExact cn (idris_interfaces ist) of
                         Just _ -> a { getTm = PResolveTC fc } : addResolvesArgs fc sc args
                         Nothing -> a : addResolvesArgs fc sc args
-         addResolvesArgs fc (Bind n (Pi _ ty _) sc) (a : args)
+         addResolvesArgs fc (Bind n (Pi _ _ ty _) sc) (a : args)
                  = a : addResolvesArgs fc sc args
          addResolvesArgs fc _ args = args
 

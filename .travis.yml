@@ -35,6 +35,11 @@ matrix:
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+  allow_failures:
+    - os: osx
+      env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
+      compiler: ": #GHC 8.0.1"
+  fast-finish: true
 
 cache:
   directories:
@@ -56,9 +61,8 @@ before_install:
   - env
   - if [[ $TRAVIS_OS_NAME == 'osx' ]];
     then
-        brew update; brew install ghc; brew install cabal-install;
-        brew install libffi; brew install pkg-config; brew install cppcheck;
-        brew install gnu-sed;
+        brew outdated pkgconfig || brew install pkgconfig;
+        brew install ghc cabal-install libffi cppcheck gnu-sed;
         export PATH=$HOME/.cabal/bin:$PATH;
         export SED=gsed;
         export ZCAT=gzcat;
@@ -66,6 +70,8 @@ before_install:
     fi
 
 install:
+  - which cabal
+  - which ghc
   - cabal --version
   - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
   - if [ -f $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz ];

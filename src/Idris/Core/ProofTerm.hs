@@ -84,7 +84,7 @@ findHole n env t = fh' env Top t where
       | Just (p, env', tm) <- fh' env path f = Just (AppL s p a, env', tm)
   fh' env path (Bind x b sc)
       | Just (bp, env', tm) <- fhB env path b = Just (InBind x bp sc, env', tm)
-      | Just (p, env', tm) <- fh' ((x,b):env) path sc = Just (InScope x b p, env', tm)
+      | Just (p, env', tm) <- fh' ((x,RigW,b):env) path sc = Just (InScope x b p, env', tm)
   fh' _ _ _ = Nothing
 
   fhB env path (Let t v)
@@ -170,10 +170,10 @@ updateSolvedTerm' xs x = updateSolved' xs x where
                    _ -> let (t', _) = updateSolved' xs t in
                             (updsubst n v t', True)
     updateSolved' xs tm@(Bind n b t)
-        | otherwise = let (t', ut) = updateSolved' xs t
-                          (b', ub) = updateSolvedB' xs b in
-                          if ut || ub then (Bind n b' t', True)
-                                      else (tm, False)
+        = let (t', ut) = updateSolved' xs t
+              (b', ub) = updateSolvedB' xs b in
+              if ut || ub then (Bind n b' t', True)
+                          else (tm, False)
     updateSolved' xs t@(App Complete f a) = (t, False)
     updateSolved' xs t@(App s f a)
         = let (f', uf) = updateSolved' xs f
@@ -255,7 +255,7 @@ updsubst n v tm = fst $ subst' 0 tm
 updateEnv :: [(Name, Term)] -> Env -> Env
 updateEnv [] e = e
 updateEnv ns [] = []
-updateEnv ns ((n, b) : env) = (n, fmap (updateSolvedTerm ns) b) : updateEnv ns env
+updateEnv ns ((n, r, b) : env) = (n, r, fmap (updateSolvedTerm ns) b) : updateEnv ns env
 
 -- | Fill out solved holes in a term zipper.
 updateSolvedPath :: [(Name, Term)] -> TermPath -> TermPath
@@ -284,7 +284,7 @@ updateSolvedPath ns (InScope n b sc)
 updateSolved :: [(Name, Term)] -> ProofTerm -> ProofTerm
 updateSolved xs pt@(PT path env sub ups)
      = PT path -- (updateSolvedPath xs path)
-          (updateEnv xs (filter (\(n, t) -> n `notElem` map fst xs) env))
+          (updateEnv xs (filter (\(n, r, t) -> n `notElem` map fst xs) env))
           (updateSolvedTerm xs sub)
           (ups ++ xs)
 
@@ -297,10 +297,10 @@ goal h pt@(PT path env sub ups)
     g env (Bind n b@(Guess _ _) sc)
                         | same h n = return $ GD env b
                         | otherwise
-                           = gb env b `mplus` g ((n, b):env) sc
+                           = gb env b `mplus` g ((n, RigW, b):env) sc
     g env (Bind n b sc) | hole b && same h n = return $ GD env b
                         | otherwise
-                           = g ((n, b):env) sc `mplus` gb env b
+                           = g ((n, RigW, b):env) sc `mplus` gb env b
     g env (App Complete f a) = fail "Can't find hole"
     g env (App _ f a) = g env a `mplus` g env f
     g env t           = fail "Can't find hole"
@@ -338,12 +338,12 @@ atHole h f c e pt -- @(PT path env sub)
             = do -- binder first
                  (b', u) <- ulift2 f c env Guess t v
                  if u then return (Bind n b' sc, True)
-                      else do (sc', u) <- atH f c ((n, b) : env) sc
+                      else do (sc', u) <- atH f c ((n, RigW, b) : env) sc
                               return (Bind n b' sc', u)
     atH f c env binder@(Bind n b sc)
         | hole b && same h n = updated (f c env binder)
         | otherwise -- scope first
-            = do (sc', u) <- atH f c ((n, b) : env) sc
+            = do (sc', u) <- atH f c ((n, RigW, b) : env) sc
                  if u then return (Bind n b sc', True)
                       else do (b', u) <- atHb f c env b
                               return (Bind n b' sc', u)

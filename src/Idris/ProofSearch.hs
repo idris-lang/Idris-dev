@@ -49,7 +49,7 @@ trivialHoles psnames ok elab ist
                 return ()) True
       where
         tryAll []     = fail "No trivial solution"
-        tryAll ((x, b):xs)
+        tryAll ((x, _, b):xs)
            = do -- if type of x has any holes in it, move on
                 hs <- get_holes
                 let badhs = hs -- filter (flip notElem holesOK) hs
@@ -85,7 +85,7 @@ trivialTCs ok elab ist
                 return ()) True
       where
         tryAll []     = fail "No trivial solution"
-        tryAll ((x, b):xs)
+        tryAll ((x, _, b):xs)
            = do -- if type of x has any holes in it, move on
                 hs <- get_holes
                 let badhs = hs -- filter (flip notElem holesOK) hs
@@ -123,7 +123,7 @@ cantSolveGoal :: ElabD a
 cantSolveGoal = do g <- goal
                    env <- get_env
                    lift $ tfail $
-                      CantSolveGoal g (map (\(n,b) -> (n, binderTy b)) env)
+                      CantSolveGoal g (map (\(n,_,b) -> (n, binderTy b)) env)
 
 proofSearch :: Bool -- ^ recursive search (False for 'refine')
             -> Bool -- ^ invoked from a tactic proof. If so, making new metavariables is meaningless, and there should be an error reported instead.
@@ -300,7 +300,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
              tryLocals d locs tys env
 
     tryLocals d locs tys [] = fail "Locals failed"
-    tryLocals d locs tys ((x, t) : xs)
+    tryLocals d locs tys ((x, _, t) : xs)
        | x `elem` locs || x `notElem` psnames = tryLocals d locs tys xs
        | otherwise = try' (tryLocal d (x : locs) tys x t)
                           (tryLocals d locs tys xs) True
@@ -346,7 +346,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
         TermPart ty,
         TextPart "using proof search, but proof search only works on datatypes with constructors."] ++
        case ty of
-         (Bind _ (Pi _ _ _) _) -> [TextPart "In particular, function types are not supported."]
+         (Bind _ (Pi _ _ _ _) _) -> [TextPart "In particular, function types are not supported."]
          _ -> []
 
 -- | Resolve interfaces. This will only pick up 'normal'
@@ -475,9 +475,9 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
 
     introImps = do g <- goal
                    case g of
-                        (Bind _ (Pi _ _ _) sc) -> do attack; intro Nothing
-                                                     num <- introImps
-                                                     return (num + 1)
+                        (Bind _ (Pi _ _ _ _) sc) -> do attack; intro Nothing
+                                                       num <- introImps
+                                                       return (num + 1)
                         _ -> return 0
 
     solven n = replicateM_ n solve

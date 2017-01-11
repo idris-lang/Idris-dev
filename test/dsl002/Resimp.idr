@@ -3,6 +3,7 @@ module Resimp
 import public Data.Vect
 import public Data.Fin
 
+%language DSLNotation
 %access public export
 
 -- IO operations which read a resource

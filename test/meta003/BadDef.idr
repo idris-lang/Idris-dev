@@ -2,6 +2,8 @@ module BadDef
 
 import Language.Reflection.Elab
 
+%language ElabReflection
+
 mkN : String -> TTName
 mkN n = NS (UN n) ["BadDef"]
 

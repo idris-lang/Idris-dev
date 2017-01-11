@@ -366,8 +366,8 @@ buildDepMap ci used externs ctx startNames
     getDepsTerm vs bs cd (Bind n bdr body)
         -- here we just push IM.empty on the de bruijn stack
         -- the args will be marked as used at the usage site
-        | Lam ty <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
-        | Pi _ ty _ <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
+        | Lam _ ty <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
+        | Pi _ _ ty _ <- bdr = getDepsTerm vs ((n, const M.empty) : bs) cd body
 
         -- let-bound variables can get partially evaluated
         -- it is sufficient just to plug the Cond in when the bound names are used
@@ -421,11 +421,11 @@ buildDepMap ci used externs ctx startNames
             V i -> snd (bs !! i) cd `union` unconditionalDeps args
 
             -- we interpret applied lambdas as lets in order to reuse code here
-            Bind n (Lam ty) t -> getDepsTerm vs bs cd (lamToLet app)
+            Bind n (Lam _ ty) t -> getDepsTerm vs bs cd (lamToLet app)
 
             -- and we interpret applied lets as lambdas
-            Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam ty) t) t')
-            Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam ty) t) t')
+            Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam RigW ty) t) t')
+            Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam RigW ty) t) t')
 
             Proj t i
                 -> error $ "cannot[0] analyse projection !" ++ show i ++ " of " ++ show t
@@ -504,7 +504,7 @@ buildDepMap ci used externs ctx startNames
         (f, args) = unApply tm
 
     lamToLet' :: [Term] -> Term -> Term
-    lamToLet' (v:vs) (Bind n (Lam ty) tm) = Bind n (Let ty v) $ lamToLet' vs tm
+    lamToLet' (v:vs) (Bind n (Lam _ ty) tm) = Bind n (Let ty v) $ lamToLet' vs tm
     lamToLet'    []  tm = tm
     lamToLet'    vs  tm = error $
         "Erasure.hs:lamToLet': unexpected input: "
@@ -512,7 +512,7 @@ buildDepMap ci used externs ctx startNames
 
     -- split "\x_i -> T(x_i)" into [x_i] and T
     unfoldLams :: Term -> ([Name], Term)
-    unfoldLams (Bind n (Lam ty) t) = let (ns,t') = unfoldLams t in (n:ns, t')
+    unfoldLams (Bind n (Lam _ ty) t) = let (ns,t') = unfoldLams t in (n:ns, t')
     unfoldLams t = ([], t)
 
     union :: Deps -> Deps -> Deps

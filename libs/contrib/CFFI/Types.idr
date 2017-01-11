@@ -126,13 +126,15 @@ offsetsPacked xs = offsets' xs [] 0
         offsets' [] acc _ = reverse acc
         offsets' (x::xs) acc pos = offsets' xs (pos::acc) (sizeOf x)
 
+%language ElabReflection -- needed for 'error', which finds a line number
+
 private
 indexOrFail : Nat -> List a -> a
 indexOrFail i xs = case index' i xs of
                         Just x => x
                         Nothing => error "Out of bounds access"
 
-||| The offset of a firld in a composite type
+||| The offset of a field in a composite type
 export
 offset : Composite -> Nat -> Int
 offset (STRUCT xs) i = indexOrFail i (offsetsStruct xs)

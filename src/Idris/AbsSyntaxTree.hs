@@ -91,7 +91,7 @@ data IOption = IOption {
   , opt_showimp      :: Bool          -- ^ show implicits
   , opt_errContext   :: Bool
   , opt_repl         :: Bool
-  , opt_verbose      :: Bool
+  , opt_verbose      :: Int
   , opt_nobanner     :: Bool
   , opt_quiet        :: Bool
   , opt_codegen      :: Codegen
@@ -120,7 +120,7 @@ defaultOpts = IOption { opt_logLevel   = 0
                       , opt_showimp    = False
                       , opt_errContext = False
                       , opt_repl       = True
-                      , opt_verbose    = True
+                      , opt_verbose    = 0
                       , opt_nobanner   = False
                       , opt_quiet      = False
                       , opt_codegen    = Via IBCFormat "c"
@@ -184,7 +184,9 @@ ppOption opt = PPOption {
 ppOptionIst :: IState -> PPOption
 ppOptionIst = ppOption . idris_options
 
-data LanguageExt = TypeProviders | ErrorReflection
+data LanguageExt = TypeProviders | ErrorReflection | UniquenessTypes
+                 | DSLNotation   | ElabReflection  | FCReflection
+                 | LinearTypes
   deriving (Show, Eq, Read, Ord, Generic)
 
 -- | The output mode in use
@@ -335,6 +337,7 @@ primDefs = [ sUN "unsafePerformPrimIO"
            , sUN "mkForeignPrim"
            , sUN "void"
            , sUN "assert_unreachable"
+           , sUN "idris_crash"
            ]
 
 -- information that needs writing for the current module's .ibc file
@@ -510,7 +513,7 @@ data Opt = Filename String
          | NoCoverage
          | ErrContext
          | ShowImpl
-         | Verbose
+         | Verbose Int
          | Port REPLPort -- ^ REPL TCP port
          | IBCSubDir String
          | ImportDir String
@@ -597,17 +600,21 @@ data Plicity = Imp { pargopts  :: [ArgOpt]
                    , pparam    :: Bool
                    , pscoped   :: Maybe ImplicitInfo -- ^ Nothing, if top level
                    , pinsource :: Bool               -- ^ Explicitly written in source
+                   , pcount    :: RigCount
                    }
              | Exp { pargopts :: [ArgOpt]
                    , pstatic  :: Static
                    , pparam   :: Bool -- ^ this is a param (rather than index)
+                   , pcount    :: RigCount
                    }
              | Constraint { pargopts :: [ArgOpt]
-                         ,  pstatic :: Static
+                          , pstatic :: Static
+                          , pcount    :: RigCount
                          }
              | TacImp { pargopts :: [ArgOpt]
                       , pstatic  :: Static
                       , pscript  :: PTerm
+                      , pcount    :: RigCount
                       }
              deriving (Show, Eq, Ord, Data, Generic, Typeable)
 
@@ -616,24 +623,24 @@ deriving instance Binary Plicity
 !-}
 
 is_scoped :: Plicity -> Maybe ImplicitInfo
-is_scoped (Imp _ _ _ s _) = s
-is_scoped _               = Nothing
+is_scoped (Imp _ _ _ s _ _) = s
+is_scoped _                 = Nothing
 
 -- Top level implicit
-impl              = Imp [] Dynamic False (Just (Impl False True False)) False
+impl              = Imp [] Dynamic False (Just (Impl False True False)) False RigW
 -- Machine generated top level implicit
-impl_gen          = Imp [] Dynamic False (Just (Impl False True True)) False
+impl_gen          = Imp [] Dynamic False (Just (Impl False True True)) False RigW
 
 -- Scoped implicits
-forall_imp        = Imp [] Dynamic False (Just (Impl False False True)) False
-forall_constraint = Imp [] Dynamic False (Just (Impl True False True)) False
+forall_imp        = Imp [] Dynamic False (Just (Impl False False True)) False RigW
+forall_constraint = Imp [] Dynamic False (Just (Impl True False True)) False RigW
 
-expl              = Exp [] Dynamic False
-expl_param        = Exp [] Dynamic True
+expl              = Exp [] Dynamic False RigW
+expl_param        = Exp [] Dynamic True RigW
 
-constraint        = Constraint [] Static
+constraint        = Constraint [] Static RigW
 
-tacimpl t         = TacImp [] Dynamic t
+tacimpl t         = TacImp [] Dynamic t RigW
 
 data FnOpt = Inlinable -- ^ always evaluate when simplifying
            | TotalFn | PartialFn | CoveringFn
@@ -1617,8 +1624,8 @@ getInferTerm (App _ (App _ _ _) tm) = tm
 getInferTerm tm = tm -- error ("getInferTerm " ++ show tm)
 
 getInferType (Bind n b sc)  = Bind n (toTy b) $ getInferType sc
-  where toTy (Lam t)        = Pi Nothing t (TType (UVar [] 0))
-        toTy (PVar t)       = PVTy t
+  where toTy (Lam r t)      = Pi r Nothing t (TType (UVar [] 0))
+        toTy (PVar _ t)     = PVTy t
         toTy b              = b
 getInferType (App _ (App _ _ ty) _) = ty
 
@@ -1813,7 +1820,15 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
       depth d . bracket p startPrec . group . align $
       kwd "let" <+> (group . align . hang 2 $ prettyBindingOf n False <+> text "=" <$> prettySe (decD d) startPrec bnd v) </>
       kwd "in" <+> (group . align . hang 2 $ prettySe (decD d) startPrec ((n, False):bnd) sc)
-    prettySe d p bnd (PPi (Exp l s _) n _ ty sc)
+    prettySe d p bnd (PPi (Exp l s _ rig) n _ ty sc)
+      | Rig0 <- rig = 
+          depth d . bracket p startPrec . group $
+          enclose lparen rparen (group . align $ text "0" <+> prettyBindingOf n False <+> colon <+> prettySe (decD d) startPrec bnd ty) <+>
+          st <> text "->" <$> prettySe (decD d) startPrec ((n, False):bnd) sc
+      | Rig1 <- rig = 
+          depth d . bracket p startPrec . group $
+          enclose lparen rparen (group . align $ text "1" <+> prettyBindingOf n False <+> colon <+> prettySe (decD d) startPrec bnd ty) <+>
+          st <> text "->" <$> prettySe (decD d) startPrec ((n, False):bnd) sc
       | n `elem` allNamesIn sc || ppopt_impl ppo && uname n || n `elem` docArgs
           || ppopt_pinames ppo && uname n =
           depth d . bracket p startPrec . group $
@@ -1833,24 +1848,28 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
           case s of
             Static -> text "%static" <> space
             _      -> empty
-    prettySe d p bnd (PPi (Imp l s _ fa _) n _ ty sc)
+    prettySe d p bnd (PPi (Imp l s _ fa _ rig) n _ ty sc)
       | ppopt_impl ppo =
           depth d . bracket p startPrec $
-          lbrace <> prettyBindingOf n True <+> colon <+> prettySe (decD d) startPrec bnd ty <> rbrace <+>
+          lbrace <> showRig rig n <+> colon <+> prettySe (decD d) startPrec bnd ty <> rbrace <+>
           st <> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
       | otherwise = depth d $ prettySe (decD d) startPrec ((n, True):bnd) sc
       where
+        showRig Rig0 n = text "0" <+> prettyBindingOf n True
+        showRig Rig1 n = text "1" <+> prettyBindingOf n True
+        showRig _ n = prettyBindingOf n True
+
         st =
           case s of
             Static -> text "%static" <> space
             _      -> empty
-    prettySe d p bnd (PPi (Constraint _ _) n _ ty sc) =
+    prettySe d p bnd (PPi (Constraint _ _ rig) n _ ty sc) =
       depth d . bracket p startPrec $
       prettySe (decD d) (startPrec + 1) bnd ty <+> text "=>" </> prettySe (decD d) startPrec ((n, True):bnd) sc
-    prettySe d p bnd (PPi (TacImp _ _ (PTactics [ProofSearch{}])) n _ ty sc) =
+    prettySe d p bnd (PPi (TacImp _ _ (PTactics [ProofSearch{}]) rig) n _ ty sc) =
       lbrace <> kwd "auto" <+> pretty n <+> colon <+> prettySe (decD d) startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
-    prettySe d p bnd (PPi (TacImp _ _ s) n _ ty sc) =
+    prettySe d p bnd (PPi (TacImp _ _ s rig) n _ ty sc) =
       depth d . bracket p startPrec $
       lbrace <> kwd "default" <+> prettySe (decD d) (funcAppPrec + 1) bnd s <+> pretty n <+> colon <+> prettySe (decD d) startPrec bnd ty <>
       rbrace <+> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
@@ -2378,7 +2397,7 @@ allNamesIn tm = nub $ ni 0 [] tm
     ni i env (PUnquote tm)        = ni (i - 1) env tm
     ni i env tm                   = concatMap (ni i env) (children tm)
 
-    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp i env (TacImp _ _ scr _) = ni i env scr
     niTacImp _ _ _                  = []
 
 
@@ -2414,7 +2433,7 @@ boundNamesIn tm = S.toList (ni 0 S.empty tm)
     niTms i set []        = set
     niTms i set (x : xs)  = niTms i (ni i set x) xs
 
-    niTacImp i set (TacImp _ _ scr) = ni i set scr
+    niTacImp i set (TacImp _ _ scr _) = ni i set scr
     niTacImp i set _                = set
 
 -- Return names which are valid implicits in the given term (type).
@@ -2470,6 +2489,8 @@ implicitNamesIn uvars ist tm
     ni 0 env (PIfThenElse _ c t f)            = mapM_ (ni 0 env) [c, t, f]
     ni 0 env (PLam fc n _ ty sc)              = do ni 0 env ty; ni 0 (n:env) sc
     ni 0 env (PPi p n _ ty sc)                = do ni 0 env ty; ni 0 (n:env) sc
+    ni 0 env (PLet fc n _ ty val sc)          = do ni 0 env ty;
+                                                   ni 0 env val; ni 0 (n:env) sc
     ni 0 env (PRewrite _ _ l r _)             = do ni 0 env l; ni 0 env r
     ni 0 env (PTyped l r)                     = do ni 0 env l; ni 0 env r
     ni 0 env (PPair _ _ _ l r)                = do ni 0 env l; ni 0 env r
@@ -2523,7 +2544,7 @@ namesIn uvars ist tm = nub $ ni 0 [] tm
 
     ni i env tm                     = concatMap (ni i env) (children tm)
 
-    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp i env (TacImp _ _ scr _) = ni i env scr
     niTacImp _ _ _                  = []
 
 -- Return which of the given names are used in the given term.
@@ -2558,7 +2579,7 @@ usedNamesIn vars ist tm = nub $ ni 0 [] tm
 
     ni i env tm                     = concatMap (ni i env) (children tm)
 
-    niTacImp i env (TacImp _ _ scr) = ni i env scr
+    niTacImp i env (TacImp _ _ scr _) = ni i env scr
     niTacImp _ _ _                = []
 
 -- Return the list of inaccessible (= dotted) positions for a name.

@@ -1,4 +1,42 @@
-# New in 0.13:
+# New in 0.99.1:
+
+## Language updates
+
+* Language pragmas now required for the less stable existing features, in
+  addition to the existing `TypeProviders` and `ErrorReflection`:
+  + `ElabReflection`, which must be enabled to use `%runElab`
+  + `UniquenessTypes`, which must be enabled to use `UniqueType`
+  + `DSLNotation`, which must be enabled to define a `dsl` block
+  + `FirstClassReflection`, which must be enabled to define a `%reflection`
+    function
+
+* New language extension `LinearTypes`:
+  + This allows adding a /multiplicity/ to a binder which says how often it
+    is allowed to be used; either 0 or 1 (if unstated, multiplicity is "many")
+  + The typing rules follow Conor McBride's paper "I Got Plenty o' Nuttin'"
+  + This is highly experimental, unfinished, not at all polished. and there
+    are still lots of details to sort out. Some features don't quite work
+    properly yet. But it is there to play with for the brave!
+
+## Tool Updates
+
++ Idris' output has been updated to more accurately reflect its
+  progress through the compiler i.e. Type Checking; Totality Checking;
+  IBC Generation; Compiling; and Code Generation. To control the
+  loudness of the reporting three verbosity levels are introduced:
+  `--V0`, `--V1`, and `--V2`. The old aliases of `-V` and `--verbose`
+  persist.
+
+## Library Updates
+
++ Terminating programs has been improved with more appropriate
+  functions (`exitWith`, `exitFailure`, and `exitSuccess`) and a data
+  structure (`ExitCode`) to capture a program's return code.
+
++ Casting a `String` to an `Int`, `Integer` or a `Double` now ignores leading
+  and trailing whitespace. Previously only leading whitespace was ignored.
+
+# New in 0.99:
 
 ## Language updates
 
@@ -62,6 +100,7 @@
 
 ## Miscellaneous updates
 
+* New, faster, better, implementation of the coverage checker
 * The test suite now uses [tasty-golden](https://hackage.haskell.org/package/tasty-golden). New tests must be registered in `test/TestData.hs`, as explained in the relevant `README.md`.
 * Added OSX and Windows continous integration with Travis and Appveyor.
 

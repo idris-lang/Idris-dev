@@ -1,4 +1,4 @@
-BadDef.idr:12:1-9:
+BadDef.idr:14:1-9:
 While running an elaboration script, the following error occurred:
 Type mismatch between
         ()

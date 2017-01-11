@@ -52,8 +52,10 @@ import System.Process
 
 -- |  Compile to simplified forms and return CodegenInfo
 compile :: Codegen -> FilePath -> Maybe Term -> Idris CodegenInfo
-compile codegen f mtm
-   = do checkMVs  -- check for undefined metavariables
+compile codegen f mtm = do
+        logCodeGen 1 "Compiling Output."
+        iReport 2 "Compiling Output."
+        checkMVs  -- check for undefined metavariables
         checkTotality -- refuse to compile if there are totality problems
         exports <- findExports
         let rootNames = case mtm of
@@ -89,9 +91,11 @@ compile codegen f mtm
         let ctxtIn = addAlist tagged emptyContext
 
         logCodeGen 1 "Defunctionalising"
+        iReport 3 "Defunctionalising"
         let defuns_in = defunctionalise nexttag ctxtIn
         logCodeGen 5 $ show defuns_in
         logCodeGen 1 "Inlining"
+        iReport 3 "Inlining"
         let defuns = inline defuns_in
         logCodeGen 5 $ show defuns
         logCodeGen 1 "Resolving variables for CG"
@@ -108,7 +112,8 @@ compile codegen f mtm
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
         triple <- Idris.AbsSyntax.targetTriple
         cpu <- Idris.AbsSyntax.targetCPU
-        logCodeGen 1 "Building output"
+        logCodeGen 1 "Generating Code."
+        iReport 2 "Generating Code."
         case checked of
             OK c -> do return $ CodegenInfo f outty triple cpu
                                             hdrs impdirs objs libs flags
@@ -257,6 +262,11 @@ irTerm top vs env tm@(App _ f a) = do
     (P _ (UN u) _, _)
         | u == txt "assert_unreachable"
         -> return $ LError $ "ABORT: Reached an unreachable case in " ++ show top
+
+    (P _ (UN u) _, [_, msg])
+        | u == txt "idris_crash"
+        -> do msg' <- irTerm top vs env msg
+              return $ LOp LCrash [msg']
 
     -- TMP HACK - until we get inlining.
     (P _ (UN r) _, [_, _, _, _, _, arg])
@@ -456,14 +466,14 @@ irTerm top vs env tm@(App _ f a) = do
             | otherwise = n
 
         used = maybe [] (map fst . usedpos) $ lookupCtxtExact uName (idris_callgraph ist)
-        fst4 (x,_,_,_,_) = x
+        fst4 (x,_,_,_,_,_) = x
 
 irTerm top vs env (P _ n _) = return $ LV (Glob n)
 irTerm top vs env (V i)
     | i >= 0 && i < length env = return $ LV (Glob (env!!i))
     | otherwise = ifail $ "bad de bruijn index: " ++ show i
 
-irTerm top vs env (Bind n (Lam _) sc) = LLam [n'] <$> irTerm top vs (n':env) sc
+irTerm top vs env (Bind n (Lam _ _) sc) = LLam [n'] <$> irTerm top vs (n':env) sc
   where
     n' = uniqueName n env
 
