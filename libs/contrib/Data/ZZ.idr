@@ -84,7 +84,7 @@ mutual
     negate (Pos Z)     = Pos Z
     negate (Pos (S n)) = NegS n
     negate (NegS n)    = Pos (S n)
-  
+
     (-) = subZ
     abs = cast . absZ
 
@@ -155,3 +155,61 @@ plusCommutativeZ (Pos n) (NegS m) = Refl
 plusCommutativeZ (NegS n) (Pos m) = Refl
 plusCommutativeZ (NegS n) (NegS m) = cong {f=NegS} $ cong {f=S} $ plusCommutative n m
 
+minusNatZAntiCommutative : (j, k : Nat) -> negate (minusNatZ j k) = minusNatZ k j
+minusNatZAntiCommutative Z Z = Refl
+minusNatZAntiCommutative Z (S k) = Refl
+minusNatZAntiCommutative (S j) Z = Refl
+minusNatZAntiCommutative (S j) (S k) = minusNatZAntiCommutative j k
+
+negateDistributesPlus : (a, b : ZZ) -> negate (a + b) = (negate a) + (negate b)
+negateDistributesPlus (Pos Z) b = rewrite plusZeroLeftNeutralZ b in
+                                  rewrite plusZeroLeftNeutralZ (negate b) in Refl
+negateDistributesPlus (Pos (S k)) (Pos Z) = rewrite plusZeroRightNeutral k in Refl
+negateDistributesPlus (Pos (S k)) (Pos (S j)) = rewrite plusCommutative k (S j) in
+                                                rewrite plusCommutative j k in Refl
+negateDistributesPlus (Pos (S k)) (NegS j) = minusNatZAntiCommutative k j
+negateDistributesPlus (NegS k) (Pos Z) = rewrite plusZeroRightNeutral k in Refl
+negateDistributesPlus (NegS k) (Pos (S j)) = minusNatZAntiCommutative j k
+negateDistributesPlus (NegS k) (NegS j) = rewrite plusCommutative k (S j) in
+                                          rewrite plusCommutative k j in Refl
+
+lemmaMinusSucc : (k, j, i : Nat) -> plusZ (minusNatZ k (S j)) (Pos i) = plusZ (minusNatZ k (S (S j))) (Pos (S i))
+lemmaMinusSucc Z j i = Refl
+lemmaMinusSucc (S Z) Z i = Refl
+lemmaMinusSucc (S (S k)) Z i = rewrite plusCommutative k (S i) in
+                               rewrite plusCommutative i k in Refl
+lemmaMinusSucc (S k) (S j) i = lemmaMinusSucc k j i
+
+lemmaAssocNegation : (k : Nat) -> (c, r : ZZ) -> (Pos (S k)) + (c + r) = ((Pos (S k)) + c) + r -> (NegS k) + ((negate c) + (negate r)) = ((NegS k) + (negate c)) + (negate r)
+lemmaAssocNegation k c r prf = rewrite sym $ negateDistributesPlus c r in
+                               rewrite sym $ negateDistributesPlus (Pos (S k)) (plusZ c r) in
+                               rewrite sym $ negateDistributesPlus (Pos (S k)) c in
+                               rewrite sym $ negateDistributesPlus (plusZ (Pos (S k)) c) r in
+                               cong $ prf
+
+lemmaAssocPos : (k : Nat) -> (c, r : ZZ) -> (Pos k) + (c + r) = ((Pos k) + c) + r
+lemmaAssocPos k (Pos j) (Pos i) = cong $ plusAssociative k j i
+lemmaAssocPos k (Pos Z) (NegS i) = rewrite plusZeroRightNeutral k in Refl
+lemmaAssocPos k (Pos (S j)) (NegS Z) = rewrite plusCommutative k (S j) in
+                                       rewrite plusCommutative j k in Refl
+lemmaAssocPos k (Pos (S j)) (NegS (S i)) = let ind = lemmaAssocPos k (assert_smaller (Pos (S j)) (Pos j)) (assert_smaller (NegS (S i)) (NegS i)) in
+                                           rewrite ind in
+                                           rewrite plusCommutative k (S j) in
+                                           rewrite plusCommutative j k in Refl
+lemmaAssocPos k (NegS j) (Pos Z) = rewrite plusZeroRightNeutralZ (minusNatZ k (S j)) in Refl
+lemmaAssocPos Z (NegS Z) (Pos (S i)) = Refl
+lemmaAssocPos (S k) (NegS Z) (Pos (S i)) = rewrite plusCommutative k (S i) in
+                                           rewrite plusCommutative k i in Refl
+lemmaAssocPos k (NegS (S j)) (Pos (S i)) = let ind = lemmaAssocPos k (assert_smaller (NegS (S j)) (NegS j)) (assert_smaller (Pos (S i)) (Pos i)) in
+                                           rewrite ind in
+                                           rewrite lemmaMinusSucc k j i in Refl
+lemmaAssocPos Z (NegS j) (NegS i) = Refl
+lemmaAssocPos (S k) (NegS Z) (NegS i) = Refl
+lemmaAssocPos (S k) (NegS (S j)) (NegS i) = let ind = lemmaAssocPos (assert_smaller (S k) k) (assert_smaller (NegS (S j)) (NegS j)) (NegS i) in
+                                            rewrite ind in Refl
+
+plusAssociativeZ : (l, c, r : ZZ) -> l + (c + r) = (l + c) + r
+plusAssociativeZ (Pos k) c r = lemmaAssocPos k c r
+plusAssociativeZ (NegS k) c r = rewrite sym $ doubleNegElim c in
+                                rewrite sym $ doubleNegElim r in
+                                lemmaAssocNegation k (negate c) (negate r) (lemmaAssocPos (S k) (negate c) (negate r))
