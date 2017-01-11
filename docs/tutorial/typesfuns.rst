@@ -713,7 +713,7 @@ of ones.
 
 .. code-block:: idris
 
-    ones :: Stream Nat
+    ones : Stream Nat
     ones = 1 :: ones
 
 It is important to note that codata does not allow the creation of infinite
