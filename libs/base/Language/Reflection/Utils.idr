@@ -264,6 +264,18 @@ implementation Eq TT where
           equalp (UType u)    (UType u')       = u == u'
           equalp x            y                = False
 
+implementation Eq Raw where
+  a == b = equalp a b
+    where equalp : Raw -> Raw -> Bool
+          equalp (Var x)         (Var y)         = x == y
+          equalp (RBind x b1 e1) (RBind y b2 e2) = x == y && b1 == b2 && e1 == e2
+          equalp (RApp f1 a1)    (RApp f2 a2)    = f1 == f2 && a1 == a2
+          equalp RType           RType           = True
+          equalp (RUType u1)     (RUType u2)     = u1 == u2
+          equalp (RConstant c1)  (RConstant c2)  = c1 == c2
+          equalp _               _               = False
+
+
 total
 forget : TT -> Maybe Raw
 forget tm = fe [] tm
