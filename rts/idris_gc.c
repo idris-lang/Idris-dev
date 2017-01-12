@@ -1,3 +1,4 @@
+#include "idris_heap.h"
 #include "idris_rts.h"
 #include "idris_gc.h"
 #include "idris_bitstring.h"
@@ -73,7 +74,7 @@ VAL copy(VM* vm, VAL x) {
 void cheney(VM *vm) {
     int i;
     int ar;
-    char* scan = vm->heap.heap;
+    char* scan = aligned_heap_pointer(vm->heap.heap);
 
     while(scan < vm->heap.next) {
        size_t inc = *((size_t*)scan);

@@ -118,14 +118,7 @@ void alloc_heap(Heap * h, size_t heap_size, size_t growth, char * old)
     }
 
     h->heap = mem;
-#ifdef FORCE_ALIGNMENT
-    if (((i_int)(h->heap)&1) == 1) {
-        h->next = h->heap + 1;
-    } else
-#endif
-    {
-        h->next = h->heap;
-    }
+    h->next = aligned_heap_pointer(h->heap);
     h->end  = h->heap + heap_size;
 
     h->size   = heap_size;
@@ -167,6 +160,17 @@ int is_valid_ref(VAL v) {
 
 int ref_in_heap(Heap * heap, VAL v) {
     return ((VAL)heap->heap <= v) && (v < (VAL)heap->next);
+}
+
+char* aligned_heap_pointer(char * heap) {
+#ifdef FORCE_ALIGNMENT
+    if (((i_int)heap&1) == 1) {
+	    return (heap + 1);
+    } else
+#endif
+    {
+	    return heap;
+    }
 }
 
 // Checks three important properties:
