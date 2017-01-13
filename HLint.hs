@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 --  --------------------------------------------------------------- [ HLint.hs ]
 -- HLint suggestions we like.
 --

@@ -5,38 +5,39 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE GeneralizedNewtypeDeriving, ConstraintKinds #-}
-{-# LANGUAGE PatternGuards, TupleSections                #-}
+{-# LANGUAGE ConstraintKinds, GeneralizedNewtypeDeriving, PatternGuards,
+             TupleSections #-}
 module Idris.Parser.Expr where
 
 import Idris.AbsSyntax
+import Idris.Core.TT
+import Idris.DSL
 import Idris.Parser.Helpers
 import Idris.Parser.Ops
-import Idris.DSL
-import Idris.Core.TT
 
 import Prelude hiding (pi)
 
-import Text.Trifecta.Delta
-import Text.Trifecta hiding (span, stringLiteral, charLiteral, natural, symbol, char, string, whiteSpace, Err)
-import Text.Parser.LookAhead
-import Text.Parser.Expression
-import qualified Text.Parser.Token as Tok
-import qualified Text.Parser.Char as Chr
-import qualified Text.Parser.Token.Highlight as Hi
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Function (on)
-import Data.Maybe
-import qualified Data.List.Split as Spl
-import Data.List
-import Data.Monoid
-import Data.Char
-import qualified Data.HashSet as HS
-import qualified Data.Text as T
 import qualified Data.ByteString.UTF8 as UTF8
+import Data.Char
+import Data.Function (on)
+import qualified Data.HashSet as HS
+import Data.List
+import qualified Data.List.Split as Spl
+import Data.Maybe
+import Data.Monoid
+import qualified Data.Text as T
 import Debug.Trace
+import qualified Text.Parser.Char as Chr
+import Text.Parser.Expression
+import Text.Parser.LookAhead
+import qualified Text.Parser.Token as Tok
+import qualified Text.Parser.Token.Highlight as Hi
+import Text.Trifecta hiding (Err, char, charLiteral, natural, span, string,
+                      stringLiteral, symbol, whiteSpace)
+import Text.Trifecta.Delta
 
 -- | Allow implicit type declarations
 allowImp :: SyntaxInfo -> SyntaxInfo
@@ -678,16 +679,16 @@ app syn = do f <- simpleExpr syn
                                f
                                (PMatchApp fc ff)
                                (PRef fc [] (sMN 0 "match")))
-              <?> "matching application expression") <|> (do
-             fc <- getFC
-             i <- get
-             args <- many (do notEndApp; arg syn)
-             wargs <- if withAppAllowed syn && not (inPattern syn)
-                         then many (do notEndApp; reservedOp "|"; expr' syn)
-                         else return []
-             case args of
-               [] -> return f
-               _  -> return (withApp fc (flattenFromInt fc f args) wargs))
+                   <?> "matching application expression") <|>
+               (do fc <- getFC
+                   i <- get
+                   args <- many (do notEndApp; arg syn)
+                   wargs <- if withAppAllowed syn && not (inPattern syn)
+                              then many (do notEndApp; reservedOp "|"; expr' syn)
+                              else return []
+                   case args of
+                     [] -> return f
+                     _  -> return (withApp fc (flattenFromInt fc f args) wargs))
        <?> "function application"
    where
     -- bit of a hack to deal with the situation where we're applying a

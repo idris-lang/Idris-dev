@@ -22,7 +22,7 @@ TT is the core language of Idris. The language has:
    * We have a simple collection of tactics which we use to elaborate source
      programs with implicit syntax into fully explicit terms.
 -}
-{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, FlexibleContexts,
              FunctionalDependencies, MultiParamTypeClasses, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.TT(
@@ -1503,7 +1503,7 @@ substRetTy (Bind n (PVar _ ty) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy (Bind n (PVTy ty) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy (Bind n (Pi _ _ ty _) sc) = substRetTy (substV (P Ref n ty) sc)
 substRetTy sc = sc
-   
+
 
 uniqueNameFrom :: [Name] -> [Name] -> Name
 uniqueNameFrom []           hs = uniqueName (nextName (sUN "x")) hs
