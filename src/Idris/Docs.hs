@@ -6,9 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE MultiWayIf    #-}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE DeriveFunctor, MultiWayIf, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Docs (

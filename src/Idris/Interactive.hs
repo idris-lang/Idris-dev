@@ -52,31 +52,18 @@ caseSplitAt fn updatefile l n
 
 addClauseFrom :: FilePath -> Bool -> Int -> Name -> Idris ()
 addClauseFrom fn updatefile l n = do
-{-
-    runIO . traceIO $ "addClauseFrom: " ++ show (M.fromList
-      [ ("fn", fn)
-      , ("updatefile", show updatefile)
-      , ("line", show l)
-      , ("name", show n)
-      ])
--}
     -- if a definition already exists, add missing cases rather than
     -- adding a new definition.
     ist <- getIState
     cl <- getInternalApp fn l
---    runIO . traceIO $ "cl = " ++ show cl
     let fulln = getAppName cl
---    runIO . traceIO $ "fulln = " ++ show fulln
-
     let metavars = lookup fulln (idris_metavars ist)
---    runIO . traceIO $ "metavars = " ++ show metavars
     case metavars of
       Nothing -> addMissing fn updatefile l n
       Just _ -> do
         src <- runIO $ readSource fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
---        runIO . traceIO $ "getIndent => " ++ show indent
         cl <- getClause l fulln n fn
         -- add clause before first blank line in 'later'
         let (nonblank, rest) = span (not . all isSpace) (tyline:later)
