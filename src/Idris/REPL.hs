@@ -4,8 +4,9 @@ Description : Entry Point for the Idris REPL and CLI.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
-             PatternGuards #-}
+
+{-# LANGUAGE PatternGuards #-}
+
 module Idris.REPL
   ( idemodeStart
   , startServer
@@ -16,6 +17,23 @@ module Idris.REPL
   , proofs
   ) where
 
+import Control.Category
+import Control.Concurrent
+import Control.Concurrent.Async (race)
+import Control.DeepSeq
+import qualified Control.Exception as X
+import Control.Monad
+import Control.Monad.Trans (lift)
+import Control.Monad.Trans.Except (runExceptT)
+import Control.Monad.Trans.State.Strict (evalStateT, get, put)
+import Data.Char
+import Data.Either (partitionEithers)
+import Data.List hiding (group)
+import Data.List.Split (splitOn)
+import Data.Maybe
+import qualified Data.Set as S
+import qualified Data.Text as T
+import Data.Version
 import Idris.AbsSyntax
 import Idris.Apropos (apropos, aproposModules)
 import Idris.ASTUtils
@@ -29,7 +47,7 @@ import Idris.Core.Unify
 import Idris.Core.WHNF
 import Idris.Coverage
 import Idris.Delaborate
-import Idris.Docs hiding (Doc)
+import Idris.Docs
 import Idris.Docstrings (overview, renderDocTerm, renderDocstring)
 import Idris.Elab.Clause
 import Idris.Elab.Term
@@ -55,36 +73,8 @@ import Idris.Termination
 import Idris.TypeSearch (searchByType)
 import Idris.WhoCalls
 import IRTS.Compiler
-
-import Util.DynamicLinker
-import Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort)
-import Util.Pretty hiding ((</>))
-import Util.System
-
-import Version_idris (gitHash)
-
-import Prelude hiding (id, (.), (<$>))
-
-import Control.Category
-import Control.Concurrent
-import Control.Concurrent.Async (race)
-import Control.Concurrent.MVar
-import Control.DeepSeq
-import qualified Control.Exception as X
-import Control.Monad
-import Control.Monad.Trans (lift)
-import Control.Monad.Trans.Except (ExceptT, runExceptT)
-import Control.Monad.Trans.State.Strict (StateT, evalStateT, execStateT, get,
-                                         put)
-import Data.Char
-import Data.Either (partitionEithers)
-import Data.List hiding (group)
-import Data.List.Split (splitOn)
-import Data.Maybe
-import qualified Data.Set as S
-import qualified Data.Text as T
-import Data.Version
 import Network
+import Prelude hiding (id, (.), (<$>))
 import System.Console.Haskeline as H
 import System.Directory
 import System.Environment
@@ -96,6 +86,11 @@ import System.FSNotify.Devel (allEvents, doAllEvents)
 import System.IO
 import System.Process
 import Text.Trifecta.Result (ErrInfo(..), Result(..))
+import Util.DynamicLinker
+import Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort)
+import Util.Pretty hiding ((</>))
+import Util.System
+import Version_idris (gitHash)
 
 -- | Run the REPL
 repl :: IState -- ^ The initial state
@@ -1456,7 +1451,6 @@ process fn (PPrint fmt width t)
         let ppo = ppOptionIst ist
             ty' = normaliseC ctxt [] ty
         iPrintResult =<< renderExternal fmt width (pprintDelab ist tm)
-
 
 showTotal :: Totality -> IState -> Doc OutputAnnotation
 showTotal t@(Partial (Other ns)) i

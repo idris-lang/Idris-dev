@@ -32,10 +32,7 @@ import Util.System
 
 import Data.Char
 import Data.List (isSuffixOf)
-import Data.Maybe (fromMaybe)
-import Debug.Trace
 import System.Directory
-import System.FilePath
 import System.IO
 
 caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
@@ -60,8 +57,8 @@ addClauseFrom fn updatefile l n = do
     ist <- getIState
     cl <- getInternalApp fn l
     let fulln = getAppName cl
-
-    case lookup fulln (idris_metavars ist) of
+    let metavars = lookup fulln (idris_metavars ist)
+    case metavars of
       Nothing -> addMissing fn updatefile l n
       Just _ -> do
         src <- runIO $ readSource fn
@@ -164,22 +161,25 @@ addMissing fn updatefile l n
 
 
 makeWith :: FilePath -> Bool -> Int -> Name -> Idris ()
-makeWith fn updatefile l n
-   = do src <- runIO $ readSource fn
-        let (before, tyline : later) = splitAt (l-1) (lines src)
-        let ind = getIndent tyline
-        let with = mkWith tyline n
-        -- add clause before first blank line in 'later',
-        -- or (TODO) before first line with same indentation as tyline
-        let (nonblank, rest) = span (\x -> not (all isSpace x) &&
-                                           not (ind == getIndent x)) later
-        if updatefile then
-           do let fb = fn ++ "~"
-              runIO $ writeSource fb (unlines (before ++ nonblank)
-                                        ++ with ++ "\n" ++
-                                    unlines rest)
-              runIO $ copyFile fb fn
-           else iPrintResult (with ++ "\n")
+makeWith fn updatefile l n = do
+  src <- runIO $ readSource fn
+  i <- getIState
+  indentWith <- getIndentWith
+  let (before, tyline : later) = splitAt (l-1) (lines src)
+  let ind = getIndent tyline
+--  runIO . traceIO $ "indentWith = " ++ show indentWith
+  let with = mkWith tyline n indentWith
+  -- add clause before first blank line in 'later',
+  -- or (TODO) before first line with same indentation as tyline
+  let (nonblank, rest) = span (\x -> not (all isSpace x) &&
+                                     not (ind == getIndent x)) later
+  if updatefile
+    then do
+      let fb = fn ++ "~"
+      runIO $ writeSource fb (unlines (before ++ nonblank) ++
+                              with ++ "\n" ++ unlines rest)
+      runIO $ copyFile fb fn
+    else iPrintResult (with ++ "\n")
   where getIndent s = length (takeWhile isSpace s)
 
 -- Replace the given metavariable on the given line with a 'case'
@@ -219,9 +219,6 @@ makeCase fn updatefile l n
                 = Just (reverse acc, i, drop (length n) xs)
         findSubstr' acc i n [] = Nothing
         findSubstr' acc i n (x : xs) = findSubstr' (x : acc) (i + 1) n xs
-
-
-
 
 
 doProofSearch :: FilePath -> Bool -> Bool ->

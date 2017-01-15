@@ -5,24 +5,25 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
-             FlexibleInstances, MultiParamTypeClasses, PatternGuards,
-             TypeSynonymInstances #-}
+
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, PatternGuards #-}
 
 module Idris.AbsSyntaxTree where
 
-import Idris.Colours
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.Typecheck
 import Idris.Docstrings
 import IRTS.CodegenCommon
 import IRTS.Lang
 import Util.DynamicLinker
 import Util.Pretty
 
-import Prelude hiding ((<$>))
+import Idris.Colours
+
+import System.IO
+
+import Prelude hiding (Foldable, Traversable, (<$>))
 
 import Control.Applicative ((<|>))
 import qualified Control.Monad.Trans.Class as Trans (lift)
@@ -30,24 +31,20 @@ import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
 import Data.Char
 import Data.Data (Data)
-import Data.Either
+
 import Data.Foldable (Foldable)
 import Data.Function (on)
 import Data.Generics.Uniplate.Data (children, universe)
 import Data.List hiding (group)
 import qualified Data.Map.Strict as M
-import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (mapMaybe, maybeToList)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Traversable (Traversable)
 import Data.Typeable
-import Data.Word (Word)
-import Debug.Trace
 import GHC.Generics (Generic)
 import Network.Socket (PortNumber)
-import System.Console.Haskeline
-import System.IO
-import Text.PrettyPrint.Annotated.Leijen
+
 
 data ElabWhat = ETypes | EDefns | EAll
   deriving (Show, Eq)
@@ -112,6 +109,7 @@ data IOption = IOption {
   , opt_autoimpls    :: Bool
   } deriving (Show, Eq, Generic)
 
+defaultOpts :: IOption
 defaultOpts = IOption { opt_logLevel   = 0
                       , opt_logcats    = []
                       , opt_typecase   = False
@@ -151,6 +149,7 @@ data PPOption = PPOption {
 data Optimisation = PETransform -- ^ partial eval and associated transforms
   deriving (Show, Eq, Generic)
 
+defaultOptimise :: [Optimisation]
 defaultOptimise = [PETransform]
 
 -- | Pretty printing options with default verbosity.
@@ -205,6 +204,12 @@ data DefaultTotality = DefaultCheckingTotal    -- ^ Total
                      | DefaultCheckingPartial  -- ^ Partial
                      | DefaultCheckingCovering -- ^Total coverage, but may diverge
   deriving (Show, Eq, Generic)
+
+-- | Configuration options for interactive editing.
+data InteractiveOpts = InteractiveOpts {
+    interactiveOpts_indentWith :: Int
+  , interactiveOpts_indentClause :: Int
+} deriving (Show, Generic)
 
 -- | The global state used in the Idris monad
 data IState = IState {
@@ -294,7 +299,7 @@ data IState = IState {
   , idris_repl_defs              :: [Name]
 
   -- | Stack of names currently being elaborated, Bool set if it's an
-  -- implementation (implementations appear twice; also as a funtion name)
+  -- implementation (implementations appear twice; also as a function name)
   , elab_stack                   :: [(Name, Bool)]
 
 
@@ -306,8 +311,8 @@ data IState = IState {
   , idris_inmodule               :: S.Set Name                -- ^ Names defined in current module
   , idris_ttstats                :: M.Map Term (Int, Term)
   , idris_fragile                :: Ctxt String               -- ^ Fragile names and explanation.
-  }
-  deriving Generic
+  , idris_interactiveOpts        :: InteractiveOpts
+  } deriving Generic
 
 -- Required for parsers library, and therefore trifecta
 instance Show IState where
@@ -332,6 +337,7 @@ data CGInfo = CGInfo {
 deriving instance Binary CGInfo
 !-}
 
+primDefs :: [Name]
 primDefs = [ sUN "unsafePerformPrimIO"
            , sUN "mkLazyForeignPrim"
            , sUN "mkForeignPrim"
@@ -390,6 +396,12 @@ data IBCWrite = IBCFix FixDecl
               | IBCConstraint FC UConstraint
   deriving (Show, Generic)
 
+initialInteractiveOpts :: InteractiveOpts
+initialInteractiveOpts = InteractiveOpts {
+    interactiveOpts_indentWith = 2
+  , interactiveOpts_indentClause = 2
+}
+
 -- | The initial state for the compiler
 idrisInit :: IState
 idrisInit = IState initContext S.empty []
@@ -402,7 +414,7 @@ idrisInit = IState initContext S.empty []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Private DefaultCheckingPartial [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
-                   emptyContext S.empty M.empty emptyContext
+                   emptyContext S.empty M.empty emptyContext initialInteractiveOpts
 
 
 -- | The monad for the main REPL - reading and processing files and
@@ -488,6 +500,8 @@ data Opt = Filename String
          | ColourREPL Bool
          | Idemode
          | IdemodeSocket
+         | IndentWith Int
+         | IndentClause Int
          | ShowAll
          | ShowLibs
          | ShowLibDir
@@ -627,19 +641,27 @@ is_scoped (Imp _ _ _ s _ _) = s
 is_scoped _                 = Nothing
 
 -- Top level implicit
+impl              :: Plicity
 impl              = Imp [] Dynamic False (Just (Impl False True False)) False RigW
 -- Machine generated top level implicit
+impl_gen          :: Plicity
 impl_gen          = Imp [] Dynamic False (Just (Impl False True True)) False RigW
 
 -- Scoped implicits
+forall_imp        :: Plicity
 forall_imp        = Imp [] Dynamic False (Just (Impl False False True)) False RigW
+forall_constraint :: Plicity
 forall_constraint = Imp [] Dynamic False (Just (Impl True False True)) False RigW
 
+expl              :: Plicity
 expl              = Exp [] Dynamic False RigW
+expl_param        :: Plicity
 expl_param        = Exp [] Dynamic True RigW
 
+constraint        :: Plicity
 constraint        = Constraint [] Static RigW
 
+tacimpl           :: PTerm -> Plicity
 tacimpl t         = TacImp [] Dynamic t RigW
 
 data FnOpt = Inlinable -- ^ always evaluate when simplifying
@@ -1410,7 +1432,7 @@ highestFC (PAppImpl t _)          = highestFC t
 -- Interface data
 
 data InterfaceInfo = CI {
-    implementationCtorName                   :: Name
+    implementationCtorName             :: Name
   , interface_methods                  :: [(Name, (Bool, FnOpts, PTerm))] -- ^ flag whether it's a "data" method
   , interface_defaults                 :: [(Name, (Name, PDecl))]         -- ^ method name -> default impl
   , interface_default_super_interfaces :: [PDecl]
@@ -2269,7 +2291,7 @@ getExps (_ : xs)              = getExps xs
 
 getShowArgs :: [PArg] -> [PArg]
 getShowArgs [] = []
-getShowArgs (e@(PExp _ _ _ tm) : xs) = e : getShowArgs xs
+getShowArgs (e@(PExp _ _ _ _) : xs) = e : getShowArgs xs
 getShowArgs (e : xs) | AlwaysShow `elem` argopts e = e : getShowArgs xs
                      | PImp _ _ _ _ tm <- e
                      , containsHole tm = e : getShowArgs xs
@@ -2586,5 +2608,5 @@ usedNamesIn vars ist tm = nub $ ni 0 [] tm
 getErasureInfo :: IState -> Name -> [Int]
 getErasureInfo ist n =
     case lookupCtxtExact n (idris_optimisation ist) of
-        Just (Optimise inacc detag force) -> map fst inacc
+        Just (Optimise inacc _ _) -> map fst inacc
         Nothing -> []

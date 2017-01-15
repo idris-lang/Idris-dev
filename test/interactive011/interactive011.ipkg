@@ -1,0 +1,8 @@
+package interactive011
+
+opts = "--quiet --indent-clause 4 --indent-with 8"
+
+sourcedir = src
+modules = Foo
+main = Main
+executable = interactive011

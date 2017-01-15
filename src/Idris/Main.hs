@@ -31,8 +31,6 @@ import IRTS.CodegenCommon
 
 import Util.System
 
-import Prelude hiding (id, (.), (<$>))
-
 import Control.Category
 import Control.DeepSeq
 import Control.Monad
@@ -40,6 +38,7 @@ import Control.Monad.Trans (lift)
 import Control.Monad.Trans.Except (runExceptT)
 import Control.Monad.Trans.State.Strict (execStateT)
 import Data.Maybe
+import Prelude hiding (id, (.), (<$>))
 import System.Console.Haskeline as H
 import System.Directory
 import System.Exit
@@ -55,7 +54,6 @@ runMain prog = do res <- runExceptT $ execStateT prog idrisInit
                          putStrLn $ "Uncaught error: " ++ show err
                          exitFailure
                        Right _ -> return ()
-
 
 -- | The main function of Idris that when given a set of Options will
 -- launch Idris into the desired interaction mode either: REPL;
@@ -215,14 +213,16 @@ idrisMain opts =
        ok <- noErrors
        when (not ok) $ runIO (exitWith (ExitFailure 1))
   where
-    makeOption (OLogging i)  = setLogLevel i
-    makeOption (OLogCats cs) = setLogCats cs
-    makeOption (Verbose v)   = setVerbose v
-    makeOption TypeCase      = setTypeCase True
-    makeOption TypeInType    = setTypeInType True
-    makeOption NoCoverage    = setCoverage False
-    makeOption ErrContext    = setErrContext True
-    makeOption _             = return ()
+    makeOption (OLogging i)     = setLogLevel i
+    makeOption (OLogCats cs)    = setLogCats cs
+    makeOption (Verbose v)      = setVerbose v
+    makeOption TypeCase         = setTypeCase True
+    makeOption TypeInType       = setTypeInType True
+    makeOption NoCoverage       = setCoverage False
+    makeOption ErrContext       = setErrContext True
+    makeOption (IndentWith n)   = setIndentWith n
+    makeOption (IndentClause n) = setIndentClause n
+    makeOption _                = return ()
 
     processOptimisation :: (Bool,Optimisation) -> Idris ()
     processOptimisation (True,  p) = addOptimise p

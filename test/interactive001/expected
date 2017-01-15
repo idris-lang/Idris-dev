@@ -5,7 +5,7 @@ isElem x (y :: xs) = ?isElem_rhs_3
 
 f x :: map f xs
 isElem2 x (y :: ys) with (_)
-  isElem2 x (y :: ys) | with_pat = ?isElem2_rhs
+        isElem2 x (y :: ys) | with_pat = ?isElem2_rhs
 
   isElem3 y (y :: ys) | (Yes Refl) = ?isElem3_rhs_3
 

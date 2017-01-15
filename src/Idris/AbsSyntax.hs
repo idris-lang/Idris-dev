@@ -5,8 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
-             PatternGuards, TypeSynonymInstances #-}
+
+{-# LANGUAGE DeriveFunctor, PatternGuards #-}
 
 module Idris.AbsSyntax(
     module Idris.AbsSyntax
@@ -15,37 +15,32 @@ module Idris.AbsSyntax(
 
 import Idris.AbsSyntaxTree
 import Idris.Colours
-import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.Typecheck
 import Idris.Docstrings
 import Idris.IdeMode hiding (Opt(..))
 import IRTS.CodegenCommon
 
-import Util.DynamicLinker
-import Util.Pretty
-import Util.ScreenSize
-import Util.System
+import System.Directory (canonicalizePath, doesFileExist)
+import System.IO
 
 import Control.Applicative
-import Control.Monad (liftM3)
 import Control.Monad.State
-import Data.Char
+import Prelude hiding (Applicative, Foldable, Traversable, (<$>))
+
 import Data.Either
-import Data.Generics.Uniplate.Data (descend, descendM)
 import Data.List hiding (insert, union)
 import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Data.Word (Word)
-import Debug.Trace
-import Network (PortID(PortNumber))
-import System.Console.Haskeline
-import System.Directory (canonicalizePath, doesFileExist)
-import System.IO
-import System.IO.Error (ioeGetErrorString, isUserError, tryIOError)
+import System.IO.Error (tryIOError)
+
+import Data.Generics.Uniplate.Data (descend, descendM)
+
+import Util.DynamicLinker
+import Util.Pretty
+import Util.System
 
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
@@ -91,9 +86,9 @@ addDyLib libs = do i <- getIState
                          Just x -> do putIState $ i { idris_dynamic_libs = x:ls }
                                       return (Left x)
     where findDyLib :: [DynamicLib] -> String -> Maybe DynamicLib
-          findDyLib []         l                     = Nothing
-          findDyLib (lib:libs) l | l == lib_name lib = Just lib
-                                 | otherwise         = findDyLib libs l
+          findDyLib []         _                     = Nothing
+          findDyLib (lib:libs') l | l == lib_name lib = Just lib
+                                  | otherwise         = findDyLib libs' l
 
 getAutoImports :: Idris [FilePath]
 getAutoImports = do i <- getIState
@@ -102,7 +97,6 @@ getAutoImports = do i <- getIState
 addAutoImport :: FilePath -> Idris ()
 addAutoImport fp = do i <- getIState
                       let opts = idris_options i
-                      let autoimps = opt_autoImport opts
                       put (i { idris_options = opts { opt_autoImport =
                                                        fp : opt_autoImport opts } } )
 
@@ -250,7 +244,7 @@ getCoercionsTo i ty =
     let cs = idris_coercions i
         (fn,_) = unApply (getRetTy ty) in
         findCoercions fn cs
-    where findCoercions t [] = []
+    where findCoercions _ [] = []
           findCoercions t (n : ns) =
              let ps = case lookupTy n (tt_ctxt i) of
                         [ty'] -> case unApply (getRetTy (normalise (tt_ctxt i) [] ty')) of
@@ -322,10 +316,10 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
               do let (fx, _) = unApply x
                  let (fy, _) = unApply y
                  case (fx, fy) of
-                      (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n)
+                      (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n) -- XXX: n' is unused. Should this be errWhen (n /= n')?
                       (P (TCon _ _) n _, Constant _) -> errWhen True
                       (Constant _, P (TCon _ _) n' _) -> errWhen True
-                      (P (DCon _ _ _) n _, P (DCon _ _ _) n' _) -> errWhen (n/=n)
+                      (P (DCon _ _ _) n _, P (DCon _ _ _) n' _) -> errWhen (n/=n) -- XXX: n' is unused. Should this be errWhen (n /= n')?
                       _ -> return ()
 
               where errWhen True
@@ -352,12 +346,6 @@ addFunctionErrorHandlers f arg hs =
                         Just (oldHandlers) -> M.insertWith S.union arg (S.fromList hs) oldHandlers
                         -- will always be one of those two, thus no extra case
     putIState $ i { idris_function_errorhandlers = newHandlers }
-
-getFunctionErrorHandlers :: Name -> Name -> Idris [Name]
-getFunctionErrorHandlers f arg = do i <- getIState
-                                    return . maybe [] S.toList $
-                                     undefined --lookup arg =<< lookupCtxtExact f (idris_function_errorhandlers i)
-
 
 -- | Trace all the names in a call graph starting at the given name
 getAllNames :: Name -> Idris [Name]
@@ -414,7 +402,7 @@ addNameHint ty n
         putIState $ i { idris_namehints = addDef ty' ns' (idris_namehints i) }
 
 getNameHints :: IState -> Name -> [Name]
-getNameHints i (UN arr) | arr == txt "->" = [sUN "f",sUN "g"]
+getNameHints _ (UN arr) | arr == txt "->" = [sUN "f",sUN "g"]
 getNameHints i n =
         case lookupCtxt n (idris_namehints i) of
              [ns] -> ns
@@ -430,7 +418,6 @@ getDeprecated n = do
   i <- getIState
   return $ lookupCtxtExact n (idris_deprecated i)
 
-
 addFragile :: Name -> String -> Idris ()
 addFragile n reason = do
   i <- getIState
@@ -442,15 +429,15 @@ getFragile n = do
   return $ lookupCtxtExact n (idris_fragile i)
 
 push_estack :: Name -> Bool -> Idris ()
-push_estack n impl
+push_estack n implementation
     = do i <- getIState
-         putIState (i { elab_stack = (n, impl) : elab_stack i })
+         putIState (i { elab_stack = (n, implementation) : elab_stack i })
 
 pop_estack :: Idris ()
 pop_estack = do i <- getIState
                 putIState (i { elab_stack = ptail (elab_stack i) })
     where ptail [] = []
-          ptail (x : xs) = xs
+          ptail (_ : xs) = xs
 
 -- | Add an interface implementation function.
 --
@@ -546,7 +533,7 @@ addIBC ibc@(IBCDef n)
                 when (notDef (ibc_write i)) $
                   putIState $ i { ibc_write = ibc : ibc_write i }
    where notDef [] = True
-         notDef (IBCDef n': is) | n == n' = False
+         notDef (IBCDef n': _) | n == n' = False
          notDef (_ : is) = notDef is
 addIBC ibc = do i <- getIState; putIState $ i { ibc_write = ibc : ibc_write i }
 
@@ -683,7 +670,7 @@ clearPTypes :: Idris ()
 clearPTypes = do i <- get
                  let ctxt = tt_ctxt i
                  put (i { tt_ctxt = mapDefCtxt pErase ctxt })
-   where pErase (CaseOp c t tys orig tot cds)
+   where pErase (CaseOp c t tys orig _ cds)
             = CaseOp c t tys orig [] (pErase' cds)
          pErase x = x
          pErase' (CaseDefs (cs, c) rs)
@@ -699,7 +686,7 @@ checkUndefined fc n
              _ -> return ()
 
 isUndefined :: FC -> Name -> Idris Bool
-isUndefined fc n
+isUndefined _ n
     = do i <- getContext
          case lookupTyExact n i of
              Just _ -> return False
@@ -756,7 +743,7 @@ addDeferred' nt ns
         tidyNames used (Bind n b sc)
             = let n' = uniqueNameSet n used in
                   Bind n' b $ tidyNames (S.insert n' used) sc
-        tidyNames used b = b
+        tidyNames _    b = b
 
 solveDeferred :: FC -> Name -> Idris ()
 solveDeferred fc n
@@ -1144,7 +1131,6 @@ setColour ct c = do i <- getIState
           setColour' PromptColour    c t = t { promptColour = c }
           setColour' PostulateColour c t = t { postulateColour = c }
 
-
 logLvl :: Int -> String -> Idris ()
 logLvl = logLvlCats []
 
@@ -1178,7 +1164,7 @@ logLvlCats :: [LogCat] -- ^ The categories that the message should appear under.
            -> Int      -- ^ The Logging level the message should appear.
            -> String   -- ^ The message to show the developer.
            -> Idris ()
-logLvlCats cs l str = do
+logLvlCats cs l msg = do
     i <- getIState
     let lvl  = opt_logLevel (idris_options i)
     let cats = opt_logcats (idris_options i)
@@ -1186,9 +1172,9 @@ logLvlCats cs l str = do
       when (inCat cs cats || null cats) $
         case idris_outputmode i of
           RawOutput h -> do
-            runIO $ hPutStrLn h str
+            runIO $ hPutStrLn h msg
           IdeMode n h -> do
-            let good = SexpList [IntegerAtom (toInteger l), toSExp str]
+            let good = SexpList [IntegerAtom (toInteger l), toSExp msg]
             runIO . hPutStrLn h $ convSExp "log" good n
   where
     inCat :: [LogCat] -> [LogCat] -> Bool
@@ -1210,6 +1196,29 @@ setTypeCase t = do i <- getIState
                    let opt' = opts { opt_typecase = t }
                    putIState $ i { idris_options = opt' }
 
+getIndentWith :: Idris Int
+getIndentWith = do
+  i <- getIState
+  return $ interactiveOpts_indentWith (idris_interactiveOpts i)
+
+setIndentWith :: Int -> Idris ()
+setIndentWith indentWith = do
+  i <- getIState
+  let opts = idris_interactiveOpts i
+  let opts' = opts { interactiveOpts_indentWith = indentWith }
+  putIState $ i { idris_interactiveOpts = opts' }
+
+getIndentClause :: Idris Int
+getIndentClause = do
+  i <- getIState
+  return $ interactiveOpts_indentClause (idris_interactiveOpts i)
+
+setIndentClause :: Int -> Idris ()
+setIndentClause indentClause = do
+  i <- getIState
+  let opts = idris_interactiveOpts i
+  let opts' = opts { interactiveOpts_indentClause = indentClause }
+  putIState $ i { idris_interactiveOpts = opts' }
 
 -- Dealing with parameters
 
@@ -2226,9 +2235,10 @@ instance Applicative (EitherErr a) where
 instance Monad (EitherErr a) where
     return = RightOK
 
-    (LeftErr e) >>= k = LeftErr e
+    (LeftErr e) >>= _ = LeftErr e
     RightOK v   >>= k = k v
 
+toEither :: EitherErr a b -> Either a b
 toEither (LeftErr e)  = Left e
 toEither (RightOK ho) = Right ho
 
@@ -2439,7 +2449,7 @@ mkUniqueNames env shadows tm
   -- looking for too long...)
   initN (UN n) l = UN $ txt (str n ++ show l)
   initN (MN i s) l = MN (i+l) s
-  initN n l = n
+  initN n _ = n
 
   -- FIXME: Probably ought to do this for completeness! It's fine as
   -- long as there are no bindings inside tactics though.
@@ -2547,50 +2557,49 @@ mkUniqueNames env shadows tm
 
   mkUniq ql nmap tm = descendM (mkUniq ql nmap) tm
 
-
 getFile :: Opt -> Maybe String
-getFile (Filename str) = Just str
+getFile (Filename s) = Just s
 getFile _ = Nothing
 
 getBC :: Opt -> Maybe String
-getBC (BCAsm str) = Just str
+getBC (BCAsm s) = Just s
 getBC _ = Nothing
 
 getOutput :: Opt -> Maybe String
-getOutput (Output str) = Just str
+getOutput (Output s) = Just s
 getOutput _ = Nothing
 
 getIBCSubDir :: Opt -> Maybe String
-getIBCSubDir (IBCSubDir str) = Just str
+getIBCSubDir (IBCSubDir s) = Just s
 getIBCSubDir _ = Nothing
 
 getImportDir :: Opt -> Maybe String
-getImportDir (ImportDir str) = Just str
+getImportDir (ImportDir s) = Just s
 getImportDir _ = Nothing
 
 getSourceDir :: Opt -> Maybe String
-getSourceDir (SourceDir str) = Just str
+getSourceDir (SourceDir s) = Just s
 getSourceDir _ = Nothing
 
 getPkgDir :: Opt -> Maybe String
-getPkgDir (Pkg str) = Just str
+getPkgDir (Pkg s) = Just s
 getPkgDir _ = Nothing
 
 getPkg :: Opt -> Maybe (Bool, String)
-getPkg (PkgBuild   str) = Just (False, str)
-getPkg (PkgInstall str) = Just (True, str)
+getPkg (PkgBuild s)   = Just (False, s)
+getPkg (PkgInstall s) = Just (True, s)
 getPkg _ = Nothing
 
 getPkgClean :: Opt -> Maybe String
-getPkgClean (PkgClean str) = Just str
+getPkgClean (PkgClean s) = Just s
 getPkgClean _ = Nothing
 
 getPkgREPL :: Opt -> Maybe String
-getPkgREPL (PkgREPL str) = Just str
+getPkgREPL (PkgREPL s) = Just s
 getPkgREPL _ = Nothing
 
 getPkgCheck :: Opt -> Maybe String
-getPkgCheck (PkgCheck str) = Just str
+getPkgCheck (PkgCheck s) = Just s
 getPkgCheck _              = Nothing
 
 -- | Returns None if given an Opt which is not PkgMkDoc
@@ -2617,7 +2626,6 @@ getCodegenArgs _ = Nothing
 getConsoleWidth :: Opt -> Maybe ConsoleWidth
 getConsoleWidth (UseConsoleWidth x) = Just x
 getConsoleWidth _ = Nothing
-
 
 getExecScript :: Opt -> Maybe String
 getExecScript (InterpretScript expr) = Just expr
@@ -2667,7 +2675,7 @@ getClient _ = Nothing
 -- Get the first valid port
 getPort :: [Opt] -> Maybe REPLPort
 getPort []            = Nothing
-getPort (Port p : xs) = Just p
+getPort (Port p : _ ) = Just p
 getPort (_      : xs) = getPort xs
 
 opt :: (Opt -> Maybe a) -> [Opt] -> [a]

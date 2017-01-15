@@ -5,16 +5,21 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE DeriveFunctor, MultiWayIf, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+
 module Idris.Docs (
     pprintDocs
   , getDocs, pprintConstDocs, pprintTypeDoc
   , FunDoc, FunDoc'(..), Docs, Docs'(..)
   ) where
 
-import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
+import Idris.AbsSyntax (FixDecl(..), Fixity, HowMuchDocs(..), IState(..), Idris,
+                        InterfaceInfo(..), PArg'(..), PDecl'(..), PPOption(..),
+                        PTerm(..), Plicity(..), RecordInfo(..), basename,
+                        getIState, modDocName, ppOptionIst, pprintPTerm,
+                        prettyIst, prettyName, type1Doc, typeDescription)
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
@@ -26,7 +31,6 @@ import Util.Pretty
 
 import Prelude hiding ((<$>))
 
-import Control.Arrow (first)
 import Data.List
 import Data.Maybe
 import qualified Data.Text as T
