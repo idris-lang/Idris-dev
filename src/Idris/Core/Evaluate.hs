@@ -144,7 +144,7 @@ specialise ctxt env limits t
          (tm, limited st)
 
 -- | Like normalise, but we only reduce functions that are marked as okay to
--- inline, and lets 
+-- inline, and lets
 simplify :: Context -> Env -> TT Name -> TT Name
 simplify ctxt env t
    = evalState (do val <- eval False ctxt [(sUN "lazy", 0),
@@ -160,7 +160,7 @@ simplify ctxt env t
                    quote 0 val) initEval
 
 -- | Like simplify, but we only reduce functions that are marked as okay to
--- inline, and don't reduce lets 
+-- inline, and don't reduce lets
 inlineSmall :: Context -> Env -> TT Name -> TT Name
 inlineSmall ctxt env t
    = evalState (do val <- eval False ctxt []
@@ -229,7 +229,7 @@ usable False uf depthlimit n ns
   = case lookup n ns of
          Just 0 -> return (False, ns)
          Just i -> return $ (True, (n, abs (i-1)) : filter (\ (n', _) -> n/=n') ns)
-         _ -> return $ if uf 
+         _ -> return $ if uf
                           then (False, ns)
                           else (True, (n, depthlimit) : filter (\ (n', _) -> n/=n') ns)
 
@@ -1181,14 +1181,14 @@ linearCheck ctxt t = checkArgs t
     checkArgs (Bind n (Pi RigW _ ty _) sc)
         = do linearCheckArg ctxt ty
              checkArgs (substV (P Bound n Erased) sc)
-    checkArgs (Bind n (Pi _ _ _ _) sc) 
+    checkArgs (Bind n (Pi _ _ _ _) sc)
           = checkArgs (substV (P Bound n Erased) sc)
     checkArgs _ = return ()
 
 linearCheckArg :: Context -> Type -> TC ()
 linearCheckArg ctxt ty = mapM_ checkNameOK (allTTNames ty)
   where
-    checkNameOK f 
+    checkNameOK f
        = case lookupRigCountExact f ctxt of
               Just Rig1 ->
                   tfail $ Msg $ show f ++ " can only appear in a linear binding"
@@ -1197,7 +1197,7 @@ linearCheckArg ctxt ty = mapM_ checkNameOK (allTTNames ty)
     checkArgs (Bind n (Pi RigW _ ty _) sc)
         = do mapM_ checkNameOK (allTTNames ty)
              checkArgs (substV (P Bound n Erased) sc)
-    checkArgs (Bind n (Pi _ _ _ _) sc) 
+    checkArgs (Bind n (Pi _ _ _ _) sc)
           = checkArgs (substV (P Bound n Erased) sc)
     checkArgs _ = return ()
 

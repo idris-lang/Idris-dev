@@ -48,7 +48,7 @@ checkAllCovering _ _ _ _ = return ()
 --
 -- If so, set the 'AllGuarded' flag which can be used by the productivity check
 checkIfGuarded :: Name -> Idris ()
-checkIfGuarded n 
+checkIfGuarded n
    = do i <- get
         let ctxt = tt_ctxt i
         case lookupDefExact n ctxt of
@@ -65,9 +65,9 @@ checkIfGuarded n
                            Nothing -> False
                            Just fs -> AllGuarded `elem` fs
 
-    -- Top level thing always needs to be a constructor application if 
+    -- Top level thing always needs to be a constructor application if
     -- the delayed things are going to be definitely guarded by this definition
-    allGuarded names i (STerm t) 
+    allGuarded names i (STerm t)
           | (P _ fn _, args) <- unApply t,
             guard fn i
             = and (map (guardedTerm names i) args)
@@ -86,7 +86,7 @@ checkIfGuarded n
                 = and (map (guardedTerm names i) args)
     guardedTerm names i (App _ f a) = False
     guardedTerm names i tm = True
-    
+
     guardedAlt names i (ConCase _ _ _ t) = allGuarded names i t
     guardedAlt names i (FnCase _ _ t) = allGuarded names i t
     guardedAlt names i (ConstCase _ t) = allGuarded names i t
@@ -369,7 +369,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
         = findCalls cases Unguarded f pvs pargs ++ findCalls cases Unguarded a pvs pargs
   findCalls cases guarded (Bind n (Let t v) e) pvs pargs
         = findCalls cases Unguarded t pvs pargs ++
-          findCalls cases Unguarded v pvs pargs ++ 
+          findCalls cases Unguarded v pvs pargs ++
           -- Substitute in the scope since this might reveal some useful
           -- structure
           findCalls cases guarded (substV v e) pvs pargs

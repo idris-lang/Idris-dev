@@ -18,7 +18,7 @@ import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.TT
 import Idris.Core.Typecheck (check, converts, isType, recheck)
 import Idris.Core.Unify
-import Idris.Core.WHNF (whnf,whnfArgs)
+import Idris.Core.WHNF (whnf, whnfArgs)
 import Idris.Coverage (genClauses, recoverableCoverage, validCoverageCase)
 import Idris.Delaborate
 import Idris.DSL
@@ -30,7 +30,7 @@ import Idris.ErrReverse (errReverse)
 import Idris.Output (pshow)
 import Idris.ProofSearch
 import Idris.Reflection
-import Idris.Termination(buildSCG, checkDeclTotality, checkPositive)
+import Idris.Termination (buildSCG, checkDeclTotality, checkPositive)
 
 import qualified Util.Pretty as U
 
@@ -710,7 +710,7 @@ elab ist info emode opts fn tm
                solve
                highlightSource nfc (AnnBoundName n False)
     elab' ina fc (PPi p n nfc Placeholder sc)
-          = do attack; 
+          = do attack;
                case pcount p of
                     RigW -> return ()
                     _ -> unless (LinearTypes `elem` idris_language_extensions ist
@@ -1754,7 +1754,7 @@ pruneByType imp env (P _ n _) goalty ist as
          | (P _ fl _, argsl) <- unApply apl,
            (P _ fr _, argsr) <- unApply apr,
            isConName fl ctxt && isConName fr ctxt
-       = fl == fr 
+       = fl == fr
     matchingHead _ _ = True
 
     -- Return whether there is a possible coercion between the return type

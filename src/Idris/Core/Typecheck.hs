@@ -12,8 +12,8 @@ Maintainer  : The Idris Community.
 module Idris.Core.Typecheck where
 
 import Idris.Core.Evaluate
-import Idris.Core.WHNF
 import Idris.Core.TT
+import Idris.Core.WHNF
 
 import Control.Monad.State
 import qualified Data.Vector.Unboxed as V (length)
@@ -87,8 +87,8 @@ check ctxt env tm
      = evalStateT (check' True [] ctxt env tm) (0, [])
 
 check' :: Bool -> String -> Context -> Env -> Raw -> StateT UCs TC (Term, Type)
-check' holes tcns ctxt env top 
-   = do (tm, ty, _) <- chk Rig1 (TType (UVar tcns (-5))) Nothing env top 
+check' holes tcns ctxt env top
+   = do (tm, ty, _) <- chk Rig1 (TType (UVar tcns (-5))) Nothing env top
         return (tm, ty)
  where
 
@@ -106,7 +106,7 @@ check' holes tcns ctxt env top
          Maybe UExp -> -- universe for kind
          Env -> Raw -> StateT UCs TC (Term, Type, [Name])
   chk rigc u lvl env (Var n)
-      | Just (i, erig, ty) <- lookupTyEnv n env 
+      | Just (i, erig, ty) <- lookupTyEnv n env
              = case rigSafe holes erig rigc n of
                     Nothing -> return (P Bound n ty, ty, used rigc n)
                     Just msg -> lift $ tfail $ Msg msg
@@ -151,13 +151,13 @@ check' holes tcns ctxt env top
              t -> lift $ tfail $ NonFunctionType fv fty
   chk rigc u lvl env ap@(RApp f a)
       = do (fv, fty, fns) <- chk rigc u Nothing env f
-           let (rigf, fty') = 
+           let (rigf, fty') =
                    case uniqueBinders (map fstEnv env) (finalise fty) of
                         ty@(Bind x (Pi rig i s k) t) -> (rig, ty)
                         _ -> case normalise ctxt env fty of
-                                  ty@(Bind x (Pi rig i s k) t) -> 
+                                  ty@(Bind x (Pi rig i s k) t) ->
                                      (rig, uniqueBinders (map fstEnv env) ty)
-                                  _ -> (RigW, uniqueBinders (map fstEnv env) 
+                                  _ -> (RigW, uniqueBinders (map fstEnv env)
                                                     (normalise ctxt env fty)) -- This is an error, caught below...
            (av, aty, ans) <- chk (rigMult rigc rigf) u Nothing env a
            case fty' of
@@ -198,7 +198,7 @@ check' holes tcns ctxt env top
           constType _       = TType (UVal 0)
   chk rigc u lvl env (RBind n (Pi rig i s k) t)
       = do (sv, st, sns) <- chk Rig0 u Nothing (envZero env) s
-           when (rig == RigW) $ 
+           when (rig == RigW) $
                 lift $ linearCheckArg ctxt (normalise ctxt env sv)
            (v, cs) <- get
            (kv, kt, _) <- chk Rig0 u Nothing (envZero env) k -- no need to validate these constraints, they are independent
@@ -256,10 +256,10 @@ check' holes tcns ctxt env top
 
           checkUsageOK Rig0 _ = return ()
           checkUsageOK RigW _ = return ()
-          checkUsageOK Rig1 ns 
+          checkUsageOK Rig1 ns
               = let used = length (filter (==n) ns) in
                     if used == 1 then return ()
-                       else lift $ tfail $ Msg $ "There are " ++ (show used) ++ 
+                       else lift $ tfail $ Msg $ "There are " ++ (show used) ++
                               " uses of linear name " ++ show n
 
           checkBinder (Lam rig t)
@@ -269,7 +269,7 @@ check' holes tcns ctxt env top
                  return (Lam rig tv, tt, [])
           checkBinder (Let t v)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
-                 -- May have multiple uses, check at RigW 
+                 -- May have multiple uses, check at RigW
                  -- (or rather, like an application of a lambda, multiply)
                  -- (Consider: adding a single use let?)
                  (vv, vt, vns) <- chk (rigMult rigc RigW) u Nothing env v

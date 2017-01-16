@@ -16,10 +16,10 @@ import Idris.ASTUtils
 import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
-import Idris.Core.WHNF
 import Idris.Core.Execute
 import Idris.Core.TT
 import Idris.Core.Typecheck
+import Idris.Core.WHNF
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.DeepSeq
@@ -133,7 +133,7 @@ buildType info syn fc opts n ty' = do
              let fninfo = FnInfo (param_pos 0 pnames cty)
              setFnInfo n fninfo
              addIBC (IBCFnInfo n fninfo)
-         
+
          -- If we use any types with linear constructor arguments, we'd better
          -- make sure they are use-once
          tcliftAt fc $ linearCheck ctxt (whnfArgs ctxt [] cty)
