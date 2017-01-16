@@ -8,7 +8,7 @@ env:
 
 matrix:
   include:
-    - env: CABALVER="1.24" GHCVER="8.0.1" STYLISH=YES
+    - env: CABALVER="1.24" GHCVER="8.0.1" STACKVER="7.14" STYLISH=YES
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,hscolour], sources: [hvr-ghc]}}
     - os: osx
       env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"

@@ -5,9 +5,9 @@ set -e
 if [ -n "$TRAVIS" ];
 then
     mkdir -p ~/.local/bin
-    export PATH=$HOME/.local/bin:/opt/ghc/8.0.1/bin:$PATH
+    export PATH=$HOME/.local/bin:/opt/ghc/$GHCVER/bin:$PATH
     curl --retry 3 -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-    stack install --resolver lts-7.2 stylish-haskell --no-terminal
+    stack install --resolver "lts-$STACKVER" stylish-haskell --no-terminal
 fi
 
 
