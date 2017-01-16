@@ -174,7 +174,7 @@ findCalls' ignoreasserts sc topargs = S.toList $ nu' topargs sc where
                   then S.empty
                   else if n `elem` ps
                           then S.union (nut ps f) (nut ps a)
-                          else S.insert (n, map argNames args) 
+                          else S.insert (n, map argNames args)
                                    (S.unions $ map (nut ps) args)
         | (P (TCon _ _) n _, _) <- unApply fn = S.empty
         | otherwise = S.union (nut ps f) (nut ps a)
@@ -245,7 +245,7 @@ runCaseBuilder :: ErasureInfo -> CaseBuilder a -> (CS -> (a, CS))
 runCaseBuilder ei bld = runState $ runReaderT bld ei
 
 data Phase = CoverageCheck [Int] -- list of positions explicitly given
-           | CompileTime 
+           | CompileTime
            | RunTime
     deriving (Show, Eq)
 
@@ -253,7 +253,7 @@ data Phase = CoverageCheck [Int] -- list of positions explicitly given
 -- Work Right to Left
 
 simpleCase :: Bool -> SC -> Bool ->
-              Phase -> FC -> 
+              Phase -> FC ->
               -- Following two can be empty lists when Phase = CoverageCheck
               [Int] -> -- Inaccessible argument positions
               [(Type, Bool)] -> -- (Argument type, whether it's canonical)
@@ -444,7 +444,7 @@ order :: Phase -> [(Name, Bool)] -> [Clause] -> [Bool] -> ([Name], [Clause])
 -- order CompileTime ns cs _ = (map fst ns, cs)
 order _ []  cs cans = ([], cs)
 order _ ns' [] cans = (map fst ns', [])
-order (CoverageCheck pos) ns' cs cans 
+order (CoverageCheck pos) ns' cs cans
     = let ns_out = pick 0 [] (map fst ns')
           cs_out = map pickClause cs in
           (ns_out, cs_out)
@@ -454,7 +454,7 @@ order (CoverageCheck pos) ns' cs cans
     -- Order the list so that things in a position in 'pos' are in the first
     -- part, then all the other things later. Otherwise preserve order.
     pick i skipped [] = reverse skipped
-    pick i skipped (x : xs) 
+    pick i skipped (x : xs)
          | i `elem` pos = x : pick (i + 1) skipped xs
          | otherwise    = pick (i + 1) (x : skipped) xs
 

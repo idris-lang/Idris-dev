@@ -62,30 +62,30 @@ mkPatTm t = do i <- getIState
 --
 -- This will only work after the given clauses have been typechecked and the
 -- names are fully explicit!
-genClauses :: FC -> Name -> [([Name], Term)] -> -- (Argument names, LHS) 
+genClauses :: FC -> Name -> [([Name], Term)] -> -- (Argument names, LHS)
               [PTerm] -> Idris [PTerm]
 -- No clauses (only valid via elab reflection). We should probably still do
 -- a check here somehow, e.g. that one of the arguments is an obviously
 -- empty type. In practice, this should only really be used for Void elimination.
-genClauses fc n lhs_tms [] = return [] 
+genClauses fc n lhs_tms [] = return []
 genClauses fc n lhs_tms given
    = do i <- getIState
-      
-        let lhs_given = zipWith removePlaceholders lhs_tms 
+
+        let lhs_given = zipWith removePlaceholders lhs_tms
                             (map (stripUnmatchable i) (map flattenArgs given))
-        
+
         logCoverage 5 $ "Building coverage tree for:\n" ++ showSep "\n" (map show (lhs_given))
         let givenpos = mergePos (map getGivenPos given)
 
-        (cns, ctree_in) <- 
+        (cns, ctree_in) <-
                          case simpleCase False (UnmatchedCase "Undefined") False
                               (CoverageCheck givenpos) emptyFC [] []
-                              lhs_given 
+                              lhs_given
                               (const []) of
                            OK (CaseDef cns ctree_in _) ->
                               return (cns, ctree_in)
                            Error e -> tclift $ tfail $ At fc e
-            
+
         let ctree = trimOverlapping (addMissingCons i ctree_in)
         let (coveredas, missingas) = mkNewClauses (tt_ctxt i) n cns ctree
         let covered = map (\t -> delab' i t True True) coveredas
@@ -94,9 +94,9 @@ genClauses fc n lhs_tms given
 
         logCoverage 5 $ "Coverage from case tree for " ++ show n ++ ": " ++ show ctree
         logCoverage 2 $ show (length missing) ++ " missing clauses for " ++ show n
-        logCoverage 3 $ "Missing clauses:\n" ++ showSep "\n" 
+        logCoverage 3 $ "Missing clauses:\n" ++ showSep "\n"
                               (map showTmImpls missing)
-        logCoverage 10 $ "Covered clauses:\n" ++ showSep "\n" 
+        logCoverage 10 $ "Covered clauses:\n" ++ showSep "\n"
                               (map showTmImpls covered)
         return missing
     where
@@ -132,16 +132,16 @@ removePlaceholders (ns, tm) ptm = (ns, rp tm ptm, Erased)
        | (tf, [tyl, tyr, tl, tr]) <- unApply tm
            = let tl' = rp tl pl
                  tr' = rp tr pr in
-                 mkApp tf [Erased, Erased, tl', tr'] 
+                 mkApp tf [Erased, Erased, tl', tr']
     rp tm (PDPair _ _ _ pl pt pr)
        | (tf, [tyl, tyr, tl, tr]) <- unApply tm
            = let tl' = rp tl pl
                  tr' = rp tr pr in
-                 mkApp tf [Erased, Erased, tl', tr'] 
+                 mkApp tf [Erased, Erased, tl', tr']
     rp tm _ = tm
 
 mkNewClauses :: Context -> Name -> [Name] -> SC -> ([Term], [Term])
-mkNewClauses ctxt fn ns sc 
+mkNewClauses ctxt fn ns sc
      = (map (mkPlApp (P Ref fn Erased)) $
             mkFromSC True (map (\n -> P Ref n Erased) ns) sc,
         map (mkPlApp (P Ref fn Erased)) $
@@ -149,7 +149,7 @@ mkNewClauses ctxt fn ns sc
   where
     mkPlApp f args = mkApp f (map erasePs args)
 
-    erasePs ap@(App t f a) 
+    erasePs ap@(App t f a)
         | (f, args) <- unApply ap = mkApp f (map erasePs args)
     erasePs (P _ n _) | not (isConName n ctxt) = Erased
     erasePs tm = tm
@@ -157,16 +157,16 @@ mkNewClauses ctxt fn ns sc
     mkFromSC cov args sc = evalState (mkFromSC' cov args sc) []
 
     mkFromSC' :: Bool -> [Term] -> SC -> State [[Term]] [[Term]]
-    mkFromSC' cov args (STerm _) 
+    mkFromSC' cov args (STerm _)
         = if cov then return [args] else return [] -- leaf of provided case
-    mkFromSC' cov args (UnmatchedCase _) 
+    mkFromSC' cov args (UnmatchedCase _)
         = if cov then return [] else return [args] -- leaf of missing case
     mkFromSC' cov args ImpossibleCase = return []
     mkFromSC' cov args (Case _ x alts)
        = do done <- get
             if (args `elem` done)
                then return []
-               else do alts' <- mapM (mkFromAlt cov args x) alts 
+               else do alts' <- mapM (mkFromAlt cov args x) alts
                        put (args : done)
                        return (concat alts')
     mkFromSC' cov args _ = return [] -- Should never happen
@@ -178,7 +178,7 @@ mkNewClauses ctxt fn ns sc
              args' = map (subst x argrep) args in
              mkFromSC' cov args' sc
     mkFromAlt cov args x (ConstCase c sc)
-       = let argrep = Constant c 
+       = let argrep = Constant c
              args' = map (subst x argrep) args in
              mkFromSC' cov args' sc
     mkFromAlt cov args x (DefaultCase sc)
@@ -195,18 +195,18 @@ addMissingConsSt :: IState -> SC -> State Int SC
 addMissingConsSt ist (Case t n alts) = liftM (Case t n) (addMissingAlts n alts)
   where
     addMissingAlt :: CaseAlt -> State Int CaseAlt
-    addMissingAlt (ConCase n i ns sc) 
+    addMissingAlt (ConCase n i ns sc)
          = liftM (ConCase n i ns) (addMissingConsSt ist sc)
-    addMissingAlt (FnCase n ns sc) 
+    addMissingAlt (FnCase n ns sc)
          = liftM (FnCase n ns) (addMissingConsSt ist sc)
-    addMissingAlt (ConstCase c sc) 
+    addMissingAlt (ConstCase c sc)
          = liftM (ConstCase c) (addMissingConsSt ist sc)
-    addMissingAlt (SucCase n sc) 
+    addMissingAlt (SucCase n sc)
          = liftM (SucCase n) (addMissingConsSt ist sc)
-    addMissingAlt (DefaultCase sc) 
+    addMissingAlt (DefaultCase sc)
          = liftM DefaultCase (addMissingConsSt ist sc)
 
-    addMissingAlts argn as 
+    addMissingAlts argn as
 --          | any hasDefault as = map addMissingAlt as
          | cons@(n:_) <- mapMaybe collectCons as,
            Just tyn <- getConType n,
@@ -226,7 +226,7 @@ addMissingConsSt ist (Case t n alts) = liftM (Case t n) (addMissingAlts n alts)
     addCases missing (DefaultCase rhs : rest)
        = do missing' <- mapM (genMissingAlt rhs) missing
             return (mapMaybe id missing' ++ rest)
-    addCases missing (c : rest) 
+    addCases missing (c : rest)
        = liftM (c :) $ addCases missing rest
 
     addCons missing [] = []
@@ -258,7 +258,7 @@ addMissingConsSt ist (Case t n alts) = liftM (Case t n) (addMissingAlts n alts)
                       case unApply (getRetTy (normalise (tt_ctxt ist) [] ty)) of
                            (P _ tyn _, _) -> Just tyn
                            _ -> Nothing
-    
+
     -- for every constant in a term (at any level) take next one to make sure
     -- that constants which are not explicitly handled are covered
     nextConst (I c) = I (c + 1)
@@ -312,7 +312,7 @@ trimOverlapping sc = trim [] [] sc
     substMatch ca (_:cs) = substMatch ca cs
 
     substNames [] sc = sc
-    substNames ((n, n') : ns) sc 
+    substNames ((n, n') : ns) sc
        = substNames ns (substSC n n' sc)
 
     notConMatch cs (ConCase cn t args sc) = cn `notElem` cs
@@ -358,14 +358,14 @@ recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
         -- The state is a mapping of name to what it has failed to unify
         -- with
         checkRec :: Term -> Term -> State [(Name, Term)] Bool
-        checkRec (P Bound x _) tm 
+        checkRec (P Bound x _) tm
            | (P yt _ _, _) <- unApply tm,
              conType yt = do nmap <- get
                              case lookup x nmap of
                                   Nothing -> do put ((x, tm) : nmap)
                                                 return True
                                   Just y' -> checkRec tm y'
-        checkRec tm (P Bound y _) 
+        checkRec tm (P Bound y _)
            | (P xt _ _, _) <- unApply tm,
              conType xt = do nmap <- get
                              case lookup y nmap of
@@ -379,13 +379,13 @@ recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
               (f', as') <- unApply fa'
                  = if (length as /= length as')
                       then checkRec f f'
-                      else checkRecs (f : as) (f' : as') 
+                      else checkRecs (f : as) (f' : as')
           where
             checkRecs [] [] = return True
             checkRecs (a : as) (b : bs) = do aok <- checkRec a b
                                              asok <- checkRecs as bs
                                              return (aok && asok)
-        checkRec (P xt x _) (P yt y _) 
+        checkRec (P xt x _) (P yt y _)
            | x == y = return True
            | ntRec xt yt = return True
         checkRec _ _ = return False

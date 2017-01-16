@@ -1003,14 +1003,14 @@ updateProblems ps updates probs = rec 10 updates probs
                   updateEnv ns env, updateError ns err, fc, fa)
 
 orderUpdateSolved :: [(Name, Term)] -> ProofTerm -> (ProofTerm, [Name])
-orderUpdateSolved ns tm = update [] ns tm 
+orderUpdateSolved ns tm = update [] ns tm
   where
     update done [] t = (t, done)
     update done ((n, P _ n' _) : ns) t | n == n' = update done ns t
     update done (n : ns) t = update (fst n : done)
                                     (map (updateMatch n) ns)
                                     (updateSolved [n] t)
-    
+
     -- Update the later solutions too
     updateMatch n (x, tm) = (x, updateSolvedTerm [n] tm)
 
@@ -1094,7 +1094,7 @@ processTactic (MatchProblems all) ps
           return (ps { pterm = pterm', solved = Nothing, problems = probs'',
                        previous = Just ps, plog = "",
                        notunified = updateNotunified ns'' (notunified ps),
-                       recents = recents ps ++ dropped, 
+                       recents = recents ps ++ dropped,
                        holes = holes ps \\ dropped }, plog ps)
 processTactic t ps
     = case holes ps of

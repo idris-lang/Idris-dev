@@ -55,13 +55,13 @@ data WHNF = WDCon Int Int Bool Name (Term, WEnv) -- ^ data constructor
 whnf :: Context -> Env -> Term -> Term
 -- whnf ctxt env tm = let res = whnf' ctxt env tm in
 --                        trace (show tm ++ "\n==>\n" ++ show res ++ "\n") res
-whnf ctxt env tm = 
+whnf ctxt env tm =
    inlineSmall ctxt env $ -- reduce small things in body. This is primarily
                           -- to get rid of any noisy "assert_smaller/assert_total"
                           -- and evaluate any simple operators, which makes things
                           -- easier to read.
      whnf' ctxt env tm
-whnf' ctxt env tm = 
+whnf' ctxt env tm =
      quote (do_whnf ctxt (map finalEntry env) (finalise tm))
 
 -- | Reduce a type so that all arguments are expanded
@@ -72,8 +72,8 @@ whnfArgs' ctxt env tm
            -- The assumption is that de Bruijn indices refer to local things
            -- (so not in the external environment) so we need to instantiate
            -- the name
-           Bind n b@(Pi rig _ ty _) sc -> 
-                    Bind n b (whnfArgs' ctxt ((n, rig, b):env) 
+           Bind n b@(Pi rig _ ty _) sc ->
+                    Bind n b (whnfArgs' ctxt ((n, rig, b):env)
                              (subst n (P Bound n ty) sc))
            res -> tm
 
@@ -96,7 +96,7 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
          =let n' = uniqueName n (map fstEnv genv) in
               WBind n' (fmap (\t -> (t, wenv)) b) (sc, WEnv (d + 1) env)
 
-    eval env stk (P nt n ty) 
+    eval env stk (P nt n ty)
          | Just (Let t v) <- lookupBinder n genv = eval env stk v
     eval env stk (P nt n ty) = apply env nt n ty stk
     eval env stk (App _ f a) = eval env ((a, env) : stk) f
@@ -112,7 +112,7 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
     eval env stk (UType u) = unload (WUType u) stk
 
     apply :: WEnv -> NameType -> Name -> Type -> Stack -> WHNF
-    apply env nt n ty stk 
+    apply env nt n ty stk
           = let wp = case nt of
                           DCon t a u -> WDCon t a u n (ty, env)
                           TCon t a -> WTCon t a n (ty, env)
@@ -122,7 +122,7 @@ do_whnf ctxt genv tm = eval (WEnv 0 []) [] tm
             if not (tcReducible n ctxt)
                then unload wp stk
                else case lookupDefAccExact n False ctxt of
-                         Just (CaseOp ci _ _ _ _ cd, acc) 
+                         Just (CaseOp ci _ _ _ _ cd, acc)
                              | acc == Public || acc == Hidden ->
                           let (ns, tree) = cases_compiletime cd in
                               case evalCase env ns tree stk of
@@ -230,7 +230,7 @@ quote (WDCon t a u n (ty, env)) = P (DCon t a u) n (quoteEnv env ty)
 quote (WTCon t a n (ty, env)) = P (TCon t a) n (quoteEnv env ty)
 quote (WPRef n (ty, env)) = P Ref n (quoteEnv env ty)
 quote (WV i) = V i
-quote (WBind n b (sc, env)) = Bind n (fmap (\ (t, env) -> quoteEnv env t) b) 
+quote (WBind n b (sc, env)) = Bind n (fmap (\ (t, env) -> quoteEnv env t) b)
                                      (quoteEnv env sc)
 quote (WApp f (a, env)) = App Complete (quote f) (quoteEnv env a)
 quote (WConstant c) = Constant c

@@ -193,7 +193,7 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
 
          -- Check that the constructor type is, in fact, a part of the family being defined
          tyIs n cty'
-         let force = if tn == sUN "Delayed" 
+         let force = if tn == sUN "Delayed"
                         then [] -- TMP HACK! Totality checker needs this info
                         else forceArgs ctxt cty'
 
@@ -273,7 +273,7 @@ forceArgs ctxt ty = forceFrom 0 ty
     forceFrom :: Int -> Type -> [Int]
     forceFrom i (Bind n (Pi _ _ _ _) sc)
        = forceFrom (i + 1) (substV (P Ref (sMN i "FF") Erased) sc)
-    forceFrom i sc 
+    forceFrom i sc
         -- Go under the top level type application
         -- We risk affecting erasure of more complex indices, so we'll only
         -- mark something forced if *everything* which appears in an index
@@ -292,14 +292,14 @@ forceArgs ctxt ty = forceFrom 0 ty
     -- Only look under constructors in applications
     findForcePos ap@(App _ f a)
         | (P _ con _, args) <- unApply ap,
-          isDConName con ctxt 
+          isDConName con ctxt
             = nub $ concatMap findForcePos args
     findForcePos _ = []
 
     findNonForcePos fok (P _ (MN i ff) _)
         | ff == txt "FF" = if fok then [] else [i]
     -- Look under non-constructors in applications for things which can't
-    -- be forced 
+    -- be forced
     findNonForcePos fok ap@(App _ f a)
         | (P _ con _, args) <- unApply ap
             = nub $ concatMap (findNonForcePos (fok && isConName con ctxt)) args

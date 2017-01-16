@@ -5,13 +5,14 @@ set -e
 if [ -n "$TRAVIS" ];
 then
     mkdir -p ~/.local/bin
-    export PATH=$HOME/.local/bin:/opt/ghc/8.0.1/bin:$PATH
+    export PATH=$HOME/.local/bin:/opt/ghc/$GHCVER/bin:$PATH
     curl --retry 3 -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-    stack install --resolver lts-7.2 stylish-haskell --no-terminal
+    stack config set system-ghc --global true
+    stack install --resolver "lts-$STACKVER" stylish-haskell --no-terminal
 fi
 
 
-find . -name \*.hs -and \( -not \( -name Setup.hs -or -path ./dist/\* \) \) | xargs stylish-haskell -i > stylish-out 2>&1
+find . -name \*.hs -and \( -not \( -name Setup.hs -or -path ./.cabal-sandbox/\* -or -path ./dist/\* \) \) | xargs stylish-haskell -i > stylish-out 2>&1
 
 # It doesn't do exit codes properly, so we just check if it outputted anything.
 if [ -s stylish-out ];

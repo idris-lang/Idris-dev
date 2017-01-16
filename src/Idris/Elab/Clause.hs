@@ -14,9 +14,9 @@ import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.Execute
-import Idris.Core.WHNF
 import Idris.Core.TT
 import Idris.Core.Typecheck
+import Idris.Core.WHNF
 import Idris.Coverage
 import Idris.DataOpts
 import Idris.DeepSeq
@@ -150,13 +150,13 @@ elabClauses info' fc opts n_in cs =
 
            -- pdef is the compile-time pattern definition, after forcing
            -- optimisation applied to LHS
-           let pdef = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $ 
+           let pdef = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $
                           map debind pats_forced
            -- pdef_cov is the pattern definition without forcing, which
            -- we feed to the coverage checker (we need to know what the
            -- programmer wrote before forcing erasure)
            let pdef_cov
-                    = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $ 
+                    = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $
                           map debind pats_raw
            -- pdef_pe is the one which will get further optimised
            -- for run-time, with no forcing optimisation of the LHS because
@@ -189,7 +189,7 @@ elabClauses info' fc opts n_in cs =
            pmissing <-
                    if cov && not (hasDefault pats_raw)
                       then do -- Generate clauses from the given possible cases
-                              missing <- genClauses fc n 
+                              missing <- genClauses fc n
                                                  (map (\ (ns,tm,_) -> (ns, tm)) pdef)
                                                  cs_full
                               -- missing <- genMissing n scargs sc
@@ -287,8 +287,8 @@ elabClauses info' fc opts n_in cs =
                                       Just Public -> mapM_ (checkVisibility fc n Public Public) calls
                                       _ -> return ()
                                  addCalls n calls
-                                 let rig = if linearArg (whnfArgs ctxt [] ty) 
-                                              then Rig1 
+                                 let rig = if linearArg (whnfArgs ctxt [] ty)
+                                              then Rig1
                                               else RigW
                                  updateContext (setRigCount n (minRig ctxt rig calls))
                                  addIBC (IBCCG n)
@@ -354,7 +354,7 @@ elabClauses info' fc opts n_in cs =
 
     -- Simplify the left hand side of a definition, to remove any lets
     -- that may have arisen during elaboration
-    simple_lhs ctxt (Right (x, y)) 
+    simple_lhs ctxt (Right (x, y))
         = Right (Idris.Core.Evaluate.simplify ctxt [] x, y)
     simple_lhs ctxt t = t
 
@@ -598,12 +598,12 @@ checkPossible info fc tcgen fname lhs_in
                   updateIState $ \i -> i { idris_name = newGName }
                   let lhs_tm = normalise ctxt [] (orderPats (getInferTerm lhs'))
                   let emptyPat = hasEmptyPat ctxt (idris_datatypes i) lhs_tm
-                  if emptyPat then 
+                  if emptyPat then
                      do logElab 10 $ "Empty type in pattern "
                         return Nothing
                     else
                       case recheck (constraintNS info) ctxt' [] (forget lhs_tm) lhs_tm of
-                           OK (tm, _, _) -> 
+                           OK (tm, _, _) ->
                                     do logElab 10 $ "Valid " ++ show tm ++ "\n"
                                                  ++ " from " ++ show lhs
                                        return (Just (delab' i tm True True))
@@ -618,7 +618,7 @@ checkPossible info fc tcgen fname lhs_in
                             if tcgen then returnTm i err (recoverableCoverage ctxt err)
                                   else returnTm i err (validCoverageCase ctxt err ||
                                                  recoverableCoverage ctxt err)
-  where returnTm i err True = do logLvl 10 $ "Possibly resolvable error on " ++ 
+  where returnTm i err True = do logLvl 10 $ "Possibly resolvable error on " ++
                                     pshow i (fmap (normalise (tt_ctxt i) []) err)
                                               ++ " on " ++ showTmImpls lhs_in
                                  return $ Just lhs_in
@@ -637,8 +637,8 @@ checkPossibles info fc tcgen fname (lhs : rest)
         -- check, just remove from the next batch
         let rest' = filter (\x -> not (qmatch x lhs)) (take 200 rest) ++ drop 200 rest
         restpos <- checkPossibles info fc tcgen fname rest'
-        case ok of 
-             Nothing -> return restpos 
+        case ok of
+             Nothing -> return restpos
              Just lhstm -> return (lhstm : restpos)
   where
     qmatch _ Placeholder = True
@@ -647,9 +647,9 @@ checkPossibles info fc tcgen fname (lhs : rest)
             = qmatch f f' && and (zipWith qmatch (map getTm args)
                                                  (map getTm args'))
     qmatch (PRef _ _ n) (PRef _ _ n') = n == n'
-    qmatch (PPair _ _ _ l r) (PPair _ _ _ l' r') = qmatch l l' && qmatch r r' 
-    qmatch (PDPair _ _ _ l t r) (PDPair _ _ _ l' t' r') 
-          = qmatch l l' && qmatch t t' && qmatch r r' 
+    qmatch (PPair _ _ _ l r) (PPair _ _ _ l' r') = qmatch l l' && qmatch r r'
+    qmatch (PDPair _ _ _ l t r) (PDPair _ _ _ l' t' r')
+          = qmatch l l' && qmatch t t' && qmatch r r'
     qmatch x y = x == y
 checkPossibles _ _ _ _ [] = return []
 
@@ -680,12 +680,12 @@ getNamesToUnfold iname ms tm = nub $ iname : getNames Nothing tm ++ ms
         | (f, args) <- unApply fn
              = let under' = case f of
                                  P _ fn _ -> Just fn
-                                 _ -> Nothing 
+                                 _ -> Nothing
                               in
                    getNames under f ++ concatMap (getNames under') args
     getNames (Just under) (P _ ref _)
         = if ref == iname then [under] else []
-    getNames under (Bind n (Let t v) sc) 
+    getNames under (Bind n (Let t v) sc)
         = getNames Nothing t ++
           getNames Nothing v ++
           getNames Nothing sc
@@ -862,13 +862,13 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logElab 3 "DONE CHECK"
         logElab 3 $ "---> " ++ show rhsElab
         ctxt <- getContext
-        
+
         let rhs' = case getUnfolds opts of
-                        Just (n, ms) -> 
+                        Just (n, ms) ->
                            let ns = getNamesToUnfold n ms rhsElab in
                                unfold ctxt [] (map (\n -> (n, 1)) ns) rhsElab
                         _ -> rhsElab
-        
+
         logElab 5 $ "----- " ++ show (getUnfolds opts) ++
                     "\nUnfolded " ++ show rhsElab ++ "\n" ++
                     "to " ++ show rhs'
@@ -1042,7 +1042,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                      Placeholder -> ierror $ At fc $
                           Msg "No expression for the with block to inspect.\nYou need to replace the _ with an expression."
                      _ -> return $
-                            rhs_trans info $ 
+                            rhs_trans info $
                               addImplBound i (map fst bargs) wval_in
         logElab 5 ("Checking " ++ showTmImpls wval)
         -- Elaborate wval in this context
@@ -1070,11 +1070,11 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         mapM_ (elabCaseBlock info opts) is
 
         let wval' = case getUnfolds opts of
-                        Just (n, ms) -> 
+                        Just (n, ms) ->
                            let ns = getNamesToUnfold n ms wvalElab in
                              unfold ctxt [] (map (\n -> (n, 1)) ns) wvalElab
                         _ -> wvalElab
-        
+
         logElab 5 ("Checked wval " ++ show wval')
         logElab 5 $ "----- " ++ show (getUnfolds opts) ++
                     "\nUnfolded wval " ++ show wvalElab ++ "\n" ++
@@ -1155,7 +1155,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                           Just (n, ns) -> [UnfoldIface n ns]
                           _ -> []
         setFlags wname ([Inlinable] ++ uflags)
-        when (AssertTotal `elem` opts) $ 
+        when (AssertTotal `elem` opts) $
            setFlags wname ([Inlinable, AssertTotal] ++ uflags)
         i <- getIState
         let rhstrans' = updateWithTerm i mpn wname lhs (map fst bargs_pre) (map fst (bargs_post))
@@ -1186,18 +1186,18 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                         tt <- get_term
                         return (tt, d, is, ctxt', newDecls, highlights, newGName))
         setContext ctxt'
-        
+
         processTacticDecls info newDecls
         sendHighlighting highlights
         updateIState $ \i -> i { idris_name = newGName }
-        
+
         ctxt <- getContext
         let rhs' = case getUnfolds opts of
-                        Just (n, ms) -> 
+                        Just (n, ms) ->
                            let ns = getNamesToUnfold n ms rhsElab in
                              unfold ctxt [] (map (\n -> (n, 1)) ns) rhsElab
                         _ -> rhsElab
-        
+
         logElab 5 $ "----- " ++ show (getUnfolds opts) ++
                     "\nUnfolded with RHS " ++ show rhsElab ++ "\n" ++
                     "to " ++ show rhs'

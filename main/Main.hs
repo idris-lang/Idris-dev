@@ -1,10 +1,10 @@
 module Main where
 
-import System.Exit ( ExitCode(..), exitWith, exitSuccess )
+import System.Exit (ExitCode(..), exitSuccess, exitWith)
 
-import Control.Monad ( unless, when, (>=>) )
-import Data.Maybe    ( fromMaybe )
-import Data.Foldable ( foldrM )
+import Control.Monad (unless, when, (>=>))
+import Data.Foldable (foldrM)
+import Data.Maybe (fromMaybe)
 
 import Idris.AbsSyntax
 import Idris.CmdOptions
@@ -15,8 +15,8 @@ import Idris.Package
 
 import Util.System (setupBundledCC)
 
-import Util.System ( setupBundledCC )
-import System.Exit ( ExitCode(..), exitWith)
+import System.Exit (ExitCode(..), exitWith)
+import Util.System (setupBundledCC)
 
 processShowOptions :: [Opt] -> Idris ()
 processShowOptions opts = runIO $ do

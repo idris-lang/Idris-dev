@@ -11,9 +11,9 @@ module Idris.Elab.Utils where
 import Idris.AbsSyntax
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
-import Idris.Core.WHNF
 import Idris.Core.TT
 import Idris.Core.Typecheck
+import Idris.Core.WHNF
 import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
@@ -561,7 +561,7 @@ isEmpty ctxt tyctxt ty
     findClash l r
        | (P _ n _, _) <- unApply l,
          (P _ n' _, _) <- unApply r,
-         isConName n ctxt && isConName n' ctxt, n /= n' 
+         isConName n ctxt && isConName n' ctxt, n /= n'
            = True
     findClash (App _ f a) (App _ f' a') = findClash f f' || findClash a a'
     findClash l r = False
@@ -584,16 +584,16 @@ findLinear ist env tm | (P _ f _, args) <- unApply tm,
     findLinArg (Bind n (Pi c _ _ _) sc) (P _ a _ : as)
          | Rig0 <- c = (a, c) : findLinArg sc as
          | Rig1 <- c = (a, c) : findLinArg sc as
-    findLinArg (Bind n (Pi _ _ _ _) sc) (a : as) 
+    findLinArg (Bind n (Pi _ _ _ _) sc) (a : as)
           = findLinArg (whnf (tt_ctxt ist) [] (substV a sc)) as
     findLinArg _ _ = []
-findLinear ist env (App _ f a) 
-    = nub $ findLinear ist env f ++ findLinear ist env a    
+findLinear ist env (App _ f a)
+    = nub $ findLinear ist env f ++ findLinear ist env a
 findLinear ist env (Bind n b sc) = findLinear ist (n : env) sc
 findLinear ist _ _ = []
 
 setLinear :: [(Name, RigCount)] -> Term -> Term
-setLinear ns (Bind n b@(PVar r t) sc) 
+setLinear ns (Bind n b@(PVar r t) sc)
    | Just r <- lookup n ns = Bind n (PVar r t) (setLinear ns sc)
    | otherwise = Bind n b (setLinear ns sc)
 setLinear ns tm = tm
