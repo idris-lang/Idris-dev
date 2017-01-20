@@ -30,7 +30,7 @@ data CodegenFile = CGFile {
 
 -- Update the version when the format changes
 formatVersion :: Int
-formatVersion = 2
+formatVersion = 3
 
 writePortable :: Handle -> CodegenInfo -> IO ()
 writePortable file ci = do
