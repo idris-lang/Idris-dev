@@ -292,8 +292,6 @@ data IState = IState {
   , idris_postulates             :: S.Set Name
   , idris_externs                :: S.Set (Name, Int)
   , idris_erasureUsed            :: [(Name, Int)]                  -- ^ Function/constructor name, argument position is used
-  , idris_whocalls               :: Maybe (M.Map Name [Name])
-  , idris_callswho               :: Maybe (M.Map Name [Name])
 
   -- | List of names that were defined in the repl, and can be re-/un-defined
   , idris_repl_defs              :: [Name]
@@ -413,7 +411,7 @@ idrisInit = IState initContext S.empty []
                    [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Private DefaultCheckingPartial [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty S.empty [] Nothing Nothing [] [] M.empty [] [] []
+                   AutomaticWidth S.empty S.empty [] [] [] M.empty [] [] []
                    emptyContext S.empty M.empty emptyContext initialInteractiveOpts
 
 
