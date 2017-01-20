@@ -74,6 +74,7 @@ compile codegen f mtm = do
         flags <- getFlags codegen
         hdrs <- getHdrs codegen
         impdirs <- allImportDirs
+        ttDeclarations <- getDeclarations reachableNames
         defsIn <- mkDecls reachableNames
         -- if no 'main term' given, generate interface files
         let iface = case mtm of
@@ -119,6 +120,7 @@ compile codegen f mtm = do
                                             hdrs impdirs objs libs flags
                                             NONE c (toAlist defuns)
                                             tagged iface exports
+                                            ttDeclarations
             Error e -> ierror e
   where checkMVs = do i <- getIState
                       case map fst (idris_metavars i) \\ primDefs of
@@ -163,6 +165,12 @@ mkDecls used
          let ds = filter (\(n, d) -> n `elem` used || isCon d) $ ctxtAlist (tt_ctxt i)
          decls <- mapM build ds
          return decls
+
+getDeclarations :: [Name] -> Idris ([(Name, (Def, RigCount, Injectivity, Accessibility, Totality, MetaInformation))])
+getDeclarations used
+    = do i <- getIState
+         let ds = filter (\(n, (d,_,_,_,_,_)) -> n `elem` used || isCon d) $ ((toAlist . definitions . tt_ctxt) i)
+         return ds
 
 showCaseTrees :: [(Name, LDecl)] -> String
 showCaseTrees = showSep "\n\n" . map showCT . sortBy (comparing defnRank)

@@ -9,6 +9,7 @@ Maintainer  : The Idris Community.
 module IRTS.Portable (writePortable) where
 
 import Idris.Core.CaseTree
+import Idris.Core.Evaluate
 import Idris.Core.TT
 import IRTS.Bytecode
 import IRTS.CodegenCommon
@@ -53,7 +54,8 @@ instance ToJSON CodegenInfo where
                         "lift-decls" .= (liftDecls ci),
                         "defun-decls" .= (defunDecls ci),
                         "simple-decls" .= (simpleDecls ci),
-                        "bytecode" .= (map toBC (simpleDecls ci))]
+                        "bytecode" .= (map toBC (simpleDecls ci)),
+                        "tt-decls" .= (ttDecls ci)]
 
 instance ToJSON Name where
     toJSON n = toJSON $ showCG n
@@ -279,3 +281,18 @@ instance ToJSON Reg where
     toJSON (T i) = object ["T" .= i]
     toJSON (L i) = object ["L" .= i]
     toJSON Tmp = object ["Tmp" .= Null]
+
+instance ToJSON RigCount where
+    toJSON r = object ["RigCount" .= show r]
+
+instance ToJSON Totality where
+    toJSON t = object ["Totality" .= show t]
+
+instance ToJSON MetaInformation where
+    toJSON m = object ["MetaInformation" .= show m]
+
+instance ToJSON Def where
+    toJSON d = object ["Def" .= show d]
+
+instance ToJSON Accessibility where
+    toJSON a = object ["Accessibility" .= show a]

@@ -8,6 +8,7 @@ Maintainer  : The Idris Community.
 -}
 module IRTS.CodegenCommon where
 
+import Idris.Core.Evaluate
 import Idris.Core.TT
 import IRTS.Defunctionalise
 import IRTS.Simplified
@@ -39,6 +40,7 @@ data CodegenInfo = CodegenInfo {
   , liftDecls     :: [(Name, LDecl)]
   , interfaces    :: Bool
   , exportDecls   :: [ExportIFace]
+  , ttDecls       :: [(Name, (Def, RigCount, Injectivity, Accessibility, Totality, MetaInformation))]
   }
 
 type CodeGenerator = CodegenInfo -> IO ()
