@@ -40,7 +40,7 @@ data CodegenInfo = CodegenInfo {
   , liftDecls     :: [(Name, LDecl)]
   , interfaces    :: Bool
   , exportDecls   :: [ExportIFace]
-  , ttDecls       :: [(Name, (Def, RigCount, Injectivity, Accessibility, Totality, MetaInformation))]
+  , ttDecls       :: [(Name, TTDecl)]
   }
 
 type CodeGenerator = CodegenInfo -> IO ()

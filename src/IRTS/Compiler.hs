@@ -166,7 +166,7 @@ mkDecls used
          decls <- mapM build ds
          return decls
 
-getDeclarations :: [Name] -> Idris ([(Name, (Def, RigCount, Injectivity, Accessibility, Totality, MetaInformation))])
+getDeclarations :: [Name] -> Idris ([(Name, TTDecl)])
 getDeclarations used
     = do i <- getIState
          let ds = filter (\(n, (d,_,_,_,_,_)) -> n `elem` used || isCon d) $ ((toAlist . definitions . tt_ctxt) i)
