@@ -6,7 +6,6 @@ import Data.Sign
 %default total
 %access public export
 
-
 ||| An integer is either a positive `Nat` or the negated successor of a `Nat`.
 |||
 ||| For example, 3 is `Pos 3` and -2 is `NegS 1`. Zero is arbitrarily chosen
@@ -51,7 +50,6 @@ implementation Eq ZZ where
   (NegS n) == (NegS m) = n == m
   _ == _ = False
 
-
 implementation Ord ZZ where
   compare (Pos n) (Pos m) = compare n m
   compare (NegS n) (NegS m) = compare m n
@@ -92,14 +90,12 @@ mutual
   subZ : ZZ -> ZZ -> ZZ
   subZ n m = plusZ n (negate m)
 
-
 implementation Cast ZZ Integer where
   cast (Pos n) = cast n
   cast (NegS n) = (-1) * (cast n + 1)
 
 implementation Cast Integer ZZ where
   cast = fromInteger
-
 
 --------------------------------------------------------------------------------
 -- Properties
@@ -141,6 +137,7 @@ implementation DecEq ZZ where
     | No p = No $ \h => p $ negSInjective h
 
 -- Plus
+
 plusZeroLeftNeutralZ : (right : ZZ) -> 0 + right = right
 plusZeroLeftNeutralZ (Pos n) = Refl
 plusZeroLeftNeutralZ (NegS n) = Refl
@@ -213,3 +210,144 @@ plusAssociativeZ (Pos k) c r = lemmaAssocPos k c r
 plusAssociativeZ (NegS k) c r = rewrite sym $ doubleNegElim c in
                                 rewrite sym $ doubleNegElim r in
                                 lemmaAssocNegation k (negate c) (negate r) (lemmaAssocPos (S k) (negate c) (negate r))
+
+lemmaMinusSymmZero : (k : Nat) -> minusNatZ k k = Pos 0
+lemmaMinusSymmZero Z = Refl
+lemmaMinusSymmZero (S k) = let ind = lemmaMinusSymmZero k in
+                           rewrite ind in Refl
+
+plusNegateInverseLZ : (a : ZZ) -> a + negate a = Pos Z
+plusNegateInverseLZ (Pos Z) = Refl
+plusNegateInverseLZ (Pos (S k)) = rewrite lemmaMinusSymmZero k in Refl
+plusNegateInverseLZ (NegS k) = rewrite lemmaMinusSymmZero k in Refl
+
+plusNegateInverseRZ : (a : ZZ) -> negate a + a = Pos Z
+plusNegateInverseRZ (Pos Z) = Refl
+plusNegateInverseRZ (Pos (S k)) = rewrite lemmaMinusSymmZero k in Refl
+plusNegateInverseRZ (NegS k) = rewrite lemmaMinusSymmZero k in Refl
+
+-- Mult
+multZeroLeftZeroZ : (right : ZZ) -> (Pos Z) * right = (Pos Z)
+multZeroLeftZeroZ (Pos k) = Refl
+multZeroLeftZeroZ (NegS k) = Refl
+
+multZeroRightZeroZ : (left : ZZ) -> left * (Pos Z) = (Pos Z)
+multZeroRightZeroZ (Pos k) = rewrite multZeroRightZero k in Refl
+multZeroRightZeroZ (NegS k) = rewrite multZeroRightZero k in Refl
+
+multOneLeftNeutralZ : (right : ZZ) -> 1 * right = right
+multOneLeftNeutralZ (Pos k) = rewrite plusZeroRightNeutral k in Refl
+multOneLeftNeutralZ (NegS k) = rewrite plusZeroRightNeutral k in Refl
+
+multOneRightNeutralZ : (left : ZZ) -> left * 1 = left
+multOneRightNeutralZ (Pos Z) = Refl
+multOneRightNeutralZ (Pos (S k)) = cong $ multOneRightNeutral (S k)
+multOneRightNeutralZ (NegS k) = cong $ multOneRightNeutral k
+
+multCommutativeZ : (left : ZZ) -> (right : ZZ) -> (left * right = right * left)
+multCommutativeZ (Pos k) (Pos j) = cong $ multCommutative k j
+multCommutativeZ (Pos k) (NegS j) = rewrite multCommutative j k in
+                                    cong $ multRightSuccPlus k j
+multCommutativeZ (NegS k) (Pos j) = rewrite multCommutative j (S k) in Refl
+multCommutativeZ (NegS k) (NegS j) = cong $ multCommutative (S k) (S j)
+
+lemmaPosMultNegNat : (k, j : Nat) -> multZ (Pos k) (negNat j) = negNat (mult k j)
+lemmaPosMultNegNat k Z = rewrite multZeroRightZero k in Refl
+lemmaPosMultNegNat k (S j) = Refl
+
+lemmaNegMultNegNat : (k, j : Nat) -> multZ (NegS k) (negNat j) = multZ (Pos (S k)) (Pos j)
+lemmaNegMultNegNat k Z = rewrite multZeroRightZero k in Refl
+lemmaNegMultNegNat k (S j) = Refl
+
+lemmaNegatePosNegNat : (k : Nat) -> negate (Pos k) = negNat k
+lemmaNegatePosNegNat Z = Refl
+lemmaNegatePosNegNat (S k) = Refl
+
+multNegLeftZ : (k : Nat) -> (j : ZZ) -> (NegS k) * j = negate (Pos (S k) * j)
+multNegLeftZ k (Pos j) = rewrite lemmaNegatePosNegNat ((S k) * j) in Refl
+multNegLeftZ k (NegS j) = Refl
+
+multNegateLeftZ : (k, j : ZZ) -> (negate k) * j = negate (k * j)
+multNegateLeftZ (Pos Z) j = rewrite multZeroLeftZeroZ j in Refl
+multNegateLeftZ (Pos (S k)) (Pos j) = rewrite lemmaNegatePosNegNat ((S k) * j) in Refl
+multNegateLeftZ (Pos (S k)) (NegS j) = Refl
+multNegateLeftZ (NegS k) j = rewrite sym $ doubleNegElim (multZ (Pos (S k)) j) in
+                             rewrite multNegLeftZ k j in Refl
+
+multAssociativeZPos : (k : Nat) -> (c, r : ZZ) -> (Pos k) * (c * r) = ((Pos k) * c) * r
+multAssociativeZPos k (Pos j) (Pos i) = cong $ multAssociative k j i
+multAssociativeZPos k (Pos j) (NegS i) = rewrite sym $ multAssociative k j (S i) in lemmaPosMultNegNat k (mult j (S i))
+multAssociativeZPos k (NegS j) (Pos i) = rewrite multCommutative j i in
+                                         rewrite sym $ multRightSuccPlus i j in
+                                         rewrite lemmaPosMultNegNat k (mult i (S j)) in
+                                         rewrite multCommutativeZ (negNat (mult k (S j))) (Pos i) in
+                                         rewrite lemmaPosMultNegNat i (mult k (S j)) in
+                                         rewrite multAssociative k i (S j) in
+                                         rewrite multAssociative i k (S j) in
+                                         rewrite multCommutative i k in Refl
+multAssociativeZPos k (NegS j) (NegS i) = rewrite multCommutativeZ (negNat (mult k (S j))) (NegS i) in
+                                          rewrite lemmaNegMultNegNat i (mult k (S j)) in
+                                          rewrite multAssociative k (S j) (S i) in
+                                          rewrite multCommutative (mult k (S j)) (S i) in Refl
+
+multAssociativeZ : (l, c, r : ZZ) -> l * (c * r) = (l * c) * r
+multAssociativeZ (Pos k) c r = multAssociativeZPos k c r
+multAssociativeZ (NegS k) c r = rewrite multNegLeftZ k (c * r) in
+                                rewrite multNegLeftZ k c in
+                                rewrite multNegateLeftZ (multZ (Pos (S k)) c) r in
+                                cong $ multAssociativeZPos (S k) c r
+
+lemmaPlusPosNegCancel : (k, j, i : Nat) -> plusZ (Pos (plus k j)) (negNat (plus k i)) = plusZ (Pos j) (negNat i)
+lemmaPlusPosNegCancel Z j i = Refl
+lemmaPlusPosNegCancel (S Z) j Z = rewrite plusZeroRightNeutral j in Refl
+lemmaPlusPosNegCancel (S Z) j (S i) = Refl
+lemmaPlusPosNegCancel (S (S k)) j i = lemmaPlusPosNegCancel (S k) j i
+
+lemmaPlusPosNegZero : (k : Nat) -> plusZ (Pos k) (negNat k) = Pos Z
+lemmaPlusPosNegZero Z = Refl
+lemmaPlusPosNegZero (S k) = rewrite lemmaMinusSymmZero k in Refl
+
+negNatDistributesPlus : (j, k : Nat) -> plusZ (negNat j) (negNat k) = negNat (plus j k)
+negNatDistributesPlus Z k = rewrite plusZeroLeftNeutralZ (negNat k) in Refl
+negNatDistributesPlus (S j) Z = rewrite plusZeroRightNeutral j in Refl
+negNatDistributesPlus (S j) (S k) = rewrite plusSuccRightSucc j k in Refl
+
+-- Distributivity
+
+multDistributesOverPlusRightPosPosZ : (l, c : Nat) -> (r : ZZ) -> (Pos l) * ((Pos c) + r) = ((Pos l) * (Pos c)) + ((Pos l) * r)
+multDistributesOverPlusRightPosPosZ l c (Pos i) = rewrite multDistributesOverPlusRight l c i in Refl
+multDistributesOverPlusRightPosPosZ l Z (NegS i) = rewrite multZeroRightZero l in
+                                                   rewrite plusZeroLeftNeutralZ (negNat (mult l (S i))) in Refl
+multDistributesOverPlusRightPosPosZ l (S c) (NegS Z) = rewrite multOneRightNeutral l in
+                                                       rewrite multRightSuccPlus l c in
+                                                       rewrite sym $ plusAssociativeZ (Pos l) (Pos (mult l c)) (negNat l) in
+                                                       rewrite plusCommutativeZ (Pos (mult l c)) (negNat l) in
+                                                       rewrite plusAssociativeZ (Pos l) (negNat l) (Pos (mult l c)) in
+                                                       rewrite lemmaPlusPosNegZero l in Refl
+multDistributesOverPlusRightPosPosZ l (S c) (NegS (S i)) = let ind = multDistributesOverPlusRightPosPosZ l (assert_smaller (S c) c) (assert_smaller (NegS (S i)) (NegS i)) in
+                                                           rewrite ind in
+                                                           rewrite multRightSuccPlus l (S i) in
+                                                           rewrite multRightSuccPlus l c in
+                                                           rewrite lemmaPlusPosNegCancel l (mult l c) (mult l (S i)) in Refl
+
+multDistributesOverPlusRightPosZ : (k : Nat) -> (c, r : ZZ) -> (Pos k) * (c + r) = ((Pos k) * c) + ((Pos k) * r)
+multDistributesOverPlusRightPosZ k (Pos j) r = multDistributesOverPlusRightPosPosZ k j r
+multDistributesOverPlusRightPosZ k (NegS j) (Pos i) = rewrite plusCommutativeZ ((Pos k) * (NegS j)) ((Pos k) * (Pos i)) in
+                                                      rewrite multDistributesOverPlusRightPosPosZ k i (NegS j) in Refl
+multDistributesOverPlusRightPosZ k (NegS j) (NegS i) = rewrite negNatDistributesPlus (mult k (S j)) (mult k (S i)) in
+                                                       rewrite sym $ multDistributesOverPlusRight k (S j) (S i) in
+                                                       rewrite plusSuccRightSucc j i in Refl
+
+multDistributesOverPlusRightZ : (l, c, r : ZZ) -> l * (c + r) = (l * c) + (l * r)
+multDistributesOverPlusRightZ (Pos k) c r = multDistributesOverPlusRightPosZ k c r
+multDistributesOverPlusRightZ (NegS k) c r = rewrite multNegLeftZ k (plusZ c r) in
+                                             rewrite multNegLeftZ k c in
+                                             rewrite multNegLeftZ k r in
+                                             rewrite sym $ negateDistributesPlus (multZ (Pos (S k)) c) (multZ (Pos (S k)) r) in
+                                             rewrite multDistributesOverPlusRightPosZ (S k) c r in Refl
+
+multDistributesOverPlusLeftZ : (l, c, r : ZZ) -> (l + c) * r = (l * r) + (c * r)
+multDistributesOverPlusLeftZ l c r = rewrite multCommutativeZ (l + c) r in
+                                     rewrite multDistributesOverPlusRightZ r l c in
+                                     rewrite multCommutativeZ r l in
+                                     rewrite multCommutativeZ r c in Refl
