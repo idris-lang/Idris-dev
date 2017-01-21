@@ -14,7 +14,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 rt_simplify, simplify, inlineSmall,
                 specialise, unfold, convEq, convEq',
                 Def(..), CaseInfo(..), CaseDefs(..),
-                Accessibility(..), Injectivity, Totality(..), PReason(..), MetaInformation(..),
+                Accessibility(..), Injectivity, Totality(..), TTDecl, PReason(..), MetaInformation(..),
                 Context, initContext, ctxtAlist, next_tvar,
                 addToCtxt, setAccess, setInjective, setTotal, setRigCount,
                 setMetaInformation, addCtxtDef, addTyDecl,
@@ -872,9 +872,10 @@ data MetaInformation =
 -- 1 in a RigW, for example)
 data Context = MkContext {
                   next_tvar       :: Int,
-                  definitions     :: Ctxt (Def, RigCount, Injectivity, Accessibility, Totality, MetaInformation)
+                  definitions     :: Ctxt TTDecl
                 } deriving (Show, Generic)
 
+type TTDecl = (Def, RigCount, Injectivity, Accessibility, Totality, MetaInformation)
 
 -- | The initial empty context
 initContext = MkContext 0 emptyContext
