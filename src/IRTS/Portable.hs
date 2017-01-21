@@ -292,7 +292,73 @@ instance ToJSON MetaInformation where
     toJSON m = object ["MetaInformation" .= show m]
 
 instance ToJSON Def where
-    toJSON d = object ["Def" .= show d]
+    toJSON (Function ty tm) = object ["Function" .= (ty, tm)]
+    toJSON (TyDecl nm ty) = object ["TyDecl" .= (nm, ty)]
+    toJSON (Operator ty n f) = Null -- Operator and CaseOp omits same values as in IBC.hs
+    toJSON (CaseOp info ty argTy _ _ cdefs) = object ["CaseOp" .= (info, ty, argTy, cdefs)]
+
+instance (ToJSON t) => ToJSON (TT t) where
+    toJSON (P nt name term) = object ["P" .= (nt, name, term)]
+    toJSON (V n) = object ["V" .= n]
+    toJSON (Bind n b tt) = object ["Bind" .= (n, b, tt)]
+    toJSON (App s t1 t2) = object ["App" .= (s, t1, t2)]
+    toJSON (Constant c) = object ["Constant" .= c]
+    toJSON (Proj tt n) = object ["Proj" .= (tt, n)]
+    toJSON Erased = object ["Erased" .= Null]
+    toJSON Impossible = object ["Impossible" .= Null]
+    toJSON (Inferred tt) = object ["Inferred" .= tt]
+    toJSON (TType u) = object ["TType" .= u]
+    toJSON (UType u) = object ["UType" .= (show u)]
+
+instance ToJSON UExp where
+    toJSON (UVar src n) = object ["UVar" .= (src, n)]
+    toJSON (UVal n) = object ["UVal" .= n]
+
+
+instance (ToJSON t) => ToJSON (AppStatus t) where
+    toJSON Complete = object ["Complete" .= Null]
+    toJSON MaybeHoles = object ["MaybeHoles" .= Null]
+    toJSON (Holes ns) = object ["Holes" .= ns]
+
+instance (ToJSON t) => ToJSON (Binder t) where
+    toJSON (Lam rc bty) = object ["Lam" .= (rc, bty)]
+    toJSON (Pi c i t k) = object ["Pi" .= (c, i, t, k)]
+    toJSON (Let t v) = object ["Let" .= (t, v)]
+    toJSON (NLet t v) = object ["NLet" .= (t, v)]
+    toJSON (Hole t) = object ["Hole" .= (t)]
+    toJSON (GHole l ns t) = object ["GHole" .= (l, ns, t)]
+    toJSON (Guess t v) = object ["Guess" .= (t, v)]
+    toJSON (PVar rc t) = object ["PVar" .= (rc, t)]
+    toJSON (PVTy t) = object ["PVTy" .= (t)]
+
+instance ToJSON ImplicitInfo where
+    toJSON (Impl a b c) = object ["Impl" .= (a, b, c)]
+
+instance ToJSON NameType where
+    toJSON Bound = object ["Bound" .= Null]
+    toJSON Ref = object ["Ref" .= Null]
+    toJSON (DCon a b c) = object ["DCon" .= (a, b, c)]
+    toJSON (TCon a b) = object ["TCon" .= (a, b)]
+
+instance ToJSON CaseDefs where
+    toJSON (CaseDefs rt ct) = object ["Runtime" .= rt, "Compiletime" .= ct]
+
+instance (ToJSON t) => ToJSON (SC' t) where
+    toJSON (Case ct n alts) = object ["Case" .= (ct, n, alts)]
+    toJSON (ProjCase t alts) = object ["ProjCase" .= (t, alts)]
+    toJSON (STerm t) = object ["STerm" .= t]
+    toJSON (UnmatchedCase s) = object ["UnmatchedCase" .= s]
+    toJSON ImpossibleCase = object ["ImpossibleCase" .= Null]
+
+instance (ToJSON t) => ToJSON (CaseAlt' t) where
+    toJSON (ConCase n c ns sc) = object ["ConCase" .= (n, c, ns, sc)]
+    toJSON (FnCase n ns sc) = object ["FnCase" .= (n, ns, sc)]
+    toJSON (ConstCase c sc) = object ["ConstCase" .= (c, sc)]
+    toJSON (SucCase n sc) = object ["SucCase" .= (n, sc)]
+    toJSON (DefaultCase sc) = object ["DefaultCase" .=  sc]
+
+instance ToJSON CaseInfo where
+    toJSON (CaseInfo a b c) = object ["CaseInfo" .= (a, b, c)]
 
 instance ToJSON Accessibility where
     toJSON a = object ["Accessibility" .= show a]
