@@ -233,7 +233,7 @@ possible to give hints to the checker to give more detail for a termination
 argument. The checker works by ensuring that all chains of recursive calls
 eventually lead to one of the arguments decreasing towards a base case, but
 sometimes this is hard to spot. For example, the following definition cannot be
-checked as ``total`` because the checker cannot decide that ``filter (<= x) xs``
+checked as ``total`` because the checker cannot decide that ``filter (< x) xs``
 will always be smaller than ``(x :: xs)``:
 
 .. code-block:: idris
