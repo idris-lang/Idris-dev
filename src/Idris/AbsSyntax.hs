@@ -502,9 +502,10 @@ addInterface :: Name -> InterfaceInfo -> Idris ()
 addInterface n i
    = do ist <- getIState
         let i' = case lookupCtxt n (idris_interfaces ist) of
-                      [c] -> c { interface_implementations = interface_implementations i }
+                      [c] -> i { interface_implementations = interface_implementations c ++ 
+                                                             interface_implementations i }
                       _ -> i
-        putIState $ ist { idris_interfaces = addDef n i' (idris_interfaces ist) }
+        putIState $ ist { idris_interfaces = addDef n i (idris_interfaces ist) }
 
 addRecord :: Name -> RecordInfo -> Idris ()
 addRecord n ri = do ist <- getIState
@@ -1927,7 +1928,8 @@ addImpl' inpat env infns imp_meths ist ptm
     ai inpat qq env ds (PPi p n nfc ty sc)
       = let ty' = ai inpat qq env ds ty
             env' = if n `elem` imp_meths then env
-                      else ((n, Just ty) : env)
+                      else 
+                      ((n, Just ty) : env)
             sc' = ai inpat qq env' ds sc in
             PPi p n nfc ty' sc'
     ai inpat qq env ds (PGoal fc r n sc)
@@ -2168,8 +2170,12 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
        -- check will not necessarily fully resolve constructor names,
        -- and these bare names will otherwise get in the way of
        -- impossbility checking.
-       | canBeDConName fn ctxt
+       | -- Just fn <- getFn f,
+         canBeDConName fn ctxt
           = PApp fc f (fmap (fmap su) args)
+      where getFn (PRef _ _ fn) = Just fn
+            getFn (PApp _ f args) = getFn f
+            getFn _ = Nothing
     su (PApp fc f args)
           = PHidden (PApp fc f args)
     su (PAlternative ms b alts)
@@ -2379,6 +2385,8 @@ substMatchesShadow nmap shs t = sm shs t where
                    PPi p x' fc (sm (x':xs) (substMatch x (PRef emptyFC [] x') t))
                                (sm (x':xs) (substMatch x (PRef emptyFC [] x') sc))
          | otherwise = PPi p x fc (sm xs t) (sm (x : xs) sc)
+    sm xs (PLet fc x xfc val t sc) 
+         = PLet fc x xfc (sm xs val) (sm xs t) (sm xs sc)
     sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
     sm xs (PIfThenElse fc c t f) = PIfThenElse fc (sm xs c) (sm xs t) (sm xs f)

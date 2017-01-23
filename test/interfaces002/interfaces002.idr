@@ -1,10 +1,9 @@
 import Data.Vect
 
 %default total
-  
+
 interface ArrayM where
   Array : (n : Nat) -> (a : Type) -> Type
-  
   create : (n : Nat) -> a -> Array n a
 
   lkp : (i : Nat) -> (prf : LTE (S i) n) -> Array n a -> a
@@ -37,5 +36,3 @@ testSum = sumArray
 
 main : IO ()
 main = printLn (testSum (upd 11 1 (LTESucc (LTESucc LTEZero)) (create 4 10)))
-
-

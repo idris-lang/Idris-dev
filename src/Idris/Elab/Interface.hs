@@ -106,6 +106,12 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                  concatMap (namesIn [] ist) (map snd constraints)
 
          mapM_ (checkConstraintName (map (\(x, _, _) -> x) ps)) constraintNames
+         
+         let pre_ddecl = PLaterdecl tn NoFC tty
+         -- Elaborate the interface header
+         elabData info (syn { no_imp = no_imp syn ++ mnames,
+                              imp_methods = mnames }) doc pDocs fc [] pre_ddecl
+         dets <- findDets tn (map fst fds)
 
          logElab 2 $ "Building methods " ++ show mnames
          ims <- mapM (tdecl impps mnames) mdecls
@@ -114,7 +120,20 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let (methods, imethods)
               = unzip (map (\ (x, y, z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
-
+         
+         addInterface tn (CI cn (map nodoc imethods) defaults idecls
+                              (map (\(n, _, _) -> n) impps)
+                              (map (\(n, _, _) -> n) ps)
+                              (map snd constraints)
+                              [] dets)
+         
+         -- for each constraint, build a top level function to chase it
+         -- elaborate types now, bodies later (after we've done the constructor
+         -- of the interface)
+         cfns <- mapM (cfun cn constraint syn (map fst imethods)) constraints
+         let (cfnTyDecls, cfnDefs) = unzip cfns
+         mapM_ (rec_elabDecl info EAll info) cfnTyDecls
+         
          -- build implementation constructor type
          let cty = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $ conbind constraints
                       $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
@@ -125,26 +144,27 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
          logElab 5 $ "Interface " ++ show (showDImp verbosePPOption ddecl)
 
+         -- for each method, build a top level function
+         -- 'tfun' builds appropriate implicits for the constructor
+         -- declaration
+         fns <- mapM (tfun cn constraint (syn { imp_methods = mnames }) -- mnames })
+                           (map fst imethods)) imethods
+         let (fnTyDecls, fnDefs) = unzip fns
+
          -- Elaborate the data declaration
          elabData info (syn { no_imp = no_imp syn ++ mnames,
                               imp_methods = mnames }) doc pDocs fc [] ddecl
-         dets <- findDets cn (map fst fds)
-         addInterface tn (CI cn (map nodoc imethods) defaults idecls
-                              (map (\(n, _, _) -> n) impps)
-                              (map (\(n, _, _) -> n) ps)
-                              (map snd constraints)
-                              [] dets)
 
-         -- for each constraint, build a top level function to chase it
-         cfns <- mapM (cfun cn constraint syn (map fst imethods)) constraints
-         mapM_ (rec_elabDecl info EAll info) (concat cfns)
+         mapM_ (rec_elabDecl info EAll info) fnTyDecls
 
-         -- for each method, build a top level function
-         fns <- mapM (tfun cn constraint (syn { imp_methods = mnames })
-                           (map fst imethods)) imethods
-         logElab 5 $ "Functions " ++ show fns
-         -- Elaborate the the top level methods
-         mapM_ (rec_elabDecl info EAll info) (concat fns)
+         logElab 5 $ "Function types " ++ show fnTyDecls
+         logElab 5 $ "Method types now: " ++ show imethods
+
+         -- Elaborate the the top level constraint chasers
+         -- (Types elaborated earlier)
+         mapM_ (rec_elabDecl info EAll info) cfnDefs
+         -- Elaborate the the top level method bodies
+         mapM_ (rec_elabDecl info EAll info) fnDefs
 
          -- Flag all the top level data declarations as injective
          mapM_ (\n -> do setInjectivity n True
@@ -207,7 +227,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     tdecl impps allmeths (PTy doc _ syn _ o n nfc t)
            = do t' <- implicit' info syn (map (\(n, _, _) -> n) (impps ++ ps) ++ allmeths) n t
-                logElab 2 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
+                logElab 1 $ "Method " ++ show n ++ " : " ++ showTmImpls t'
                 return ( (n, (toExp (map (\(pn, _, _) -> pn) ps) Exp t')),
                          (n, (False, nfc, doc, o, (toExp (map (\(pn, _, _) -> pn) ps)
                                               (\ l s p r -> Imp l s p Nothing True r) t'))),
@@ -249,7 +269,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     clause _ = False
 
     -- Generate a function for chasing a dictionary constraint
-    cfun :: Name -> PTerm -> SyntaxInfo -> [a] -> (Name, PTerm) -> Idris [PDecl' PTerm]
+    cfun :: Name -> PTerm -> SyntaxInfo -> [a] -> (Name, PTerm) -> Idris (PDecl, PDecl)
     cfun cn c syn all (cnm, con)
         = do let cfn = SN (ParentN cn (txt (show con)))
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
@@ -269,8 +289,8 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              addImplementation False True conn' cfn
              addIBC (IBCImplementation False True conn' cfn)
 --              iputStrLn ("Added " ++ show (conn, cfn, ty))
-             return [PTy emptyDocstring [] syn fc [] cfn NoFC ty,
-                     PClauses fc [Inlinable, Dictionary] cfn [PClause fc cfn lhs [] rhs []]]
+             return (PTy emptyDocstring [] syn fc [] cfn NoFC ty,
+                     PClauses fc [Inlinable, Dictionary] cfn [PClause fc cfn lhs [] rhs []])
 
     -- | Generate a top level function which looks up a method in a given
     -- dictionary (this is inlinable, always)
@@ -279,7 +299,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          -> SyntaxInfo -> [Name] -- ^ All the method names
          -> (Name, (Bool, FC, Docstring (Either Err PTerm), FnOpts, PTerm))
             -- ^ The present declaration
-         -> Idris [PDecl]
+         -> Idris (PDecl, PDecl)
     tfun cn c syn all (m, (isdata, mfc, doc, o, ty))
         = do let ty' = expandMethNS syn (insertConstraint c all ty)
              let mnames = take (length all) $ map (\x -> sMN x "meth") [0..]
@@ -291,8 +311,15 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              logElab 2 ("Top level type: " ++ showTmImpls ty')
              logElab 1 (show (m, ty', capp, margs))
              logElab 2 ("Definition: " ++ showTmImpls lhs ++ " = " ++ showTmImpls rhs)
-             return [PTy doc [] syn fc o m mfc ty',
-                     PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []]]
+             return (PTy doc [] syn fc o m mfc ty',
+                     PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []])
+
+    updateIMethod :: [(Name, PTerm)] -> 
+                     (Name, (a, b, c, d, PTerm)) ->     
+                     (Name, (a, b, c, d, PTerm))
+    updateIMethod ns tm@(n, (isf, mfc, doc, o, ty))
+       | Just ty' <- lookup (nsroot n) ns = (n, (isf, mfc, doc, o, ty'))
+       | otherwise = tm
 
     getMArgs (PPi (Imp _ _ _ _ _ _) n _ ty sc) = IA n : getMArgs sc
     getMArgs (PPi (Exp _ _ _ _) n _ ty sc) = EA n : getMArgs sc
