@@ -590,7 +590,8 @@ splitName s = case reverse $ splitOn "." s of
 idemodeProcess :: FilePath -> Command -> Idris ()
 idemodeProcess fn Warranty = process fn Warranty
 idemodeProcess fn Help = process fn Help
-idemodeProcess fn (RunShellCommand cmd) = process fn (RunShellCommand cmd)
+idemodeProcess fn (RunShellCommand cmd) =
+  iPrintError ":! is not currently supported in IDE mode."
 idemodeProcess fn (ChangeDirectory f) =
   do process fn (ChangeDirectory f)
      dir <- runIO $ getCurrentDirectory
