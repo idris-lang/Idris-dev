@@ -590,6 +590,7 @@ splitName s = case reverse $ splitOn "." s of
 idemodeProcess :: FilePath -> Command -> Idris ()
 idemodeProcess fn Warranty = process fn Warranty
 idemodeProcess fn Help = process fn Help
+idemodeProcess fn (RunShellCommand cmd) = process fn (RunShellCommand cmd)
 idemodeProcess fn (ChangeDirectory f) =
   do process fn (ChangeDirectory f)
      dir <- runIO $ getCurrentDirectory
@@ -817,6 +818,7 @@ insertScript prf (x : xs) = x : insertScript prf xs
 process :: FilePath -> Command -> Idris ()
 process fn Help = iPrintResult displayHelp
 process fn Warranty = iPrintResult warranty
+process fn (RunShellCommand cmd) = runIO $ system cmd >> return ()
 process fn (ChangeDirectory f)
                  = do runIO $ setCurrentDirectory f
                       return ()

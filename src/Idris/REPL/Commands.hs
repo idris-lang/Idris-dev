@@ -17,6 +17,7 @@ data Command = Quit
              | Reload
              | Watch
              | Load FilePath (Maybe Int) -- up to maximum line number
+             | RunShellCommand FilePath
              | ChangeDirectory FilePath
              | ModImport String
              | Edit
