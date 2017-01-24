@@ -316,10 +316,10 @@ addTyInfConstraints fc ts = do logLvl 2 $ "TI missing: " ++ show ts
               do let (fx, _) = unApply x
                  let (fy, _) = unApply y
                  case (fx, fy) of
-                      (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n) -- XXX: n' is unused. Should this be errWhen (n /= n')?
+                      (P (TCon _ _) n _, P (TCon _ _) n' _) -> errWhen (n/=n')
                       (P (TCon _ _) n _, Constant _) -> errWhen True
                       (Constant _, P (TCon _ _) n' _) -> errWhen True
-                      (P (DCon _ _ _) n _, P (DCon _ _ _) n' _) -> errWhen (n/=n) -- XXX: n' is unused. Should this be errWhen (n /= n')?
+                      (P (DCon _ _ _) n _, P (DCon _ _ _) n' _) -> errWhen (n/=n')
                       _ -> return ()
 
               where errWhen True
