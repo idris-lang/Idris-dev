@@ -63,7 +63,7 @@ data ElabInfo = EInfo {
   , elabFC    :: Maybe FC
   , constraintNS :: String        -- ^ filename for adding to constraint variables
   , pe_depth  :: Int
-
+  , noCaseLift :: [Name]         -- ^ types which shouldn't be made arguments to case
   -- | We may, recursively, collect transformations to do on the rhs,
   -- e.g. rewriting recursive calls to functions defined by 'with'
   , rhs_trans :: PTerm -> PTerm
@@ -71,10 +71,10 @@ data ElabInfo = EInfo {
   }
 
 toplevel :: ElabInfo
-toplevel = EInfo [] emptyContext id [] Nothing "(toplevel)" 0 id (\_ _ _ -> fail "Not implemented")
+toplevel = EInfo [] emptyContext id [] Nothing "(toplevel)" 0 [] id (\_ _ _ -> fail "Not implemented")
 
 toplevelWith :: String -> ElabInfo
-toplevelWith ns = EInfo [] emptyContext id [] Nothing ns 0 id (\_ _ _ -> fail "Not implemented")
+toplevelWith ns = EInfo [] emptyContext id [] Nothing ns 0 [] id (\_ _ _ -> fail "Not implemented")
 
 eInfoNames :: ElabInfo -> [Name]
 eInfoNames info = map fst (params info) ++ M.keys (inblock info)

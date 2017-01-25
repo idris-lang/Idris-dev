@@ -68,7 +68,7 @@ import Debug.Trace
 
 -- | Top level elaborator info, supporting recursive elaboration
 recinfo :: FC -> ElabInfo
-recinfo fc = EInfo [] emptyContext id [] (Just fc) (fc_fname fc) 0 id elabDecl'
+recinfo fc = EInfo [] emptyContext id [] (Just fc) (fc_fname fc) 0 [] id elabDecl'
 
 -- | Return the elaborated term which calls 'main'
 elabMain :: Idris Term

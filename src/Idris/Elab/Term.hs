@@ -1097,7 +1097,7 @@ elab ist info emode opts fn tm
              ptm <- get_term
              let inOpts = (filter (/= scvn) (map fstEnv args)) \\ (concatMap (\x -> allNamesIn (snd x)) opts)
 
-             let argsDropped = filter (\t -> isUnique envU t || isConstraint args t)
+             let argsDropped = filter (\t -> isUnique envU t || isNotLift args t)
                                    (nub $ allNamesIn scr ++ inApp ptm ++
                                     inOpts)
 
@@ -1168,9 +1168,13 @@ elab ist info emode opts fn tm
                          _ -> False
               tcName _ = False
 
-              isConstraint env n = case lookupBinder n env of
-                                        Just ty -> False -- tcName (binderTy ty)
-                                        _ -> False
+              isNotLift env n 
+                 = case lookupBinder n env of
+                        Just ty -> 
+                             case unApply (binderTy ty) of
+                                  (P _ n _, _) -> n `elem` noCaseLift info
+                                  _ -> False
+                        _ -> False
 
               usedIn ns (n, b)
                  = n `elem` ns

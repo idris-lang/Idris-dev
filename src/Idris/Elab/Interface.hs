@@ -72,7 +72,7 @@ elabInterface :: ElabInfo
               -> Maybe (Name, FC)             -- ^ implementation ctor name and location
               -> Docstring (Either Err PTerm) -- ^ implementation ctor docs
               -> Idris ()
-elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
+elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     = do let cn = fromMaybe (SN (ImplementationCtorN tn)) (fst <$> mcn)
          let constraint = PApp fc (PRef fc [] tn)
                                   (map (pexp . PRef fc []) (map (\(n, _, _) -> n) ps))
@@ -127,7 +127,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                               (map (\(n, _, _) -> n) ps)
                               (map snd constraints)
                               [] dets)
-         
+        
          -- for each constraint, build a top level function to chase it
          -- elaborate types now, bodies later (after we've done the constructor
          -- of the interface)
@@ -142,25 +142,26 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                            (map fst imethods)) imethods
          let (fnTyDecls, fnDefs) = unzip fns
          mapM_ (rec_elabDecl info EAll info) fnTyDecls
-
+         
          elabMethTys <- mapM getElabMethTy fullmnames
+
          logElab 3 $ "Method types:\n" ++ showSep "\n" (map showTmImpls elabMethTys)
         
          let cpos = map (\ (n, ty) -> (n, findConstraint ty)) 
                         (zip fullmnames elabMethTys)
          logElab 5 $ "Constraint pos: " ++ show cpos
 
+         -- Method types to store in the IState, taken from the elaborated
+         -- types with the parameter removed
+         let storemeths = map (mkMethTy True cpos) (zip fullmnames elabMethTys)
+         updateIMethods tn storemeths
+         
          -- build implementation constructor type
          let cty = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $ 
                          conbind constraints $
-                         pibind (map (mkMethTy cpos) (zip fullmnames elabMethTys))
+                         pibind (map (mkMethTy False cpos) (zip fullmnames elabMethTys))
                          constraint
-         let ctyOld = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $ conbind constraints
-                      $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
-                               constraint
-         
          logElab 3 $ "Constraint constructor type: " ++ showTmImpls cty
-
 
          let cons = [(cd, pDocs ++ mapMaybe memberDocs ds, cn, NoFC, cty, fc, [])]
          let ddecl = PDatadecl tn NoFC tty cons
@@ -198,10 +199,15 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
            maybe [] (\(conN, conNFC) -> [(conNFC, AnnName conN Nothing Nothing Nothing)]) mcn
 
   where
+    info = info_in { noCaseLift = tn : noCaseLift info_in }
+    
     getElabMethTy :: Name -> Idris PTerm
     getElabMethTy n = do ist <- getIState
+                         let impls = case lookupCtxtExact n (idris_implicits ist) of
+                                          Just i -> i
+                                          Nothing -> []
                          case lookupTyExact n (tt_ctxt ist) of
-                              Just ty -> return (delabDirect ist ty)
+                              Just ty -> return (delabTy' ist impls ty False False False)
                               Nothing -> tclift $ tfail (At fc (InternalMsg "Can't happen, elabMethTy"))
 
     -- Find the argument position of the current interface in a method type
@@ -219,8 +225,9 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     -- Make the method component of the constructor type by taking the
     -- elaborated top level method and removing the implicits/constraint
-    mkMethTy :: [(Name, Int)] -> (Name, PTerm) -> (Name, PTerm)
-    mkMethTy cpos (n, tm) = (nsroot n, dropPis num (mapPT dropImp tm))
+    mkMethTy :: Bool -> [(Name, Int)] -> (Name, PTerm) -> (Name, PTerm)
+    mkMethTy keepns cpos (n, tm) 
+        = (if keepns then n else nsroot n, dropPis num (mapPT dropImp tm))
       where
         num = case lookup n cpos of
                    Just i -> i + 1

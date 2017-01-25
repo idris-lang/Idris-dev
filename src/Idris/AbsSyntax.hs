@@ -41,6 +41,7 @@ import Data.Generics.Uniplate.Data (descend, descendM)
 import Util.DynamicLinker
 import Util.Pretty
 import Util.System
+import Debug.Trace
 
 getContext :: Idris Context
 getContext = do i <- getIState; return (tt_ctxt i)
@@ -505,7 +506,21 @@ addInterface n i
                       [c] -> i { interface_implementations = interface_implementations c ++ 
                                                              interface_implementations i }
                       _ -> i
+        putIState $ ist { idris_interfaces = addDef n i' (idris_interfaces ist) }
+
+updateIMethods :: Name -> [(Name, PTerm)] -> Idris ()
+updateIMethods n meths
+   = do ist <- getIState
+        let i = case lookupCtxtExact n (idris_interfaces ist) of
+                     Just c -> c { interface_methods = update (interface_methods c) }
+                     Nothing -> error "Can't happen updateIMethods"
         putIState $ ist { idris_interfaces = addDef n i (idris_interfaces ist) }
+  where
+    update [] = []
+    update (m@(n, (b, opts, t)) : rest)
+        | Just ty <- lookup n meths 
+             = (n, (b, opts, ty)) : update rest
+        | otherwise = m : update rest
 
 addRecord :: Name -> RecordInfo -> Idris ()
 addRecord n ri = do ist <- getIState
