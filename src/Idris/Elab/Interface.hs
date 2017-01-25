@@ -101,6 +101,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let idecls = filter impldecl ds -- default super interface implementation declarations
          mapM_ checkDefaultSuperInterfaceImplementation idecls
          let mnames = map getMName mdecls
+         let fullmnames = map getFullMName mdecls
          ist <- getIState
          let constraintNames = nub $
                  concatMap (namesIn [] ist) (map snd constraints)
@@ -113,7 +114,7 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                               imp_methods = mnames }) doc pDocs fc [] pre_ddecl
          dets <- findDets tn (map fst fds)
 
-         logElab 2 $ "Building methods " ++ show mnames
+         logElab 3 $ "Building methods " ++ show fullmnames
          ims <- mapM (tdecl impps mnames) mdecls
          defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint)
                       (filter clause ds)
@@ -134,28 +135,43 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let (cfnTyDecls, cfnDefs) = unzip cfns
          mapM_ (rec_elabDecl info EAll info) cfnTyDecls
          
-         -- build implementation constructor type
-         let cty = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $ conbind constraints
-                      $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
-                               constraint
-
-         let cons = [(cd, pDocs ++ mapMaybe memberDocs ds, cn, NoFC, cty, fc, [])]
-         let ddecl = PDatadecl tn NoFC tty cons
-
-         logElab 5 $ "Interface " ++ show (showDImp verbosePPOption ddecl)
-
          -- for each method, build a top level function
          -- 'tfun' builds appropriate implicits for the constructor
          -- declaration
          fns <- mapM (tfun cn constraint (syn { imp_methods = mnames }) -- mnames })
                            (map fst imethods)) imethods
          let (fnTyDecls, fnDefs) = unzip fns
+         mapM_ (rec_elabDecl info EAll info) fnTyDecls
+
+         elabMethTys <- mapM getElabMethTy fullmnames
+         logElab 3 $ "Method types:\n" ++ showSep "\n" (map showTmImpls elabMethTys)
+        
+         let cpos = map (\ (n, ty) -> (n, findConstraint ty)) 
+                        (zip fullmnames elabMethTys)
+         logElab 5 $ "Constraint pos: " ++ show cpos
+
+         -- build implementation constructor type
+         let cty = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $ 
+                         conbind constraints $
+                         pibind (map (mkMethTy cpos) (zip fullmnames elabMethTys))
+                         constraint
+         let ctyOld = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $ conbind constraints
+                      $ pibind (map (\ (n, ty) -> (nsroot n, ty)) methods)
+                               constraint
+         
+         logElab 3 $ "Constraint constructor type: " ++ showTmImpls cty
+
+
+         let cons = [(cd, pDocs ++ mapMaybe memberDocs ds, cn, NoFC, cty, fc, [])]
+         let ddecl = PDatadecl tn NoFC tty cons
+
+         logElab 10 $ "Interface " ++ show (showDImp verbosePPOption ddecl)
+
 
          -- Elaborate the data declaration
          elabData info (syn { no_imp = no_imp syn ++ mnames,
-                              imp_methods = mnames }) doc pDocs fc [] ddecl
+                              imp_methods = [] }) doc pDocs fc [] ddecl
 
-         mapM_ (rec_elabDecl info EAll info) fnTyDecls
 
          logElab 5 $ "Function types " ++ show fnTyDecls
          logElab 5 $ "Method types now: " ++ show imethods
@@ -182,6 +198,48 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
            maybe [] (\(conN, conNFC) -> [(conNFC, AnnName conN Nothing Nothing Nothing)]) mcn
 
   where
+    getElabMethTy :: Name -> Idris PTerm
+    getElabMethTy n = do ist <- getIState
+                         case lookupTyExact n (tt_ctxt ist) of
+                              Just ty -> return (delabDirect ist ty)
+                              Nothing -> tclift $ tfail (At fc (InternalMsg "Can't happen, elabMethTy"))
+
+    -- Find the argument position of the current interface in a method type
+    -- (we'll use this to update the elaborated top level method types before
+    -- building a data declaration
+    findConstraint :: PTerm -> Int
+    findConstraint = findPos 0
+      where
+        findPos i (PPi _ _ _ (PRef _ _ n) sc)
+            | n == tn = i 
+        findPos i (PPi _ _ _ (PApp _ (PRef _ _ n) _) sc)
+            | n == tn = i 
+        findPos i (PPi _ _ _ ty sc) = findPos (i + 1) sc
+        findPos i _ = -1 -- Can't happen!
+
+    -- Make the method component of the constructor type by taking the
+    -- elaborated top level method and removing the implicits/constraint
+    mkMethTy :: [(Name, Int)] -> (Name, PTerm) -> (Name, PTerm)
+    mkMethTy cpos (n, tm) = (nsroot n, dropPis num (mapPT dropImp tm))
+      where
+        num = case lookup n cpos of
+                   Just i -> i + 1
+                   Nothing -> 0
+
+        dropPis n (PPi _ _ _ _ sc) | n > 0 = dropPis (n - 1) sc
+        dropPis _ tm = tm
+
+        dropImp (PApp fc (PRef fcr fcs n) args)
+            | Just pos <- lookup n cpos 
+                 = PApp fc (PRef fcr fcs (nsroot n))
+                           (filter notConstr (drop (pos + 1) args))
+        dropImp (PApp fc f args)
+                 = PApp fc f (filter notConstr args)
+        dropImp tm = tm
+
+        notConstr (PConstraint {}) = False
+        notConstr _ = True
+
     nodoc (n, (inj, _, _, o, t)) = (n, (inj, o, t))
 
     pibind [] x = x
@@ -224,6 +282,9 @@ elabInterface info syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     getMName (PTy _ _ _ _ _ n nfc _) = nsroot n
     getMName (PData _ _ _ _ _ (PLaterdecl n nfc _)) = nsroot n
+    
+    getFullMName (PTy _ _ _ _ _ n nfc _) = n
+    getFullMName (PData _ _ _ _ _ (PLaterdecl n nfc _)) = n
 
     tdecl impps allmeths (PTy doc _ syn _ o n nfc t)
            = do t' <- implicit' info syn (map (\(n, _, _) -> n) (impps ++ ps) ++ allmeths) n t
