@@ -107,7 +107,7 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                  concatMap (namesIn [] ist) (map snd constraints)
 
          mapM_ (checkConstraintName (map (\(x, _, _) -> x) ps)) constraintNames
-         
+
          let pre_ddecl = PLaterdecl tn NoFC tty
          -- Elaborate the interface header
          elabData info (syn { no_imp = no_imp syn ++ mnames,
@@ -121,20 +121,20 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          let (methods, imethods)
               = unzip (map (\ (x, y, z) -> (x, y)) ims)
          let defaults = map (\ (x, (y, z)) -> (x,y)) defs
-         
+
          addInterface tn (CI cn (map nodoc imethods) defaults idecls
                               (map (\(n, _, _) -> n) impps)
                               (map (\(n, _, _) -> n) ps)
                               (map snd constraints)
                               [] dets)
-        
+
          -- for each constraint, build a top level function to chase it
          -- elaborate types now, bodies later (after we've done the constructor
          -- of the interface)
          cfns <- mapM (cfun cn constraint syn (map fst imethods)) constraints
          let (cfnTyDecls, cfnDefs) = unzip cfns
          mapM_ (rec_elabDecl info EAll info) cfnTyDecls
-         
+
          -- for each method, build a top level function
          -- 'tfun' builds appropriate implicits for the constructor
          -- declaration
@@ -142,12 +142,12 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
                            (map fst imethods)) imethods
          let (fnTyDecls, fnDefs) = unzip fns
          mapM_ (rec_elabDecl info EAll info) fnTyDecls
-         
+
          elabMethTys <- mapM getElabMethTy fullmnames
 
          logElab 3 $ "Method types:\n" ++ showSep "\n" (map showTmImpls elabMethTys)
-        
-         let cpos = map (\ (n, ty) -> (n, findConstraint ty)) 
+
+         let cpos = map (\ (n, ty) -> (n, findConstraint ty))
                         (zip fullmnames elabMethTys)
          logElab 5 $ "Constraint pos: " ++ show cpos
 
@@ -155,9 +155,9 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
          -- types with the parameter removed
          let storemeths = map (mkMethTy True cpos) (zip fullmnames elabMethTys)
          updateIMethods tn storemeths
-         
+
          -- build implementation constructor type
-         let cty = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $ 
+         let cty = impbind [(pn, pt) | (pn, _, pt) <- impps ++ ps] $
                          conbind constraints $
                          pibind (map (mkMethTy False cpos) (zip fullmnames elabMethTys))
                          constraint
@@ -200,7 +200,7 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
   where
     info = info_in { noCaseLift = tn : noCaseLift info_in }
-    
+
     getElabMethTy :: Name -> Idris PTerm
     getElabMethTy n = do ist <- getIState
                          let impls = case lookupCtxtExact n (idris_implicits ist) of
@@ -217,16 +217,16 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
     findConstraint = findPos 0
       where
         findPos i (PPi _ _ _ (PRef _ _ n) sc)
-            | n == tn = i 
+            | n == tn = i
         findPos i (PPi _ _ _ (PApp _ (PRef _ _ n) _) sc)
-            | n == tn = i 
+            | n == tn = i
         findPos i (PPi _ _ _ ty sc) = findPos (i + 1) sc
         findPos i _ = -1 -- Can't happen!
 
     -- Make the method component of the constructor type by taking the
     -- elaborated top level method and removing the implicits/constraint
     mkMethTy :: Bool -> [(Name, Int)] -> (Name, PTerm) -> (Name, PTerm)
-    mkMethTy keepns cpos (n, tm) 
+    mkMethTy keepns cpos (n, tm)
         = (if keepns then n else nsroot n, dropPis num (mapPT dropImp tm))
       where
         num = case lookup n cpos of
@@ -237,7 +237,7 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
         dropPis _ tm = tm
 
         dropImp (PApp fc (PRef fcr fcs n) args)
-            | Just pos <- lookup n cpos 
+            | Just pos <- lookup n cpos
                  = PApp fc (PRef fcr fcs (nsroot n))
                            (filter notConstr (drop (pos + 1) args))
         dropImp (PApp fc f args)
@@ -289,7 +289,7 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
 
     getMName (PTy _ _ _ _ _ n nfc _) = nsroot n
     getMName (PData _ _ _ _ _ (PLaterdecl n nfc _)) = nsroot n
-    
+
     getFullMName (PTy _ _ _ _ _ n nfc _) = n
     getFullMName (PData _ _ _ _ _ (PLaterdecl n nfc _)) = n
 
@@ -382,8 +382,8 @@ elabInterface info_in syn_in doc fc constraints tn tnfc ps pDocs fds ds mcn cd
              return (PTy doc [] syn fc o m mfc ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []])
 
-    updateIMethod :: [(Name, PTerm)] -> 
-                     (Name, (a, b, c, d, PTerm)) ->     
+    updateIMethod :: [(Name, PTerm)] ->
+                     (Name, (a, b, c, d, PTerm)) ->
                      (Name, (a, b, c, d, PTerm))
     updateIMethod ns tm@(n, (isf, mfc, doc, o, ty))
        | Just ty' <- lookup (nsroot n) ns = (n, (isf, mfc, doc, o, ty'))

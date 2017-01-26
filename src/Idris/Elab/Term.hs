@@ -1168,9 +1168,9 @@ elab ist info emode opts fn tm
                          _ -> False
               tcName _ = False
 
-              isNotLift env n 
+              isNotLift env n
                  = case lookupBinder n env of
-                        Just ty -> 
+                        Just ty ->
                              case unApply (binderTy ty) of
                                   (P _ n _, _) -> n `elem` noCaseLift info
                                   _ -> False
