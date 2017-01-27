@@ -72,22 +72,29 @@ data Bits : Nat -> Type where
     ||| up to the maximum supported by `machineTy`.
     MkBits : machineTy (nextBytes n) -> Bits n
 
-||| Perform a function over Bits8 as if it is carried out on n bits
-pad8 : (n : Nat) -> (f :(Bits8 -> Bits8 -> Bits8)) -> Bits8 -> Bits8 -> Bits8
+||| Perform a function over Bits8 as if it is carried out on n bits.
+||| (n should be 8 or lower)
+pad8 : (n : Nat) -> (Bits8 -> Bits8 -> Bits8) -> Bits8 -> Bits8 -> Bits8
 pad8 n f x y = prim__lshrB8 (f (prim__shlB8 x pad) (prim__shlB8 y pad)) pad
     where
       pad = getPad {n=0} n
 
-pad16 : Nat -> (Bits16 -> Bits16 -> Bits16) -> Bits16 -> Bits16 -> Bits16
+||| Perform a function over Bits16 as if it is carried out on n bits.
+||| (n should be 16 or lower)
+pad16 : (n: Nat) -> (Bits16 -> Bits16 -> Bits16) -> Bits16 -> Bits16 -> Bits16
 pad16 n f x y = prim__lshrB16 (f (prim__shlB16 x pad) (prim__shlB16 y pad)) pad
     where
       pad = getPad {n=1} n
 
+||| Perform a function over Bits32 as if it is carried out on n bits.
+||| (n should be 32 or lower)
 pad32 : Nat -> (Bits32 -> Bits32 -> Bits32) -> Bits32 -> Bits32 -> Bits32
 pad32 n f x y = prim__lshrB32 (f (prim__shlB32 x pad) (prim__shlB32 y pad)) pad
     where
       pad = getPad {n=2} n
 
+||| Perform a function over Bits64 as if it is carried out on n bits.
+||| (n should be 64 or lower)
 pad64 : Nat -> (Bits64 -> Bits64 -> Bits64) -> Bits64 -> Bits64 -> Bits64
 pad64 n f x y = prim__lshrB64 (f (prim__shlB64 x pad) (prim__shlB64 y pad)) pad
     where
@@ -114,7 +121,7 @@ pad64' n f x y = prim__lshrB64 (f (prim__shlB64 x pad) y) pad
     where
       pad = getPad {n=3} n
 
--- TODO: This (and all the other functions along these lings) is -- because it is used by things. Do they really need to be
+-- TODO: This (and all the other functions along these lines) is -- because it is used by things. Do they really need to be
 -- public export, or is export good enough?
 shiftLeft' : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 shiftLeft' {n=n} x c with (nextBytes n)
@@ -124,9 +131,11 @@ shiftLeft' {n=n} x c with (nextBytes n)
     | S (S (S _)) = pad64' n prim__shlB64 x c
     | _ = assert_unreachable
 
+||| Binary left shift
 shiftLeft : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftLeft (MkBits x) (MkBits y) = MkBits (shiftLeft' x y)
 
+||| Logical binary right shift
 shiftRightLogical' : %static {n : Nat} -> machineTy n -> machineTy n -> machineTy n
 shiftRightLogical' {n=n} x c with (n)
     | Z = prim__lshrB8 x c
@@ -135,10 +144,12 @@ shiftRightLogical' {n=n} x c with (n)
     | S (S (S _)) = prim__lshrB64 x c
     | _ = assert_unreachable
 
+||| Logical binary right shift
 shiftRightLogical : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftRightLogical {n} (MkBits x) (MkBits y)
     = MkBits {n} (shiftRightLogical' {n=nextBytes n} x y)
 
+||| Arithematic binary right shift
 shiftRightArithmetic' : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 shiftRightArithmetic' {n=n} x c with (nextBytes n)
     | Z = pad8' n prim__ashrB8 x c
@@ -147,9 +158,11 @@ shiftRightArithmetic' {n=n} x c with (nextBytes n)
     | S (S (S _)) = pad64' n prim__ashrB64 x c
     | _ = assert_unreachable
 
+||| Arithematic binary right shift
 shiftRightArithmetic : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 shiftRightArithmetic (MkBits x) (MkBits y) = MkBits (shiftRightArithmetic' x y)
 
+||| Binary and
 and' : %static {n : Nat} -> machineTy n -> machineTy n -> machineTy n
 and' {n=n} x y with (n)
     | Z = prim__andB8 x y
@@ -158,9 +171,11 @@ and' {n=n} x y with (n)
     | S (S (S _)) = prim__andB64 x y
     | _ = assert_unreachable
 
+||| Binary and
 and : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 and {n} (MkBits x) (MkBits y) = MkBits (and' {n=nextBytes n} x y)
 
+||| Binary or
 or' : %static {n : Nat} -> machineTy n -> machineTy n -> machineTy n
 or' {n=n} x y with (n)
     | Z = prim__orB8 x y
@@ -169,9 +184,11 @@ or' {n=n} x y with (n)
     | S (S (S _)) = prim__orB64 x y
     | _ = assert_unreachable
 
+||| Binary or
 or : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 or {n} (MkBits x) (MkBits y) = MkBits (or' {n=nextBytes n} x y)
 
+||| Binary xor
 xor' : %static {n : Nat} -> machineTy n -> machineTy n -> machineTy n
 xor' {n=n} x y with (n)
     | Z = prim__xorB8 x y
@@ -180,9 +197,11 @@ xor' {n=n} x y with (n)
     | S (S (S _)) = prim__xorB64 x y
     | _ = assert_unreachable
 
+||| Binary xor
 xor : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 xor {n} (MkBits x) (MkBits y) = MkBits {n} (xor' {n=nextBytes n} x y)
 
+||| Overflowing addition
 plus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 plus' {n=n} x y with (nextBytes n)
     | Z = pad8 n prim__addB8 x y
@@ -191,9 +210,11 @@ plus' {n=n} x y with (nextBytes n)
     | S (S (S _)) = pad64 n prim__addB64 x y
     | _ = assert_unreachable
 
+||| Overflowing addition
 plus : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 plus (MkBits x) (MkBits y) = MkBits (plus' x y)
 
+||| Subtraction
 minus' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 minus' {n=n} x y with (nextBytes n)
     | Z = pad8 n prim__subB8 x y
@@ -202,9 +223,11 @@ minus' {n=n} x y with (nextBytes n)
     | S (S (S _)) = pad64 n prim__subB64 x y
     | _ = assert_unreachable
 
+||| Subtraction
 minus : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 minus (MkBits x) (MkBits y) = MkBits (minus' x y)
 
+||| Multiplication
 times' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 times' {n=n} x y with (nextBytes n)
     | Z = pad8 n prim__mulB8 x y
@@ -213,9 +236,11 @@ times' {n=n} x y with (nextBytes n)
     | S (S (S _)) = pad64 n prim__mulB64 x y
     | _ = assert_unreachable
 
+||| Multiplication
 times : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 times (MkBits x) (MkBits y) = MkBits (times' x y)
 
+||| Signed integer division
 partial
 sdiv' : machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 sdiv' {n=n} x y with (nextBytes n)
@@ -225,10 +250,12 @@ sdiv' {n=n} x y with (nextBytes n)
     | S (S (S _)) = prim__sdivB64 x y
     | _ = assert_unreachable
 
+||| Signed integer division
 partial
 sdiv : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 sdiv (MkBits x) (MkBits y) = MkBits (sdiv' x y)
 
+||| Unsigned integer division
 partial
 udiv' : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 udiv' {n=n} x y with (nextBytes n)
@@ -238,10 +265,12 @@ udiv' {n=n} x y with (nextBytes n)
     | S (S (S _)) = prim__udivB64 x y
     | _ = assert_unreachable
 
+||| Unsigned integer division
 partial
 udiv : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 udiv (MkBits x) (MkBits y) = MkBits (udiv' x y)
 
+||| Signed remainder (mod)
 partial
 srem' : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 srem' {n=n} x y with (nextBytes n)
@@ -251,10 +280,12 @@ srem' {n=n} x y with (nextBytes n)
     | S (S (S _)) = prim__sremB64 x y
     | _ = assert_unreachable
 
+||| Signed remainder (mod)
 partial
 srem : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 srem (MkBits x) (MkBits y) = MkBits (srem' x y)
 
+||| Unsigned remainder (mod)
 partial
 urem' : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 urem' {n=n} x y with (nextBytes n)
@@ -264,6 +295,7 @@ urem' {n=n} x y with (nextBytes n)
     | S (S (S _)) = prim__uremB64 x y
     | _ = assert_unreachable
 
+||| Unsigned remainder (mod)
 partial
 urem : %static {n : Nat} -> Bits n -> Bits n -> Bits n
 urem (MkBits x) (MkBits y) = MkBits (urem' x y)
