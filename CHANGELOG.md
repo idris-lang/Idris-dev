@@ -27,6 +27,8 @@
   `--V0`, `--V1`, and `--V2`. The old aliases of `-V` and `--verbose`
   persist.
 
++ New REPL command `:!` that runs an external shell command.
+
 ## Library Updates
 
 + Terminating programs has been improved with more appropriate

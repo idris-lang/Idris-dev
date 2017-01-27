@@ -11,6 +11,7 @@ module Idris.Help (CmdArg(..), extraHelp) where
 data CmdArg = ExprArg               -- ^ The command takes an expression
             | NameArg               -- ^ The command takes a name
             | FileArg               -- ^ The command takes a file
+            | ShellCommandArg       -- ^ The command takes a shell command name
             | ModuleArg             -- ^ The command takes a module name
             | PkgArgs               -- ^ The command takes a list of package names
             | NumberArg             -- ^ The command takes a number
@@ -30,6 +31,7 @@ instance Show CmdArg where
     show ExprArg          = "<expr>"
     show NameArg          = "<name>"
     show FileArg          = "<filename>"
+    show ShellCommandArg  = "<command>"
     show ModuleArg        = "<module>"
     show PkgArgs          = "<package list>"
     show NumberArg        = "<number>"

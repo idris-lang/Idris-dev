@@ -78,6 +78,7 @@ parserCommandsForHelp =
   , noArgCmd ["w", "watch"] Watch "Watch the current file for changes"
   , (["l", "load"], FileArg, "Load a new file"
     , strArg (\f -> Load f Nothing))
+  , (["!"], ShellCommandArg, "Run a shell command", strArg RunShellCommand)
   , (["cd"], FileArg, "Change working directory"
     , strArg ChangeDirectory)
   , (["module"], ModuleArg, "Import an extra module", moduleArg ModImport) -- NOTE: dragons

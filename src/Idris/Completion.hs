@@ -159,6 +159,7 @@ completeColour (prev, next) = case words (reverse prev) of
 completeCmd :: String -> CompletionFunc Idris
 completeCmd cmd (prev, next) = fromMaybe completeCmdName $ fmap completeArg $ lookupInHelp cmd
     where completeArg FileArg = completeFilename (prev, next)
+          completeArg ShellCommandArg = completeFilename (prev, next)
           completeArg NameArg = completeName UpTo [] (prev, next)
           completeArg OptionArg = completeOption (prev, next)
           completeArg ModuleArg = noCompletion (prev, next)
