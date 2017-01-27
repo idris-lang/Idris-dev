@@ -6,6 +6,9 @@ import Data.Fin
                -- to improve it! (EB)
 %access export
 
+||| Finds the next exponent of a power of two.
+||| For example `nextPow2 200 = 8`, because 2^8 = 256.
+||| If it is an exact match, it is not rounded up: `nextPow2 256 = 8` because 2^8 = 256.
 public export
 nextPow2 : Nat -> Nat
 nextPow2 Z = Z
@@ -15,10 +18,17 @@ nextPow2 (S x) = if (S x) == (2 `power` l2x)
     where
       l2x = log2NZ (S x) SIsNotZ
 
+||| Gets the lowest n for which "8 * 2 ^ n" is larger than or equal to the input.
+||| For example, `nextBytes 10 = 16`.
+||| Like with nextPow2, the result is not rounded up, so `nextBytes 16 = 16`.
 public export
 nextBytes : Nat -> Nat
 nextBytes bits = (nextPow2 (divCeilNZ bits 8 SIsNotZ))
 
+||| An index function to access the Bits* types in order.
+||| machineTy 0 = Bits8, machineTy 1 = Bits16, etc.
+||| Any input that would result in getting a type that is larger than supported
+||| will result in the largest supported type instead (currently 64 bits).
 public export
 machineTy : Nat -> Type
 machineTy Z = Bits8
@@ -26,9 +36,13 @@ machineTy (S Z) = Bits16
 machineTy (S (S Z)) = Bits32
 machineTy (S (S (S _))) = Bits64
 
+||| Finds the number of bits used by `machineTy n`.
+||| For example, bitsUsed 2 = 16
 bitsUsed : Nat -> Nat
 bitsUsed n = 8 * (2 `power` n)
 
+||| Converts a Nat to a machineTy n, with the first argument as an accumulator.
+||| You shouldn't have to call this manually, use natToBits (without ') instead.
 natToBits' : %static {n : Nat} -> machineTy n -> Nat -> machineTy n
 natToBits' a Z = a
 natToBits' {n=n} a x with (n)
@@ -39,6 +53,7 @@ natToBits' {n=n} a x with (n)
  natToBits' a (S x') | S (S (S _)) = natToBits' {n=3} (prim__addB64 a (prim__truncInt_B64 1)) x'
  natToBits' a _      | _           = assert_unreachable
 
+||| Converts a Nat to a machineTy n.
 natToBits : %static {n : Nat} -> Nat -> machineTy n
 natToBits {n=n} x with (n)
     | Z           = natToBits' {n=0} (prim__truncInt_B8  0) x
@@ -50,8 +65,11 @@ natToBits {n=n} x with (n)
 getPad : %static {n : Nat} -> Nat -> machineTy n
 getPad n = assert_total $ natToBits (minus (bitsUsed (nextBytes n)) n)
 
+||| A "high-level" wrapper to the types defined by `machineTy`.
 public export
 data Bits : Nat -> Type where
+    ||| An bits type that has at least n bits available,
+    ||| up to the maximum supported by `machineTy`.
     MkBits : machineTy (nextBytes n) -> Bits n
 
 pad8 : Nat -> (Bits8 -> Bits8 -> Bits8) -> Bits8 -> Bits8 -> Bits8
@@ -447,4 +465,3 @@ bitsToStr x = pack (helper last x)
 
 implementation Show (Bits n) where
     show = bitsToStr
-
