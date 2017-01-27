@@ -72,7 +72,8 @@ data Bits : Nat -> Type where
     ||| up to the maximum supported by `machineTy`.
     MkBits : machineTy (nextBytes n) -> Bits n
 
-pad8 : Nat -> (Bits8 -> Bits8 -> Bits8) -> Bits8 -> Bits8 -> Bits8
+||| Perform a function over Bits8 as if it is carried out on n bits
+pad8 : (n : Nat) -> (f :(Bits8 -> Bits8 -> Bits8)) -> Bits8 -> Bits8 -> Bits8
 pad8 n f x y = prim__lshrB8 (f (prim__shlB8 x pad) (prim__shlB8 y pad)) pad
     where
       pad = getPad {n=0} n
