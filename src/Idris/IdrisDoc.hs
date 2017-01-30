@@ -46,7 +46,6 @@ import Text.Blaze.Html.Renderer.Utf8 (renderHtml)
 import Text.Blaze.Html5 (preEscapedToHtml, toHtml, (!))
 import qualified Text.Blaze.Html5 as H
 import Text.Blaze.Html5.Attributes as A
-import Text.Blaze.Internal (MarkupM(Empty))
 import Text.Blaze.Renderer.String (renderMarkup)
 import Text.PrettyPrint.Annotated.Leijen (displayDecorated, renderCompact)
 
@@ -543,7 +542,7 @@ createFunDoc :: IState -- ^ Needed to determine the types of names
 createFunDoc ist fd@(FD name docstring args ftype fixity) = do
   H.dt ! (A.id $ toValue $ show name) $ genTypeHeader ist fd
   H.dd $ do
-    (if nullDocstring docstring then Empty else Docstrings.renderHtml docstring)
+    (if nullDocstring docstring then mempty else Docstrings.renderHtml docstring)
     let args'             = filter (\(_, _, _, d) -> isJust d) args
     if (not $ null args') || (isJust fixity)
        then H.dl $ do
@@ -551,9 +550,9 @@ createFunDoc ist fd@(FD name docstring args ftype fixity) = do
              H.dt ! class_ "fixity" $ "Fixity"
              let f = fromJust fixity
              H.dd ! class_ "fixity" ! title (toValue $ show f) $ genFix f
-           else Empty
+           else mempty
          forM_ args' genArg
-       else Empty
+       else mempty
 
   where genFix (Infixl {prec=p})  =
           toHtml $ "Left associative, precedence " ++ show p
@@ -563,7 +562,7 @@ createFunDoc ist fd@(FD name docstring args ftype fixity) = do
           toHtml $ "Non-associative, precedence " ++ show p
         genFix (PrefixN {prec=p}) =
           toHtml $ "Prefix, precedence " ++ show p
-        genArg (_, _, _, Nothing)           = Empty
+        genArg (_, _, _, Nothing)           = mempty
         genArg (name, _, _, Just docstring) = do
           H.dt $ toHtml $ show name
           H.dd $ Docstrings.renderHtml docstring
@@ -584,7 +583,7 @@ createOtherDoc ist (InterfaceDoc n docstring fds _ _ _ _ _ c) = do
            $ toHtml $ name $ nsroot n
     H.span ! class_ "signature" $ nbsp
   H.dd $ do
-    (if nullDocstring docstring then Empty else Docstrings.renderHtml docstring)
+    (if nullDocstring docstring then mempty else Docstrings.renderHtml docstring)
     H.dl ! class_ "decls" $ (forM_ (maybeToList c ++ fds) (createFunDoc ist))
 
   where name (NS n ns) = show (NS (sUN $ name n) ns)
@@ -601,10 +600,10 @@ createOtherDoc ist (RecordDoc n doc ctor projs params) = do
            $ toHtml $ name $ nsroot n
     H.span ! class_ "type" $ do nbsp ; prettyParameters
   H.dd $ do
-    (if nullDocstring doc then Empty else Docstrings.renderHtml doc)
+    (if nullDocstring doc then mempty else Docstrings.renderHtml doc)
     if not $ null params
        then H.dl $ forM_ params genParam
-       else Empty
+       else mempty
     H.dl ! class_ "decls" $ createFunDoc ist ctor
     H.dl ! class_ "decls" $ forM_ projs (createFunDoc ist)
   where name (NS n ns) = show (NS (sUN $ name n) ns)
@@ -624,14 +623,14 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
     H.span ! class_ "word" $ do "data"; nbsp
     genTypeHeader ist fd
   H.dd $ do
-    (if nullDocstring docstring then Empty else Docstrings.renderHtml docstring)
+    (if nullDocstring docstring then mempty else Docstrings.renderHtml docstring)
     let args' = filter (\(_, _, _, d) -> isJust d) args
     if not $ null args'
        then H.dl $ forM_ args' genArg
-       else Empty
+       else mempty
     H.dl ! class_ "decls" $ forM_ fds (createFunDoc ist)
 
-  where genArg (_, _, _, Nothing)           = Empty
+  where genArg (_, _, _, Nothing)           = mempty
         genArg (name, _, _, Just docstring) = do
           H.dt $ toHtml $ show name
           H.dd $ Docstrings.renderHtml docstring
@@ -663,7 +662,7 @@ wrapper ns inner =
       H.div ! class_ "wrapper" $ do
         H.header $ do
           H.strong "IdrisDoc"
-          if index then Empty else do
+          if index then mempty else do
             ": "
             toHtml str
           H.nav $ H.a ! href (toValue indexPage) $ "Index"
