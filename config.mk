@@ -1,4 +1,6 @@
-ifneq (, $(findstring MSYS, $(shell uname -a)))
+UNAME_INFO      := $(shell uname -a)
+
+ifeq ($(filter , $(findstring MSYS, $(UNAME_INFO)) $(findstring MINGW, $(UNAME_INFO))),)
 	ifeq (cc,$(CC))
 		# In MSYS2, when using the mingw version of gcc, there is no cc -> gcc
 		# symlink. We can't use ?= here because CC is set implicitly to cc.
