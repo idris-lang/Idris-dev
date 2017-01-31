@@ -16,7 +16,6 @@ module Util.System( tempfile
                   , readSource
                   , setupBundledCC
                   , isATTY
-                  , isMinTTY
                   ) where
 
 import Control.Exception as CE
@@ -73,8 +72,9 @@ foreign import ccall "isatty" isATTYRaw :: CInt -> IO CInt
 
 isATTY :: IO Bool
 isATTY = do
-            tty <- isATTYRaw 1 -- fd stdout
-            return $ tty /= 0
+            tty    <- isATTYRaw 1 -- fd stdout
+            mintty <- isMinTTY
+            return $ (tty /= 0) || mintty
 
 -- | Return 'True' if the process's standard output is attached to a MinTTY
 -- console (e.g., Cygwin or MSYS) on Windows. Return 'False' otherwise.
