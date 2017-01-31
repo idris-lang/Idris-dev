@@ -11,6 +11,8 @@
 
 #if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
 int win_fpoll(void* h);
+FILE *win32_u8fopen(const char *path, const char *mode);
+FILE *win32_u8popen(const char *path, const char *mode);
 #else
 #include <sys/select.h>
 #endif
@@ -21,9 +23,13 @@ void putStr(char* str) {
     printf("%s", str);
 }
 
-void* fileOpen(char* name, char* mode) {
-    FILE* f = fopen(name, mode);
-    return (void*)f;
+void *fileOpen(char *name, char *mode) {
+#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+    FILE *f = win32_u8fopen(name, mode);
+#else
+    FILE *f = fopen(name, mode);
+#endif
+    return (void *)f;
 }
 
 void fileClose(void* h) {
@@ -82,10 +88,14 @@ int fpoll(void* h)
 #endif
 }
 
-void* do_popen(const char* cmd, const char* mode) {
-    FILE* f = popen(cmd, mode);
-//    int d = fileno(f);
-//    fcntl(d, F_SETFL, O_NONBLOCK);
+void *do_popen(const char *cmd, const char *mode) {
+#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+    FILE *f = win32_u8popen(cmd, mode);
+#else
+    FILE *f = popen(cmd, mode);
+    //    int d = fileno(f);
+    //    fcntl(d, F_SETFL, O_NONBLOCK);
+#endif
     return f;
 }
 
