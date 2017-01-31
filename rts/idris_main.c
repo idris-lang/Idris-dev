@@ -1,7 +1,32 @@
-#include "idris_opts.h"
-#include "idris_stats.h"
-#include "idris_rts.h"
 #include "idris_gmp.h"
+#include "idris_opts.h"
+#include "idris_rts.h"
+#include "idris_stats.h"
+
+#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+#include <Windows.h>
+int win32_get_argv_utf8(int *argc_ptr, char ***argv_ptr)
+{
+    int argc;
+    char **argv;
+    wchar_t **argv_utf16 = CommandLineToArgvW(GetCommandLineW(), &argc);
+    int i;
+    int offset = (argc + 1) * sizeof(char *);
+    int size = offset;
+    for (i = 0; i < argc; i++) {
+        size += WideCharToMultiByte(CP_UTF8, 0, argv_utf16[i], -1, 0, 0, 0, 0);
+    }
+    argv = (char **)malloc(size);
+    for (i = 0; i < argc; i++) {
+        argv[i] = (char *)argv + offset;
+        offset += WideCharToMultiByte(CP_UTF8, 0, argv_utf16[i], -1, argv[i], size - offset, 0, 0);
+    }
+    *argc_ptr = argc;
+    *argv_ptr = argv;
+    return 0;
+}
+#endif
+
 // The default options should give satisfactory results under many circumstances.
 RTSOpts opts = { 
     .init_heap_size = 16384000,
@@ -9,7 +34,14 @@ RTSOpts opts = {
     .show_summary   = 0
 };
 
-int main(int argc, char* argv[]) {
+#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+int main() {
+    int argc;
+    char **argv;
+    win32_get_argv_utf8(&argc, &argv);
+#else
+int main(int argc, char **argv) {
+#endif
     parse_shift_args(&opts, &argc, &argv);
 
     __idris_argc = argc;

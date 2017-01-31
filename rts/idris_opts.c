@@ -99,7 +99,7 @@ int parse_args(RTSOpts * opts, int argc, char *argv[])
     return argc;
 }
 
-void parse_shift_args(RTSOpts * opts, int * argc, char ** argv[]) {
+void parse_shift_args(RTSOpts * opts, int * argc, char *** argv) {
     size_t shift = parse_args(opts, (*argc) - 1, (*argv) + 1);
 
     char *prg = (*argv)[0];
