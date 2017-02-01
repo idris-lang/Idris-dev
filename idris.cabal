@@ -328,7 +328,8 @@ Library
   if os(darwin)
      build-depends: unix < 2.8
   if os(windows)
-     build-depends: Win32 < 2.4
+     build-depends: mintty >= 0.1 && < 0.2
+                  , Win32 < 2.4
   if flag(FFI)
      build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_FFI

@@ -38,6 +38,11 @@ import System.FilePath (dropFileName, isAbsolute, searchPathSeparator)
 import Tools_idris
 #endif
 
+#ifdef mingw32_HOST_OS
+import Graphics.Win32.Misc (getStdHandle, sTD_OUTPUT_HANDLE)
+import System.Console.MinTTY (isMinTTYHandle)
+#endif
+
 catchIO :: IO a -> (IOError -> IO a) -> IO a
 catchIO = CE.catch
 
@@ -67,8 +72,23 @@ foreign import ccall "isatty" isATTYRaw :: CInt -> IO CInt
 
 isATTY :: IO Bool
 isATTY = do
-            tty <- isATTYRaw 1 -- fd stdout
-            return $ tty /= 0
+            tty    <- isATTYRaw 1 -- fd stdout
+            mintty <- isMinTTY
+            return $ (tty /= 0) || mintty
+
+-- | Return 'True' if the process's standard output is attached to a MinTTY
+-- console (e.g., Cygwin or MSYS) on Windows. Return 'False' otherwise.
+--
+-- Unfortunately, we must check this separately since 'isATTY' always returns
+-- 'False' on MinTTY consoles.
+isMinTTY :: IO Bool
+#ifdef mingw32_HOST_OS
+isMinTTY = do
+  h <- getStdHandle sTD_OUTPUT_HANDLE
+  isMinTTYHandle h
+#else
+isMinTTY = return False
+#endif
 
 withTempdir :: String -> (FilePath -> IO a) -> IO a
 withTempdir subdir callback
