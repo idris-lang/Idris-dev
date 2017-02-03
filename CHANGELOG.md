@@ -29,6 +29,9 @@
 
 + New REPL command `:!` that runs an external shell command.
 
++ The REPL now colourises output on MinTTY consoles (e.g., Cygwin and MSYS)
+  on Windows, which previously did not occur due to a bug.
+
 ## Library Updates
 
 + Terminating programs has been improved with more appropriate
