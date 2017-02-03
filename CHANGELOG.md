@@ -37,9 +37,9 @@
 + Terminating programs has been improved with more appropriate
   functions (`exitWith`, `exitFailure`, and `exitSuccess`) and a data
   structure (`ExitCode`) to capture a program's return code.
-
 + Casting a `String` to an `Int`, `Integer` or a `Double` now ignores leading
   and trailing whitespace. Previously only leading whitespace was ignored.
++ RTS functions `openFile`, `do_popen`, and `ARGV` now is properly encoded in UTF-8 on Windows.
 
 # New in 0.99:
 
