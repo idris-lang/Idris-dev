@@ -1,3 +1,8 @@
+||| Functions operating over Chars.
+|||
+||| The representation of a Char is backend dependent,
+||| for the C backend, it is a Unicode code point.
+|||
 module Prelude.Chars
 -- Functions operating over Chars
 
@@ -9,7 +14,7 @@ import Builtins
 
 %access public export
 
-||| Convert the number to its Unicode equivalent.
+||| Convert the number to its backend dependent (usually Unicode) Char equivelent.
 chr : Int -> Char
 chr x = if (x >= 0 && x < 0x110000)
                 then assert_total (prim__intToChar x)
@@ -18,7 +23,7 @@ chr x = if (x >= 0 && x < 0x110000)
 Cast Int Char where
     cast = chr
 
-||| Return the Unicode representation of the character.
+||| Return the backend dependent (usually Unicode) numerical equivelent of the Char.
 ord : Char -> Int
 ord x = prim__charToInt x
 
