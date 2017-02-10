@@ -11,16 +11,24 @@ module Idris.ErrReverse(errReverse) where
 
 import Idris.AbsSyntax
 import Idris.Core.TT
+import Idris.Core.Evaluate(unfold)
 import Util.Pretty
 
 import Data.List
 import Debug.Trace
 
 -- | For display purposes, apply any 'error reversal' transformations
--- so that errors will be more readable
+-- so that errors will be more readable,
+-- and any 'error reduce' transformations
 errReverse :: IState -> Term -> Term
-errReverse ist t = rewrite 5 t -- (elideLambdas t)
+errReverse ist t = rewrite 5 (do_unfold t) -- (elideLambdas t)
   where
+    do_unfold :: Term -> Term
+    do_unfold t = let ns = idris_errReduce ist in
+                      if null ns then t
+                         else unfold (tt_ctxt ist) [] 
+                                     (map (\x -> (x, 1000)) (idris_errReduce ist))
+                                     t
 
     rewrite 0 t = t
     rewrite n t = let t' = foldl applyRule t (reverse (idris_errRev ist)) in

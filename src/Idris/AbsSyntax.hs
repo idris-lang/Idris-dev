@@ -153,9 +153,17 @@ addTrans basefn t
                 putIState $ i { idris_transforms = addDef basefn t'
                                                           (idris_transforms i) }
 
+-- | Add transformation rules from a definition, which will reverse the
+-- definition for an error to make it more readable
 addErrRev :: (Term, Term) -> Idris ()
 addErrRev t = do i <- getIState
                  putIState $ i { idris_errRev = t : idris_errRev i }
+
+-- | Say that the name should always be reduced in error messages, to
+-- help readability/error reflection
+addErrReduce :: Name -> Idris ()
+addErrReduce t = do i <- getIState
+                    putIState $ i { idris_errReduce = t : idris_errReduce i }
 
 addErasureUsage :: Name -> Int -> Idris ()
 addErasureUsage n i = do ist <- getIState

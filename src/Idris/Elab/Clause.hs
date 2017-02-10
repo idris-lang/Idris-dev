@@ -942,6 +942,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         when (rev || ErrorReverse `elem` opts) $ do
            addIBC (IBCErrRev (crhs, clhs))
            addErrRev (crhs, clhs)
+        when (rev || ErrorReduce `elem` opts) $ do
+           addIBC (IBCErrReduce fname)
+           addErrReduce fname
         pop_estack
         return (Right (clhs, crhs), lhs)
   where
