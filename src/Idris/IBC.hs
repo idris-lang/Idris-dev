@@ -86,6 +86,7 @@ data IBCFile = IBCFile {
   , ibc_moduledocs             :: ![(Name, Docstring D.DocTerm)]
   , ibc_transforms             :: ![(Name, (Term, Term))]
   , ibc_errRev                 :: ![(Term, Term)]
+  , ibc_errReduce              :: ![Name]
   , ibc_coercions              :: ![Name]
   , ibc_lineapps               :: ![(FilePath, Int, PTerm)]
   , ibc_namehints              :: ![(Name, Name)]
@@ -114,7 +115,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -191,6 +192,7 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_moduledocs"  (ibc_moduledocs i),
                        makeEntry "ibc_transforms"  (ibc_transforms i),
                        makeEntry "ibc_errRev"  (ibc_errRev i),
+                       makeEntry "ibc_errReduce"  (ibc_errReduce i),
                        makeEntry "ibc_coercions"  (ibc_coercions i),
                        makeEntry "ibc_lineapps"  (ibc_lineapps i),
                        makeEntry "ibc_namehints"  (ibc_namehints i),
@@ -324,6 +326,7 @@ ibc i (IBCTotal n a) f = return f { ibc_total = (n,a) : ibc_total f }
 ibc i (IBCInjective n a) f = return f { ibc_injective = (n,a) : ibc_injective f }
 ibc i (IBCTrans n t) f = return f { ibc_transforms = (n, t) : ibc_transforms f }
 ibc i (IBCErrRev t) f = return f { ibc_errRev = t : ibc_errRev f }
+ibc i (IBCErrReduce t) f = return f { ibc_errReduce = t : ibc_errReduce f }
 ibc i (IBCLineApp fp l t) f
      = return f { ibc_lineapps = (fp,l,t) : ibc_lineapps f }
 ibc i (IBCNameHint (n, ty)) f
@@ -416,6 +419,7 @@ process reexp phase archive fn = do
                 processCoercions archive
                 processTransforms archive
                 processErrRev archive
+                processErrReduce archive
                 processLineApps archive
                 processNameHints archive
                 processMetaInformation archive
@@ -796,6 +800,11 @@ processErrRev :: Archive -> Idris ()
 processErrRev ar = do
     ts <- getEntry [] "ibc_errRev" ar
     mapM_ addErrRev ts
+
+processErrReduce :: Archive -> Idris ()
+processErrReduce ar = do
+    ts <- getEntry [] "ibc_errReduce" ar
+    mapM_ addErrReduce ts
 
 processLineApps :: Archive -> Idris ()
 processLineApps ar = do
@@ -1232,6 +1241,7 @@ instance Binary FnOpt where
                 UnfoldIface x ns -> do putWord8 19
                                        put x
                                        put ns
+                ErrorReduce -> putWord8 20
         get
           = do i <- getWord8
                case i of
@@ -1259,6 +1269,7 @@ instance Binary FnOpt where
                    19 -> do x <- get
                             ns <- get
                             return (UnfoldIface x ns)
+                   20 -> return ErrorReduce
                    _ -> error "Corrupted binary data for FnOpt"
 
 instance Binary Fixity where

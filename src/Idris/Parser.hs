@@ -688,6 +688,8 @@ fnOpt = do reservedHL "total"; return TotalFn
                     return ErrorHandler
         <|> do try (lchar '%' *> reserved "error_reverse");
                     return ErrorReverse
+        <|> do try (lchar '%' *> reserved "error_reduce");
+                    return ErrorReduce
         <|> do try (lchar '%' *> reserved "reflection");
                     return Reflection
         <|> do try (lchar '%' *> reserved "hint");

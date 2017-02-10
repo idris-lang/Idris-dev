@@ -257,6 +257,7 @@ data IState = IState {
   , idris_metavars      :: [(Name, (Maybe Name, Int, [Name], Bool, Bool))]
   , idris_coercions              :: [Name]
   , idris_errRev                 :: [(Term, Term)]
+  , idris_errReduce              :: [Name]
   , syntax_rules                 :: SyntaxRules
   , syntax_keywords              :: [String]
   , imported                     :: [FilePath]                    -- ^ The imported modules
@@ -373,6 +374,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCFnInfo Name FnInfo
               | IBCTrans Name (Term, Term)
               | IBCErrRev (Term, Term)
+              | IBCErrReduce Name
               | IBCCG Name
               | IBCDoc Name
               | IBCCoercion Name
@@ -408,7 +410,7 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext
-                   [] [] [] defaultOpts 6 [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
+                   [] [] [] defaultOpts 6 [] [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Private DefaultCheckingPartial [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] [] [] M.empty [] [] []
@@ -676,6 +678,7 @@ data FnOpt = Inlinable -- ^ always evaluate when simplifying
            | CExport String                 -- ^ export, with a C name
            | ErrorHandler                   -- ^ an error handler for use with the ErrorReflection extension
            | ErrorReverse                   -- ^ attempt to reverse normalise before showing in error
+           | ErrorReduce                    -- ^ unfold definition before showing an error
            | Reflection                     -- ^ a reflecting function, compile-time only
            | Specialise [(Name, Maybe Int)] -- ^ specialise it, freeze these names
            | UnfoldIface Name [Name]
