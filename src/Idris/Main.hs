@@ -44,16 +44,20 @@ import System.Directory
 import System.Exit
 import System.FilePath
 import System.IO
+import System.IO.CodePage (withCP65001)
 import Text.Trifecta.Result (ErrInfo(..), Result(..))
 
 -- | How to run Idris programs.
 runMain :: Idris () -> IO ()
-runMain prog = do res <- runExceptT $ execStateT prog idrisInit
-                  case res of
-                       Left err -> do
-                         putStrLn $ "Uncaught error: " ++ show err
-                         exitFailure
-                       Right _ -> return ()
+runMain prog = withCP65001 $ do
+               -- Run in codepage 65001 on Windows so that UTF-8 characters can
+               -- be displayed properly. See #3000.
+  res <- runExceptT $ execStateT prog idrisInit
+  case res of
+       Left err -> do
+         putStrLn $ "Uncaught error: " ++ show err
+         exitFailure
+       Right _ -> return ()
 
 -- | The main function of Idris that when given a set of Options will
 -- launch Idris into the desired interaction mode either: REPL;

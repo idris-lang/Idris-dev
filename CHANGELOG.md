@@ -32,6 +32,10 @@
 + The REPL now colourises output on MinTTY consoles (e.g., Cygwin and MSYS)
   on Windows, which previously did not occur due to a bug.
 
++ Idris now runs in a UTF-8-compatible codepage on Windows. This fixes many
+  Unicode-rendering issues on Windows (e.g., error messages stating
+  `commitBuffer: invalid argument (invalid character)`).
+
 ## Library Updates
 
 + Terminating programs has been improved with more appropriate
