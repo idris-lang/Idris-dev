@@ -10,8 +10,8 @@ Maintainer  : The Idris Community.
 module Idris.ErrReverse(errReverse) where
 
 import Idris.AbsSyntax
+import Idris.Core.Evaluate (unfold)
 import Idris.Core.TT
-import Idris.Core.Evaluate(unfold)
 import Util.Pretty
 
 import Data.List
@@ -26,7 +26,7 @@ errReverse ist t = rewrite 5 (do_unfold t) -- (elideLambdas t)
     do_unfold :: Term -> Term
     do_unfold t = let ns = idris_errReduce ist in
                       if null ns then t
-                         else unfold (tt_ctxt ist) [] 
+                         else unfold (tt_ctxt ist) []
                                      (map (\x -> (x, 1000)) (idris_errReduce ist))
                                      t
 
