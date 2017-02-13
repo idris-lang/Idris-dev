@@ -8,6 +8,7 @@ import Prelude.Applicative
 import Prelude.Monad
 import Prelude.Nat
 import Prelude.List
+import Prelude.Bool
 
 %access public export
 %default total
@@ -45,6 +46,22 @@ take (S n) (x :: xs) = x :: (take n xs)
 drop : (n : Nat) -> Stream a -> Stream a
 drop Z     xs = xs
 drop (S k) (x::xs) = drop k xs
+
+||| Take elements from the stream as long as the predicate matches
+||| @ pred the predicate
+||| @ xs the stream
+takeWhile : (pred : a -> Bool) -> (xs : Stream a) -> List a
+takeWhile pred s@(x :: xs) = if (pred x)
+                             then x :: (takeWhile pred (assert_smaller s xs))
+                             else []
+
+||| Drop elements from the stream until the predicate no longer matches
+||| @ pred the predicate
+||| @ xs the stream
+dropWhile : (pred : a -> Bool) -> (xs : Stream a) -> Stream a
+dropWhile pred s@(x :: xs) = if (pred x)
+                             then dropWhile pred (assert_smaller s xs)
+                             else xs
 
 ||| An infinite stream of repetitions of the same thing
 repeat : a -> Stream a
