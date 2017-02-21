@@ -163,7 +163,7 @@ checkTotality path fc n
         t <- getTotality n
         i <- getIState
         ctxt' <- do ctxt <- getContext
-                    tclift $ simplifyCasedef n (getErasureInfo i) ctxt
+                    tclift $ simplifyCasedef n [] [] (getErasureInfo i) ctxt
         setContext ctxt'
         ctxt <- getContext
         i <- getIState
@@ -239,7 +239,7 @@ verifyTotality (fc, n)
                  case getPartial ist [] ns of
                       Nothing -> return ()
                       Just bad -> do let t' = Partial (Other bad)
-                                     logCoverage 2 $ "Set to " ++ show t'
+                                     logCoverage 2 $ "Set in verify to " ++ show t'
                                      setTotality n t'
                                      addIBC (IBCTotal n t')
               _ -> return ()
@@ -634,16 +634,16 @@ collapse' def (d : xs)         = collapse' d xs
 -- collapse' Unchecked []         = Total []
 collapse' def []               = def
 
-totalityCheckBlock :: Idris ()
-totalityCheckBlock = do
-         ist <- getIState
-         -- Do totality checking after entire mutual block
-         mapM_ (\n -> do logElab 5 $ "Simplifying " ++ show n
-                         ctxt' <- do ctxt <- getContext
-                                     tclift $ simplifyCasedef n (getErasureInfo ist) ctxt
-                         setContext ctxt')
-                 (map snd (idris_totcheck ist))
-         mapM_ buildSCG (idris_totcheck ist)
-         mapM_ checkDeclTotality (idris_totcheck ist)
-         clear_totcheck
+-- totalityCheckBlock :: Idris ()
+-- totalityCheckBlock = do
+--          ist <- getIState
+--          -- Do totality checking after entire mutual block
+--          mapM_ (\n -> do logElab 5 $ "Simplifying " ++ show n
+--                          ctxt' <- do ctxt <- getContext
+--                                      tclift $ simplifyCasedef n (getErasureInfo ist) ctxt
+--                          setContext ctxt')
+--                  (map snd (idris_totcheck ist))
+--          mapM_ buildSCG (idris_totcheck ist)
+--          mapM_ checkDeclTotality (idris_totcheck ist)
+--          clear_totcheck
 

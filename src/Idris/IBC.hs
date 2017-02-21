@@ -1238,9 +1238,6 @@ instance Binary FnOpt where
                 PEGenerated -> putWord8 16
                 StaticFn -> putWord8 17
                 OverlappingDictionary -> putWord8 18
-                UnfoldIface x ns -> do putWord8 19
-                                       put x
-                                       put ns
                 ErrorReduce -> putWord8 20
         get
           = do i <- getWord8
@@ -1266,9 +1263,6 @@ instance Binary FnOpt where
                    16 -> return PEGenerated
                    17 -> return StaticFn
                    18 -> return OverlappingDictionary
-                   19 -> do x <- get
-                            ns <- get
-                            return (UnfoldIface x ns)
                    20 -> return ErrorReduce
                    _ -> error "Corrupted binary data for FnOpt"
 
