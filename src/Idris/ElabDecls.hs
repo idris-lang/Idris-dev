@@ -197,7 +197,12 @@ elabDecl' what info d@(PClauses f o n ps)
                     [] -> []
          elabClauses info f (o ++ o') n ps
 elabDecl' what info (PMutual f ps)
-    = do case ps of
+    = do i <- get
+         -- Find the interfaces we're defining in the block so that we can
+         -- inline them appropriately before totality checking
+         let (ufnames, umethss) = unzip (mapMaybe (findTCImpl i) ps)
+
+         case ps of
               [p] -> elabDecl what info p
               _ -> do mapM_ (elabDecl ETypes info) ps
                       mapM_ (elabDecl EDefns info) ps
@@ -210,9 +215,10 @@ elabDecl' what info (PMutual f ps)
          i <- get
          mapM_ (\n -> do logElab 5 $ "Simplifying " ++ show n
                          ctxt' <- do ctxt <- getContext
-                                     tclift $ simplifyCasedef n (getErasureInfo i) ctxt
+                                     tclift $ simplifyCasedef n ufnames umethss (getErasureInfo i) ctxt
                          setContext ctxt')
                  (map snd (idris_totcheck i))
+
          mapM_ buildSCG (idris_totcheck i)
          mapM_ checkDeclTotality (idris_totcheck i)
          -- We've only checked that things are total independently. Given
@@ -222,6 +228,23 @@ elabDecl' what info (PMutual f ps)
          clear_totcheck
   where isDataDecl (PData _ _ _ _ _ _) = True
         isDataDecl _ = False
+
+        findTCImpl :: IState -> PDecl -> Maybe (Name, [Name])
+        findTCImpl ist (PImplementation _ _ _ _ _ _ _ _ n_in _ ps _ _ expn _)
+             = let (n, meths) 
+                        = case lookupCtxtName n_in (idris_interfaces ist) of
+                               [(n', ci)] -> (n', map fst (interface_methods ci))
+                               _ -> (n_in, [])
+                   iname = mkiname n (namespace info) ps expn in
+                   Just (iname, meths)
+        findTCImpl ist _ = Nothing
+    
+        mkiname n' ns ps' expn' =
+           case expn' of
+                Nothing -> case ns of
+                              [] -> SN (sImplementationN n' (map show ps'))
+                              m -> sNS (SN (sImplementationN n' (map show ps'))) m
+                Just nm -> nm
 
         getDataDecls (PNamespace _ _ ds : decls)
            = getDataDecls ds ++ getDataDecls decls

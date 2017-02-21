@@ -36,6 +36,7 @@ import Control.Applicative hiding (Const)
 import Control.Monad.State
 import Data.Binary hiding (get, put)
 import qualified Data.Binary as B
+import Data.List
 import Data.Maybe (listToMaybe)
 import Debug.Trace
 import GHC.Generics (Generic)
@@ -989,12 +990,13 @@ addCasedef n ei ci@(CaseInfo inline alwaysInline tcdict)
 --                    other -> tfail (Msg $ "Error adding case def: " ++ show other)
          return uctxt { definitions = ctxt' }
 
--- simplify a definition by inlining
--- (Note: This used to be for totality checking, and now it's actually a
--- no-op, but I'm keeping it here because I'll be putting it back with some
--- more carefully controlled inlining at some stage. --- EB)
-simplifyCasedef :: Name -> ErasureInfo -> Context -> TC Context
-simplifyCasedef n ei uctxt
+-- simplify a definition by unfolding interface methods
+-- We need this for totality checking, because functions which use interfaces
+-- in an implementation definition themselves need to have the implementation
+-- inlined or it'll be treated as a higher order function that will potentially
+-- loop.
+simplifyCasedef :: Name -> [Name] -> [[Name]] -> ErasureInfo -> Context -> TC Context
+simplifyCasedef n ufnames umethss ei uctxt
    = do let ctxt = definitions uctxt
         ctxt' <- case lookupCtxt n ctxt of
                    [(CaseOp ci ty atys [] ps _, rc, inj, acc, tot, metainf)] ->
@@ -1018,8 +1020,36 @@ simplifyCasedef n ei uctxt
                                 (vs, x', y')
     debind (Left x)       = let (vs, x') = depat [] x in
                                 (vs, x', Impossible)
-    simpl (Right (x, y)) = Right (x, y) -- inline uctxt [] y)
+    simpl (Right (x, y)) 
+         = if null ufnames then Right (x, y)
+              else Right (x, unfold uctxt [] (map (\n -> (n, 1)) (uns y)) y)
     simpl t = t
+
+    -- Unfold the given name, interface methdods, and any function which uses it as
+    -- an argument directly. This is specifically for finding applications of
+    -- interface dictionaries and inlining them both for totality checking and for
+    -- a small performance gain.
+    uns tm = getNamesToUnfold ufnames umethss tm
+
+    getNamesToUnfold :: [Name] -> [[Name]] -> Term -> [Name]
+    getNamesToUnfold inames ms tm = nub $ inames ++ getNames Nothing tm ++ concat ms
+      where
+        getNames under fn@(App _ _ _)
+            | (f, args) <- unApply fn
+                 = let under' = case f of
+                                     P _ fn _ -> Just fn
+                                     _ -> Nothing
+                                  in
+                       getNames under f ++ concatMap (getNames under') args
+        getNames (Just under) (P _ ref _)
+            = if ref `elem` inames then [under] else []
+        getNames under (Bind n (Let t v) sc)
+            = getNames Nothing t ++
+              getNames Nothing v ++
+              getNames Nothing sc
+        getNames under (Bind n b sc) = getNames Nothing (binderTy b) ++
+                                       getNames Nothing sc
+        getNames _ _ = []
 
 addOperator :: Name -> Type -> Int -> ([Value] -> Maybe Value) ->
                Context -> Context

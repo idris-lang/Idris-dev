@@ -665,34 +665,6 @@ findUnique ctxt env (Bind n b sc)
                  else findUnique ctxt ((n, RigW, b) : env) sc
 findUnique _ _ _ = []
 
-getUnfolds (UnfoldIface n ns : _) = Just (n, ns)
-getUnfolds (_ : xs) = getUnfolds xs
-getUnfolds [] = Nothing
-
--- Unfold the given name, interface methdods, and any function which uses it as
--- an argument directly. This is specifically for finding applications of
--- interface dictionaries and inlining them both for totality checking and for
--- a small performance gain.
-getNamesToUnfold :: Name -> [Name] -> Term -> [Name]
-getNamesToUnfold iname ms tm = nub $ iname : getNames Nothing tm ++ ms
-  where
-    getNames under fn@(App _ _ _)
-        | (f, args) <- unApply fn
-             = let under' = case f of
-                                 P _ fn _ -> Just fn
-                                 _ -> Nothing
-                              in
-                   getNames under f ++ concatMap (getNames under') args
-    getNames (Just under) (P _ ref _)
-        = if ref == iname then [under] else []
-    getNames under (Bind n (Let t v) sc)
-        = getNames Nothing t ++
-          getNames Nothing v ++
-          getNames Nothing sc
-    getNames under (Bind n b sc) = getNames Nothing (binderTy b) ++
-                                   getNames Nothing sc
-    getNames _ _ = []
-
 -- | Return the elaborated LHS/RHS, and the original LHS with implicits added
 elabClause :: ElabInfo -> FnOpts -> (Int, PClause) ->
               Idris (Either Term (Term, Term), PTerm)
@@ -863,15 +835,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         logElab 3 $ "---> " ++ show rhsElab
         ctxt <- getContext
 
-        let rhs' = case getUnfolds opts of
-                        Just (n, ms) ->
-                           let ns = getNamesToUnfold n ms rhsElab in
-                               unfold ctxt [] (map (\n -> (n, 1)) ns) rhsElab
-                        _ -> rhsElab
-
-        logElab 5 $ "----- " ++ show (getUnfolds opts) ++
-                    "\nUnfolded " ++ show rhsElab ++ "\n" ++
-                    "to " ++ show rhs'
+        let rhs' = rhsElab
 
         when (not (null defer)) $ logElab 1 $ "DEFERRED " ++
                     show (map (\ (n, (_,_,t,_)) -> (n, t)) defer)
@@ -1072,17 +1036,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         addDeferred def''
         mapM_ (elabCaseBlock info opts) is
 
-        let wval' = case getUnfolds opts of
-                        Just (n, ms) ->
-                           let ns = getNamesToUnfold n ms wvalElab in
-                             unfold ctxt [] (map (\n -> (n, 1)) ns) wvalElab
-                        _ -> wvalElab
-
+        let wval' = wvalElab
         logElab 5 ("Checked wval " ++ show wval')
-        logElab 5 $ "----- " ++ show (getUnfolds opts) ++
-                    "\nUnfolded wval " ++ show wvalElab ++ "\n" ++
-                    "to " ++ show wval'
-
 
         ctxt <- getContext
         (cwval, cwvalty) <- recheckC (constraintNS info) fc id [] (getInferTerm wval')
@@ -1153,13 +1108,9 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         wb <- mapM (mkAuxC mpn wname lhs (map fst bargs_pre) (map fst bargs_post))
                        withblock
         logElab 3 ("with block " ++ show wb)
-        -- propagate totality assertion and unfold flags to the new definitions
-        let uflags = case getUnfolds opts of
-                          Just (n, ns) -> [UnfoldIface n ns]
-                          _ -> []
-        setFlags wname ([Inlinable] ++ uflags)
+        setFlags wname [Inlinable] 
         when (AssertTotal `elem` opts) $
-           setFlags wname ([Inlinable, AssertTotal] ++ uflags)
+           setFlags wname [Inlinable, AssertTotal]
         i <- getIState
         let rhstrans' = updateWithTerm i mpn wname lhs (map fst bargs_pre) (map fst (bargs_post))
                              . rhs_trans info
@@ -1195,16 +1146,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         updateIState $ \i -> i { idris_name = newGName }
 
         ctxt <- getContext
-        let rhs' = case getUnfolds opts of
-                        Just (n, ms) ->
-                           let ns = getNamesToUnfold n ms rhsElab in
-                             unfold ctxt [] (map (\n -> (n, 1)) ns) rhsElab
-                        _ -> rhsElab
-
-        logElab 5 $ "----- " ++ show (getUnfolds opts) ++
-                    "\nUnfolded with RHS " ++ show rhsElab ++ "\n" ++
-                    "to " ++ show rhs'
-
+        let rhs' = rhsElab
 
         def' <- checkDef info fc iderr True defer
         let def'' = map (\(n, (i, top, t, ns)) -> (n, (i, top, t, ns, False, True))) def'
