@@ -164,7 +164,7 @@ library function ``qsort`` which takes a pointer to a comparison function.
     myComparer = ...
 
     qsort : Ptr -> Int -> Int -> IO ()
-    test2 data elems elsize = foreign FFI_C "qsort"
+    qsort data elems elsize = foreign FFI_C "qsort"
                     (Ptr -> Int -> Int -> CFnPtr (Ptr -> Ptr -> Int) -> IO ())
                     data elems elsize (MkCFnPtr myComparer)
 
