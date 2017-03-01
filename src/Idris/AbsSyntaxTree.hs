@@ -150,7 +150,7 @@ data Optimisation = PETransform -- ^ partial eval and associated transforms
   deriving (Show, Eq, Generic)
 
 defaultOptimise :: [Optimisation]
-defaultOptimise = [PETransform]
+defaultOptimise = []
 
 -- | Pretty printing options with default verbosity.
 defaultPPOption :: PPOption

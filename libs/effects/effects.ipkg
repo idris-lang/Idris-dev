@@ -1,6 +1,6 @@
 package effects
 
-opts    = "--nobasepkgs --typeintype -i ../prelude -i ../base"
+opts    = "--nobasepkgs --partial-eval --typeintype -i ../prelude -i ../base"
 
 modules = Effects
         , Effect.Default
