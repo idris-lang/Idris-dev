@@ -1,6 +1,6 @@
 package base
 
-opts = "--nobasepkgs --total --no-elim-deprecation-warnings -i ../prelude"
+opts = "--nobasepkgs --total --no-elim-deprecation-warnings --partial-eval -i ../prelude"
 modules = System,
 
           Debug.Error, Debug.Trace,

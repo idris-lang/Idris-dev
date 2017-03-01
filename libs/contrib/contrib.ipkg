@@ -1,6 +1,6 @@
 package contrib
 
-opts = "--nobasepkgs --total -i ../prelude -i ../base"
+opts = "--nobasepkgs --partial-eval --total -i ../prelude -i ../base"
 modules = CFFI, CFFI.Types, CFFI.Memory,
 
           Control.Algebra,
