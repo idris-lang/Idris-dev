@@ -245,7 +245,7 @@ elab :: IState
 elab ist info emode opts fn tm
     = do let loglvl = opt_logLevel (idris_options ist)
          when (loglvl > 5) $ unifyLog True
-         whnf_compute_args -- expand type synonyms, etc
+         compute -- expand type synonyms, etc
          let fc = maybe "(unknown)"
          elabE initElabCtxt (elabFC info) tm -- (in argument, guarded, in type, in qquote)
          est <- getAux
@@ -339,13 +339,13 @@ elab ist info emode opts fn tm
                               pexp ct]))
 
     forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
-       | (P _ (UN ht) _, _) <- unApply (whnf (tt_ctxt ist) env t),
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
             ht == txt "Delayed" = notDelay orig
     forceErr orig env (CantUnify _ (t,_) (t',_) _ _ _)
-       | (P _ (UN ht) _, _) <- unApply (whnf (tt_ctxt ist) env t'),
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t'),
             ht == txt "Delayed" = notDelay orig
     forceErr orig env (InfiniteUnify _ t _)
-       | (P _ (UN ht) _, _) <- unApply (whnf (tt_ctxt ist) env t),
+       | (P _ (UN ht) _, _) <- unApply (normalise (tt_ctxt ist) env t),
             ht == txt "Delayed" = notDelay orig
     forceErr orig env (Elaborating _ _ _ t) = forceErr orig env t
     forceErr orig env (ElaboratingArg _ _ _ t) = forceErr orig env t
@@ -397,7 +397,7 @@ elab ist info emode opts fn tm
                           highlightSource fc' (AnnConst c)
     elab' ina fc (PQuote r)     = do fill r; solve
     elab' ina _ (PTrue fc _)   =
-       do whnf_compute
+       do compute
           g <- goal
           case g of
             TType _ -> elab' ina (Just fc) (PRef fc [] unitTy)
@@ -431,7 +431,7 @@ elab ist info emode opts fn tm
                     pexp l, pexp r]))
 
     elab' ina _ (PPair fc hls _ l r)
-        = do whnf_compute
+        = do compute
              g <- goal
              let (tc, _) = unApply g
              case g of
@@ -454,7 +454,7 @@ elab ist info emode opts fn tm
                 IsType -> asType
                 IsTerm -> asValue
                 TypeOrTerm ->
-                   do whnf_compute
+                   do compute
                       g <- goal
                       case g of
                          TType _ -> asType
@@ -544,7 +544,7 @@ elab ist info emode opts fn tm
                          (trySeq' deferr xs) True
     elab' ina fc (PAlternative ms TryImplicit (orig : alts)) = do
         env <- get_env
-        whnf_compute
+        compute
         ty <- goal
         let doelab = elab' ina fc orig
         tryCatch doelab
@@ -576,7 +576,7 @@ elab ist info emode opts fn tm
         recoverableErr _ = True
 
         pruneAlts (CantUnify _ (inc, _) (outc, _) _ _ _) alts env
-            = case unApply (whnf (tt_ctxt ist) env inc) of
+            = case unApply (normalise (tt_ctxt ist) env inc) of
                    (P (TCon _ _) n _, _) -> filter (hasArg n env) alts
                    (Constant _, _) -> alts
                    _ -> filter isLend alts -- special case hack for 'Borrowed'
@@ -668,7 +668,7 @@ elab ist info emode opts fn tm
                do fty <- get_type (Var n) -- check for implicits
                   ctxt <- get_context
                   env <- get_env
-                  let a' = insertScopedImps fc (whnfArgs ctxt env fty) []
+                  let a' = insertScopedImps fc (normalise ctxt env fty) []
                   if null a'
                      then erun fc $
                             do apply (Var n) []
@@ -863,7 +863,7 @@ elab ist info emode opts fn tm
             let dataCon = isDConName f ctxt
             annot <- findHighlight f
             mapM_ checkKnownImplicit args_in
-            let args = insertScopedImps fc (whnfArgs ctxt env fty) args_in
+            let args = insertScopedImps fc (normalise ctxt env fty) args_in
             let unmatchableArgs = if pattern
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []
@@ -925,7 +925,7 @@ elab ist info emode opts fn tm
                                          return []
                                       Just rguess -> do
                                          gty <- get_type rguess
-                                         let ty_n = whnf ctxt env gty
+                                         let ty_n = normalise ctxt env gty
                                          return $ getReqImps ty_n
                               else return []
                     -- Now we find out how many implicits we needed at the
@@ -982,7 +982,7 @@ elab ist info emode opts fn tm
                 case lookupBinder n env of
                      Nothing -> return ()
                      Just b ->
-                       case unApply (whnf (tt_ctxt ist) env (binderTy b)) of
+                       case unApply (normalise (tt_ctxt ist) env (binderTy b)) of
                             (P _ c _, args) ->
                                 case lookupCtxtExact c (idris_interfaces ist) of
                                    Nothing -> return ()
@@ -1713,7 +1713,7 @@ pruneByType imp env (P _ n _) goalty ist as
                Just ty -> case unApply (getRetTy ty) of
                             (P _ ctyn _, _) | isTConName ctyn ctxt && not (ctyn == f)
                                      -> False
-                            _ -> let ty' = whnf ctxt [] ty in
+                            _ -> let ty' = normalise ctxt [] ty in
 --                                    trace ("Trying " ++ show f' ++ " : " ++ show (getRetTy ty') ++ " for " ++ show goalty
 --                                       ++ "\nMATCH: " ++ show (pat, matching (getRetTy ty') goalty)) $
                                      case unApply (getRetTy ty') of
