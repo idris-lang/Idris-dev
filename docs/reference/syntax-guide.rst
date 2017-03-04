@@ -158,6 +158,74 @@ value of type ``Type``).
       Nil  : Vect Z a
       (::) : (x : a) -> (xs : Vect n a) -> Vect (S n) a
 
+The signature of type constructors may use dependent types
+
+.. code:: idris
+
+    data DPair : (a : Type) -> (a -> Type) -> Type where
+      MkDPair : {P : a -> Type} -> (x : a) -> (pf : P x) -> DPair a P
+
+Records
+~~~~~~~
+
+There is a special syntax for data types with one constructors and
+multiple fields.
+
+.. code:: idris
+
+    record A a where
+      constructor MkA
+      foo, bar : a
+      baz : Nat
+
+This defines a constructor as well as getter and setter function for
+each field.
+
+.. code:: idris
+
+    MkA : a -> a -> Nat -> A a
+    foo : A a -> a
+    set_foo : a -> A a -> A a
+
+The types of record fields may depend on the value of other fields
+
+.. code:: idris
+
+    record Collection a where
+      constructor MkCollection
+      size : Nat
+      items : Vect size a
+
+Setter functions are only provided for fields that do not use dependant
+types. In the example above neither ``set_size`` nor ``set_items`` are
+defined.
+
+
+Co-data
+~~~~~~~
+
+Inifinite data structures can be introduced with the ``codata``
+keyword.
+
+.. code:: idris
+
+  codata Stream : Type -> Type where
+    (::) a -> Stream a -> Stream a
+
+This is syntactic sugar for
+
+.. code:: idris
+
+  data Stream : Type -> Type where
+    (::) a -> Delayed Infinite (Stream a) -> Stream a
+
+Every occurence of the the defined type in a constructor argument will
+be wrapped in the ``Delayed Infinite`` type constructor. This has the
+effect of delaying the evaluation of the second argument when the data
+constructor is applied. The argument is only evaluated when we pattern
+match against the constructor.
+
+
 Operators
 ---------
 
