@@ -1020,7 +1020,7 @@ simplifyCasedef n ufnames umethss ei uctxt
                                 (vs, x', y')
     debind (Left x)       = let (vs, x') = depat [] x in
                                 (vs, x', Impossible)
-    simpl (Right (x, y)) 
+    simpl (Right (x, y))
          = if null ufnames then Right (x, y)
               else Right (x, unfold uctxt [] (map (\n -> (n, 1)) (uns y)) y)
     simpl t = t

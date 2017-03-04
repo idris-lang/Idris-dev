@@ -231,14 +231,14 @@ elabDecl' what info (PMutual f ps)
 
         findTCImpl :: IState -> PDecl -> Maybe (Name, [Name])
         findTCImpl ist (PImplementation _ _ _ _ _ _ _ _ n_in _ ps _ _ expn _)
-             = let (n, meths) 
+             = let (n, meths)
                         = case lookupCtxtName n_in (idris_interfaces ist) of
                                [(n', ci)] -> (n', map fst (interface_methods ci))
                                _ -> (n_in, [])
                    iname = mkiname n (namespace info) ps expn in
                    Just (iname, meths)
         findTCImpl ist _ = Nothing
-    
+
         mkiname n' ns ps' expn' =
            case expn' of
                 Nothing -> case ns of

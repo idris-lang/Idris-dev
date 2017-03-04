@@ -1108,7 +1108,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         wb <- mapM (mkAuxC mpn wname lhs (map fst bargs_pre) (map fst bargs_post))
                        withblock
         logElab 3 ("with block " ++ show wb)
-        setFlags wname [Inlinable] 
+        setFlags wname [Inlinable]
         when (AssertTotal `elem` opts) $
            setFlags wname [Inlinable, AssertTotal]
         i <- getIState
