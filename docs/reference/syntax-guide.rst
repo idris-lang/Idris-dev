@@ -212,19 +212,21 @@ keyword.
   codata Stream : Type -> Type where
     (::) a -> Stream a -> Stream a
 
-This is syntactic sugar for
+This is syntactic sugar for the following, which is usually preferred:
 
 .. code:: idris
 
   data Stream : Type -> Type where
-    (::) a -> Delayed Infinite (Stream a) -> Stream a
+    (::) a -> Inf (Stream a) -> Stream a
 
-Every occurence of the the defined type in a constructor argument will
-be wrapped in the ``Delayed Infinite`` type constructor. This has the
-effect of delaying the evaluation of the second argument when the data
-constructor is applied. The argument is only evaluated when we pattern
-match against the constructor.
+Every occurence of the the defined type in a constructor argument will be
+wrapped in the ``Inf`` type constructor. This has the effect of delaying the
+evaluation of the second argument when the data constructor is applied.
+An ``Inf`` argument is constructed using ``Delay`` (which Idris will insert
+implicitly) adn evaluated using ``Force`` (again inserted implicitly).
 
+Furthermore, recursive calls under a ``Delay`` must be guarded by a constructor
+to pass the totality checker.
 
 Operators
 ---------
