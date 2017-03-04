@@ -79,7 +79,7 @@ idrisMain opts =
        let pkgdirs = opt getPkgDir opts
        -- Set default optimisations
        let optimise = case opt getOptLevel opts of
-                        [] -> 2
+                        [] -> 1
                         xs -> last xs
 
        setOptLevel optimise
