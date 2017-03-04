@@ -545,11 +545,11 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
 
 isEmpty :: Context -> Ctxt TypeInfo -> Type -> Bool
 isEmpty ctxt tyctxt ty
-    | (P _ tyname _, args) <- unApply (getRetTy ty),
+    | (P _ tyname _, args) <- unApply ty,
       Just tyinfo <- lookupCtxtExact tyname tyctxt
       -- Compare all the constructor types against the type we need
       -- If they *all* have an argument position where some constructor
-      -- clases with the needed type, then the type we're looking for must
+      -- clashes with the needed type, then the type we're looking for must
       -- be empty
          = let neededty = getRetTy ty
                contys = mapMaybe getConType (con_names tyinfo) in
