@@ -153,6 +153,16 @@ separated list, for example:
     sortAndShow : (Ord a, Show a) => List a -> String
     sortAndShow xs = show (sort xs)
 
+Note: Interfaces and ``mutual`` blocks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Idris is strictly "define before use", except in ``mutual`` blocks.
+In a ``mutual`` block, Idris elaborates in two passes: types on the first 
+pass and definitions on the second. When the mutual block contains an
+interface declaration, it elaborates the interface header but none of the
+method types on the first pass, and elaborates the method types and any
+default definitions on the second pass.
+
 Functors and Applicatives
 =========================
 
