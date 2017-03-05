@@ -403,6 +403,7 @@ recoverableCoverage ctxt (CantUnify r (topx, _) (topy, _) e _ _)
                   | Bound <- x = True
                   | Bound <- y = True
                   | otherwise = False -- name is different, unrecoverable
+recoverableCoverage ctxt (InfiniteUnify _ _ _) = False -- always unrecoverable
 recoverableCoverage ctxt (At _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (Elaborating _ _ _ e) = recoverableCoverage ctxt e
 recoverableCoverage ctxt (ElaboratingArg _ _ _ e) = recoverableCoverage ctxt e
