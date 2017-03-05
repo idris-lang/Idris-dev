@@ -291,9 +291,8 @@ elabDecl' what info (PNamespace n nfc ps) =
     ninfo = info { namespace = newNS }
 
 elabDecl' what info (PInterface doc s f cs n nfc ps pdocs fds ds cn cd)
-  | what /= EDefns
     = do logElab 1 $ "Elaborating interface " ++ show n
-         elabInterface info (s { syn_params = [] }) doc f cs n nfc ps pdocs fds ds cn cd
+         elabInterface info (s { syn_params = [] }) doc what f cs n nfc ps pdocs fds ds cn cd
 elabDecl' what info (PImplementation doc argDocs s f cs pnames acc fnopts n nfc ps pextra t expn ds)
     = do logElab 1 $ "Elaborating implementation " ++ show n
          elabImplementation info s doc argDocs what f cs pnames acc fnopts n nfc ps pextra t expn ds
