@@ -270,8 +270,8 @@ verifyTotality (fc, n)
 buildSCG :: (FC, Name) -> Idris ()
 buildSCG (_, n) = do
    ist <- getIState
-   case lookupCtxt n (idris_callgraph ist) of
-       [cg] -> case lookupDefExact n (tt_ctxt ist) of
+   case lookupCtxtExact n (idris_callgraph ist) of
+       Just cg -> case lookupDefExact n (tt_ctxt ist) of
            Just (CaseOp _ _ _ pats _ cd) ->
              let (args, sc) = cases_compiletime cd in
                do logCoverage 2 $ "Building SCG for " ++ show n ++ " from\n"
@@ -280,8 +280,7 @@ buildSCG (_, n) = do
                   logCoverage 5 $ "SCG is: " ++ show newscg
                   addToCG n ( cg { scg = newscg } )
            _ -> return () -- CG comes from a type declaration only
-       [] -> logCoverage 5 $ "Could not build SCG for " ++ show n ++ "\n"
-       x -> error $ "buildSCG: " ++ show (n, x)
+       _ -> logCoverage 5 $ "Could not build SCG for " ++ show n ++ "\n"
 
 delazy = delazy' False -- not lazy codata
 delazy' all t@(App _ f a)
