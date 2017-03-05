@@ -26,6 +26,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 lookupRigCount, lookupRigCountExact,
                 lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict,
                 isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
+                conGuarded,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
                 isUniverse, linearCheck, linearCheckArg) where
 
@@ -1136,6 +1137,17 @@ isTCDict n ctxt
          Just (Operator _ _ _)      -> False
          Just (CaseOp ci _ _ _ _ _) -> tc_dictionary ci
          _                          -> False
+
+-- Is the name guarded by constructors in the term?
+-- We assume the term is normalised, so no looking under 'let' for example.
+conGuarded :: Context -> Name -> Term -> Bool
+conGuarded ctxt n tm = guarded n tm
+  where
+    guarded n (P _ n' _) = n == n'
+    guarded n ap@(App _ _ _)
+        | (P _ f _, as) <- unApply ap,
+          isConName f ctxt = any (guarded n) as
+    guarded _ _ = False
 
 lookupP :: Name -> Context -> [Term]
 lookupP = lookupP_all False False
