@@ -164,16 +164,16 @@ Show () where
   show () = "()"
 
 Show Bits8 where
-  show b = b8ToString b
+  show b = b8ToHexString b
 
 Show Bits16 where
-  show b = b16ToString b
+  show b = b16ToHexString b
 
 Show Bits32 where
-  show b = b32ToString b
+  show b = b32ToHexString b
 
 Show Bits64 where
-  show b = b64ToString b
+  show b = b64ToHexString b
 
 (Show a, Show b) => Show (a, b) where
     show (x, y) = "(" ++ show x ++ ", " ++ show y ++ ")"
