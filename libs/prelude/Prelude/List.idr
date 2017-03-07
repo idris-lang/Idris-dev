@@ -547,7 +547,8 @@ elemIndices = elemIndicesBy (==)
 -- Filters
 --------------------------------------------------------------------------------
 
-||| filter, applied to a predicate and a list, returns the list of those elements that satisfy the predicate; e.g.,
+||| filter, applied to a predicate and a list, returns the list of those
+||| elements that satisfy the predicate; e.g.,
 |||
 ||| ````idris example
 ||| filter (< 3) [Z, S Z, S (S Z), S (S (S Z)), S (S (S (S Z)))]
@@ -569,7 +570,8 @@ filterSmaller {p} (x :: xs) with (p x)
   filterSmaller {p = p} (x :: xs) | True = LTESucc (filterSmaller xs)
 
 
-||| The nubBy function behaves just like nub, except it uses a user-supplied equality predicate instead of the overloaded == function.
+||| The nubBy function behaves just like nub, except it uses a user-supplied
+||| equality predicate instead of the overloaded == function.
 nubBy : (a -> a -> Bool) -> List a -> List a
 nubBy = nubBy' []
   where
@@ -680,7 +682,9 @@ split p xs =
 splitAt : (n : Nat) -> (xs : List a) -> (List a, List a)
 splitAt n xs = (take n xs, drop n xs)
 
-||| The partition function takes a predicate a list and returns the pair of lists of elements which do and do not satisfy the predicate, respectively; e.g.,
+||| The partition function takes a predicate a list and returns the pair of
+||| lists of elements which do and do not satisfy the predicate, respectively;
+||| e.g.,
 |||
 ||| ```idris example
 ||| partition (<3) [0, 1, 2, 3, 4, 5]
@@ -763,7 +767,8 @@ isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 isSuffixOf : Eq a => List a -> List a -> Bool
 isSuffixOf = isSuffixOfBy (==)
 
-||| The isInfixOf function takes two lists and returns True iff the first list is contained, wholly and intact, anywhere within the second.
+||| The isInfixOf function takes two lists and returns True iff the first list
+||| is contained, wholly and intact, anywhere within the second.
 |||
 ||| ```idris example
 ||| isInfixOf ['b','c'] ['a', 'b', 'c', 'd']
