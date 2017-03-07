@@ -64,18 +64,28 @@ contribute.
 cross-platform program for developing Haskell projects, that enhances
 the functionality provided by Cabal. There is experimental support for
 building Idris from source with stack.
+
 This installation has been tested on Ubuntu 16.04.1 LTS, and the current
 NixOS unstable.
 
-To build Idris with stack the following commands are recommended:
+*Important* Stack will not install any external dependencies required
+to build Idris. Before you try stack please ensure you have the
+correct depenencies.
+
+To build Idris with stack use the following command:
 
 * `stack build`
 
-This will install Idris (and related executables) into `./local/bin/`
-on Unix based systems and an appropriate place on Windows. If you
-haven't used stack before this will also setup the related
-infrastructure. For more information about Stack please visit the
-[Stack website](https://github.com/commercialhaskell/stack).
+To install Idris:
+
+* `stack install`
+
+Stack will install Idris (and related executables) into `$HOME/.local/bin/`
+on Unix based systems and an appropriate place on Windows.
+
+Of note: If you haven't used stack before commands will also setup the
+related infrastructure. For more information about Stack please visit
+the [Stack website](https://github.com/commercialhaskell/stack).
 
 On NixOS, please use the following command instead, to make sure
 the required libraries and header files are available:
