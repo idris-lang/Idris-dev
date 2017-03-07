@@ -36,6 +36,11 @@
   Unicode-rendering issues on Windows (e.g., error messages stating
   `commitBuffer: invalid argument (invalid character)`).
 
++ Idris now has a `--warnipkg` flag to enable auditing of Idris
+  packages during build time. Currently auditing check's the list of
+  modules specified in the `iPKG` file with those presented in the
+  package directory.
+
 ## Library Updates
 
 + Terminating programs has been improved with more appropriate
