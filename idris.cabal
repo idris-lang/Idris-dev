@@ -310,6 +310,11 @@ Library
   else
      build-depends: safe >= 0.3.9
 
+  if impl(ghc < 7.8.4)
+     build-depends: tagsoup < 0.14.1
+  else
+     build-depends: tagsoup >= 0.14.1
+
   Extensions:     MultiParamTypeClasses
                 , DeriveFoldable
                 , DeriveTraversable
