@@ -1,7 +1,7 @@
 Not all command line options can be used to override package options.
 
 The only changeable options are:
-	--log <lvl>, --total, --warnpartial, --warnreach
+	--log <lvl>, --total, --warnpartial, --warnreach, --warnipkg
 	--ibcsubdir <path>, -i --idrispath <path>
 	--logging-categories <cats>
 

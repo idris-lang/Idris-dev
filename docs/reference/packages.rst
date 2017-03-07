@@ -138,6 +138,8 @@ Given an Idris package file ``text.ipkg`` it can be used with the Idris compiler
 
 + ``idris --testpkg test.ipkg`` will compile and run any embedded tests you have specified in the ``tests`` parameter.
 
+When building or install packages the commandline flag ``--warnipkg`` will audit the project and warn of any potentiable problems.
+
 Once the test package has been installed, the command line option
 ``--package test`` makes it accessible (abbreviated to ``-p test``).
 For example::

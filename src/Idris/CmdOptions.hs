@@ -126,6 +126,7 @@ parseFlags = many $
   <|> flag' DefaultPartial (long "partial")
   <|> flag' WarnPartial    (long "warnpartial" <> help "Warn about undeclared partial functions")
   <|> flag' WarnReach      (long "warnreach"   <> help "Warn about reachable but inaccessible arguments")
+  <|> flag' AuditIPkg      (long "warnipkg"    <> help "Warn about possible incorrect package specifications")
   <|> flag' NoCoverage     (long "nocoverage")
   <|> flag' ErrContext     (long "errorcontext")
 

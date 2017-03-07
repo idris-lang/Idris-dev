@@ -8,6 +8,26 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE CPP #-}
 module Idris.Package where
 
+import System.Directory
+import System.Directory (copyFile, createDirectoryIfMissing)
+import System.Exit
+import System.FilePath (addExtension, addTrailingPathSeparator, dropExtension,
+                        hasExtension, normalise, takeDirectory, takeExtension,
+                        takeFileName, (</>))
+import System.IO
+import System.Process
+
+import Util.System
+
+import Control.Monad
+import Control.Monad.Trans.Except (runExceptT)
+import Control.Monad.Trans.State.Strict (execStateT)
+import Data.Either (partitionEithers)
+import Data.Either (partitionEithers)
+import Data.List
+import Data.List.Split (splitOn)
+import Data.Maybe (fromMaybe)
+
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Error (ifail)
@@ -17,28 +37,13 @@ import Idris.Imports
 import Idris.Main (idris, idrisMain)
 import Idris.Output (pshow)
 import Idris.Output
-import Idris.Package.Common
-import Idris.Package.Parser
 import Idris.Parser (loadModule)
 import Idris.REPL
+
+import Idris.Package.Common
+import Idris.Package.Parser
+
 import IRTS.System
-
-import Util.System
-
-import Control.Monad
-import Control.Monad.Trans.Except (runExceptT)
-import Control.Monad.Trans.State.Strict (execStateT)
-import Data.Either (partitionEithers)
-import Data.List
-import Data.List.Split (splitOn)
-import Data.Maybe (fromMaybe)
-import System.Directory
-import System.Directory (copyFile, createDirectoryIfMissing)
-import System.Exit
-import System.FilePath (addExtension, addTrailingPathSeparator, hasExtension,
-                        normalise, takeDirectory, takeFileName, (</>))
-import System.IO
-import System.Process
 
 -- To build a package:
 -- * read the package description
@@ -75,14 +80,18 @@ buildPkg copts warnonly (install, fp) = do
             Left emsg -> do
               putStrLn emsg
               exitWith (ExitFailure 1)
-            Right opts -> buildMods opts (modules pkgdesc)
+            Right opts -> do
+              auditPackage (AuditIPkg `elem` opts) pkgdesc
+              buildMods opts (modules pkgdesc)
         Just o -> do
           let exec = dir </> o
           case mergeOptions copts (idx : NoREPL : Verbose 1 : Output exec : idris_opts pkgdesc) of
             Left emsg -> do
               putStrLn emsg
               exitWith (ExitFailure 1)
-            Right opts -> buildMain opts (idris_main pkgdesc)
+            Right opts -> do
+              auditPackage (AuditIPkg `elem` opts) pkgdesc
+              buildMain opts (idris_main pkgdesc)
     case m_ist of
       Nothing  -> exitWith (ExitFailure 1)
       Just ist -> do
@@ -120,6 +129,7 @@ checkPkg copts warnonly quit fpath = do
           putStrLn emsg
           exitWith (ExitFailure 1)
         Right opts -> do
+          auditPackage (AuditIPkg `elem` opts) pkgdesc
           buildMods opts (modules pkgdesc)
     when quit $ case res of
                   Nothing -> exitWith (ExitFailure 1)
@@ -301,10 +311,55 @@ installPkg altdests pkgdesc = inPkgDir pkgdesc $ do
 -- Methods for building, testing, installing, and removal of idris
 -- packages.
 
+auditPackage :: Bool -> PkgDesc -> IO ()
+auditPackage False _    = return ()
+auditPackage True  ipkg = do
+    cwd <- getCurrentDirectory
+
+    let ms = map (sourcedir ipkg </>) $ map (toPath . showCG) (modules ipkg)
+    ms' <- mapM makeAbsolute ms
+
+    ifiles <- getIdrisFiles cwd
+
+    let ifiles' = map dropExtension ifiles
+
+    not_listed <- mapM makeRelativeToCurrentDirectory (ifiles' \\ ms')
+
+    putStrLn $ unlines $
+         ["Warning: The following modules are not listed in your iPkg file:\n"]
+      ++ map (\m -> unwords ["-", m]) not_listed
+      ++ ["\nModules that are not listed, are not installed."]
+
+  where
+    toPath n = foldl1' (</>) $ splitOn "." n
+
+    getIdrisFiles :: FilePath -> IO [FilePath]
+    getIdrisFiles dir = do
+      contents <- getDirectoryContents dir
+      let contents' = filter (\fname -> fname /= "." && fname /= "..") contents
+
+      -- [ NOTE ] Directory >= 1.2.5.0 introduced `listDirectory` but later versions of directory appear to be causing problems with ghc 7.10.3 and cabal 1.22 in travis. Let's reintroduce the old ranges for directory to be sure.
+
+
+      files <- forM contents (findRest dir)
+      return $ filter (isIdrisFile) (concat files)
+
+    isIdrisFile :: FilePath -> Bool
+    isIdrisFile fp = takeExtension fp == ".idr" || takeExtension fp == ".lidr"
+
+    findRest :: FilePath -> FilePath -> IO [FilePath]
+    findRest dir fn = do
+      path <- makeAbsolute (dir </> fn)
+      isDir <- doesDirectoryExist path
+      if isDir
+        then getIdrisFiles path
+        else return [path]
+
 buildMods :: [Opt] -> [Name] -> IO (Maybe IState)
 buildMods opts ns = do let f = map (toPath . showCG) ns
                        idris (map Filename f ++ opts)
-    where toPath n = foldl1' (</>) $ splitOn "." n
+    where
+      toPath n = foldl1' (</>) $ splitOn "." n
 
 testLib :: Bool -> String -> String -> IO Bool
 testLib warn p f
@@ -443,13 +498,14 @@ mergeOptions copts popts =
     chkOpt o@(ImportDir _ )   = Right o
     chkOpt o@(UseCodegen _)   = Right o
     chkOpt o@(Verbose _)      = Right o
+    chkOpt o@(AuditIPkg)      = Right o
     chkOpt o                  = Left (unwords ["\t", show o, "\n"])
 
     genErrMsg :: [String] -> String
     genErrMsg es = unlines
         [ "Not all command line options can be used to override package options."
         , "\nThe only changeable options are:"
-        , "\t--log <lvl>, --total, --warnpartial, --warnreach"
+        , "\t--log <lvl>, --total, --warnpartial, --warnreach, --warnipkg"
         , "\t--ibcsubdir <path>, -i --idrispath <path>"
         , "\t--logging-categories <cats>"
         , "\nThe options need removing are:"
