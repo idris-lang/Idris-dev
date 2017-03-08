@@ -62,3 +62,6 @@ pkgbuild --identifier org.idris-lang \
          --version "v$VERSION"       \
          --root /tmp/idris-pkg/      \
          idris-$VERSION.pkg
+
+echo "==> Creating SHA256 hash (don't forget to update web site!)"
+shasum -a 256 idris-$VERSION.pkg > idris-$VERSION.pkg.sha256
