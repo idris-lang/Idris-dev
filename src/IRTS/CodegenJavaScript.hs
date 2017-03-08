@@ -757,19 +757,19 @@ jsOP _ reg op args = JSAssign (translateReg reg) jsOP'
             )
           ]
 
-      | (LTrunc (ITFixed IT16) (ITFixed IT8)) <- op
+      | (LTrunc (ITFixed _from) (ITFixed IT8)) <- op
       , (arg:_)                               <- args =
           jsPackUBits8 (
             JSBinOp "&" (jsUnPackBits $ translateReg arg) (JSNum (JSInt 0xFF))
           )
 
-      | (LTrunc (ITFixed IT32) (ITFixed IT16)) <- op
+      | (LTrunc (ITFixed _from) (ITFixed IT16)) <- op
       , (arg:_)                                <- args =
           jsPackUBits16 (
             JSBinOp "&" (jsUnPackBits $ translateReg arg) (JSNum (JSInt 0xFFFF))
           )
 
-      | (LTrunc (ITFixed IT64) (ITFixed IT32)) <- op
+      | (LTrunc (ITFixed _from) (ITFixed IT32)) <- op
       , (arg:_)                                <- args =
           jsPackUBits32 (
             jsMeth (jsMeth (translateReg arg) "and" [
