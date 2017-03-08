@@ -46,6 +46,7 @@ import Idris.Core.TT
 import Idris.Core.Unify
 import Idris.Core.WHNF
 import Idris.Coverage
+import Idris.DataOpts
 import Idris.Delaborate
 import Idris.Docs
 import Idris.Docstrings (overview, renderDocTerm, renderDocstring)
@@ -1236,7 +1237,8 @@ process fn (TestInline t)
 process fn (Execute tm)
                    = idrisCatch
                        (do ist <- getIState
-                           (m, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS (elabExec fc tm)
+                           (m_in, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS (elabExec fc tm)
+                           m <- applyOpts m_in
                            (tmpn, tmph) <- runIO $ tempfile ""
                            runIO $ hClose tmph
                            t <- codegen
