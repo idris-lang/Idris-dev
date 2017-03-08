@@ -62,3 +62,4 @@ pkgbuild --identifier org.idris-lang \
          --version "v$VERSION"       \
          --root /tmp/idris-pkg/      \
          idris-$VERSION.pkg
+shasum -a 256 idris-$VERSION.pkg > idris-$VERSION.pkg.sha256

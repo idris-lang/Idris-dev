@@ -37,6 +37,7 @@ Things to be checked, or done before a release is made.
 ## Announcements
 
 + [ ] Update website.
+  + [ ] Update web site with SHA256 hash of binary
 + [ ] Email Mailing list.
 + [ ] Make REDDIT post.
 + [ ] Tweet
