@@ -38,11 +38,10 @@ import System.FilePath (dropFileName, isAbsolute, searchPathSeparator)
 import Tools_idris
 #endif
 
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS) && defined(x86_64_HOST_ARCH)
 import Graphics.Win32.Misc (getStdHandle, sTD_OUTPUT_HANDLE)
 import System.Console.MinTTY (isMinTTYHandle)
 #endif
-
 catchIO :: IO a -> (IOError -> IO a) -> IO a
 catchIO = CE.catch
 
@@ -82,7 +81,7 @@ isATTY = do
 -- Unfortunately, we must check this separately since 'isATTY' always returns
 -- 'False' on MinTTY consoles.
 isMinTTY :: IO Bool
-#ifdef mingw32_HOST_OS
+#if defined(mingw32_HOST_OS) && defined(x86_64_HOST_ARCH)
 isMinTTY = do
   h <- getStdHandle sTD_OUTPUT_HANDLE
   isMinTTYHandle h
