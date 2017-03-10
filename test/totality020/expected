@@ -1,1 +1,2 @@
 totality020.idr:4:5:bug _ _ Refl is a valid case
+totality020.idr:7:5:foo a b Refl is a valid case
