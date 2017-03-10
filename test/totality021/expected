@@ -1,0 +1,5 @@
+totality021.idr:8:1:
+Main.sLevelNotSLevel' is possibly not total due to recursive path Main.sLevelNotSLevel' --> Main.sLevelNotSLevel'
+totality021.idr:12:1:
+Main.sLevelNotSLevel is possibly not total due to: Main.sLevelNotSLevel'
+totality021.idr:18:1:Main.v is possibly not total due to: Main.sLevelNotSLevel
