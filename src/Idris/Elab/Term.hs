@@ -1311,17 +1311,21 @@ elab ist info emode opts fn tm
       do unless (ElabReflection `elem` idris_language_extensions ist) $
            lift $ tfail $ At fc' (Msg "You must turn on the ElabReflection extension to use %runElab")
          attack
+         let elabName = sNS (sUN "Elab") ["Elab", "Reflection", "Language"]
          n <- getNameFrom (sMN 0 "tacticScript")
-         let scriptTy = RApp (Var (sNS (sUN "Elab")
-                                  ["Elab", "Reflection", "Language"]))
-                             (Var unitTy)
+         let scriptTy = RApp (Var elabName) (Var unitTy)
          claim n scriptTy
          focus n
+         elabUnit <- goal
          attack -- to get an extra hole
          elab' ina (Just fc') tm
          script <- get_guess
          fullyElaborated script
          solve -- eliminate the hole. Because there are no references, the script is only in the binding
+         ctxt <- get_context
+         env <- get_env
+         (scriptTm, scriptTy) <- lift $ check ctxt [] (forget script)
+         lift $ converts ctxt env elabUnit scriptTy
          env <- get_env
          runElabAction info ist (maybe fc' id fc) env script ns
          solve
