@@ -284,6 +284,8 @@ data STrans : (m : Type -> Type) ->
                 STrans m b (st2_fn result) st3_fn) ->
             STrans m b st1 st3_fn
      Lift : Monad m => m t -> STrans m t ctxt (const ctxt)
+     RunAs : Applicative m => STrans m t in_res (const out_res) -> 
+             STrans m (m t) in_res (const out_res)
 
      New : (val : state) -> 
            STrans m Var ctxt (\lbl => (lbl ::: state) :: ctxt)
@@ -347,6 +349,7 @@ runST env (Bind prog next) k
 runST env (Lift action) k 
    = do res <- action
         k res env
+runST env (RunAs prog) k = runST env prog (\res, env' => k (pure res) env')
 runST env (New val) k = k MkVar (val :: env)
 runST env (Delete lbl prf) k = k () (dropVal prf env)
 runST env (DropSubCtxt prf) k = k (dropEnv env prf) (keepEnv env prf)
@@ -383,6 +386,11 @@ export
 export
 lift : Monad m => m t -> STrans m t ctxt (const ctxt)
 lift = Lift
+
+export
+runAs : Applicative m => STrans m t in_res (const out_res) -> 
+        STrans m (m t) in_res (const out_res)
+runAs = RunAs
 
 export
 new : (val : state) -> 
