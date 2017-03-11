@@ -270,7 +270,7 @@ Library
                 , filepath < 1.5
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
-                , ieee754 >= 0.7 && < 0.8
+                , ieee754 >= 0.7 && <= 0.8.0
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7
                 , optparse-applicative >= 0.11 && < 0.14
