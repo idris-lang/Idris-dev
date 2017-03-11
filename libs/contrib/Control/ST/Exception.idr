@@ -1,4 +1,4 @@
-module Control.ST.ImplicitCall
+module Control.ST.Exception
 
 import Control.ST
 import Control.Catchable
