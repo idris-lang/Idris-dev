@@ -4,7 +4,7 @@ import Control.IOExcept
 
 %access public export
 
-interface Catchable (m : Type -> Type) t where
+interface Catchable (m : Type -> Type) t | m where
     throw : t -> m a
     catch : m a -> (t -> m a) -> m a
 
