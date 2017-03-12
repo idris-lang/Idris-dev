@@ -301,9 +301,8 @@ which can be inferred by the type checker:
     "[1, 2, 3, 4, 5, 6]" : String
 
 
-**********************
 Modules Dependencies Using Atom 
-**********************
+===============================
 
 If you are using the Atom editor and have a dependency on another package, 
 corresponding to for instance ``import Lightyear`` or ``import Pruviloj``, 
