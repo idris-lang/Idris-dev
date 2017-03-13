@@ -46,8 +46,12 @@ allowImp syn = syn { implicitAllowed = True,
 
 -- | Disallow implicit type declarations
 disallowImp :: SyntaxInfo -> SyntaxInfo
-disallowImp syn = syn { implicitAllowed = False,
-                        constraintAllowed = False }
+disallowImp = scopedImp
+
+-- | Implicits hare are scoped rather than top level
+scopedImp :: SyntaxInfo -> SyntaxInfo
+scopedImp syn = syn { implicitAllowed = False,
+                      constraintAllowed = False }
 
 -- | Allow scoped constraint arguments
 allowConstr :: SyntaxInfo -> SyntaxInfo

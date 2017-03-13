@@ -106,7 +106,8 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                           <|> (symbol "_" >> return Nothing)
             ns <- commaSeparated oneName
             lchar ':'
-            t <- typeExpr (allowImp syn)
+            -- Implicits are scoped in fields (fields aren't top level)
+            t <- typeExpr (scopedImp syn)
             p <- endPlicity c
             ist <- get
             let doc' = case doc of -- Temp: Throws away any possible arg docs
