@@ -753,9 +753,6 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         -- These are the names we're not allowed to use on the RHS, because
         -- they're UniqueTypes and borrowed from another function.
-        -- FIXME: There is surely a nicer way than this...
-        -- Issue #1615 on the Issue Tracker.
-        --     https://github.com/idris-lang/Idris-dev/issues/1615
         when (not (null borrowed)) $
           logElab 5 ("Borrowed names on LHS: " ++ show borrowed)
 

@@ -611,9 +611,7 @@ prepare_apply fn imps =
     mkClaims _ _ _ _
             | Var n <- fn
                    = do ctxt <- get_context
-                        case lookupTy n ctxt of
-                                [] -> lift $ tfail $ NoSuchVariable n
-                                _ -> lift $ tfail $ TooManyArguments n
+                        lift $ tfail $ TooManyArguments n
             | otherwise = fail $ "Too many arguments for " ++ show fn
 
     doClaim ((i, _), n, t) = do claim n t

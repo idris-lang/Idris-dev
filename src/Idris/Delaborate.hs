@@ -8,7 +8,7 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Delaborate (
-    annName, bugaddr, delab, delabDirect, delab', delabMV, delabSugared
+    annName, bugaddr, delab, delabWithEnv, delabDirect, delab', delabMV, delabSugared
   , delabTy, delabTy', fancifyAnnots, pprintDelab, pprintNoDelab
   , pprintDelabTy, pprintErr, resugar
   ) where
@@ -82,6 +82,9 @@ delabSugared ist tm = resugar ist $ delab ist tm
 delab :: IState -> Term -> PTerm
 delab i tm = delab' i tm False False
 
+delabWithEnv :: IState -> [(Name, Type)] -> Term -> PTerm
+delabWithEnv i tys tm = delabWithEnv' i tys tm False False
+
 delabMV :: IState -> Term -> PTerm
 delabMV i tm = delab' i tm False True
 
@@ -89,26 +92,31 @@ delabMV i tm = delab' i tm False True
 -- We need this for interactive case splitting, where we need access to the
 -- underlying function in a delaborated form, to generate the right patterns
 delabDirect :: IState -> Term -> PTerm
-delabDirect i tm = delabTy' i [] tm False False False
+delabDirect i tm = delabTy' i [] [] tm False False False
 
 delabTy :: IState -> Name -> PTerm
 delabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> case lookupCtxt n (idris_implicits i) of
-                         (imps:_) -> delabTy' i imps ty False False True
-                         _ -> delabTy' i [] ty False False True
+                         (imps:_) -> delabTy' i imps [] ty False False True
+                         _ -> delabTy' i [] [] ty False False True
            [] -> error "delabTy: got non-existing name"
 
 delab' :: IState -> Term -> Bool -> Bool -> PTerm
-delab' i t f mvs = delabTy' i [] t f mvs True
+delab' i t f mvs = delabTy' i [] [] t f mvs True
+
+delabWithEnv' :: IState -> [(Name, Type)] -> Term -> Bool -> Bool -> PTerm
+delabWithEnv' i tys t f mvs = delabTy' i [] tys t f mvs True
 
 delabTy' :: IState -> [PArg] -- ^ implicit arguments to type, if any
+          -> [(Name, Type)] -- ^ Names and types in environment
+                            -- (for properly hiding scoped implicits)
           -> Term
           -> Bool -- ^ use full names
           -> Bool -- ^ Don't treat metavariables specially
           -> Bool -- ^ resugar cases
           -> PTerm
-delabTy' ist imps tm fullname mvs docases = de [] imps tm
+delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
   where
     un = fileFC "(val)"
 
@@ -118,64 +126,71 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
     -- the last argument,
     -- although that's not always the thing that gets pattern matched
     -- in the elaborated block)
-    de env imps sc
+    de tys env imps sc
           | docases
           , isCaseApp sc
           , (P _ cOp _, args@(_:_)) <- unApply sc
-          , Just caseblock <- delabCase env imps (last args) cOp args
+          , Just caseblock <- delabCase tys env imps (last args) cOp args
                  = caseblock
 
-    de env _ (App _ f a) = deFn env f [a]
-    de env _ (V i)     | i < length env = PRef un [] (snd (env!!i))
+    de tys env _ (App _ f a) = deFn tys env f [a]
+    de tys env _ (V i) | i < length env = PRef un [] (snd (env!!i))
                        | otherwise = PRef un [] (sUN ("v" ++ show i ++ ""))
-    de env _ (P _ n _) | n == unitTy = PTrue un IsType
-                       | n == unitCon = PTrue un IsTerm
-                       | Just n' <- lookup n env = PRef un [] n'
-                       | otherwise
-                            = case lookup n (idris_metavars ist) of
-                                  Just (Just _, mi, _, _, _) -> mkMVApp n []
-                                  _ -> PRef un [] n
-    de env _ (Bind n (Lam _ ty) sc)
-          = PLam un n NoFC (de env [] ty) (de ((n,n):env) [] sc)
-    de env (_ : is) (Bind n (Pi rig (Just impl) ty _) sc)
+    de tys env _ (P _ n _) | n == unitTy = PTrue un IsType
+                           | n == unitCon = PTrue un IsTerm
+                           | Just n' <- lookup n env = PRef un [] n'
+                           | otherwise
+                                = case lookup n (idris_metavars ist) of
+                                      Just (Just _, mi, _, _, _) -> mkMVApp n []
+                                      _ -> PRef un [] n
+    de tys env _ (Bind n (Lam _ ty) sc)
+          = PLam un n NoFC (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) [] sc)
+    de tys env (_ : is) (Bind n (Pi rig (Just impl) ty _) sc)
        | toplevel_imp impl -- information in 'imps' repeated
-          = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env is (Bind n (Pi rig (Just impl) ty _) sc)
+          = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC 
+                (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) is sc)
+    de tys env is (Bind n (Pi rig (Just impl) ty _) sc)
        | tcimplementation impl
-          = PPi constraint n NoFC (de env [] ty) (de ((n,n):env) is sc)
+          = PPi constraint n NoFC (de tys env [] ty) 
+                (de ((n, ty) : tys) ((n,n):env) is sc)
        | otherwise
-          = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env ((PImp { argopts = opts }):is) (Bind n (Pi rig _ ty _) sc)
-          = PPi (Imp opts Dynamic False Nothing False rig) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (PConstraint _ _ _ _:is) (Bind n (Pi rig _ ty _) sc)
-          = PPi (constraint { pcount = rig}) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi rig _ ty _) sc)
-          = PPi ((tacimpl tac) { pcount = rig }) n NoFC (de env [] ty) (de ((n,n):env) is sc)
-    de env (plic:is) (Bind n (Pi rig _ ty _) sc)
+          = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC (de tys env [] ty) (de tys ((n,n):env) is sc)
+    de tys env ((PImp { argopts = opts }):is) (Bind n (Pi rig _ ty _) sc)
+          = PPi (Imp opts Dynamic False Nothing False rig) n NoFC 
+                (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) is sc)
+    de tys env (PConstraint _ _ _ _:is) (Bind n (Pi rig _ ty _) sc)
+          = PPi (constraint { pcount = rig}) n NoFC 
+                (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) is sc)
+    de tys env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi rig _ ty _) sc)
+          = PPi ((tacimpl tac) { pcount = rig }) n NoFC 
+                (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) is sc)
+    de tys env (plic:is) (Bind n (Pi rig _ ty _) sc)
           = PPi (Exp (argopts plic) Dynamic False rig)
                 n NoFC
-                (de env [] ty)
-                (de ((n,n):env) is sc)
-    de env [] (Bind n (Pi rig _ ty _) sc)
-          = PPi (expl { pcount = rig }) n NoFC (de env [] ty) (de ((n,n):env) [] sc)
+                (de tys env [] ty)
+                (de ((n, ty) : tys) ((n,n):env) is sc)
+    de tys env [] (Bind n (Pi rig _ ty _) sc)
+          = PPi (expl { pcount = rig }) n NoFC (de tys env [] ty) 
+                (de ((n, ty) : tys) ((n,n):env) [] sc)
 
-    de env imps (Bind n (Let ty val) sc)
+    de tys env imps (Bind n (Let ty val) sc)
           | docases
           , isCaseApp sc
           , (P _ cOp _, args) <- unApply sc
-          , Just caseblock    <- delabCase env imps val cOp args = caseblock
+          , Just caseblock    <- delabCase tys env imps val cOp args = caseblock
           | otherwise    =
-              PLet un n NoFC (de env [] ty) (de env [] val) (de ((n,n):env) [] sc)
-    de env _ (Bind n (Hole ty) sc) = de ((n, sUN "[__]"):env) [] sc
-    de env _ (Bind n (Guess ty val) sc) = de ((n, sUN "[__]"):env) [] sc
-    de env plic (Bind n bb sc) = de ((n,n):env) [] sc
-    de env _ (Constant i) = PConstant NoFC i
-    de env _ (Proj _ _) = error "Delaboration got run-time-only Proj!"
-    de env _ Erased = Placeholder
-    de env _ Impossible = Placeholder
-    de env _ (Inferred t) = Placeholder
-    de env _ (TType i) = PType un
-    de env _ (UType u) = PUniverse un u
+              PLet un n NoFC (de tys env [] ty) 
+                   (de tys env [] val) (de ((n, ty) : tys) ((n,n):env) [] sc)
+    de tys env _ (Bind n (Hole ty) sc) = de ((n, ty) : tys) ((n, sUN "[__]"):env) [] sc
+    de tys env _ (Bind n (Guess ty val) sc) = de ((n, ty) : tys) ((n, sUN "[__]"):env) [] sc
+    de tys env plic (Bind n bb sc) = de ((n, binderTy bb) : tys) ((n,n):env) [] sc
+    de tys env _ (Constant i) = PConstant NoFC i
+    de tys env _ (Proj _ _) = error "Delaboration got run-time-only Proj!"
+    de tys env _ Erased = Placeholder
+    de tys env _ Impossible = Placeholder
+    de tys env _ (Inferred t) = Placeholder
+    de tys env _ (TType i) = PType un
+    de tys env _ (UType u) = PUniverse un u
 
     dens x | fullname = x
     dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
@@ -184,38 +199,48 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
                               _ -> ns
     dens n = n
 
-    deFn env (App _ f a) args = deFn env f (a:args)
-    deFn env (P _ n _) [l,r]
-         | n == pairTy    = PPair un [] IsType (de env [] l) (de env [] r)
-         | n == sUN "lazy" = de env [] r -- TODO: Fix string based matching
-    deFn env (P _ n _) [ty, Bind x (Lam _ _) r]
+    deFn tys env (App _ f a) args = deFn tys env f (a:args)
+    deFn tys env (P _ n _) [l,r]
+         | n == pairTy    = PPair un [] IsType (de tys env [] l) (de tys env [] r)
+    deFn tys env (P _ n _) [ty, Bind x (Lam _ _) r]
          | n == sigmaTy
-               = PDPair un [] IsType (PRef un [] x) (de env [] ty)
-                           (de ((x,x):env) [] (instantiate (P Bound x ty) r))
-    deFn env (P _ n _) [lt,rt,l,r]
-         | n == pairCon = PPair un [] IsTerm (de env [] l) (de env [] r)
-         | n == sigmaCon = PDPair un [] IsTerm (de env [] l) Placeholder
-                                                (de env [] r)
-    deFn env f@(P _ n _) args
-         | n `elem` map snd env
-              = PApp un (de env [] f) (map pexp (map (de env []) args))
-    deFn env (P _ n _) args
+               = PDPair un [] IsType (PRef un [] x) (de tys env [] ty)
+                           (de tys ((x,x):env) [] (instantiate (P Bound x ty) r))
+    deFn tys env (P _ n _) [lt,rt,l,r]
+         | n == pairCon = PPair un [] IsTerm (de tys env [] l) (de tys env [] r)
+         | n == sigmaCon = PDPair un [] IsTerm (de tys env [] l) Placeholder
+                                                (de tys env [] r)
+--     deFn tys env f@(P _ n _) args
+--          | n `elem` map snd env
+--               = PApp un (de tys env [] f) (map pexp (map (de tys env []) args))
+    deFn tys env (P _ n _) args
          | not mvs = case lookup n (idris_metavars ist) of
                         Just (Just _, mi, _, _, _) ->
-                            mkMVApp n (drop mi (map (de env []) args))
-                        _ -> mkPApp n (map (de env []) args)
-         | otherwise = mkPApp n (map (de env []) args)
-    deFn env f args = PApp un (de env [] f) (map pexp (map (de env []) args))
+                            mkMVApp n (drop mi (map (de tys env []) args))
+                        _ -> mkPApp tys n (map (de tys env []) args)
+         | otherwise = mkPApp tys n (map (de tys env []) args)
+    deFn tys env (V i) args
+         | i < length env = mkPApp tys (fst (env!!i)) (map (de tys env []) args)
+    deFn tys env f args = PApp un (de tys env [] f) (map pexp (map (de tys env []) args))
 
     mkMVApp n []
             = PMetavar NoFC n
     mkMVApp n args
             = PApp un (PMetavar NoFC n) (map pexp args)
-    mkPApp n args
+
+    mkPApp tys n args
+        | Just ty <- lookup n tys
+            = let imps = findImp ty in
+                  PApp un (PRef un [] n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | Just imps <- lookupCtxtExact n (idris_implicits ist)
             = PApp un (PRef un [] n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un [] n) (map pexp args)
-
+      where 
+        findImp (Bind n (Pi _ im@(Just i) _ _) sc) 
+             = pimp n Placeholder True : findImp sc
+        findImp (Bind n (Pi _ _ _ _) sc) 
+             = pexp Placeholder : findImp sc
+        findImp _ = []
     imp (PImp p m l n _) arg = PImp p m l n arg
     imp (PExp p l n _)   arg = PExp p l n arg
     imp (PConstraint p l n _) arg = PConstraint p l n arg
@@ -227,14 +252,14 @@ delabTy' ist imps tm fullname mvs docases = de [] imps tm
             isCN (SN (CaseN _ _)) = True
             isCN _ = False
 
-    delabCase :: [(Name, Name)] -> [PArg] -> Term -> Name -> [Term] -> Maybe PTerm
-    delabCase env imps scrutinee caseName caseArgs =
+    delabCase :: [(Name, Type)] -> [(Name, Name)] -> [PArg] -> Term -> Name -> [Term] -> Maybe PTerm
+    delabCase tys env imps scrutinee caseName caseArgs =
       do cases <- case lookupCtxt caseName (idris_patdefs ist) of
                     [(cases, _)] -> return cases
                     _ -> Nothing
-         return $ PCase un (de env imps scrutinee)
-                    [ (de (env ++ map (\(n, _) -> (n, n)) vars) imps (splitArg lhs),
-                       de (env ++ map (\(n, _) -> (n, n)) vars) imps rhs)
+         return $ PCase un (de tys env imps scrutinee)
+                    [ (de tys (env ++ map (\(n, _) -> (n, n)) vars) imps (splitArg lhs),
+                       de tys (env ++ map (\(n, _) -> (n, n)) vars) imps rhs)
                     | (vars, lhs, rhs) <- cases
                     ]
       where splitArg tm | (_, args) <- unApply tm = nonVar (reverse args)
@@ -268,8 +293,8 @@ pprintDelabTy i n
     = case lookupTy n (tt_ctxt i) of
            (ty:_) -> annotate (AnnTerm [] ty) . prettyIst i $
                      case lookupCtxt n (idris_implicits i) of
-                         (imps:_) -> resugar i $ delabTy' i imps ty False False True
-                         _ -> resugar i $ delabTy' i [] ty False False True
+                         (imps:_) -> resugar i $ delabTy' i imps [] ty False False True
+                         _ -> resugar i $ delabTy' i [] [] ty False False True
            [] -> error "pprintDelabTy got a name that doesn't exist"
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation
