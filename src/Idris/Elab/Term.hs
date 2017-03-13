@@ -615,7 +615,7 @@ elab ist info emode opts fn tm
 --    elab' (_, _, inty) (PRef fc f)
 --       | isTConName f (tt_ctxt ist) && pattern && not reflection && not inty
 --          = lift $ tfail (Msg "Typecase is not allowed")
-    elab' ec _ tm@(PRef fc hl n)
+    elab' ec fc' tm@(PRef fc hls n)
       | pattern && not reflection && not (e_qq ec) && not (e_intype ec)
             && isTConName n (tt_ctxt ist)
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
@@ -628,22 +628,24 @@ elab ist info emode opts fn tm
                  guarded = e_guarded ec
                  inty = e_intype ec
              ctxt <- get_context
+             env <- get_env
 
+             -- If the name is defined, globally or locally, elaborate it
+             -- as a reference, otherwise it might end up as a pattern var.
              let defined = case lookupTy n ctxt of
-                               [] -> False
+                               [] -> case lookupTyEnv n env of
+                                          Just _ -> True
+                                          _ -> False
                                _ -> True
-           -- this is to stop us resolve interfaces recursively
-             -- trace (show (n, guarded)) $
+             
+             -- this is to stop us resolving interfaces recursively
              if (tcname n && ina && not intransform)
                then erun fc $
                       do patvar n
                          update_term liftPats
                          highlightSource fc (AnnBoundName n False)
-               else if defined
-                       then do apply (Var n) []
-                               annot <- findHighlight n
-                               solve
-                               highlightSource fc annot
+               else if defined -- finally, ordinary PRef elaboration
+                       then elabRef ec fc' fc hls n tm
                        else try (do apply (Var n) []
                                     annot <- findHighlight n
                                     solve
@@ -664,19 +666,7 @@ elab ist info emode opts fn tm
               = lift $ tfail $ Msg ("No explicit types on left hand side: " ++ show tm)
           | pattern && not reflection && not (e_qq ina) && e_nomatching ina
               = lift $ tfail $ Msg ("Attempting concrete match on polymorphic argument: " ++ show tm)
-          | otherwise =
-               do fty <- get_type (Var n) -- check for implicits
-                  ctxt <- get_context
-                  env <- get_env
-                  let a' = insertScopedImps fc (normalise ctxt env fty) []
-                  if null a'
-                     then erun fc $
-                            do apply (Var n) []
-                               hilite <- findHighlight n
-                               solve
-                               mapM_ (uncurry highlightSource) $
-                                 (fc, hilite) : map (\f -> (f, hilite)) hls
-                     else elab' ina fc' (PApp fc tm [])
+          | otherwise = elabRef ina fc' fc hls n tm
     elab' ina _ (PLam _ _ _ _ PImpossible) = lift . tfail . Msg $ "Only pattern-matching lambdas can be impossible"
     elab' ina _ (PLam fc n nfc Placeholder sc)
           = do -- if n is a type constructor name, this makes no sense...
@@ -1512,14 +1502,14 @@ elab ist info emode opts fn tm
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
     fullApp x = x
 
-    insertScopedImps fc (Bind n (Pi _ im@(Just i) _ _) sc) xs
+    insertScopedImps fc ty@(Bind n (Pi _ im@(Just i) _ _) sc) xs
       | tcimplementation i && not (toplevel_imp i)
           = pimp n (PResolveTC fc) True : insertScopedImps fc sc xs
       | not (toplevel_imp i)
           = pimp n Placeholder True : insertScopedImps fc sc xs
     insertScopedImps fc (Bind n (Pi _ _ _ _) sc) (x : xs)
         = x : insertScopedImps fc sc xs
-    insertScopedImps _ _ xs = xs
+    insertScopedImps _ ty xs = xs
 
     insertImpLam ina t =
         do ty <- goal
@@ -1528,13 +1518,9 @@ elab ist info emode opts fn tm
            addLam ty' t
       where
         -- just one level at a time
-        addLam (Bind n (Pi _ (Just _) _ _) sc) t =
+        addLam goal@(Bind n (Pi _ (Just _) _ _) sc) t =
                  do impn <- unique_hole n -- (sMN 0 "scoped_imp")
-                    if e_isfn ina -- apply to an implicit immediately
-                       then return (PApp emptyFC
-                                         (PLam emptyFC impn NoFC Placeholder t)
-                                         [pexp Placeholder])
-                       else return (PLam emptyFC impn NoFC Placeholder t)
+                    return (PLam emptyFC impn NoFC Placeholder t)
         addLam _ t = return t
 
     insertCoerce ina t@(PCase _ _ _) = return t
@@ -1558,6 +1544,21 @@ elab ist info emode opts fn tm
          mkCoerce env t n = let fc = maybe (fileFC "Coercion") id (highestFC t) in
                                 addImplBound ist (map fstEnv env)
                                   (PApp fc (PRef fc [] n) [pexp (PCoerced t)])
+
+    elabRef :: ElabCtxt -> Maybe FC -> FC -> [FC] -> Name -> PTerm -> ElabD ()
+    elabRef ina fc' fc hls n tm =
+               do fty <- get_type (Var n) -- check for implicits
+                  ctxt <- get_context
+                  env <- get_env
+                  let a' = insertScopedImps fc (normalise ctxt env fty) []
+                  if null a'
+                     then erun fc $
+                            do apply (Var n) []
+                               hilite <- findHighlight n
+                               solve
+                               mapM_ (uncurry highlightSource) $
+                                 (fc, hilite) : map (\f -> (f, hilite)) hls
+                     else elab' ina fc' (PApp fc tm [])
 
     -- | Elaborate the arguments to a function
     elabArgs :: IState -- ^ The current Idris state
