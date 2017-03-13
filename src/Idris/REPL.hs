@@ -93,6 +93,8 @@ import Util.Pretty hiding ((</>))
 import Util.System
 import Version_idris (gitHash)
 
+import Debug.Trace
+
 -- | Run the REPL
 repl :: IState -- ^ The initial state
      -> [FilePath] -- ^ The loaded modules
@@ -422,9 +424,9 @@ runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
         splitPi :: IState -> Int -> Type -> ([(Name, Type, PTerm)], Type, PTerm)
         splitPi ist i (Bind n (Pi _ _ t _) rest) | i > 0 =
           let (hs, c, pc) = splitPi ist (i - 1) rest in
-            ((n, t, delabTy' ist [] t False False True):hs,
-             c, delabTy' ist [] c False False True)
-        splitPi ist i tm = ([], tm, delabTy' ist [] tm False False True)
+            ((n, t, delabTy' ist [] [] t False False True):hs,
+             c, delabTy' ist [] [] c False False True)
+        splitPi ist i tm = ([], tm, delabTy' ist [] [] tm False False True)
 
         -- | Get the types of a list of metavariable names
         mvTys :: IState -> [(Name, Int)] -> [(Name, Int, Type)]
@@ -1511,15 +1513,16 @@ pprintDef asCore n =
         ppDef amb ist (n, (clauses, missing)) =
           prettyName True amb [] n <+> colon <+>
           align (pprintDelabTy ist n) <$>
-          ppClauses ist (map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) clauses) <> ppMissing missing
+          ppClauses ist clauses <> ppMissing missing
         ppClauses ist [] = text "No clauses."
         ppClauses ist cs = vsep (map pp cs)
-          where pp (vars, lhs, rhs) =
-                  let ppTm t = annotate (AnnTerm (zip vars (repeat False)) t) .
+          where pp (varTys, lhs, rhs) =
+                  let vars = map fst varTys
+                      ppTm t = annotate (AnnTerm (zip vars (repeat False)) t) .
                                pprintPTerm (ppOptionIst ist)
                                      (zip vars (repeat False))
                                      [] (idris_infixes ist) .
-                               delab ist $
+                               delabWithEnv ist varTys $
                                t
                   in group $ ppTm lhs <+> text "=" <$> (group . align . hang 2 $ ppTm rhs)
         ppMissing _ = empty

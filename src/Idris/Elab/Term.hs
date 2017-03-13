@@ -2659,8 +2659,10 @@ runTac autoSolve ist perhapsFC fn tac
              letbind scriptvar scriptTy (Var script)
              focus script
              ptm <- get_term
+             env <- get_env
+             let denv = map (\(n, _, b) -> (n, binderTy b)) env
              elab ist toplevel ERHS [] (sMN 0 "tac")
-                  (PApp emptyFC tm [pexp (delabTy' ist [] tgoal True True True)])
+                  (PApp emptyFC tm [pexp (delabTy' ist [] denv tgoal True True True)])
              (script', _) <- get_type_val (Var scriptvar)
              -- now that we have the script apply
              -- it to the reflected goal

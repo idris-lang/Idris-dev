@@ -209,8 +209,11 @@ getPBtys _ = []
 psolve (Bind n (PVar _ t) sc) = do solve; psolve sc
 psolve tm = return ()
 
-pvars ist (Bind n (PVar _ t) sc) = (n, delab ist t) : pvars ist sc
-pvars ist _ = []
+pvars ist tm = pv' [] tm
+  where
+    pv' env (Bind n (PVar _ t) sc) 
+        = (n, delabWithEnv ist env t) : pv' ((n, t) : env) sc
+    pv' env _ = []
 
 getFixedInType i env (PExp _ _ _ _ : is) (Bind n (Pi _ _ t _) sc)
     = nub $ getFixedInType i env [] t ++

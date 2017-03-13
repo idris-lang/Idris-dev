@@ -1871,11 +1871,16 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
           depth d . bracket p startPrec $
           lbrace <> showRig rig n <+> colon <+> prettySe (decD d) startPrec bnd ty <> rbrace <+>
           st <> text "->" </> prettySe (decD d) startPrec ((n, True):bnd) sc
+      | isPi sc = depth d . bracket p startPrec $ prettySe (decD d) startPrec ((n, True):bnd) sc
       | otherwise = depth d $ prettySe (decD d) startPrec ((n, True):bnd) sc
       where
         showRig Rig0 n = text "0" <+> prettyBindingOf n True
         showRig Rig1 n = text "1" <+> prettyBindingOf n True
         showRig _ n = prettyBindingOf n True
+
+        isPi (PPi (Exp{}) _ _ _ _) = True
+        isPi (PPi _ _ _ _ sc) = isPi sc
+        isPi _ = False
 
         st =
           case s of

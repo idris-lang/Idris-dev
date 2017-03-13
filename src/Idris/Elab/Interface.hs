@@ -212,7 +212,7 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
                                           Just i -> i
                                           Nothing -> []
                          case lookupTyExact n (tt_ctxt ist) of
-                              Just ty -> return (delabTy' ist impls ty False False False)
+                              Just ty -> return (delabTy' ist impls [] ty False False False)
                               Nothing -> tclift $ tfail (At fc (InternalMsg "Can't happen, elabMethTy"))
 
     -- Find the argument position of the current interface in a method type
