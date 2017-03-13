@@ -637,7 +637,7 @@ elab ist info emode opts fn tm
                                           Just _ -> True
                                           _ -> False
                                _ -> True
-             
+
              -- this is to stop us resolving interfaces recursively
              if (tcname n && ina && not intransform)
                then erun fc $
