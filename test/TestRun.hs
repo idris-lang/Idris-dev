@@ -108,7 +108,9 @@ runTest path flags = do
 
 main :: IO ()
 main = do
-  node <- findExecutable "node"
+  nodePath   <- findExecutable "node"
+  nodejsPath <- findExecutable "nodejs"
+  let node = nodePath <|> nodejsPath
   case node of
     Nothing -> do
       putStrLn "For running the test suite against Node, node must be installed."
