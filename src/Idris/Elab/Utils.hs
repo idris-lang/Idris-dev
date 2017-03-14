@@ -211,7 +211,7 @@ psolve tm = return ()
 
 pvars ist tm = pv' [] tm
   where
-    pv' env (Bind n (PVar _ t) sc) 
+    pv' env (Bind n (PVar _ t) sc)
         = (n, delabWithEnv ist env t) : pv' ((n, t) : env) sc
     pv' env _ = []
 

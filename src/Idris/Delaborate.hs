@@ -147,22 +147,22 @@ delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
           = PLam un n NoFC (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) [] sc)
     de tys env (_ : is) (Bind n (Pi rig (Just impl) ty _) sc)
        | toplevel_imp impl -- information in 'imps' repeated
-          = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC 
+          = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC
                 (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) is sc)
     de tys env is (Bind n (Pi rig (Just impl) ty _) sc)
        | tcimplementation impl
-          = PPi constraint n NoFC (de tys env [] ty) 
+          = PPi constraint n NoFC (de tys env [] ty)
                 (de ((n, ty) : tys) ((n,n):env) is sc)
        | otherwise
           = PPi (Imp [] Dynamic False (Just impl) False rig) n NoFC (de tys env [] ty) (de tys ((n,n):env) is sc)
     de tys env ((PImp { argopts = opts }):is) (Bind n (Pi rig _ ty _) sc)
-          = PPi (Imp opts Dynamic False Nothing False rig) n NoFC 
+          = PPi (Imp opts Dynamic False Nothing False rig) n NoFC
                 (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) is sc)
     de tys env (PConstraint _ _ _ _:is) (Bind n (Pi rig _ ty _) sc)
-          = PPi (constraint { pcount = rig}) n NoFC 
+          = PPi (constraint { pcount = rig}) n NoFC
                 (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) is sc)
     de tys env (PTacImplicit _ _ _ tac _:is) (Bind n (Pi rig _ ty _) sc)
-          = PPi ((tacimpl tac) { pcount = rig }) n NoFC 
+          = PPi ((tacimpl tac) { pcount = rig }) n NoFC
                 (de tys env [] ty) (de ((n, ty) : tys) ((n,n):env) is sc)
     de tys env (plic:is) (Bind n (Pi rig _ ty _) sc)
           = PPi (Exp (argopts plic) Dynamic False rig)
@@ -170,7 +170,7 @@ delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
                 (de tys env [] ty)
                 (de ((n, ty) : tys) ((n,n):env) is sc)
     de tys env [] (Bind n (Pi rig _ ty _) sc)
-          = PPi (expl { pcount = rig }) n NoFC (de tys env [] ty) 
+          = PPi (expl { pcount = rig }) n NoFC (de tys env [] ty)
                 (de ((n, ty) : tys) ((n,n):env) [] sc)
 
     de tys env imps (Bind n (Let ty val) sc)
@@ -179,7 +179,7 @@ delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
           , (P _ cOp _, args) <- unApply sc
           , Just caseblock    <- delabCase tys env imps val cOp args = caseblock
           | otherwise    =
-              PLet un n NoFC (de tys env [] ty) 
+              PLet un n NoFC (de tys env [] ty)
                    (de tys env [] val) (de ((n, ty) : tys) ((n,n):env) [] sc)
     de tys env _ (Bind n (Hole ty) sc) = de ((n, ty) : tys) ((n, sUN "[__]"):env) [] sc
     de tys env _ (Bind n (Guess ty val) sc) = de ((n, ty) : tys) ((n, sUN "[__]"):env) [] sc
@@ -235,10 +235,10 @@ delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
         | Just imps <- lookupCtxtExact n (idris_implicits ist)
             = PApp un (PRef un [] n) (zipWith imp (imps ++ repeat (pexp undefined)) args)
         | otherwise = PApp un (PRef un [] n) (map pexp args)
-      where 
-        findImp (Bind n (Pi _ im@(Just i) _ _) sc) 
+      where
+        findImp (Bind n (Pi _ im@(Just i) _ _) sc)
              = pimp n Placeholder True : findImp sc
-        findImp (Bind n (Pi _ _ _ _) sc) 
+        findImp (Bind n (Pi _ _ _ _) sc)
              = pexp Placeholder : findImp sc
         findImp _ = []
     imp (PImp p m l n _) arg = PImp p m l n arg
