@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ${IDRIS:-idris} $@ --check \
-    reg001.idr reg002.idr reg003.idr reg036.idr reg037.idr \
+    reg001.idr reg002.idr reg003.idr reg004.lidr reg036.idr reg037.idr \
     reg038.idr reg046.idr \
     reg047a.idr reg053.idr reg057.idr reg058.idr reg058a.idr \
     reg059.idr reg060.idr  reg061.idr reg062.idr reg063.idr \
