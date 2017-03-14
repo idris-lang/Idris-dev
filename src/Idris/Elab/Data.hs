@@ -193,9 +193,12 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
 
          -- Check that the constructor type is, in fact, a part of the family being defined
          tyIs n cty'
+         -- Need to calculate forceability from the non-normalised type,
+         -- because we might not be able to export the definitions which
+         -- we're normalising which changes the forceability status!
          let force = if tn == sUN "Delayed"
                         then [] -- TMP HACK! Totality checker needs this info
-                        else forceArgs ctxt cty'
+                        else forceArgs ctxt tn cty
 
          logElab 5 $ show fc ++ ":Constructor " ++ show n ++ " elaborated : " ++ show t
          logElab 5 $ "Inaccessible args: " ++ show inacc
@@ -264,8 +267,8 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
         = tclift $ tfail (At fc (UniqueKindError AllTypes n))
     checkUniqueKind _ _ = return ()
 
-forceArgs :: Context -> Type -> [Int]
-forceArgs ctxt ty = forceFrom 0 ty
+forceArgs :: Context -> Name -> Type -> [Int]
+forceArgs ctxt tn ty = forceFrom 0 ty
   where
     -- for each argument, substitute in MN pos "FF"
     -- then when we look at the return type, if we see MN pos name
@@ -281,7 +284,8 @@ forceArgs ctxt ty = forceFrom 0 ty
         -- (FIXME: Actually the real risk is if we erase something a programmer
         -- definitely wants, which is particularly the case with 'views'.
         -- So perhaps we need a way of marking that in the source?)
-        | (P _ ty _, args) <- unApply sc
+        | (P _ ty _, args) <- unApply sc,
+          ty == tn -- Must be the right top level type!
              = if null (concatMap (findNonForcePos True) args)
                   then nub (concatMap findForcePos args)
                   else []
