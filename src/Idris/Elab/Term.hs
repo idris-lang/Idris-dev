@@ -1502,7 +1502,21 @@ elab ist info emode opts fn tm
     fullApp (PApp _ (PApp fc f args) xs) = fullApp (PApp fc f (args ++ xs))
     fullApp x = x
 
+    -- See if the name is listed as an implicit. If it is, return it, and
+    -- drop it from the rest of the list
+    findImplicit :: Name -> [PArg] -> (Maybe PArg, [PArg])
+    findImplicit n [] = (Nothing, [])
+    findImplicit n (i@(PImp _ _ _ n' _) : args)
+        | n == n' = (Just i, args)
+    findImplicit n (i@(PTacImplicit _ _ n' _ _) : args)
+        | n == n' = (Just i, args)
+    findImplicit n (x : xs) = let (arg, rest) = findImplicit n xs in
+                                  (arg, x : rest)
+
     insertScopedImps fc ty@(Bind n (Pi _ im@(Just i) _ _) sc) xs
+      | (Just arg, xs') <- findImplicit n xs,
+        not (toplevel_imp i)
+          = arg : insertScopedImps fc sc xs'
       | tcimplementation i && not (toplevel_imp i)
           = pimp n (PResolveTC fc) True : insertScopedImps fc sc xs
       | not (toplevel_imp i)
