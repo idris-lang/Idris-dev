@@ -142,3 +142,36 @@ VAL idris_mkFileError(VM* vm) {
 void idris_forceGC(void* vm) {
     idris_gc((VM*)vm);
 }
+
+typedef struct {
+    char* string;
+    int len;
+} StrBuffer;
+
+void* idris_makeStringBuffer(int len) {
+    StrBuffer* sb = malloc(sizeof(StrBuffer));
+    if (sb != NULL) {
+        sb->string = malloc(len);
+        sb->string[0] = '\0';
+        sb->len = 0;
+    }
+    return sb;
+}
+
+void idris_addToString(void* buffer, char* str) {
+    StrBuffer* sb = (StrBuffer*)buffer;
+    int len = strlen(str);
+
+    memcpy(sb->string + sb->len, str, len+1);
+    sb->len += len;
+}
+
+VAL idris_getString(VM* vm, void* buffer) {
+    StrBuffer* sb = (StrBuffer*)buffer;
+
+    VAL str = MKSTR(vm, sb->string);
+    free(sb->string);
+    free(sb);
+    return str;
+}
+

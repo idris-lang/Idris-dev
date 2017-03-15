@@ -624,6 +624,10 @@ doOp v LNoOp args = v ++ creg (last args)
 doOp v (LExternal rf) [_,x]
    | rf == sUN "prim__readFile"
        = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
+doOp v (LExternal rf) [_,len,x]
+   | rf == sUN "prim__readChars"
+       = v ++ "idris_readChars(vm, GETINT(" ++ creg len ++ 
+                                "), GETPTR(" ++ creg x ++ "))"
 doOp v (LExternal wf) [_,x,s]
    | wf == sUN "prim__writeFile"
        = v ++ "MKINT((i_int)(idris_writeStr(GETPTR(" ++ creg x
