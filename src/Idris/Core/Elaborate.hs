@@ -963,12 +963,14 @@ tryAll' constrok xs = doAll [] 999999 xs
        = do s <- get
             ps <- get_probs
             ivs <- get_implementations
+            g <- goal
             case prunStateT pmax True ps (if constrok then Nothing
                                                       else Just ivs) x s of
                 OK ((v, newps, probs), s') ->
                       do let cs' = if (newps < pmax)
                                       then [do put s'; return $! v]
                                       else (do put s'; return $! v) : cs
+                         put s
                          doAll cs' newps xs
                 Error err -> do put s
                                 doAll cs pmax xs

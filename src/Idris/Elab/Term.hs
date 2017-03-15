@@ -505,6 +505,7 @@ elab ist info emode opts fn tm
               showHd (PApp _ (PRef _ _ n) _) = return n
               showHd (PRef _ _ n) = return n
               showHd (PApp _ h _) = showHd h
+              showHd (PHidden h) = showHd h
               showHd x = getNameFrom (sMN 0 "_") -- We probably should do something better than this here
 
               doPrune as =
@@ -1292,11 +1293,16 @@ elab ist info emode opts fn tm
              -- Delay dotted things to the end, then when we elaborate them
              -- we can check the result against what was inferred
              movelast h
-             delayElab 10 $ do hs <- get_holes
-                               when (h `elem` hs) $ do
-                                   focus h
-                                   dotterm
-                                   elab' ina fc t
+             (h' : hs) <- get_holes
+             -- If we're at the end anyway, do it now
+             if h == h' then elabHidden h
+                        else delayElab 10 $ elabHidden h
+     where
+      elabHidden h = do hs <- get_holes
+                        when (h `elem` hs) $ do
+                            focus h
+                            dotterm
+                            elab' ina fc t
     elab' ina fc (PRunElab fc' tm ns) =
       do unless (ElabReflection `elem` idris_language_extensions ist) $
            lift $ tfail $ At fc' (Msg "You must turn on the ElabReflection extension to use %runElab")
