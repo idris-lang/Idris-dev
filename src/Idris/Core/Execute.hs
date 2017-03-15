@@ -425,7 +425,7 @@ execForeign env ctxt arity ty fn xs onfail
                       ". Are all cases covered?"
     | Just (FFun "idris_addToString" [(_, strBuf), (_, str)] _) <- foreignFromTT arity ty fn xs
        = case (strBuf, str) of
-              (EStringBuf ref, EConstant (Str add)) -> 
+              (EStringBuf ref, EConstant (Str add)) ->
                   do execIO $ modifyIORef ref (++add)
                      execApp env ctxt ioUnit (drop arity xs)
               _ -> execFail . Msg $

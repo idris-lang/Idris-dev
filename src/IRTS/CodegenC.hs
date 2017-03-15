@@ -626,7 +626,7 @@ doOp v (LExternal rf) [_,x]
        = v ++ "idris_readStr(vm, GETPTR(" ++ creg x ++ "))"
 doOp v (LExternal rf) [_,len,x]
    | rf == sUN "prim__readChars"
-       = v ++ "idris_readChars(vm, GETINT(" ++ creg len ++ 
+       = v ++ "idris_readChars(vm, GETINT(" ++ creg len ++
                                 "), GETPTR(" ++ creg x ++ "))"
 doOp v (LExternal wf) [_,x,s]
    | wf == sUN "prim__writeFile"

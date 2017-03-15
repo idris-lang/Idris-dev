@@ -21,4 +21,6 @@ char* idris_utf8_rev(char* s, char* result);
 // Advance a pointer into a string by i UTF8 characters.
 // Return original pointer if i <= 0.
 char* idris_utf8_advance(char* str, int i);
+// Return the offset of the ith UTF8 character in the string
+int idris_utf8_findOffset(char* str, int i);
 #endif

@@ -103,6 +103,17 @@ char* idris_utf8_advance(char* str, int i) {
     return str;
 }
 
+int idris_utf8_findOffset(char* str, int i) {
+    int offset = 0;
+    while(i > 0) {
+        int len = idris_utf8_charlen(str);
+        str+=len;
+        offset+=len;
+        i--;
+    }
+    return offset;
+}
+
 
 char* idris_utf8_fromChar(int x) {
     char* str;
