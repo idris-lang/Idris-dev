@@ -210,6 +210,7 @@ export data ManagedPtr : Type
 export data CData : Type
 
 %extern prim__readFile : prim__WorldType -> Ptr -> String
+%extern prim__readChars : prim__WorldType -> Int -> Ptr -> String
 %extern prim__writeFile : prim__WorldType -> Ptr -> String -> Int
 
 %extern prim__vm : prim__WorldType -> Ptr

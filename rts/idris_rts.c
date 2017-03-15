@@ -239,6 +239,11 @@ void* allocate(size_t size, int outerlock) {
 #endif
         return ptr;
     } else {
+        // If we're trying to allocate something bigger than the heap,
+        // grow the heap here so that the new heap is big enough.
+        if (size > vm->heap.size) {
+            vm->heap.size += size;
+        }
         idris_gc(vm);
 #ifdef HAS_PTHREAD
         if (lock) { // not message passing
@@ -586,6 +591,22 @@ VAL idris_readStr(VM* vm, FILE* h) {
     size_t n = 0;
     ssize_t len;
     len = getline(&buffer, &n, h);
+    if (len <= 0) {
+        ret = MKSTR(vm, "");
+    } else {
+        ret = MKSTR(vm, buffer);
+    }
+    free(buffer);
+    return ret;
+}
+
+VAL idris_readChars(VM* vm, int num, FILE* h) {
+    VAL ret;
+    char *buffer = malloc((num+1)*sizeof(char));
+    size_t len;
+    len = fread(buffer, sizeof(char), (size_t)num, h);
+    buffer[len] = '\0';
+
     if (len <= 0) {
         ret = MKSTR(vm, "");
     } else {
