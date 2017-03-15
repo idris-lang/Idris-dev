@@ -2204,7 +2204,7 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su (PAlternative ms b alts)
        = let alts' = filter (/= Placeholder) (map su alts) in
              if null alts' then Placeholder
-                           else PAlternative ms b alts'
+                           else liftHidden $ PAlternative ms b alts'
     su (PPair fc hls p l r) = PPair fc hls p (su l) (su r)
     su (PDPair fc hls p l t r) = PDPair fc hls p (su l) (su t) (su r)
     su t@(PLam fc _ _ _ _) = PHidden t
@@ -2213,6 +2213,20 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
     su t = t
 
     ctxt = tt_ctxt i
+
+    -- If the ambiguous terms are all hidden, the PHidden needs to be outside
+    -- because elaboration of PHidden gets delayed, and we need the elaboration
+    -- to resolve the ambiguity.
+    liftHidden tm@(PAlternative ms b as)
+        | allHidden as = PHidden (PAlternative ms b (map unHide as))
+        | otherwise = tm
+
+    allHidden [] = True
+    allHidden (PHidden _ : xs) = allHidden xs
+    allHidden (x : xs) = False
+
+    unHide (PHidden t) = t
+    unHide t = t
 
 stripUnmatchable i tm = tm
 
