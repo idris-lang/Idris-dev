@@ -853,8 +853,10 @@ elab ist info emode opts fn tm
             ctxt <- get_context
             let dataCon = isDConName f ctxt
             annot <- findHighlight f
-            mapM_ checkKnownImplicit args_in
-            let args = insertScopedImps fc (normalise ctxt env fty) args_in
+            knowns_m <- mapM getKnownImplicit args_in
+            let knowns = mapMaybe id knowns_m
+            args <- insertScopedImps fc f knowns (normalise ctxt env fty) args_in
+
             let unmatchableArgs = if pattern
                                      then getUnmatchable (tt_ctxt ist) f
                                      else []
@@ -959,10 +961,10 @@ elab ist info emode opts fn tm
                           es -> do put s
                                    elab' ina topfc (PAppImpl tm es)
 
-            checkKnownImplicit imp
+            getKnownImplicit imp
                  | UnknownImp `elem` argopts imp
-                    = lift $ tfail $ UnknownImplicit (pname imp) f
-            checkKnownImplicit _ = return ()
+                    = return Nothing -- lift $ tfail $ UnknownImplicit (pname imp) f
+                 | otherwise = return (Just (pname imp))
 
             getReqImps (Bind x (Pi _ (Just i) ty _) sc)
                  = i : getReqImps sc
@@ -1519,17 +1521,29 @@ elab ist info emode opts fn tm
     findImplicit n (x : xs) = let (arg, rest) = findImplicit n xs in
                                   (arg, x : rest)
 
-    insertScopedImps fc ty@(Bind n (Pi _ im@(Just i) _ _) sc) xs
-      | (Just arg, xs') <- findImplicit n xs,
-        not (toplevel_imp i)
-          = arg : insertScopedImps fc sc xs'
-      | tcimplementation i && not (toplevel_imp i)
-          = pimp n (PResolveTC fc) True : insertScopedImps fc sc xs
-      | not (toplevel_imp i)
-          = pimp n Placeholder True : insertScopedImps fc sc xs
-    insertScopedImps fc (Bind n (Pi _ _ _ _) sc) (x : xs)
-        = x : insertScopedImps fc sc xs
-    insertScopedImps _ ty xs = xs
+    insertScopedImps :: FC -> Name -> [Name] -> Type -> [PArg] -> ElabD [PArg]
+    insertScopedImps fc f knowns ty xs = 
+         do mapM_ (checkKnownImplicit (map fst (getArgTys ty) ++ knowns)) xs
+            doInsert ty xs
+      where
+        doInsert ty@(Bind n (Pi _ im@(Just i) _ _) sc) xs
+          | (Just arg, xs') <- findImplicit n xs,
+            not (toplevel_imp i)
+              = liftM (arg :) (doInsert sc xs')
+          | tcimplementation i && not (toplevel_imp i)
+              = liftM (pimp n (PResolveTC fc) True :) (doInsert sc xs)
+          | not (toplevel_imp i)
+              = liftM (pimp n Placeholder True :) (doInsert sc xs)
+        doInsert (Bind n (Pi _ _ _ _) sc) (x : xs)
+              = liftM (x :) (doInsert sc xs)
+        doInsert ty xs = return xs
+
+        -- Any implicit in the application needs to have the name of a 
+        -- scoped implicit or a top level implicit, otherwise report an error
+        checkKnownImplicit ns imp@(PImp{})
+             | pname imp `elem` ns = return ()
+             | otherwise = lift $ tfail $ At fc $ UnknownImplicit (pname imp) f
+        checkKnownImplicit ns _ = return ()
 
     insertImpLam ina t =
         do ty <- goal
@@ -1570,7 +1584,7 @@ elab ist info emode opts fn tm
                do fty <- get_type (Var n) -- check for implicits
                   ctxt <- get_context
                   env <- get_env
-                  let a' = insertScopedImps fc (normalise ctxt env fty) []
+                  a' <- insertScopedImps fc n [] (normalise ctxt env fty) []
                   if null a'
                      then erun fc $
                             do apply (Var n) []
