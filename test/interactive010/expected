@@ -1,6 +1,6 @@
 Prelude.List.(++) : List a -> List a -> List a
 Prelude.Strings.(++) : String -> String -> String
-a is not an implicit argument of Prelude.Interfaces./
+(input):1:11:a is not an implicit argument of Prelude.Interfaces./
 Usage is :doc <functionname>
 Usage is :wc <functionname>
 Usage is :printdef <functionname>
