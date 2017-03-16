@@ -1522,7 +1522,7 @@ elab ist info emode opts fn tm
                                   (arg, x : rest)
 
     insertScopedImps :: FC -> Name -> [Name] -> Type -> [PArg] -> ElabD [PArg]
-    insertScopedImps fc f knowns ty xs = 
+    insertScopedImps fc f knowns ty xs =
          do mapM_ (checkKnownImplicit (map fst (getArgTys ty) ++ knowns)) xs
             doInsert ty xs
       where
@@ -1538,7 +1538,7 @@ elab ist info emode opts fn tm
               = liftM (x :) (doInsert sc xs)
         doInsert ty xs = return xs
 
-        -- Any implicit in the application needs to have the name of a 
+        -- Any implicit in the application needs to have the name of a
         -- scoped implicit or a top level implicit, otherwise report an error
         checkKnownImplicit ns imp@(PImp{})
              | pname imp `elem` ns = return ()
