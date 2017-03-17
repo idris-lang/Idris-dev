@@ -4,6 +4,7 @@ The only changeable options are:
 	--log <lvl>, --total, --warnpartial, --warnreach, --warnipkg
 	--ibcsubdir <path>, -i --idrispath <path>
 	--logging-categories <cats>
+	--highlight
 
 The options need removing are:
 	 Quiet 
