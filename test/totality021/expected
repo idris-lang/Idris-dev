@@ -3,3 +3,7 @@ Main.sLevelNotSLevel' is possibly not total due to recursive path Main.sLevelNot
 totality021.idr:12:1:
 Main.sLevelNotSLevel is possibly not total due to: Main.sLevelNotSLevel'
 totality021.idr:18:1:Main.v is possibly not total due to: Main.sLevelNotSLevel
+totality021a.idr:9:1:
+Main.noNonEmptyPointInt is not total as there are missing cases
+totality021a.idr:12:1:
+Main.myVoid is possibly not total due to: Main.noNonEmptyPointInt

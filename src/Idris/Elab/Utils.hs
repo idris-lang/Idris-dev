@@ -606,4 +606,166 @@ linearArg (Bind n (Pi Rig1 _ _ _) sc) = True
 linearArg (Bind n (Pi _ _ _ _) sc) = linearArg sc
 linearArg _ = False
 
+-- Rule out alternatives that don't return the same type as the head of the goal
+-- (If there are none left as a result, do nothing)
+pruneByType :: Bool -> -- In an impossible clause
+               Env -> Term -> -- head of the goal
+               Type -> -- goal
+               IState -> [PTerm] -> [PTerm]
+-- if an alternative has a locally bound name at the head, take it
+pruneByType imp env t goalty c as
+   | Just a <- locallyBound as = [a]
+  where
+    locallyBound [] = Nothing
+    locallyBound (t:ts)
+       | Just n <- getName t,
+         n `elem` map fstEnv env = Just t
+       | otherwise = locallyBound ts
+    getName (PRef _ _ n) = Just n
+    getName (PApp _ (PRef _ _ (UN l)) [_, _, arg]) -- ignore Delays
+       | l == txt "Delay" = getName (getTm arg)
+    getName (PApp _ f _) = getName f
+    getName (PHidden t) = getName t
+    getName _ = Nothing
+
+-- 'n' is the name at the head of the goal type
+pruneByType imp env (P _ n _) goalty ist as
+-- if the goal type is polymorphic, keep everything
+   | Nothing <- lookupTyExact n ctxt = as
+-- if the goal type is a ?metavariable, keep everything
+   | Just _ <- lookup n (idris_metavars ist) = as
+   | otherwise
+       = let asV = filter (headIs True n) as
+             as' = filter (headIs False n) as in
+             case as' of
+               [] -> asV
+               _ -> as'
+  where
+    ctxt = tt_ctxt ist
+
+    -- Get the function at the head of the alternative and see if it's
+    -- a plausible match against the goal type. Keep if so. Also keep if
+    -- there is a possible coercion to the goal type.
+    headIs var f (PRef _ _ f') = typeHead var f f'
+    headIs var f (PApp _ (PRef _ _ (UN l)) [_, _, arg])
+        | l == txt "Delay" = headIs var f (getTm arg)
+    headIs var f (PApp _ (PRef _ _ f') _) = typeHead var f f'
+    headIs var f (PApp _ f' _) = headIs var f f'
+    headIs var f (PPi _ _ _ _ sc) = headIs var f sc
+    headIs var f (PHidden t) = headIs var f t
+    headIs var f t = True -- keep if it's not an application
+
+    typeHead var f f'
+        = -- trace ("Trying " ++ show f' ++ " for " ++ show n) $
+          case lookupTyExact f' ctxt of
+               Just ty -> case unApply (getRetTy ty) of
+                            (P _ ctyn _, _) | isTConName ctyn ctxt && not (ctyn == f)
+                                     -> False
+                            _ -> let ty' = normalise ctxt [] ty in
+--                                    trace ("Trying " ++ show f' ++ " : " ++ show (getRetTy ty') ++ " for " ++ show goalty
+--                                       ++ "\nMATCH: " ++ show (pat, matching (getRetTy ty') goalty)) $
+                                     case unApply (getRetTy ty') of
+                                          (V _, _) ->
+                                              isPlausible ist var env n ty
+                                          _ -> matchingTypes imp (getRetTy ty') goalty
+                                                 || isCoercion (getRetTy ty') goalty
+-- May be useful to keep for debugging purposes for a bit:
+--                                                let res = matching (getRetTy ty') goalty in
+--                                                   traceWhen (not res)
+--                                                     ("Rejecting " ++ show (getRetTy ty', goalty)) res
+               _ -> False
+
+    matchingTypes True = matchingHead
+    matchingTypes False = matching
+
+    -- If the goal is a constructor, it must match the suggested function type
+    matching (P _ ctyn _) (P _ n' _)
+         | isTConName n' ctxt && isTConName ctyn ctxt = ctyn == n'
+         | otherwise = True
+    -- Variables match anything
+    matching (V _) _ = True
+    matching _ (V _) = True
+    matching _ (P _ n _) = not (isTConName n ctxt)
+    matching (P _ n _) _ = not (isTConName n ctxt)
+    -- Binders are a plausible match, so keep them
+    matching (Bind n _ sc) _ = True
+    matching _ (Bind n _ sc) = True
+    -- If we hit a function name, it's a plausible match
+    matching apl@(App _ _ _) apr@(App _ _ _)
+         | (P _ fl _, argsl) <- unApply apl,
+           (P _ fr _, argsr) <- unApply apr
+       = fl == fr && and (zipWith matching argsl argsr)
+           || (not (isConName fl ctxt && isConName fr ctxt))
+    -- If the application structures aren't easily comparable, it's a
+    -- plausible match
+    matching (App _ f a) (App _ f' a') = True
+    matching (TType _) (TType _) = True
+    matching (UType _) (UType _) = True
+    matching l r = l == r
+
+    -- In impossible-case mode, only look at the heads (this is to account for
+    -- the non type-directed case with 'impossible' - we'd be ruling out
+    -- too much and wouldn't find the mismatch we're looking for)
+    matchingHead apl@(App _ _ _) apr@(App _ _ _)
+         | (P _ fl _, argsl) <- unApply apl,
+           (P _ fr _, argsr) <- unApply apr,
+           isConName fl ctxt && isConName fr ctxt
+       = fl == fr
+    matchingHead _ _ = True
+
+    -- Return whether there is a possible coercion between the return type
+    -- of an alternative and the goal type
+    isCoercion rty gty | (P _ r _, _) <- unApply rty
+            = not (null (getCoercionsBetween r gty))
+    isCoercion _ _ = False
+
+    getCoercionsBetween :: Name -> Type -> [Name]
+    getCoercionsBetween r goal
+       = let cs = getCoercionsTo ist goal in
+             findCoercions r cs
+        where findCoercions t [] = []
+              findCoercions t (n : ns) =
+                 let ps = case lookupTy n (tt_ctxt ist) of
+                               [ty'] -> let as = map snd (getArgTys (normalise (tt_ctxt ist) [] ty')) in
+                                            [n | any useR as]
+                               _ -> [] in
+                     ps ++ findCoercions t ns
+
+              useR ty =
+                  case unApply (getRetTy ty) of
+                       (P _ t _, _) -> t == r
+                       _ -> False
+
+
+pruneByType _ _ t _ _ as = as
+
+-- Could the name feasibly be the return type?
+-- If there is an interface constraint on the return type, and no implementation
+-- in the environment or globally for that name, then no
+-- Otherwise, yes
+-- (FIXME: This isn't complete, but I'm leaving it here and coming back
+-- to it later - just returns 'var' for now. EB)
+isPlausible :: IState -> Bool -> Env -> Name -> Type -> Bool
+isPlausible ist var env n ty
+    = let (hvar, interfaces) = collectConstraints [] [] ty in
+          case hvar of
+               Nothing -> True
+               Just rth -> var -- trace (show (rth, interfaces)) var
+   where
+     collectConstraints :: [Name] -> [(Term, [Name])] -> Type ->
+                                     (Maybe Name, [(Term, [Name])])
+     collectConstraints env tcs (Bind n (Pi _ _ ty _) sc)
+         = let tcs' = case unApply ty of
+                           (P _ c _, _) ->
+                               case lookupCtxtExact c (idris_interfaces ist) of
+                                    Just tc -> ((ty, map fst (interface_implementations tc))
+                                                     : tcs)
+                                    Nothing -> tcs
+                           _ -> tcs
+                      in
+               collectConstraints (n : env) tcs' sc
+     collectConstraints env tcs t
+         | (V i, _) <- unApply t = (Just (env !! i), tcs)
+         | otherwise = (Nothing, tcs)
+
 
