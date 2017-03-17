@@ -53,23 +53,20 @@ mkTTName fc n =
 expandSugar :: DSL -> PTerm -> PTerm
 expandSugar dsl (PLam fc n nfc ty tm)
     | Just lam <- dsl_lambda dsl
-        = let sc = PApp fc lam [ pexp (mkTTName fc n)
-                               , pexp (var dsl n tm 0)]
-          in expandSugar dsl sc
+        = PApp fc lam [ pexp (mkTTName fc n)
+                      , pexp (expandSugar dsl (var dsl n tm 0))]
 expandSugar dsl (PLam fc n nfc ty tm) = PLam fc n nfc (expandSugar dsl ty) (expandSugar dsl tm)
 expandSugar dsl (PLet fc n nfc ty v tm)
     | Just letb <- dsl_let dsl
-        = let sc = PApp (fileFC "(dsl)") letb [ pexp (mkTTName fc n)
-                                              , pexp v
-                                              , pexp (var dsl n tm 0)]
-          in expandSugar dsl sc
+        = PApp (fileFC "(dsl)") letb [ pexp (mkTTName fc n)
+                                     , pexp (expandSugar dsl v)
+                                     , pexp (expandSugar dsl (var dsl n tm 0))]
 expandSugar dsl (PLet fc n nfc ty v tm) = PLet fc n nfc (expandSugar dsl ty) (expandSugar dsl v) (expandSugar dsl tm)
 expandSugar dsl (PPi p n fc ty tm)
     | Just pi <- dsl_pi dsl
-        = let sc = PApp (fileFC "(dsl)") pi [ pexp (mkTTName (fileFC "(dsl)") n)
-                                            , pexp ty
-                                            , pexp (var dsl n tm 0)]
-          in expandSugar dsl sc
+        = PApp (fileFC "(dsl)") pi [ pexp (mkTTName (fileFC "(dsl)") n)
+                                   , pexp (expandSugar dsl ty)
+                                   , pexp (expandSugar dsl (var dsl n tm 0))]
 expandSugar dsl (PPi p n fc ty tm) = PPi p n fc (expandSugar dsl ty) (expandSugar dsl tm)
 expandSugar dsl (PApp fc t args) = PApp fc (expandSugar dsl t)
                                         (map (fmap (expandSugar dsl)) args)
