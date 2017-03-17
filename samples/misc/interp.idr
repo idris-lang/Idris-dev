@@ -1,5 +1,9 @@
 module Main
 
+import Data.Vect
+
+%language DSLNotation
+
 data Ty = TyInt | TyBool | TyFun Ty Ty
 
 interpTy : Ty -> Type
@@ -14,30 +18,33 @@ using (G : Vect n Ty)
       (::) : interpTy a -> Env G -> Env (a :: G)
 
   data HasType : (i : Fin n) -> Vect n Ty -> Ty -> Type where
-      stop : HasType FZ (t :: G) t
-      pop  : HasType k G t -> HasType (FS k) (u :: G) t
+      Stop : HasType FZ (t :: G) t
+      Pop  : HasType k G t -> HasType (FS k) (u :: G) t
 
   lookup : HasType i G t -> Env G -> interpTy t
-  lookup stop    (x :: xs) = x
-  lookup (pop k) (x :: xs) = lookup k xs
+  lookup Stop    (x :: xs) = x
+  lookup (Pop k) (x :: xs) = lookup k xs
 
   data Expr : Vect n Ty -> Ty -> Type where
       Var : HasType i G t -> Expr G t
       Val : (x : Int) -> Expr G TyInt
       Lam : Expr (a :: G) t -> Expr G (TyFun a t)
-      App : Expr G (TyFun a t) -> Expr G a -> Expr G t
+      App : Lazy (Expr G (TyFun a t)) -> Expr G a -> Expr G t
       Op  : (interpTy a -> interpTy b -> interpTy c) -> Expr G a -> Expr G b ->
             Expr G c
       If  : Expr G TyBool -> Expr G a -> Expr G a -> Expr G a
       Bind : Expr G a -> (interpTy a -> Expr G b) -> Expr G b
 
-  dsl expr
-      lambda      = Lam
-      variable    = Var
-      index_first = stop
-      index_next  = pop
+  lam_ : TTName -> Expr (a :: G) t -> Expr G (TyFun a t)
+  lam_ _ = Lam
 
-  (<*>) : |(f : Expr G (TyFun a t)) -> Expr G a -> Expr G t
+  dsl expr
+      lambda      = lam_
+      variable    = Var
+      index_first = Stop
+      index_next  = Pop
+
+  (<*>) : Lazy (Expr G (TyFun a t)) -> Expr G a -> Expr G t
   (<*>) = \f, a => App f a
 
   pure : Expr G a -> Expr G a
@@ -53,14 +60,16 @@ using (G : Vect n Ty)
 
   implementation Num (Expr G TyInt) where
     (+) x y = Op (+) x y
-    (-) x y = Op (-) x y
     (*) x y = Op (*) x y
 
-    abs x = IF (x < 0) THEN (-x) ELSE x
-
     fromInteger = Val . fromInteger
+  
+  implementation Neg (Expr G TyInt) where
+    (-) x y = Op (-) x y
+    abs x = IF (x < 0) THEN (-x) ELSE x
+    negate x = Op (-) 0 x
 
-  interp : Env G -> {static} Expr G t -> interpTy t
+  interp : Env G -> Expr G t -> interpTy t
   interp env (Var i)     = lookup i env
   interp env (Val x)     = x
   interp env (Lam sc)    = \x => interp (x :: env) sc
@@ -79,7 +88,7 @@ using (G : Vect n Ty)
   eAdd = expr (\x, y => Op (+) x y)
 
   eDouble : Expr G (TyFun TyInt TyInt)
-  eDouble = expr (\x => App (App eAdd x) (Var stop))
+  eDouble = expr (\x => App (App eAdd x) (Var Stop))
 
   eFac : Expr G (TyFun TyInt TyInt)
   eFac = expr (\x => IF x == 0 THEN 1 ELSE [| eFac (x - 1) |] * x)
