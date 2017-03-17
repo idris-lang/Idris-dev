@@ -499,6 +499,7 @@ mergeOptions copts popts =
     chkOpt o@(UseCodegen _)   = Right o
     chkOpt o@(Verbose _)      = Right o
     chkOpt o@(AuditIPkg)      = Right o
+    chkOpt o@(DumpHighlights) = Right o
     chkOpt o                  = Left (unwords ["\t", show o, "\n"])
 
     genErrMsg :: [String] -> String
@@ -508,6 +509,7 @@ mergeOptions copts popts =
         , "\t--log <lvl>, --total, --warnpartial, --warnreach, --warnipkg"
         , "\t--ibcsubdir <path>, -i --idrispath <path>"
         , "\t--logging-categories <cats>"
+        , "\t--highlight"
         , "\nThe options need removing are:"
         , unlines es
         ]
