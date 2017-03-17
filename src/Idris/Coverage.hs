@@ -14,6 +14,7 @@ import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
+import Idris.Elab.Utils
 import Idris.Error
 import Idris.Output (iWarn, iputStrLn)
 
@@ -28,33 +29,64 @@ import Debug.Trace
 --
 -- We need this to eliminate the pattern clauses which have been
 -- provided explicitly from new clause generation.
+--
+-- This takes a type directed approach to disambiguating names. If we
+-- can't immediately disambiguate by looking at the expected type, it's an
+-- error (we can't do this the usual way of trying it to see what type checks
+-- since the whole point of an impossible case is that it won't type check!)
 mkPatTm :: PTerm -> Idris Term
 mkPatTm t = do i <- getIState
                let timp = addImpl' True [] [] [] i t
-               evalStateT (toTT (mapPT deNS timp)) 0
+               evalStateT (toTT Nothing timp) 0
   where
-    toTT (PRef _ _ n) = do i <- lift getIState
-                           case lookupNameDef n (tt_ctxt i) of
-                                [(n', TyDecl nt _)] -> return $ P nt n' Erased
-                                _ -> return $ P Ref n Erased
-    toTT (PApp _ t args) = do t' <- toTT t
-                              args' <- mapM (toTT . getTm) args
-                              return $ mkApp t' args'
-    toTT (PDPair _ _ _ l _ r) = do l' <- toTT l
-                                   r' <- toTT r
-                                   return $ mkApp (P Ref sigmaCon Erased) [Erased, Erased, l', r']
-    toTT (PPair _ _ _ l r) = do l' <- toTT l
-                                r' <- toTT r
-                                return $ mkApp (P Ref pairCon Erased) [Erased, Erased, l', r']
+    toTT :: Maybe Type -> PTerm -> StateT Int Idris Term
+    toTT ty (PRef _ _ n)
+       = do i <- lift getIState
+            case lookupDefExact n (tt_ctxt i) of
+                 Just (TyDecl nt _) -> return $ P nt n Erased
+                 _ -> return $ P Ref n Erased
+    toTT ty (PApp _ t@(PRef _ _ n) args)
+       = do i <- lift getIState
+            let aTys = case lookupTyExact n (tt_ctxt i) of
+                              Just nty -> map (Just . snd) (getArgTys nty)
+                              Nothing -> map (const Nothing) args
+            args' <- zipWithM toTT aTys (map getTm args)
+            t' <- toTT Nothing t
+            return $ mkApp t' args'
+    toTT ty (PApp _ t args)
+       = do t' <- toTT Nothing t
+            args' <- mapM (toTT Nothing . getTm) args
+            return $ mkApp t' args'
+    toTT ty (PDPair _ _ _ l _ r)
+       = do l' <- toTT Nothing l
+            r' <- toTT Nothing r
+            return $ mkApp (P Ref sigmaCon Erased) [Erased, Erased, l', r']
+    toTT ty (PPair _ _ _ l r)
+       = do l' <- toTT Nothing l
+            r' <- toTT Nothing r
+            return $ mkApp (P Ref pairCon Erased) [Erased, Erased, l', r']
     -- For alternatives, pick the first and drop the namespaces. It doesn't
     -- really matter which is taken since matching will ignore the namespace.
-    toTT (PAlternative _ _ (a : as)) = toTT a
-    toTT _ = do v <- get
-                put (v + 1)
-                return (P Bound (sMN v "imp") Erased)
+    toTT (Just ty) (PAlternative _ _ as)
+       | (hd, _) <- unApply ty
+          = do i <- lift getIState
+               case pruneByType True [] hd ty i as of
+                    [a] -> toTT (Just ty) a
+                    _ -> lift $ ierror $ CantResolveAlts (map getAltName as)
+    toTT Nothing (PAlternative _ _ as)
+                    = lift $ ierror $ CantResolveAlts (map getAltName as)
+    toTT ty _
+       = do v <- get
+            put (v + 1)
+            return (P Bound (sMN v "imp") Erased)
 
-    deNS (PRef f hl (NS n _)) = PRef f hl n
-    deNS t = t
+    getAltName (PApp _ (PRef _ _ (UN l)) [_, _, arg])
+             | l == txt "Delay" = getAltName (getTm arg)
+    getAltName (PApp _ (PRef _ _ n) _) = n
+    getAltName (PRef _ _ n) = n
+    getAltName (PApp _ h _) = getAltName h
+    getAltName (PHidden h) = getAltName h
+    getAltName x = sUN "_" -- should never happen here
 
 -- | Given a list of LHSs, generate a extra clauses which cover the remaining
 -- cases. The ones which haven't been provided are marked 'absurd' so
@@ -74,7 +106,9 @@ genClauses fc n lhs_tms given
         let lhs_given = zipWith removePlaceholders lhs_tms
                             (map (stripUnmatchable i) (map flattenArgs given))
 
-        logCoverage 5 $ "Building coverage tree for:\n" ++ showSep "\n" (map show (lhs_given))
+        logCoverage 5 $ "Building coverage tree for:\n" ++ showSep "\n" (map showTmImpls given)
+        logCoverage 10 $ "Building coverage tree for:\n" ++ showSep "\n" (map show lhs_given)
+        logCoverage 10 $ "From terms:\n" ++ showSep "\n" (map show lhs_tms)
         let givenpos = mergePos (map getGivenPos given)
 
         (cns, ctree_in) <-
