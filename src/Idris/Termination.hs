@@ -351,7 +351,8 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
        Delayed <- guarded
        -- Under a delayed recursive call just check the arguments
            = concatMap (\x -> findCalls cases Unguarded x pvs pargs) args
-     | (P _ n _, args) <- unApply ap
+     | (P _ n _, args) <- unApply ap,
+       not (n `elem` pvs)
         -- Ordinary call, not under a delay.
         -- If n is a constructor, set 'args' as Guarded
         = let nguarded = case guarded of
