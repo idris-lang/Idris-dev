@@ -112,7 +112,7 @@ Semigroup (Maybe a) where
   m         <+> Nothing = m
   (Just m1) <+> (Just m2) = Just (m1 <+> m2)
 
- Monoid (Maybe a) where
+Monoid (Maybe a) where
   neutral = Nothing
 
 (Monoid a, Eq a) => Cast a (Maybe a) where
