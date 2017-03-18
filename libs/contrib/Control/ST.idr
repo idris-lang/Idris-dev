@@ -551,7 +551,7 @@ runLoop fuel prog onEmpty
 ||| runWith allows running an STrans program with an initial environment,
 ||| which must be consumed.
 ||| It's only allowed in the IO monad, because it's inherently unsafe, so
-||| we don't want to be able to use it under a 'lift in just *any* ST program -
+||| we don't want to be able to use it under a 'lift' in just *any* ST program -
 ||| if we have access to an 'Env' we can easily duplicate it - so it's the
 ||| responsibility of an implementation of an interface in IO which uses it
 ||| to ensure that it isn't duplicated.
@@ -597,10 +597,12 @@ st_precondition (CantUnify _ tm1 tm2 _ _ _)
   where
     getPreconditions : TT -> Maybe TT
     getPreconditions `(STrans ~m ~ret ~pre ~post) = Just pre
+    getPreconditions `(STransLoop ~m ~ret ~pre ~post) = Just pre
     getPreconditions _ = Nothing
 
     getPostconditions : TT -> Maybe TT
     getPostconditions `(STrans ~m ~ret ~pre ~post) = Just post
+    getPostconditions `(STransLoop ~m ~ret ~pre ~post) = Just post
     getPostconditions _ = Nothing
 
     renderPre : TT -> TT -> List (ErrorReportPart)
