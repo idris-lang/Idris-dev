@@ -93,9 +93,9 @@ namespace VarList
 public export
 data SubCtxt : Context -> Context -> Type where
      SubNil : SubCtxt [] []
+     Skip : SubCtxt xs ys -> SubCtxt xs (y :: ys)
      InCtxt : (el : ElemCtxt x ys) -> SubCtxt xs (dropEl ys el) ->
               SubCtxt (x :: xs) ys
-     Skip : SubCtxt xs ys -> SubCtxt xs (y :: ys)
 
 %hint
 public export
@@ -112,9 +112,9 @@ subCtxtNil {xs = (x :: xs)} = Skip subCtxtNil
 public export
 data VarsIn : List Var -> Context -> Type where
      VarsNil : VarsIn [] []
+     SkipVar : VarsIn xs ys -> VarsIn xs (y :: ys)
      InCtxtVar : (el : VarInCtxt x ys) -> VarsIn xs (dropVarIn ys el) ->
                  VarsIn (x :: xs) ys
-     SkipVar : VarsIn xs ys -> VarsIn xs (y :: ys)
 
 public export
 Uninhabited (ElemCtxt x []) where
@@ -130,9 +130,9 @@ updateWith new [] (InCtxt el z) = absurd el
 -- Don't add the ones which were consumed by the subctxt
 updateWith [] (x :: xs) (InCtxt el p) 
     = updateWith [] (dropEl _ el) p
+-- A new item corresponding to an existing thing
 updateWith (n :: ns) (x :: xs) (InCtxt el p) 
     = n :: updateWith ns (dropEl _ el) p
--- Do add the ones we didn't use in the subctxt
 updateWith new (x :: xs) (Skip p) = x :: updateWith new xs p
 
 public export
@@ -163,6 +163,10 @@ namespace Env
   data Env : Context -> Type where
        Nil : Env []
        (::) : ty -> Env xs -> Env ((lbl ::: ty) :: xs)
+
+  (++) : Env xs -> Env ys -> Env (xs ++ ys)
+  (++) [] ys = ys
+  (++) (x :: xs) ys = x :: xs ++ ys
 
 lookupEnv : InState lbl ty ctxt -> Env ctxt -> ty
 lookupEnv Here (x :: xs) = x
@@ -304,6 +308,9 @@ data STrans : (m : Type -> Type) ->
                (prf : VarsIn (comp :: vs) ctxt) ->
                STrans m () ctxt
                    (const (combineVarsIn ctxt prf))
+     ToEnd : (lbl : Var) ->
+             (prf : InState lbl state ctxt) ->
+             STrans m () ctxt (const (drop ctxt prf ++ [lbl ::: state]))
 
      Call : STrans m t sub new_f -> (ctxt_prf : SubCtxt sub old) ->
             STrans m t old (\res => updateWith (new_f res) old ctxt_prf)
@@ -373,6 +380,7 @@ runST env (Split lbl prf) k = let val = lookupEnv prf env
     addToEnv : (comp : Composite ts) -> Env xs -> Env (mkCtxt (mkVars comp) ++ xs)
     addToEnv CompNil env = env
     addToEnv (CompCons x xs) env = x :: addToEnv xs env
+runST env (ToEnd var prf) k = k () (dropVal prf env ++ [lookupEnv prf env])
 runST env (Combine lbl vs prf) k = k () (rebuildVarsIn env prf)
 runST env (Call prog ctxt_prf) k 
    = let env' = dropEnv env ctxt_prf in
@@ -448,6 +456,12 @@ combine : (comp : Var) -> (vs : List Var) ->
           STrans m () ctxt
               (const (combineVarsIn ctxt var_prf))
 combine comp vs {var_prf} = Combine comp vs var_prf
+     
+export
+toEnd : (lbl : Var) ->
+        {auto prf : InState lbl state ctxt} ->
+        STrans m () ctxt (const (drop ctxt prf ++ [lbl ::: state]))
+toEnd lbl {prf} = ToEnd lbl prf
 
 export -- implicit ???
 call : STrans m t sub new_f ->
