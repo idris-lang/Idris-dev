@@ -316,6 +316,15 @@ data STrans : (m : Type -> Type) ->
              (val : ty') ->
              STrans m () ctxt (const (updateCtxt ctxt prf ty'))
 
+namespace Loop
+  export
+  data STransLoop : (m : Type -> Type) -> (ty : Type) ->
+                    Context -> (ty -> Context) -> Type where
+       Bind : STrans m a st1 st2_fn ->
+              ((result : a) -> Inf (STransLoop m b (st2_fn result) st3_fn)) ->
+              STransLoop m b st1 st3_fn
+       Pure : (result : ty) -> STransLoop m ty (out_fn result) out_fn
+
 export
 dropEnv : Env ys -> SubCtxt xs ys -> Env xs
 dropEnv [] SubNil = []
@@ -372,6 +381,20 @@ runST env (Call prog ctxt_prf) k
 runST env (Read lbl prf) k = k (lookupEnv prf env) env
 runST env (Write lbl prf val) k = k () (updateEnv prf env val)
 
+export
+data Fuel = Empty | More (Lazy Fuel)
+
+export partial
+forever : Fuel
+forever = More forever
+
+runSTLoop : Fuel -> Env invars -> STransLoop m a invars outfn ->
+            (k : (x : a) -> Env (outfn x) -> m b) ->
+            (onDry : m b) -> m b
+runSTLoop Empty _ _ _ onDry = onDry
+runSTLoop (More x) env (Bind prog next) k onDry 
+    = runST env prog (\prog', env' => runSTLoop x env' (next prog') k onDry)
+runSTLoop (More x) env (Pure result) k onDry = k result env
 
 export 
 pure : (result : ty) -> STrans m ty (out_fn result) out_fn
@@ -445,6 +468,17 @@ write : (lbl : Var) ->
         (val : ty') ->
         STrans m () ctxt (const (updateCtxt ctxt prf (State ty')))
 write lbl {prf} val = Write lbl prf (Value val)
+       
+namespace Loop
+   export
+   (>>=) : STrans m a st1 st2_fn ->
+          ((result : a) -> Inf (STransLoop m b (st2_fn result) st3_fn)) ->
+          STransLoop m b st1 st3_fn
+   (>>=) = Bind
+
+   export
+   pure : (result : ty) -> STransLoop m ty (out_fn result) out_fn
+   pure = Pure
     
 public export %error_reduce
 out_res : ty -> (as : List (Action ty)) -> Context
@@ -470,6 +504,13 @@ ST : (m : Type -> Type) ->
      List (Action ty) -> Type
 ST m ty xs = STrans m ty (in_res xs) (\result : ty => out_res result xs)
 
+public export
+%error_reduce -- always evaluate this before showing errors
+STLoop : (m : Type -> Type) ->
+         (ty : Type) -> 
+         List (Action ty) -> Type
+STLoop m ty xs = STransLoop m ty (in_res xs) (\result : ty => out_res result xs)
+
 -- Console IO is useful sufficiently often that let's have it here
 public export
 interface ConsoleIO (m : Type -> Type) where
@@ -486,6 +527,13 @@ export
 run : Applicative m => ST m a [] -> m a
 run prog = runST [] prog (\res, env' => pure res)
 
+export
+runLoop : Applicative m => Fuel -> STLoop m a [] -> 
+          (onEmpty : m a) ->
+          m a
+runLoop fuel prog onEmpty
+    = runSTLoop fuel [] prog (\res, env' => pure res) onEmpty
+
 ||| runWith allows running an STrans program with an initial environment,
 ||| which must be consumed.
 ||| It's only allowed in the IO monad, because it's inherently unsafe, so
@@ -498,6 +546,14 @@ runWith : {ctxtf : _} ->
           Env ctxt -> STrans IO a ctxt (\res => ctxtf res) -> 
           IO (res ** Env (ctxtf res))
 runWith env prog = runST env prog (\res, env' => pure (res ** env'))
+
+export
+runWithLoop : {ctxtf : _} ->
+          Env ctxt -> Fuel -> STransLoop IO a ctxt (\res => ctxtf res) -> 
+          IO (Maybe (res ** Env (ctxtf res)))
+runWithLoop env fuel prog 
+    = runSTLoop fuel env prog (\res, env' => pure (Just (res ** env'))) 
+                              (pure Nothing)
 
 export
 runPure : ST Basics.id a [] -> a
