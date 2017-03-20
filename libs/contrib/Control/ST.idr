@@ -20,56 +20,56 @@ export
 data Var = MkVar -- Phantom, just for labelling purposes
 
 {- Contexts for holding current resources states -}
-namespace Context
+namespace Resources
   public export
-  data Context : Type where
-       Nil : Context
-       (::) : Resource -> Context -> Context
+  data Resources : Type where
+       Nil : Resources
+       (::) : Resource -> Resources -> Resources
 
   public export
-  (++) : Context -> Context -> Context
+  (++) : Resources -> Resources -> Resources
   (++) [] ys = ys
   (++) (x :: xs) ys = x :: xs ++ ys
 
 {- Proof that a label has a particular type in a given context -}
 public export
-data InState : lbl -> Type -> Context -> Type where
+data InState : lbl -> Type -> Resources -> Type where
      Here : InState lbl st (MkRes lbl st :: rs)
      There : InState lbl st rs -> InState lbl st (r :: rs)
 
 {- Update an entry in a context with a new state -}
 public export
-updateCtxt : (ctxt : Context) -> 
-             InState lbl st ctxt -> Type -> Context
+updateCtxt : (ctxt : Resources) -> 
+             InState lbl st ctxt -> Type -> Resources
 updateCtxt (MkRes lbl _ :: rs) Here val = (MkRes lbl val :: rs)
 updateCtxt (r :: rs) (There x) ty = r :: updateCtxt rs x ty
 
 {- Remove an entry from a context -}
 public export
-drop : (ctxt : Context) -> (prf : InState lbl st ctxt) -> 
-       Context
+drop : (ctxt : Resources) -> (prf : InState lbl st ctxt) -> 
+       Resources
 drop (MkRes lbl st :: rs) Here = rs
 drop (r :: rs) (There p) = r :: drop rs p
 
 {- Proof that a resource state (label/type) is in a context -}
 public export
-data ElemCtxt : Resource -> Context -> Type where
+data ElemCtxt : Resource -> Resources -> Type where
      HereCtxt : ElemCtxt a (a :: as)
      ThereCtxt : ElemCtxt a as -> ElemCtxt a (b :: as)
 
 public export %error_reduce
-dropEl : (ys: _) -> ElemCtxt x ys -> Context
+dropEl : (ys: _) -> ElemCtxt x ys -> Resources
 dropEl (x :: as) HereCtxt = as
 dropEl (x :: as) (ThereCtxt p) = x :: dropEl as p
 
 {- Proof that a variable name is in a context -}
 public export
-data VarInCtxt : Var -> Context -> Type where
+data VarInCtxt : Var -> Resources -> Type where
      VarHere   : VarInCtxt a (MkRes a st :: as)
      VarThere  : VarInCtxt a as -> VarInCtxt a (b :: as)
 
 public export %error_reduce
-dropVarIn : (ys: _) -> VarInCtxt x ys -> Context
+dropVarIn : (ys: _) -> VarInCtxt x ys -> Resources
 dropVarIn ((MkRes x _) :: as) VarHere = as
 dropVarIn (x :: as) (VarThere p) = x :: dropVarIn as p
 
@@ -85,13 +85,13 @@ namespace VarList
        (::) : Var -> VarList ts -> VarList (t :: ts)
 
   public export
-  mkCtxt : VarList tys -> Context
+  mkCtxt : VarList tys -> Resources
   mkCtxt [] = []
   mkCtxt {tys = (t :: ts)} (v :: vs) = (v ::: t) :: mkCtxt vs
 
 {- Proof that a context is a subset of another context -}
 public export
-data SubCtxt : Context -> Context -> Type where
+data SubCtxt : Resources -> Resources -> Type where
      SubNil : SubCtxt [] []
      Skip : SubCtxt xs ys -> SubCtxt xs (y :: ys)
      InCtxt : (el : ElemCtxt x ys) -> SubCtxt xs (dropEl ys el) ->
@@ -110,7 +110,7 @@ subCtxtNil {xs = (x :: xs)} = Skip subCtxtNil
 
 {- Proof that every variable in the list appears once in the context -}
 public export
-data VarsIn : List Var -> Context -> Type where
+data VarsIn : List Var -> Resources -> Type where
      VarsNil : VarsIn [] []
      SkipVar : VarsIn xs ys -> VarsIn xs (y :: ys)
      InCtxtVar : (el : VarInCtxt x ys) -> VarsIn xs (dropVarIn ys el) ->
@@ -122,8 +122,8 @@ Uninhabited (ElemCtxt x []) where
   uninhabited (ThereCtxt _) impossible
 
 public export %error_reduce
-updateWith : (new : Context) -> (xs : Context) ->
-             SubCtxt ys xs -> Context
+updateWith : (new : Resources) -> (xs : Resources) ->
+             SubCtxt ys xs -> Resources
 -- At the end, add the ones which were updated by the subctxt
 updateWith new [] SubNil = new
 updateWith new [] (InCtxt el z) = absurd el
@@ -136,7 +136,7 @@ updateWith (n :: ns) (x :: xs) (InCtxt el p)
 updateWith new (x :: xs) (Skip p) = x :: updateWith new xs p
 
 public export
-getVarType : (xs : Context) -> VarInCtxt v xs -> Type
+getVarType : (xs : Resources) -> VarInCtxt v xs -> Type
 getVarType ((MkRes v st) :: as) VarHere = st
 getVarType (b :: as) (VarThere x) = getVarType as x
 
@@ -147,20 +147,20 @@ getCombineType (InCtxtVar el y) = getVarType _ el :: getCombineType y
 getCombineType (SkipVar x) = getCombineType x
 
 public export
-dropCombined : VarsIn vs ctxt -> Context
+dropCombined : VarsIn vs ctxt -> Resources
 dropCombined {ctxt = []} VarsNil = []
 dropCombined {ctxt} (InCtxtVar el y) = dropCombined y
 dropCombined {ctxt = (y :: ys)} (SkipVar x) = y :: dropCombined x
 
 public export
-combineVarsIn : (ctxt : Context) -> VarsIn (comp :: vs) ctxt -> Context
+combineVarsIn : (ctxt : Resources) -> VarsIn (comp :: vs) ctxt -> Resources
 combineVarsIn {comp} ctxt (InCtxtVar el x) 
      = ((comp ::: Composite (getCombineType x)) :: dropCombined (InCtxtVar el x))
 combineVarsIn (y :: ys) (SkipVar x) = y :: combineVarsIn ys x
 
 namespace Env
   public export
-  data Env : Context -> Type where
+  data Env : Resources -> Type where
        Nil : Env []
        (::) : ty -> Env xs -> Env ((lbl ::: ty) :: xs)
 
@@ -224,7 +224,7 @@ data Action : Type -> Type where
      Stable : lbl -> Type -> Action ty
      Trans : lbl -> Type -> (ty -> Type) -> Action ty
      Remove : lbl -> Type -> Action ty
-     Add : (ty -> Context) -> Action ty
+     Add : (ty -> Resources) -> Action ty
 
 namespace Stable
   public export %error_reduce
@@ -264,7 +264,7 @@ addIfJust : Type -> Action (Maybe a)
 addIfJust ty = Add (maybe [] (\var => [var ::: ty]))
 
 public export
-kept : SubCtxt xs ys -> Context
+kept : SubCtxt xs ys -> Resources
 kept SubNil = []
 kept (InCtxt el p) = kept p
 kept (Skip {y} p) = y :: kept p
@@ -279,7 +279,7 @@ data State : Type -> Type where
 export
 data STrans : (m : Type -> Type) ->
               (ty : Type) ->
-              Context -> (ty -> Context) ->
+              Resources -> (ty -> Resources) ->
               Type where
      Pure : (result : ty) -> 
             STrans m ty (out_fn result) out_fn
@@ -326,7 +326,7 @@ data STrans : (m : Type -> Type) ->
 namespace Loop
   export
   data STransLoop : (m : Type -> Type) -> (ty : Type) ->
-                    Context -> (ty -> Context) -> Type where
+                    Resources -> (ty -> Resources) -> Type where
        Bind : STrans m a st1 st2_fn ->
               ((result : a) -> Inf (STransLoop m b (st2_fn result) st3_fn)) ->
               STransLoop m b st1 st3_fn
@@ -495,7 +495,7 @@ namespace Loop
    pure = Pure
     
 public export %error_reduce
-out_res : ty -> (as : List (Action ty)) -> Context
+out_res : ty -> (as : List (Action ty)) -> Resources
 out_res x [] = []
 out_res x ((Stable lbl inr) :: xs) = (lbl ::: inr) :: out_res x xs
 out_res x ((Trans lbl inr outr) :: xs) 
@@ -504,7 +504,7 @@ out_res x ((Remove lbl inr) :: xs) = out_res x xs
 out_res x (Add outf :: xs) = outf x ++ out_res x xs
 
 public export %error_reduce
-in_res : (as : List (Action ty)) -> Context
+in_res : (as : List (Action ty)) -> Resources
 in_res [] = []
 in_res ((Stable lbl inr) :: xs) = (lbl ::: inr) :: in_res xs
 in_res ((Trans lbl inr outr) :: xs) = (lbl ::: inr) :: in_res xs
