@@ -407,12 +407,19 @@ runSTLoop (More x) env (Pure result) k onDry = k result env
 export 
 pure : (result : ty) -> STrans m ty (out_fn result) out_fn
 pure = Pure
- 
+
 export 
 (>>=) : STrans m a st1 st2_fn ->
         ((result : a) -> STrans m b (st2_fn result) st3_fn) ->
         STrans m b st1 st3_fn
 (>>=) = Bind
+
+export
+returning : (result : ty) -> STrans m () ctxt (const (out_fn result)) ->
+            STrans m ty ctxt out_fn
+returning res prog = do prog
+                        pure res
+ 
 
 export
 lift : Monad m => m t -> STrans m t ctxt (const ctxt)
