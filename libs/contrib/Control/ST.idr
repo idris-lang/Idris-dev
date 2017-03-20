@@ -540,6 +540,10 @@ interface ConsoleIO (m : Type -> Type) where
   getStr : STrans m String xs (const xs)
 
 export
+putStrLn : ConsoleIO m => String -> STrans m () xs (const xs)
+putStrLn str = putStr (str ++ "\n")
+
+export
 ConsoleIO IO where
   putStr str = lift (Interactive.putStr str)
   getStr = lift Interactive.getLine
