@@ -21,6 +21,7 @@ Documentation for the Idris Language
 
    tutorial/index
    faq/faq
+   st/index
    effects/index
    proofs/index
    reference/index

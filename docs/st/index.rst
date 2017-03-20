@@ -20,4 +20,8 @@ the `Control.ST` library in `Idris`.
    :maxdepth: 1
 
    introduction
+   state
+   machines
+   composing
+   examples
 
