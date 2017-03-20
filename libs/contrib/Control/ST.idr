@@ -483,6 +483,14 @@ write : (lbl : Var) ->
         STrans m () ctxt (const (updateCtxt ctxt prf (State ty')))
 write lbl {prf} val = Write lbl prf (Value val)
        
+export
+update : (lbl : Var) ->
+         {auto prf : InState lbl (State ty) ctxt} ->
+         (ty -> ty') ->
+         STrans m () ctxt (const (updateCtxt ctxt prf (State ty')))
+update lbl f = do x <- read lbl
+                  write lbl (f x)
+
 namespace Loop
    export
    (>>=) : STrans m a st1 st2_fn ->
