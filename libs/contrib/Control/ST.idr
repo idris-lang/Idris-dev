@@ -251,15 +251,19 @@ public export
 or : a -> a -> Either b c -> a
 or x y = either (const x) (const y)
 
-public export
+public export %error_reduce
 add : Type -> Action a
 add ty = Add (\var => [var ::: ty])
+ 
+public export %error_reduce
+remove : lbl -> Type -> Action ty
+remove = Remove
 
-public export
+public export %error_reduce
 addIfRight : Type -> Action (Either a b)
 addIfRight ty = Add (either (const []) (\var => [var ::: ty]))
 
-public export
+public export %error_reduce
 addIfJust : Type -> Action (Maybe a)
 addIfJust ty = Add (maybe [] (\var => [var ::: ty]))
 
