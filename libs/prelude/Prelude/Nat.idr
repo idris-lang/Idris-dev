@@ -236,12 +236,12 @@ Cast Integer Nat where
 Cast String Nat where
     cast str = cast (the Integer (cast str))
 
-||| A wrapper for Nat that specifies the semigroup and monad implementations that use (*)
+||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (*)
 record Multiplicative where
   constructor GetMultiplicative
   _ : Nat
 
-||| A wrapper for Nat that specifies the semigroup and monad implementations that use (+)
+||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (+)
 record Additive where
   constructor GetAdditive
   _ : Nat
