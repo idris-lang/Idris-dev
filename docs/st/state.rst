@@ -19,7 +19,7 @@ how those resources change when a function runs:
 A value of type ``STrans m resultType in_res out_res_fn`` represents a sequence
 of actions which can manipulate state. The arguments are: 
 
-* ``m``, which is an underlying *context* in which the actions will be executed.
+* ``m``, which is an underlying *computation context* in which the actions will be executed.
   Usually, this will be a generic type with a ``Monad`` implementation, but 
   it isn't necessarily so. In particular, there is no need to understand monads
   to be able to use ``ST`` effectively!
@@ -96,7 +96,7 @@ reads it back, then deletes it using ``delete``, returning the final value
 of the resource. Again, we'll see the types of ``new`` and ``delete``
 shortly.
 
-The ``m`` argument to ``STrans`` (of type ``Type -> Type``) is the *context* in
+The ``m`` argument to ``STrans`` (of type ``Type -> Type``) is the *computation context* in
 which the function can be run. Here, the type level variable indicates that we
 can run it in *any* context. We can run it in the identity context with
 ``runPure``. For example, try entering the above definitions in a file
@@ -166,6 +166,25 @@ The ``lift`` function allows us to use funtions from the underlying
 computation context (``IO`` here) directly. Again, we'll see the exact type
 of ``lift`` shortly.
 
+.. topic:: !-notation
+
+    In ``ioMakeAndIncrement`` we've used ``!(read var)`` to read from the
+    resource. You can read about this ``!``-notation in the main Idris tutorial
+    (see :ref:`monadsdo`). In short, it allows us to use an ``STrans``
+    function inline, rather than having to bind the result to a variable
+    first.
+
+    Conceptually, at least, you can think of it as having the following type:
+
+    .. code-block:: idris
+    
+        (!) : STrans m a state_in state_out -> a
+
+    It is syntactic sugar for binding a variable immediately before the
+    current action in a ``do`` block, then using that variable in place of
+    the ``!``-expression.
+
+
 In general, though, it's bad practice to use a *specific* context like
 ``IO``. Firstly, it requires us to sprinkle ``lift`` liberally throughout
 our code, which hinders readability. Secondly, and more importantly, it will
@@ -228,6 +247,8 @@ can execute ``ioMakeAndIncrement`` at the REPL as follows:
     Enter a number: 93
     var = 93
     var = 94
+
+.. _depstate:
 
 Manipulating ``State`` with dependent types
 ===========================================
@@ -550,7 +571,8 @@ given input and output resource lists in full. We can do this with
 
 ``ST`` is a type level function which computes an appropriate ``STrans``
 type given a list of *actions*, which describe transitions on resources.
-An ``Action`` in a function type can take one of the following forms:
+An ``Action`` in a function type can take one of the following forms (plus
+some others which we'll see shortly):
 
 * ``lbl ::: ty`` expresses that the resource ``lbl`` begins and ends in
   the state ``ty``
@@ -595,6 +617,33 @@ how each function affects the overall resource state. If there is a resource
 update depending on a result, as with ``readAndAdd``, then we need to describe
 it in full. Otherwise, as with ``increment`` and ``makeAndIncrement``, we can
 write the input and output resource lists without repetition.
+
+An ``Action`` can also describe *adding* and *removing* states:
+
+* ``add ty``, assuming the operation returns a ``Var``, adds a new resource
+  of type ``ty``.
+* ``remove lbl ty`` expresses that the operation removes the resource named
+  ``lbl``, beginning in state ``ty`` from the resource list.
+
+So, for example, we can write:
+
+.. code-block:: idris
+
+  newState : ST m Var [add (State Int)]
+  removeState : (lbl : Var) -> ST m () [remove lbl (State Int)]
+
+The first of these, ``newState``, returns a new resource label, and adds that
+resource to the list with type ``State Int``. The second, ``removeState``,
+given a label ``lbl``, removes the resource from the list. These types are
+equivalent to the following:
+
+.. code-block:: idris
+
+  newState : STrans m Var [] (\lbl => [lbl ::: State Int])
+  removeState : (lbl : Var) -> STrans m () [lbl ::: State Int] (const [])
+
+These are the primitive methods of constructing an ``Action``.  Later, we will
+encounter some other ways using type level functions to help with readability.
 
 In the remainder of this tutorial, we will generally use ``ST`` except on
 the rare occasions we need the full precision of ``STrans``. In the next
