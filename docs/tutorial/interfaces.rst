@@ -203,6 +203,8 @@ abstracts the notion of function application:
         pure  : a -> f a
         (<*>) : f (a -> b) -> f a -> f b
 
+.. _monadsdo:
+
 Monads and ``do``-notation
 ==========================
 

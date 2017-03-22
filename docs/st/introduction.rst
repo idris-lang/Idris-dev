@@ -39,7 +39,32 @@ secondly, we can implement one state transition system in terms of others.
 Introductory example: a data store requiring a login
 ====================================================
 
+Many software components rely on some form of state, and there may be
+operations which are only valid in specific states. For example, consider
+a secure data store in which a user must log in before getting access to
+some secret data. This system can be in one of two states:
+
+* ``LoggedIn``, in which the user is allowed to read the secret
+* ``LoggedOut``, in which the user has no access to the secret
+
+We can provide commands to log in, log out, and read the data, as illustrated
+in the following diagram:
+
 |login|
+
+The ``login`` command, if it succeeds, moves the overall system state from
+``LoggedOut`` to ``LoggedIn``. The ``logout`` command moves the state from
+``LoggedIn`` to ``LoggedOut``. Most importantly, the ``readSecret`` command
+is only valid when the system is in the ``LoggedIn`` state.
+
+We routinely use type checkers to ensure that variables and arguments are used
+consistently. However, statically checking that operations are performed only
+on resources in an appropriate state is not well supported by mainstream type
+systems. In the data store example, for example, it's important to check that
+the user is successfully logged in before using ``readSecret``. The
+``ST`` library allows us to represent this kind of *protocol* in the type
+system, and ensure at *compile-time* that the secret is only read when the
+user is logged in.
 
 Outline
 =======
