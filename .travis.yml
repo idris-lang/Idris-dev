@@ -74,7 +74,7 @@ before_install:
   # work around https://github.com/haskell/cabal/issues/1666 : cabal-install
   # will not install the required version of the Cabal library if a project
   # requires it only for Setup.hs (i.e. it’s not a normal dependency).
-  - cabal install "Cabal-${CABALVER}.*"
+  - cabal install Cabal --constraint Cabal==${CABALVER}.*
   - if [ -n "$STYLISH" ]; then ./stylize.sh; exit $?; fi
 
 install:
