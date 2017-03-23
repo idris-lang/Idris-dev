@@ -1,7 +1,7 @@
 .. _stexamples:
 
-********
-Examples
-********
+****************
+Further Examples
+****************
 
 
