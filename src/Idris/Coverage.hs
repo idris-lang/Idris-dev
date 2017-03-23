@@ -440,12 +440,22 @@ checkRec fa@(App _ _ _) fa'@(App _ _ _)
       (f', as') <- unApply fa'
          = if (length as /= length as')
               then checkRec f f'
-              else checkRecs (f : as) (f' : as')
+              -- Same function but different args is recoverable,
+              -- and vice versa, if it's an ordinary function
+              -- If a constructor, everything has to be recoverable
+              else do fok <- checkRec f f'
+                      argok <- checkRecs (f : as) (f : as')
+                      return (if conType f then fok && argok
+                                           else fok || argok)
   where
     checkRecs [] [] = return True
     checkRecs (a : as) (b : bs) = do aok <- checkRec a b
                                      asok <- checkRecs as bs
                                      return (aok && asok)
+    conType (P (DCon _ _ _) _ _) = True
+    conType (P (TCon _ _) _ _) = True
+    conType _ = False
+
 checkRec (P xt x _) (P yt y _)
    | x == y = return True
    | ntRec xt yt = return True

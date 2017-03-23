@@ -1,0 +1,1 @@
+totality022.idr:7:3:f _ [] (RSnoc _ _) is a valid case
