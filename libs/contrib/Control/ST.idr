@@ -11,13 +11,13 @@ public export
 data Resource : Type where
      MkRes : label -> Type -> Resource
 
-%error_reverse
-public export
-(:::) : label -> Type -> Resource
-(:::) = MkRes
-
 export
 data Var = MkVar -- Phantom, just for labelling purposes
+
+%error_reverse
+public export
+(:::) : Var -> Type -> Resource
+(:::) = MkRes
 
 {- Contexts for holding current resources states -}
 namespace Resources
@@ -33,7 +33,7 @@ namespace Resources
 
 {- Proof that a label has a particular type in a given context -}
 public export
-data InState : lbl -> Type -> Resources -> Type where
+data InState : Var -> Type -> Resources -> Type where
      Here : InState lbl st (MkRes lbl st :: rs)
      There : InState lbl st rs -> InState lbl st (r :: rs)
 
@@ -221,14 +221,14 @@ infix 6 :->
           
 public export
 data Action : Type -> Type where
-     Stable : lbl -> Type -> Action ty
-     Trans : lbl -> Type -> (ty -> Type) -> Action ty
-     Remove : lbl -> Type -> Action ty
+     Stable : Var -> Type -> Action ty
+     Trans : Var -> Type -> (ty -> Type) -> Action ty
+     Remove : Var -> Type -> Action ty
      Add : (ty -> Resources) -> Action ty
 
 namespace Stable
   public export %error_reduce
-  (:::) : lbl -> Type -> Action ty
+  (:::) : Var -> Type -> Action ty
   (:::) = Stable
 
 namespace Trans
@@ -236,7 +236,7 @@ namespace Trans
   data Trans ty = (:->) Type Type
 
   public export %error_reduce
-  (:::) : lbl -> Trans ty -> Action ty
+  (:::) : Var -> Trans ty -> Action ty
   (:::) lbl (st :-> st') = Trans lbl st (const st')
 
 namespace DepTrans
@@ -244,7 +244,7 @@ namespace DepTrans
   data DepTrans ty = (:->) Type (ty -> Type)
 
   public export %error_reduce
-  (:::) : lbl -> DepTrans ty -> Action ty
+  (:::) : Var -> DepTrans ty -> Action ty
   (:::) lbl (st :-> st') = Trans lbl st st'
 
 public export
@@ -252,19 +252,19 @@ or : a -> a -> Either b c -> a
 or x y = either (const x) (const y)
 
 public export %error_reduce
-add : Type -> Action a
+add : Type -> Action Var
 add ty = Add (\var => [var ::: ty])
  
 public export %error_reduce
-remove : lbl -> Type -> Action ty
+remove : Var -> Type -> Action ty
 remove = Remove
 
 public export %error_reduce
-addIfRight : Type -> Action (Either a b)
+addIfRight : Type -> Action (Either a Var)
 addIfRight ty = Add (either (const []) (\var => [var ::: ty]))
 
 public export %error_reduce
-addIfJust : Type -> Action (Maybe a)
+addIfJust : Type -> Action (Maybe Var)
 addIfJust ty = Add (maybe [] (\var => [var ::: ty]))
 
 public export
