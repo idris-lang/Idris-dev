@@ -34,8 +34,8 @@ this is the *only* way to access the store.
 Defining an interface for the data store
 ========================================
 
-We'll begin by defining a data type which represents the two abstract states
-of the store, either ``LoggedOut`` or ``LoggedIn``:
+We'll begin by defining a data type, in a file ``Login.idr``, which represents
+the two abstract states of the store, either ``LoggedOut`` or ``LoggedIn``:
 
 .. code-block:: idris
 
@@ -56,7 +56,18 @@ a data store *interface* and define a concrete type later:
 .. code-block:: idris
 
   interface DataStore (m : Type -> Type) where
-    Store : Access -> Type
+    data Store : Access -> Type
+
+.. topic:: ``data`` in interfaces
+
+   The ``data`` keyword in the interface means that ``Store`` must be
+   implemented by a concrete data type in any implementation of
+   ``DataStore``. By doing this, Idris can use this
+   information to help in type-checking. For example, if a constraint arises
+   during type checking that ``State x`` must be the same as ``State y``,
+   in the same implementation,
+   Idris can assume that ``x`` must be the same as ``y``, because ``State``
+   must be implemented by the same data type.
 
 We can continue to populate this interface with operations on the store.  Among
 other advantages, by separating the *interface* from its *implementation* we
@@ -202,7 +213,7 @@ This completes the interface, repeated in full for reference below:
 .. code-block:: idris
 
   interface DataStore (m : Type -> Type) where
-    Store : Access -> Type
+    data Store : Access -> Type
 
     connect : ST m Var [add (Store LoggedOut)]
     disconnect : (store : Var) -> ST m () [remove store (Store LoggedOut)]
@@ -359,10 +370,10 @@ alternative (see the Idris tutorial, :ref:`monadsdo`) rather than a
   getData : (ConsoleIO m, DataStore m) => ST m () []
   getData = do st <- connect
                OK <- login st
-                  | BadPassword => do putStr "Failure\n"
+                  | BadPassword => do putStrLn "Failure"
                                       disconnect st
                secret <- readSecret st
-               putStr ("Secret is: " ++ show secret ++ "\n")
+               putStrLn ("Secret is: " ++ show secret)
                logout st
                disconnect st
 
