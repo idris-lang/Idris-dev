@@ -383,6 +383,154 @@ of ``DataStore``.
 Implementing the interface
 ==========================
 
+To execute ``getData`` in ``IO``, we'll need to provided an implementation
+of ``DataStore`` which works in the ``IO`` context. We can begin as
+follows:
+
+.. code-block:: idris
+
+  implementation DataStore IO where
+
+Then, we can ask Idris to populate the interface with skeleton definitions
+for the necessary methods (press ``Ctrl-Alt-A`` in Atom for "add definition"
+or the corresponding shortcut for this in the Idris mode in your favourite
+editor):
+
+.. code-block:: idris
+
+  implementation DataStore IO where
+    Store x = ?DataStore_rhs_1
+    connect = ?DataStore_rhs_2
+    disconnect store = ?DataStore_rhs_3
+    readSecret store = ?DataStore_rhs_4
+    login store = ?DataStore_rhs_5
+    logout store = ?DataStore_rhs_6
+
+The first decision we'll need to make is how to represent the data store.
+We'll keep this simple, and store the data as a single ``String``, using
+a hard coded password to gain access. So, we can define ``Store`` as
+follows, using a ``String`` to represent the data no matter whether we
+are ``LoggedOut`` or ``LoggedIn``:
+
+.. code-block:: idris
+
+    Store x = State String
+
+Now that we've given a concrete type for ``Store``, we can implement operations
+for connecting, disconnecting, and accessing the data. And, since we used
+``State``, we can use ``new``, ``delete``, ``read`` and ``write`` to
+manipulate the store.
+
+Looking at the types of the holes tells us how we need to manipulate the
+state. For example, the ``?DataStore_rhs_2`` hole tells us what we need
+to do to implement ``connect``. We need to return a new ``Var`` which 
+represents a resource of type ``State String``:
+
+.. code-block:: idris
+
+    --------------------------------------
+    DataStore_rhs_2 : STrans IO Var [] (\result => [result ::: State String])
+
+We can implement this by creating a new variable with some data for the
+content of the store (we can use any ``String`` for this) and returning
+that variable:
+
+.. code-block:: idris
+
+    connect = do store <- new "Secret Data"
+                 pure store
+
+For ``disconnect``, we only need to delete the resource:
+
+.. code-block:: idris
+
+    disconnect store = delete store
+
+For ``readSecret``, we need to read the secret data and return the
+``String``. Since we now know the concrete representation of the data is
+a ``State String``, we can use ``read`` to access the data directly:
+
+.. code-block:: idris
+
+    readSecret store = read store
+
+We'll do ``logout`` next and return to ``login``. Checking the hole
+reveals the following:
+
+.. code-block:: idris
+
+      store : Var
+    --------------------------------------
+    DataStore_rhs_6 : STrans IO () [store ::: State String] (\result => [store ::: State String])
+
+So, in this minimal implementation, we don't actually have to do anything!
+
+.. code-block:: idris
+
+    logout store = pure ()
+
+For ``login``, we need to return whether logging in was successful. We'll
+do this by prompting for a password, and returning ``OK`` if it matches
+a hard coded password, or ``BadPassword`` otherwise:
+
+.. code-block:: idris
+
+    login store = do putStr "Enter password: "
+                     p <- getStr
+                     if p == "Mornington Crescent"
+                        then pure OK
+                        else pure BadPassword
+
+For reference, here is the complete implementation which allows us to
+execute a ``DataStore`` program at the REPL:
+
+.. code-block:: idris
+
+  implementation DataStore IO where
+    Store x = State String
+    connect = do store <- new "Secret Data"
+                 pure store
+    disconnect store = delete store
+    readSecret store = read store
+    login store = do putStr "Enter password: "
+                     p <- getStr
+                     if p == "Mornington Crescent"
+                        then pure OK
+                        else pure BadPassword
+    logout store = pure ()
+
+Finally, we can try this at the REPL as follows (Idris defaults to the
+``IO`` context at the REPL if there is an implementation available, so no
+need to give the ``m`` argument explicitly here):
+
+.. code:: 
+
+    *Login> :exec run getData
+    Enter password: Mornington Crescent
+    Secret is: "Secret Data"
+
+    *Login> :exec run getData
+    Enter password: Dollis Hill
+    Failure
+
+We can only use ``read``, ``write``, ``new`` and ``delete`` on a resource
+with a ``State`` type. So, *within* the implementation of ``DataStore``,
+or anywhere where we know the context is ``IO``, we can access the data store
+however we like: this is where the internal details of ``DataStore`` are
+implemented. However, if we merely have a constraint ``DataStore m``, we can't
+know how the store is implemented, so we can only access via the API given
+by the ``DataStore`` interface.
+
+It is therefore good practice to use a *generic* context ``m`` for functions
+like ``getData``, and constrain by only the interfaces we need, rather than
+using a concrete context ``IO``.
+
+We've now seen how to manipulate states, and how to encapsulate state
+transitions for a specific system like the data store inn an interface.
+However, realistic systems will need to *compose* state machines. We'll
+either need to use more than one state machine at a time, or implement one
+state machine in terms of one or more others. We'll see how to achieve this
+in the next section.
 
 .. |login| image:: ../image/login.png
                    :width: 500px
