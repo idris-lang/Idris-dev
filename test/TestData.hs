@@ -157,7 +157,7 @@ testFamiliesData = [
       (  2, ANY  ),
       (  3, ANY  ),
       (  4, ANY  ),
-      (  5, ANY  ),
+--       (  5, ANY  ),
       (  6, ANY  ),
       (  7, ANY  )]),
   ("io",              "IO monad",

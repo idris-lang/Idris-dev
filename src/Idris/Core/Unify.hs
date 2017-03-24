@@ -303,10 +303,16 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 
     injective (P (DCon _ _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
-    injective (P Ref n _)
-         | Just i <- lookupInjectiveExact n ctxt = i
+--     injective (P Ref n _)
+--          | Just i <- lookupInjectiveExact n ctxt = i
     injective (App _ f a)        = injective f -- && injective a
     injective _                  = False
+
+--     injectiveTC (P Ref n _) (P Ref n' _)
+--          | Just i <- lookupInjectiveExact n ctxt,
+--            n == n' = i
+--     injectiveTC (App _ f a) (App _ f' a') = injectiveTC f a
+--     injectiveTC _ _ = False
 
 --     injectiveVar (P _ (MN _ _) _) = True -- TMP HACK
     injectiveVar (P _ n _)        = n `elem` inj
@@ -534,6 +540,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
          | (injectiveApp fx && injectiveApp fy)
         || (injectiveApp fx && metavarApp fy && ax == ay)
         || (injectiveApp fy && metavarApp fx && ax == ay)
+        || (injectiveTC fx fy) -- data interface method
          = do let (headx, _) = unApply fx
               let (heady, _) = unApply fy
               -- fail quickly if the heads are disjoint
@@ -611,6 +618,15 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                            _ -> False
 
             notFn t = injective t || metavar t || inenv t
+
+            injectiveTC t@(P Ref n _) t'@(P Ref n' _)
+                | Just ni <- lookupInjectiveExact n ctxt,
+                  Just ni' <- lookupInjectiveExact n' ctxt
+              = (n == n' && ni) ||
+                (ni && metavar t') ||
+                (metavar t && ni')
+            injectiveTC (App _ f a) (App _ f' a') = injectiveTC f f'
+            injectiveTC _ _ = False
 
 
     unifyTmpFail :: Term -> Term -> StateT UInfo TC [(Name, TT Name)]
