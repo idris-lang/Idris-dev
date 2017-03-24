@@ -56,18 +56,7 @@ a data store *interface* and define a concrete type later:
 .. code-block:: idris
 
   interface DataStore (m : Type -> Type) where
-    data Store : Access -> Type
-
-.. topic:: ``data`` in interfaces
-
-   The ``data`` keyword in the interface means that ``Store`` must be
-   implemented by a concrete data type in any implementation of
-   ``DataStore``. By doing this, Idris can use this
-   information to help in type-checking. For example, if a constraint arises
-   during type checking that ``State x`` must be the same as ``State y``,
-   in the same implementation,
-   Idris can assume that ``x`` must be the same as ``y``, because ``State``
-   must be implemented by the same data type.
+    Store : Access -> Type
 
 We can continue to populate this interface with operations on the store.  Among
 other advantages, by separating the *interface* from its *implementation* we
@@ -213,7 +202,7 @@ This completes the interface, repeated in full for reference below:
 .. code-block:: idris
 
   interface DataStore (m : Type -> Type) where
-    data Store : Access -> Type
+    Store : Access -> Type
 
     connect : ST m Var [add (Store LoggedOut)]
     disconnect : (store : Var) -> ST m () [remove store (Store LoggedOut)]
