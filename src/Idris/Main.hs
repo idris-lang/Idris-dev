@@ -146,7 +146,7 @@ idrisMain opts =
 
                       when (not $ null diff_pkgs) $ do
                         iputStrLn "The following packages were specified but cannot be found:"
-                        iputStrLn $ unlines $ map (\x -> unwords ["-", x]) diff_pkgs
+                        iputStr $ unlines $ map (\x -> unwords ["-", x]) diff_pkgs
                         runIO $ exitWith (ExitFailure 1))
                   (\e -> return ())
 
