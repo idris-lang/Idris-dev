@@ -1,3 +1,10 @@
+# New in 0.99.2
+
+## Tool Updates
+
++ Idris now checks the list of packages specified at the command line
+  against those installed. If there is a mismatch Idris will complain.
+
 # New in 0.99.1:
 
 ## Language updates

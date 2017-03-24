@@ -174,6 +174,11 @@ iputStrLn s = do i <- getIState
                    RawOutput h  -> runIO $ hPutStrLn h s
                    IdeMode n h -> runIO . hPutStrLn h $ convSExp "write-string" s n
 
+iputStr :: String -> Idris ()
+iputStr s = do i <- getIState
+               case idris_outputmode i of
+                   RawOutput h  -> runIO $ hPutStr h s
+                   IdeMode n h -> runIO . hPutStr h $ convSExp "write-string" s n
 
 idemodePutSExp :: SExpable a => String -> a -> Idris ()
 idemodePutSExp cmd info = do i <- getIState

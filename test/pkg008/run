@@ -7,3 +7,5 @@ ${IDRIS:-idris} $@ --testpkg maths.ipkg | grep -v -e "idris"
 # to remove it to make output consistent.
 
 ${IDRIS:-idris} $@ --clean maths.ipkg
+
+${IDRIS:-idris} $@ -p maths

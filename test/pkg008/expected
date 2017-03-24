@@ -11,3 +11,5 @@ Removed: NumOps.ibc
 Removed: Test.ibc
 Removed: 00maths-idx.ibc
 Leaving directory `./src'
+The following packages were specified but cannot be found:
+- maths
