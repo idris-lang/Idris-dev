@@ -431,7 +431,7 @@ state machines to implement a high level network communication protocol
 in terms of the lower level sockets API. This also uses threading, to
 handle incoming requests asyncronously. You can find some more detail
 on threading and the random number server in the draft paper
-`State Machines All The Way Down <http://eb.host.cs.st-andrews.ac.uk/drafts/sms.pdf>`_
+`State Machines All The Way Down <https://www.idris-lang.org/drafts/sms.pdf>`_
 by Edwin Brady.
 
 .. |netstate| image:: ../image/netstate.png

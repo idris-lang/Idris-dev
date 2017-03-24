@@ -83,7 +83,7 @@ API in practice, implementing the POSIX network sockets API.
 
 The ``Control.ST`` library is also described in a draft paper by
 `Edwin Brady <https://edwinb.wordpress.com/>`_, "State Machines All The Way
-Down", available `here <http://eb.host.cs.st-andrews.ac.uk/drafts/sms.pdf>`_.
+Down", available `here <https://www.idris-lang.org/drafts/sms.pdf>`_.
 This paper presents many of the examples from this tutorial, and describes
 the motivation, design and implementation of the library in more depth. 
 
