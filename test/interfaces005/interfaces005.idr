@@ -39,15 +39,15 @@ namespace TreeSet
 using implementation TreeSet
 
   test : Set Nat
-  test = insert 3 $ 
-         insert 2 $ 
-         insert 7 $ 
-         insert 3 $ 
-         insert 4 $ 
-         insert 5 new 
+  test = -- insert (the Nat 3) $ 
+--          insert 2 $ 
+--          insert 7 $ 
+--          insert 3 $ 
+--          insert 4 $ 
+        insert {a = Nat} (the Nat 5) new
 
   foo : Bool
-  foo = member 6 test
+  foo = member (the Nat 6) test
 
   bar : Bool
-  bar = member 3 test
+  bar = member (the Nat 3) test
