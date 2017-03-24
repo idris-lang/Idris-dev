@@ -11,13 +11,13 @@ interface Conc (m : Type -> Type) where
   -- TODO: Note that there is nothing here yet about how the threads
   -- communicate with each other...
   fork : (thread : STrans m () thread_res (const [])) ->
-         {auto tprf : SubCtxt thread_res all} ->
+         {auto tprf : SubRes thread_res all} ->
          STrans m () all (const (kept tprf)) 
 
 export
 implementation Conc IO where
   fork thread
-      = do threadEnv <- dropSubCtxt
+      = do threadEnv <- dropSub
            lift $ spawn (do runWith threadEnv thread
                             pure ()) 
            pure ()

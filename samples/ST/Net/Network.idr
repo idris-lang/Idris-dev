@@ -86,8 +86,7 @@ implementation Sockets IO where
   accept sock = do Right (conn, addr) <- lift $ accept !(read sock)
                          | Left err => pure (Left ())
                    lbl <- new conn
-                   toEnd lbl
-                   pure (Right lbl)
+                   returning (Right lbl) (toEnd lbl)
 
   connect sock addr port 
        = do ok <- lift $ connect !(read sock) addr port
