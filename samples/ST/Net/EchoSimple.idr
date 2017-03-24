@@ -4,13 +4,10 @@ import Control.ST
 import Control.ST.ImplicitCall
 
 echoServer : (ConsoleIO m, Sockets m) => (sock : Var) -> 
-             ST m () [Remove sock (Sock {m} Listening)]
+             ST m () [remove sock (Sock {m} Listening)]
 echoServer sock = 
-  do Right new <- accept sock
-           | Left err => do close sock; remove sock
-     Right msg <- recv new
-           | Left err => do close sock; remove sock; remove new
-     putStr (msg ++ "\n")
+  do Right new <- accept sock | Left err => do close sock; remove sock
+     Right msg <- recv new | Left err => do close sock; remove sock; remove new
      Right ok <- send new ("You said " ++ msg)
            | Left err => do remove new; close sock; remove sock
      close new; remove new; echoServer sock

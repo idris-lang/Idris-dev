@@ -21,7 +21,7 @@ example, in the software which implements an ATM, it’s important that the ATM
 dispenses cash only when the machine is in a state where a card has been
 inserted and the PIN verified.
 
-In this tutorial I will introduce the ``Control.ST`` library, which is included
+In this tutorial we will introduce the ``Control.ST`` library, which is included
 with the Idris distribution (currently as part of the ``contrib`` package)
 and supports programming and reasoning with state and side effects.  This
 tutorial assumes familiarity with pure programming in Idris, as described in
@@ -69,11 +69,23 @@ user is logged in.
 Outline
 =======
 
-* Working with simple states, introducing STrans and ST. Executing
-  stateful programs. Working with multiple states.
-* State machines in types, implementing the data store. Interfaces.
-* Composing state machines, combining resources: Graphics
-* Examples: Networks, Threads, Hangman
+This tutorial starts (:ref:`introst`) by describing how to manipulate
+individual states, introduce a data type ``STrans`` for describing stateful
+functions, and ``ST`` which describes top level state transitions.
+Next (:ref:`smstypes`) it describes how to represent state machines in
+types, and how to define *interfaces* for describing stateful systems.
+Then (:ref:`composing`) it describes how to compose systems of multiple
+state machines. It explains how to implement systems which use several
+state machines at once, and how to implement a high level stateful system
+in terms of lower level systems.
+Finally (:ref:`netexample`) we'll see a specific example of a stateful
+API in practice, implementing the POSIX network sockets API.
+
+The ``Control.ST`` library is also described in a draft paper by
+`Edwin Brady <https://edwinb.wordpress.com/>`_, "State Machines All The Way
+Down", available `here <http://eb.host.cs.st-andrews.ac.uk/drafts/sms.pdf>`_.
+This paper presents many of the examples from this tutorial, and describes
+the motivation, design and implementation of the library in more depth. 
 
 .. |login| image:: ../image/login.png
                    :width: 500px
