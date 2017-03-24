@@ -361,7 +361,7 @@ return ``True``, otherwise we need to return ``False``:
 
 There is a slight difficulty if we're developing interactively, which is
 that if we leave a hole, the required output state isn't easily visible
-until we know the value that's being returning. For example. in the following
+until we know the value that's being returned. For example. in the following
 incomplete definition of ``readAndAdd`` we've left a hole for the
 successful case:
 
@@ -373,7 +373,7 @@ successful case:
                          then ?whatNow
                          else pure False
 
-We can look at the type of ``?whatNow``, but it is unforunately rather less
+We can look at the type of ``?whatNow``, but it is unfortunately rather less
 than informative:
 
 .. code-block:: idris
