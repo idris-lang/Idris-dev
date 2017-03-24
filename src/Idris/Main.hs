@@ -37,6 +37,7 @@ import Control.Monad
 import Control.Monad.Trans (lift)
 import Control.Monad.Trans.Except (runExceptT)
 import Control.Monad.Trans.State.Strict (execStateT)
+import Data.List
 import Data.Maybe
 import Prelude hiding (id, (.), (<$>))
 import System.Console.Haskeline as H
@@ -138,9 +139,21 @@ idrisMain opts =
 
        setNoBanner nobanner
 
+       -- Check if listed packages are actually installed
+
+       idrisCatch (do ipkgs <- runIO $ getIdrisInstalledPackages
+                      let diff_pkgs = (\\) pkgdirs ipkgs
+
+                      when (not $ null diff_pkgs) $ do
+                        iputStrLn "The following packages were specified but cannot be found:"
+                        iputStr $ unlines $ map (\x -> unwords ["-", x]) diff_pkgs
+                        runIO $ exitWith (ExitFailure 1))
+                  (\e -> return ())
+
        when (not (NoBasePkgs `elem` opts)) $ do
            addPkgDir "prelude"
            addPkgDir "base"
+
        mapM_ addPkgDir pkgdirs
        elabPrims
        when (not (NoBuiltins `elem` opts)) $ do x <- loadModule "Builtins" (IBC_REPL True)
