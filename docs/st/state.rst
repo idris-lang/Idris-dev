@@ -562,7 +562,7 @@ their types can become quite verbose given that we need to provide explicit
 input and output resource lists. This is convenient for giving types for
 the primitive operations, but for more general use it's much more convenient
 to be able to express *transitions* on individual resources, rather than
-given input and output resource lists in full. We can do this with
+giving input and output resource lists in full. We can do this with
 ``ST``:
 
 .. code-block:: idris
@@ -574,7 +574,7 @@ given input and output resource lists in full. We can do this with
 ``ST`` is a type level function which computes an appropriate ``STrans``
 type given a list of *actions*, which describe transitions on resources.
 An ``Action`` in a function type can take one of the following forms (plus
-some others which we'll see shortly):
+some others which we'll see later in the tutorial):
 
 * ``lbl ::: ty`` expresses that the resource ``lbl`` begins and ends in
   the state ``ty``
