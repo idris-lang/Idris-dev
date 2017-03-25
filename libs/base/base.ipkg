@@ -21,7 +21,7 @@ modules = System,
           Data.Nat.Views,
           Data.Primitives.Views,
           Data.String.Views,
-          Data.So, Data.String,
+          Data.So, Data.String, Data.Buffer,
 
           Control.Isomorphism,
           Control.Monad.Identity,

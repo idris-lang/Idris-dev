@@ -1,5 +1,10 @@
 # New in 0.99.2
 
+## Library Updates
+
++ Added `Data.Buffer` to `base`. This allows basic manipulation of mutable
+  buffers of `Bits8`, including reading from and writing to files.
+
 ## Tool Updates
 
 + Idris now checks the list of packages specified at the command line
