@@ -5,6 +5,11 @@
 + Idris now checks the list of packages specified at the command line
   against those installed. If there is a mismatch Idris will complain.
 
+## Miscellaneous Updates
+
++ Documentation updates for the new `Control.ST` library
++ Various stability/efficiency fixes
+
 # New in 0.99.1:
 
 ## Language updates
