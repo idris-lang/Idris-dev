@@ -77,6 +77,8 @@ testFamiliesData = [
       (  2, ANY  )]),
   ("bounded",         "Bounded",
     [ (  1, ANY  )]),
+  ("buffer",          "Buffer",
+    [ (  1, C_CG  )]),
   ("corecords",       "Corecords",
     [ (  1, ANY  ),
       (  2, ANY  )]),
