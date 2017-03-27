@@ -1,4 +1,4 @@
-resolver: lts-8.04
+resolver: lts-8.06
 
 packages:
   - location: .
