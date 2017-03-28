@@ -252,7 +252,7 @@ Library
                 , Tools_idris
 
   Build-depends:  base >=4 && <5
-                , aeson >= 0.6 && < 1.1
+                , aeson >= 0.6 && < 1.2
                 , annotated-wl-pprint >= 0.7 && < 0.8
                 , ansi-terminal < 0.7
                 , ansi-wl-pprint < 0.7
@@ -287,7 +287,7 @@ Library
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
                 , utf8-string < 1.1
-                , vector < 0.12
+                , vector < 0.13
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.4
                 , fsnotify >= 0.2 && < 2.2
