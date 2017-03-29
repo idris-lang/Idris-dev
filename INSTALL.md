@@ -92,6 +92,17 @@ the required libraries and header files are available:
 
 * `stack build --nix`
 
+### before rebuilding new pulls
+the default build will currently just reuse `.ibc` files which can result
+in build-failures in the `Building libraries...` phase.
+
+A safer way to do this is therefore to recursively delete all the `*.ibc`
+files from the `libs/` folder.
+
+On Linux(or similar) you can do this with
+
+    find . -name "*.ibc" -exec rm -rf {} \;
+
 ### System GHC
 
 The flag `--system-ghc` can be added to enforce use of your system's
@@ -111,4 +122,4 @@ encounter this then the fix is to augment the `PKG_CONFIG_PATH` for
 
 ```
 PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig stack build
-```
+``` 
