@@ -640,14 +640,6 @@ convEq ctxt holes topx topy = ceq [] topx topy where
         | x `elem` holes || y `elem` holes = return True
         | x == y || (x, y) `elem` ps || (y,x) `elem` ps = return True
         | otherwise = sameDefs ps x y
-    ceq ps x (Bind n (Lam _ t) (App _ y (V 0)))
-          = ceq ps x (substV (P Bound n t) y)
-    ceq ps (Bind n (Lam _ t) (App _ x (V 0))) y
-          = ceq ps (substV (P Bound n t) x) y
-    ceq ps x (Bind n (Lam _ t) (App _ y (P Bound n' _)))
-        | n == n' = ceq ps x y
-    ceq ps (Bind n (Lam _ t) (App _ x (P Bound n' _))) y
-        | n == n' = ceq ps x y
 
     ceq ps (Bind n (PVar _ t) sc) y = ceq ps sc y
     ceq ps x (Bind n (PVar _ t) sc) = ceq ps x sc
@@ -668,6 +660,16 @@ convEq ctxt holes topx topy = ceq [] topx topy where
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Pi r i v t) (Pi r' i' v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
+
+    ceq ps x (Bind n (Lam _ t) (App _ y (V 0)))
+          = ceq ps x (substV (P Bound n t) y)
+    ceq ps (Bind n (Lam _ t) (App _ x (V 0))) y
+          = ceq ps (substV (P Bound n t) x) y
+    ceq ps x (Bind n (Lam _ t) (App _ y (P Bound n' _)))
+        | n == n' = ceq ps x y
+    ceq ps (Bind n (Lam _ t) (App _ x (P Bound n' _))) y
+        | n == n' = ceq ps x y
+
     -- Special case for 'case' blocks - size of scope causes complications,
     -- we only want to check the blocks themselves are valid and identical
     -- in the current scope. So, just check the bodies, and the additional
