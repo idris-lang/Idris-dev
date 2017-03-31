@@ -538,7 +538,7 @@ instance Show Name where
     show (UN n) = str n
     show (NS n s) = showSep "." (map T.unpack (reverse s)) ++ "." ++ show n
     show (MN _ u) | u == txt "underscore" = "_"
-    show (MN i s) = "{" ++ str s ++ show i ++ "}"
+    show (MN i s) = "{" ++ str s ++ "_" ++ show i ++ "}"
     show (SN s) = show s
     show (SymRef i) = "##symbol" ++ show i ++ "##"
 
@@ -559,7 +559,7 @@ showCG :: Name -> String
 showCG (UN n) = T.unpack n
 showCG (NS n s) = showSep "." (map T.unpack (reverse s)) ++ "." ++ showCG n
 showCG (MN _ u) | u == txt "underscore" = "_"
-showCG (MN i s) = "{" ++ T.unpack s ++ show i ++ "}"
+showCG (MN i s) = "{" ++ T.unpack s ++ "_" ++ show i ++ "}"
 showCG (SN s) = showCG' s
   where showCG' (WhereN i p c) = showCG p ++ ":" ++ showCG c ++ ":" ++ show i
         showCG' (WithN i n) = "_" ++ showCG n ++ "_with_" ++ show i
