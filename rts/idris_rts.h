@@ -213,7 +213,9 @@ typedef void(*func)(VM*, VAL*);
 
 typedef intptr_t i_int;
 
-#define MKINT(x) ((void*)((i_int)(((x)<<1)+1)))
+// Shifting a negative number left is undefined and (rightly) gives a warning,
+// but we're only interested in shifting the bit pattern, so cast it
+#define MKINT(x) ((void*)((i_int)((((uintptr_t)x)<<1)+1)))
 #define GETINT(x) ((i_int)(x)>>1)
 #define ISINT(x) ((((i_int)x)&1) == 1)
 #define ISSTR(x) (GETTY(x) == CT_STRING)
