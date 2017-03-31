@@ -1,3 +1,2 @@
 <<int fn>>
-6
 reg027a.idr:9:16:Overlapping implementation: Show (Int -> a) already defined
