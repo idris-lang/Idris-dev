@@ -250,17 +250,65 @@ So, for example, the following definitions are legal:
             d y = c (y + 1 + z y)
                   where z w = y + w
 
+.. _sect-holes:
+
+Holes
+-----
+
+Idris programs can contain *holes* which stand for incomplete parts of
+programs. For example, we could leave a hole for the greeting in our
+"Hello world" program:
+
+.. code-block:: idris
+
+    main : IO ()
+    main = putStrLn ?greeting
+
+The syntax ``?greeting`` introduces a hole, which stands for a part of
+a program which is not yet written. This is a valid Idris program, and you
+can check the type of ``greeting``:
+
+::
+
+    *Hello> :t greeting
+    --------------------------------------
+    greeting : String
+
+Checking the type of a hole also shows the types of any variables in scope.
+For example, given an incomplete definition of ``even``:
+
+.. code-block:: idris
+
+    even : Nat -> Bool
+    even Z = True
+    even (S k) = ?even_rhs
+
+We can check the type of ``even_rhs`` and see the expected return type,
+and the type of the variable ``k``:
+
+::
+
+    *Even> :t even_rhs
+      k : Nat
+    --------------------------------------
+    even_rhs : Bool
+
+Holes are useful because they help us write functions *incrementally*.
+Rather than writing an entire function in one go, we can leave some parts
+unwritten and use Idris to tell us what is necessary to complete the
+definition.
 
 Dependent Types
 ===============
 
+.. _sect-fctypes:
+
 First Class Types
 -----------------
 
-In Idris, types are a first class language construct, meaning that they
-can be computed and manipulated (and passed to functions) just like any
-other language construct. For example, we could write a function which
-computes a type:
+In Idris, types are first class, meaning that they can be computed and
+manipulated (and passed to functions) just like any other language construct.
+For example, we could write a function which computes a type:
 
 .. code-block:: idris
 
@@ -350,19 +398,22 @@ following:
 
 ::
 
-    $ idris vbroken.idr --check
-    vbroken.idr:9:23:When elaborating right hand side of Vect.++:
-    When elaborating an application of constructor Vect.:::
-        Type mismatch between
-                Vect (k + k) a (Type of xs ++ xs)
-        and
-                Vect (plus k m) a (Expected type)
+    $ idris VBroken.idr --check
+    VBroken.idr:9:23-25:
+    When checking right hand side of Vect.++ with expected type
+            Vect (S k + m) a
 
-        Specifically:
-                Type mismatch between
-                        plus k k
-                and
-                        plus k m
+    When checking an application of constructor Vect.:::
+            Type mismatch between
+                    Vect (k + k) a (Type of xs ++ xs)
+            and
+                    Vect (plus k m) a (Expected type)
+
+            Specifically:
+                    Type mismatch between
+                            plus k k
+                    and
+                            plus k m
 
 
 This error message suggests that there is a length mismatch between
@@ -656,9 +707,9 @@ not always the best approach. Consider the following function:
 
 .. code-block:: idris
 
-    ifThenElse : Bool -> a -> a -> a;
-    ifThenElse True  t e = t;
-    ifThenElse False t e = e;
+    ifThenElse : Bool -> a -> a -> a
+    ifThenElse True  t e = t
+    ifThenElse False t e = e
 
 This function uses one of the ``t`` or ``e`` arguments, but not both
 (in fact, this is used to implement the ``if...then...else`` construct
@@ -681,19 +732,19 @@ without any explicit use of ``Force`` or ``Delay``:
 
 .. code-block:: idris
 
-    ifThenElse : Bool -> Lazy a -> Lazy a -> a;
-    ifThenElse True  t e = t;
-    ifThenElse False t e = e;
+    ifThenElse : Bool -> Lazy a -> Lazy a -> a
+    ifThenElse True  t e = t
+    ifThenElse False t e = e
 
 Codata Types
 ============
 
-Codata types are like regular data types, except that they allow for us to
-define infinite data structures.  More precisely, for a type ``T``, each of its
-constructor arguments of type ``T`` are transformed into a coinductive parameter
-``Inf T``. This makes each of the ``T`` arguments lazy, and allows infinite data
-structures of type ``T`` to be built. One example of a codata type is Stream,
-which is defined as follows.
+Codata types allow us to define infinite data structures by marking recursive
+arguments as potentially infinite. For
+a codata type ``T``, each of its constructor arguments of type ``T`` are transformed
+into an argument of type ``Inf T``. This makes each of the ``T`` arguments
+lazy, and allows infinite data structures of type ``T`` to be built. One
+example of a codata type is Stream, which is defined as follows.
 
 .. code-block:: idris
 
@@ -778,7 +829,8 @@ Useful Data Types
 =================
 
 Idris includes a number of useful data types and library functions
-(see the ``libs/`` directory in the distribution). This chapter
+(see the ``libs/`` directory in the distribution, and the
+`documentation <https://www.idris-lang.org/documentation/>`_). This section
 describes a few of these. The functions described here are imported
 automatically by every Idris program, as part of ``Prelude.idr``.
 
@@ -836,7 +888,7 @@ the vector:
 
 ::
 
-    *usefultypes> show (map double intVec)
+    *UsefulTypes> show (map double intVec)
     "[2, 4, 6, 8, 10]" : String
 
 For more details of the functions available on ``List`` and
@@ -850,9 +902,7 @@ For more details of the functions available on ``List`` and
 
 -  ``libs/base/Data/VectType.idr``
 
-Functions include filtering, appending, reversing, and so on. Also
-remember that Idris is still in development, so if you don’t see
-the function you need, please feel free to add it and submit a patch!
+Functions include filtering, appending, reversing, and so on. 
 
 Aside: Anonymous functions and operator sections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -862,7 +912,7 @@ would be to use an anonymous function:
 
 ::
 
-    *usefultypes> show (map (\x => x * 2) intVec)
+    *UsefulTypes> show (map (\x => x * 2) intVec)
     "[2, 4, 6, 8, 10]" : String
 
 The notation ``\x => val`` constructs an anonymous function which takes
@@ -874,7 +924,7 @@ e.g. ``\(x, y) => x + y``. We could also use an operator section:
 
 ::
 
-    *usefultypes> show (map (* 2) intVec)
+    *UsefulTypes> show (map (* 2) intVec)
     "[2, 4, 6, 8, 10]" : String
 
 ``(*2)`` is shorthand for a function which multiplies a number
@@ -938,19 +988,18 @@ contain an arbitrary number of values, represented as nested pairs:
 
 ::
 
-    *usefultypes> fst jim
+    *UsefulTypes> fst jim
     "Jim" : String
-    *usefultypes> snd jim
+    *UsefulTypes> snd jim
     (25, "Cambridge") : (Int, String)
-    *usefultypes> jim == ("Jim", (25, "Cambridge"))
+    *UsefulTypes> jim == ("Jim", (25, "Cambridge"))
     True : Bool
 
 Dependent Pairs
 ---------------
 
 Dependent pairs allow the type of the second element of a pair to depend
-on the value of the first element. Traditionally, these are referred to
-as “sigma types”:
+on the value of the first element. 
 
 .. code-block:: idris
 
@@ -1021,6 +1070,7 @@ intermediate values:
 
 We will see more on ``with`` notation later.
 
+Dependent pairs are sometimes referred to as “sigma types”.
 
 Records
 -------
@@ -1052,11 +1102,11 @@ can be used to access the field values:
 
 ::
 
-    *record> firstName fred
+    *Record> firstName fred
     "Fred" : String
-    *record> age fred
+    *Record> age fred
     30 : Int
-    *record> :t firstName
+    *Record> :t firstName
     firstName : Person -> String
 
 We can also use the field names to update a record (or, more
@@ -1065,9 +1115,9 @@ updated):
 
 .. code-block:: bash
 
-    *record> record { firstName = "Jim" } fred
+    *Record> record { firstName = "Jim" } fred
     MkPerson "Jim" "Joe" "Bloggs" 30 : Person
-    *record> record { firstName = "Jim", age $= (+ 1) } fred
+    *Record> record { firstName = "Jim", age $= (+ 1) } fred
     MkPerson "Jim" "Joe" "Bloggs" 31 : Person
 
 The syntax ``record { field = val, ... }`` generates a function which
@@ -1098,9 +1148,15 @@ length because it will not affect the type of the record:
 
 ::
 
-    *record> addStudent fred (ClassInfo [] "CS")
+    *Record> addStudent fred (ClassInfo [] "CS")
     ClassInfo [MkPerson "Fred" "Joe" "Bloggs" 30] "CS" : Class
 
+We could also use ``$=`` to define ``addStudent`` more concisely:
+
+.. code-block:: idris
+
+    addStudent' : Person -> Class -> Class
+    addStudent' p c = record { students $= (p ::) } c
 
 Nested record update
 ~~~~~~~~~~~~~~~~~~~~
@@ -1123,12 +1179,13 @@ can also be accessed with the following syntax:
 
     record { a->b->c } x
 
+The ``$=`` notation is also valid for nested record updates.
 
 Dependent Records
 -----------------
 
-Records can also be dependent on values. Records *parameters*, which
-are not subject to field updates. The parameters appear as arguments
+Records can also be dependent on values. Records have *parameters*, which
+cannot be updated like the other fields. The parameters appear as arguments
 to the resulting type, and are written following the record type
 name. For example, a pair type could be defined as follows:
 
@@ -1140,10 +1197,9 @@ name. For example, a pair type could be defined as follows:
         snd : b
 
 
-Using the class record from the original introduction to records.  The
-size of the class can be restricted using a ``Vect`` and the size
-promoted to the type level by parameterising the record with the size.
-For example:
+Using the ``class`` record from earlier, the size of the class can be
+restricted using a ``Vect`` and the size included in the type by parameterising
+the record with the size.  For example:
 
 
 .. code-block:: idris
@@ -1258,9 +1314,9 @@ we get a default value:
 
 ::
 
-    *usefultypes> lookup_default 2 [3,4,5,6] (-1)
+    *UsefulTypes> lookup_default 2 [3,4,5,6] (-1)
     5 : Integer
-    *usefultypes> lookup_default 4 [3,4,5,6] (-1)
+    *UsefulTypes> lookup_default 4 [3,4,5,6] (-1)
     -1 : Integer
 
 **Restrictions:** The ``case`` construct is intended for simple
@@ -1278,75 +1334,25 @@ matching ``let`` and lambda bindings. It will *only* work if:
 Totality
 ========
 
-A *total* function is a function that terminates for all possible
-inputs, or one that is guaranteed to produce some output before making
-a recursive call. For example, Idris' ``head`` function is total for
-all lists:
+Idris distinguishes between *total* and *partial* functions.
+A total function is a function that either:
 
-::
++ Terminates for all possible inputs, or 
++ Produces a non-empty, finite, prefix of a possibly infinite result
 
-    Idris> :t Prelude.List.head
-    head : (l : List a) -> {auto ok : NonEmpty l} -> a
+If a function is total, we can consider its type a precise description of what
+that function will do. For example, if we have a function with a return
+type of ``String`` we know something different, depending on whether or not
+it's total:
 
-The ``{auto ok : NonEmpty l}`` tells us that Idris won't compile if we
-try to call ``head`` on an empty list. The implementation is as follows:
++ If it's total, it will return a value of type ``String`` in finite time
++ If it's partial, then as long as it doesn't crash or enter an infinite loop,
+  it will return a ``String``.
 
-.. code-block:: idris
-
-    ||| Get the first element of a non-empty list
-    ||| @ ok proof that the list is non-empty
-    head : (l : List a) -> {auto ok : NonEmpty l} -> a
-    head []      {ok=IsNonEmpty} impossible
-    head (x::xs) {ok=p}    = x
-
-(Note that this implementation is in contrast to Haskell's ``head``,
-which is  *not* total and will fail at runtime rather than compile time.)
-The following Idris code will compile:
-
-.. code-block:: idris
-
-    module Main
-
-    main : IO ()
-    main = do
-      let x : Integer = head [1,2,3]
-      print x
-
-And will print ``1``. However, the same code with ``head []`` won't compile:
-
-::
-
-    test.idr:5:26:When checking right hand side of main with expected type
-        IO ()
-
-    When checking argument ok to function Prelude.List.head:
-          Can't find a value of type
-                  NonEmpty []
-
-We can't bind and print ``x`` because ``head []`` doesn't type check.
-
-However, we might imagine a function, ``unsafeHead``, that is identical to
-Idris' ``head`` function except that it is *not* total: it will error out
-at runtime if called on an empty list. (This is similar to the behavior of
-Haskell's ``head`` function.) ``unsafeHead`` might look like this:
-
-.. code-block:: idris
-
-    -- Unsafe head example!
-    unsafeHead : List a -> a
-    unsafeHead (x::xs) = x
-
-And although it typechecks and compiles, it will not reduce (that is, evaluation
-of the function will cause it to change):
-
-::
-
-    unsafe> the Integer $ unsafeHead [1, 2, 3]
-    1 : Integer
-    unsafe> the Integer $ unsafeHead []
-    unsafeHead [] : Integer
-
-Functions that are not total are known as *partial functions*. As
-mentioned in the note about ``mutual`` blocks, non-total definitions
-aren't reduced when type checking because they are not well-defined
-for all possible inputs.
+Idris makes this distinction so that it knows which functions are safe to
+evaluate while type checking (as we've seen with :ref:`sect-fctypes`).  After all,
+if it tries to evaluate a function during type checking which doesn't
+terminate, then type checking won't terminate!
+Therefore, only total functions will be evaluated during type checking.
+Partial functions can still be used in types, but will not be evaluated
+further.

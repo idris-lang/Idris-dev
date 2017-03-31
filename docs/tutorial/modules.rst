@@ -16,22 +16,28 @@ module which defines a binary tree type ``BTree`` (in a file
 
     module Btree
 
+    public export
     data BTree a = Leaf
                  | Node (BTree a) a (BTree a)
 
+    export
     insert : Ord a => a -> BTree a -> BTree a
     insert x Leaf = Node Leaf x Leaf
     insert x (Node l v r) = if (x < v) then (Node (insert x l) v r)
                                        else (Node l v (insert x r))
 
+    export
     toList : BTree a -> List a
     toList Leaf = []
     toList (Node l v r) = Btree.toList l ++ (v :: Btree.toList r)
 
+    export
     toTree : Ord a => List a -> BTree a
     toTree [] = Leaf
     toTree (x :: xs) = insert x (toTree xs)
 
+The modifiers ``export`` and ``public export`` say which names are visible
+from other modules. These are explained further below.
 
 Then, this gives a main program (in a file
 ``bmain.idr``) which uses the ``Btree`` module to sort a list:
@@ -46,11 +52,9 @@ Then, this gives a main program (in a file
     main = do let t = toTree [1,8,2,7,9,3]
               print (Btree.toList t)
 
-
-
-The same names can be defined in multiple modules. This is possible
-because in practice names are *qualified* with the name of the module.
-The names defined in the ``Btree`` module are, in full:
+The same names can be defined in multiple modules: names are *qualified* with
+the name of the module.  The names defined in the ``Btree`` module are, in
+full:
 
 + ``Btree.BTree``
 + ``Btree.Leaf``
@@ -115,6 +119,10 @@ Meaning for Functions
    the module. Otherwise, Idris won't know what the synonym is a
    synonym for.
 
+Since ``public export`` means that a function's definition is exported,
+this effectively makes the function definition part of the module's API.
+Therefore, it's generally a good idea to avoid using ``public export`` for
+functions unless you really mean to export the full definition.
 
 Meaning for Data Types
 ----------------------
@@ -136,41 +144,10 @@ For interfaces, the meanings are:
 - ``public export`` the interface name, method names and default
   definitions are exported
 
-
-
-``BTree`` Revisited
-+++++++++++++++++++
-
-For our ``BTree`` module, it makes sense for the tree data type and the
-functions to be exported as ``export``, as we see below:
-
-.. code-block:: idris
-
-    module BTree
-
-    export data BTree a = Leaf
-                        | Node (BTree a) a (BTree a)
-
-    export
-    insert : Ord a => a -> BTree a -> BTree a
-    insert x Leaf = Node Leaf x Leaf
-    insert x (Node l v r) = if (x < v) then (Node (insert x l) v r)
-                                       else (Node l v (insert x r))
-
-    export
-    toList : BTree a -> List a
-    toList Leaf = []
-    toList (Node l v r) = Btree.toList l ++ (v :: Btree.toList r)
-
-    export
-    toTree : Ord a => List a -> BTree a
-    toTree [] = Leaf
-    toTree (x :: xs) = insert x (toTree xs)
-
 ``%access`` Directive
 ----------------------
 
-Finally, the default export mode can be changed with the ``%access``
+The default export mode can be changed with the ``%access``
 directive, for example:
 
 .. code-block:: idris
@@ -179,8 +156,9 @@ directive, for example:
 
     %access export
 
+    public export
     data BTree a = Leaf
-                          | Node (BTree a) a (BTree a)
+                 | Node (BTree a) a (BTree a)
 
     insert : Ord a => a -> BTree a -> BTree a
     insert x Leaf = Node Leaf x Leaf
@@ -237,14 +215,14 @@ wish to overload names within the same module:
       test x = x ++ x
 
 This (admittedly contrived) module defines two functions with fully
-qualified names ``foo.x.test`` and ``foo.y.test``, which can be
+qualified names ``Foo.x.test`` and ``Foo.y.test``, which can be
 disambiguated by their types:
 
 ::
 
-    *foo> test 3
+    *Foo> test 3
     6 : Int
-    *foo> test "foo"
+    *Foo> test "foo"
     "foofoo" : String
 
 Parameterised blocks
@@ -301,22 +279,3 @@ which can be inferred by the type checker:
     "[1, 2, 3, 4, 5, 6]" : String
 
 
-Modules Dependencies Using Atom 
-===============================
-
-If you are using the Atom editor and have a dependency on another package, 
-corresponding to for instance ``import Lightyear`` or ``import Pruviloj``, 
-you need to let Atom know that it should be loaded. The easiest way to 
-accomplish that is with a .ipkg file. The general contents of an ipkg file 
-will be described in the next section of the tutorial, but for now here is 
-a simple recipe for this trivial case. 
-
-- Create a folder myProject. 
-
-- Add a file myProject.ipkg containing just a couple of lines: 
-
-``package myProject`` 
-
-``pkgs = pruviloj, lightyear`` 
-
-- In Atom, use the File menu to Open Folder myProject. 

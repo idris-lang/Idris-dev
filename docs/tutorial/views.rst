@@ -89,7 +89,7 @@ a function in the patterns (``+``) and repeated occurrences of
 ``j``—this is allowed because another argument has determined the form
 of these patterns.
 
-We will return to this function in Section :ref:`sect-provisional` to
+We will return to this function in the next section :ref:`sect-parity` to
 complete the definition of ``parity``.
 
 With and proofs

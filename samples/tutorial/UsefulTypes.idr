@@ -1,3 +1,4 @@
+import Data.Vect
 
 intVec : Vect 5 Int
 intVec = [1, 2, 3, 4, 5]

@@ -146,6 +146,26 @@ The testing framework can then be invoked using ``idris --testpkg maths.ipkg``::
 Note how both tests have reported success by printing ``Test Passed``
 as we arranged for with the ``assertEq`` and ``assertNoEq`` functions.
 
+Package Dependencies Using Atom 
+===============================
+
+If you are using the Atom editor and have a dependency on another package, 
+corresponding to for instance ``import Lightyear`` or ``import Pruviloj``, 
+you need to let Atom know that it should be loaded. The easiest way to 
+accomplish that is with a .ipkg file. The general contents of an ipkg file 
+will be described in the next section of the tutorial, but for now here is 
+a simple recipe for this trivial case. 
+
+- Create a folder myProject. 
+
+- Add a file myProject.ipkg containing just a couple of lines: 
+
+``package myProject`` 
+
+``pkgs = pruviloj, lightyear`` 
+
+- In Atom, use the File menu to Open Folder myProject. 
+
 More information
 ================
 

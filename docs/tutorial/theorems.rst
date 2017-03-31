@@ -122,6 +122,145 @@ Idris provides interactive editing capabilities, which can help with
 building proofs. For more details on building proofs interactively in
 an editor, see :ref:`proofs-index`.
 
+.. _sect-parity:
+
+Theorems in Practice
+====================
+
+The need to prove theorems can arise naturally in practice. For example,
+previously (:ref:`sec-views`) we implemented ``natToBin`` using a function
+``parity``:
+
+.. code-block:: idris
+
+    parity : (n:Nat) -> Parity n
+
+However, we didn't provide a definition for ``parity``. We might expect it
+to look something like the following:
+
+.. code-block:: idris
+
+    parity : (n:Nat) -> Parity n
+    parity Z     = Even {n=Z}
+    parity (S Z) = Odd {n=Z}
+    parity (S (S k)) with (parity k)
+      parity (S (S (j + j)))     | Even = Even {n=S j}
+      parity (S (S (S (j + j)))) | Odd  = Odd {n=S j}
+
+Unfortunately, this fails with a type error:
+
+::
+
+    When checking right hand side of with block in views.parity with expected type
+            Parity (S (S (j + j)))
+
+    Type mismatch between
+            Parity (S j + S j) (Type of Even)
+    and
+            Parity (S (S (plus j j))) (Expected type)
+
+The problem is that normalising ``S j + S j``, in the type of ``Even``
+doesn't result in what we need for the type of the right hand side of
+``Parity``. We know that ``S (S (plus j j))`` is going to be equal to
+``S j + S j``, but we need to explain it to Idris with a proof. We can
+begin by adding some *holes* (see :ref:`sect-holes`) to the definition:
+
+.. code-block:: idris
+
+    parity : (n:Nat) -> Parity n
+    parity Z     = Even {n=Z}
+    parity (S Z) = Odd {n=Z}
+    parity (S (S k)) with (parity k)
+      parity (S (S (j + j)))     | Even = let result = Even {n=S j} in
+                                              ?helpEven
+      parity (S (S (S (j + j)))) | Odd  = let result = Odd {n=S j} in
+                                              ?helpOdd
+
+Checking the type of ``helpEven`` shows us what we need to prove for the
+``Even`` case:
+
+::
+
+      j : Nat
+      result : Parity (S (plus j (S j)))
+    --------------------------------------
+    helpEven : Parity (S (S (plus j j)))
+
+We can therefore write a helper function to *rewrite* the type to the form
+we need:
+
+.. code-block:: idris
+
+    helpEven : (j : Nat) -> Parity (S j + S j) -> Parity (S (S (plus j j)))
+    helpEven j p = rewrite plusSuccRightSucc j j in p
+
+The ``rewrite ... in`` syntax allows you to change the required type of an
+expression by rewriting it according to an equality proof. Here, we have
+used ``plusSuccRightSucc``, which has the following type:
+
+.. code-block:: idris
+
+    plusSuccRightSucc : (left : Nat) -> (right : Nat) -> S (left + right) = left + S right
+
+We can see the effect of ``rewrite`` by replacing the right hand side of
+``helpEven`` with a hole, and working step by step. Beginning with the following:
+
+.. code-block:: idris
+
+    helpEven : (j : Nat) -> Parity (S j + S j) -> Parity (S (S (plus j j)))
+    helpEven j p = ?helpEven_rhs
+
+We can look at the type of ``helpEven_rhs``:
+
+.. code-block:: idris
+
+      j : Nat
+      p : Parity (S (plus j (S j)))
+    --------------------------------------
+    helpEven_rhs : Parity (S (S (plus j j)))
+
+Then we can ``rewrite`` by applying ``plusSuccRightSucc j j``, which gives
+an equation ``S (j + j) = j + S j``, thus replacing ``S (j + j)`` (or,
+in this case, ``S (plus j j)`` since ``S (j + j)`` reduces to that) in the
+type with ``j + S j``:
+
+.. code-block:: idris
+
+    helpEven : (j : Nat) -> Parity (S j + S j) -> Parity (S (S (plus j j)))
+    helpEven j p = rewrite plusSuccRightSucc j j in ?helpEven_rhs
+
+Checking the type of ``helpEven_rhs`` now shows what has happened, including
+the type of the equation we just used (as the type of ``_rewrite_rule``):
+
+.. code-block:: idris
+
+      j : Nat
+      p : Parity (S (plus j (S j)))
+      _rewrite_rule : S (plus j j) = plus j (S j)
+    --------------------------------------
+    helpEven_rhs : Parity (S (plus j (S j)))
+
+Using ``rewrite`` and another helper for the ``Odd`` case, we can complete
+``parity`` as follows:
+
+.. code-block:: idris
+
+    helpEven : (j : Nat) -> Parity (S j + S j) -> Parity (S (S (plus j j)))
+    helpEven j p = rewrite plusSuccRightSucc j j in p
+
+    helpOdd : (j : Nat) -> Parity (S (S (j + S j))) -> Parity (S (S (S (j + j))))
+    helpOdd j p = rewrite plusSuccRightSucc j j in p
+
+    parity : (n:Nat) -> Parity n
+    parity Z     = Even {n=Z}
+    parity (S Z) = Odd {n=Z}
+    parity (S (S k)) with (parity k)
+      parity (S (S (j + j)))     | Even = helpEven j (Even {n = S j})
+      parity (S (S (S (j + j)))) | Odd  = helpOdd j (Odd {n = S j})
+
+Full details of ``rewrite`` are beyond the scope of this introductory tutorial,
+but it is covered in the theorem proving tutorial (see :ref:`proofs-index`).
+
 .. _sect-totality:
 
 Totality Checking
@@ -151,10 +290,10 @@ definitions is total:
 
 ::
 
-    *theorems> :total empty1
+    *Theorems> :total empty1
     possibly not total due to: empty1#hd
         not total as there are missing cases
-    *theorems> :total empty2
+    *Theorems> :total empty2
     possibly not total due to recursive path empty2
 
 Note the use of the word “possibly” — a totality check can, of course,

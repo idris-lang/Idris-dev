@@ -55,6 +55,11 @@ assumed, although most concepts will at least be explained
 briefly. The reader is also assumed to have some interest in using
 dependent types for writing and verifying systems software.
 
+For a more in-depth introduction to Idris, which proceeds at a much slower
+pace, covering interactive program development, with many more examples, see
+`Type-Driven Development with Idris <https://www.manning.com/books/type-driven-development-with-idris>`_
+by Edwin Brady, available from `Manning <https://www.manning.com>`_.
+
 Example Code
 ============
 

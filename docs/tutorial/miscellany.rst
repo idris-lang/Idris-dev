@@ -67,16 +67,6 @@ In the case that a proof is not found, it can be provided explicitly as normal:
 
     head xs {p = ?headProof}
 
-More generally, we can fill in implicit arguments with a default value
-by annotating them with ``default``. The definition above is equivalent
-to:
-
-.. code-block:: idris
-
-    head : (xs : List a) ->
-           {default proof { trivial; } p : isCons xs = True} -> a
-    head (x :: xs) = x
-
 Implicit conversions
 ====================
 

@@ -1,4 +1,4 @@
-module wheres
+module Wheres
 
 even : Nat -> Bool
 even Z = True

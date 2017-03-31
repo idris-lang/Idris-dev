@@ -35,23 +35,3 @@ plusReducesS : (n:Nat) -> (m:Nat) -> S (plus n m) = plus n (S m)
 plusReducesS Z m = Refl
 plusReducesS (S k) m = cong (plusReducesS k m)
 
-plusReducesZ' : (n:Nat) -> n = plus n Z
-plusReducesZ' Z     = ?plusredZ_Z
-plusReducesZ' (S k) = let ih = plusReducesZ' k in
-                      ?plusredZ_S
-
-
----------- Proofs ----------
-
-plusredZ_S = proof {
-    intro;
-    intro;
-    rewrite ih;
-    trivial;
-}
-
-plusredZ_Z = proof {
-    compute;
-    trivial;
-}
-
