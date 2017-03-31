@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     init_nullaries();
     init_signals();
 
-    _idris__123_runMain0_125_(vm, NULL);
+    _idris__123_runMain_95_0_125_(vm, NULL);
 
 #ifdef IDRIS_DEBUG
     if (opts.show_summary) {

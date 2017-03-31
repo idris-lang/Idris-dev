@@ -841,14 +841,14 @@ genWrapper (desc, tag) =  ret ++ " " ++ wrapperName tag ++ "(" ++
                                             indent 1 ++ "STOREOLD;\n" ++
                                             indent 1 ++ "BASETOP(0);\n" ++
                                             indent 1 ++ "ADDTOP(2);\n" ++
-                                            indent 1 ++ "CALL(_idris__123_APPLY0_125_);\n" ++
+                                            indent 1 ++ "CALL(_idris__123_APPLY_95_0_125_);\n" ++
                                             indent 1 ++ "TOP(0)=REG1;\n" ++
                                             applyArgs (y:xs)
                         applyArgs x = push 1 x ++
                                       indent 1 ++ "STOREOLD;\n" ++
                                       indent 1 ++ "BASETOP(0);\n" ++
                                       indent 1 ++ "ADDTOP(" ++ show (length x + 1) ++ ");\n" ++
-                                      indent 1 ++ "CALL(_idris__123_APPLY0_125_);\n"
+                                      indent 1 ++ "CALL(_idris__123_APPLY_95_0_125_);\n"
                         renderArgs [] = "void"
                         renderArgs [((s, _), n)] = s ++ " a" ++ (show n)
                         renderArgs (((s, _), n):xs) = s ++ " a" ++ (show n) ++ ", " ++

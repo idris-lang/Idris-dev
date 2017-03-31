@@ -4,9 +4,9 @@ Prelude.Strings.(++) : String -> String -> String
 Usage is :doc <functionname>
 Usage is :wc <functionname>
 Usage is :printdef <functionname>
-pat {ty503} : Type toplevel.u. pat {__interface504} : Prelude.Interfaces.Fractional {ty503}. Prelude.Interfaces./ {ty503} {__interface504}
+pat {ty_503} : Type toplevel.u. pat {__interface_504} : Prelude.Interfaces.Fractional {ty_503}. Prelude.Interfaces./ {ty_503} {__interface_504}
 
- : pty {ty503} : Type toplevel.u. pty {__interface504} : Prelude.Interfaces.Fractional {ty503}. {ty503} -> {ty503} -> {ty503}
+ : pty {ty_503} : Type toplevel.u. pty {__interface_504} : Prelude.Interfaces.Fractional {ty_503}. {ty_503} -> {ty_503} -> {ty_503}
 (input):1:1: error: expected: ":",
     dependent type signature,
     end of input
