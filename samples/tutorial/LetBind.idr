@@ -1,4 +1,4 @@
-module letbind
+module LetBind
 
 mirror : List a -> List a
 mirror xs = let xs' = reverse xs in

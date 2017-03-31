@@ -1,8 +1,8 @@
 module Main
 
-import btree
+import BTree
 
 main : IO ()
 main = do let t = toTree [1,8,2,7,9,3]
-          print (btree.toList t)
+          printLn (btree.toList t)
 

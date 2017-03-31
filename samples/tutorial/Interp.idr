@@ -33,7 +33,7 @@ using (G : Vect n Ty)
             Expr G c
       If  : Expr G TyBool -> Lazy (Expr G a) -> Lazy (Expr G a) -> Expr G a
 
-  interp : Env G -> %static (e : Expr G t) -> interpTy t
+  interp : Env G -> (e : Expr G t) -> interpTy t
   interp env (Var i)     = lookup i env
   interp env (Val x)     = x
   interp env (Lam sc)    = \x => interp (x :: env) sc
@@ -67,5 +67,5 @@ testFac = interp [] fact 4
 main : IO ()
 main = do putStr "Enter a number: "
           x <- getLine
-          print (interp [] fact (cast x))
+          printLn (interp [] fact (cast x))
 
