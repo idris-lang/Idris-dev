@@ -26,6 +26,7 @@ Things to be checked, or done before a release is made.
 
 + [ ] Push to GITHUB.
 + [ ] Upload to Hackage.
++ [ ] Upload package documentation to web site
 
 ## Binaries
 

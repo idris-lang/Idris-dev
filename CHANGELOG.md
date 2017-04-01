@@ -1,3 +1,7 @@
+# New in 1.0
+
++ It's about time
+
 # New in 0.99.2
 
 ## Library Updates
