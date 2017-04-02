@@ -497,7 +497,7 @@ getOp :: Name -> [ExecVal] -> Maybe (Exec ExecVal, [ExecVal])
 getOp fn (_ : _ : x : xs) | fn == pbm = Just (return x, xs)
 getOp fn (_ : EConstant (Str n) : xs)
     | fn == pws =
-              Just (do execIO $ putStr n
+              Just (do execIO $ putStr n >> hFlush stdout
                        return (EConstant (I 0)), xs)
 getOp fn (_:xs)
     | fn == prs =
@@ -505,7 +505,7 @@ getOp fn (_:xs)
                        return (EConstant (Str line)), xs)
 getOp fn (_ : EP _ fn' _ : EConstant (Str n) : xs)
     | fn == pwf && fn' == pstdout =
-              Just (do execIO $ putStr n
+              Just (do execIO $ putStr n >> hFlush stdout
                        return (EConstant (I 0)), xs)
 getOp fn (_ : EP _ fn' _ : xs)
     | fn == prf && fn' == pstdin =
@@ -513,7 +513,7 @@ getOp fn (_ : EP _ fn' _ : xs)
                        return (EConstant (Str line)), xs)
 getOp fn (_ : EHandle h : EConstant (Str n) : xs)
     | fn == pwf =
-              Just (do execIO $ hPutStr h n
+              Just (do execIO $ hPutStr h n >> hFlush h
                        return (EConstant (I 0)), xs)
 getOp fn (_ : EHandle h : xs)
     | fn == prf =
