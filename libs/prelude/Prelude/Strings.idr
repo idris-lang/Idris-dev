@@ -37,7 +37,7 @@ foldl1 f (x::xs) = foldl f x xs
 (++) = prim__concat
 
 ||| A preallocated buffer for building a String. This allows a function (in IO)
-||| to allocate enough space for a stirng which will be build from smaller
+||| to allocate enough space for a string which will be built from smaller
 ||| pieces without having to allocate at every step.
 ||| To build a string using a `StringBuffer`, see `newStringBuffer`,
 ||| `addToStringBuffer` and `getStringFromBuffer`.
@@ -247,7 +247,7 @@ break p = span (not . p)
 split : (Char -> Bool) -> String -> List String
 split p xs = map pack (split p (unpack xs))
 
-||| Removes whitespace (determined with 'isSpace') from
+||| Removes whitespace (determined by 'isSpace') from
 ||| the start of the string.
 |||
 ||| ```idris example
@@ -262,7 +262,7 @@ ltrim xs with (strM xs)
     ltrim (strCons x xs) | StrCons _ _
         = if (isSpace x) then assert_total (ltrim xs) else (strCons x xs)
 
-||| Removes whitespace (determined with 'isSpace') from
+||| Removes whitespace (determined by 'isSpace') from
 ||| the start and end of the string.
 |||
 ||| ```idris example
@@ -371,7 +371,7 @@ toLower x with (strM x)
 ||| Uppercases all characters in the string.
 |||
 ||| ```idris example
-||| toLower "aBc12!"
+||| toUpper "aBc12!"
 ||| ```
 toUpper : String -> String
 toUpper x with (strM x)
