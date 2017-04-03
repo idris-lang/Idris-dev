@@ -348,7 +348,7 @@ execForeign env ctxt arity ty fn xs onfail
                 ch <- execIO $ fmap (ioWrap . EConstant . I . fromEnum) getChar
                 execApp env ctxt ch xs
     | Just (FFun "idris_time" _ _) <- foreignFromTT arity ty fn xs
-           = do execIO $ fmap (ioWrap . EConstant . I . round) getPOSIXTime
+           = do execIO $ fmap (ioWrap . mkRaw . EConstant . I . round) getPOSIXTime
     | Just (FFun "idris_showerror" _ _) <- foreignFromTT arity ty fn xs
            = do execIO $ return $ ioWrap $ EConstant $ Str "Operation not permitted"
     | Just (FFun "idris_mkFileError" _ _) <- foreignFromTT arity ty fn xs
