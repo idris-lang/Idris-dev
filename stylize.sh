@@ -11,6 +11,7 @@ then
     stack install --resolver "lts-$STACKVER" stylish-haskell --no-terminal
 fi
 
+command -v stylish-haskell >/dev/null 2>&1 || { echo "Could not find stylish-haskell. Aborting." >&2; exit 1; }
 
 find . -name \*.hs -and \( -not \( -name Setup.hs -or -path ./.cabal-sandbox/\* -or -path ./dist/\* \) \) | xargs stylish-haskell -i > stylish-out 2>&1
 
