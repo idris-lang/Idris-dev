@@ -10,11 +10,17 @@ infixr 0 <|
 ||| functions into a series of transformations, reading top
 ||| to bottom.
 |||
-|||     [[1], [2], [3]] |> join |> map (* 2)
+||| ```idris example
+||| [[1], [2], [3]] |> join |> map (* 2)
+||| ```
 (|>) : a -> (a -> b) -> b
 a |> f = f a
 
 
 ||| Backwards pipeline style function application, similar to $.
+|||
+||| ```idris example
+||| unpack <| "hello" ++ "world"
+||| ```
 (<|) : (a -> b) -> a -> b
 f <| a = f a
