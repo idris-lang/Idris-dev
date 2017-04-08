@@ -17,7 +17,7 @@ data System : Effect where
      CSystem : String -> sig System Int
      Usleep : (i : Int) ->
               {auto prf : So (i >= fromInteger 0 && Delay (i <= fromInteger 1000000))} ->
-              sig Sleep ()
+              sig System ()
 
 implementation Handler System IO where
     handle () Args k = do x <- getArgs; k x ()
