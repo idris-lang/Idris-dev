@@ -10,6 +10,7 @@ Methods:
         
         The function is Total
 Implementations:
+    Functor (Pair a)
     Functor List
     Functor (IO' ffi)
     Functor Stream
