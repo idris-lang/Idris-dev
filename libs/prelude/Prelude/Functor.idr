@@ -1,5 +1,6 @@
 module Prelude.Functor
 
+import Builtins
 import Prelude.Basics
 
 %access public export
@@ -22,3 +23,5 @@ infixl 4 <$>
 (<$>) : Functor f => (func : a -> b) -> f a -> f b
 func <$> x = map func x
 
+Functor (Pair a) where
+  map f (x, y) = (x, f y)
