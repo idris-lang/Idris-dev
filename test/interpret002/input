@@ -1,0 +1,4 @@
+:x echo "not a file"
+:x echo "unreadable.txt"
+:x echo "readable.txt"
+:x echo ".."
