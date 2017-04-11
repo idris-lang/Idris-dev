@@ -51,7 +51,7 @@ some constructors of proofs.
 
 ::
 
-    syntax Trivial = (| oh, refl |)
+    syntax Trivial = (| Oh, Refl |)
 
 
 Totality checking assertions
@@ -296,13 +296,13 @@ can be used in proofs, for example:
     -- Base case
     (Z + m = m + Z) <== plus_comm =
         rewrite ((m + Z = m) <== plusZeroRightNeutral) ==>
-                (Z + m = m) in refl
+                (Z + m = m) in Refl
 
     -- Step case
     (S k + m = m + S k) <== plus_comm =
         rewrite ((k + m = m + k) <== plus_comm) in
         rewrite ((S (m + k) = m + S k) <== plusSuccRightSucc) in
-            refl
+            Refl
 
 Reflection
 ==========
