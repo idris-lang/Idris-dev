@@ -74,14 +74,14 @@ bound is below the upper bound using ``so``:
 
     data Interval : Type where
        MkInterval : (lower : Double) -> (upper : Double) ->
-                    so (lower < upper) -> Interval
+                    So (lower < upper) -> Interval
 
-We can define a syntax which, in patterns, always matches ``oh`` for
+We can define a syntax which, in patterns, always matches ``Oh`` for
 the proof argument, and in terms requires a proof term to be provided:
 
 .. code-block:: idris
 
-    pattern syntax "[" [x] "..." [y] "]" = MkInterval x y oh
+    pattern syntax "[" [x] "..." [y] "]" = MkInterval x y Oh
     term    syntax "[" [x] "..." [y] "]" = MkInterval x y ?bounds_lemma
 
 In terms, the syntax ``[x...y]`` will generate a proof obligation
