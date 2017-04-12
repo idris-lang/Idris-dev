@@ -10,6 +10,7 @@ import Network.Socket.Raw
 %include C "idris_net.h"
 %include C "sys/types.h"
 %include C "sys/socket.h"
+%include C "unistd.h"
 %include C "netdb.h"
 
 %access export
