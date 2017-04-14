@@ -49,7 +49,9 @@ parseInteger s = parseIntTrimmed (trim s)
           then map (\y => negate (fromInteger y)) (parseNumWithoutSign (unpack xs) 0)
           else if (x == '+') 
             then map fromInteger (parseNumWithoutSign (unpack xs) (cast {from=Int} 0))
-            else map fromInteger (parseNumWithoutSign (unpack xs) (cast (ord x - ord '0')))
+            else if (x >= '0' && x <= '9')
+            then map fromInteger (parseNumWithoutSign (unpack xs) (cast (ord x - ord '0')))
+              else Nothing
 
 
 ||| Convert a number string to a Double.
