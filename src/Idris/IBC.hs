@@ -223,7 +223,7 @@ writeArchive fp i = do let a = L.foldl (\x y -> addEntryToArchive y x) emptyArch
 writeIBC :: FilePath -> FilePath -> Idris ()
 writeIBC src f
     = do
-         logIBC  1 $ "Writing IBC for: " ++ show f
+         logIBC  2 $ "Writing IBC for: " ++ show f
          iReport 2 $ "Writing IBC for: " ++ show f
          i <- getIState
 --          case (Data.List.map fst (idris_metavars i)) \\ primDefs of
@@ -233,8 +233,8 @@ writeIBC src f
          ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src })
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
-                        logIBC 1 "Written")
-            (\c -> do logIBC 1 $ "Failed " ++ pshow i c)
+                        logIBC 2 "Written")
+            (\c -> do logIBC 2 $ "Failed " ++ pshow i c)
          return ()
 
 -- | Write a package index containing all the imports in the current
@@ -244,14 +244,14 @@ writePkgIndex :: FilePath -> Idris ()
 writePkgIndex f
     = do i <- getIState
          let imps = map (\ (x, y) -> (True, x)) $ idris_imported i
-         logIBC 1 $ "Writing package index " ++ show f ++ " including\n" ++
+         logIBC 2 $ "Writing package index " ++ show f ++ " including\n" ++
                 show (map snd imps)
          resetNameIdx
          let ibcf = initIBC { ibc_imports = imps }
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
-                        logIBC 1 "Written")
-            (\c -> do logIBC 1 $ "Failed " ++ pshow i c)
+                        logIBC 2 "Written")
+            (\c -> do logIBC 2 $ "Failed " ++ pshow i c)
          return ()
 
 mkIBC :: [IBCWrite] -> IBCFile -> Idris IBCFile
@@ -369,7 +369,7 @@ process :: Bool -- ^ Reexporting
 process reexp phase archive fn = do
                 ver <- getEntry 0 "ver" archive
                 when (ver /= ibcVersion) $ do
-                                    logIBC 1 "ibc out of date"
+                                    logIBC 2 "ibc out of date"
                                     let e = if ver < ibcVersion
                                             then "an earlier" else "a later"
                                     ldir <- runIO $ getIdrisLibDir
@@ -524,10 +524,10 @@ processImports reexp phase ar = do
                          p -> p
         case fp of
             LIDR fn -> do
-                logIBC 1 $ "Failed at " ++ fn
+                logIBC 2 $ "Failed at " ++ fn
                 ifail "Must be an ibc"
             IDR fn -> do
-                logIBC 1 $ "Failed at " ++ fn
+                logIBC 2 $ "Failed at " ++ fn
                 ifail "Must be an ibc"
             IBC fn src -> loadIBC (reexp && re) phase' fn) fs
 
@@ -650,7 +650,7 @@ processDefs ar = do
             case d' of
                 TyDecl _ _ -> return ()
                 _ -> do
-                    logIBC 1 $ "SOLVING " ++ show n
+                    logIBC 2 $ "SOLVING " ++ show n
                     solveDeferred emptyFC n
             updateIState (\i -> i { tt_ctxt = addCtxtDef n d' (tt_ctxt i) })) ds
     where
@@ -749,9 +749,9 @@ processAccess reexp phase ar = do
 
         if (not reexp)
             then do
-                logIBC 1 $ "Not exporting " ++ show n
+                logIBC 2 $ "Not exporting " ++ show n
                 setAccessibility n Hidden
-            else logIBC 1 $ "Exporting " ++ show n
+            else logIBC 2 $ "Exporting " ++ show n
         -- Everything should be available at the REPL from
         -- things imported publicly
         when (phase == IBC_REPL True) $ setAccessibility n Public) ds
