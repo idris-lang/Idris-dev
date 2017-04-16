@@ -246,6 +246,9 @@ idemodeStart :: Bool -> IState -> [FilePath] -> Idris ()
 idemodeStart s orig mods
   = do h <- runIO $ if s then initIdemodeSocket else return stdout
        setIdeMode True h
+       -- Turn off newline translation to prevent the message lengths
+       -- from being incorrect on Windows
+       runIO $ hSetNewlineMode h noNewlineTranslation
        i <- getIState
        case idris_outputmode i of
          IdeMode n h ->
