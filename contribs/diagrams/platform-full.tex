@@ -1,0 +1,107 @@
+% This work is licensed under the Creative Commons
+% Attribution-ShareAlike 4.0 International License.  To view a copy of
+% this license, visit http://creativecommons.org/licenses/by-sa/4.0/.
+\documentclass[landscape]{standalone}
+
+\input{./preamble.tex}
+
+\begin{document}
+\centering
+\begin{tikzpicture}[scale=1, shape aspect=1]
+
+
+\node (center) at (0,0) {};
+
+%% ----------------------------------------------------------- [ STD Libraries ]
+
+\matrix (stdlibs) [BasicMatrix, BorderBox, WhiteBody, left = 1mm of center] {
+  \node [Box, WhiteBody] {Protocols}; &
+  \node [Box, WhiteBody] {Edda}; \\
+  \node [Box, WhiteBody] {Providers}; &
+  \node [Box, WhiteBody] {Lightyear}; \\
+};
+\node [BlackTitle, right] at (stdlibs.south west) {Native};
+
+%% ---------------------------------------------------------------- [ Bindings ]
+\matrix (bindings) [BasicMatrix, BorderBox, WhiteBody, right = of stdlibs, right = 1mm of center] {
+  \node (sodium) [Box, WhiteBody] {Sodium}; &
+  \node [Box, WhiteBody] {iQuery}; \\
+  \node [Box, WhiteBody] {USB};    &
+  \node [Box, WhiteBody] {SQL};    \\
+};
+\node [BlackTitle, right] at (bindings.south west) {Bindings};
+
+%% --------------------------------------------------------------------- [ FFI ]
+\node (ffi) [Box, WhiteBody, minimum height = 60mm,
+             right = 4mm of bindings.335] {\textbf{F}oreign \textbf{F}unction \textbf{I}nterface};
+
+\node (fakeffi) [minimum width = 20mm] at (ffi.west) {};
+
+%% -------------------------------------------------------------------- [ Core ]
+
+\matrix (core) [BasicMatrix, BorderBox, WhiteBody, minimum width = 120mm, below = 23mm of center] {
+  \node [Box, WhiteBody, minimum width=35mm] {Effects};    &
+  \node [Box, WhiteBody, minimum width=35mm] {Prelude};    &
+  \node [Box, WhiteBody, minimum width=35mm] {Base};       \\
+};
+\node [BlackTitle, right] at (core.south west) {Core Pkgs};
+
+\begin{pgfonlayer}{background layer}
+
+\node (libs) [BorderBox, WhiteBody, GrayBody,
+              fit=(stdlibs) (bindings) (fakeffi) (core),
+              ] {};
+\node [BlackTitle, right] at (libs.north west) {Libraries};
+
+\end{pgfonlayer}
+
+%% ------------------------------------------------------ [ External Libraries ]
+\matrix (extlibs) [BasicMatrix, BorderBox, GrayBody, right = 15mm of libs ] {
+  \node [Box, WhiteBody] {libSodium}; \\
+  \node [Box, WhiteBody] {jQuery};    \\
+  \node [Box, WhiteBody] {libUSB};    \\
+  \node [Box, WhiteBody] {SQLlite3};  \\
+  \node [Box, WhiteBody] {libGMP};  \\
+};
+\node [BlackTitle] at (extlibs.north) {External Libraries};
+
+%% ---------------------------------------------------------------- [ Compiler ]
+\node (compiler) [Box, WhiteBody, minimum width = 191mm,
+                  below = 5mm of libs.301] {Compiler};
+
+%% ---------------------------------------------------------------- [ BackEnds ]
+\matrix (backends) [BasicMatrix, BorderBox, GrayBody,
+                    minimum width = 191mm,
+                    below = 5mm of compiler] {
+    \node [Box, WhiteBody, minimum width = 33mm] {C};          &
+    \node [Box, WhiteBody, minimum width = 33mm] {Javascript}; &
+    \node [Box, WhiteBody, minimum width = 33mm] {Ruby};       &
+    \node [Box, WhiteBody, minimum width = 33mm] {COBOL};      &
+    \node [Box, WhiteBody, minimum width = 33mm] {Java};       \\
+};
+\node [BlackTitle, right] at (backends.north west) {Backends};
+
+%% --------------------------------------------------------------- [ Platforms ]
+\matrix (pforms) [BasicMatrix, GrayBody, BorderBox,
+                  minimum width = 191mm,
+                  below = 5mm of backends]
+{
+  \node [Box, WhiteBody, minimum width = 40mm] {Windows};  &
+  \node [Box, WhiteBody, minimum width = 40mm] {Mac OS X}; &
+  \node [Box, WhiteBody, minimum width = 40mm] {Linux};    &
+  \node [Box, WhiteBody, minimum width = 40mm] {BSD};     \\
+};
+\node [BlackTitle, right] at (pforms.north west) {Platforms};
+
+%% ------------------------------------------------------------ [ Applications ]
+\matrix (apps) [BasicMatrix, GrayBody, BorderBox,
+                minimum width = 191mm,
+                above = 5mm of libs.59]
+{
+  \node [Box, WhiteBody, text width = 50mm, minimum width = 40mm] {Bibdris};  &
+  \node [Box, WhiteBody, text width = 50mm, minimum width = 40mm] {Iridium};  \\
+};
+\node [BlackTitle, right] at (apps.north west) {Applications};
+
+\end{tikzpicture}
+\end{document}
