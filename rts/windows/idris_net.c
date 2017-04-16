@@ -1,7 +1,7 @@
 // C-Side of the Idris network library
 // (C) Simon Fowler, 2014
 // MIT Licensed. Have fun!
-#include "../idris_net.h"
+#include "idris_net.h"
 
 #include <errno.h>
 #include <stdbool.h>
