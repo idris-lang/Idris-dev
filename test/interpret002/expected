@@ -1,8 +1,4 @@
 File Not Found
 MkIO (\w => prim_io_pure ()) : IO' (MkFFI C_Types String String) ()
-Permission Denied
-MkIO (\w => prim_io_pure ()) : IO' (MkFFI C_Types String String) ()
 "readable"
-MkIO (\w => prim_io_pure ()) : IO' (MkFFI C_Types String String) ()
-Operation not permitted
 MkIO (\w => prim_io_pure ()) : IO' (MkFFI C_Types String String) ()

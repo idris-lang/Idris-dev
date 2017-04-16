@@ -1,5 +1,3 @@
 #!/usr/bin/env bash
-chmod a-r unreadable.txt
 ${IDRIS:-idris} $@ --quiet --port none --nocolour file-error.idr < input
-chmod a+r unreadable.txt
 rm -f *.ibc
