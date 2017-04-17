@@ -195,6 +195,9 @@ implementation Enum (Fin (S n)) where
   fromNat {n=n} m = case natToFin m (S n) of
     Just k => k
     Nothing => last
+    
+instance Show (Fin n) where
+  show = show . finToNat
 
 --------------------------------------------------------------------------------
 -- DecEq
