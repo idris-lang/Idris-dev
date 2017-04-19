@@ -42,7 +42,7 @@ export
 difference : (x, y : SortedSet k) -> SortedSet k
 difference x y = foldr delete x y
 
-||| Set symetric difference. Uses the union of the differences.
+||| Set symmetric difference. Uses the union of the differences.
 export
 symDifference : (x, y : SortedSet k) -> SortedSet k
 symDifference x y = union (difference x y) (difference y x)
