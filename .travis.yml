@@ -126,6 +126,7 @@ script:
   - echo -en 'travis_fold:end:script.configure\\r'
 ###
   - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'
+  - find . -name "*.ibc" -type f -delete
   - cabal build
   - echo -en 'travis_fold:end:script.build\\r'
 ###
