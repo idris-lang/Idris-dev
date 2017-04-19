@@ -50,7 +50,7 @@ symDifference x y = union (difference x y) (difference y x)
 ||| Set intersection. Implemented as the difference of the union and the symetric difference.
 export
 intersection : (x, y : SortedSet k) -> SortedSet k
-intersection x y = difference (union x y) (symDifference x y)
+intersection x y = difference x (difference x y)
 
 Ord k => Semigroup (SortedSet k) where
   (<+>) = union
