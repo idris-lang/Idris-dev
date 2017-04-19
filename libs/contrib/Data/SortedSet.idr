@@ -42,10 +42,15 @@ export
 difference : (x, y : SortedSet k) -> SortedSet k
 difference x y = foldr delete x y
 
-||| Set intersection. Uses the union of the differences.
+||| Set symetric difference. Uses the union of the differences.
+export
+symDifference : (x, y : SortedSet k) -> SortedSet k
+symDifference x y = union (difference x y) (difference y x)
+
+||| Set intersection. Implemented as the difference of the union and the symetric difference.
 export
 intersection : (x, y : SortedSet k) -> SortedSet k
-intersection x y = union (difference x y) (difference y x)
+intersection x y = difference (union x y) (symDifference x y)
 
 Ord k => Semigroup (SortedSet k) where
   (<+>) = union
