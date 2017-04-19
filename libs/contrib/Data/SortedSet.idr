@@ -2,8 +2,6 @@ module Data.SortedSet
 
 import Data.SortedMap
 
--- TODO: add intersection, union, difference
-
 export
 data SortedSet k = SetWrapper (Data.SortedMap.SortedMap k ())
 
@@ -31,5 +29,26 @@ export
 toList : SortedSet k -> List k
 toList (SetWrapper m) = map (\(i, _) => i) (Data.SortedMap.toList m)
 
-implementation Foldable SortedSet where
+Foldable SortedSet where
   foldr f e xs = foldr f e (Data.SortedSet.toList xs)
+
+||| Set union. Inserts all elements of x into y
+export
+union : (x, y : SortedSet k) -> SortedSet k
+union x y = foldr insert x y
+
+||| Set difference. Delete all elments in y from x
+export
+difference : (x, y : SortedSet k) -> SortedSet k
+difference x y = foldr delete x y
+
+||| Set intersection. Uses the union of the differences.
+export
+intersection : (x, y : SortedSet k) -> SortedSet k
+intersection x y = union (difference x y) (difference y x)
+
+Ord k => Semigroup (SortedSet k) where
+  (<+>) = union
+
+Ord k => Monoid (SortedSet k) where
+  neutral = empty
