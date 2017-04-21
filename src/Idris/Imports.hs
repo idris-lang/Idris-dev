@@ -94,7 +94,7 @@ findPkgIndex p = do let idx = pkgIndex p
 installedPackages :: IO [String]
 installedPackages = do
   idir <- getIdrisLibDir
-  filterM (goodDir idir) =<< dirContents idir
+  filterM (goodDir idir) =<< concat <$> (mapM dirContents (splitSearchPath idir))
   where
   allFilesInDir base fp = do
     let fullpath = base </> fp
@@ -102,7 +102,9 @@ installedPackages = do
     if isDir
       then fmap concat (mapM (allFilesInDir fullpath) =<< dirContents fullpath)
       else return [fp]
-  dirContents = fmap (filter (not . (`elem` [".", ".."]))) . getDirectoryContents
+  prependDirname dir = fmap (fmap (dir </>))
+  filterPaths = fmap (filter (not . (`elem` [".", ".."])))
+  dirContents dir = prependDirname dir (filterPaths (getDirectoryContents dir))
   goodDir idir d = any (".ibc" `isSuffixOf`) <$> allFilesInDir idir d
 
 
