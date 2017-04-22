@@ -28,6 +28,8 @@ Idris has support for external code generators. Supplied with the distribution
 is a C code generator to compile executables, and a JavaScript code generator
 with support for node.js and browser JavaScript.
 
+More information about [code generators can be found on the wiki](http://idris.readthedocs.io/en/latest/reference/codegen.html).
+
 ## More Information
 
 If you would like to find out more information, or ask questions, we
