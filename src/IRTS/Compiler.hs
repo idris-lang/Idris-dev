@@ -29,6 +29,7 @@ import IRTS.Lang
 import IRTS.LangOpts
 import IRTS.Portable
 import IRTS.Simplified
+import IRTS.System (getExtCodeGenerator)
 
 import Prelude hiding (id, (.))
 
@@ -138,21 +139,23 @@ generate codegen mainmod ir
   = case codegen of
        -- Built-in code generators (FIXME: lift these out!)
        Via _ "c" -> codegenC ir
-       -- Any external code generator
-       Via fm cg -> do input <- case fm of
-                                    IBCFormat -> return mainmod
-                                    JSONFormat -> do
-                                        tempdir <- getTemporaryDirectory
-                                        (fn, h) <- openTempFile tempdir "idris-cg.json"
-                                        writePortable h ir
-                                        hClose h
-                                        return fn
-                       let cmd = "idris-codegen-" ++ cg
-                           args = [input, "-o", outputFile ir] ++ compilerFlags ir
-                       exit <- rawSystem cmd args
-                       when (exit /= ExitSuccess) $
-                            putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
+       -- Any extension or external code generator
+       Via fm cg -> getExtCodeGenerator cg >>= maybe (external fm cg) ($ ir)
        Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
+  where external fm cg = do
+          input <- case fm of
+                     IBCFormat -> return mainmod
+                     JSONFormat -> do
+                                     tempdir <- getTemporaryDirectory
+                                     (fn, h) <- openTempFile tempdir "idris-cg.json"
+                                     writePortable h ir
+                                     hClose h
+                                     return fn
+          let cmd = "idris-codegen-" ++ cg
+              args = [input, "-o", outputFile ir] ++ compilerFlags ir
+          exit <- rawSystem cmd args
+          when (exit /= ExitSuccess) $
+            putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
 
 irMain :: TT Name -> Idris LDecl
 irMain tm = do

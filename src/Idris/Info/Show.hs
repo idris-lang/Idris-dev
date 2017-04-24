@@ -1,7 +1,9 @@
 module Idris.Info.Show where
 
 import Idris.Info
+import IRTS.System (getExtInfoStrings)
 
+import Control.Monad (unless)
 import System.Exit
 
 showIdrisCRTSDir :: IO ()
@@ -136,6 +138,9 @@ showIdrisInfo = do
   putStrLn $ unwords (["-", "History File:",    hfile])
   putStrLn $ unwords (["-", "REPL Init Script", iscript])
 
+  strs <- getExtInfoStrings
+  unless (null strs) $ putStrLn "Bundled Extensions:"
+  mapM_ (\(name, val) -> putStrLn $ unwords ["-", name ++ ":", val]) strs
 
 showExitIdrisInfo :: IO ()
 showExitIdrisInfo = do

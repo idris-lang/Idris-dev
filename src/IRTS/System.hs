@@ -17,6 +17,12 @@ module IRTS.System( getIdrisDataFileByName
                   , getIncFlags
                   , getEnvFlags
                   , version
+                  , registerCodeGenerator
+                  , getExtCodeGenerator
+                  , registerIncFlag
+                  , registerLibFlag
+                  , registerInfoString
+                  , getExtInfoStrings
                   ) where
 
 #ifdef FREESTANDING
@@ -29,9 +35,65 @@ import Paths_idris
 import Control.Applicative ((<$>))
 import Data.List.Split
 import Data.Maybe (fromMaybe)
+import Data.List (find, sortBy)
+import Data.Function (on)
 import System.Environment
 import System.FilePath (addTrailingPathSeparator, (</>))
 
+import Control.Concurrent.MVar
+import System.IO.Unsafe
+
+import IRTS.CodegenCommon (CodeGenerator)
+
+type FlagPriority = Int
+
+data IdrisExtensions = IdrisExtensions
+  { codegens    :: [(String, CodeGenerator)]
+  , incFlags    :: [(FlagPriority, String)]
+  , libFlags    :: [(FlagPriority, String)]
+  , infoStrings :: [(String, String)]
+  }
+
+idrisExt :: MVar IdrisExtensions
+idrisExt = unsafePerformIO . newMVar $ IdrisExtensions [] [] [] []
+
+registerCodeGenerator :: String -> CodeGenerator -> IO ()
+registerCodeGenerator name cg = do
+  env <- takeMVar idrisExt
+  putMVar idrisExt $ env { codegens = (name, cg) : codegens env }
+
+getExtCodeGenerator :: String -> IO (Maybe CodeGenerator)
+getExtCodeGenerator name = do
+  env <- readMVar idrisExt
+  return . fmap snd . find ((== name) . fst) $ codegens env
+
+registerIncFlag :: String -> FlagPriority -> IO ()
+registerIncFlag flag pri = do
+  env <- takeMVar idrisExt
+  putMVar idrisExt $ env { incFlags = (pri, flag) : incFlags env }
+
+registerLibFlag :: String -> FlagPriority -> IO ()
+registerLibFlag flag pri = do
+  env <- takeMVar idrisExt
+  putMVar idrisExt $ env { libFlags = (pri, flag) : libFlags env }
+
+getExtLibFlags :: IO [String]
+getExtLibFlags = do env <- readMVar idrisExt
+                    return . map snd . sortBy (compare `on` fst) $ libFlags env
+
+getExtIncFlags :: IO [String]
+getExtIncFlags = do env <- readMVar idrisExt
+                    return . map snd . sortBy (compare `on` fst) $ incFlags env
+
+registerInfoString :: String -> String -> IO ()
+registerInfoString name val = do
+  env <- takeMVar idrisExt
+  putMVar idrisExt $ env { infoStrings = (name, val) : infoStrings env }
+
+getExtInfoStrings :: IO [(String, String)]
+getExtInfoStrings = do
+  env <- readMVar idrisExt
+  return $ infoStrings env
 
 getIdrisDataDir :: IO String
 getIdrisDataDir = do
@@ -81,8 +143,9 @@ gmpLib = []
 #endif
 
 getLibFlags = do dir <- getIdrisCRTSDir
+                 ext <- getExtLibFlags
                  return $ ["-L" ++ dir,
-                           "-lidris_rts"] ++ extraLib ++ gmpLib ++ ["-lpthread"]
+                           "-lidris_rts"] ++ ext ++ extraLib ++ gmpLib ++ ["-lpthread"]
 
 getIdrisLibDir = addTrailingPathSeparator <$> overrideIdrisSubDirWith "libs" "IDRIS_LIBRARY_PATH"
 
@@ -97,4 +160,5 @@ getIdrisCRTSDir = do
   return $ addTrailingPathSeparator (ddir </> "rts")
 
 getIncFlags = do dir <- getIdrisCRTSDir
-                 return $ ("-I" ++ dir) : extraInclude
+                 ext <- getExtIncFlags
+                 return $ ("-I" ++ dir) : ext ++ extraInclude
