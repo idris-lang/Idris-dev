@@ -437,7 +437,7 @@ deleteBy : (elem -> elem -> Bool) -> elem -> Vect len elem -> (p ** Vect p elem)
 deleteBy _  _ []      = (_ ** [])
 deleteBy eq x (y::ys) =
   let (len ** zs) = deleteBy eq x ys
-  in if x `eq` y then (_ ** ys) else (S len ** y ::zs)
+  in if x `eq` y then (_ ** zs) else (S len ** y ::zs)
 
 delete : (Eq elem) => elem -> Vect len elem -> (p ** Vect p elem)
 delete = deleteBy (==)
