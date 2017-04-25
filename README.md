@@ -28,9 +28,7 @@ Idris has support for external code generators. Supplied with the distribution
 is a C code generator to compile executables, and a JavaScript code generator
 with support for node.js and browser JavaScript.
 
-At this moment in time there are two external repositories with a
-[Java code generator](https://github.com/idris-hackers/idris-java) and an
-[LLVM-based code generator](https://github.com/idris-hackers/idris-llvm).
+More information about [code generators can be found on the wiki](http://idris.readthedocs.io/en/latest/reference/codegen.html).
 
 ## More Information
 
