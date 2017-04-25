@@ -19,15 +19,18 @@ import Data.Data
 data JsAST = JsEmpty
            | JsNull
            | JsLambda [Text] JsAST
+           | JsCurryLambda [Text] JsAST
            | JsFun Text [Text] JsAST
-           | JsCurryFun Text [Text] JsAST
+--           | JsCurryFun Text [Text] JsAST
            | JsReturn JsAST
            | JsApp Text [JsAST]
            | JsCurryApp JsAST [JsAST]
            | JsMethod JsAST Text [JsAST]
            | JsVar Text
            | JsSeq JsAST JsAST
-           | JsDecVar Text JsAST
+           | JsConst Text JsAST
+           | JsLet Text JsAST
+           | JsLetList [(Text, JsAST)]
            | JsSetVar Text JsAST
            | JsArrayProj JsAST JsAST
            | JsInt Int
@@ -41,9 +44,11 @@ data JsAST = JsEmpty
            | JsBinOp Text JsAST JsAST
            | JsForeign Text [JsAST]
            | JsB2I JsAST
-           | JsWhileTrue JsAST
+           -- | JsWhileTrue JsAST
+           | JsFor (JsAST, JsAST, JsAST) JsAST
            | JsContinue
            | JsBreak
+           | JsTrue
            | JsComment Text
            | JsForce JsAST
            | JsLazy JsAST
@@ -60,9 +65,9 @@ curryDef :: [Text] -> JsAST -> Text
 curryDef [] body =
   jsAst2Text body
 curryDef (x:xs) body =
-  T.concat [ "return function", "(", x, "){\n"
-           , indent $ curryDef xs body
-           , "}\n"
+  T.concat [ "(function", "(", x, "){return "
+           , curryDef xs body
+           , "})"
            ]
 
 
@@ -74,18 +79,20 @@ jsAst2Text (JsLambda args body) =
            , jsAst2Text body
            , "})"
            ]
+jsAst2Text (JsCurryLambda args body) = curryDef args body
 jsAst2Text (JsFun name args body) =
-  T.concat [ "function ", name, "(", T.intercalate ", " args , "){\n"
+  T.concat [ "var ", name, " = function(", T.intercalate ", " args , "){\n"
            , indent $ jsAst2Text body
            , "}\n"
            ]
-jsAst2Text (JsCurryFun name args body) =
+{-jsAst2Text (JsCurryFun name args body) =
   T.concat [ "var ", name, " = \n"
            , indent $ T.concat [ "(function(){\n"
                                , indent $ curryDef args body
                                , "})()"
                                ]
            ]
+-}
 jsAst2Text (JsReturn x) = T.concat [ "return ", jsAst2Text x]
 jsAst2Text (JsApp fn args) = T.concat [fn, "(", T.intercalate ", " $ map jsAst2Text args, ")"]
 jsAst2Text (JsCurryApp fn []) = jsAst2Text fn
@@ -101,7 +108,9 @@ jsAst2Text (JsVar x) = x
 jsAst2Text (JsSeq JsEmpty y) = jsAst2Text y
 jsAst2Text (JsSeq x JsEmpty) = jsAst2Text x
 jsAst2Text (JsSeq x y) = T.concat [jsAst2Text x, ";\n", jsAst2Text y]
-jsAst2Text (JsDecVar name exp) = T.concat [ "var ", name, " = ", jsAst2Text exp]
+jsAst2Text (JsConst name exp) = T.concat [ "const ", name, " = ", jsAst2Text exp]
+jsAst2Text (JsLet name exp) = T.concat [ "let ", name, " = ", jsAst2Text exp]
+jsAst2Text (JsLetList lst) = T.concat [ "let ", T.intercalate ", " (map (\(n,v) -> T.concat [n, " = ", jsAst2Text v]  ) lst) ]
 jsAst2Text (JsSetVar name exp) = T.concat [ name, " = ", jsAst2Text exp]
 jsAst2Text (JsArrayProj i exp) = T.concat [ jsAst2Text exp, "[", jsAst2Text i, "]"]
 jsAst2Text (JsInt i) = T.pack $ show i
@@ -126,15 +135,17 @@ jsAst2Text (JsForeign code args) =
       args_repl c i (t:r) = args_repl (T.replace ("%" `T.append` T.pack (show i)) t c) (i+1) r
   in T.concat ["(", args_repl code 0 (map jsAst2Text args), ")"]
 jsAst2Text (JsB2I x) = jsAst2Text $ JsBinOp "+" x (JsInt 0)
-jsAst2Text (JsWhileTrue x) =
-  T.concat [ "while(true){\n"
-           , indent $ jsAst2Text x
+jsAst2Text (JsFor (x,y,z) w) =
+  T.concat [ "for(", jsAst2Text x , "; ",jsAst2Text y, "; ",jsAst2Text z,"){\n"
+           , indent $ jsAst2Text w
            , "}\n"
            ]
 jsAst2Text JsContinue =
   "continue"
 jsAst2Text JsBreak =
   "break"
+jsAst2Text JsTrue =
+  "true"
 jsAst2Text (JsComment c)=
   T.concat ["/*",c,"*/"]
 jsAst2Text (JsLazy e) =
@@ -159,7 +170,7 @@ throw2 = T.concat [ "var js_idris_throw2 = function (x){\n"
                   ]
 
 force  = T.concat [ "var js_idris_force = function (x){\n"
-                  , " if(x.js_idris_lazy_calc === undefined){\n"
+                  , " if(x === undefined || x.js_idris_lazy_calc === undefined){\n"
                   , "  return x\n"
                   , " }else{\n"
                   , "  if(x.js_idris_lazy_val === undefined){\n"
