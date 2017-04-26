@@ -41,11 +41,14 @@ import Data.Data
 import Data.Generics.Uniplate.Data
 import Data.List
 
+data Partial = Partial Name Int Int deriving (Eq, Ord)
+
 data CGStats = CGStats { usedWriteStr :: Bool
+                       , partialApplications :: Set Partial
                        }
 
 emptyStats :: CGStats
-emptyStats = CGStats {usedWriteStr = False}
+emptyStats = CGStats {usedWriteStr = False, partialApplications = Set.empty}
 
 data CGConf = CGConf { header :: Text
                      , footer :: Text
@@ -92,6 +95,7 @@ codegenJs conf ci =
                                              , "\"use strict\";\n\n"
                                              , "(function(){\n\n"
                                              , initialization conf stats
+                                             , doPartials (partialApplications stats)
                                              , includes, "\n"
                                              , js_aux_defs, "\n"
                                              , out, "\n"
@@ -106,10 +110,24 @@ jsName n = T.pack $ "idris_" ++ concatMap jschar (showCG n)
   where jschar x | isAlpha x || isDigit x = [x]
                   | otherwise = "_" ++ show (fromEnum x) ++ "_"
 
+jsPartialName :: Partial -> Text
+jsPartialName (Partial n i j) = T.concat ["partial_", T.pack $ show i, "_", T.pack $ show j, "_" , jsName n]
+
+doPartials :: Set Partial -> Text
+doPartials x =
+  T.intercalate "\n" (map f $ Set.toList x)
+  where
+      f p@(Partial n i j) =
+        let vars1 = map (T.pack . ("x"++) . show) [1..i]
+            vars2 = map (T.pack . ("x"++) . show) [(i+1)..j]
+        in jsAst2Text $
+             JsFun (jsPartialName p) vars1 $ JsReturn $ JsCurryLambda vars2 (JsApp (jsName n) (map JsVar (vars1 ++ vars2)) )
+
 doCodegen :: CGConf -> LDefs -> [LDecl] -> (Text, CGStats)
 doCodegen conf defs decls =
   let xs = map (doCodegenDecl conf defs) decls
-      groupCGStats x y = CGStats {usedWriteStr = usedWriteStr x || usedWriteStr y}
+      groupCGStats x y = CGStats {usedWriteStr = usedWriteStr x || usedWriteStr y
+                                 , partialApplications = partialApplications x `Set.union` partialApplications y }
   in (T.intercalate "\n" $ map fst xs, foldl' groupCGStats emptyStats (map snd xs) )
 
 doCodegenDecl :: CGConf -> LDefs -> LDecl -> (Text, CGStats)
@@ -123,12 +141,14 @@ seqJs :: [JsAST] -> JsAST
 seqJs [] = JsEmpty
 seqJs (x:xs) = JsSeq x (seqJs xs)
 
+
 data CGBodyState = CGBodyState { defs :: LDefs
                                , lastIntName :: Int
                                , currentFnNameAndArgs :: (Text, [Text])
                                , isTailRec :: Bool
                                , conf :: CGConf
                                , usedWrite :: Bool
+                               , partialApps :: Set Partial
                                }
 
 getNewCGName :: State CGBodyState Text
@@ -138,6 +158,11 @@ getNewCGName =
     let v = lastIntName st + 1
     put $ st {lastIntName = v}
     return $ T.pack $ "cgIdris_" ++ show v
+
+addPartial :: Partial -> State CGBodyState ()
+addPartial p =
+  modify (\s -> s {partialApps = Set.insert p (partialApps s) })
+
 
 getNewCGNames :: Int -> State CGBodyState [Text]
 getNewCGNames n =
@@ -189,17 +214,17 @@ cgFun cnf dfs n args def =
                                        , isTailRec = False
                                        , conf = cnf
                                        , usedWrite = False
+                                       , partialApps = Set.empty
                                        }
                           )
       body = if isTailRec st then
                 JsFor (JsLetList [("cgArgs", JsApp "Array.prototype.slice.call" [JsVar "arguments"]), ("cgArgs2", JsNull) ] , JsTrue, JsSetVar  "cgArgs" (JsVar "cgArgs2")  ) $
-                --JsSeq (JsDecVar "cgArgs" $ JsApp "Array.prototype.slice.call" [JsVar "arguments"]) $ JsWhileTrue $
                   replaceVarsByProj
                     (JsVar "cgArgs")
                     (Map.fromList $ zip argNames [0..])
                     ((seqJs decs) `JsSeq` res)
                 else JsSeq (seqJs decs) res
-  in (JsFun fnName argNames $ body, CGStats {usedWriteStr = usedWrite st})
+  in (JsFun fnName argNames $ body, CGStats {usedWriteStr = usedWrite st, partialApplications = partialApps st})
 
 getSwitchJs :: JsAST -> [LAlt] -> JsAST
 getSwitchJs x alts =
@@ -224,8 +249,10 @@ cgBody rt (LV (Glob n)) =
         pure $ ([], addRT rt $ JsApp (jsName n) [])
       Just a ->
         do
-          newNames <- getNewCGNames $ length a
-          pure ([], addRT rt $ JsCurryLambda newNames (JsApp (jsName n) (map JsVar newNames)))
+          --newNames <- getNewCGNames $ length a
+          let part = Partial n  0  (length a)
+          addPartial part
+          pure ([], addRT rt $ JsApp (jsPartialName part) []) --JsCurryLambda newNames (JsApp (jsName n) (map JsVar newNames)))
       Nothing ->
         pure $ ([], addRT rt $ JsVar $ jsName n)
 cgBody rt (LApp tailcall (LV (Glob fn)) args) =
@@ -262,8 +289,10 @@ cgBody rt (LApp tailcall (LV (Glob fn)) args) =
                     pure (preDecs, addRT rt $ JsCurryApp  (JsApp fname (take lenAgFn argVals )) (drop lenAgFn argVals) )
                   GT ->
                     do
-                      newNames <- getNewCGNames $ lenAgFn - lenArgs
-                      pure (preDecs, addRT rt $ JsCurryLambda newNames (JsApp fname (argVals ++ (map JsVar newNames) )  ) )
+                      let part = Partial fn lenArgs lenAgFn
+                      addPartial part
+                      --newNames <- getNewCGNames $ lenAgFn - lenArgs
+                      pure (preDecs, addRT rt $ JsApp (jsPartialName part) argVals ) -- JsCurryLambda newNames (JsApp fname (argVals ++ (map JsVar newNames) )  ) )
 
 cgBody rt (LForce (LLazyApp n args)) = cgBody rt (LApp False (LV (Glob n)) args)
 cgBody rt (LLazyApp n args) =
