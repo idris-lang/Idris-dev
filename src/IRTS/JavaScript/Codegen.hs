@@ -113,6 +113,9 @@ jsName n = T.pack $ "idris_" ++ concatMap jschar (showCG n)
 jsPartialName :: Partial -> Text
 jsPartialName (Partial n i j) = T.concat ["partial_", T.pack $ show i, "_", T.pack $ show j, "_" , jsName n]
 
+jsTailCallOptimName :: Text -> Text
+jsTailCallOptimName x = T.concat ["tailCallOptim_cgIdris_", x]
+
 doPartials :: Set Partial -> Text
 doPartials x =
   T.intercalate "\n" (map f $ Set.toList x)
@@ -145,6 +148,7 @@ seqJs (x:xs) = JsSeq x (seqJs xs)
 data CGBodyState = CGBodyState { defs :: LDefs
                                , lastIntName :: Int
                                , currentFnNameAndArgs :: (Text, [Text])
+                               , usedArgsTailCallOptim :: Set (Text, Text)
                                , isTailRec :: Bool
                                , conf :: CGConf
                                , usedWrite :: Bool
@@ -163,6 +167,9 @@ addPartial :: Partial -> State CGBodyState ()
 addPartial p =
   modify (\s -> s {partialApps = Set.insert p (partialApps s) })
 
+addUsedArgsTailCallOptim :: Set (Text, Text) -> State CGBodyState ()
+addUsedArgsTailCallOptim p =
+  modify (\s -> s {usedArgsTailCallOptim = Set.union p (usedArgsTailCallOptim s) })
 
 getNewCGNames :: Int -> State CGBodyState [Text]
 getNewCGNames n =
@@ -211,6 +218,7 @@ cgFun cnf dfs n args def =
                           (CGBodyState { defs=dfs
                                        , lastIntName = 0
                                        , currentFnNameAndArgs = (fnName, argNames)
+                                       , usedArgsTailCallOptim = Set.empty
                                        , isTailRec = False
                                        , conf = cnf
                                        , usedWrite = False
@@ -218,12 +226,10 @@ cgFun cnf dfs n args def =
                                        }
                           )
       body = if isTailRec st then
-                JsFor (JsLetList [("cgArgs", JsApp "Array.prototype.slice.call" [JsVar "arguments"]), ("cgArgs2", JsNull) ] , JsTrue, JsSetVar  "cgArgs" (JsVar "cgArgs2")  ) $
-                  replaceVarsByProj
-                    (JsVar "cgArgs")
-                    (Map.fromList $ zip argNames [0..])
-                    ((seqJs decs) `JsSeq` res)
-                else JsSeq (seqJs decs) res
+                JsSeq
+                 (declareUsedOptimArgs $ usedArgsTailCallOptim st)
+                 (JsWhileTrue ((seqJs decs) `JsSeq` res))
+                else (seqJs decs) `JsSeq` res
   in (JsFun fnName argNames $ body, CGStats {usedWriteStr = usedWrite st, partialApplications = partialApps st})
 
 getSwitchJs :: JsAST -> [LAlt] -> JsAST
@@ -239,6 +245,20 @@ addRT (DecBT n) x = JsLet n x
 addRT (SetBT n) x = JsSetVar n x
 addRT (DecConstBT n) x = JsConst n x
 addRT GetExpBT x = x
+
+declareUsedOptimArgs :: Set (Text, Text) -> JsAST
+declareUsedOptimArgs x = seqJs $ map (\(x,y) -> JsLet x (JsVar y) ) (Set.toList x)
+
+tailCallOptimRefreshArgs :: [(Text, JsAST)] -> Set Text -> ((JsAST, JsAST), Set (Text, Text))
+tailCallOptimRefreshArgs [] s = ((JsEmpty, JsEmpty), Set.empty)
+tailCallOptimRefreshArgs ((n,x):r) s =
+  let ((y1,y2), y3) = tailCallOptimRefreshArgs r (Set.insert n s) --
+  in if Set.null $ (Set.fromList [ z | z <- universeBi x ]) `Set.intersection` s then
+      ((y1, JsSetVar n x `JsSeq` y2), y3)
+      else
+        let n' = jsTailCallOptimName n
+        in ((JsSetVar n' x `JsSeq` y1, JsSetVar n (JsVar n') `JsSeq` y2), Set.insert (n',n) y3)
+
 
 cgBody :: BodyResTarget -> LExp -> State CGBodyState ([JsAST], JsAST)
 cgBody rt (LV (Glob n)) =
@@ -267,11 +287,13 @@ cgBody rt (LApp tailcall (LV (Glob fn)) args) =
       (True, ReturnBT) ->
         do
           modify (\x-> x {isTailRec = True})
+          let ((y1,y2), y3) = tailCallOptimRefreshArgs (zip argN argVals) Set.empty
+          addUsedArgsTailCallOptim y3
           --vars <- getNewCGNames $ length argN --sequence $ map (\_->getNewCGName) argN
-          let refreshArgs = JsSetVar "cgArgs2" (JsArray argVals)
+          --let refreshArgs = JsSetVar "cgArgs2" (JsArray argVals)
           --let calcs = map (\(n,v) -> JsDecVar n v) (zip vars argVals)
           --let calcsToArgs = map (\(n,v) -> JsSetVar n (JsVar v)) (zip argN vars)
-          pure (preDecs, refreshArgs)
+          pure (preDecs, y1 `JsSeq` y2)
       _ ->
         do
           argsFn <- getArgList fn

@@ -30,7 +30,7 @@ data JsAST = JsEmpty
            | JsSeq JsAST JsAST
            | JsConst Text JsAST
            | JsLet Text JsAST
-           | JsLetList [(Text, JsAST)]
+      --     | JsLetList [(Text, JsAST)]
            | JsSetVar Text JsAST
            | JsArrayProj JsAST JsAST
            | JsInt Int
@@ -44,8 +44,8 @@ data JsAST = JsEmpty
            | JsBinOp Text JsAST JsAST
            | JsForeign Text [JsAST]
            | JsB2I JsAST
-           -- | JsWhileTrue JsAST
-           | JsFor (JsAST, JsAST, JsAST) JsAST
+           | JsWhileTrue JsAST
+          -- | JsFor (JsAST, JsAST, JsAST) JsAST
            | JsContinue
            | JsBreak
            | JsTrue
@@ -110,7 +110,7 @@ jsAst2Text (JsSeq x JsEmpty) = jsAst2Text x
 jsAst2Text (JsSeq x y) = T.concat [jsAst2Text x, ";\n", jsAst2Text y]
 jsAst2Text (JsConst name exp) = T.concat [ "const ", name, " = ", jsAst2Text exp]
 jsAst2Text (JsLet name exp) = T.concat [ "let ", name, " = ", jsAst2Text exp]
-jsAst2Text (JsLetList lst) = T.concat [ "let ", T.intercalate ", " (map (\(n,v) -> T.concat [n, " = ", jsAst2Text v]  ) lst) ]
+--jsAst2Text (JsLetList lst) = T.concat [ "let ", T.intercalate ", " (map (\(n,v) -> T.concat [n, " = ", jsAst2Text v]  ) lst) ]
 jsAst2Text (JsSetVar name exp) = T.concat [ name, " = ", jsAst2Text exp]
 jsAst2Text (JsArrayProj i exp) = T.concat [ jsAst2Text exp, "[", jsAst2Text i, "]"]
 jsAst2Text (JsInt i) = T.pack $ show i
@@ -135,11 +135,16 @@ jsAst2Text (JsForeign code args) =
       args_repl c i (t:r) = args_repl (T.replace ("%" `T.append` T.pack (show i)) t c) (i+1) r
   in T.concat ["(", args_repl code 0 (map jsAst2Text args), ")"]
 jsAst2Text (JsB2I x) = jsAst2Text $ JsBinOp "+" x (JsInt 0)
-jsAst2Text (JsFor (x,y,z) w) =
-  T.concat [ "for(", jsAst2Text x , "; ",jsAst2Text y, "; ",jsAst2Text z,"){\n"
+jsAst2Text (JsWhileTrue w) =
+  T.concat [ "while(true){\n"
            , indent $ jsAst2Text w
            , "}\n"
            ]
+{-jsAst2Text (JsFor (x,y,z) w) =
+  T.concat [ "for(", jsAst2Text x , "; ",jsAst2Text y, "; ",jsAst2Text z,"){\n"
+           , indent $ jsAst2Text w
+           , "}\n"
+           ]-}
 jsAst2Text JsContinue =
   "continue"
 jsAst2Text JsBreak =
