@@ -23,7 +23,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Data.CoList, Data.Storable,
 	  Data.List.Zipper,
 
-          Decidable.Decidable, Decidable.Order,
+          Decidable.Decidable, Decidable.Order, Decidable.ExcludedMiddleInconsistent,
 
           Network.Cgi, Network.Socket.Data, Network.Socket.Raw, Network.Socket,
 
