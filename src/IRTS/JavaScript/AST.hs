@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, PatternGuards #-}
 
 module IRTS.JavaScript.AST( JsAST(..)
                          , jsAst2Text
@@ -15,13 +15,14 @@ module IRTS.JavaScript.AST( JsAST(..)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Data
+import Data.Char
+import Numeric
 
 data JsAST = JsEmpty
            | JsNull
            | JsLambda [Text] JsAST
            | JsCurryLambda [Text] JsAST
            | JsFun Text [Text] JsAST
---           | JsCurryFun Text [Text] JsAST
            | JsReturn JsAST
            | JsApp Text [JsAST]
            | JsCurryApp JsAST [JsAST]
@@ -30,20 +31,18 @@ data JsAST = JsEmpty
            | JsSeq JsAST JsAST
            | JsConst Text JsAST
            | JsLet Text JsAST
-      --     | JsLetList [(Text, JsAST)]
            | JsSetVar Text JsAST
            | JsArrayProj JsAST JsAST
+           | JsNum Double
            | JsInt Int
-           | JsInteger Integer
-           | JsDouble Double
-           | JsStr Text
+           | JsStr String
            | JsArray [JsAST]
            | JsSwitchCase JsAST [(JsAST, JsAST)] (Maybe JsAST)
            | JsError JsAST
            | JsErrorExp JsAST
            | JsBinOp Text JsAST JsAST
            | JsForeign Text [JsAST]
-           | JsB2I JsAST
+      --     | JsB2I JsAST
            | JsWhileTrue JsAST
           -- | JsFor (JsAST, JsAST, JsAST) JsAST
            | JsContinue
@@ -54,6 +53,37 @@ data JsAST = JsEmpty
            | JsLazy JsAST
             deriving (Show, Eq, Data, Typeable)
 
+
+translateChar :: Char -> String
+translateChar ch
+  | '\a'   <- ch       = "\\u0007"
+  | '\b'   <- ch       = "\\b"
+  | '\f'   <- ch       = "\\f"
+  | '\n'   <- ch       = "\\n"
+  | '\r'   <- ch       = "\\r"
+  | '\t'   <- ch       = "\\t"
+  | '\v'   <- ch       = "\\v"
+  | '\SO'  <- ch       = "\\u000E"
+  | '\DEL' <- ch       = "\\u007F"
+  | '\\'   <- ch       = "\\\\"
+  | '\"'   <- ch       = "\\\""
+  | '\''   <- ch       = "\\\'"
+  | ch `elem` asciiTab = "\\u" ++ fill (showHex (ord ch) "")
+  | ord ch > 255       = "\\u" ++ fill (showHex (ord ch) "")
+  | otherwise          = [ch]
+  where
+    fill :: String -> String
+    fill s = case length s of
+                  1 -> "000" ++ s
+                  2 -> "00"  ++ s
+                  3 -> "0"   ++ s
+                  _ ->          s
+
+    asciiTab =
+      ['\NUL', '\SOH', '\STX', '\ETX', '\EOT', '\ENQ', '\ACK', '\BEL',
+       '\BS',  '\HT',  '\LF',  '\VT',  '\FF',  '\CR',  '\SO',  '\SI',
+       '\DLE', '\DC1', '\DC2', '\DC3', '\DC4', '\NAK', '\SYN', '\ETB',
+       '\CAN', '\EM',  '\SUB', '\ESC', '\FS',  '\GS',  '\RS',  '\US']
 
 indent :: Text -> Text
 indent x =
@@ -113,10 +143,10 @@ jsAst2Text (JsLet name exp) = T.concat [ "let ", name, " = ", jsAst2Text exp]
 --jsAst2Text (JsLetList lst) = T.concat [ "let ", T.intercalate ", " (map (\(n,v) -> T.concat [n, " = ", jsAst2Text v]  ) lst) ]
 jsAst2Text (JsSetVar name exp) = T.concat [ name, " = ", jsAst2Text exp]
 jsAst2Text (JsArrayProj i exp) = T.concat [ jsAst2Text exp, "[", jsAst2Text i, "]"]
-jsAst2Text (JsInt i) = T.pack $ show i
-jsAst2Text (JsDouble d) = T.pack $ show d
-jsAst2Text (JsInteger i) = T.pack $ show i
-jsAst2Text (JsStr s) = T.pack $ show s
+jsAst2Text (JsInt i) = T.pack $ show i ++ "|0"
+jsAst2Text (JsNum d) = T.pack $ show d
+--jsAst2Text (JsInteger i) = T.pack $ show i
+jsAst2Text (JsStr s) =   "\"" `T.append` T.pack (concatMap translateChar s) `T.append` "\""
 jsAst2Text (JsArray l) = T.concat [ "[", T.intercalate ", " (map jsAst2Text l), "]"]
 jsAst2Text (JsSwitchCase exp l d) =
   T.concat [ "switch(", jsAst2Text exp, "){\n"
@@ -134,7 +164,7 @@ jsAst2Text (JsForeign code args) =
   let args_repl c i [] = c
       args_repl c i (t:r) = args_repl (T.replace ("%" `T.append` T.pack (show i)) t c) (i+1) r
   in T.concat ["(", args_repl code 0 (map jsAst2Text args), ")"]
-jsAst2Text (JsB2I x) = jsAst2Text $ JsBinOp "+" x (JsInt 0)
+--jsAst2Text (JsB2I x) = jsAst2Text $ JsBinOp "+" x (JsNum 0)
 jsAst2Text (JsWhileTrue w) =
   T.concat [ "while(true){\n"
            , indent $ jsAst2Text w
