@@ -28,7 +28,7 @@ else
 	GMP_INCLUDE_DIR      :=-I/usr/local/include
 endif
 
-MACHINE         := $(shell $(CC) -dumpmachine)
+MACHINE         ?= $(shell $(CC) -dumpmachine)
 ifneq (, $(findstring darwin, $(MACHINE)))
 	OS      :=darwin
 else ifneq (, $(findstring cygwin, $(MACHINE)))
@@ -39,6 +39,11 @@ else ifneq (, $(findstring windows, $(MACHINE)))
 	OS      :=windows
 else
 	OS      :=unix
+endif
+
+# Only include -msse2 on x86 machines
+ifneq (,$(findstring 86, $(MACHINE)))
+	CFLAGS += -msse2
 endif
 
 ifeq ($(OS),darwin)
