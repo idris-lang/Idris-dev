@@ -156,10 +156,6 @@ VerifiedRingWithUnity ZZ where
   ringWithUnityIsUnityL = multOneRightNeutralZ
   ringWithUnityIsUnityR = multOneLeftNeutralZ
 
---interface (VerifiedRingWithUnity a, Field a) => VerifiedField a where
---  total fieldInverseIsInverseL : (l : a) -> (notId : Not (l = Algebra.neutral)) -> l <.> (inverseM l notId) = Algebra.unity
---  total fieldInverseIsInverseR : (r : a) -> (notId : Not (r = Algebra.neutral)) -> (inverseM r notId) <.> r = Algebra.unity
-
 interface JoinSemilattice a => VerifiedJoinSemilattice a where
   total joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
   total joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
@@ -169,31 +165,3 @@ interface MeetSemilattice a => VerifiedMeetSemilattice a where
   total meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
   total meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
   total meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
-
-{- FIXME: Some maintenance required here.
-   Algebra.top and Algebra.bottom don't exist!
--}
-{-
-
-interface (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJoinSemilattice a where
-  total boundedJoinSemilatticeBottomIsBottom : (e : a) -> join e Algebra.bottom = e
-
-interface (VerifiedMeetSemilattice a, BoundedMeetSemilattice a) => VerifiedBoundedMeetSemilattice a where
-  total boundedMeetSemilatticeTopIsTop : (e : a) -> meet e Algebra.top = e
-
-interface (VerifiedJoinSemilattice a, VerifiedMeetSemilattice a) => VerifiedLattice a where
-  total latticeMeetAbsorbsJoin : (l, r : a) -> meet l (join l r) = l
-  total latticeJoinAbsorbsMeet : (l, r : a) -> join l (meet l r) = l
-
-interface (VerifiedBoundedJoinSemilattice a, VerifiedBoundedMeetSemilattice a, VerifiedLattice a) => VerifiedBoundedLattice a where { }
-
-
---interface (VerifiedRingWithUnity a, VerifiedAbelianGroup b, Module a b) => VerifiedModule a b where
---  total moduleScalarMultiplyComposition : (x,y : a) -> (v : b) -> x <#> (y <#> v) = (x <.> y) <#> v
---  total moduleScalarUnityIsUnity : (v : b) -> Algebra.unity {a} <#> v = v
---  total moduleScalarMultDistributiveWRTVectorAddition : (s : a) -> (v, w : b) -> s <#> (v <+> w) = (s <#> v) <+> (s <#> w)
---  total moduleScalarMultDistributiveWRTModuleAddition : (s, t : a) -> (v : b) -> (s <+> t) <#> v = (s <#> v) <+> (t <#> v)
-
---interface (VerifiedField a, VerifiedModule a b) => VerifiedVectorSpace a b where {}
-
--}
