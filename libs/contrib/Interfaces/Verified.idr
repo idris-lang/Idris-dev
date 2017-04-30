@@ -21,8 +21,6 @@ interface Functor f => VerifiedFunctor (f : Type -> Type) where
                        (g1 : a -> b) -> (g2 : b -> c) ->
                        map (g2 . g1) x = (map g2 . map g1) x
 
--- TODO VerifiedFunctor instances for: List, Stream, Either e
-
 VerifiedFunctor Maybe where
   functorIdentity Nothing = Refl
   functorIdentity (Just x) = Refl
@@ -57,8 +55,6 @@ VerifiedApplicative Maybe where
   applicativeInterchange x Nothing = Refl
   applicativeInterchange x (Just y) = Refl
 
--- TODO VerifiedApplicative instances for: List, Stream, Either e
-
 interface (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) where
   monadApplicative : (mf : m (a -> b)) -> (mx : m a) ->
                      mf <*> mx = mf >>= \f =>
@@ -80,8 +76,6 @@ VerifiedMonad Maybe where
     monadAssociativity Nothing f g = Refl
     monadAssociativity (Just x) f g = Refl
 
--- TODO VerifiedMonad instances for: List, Stream, Either e
-
 interface Semigroup a => VerifiedSemigroup a where
   total semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
 
@@ -99,16 +93,6 @@ implementation VerifiedSemigroup (List a) where
 
 [MultZZSemiV] VerifiedSemigroup ZZ using MultZZSemi where
   semigroupOpIsAssociative = multAssociativeZ
-
--- TODO Verified versions of...
---  (Semigroup m, Semigroup n) => Semigroup (m, n) where
---    (a, b) <+> (c, d) = (a <+> c, b <+> d)
---
--- Semigroup (Maybe a)
---
--- [collectJust] Semigroup a => Semigroup (Maybe a)
---
--- libs/base/Data/Morphisms.idr: implementation Monoid (Endomorphism a)
 
 interface (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
   total monoidNeutralIsNeutralL : (l : a) -> l <+> Algebra.neutral = l
@@ -133,12 +117,6 @@ interface (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
 implementation VerifiedMonoid (List a) where
   monoidNeutralIsNeutralL = appendNilRightNeutral
   monoidNeutralIsNeutralR xs = Refl
-
--- TODO Verified versions of...
---  (Monoid m, Monoid n) => Monoid (m, n) where
---    neutral = (neutral, neutral)
---
--- Monoid (Maybe a)
 
 interface (VerifiedMonoid a, Group a) => VerifiedGroup a where
   total groupInverseIsInverseL : (l : a) -> l <+> inverse l = Algebra.neutral
