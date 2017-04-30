@@ -9,6 +9,8 @@ import Data.ZZ
 
 %access public export
 
+-- Integer
+
 Semigroup Integer where
   (<+>) = (+)
 
@@ -18,7 +20,7 @@ Monoid Integer where
 Group Integer where
   inverse = (* -1)
 
-AbelianGroup Integer where 
+AbelianGroup Integer where
 
 Ring Integer where
   (<.>) = (*)
@@ -26,6 +28,7 @@ Ring Integer where
 RingWithUnity Integer where
   unity = 1
 
+-- Int
 
 Semigroup Int where
   (<+>) = (+)
@@ -44,6 +47,7 @@ Ring Int where
 RingWithUnity Int where
   unity = 1
 
+-- Double
 
 Semigroup Double where
   (<+>) = (+)
@@ -65,23 +69,38 @@ RingWithUnity Double where
 Field Double where
   inverseM f _ = 1 / f
 
+-- Nat
 
-Semigroup Nat where
+[PlusNatSemi] Semigroup Nat where
   (<+>) = (+)
 
-Monoid Nat where
+[PlusNatMonoid] Monoid Nat using PlusNatSemi where
   neutral = 0
 
-Semigroup ZZ where
+[MultNatSemi] Semigroup Nat where
+  (<+>) = (*)
+
+[MultNatMonoid] Monoid Nat using MultNatSemi where
+  neutral = 1
+
+-- ZZ
+
+[PlusZZSemi] Semigroup ZZ where
   (<+>) = (+)
 
-Monoid ZZ where
+[PlusZZMonoid] Monoid ZZ using PlusZZSemi where
   neutral = 0
 
-Group ZZ where
+Group ZZ using PlusZZMonoid where
   inverse = (* -1)
 
 AbelianGroup ZZ where
+
+[MultZZSemi] Semigroup ZZ where
+  (<+>) = (*)
+
+[MultZZMonoid] Monoid ZZ using MultZZSemi where
+  neutral = 1
 
 Ring ZZ where
   (<.>) = (*)
@@ -89,6 +108,7 @@ Ring ZZ where
 RingWithUnity ZZ where
   unity = 1
 
+-- Complex
 
 Semigroup a => Semigroup (Complex a) where
   (<+>) (a :+ b) (c :+ d) = (a <+> c) :+ (b <+> d)
