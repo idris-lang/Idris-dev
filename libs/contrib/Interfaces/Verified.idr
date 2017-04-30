@@ -69,7 +69,6 @@ interface (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) w
   monadAssociativity : (mx : m a) -> (f : a -> m b) -> (g : b -> m c) ->
                        (mx >>= f) >>= g = mx >>= (\x => f x >>= g)
 
--- The believe_me is there because idris won't seem to unify (pure x = Just x) with Refl
 VerifiedMonad Maybe where
     monadApplicative Nothing Nothing = Refl
     monadApplicative Nothing (Just x) = Refl
@@ -77,7 +76,7 @@ VerifiedMonad Maybe where
     monadApplicative (Just x) (Just y) = Refl
     monadLeftIdentity x f = Refl
     monadRightIdentity Nothing = Refl
-    monadRightIdentity (Just x) = (believe_me (Refl {A = Maybe a} {x = Just x}))
+    monadRightIdentity (Just x) = Refl
     monadAssociativity Nothing f g = Refl
     monadAssociativity (Just x) f g = Refl
 
