@@ -32,6 +32,9 @@ Running Elaborator Scripts
 
 On their own, tactics have no effect.
 The meta-operation ``%runElab script`` runs ``script`` in the current elaboration context.
+Before you can use ``%runElab``, you will have to enable the language extension by adding
+``%language ElabReflection`` in your file (or by passing ``-X ElabReflection`` to the
+``idris`` executable from your command line).
 For example, the following script constructs the identity function at type ``Nat``:
 
 .. code-block:: idris
