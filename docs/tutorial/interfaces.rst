@@ -48,8 +48,8 @@ For example, the
 Only one implementation of an interface can be given for a type — implementations may
 not overlap. Implementation declarations can themselves have constraints.
 To help with resolution, the arguments of an implementation must be
-constructors (either data or type constructors), variables or
-constants (i.e. you cannot give an implementation for a function).  For
+constructors (either data or type constructors) or variables 
+(i.e. you cannot give an implementation for a function).  For
 example, to define a ``Show`` implementation for vectors, we need to know
 that there is a ``Show`` implementation for the element type, because we are
 going to use it to convert each element to a ``String``:
