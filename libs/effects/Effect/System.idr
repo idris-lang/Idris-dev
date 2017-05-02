@@ -4,7 +4,7 @@ module Effect.System
 -- to split them up, I just need some of them now :))
 
 import Effects
-import System
+import public System
 import Control.IOExcept
 import public Data.So
 
