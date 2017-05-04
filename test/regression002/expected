@@ -145,3 +145,5 @@ When checking argument value to function Prelude.Basics.the:
                         -0.0
                 and
                         0.0
+Canonicity.idr:9:1:Canonicity.f is not total as there are missing cases
+Canonicity.idr:12:1:Canonicity.NaN is possibly not total due to: Canonicity.f

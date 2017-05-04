@@ -32,6 +32,7 @@ ${IDRIS:-idris} $@ --nobanner --nocolour --quiet --port none <<!
 :load reg076.idr
 :load reg077.idr
 :load DoubleEquality.idr
+:load Canonicity.idr
 !
 
 rm -f *.ibc
