@@ -44,17 +44,19 @@ import Data.Char
 data Partial = Partial Name Int Int deriving (Eq, Ord)
 
 data CGStats = CGStats { usedWriteStr :: Bool
+                       , usedReadStr :: Bool
                        , usedBigInt :: Bool
                        , partialApplications :: Set Partial
                        }
 
 emptyStats :: CGStats
-emptyStats = CGStats {usedWriteStr = False, partialApplications = Set.empty, usedBigInt = False}
+emptyStats = CGStats {usedWriteStr = False, partialApplications = Set.empty, usedBigInt = False, usedReadStr = False}
 
 data CGConf = CGConf { header :: Text
                      , footer :: Text
                      , initialization :: CGStats -> Text
                      , writeStrTemplate :: Text
+                     , readStrTemplate :: Text
                      }
 
 
@@ -141,6 +143,7 @@ doCodegen conf defs decls =
       groupCGStats x y = CGStats {usedWriteStr = usedWriteStr x || usedWriteStr y
                                  , partialApplications = partialApplications x `Set.union` partialApplications y
                                  , usedBigInt = usedBigInt x || usedBigInt y
+                                 , usedReadStr = usedReadStr x || usedReadStr y
                                  }
   in (T.intercalate "\n" $ map fst xs, foldl' groupCGStats emptyStats (map snd xs) )
 
@@ -163,6 +166,7 @@ data CGBodyState = CGBodyState { defs :: LDefs
                                , isTailRec :: Bool
                                , conf :: CGConf
                                , usedWrite :: Bool
+                               , usedRead :: Bool
                                , usedITBig :: Bool
                                , partialApps :: Set Partial
                                }
@@ -234,6 +238,7 @@ cgFun cnf dfs n args def =
                                        , isTailRec = False
                                        , conf = cnf
                                        , usedWrite = False
+                                       , usedRead = False
                                        , usedITBig = False
                                        , partialApps = Set.empty
                                        }
@@ -243,7 +248,12 @@ cgFun cnf dfs n args def =
                  (declareUsedOptimArgs $ usedArgsTailCallOptim st)
                  (JsWhileTrue ((seqJs decs) `JsSeq` res))
                 else (seqJs decs) `JsSeq` res
-  in (JsFun fnName argNames $ body, CGStats {usedWriteStr = usedWrite st, partialApplications = partialApps st, usedBigInt = usedITBig st})
+  in (JsFun fnName argNames $ body, CGStats { usedWriteStr = usedWrite st
+                                            , partialApplications = partialApps st
+                                            , usedBigInt = usedITBig st
+                                            , usedReadStr = usedRead st
+                                            }
+     )
 
 getSwitchJs :: JsAST -> [LAlt] -> JsAST
 getSwitchJs x alts =
@@ -387,8 +397,9 @@ cgBody rt (LError x) = pure ([JsError $ JsStr x], addRT rt JsNull)
 cgBody rt x@(LForeign dres (FStr code) args ) =
   do
     z <- mapM (cgBody GetExpBT) (map snd args)
-    let jsArgs = map cgForeignArg (zip (map fst args) (map snd z))
-    pure $ (concat $ map fst z, addRT rt $ cgForeignRes dres $ JsForeign (T.pack code) jsArgs)
+    jsArgs <- sequence $ map cgForeignArg (zip (map fst args) (map snd z))
+    jsDres <- cgForeignRes dres $ JsForeign (T.pack code) jsArgs
+    pure $ (concat $ map fst z, addRT rt $ jsDres)
 cgBody _ x = error $ "Instruction " ++ show x ++ " not compilable yet"
 
 altsRT :: Text -> BodyResTarget -> BodyResTarget
@@ -428,24 +439,34 @@ cgAlts _ _ _ [] =
   pure ([],Nothing)
 
 
-cgForeignArg :: (FDesc, JsAST) -> JsAST
-cgForeignArg (FApp (UN "JS_IntT") _, v) = v
-cgForeignArg (FCon (UN "JS_Str"), v) = v
-cgForeignArg (FCon (UN "JS_Ptr"), v) = v
-cgForeignArg (FCon (UN "JS_Unit"), v) = v
+cgForeignArg :: (FDesc, JsAST) -> State CGBodyState JsAST
+cgForeignArg (FApp (UN "JS_IntT") _, v) = pure v
+cgForeignArg (FCon (UN "JS_Str"), v) = pure v
+cgForeignArg (FCon (UN "JS_Ptr"), v) = pure v
+cgForeignArg (FCon (UN "JS_Unit"), v) = pure v
 cgForeignArg (FApp (UN "JS_FnT") [_,FApp (UN "JS_Fn") [_,_, a, FApp (UN "JS_FnBase") [_,b]]], f) =
-  f
+  pure f
 cgForeignArg (FApp (UN "JS_FnT") [_,FApp (UN "JS_Fn") [_,_, a, FApp (UN "JS_FnIO") [_,_, b]]], f) =
-  JsLambda ["x"] $ JsReturn $ cgForeignRes b $ JsCurryApp (JsCurryApp f [cgForeignArg (a, JsVar "x")]) [JsNull]
-cgForeignArg (desc, _) = error $ "Foreign arg type " ++ show desc ++ " not supported yet."
+  do
+    jsx <- cgForeignArg (a, JsVar "x")
+    jsres <- cgForeignRes b $ JsCurryApp (JsCurryApp f [jsx]) [JsNull]
+    pure $ JsLambda ["x"] $ JsReturn jsres
+cgForeignArg (desc, _) =
+  do
+    st <- get
+    error $ "Foreign arg type " ++ show desc ++ " not supported yet. While generating function " ++ (show $ fst $ currentFnNameAndArgs st)
 
-cgForeignRes :: FDesc -> JsAST -> JsAST
-cgForeignRes (FApp (UN "JS_IntT") _) x = x
-cgForeignRes (FCon (UN "JS_Unit")) x = x
-cgForeignRes (FCon (UN "JS_Str")) x = x
-cgForeignRes (FCon (UN "JS_Ptr")) x =  x
-cgForeignRes (FCon (UN "JS_Float")) x = x
-cgForeignRes desc val =  error $ "Foreign return type " ++ show desc ++ " not supported yet."
+cgForeignRes :: FDesc -> JsAST -> State CGBodyState JsAST
+cgForeignRes (FApp (UN "JS_IntT") _) x = pure x
+cgForeignRes (FCon (UN "JS_Unit")) x = pure x
+cgForeignRes (FCon (UN "JS_Str")) x = pure x
+cgForeignRes (FCon (UN "JS_Ptr")) x = pure x
+cgForeignRes (FCon (UN "JS_Float")) x = pure x
+--cgForeignRes _ x = x
+cgForeignRes desc val =
+  do
+    st <- get
+    error $ "Foreign return type " ++ show desc ++ " not supported yet. While generating function " ++ (show $ fst $ currentFnNameAndArgs st)
 
 setUsedITBig :: State CGBodyState ()
 setUsedITBig =   modify (\s -> s {usedITBig = True})
@@ -484,6 +505,11 @@ cgOp (LMinus (ATInt ITBig)) [l, r] =
     setUsedITBig
     pure $ JsMethod l "subtract" [r]
 cgOp (LTimes ATFloat) [l, r] = pure $ JsBinOp "*" l r
+cgOp (LTimes (ATInt ITNative)) [l, r] = pure $ JsForeign "%0*%1|0" [l,r]
+cgOp (LTimes (ATInt ITBig)) [l, r] =
+  do
+    setUsedITBig
+    pure $ JsMethod l "multiply" [r]
 cgOp (LEq ATFloat) [l, r] = pure $ jsB2I $ JsBinOp "==" l r
 cgOp (LEq (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp "==" l r
 cgOp (LEq (ATInt ITChar)) [l,r] = pure $ jsB2I $ JsBinOp "==" l r
@@ -493,44 +519,76 @@ cgOp (LEq (ATInt ITBig)) [l, r] =
     pure $ jsB2I $ JsMethod l "equals" [r]
 cgOp (LSLt ATFloat) [l, r] = pure $ jsB2I $ JsBinOp "<" l r
 cgOp (LSLt (ATInt ITChar)) [l, r] = pure $ jsB2I $ JsBinOp "<" l r
+cgOp (LSLt (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp "<" l r
 cgOp (LSLt (ATInt ITBig)) [l, r] =
   do
     setUsedITBig
     pure $ jsB2I $ JsForeign "%0.compareTo(%1) < 0" [l,r]
 cgOp (LSLe ATFloat) [l, r] = pure $ jsB2I $ JsBinOp "<=" l r
+cgOp (LSLe (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp "<=" l r
+cgOp (LSLe (ATInt ITBig)) [l, r] =
+  do
+    setUsedITBig
+    pure $ jsB2I $ JsForeign "%0.compareTo(%1) <= 0" [l,r]
 cgOp (LSGt ATFloat) [l, r] = pure $ jsB2I $ JsBinOp ">" l r
+cgOp (LSGt (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp ">" l r
+cgOp (LSGt (ATInt ITBig)) [l, r] =
+  do
+    setUsedITBig
+    pure $ jsB2I $ JsForeign "%0.compareTo(%1) > 0" [l,r]
 cgOp (LSGe ATFloat) [l, r] = pure $ jsB2I $ JsBinOp ">=" l r
+cgOp (LSGe (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp ">=" l r
+cgOp (LSGe (ATInt ITBig)) [l, r] =
+  do
+    setUsedITBig
+    pure $ jsB2I $ JsForeign "%0.compareTo(%1) >= 0" [l,r]
 cgOp LStrEq [l,r] = pure $ jsB2I $ JsBinOp "==" l r
 cgOp LStrLen [x] = pure $ JsForeign "%0.length" [x]
 cgOp LStrHead [x] = pure $ JsArrayProj (JsInt 0) x
 cgOp LStrIndex [x, y] = pure $ JsArrayProj y x
 cgOp LStrTail [x] = pure $ JsMethod x "slice" [JsInt 1]
 cgOp LStrLt [l, r] = pure $ jsB2I $ JsBinOp "<" l r
+cgOp LStrRev [x] = pure $ JsForeign "%0.split('').reverse().join('')" [x]
 cgOp (LFloatStr) [x] = pure $ JsApp "String" [x]
 cgOp (LIntStr ITNative) [x] = pure $  JsApp "String" [x]
 cgOp (LIntStr ITBig) [x] =
   do
     setUsedITBig
     pure $ JsForeign "%0.toString()" [x]
---cgOp (LFloatInt _) [x] = pure $ JsApp "Math.trunc" [x]
---cgOp (LStrInt _) [x] = pure $ JsBinOp "||" (JsApp "parseInt" [x]) (JsInt 0)
+cgOp (LFloatInt ITNative) [x] = pure $ JsForeign "%x|0" [x]
+cgOp (LStrInt ITNative) [x] = pure $ JsForeign "parseInt(%0)|0" [x]
 cgOp (LStrFloat) [x] = pure $ JsApp "parseFloat" [x]
-cgOp (LChInt _) [x] = pure $ JsForeign "%0.charCodeAt(0)|0" [x]
---cgOp (LIntCh _) [x] = pure $ x
+cgOp (LChInt ITNative) [x] = pure $ JsForeign "%0.charCodeAt(0)|0" [x]
+cgOp (LIntCh ITNative) [x] = pure $ JsApp "String.fromCharCode" [x]
+cgOp (LTrunc ITBig ITNative) [x] = pure $ JsForeign "%0.intValue()|0" [x]
 cgOp (LSExt ITNative ITBig) [x] =
   do
     setUsedITBig
     pure $ JsForeign "new jsbn.BigInteger(String(%0))" [x]
+cgOp (LZExt ITNative ITBig) [x] =
+  do
+    setUsedITBig
+    pure $ JsForeign "new jsbn.BigInteger(String(%0))" [x]
 --cgOp (LZExt _ _) [x] = pure $ x
---cgOp (LIntFloat _) [x] = pure $ x
---cgOp (LSDiv _) [x,y] = pure $ JsBinOp "/" x y
+cgOp (LIntFloat ITNative) [x] = pure $ x
+cgOp (LSDiv (ATInt ITNative)) [l,r] = pure $ JsForeign "%0/%1|0" [l, r]
+cgOp (LSDiv (ATInt ITBig)) [l,r] =
+  do
+    setUsedITBig
+    pure $ JsMethod l "divide" [r]
 cgOp LWriteStr [_,str] =
   do
     s <- get
     put $ s {usedWrite = True}
     pure $ JsForeign (writeStrTemplate $ conf s) [str]
+cgOp LReadStr [_] =
+  do
+    s <- get
+    put $ s {usedRead = True}
+    pure $ JsForeign (readStrTemplate $ conf s) []
 cgOp LStrConcat [l,r] = pure $ JsBinOp "+" l r
-cgOp LStrCons [l,r] = pure $ JsForeign "%0+%1" [l,r] --JsForeign "String.fromCharCode(%0) + %1" [l,r]
---cgOp (LSRem (ATInt _)) [l,r] = pure $ JsBinOp "%" l r
+cgOp LStrCons [l,r] = pure $ JsForeign "%0+%1" [l,r]
+cgOp LStrSubstr [offset,len,str] = pure $  JsMethod str "substr" [offset, len]
+cgOp (LSRem (ATInt ITNative)) [l,r] = pure $ JsBinOp "%" l r
 cgOp LCrash [l] = pure $ JsErrorExp l
 cgOp op exps = error ("Operator " ++ show (op, exps) ++ " not implemented")
