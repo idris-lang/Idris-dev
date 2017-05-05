@@ -83,8 +83,8 @@ codegenJs conf ci =
       if optim then putStrLn "compiling width idris-js optimizations"
         else putStrLn "compiling widthout idris-js optimizations"
       else pure ()
-    let defs = addAlist (liftDecls ci) emptyContext
-    let used = used_decls defs [sMN 0 "runMain"]
+    let defs = Map.fromList $ liftDecls ci
+    let used = Map.elems $ used_defs defs [sMN 0 "runMain"]
     used `deepseq` if debug then
       do
         putStrLn $ "Finished calculating used"
@@ -137,7 +137,7 @@ doPartials x =
         in jsAst2Text $
              JsFun (jsPartialName p) vars1 $ JsReturn $ JsCurryLambda vars2 (JsApp (jsName n) (map JsVar (vars1 ++ vars2)) )
 
-doCodegen :: CGConf -> LDefs -> [LDecl] -> (Text, CGStats)
+doCodegen :: CGConf -> Map Name LDecl -> [LDecl] -> (Text, CGStats)
 doCodegen conf defs decls =
   let xs = map (doCodegenDecl conf defs) decls
       groupCGStats x y = CGStats {usedWriteStr = usedWriteStr x || usedWriteStr y
@@ -147,7 +147,7 @@ doCodegen conf defs decls =
                                  }
   in (T.intercalate "\n" $ map fst xs, foldl' groupCGStats emptyStats (map snd xs) )
 
-doCodegenDecl :: CGConf -> LDefs -> LDecl -> (Text, CGStats)
+doCodegenDecl :: CGConf -> Map Name LDecl -> LDecl -> (Text, CGStats)
 doCodegenDecl conf defs (LFun _ n args def) =
   let (ast, stats) = cgFun conf defs n args def
   in (jsAst2Text $ ast, stats)
@@ -159,7 +159,7 @@ seqJs [] = JsEmpty
 seqJs (x:xs) = JsSeq x (seqJs xs)
 
 
-data CGBodyState = CGBodyState { defs :: LDefs
+data CGBodyState = CGBodyState { defs :: Map Name LDecl
                                , lastIntName :: Int
                                , currentFnNameAndArgs :: (Text, [Text])
                                , usedArgsTailCallOptim :: Set (Text, Text)
@@ -195,7 +195,7 @@ getConsId :: Name -> State CGBodyState Int
 getConsId n =
     do
       st <- get
-      case lookupCtxtExact n (defs st) of
+      case Map.lookup n (defs st) of
         Just (LConstructor _ conId _) -> pure conId
         _ -> error $ "Internal JS Backend error " ++ showCG n ++ " is not a constructor."
 
@@ -203,7 +203,7 @@ getArgList :: Name -> State CGBodyState (Maybe [Name])
 getArgList n =
   do
     st <- get
-    case lookupCtxtExact n (defs st) of
+    case Map.lookup n (defs st) of
       Just (LFun _ _ a _) -> pure $ Just a
       _ -> pure Nothing
 
@@ -224,7 +224,7 @@ replaceVarsByProj n d z =
         Just i -> JsArrayProj (JsInt i) n
     f x = x
 
-cgFun :: CGConf -> LDefs -> Name -> [Name] -> LExp -> (JsAST, CGStats)
+cgFun :: CGConf -> Map Name LDecl -> Name -> [Name] -> LExp -> (JsAST, CGStats)
 cgFun cnf dfs n args def =
   let
       fnName = jsName n
@@ -295,10 +295,9 @@ cgBody rt (LV (Glob n)) =
         pure $ ([], addRT rt $ JsApp (jsName n) [])
       Just a ->
         do
-          --newNames <- getNewCGNames $ length a
           let part = Partial n  0  (length a)
           addPartial part
-          pure ([], addRT rt $ JsApp (jsPartialName part) []) --JsCurryLambda newNames (JsApp (jsName n) (map JsVar newNames)))
+          pure ([], addRT rt $ JsApp (jsPartialName part) [])
       Nothing ->
         pure $ ([], addRT rt $ JsVar $ jsName n)
 cgBody rt (LApp tailcall (LV (Glob fn)) args) =
@@ -315,10 +314,6 @@ cgBody rt (LApp tailcall (LV (Glob fn)) args) =
           modify (\x-> x {isTailRec = True})
           let ((y1,y2), y3) = tailCallOptimRefreshArgs (zip argN argVals) Set.empty
           addUsedArgsTailCallOptim y3
-          --vars <- getNewCGNames $ length argN --sequence $ map (\_->getNewCGName) argN
-          --let refreshArgs = JsSetVar "cgArgs2" (JsArray argVals)
-          --let calcs = map (\(n,v) -> JsDecVar n v) (zip vars argVals)
-          --let calcsToArgs = map (\(n,v) -> JsSetVar n (JsVar v)) (zip argN vars)
           pure (preDecs, y1 `JsSeq` y2)
       _ ->
         do
@@ -339,8 +334,7 @@ cgBody rt (LApp tailcall (LV (Glob fn)) args) =
                     do
                       let part = Partial fn lenArgs lenAgFn
                       addPartial part
-                      --newNames <- getNewCGNames $ lenAgFn - lenArgs
-                      pure (preDecs, addRT rt $ JsApp (jsPartialName part) argVals ) -- JsCurryLambda newNames (JsApp fname (argVals ++ (map JsVar newNames) )  ) )
+                      pure (preDecs, addRT rt $ JsApp (jsPartialName part) argVals )
 
 cgBody rt (LForce (LLazyApp n args)) = cgBody rt (LApp False (LV (Glob n)) args)
 cgBody rt (LLazyApp n args) =
@@ -431,7 +425,6 @@ cgAlts rt resName scrvar ((LConCase _ n args exp):r) =
     (d, v) <- cgBody (altsRT resName rt) exp
     (ar, def) <- cgAlts rt resName scrvar r
     conId <- getConsId n
-    -- let branchBody = JsSeq (conCaseToProjs 1 scrvar args) $ JsSeq (seqJs d) v
     let replace = replaceVarsByProj scrvar (Map.fromList $ zip (map jsName args) [1..])
     let branchBody = JsSeq (seqJs $ map replace d) (replace v)
     pure ((JsInt conId, branchBody) : ar, def)
@@ -454,7 +447,7 @@ cgForeignArg (FApp (UN "JS_FnT") [_,FApp (UN "JS_Fn") [_,_, a, FApp (UN "JS_FnIO
 cgForeignArg (desc, _) =
   do
     st <- get
-    error $ "Foreign arg type " ++ show desc ++ " not supported yet. While generating function " ++ (show $ fst $ currentFnNameAndArgs st)
+    error $ "Foreign arg type " ++ show desc ++ " not supported. While generating function " ++ (show $ fst $ currentFnNameAndArgs st)
 
 cgForeignRes :: FDesc -> JsAST -> State CGBodyState JsAST
 cgForeignRes (FApp (UN "JS_IntT") _) x = pure x
@@ -466,7 +459,7 @@ cgForeignRes (FCon (UN "JS_Float")) x = pure x
 cgForeignRes desc val =
   do
     st <- get
-    error $ "Foreign return type " ++ show desc ++ " not supported yet. While generating function " ++ (show $ fst $ currentFnNameAndArgs st)
+    error $ "Foreign return type " ++ show desc ++ " not supported. While generating function " ++ (show $ fst $ currentFnNameAndArgs st)
 
 setUsedITBig :: State CGBodyState ()
 setUsedITBig =   modify (\s -> s {usedITBig = True})
