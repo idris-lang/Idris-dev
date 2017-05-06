@@ -455,7 +455,6 @@ cgForeignRes (FCon (UN "JS_Unit")) x = pure x
 cgForeignRes (FCon (UN "JS_Str")) x = pure x
 cgForeignRes (FCon (UN "JS_Ptr")) x = pure x
 cgForeignRes (FCon (UN "JS_Float")) x = pure x
---cgForeignRes _ x = x
 cgForeignRes desc val =
   do
     st <- get
@@ -474,10 +473,13 @@ cgConst (BI i) =
 cgConst (Ch c) = pure $ JsStr [c]
 cgConst (Str s) = pure $ JsStr s
 cgConst (Fl f) = pure $ JsNum f
-cgConst (B8 x) = error "error B8"
-cgConst (B16 x) = error "error B16"
-cgConst (B32 x) = error "error B32"
-cgConst (B64 x) = error "error B64"
+cgConst (B8 x) = pure $ JsForeign (T.pack $ "new Uint8Array([" ++ show x ++ "])") []
+cgConst (B16 x) = pure $ JsForeign (T.pack $ "new Uint16Array([" ++ show x ++ "])") []
+cgConst (B32 x) = pure $ JsForeign (T.pack $ show x ++ "|0" ) []
+cgConst (B64 x) =
+  do
+    setUsedITBig
+    pure $ JsForeign "new jsbn.BigInteger(%0)" [JsStr $ show x]
 cgConst x | isTypeConst x = pure $ JsInt 0
 cgConst x = error $ "Constant " ++ show x ++ " not compilable yet"
 
@@ -485,12 +487,28 @@ jsB2I :: JsAST -> JsAST
 jsB2I x = JsForeign "%0 ? 1|0 : 0|0" [x]
 
 cgOp :: PrimFn -> [JsAST] -> State CGBodyState JsAST
+cgOp (LAnd (ITFixed IT8)) [l, r] = pure $ JsForeign "new Uint8Array([ %0[0] & %1[0] ])" [l,r]
 cgOp (LPlus ATFloat) [l, r] = pure $ JsBinOp "+" l r
+cgOp (LPlus (ATInt ITChar)) [l, r] = pure $ JsForeign "String.fromCharCode(%0.charCodeAt(0) + %1.charCodeAt(0))" [l,r]
 cgOp (LPlus (ATInt ITNative)) [l, r] = pure $ JsForeign "%0+%1|0" [l,r]
+cgOp (LPlus (ATInt (ITFixed IT8))) [l, r] = pure $ JsForeign "new Uint8Array([ %0[0] + %1[0] ])" [l,r]
+cgOp (LPlus (ATInt (ITFixed IT16))) [l, r] = pure $ JsForeign "new Uint16Array([ %0[0] + %1[0] ])" [l,r]
+cgOp (LPlus (ATInt (ITFixed IT32))) [l, r] = pure $ JsForeign "%0+%1|0" [l,r]
 cgOp (LPlus (ATInt ITBig)) [l, r] =
   do
     setUsedITBig
     pure $ JsMethod l "add" [r]
+cgOp (LPlus (ATInt (ITFixed IT64))) [l, r] =
+  do
+    setUsedITBig
+    pure $ JsMethod (JsMethod l "add" [r]) "and" [JsStr $ show 0xFFFFFFFFFFFFFFFF]
+cgOp (LLSHR (ITFixed IT8)) [l, r] = pure $ JsForeign "new Uint8Array([ %0[0] >> %1[0] ])" [l,r]
+cgOp (LLSHR (ITFixed IT16)) [l, r] = pure $ JsForeign "new Uint16Array([ %0[0] >> %1[0] ])" [l,r]
+cgOp (LLSHR (ITFixed IT32)) [l, r] = pure $ JsForeign "%0 >> %1|0" [l,r]
+cgOp (LLSHR (ITFixed IT64)) [l, r] =
+  do
+    setUsedITBig
+    pure $ JsMethod (JsMethod l "shiftLeft" [r]) "and" [JsStr $ show 0xFFFFFFFFFFFFFFFF]
 cgOp (LMinus ATFloat) [l, r] = pure $ JsBinOp "-" l r
 cgOp (LMinus (ATInt ITNative)) [l, r] = pure $ JsForeign "%0-%1|0" [l,r]
 cgOp (LMinus (ATInt ITBig)) [l, r] =
@@ -553,17 +571,39 @@ cgOp (LStrInt ITNative) [x] = pure $ JsForeign "parseInt(%0)|0" [x]
 cgOp (LStrFloat) [x] = pure $ JsApp "parseFloat" [x]
 cgOp (LChInt ITNative) [x] = pure $ JsForeign "%0.charCodeAt(0)|0" [x]
 cgOp (LIntCh ITNative) [x] = pure $ JsApp "String.fromCharCode" [x]
-cgOp (LTrunc ITBig ITNative) [x] = pure $ JsForeign "%0.intValue()|0" [x]
+cgOp (LTrunc ITBig ITNative) [x] =
+  do
+    setUsedITBig
+    pure $ JsForeign "%0.intValue()|0" [x]
+cgOp (LTrunc (ITFixed IT16) (ITFixed IT8)) [x] = pure $ JsForeign "new Uint8Array([ %0[0] ])" [x]
+cgOp (LTrunc (ITFixed IT32) (ITFixed IT8)) [x] = pure $ JsForeign "new Uint8Array([ %0 ])" [x]
+cgOp (LTrunc (ITFixed IT64) (ITFixed IT8)) [x] =
+  do
+    setUsedITBig
+    pure $ JsForeign "new Uint8Array([  %0.intValue() ])" [x]
 cgOp (LSExt ITNative ITBig) [x] =
   do
     setUsedITBig
     pure $ JsForeign "new jsbn.BigInteger(String(%0))" [x]
+cgOp (LZExt (ITFixed IT8) ITNative) [x] = pure $ JsForeign "%0[0]" [x]
 cgOp (LZExt ITNative ITBig) [x] =
   do
     setUsedITBig
     pure $ JsForeign "new jsbn.BigInteger(String(%0))" [x]
---cgOp (LZExt _ _) [x] = pure $ x
 cgOp (LIntFloat ITNative) [x] = pure $ x
+cgOp LFACos [x] = pure $ JsApp "Math.acos" [x]
+cgOp LFATan [x] = pure $ JsApp "Math.atan" [x]
+cgOp LFCos [x] = pure $ JsApp "Math.cos" [x]
+cgOp LFFloor [x] = pure $ JsApp "Math.floor" [x]
+cgOp LFSin [x] = pure $ JsApp "Math.sin" [x]
+cgOp LFTan [x] = pure $ JsApp "Math.tan" [x]
+cgOp LFASin [x] = pure $ JsApp "Math.asin" [x]
+cgOp LFCeil [x] = pure $ JsApp "Math.ceil" [x]
+cgOp LFExp [x] = pure $ JsApp "Math.exp" [x]
+cgOp LFLog [x] = pure $ JsApp "Math.log" [x]
+cgOp LFSqrt [x] = pure $ JsApp "Math.sqrt" [x]
+cgOp LFNegate [x] = pure $ JsForeign "-%0" [x]
+cgOp (LSDiv ATFloat) [l,r] = pure $ JsBinOp "/" l r
 cgOp (LSDiv (ATInt ITNative)) [l,r] = pure $ JsForeign "%0/%1|0" [l, r]
 cgOp (LSDiv (ATInt ITBig)) [l,r] =
   do
@@ -583,5 +623,9 @@ cgOp LStrConcat [l,r] = pure $ JsBinOp "+" l r
 cgOp LStrCons [l,r] = pure $ JsForeign "%0+%1" [l,r]
 cgOp LStrSubstr [offset,len,str] = pure $  JsMethod str "substr" [offset, len]
 cgOp (LSRem (ATInt ITNative)) [l,r] = pure $ JsBinOp "%" l r
+cgOp (LSRem (ATInt ITBig)) [l,r] =
+  do
+    setUsedITBig
+    pure $ JsMethod l "remainder" [r]
 cgOp LCrash [l] = pure $ JsErrorExp l
 cgOp op exps = error ("Operator " ++ show (op, exps) ++ " not implemented")
