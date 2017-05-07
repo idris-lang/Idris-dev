@@ -479,7 +479,7 @@ cgConst (B32 x) = pure $ JsForeign (T.pack $ show x ++ "|0" ) []
 cgConst (B64 x) =
   do
     setUsedITBig
-    pure $ JsForeign "new jsbn.BigInteger(%0)" [JsStr $ show x]
+    pure $ JsForeign "new jsbn.BigInteger(%0).and(new jsbn.BigInteger(%1))" [JsStr $ show x, JsStr $ show 0xFFFFFFFFFFFFFFFF]
 cgConst x | isTypeConst x = pure $ JsInt 0
 cgConst x = error $ "Constant " ++ show x ++ " not compilable yet"
 
@@ -501,14 +501,14 @@ cgOp (LPlus (ATInt ITBig)) [l, r] =
 cgOp (LPlus (ATInt (ITFixed IT64))) [l, r] =
   do
     setUsedITBig
-    pure $ JsMethod (JsMethod l "add" [r]) "and" [JsStr $ show 0xFFFFFFFFFFFFFFFF]
+    pure $ JsForeign "%0.add(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
 cgOp (LLSHR (ITFixed IT8)) [l, r] = pure $ JsForeign "new Uint8Array([ %0[0] >> %1[0] ])" [l,r]
 cgOp (LLSHR (ITFixed IT16)) [l, r] = pure $ JsForeign "new Uint16Array([ %0[0] >> %1[0] ])" [l,r]
 cgOp (LLSHR (ITFixed IT32)) [l, r] = pure $ JsForeign "%0 >> %1|0" [l,r]
 cgOp (LLSHR (ITFixed IT64)) [l, r] =
   do
     setUsedITBig
-    pure $ JsMethod (JsMethod l "shiftLeft" [r]) "and" [JsStr $ show 0xFFFFFFFFFFFFFFFF]
+    pure $ JsForeign "%0.shiftRight(%1)" [l,r]
 cgOp (LMinus ATFloat) [l, r] = pure $ JsBinOp "-" l r
 cgOp (LMinus (ATInt ITNative)) [l, r] = pure $ JsForeign "%0-%1|0" [l,r]
 cgOp (LMinus (ATInt ITBig)) [l, r] =
@@ -580,7 +580,7 @@ cgOp (LTrunc (ITFixed IT32) (ITFixed IT8)) [x] = pure $ JsForeign "new Uint8Arra
 cgOp (LTrunc (ITFixed IT64) (ITFixed IT8)) [x] =
   do
     setUsedITBig
-    pure $ JsForeign "new Uint8Array([  %0.intValue() ])" [x]
+    pure $ JsForeign "new Uint8Array([  %0.and(new jsbn.BigInteger(%1)).intValue() ])" [x, JsStr $ show 0xFF]
 cgOp (LSExt ITNative ITBig) [x] =
   do
     setUsedITBig
@@ -621,7 +621,7 @@ cgOp LReadStr [_] =
     pure $ JsForeign (readStrTemplate $ conf s) []
 cgOp LStrConcat [l,r] = pure $ JsBinOp "+" l r
 cgOp LStrCons [l,r] = pure $ JsForeign "%0+%1" [l,r]
-cgOp LStrSubstr [offset,len,str] = pure $  JsMethod str "substr" [offset, len]
+cgOp LStrSubstr [offset,len,str] = pure $ JsForeign "%0.substr(Math.max(0,%1), Math.max(0, %2))" [str, offset, len]  -- JsMethod str "substr" [offset, len]
 cgOp (LSRem (ATInt ITNative)) [l,r] = pure $ JsBinOp "%" l r
 cgOp (LSRem (ATInt ITBig)) [l,r] =
   do
