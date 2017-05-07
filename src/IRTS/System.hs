@@ -30,7 +30,8 @@ import Control.Applicative ((<$>))
 import Data.List.Split
 import Data.Maybe (fromMaybe)
 import System.Environment
-import System.FilePath (addTrailingPathSeparator, (</>))
+import System.FilePath (addTrailingPathSeparator, dropTrailingPathSeparator,
+                        (</>))
 
 
 getIdrisDataDir :: IO String
@@ -81,7 +82,7 @@ gmpLib = []
 #endif
 
 getLibFlags = do dir <- getIdrisCRTSDir
-                 return $ ["-L" ++ dir,
+                 return $ ["-L" ++ dropTrailingPathSeparator dir,
                            "-lidris_rts"] ++ extraLib ++ gmpLib ++ ["-lpthread"]
 
 getIdrisLibDir = addTrailingPathSeparator <$> overrideIdrisSubDirWith "libs" "IDRIS_LIBRARY_PATH"
@@ -97,4 +98,4 @@ getIdrisCRTSDir = do
   return $ addTrailingPathSeparator (ddir </> "rts")
 
 getIncFlags = do dir <- getIdrisCRTSDir
-                 return $ ("-I" ++ dir) : extraInclude
+                 return $ ("-I" ++ dropTrailingPathSeparator dir) : extraInclude
