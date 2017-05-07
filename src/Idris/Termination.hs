@@ -284,8 +284,8 @@ buildSCG (_, n) = do
 
 delazy = delazy' False -- not lazy codata
 delazy' all t@(App _ f a)
-     | (P _ (UN l) _, [_, _, arg]) <- unApply t,
-       l == txt "Force" = delazy' all arg
+     | (P _ (UN l) _, [P _ (UN lty) _, _, arg]) <- unApply t,
+       l == txt "Force" && (all || lty /= txt "Infinite") = delazy' all arg
      | (P _ (UN l) _, [P _ (UN lty) _, _, arg]) <- unApply t,
        l == txt "Delay" && (all || lty /= txt "Infinite") = delazy arg
      | (P _ (UN l) _, [P _ (UN lty) _, arg]) <- unApply t,
