@@ -387,7 +387,7 @@ cgBody rt (LOp op args) =
     res <- cgOp op (map snd z)
     pure $ (concat $ map fst z, addRT rt $ res)
 cgBody rt LNothing = pure ([], addRT rt JsNull)
-cgBody rt (LError x) = pure ([JsError $ JsStr x], addRT rt JsNull)
+cgBody rt (LError x) = pure ([], JsError $ JsStr x)
 cgBody rt x@(LForeign dres (FStr code) args ) =
   do
     z <- mapM (cgBody GetExpBT) (map snd args)
