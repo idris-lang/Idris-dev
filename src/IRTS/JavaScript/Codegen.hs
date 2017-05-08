@@ -566,7 +566,7 @@ cgOp (LIntStr ITBig) [x] =
   do
     setUsedITBig
     pure $ JsForeign "%0.toString()" [x]
-cgOp (LFloatInt ITNative) [x] = pure $ JsForeign "%x|0" [x]
+cgOp (LFloatInt ITNative) [x] = pure $ JsForeign "%0|0" [x]
 cgOp (LStrInt ITNative) [x] = pure $ JsForeign "parseInt(%0)|0" [x]
 cgOp (LStrFloat) [x] = pure $ JsApp "parseFloat" [x]
 cgOp (LChInt ITNative) [x] = pure $ JsForeign "%0.charCodeAt(0)|0" [x]
