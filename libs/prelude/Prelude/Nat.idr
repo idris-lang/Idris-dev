@@ -122,15 +122,15 @@ total GT : Nat -> Nat -> Type
 GT left right = LT right left
 
 ||| A successor is never less than or equal zero
-succNotLTEzero : Not (S m `LTE` Z)
+total succNotLTEzero : Not (S m `LTE` Z)
 succNotLTEzero LTEZero impossible
 
 ||| If two numbers are ordered, their predecessors are too
-fromLteSucc : (S m `LTE` S n) -> (m `LTE` n)
+total fromLteSucc : (S m `LTE` S n) -> (m `LTE` n)
 fromLteSucc (LTESucc x) = x
 
 ||| A decision procedure for `LTE`
-isLTE : (m, n : Nat) -> Dec (m `LTE` n)
+total isLTE : (m, n : Nat) -> Dec (m `LTE` n)
 isLTE Z n = Yes LTEZero
 isLTE (S k) Z = No succNotLTEzero
 isLTE (S k) (S j) with (isLTE k j)
@@ -138,25 +138,32 @@ isLTE (S k) (S j) with (isLTE k j)
   isLTE (S k) (S j) | (No contra) = No (contra . fromLteSucc)
 
 ||| `LTE` is reflexive.
-lteRefl : LTE n n
+total lteRefl : LTE n n
 lteRefl {n = Z}   = LTEZero
 lteRefl {n = S k} = LTESucc lteRefl
 
 ||| n < m implies n < m + 1
-lteSuccRight : LTE n m -> LTE n (S m)
+total lteSuccRight : LTE n m -> LTE n (S m)
 lteSuccRight LTEZero     = LTEZero
 lteSuccRight (LTESucc x) = LTESucc (lteSuccRight x)
 
 ||| n + 1 < m implies n < m 
-lteSuccLeft : LTE (S n) m -> LTE n m
+total lteSuccLeft : LTE (S n) m -> LTE n m
 lteSuccLeft (LTESucc x) = lteSuccRight x
 
 ||| `LTE` is transitive
-lteTransitive : LTE n m -> LTE m p -> LTE n p
+total lteTransitive : LTE n m -> LTE m p -> LTE n p
 lteTransitive LTEZero y = LTEZero
 lteTransitive (LTESucc x) (LTESucc y) = LTESucc (lteTransitive x y)
 
-lteAddRight : (n : Nat) -> LTE n (plus n m)
+||| `LTE` is antisymetric
+total lteAntisymetric : LTE n m -> LTE m n -> n = m
+lteAntisymetric {n = Z} {m = Z} LTEZero LTEZero = Refl
+lteAntisymetric {n = (S j)} {m = (S k)} (LTESucc x) (LTESucc y) =
+  let inductiveHypothesis = lteAntisymetric {n = j} {m = k} x y
+  in cong inductiveHypothesis
+
+total lteAddRight : (n : Nat) -> LTE n (plus n m)
 lteAddRight Z = LTEZero
 lteAddRight (S k) = LTESucc (lteAddRight k)
 
