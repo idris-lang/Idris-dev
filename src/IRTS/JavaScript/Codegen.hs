@@ -437,6 +437,7 @@ cgForeignArg (FApp (UN "JS_IntT") _, v) = pure v
 cgForeignArg (FCon (UN "JS_Str"), v) = pure v
 cgForeignArg (FCon (UN "JS_Ptr"), v) = pure v
 cgForeignArg (FCon (UN "JS_Unit"), v) = pure v
+cgForeignArg (FCon (UN "JS_Float"), v) = pure v
 cgForeignArg (FApp (UN "JS_FnT") [_,FApp (UN "JS_Fn") [_,_, a, FApp (UN "JS_FnBase") [_,b]]], f) =
   pure f
 cgForeignArg (FApp (UN "JS_FnT") [_,FApp (UN "JS_Fn") [_,_, a, FApp (UN "JS_FnIO") [_,_, b]]], f) =
