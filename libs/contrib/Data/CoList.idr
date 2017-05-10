@@ -47,7 +47,7 @@ takeCo (S n) (x::xs) = x :: takeCo n xs
 ||| unfoldr (\b => if b == 0 then Nothing else Just (b, b-1)) 10
 ||| ```
 |||
-unfoldr : (a -> Maybe (a, a)) -> a -> CoList a
+unfoldr : (a -> Maybe (b, a)) -> a -> CoList b
 unfoldr f x =
   case f x of
     Just (y, new_x) => y :: (unfoldr f new_x)
