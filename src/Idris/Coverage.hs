@@ -410,31 +410,43 @@ recoverableCoverage _ _ = False
 -- with
 checkRec :: Term -> Term -> State [(Name, Term)] Bool
 checkRec (P Bound x _) tm
-   | (P yt _ _, _) <- unApply tm,
-     conType yt = do nmap <- get
-                     case lookup x nmap of
-                          Nothing -> do put ((x, tm) : nmap)
-                                        return True
-                          Just y' -> checkRec tm y'
+   | isCon tm = do nmap <- get
+                   case lookup x nmap of
+                        Nothing -> do put ((x, tm) : nmap)
+                                      return True
+                        Just y' -> checkRec tm y'
  where
+   isCon tm
+       | (P yt _ _, _) <- unApply tm,
+         conType yt = True
+   isCon (Constant _) = True
+   isCon _ = False
+
    conType (DCon _ _ _) = True
    conType (TCon _ _) = True
    conType _ = False
 
 checkRec tm (P Bound y _)
-   | (P xt _ _, _) <- unApply tm,
-     conType xt = do nmap <- get
-                     case lookup y nmap of
-                          Nothing -> do put ((y, tm) : nmap)
-                                        return True
-                          Just x' -> checkRec tm x'
+   | isCon tm = do nmap <- get
+                   case lookup y nmap of
+                        Nothing -> do put ((y, tm) : nmap)
+                                      return True
+                        Just x' -> checkRec tm x'
  where
+   isCon tm
+       | (P yt _ _, _) <- unApply tm,
+         conType yt = True
+   isCon (Constant _) = True
+   isCon _ = False
+
    conType (DCon _ _ _) = True
    conType (TCon _ _) = True
    conType _ = False
 
 checkRec (App _ f a) p@(P _ _ _) = checkRec f p
+checkRec (App _ f a) p@(Constant _) = checkRec f p
 checkRec p@(P _ _ _) (App _ f a) = checkRec p f
+checkRec p@(Constant _) (App _ f a) = checkRec p f
 checkRec fa@(App _ _ _) fa'@(App _ _ _)
     | (f, as) <- unApply fa,
       (f', as') <- unApply fa'
@@ -454,6 +466,7 @@ checkRec fa@(App _ _ _) fa'@(App _ _ _)
                                      return (aok && asok)
     conType (P (DCon _ _ _) _ _) = True
     conType (P (TCon _ _) _ _) = True
+    conType (Constant _) = True
     conType _ = False
 
 checkRec (P xt x _) (P yt y _)
@@ -469,4 +482,8 @@ checkRec (P xt x _) (P yt y _)
               | Bound <- x = True
               | Bound <- y = True
               | otherwise = False -- name is different, unrecoverable
+-- A function reference against a constant might be recoverable if we get to
+-- reduce the function
+checkRec (P Ref _ _) (Constant _) = return True
+checkRec (Constant _) (P Ref _ _) = return True
 checkRec _ _ = return False

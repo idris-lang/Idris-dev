@@ -593,15 +593,24 @@ runLoop fuel prog onEmpty
 ||| responsibility of an implementation of an interface in IO which uses it
 ||| to ensure that it isn't duplicated.
 export
+<<<<<<< HEAD
 runWith : {resf : _} ->
           Env res -> STrans IO a res (\result => resf result) ->
+=======
+runWith : Env res -> STrans IO a res resf ->
+>>>>>>> fcbabc28343ca9fa159f6d7db3fc7bd20ca45dc9
           IO (result ** Env (resf result))
 runWith env prog = runST env prog (\res, env' => pure (res ** env'))
 
 export
+<<<<<<< HEAD
 runWithLoop : {resf : _} ->
           Env res -> Fuel -> STransLoop IO a res (\result => resf result) ->
           IO (Maybe (result ** Env (resf result)))
+=======
+runWithLoop : Env res -> Fuel -> STransLoop IO a res resf  ->
+              IO (Maybe (result ** Env (resf result)))
+>>>>>>> fcbabc28343ca9fa159f6d7db3fc7bd20ca45dc9
 runWithLoop env fuel prog
     = runSTLoop fuel env prog (\res, env' => pure (Just (res ** env')))
                               (pure Nothing)
