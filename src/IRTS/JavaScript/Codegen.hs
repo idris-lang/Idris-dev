@@ -592,6 +592,10 @@ cgOp (LZExt ITNative ITBig) [x] =
     setUsedITBig
     pure $ JsForeign "new jsbn.BigInteger(String(%0))" [x]
 cgOp (LIntFloat ITNative) [x] = pure $ x
+cgOp (LIntFloat ITBig) [x] =
+  do
+    setUsedITBig
+    pure $ JsForeign "%0.intValue()" [x]
 cgOp LFACos [x] = pure $ JsApp "Math.acos" [x]
 cgOp LFATan [x] = pure $ JsApp "Math.atan" [x]
 cgOp LFCos [x] = pure $ JsApp "Math.cos" [x]
