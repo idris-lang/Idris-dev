@@ -144,6 +144,8 @@ instance ToJSON PrimFn where
     toJSON (LTimes aty) = object ["LTimes" .= aty]
     toJSON (LUDiv aty) = object ["LUDiv" .= aty]
     toJSON (LSDiv aty) = object ["LSDiv" .= aty]
+    toJSON (LURem ity) = object ["LURem" .= ity]
+    toJSON (LSRem aty) = object ["LSRem" .= aty]
     toJSON (LAnd ity) = object ["LAnd" .= ity]
     toJSON (LOr ity) = object ["LOr" .= ity]
     toJSON (LXOr ity) = object ["LXOr" .= ity]
@@ -200,11 +202,8 @@ instance ToJSON PrimFn where
     toJSON LFork = object ["LFork" .= Null]
     toJSON LPar = object ["LPar" .= Null]
     toJSON (LExternal name) = object ["LExternal" .= name]
+    toJSON LCrash = object ["LCrash" .= Null]
     toJSON LNoOp = object ["LNoOp" .= Null]
-
-
-
-
 
 instance ToJSON DDecl where
     toJSON (DFun name args exp) = object ["DFun" .= (name, args, exp)]
