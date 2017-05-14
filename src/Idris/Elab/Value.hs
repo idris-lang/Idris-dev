@@ -123,13 +123,16 @@ elabDocTerms info str = do typechecked <- Traversable.mapM decorate str
                                             else Checked tm
           | otherwise                   = Unchecked
 
--- | Try running the term directly (as IO ()), then printing it as an Integer
--- (as a default numeric tye), then printing it as any Showable thing
+-- | Try running the term directly (as IO ()) or with >>= printLn appended
+-- (for other IO _), then printing it as an Integer (as a default numeric
+-- type), then printing it as any Showable thing
 elabExec :: FC -> PTerm -> PTerm
 elabExec fc tm = runtm (PAlternative [] FirstSuccess
                    [printtm (PApp fc (PRef fc [] (sUN "the"))
                      [pexp (PConstant NoFC (AType (ATInt ITBig))), pexp tm]),
                     tm,
+                    PApp fc (PRef fc [] (sUN ">>="))
+                     [pexp tm, pexp (PRef fc [] (sUN "printLn"))],
                     printtm tm
                     ])
   where
