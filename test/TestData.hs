@@ -154,7 +154,7 @@ testFamiliesData = [
       ( 11, ANY  ),
       ( 12, ANY  ),
       ( 13, ANY  ),
-      ( 14, ANY  )]),
+      ( 14, C_CG )]),
   ("interfaces",      "Interfaces",
     [ (  1, ANY  ),
       (  2, ANY  ),
