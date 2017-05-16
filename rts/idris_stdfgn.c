@@ -61,7 +61,7 @@ int fileSize(void* h) {
 
 int idris_writeStr(void* h, char* str) {
     FILE* f = (FILE*)h;
-    if (fputs(str, f)) {
+    if (fputs(str, f) >= 0) {
         return 0;
     } else {
         return -1;
