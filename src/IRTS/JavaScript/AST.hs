@@ -9,7 +9,7 @@ Maintainer  : The Idris Community.
 
 module IRTS.JavaScript.AST( JsAST(..)
                          , jsAst2Text
-                         , js_aux_defs
+                         , jsAuxDefs
                          ) where
 
 import Data.Char
@@ -214,7 +214,7 @@ force  = T.concat [ "var js_idris_force = function (x){\n"
                   , "}\n\n"
                   ]
 
-js_aux_defs = T.concat [throw2, force]
+jsAuxDefs = T.concat [throw2, force]
 
 default2Text :: Maybe JsAST -> Text
 default2Text Nothing = ""

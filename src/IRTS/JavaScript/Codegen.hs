@@ -59,12 +59,12 @@ data CGConf = CGConf { header :: Text
                      }
 
 
-get_include :: FilePath -> IO Text
-get_include p = TIO.readFile p
+getInclude :: FilePath -> IO Text
+getInclude p = TIO.readFile p
 
-get_includes :: [FilePath] -> IO Text
-get_includes l = do
-  incs <- mapM get_include l
+getIncludes :: [FilePath] -> IO Text
+getIncludes l = do
+  incs <- mapM getInclude l
   return $ T.intercalate "\n\n" incs
 
 isYes :: Maybe String -> Bool
@@ -83,7 +83,7 @@ codegenJs conf ci =
         else putStrLn "compiling widthout idris-js optimizations"
       else pure ()
     let defs = Map.fromList $ liftDecls ci
-    let used = Map.elems $ used_defs defs [sMN 0 "runMain"]
+    let used = Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
     if debug then
       do
         writeFile (outputFile ci ++ ".LDeclsDebug") $ (unlines $ intersperse "" $ map show used) ++ "\n\n\n"
@@ -98,7 +98,7 @@ codegenJs conf ci =
               else return ""
 
 
-    includes <- get_includes $ includes ci
+    includes <- getIncludes $ includes ci
     TIO.writeFile (outputFile ci) $ T.concat [ header conf
                                              , "\"use strict\";\n\n"
                                              , "(function(){\n\n"
@@ -106,7 +106,7 @@ codegenJs conf ci =
                                              , initialization conf stats
                                              , doPartials (partialApplications stats)
                                              , includes, "\n"
-                                             , js_aux_defs, "\n"
+                                             , jsAuxDefs, "\n"
                                              , out, "\n"
                                              , "\n"
                                              , jsName (sMN 0 "runMain"), "();\n\n"
