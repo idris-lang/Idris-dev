@@ -5,8 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveDataTypeable, DeriveGeneric, FlexibleInstances,
-             OverloadedStrings, StandaloneDeriving #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, StandaloneDeriving #-}
 
 module IRTS.JavaScript.LangTransforms( removeDeadCode
                                      ) where
@@ -30,8 +29,8 @@ import Data.Data
 import Data.Generics.Uniplate.Data
 import GHC.Generics (Generic)
 
-deriving instance Typeable (LAlt' LExp)
-deriving instance Data (LAlt' LExp)
+deriving instance Typeable a => Typeable (LAlt' a)
+deriving instance Data a => Data (LAlt' a)
 deriving instance Typeable FDesc
 deriving instance Data FDesc
 deriving instance Typeable LVar

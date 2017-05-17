@@ -1,3 +1,9 @@
+
+## Tool Updates
+
++ New javascript code generator that uses an higher level intermediate
+  representation.
+
 # New in 1.0
 
 + It's about time
