@@ -138,14 +138,12 @@ jsAst2Text (JsVar x) = x
 jsAst2Text (JsSeq JsEmpty y) = jsAst2Text y
 jsAst2Text (JsSeq x JsEmpty) = jsAst2Text x
 jsAst2Text (JsSeq x y) = T.concat [jsAst2Text x, ";\n", jsAst2Text y]
-jsAst2Text (JsConst name exp) = T.concat [ "const ", name, " = ", jsAst2Text exp]
-jsAst2Text (JsLet name exp) = T.concat [ "let ", name, " = ", jsAst2Text exp]
---jsAst2Text (JsLetList lst) = T.concat [ "let ", T.intercalate ", " (map (\(n,v) -> T.concat [n, " = ", jsAst2Text v]  ) lst) ]
+jsAst2Text (JsConst name exp) = T.concat [ "var ", name, " = ", jsAst2Text exp] -- using var instead of const until ES6
+jsAst2Text (JsLet name exp) = T.concat [ "var ", name, " = ", jsAst2Text exp] -- using var instead of const until ES6
 jsAst2Text (JsSetVar name exp) = T.concat [ name, " = ", jsAst2Text exp]
 jsAst2Text (JsArrayProj i exp) = T.concat [ jsAst2Text exp, "[", jsAst2Text i, "]"]
 jsAst2Text (JsInt i) = T.pack $ show i ++ "|0"
 jsAst2Text (JsNum d) = T.pack $ show d
---jsAst2Text (JsInteger i) = T.pack $ show i
 jsAst2Text (JsStr s) =   "\"" `T.append` T.pack (concatMap translateChar s) `T.append` "\""
 jsAst2Text (JsArray l) = T.concat [ "[", T.intercalate ", " (map jsAst2Text l), "]"]
 jsAst2Text (JsSwitchCase exp l d) =
