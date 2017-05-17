@@ -11,13 +11,13 @@ module IRTS.CodegenJavaScript (codegenJavaScript
                              , JSTarget(..)
                              ) where
 
+import Data.Char
+import Data.Text (Text)
+import qualified Data.Text as T
 import IRTS.CodegenCommon
 import IRTS.JavaScript.Codegen
 import System.Directory
 import System.FilePath
-import Data.Char
-import Data.Text (Text)
-import qualified Data.Text as T
 
 
 data JSTarget = Node | JavaScript deriving Eq

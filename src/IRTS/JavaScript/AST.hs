@@ -12,10 +12,10 @@ module IRTS.JavaScript.AST( JsAST(..)
                          , js_aux_defs
                          ) where
 
+import Data.Char
+import Data.Data
 import Data.Text (Text)
 import qualified Data.Text as T
-import Data.Data
-import Data.Char
 import Numeric
 
 data JsAST = JsEmpty

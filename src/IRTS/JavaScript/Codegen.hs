@@ -13,33 +13,33 @@ module IRTS.JavaScript.Codegen( codegenJs
                               ) where
 
 import Control.DeepSeq
-import IRTS.CodegenCommon
-import IRTS.Lang
 import Idris.Core.TT
-import IRTS.LangOpts
+import IRTS.CodegenCommon
 import IRTS.JavaScript.AST
 import IRTS.JavaScript.LangTransforms
+import IRTS.Lang
+import IRTS.LangOpts
 import IRTS.System
 
+import Control.Monad.Trans.State
+import Data.List (nub)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 import Data.Maybe (fromJust)
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
-import Data.List (nub)
 import System.Directory (doesFileExist)
-import System.FilePath
-import Control.Monad.Trans.State
 import System.Environment
+import System.FilePath
 
-import GHC.Generics (Generic)
+import Data.Char
 import Data.Data
 import Data.Generics.Uniplate.Data
 import Data.List
-import Data.Char
+import GHC.Generics (Generic)
 
 data Partial = Partial Name Int Int deriving (Eq, Ord)
 

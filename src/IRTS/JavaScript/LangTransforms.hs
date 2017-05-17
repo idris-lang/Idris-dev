@@ -5,29 +5,30 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveDataTypeable, StandaloneDeriving, OverloadedStrings, DeriveGeneric, DeriveAnyClass, FlexibleInstances #-}
+{-# LANGUAGE DeriveAnyClass, DeriveDataTypeable, DeriveGeneric,
+             FlexibleInstances, OverloadedStrings, StandaloneDeriving #-}
 
 module IRTS.JavaScript.LangTransforms( used_defs
                                      ) where
 
 
 import Control.DeepSeq
-import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Set (Set)
-import qualified Data.Set as Set
+import Control.Monad.Trans.State
+import Data.List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Data.Maybe
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.Text (Text)
+import qualified Data.Text as T
+import Idris.Core.CaseTree
 import Idris.Core.TT
 import IRTS.Lang
-import Idris.Core.CaseTree
-import Data.List
-import Data.Maybe
-import Control.Monad.Trans.State
 
-import GHC.Generics (Generic)
 import Data.Data
 import Data.Generics.Uniplate.Data
+import GHC.Generics (Generic)
 import Idris.Core.DeepSeq
 
 deriving instance Typeable (LAlt' LExp)
