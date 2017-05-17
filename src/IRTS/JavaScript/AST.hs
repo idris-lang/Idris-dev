@@ -42,9 +42,7 @@ data JsAST = JsEmpty
            | JsErrorExp JsAST
            | JsBinOp Text JsAST JsAST
            | JsForeign Text [JsAST]
-      --     | JsB2I JsAST
            | JsWhileTrue JsAST
-          -- | JsFor (JsAST, JsAST, JsAST) JsAST
            | JsContinue
            | JsBreak
            | JsTrue
@@ -115,14 +113,6 @@ jsAst2Text (JsFun name args body) =
            , indent $ jsAst2Text body
            , "}\n"
            ]
-{-jsAst2Text (JsCurryFun name args body) =
-  T.concat [ "var ", name, " = \n"
-           , indent $ T.concat [ "(function(){\n"
-                               , indent $ curryDef args body
-                               , "})()"
-                               ]
-           ]
--}
 jsAst2Text (JsReturn x) = T.concat [ "return ", jsAst2Text x]
 jsAst2Text (JsApp fn args) = T.concat [fn, "(", T.intercalate ", " $ map jsAst2Text args, ")"]
 jsAst2Text (JsCurryApp fn []) = jsAst2Text fn
@@ -139,7 +129,7 @@ jsAst2Text (JsSeq JsEmpty y) = jsAst2Text y
 jsAst2Text (JsSeq x JsEmpty) = jsAst2Text x
 jsAst2Text (JsSeq x y) = T.concat [jsAst2Text x, ";\n", jsAst2Text y]
 jsAst2Text (JsConst name exp) = T.concat [ "var ", name, " = ", jsAst2Text exp] -- using var instead of const until ES6
-jsAst2Text (JsLet name exp) = T.concat [ "var ", name, " = ", jsAst2Text exp] -- using var instead of const until ES6
+jsAst2Text (JsLet name exp) = T.concat [ "var ", name, " = ", jsAst2Text exp] -- using var instead of let until ES6
 jsAst2Text (JsSetVar name exp) = T.concat [ name, " = ", jsAst2Text exp]
 jsAst2Text (JsArrayProj i exp) = T.concat [ jsAst2Text exp, "[", jsAst2Text i, "]"]
 jsAst2Text (JsInt i) = T.pack $ show i ++ "|0"
@@ -162,17 +152,11 @@ jsAst2Text (JsForeign code args) =
   let args_repl c i [] = c
       args_repl c i (t:r) = args_repl (T.replace ("%" `T.append` T.pack (show i)) t c) (i+1) r
   in T.concat ["(", args_repl code 0 (map jsAst2Text args), ")"]
---jsAst2Text (JsB2I x) = jsAst2Text $ JsBinOp "+" x (JsNum 0)
 jsAst2Text (JsWhileTrue w) =
   T.concat [ "while(true){\n"
            , indent $ jsAst2Text w
            , "}\n"
            ]
-{-jsAst2Text (JsFor (x,y,z) w) =
-  T.concat [ "for(", jsAst2Text x , "; ",jsAst2Text y, "; ",jsAst2Text z,"){\n"
-           , indent $ jsAst2Text w
-           , "}\n"
-           ]-}
 jsAst2Text JsContinue =
   "continue"
 jsAst2Text JsBreak =

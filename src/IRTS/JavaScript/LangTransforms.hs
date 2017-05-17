@@ -75,7 +75,7 @@ usedFunctions alldefs done names =
 usedDecls :: Map Name LDecl -> [Name] -> Map Name LDecl
 usedDecls dcls start =
   let used = reverse $ start ++ usedFunctions dcls (Set.fromList start) start
-  in restrictKeys dcls (Set.fromList used) --catMaybes $ map (\x -> Map.lookup  x dcls) used
+  in restrictKeys dcls (Set.fromList used)
 
 getUsedConstructors :: Map Name LDecl -> Set Name
 getUsedConstructors x = Set.fromList [ n | LCon _ _ n _ <- universeBi x]
