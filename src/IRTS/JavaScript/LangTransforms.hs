@@ -29,8 +29,6 @@ import Data.Data
 import Data.Generics.Uniplate.Data
 import GHC.Generics (Generic)
 
-deriving instance Typeable a => Typeable (LAlt' a)
-deriving instance Data a => Data (LAlt' a)
 deriving instance Typeable FDesc
 deriving instance Data FDesc
 deriving instance Typeable LVar

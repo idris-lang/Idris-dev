@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveFunctor, DeriveGeneric, PatternGuards #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, PatternGuards #-}
 
 module IRTS.Lang where
 
@@ -14,7 +14,9 @@ import Idris.Core.TT
 
 import Control.Applicative hiding (Const)
 import Control.Monad.State hiding (lift)
+import Data.Data (Data)
 import Data.List
+import Data.Typeable (Typeable)
 import Debug.Trace
 import GHC.Generics (Generic)
 
@@ -117,7 +119,7 @@ data FType = FArith ArithTy
 data LAlt' e = LConCase Int Name [Name] e
              | LConstCase Const e
              | LDefaultCase e
-  deriving (Show, Eq, Functor)
+  deriving (Show, Eq, Functor, Data, Typeable)
 
 type LAlt = LAlt' LExp
 
