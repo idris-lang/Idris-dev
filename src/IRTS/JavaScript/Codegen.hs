@@ -12,7 +12,6 @@ module IRTS.JavaScript.Codegen( codegenJs
                               , CGStats(..)
                               ) where
 
-import Control.DeepSeq
 import Idris.Core.TT
 import IRTS.CodegenCommon
 import IRTS.JavaScript.AST
@@ -85,10 +84,10 @@ codegenJs conf ci =
       else pure ()
     let defs = Map.fromList $ liftDecls ci
     let used = Map.elems $ used_defs defs [sMN 0 "runMain"]
-    used `deepseq` if debug then
+    if debug then
       do
-        putStrLn $ "Finished calculating used"
         writeFile (outputFile ci ++ ".LDeclsDebug") $ (unlines $ intersperse "" $ map show used) ++ "\n\n\n"
+        putStrLn $ "Finished calculating used"
       else pure ()
 
     let (out, stats) = doCodegen conf defs used
@@ -99,7 +98,6 @@ codegenJs conf ci =
               else return ""
 
 
-    out `deepseq` if debug then putStrLn $ "Finished generating code" else pure ()
     includes <- get_includes $ includes ci
     TIO.writeFile (outputFile ci) $ T.concat [ header conf
                                              , "\"use strict\";\n\n"

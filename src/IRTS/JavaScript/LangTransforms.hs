@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveAnyClass, DeriveDataTypeable, DeriveGeneric,
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric,
              FlexibleInstances, OverloadedStrings, StandaloneDeriving #-}
 
 module IRTS.JavaScript.LangTransforms( used_defs
@@ -29,7 +29,6 @@ import IRTS.Lang
 import Data.Data
 import Data.Generics.Uniplate.Data
 import GHC.Generics (Generic)
-import Idris.Core.DeepSeq
 
 deriving instance Typeable (LAlt' LExp)
 deriving instance Data (LAlt' LExp)
@@ -47,32 +46,6 @@ deriving instance Typeable LDecl
 deriving instance Data LDecl
 deriving instance Typeable LOpt
 deriving instance Data LOpt
-
-deriving instance Generic LDecl
-deriving instance NFData LDecl
-deriving instance Generic LOpt
-deriving instance NFData LOpt
-deriving instance Generic LExp
-deriving instance NFData LExp
-deriving instance NFData PrimFn
-deriving instance Generic LVar
-deriving instance NFData LVar
-deriving instance NFData (LAlt' LExp)
-deriving instance Generic (LAlt' e)
-deriving instance NFData FDesc
-deriving instance Generic FDesc
-
-{-
-deriving instance NFData FC
-deriving instance NFData FC'
-deriving instance NFData SpecialName
-deriving instance NFData Name
-deriving instance NFData ArithTy
-deriving instance NFData IntTy
-deriving instance NFData NativeTy
-deriving instance NFData Const
-deriving instance NFData CaseType
--}
 
 
 restrictKeys :: Ord k => Map k a -> Set k -> Map k a
