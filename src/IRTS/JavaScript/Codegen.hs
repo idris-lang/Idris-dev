@@ -34,6 +34,7 @@ import System.Directory (doesFileExist)
 import System.Environment
 import System.FilePath
 
+import Control.Applicative (pure, (<$>))
 import Data.Char
 import Data.Data
 import Data.Generics.Uniplate.Data
