@@ -9,7 +9,6 @@ Maintainer  : The Idris Community.
 
 module IRTS.JavaScript.AST( JsAST(..)
                          , jsAst2Text
-                         , jsAuxDefs
                          ) where
 
 import Data.Char
@@ -180,25 +179,6 @@ case2Text (x,y) =
   T.concat [ "case ", jsAst2Text x, ":\n"
            , indent $ T.concat [ jsAst2Text y, ";\nbreak;\n"]
            ]
-
-throw2 = T.concat [ "var js_idris_throw2 = function (x){\n"
-                  , " throw x;\n"
-                  , "}\n\n"
-                  ]
-
-force  = T.concat [ "var js_idris_force = function (x){\n"
-                  , " if(x === undefined || x.js_idris_lazy_calc === undefined){\n"
-                  , "  return x\n"
-                  , " }else{\n"
-                  , "  if(x.js_idris_lazy_val === undefined){\n"
-                  , "   x.js_idris_lazy_val = x.js_idris_lazy_calc()\n"
-                  , "  }"
-                  , "  return x.js_idris_lazy_val"
-                  , "}"
-                  , "}\n\n"
-                  ]
-
-jsAuxDefs = T.concat [throw2, force]
 
 default2Text :: Maybe JsAST -> Text
 default2Text Nothing = ""

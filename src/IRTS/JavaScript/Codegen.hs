@@ -98,6 +98,7 @@ codegenJs conf ci =
               then TIO.readFile $ path </> "jsbn/jsbn.js"
               else return ""
 
+    runtimeCommon <- TIO.readFile $ path </> "Runtime-common.js"
 
     includes <- getIncludes $ includes ci
     TIO.writeFile (outputFile ci) $ T.concat [ header conf
@@ -107,7 +108,7 @@ codegenJs conf ci =
                                              , initialization conf stats
                                              , doPartials (partialApplications stats)
                                              , includes, "\n"
-                                             , jsAuxDefs, "\n"
+                                             , runtimeCommon, "\n"
                                              , out, "\n"
                                              , "\n"
                                              , jsName (sMN 0 "runMain"), "();\n\n"
