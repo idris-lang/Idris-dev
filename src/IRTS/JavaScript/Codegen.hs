@@ -613,7 +613,7 @@ cgOp (LSHL ITNative) [l, r] = pure $ JsForeign "%0 << %1 |0" [l,r]
 cgOp (LSHL (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 << %1 & 0xFF" [l,r]
 cgOp (LSHL (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 << %1 & 0xFFFF" [l,r]
 cgOp (LSHL (ITFixed IT32)) [l, r] = pure $ JsForeign "%0  << %1 |0" [l,r]
-cgOp (LTimes (ATInt (ITFixed IT64))) [l, r] =
+cgOp (LSHL (ITFixed IT64)) [l, r] =
   do
     setUsedITBig
     pure $ JsForeign "%0.shiftLeft(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
