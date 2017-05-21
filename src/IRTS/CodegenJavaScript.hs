@@ -73,6 +73,7 @@ codegenJavaScript ci =
                        , initialization = const ""
                        , writeStrTemplate = "console.log(%0)"
                        , readStrTemplate = "prompt('Prelude.getLine')"
+                       , extraRunTime = "Runtime-javascript.js"
                        }
                )
                ci
@@ -91,6 +92,7 @@ codegenNode ci =
                       , initialization = initializationNode
                       , writeStrTemplate = "fs.writeSync(1,%0)"
                       , readStrTemplate = "js_idris_readStr()"
+                      , extraRunTime = "Runtime-node.js"
                       }
               )
               ci
