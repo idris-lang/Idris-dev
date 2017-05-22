@@ -128,7 +128,8 @@ namespaceOf _         = Nothing
 
 instance SExpable OutputAnnotation where
   toSExp (AnnName n ty d t) = toSExp $ [(SymbolAtom "name", StringAtom (show n)),
-                                        (SymbolAtom "implicit", BoolAtom False)] ++
+                                        (SymbolAtom "implicit", BoolAtom False),
+                                        (SymbolAtom "key", StringAtom (encodeName n))] ++
                                        maybeProps [("decor", ty)] ++
                                        maybeProps [("doc-overview", d), ("type", t)] ++
                                        maybeProps [("namespace", namespaceOf n)]
@@ -171,6 +172,12 @@ instance SExpable OutputAnnotation where
              maybeProps [("source-file", file)]
   toSExp AnnQuasiquote = toSExp [(SymbolAtom "quasiquotation", True)]
   toSExp AnnAntiquote = toSExp [(SymbolAtom "antiquotation", True)]
+
+encodeName :: Name -> String
+encodeName n = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $ n
+
+decodeName :: String -> Name
+decodeName = Binary.decode . Lazy.fromStrict . Base64.decodeLenient . UTF8.fromString
 
 encodeTerm :: [(Name, Bool)] -> Term -> String
 encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $
