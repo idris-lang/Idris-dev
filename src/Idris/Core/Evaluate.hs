@@ -78,6 +78,7 @@ data Value = VP NameType Name Value
 
 canonical :: Value -> Bool
 canonical (VP (DCon _ _ _) _ _) = True
+canonical (VP (TCon _ _) _ _) = True
 canonical (VApp f a) = canonical f
 canonical (VConstant _) = True
 canonical (VType _) = True

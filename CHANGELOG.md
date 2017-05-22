@@ -3,6 +3,11 @@
 
 + New javascript code generator that uses an higher level intermediate
   representation.
+  
++ Names are now annotated with their representations over the IDE
+  protocol, which allows IDEs to provide commands that work on special
+  names that don't have syntax, such as case block names
+  
 
 # New in 1.0
 
