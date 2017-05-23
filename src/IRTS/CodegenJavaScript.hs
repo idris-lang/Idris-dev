@@ -73,6 +73,7 @@ codegenJavaScript ci =
                        , initialization = const ""
                        , writeStrTemplate = "console.log(%0)"
                        , readStrTemplate = "prompt('Prelude.getLine')"
+                       , jsbnPath = "jsbn/jsbn-browser.js"
                        , extraRunTime = "Runtime-javascript.js"
                        }
                )
@@ -90,8 +91,9 @@ codegenNode ci =
     codegenJs (CGConf { header = "#!/usr/bin/env node\n"
                       , footer = ""
                       , initialization = initializationNode
-                      , writeStrTemplate = "fs.writeSync(1,%0)"
+                      , writeStrTemplate = "process.stdout.write(%0)"
                       , readStrTemplate = "js_idris_readStr()"
+                      , jsbnPath = "jsbn/jsbn-node.js"
                       , extraRunTime = "Runtime-node.js"
                       }
               )

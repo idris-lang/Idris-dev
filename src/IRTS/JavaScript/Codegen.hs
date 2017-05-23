@@ -16,10 +16,14 @@ import Idris.Core.TT
 import IRTS.CodegenCommon
 import IRTS.JavaScript.AST
 import IRTS.JavaScript.LangTransforms
+import IRTS.JavaScript.Name
+import IRTS.JavaScript.PrimOp
+import IRTS.JavaScript.Specialize
 import IRTS.Lang
 import IRTS.LangOpts
 import IRTS.System
 
+import Control.Monad
 import Control.Monad.Trans.State
 import Data.List (nub)
 import Data.Map.Strict (Map)
@@ -41,8 +45,6 @@ import Data.Generics.Uniplate.Data
 import Data.List
 import GHC.Generics (Generic)
 
-data Partial = Partial Name Int Int deriving (Eq, Ord)
-
 data CGStats = CGStats { usedWriteStr :: Bool
                        , usedReadStr :: Bool
                        , usedBigInt :: Bool
@@ -57,6 +59,7 @@ data CGConf = CGConf { header :: Text
                      , initialization :: CGStats -> Text
                      , writeStrTemplate :: Text
                      , readStrTemplate :: Text
+                     , jsbnPath :: String
                      , extraRunTime :: String
                      }
 
@@ -96,7 +99,7 @@ codegenJs conf ci =
 
     path <- getIdrisJSRTSDir
     jsbn <- if usedBigInt stats
-              then TIO.readFile $ path </> "jsbn/jsbn.js"
+              then TIO.readFile $ path </> jsbnPath conf
               else return ""
 
     runtimeCommon <- TIO.readFile $ path </> "Runtime-common.js"
@@ -119,17 +122,6 @@ codegenJs conf ci =
                                              , footer conf
                                              ]
 
-jsName :: Name -> Text
-jsName n = T.pack $ "idris_" ++ concatMap jschar (showCG n)
-  where jschar x | isAlpha x || isDigit x = [x]
-                  | otherwise = "_" ++ show (fromEnum x) ++ "_"
-
-jsPartialName :: Partial -> Text
-jsPartialName (Partial n i j) = T.concat ["partial_", T.pack $ show i, "_", T.pack $ show j, "_" , jsName n]
-
-jsTailCallOptimName :: Text -> Text
-jsTailCallOptimName x = T.concat ["tailCallOptim_cgIdris_", x]
-
 doPartials :: Set Partial -> Text
 doPartials x =
   T.intercalate "\n" (map f $ Set.toList x)
@@ -137,8 +129,9 @@ doPartials x =
       f p@(Partial n i j) =
         let vars1 = map (T.pack . ("x"++) . show) [1..i]
             vars2 = map (T.pack . ("x"++) . show) [(i+1)..j]
-        in jsAst2Text $
-             JsFun (jsPartialName p) vars1 $ JsReturn $ JsCurryLambda vars2 (JsApp (jsName n) (map JsVar (vars1 ++ vars2)) )
+        in jsStmt2Text $
+             JsFun (jsNamePartial p) vars1 $ JsReturn $
+               jsCurryLam vars2 (jsAppN (jsName n) (map JsVar (vars1 ++ vars2)) )
 
 doCodegen :: CGConf -> Map Name LDecl -> [LDecl] -> (Text, CGStats)
 doCodegen conf defs decls =
@@ -153,17 +146,17 @@ doCodegen conf defs decls =
 doCodegenDecl :: CGConf -> Map Name LDecl -> LDecl -> (Text, CGStats)
 doCodegenDecl conf defs (LFun _ n args def) =
   let (ast, stats) = cgFun conf defs n args def
-  in (jsAst2Text $ ast, stats)
-doCodegenDecl conf defs (LConstructor n i sz) =
-  ("", emptyStats)
+  in (jsStmt2Text $ ast, stats)
+doCodegenDecl conf defs (LConstructor n i sz) = ("", emptyStats)
 
-seqJs :: [JsAST] -> JsAST
+seqJs :: [JsStmt] -> JsStmt
 seqJs [] = JsEmpty
 seqJs (x:xs) = JsSeq x (seqJs xs)
 
 
 data CGBodyState = CGBodyState { defs :: Map Name LDecl
                                , lastIntName :: Int
+                               , reWrittenNames :: Map.Map Name JsExpr
                                , currentFnNameAndArgs :: (Text, [Text])
                                , usedArgsTailCallOptim :: Set (Text, Text)
                                , isTailRec :: Bool
@@ -180,7 +173,7 @@ getNewCGName =
     st <- get
     let v = lastIntName st + 1
     put $ st {lastIntName = v}
-    return $ T.pack $ "cgIdris_" ++ show v
+    return $ jsNameGenerated v
 
 addPartial :: Partial -> State CGBodyState ()
 addPartial p =
@@ -194,12 +187,12 @@ getNewCGNames :: Int -> State CGBodyState [Text]
 getNewCGNames n =
   mapM (\_ -> getNewCGName) [1..n]
 
-getConsId :: Name -> State CGBodyState Int
+getConsId :: Name -> State CGBodyState (Int, Int)
 getConsId n =
     do
       st <- get
       case Map.lookup n (defs st) of
-        Just (LConstructor _ conId _) -> pure conId
+        Just (LConstructor _ conId arity) -> pure (conId, arity)
         _ -> error $ "Internal JS Backend error " ++ showCG n ++ " is not a constructor."
 
 getArgList :: Name -> State CGBodyState (Maybe [Name])
@@ -216,26 +209,15 @@ data BodyResTarget = ReturnBT
                    | DecConstBT Text
                    | GetExpBT
 
-replaceVarsByProj :: JsAST -> Map Text Int -> JsAST -> JsAST
-replaceVarsByProj n d z =
-  transform f z
-  where
-    f :: JsAST -> JsAST
-    f (JsVar x) =
-      case Map.lookup x d of
-        Nothing -> (JsVar x)
-        Just i -> JsArrayProj (JsInt i) n
-    f x = x
-
-cgFun :: CGConf -> Map Name LDecl -> Name -> [Name] -> LExp -> (JsAST, CGStats)
-cgFun cnf dfs n args def =
-  let
-      fnName = jsName n
-      argNames = map jsName args
-      ((decs, res),st) = runState
+cgFun :: CGConf -> Map Name LDecl -> Name -> [Name] -> LExp -> (JsStmt, CGStats)
+cgFun cnf dfs n args def = do
+  let fnName = jsName n
+  let argNames = map jsName args
+  let ((decs, res),st) = runState
                           (cgBody ReturnBT def)
                           (CGBodyState { defs=dfs
                                        , lastIntName = 0
+                                       , reWrittenNames = Map.empty
                                        , currentFnNameAndArgs = (fnName, argNames)
                                        , usedArgsTailCallOptim = Set.empty
                                        , isTailRec = False
@@ -246,19 +228,16 @@ cgFun cnf dfs n args def =
                                        , partialApps = Set.empty
                                        }
                           )
-      body = if isTailRec st then
-                JsSeq
-                 (declareUsedOptimArgs $ usedArgsTailCallOptim st)
-                 (JsWhileTrue ((seqJs decs) `JsSeq` res))
-                else (seqJs decs) `JsSeq` res
-  in (JsFun fnName argNames $ body, CGStats { usedWriteStr = usedWrite st
-                                            , partialApplications = partialApps st
-                                            , usedBigInt = usedITBig st
-                                            , usedReadStr = usedRead st
-                                            }
-     )
+  let body = if isTailRec st then JsSeq (declareUsedOptimArgs $ usedArgsTailCallOptim st) (JsForever ((seqJs decs) `JsSeq` res)) else (seqJs decs) `JsSeq` res
+  let fn = JsFun fnName argNames body
+  let state' = CGStats { usedWriteStr = usedWrite st
+                       , partialApplications = partialApps st
+                       , usedBigInt = usedITBig st
+                       , usedReadStr = usedRead st
+                       }
+  (fn, state')
 
-getSwitchJs :: JsAST -> [LAlt] -> JsAST
+getSwitchJs :: JsExpr -> [LAlt] -> JsExpr
 getSwitchJs x alts =
   if any conCase alts then JsArrayProj (JsInt 0) x
     else if any constBigIntCase alts then JsForeign "%0.toString()" [x]
@@ -268,48 +247,75 @@ getSwitchJs x alts =
         constBigIntCase (LConstCase (BI _) _) = True
         constBigIntCase _ = False
 
-addRT :: BodyResTarget -> JsAST -> JsAST
+addRT :: BodyResTarget -> JsExpr -> JsStmt
 addRT ReturnBT x = JsReturn x
-addRT (DecBT n) x = JsLet n x
-addRT (SetBT n) x = JsSetVar n x
-addRT (DecConstBT n) x = JsConst n x
-addRT GetExpBT x = x
+addRT (DecBT n) x = JsDecLet n x
+addRT (DecConstBT n) x = JsDecConst n x
+addRT (SetBT n) x = JsSet (JsVar n) x
+addRT GetExpBT x = JsExprStmt x
 
-declareUsedOptimArgs :: Set (Text, Text) -> JsAST
-declareUsedOptimArgs x = seqJs $ map (\(x,y) -> JsLet x (JsVar y) ) (Set.toList x)
+declareUsedOptimArgs :: Set (Text, Text) -> JsStmt
+declareUsedOptimArgs x = seqJs $ map (\(x,y) -> JsDecLet x (JsVar y) ) (Set.toList x)
 
-tailCallOptimRefreshArgs :: [(Text, JsAST)] -> Set Text -> ((JsAST, JsAST), Set (Text, Text))
+tailCallOptimRefreshArgs :: [(Text, JsExpr)] -> Set Text -> ((JsStmt, JsStmt), Set (Text, Text))
 tailCallOptimRefreshArgs [] s = ((JsEmpty, JsEmpty), Set.empty)
 tailCallOptimRefreshArgs ((n,x):r) s =
   let ((y1,y2), y3) = tailCallOptimRefreshArgs r (Set.insert n s) --
   in if Set.null $ (Set.fromList [ z | z <- universeBi x ]) `Set.intersection` s then
-      ((y1, JsSetVar n x `JsSeq` y2), y3)
+      ((y1, jsSetVar n x `JsSeq` y2), y3)
       else
         let n' = jsTailCallOptimName n
-        in ((JsSetVar n' x `JsSeq` y1, JsSetVar n (JsVar n') `JsSeq` y2), Set.insert (n',n) y3)
+        in ((jsSetVar n' x `JsSeq` y1, jsSetVar n (JsVar n') `JsSeq` y2), Set.insert (n',n) y3)
 
+cgName :: Name -> State CGBodyState JsExpr
+cgName b = do
+  st <- get
+  case Map.lookup b (reWrittenNames st) of
+    Just e -> pure e
+    _ -> pure $ JsVar $ jsName b
 
-cgBody :: BodyResTarget -> LExp -> State CGBodyState ([JsAST], JsAST)
-cgBody rt (LV (Glob n)) =
+cgBody :: BodyResTarget -> LExp -> State CGBodyState ([JsStmt], JsStmt)
+cgBody rt expr =
+  case expr of
+    (LCase _ (LOp oper [x, y]) [LConstCase (I 0) (LCon _ _ ff []), LDefaultCase (LCon _ _ tt [])])
+      | (ff == qualifyN "Prelude.Bool" "False" &&
+         tt == qualifyN "Prelude.Bool" "True") ->
+        case (Map.lookup oper primDB) of
+          Just (useBigInt, pti, combinator) | pti == PTBool -> do
+            z <- mapM (cgBody GetExpBT) [x, y]
+            when useBigInt setUsedITBig
+            let res = jsPrimCoerce pti PTBool $ combinator $ map (jsStmt2Expr . snd) z
+            pure $ (concat $ map fst z, addRT rt res)
+          _ -> cgBody' rt expr
+    (LCase f e [LConCase nf ff [] alt, LConCase nt tt [] conseq])
+      | (ff == qualifyN "Prelude.Bool" "False" &&
+         tt == qualifyN "Prelude.Bool" "True") ->
+        cgBody' rt $ LCase f e [LConCase nt tt [] conseq, LConCase nf ff [] alt]
+    expr -> cgBody' rt expr
+
+cgBody' :: BodyResTarget -> LExp -> State CGBodyState ([JsStmt], JsStmt)
+cgBody' rt (LV (Glob n)) =
   do
     argsFn <- getArgList n
     case argsFn of
-      Just [] ->
-        pure $ ([], addRT rt $ JsApp (jsName n) [])
+      Just [] -> do
+        n' <- cgName n
+        pure $ ([], addRT rt n')
       Just a ->
         do
-          let part = Partial n  0  (length a)
+          let part = Partial n 0 (length a)
           addPartial part
-          pure ([], addRT rt $ JsApp (jsPartialName part) [])
-      Nothing ->
-        pure $ ([], addRT rt $ JsVar $ jsName n)
-cgBody rt (LApp tailcall (LV (Glob fn)) args) =
+          pure ([], addRT rt $ jsAppN (jsNamePartial part) [])
+      Nothing -> do
+        n' <- cgName n
+        pure $ ([], addRT rt n')
+cgBody' rt (LApp tailcall (LV (Glob fn)) args) =
   do
     let fname = jsName fn
     st <- get
     let (currFn, argN) = currentFnNameAndArgs st
     z <- mapM (cgBody GetExpBT) args
-    let argVals = map snd z
+    let argVals = map (jsStmt2Expr . snd) z
     let preDecs = concat $ map fst z
     case (fname == currFn && (length args) == (length argN), rt) of
       (True, ReturnBT) ->
@@ -323,81 +329,86 @@ cgBody rt (LApp tailcall (LV (Glob fn)) args) =
           argsFn <- getArgList fn
           case argsFn of
             Nothing ->
-              pure (preDecs, addRT rt $ JsCurryApp (JsVar fname) argVals )
+              pure (preDecs, addRT rt $ jsCurryApp (JsVar fname) argVals )
             Just agFn ->
               do
                 let lenAgFn = length agFn
                 let lenArgs = length args
                 case compare lenAgFn lenArgs of
                   EQ ->
-                    pure (preDecs, addRT rt $ JsApp fname argVals)
+                    pure (preDecs, addRT rt $ jsAppN fname argVals)
                   LT ->
-                    pure (preDecs, addRT rt $ JsCurryApp  (JsApp fname (take lenAgFn argVals )) (drop lenAgFn argVals) )
+                    pure (preDecs, addRT rt $ jsCurryApp (jsAppN fname (take lenAgFn argVals)) (drop lenAgFn argVals) )
                   GT ->
                     do
                       let part = Partial fn lenArgs lenAgFn
                       addPartial part
-                      pure (preDecs, addRT rt $ JsApp (jsPartialName part) argVals )
+                      pure (preDecs, addRT rt $ jsAppN (jsNamePartial part) argVals )
 
-cgBody rt (LForce (LLazyApp n args)) = cgBody rt (LApp False (LV (Glob n)) args)
-cgBody rt (LLazyApp n args) =
+cgBody' rt (LForce (LLazyApp n args)) = cgBody rt (LApp False (LV (Glob n)) args)
+cgBody' rt (LLazyApp n args) =
   do
     (d,v) <- cgBody ReturnBT (LApp False (LV (Glob n)) args)
-    pure ([], addRT rt $ JsLazy $ JsSeq (seqJs d) v)
-cgBody rt (LForce e) =
+    pure ([], addRT rt $ jsLazy $ jsStmt2Expr $ JsSeq (seqJs d) v)
+cgBody' rt (LForce e) =
   do
     (d,v) <- cgBody GetExpBT e
-    pure (d, addRT rt $ JsForce v)
-cgBody rt (LLet n v sc) =
+    pure (d, addRT rt $ JsForce $ jsStmt2Expr v)
+cgBody' rt (LLet n v sc) =
   do
     (d1, v1) <- cgBody (DecConstBT $ jsName n) v
     (d2, v2) <- cgBody rt sc
-    pure $ ((d1 ++ v1 : d2), v2 )
-cgBody rt (LProj e i) =
+    pure $ ((d1 ++ v1 : d2), v2)
+cgBody' rt (LProj e i) =
   do
     (d, v) <- cgBody GetExpBT e
-    pure $ (d, addRT rt $ JsArrayProj (JsInt $ i+1) $ v)
-cgBody rt (LCon _  conId n args) =
+    pure $ (d, addRT rt $ JsArrayProj (JsInt $ i+1) $ jsStmt2Expr v)
+cgBody' rt (LCon _  conId n args) =
   do
     z <- mapM (cgBody GetExpBT) args
-    pure $ (concat $ map fst z, addRT rt $ JsArray (JsInt conId : map snd z))
-cgBody rt (LCase _ e alts) =
-  do
-    (d,v) <- cgBody GetExpBT e
-    resName <- getNewCGName
-    swName <- getNewCGName
-    (altsJs,def) <- cgAlts rt resName (JsVar swName) alts
-    let decSw = JsConst swName v
-    let sw = JsSwitchCase (getSwitchJs (JsVar swName) alts) altsJs def
-    case rt of
-      ReturnBT ->
-        pure (d ++ [decSw], sw)
-      (DecBT nvar) ->
-        pure (d ++ [decSw, JsLet nvar JsNull], sw)
-      (SetBT nvar) ->
-        pure (d ++ [decSw], sw)
-      GetExpBT ->
-        pure (d ++ [decSw, JsLet resName JsNull, sw], JsVar resName)
-      (DecConstBT nvar) ->
-        pure (d ++ [decSw, JsLet nvar JsNull], sw)
-cgBody rt (LConst c) =
+    con <- formCon n (map (jsStmt2Expr . snd) z)
+    pure $ (concat $ map fst z, addRT rt con)
+cgBody' rt (LCase _ e alts) = do
+  (d, v) <- cgBody GetExpBT e
+  resName <- getNewCGName
+  (decSw, entry) <-
+    case (all altHasNoProj alts && length alts <= 2, v) of
+      (True, _) -> pure (JsEmpty, jsStmt2Expr v)
+      (False, JsExprStmt (JsVar n)) -> pure (JsEmpty, jsStmt2Expr v)
+      _ -> do
+        swName <- getNewCGName
+        pure (JsDecConst swName $ jsStmt2Expr v, JsVar swName)
+  sw' <- cgIfTree rt resName entry alts
+  let sw =
+        case sw' of
+          (Just x) -> x
+          Nothing -> JsExprStmt JsNull
+  case rt of
+    ReturnBT -> pure (d ++ [decSw], sw)
+    (DecBT nvar) -> pure (d ++ [decSw, JsDecLet nvar JsNull], sw)
+    (DecConstBT nvar) -> pure (d ++ [decSw, JsDecLet nvar JsNull], sw)
+    (SetBT nvar) -> pure (d ++ [decSw], sw)
+    GetExpBT ->
+      pure
+        (d ++ [decSw, JsDecLet resName JsNull, sw], JsExprStmt $ JsVar resName)
+cgBody' rt (LConst c) =
   do
      cst <- cgConst c
      pure ([], (addRT rt) $ cst)
-cgBody rt (LOp op args) =
+cgBody' rt (LOp op args) =
   do
     z <- mapM (cgBody GetExpBT) args
-    res <- cgOp op (map snd z)
+    res <- cgOp op (map (jsStmt2Expr . snd) z)
     pure $ (concat $ map fst z, addRT rt $ res)
-cgBody rt LNothing = pure ([], addRT rt JsNull)
-cgBody rt (LError x) = pure ([], JsError $ JsStr x)
-cgBody rt x@(LForeign dres (FStr code) args ) =
+cgBody' rt LNothing = pure ([], addRT rt JsNull)
+cgBody' rt (LError x) = pure ([], JsError $ JsStr x)
+cgBody' rt x@(LForeign dres (FStr code) args ) =
   do
     z <- mapM (cgBody GetExpBT) (map snd args)
-    jsArgs <- sequence $ map cgForeignArg (zip (map fst args) (map snd z))
+    jsArgs <- sequence $ map cgForeignArg (zip (map fst args) (map (jsStmt2Expr . snd) z))
     jsDres <- cgForeignRes dres $ JsForeign (T.pack code) jsArgs
     pure $ (concat $ map fst z, addRT rt $ jsDres)
-cgBody _ x = error $ "Instruction " ++ show x ++ " not compilable yet"
+cgBody' _ x = error $ "Instruction " ++ show x ++ " not compilable yet"
 
 altsRT :: Text -> BodyResTarget -> BodyResTarget
 altsRT rn ReturnBT = ReturnBT
@@ -406,36 +417,85 @@ altsRT rn (SetBT n) = SetBT n
 altsRT rn (DecConstBT n) = SetBT n
 altsRT rn GetExpBT = SetBT rn
 
-cgAlts :: BodyResTarget -> Text -> JsAST -> [LAlt] -> State CGBodyState ([(JsAST, JsAST)], Maybe JsAST)
-cgAlts rt resName scrvar ((LConstCase t exp):r) =
-  do
-    (d, v) <- cgBody (altsRT resName rt) exp
-    (ar, def) <- cgAlts rt resName scrvar r
-    cst <- case t of
-            BI _ ->
-              do
-                setUsedITBig
-                c' <- cgConst t
-                pure $ JsForeign "%0.toString()" [c']
-            _ -> cgConst t
-    pure ((cst, JsSeq (seqJs d) v) : ar, def)
-cgAlts rt resName scrvar ((LDefaultCase exp):r) =
-  do
-    (d, v) <- cgBody (altsRT resName rt) exp
-    pure ([], Just $ JsSeq (seqJs d) v)
-cgAlts rt resName scrvar ((LConCase _ n args exp):r) =
-  do
-    (d, v) <- cgBody (altsRT resName rt) exp
-    (ar, def) <- cgAlts rt resName scrvar r
-    conId <- getConsId n
-    let replace = replaceVarsByProj scrvar (Map.fromList $ zip (map jsName args) [1..])
-    let branchBody = JsSeq (seqJs $ map replace d) (replace v)
-    pure ((JsInt conId, branchBody) : ar, def)
-cgAlts _ _ _ [] =
-  pure ([],Nothing)
+altHasNoProj :: LAlt -> Bool
+altHasNoProj (LConCase _ _ args _) = args == []
+altHasNoProj _ = True
+
+formCon :: Name -> [JsExpr] -> State CGBodyState JsExpr
+formCon n args = do
+  case specialCased n of
+    Just (ctor, test, match) -> pure $ ctor args
+    Nothing -> do
+      (conId, arity) <- getConsId n
+      if (arity > 0)
+        then pure $
+             JsObj $
+             (T.pack "type", JsInt conId) :
+             zip (map (\i -> T.pack $ "$" ++ show i) [1 ..]) args
+        else pure $ JsInt conId
+
+formConTest :: Name -> JsExpr -> State CGBodyState JsExpr
+formConTest n x = do
+  case specialCased n of
+    Just (ctor, test, match) -> pure $ test x
+    Nothing -> do
+      (conId, arity) <- getConsId n
+      if (arity > 0)
+        then pure $ JsBinOp "===" (JsProp x (T.pack "type")) (JsInt conId)
+        else pure $ JsBinOp "===" x (JsInt conId)
+
+formProj :: Name -> JsExpr -> Int -> JsExpr
+formProj n v i =
+  case specialCased n of
+    Just (ctor, test, proj) -> proj v i
+    Nothing -> JsProp v (T.pack $ "$" ++ show i)
+
+smartif :: JsExpr -> JsStmt -> Maybe JsStmt -> JsStmt
+smartif cond conseq (Just alt) = JsIf cond conseq (Just alt)
+smartif cond conseq Nothing = conseq
+
+cgIfTree :: BodyResTarget
+         -> Text
+         -> JsExpr
+         -> [LAlt]
+         -> State CGBodyState (Maybe JsStmt)
+cgIfTree _ _ _ [] = pure Nothing
+cgIfTree rt resName scrvar ((LConstCase t exp):r) = do
+  (d, v) <- cgBody (altsRT resName rt) exp
+  alternatives <- cgIfTree rt resName scrvar r
+  test <- case t of
+            BI _ -> do
+              t' <- cgConst t
+              cgOp (LPlus (ATInt ITBig)) [scrvar, t']
+            _ -> do
+              t' <- cgConst t
+              pure $ JsBinOp "===" scrvar t'
+  pure $ Just $
+    smartif test (JsSeq (seqJs d) v) alternatives
+cgIfTree rt resName scrvar ((LDefaultCase exp):r) = do
+  (d, v) <- cgBody (altsRT resName rt) exp
+  pure $ Just $ JsSeq (seqJs d) v
+cgIfTree rt resName scrvar ((LConCase _ n args exp):r) = do
+  alternatives <- cgIfTree rt resName scrvar r
+  test <- formConTest n scrvar
+  st <- get
+  let rwn = reWrittenNames st
+  put $
+    st
+    { reWrittenNames =
+        foldl
+          (\m (n, j) -> Map.insert n (formProj n scrvar j) m)
+          rwn
+          (zip args [1 ..])
+    }
+  (d, v) <- cgBody (altsRT resName rt) exp
+  st1 <- get
+  put $ st1 {reWrittenNames = rwn}
+  let branchBody = JsSeq (seqJs d) v
+  pure $ Just $ smartif test branchBody alternatives
 
 
-cgForeignArg :: (FDesc, JsAST) -> State CGBodyState JsAST
+cgForeignArg :: (FDesc, JsExpr) -> State CGBodyState JsExpr
 cgForeignArg (FApp (UN "JS_IntT") _, v) = pure v
 cgForeignArg (FCon (UN "JS_Str"), v) = pure v
 cgForeignArg (FCon (UN "JS_Ptr"), v) = pure v
@@ -446,14 +506,14 @@ cgForeignArg (FApp (UN "JS_FnT") [_,FApp (UN "JS_Fn") [_,_, a, FApp (UN "JS_FnBa
 cgForeignArg (FApp (UN "JS_FnT") [_,FApp (UN "JS_Fn") [_,_, a, FApp (UN "JS_FnIO") [_,_, b]]], f) =
   do
     jsx <- cgForeignArg (a, JsVar "x")
-    jsres <- cgForeignRes b $ JsCurryApp (JsCurryApp f [jsx]) [JsNull]
+    jsres <- cgForeignRes b $ jsCurryApp (jsCurryApp f [jsx]) [JsNull]
     pure $ JsLambda ["x"] $ JsReturn jsres
 cgForeignArg (desc, _) =
   do
     st <- get
     error $ "Foreign arg type " ++ show desc ++ " not supported. While generating function " ++ (show $ fst $ currentFnNameAndArgs st)
 
-cgForeignRes :: FDesc -> JsAST -> State CGBodyState JsAST
+cgForeignRes :: FDesc -> JsExpr -> State CGBodyState JsExpr
 cgForeignRes (FApp (UN "JS_IntT") _) x = pure x
 cgForeignRes (FCon (UN "JS_Unit")) x = pure x
 cgForeignRes (FCon (UN "JS_Str")) x = pure x
@@ -468,7 +528,7 @@ setUsedITBig :: State CGBodyState ()
 setUsedITBig =   modify (\s -> s {usedITBig = True})
 
 
-cgConst :: Const -> State CGBodyState JsAST
+cgConst :: Const -> State CGBodyState JsExpr
 cgConst (I i) = pure $ JsInt i
 cgConst (BI i) =
   do
@@ -476,7 +536,7 @@ cgConst (BI i) =
     pure $ JsForeign "new jsbn.BigInteger(%0)" [JsStr $ show i]
 cgConst (Ch c) = pure $ JsStr [c]
 cgConst (Str s) = pure $ JsStr s
-cgConst (Fl f) = pure $ JsNum f
+cgConst (Fl f) = pure $ JsDouble f
 cgConst (B8 x) = pure $ JsForeign (T.pack $ show x ++ " & 0xFF") []
 cgConst (B16 x) = pure $ JsForeign (T.pack $ show x ++ " & 0xFFFF") []
 cgConst (B32 x) = pure $ JsForeign (T.pack $ show x ++ "|0" ) []
@@ -487,327 +547,10 @@ cgConst (B64 x) =
 cgConst x | isTypeConst x = pure $ JsInt 0
 cgConst x = error $ "Constant " ++ show x ++ " not compilable yet"
 
-jsB2I :: JsAST -> JsAST
+jsB2I :: JsExpr -> JsExpr
 jsB2I x = JsForeign "%0 ? 1|0 : 0|0" [x]
 
-cgOp :: PrimFn -> [JsAST] -> State CGBodyState JsAST
-cgOp (LPlus ATFloat) [l, r] = pure $ JsBinOp "+" l r
-cgOp (LPlus (ATInt ITChar)) [l, r] = pure $ JsForeign "String.fromCharCode(%0.charCodeAt(0) + %1.charCodeAt(0))" [l,r]
-cgOp (LPlus (ATInt ITNative)) [l, r] = pure $ JsForeign "%0+%1|0" [l,r]
-cgOp (LPlus (ATInt (ITFixed IT8))) [l, r] = pure $ JsForeign "%0 + %1 & 0xFF" [l,r]
-cgOp (LPlus (ATInt (ITFixed IT16))) [l, r] = pure $ JsForeign "%0 + %1 & 0xFFFF" [l,r]
-cgOp (LPlus (ATInt (ITFixed IT32))) [l, r] = pure $ JsForeign "%0+%1|0" [l,r]
-cgOp (LPlus (ATInt ITBig)) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "add" [r]
-cgOp (LPlus (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.add(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
-cgOp (LMinus ATFloat) [l, r] = pure $ JsBinOp "-" l r
-cgOp (LMinus (ATInt ITChar)) [l, r] = pure $ JsForeign "String.fromCharCode(%0.charCodeAt(0) - %1.charCodeAt(0))" [l,r]
-cgOp (LMinus (ATInt ITNative)) [l, r] = pure $ JsForeign "%0-%1|0" [l,r]
-cgOp (LMinus (ATInt (ITFixed IT8))) [l, r] = pure $ JsForeign "%0 - %1 & 0xFF" [l,r]
-cgOp (LMinus (ATInt (ITFixed IT16))) [l, r] = pure $ JsForeign "%0 - %1 & 0xFFFF" [l,r]
-cgOp (LMinus (ATInt (ITFixed IT32))) [l, r] = pure $ JsForeign "%0-%1|0" [l,r]
-cgOp (LMinus (ATInt ITBig)) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "subtract" [r]
-cgOp (LMinus (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.subtract(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
-cgOp (LTimes ATFloat) [l, r] = pure $ JsBinOp "*" l r
-cgOp (LTimes (ATInt ITChar)) [l, r] = pure $ JsForeign "String.fromCharCode(%0.charCodeAt(0) * %1.charCodeAt(0))" [l,r]
-cgOp (LTimes (ATInt ITNative)) [l, r] = pure $ JsForeign "%0*%1|0" [l,r]
-cgOp (LTimes (ATInt (ITFixed IT8))) [l, r] = pure $ JsForeign "%0 * %1 & 0xFF" [l,r]
-cgOp (LTimes (ATInt (ITFixed IT16))) [l, r] = pure $ JsForeign "%0 * %1 & 0xFFFF" [l,r]
-cgOp (LTimes (ATInt (ITFixed IT32))) [l, r] = pure $ JsForeign "%0*%1|0" [l,r]
-cgOp (LTimes (ATInt ITBig)) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "multiply" [r]
-cgOp (LTimes (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.multiply(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
-cgOp (LUDiv (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 / %1" [l,r]
-cgOp (LUDiv (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 / %1" [l,r]
-cgOp (LUDiv (ITFixed IT32)) [l, r] = pure $ JsForeign "(%0>>>0)  / (%1>>>0) |0" [l,r]
-cgOp (LUDiv (ITFixed IT64)) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.divide(%1)" [l,r]
-cgOp (LSDiv ATFloat) [l,r] = pure $ JsBinOp "/" l r
-cgOp (LSDiv (ATInt (ITFixed IT8))) [l, r] = pure $ JsForeign "%0 / %1" [l,r]
-cgOp (LSDiv (ATInt (ITFixed IT16))) [l, r] = pure $ JsForeign "%0 / %1" [l,r]
-cgOp (LSDiv (ATInt (ITFixed IT32))) [l, r] = pure $ JsForeign "%0  / %1 |0" [l,r]
-cgOp (LSDiv (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.divide(%1)" [l,r]
-cgOp (LSDiv (ATInt ITNative)) [l,r] = pure $ JsForeign "%0/%1|0" [l, r]
-cgOp (LSDiv (ATInt ITBig)) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "divide" [r]
-cgOp (LURem (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 % %1" [l,r]
-cgOp (LURem (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 % %1" [l,r]
-cgOp (LURem (ITFixed IT32)) [l, r] = pure $ JsForeign "(%0>>>0)  % (%1>>>0) |0" [l,r]
-cgOp (LURem (ITFixed IT64)) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "remainder" [r]
-cgOp (LSRem ATFloat) [l,r] = pure $ JsBinOp "%" l r
-cgOp (LSRem (ATInt ITNative)) [l,r] = pure $ JsForeign "%0 % %1 |0" [l,r]
-cgOp (LSRem (ATInt (ITFixed IT8))) [l, r] = pure $ JsForeign "%0 % %1" [l,r]
-cgOp (LSRem (ATInt (ITFixed IT16))) [l, r] = pure $ JsForeign "%0 % %1" [l,r]
-cgOp (LSRem (ATInt (ITFixed IT32))) [l, r] = pure $ JsForeign "%0 % %1 |0" [l,r]
-cgOp (LSRem (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "remainder" [r]
-cgOp (LSRem (ATInt ITBig)) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "remainder" [r]
-cgOp (LAnd ITNative) [l, r] = pure $ JsForeign "%0 & %1" [l,r]
-cgOp (LAnd (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 & %1" [l,r]
-cgOp (LAnd (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 & %1" [l,r]
-cgOp (LAnd (ITFixed IT32)) [l, r] = pure $ JsForeign "%0  & %1" [l,r]
-cgOp (LAnd (ITFixed IT64)) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "and" [r]
-cgOp (LAnd ITBig) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "and" [r]
-cgOp (LOr ITNative) [l, r] = pure $ JsForeign "%0 | %1" [l,r]
-cgOp (LOr (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 | %1" [l,r]
-cgOp (LOr (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 | %1" [l,r]
-cgOp (LOr (ITFixed IT32)) [l, r] = pure $ JsForeign "%0 | %1" [l,r]
-cgOp (LOr (ITFixed IT64)) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "or" [r]
-cgOp (LOr ITBig) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "or" [r]
-cgOp (LXOr ITNative) [l, r] = pure $ JsForeign "%0 ^ %1" [l,r]
-cgOp (LXOr (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 ^ %1" [l,r]
-cgOp (LXOr (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 ^ %1" [l,r]
-cgOp (LXOr (ITFixed IT32)) [l, r] = pure $ JsForeign "%0 ^ %1" [l,r]
-cgOp (LXOr (ITFixed IT64)) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "xor" [r]
-cgOp (LXOr ITBig) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "xor" [r]
-cgOp (LSHL ITNative) [l, r] = pure $ JsForeign "%0 << %1 |0" [l,r]
-cgOp (LSHL (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 << %1 & 0xFF" [l,r]
-cgOp (LSHL (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 << %1 & 0xFFFF" [l,r]
-cgOp (LSHL (ITFixed IT32)) [l, r] = pure $ JsForeign "%0  << %1 |0" [l,r]
-cgOp (LSHL (ITFixed IT64)) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.shiftLeft(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
-cgOp (LSHL ITBig) [l,r] =
-  do
-    setUsedITBig
-    pure $ JsMethod l "shiftLeft" [r]
-cgOp (LLSHR ITNative) [l, r] = pure $ JsForeign "%0 >> %1 |0" [l,r]
-cgOp (LLSHR (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 >> %1" [l,r]
-cgOp (LLSHR (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 >> %1" [l,r]
-cgOp (LLSHR (ITFixed IT32)) [l, r] = pure $ JsForeign "%0 >> %1|0" [l,r]
-cgOp (LLSHR (ITFixed IT64)) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.shiftRight(%1)" [l,r]
-cgOp (LASHR ITNative) [l, r] = pure $ JsForeign "%0 >> %1 |0" [l,r]
-cgOp (LASHR (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 >> %1" [l,r]
-cgOp (LASHR (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 >> %1" [l,r]
-cgOp (LASHR (ITFixed IT32)) [l, r] = pure $ JsForeign "%0 >> %1|0" [l,r]
-cgOp (LASHR (ITFixed IT64)) [l, r] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.shiftRight(%1)" [l,r]
-cgOp (LEq ATFloat) [l, r] = pure $ jsB2I $ JsBinOp "==" l r
-cgOp (LEq (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp "==" l r
-cgOp (LEq (ATInt ITChar)) [l,r] = pure $ jsB2I $ JsBinOp "==" l r
-cgOp (LEq (ATInt ITBig)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsMethod l "equals" [r]
-cgOp (LEq (ATInt (ITFixed IT8))) [l, r] = pure $ jsB2I $ JsBinOp "==" l r
-cgOp (LEq (ATInt (ITFixed IT16))) [l, r] =  pure $ jsB2I $ JsBinOp "==" l r
-cgOp (LEq (ATInt (ITFixed IT32))) [l, r] =  pure $ jsB2I $ JsBinOp "==" l r
-cgOp (LEq (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsMethod l "equals" [r]
-cgOp (LLt (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 < %1" [l,r]
-cgOp (LLt (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 < %1" [l,r]
-cgOp (LLt (ITFixed IT32)) [l, r] = pure $ JsForeign "(%0>>>0) < (%1>>>0)" [l,r]
-cgOp (LLt (ITFixed IT64)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) < 0" [l,r]
-cgOp (LLe (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 <= %1" [l,r]
-cgOp (LLe (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 <= %1" [l,r]
-cgOp (LLe (ITFixed IT32)) [l, r] = pure $ JsForeign "(%0>>>0) <= (%1>>>0)" [l,r]
-cgOp (LLe (ITFixed IT64)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) <= 0" [l,r]
-cgOp (LGt (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 > %1" [l,r]
-cgOp (LGt (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 > %1" [l,r]
-cgOp (LGt (ITFixed IT32)) [l, r] = pure $ JsForeign "(%0>>>0) > (%1>>>0)" [l,r]
-cgOp (LGt (ITFixed IT64)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) > 0" [l,r]
-cgOp (LGe (ITFixed IT8)) [l, r] = pure $ JsForeign "%0 >= %1" [l,r]
-cgOp (LGe (ITFixed IT16)) [l, r] = pure $ JsForeign "%0 >= %1" [l,r]
-cgOp (LGe (ITFixed IT32)) [l, r] = pure $ JsForeign "(%0>>>0) >= (%1>>>0)" [l,r]
-cgOp (LGe (ITFixed IT64)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) >= 0" [l,r]
-cgOp (LSLt ATFloat) [l, r] = pure $ jsB2I $ JsBinOp "<" l r
-cgOp (LSLt (ATInt ITChar)) [l, r] = pure $ jsB2I $ JsBinOp "<" l r
-cgOp (LSLt (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp "<" l r
-cgOp (LSLt (ATInt ITBig)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) < 0" [l,r]
-cgOp (LSLt (ATInt (ITFixed IT8))) [l, r] = pure $ jsB2I $ JsBinOp "<" l r
-cgOp (LSLt (ATInt (ITFixed IT16))) [l, r] =  pure $ jsB2I $ JsBinOp "<" l r
-cgOp (LSLt (ATInt (ITFixed IT32))) [l, r] =  pure $ jsB2I $ JsBinOp "<" l r
-cgOp (LSLt (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) < 0" [l,r]
-cgOp (LSLe ATFloat) [l, r] = pure $ jsB2I $ JsBinOp "<=" l r
-cgOp (LSLe (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp "<=" l r
-cgOp (LSLe (ATInt ITBig)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) <= 0" [l,r]
-cgOp (LSLe (ATInt (ITFixed IT8))) [l, r] = pure $ jsB2I $ JsBinOp "<=" l r
-cgOp (LSLe (ATInt (ITFixed IT16))) [l, r] =  pure $ jsB2I $ JsBinOp "<=" l r
-cgOp (LSLe (ATInt (ITFixed IT32))) [l, r] =  pure $ jsB2I $ JsBinOp "<=" l r
-cgOp (LSLe (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) <= 0" [l,r]
-cgOp (LSGt ATFloat) [l, r] = pure $ jsB2I $ JsBinOp ">" l r
-cgOp (LSGt (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp ">" l r
-cgOp (LSGt (ATInt ITBig)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) > 0" [l,r]
-cgOp (LSGt (ATInt (ITFixed IT8))) [l, r] = pure $ jsB2I $ JsBinOp ">" l r
-cgOp (LSGt (ATInt (ITFixed IT16))) [l, r] =  pure $ jsB2I $ JsBinOp ">" l r
-cgOp (LSGt (ATInt (ITFixed IT32))) [l, r] =  pure $ jsB2I $ JsBinOp ">" l r
-cgOp (LSGt (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) > 0" [l,r]
-cgOp (LSGe ATFloat) [l, r] = pure $ jsB2I $ JsBinOp ">=" l r
-cgOp (LSGe (ATInt ITNative)) [l, r] = pure $ jsB2I $ JsBinOp ">=" l r
-cgOp (LSGe (ATInt ITBig)) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) >= 0" [l,r]
-cgOp (LSGe (ATInt (ITFixed IT8))) [l, r] = pure $ jsB2I $ JsBinOp ">=" l r
-cgOp (LSGe (ATInt (ITFixed IT16))) [l, r] =  pure $ jsB2I $ JsBinOp ">=" l r
-cgOp (LSGe (ATInt (ITFixed IT32))) [l, r] =  pure $ jsB2I $ JsBinOp ">=" l r
-cgOp (LSGe (ATInt (ITFixed IT64))) [l, r] =
-  do
-    setUsedITBig
-    pure $ jsB2I $ JsForeign "%0.compareTo(%1) >= 0" [l,r]
-cgOp (LSExt ITNative ITBig) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "new jsbn.BigInteger(String(%0))" [x]
-cgOp (LZExt (ITFixed IT8) ITNative) [x] = pure x
-cgOp (LZExt (ITFixed IT16) ITNative) [x] = pure x
-cgOp (LZExt (ITFixed IT32) ITNative) [x] = pure x
-cgOp (LZExt ITNative ITBig) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "new jsbn.BigInteger(String(%0))" [x]
-cgOp (LTrunc ITBig ITNative) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.intValue()|0" [x]
-cgOp (LTrunc (ITFixed IT16) (ITFixed IT8)) [x] = pure $ JsForeign "%0 & 0xFF" [x]
-cgOp (LTrunc (ITFixed IT32) (ITFixed IT8)) [x] = pure $ JsForeign "%0 & 0xFF" [x]
-cgOp (LTrunc (ITFixed IT64) (ITFixed IT8)) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.intValue() & 0xFF" [x]
-cgOp (LTrunc (ITFixed IT32) (ITFixed IT16)) [x] = pure $ JsForeign "%0 & 0xFFFF" [x]
-cgOp (LTrunc (ITFixed IT64) (ITFixed IT16)) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.intValue() & 0xFFFF" [x]
-cgOp (LTrunc (ITFixed IT64) (ITFixed IT32)) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.intValue() & 0xFFFFFFFF" [x]
-cgOp (LTrunc ITBig (ITFixed IT64)) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.and(new jsbn.BigInteger(%1))" [x, JsStr $ show 0xFFFFFFFFFFFFFFFF]
-cgOp LStrConcat [l,r] = pure $ JsBinOp "+" l r
-cgOp LStrLt [l, r] = pure $ jsB2I $ JsBinOp "<" l r
-cgOp LStrEq [l,r] = pure $ jsB2I $ JsBinOp "==" l r
-cgOp LStrLen [x] = pure $ JsForeign "%0.length" [x]
-cgOp (LIntFloat ITNative) [x] = pure $ x
-cgOp (LIntFloat ITBig) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.intValue()" [x]
-cgOp (LFloatInt ITNative) [x] = pure $ JsForeign "%0|0" [x]
-cgOp (LIntStr ITNative) [x] = pure $  JsApp "String" [x]
-cgOp (LIntStr ITBig) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "%0.toString()" [x]
-cgOp (LStrInt ITNative) [x] = pure $ JsForeign "parseInt(%0)|0" [x]
-cgOp (LStrInt ITBig) [x] =
-  do
-    setUsedITBig
-    pure $ JsForeign "new jsbn.BigInteger(%0)" [x]
-cgOp (LFloatStr) [x] = pure $ JsApp "String" [x]
-cgOp (LStrFloat) [x] = pure $ JsApp "parseFloat" [x]
-cgOp (LChInt ITNative) [x] = pure $ JsForeign "%0.charCodeAt(0)|0" [x]
-cgOp (LIntCh ITNative) [x] = pure $ JsApp "String.fromCharCode" [x]
-cgOp LFExp [x] = pure $ JsApp "Math.exp" [x]
-cgOp LFLog [x] = pure $ JsApp "Math.log" [x]
-cgOp LFSin [x] = pure $ JsApp "Math.sin" [x]
-cgOp LFCos [x] = pure $ JsApp "Math.cos" [x]
-cgOp LFTan [x] = pure $ JsApp "Math.tan" [x]
-cgOp LFASin [x] = pure $ JsApp "Math.asin" [x]
-cgOp LFACos [x] = pure $ JsApp "Math.acos" [x]
-cgOp LFATan [x] = pure $ JsApp "Math.atan" [x]
-cgOp LFSqrt [x] = pure $ JsApp "Math.sqrt" [x]
-cgOp LFFloor [x] = pure $ JsApp "Math.floor" [x]
-cgOp LFCeil [x] = pure $ JsApp "Math.ceil" [x]
-cgOp LFNegate [x] = pure $ JsForeign "-%0" [x]
-cgOp LStrHead [x] = pure $ JsArrayProj (JsInt 0) x
-cgOp LStrTail [x] = pure $ JsMethod x "slice" [JsInt 1]
-cgOp LStrCons [l,r] = pure $ JsForeign "%0+%1" [l,r]
-cgOp LStrIndex [x, y] = pure $ JsArrayProj y x
-cgOp LStrRev [x] = pure $ JsForeign "%0.split('').reverse().join('')" [x]
-cgOp LStrSubstr [offset,len,str] = pure $ JsForeign "%0.substr(Math.max(0,%1), Math.max(0, %2))" [str, offset, len]
+cgOp :: PrimFn -> [JsExpr] -> State CGBodyState JsExpr
 cgOp LReadStr [_] =
   do
     s <- get
@@ -818,9 +561,10 @@ cgOp LWriteStr [_,str] =
     s <- get
     put $ s {usedWrite = True}
     pure $ JsForeign (writeStrTemplate $ conf s) [str]
-cgOp LSystemInfo [x] = pure $ JsApp "js_idris_systemInfo" [x]
 cgOp (LExternal name) _ | name == sUN "prim__null" = pure JsNull
 cgOp (LExternal name) [l,r] | name == sUN "prim__eqPtr" = pure $ JsBinOp "==" l r
-cgOp LCrash [l] = pure $ JsErrorExp l
-cgOp LNoOp [x] = pure x
-cgOp op exps = error ("Operator " ++ show (op, exps) ++ " not implemented")
+cgOp op exps = case Map.lookup op primDB of
+  Just (useBigInt, pti, combinator) -> do
+    when useBigInt setUsedITBig
+    pure $ jsPrimCoerce pti PTAny $ combinator exps
+  Nothing -> error ("Operator " ++ show (op, exps) ++ " not implemented")
