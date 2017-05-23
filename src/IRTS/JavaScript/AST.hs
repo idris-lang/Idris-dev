@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings, PatternGuards #-}
 
 module IRTS.JavaScript.AST
   ( JsExpr(..)
