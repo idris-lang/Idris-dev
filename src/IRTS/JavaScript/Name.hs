@@ -1,3 +1,11 @@
+{-|
+Module      : IRTS.JavaScript.Name
+Description : The JavaScript name mangler.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE OverloadedStrings, PatternGuards #-}
 
 module IRTS.JavaScript.Name

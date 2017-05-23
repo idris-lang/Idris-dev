@@ -1,3 +1,11 @@
+{-|
+Module      : IRTS.JavaScript.AST
+Description : The JavaScript AST.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
 
 module IRTS.JavaScript.AST

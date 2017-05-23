@@ -1,3 +1,11 @@
+{-|
+Module      : IRTS.JavaScript.Specialize
+Description : The JavaScript specializer.
+Copyright   :
+License     : BSD3
+Maintainer  : The Idris Community.
+-}
+
 {-# LANGUAGE OverloadedStrings, PatternGuards #-}
 
 module IRTS.JavaScript.Specialize
