@@ -93,7 +93,7 @@ codegenNode ci =
                       , initialization = initializationNode
                       , writeStrTemplate = "process.stdout.write(%0)"
                       , readStrTemplate = "js_idris_readStr()"
-                      , jsbnPath = "jsbn/jsbn-node.js"
+                      , jsbnPath = "jsbn/jsbn-browser.js"
                       , extraRunTime = "Runtime-node.js"
                       }
               )
