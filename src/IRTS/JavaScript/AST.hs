@@ -66,6 +66,8 @@ data JsExpr
              JsStmt
   | JsApp JsExpr
           [JsExpr]
+  | JsNew JsExpr
+          [JsExpr]
   | JsPart JsExpr
            Text
   | JsMethod JsExpr
@@ -237,6 +239,8 @@ jsAst2Text (JsLambda args body) =
     ]
 jsAst2Text (JsApp fn args) =
   T.concat [jsAst2Text fn, "(", T.intercalate ", " $ map jsAst2Text args, ")"]
+jsAst2Text (JsNew fn args) =
+  T.concat ["new ", jsAst2Text fn, "(", T.intercalate ", " $ map jsAst2Text args, ")"]
 jsAst2Text (JsMethod obj name args) =
   T.concat
     [ jsAst2Text obj

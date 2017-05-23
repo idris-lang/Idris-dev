@@ -14,6 +14,9 @@ module IRTS.JavaScript.Name
   , Partial(..)
   , jsNamePartial
   , jsTailCallOptimName
+  , HiddenClass(..)
+  , jsNameHiddenClass
+  , dataPartName
   ) where
 
 import Data.Char
@@ -84,3 +87,12 @@ jsNamePartial (Partial n i j) = T.concat ["$partial_", T.pack $ show i, "_", T.p
 
 jsTailCallOptimName :: Text -> Text
 jsTailCallOptimName x = T.concat ["$tco$", x]
+
+
+data HiddenClass = HiddenClass Name Int Int deriving (Eq, Ord)
+
+jsNameHiddenClass :: HiddenClass -> Text
+jsNameHiddenClass (HiddenClass n id arity) = T.concat ["$HC_", T.pack $ show arity, "_", T.pack $ show id,"$", jsName n]
+
+dataPartName :: Int -> Text
+dataPartName i = T.pack $ "$" ++ show i

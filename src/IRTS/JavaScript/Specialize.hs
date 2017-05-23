@@ -52,6 +52,9 @@ constructorOptimizeDB =
   Map.fromList
     [ item "Prelude.Bool" "True" (const $ JsBool True) trueTest cantProj
     , item "Prelude.Bool" "False" (const $ JsBool False) falseTest cantProj
+    , item "Prelude.Interfaces" "LT" (const $ JsInt (0-1)) ltTest cantProj
+    , item "Prelude.Interfaces" "EQ" (const $ JsInt 0) eqTest cantProj
+    , item "Prelude.Interfaces" "GT" (const $ JsInt 1) gtTest cantProj
     -- , item "Prelude.List" "::" cons fillList uncons
     -- , item "Prelude.List" "Nil" nil emptyList cantProj
     -- , item "Prelude.Maybe" "Just" (\[x] -> x) notNoneTest justProj
@@ -67,6 +70,9 @@ constructorOptimizeDB =
     falseTest e = JsUniOp (T.pack "!") e
     emptyList e = JsBinOp "===" (JsProp e "length") (JsInt 0)
     fillList e = JsBinOp ">" (JsProp e "length") (JsInt 0)
+    ltTest e = JsBinOp "<" e (JsInt 0)
+    eqTest e = JsBinOp "===" e (JsInt 0)
+    gtTest e = JsBinOp ">" e (JsInt 0)
     noneTest e = JsBinOp "===" e JsUndefined
     notNoneTest e = JsBinOp "!==" e JsUndefined
     -- projections

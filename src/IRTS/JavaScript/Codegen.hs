@@ -49,10 +49,16 @@ data CGStats = CGStats { usedWriteStr :: Bool
                        , usedReadStr :: Bool
                        , usedBigInt :: Bool
                        , partialApplications :: Set Partial
+                       , hiddenClasses :: Set HiddenClass
                        }
 
 emptyStats :: CGStats
-emptyStats = CGStats {usedWriteStr = False, partialApplications = Set.empty, usedBigInt = False, usedReadStr = False}
+emptyStats = CGStats { usedWriteStr = False
+                     , partialApplications = Set.empty
+                     , hiddenClasses = Set.empty
+                     , usedBigInt = False
+                     , usedReadStr = False
+                     }
 
 data CGConf = CGConf { header :: Text
                      , footer :: Text
@@ -112,6 +118,7 @@ codegenJs conf ci =
                                              , jsbn
                                              , initialization conf stats
                                              , doPartials (partialApplications stats)
+                                             , doHiddenClasses (hiddenClasses stats)
                                              , includes, "\n"
                                              , runtimeCommon, "\n"
                                              , extraRT, "\n"
@@ -133,11 +140,22 @@ doPartials x =
              JsFun (jsNamePartial p) vars1 $ JsReturn $
                jsCurryLam vars2 (jsAppN (jsName n) (map JsVar (vars1 ++ vars2)) )
 
+doHiddenClasses :: Set HiddenClass -> Text
+doHiddenClasses x =
+  T.intercalate "\n" (map f $ Set.toList x)
+  where
+      f p@(HiddenClass n id arity) =
+        let vars = map dataPartName $ take arity [1..]
+        in jsStmt2Text $
+             JsFun (jsNameHiddenClass p) vars $ JsSeq (JsSet (JsProp JsThis "type") (JsInt id)) $ seqJs
+               $ map (\tv -> JsSet (JsProp JsThis tv) (JsVar tv)) vars
+
 doCodegen :: CGConf -> Map Name LDecl -> [LDecl] -> (Text, CGStats)
 doCodegen conf defs decls =
   let xs = map (doCodegenDecl conf defs) decls
       groupCGStats x y = CGStats {usedWriteStr = usedWriteStr x || usedWriteStr y
                                  , partialApplications = partialApplications x `Set.union` partialApplications y
+                                 , hiddenClasses = hiddenClasses x `Set.union` hiddenClasses y
                                  , usedBigInt = usedBigInt x || usedBigInt y
                                  , usedReadStr = usedReadStr x || usedReadStr y
                                  }
@@ -165,6 +183,7 @@ data CGBodyState = CGBodyState { defs :: Map Name LDecl
                                , usedRead :: Bool
                                , usedITBig :: Bool
                                , partialApps :: Set Partial
+                               , hiddenCls :: Set HiddenClass
                                }
 
 getNewCGName :: State CGBodyState Text
@@ -178,6 +197,10 @@ getNewCGName =
 addPartial :: Partial -> State CGBodyState ()
 addPartial p =
   modify (\s -> s {partialApps = Set.insert p (partialApps s) })
+
+addHiddenClass :: HiddenClass -> State CGBodyState ()
+addHiddenClass p =
+  modify (\s -> s {hiddenCls = Set.insert p (hiddenCls s) })
 
 addUsedArgsTailCallOptim :: Set (Text, Text) -> State CGBodyState ()
 addUsedArgsTailCallOptim p =
@@ -226,12 +249,14 @@ cgFun cnf dfs n args def = do
                                        , usedRead = False
                                        , usedITBig = False
                                        , partialApps = Set.empty
+                                       , hiddenCls = Set.empty
                                        }
                           )
   let body = if isTailRec st then JsSeq (declareUsedOptimArgs $ usedArgsTailCallOptim st) (JsForever ((seqJs decs) `JsSeq` res)) else (seqJs decs) `JsSeq` res
   let fn = JsFun fnName argNames body
   let state' = CGStats { usedWriteStr = usedWrite st
                        , partialApplications = partialApps st
+                       , hiddenClasses = hiddenCls st
                        , usedBigInt = usedITBig st
                        , usedReadStr = usedRead st
                        }
@@ -281,12 +306,36 @@ cgBody rt expr =
       | (ff == qualifyN "Prelude.Bool" "False" &&
          tt == qualifyN "Prelude.Bool" "True") ->
         case (Map.lookup oper primDB) of
-          Just (useBigInt, pti, combinator) | pti == PTBool -> do
+          Just (needBI, pti, c) | pti == PTBool -> do
             z <- mapM (cgBody GetExpBT) [x, y]
-            when useBigInt setUsedITBig
-            let res = jsPrimCoerce pti PTBool $ combinator $ map (jsStmt2Expr . snd) z
+            when needBI setUsedITBig
+            let res = jsPrimCoerce pti PTBool $ c $ map (jsStmt2Expr . snd) z
             pure $ (concat $ map fst z, addRT rt res)
           _ -> cgBody' rt expr
+    (LCase _ e [LConCase _ n _ (LCon _ _ tt []), LDefaultCase (LCon _ _ ff [])])
+      | (ff == qualifyN "Prelude.Bool" "False" &&
+         tt == qualifyN "Prelude.Bool" "True") -> do
+           (d, v) <- cgBody GetExpBT e
+           test <- formConTest n (jsStmt2Expr v)
+           pure $ (d, addRT rt $ JsUniOp (T.pack "!") $ JsUniOp (T.pack "!") test)
+    (LCase _ e [LConCase _ n _ (LCon _ _ tt []), LConCase _ _ _ (LCon _ _ ff [])])
+      | (ff == qualifyN "Prelude.Bool" "False" &&
+         tt == qualifyN "Prelude.Bool" "True") -> do
+           (d, v) <- cgBody GetExpBT e
+           test <- formConTest n (jsStmt2Expr v)
+           pure $ (d, addRT rt $ JsUniOp (T.pack "!") $ JsUniOp (T.pack "!") test)
+    (LCase _ e [LConCase _ n _ (LCon _ _ ff []), LDefaultCase (LCon _ _ tt [])])
+      | (ff == qualifyN "Prelude.Bool" "False" &&
+         tt == qualifyN "Prelude.Bool" "True") -> do
+           (d, v) <- cgBody GetExpBT e
+           test <- formConTest n (jsStmt2Expr v)
+           pure $ (d, addRT rt $ JsUniOp (T.pack "!") test)
+    (LCase _ e [LConCase _ n _ (LCon _ _ ff []), LConCase _ _ _ (LCon _ _ tt [])])
+      | (ff == qualifyN "Prelude.Bool" "False" &&
+         tt == qualifyN "Prelude.Bool" "True") -> do
+           (d, v) <- cgBody GetExpBT e
+           test <- formConTest n (jsStmt2Expr v)
+           pure $ (d, addRT rt $ JsUniOp (T.pack "!") test)
     (LCase f e [LConCase nf ff [] alt, LConCase nt tt [] conseq])
       | (ff == qualifyN "Prelude.Bool" "False" &&
          tt == qualifyN "Prelude.Bool" "True") ->
@@ -328,8 +377,9 @@ cgBody' rt (LApp tailcall (LV (Glob fn)) args) =
         do
           argsFn <- getArgList fn
           case argsFn of
-            Nothing ->
-              pure (preDecs, addRT rt $ jsCurryApp (JsVar fname) argVals )
+            Nothing -> do
+              fn' <- cgName fn
+              pure (preDecs, addRT rt $ jsCurryApp fn' argVals )
             Just agFn ->
               do
                 let lenAgFn = length agFn
@@ -428,10 +478,10 @@ formCon n args = do
     Nothing -> do
       (conId, arity) <- getConsId n
       if (arity > 0)
-        then pure $
-             JsObj $
-             (T.pack "type", JsInt conId) :
-             zip (map (\i -> T.pack $ "$" ++ show i) [1 ..]) args
+        then do
+          let hc = HiddenClass n conId arity
+          addHiddenClass hc
+          pure $ JsNew (JsVar $ jsNameHiddenClass hc) args
         else pure $ JsInt conId
 
 formConTest :: Name -> JsExpr -> State CGBodyState JsExpr
@@ -448,11 +498,20 @@ formProj :: Name -> JsExpr -> Int -> JsExpr
 formProj n v i =
   case specialCased n of
     Just (ctor, test, proj) -> proj v i
-    Nothing -> JsProp v (T.pack $ "$" ++ show i)
+    Nothing -> JsProp v (dataPartName i)
 
 smartif :: JsExpr -> JsStmt -> Maybe JsStmt -> JsStmt
 smartif cond conseq (Just alt) = JsIf cond conseq (Just alt)
 smartif cond conseq Nothing = conseq
+
+formConstTest :: JsExpr -> Const -> State CGBodyState JsExpr
+formConstTest scrvar t = case t of
+  BI _ -> do
+    t' <- cgConst t
+    cgOp' PTBool (LEq (ATInt ITBig)) [scrvar, t']
+  _ -> do
+    t' <- cgConst t
+    pure $ JsBinOp "===" scrvar t'
 
 cgIfTree :: BodyResTarget
          -> Text
@@ -463,13 +522,7 @@ cgIfTree _ _ _ [] = pure Nothing
 cgIfTree rt resName scrvar ((LConstCase t exp):r) = do
   (d, v) <- cgBody (altsRT resName rt) exp
   alternatives <- cgIfTree rt resName scrvar r
-  test <- case t of
-            BI _ -> do
-              t' <- cgConst t
-              cgOp (LPlus (ATInt ITBig)) [scrvar, t']
-            _ -> do
-              t' <- cgConst t
-              pure $ JsBinOp "===" scrvar t'
+  test <- formConstTest scrvar t
   pure $ Just $
     smartif test (JsSeq (seqJs d) v) alternatives
 cgIfTree rt resName scrvar ((LDefaultCase exp):r) = do
@@ -547,24 +600,24 @@ cgConst (B64 x) =
 cgConst x | isTypeConst x = pure $ JsInt 0
 cgConst x = error $ "Constant " ++ show x ++ " not compilable yet"
 
-jsB2I :: JsExpr -> JsExpr
-jsB2I x = JsForeign "%0 ? 1|0 : 0|0" [x]
-
 cgOp :: PrimFn -> [JsExpr] -> State CGBodyState JsExpr
-cgOp LReadStr [_] =
+cgOp = cgOp' PTAny
+
+cgOp' :: JsPrimTy -> PrimFn -> [JsExpr] -> State CGBodyState JsExpr
+cgOp' pt LReadStr [_] =
   do
     s <- get
     put $ s {usedRead = True}
     pure $ JsForeign (readStrTemplate $ conf s) []
-cgOp LWriteStr [_,str] =
+cgOp' pt LWriteStr [_,str] =
   do
     s <- get
     put $ s {usedWrite = True}
     pure $ JsForeign (writeStrTemplate $ conf s) [str]
-cgOp (LExternal name) _ | name == sUN "prim__null" = pure JsNull
-cgOp (LExternal name) [l,r] | name == sUN "prim__eqPtr" = pure $ JsBinOp "==" l r
-cgOp op exps = case Map.lookup op primDB of
+cgOp' pt (LExternal name) _ | name == sUN "prim__null" = pure JsNull
+cgOp' pt (LExternal name) [l,r] | name == sUN "prim__eqPtr" = pure $ JsBinOp "==" l r
+cgOp' pt op exps = case Map.lookup op primDB of
   Just (useBigInt, pti, combinator) -> do
     when useBigInt setUsedITBig
-    pure $ jsPrimCoerce pti PTAny $ combinator exps
+    pure $ jsPrimCoerce pti pt $ combinator exps
   Nothing -> error ("Operator " ++ show (op, exps) ++ " not implemented")
