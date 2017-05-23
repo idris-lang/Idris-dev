@@ -47,10 +47,10 @@ Build-type:     Custom
 Tested-With:    GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
 
 Data-files:            idrisdoc/styles.css
-                       jsrts/Runtime-browser.js
-                       jsrts/Runtime-common.js
-                       jsrts/Runtime-node.js
                        jsrts/jsbn/jsbn.js
+                       jsrts/Runtime-common.js
+                       jsrts/Runtime-javascript.js
+                       jsrts/Runtime-node.js
                        jsrts/jsbn/LICENSE
                        rts/arduino/idris_main.c
                        rts/idris_bitstring.c
@@ -223,6 +223,8 @@ Library
                 , IRTS.CodegenJavaScript
                 , IRTS.Exports
                 , IRTS.JavaScript.AST
+                , IRTS.JavaScript.Codegen
+                , IRTS.JavaScript.LangTransforms
                 , IRTS.Compiler
                 , IRTS.Defunctionalise
                 , IRTS.DumpBC
