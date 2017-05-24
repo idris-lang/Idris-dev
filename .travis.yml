@@ -25,6 +25,7 @@ matrix:
     - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="test_js"
       compiler: ": #GHC 7.10.3"
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,cppcheck,hscolour], sources: [hvr-ghc]}}
+      node_js: "node"
     - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="test_c"
       compiler: ": #GHC 7.10.3"
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,cppcheck,hscolour], sources: [hvr-ghc]}}
@@ -34,6 +35,7 @@ matrix:
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_js"
       compiler: ": #GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+      node_js: "node"
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
