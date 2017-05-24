@@ -1,1 +1,1 @@
-const jsbn = require('jsbn');
+$JSRTS.jsbn = require('jsbn');

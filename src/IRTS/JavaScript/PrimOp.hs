@@ -43,7 +43,7 @@ primDB =
   , item (LPlus (ATInt (ITFixed IT32))) False PTAny $ JsForeign "%0+%1|0"
   , item (LPlus (ATInt ITBig)) True PTAny $ method "add"
   , item (LPlus (ATInt (ITFixed IT64))) True PTAny $
-    \[l, r] -> JsForeign "%0.add(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
+    \[l, r] -> JsForeign "%0.add(%1).and(new $JSRTS.jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item (LMinus ATFloat) False PTAny $ binop "-"
   , item (LMinus (ATInt ITChar)) False PTAny $ JsForeign "String.fromCharCode(%0.charCodeAt(0) - %1.charCodeAt(0))"
   , item (LMinus (ATInt ITNative)) False PTAny $ JsForeign "%0-%1|0"
@@ -52,7 +52,7 @@ primDB =
   , item (LMinus (ATInt (ITFixed IT32))) False PTAny $ JsForeign "%0-%1|0"
   , item (LMinus (ATInt ITBig)) True PTAny $ method "subtract"
   , item (LMinus (ATInt (ITFixed IT64))) True PTAny $
-    \[l, r] -> JsForeign "%0.subtract(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
+    \[l, r] -> JsForeign "%0.subtract(%1).and(new $JSRTS.jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item (LTimes ATFloat) False PTAny $ binop "*"
   , item (LTimes (ATInt ITChar)) False PTAny $ JsForeign "String.fromCharCode(%0.charCodeAt(0) * %1.charCodeAt(0))"
   , item (LTimes (ATInt ITNative)) False PTAny $ JsForeign "%0*%1|0"
@@ -61,7 +61,7 @@ primDB =
   , item (LTimes (ATInt (ITFixed IT32))) False PTAny $ JsForeign "%0*%1|0"
   , item (LTimes (ATInt ITBig)) True PTAny $ method "multiply"
   , item (LTimes (ATInt (ITFixed IT64))) True PTAny $
-    \[l, r] -> JsForeign "%0.multiply(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
+    \[l, r] -> JsForeign "%0.multiply(%1).and(new $JSRTS.jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item (LUDiv (ITFixed IT8)) False PTAny $ JsForeign "%0 / %1"
   , item (LUDiv (ITFixed IT16)) False PTAny $ JsForeign "%0 / %1"
   , item (LUDiv (ITFixed IT32)) False PTAny $ JsForeign "(%0>>>0)  / (%1>>>0) |0"
@@ -107,7 +107,7 @@ primDB =
   , item (LSHL (ITFixed IT16)) False PTAny $ JsForeign "%0 << %1 & 0xFFFF"
   , item (LSHL (ITFixed IT32)) False PTAny $ JsForeign "%0 << %1 | 0"
   , item (LSHL (ITFixed IT64)) True PTAny $
-    \[l, r] -> JsForeign "%0.shiftLeft(%1).and(new jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
+    \[l, r] -> JsForeign "%0.shiftLeft(%1).and(new $JSRTS.jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item (LSHL ITBig) True PTAny $ method "shiftLeft"
   , item (LLSHR ITNative) False PTAny $ JsForeign "%0 >> %1 |0"
   , item (LLSHR (ITFixed IT8)) False PTAny $ JsForeign "%0 >> %1"
@@ -172,11 +172,11 @@ primDB =
   , item (LSGe (ATInt (ITFixed IT16))) False PTBool $ binop ">="
   , item (LSGe (ATInt (ITFixed IT32))) False PTBool $ binop ">="
   , item (LSGe (ATInt (ITFixed IT64))) True PTBool $ JsForeign "%0.compareTo(%1) >= 0"
-  , item (LSExt ITNative ITBig) True PTAny $ JsForeign "new jsbn.BigInteger(''+%0)"
+  , item (LSExt ITNative ITBig) True PTAny $ JsForeign "new $JSRTS.jsbn.BigInteger(''+%0)"
   , item (LZExt (ITFixed IT8) ITNative) False PTAny $ head
   , item (LZExt (ITFixed IT16) ITNative) False PTAny $ head
   , item (LZExt (ITFixed IT32) ITNative) False PTAny $ head
-  , item (LZExt ITNative ITBig) True PTAny $ JsForeign "new jsbn.BigInteger(''+%0)"
+  , item (LZExt ITNative ITBig) True PTAny $ JsForeign "new $JSRTS.jsbn.BigInteger(''+%0)"
   , item (LTrunc ITBig ITNative) True PTAny $ JsForeign "%0.intValue()|0"
   , item (LTrunc (ITFixed IT16) (ITFixed IT8)) False PTAny $ JsForeign "%0 & 0xFF"
   , item (LTrunc (ITFixed IT32) (ITFixed IT8)) False PTAny $ JsForeign "%0 & 0xFF"
@@ -185,7 +185,7 @@ primDB =
   , item (LTrunc (ITFixed IT64) (ITFixed IT16)) True PTAny $ JsForeign "%0.intValue() & 0xFFFF"
   , item (LTrunc (ITFixed IT64) (ITFixed IT32)) True PTAny $ JsForeign "%0.intValue() & 0xFFFFFFFF"
   , item (LTrunc ITBig (ITFixed IT64)) True PTAny $
-    \[x] -> JsForeign "%0.and(new jsbn.BigInteger(%1))" [x, JsStr $ show 0xFFFFFFFFFFFFFFFF]
+    \[x] -> JsForeign "%0.and(new $JSRTS.jsbn.BigInteger(%1))" [x, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item LStrConcat False PTAny $ binop "+"
   , item LStrLt False PTBool $ binop "<"
   , item LStrEq False PTBool $ binop "=="
@@ -196,7 +196,7 @@ primDB =
   , item (LIntStr ITNative) False PTAny $ JsForeign "''+%0"
   , item (LIntStr ITBig) True PTAny $ JsForeign "%0.toString()"
   , item (LStrInt ITNative) False PTAny $ JsForeign "parseInt(%0)|0"
-  , item (LStrInt ITBig) True PTAny $ JsForeign "new jsbn.BigInteger(%0)"
+  , item (LStrInt ITBig) True PTAny $ JsForeign "new $JSRTS.jsbn.BigInteger(%0)"
   , item (LFloatStr) False PTAny $ JsForeign "''+%0"
   , item (LStrFloat) False PTAny $ jsAppN "parseFloat"
   , item (LChInt ITNative) False PTAny $ JsForeign "%0.charCodeAt(0)|0"
@@ -218,9 +218,11 @@ primDB =
   , item LStrCons False PTAny $ JsForeign "%0+%1"
   , item LStrIndex False PTAny $ \[x, y] -> JsArrayProj y x
   , item LStrRev False PTAny $ JsForeign "%0.split('').reverse().join('')"
-  , item LStrSubstr False PTAny $ JsForeign "%0.slice(Math.max(0,%1), Math.max(0, %2))"
-  , item LSystemInfo False PTAny $ jsAppN "js_idris_systemInfo"
+  , item LStrSubstr False PTAny $ JsForeign "$JSRTS.prim_strSubstr(%0, %1, %2)"
+  , item LSystemInfo False PTAny $ JsApp (JsProp (JsVar "$JSRTS") "prim_systemInfo")
   , item LCrash False PTAny $ \[l] -> JsErrorExp l
+  , item LReadStr False PTAny $ \[_] -> JsApp (JsProp (JsVar "$JSRTS") "prim_readStr") []
+  , item LWriteStr False PTAny $ \[_, str] -> JsApp (JsProp (JsVar "$JSRTS") "prim_writeStr") [str]
   , item LNoOp False PTAny $ head
   ]
   where

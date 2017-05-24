@@ -45,26 +45,19 @@ import Data.Generics.Uniplate.Data
 import Data.List
 import GHC.Generics (Generic)
 
-data CGStats = CGStats { usedWriteStr :: Bool
-                       , usedReadStr :: Bool
-                       , usedBigInt :: Bool
+data CGStats = CGStats { usedBigInt :: Bool
                        , partialApplications :: Set Partial
                        , hiddenClasses :: Set HiddenClass
                        }
 
 emptyStats :: CGStats
-emptyStats = CGStats { usedWriteStr = False
-                     , partialApplications = Set.empty
+emptyStats = CGStats { partialApplications = Set.empty
                      , hiddenClasses = Set.empty
                      , usedBigInt = False
-                     , usedReadStr = False
                      }
 
 data CGConf = CGConf { header :: Text
                      , footer :: Text
-                     , initialization :: CGStats -> Text
-                     , writeStrTemplate :: Text
-                     , readStrTemplate :: Text
                      , jsbnPath :: String
                      , extraRunTime :: String
                      }
@@ -115,17 +108,15 @@ codegenJs conf ci =
     TIO.writeFile (outputFile ci) $ T.concat [ header conf
                                              , "\"use strict\";\n\n"
                                              , "(function(){\n\n"
-                                             , jsbn
-                                             , initialization conf stats
-                                             , doPartials (partialApplications stats)
-                                             , doHiddenClasses (hiddenClasses stats)
-                                             , includes, "\n"
                                              , runtimeCommon, "\n"
                                              , extraRT, "\n"
+                                             , jsbn, "\n"
+                                             , doPartials (partialApplications stats), "\n"
+                                             , doHiddenClasses (hiddenClasses stats), "\n"
+                                             , includes, "\n"
                                              , out, "\n"
-                                             , "\n"
-                                             , jsName (sMN 0 "runMain"), "();\n\n"
-                                             , "\n}.call(this))"
+                                             , jsName (sMN 0 "runMain"), "();\n"
+                                             , "}.call(this))"
                                              , footer conf
                                              ]
 
@@ -153,11 +144,9 @@ doHiddenClasses x =
 doCodegen :: CGConf -> Map Name LDecl -> [LDecl] -> (Text, CGStats)
 doCodegen conf defs decls =
   let xs = map (doCodegenDecl conf defs) decls
-      groupCGStats x y = CGStats {usedWriteStr = usedWriteStr x || usedWriteStr y
-                                 , partialApplications = partialApplications x `Set.union` partialApplications y
+      groupCGStats x y = CGStats { partialApplications = partialApplications x `Set.union` partialApplications y
                                  , hiddenClasses = hiddenClasses x `Set.union` hiddenClasses y
                                  , usedBigInt = usedBigInt x || usedBigInt y
-                                 , usedReadStr = usedReadStr x || usedReadStr y
                                  }
   in (T.intercalate "\n" $ map fst xs, foldl' groupCGStats emptyStats (map snd xs) )
 
@@ -179,8 +168,6 @@ data CGBodyState = CGBodyState { defs :: Map Name LDecl
                                , usedArgsTailCallOptim :: Set (Text, Text)
                                , isTailRec :: Bool
                                , conf :: CGConf
-                               , usedWrite :: Bool
-                               , usedRead :: Bool
                                , usedITBig :: Bool
                                , partialApps :: Set Partial
                                , hiddenCls :: Set HiddenClass
@@ -238,15 +225,13 @@ cgFun cnf dfs n args def = do
   let argNames = map jsName args
   let ((decs, res),st) = runState
                           (cgBody ReturnBT def)
-                          (CGBodyState { defs=dfs
+                          (CGBodyState { defs = dfs
                                        , lastIntName = 0
                                        , reWrittenNames = Map.empty
                                        , currentFnNameAndArgs = (fnName, argNames)
                                        , usedArgsTailCallOptim = Set.empty
                                        , isTailRec = False
                                        , conf = cnf
-                                       , usedWrite = False
-                                       , usedRead = False
                                        , usedITBig = False
                                        , partialApps = Set.empty
                                        , hiddenCls = Set.empty
@@ -254,11 +239,9 @@ cgFun cnf dfs n args def = do
                           )
   let body = if isTailRec st then JsSeq (declareUsedOptimArgs $ usedArgsTailCallOptim st) (JsForever ((seqJs decs) `JsSeq` res)) else (seqJs decs) `JsSeq` res
   let fn = JsFun fnName argNames body
-  let state' = CGStats { usedWriteStr = usedWrite st
-                       , partialApplications = partialApps st
+  let state' = CGStats { partialApplications = partialApps st
                        , hiddenClasses = hiddenCls st
                        , usedBigInt = usedITBig st
-                       , usedReadStr = usedRead st
                        }
   (fn, state')
 
@@ -579,7 +562,7 @@ cgConst (I i) = pure $ JsInt i
 cgConst (BI i) =
   do
     setUsedITBig
-    pure $ JsForeign "new jsbn.BigInteger(%0)" [JsStr $ show i]
+    pure $ JsForeign "new $JSRTS.jsbn.BigInteger(%0)" [JsStr $ show i]
 cgConst (Ch c) = pure $ JsStr [c]
 cgConst (Str s) = pure $ JsStr s
 cgConst (Fl f) = pure $ JsDouble f
@@ -589,7 +572,7 @@ cgConst (B32 x) = pure $ JsForeign (T.pack $ show x ++ "|0" ) []
 cgConst (B64 x) =
   do
     setUsedITBig
-    pure $ JsForeign "new jsbn.BigInteger(%0).and(new jsbn.BigInteger(%1))" [JsStr $ show x, JsStr $ show 0xFFFFFFFFFFFFFFFF]
+    pure $ JsForeign "new $JSRTS.jsbn.BigInteger(%0).and(new $JSRTS.jsbn.BigInteger(%1))" [JsStr $ show x, JsStr $ show 0xFFFFFFFFFFFFFFFF]
 cgConst x | isTypeConst x = pure $ JsInt 0
 cgConst x = error $ "Constant " ++ show x ++ " not compilable yet"
 
@@ -597,16 +580,6 @@ cgOp :: PrimFn -> [JsExpr] -> State CGBodyState JsExpr
 cgOp = cgOp' PTAny
 
 cgOp' :: JsPrimTy -> PrimFn -> [JsExpr] -> State CGBodyState JsExpr
-cgOp' pt LReadStr [_] =
-  do
-    s <- get
-    put $ s {usedRead = True}
-    pure $ JsForeign (readStrTemplate $ conf s) []
-cgOp' pt LWriteStr [_,str] =
-  do
-    s <- get
-    put $ s {usedWrite = True}
-    pure $ JsForeign (writeStrTemplate $ conf s) [str]
 cgOp' pt (LExternal name) _ | name == sUN "prim__null" = pure JsNull
 cgOp' pt (LExternal name) [l,r] | name == sUN "prim__eqPtr" = pure $ JsBinOp "==" l r
 cgOp' pt op exps = case Map.lookup op primDB of

@@ -17,7 +17,6 @@ module IRTS.JavaScript.AST
   , jsCurryLam
   , jsCurryApp
   , jsAppN
-  , js_aux_defs
   , jsExpr2Stmt
   , jsStmt2Expr
   , jsSetVar
@@ -274,7 +273,7 @@ jsAst2Text (JsStr s) =   "\"" `T.append` T.pack (concatMap translateChar s) `T.a
 jsAst2Text (JsArray l) =
   T.concat ["[", T.intercalate ", " (map jsAst2Text l), "]"]
 jsAst2Text (JsErrorExp t) =
-  T.concat ["js_idris_throw2(new Error(  ", jsAst2Text t, "))"]
+  T.concat ["$JSRTS.throw(new Error(  ", jsAst2Text t, "))"]
 jsAst2Text (JsBinOp op a1 a2) =
   T.concat ["(", jsAst2Text a1, " ", op, " ", jsAst2Text a2, ")"]
 jsAst2Text (JsUniOp op a) = T.concat ["(", op, jsAst2Text a, ")"]
@@ -284,29 +283,10 @@ jsAst2Text (JsForeign code args) =
         args_repl (T.replace ("%" `T.append` T.pack (show i)) (T.concat ["(", t, ")"]) c) (i + 1) r
   in T.concat ["(", args_repl code 0 (map jsAst2Text args), ")"]
 jsAst2Text (JsB2I x) = jsAst2Text $ JsBinOp "+" x (JsInt 0)
-jsAst2Text (JsForce e) = T.concat ["js_idris_force(", jsAst2Text e, ")"]
+jsAst2Text (JsForce e) = T.concat ["$JSRTS.force(", jsAst2Text e, ")"]
 
 jsLazy :: JsExpr -> JsExpr
-jsLazy e = JsObj [("js_idris_lazy_calc", (JsLambda [] $ JsReturn e))]
-
-throw2 =
-  T.concat ["var js_idris_throw2 = function (x){\n", " throw x;\n", "}\n"]
-
-force =
-  T.concat
-    [ "var js_idris_force = function (x){\n"
-    , " if(x.js_idris_lazy_calc === undefined){\n"
-    , "  return x\n"
-    , " }else{\n"
-    , "  if(x.js_idris_lazy_val === undefined){\n"
-    , "   x.js_idris_lazy_val = x.js_idris_lazy_calc()\n"
-    , "  }\n"
-    , " return x.js_idris_lazy_val\n"
-    , " }\n"
-    , "}\n"
-    ]
-
-js_aux_defs = T.concat [throw2, force]
+jsLazy e = JsNew (JsProp (JsVar "$JSRTS") "Lazy") [(JsLambda [] $ JsReturn e)]
 
 jsExpr2Stmt :: JsExpr -> JsStmt
 jsExpr2Stmt = JsExprStmt
