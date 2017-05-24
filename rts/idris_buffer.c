@@ -3,7 +3,7 @@
 
 typedef struct {
     int size;
-    uint8_t* data;
+    uint8_t data[0];
 } Buffer;
 
 void* idris_newBuffer(int bytes) {
@@ -13,7 +13,6 @@ void* idris_newBuffer(int bytes) {
     }
 
     buf->size = bytes;
-    buf->data = (uint8_t*)(buf+1);
     memset(buf->data, 0, bytes);
 
     return buf;
@@ -25,7 +24,7 @@ void idris_copyBuffer(void* from, int start, int len,
     Buffer* bto = to;
 
     if (loc >= 0 && loc+len <= bto->size) {
-        memcpy((bto->data)+loc, (bfrom->data)+start, len);
+        memcpy(bto->data + loc, bfrom->data + start, len);
     }
 }
 
