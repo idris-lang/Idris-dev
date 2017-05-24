@@ -6,9 +6,6 @@ env:
   global:
     - PKGNAME=idris
 
-node_js: 
-  - "6"
-
 matrix:
   include:
     - env: CABALVER="1.24" GHCVER="8.0.1" STACKVER="7.14" STYLISH=YES
@@ -117,6 +114,7 @@ install:
     fi
 
 before_script:
+  - nvm install 6
   - ORIGINAL_DIR=$(pwd)
   - cabal sdist
   - cd ..
