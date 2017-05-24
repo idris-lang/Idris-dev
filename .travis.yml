@@ -6,7 +6,8 @@ env:
   global:
     - PKGNAME=idris
 
-node_js: "6"
+node_js: 
+  - "6"
 
 matrix:
   include:
