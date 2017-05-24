@@ -26,3 +26,8 @@ main = do Just buf <- newBuffer 40
           closeFile h
 
           printLn !(bufferData buf3)
+
+          -- Small buffer, tests issue #3828
+          Just small <- newBuffer 3
+          setByte small 0 0
+          setByte small 2 1
