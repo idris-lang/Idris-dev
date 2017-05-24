@@ -54,6 +54,8 @@ before_cache:
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index.tar
 
 before_install:
+  - nvm install 6
+  - nvm use 6
   - unset CC
   - if [[ $TRAVIS_OS_NAME == 'linux' ]];
     then
@@ -114,7 +116,6 @@ install:
     fi
 
 before_script:
-  - nvm install 6
   - ORIGINAL_DIR=$(pwd)
   - cabal sdist
   - cd ..
