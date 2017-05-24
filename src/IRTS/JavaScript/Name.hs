@@ -35,47 +35,9 @@ jsEscape = concatMap jschar
       | x == '.' = "__"
       | otherwise = "_" ++ show (fromEnum x) ++ "_"
 
-showCGJS :: Name -> String
-showCGJS (UN n) = "u$" ++ jsEscape (T.unpack n)
-showCGJS (NS n s) = "q_" ++ show (length s) ++ "$" ++ showSep "$" (map (jsEscape . T.unpack) (reverse s))
-    ++ "$" ++ showCGJS n
-showCGJS (MN _ u) | u == txt "underscore" = "_"
-showCGJS (MN i s) = "t$" ++ jsEscape (T.unpack s) ++ "$" ++ show i
-showCGJS (SN s) = showCGJS' s
-  where
-    showCGJS' (WhereN i p c) =
-      "where$" ++ showCGJS p ++ "$" ++ showCGJS c ++ "$" ++ show i
-    showCGJS' (WithN i n) = "with$" ++ showCGJS n ++ "$" ++ show i
-    showCGJS' (ImplementationN cl impl) =
-      "impl_" ++ show (length impl) ++ "$" ++ showCGJS cl ++ "$"
-        ++ showSep "$" (map (jsEscape . T.unpack) impl)
-    showCGJS' (MethodN m) = "meth$" ++ showCGJS m
-    showCGJS' (ParentN p c) = "parent$" ++ showCGJS p ++ "$" ++ show c
-    showCGJS' (CaseN fc c) = "case$" ++ showCGJS c ++ "$" ++ showFC' fc
-    showCGJS' (ElimN sn) = "elim$" ++ showCGJS sn
-    showCGJS' (ImplementationCtorN n) = "ictor$" ++ showCGJS n
-    showCGJS' (MetaN parent meta) =
-      "meta$" ++ showCGJS parent ++ "$" ++ showCGJS meta
-    showFC' (FC' NoFC) = ""
-    showFC' (FC' (FileFC f)) = "_" ++ cgFN f
-    showFC' (FC' (FC f s e))
-      | s == e = "_" ++ cgFN f ++ "_" ++ show (fst s) ++ "_" ++ show (snd s)
-      | otherwise =
-        "_" ++
-        cgFN f ++
-        "_" ++
-        show (fst s) ++
-        "_" ++ show (snd s) ++ "_" ++ show (fst e) ++ "_" ++ show (snd e)
-    cgFN =
-      concatMap
-        (\c ->
-           if not (isDigit c || isLetter c)
-             then "__"
-             else [c])
-showCGJS (SymRef i) = error "can't do codegen for a symbol reference"
-
 jsName :: Name -> Text
-jsName n = T.pack $ showCGJS n
+jsName (MN i u) = T.concat ["$_", T.pack (show i), "_", T.pack $ jsEscape $ T.unpack u]
+jsName n = T.pack $ jsEscape $ showCG n
 
 jsNameGenerated :: Int -> Text
 jsNameGenerated v = T.pack $ "$cg$" ++ show v

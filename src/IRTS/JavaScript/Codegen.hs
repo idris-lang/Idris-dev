@@ -164,7 +164,7 @@ doCodegen conf defs decls =
 doCodegenDecl :: CGConf -> Map Name LDecl -> LDecl -> (Text, CGStats)
 doCodegenDecl conf defs (LFun _ n args def) =
   let (ast, stats) = cgFun conf defs n args def
-  in (jsStmt2Text $ ast, stats)
+  in (T.concat [jsStmt2Text (JsComment $ T.pack $ show n), "\n", jsStmt2Text ast], stats)
 doCodegenDecl conf defs (LConstructor n i sz) = ("", emptyStats)
 
 seqJs :: [JsStmt] -> JsStmt
@@ -347,14 +347,7 @@ cgBody' rt (LV (Glob n)) =
   do
     argsFn <- getArgList n
     case argsFn of
-      Just [] -> do
-        n' <- cgName n
-        pure $ ([], addRT rt n')
-      Just a ->
-        do
-          let part = Partial n 0 (length a)
-          addPartial part
-          pure ([], addRT rt $ jsAppN (jsNamePartial part) [])
+      Just a -> cgBody' rt (LApp False (LV (Glob n)) [])
       Nothing -> do
         n' <- cgName n
         pure $ ([], addRT rt n')

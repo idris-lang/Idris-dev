@@ -31,6 +31,7 @@ import Numeric
 
 data JsStmt
   = JsEmpty
+  | JsComment Text
   | JsExprStmt JsExpr
   | JsFun Text
           [Text]
@@ -94,7 +95,6 @@ data JsExpr
   | JsForeign Text
               [JsExpr]
   | JsB2I JsExpr
-  | JsComment Text
   | JsForce JsExpr
   deriving (Show, Eq, Data, Typeable)
 
@@ -152,6 +152,7 @@ jsSetVar n x = JsSet (JsVar n) x
 
 jsStmt2Text :: JsStmt -> Text
 jsStmt2Text JsEmpty = ""
+jsStmt2Text (JsComment c) = T.unlines $ map ("// " `T.append`) $ T.lines c
 jsStmt2Text (JsExprStmt e) = T.concat [jsAst2Text e, ";"]
 jsStmt2Text (JsReturn x) = T.concat ["return ", jsAst2Text x, ";"]
 jsStmt2Text (JsDecVar name exp) =
@@ -283,7 +284,6 @@ jsAst2Text (JsForeign code args) =
         args_repl (T.replace ("%" `T.append` T.pack (show i)) (T.concat ["(", t, ")"]) c) (i + 1) r
   in T.concat ["(", args_repl code 0 (map jsAst2Text args), ")"]
 jsAst2Text (JsB2I x) = jsAst2Text $ JsBinOp "+" x (JsInt 0)
-jsAst2Text (JsComment c) = T.concat ["/*", c, "*/"]
 jsAst2Text (JsForce e) = T.concat ["js_idris_force(", jsAst2Text e, ")"]
 
 jsLazy :: JsExpr -> JsExpr
