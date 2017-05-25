@@ -352,7 +352,7 @@ than directly with ``delete``.
 
 We can complete ``getData`` as follows, using a pattern matching bind
 alternative (see the Idris tutorial, :ref:`monadsdo`) rather than a
-``case`` statement to catch the possibilty of an error with ``login``:
+``case`` statement to catch the possibility of an error with ``login``:
 
 .. code-block:: idris
 
@@ -367,7 +367,7 @@ alternative (see the Idris tutorial, :ref:`monadsdo`) rather than a
                disconnect st
 
 We can't yet try this out, however, because we don't have any implementations
-of ``getData``! If we try to execute it in an ``IO`` context, for example,
+of ``DataStore``! If we try to execute it in an ``IO`` context, for example,
 we'll get an error saying that there's no implementation of ``DataStore IO``:
 
 .. code::
@@ -383,7 +383,7 @@ of ``DataStore``.
 Implementing the interface
 ==========================
 
-To execute ``getData`` in ``IO``, we'll need to provided an implementation
+To execute ``getData`` in ``IO``, we'll need to provide an implementation
 of ``DataStore`` which works in the ``IO`` context. We can begin as
 follows:
 
@@ -526,7 +526,7 @@ like ``getData``, and constrain by only the interfaces we need, rather than
 using a concrete context ``IO``.
 
 We've now seen how to manipulate states, and how to encapsulate state
-transitions for a specific system like the data store inn an interface.
+transitions for a specific system like the data store in an interface.
 However, realistic systems will need to *compose* state machines. We'll
 either need to use more than one state machine at a time, or implement one
 state machine in terms of one or more others. We'll see how to achieve this
