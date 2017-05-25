@@ -306,7 +306,7 @@ data STrans : (m : Type -> Type) ->
      Split : (lbl : Var) ->
              (prf : InState lbl (Composite vars) res) ->
              STrans m (VarList vars) res
-                   (\ vs => mkRes vs ++
+                   (\vs => mkRes vs ++
                             updateRes res prf (State ()))
      Combine : (comp : Var) -> (vs : List Var) ->
                (prf : VarsIn (comp :: vs) res) ->
@@ -456,7 +456,7 @@ export
 split : (lbl : Var) ->
         {auto prf : InState lbl (Composite vars) res} ->
         STrans m (VarList vars) res
-              (\ vs => mkRes vs ++
+              (\vs => mkRes vs ++
                        updateRes res prf (State ()))
 split lbl {prf} = Split lbl prf
 
