@@ -17,6 +17,6 @@ const $JSRTS = {
         }
     },
     prim_strSubstr: function (offset, len, str) {
-        return str.slice(Math.max(0, offset), Math.max(0, len))
+        return str.substr(Math.max(0, offset), Math.max(0, len))
     }
 };
