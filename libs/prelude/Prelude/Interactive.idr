@@ -25,6 +25,17 @@ import IO
 
 ---- some basic io
 
+||| Disables buffering in both stdin and stdout
+||| so that output is written immediately, and never stored in the buffer
+||| and the next input item is read and returned
+|||
+||| this is useful to circumvent problem with IO on some windows system
+||| where stdout output sometimes is only shown after prompted input from
+||| stdin
+disableBuffering : IO ()
+disableBuffering = do prim_noIOBuffering
+                      pure ()
+
 ||| Output a string to stdout without a trailing newline, for any FFI
 ||| descriptor
 putStr' : String -> IO' ffi ()

@@ -124,6 +124,9 @@ unsafePerformIO : IO' ffi a -> a
 unsafePerformIO (MkIO f) = unsafePerformPrimIO
         (prim_io_bind (f (TheWorld prim__TheWorld)) (\ b => prim_io_pure b))
 
+prim_noIOBuffering : IO' l Int
+prim_noIOBuffering = MkIO (\w => prim_io_pure (prim__noBuffering (world w)))
+
 prim_read : IO' l String
 prim_read = MkIO (\w => prim_io_pure (prim__readString (world w)))
 

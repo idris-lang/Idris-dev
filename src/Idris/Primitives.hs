@@ -175,6 +175,8 @@ primitives =
    Prim (sUN "prim__strSubstr") (ty [AType (ATInt ITNative), AType (ATInt ITNative), StrType] StrType) 3 (p_strSubstr)
     (3, LStrSubstr) total,
 
+   Prim (sUN "prim__noBuffering") (ty [WorldType] (AType (ATInt ITNative))) 2 (p_cantreduce)
+     (2, LNoBuffering) total, -- total is okay, because we have 'WorldType'
    Prim (sUN "prim__readString") (ty [WorldType] StrType) 1 (p_cantreduce)
      (1, LReadStr) total, -- total is okay, because we have 'WorldType'
    Prim (sUN "prim__writeString") (ty [WorldType,StrType] (AType (ATInt ITNative))) 2 (p_cantreduce)

@@ -16,6 +16,8 @@ int fileError(void* h);
 int fileSize(void* h);
 
 // return 0 on success
+int idris_noBuffering();
+// return 0 on success
 int idris_writeStr(void*h, char* str);
 // construct a file error structure (see Prelude.File) from errno
 VAL idris_mkFileError(VM* vm);
