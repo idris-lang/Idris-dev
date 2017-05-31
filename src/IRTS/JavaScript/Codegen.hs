@@ -80,12 +80,7 @@ isYes _ = False
 codegenJs :: CGConf -> CodeGenerator
 codegenJs conf ci =
   do
-    optim <- isYes <$> lookupEnv "IDRISJS_OPTIM"
     debug <- isYes <$> lookupEnv "IDRISJS_DEBUG"
-    if debug then
-      if optim then putStrLn "compiling width idris-js optimizations"
-        else putStrLn "compiling widthout idris-js optimizations"
-      else pure ()
     let defs = Map.fromList $ liftDecls ci
     let used = Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
     if debug then
@@ -108,12 +103,15 @@ codegenJs conf ci =
     TIO.writeFile (outputFile ci) $ T.concat [ header conf
                                              , "\"use strict\";\n\n"
                                              , "(function(){\n\n"
+                                             -- rts
                                              , runtimeCommon, "\n"
                                              , extraRT, "\n"
                                              , jsbn, "\n"
+                                             -- external libraries
+                                             , includes, "\n"
+                                             -- user code
                                              , doPartials (partialApplications stats), "\n"
                                              , doHiddenClasses (hiddenClasses stats), "\n"
-                                             , includes, "\n"
                                              , out, "\n"
                                              , jsName (sMN 0 "runMain"), "();\n"
                                              , "}.call(this))"
@@ -135,6 +133,7 @@ doHiddenClasses :: Set HiddenClass -> Text
 doHiddenClasses x =
   T.intercalate "\n" (map f $ Set.toList x)
   where
+      f p@(HiddenClass n id 0) = jsStmt2Text $ JsDecConst (jsNameHiddenClass p) $ JsObj [("type", JsInt id)]
       f p@(HiddenClass n id arity) =
         let vars = map dataPartName $ take arity [1..]
         in jsStmt2Text $
@@ -349,27 +348,9 @@ cgBody' rt (LApp tailcall (LV (Glob fn)) args) =
           let ((y1,y2), y3) = tailCallOptimRefreshArgs (zip argN argVals) Set.empty
           addUsedArgsTailCallOptim y3
           pure (preDecs, y1 `JsSeq` y2)
-      _ ->
-        do
-          argsFn <- getArgList fn
-          case argsFn of
-            Nothing -> do
-              fn' <- cgName fn
-              pure (preDecs, addRT rt $ jsCurryApp fn' argVals )
-            Just agFn ->
-              do
-                let lenAgFn = length agFn
-                let lenArgs = length args
-                case compare lenAgFn lenArgs of
-                  EQ ->
-                    pure (preDecs, addRT rt $ jsAppN fname argVals)
-                  LT ->
-                    pure (preDecs, addRT rt $ jsCurryApp (jsAppN fname (take lenAgFn argVals)) (drop lenAgFn argVals) )
-                  GT ->
-                    do
-                      let part = Partial fn lenArgs lenAgFn
-                      addPartial part
-                      pure (preDecs, addRT rt $ jsAppN (jsNamePartial part) argVals )
+      _ -> do
+        app <- formApp fn argVals
+        pure (preDecs, addRT rt app)
 
 cgBody' rt (LForce (LLazyApp n args)) = cgBody rt (LApp False (LV (Glob n)) args)
 cgBody' rt (LLazyApp n args) =
@@ -447,18 +428,36 @@ altHasNoProj :: LAlt -> Bool
 altHasNoProj (LConCase _ _ args _) = args == []
 altHasNoProj _ = True
 
+formApp :: Name -> [JsExpr] -> State CGBodyState JsExpr
+formApp fn argVals = case specialCall fn of
+  Just (arity, g) | arity == length argVals -> pure $ g argVals
+  _ -> do
+    argsFn <- getArgList fn
+    fname <- cgName fn
+    case argsFn of
+      Nothing -> pure $ jsCurryApp fname argVals
+      Just agFn -> do
+        let lenAgFn = length agFn
+        let lenArgs = length argVals
+        case compare lenAgFn lenArgs of
+          EQ -> pure $ JsApp fname argVals
+          LT -> pure $ jsCurryApp (JsApp fname (take lenAgFn argVals)) (drop lenAgFn argVals)
+          GT -> do
+            let part = Partial fn lenArgs lenAgFn
+            addPartial part
+            pure $ jsAppN (jsNamePartial part) argVals
+
 formCon :: Name -> [JsExpr] -> State CGBodyState JsExpr
 formCon n args = do
   case specialCased n of
     Just (ctor, test, match) -> pure $ ctor args
     Nothing -> do
       (conId, arity) <- getConsId n
-      if (arity > 0)
-        then do
-          let hc = HiddenClass n conId arity
-          addHiddenClass hc
-          pure $ JsNew (JsVar $ jsNameHiddenClass hc) args
-        else pure $ JsInt conId
+      let hc = HiddenClass n conId arity
+      addHiddenClass hc
+      pure $ if (arity > 0)
+        then JsNew (JsVar $ jsNameHiddenClass hc) args
+        else JsVar $ jsNameHiddenClass hc
 
 formConTest :: Name -> JsExpr -> State CGBodyState JsExpr
 formConTest n x = do
@@ -466,9 +465,10 @@ formConTest n x = do
     Just (ctor, test, match) -> pure $ test x
     Nothing -> do
       (conId, arity) <- getConsId n
-      if (arity > 0)
-        then pure $ JsBinOp "===" (JsProp x (T.pack "type")) (JsInt conId)
-        else pure $ JsBinOp "===" x (JsInt conId)
+      pure $ JsBinOp "===" (JsProp x (T.pack "type")) (JsInt conId)
+      -- if (arity > 0)
+      --   then pure $ JsBinOp "===" (JsProp x (T.pack "type")) (JsInt conId)
+      --   else pure $ JsBinOp "===" x (JsInt conId)
 
 formProj :: Name -> JsExpr -> Int -> JsExpr
 formProj n v i =
