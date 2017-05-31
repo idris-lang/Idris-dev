@@ -47,7 +47,8 @@ Build-type:     Custom
 Tested-With:    GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
 
 Data-files:            idrisdoc/styles.css
-                       jsrts/jsbn/jsbn.js
+                       jsrts/jsbn/jsbn-browser.js
+                       jsrts/jsbn/jsbn-node.js
                        jsrts/Runtime-common.js
                        jsrts/Runtime-javascript.js
                        jsrts/Runtime-node.js
@@ -223,8 +224,11 @@ Library
                 , IRTS.CodegenJavaScript
                 , IRTS.Exports
                 , IRTS.JavaScript.AST
+                , IRTS.JavaScript.Name
                 , IRTS.JavaScript.Codegen
                 , IRTS.JavaScript.LangTransforms
+                , IRTS.JavaScript.Specialize
+                , IRTS.JavaScript.PrimOp
                 , IRTS.Compiler
                 , IRTS.Defunctionalise
                 , IRTS.DumpBC

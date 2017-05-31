@@ -1,0 +1,1 @@
+$JSRTS.jsbn = require('jsbn');
