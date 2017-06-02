@@ -225,7 +225,7 @@ and uses the ``ConsoleIO`` and ``Sockets`` interfaces:
 The first thing we need to do is create a socket for binding to a port
 and listening for incoming connections, using ``socket``. This might fail,
 so we'll need to deal with the case where it returns ``Right sock``, where
-``sock`` is the new socket variable, or wher it returns ``Left err``:
+``sock`` is the new socket variable, or where it returns ``Left err``:
 
 .. code-block:: idris
 
@@ -340,7 +340,7 @@ connection:
                ST m () [remove sock (Sock {m} Listening)]
   echoServer sock =
     do Right new <- accept sock | Left err => do close sock; remove sock
-       Right msg <- recv new | Left err => do close sock; remove sock; remove ne
+       Right msg <- recv new | Left err => do close sock; remove sock; remove new
        Right ok <- send new ("You said " ++ msg)
              | Left err => do remove new; close sock; remove sock
        close new; remove new; echoServer sock
@@ -429,7 +429,7 @@ find the complete echo server there, ``EchoServer.idr``. There is also
 a higher level network protocol, ``RandServer.idr``, using a hierarchy of
 state machines to implement a high level network communication protocol
 in terms of the lower level sockets API. This also uses threading, to
-handle incoming requests asyncronously. You can find some more detail
+handle incoming requests asynchronously. You can find some more detail
 on threading and the random number server in the draft paper
 `State Machines All The Way Down <https://www.idris-lang.org/drafts/sms.pdf>`_
 by Edwin Brady.

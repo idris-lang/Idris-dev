@@ -348,7 +348,7 @@ We'll need to be able to create a new ``Surface`` by opening a window:
     initWindow : Int -> Int -> ST m Var [add Surface]
 
 However, this isn't quite right. It's possible that opening a window
-will fail, for example if our program is running in a termina without
+will fail, for example if our program is running in a terminal without
 a windowing system available. So, somehow, ``initWindow`` needs to cope
 with the possibility of failure. We can do this by returning a
 ``Maybe Var``, rather than a ``Var``, and only adding the ``Surface``
@@ -657,14 +657,14 @@ resources and merge them into one composite resource. Before we run
 ``combine``, the target resource must exist (``comp`` here) and must be
 of type ``State ()``.
 
-It is instructive to look at the types of ``split`` and combine to see
+It is instructive to look at the types of ``split`` and ``combine`` to see
 the requirements on resource lists they work with. The type of ``split``
 is the following:
 
 .. code-block:: idris
 
     split : (lbl : Var) -> {auto prf : InState lbl (Composite vars) res} ->
-            STrans m (VarList vars) res (\ vs => mkRes vs ++ updateRes res prf (State ()))
+            STrans m (VarList vars) res (\vs => mkRes vs ++ updateRes res prf (State ()))
 
 The implicit ``prf`` argument says that the ``lbl`` being split must be
 a composite resource. It returns a variable list, built from the composite
@@ -713,8 +713,8 @@ A ``Line`` is defined as a start location, and end location, and a colour:
   Line : Type
   Line = ((Int, Int), (Int, Int), Col)
 
-To implement ``start``, which creates a new ``Turtle`` (or returns ``Nothing``)
-if this is impossible, we begin by initialising the drawing surface then
+To implement ``start``, which creates a new ``Turtle`` (or returns ``Nothing`` 
+if this is impossible), we begin by initialising the drawing surface then
 all of the components of the state. Finally, we combine all of these
 into a composite resource for the turtle:
 
