@@ -2292,6 +2292,9 @@ instance (Binary t) => Binary (PDo' t) where
                                       put x1
                                       put x2
                                       put x3
+                DoRewrite x1 x2 -> do putWord8 3
+                                      put x1
+                                      put x2
         get
           = do i <- getWord8
                case i of
@@ -2318,6 +2321,10 @@ instance (Binary t) => Binary (PDo' t) where
                            x2 <- get
                            x3 <- get
                            return (DoLetP x1 x2 x3)
+                   5 -> do
+                           x1 <- get
+                           x2 <- get
+                           return (DoRewrite x1 x2)
                    _ -> error "Corrupted binary data for PDo'"
 
 

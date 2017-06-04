@@ -233,6 +233,7 @@ updateSynMatch = update
                     = DoBindP fc (update ns i) (update ns t)
                                  (map (\(l,r) -> (update ns l, update ns r)) ts)
             upd ns (DoLetP fc i t) = DoLetP fc (update ns i) (update ns t)
+            upd ns (DoRewrite fc h) = DoRewrite fc (update ns h)
     update ns (PIdiom fc t) = PIdiom fc $ update ns t
     update ns (PMetavar fc n) = uncurry (flip PMetavar) $ updateB ns (n, fc)
     update ns (PProof tacs) = PProof $ map (updTactic ns) tacs
@@ -1342,6 +1343,7 @@ doBlock syn
 Do ::=
     'let' Name  TypeSig'?      '=' Expr
   | 'let' Expr'                '=' Expr
+  | 'rewrite Expr
   | Name  '<-' Expr
   | Expr' '<-' Expr
   | Expr
@@ -1366,6 +1368,11 @@ do_ syn
                sc <- expr syn
                highlightP kw AnnKeyword
                return (DoLetP fc i sc))
+   <|> try (do kw <- reservedFC "rewrite"
+               fc <- getFC
+               sc <- expr syn
+               highlightP kw AnnKeyword
+               return (DoRewrite fc sc))
    <|> try (do (i, ifc) <- name
                symbol "<-"
                fc <- getFC
