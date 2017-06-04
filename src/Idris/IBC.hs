@@ -2292,7 +2292,7 @@ instance (Binary t) => Binary (PDo' t) where
                                       put x1
                                       put x2
                                       put x3
-                DoRewrite x1 x2 -> do putWord8 3
+                DoRewrite x1 x2 -> do putWord8 5
                                       put x1
                                       put x2
         get
