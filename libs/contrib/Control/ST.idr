@@ -1,6 +1,7 @@
 module Control.ST
 
 import Language.Reflection.Utils
+import Control.IOExcept
 
 %default total
 
@@ -571,8 +572,16 @@ ConsoleIO IO where
   putStr str = lift (Interactive.putStr str)
   getStr = lift Interactive.getLine
 
-  putChar c = lift $ Interactive.putChar c
+  putChar c = lift (Interactive.putChar c)
   getChar = lift Interactive.getChar
+
+export
+ConsoleIO (IOExcept err) where
+  putStr str = lift (ioe_lift (Interactive.putStr str))
+  getStr = lift (ioe_lift Interactive.getLine)
+
+  putChar c = lift (ioe_lift (Interactive.putChar c))
+  getChar = lift (ioe_lift Interactive.getChar)
 
 export
 run : Applicative m => ST m a [] -> m a
