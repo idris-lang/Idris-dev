@@ -14,7 +14,7 @@ In this section we discuss a variety of additional features:
 + code generation; and
 + the universe hierarchy.
 
-Auto implicit arguments
+Implicit arguments
 =======================
 
 We have already seen implicit arguments, which allows arguments to be
@@ -23,6 +23,9 @@ omitted when they can be inferred by the type checker, e.g.
 .. code-block:: idris
 
     index : {a:Type} -> {n:Nat} -> Fin n -> Vect n a -> a
+    
+Auto implicit arguments
+------------------------
 
 In other situations, it may be possible to infer arguments not by type
 checking but by searching the context for an appropriate value, or
@@ -66,6 +69,24 @@ In the case that a proof is not found, it can be provided explicitly as normal:
 .. code-block:: idris
 
     head xs {p = ?headProof}
+    
+Default implicit arguments
+---------------------------
+
+Besides having Idris automatically find any value of a given type, sometimes we 
+want to have an implicit argument with a default value. Idris provides this 
+functionality through the ``default`` annotation. For example, if we want to 
+compute the n'th fibonacci number (and setting the 0'th as 0), we can write:
+
+.. code-block:: idris
+
+	fibonacci : {default 0 lag : Nat} -> {default 1 lead : Nat} -> Nat -> Nat
+	fibonacci {lag} Z = lag
+	fibonacci {lead} (S Z) = lead
+	fibonacci {lag} {lead} (S (S n)) = fibonacci {lag=lead} {lead=lag+lead} (S n)
+
+Here, ``fibonacci 5`` is equivalent to ``fibonacci {lag=0} {lead=1} 5``.
+
 
 Implicit conversions
 ====================
