@@ -73,19 +73,25 @@ In the case that a proof is not found, it can be provided explicitly as normal:
 Default implicit arguments
 ---------------------------
 
-Besides having Idris automatically find any value of a given type, sometimes we 
-want to have an implicit argument with a default value. Idris provides this 
-functionality through the ``default`` annotation. For example, if we want to 
-compute the n'th fibonacci number (and setting the 0'th as 0), we can write:
+Besides having Idris automatically find a value of a given type, sometimes we 
+want to have an implicit argument with a specific default value. In Idris, we can
+do this using the ``default`` annotation. While this is primarily intended to assist
+in automatically constructing a proof where auto fails, or finds an unhelpful value, 
+it might be easier to first consider a simpler case, not involving proofs. 
+
+If we want to compute the n'th fibonacci number (and defining the 0th fibonacci 
+number as 0), we could write:
 
 .. code-block:: idris
 
-	fibonacci : {default 0 lag : Nat} -> {default 1 lead : Nat} -> Nat -> Nat
+	fibonacci : {default 0 lag : Nat} -> {default 1 lead : Nat} -> (n : Nat) -> Nat
 	fibonacci {lag} Z = lag
-	fibonacci {lead} (S Z) = lead
-	fibonacci {lag} {lead} (S (S n)) = fibonacci {lag=lead} {lead=lag+lead} (S n)
+	fibonacci {lag} {lead} (S Z) = fibonacci {lag=lead} {lead=lag+lead} n
 
-Here, ``fibonacci 5`` is equivalent to ``fibonacci {lag=0} {lead=1} 5``.
+After this definition, ``fibonacci 5`` is equivalent to ``fibonacci {lag=0} {lead=1} 5``,
+and will return the 5th fibonacci number. Note that while this works, this is not the 
+intended use of the ``default`` annotation. It is included here for illustrative purposes 
+only. Usually, ``default`` is used to provide things like a custom proof search script.
 
 
 Implicit conversions
