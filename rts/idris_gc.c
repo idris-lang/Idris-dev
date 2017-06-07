@@ -104,8 +104,10 @@ void idris_gc(VM* vm) {
     HEAP_CHECK(vm)
     STATS_ENTER_GC(vm->stats, vm->heap.size)
 
-    if (vm->heap.old != NULL)
-        free(vm->heap.old);
+    void* old_heap=0;
+    if (vm->heap.old != NULL){
+        old_heap = vm->heap.old;
+    }
 
     /* Allocate swap heap. */
     alloc_heap(&vm->heap, vm->heap.size, vm->heap.growth, vm->heap.heap);
@@ -141,6 +143,7 @@ void idris_gc(VM* vm) {
 
     STATS_LEAVE_GC(vm->stats, vm->heap.size, vm->heap.next - vm->heap.heap)
     HEAP_CHECK(vm)
+    free(old_heap);
 }
 
 void idris_gcInfo(VM* vm, int doGC) {
