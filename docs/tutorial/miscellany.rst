@@ -14,7 +14,7 @@ In this section we discuss a variety of additional features:
 + code generation; and
 + the universe hierarchy.
 
-Auto implicit arguments
+Implicit arguments
 =======================
 
 We have already seen implicit arguments, which allows arguments to be
@@ -23,6 +23,9 @@ omitted when they can be inferred by the type checker, e.g.
 .. code-block:: idris
 
     index : {a:Type} -> {n:Nat} -> Fin n -> Vect n a -> a
+    
+Auto implicit arguments
+------------------------
 
 In other situations, it may be possible to infer arguments not by type
 checking but by searching the context for an appropriate value, or
@@ -66,6 +69,30 @@ In the case that a proof is not found, it can be provided explicitly as normal:
 .. code-block:: idris
 
     head xs {p = ?headProof}
+    
+Default implicit arguments
+---------------------------
+
+Besides having Idris automatically find a value of a given type, sometimes we 
+want to have an implicit argument with a specific default value. In Idris, we can
+do this using the ``default`` annotation. While this is primarily intended to assist
+in automatically constructing a proof where auto fails, or finds an unhelpful value, 
+it might be easier to first consider a simpler case, not involving proofs. 
+
+If we want to compute the n'th fibonacci number (and defining the 0th fibonacci 
+number as 0), we could write:
+
+.. code-block:: idris
+
+	fibonacci : { default 0 lag : Nat } -> { default 1 lead : Nat } -> (n : Nat) -> Nat
+	fibonacci {lag} Z = lag
+	fibonacci {lag} {lead} (S Z) = fibonacci {lag=lead} {lead=lag+lead} n
+
+After this definition, ``fibonacci 5`` is equivalent to ``fibonacci {lag=0} {lead=1} 5``,
+and will return the 5th fibonacci number. Note that while this works, this is not the 
+intended use of the ``default`` annotation. It is included here for illustrative purposes 
+only. Usually, ``default`` is used to provide things like a custom proof search script.
+
 
 Implicit conversions
 ====================
