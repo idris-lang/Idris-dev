@@ -84,7 +84,7 @@ number as 0), we could write:
 
 .. code-block:: idris
 
-	fibonacci : {default 0 lag : Nat} -> {default 1 lead : Nat} -> (n : Nat) -> Nat
+	fibonacci : { default 0 lag : Nat } -> { default 1 lead : Nat } -> (n : Nat) -> Nat
 	fibonacci {lag} Z = lag
 	fibonacci {lag} {lead} (S Z) = fibonacci {lag=lead} {lead=lag+lead} n
 
