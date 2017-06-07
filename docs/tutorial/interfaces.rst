@@ -400,7 +400,7 @@ Then the comprehension is converted to ``do`` notation:
 
 .. code-block:: idris
 
-    do { qual1; qual2; ...; qualn; pure exp; }
+    do { guard qual1; guard qual2; ...; guard qualn; pure exp; }
 
 Using monad comprehensions, an alternative definition for ``m_add``
 would be:
