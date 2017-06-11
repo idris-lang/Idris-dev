@@ -64,7 +64,14 @@ data CGConf = CGConf { header :: Text
 
 
 getInclude :: FilePath -> IO Text
-getInclude p = TIO.readFile p
+getInclude p =
+  do
+    libs <- getIdrisLibDir
+    let libPath = libs </> p
+    exitsInLib <- doesFileExist libPath
+    if exitsInLib then
+      TIO.readFile libPath
+      else TIO.readFile p
 
 getIncludes :: [FilePath] -> IO Text
 getIncludes l = do
