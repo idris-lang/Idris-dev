@@ -183,7 +183,7 @@ bcc i (ASSIGNCONST l c)
     mkConst (I i) = "MKINT(" ++ show i ++ ")"
     mkConst (BI i) | i < (2^30) = "MKINT(" ++ show i ++ ")"
                    | otherwise = "MKBIGC(vm,\"" ++ show i ++ "\")"
-    mkConst (Fl f) = "MKFLOAT(vm, " ++ show f ++ ")"
+    mkConst (Fl f) = "MKFLOAT(vm, " ++ (map toUpper $ show f) ++ ")"
     mkConst (Ch c) = "MKINT(" ++ show (fromEnum c) ++ ")"
     mkConst (Str s) = "MKSTR(vm, " ++ showCStr s ++ ")"
     mkConst (B8  x) = "idris_b8const(vm, "  ++ show x ++ "U)"
