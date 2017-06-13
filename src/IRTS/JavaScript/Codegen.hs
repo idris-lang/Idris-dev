@@ -71,6 +71,15 @@ getIncludes l = do
   incs <- mapM getInclude l
   return $ T.intercalate "\n\n" incs
 
+includeLibs :: [String] -> String
+includeLibs =
+  let
+    repl '\\' = '_'
+    repl '/' = '_'
+    repl c   = c
+  in
+    concatMap (\lib -> "var " ++ (repl <$> lib) ++ " = require(\"" ++ lib ++"\");\n")
+
 isYes :: Maybe String -> Bool
 isYes (Just "Y") = True
 isYes (Just "y") = True
@@ -100,6 +109,7 @@ codegenJs conf ci =
     extraRT <- TIO.readFile $ path </> (extraRunTime conf)
 
     includes <- getIncludes $ includes ci
+    let libs = T.pack $ includeLibs $ compileLibs ci
     TIO.writeFile (outputFile ci) $ T.concat [ header conf
                                              , "\"use strict\";\n\n"
                                              , "(function(){\n\n"
@@ -109,6 +119,7 @@ codegenJs conf ci =
                                              , jsbn, "\n"
                                              -- external libraries
                                              , includes, "\n"
+                                             , libs, "\n"
                                              -- user code
                                              , doPartials (partialApplications stats), "\n"
                                              , doHiddenClasses (hiddenClasses stats), "\n"
