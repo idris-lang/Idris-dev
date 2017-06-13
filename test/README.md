@@ -132,7 +132,7 @@ for the compatible backends are:
 
 - `ANY`: choose this if your test will work with any code generator
 - `C_CG`: choose this to only test against the C code generator
-- `JS_CG`: choose this to only test against the Node code generator
+- `NODE_CG`: choose this to only test against the Node code generator
 - `NONE`: choose this if you don't want your test to be run with multiple code
 generators (mainly for tests that only perform type checking)
 
