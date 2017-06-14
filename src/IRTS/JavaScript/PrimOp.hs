@@ -37,7 +37,7 @@ primDB =
   Map.fromList [
     item (LPlus ATFloat) False PTAny $ binop "+"
   , item (LPlus (ATInt ITChar)) False PTAny $ JsForeign "String.fromCharCode(%0.charCodeAt(0) + %1.charCodeAt(0))"
-  , item (LPlus (ATInt ITNative)) False PTAny $ JsForeign "%0+%1|0"
+  , item (LPlus (ATInt ITNative)) False PTAny $ binop "+"
   , item (LPlus (ATInt (ITFixed IT8))) False PTAny $ JsForeign "%0 + %1 & 0xFF"
   , item (LPlus (ATInt (ITFixed IT16))) False PTAny $ JsForeign "%0 + %1 & 0xFFFF"
   , item (LPlus (ATInt (ITFixed IT32))) False PTAny $ JsForeign "%0+%1|0"
@@ -46,7 +46,7 @@ primDB =
     \[l, r] -> JsForeign "%0.add(%1).and(new $JSRTS.jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item (LMinus ATFloat) False PTAny $ binop "-"
   , item (LMinus (ATInt ITChar)) False PTAny $ JsForeign "String.fromCharCode(%0.charCodeAt(0) - %1.charCodeAt(0))"
-  , item (LMinus (ATInt ITNative)) False PTAny $ JsForeign "%0-%1|0"
+  , item (LMinus (ATInt ITNative)) False PTAny $ binop "-"
   , item (LMinus (ATInt (ITFixed IT8))) False PTAny $ JsForeign "%0 - %1 & 0xFF"
   , item (LMinus (ATInt (ITFixed IT16))) False PTAny $ JsForeign "%0 - %1 & 0xFFFF"
   , item (LMinus (ATInt (ITFixed IT32))) False PTAny $ JsForeign "%0-%1|0"
@@ -55,7 +55,7 @@ primDB =
     \[l, r] -> JsForeign "%0.subtract(%1).and(new $JSRTS.jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item (LTimes ATFloat) False PTAny $ binop "*"
   , item (LTimes (ATInt ITChar)) False PTAny $ JsForeign "String.fromCharCode(%0.charCodeAt(0) * %1.charCodeAt(0))"
-  , item (LTimes (ATInt ITNative)) False PTAny $ JsForeign "%0*%1|0"
+  , item (LTimes (ATInt ITNative)) False PTAny $ binop "*"
   , item (LTimes (ATInt (ITFixed IT8))) False PTAny $ JsForeign "%0 * %1 & 0xFF"
   , item (LTimes (ATInt (ITFixed IT16))) False PTAny $ JsForeign "%0 * %1 & 0xFFFF"
   , item (LTimes (ATInt (ITFixed IT32))) False PTAny $ JsForeign "%0*%1|0"
@@ -71,14 +71,14 @@ primDB =
   , item (LSDiv (ATInt (ITFixed IT16))) False PTAny $ JsForeign "%0 / %1"
   , item (LSDiv (ATInt (ITFixed IT32))) False PTAny $ JsForeign "%0  / %1 |0"
   , item (LSDiv (ATInt (ITFixed IT64))) True PTAny $ JsForeign "%0.divide(%1)"
-  , item (LSDiv (ATInt ITNative)) False PTAny $ JsForeign "%0/%1|0"
+  , item (LSDiv (ATInt ITNative)) False PTAny $ JsForeign "%0/%1|0" -- we need "|0" in this
   , item (LSDiv (ATInt ITBig)) True PTAny $ method "divide"
   , item (LURem (ITFixed IT8)) False PTAny $ JsForeign "%0 % %1"
   , item (LURem (ITFixed IT16)) False PTAny $ JsForeign "%0 % %1"
   , item (LURem (ITFixed IT32)) False PTAny $ JsForeign "(%0>>>0) % (%1>>>0) |0"
   , item (LURem (ITFixed IT64)) True PTAny $ method "remainder"
   , item (LSRem ATFloat) False PTAny $ binop "%"
-  , item (LSRem (ATInt ITNative)) False PTAny $ JsForeign "%0 % %1 |0"
+  , item (LSRem (ATInt ITNative)) False PTAny $ binop "%"
   , item (LSRem (ATInt (ITFixed IT8))) False PTAny $ JsForeign "%0 % %1"
   , item (LSRem (ATInt (ITFixed IT16))) False PTAny $ JsForeign "%0 % %1"
   , item (LSRem (ATInt (ITFixed IT32))) False PTAny $ JsForeign "%0 % %1 |0"

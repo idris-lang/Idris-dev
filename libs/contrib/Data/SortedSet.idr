@@ -29,6 +29,7 @@ export
 toList : SortedSet k -> List k
 toList (SetWrapper m) = map (\(i, _) => i) (Data.SortedMap.toList m)
 
+export
 Foldable SortedSet where
   foldr f e xs = foldr f e (Data.SortedSet.toList xs)
 
@@ -52,8 +53,10 @@ export
 intersection : (x, y : SortedSet k) -> SortedSet k
 intersection x y = difference x (difference x y)
 
+export
 Ord k => Semigroup (SortedSet k) where
   (<+>) = union
 
+export
 Ord k => Monoid (SortedSet k) where
   neutral = empty

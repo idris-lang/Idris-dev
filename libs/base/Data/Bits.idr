@@ -19,8 +19,8 @@ nextPow2 (S x) = if (S x) == (2 `power` l2x)
       l2x = log2NZ (S x) SIsNotZ
 
 ||| Gets the lowest n for which "8 * 2 ^ n" is larger than or equal to the input.
-||| For example, `nextBytes 10 = 16`.
-||| Like with nextPow2, the result is not rounded up, so `nextBytes 16 = 16`.
+||| For example, `nextBytes 10 = 1`.
+||| Like with nextPow2, the result is not rounded up, so `nextBytes 16 = 1`.
 public export
 nextBytes : Nat -> Nat
 nextBytes bits = (nextPow2 (divCeilNZ bits 8 SIsNotZ))
@@ -368,6 +368,7 @@ complement' {n=n} x with (nextBytes n)
                     prim__complB64 (x `prim__shlB64` pad) `prim__lshrB64` pad
     | _ = assert_unreachable
 
+||| Reverse all the bits in the argument.
 complement : %static {n : Nat} -> Bits n -> Bits n
 complement (MkBits x) = MkBits (complement' x)
 
@@ -386,6 +387,7 @@ zext' {n=n} {m=m} x with (nextBytes n, nextBytes (n+m))
     | (S (S (S _)), S (S (S _))) = believe_me x
     | _ = assert_unreachable
 
+||| Extend the bitstring with zeros, leaving the first n bits unchanged.
 zeroExtend : %static {n : Nat} -> %static {m : Nat} -> Bits n -> Bits (n+m)
 zeroExtend (MkBits x) = MkBits (zext' x)
 
@@ -418,7 +420,7 @@ bitsToInt' {n=n} x with (nextBytes n)
 bitsToInt : %static {n : Nat} -> Bits n -> Integer
 bitsToInt (MkBits x) = bitsToInt' x
 
--- Zero out the high bits of a truncated bitstring
+||| Zero out the high bits of a truncated bitstring
 zeroUnused : %static {n : Nat} -> machineTy (nextBytes n) -> machineTy (nextBytes n)
 zeroUnused {n} x = x `and'` complement' (intToBits' {n=n} 0)
 
@@ -474,10 +476,13 @@ trunc' {m=m} {n=n} x with (nextBytes n, nextBytes (m+n))
     | (S (S (S _)), S (S (S _))) = believe_me x
     | _ = assert_unreachable
 
+||| Truncate the high bits of a bitstring.
 truncate : %static {m : Nat} -> %static {n : Nat} -> Bits (m+n) -> Bits n
 truncate (MkBits x) = MkBits (zeroUnused (trunc' x))
 
-bitAt : %static {n : Nat} -> Fin n -> Bits n
+||| Create a bitstring of length n with the bit given as an argument set to one
+||| and all other bits set to zero.
+bitAt : %static {n : Nat} -> (at : Fin n) -> Bits n
 bitAt n = intToBits 1 `shiftLeft` intToBits (cast n)
 
 getBit : %static {n : Nat} -> Fin n -> Bits n -> Bool
