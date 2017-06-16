@@ -73,7 +73,7 @@ smallerPlus' {m} {k} = rewrite sym (plusSuccRightSucc m k) in
 ||| Constructs the view in O(n lg n)
 export
 splitRec : (xs : Vect n a) -> SplitRec xs
-splitRec {n} input with (accessible n)
+splitRec {n} input with (sizeAcc n)
   splitRec input | acc with (split input)
     splitRec [] | acc | SplitNil = SplitRecNil
     splitRec [x] | acc | SplitOne = SplitRecOne
