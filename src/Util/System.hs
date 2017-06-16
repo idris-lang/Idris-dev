@@ -16,6 +16,7 @@ module Util.System( tempfile
                   , readSource
                   , setupBundledCC
                   , isATTY
+                  , isMinTTY
                   ) where
 
 import Control.Exception as CE
@@ -75,6 +76,20 @@ isATTY = do
             tty    <- isATTYRaw 1 -- fd stdout
             mintty <- isMinTTY
             return $ (tty /= 0) || mintty
+
+-- | Return 'True' if the process's standard output is attached to a MinTTY
+-- console (e.g., Cygwin or MSYS) on Windows. Return 'False' otherwise.
+--
+-- Unfortunately, we must check this separately since 'isATTY' always returns
+-- 'False' on MinTTY consoles.
+isMinTTY :: IO Bool
+#ifdef mingw32_HOST_OS
+isMinTTY = do
+  h <- getStdHandle sTD_OUTPUT_HANDLE
+  isMinTTYHandle h
+#else
+isMinTTY = return False
+#endif
 
 -- | Return 'True' if the process's standard output is attached to a MinTTY
 -- console (e.g., Cygwin or MSYS) on Windows. Return 'False' otherwise.

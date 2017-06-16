@@ -110,8 +110,9 @@ idrisMain opts =
 
        when (DefaultTotal `elem` opts) $ do i <- getIState
                                             putIState (i { default_total = DefaultCheckingTotal })
-       tty <- runIO isATTY
-       setColourise $ not quiet && last (tty : opt getColour opts)
+       tty    <- runIO isATTY
+       mintty <- runIO isMinTTY
+       setColourise $ not quiet && last ((tty || mintty) : opt getColour opts)
 
 
 
