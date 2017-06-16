@@ -86,14 +86,19 @@ wfInd : WellFounded rel => {P : a -> Type} ->
 wfInd {rel} step x = accInd step x (wellFounded {rel} x)
 
 
--- Accessibility for sized types
-
+||| Interface of types with sized values.
+|||
+||| The sizes are used for proofs of termination via accessibility.
+|||
+||| @ a the type whose elements can be mapped to Nat
 interface Sized a where
   size : a -> Nat
 
 Smaller : Sized a => a -> a -> Type
 Smaller x y = size x `LT` size y
 
+||| Proof of well-foundedness of `Smaller`.
+||| Constructs accessibility for any given element of `a`, provided `Sized a`.
 accessible : Sized a => (x : a) -> Accessible Smaller x
 accessible x = Access $ f (size x) (ltAccessible $ size x)
   where
@@ -114,6 +119,7 @@ accessible x = Access $ f (size x) (ltAccessible $ size x)
         ltAccessible' (S k) (LTESucc x)
             = Access (\val, p => ltAccessible' k (lteTransitive p x))
 
+||| Strong induction principle for sized types.
 sizeInd : Sized a
   => {P : a -> Type}
   -> (step : (x : a) -> ((y : a) -> Smaller y x -> P y) -> P x)
@@ -121,6 +127,7 @@ sizeInd : Sized a
   -> P z
 sizeInd step z = accInd step z (accessible z)
 
+||| Strong recursion principle for sized types.
 sizeRec : Sized a
   => (step : (x : a) -> ((y : a) -> Smaller y x -> b) -> b)
   -> (z : a)
