@@ -99,35 +99,24 @@ data JsExpr
 
 translateChar :: Char -> String
 translateChar ch
-  | '\a'   <- ch       = "\\u0007"
   | '\b'   <- ch       = "\\b"
   | '\f'   <- ch       = "\\f"
   | '\n'   <- ch       = "\\n"
   | '\r'   <- ch       = "\\r"
   | '\t'   <- ch       = "\\t"
   | '\v'   <- ch       = "\\v"
-  | '\SO'  <- ch       = "\\u000E"
-  | '\DEL' <- ch       = "\\u007F"
   | '\\'   <- ch       = "\\\\"
   | '\"'   <- ch       = "\\\""
   | '\''   <- ch       = "\\\'"
-  | ch `elem` asciiTab = "\\u" ++ fill (showHex (ord ch) "")
-  | ord ch > 255       = "\\u" ++ fill (showHex (ord ch) "")
-  | otherwise          = [ch]
+  | ord ch < 0x20      = "\\x" ++ pad 2 (showHex (ord ch) "")
+  | ord ch < 0x7f      = [ch]  -- 0x7f '\DEL'
+  | ord ch <= 0xff     = "\\x" ++ pad 2 (showHex (ord ch) "")
+  | ord ch <= 0xffff   = "\\u" ++ pad 4 (showHex (ord ch) "")
+  | ord ch <= 0x10ffff = "\\u{" ++ showHex (ord ch) "}"
+  | otherwise          = error $ "Invalid Unicode code point U+" ++ showHex (ord ch) ""
   where
-    fill :: String -> String
-    fill s = case length s of
-                  1 -> "000" ++ s
-                  2 -> "00"  ++ s
-                  3 -> "0"   ++ s
-                  _ ->          s
-
-    asciiTab =
-      ['\NUL', '\SOH', '\STX', '\ETX', '\EOT', '\ENQ', '\ACK', '\BEL',
-       '\BS',  '\HT',  '\LF',  '\VT',  '\FF',  '\CR',  '\SO',  '\SI',
-       '\DLE', '\DC1', '\DC2', '\DC3', '\DC4', '\NAK', '\SYN', '\ETB',
-       '\CAN', '\EM',  '\SUB', '\ESC', '\FS',  '\GS',  '\RS',  '\US']
-
+    pad :: Int -> String -> String
+    pad n s = replicate (n - length s) '0' ++ s
 
 indent :: Text -> Text
 indent x =
