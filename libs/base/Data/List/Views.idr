@@ -62,7 +62,7 @@ data SplitRec : List a -> Type where
                     (rrec : Lazy (SplitRec rights)) -> SplitRec (lefts ++ rights)
 
 total
-splitRecFix : (xs : List a) -> ((ys : List a) -> smaller ys xs -> SplitRec ys) -> 
+splitRecFix : (xs : List a) -> ((ys : List a) -> Smaller ys xs -> SplitRec ys) -> 
               SplitRec xs
 splitRecFix xs srec with (split xs)
   splitRecFix [] srec | SplitNil = SplitRecNil
@@ -76,7 +76,7 @@ splitRecFix xs srec with (split xs)
 ||| Constructs the view in O(n lg n)
 export total
 splitRec : (xs : List a) -> SplitRec xs
-splitRec xs = accInd splitRecFix xs (smallerAcc xs)
+splitRec = sizeInd splitRecFix
 
 ||| View for traversing a list backwards
 public export
@@ -105,17 +105,17 @@ data Filtered : (a -> a -> Bool) -> List a -> Type where
             (rrec : Lazy (Filtered p (filter (\y => not (p y x)) xs))) ->
             Filtered p (x :: xs)
 
-filteredLOK : (p : a -> a -> Bool) -> (x : a) -> (xs : List a) -> smaller (filter (\y => p y x) xs) (x :: xs)
+filteredLOK : (p : a -> a -> Bool) -> (x : a) -> (xs : List a) -> Smaller (filter (\y => p y x) xs) (x :: xs)
 filteredLOK p x xs = LTESucc (filterSmaller xs)
 
-filteredROK : (p : a -> a -> Bool) -> (x : a) -> (xs : List a) -> smaller (filter (\y => not (p y x)) xs) (x :: xs)
+filteredROK : (p : a -> a -> Bool) -> (x : a) -> (xs : List a) -> Smaller (filter (\y => not (p y x)) xs) (x :: xs)
 filteredROK p x xs = LTESucc (filterSmaller xs)
 
 ||| Covering function for the `Filtered` view
 ||| Constructs the view in O(n lg n)
 export
 filtered : (p : a -> a -> Bool) -> (xs : List a) -> Filtered p xs
-filtered p inp with (smallerAcc inp)
+filtered p inp with (accessible inp)
   filtered p [] | with_pat = FNil
   filtered p (x :: xs) | (Access xsrec) 
       =  FRec (filtered p (filter (\y => p y x) xs) | xsrec _ (filteredLOK p x xs))

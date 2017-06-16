@@ -22,7 +22,7 @@ half (S k) with (half k)
                                            HalfEven {n=S n}
   half (S (n + n)) | HalfEven = HalfOdd
 
-halfRecFix : (n : Nat) -> ((m : Nat) -> LT m n -> HalfRec m) -> HalfRec n
+halfRecFix : (n : Nat) -> ((m : Nat) -> Smaller m n -> HalfRec m) -> HalfRec n
 halfRecFix Z hrec = HalfRecZ
 halfRecFix (S k) hrec with (half k)
   halfRecFix (S (S (n + n))) hrec | HalfOdd 
@@ -34,5 +34,5 @@ halfRecFix (S k) hrec with (half k)
 ||| Covering function for the `HalfRec` view
 export
 halfRec : (n : Nat) -> HalfRec n
-halfRec n = accInd halfRecFix n (ltAccessible n)
-
+halfRec n = accInd halfRecFix n (accessible n)
+--  for some strange reason, (halfRec = sizeInd halfRecFix) does not typecheck here
