@@ -24,7 +24,7 @@ half (S k) with (half k)
 
 export
 halfRec : (n : Nat) -> HalfRec n
-halfRec n with (sizeAcc n)
+halfRec n with (sizeAccessible n)
   halfRec  Z | acc = HalfRecZ
   halfRec (S n) | acc with (half n)
     halfRec' (S (S (k + k))) | Access acc | HalfOdd

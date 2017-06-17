@@ -65,7 +65,7 @@ data SplitRec : List a -> Type where
 ||| Constructs the view in O(n lg n)
 export total
 splitRec : (xs : List a) -> SplitRec xs
-splitRec xs with (sizeAcc xs)
+splitRec xs with (sizeAccessible xs)
   splitRec xs | acc with (split xs)
     splitRec []  | acc | SplitNil = SplitRecNil
     splitRec [x] | acc | SplitOne = SplitRecOne
@@ -111,11 +111,11 @@ filteredROK p x xs = LTESucc (filterSmaller xs)
 ||| Constructs the view in O(n lg n)
 export
 filtered : (p : a -> a -> Bool) -> (xs : List a) -> Filtered p xs
-filtered p inp with (sizeAcc inp)
-  filtered p [] | with_pat = FNil
-  filtered p (x :: xs) | (Access xsrec) 
-      =  FRec (filtered p (filter (\y => p y x) xs) | xsrec _ (filteredLOK p x xs))
-              (filtered p (filter (\y => not (p y x)) xs) | xsrec _ (filteredROK p x xs))
+filtered p inp with (sizeAccessible inp)
+  filtered p [] | _ = FNil
+  filtered p (x :: xs) | Access acc
+      =  FRec (filtered p (filter (\y => p y x) xs) | acc _ (filteredLOK p x xs))
+              (filtered p (filter (\y => not (p y x)) xs) | acc _ (filteredROK p x xs))
 
 lenImpossible : (n = Z) -> (n = ((S k) + right)) -> Void
 lenImpossible {n = Z} _ Refl impossible
