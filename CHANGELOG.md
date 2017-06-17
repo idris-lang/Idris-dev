@@ -4,8 +4,7 @@
 + New JavaScript code generator that uses an higher level intermediate
   representation.
 
-+ Various optimizations of the novel JavaScript code generator to make
-  its results fast.
++ Various optimizations of the new JavaScript code generator.
 
 + Names are now annotated with their representations over the IDE
   protocol, which allows IDEs to provide commands that work on special
