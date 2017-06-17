@@ -28,7 +28,7 @@ import IRTS.Lang
 data JsPrimTy = PTBool | PTAny deriving (Eq, Ord)
 
 type PrimF = [JsExpr] -> JsExpr
-type PrimDec = (Bool, JsPrimTy, PrimF)
+type PrimDec = (Bool, JsPrimTy, PrimF) -- the bool indicates if bigint library is used or not
 
 deriving instance Ord PrimFn
 
@@ -177,15 +177,22 @@ primDB =
   , item (LZExt (ITFixed IT16) ITNative) False PTAny $ head
   , item (LZExt (ITFixed IT32) ITNative) False PTAny $ head
   , item (LZExt ITNative ITBig) True PTAny $ JsForeign "new $JSRTS.jsbn.BigInteger(''+%0)"
+  , item (LZExt (ITFixed IT8) ITBig) True PTAny $ JsForeign "new $JSRTS.jsbn.BigInteger(''+%0)"
+  , item (LZExt (ITFixed IT16) ITBig) True PTAny $ JsForeign "new $JSRTS.jsbn.BigInteger(''+%0)"
+  , item (LZExt (ITFixed IT32) ITBig) True PTAny $ JsForeign "new $JSRTS.jsbn.BigInteger(''+%0)"
+  , item (LZExt (ITFixed IT64) ITBig) True PTAny $ head
   , item (LTrunc ITBig ITNative) True PTAny $ JsForeign "%0.intValue()|0"
+  , item (LTrunc ITBig (ITFixed IT8)) True PTAny $ JsForeign "%0.intValue() & 0xFF"
+  , item (LTrunc ITBig (ITFixed IT16)) True PTAny $ JsForeign "%0.intValue() & 0xFFFF"
+  , item (LTrunc ITBig (ITFixed IT32)) True PTAny $ JsForeign "%0.intValue() & 0xFFFFFFFF"
+  , item (LTrunc ITBig (ITFixed IT64)) True PTAny $
+    \[x] -> JsForeign "%0.and(new $JSRTS.jsbn.BigInteger(%1))" [x, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item (LTrunc (ITFixed IT16) (ITFixed IT8)) False PTAny $ JsForeign "%0 & 0xFF"
   , item (LTrunc (ITFixed IT32) (ITFixed IT8)) False PTAny $ JsForeign "%0 & 0xFF"
   , item (LTrunc (ITFixed IT64) (ITFixed IT8)) True PTAny $ JsForeign "%0.intValue() & 0xFF"
   , item (LTrunc (ITFixed IT32) (ITFixed IT16)) False PTAny $ JsForeign "%0 & 0xFFFF"
   , item (LTrunc (ITFixed IT64) (ITFixed IT16)) True PTAny $ JsForeign "%0.intValue() & 0xFFFF"
   , item (LTrunc (ITFixed IT64) (ITFixed IT32)) True PTAny $ JsForeign "%0.intValue() & 0xFFFFFFFF"
-  , item (LTrunc ITBig (ITFixed IT64)) True PTAny $
-    \[x] -> JsForeign "%0.and(new $JSRTS.jsbn.BigInteger(%1))" [x, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item LStrConcat False PTAny $ binop "+"
   , item LStrLt False PTBool $ binop "<"
   , item LStrEq False PTBool $ binop "=="
