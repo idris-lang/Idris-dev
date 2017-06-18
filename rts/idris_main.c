@@ -3,6 +3,7 @@
 #include "idris_rts.h"
 #include "idris_stats.h"
 
+void _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
 #if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
 #include <Windows.h>
 int win32_get_argv_utf8(int *argc_ptr, char ***argv_ptr)
