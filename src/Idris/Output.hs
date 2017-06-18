@@ -20,7 +20,7 @@ import Idris.IdeMode
 
 import Util.Pretty
 import Util.ScreenSize (getScreenWidth)
-import Util.System (isATTY)
+import Util.System (isATTY, isMinTTY)
 
 import Prelude hiding ((<$>))
 
@@ -65,14 +65,16 @@ iRender d = do w <- getWidth
                let ideMode = case idris_outputmode ist of
                                 IdeMode _ _ -> True
                                 _            -> False
-               tty <- runIO isATTY
+               tty    <- runIO isATTY
+               mintty <- runIO isMinTTY
                case w of
                  InfinitelyWide -> return $ renderPretty 1.0 1000000000 d
                  ColsWide n -> return $
                                if n < 1
                                  then renderPretty 1.0 1000000000 d
                                  else renderPretty 0.8 n d
-                 AutomaticWidth | ideMode || not tty -> return $ renderPretty 1.0 80 d
+                 AutomaticWidth | ideMode || not (tty || mintty) ->
+                                   return $ renderPretty 1.0 80 d
                                 | otherwise -> do width <- runIO getScreenWidth
                                                   return $ renderPretty 0.8 width d
 
