@@ -285,19 +285,27 @@ VAL MKSTR(VM* vm, const char* str) {
     Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
                            sizeof(char)*len, 0);
     SETTY(cl, CT_STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
+    cl->info.str.str = (char*)cl + sizeof(Closure);
     if (str == NULL) {
-        cl->info.str = NULL;
+        cl->info.str.str = NULL;
     } else {
-        strcpy(cl -> info.str, str);
+        strcpy(cl->info.str.str, str);
     }
+    cl->info.str.len = len > 0 ? len : 0;
     return cl;
 }
 
 char* GETSTROFF(VAL stroff) {
     // Assume STROFF
     StrOffset* root = stroff->info.str_offset;
-    return (root->str->info.str + root->offset);
+    return (root->str->info.str.str + root->offset);
+}
+
+size_t GETSTROFFLEN(VAL stroff) {
+    // Assume STROFF
+    // we're working in char* here so no worries about utf8 char length
+    StrOffset* root = stroff->info.str_offset;
+    return (root->str->info.str.len - root->offset);
 }
 
 VAL MKCDATA(VM* vm, CHeapItem * item) {
@@ -342,12 +350,26 @@ VAL MKFLOATc(VM* vm, double val) {
 }
 
 VAL MKSTRc(VM* vm, char* str) {
-    Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
-                           sizeof(char)*strlen(str)+1, 1);
-    SETTY(cl, CT_STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
+    int len = strlen(str);
 
-    strcpy(cl -> info.str, str);
+    Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
+                           sizeof(char)*len+1, 1);
+    SETTY(cl, CT_STRING);
+    cl -> info.str.str = (char*)cl + sizeof(Closure);
+
+    strcpy(cl->info.str.str, str);
+    cl->info.str.len = len;
+    return cl;
+}
+
+VAL MKSTRclen(VM* vm, char* str, int len) {
+    Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
+                           sizeof(char)*len+1, 1);
+    SETTY(cl, CT_STRING);
+    cl -> info.str.str = (char*)cl + sizeof(Closure);
+
+    strcpy(cl->info.str.str, str);
+    cl->info.str.len = len;
     return cl;
 }
 
@@ -428,7 +450,7 @@ void dumpVal(VAL v) {
         printf("] ");
         break;
     case CT_STRING:
-        printf("STR[%s]", v->info.str);
+        printf("STR[%s]", v->info.str.str);
         break;
     case CT_FWD:
         printf("CT_FWD ");
@@ -490,8 +512,9 @@ VAL idris_castIntStr(VM* vm, VAL i) {
     int x = (int) GETINT(i);
     Closure* cl = allocate(sizeof(Closure) + sizeof(char)*16, 0);
     SETTY(cl, CT_STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    sprintf(cl -> info.str, "%d", x);
+    cl->info.str.str = (char*)cl + sizeof(Closure);
+    sprintf(cl->info.str.str, "%d", x);
+    cl->info.str.len = strlen(cl->info.str.str);
     return cl;
 }
 
@@ -503,32 +526,33 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
     case CT_BITS8:
         // max length 8 bit unsigned int str 3 chars (256)
         cl = allocate(sizeof(Closure) + sizeof(char)*4, 0);
-        cl->info.str = (char*)cl + sizeof(Closure);
-        sprintf(cl->info.str, "%" PRIu8, (uint8_t)i->info.bits8);
+        cl->info.str.str = (char*)cl + sizeof(Closure);
+        sprintf(cl->info.str.str, "%" PRIu8, (uint8_t)i->info.bits8);
         break;
     case CT_BITS16:
         // max length 16 bit unsigned int str 5 chars (65,535)
         cl = allocate(sizeof(Closure) + sizeof(char)*6, 0);
-        cl->info.str = (char*)cl + sizeof(Closure);
-        sprintf(cl->info.str, "%" PRIu16, (uint16_t)i->info.bits16);
+        cl->info.str.str = (char*)cl + sizeof(Closure);
+        sprintf(cl->info.str.str, "%" PRIu16, (uint16_t)i->info.bits16);
         break;
     case CT_BITS32:
         // max length 32 bit unsigned int str 10 chars (4,294,967,295)
         cl = allocate(sizeof(Closure) + sizeof(char)*11, 0);
-        cl->info.str = (char*)cl + sizeof(Closure);
-        sprintf(cl->info.str, "%" PRIu32, (uint32_t)i->info.bits32);
+        cl->info.str.str = (char*)cl + sizeof(Closure);
+        sprintf(cl->info.str.str, "%" PRIu32, (uint32_t)i->info.bits32);
         break;
     case CT_BITS64:
         // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
         cl = allocate(sizeof(Closure) + sizeof(char)*21, 0);
-        cl->info.str = (char*)cl + sizeof(Closure);
-        sprintf(cl->info.str, "%" PRIu64, (uint64_t)i->info.bits64);
+        cl->info.str.str = (char*)cl + sizeof(Closure);
+        sprintf(cl->info.str.str, "%" PRIu64, (uint64_t)i->info.bits64);
         break;
     default:
         fprintf(stderr, "Fatal Error: ClosureType %d, not an integer type", ty);
         exit(EXIT_FAILURE);
     }
 
+    cl->info.str.len = strlen(cl->info.str.str);
     SETTY(cl, CT_STRING);
     return cl;
 }
@@ -545,8 +569,10 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 VAL idris_castFloatStr(VM* vm, VAL i) {
     Closure* cl = allocate(sizeof(Closure) + sizeof(char)*32, 0);
     SETTY(cl, CT_STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    snprintf(cl -> info.str, 32, "%.16g", GETFLOAT(i));
+    cl->info.str.str = (char*)cl + sizeof(Closure);
+    snprintf(cl->info.str.str, 32, "%.16g", GETFLOAT(i));
+
+    cl->info.str.len = strlen(cl->info.str.str);
     return cl;
 }
 
@@ -559,11 +585,13 @@ VAL idris_concat(VM* vm, VAL l, VAL r) {
     char *ls = GETSTR(l);
     // dumpVal(l);
     // printf("\n");
-    Closure* cl = allocate(sizeof(Closure) + strlen(ls) + strlen(rs) + 1, 0);
+    Closure* cl = allocate(sizeof(Closure) + GETSTRLEN(l) + GETSTRLEN(r) + 1, 0);
     SETTY(cl, CT_STRING);
-    cl -> info.str = (char*)cl + sizeof(Closure);
-    strcpy(cl -> info.str, ls);
-    strcat(cl -> info.str, rs);
+    cl->info.str.str = (char*)cl + sizeof(Closure);
+    strcpy(cl->info.str.str, ls);
+    strcat(cl->info.str.str, rs);
+
+    cl->info.str.len = GETSTRLEN(l) + GETSTRLEN(r);
     return cl;
 }
 
@@ -670,21 +698,26 @@ VAL idris_strTail(VM* vm, VAL str) {
 VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     char *xstr = GETSTR(xs);
     int xval = GETINT(x);
+    int xlen = GETSTRLEN(xs);
+
     if ((xval & 0x80) == 0) { // ASCII char
         Closure* cl = allocate(sizeof(Closure) +
-                               strlen(xstr) + 2, 0);
+                               xlen + 2, 0);
         SETTY(cl, CT_STRING);
-        cl -> info.str = (char*)cl + sizeof(Closure);
-        cl -> info.str[0] = (char)(GETINT(x));
-        strcpy(cl -> info.str+1, xstr);
+        cl->info.str.str = (char*)cl + sizeof(Closure);
+        cl->info.str.str[0] = (char)(GETINT(x));
+        strcpy(cl->info.str.str+1, xstr);
+        cl->info.str.len = xlen + 1; 
         return cl;
     } else {
         char *init = idris_utf8_fromChar(xval);
-        Closure* cl = allocate(sizeof(Closure) + strlen(init) + strlen(xstr) + 1, 0);
+        int newlen = strlen(init) + xlen;
+        Closure* cl = allocate(sizeof(Closure) + newlen + 1, 0);
         SETTY(cl, CT_STRING);
-        cl -> info.str = (char*)cl + sizeof(Closure);
-        strcpy(cl -> info.str, init);
-        strcat(cl -> info.str, xstr);
+        cl->info.str.str = (char*)cl + sizeof(Closure);
+        strcpy(cl->info.str.str, init);
+        strcat(cl->info.str.str, xstr);
+        cl->info.str.len = newlen;
         free(init);
         return cl;
     }
@@ -701,7 +734,7 @@ VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
     char* str_val = GETSTR(str);
 
     // If the substring is a suffix, use idris_strShift to avoid reallocating
-    if (offset_val + length_val >= strlen(str_val)) {
+    if (offset_val + length_val >= GETSTRLEN(str)) {
         return idris_strShift(vm, str, offset_val);
     }
     else {
@@ -709,20 +742,23 @@ VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
         char *end = idris_utf8_advance(start, length_val);
         Closure* newstr = allocate(sizeof(Closure) + (end - start) +1, 0);
         SETTY(newstr, CT_STRING);
-        newstr -> info.str = (char*)newstr + sizeof(Closure);
-        memcpy(newstr -> info.str, start, end - start);
-        *(newstr -> info.str + (end - start) + 1) = '\0';
+        newstr->info.str.str = (char*)newstr + sizeof(Closure);
+        memcpy(newstr->info.str.str, start, end - start);
+        *(newstr->info.str.str + (end - start) + 1) = '\0';
+        newstr->info.str.len = strlen(newstr->info.str.str);
         return newstr;
     }
 }
 
 VAL idris_strRev(VM* vm, VAL str) {
     char *xstr = GETSTR(str);
-    Closure* cl = allocate(sizeof(Closure) +
-                           strlen(xstr) + 1, 0);
+    int xlen = GETSTRLEN(str);
+
+    Closure* cl = allocate(sizeof(Closure) + xlen + 1, 0);
     SETTY(cl, CT_STRING);
-    cl->info.str = (char*)cl + sizeof(Closure);
-    idris_utf8_rev(xstr, cl->info.str);
+    cl->info.str.str = (char*)cl + sizeof(Closure);
+    cl->info.str.len = xlen;
+    idris_utf8_rev(xstr, cl->info.str.str);
     return cl;
 }
 
@@ -832,7 +868,7 @@ VAL doCopyTo(VM* vm, VAL x) {
         cl = MKFLOATc(vm, x->info.f);
         break;
     case CT_STRING:
-        cl = MKSTRc(vm, x->info.str);
+        cl = MKSTRc(vm, x->info.str.str);
         break;
     case CT_BIGINT:
         cl = MKBIGMc(vm, x->info.ptr);

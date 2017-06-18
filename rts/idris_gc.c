@@ -24,7 +24,7 @@ VAL copy(VM* vm, VAL x) {
         cl = MKFLOATc(vm, x->info.f);
         break;
     case CT_STRING:
-        cl = MKSTRc(vm, x->info.str);
+        cl = MKSTRclen(vm, x->info.str.str, x->info.str.len);
         break;
     case CT_STROFFSET:
         cl = MKSTROFFc(vm, x->info.str_offset);

@@ -42,6 +42,11 @@ typedef struct {
     size_t offset;
 } StrOffset;
 
+typedef struct {
+    char* str;
+    size_t len; // Cached strlen (we do 'strlen' a lot)
+} String;
+
 // A foreign pointer, managed by the idris GC
 typedef struct {
     size_t size;
@@ -59,7 +64,7 @@ typedef struct Closure {
         con c;
         int i;
         double f;
-        char* str;
+        String str;
         StrOffset* str_offset;
         void* ptr;
         uint8_t bits8;
@@ -182,7 +187,8 @@ typedef void(*func)(VM*, VAL*);
 #define ALIGN(__p, __alignment) ((__p + __alignment - 1) & ~(__alignment - 1))
 
 // Retrieving values
-#define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str) : GETSTROFF(x))
+#define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str.str) : GETSTROFF(x))
+#define GETSTRLEN(x) (ISSTR(x) ? (((VAL)(x))->info.str.len) : GETSTROFFLEN(x))
 #define GETPTR(x) (((VAL)(x))->info.ptr)
 #define GETMPTR(x) (((VAL)(x))->info.mptr->data)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
@@ -255,11 +261,13 @@ VAL MKCDATA(VM* vm, CHeapItem * item);
 VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, StrOffset* off);
 VAL MKSTRc(VM* vm, char* str);
+VAL MKSTRclen(VM* vm, char* str, int len);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKMPTRc(VM* vm, void* ptr, size_t size);
 VAL MKCDATAc(VM* vm, CHeapItem * item);
 
 char* GETSTROFF(VAL stroff);
+size_t GETSTROFFLEN(VAL stroff);
 
 // #define SETTAG(x, a) (x)->info.c.tag = (a)
 #define SETARG(x, i, a) ((x)->info.c.args)[i] = ((VAL)(a))
