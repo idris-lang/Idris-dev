@@ -1,0 +1,6 @@
+test (Just x) = ?Nothing_rhs_1
+
+test : Maybe a -> Bool
+test Nothing = False
+test (Just x) = ?Nothing_rhs_1
+
