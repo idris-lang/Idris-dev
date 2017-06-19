@@ -214,6 +214,7 @@ insert k v (M _ t) =
     Left t' => (M _ t')
     Right t' => (M _ t')
 
+export
 insertFrom : Foldable f => f (k, v) -> SortedMap k v -> SortedMap k v
 insertFrom = flip $ foldl $ flip $ uncurry insert
 

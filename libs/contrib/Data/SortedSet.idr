@@ -29,6 +29,7 @@ export
 toList : SortedSet k -> List k
 toList (SetWrapper m) = map (\(i, _) => i) (Data.SortedMap.toList m)
 
+export
 Foldable SortedSet where
   foldr f e xs = foldr f e (Data.SortedSet.toList xs)
 
@@ -60,5 +61,6 @@ export
 Ord k => Monoid (SortedSet k) where
   neutral = empty
 
+export
 keySet : SortedMap k v -> SortedSet k
 keySet = SetWrapper . map (const ())
