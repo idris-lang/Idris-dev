@@ -1,3 +1,9 @@
+# New in 1.0.1
+
+## Library Updates
+
++ Added `Text.Lexer` and `Text.Parser` to `contrib`. These are small libraries
+  for implementing total lexical analysers and parsers.
 
 ## Tool Updates
 
