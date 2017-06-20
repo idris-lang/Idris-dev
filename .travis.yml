@@ -129,7 +129,7 @@ script:
   - echo -en 'travis_fold:end:script.configure\\r'
 ###
   - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'
-  - cabal build
+  - cabal build -j4
   - echo -en 'travis_fold:end:script.build\\r'
 ###
   - echo 'Copy...' && echo -en 'travis_fold:start:script.copy\\r'
