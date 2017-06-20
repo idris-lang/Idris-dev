@@ -8,19 +8,19 @@ lengthSuc : (xs : List a) -> (y : a) -> (ys : List a) ->
 lengthSuc [] _ _ = Refl
 lengthSuc (x :: xs) y ys = cong (lengthSuc xs y ys)
 
-lengthLT : (xs : List a) -> (ys : List a) -> 
+lengthLT : (xs : List a) -> (ys : List a) ->
            LTE (length xs) (length (ys ++ xs))
 lengthLT xs [] = lteRefl
 lengthLT xs (x :: ys) = lteSuccRight (lengthLT _ _)
 
-smallerLeft : (ys : List a) -> (y : a) -> (zs : List a) -> 
+smallerLeft : (ys : List a) -> (y : a) -> (zs : List a) ->
               LTE (S (S (length ys))) (S (length (ys ++ (y :: zs))))
 smallerLeft [] y zs = LTESucc (LTESucc LTEZero)
 smallerLeft (z :: ys) y zs = LTESucc (smallerLeft ys _ _)
 
-smallerRight : (ys : List a) -> (zs : List a) -> 
+smallerRight : (ys : List a) -> (zs : List a) ->
                LTE (S (S (length zs))) (S (length (ys ++ (y :: zs))))
-smallerRight {y} ys zs = rewrite lengthSuc ys y zs in 
+smallerRight {y} ys zs = rewrite lengthSuc ys y zs in
                                  (LTESucc (LTESucc (lengthLT _ _)))
 
 ||| View for splitting a list in half, non-recursively
@@ -32,12 +32,12 @@ data Split : List a -> Type where
                  Split (x :: xs ++ y :: ys)
 
 splitHelp : (head : a) ->
-            (xs : List a) -> 
+            (xs : List a) ->
             (counter : List a) -> Split (head :: xs)
 splitHelp head [] counter = SplitOne
 splitHelp head (x :: xs) [] = SplitPair {xs = []} {ys = xs}
 splitHelp head (x :: xs) [y] = SplitPair {xs = []} {ys = xs}
-splitHelp head (x :: xs) (_ :: _ :: ys) 
+splitHelp head (x :: xs) (_ :: _ :: ys)
     = case splitHelp head xs ys of
            SplitOne => SplitPair {xs = []} {ys = []}
            SplitPair {xs} {ys} => SplitPair {xs = (x :: xs)} {ys = ys}
@@ -58,16 +58,16 @@ data SplitRec : List a -> Type where
      SplitRecNil : SplitRec []
      SplitRecOne : {x : a} -> SplitRec [x]
      SplitRecPair : {lefts, rights : List a} -> -- Explicit, don't erase
-                    (lrec : Lazy (SplitRec lefts)) -> 
+                    (lrec : Lazy (SplitRec lefts)) ->
                     (rrec : Lazy (SplitRec rights)) -> SplitRec (lefts ++ rights)
 
 total
-splitRecFix : (xs : List a) -> ((ys : List a) -> smaller ys xs -> SplitRec ys) -> 
+splitRecFix : (xs : List a) -> ((ys : List a) -> smaller ys xs -> SplitRec ys) ->
               SplitRec xs
 splitRecFix xs srec with (split xs)
   splitRecFix [] srec | SplitNil = SplitRecNil
   splitRecFix [x] srec | SplitOne = SplitRecOne
-  splitRecFix (x :: (ys ++ (y :: zs))) srec | SplitPair 
+  splitRecFix (x :: (ys ++ (y :: zs))) srec | SplitPair
       = let left = srec (x :: ys) (smallerLeft ys y zs)
             right = srec (y :: zs) (smallerRight ys zs) in
             SplitRecPair left right
@@ -87,7 +87,7 @@ data SnocList : List a -> Type where
 
 snocListHelp : SnocList xs -> (ys : List a) -> SnocList (xs ++ ys)
 snocListHelp {xs} x [] = rewrite appendNilRightNeutral xs in x
-snocListHelp {xs} x (y :: ys) 
+snocListHelp {xs} x (y :: ys)
    = rewrite appendAssociative xs [y] ys in snocListHelp (Snoc x) ys
 
 ||| Covering function for the `SnocList` view
@@ -101,7 +101,7 @@ snocList xs = snocListHelp Empty xs
 public export
 data Filtered : (a -> a -> Bool) -> List a -> Type where
      FNil : Filtered p []
-     FRec : (lrec : Lazy (Filtered p (filter (\y => p y x) xs))) -> 
+     FRec : (lrec : Lazy (Filtered p (filter (\y => p y x) xs))) ->
             (rrec : Lazy (Filtered p (filter (\y => not (p y x)) xs))) ->
             Filtered p (x :: xs)
 
@@ -117,7 +117,7 @@ export
 filtered : (p : a -> a -> Bool) -> (xs : List a) -> Filtered p xs
 filtered p inp with (smallerAcc inp)
   filtered p [] | with_pat = FNil
-  filtered p (x :: xs) | (Access xsrec) 
+  filtered p (x :: xs) | (Access xsrec)
       =  FRec (filtered p (filter (\y => p y x) xs) | xsrec _ (filteredLOK p x xs))
               (filtered p (filter (\y => not (p y x)) xs) | xsrec _ (filteredROK p x xs))
 
@@ -129,14 +129,14 @@ total
 lsplit : (xs : List a) ->
          (n : Nat) -> (n = length xs) ->
          (left, right : Nat) -> (n = left + right) ->
-         (ls : List a ** rs : List a ** 
+         (ls : List a ** rs : List a **
                (length ls = left, length rs = right, xs = ls ++ rs))
 lsplit xs n prf Z right prf1 = ([] ** xs ** (Refl, rewrite sym prf in prf1, Refl))
 lsplit [] n prf (S k) right prf1 = void $ lenImpossible prf prf1
-lsplit (x :: xs) (S k) prf (S l) right prf1 
-     = let (lsrec' ** rsrec' ** (lprf, rprf, recprf)) 
+lsplit (x :: xs) (S k) prf (S l) right prf1
+     = let (lsrec' ** rsrec' ** (lprf, rprf, recprf))
                 = lsplit xs k (succInjective _ _ prf) l right (succInjective _ _ prf1) in
-           (x :: lsrec' ** rsrec' ** (eqSucc _ _ lprf, rprf, rewrite recprf in Refl))
+           (x :: lsrec' ** rsrec' ** (cong lprf, rprf, rewrite recprf in Refl))
 lsplit (_ :: _) Z Refl (S _) _ _ impossible
 
 ||| Proof that two numbers differ by at most one
@@ -165,11 +165,11 @@ mkBalanced {n = (S k)} {m = (S k)} Refl Refl = BalancedRec (mkBalanced Refl Refl
 
 splitBalancedLen : (xs : List a) -> (n : Nat) -> (n = length xs) -> SplitBalanced xs
 splitBalancedLen xs n prf with (half n)
-  splitBalancedLen xs (S (x + x)) prf | HalfOdd 
+  splitBalancedLen xs (S (x + x)) prf | HalfOdd
       = let (xs' ** ys' ** (lprf, rprf, apprf)) =
               lsplit xs (S (x + x)) prf (S x) x Refl in
               rewrite apprf in (MkSplitBal (mkBalancedL lprf rprf))
-  splitBalancedLen xs (x + x) prf | HalfEven 
+  splitBalancedLen xs (x + x) prf | HalfEven
       = let (xs' ** ys' ** (lprf, rprf, apprf)) =
               lsplit xs (x + x) prf x x Refl in
               rewrite apprf in (MkSplitBal (mkBalanced lprf rprf))
@@ -180,23 +180,23 @@ splitBalancedLen xs n prf with (half n)
 export
 splitBalanced : (xs : List a) -> SplitBalanced xs
 splitBalanced xs = splitBalancedLen xs (length xs) Refl
-  
+
 ||| The `VList` view allows us to recurse on the middle of a list,
 ||| inspecting the front and back elements simultaneously.
 public export
 data VList : List a -> Type where
      VNil : VList []
      VOne : VList [x]
-     VCons : {x : a} -> {y : a} -> .{xs : List a} -> 
+     VCons : {x : a} -> {y : a} -> .{xs : List a} ->
              (rec : VList xs) -> VList (x :: xs ++ [y])
 
 total
 balRec : (zs, xs : List a) ->
-         Balanced (S (length zs)) (S (length xs)) -> 
+         Balanced (S (length zs)) (S (length xs)) ->
          Balanced (length zs) (length xs)
 balRec zs xs (BalancedRec x) = x
 
-lengthSnoc : (x : _) -> (xs : List a) -> length (xs ++ [x]) = S (length xs) 
+lengthSnoc : (x : _) -> (xs : List a) -> length (xs ++ [x]) = S (length xs)
 lengthSnoc x [] = Refl
 lengthSnoc x (_ :: xs) = cong (lengthSnoc x xs)
 
@@ -205,23 +205,22 @@ Uninhabited (Balanced Z (S k)) where
     uninhabited BalancedL impossible
     uninhabited (BalancedRec _) impossible
 
-toVList : (xs : List a) -> SnocList ys -> 
+toVList : (xs : List a) -> SnocList ys ->
           Balanced (length xs) (length ys) -> VList (xs ++ ys)
 toVList [] Empty y = VNil
 toVList [x] Empty BalancedL = VOne
 toVList (z :: zs) (Snoc {xs} {x} srec) prf
     = rewrite appendAssociative zs xs [x] in
-              VCons (toVList zs srec (balRec zs xs 
+              VCons (toVList zs srec (balRec zs xs
                     (rewrite sym $ lengthSnoc x xs in prf)))
-toVList [] (Snoc {xs} {x} _) prf 
+toVList [] (Snoc {xs} {x} _) prf
      = let prf' : Balanced Z (S (length xs)) = rewrite sym $ lengthSnoc x xs in prf in
            absurd prf'
-      
+
 ||| Covering function for `VList`
 ||| Constructs the view in linear time.
 export
 vList : (xs : List a) -> VList xs
 vList xs with (splitBalanced xs)
-  vList (ys ++ zs) | (MkSplitBal prf) 
+  vList (ys ++ zs) | (MkSplitBal prf)
         = toVList ys (snocList zs) prf
-

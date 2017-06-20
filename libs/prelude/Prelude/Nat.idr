@@ -147,7 +147,7 @@ lteSuccRight : LTE n m -> LTE n (S m)
 lteSuccRight LTEZero     = LTEZero
 lteSuccRight (LTESucc x) = LTESucc (lteSuccRight x)
 
-||| n + 1 < m implies n < m 
+||| n + 1 < m implies n < m
 lteSuccLeft : LTE (S n) m -> LTE n m
 lteSuccLeft (LTESucc x) = lteSuccRight x
 
@@ -427,6 +427,7 @@ cmp (S x) (S y) with (cmp x y)
 total eqSucc : (left : Nat) -> (right : Nat) -> (p : left = right) ->
   S left = S right
 eqSucc left _ Refl = Refl
+%deprecate eqSucc "Please consider using `cong`, it is more general (#3585)"
 
 ||| S is injective
 total succInjective : (left : Nat) -> (right : Nat) -> (p : S left = S right) ->
