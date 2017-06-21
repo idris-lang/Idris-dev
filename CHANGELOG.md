@@ -4,6 +4,9 @@
 
 + Added `Text.Lexer` and `Text.Parser` to `contrib`. These are small libraries
   for implementing total lexical analysers and parsers.
++ New instances:
+    + Added `Catchable` for `ReaderT`, `WriterT`, and `RWST`.
+    + Added `MonadTrans` for `RWST`.
 
 ## Tool Updates
 
