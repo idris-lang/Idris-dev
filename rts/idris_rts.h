@@ -235,7 +235,15 @@ typedef intptr_t i_int;
 
 // Stack management
 
-#define INITFRAME VAL* myoldbase
+#ifdef IDRIS_TRACE
+#define TRACE idris_trace(vm, __FUNCTION__, __LINE__);
+#else
+#define TRACE 
+#endif
+
+#define INITFRAME TRACE\
+                  VAL* myoldbase
+
 #define REBASE vm->valstack_base = oldbase
 #define RESERVE(x) if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
                    else { memset(vm->valstack_top, 0, (x)*sizeof(VAL)); }
@@ -348,6 +356,7 @@ VM* idris_getSender(Msg* msg);
 int idris_getChannel(Msg* msg);
 void idris_freeMsg(Msg* msg);
 
+void idris_trace(VM* vm, const char* func, int line);
 void dumpVal(VAL r);
 void dumpStack(VM* vm);
 

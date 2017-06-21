@@ -7,6 +7,8 @@
 + New instances:
     + Added `Catchable` for `ReaderT`, `WriterT`, and `RWST`.
     + Added `MonadTrans` for `RWST`.
++ Added utility functions to `Data.SortedMap` and `Data.SortedSet` (`contrib`),
+  most notably `merge`, merging two maps by their `Semigroup` op (`<+>`)
 
 ## Tool Updates
 

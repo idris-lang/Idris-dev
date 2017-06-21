@@ -419,6 +419,13 @@ VAL MKB64(VM* vm, uint64_t bits64) {
     return cl;
 }
 
+void idris_trace(VM* vm, const char* func, int line) {
+    printf("At %s:%d\n", func, line);
+    dumpStack(vm);
+    puts("");
+    fflush(stdout);
+}
+
 void dumpStack(VM* vm) {
     int i = 0;
     VAL* root;
@@ -426,7 +433,8 @@ void dumpStack(VM* vm) {
     for (root = vm->valstack; root < vm->valstack_top; ++root, ++i) {
         printf("%d: ", i);
         dumpVal(*root);
-        if (*root >= (VAL)(vm->heap.heap) && *root < (VAL)(vm->heap.end)) { printf("OK"); }
+        if (*root >= (VAL)(vm->heap.heap) && *root < (VAL)(vm->heap.end)) { printf(" OK"); }
+        if (root == vm->valstack_base) { printf(" <--- base"); }
         printf("\n");
     }
     printf("RET: ");
