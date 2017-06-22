@@ -71,8 +71,8 @@ splitRec xs with (sizeAccessible xs)
     splitRec [x] | acc | SplitOne = SplitRecOne
     splitRec (y :: ys ++ z :: zs) | Access acc | SplitPair
       = SplitRecPair
-          (splitRec (y :: ys) | acc (y :: ys) (smallerLeft ys z zs))
-          (splitRec (z :: zs) | acc (z :: zs) (smallerRight ys zs))
+          (splitRec (y :: ys) | acc _ (smallerLeft ys z zs))
+          (splitRec (z :: zs) | acc _ (smallerRight ys zs))
 
 ||| View for traversing a list backwards
 public export
