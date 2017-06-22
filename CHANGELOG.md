@@ -1,3 +1,14 @@
+## Library Updates
+
++ `Prelude.WellFounded` now contains an interface `Sized a` that defines a size
+  mapping from `a` to natural numbers. For example, there is an implementation
+  `Sized (List a)` where `size = length`.
+
+  The function `sizeAccessible` then proves well-foundedness of the relation
+  `Smaller x y = LT (size x) (size y)`, which  allows us to use strong
+  induction conveniently with any type that implements `Sized`.
+
+  A good example of this idiom at work is `Data.List.Views.splitRec` from `base`.
 
 ## Tool Updates
 
