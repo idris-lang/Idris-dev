@@ -191,13 +191,10 @@ maximum Z m = m
 maximum (S n) Z = S n
 maximum (S n) (S m) = S (maximum n m)
 
-||| Tail recursive cast Nat to Int
+||| Cast Nat to Int
 ||| Note that this can overflow
 toIntNat : Nat -> Int
-toIntNat n = toIntNat' n 0 where
-	toIntNat' : Nat -> Int -> Int
-	toIntNat' Z     x = x
-	toIntNat' (S n) x = toIntNat' n (x + 1)
+toIntNat n = prim__truncBigInt_Int (toIntegerNat n)
 
 (-) : (m : Nat) -> (n : Nat) -> {auto smaller : LTE n m} -> Nat
 (-) m n {smaller} = minus m n

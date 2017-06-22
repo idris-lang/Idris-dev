@@ -30,4 +30,6 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
 
           System.Concurrency.Process,
 
+          Text.Lexer, Text.Parser,
+
           Data.Fin.Extra

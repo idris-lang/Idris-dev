@@ -1,5 +1,13 @@
+# New in 1.0.1
+
 ## Library Updates
 
++ Added `Text.Lexer` and `Text.Parser` to `contrib`. These are small libraries
+  for implementing total lexical analysers and parsers.
+
++ Added utility functions to `Data.SortedMap` and `Data.SortedSet` (`contrib`),
+  most notably `merge`, merging two maps by their `Semigroup` op (`<+>`)
+  
 + `Prelude.WellFounded` now contains an interface `Sized a` that defines a size
   mapping from `a` to natural numbers. For example, there is an implementation
   `Sized (List a)` where `size = length`.
@@ -15,8 +23,7 @@
 + New JavaScript code generator that uses an higher level intermediate
   representation.
 
-+ Various optimizations of the novel JavaScript code generator to make
-  its results fast.
++ Various optimizations of the new JavaScript code generator.
 
 + Names are now annotated with their representations over the IDE
   protocol, which allows IDEs to provide commands that work on special

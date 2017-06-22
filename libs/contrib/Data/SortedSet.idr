@@ -60,3 +60,7 @@ Ord k => Semigroup (SortedSet k) where
 export
 Ord k => Monoid (SortedSet k) where
   neutral = empty
+
+export
+keySet : SortedMap k v -> SortedSet k
+keySet = SetWrapper . map (const ())

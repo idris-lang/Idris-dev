@@ -1,3 +1,4 @@
+dist: trusty
 sudo: false
 
 language: c
@@ -153,7 +154,9 @@ script:
   - echo -en 'travis_fold:end:script.tests\\r'
 ###
   - echo 'Benchmarks...' && echo -en 'travis_fold:start:script.benchmarks\\r'
-  - cd benchmarks && ./build.pl && ./run.pl && cd ..
+  - if [[ "$TESTS" == "test_c" ]]; then
+      cd benchmarks && ./build.pl && ./run.pl && cd ..;
+    fi
   - echo -en 'travis_fold:end:script.benchmarks\\r'
 ###
 # EOF

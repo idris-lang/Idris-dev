@@ -111,7 +111,7 @@ addMissing :: FilePath -> Bool -> Int -> Name -> Idris ()
 addMissing fn updatefile l n
    = do src <- runIO $ readSource fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
-        let indent = getIndent 0 (show n) tyline
+        let indent = getIndent tyline
         i <- getIState
         cl <- getInternalApp fn l
         let n' = getAppName cl
@@ -124,9 +124,9 @@ addMissing fn updatefile l n
         if updatefile
           then do let fb = fn ++ "~"
                   runIO $ writeSource fb (unlines (before ++ nonblank)
-                                        ++ extras ++
-                                           (if null extras then ""
-                                                    else "\n" ++ unlines rest))
+                                        ++ extras
+                                        ++ (if null extras then "" else "\n")
+                                        ++ unlines rest)
                   runIO $ copyFile fb fn
           else iPrintResult extras
     where showPat = show . stripNS
@@ -155,9 +155,7 @@ addMissing fn updatefile l n
                                          "\n" ++ rest))
           showNew nm i _ [] = return ""
 
-          getIndent i n [] = 0
-          getIndent i n xs | take (length n) xs == n = i
-          getIndent i n (x : xs) = getIndent (i + 1) n xs
+          getIndent s = length (takeWhile isSpace s)
 
 
 makeWith :: FilePath -> Bool -> Int -> Name -> Idris ()
