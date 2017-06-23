@@ -21,6 +21,9 @@ exp x = prim__floatExp x
 log : Double -> Double
 log x = prim__floatLog x
 
+pow : Double -> Double -> Double
+pow x y = exp (y * log x) 
+
 sin : Double -> Double
 sin x = prim__floatSin x
 
