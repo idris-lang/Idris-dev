@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-cp src/interactive016.idr .
+cat src/interactive016.idr > interactive016.idr
 ${IDRIS:-idris} "$@" --quiet --port none interactive016.idr < input
 
 cat interactive016.idr
