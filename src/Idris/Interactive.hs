@@ -37,7 +37,7 @@ import System.IO
 
 caseSplitAt :: FilePath -> Bool -> Int -> Name -> Idris ()
 caseSplitAt fn updatefile l n
-   = do src <- runIO $ readSource fn
+   = do src <- runIO $ readSourceStrict fn
         (ok, res) <- splitOnLine l n fn
         logLvl 1 (showSep "\n" (map show res))
         let (before, (ap : later)) = splitAt (l-1) (lines src)
@@ -61,7 +61,7 @@ addClauseFrom fn updatefile l n = do
     case metavars of
       Nothing -> addMissing fn updatefile l n
       Just _ -> do
-        src <- runIO $ readSource fn
+        src <- runIO $ readSourceStrict fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
         cl <- getClause l fulln n fn
@@ -88,7 +88,7 @@ addClauseFrom fn updatefile l n = do
 
 addProofClauseFrom :: FilePath -> Bool -> Int -> Name -> Idris ()
 addProofClauseFrom fn updatefile l n
-   = do src <- runIO $ readSource fn
+   = do src <- runIO $ readSourceStrict fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent 0 (show n) tyline
         cl <- getProofClause l n fn
@@ -109,7 +109,7 @@ addProofClauseFrom fn updatefile l n
 
 addMissing :: FilePath -> Bool -> Int -> Name -> Idris ()
 addMissing fn updatefile l n
-   = do src <- runIO $ readSource fn
+   = do src <- runIO $ readSourceStrict fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let indent = getIndent tyline
         i <- getIState
@@ -127,7 +127,7 @@ addMissing fn updatefile l n
                                         ++ extras
                                         ++ (if null extras then "" else "\n")
                                         ++ unlines rest)
-                  runIO $ copyFile fb fn
+                  runIO $ (length src `seq` copyFile fb fn)
           else iPrintResult extras
     where showPat = show . stripNS
           stripNS tm = mapPT dens tm where
@@ -160,7 +160,7 @@ addMissing fn updatefile l n
 
 makeWith :: FilePath -> Bool -> Int -> Name -> Idris ()
 makeWith fn updatefile l n = do
-  src <- runIO $ readSource fn
+  src <- runIO $ readSourceStrict fn
   i <- getIState
   indentWith <- getIndentWith
   let (before, tyline : later) = splitAt (l-1) (lines src)
@@ -184,7 +184,7 @@ makeWith fn updatefile l n = do
 -- block, using a _ for the scrutinee
 makeCase :: FilePath -> Bool -> Int -> Name -> Idris ()
 makeCase fn updatefile l n
-   = do src <- runIO $ readSource fn
+   = do src <- runIO $ readSourceStrict fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
         let newcase = addCaseSkel (show n) tyline
 
@@ -224,7 +224,7 @@ doProofSearch :: FilePath -> Bool -> Bool ->
 doProofSearch fn updatefile rec l n hints Nothing
     = doProofSearch fn updatefile rec l n hints (Just 20)
 doProofSearch fn updatefile rec l n hints (Just depth)
-    = do src <- runIO $ readSource fn
+    = do src <- runIO $ readSourceStrict fn
          let (before, tyline : later) = splitAt (l-1) (lines src)
          ctxt <- getContext
          mn <- case lookupNames n ctxt of
@@ -319,7 +319,7 @@ addBracket True new | any isSpace new = '(' : new ++ ")"
 
 makeLemma :: FilePath -> Bool -> Int -> Name -> Idris ()
 makeLemma fn updatefile l n
-   = do src <- runIO $ readSource fn
+   = do src <- runIO $ readSourceStrict fn
         let (before, tyline : later) = splitAt (l-1) (lines src)
 
         -- if the name is in braces, rather than preceded by a ?, treat it
