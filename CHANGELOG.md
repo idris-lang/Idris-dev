@@ -9,6 +9,22 @@
     + Added `MonadTrans` for `RWST`.
 + Added utility functions to `Data.SortedMap` and `Data.SortedSet` (`contrib`),
   most notably `merge`, merging two maps by their `Semigroup` op (`<+>`)
++ Added utility functions to `Data.SortedMap` and `Data.SortedSet` (`contrib`),
+  most notably `merge`, merging two maps by their `Semigroup` op (`<+>`)
+  
++ `Prelude.WellFounded` now contains an interface `Sized a` that defines a size
+  mapping from `a` to `Nat`. For example, there is an implementation for lists,
+  where `size = length`.
+
+  The function `sizeAccessible` then proves well-foundedness of the relation
+  `Smaller x y = LT (size x) (size y)`, which  allows us to use strong
+  induction conveniently with any type that implements `Sized`.
+
+  In practice, this allows us to write functions that recurse not only on
+  direct subterms of their arguments but on any value
+  with a (strictly) smaller `size`.
+
+  A good example of this idiom at work is `Data.List.Views.splitRec` from `base`.
 
 ## Tool Updates
 

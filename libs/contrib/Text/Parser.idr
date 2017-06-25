@@ -113,7 +113,7 @@ shorter more (x :: xs) = LTESucc (lteSuccLeft (shorter more xs))
 doParse : {c : Bool} ->
           (commit : Bool) -> (xs : List tok) -> (act : Grammar tok c ty) -> 
           ParseResult xs c ty
-doParse com xs act with (smallerAcc xs)
+doParse com xs act with (sizeAccessible xs)
   doParse com xs (Empty val) | sml = EmptyRes com val xs
   doParse com [] (Fail str) | sml = Failure com str []
   doParse com (x :: xs) (Fail str) | sml = Failure com str (x :: xs)
