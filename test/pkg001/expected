@@ -18,3 +18,6 @@ builtin
 Elaborating type decl Main.main[]
 Elaborating clause Main.main
 Rechecking for positivity []
+The presented iPKG file does not have a '.ipkg' extension: "malformed-package-name"
+The presented iPKG file does not exist: "non-existent-package.ipkg"
+The presented iPKG file does not have a '.ipkg' extension: "non-existent-package-with-malformed-name"

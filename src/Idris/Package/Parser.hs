@@ -24,7 +24,9 @@ import Control.Applicative
 import Control.Monad.State.Strict
 import Data.List (union)
 import Data.Maybe (fromJust, isNothing)
-import System.FilePath (isValid, takeFileName)
+import System.Directory (doesFileExist)
+import System.Exit
+import System.FilePath (isValid, takeExtension, takeFileName)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Trifecta hiding (char, charLiteral, natural, span, string, symbol,
                       whiteSpace)
@@ -58,10 +60,19 @@ instance TokenParsing PParser where
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do
-    p <- readFile fp
-    case runparser pPkg defaultPkg fp p of
-      Failure (ErrInfo err _) -> fail (show $ PP.plain err)
-      Success x -> return x
+    when (not $ takeExtension fp == ".ipkg") $ do
+        putStrLn $ unwords ["The presented iPKG file does not have a '.ipkg' extension:", show fp]
+        exitWith (ExitFailure 1)
+    res <- doesFileExist fp
+    if res
+      then do
+        p <- readFile fp
+        case runparser pPkg defaultPkg fp p of
+          Failure (ErrInfo err _) -> fail (show $ PP.plain err)
+          Success x -> return x
+      else do
+        putStrLn $ unwords [ "The presented iPKG file does not exist:", show fp]
+        exitWith (ExitFailure 1)
 
 pPkg :: PParser PkgDesc
 pPkg = do
