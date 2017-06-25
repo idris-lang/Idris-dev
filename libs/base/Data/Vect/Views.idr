@@ -61,23 +61,23 @@ data SplitRec : Vect n a -> Type where
                     (lrec : Lazy (SplitRec xs)) -> 
                     (rrec : Lazy (SplitRec ys)) -> SplitRec (xs ++ ys)
 
-smallerPlus : LTE (S (S m)) (S (plus m (S k)))
-smallerPlus {m} {k} = rewrite sym (plusSuccRightSucc m k) in 
+smallerPlusL : LTE (S (S m)) (S (plus m (S k)))
+smallerPlusL {m} {k} = rewrite sym (plusSuccRightSucc m k) in
                               (LTESucc (LTESucc (lteAddRight _)))
 
-smallerPlus' : LTE (S (S k)) (S (plus m (S k)))
-smallerPlus' {m} {k} = rewrite sym (plusSuccRightSucc m k) in 
+smallerPlusR : LTE (S (S k)) (S (plus m (S k)))
+smallerPlusR {m} {k} = rewrite sym (plusSuccRightSucc m k) in
                                LTESucc (LTESucc (rewrite plusCommutative m k in (lteAddRight _)))
 
 ||| Covering function for the `SplitRec` view
 ||| Constructs the view in O(n lg n)
 export
 splitRec : (xs : Vect n a) -> SplitRec xs
-splitRec {n} input with (ltAccessible n)
+splitRec {n} input with (sizeAccessible n)
   splitRec input | acc with (split input)
     splitRec [] | acc | SplitNil = SplitRecNil
     splitRec [x] | acc | SplitOne = SplitRecOne
-    splitRec (x :: (xs ++ (y :: ys))) | (Access rec) | SplitPair 
-        = let left = splitRec (x :: xs) | rec _ smallerPlus
-              right = splitRec (y :: ys) | rec _ smallerPlus' in
-              SplitRecPair left right
+    splitRec (x :: (xs ++ (y :: ys))) | Access acc | SplitPair
+        = SplitRecPair
+            (splitRec (x :: xs) | acc _ smallerPlusL)
+            (splitRec (y :: ys) | acc _ smallerPlusR)

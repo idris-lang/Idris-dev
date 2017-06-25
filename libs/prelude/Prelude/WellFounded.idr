@@ -85,28 +85,60 @@ wfInd : WellFounded rel => {P : a -> Type} ->
         (x : a) -> P x
 wfInd {rel} step x = accInd step x (wellFounded {rel} x)
 
--- Some basic useful relations
+||| Interface of types with sized values.
+||| The size is used for proofs of termination via accessibility.
+|||
+||| @ a the type whose elements can be mapped to Nat
+interface Sized a where
+  size : a -> Nat
 
-||| LT is a well-founded relation on numbers
-ltAccessible : (n : Nat) -> Accessible LT n
-ltAccessible n = Access (\v, prf => ltAccessible' {n'=v} n prf)
+Smaller : Sized a => a -> a -> Type
+Smaller x y = size x `LT` size y
+
+SizeAccessible : Sized a => a -> Type
+SizeAccessible = Accessible Smaller
+
+||| Proof of well-foundedness of `Smaller`.
+||| Constructs accessibility for any given element of `a`, provided `Sized a`.
+sizeAccessible : Sized a => (x : a) -> SizeAccessible x
+sizeAccessible x = Access $ f (size x) (ltAccessible $ size x)
   where
-    ltAccessible' : (m : Nat) -> LT n' m -> Accessible LT n'
-    ltAccessible' Z x = absurd x 
-    ltAccessible' (S k) (LTESucc x) 
-        = Access (\val, p => ltAccessible' k (lteTransitive p x))
+    -- prove well-foundedness of `Smaller` from well-foundedness of `LT`
+    f : (sizeX : Nat) -> (acc : Accessible LT sizeX)
+      -> (y : a) -> (size y `LT` sizeX) -> SizeAccessible y
+    f Z acc y pf = absurd pf
+    f (S n) (Access acc) y (LTESucc yLEx)
+      = Access (\z, zLTy =>
+          f n (acc n $ LTESucc lteRefl) z (lteTransitive zLTy yLEx)
+        )
 
--- First list is smaller than the second
-smaller : List a -> List a -> Type
-smaller xs ys = LT (length xs) (length ys)
+    ||| LT is a well-founded relation on numbers
+    ltAccessible : (n : Nat) -> Accessible LT n
+    ltAccessible n = Access (\v, prf => ltAccessible' {n'=v} n prf)
+      where
+        ltAccessible' : (m : Nat) -> LT n' m -> Accessible LT n'
+        ltAccessible' Z x = absurd x
+        ltAccessible' (S k) (LTESucc x)
+            = Access (\val, p => ltAccessible' k (lteTransitive p x))
 
-||| `smaller` is a well-founded relation on lists
-smallerAcc : (xs : List a) -> Accessible WellFounded.smaller xs
-smallerAcc xs = Access (\v, prf => smallerAcc' {xs'=v} xs prf)
-  where
-    smallerAcc' : (ys : List a) -> smaller xs' ys -> Accessible smaller xs'
-    smallerAcc' [] x = absurd x
-    smallerAcc' (y :: ys) (LTESucc x) 
-       = Access (\val, p => smallerAcc' ys (lteTransitive p x))
+||| Strong induction principle for sized types.
+sizeInd : Sized a
+  => {P : a -> Type}
+  -> (step : (x : a) -> ((y : a) -> Smaller y x -> P y) -> P x)
+  -> (z : a)
+  -> P z
+sizeInd step z = accInd step z (sizeAccessible z)
+
+||| Strong recursion principle for sized types.
+sizeRec : Sized a
+  => (step : (x : a) -> ((y : a) -> Smaller y x -> b) -> b)
+  -> (z : a)
+  -> b
+sizeRec step z = accRec step z (sizeAccessible z)
 
 
+implementation Sized Nat where
+  size = \x => x
+
+implementation Sized (List a) where
+  size = length

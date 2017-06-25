@@ -22,17 +22,13 @@ half (S k) with (half k)
                                            HalfEven {n=S n}
   half (S (n + n)) | HalfEven = HalfOdd
 
-halfRecFix : (n : Nat) -> ((m : Nat) -> LT m n -> HalfRec m) -> HalfRec n
-halfRecFix Z hrec = HalfRecZ
-halfRecFix (S k) hrec with (half k)
-  halfRecFix (S (S (n + n))) hrec | HalfOdd 
-       = rewrite plusSuccRightSucc (S n) n in 
-                 HalfRecEven (hrec (S n) (LTESucc (LTESucc (lteAddRight _))))
-  halfRecFix (S (n + n)) hrec | HalfEven 
-       = HalfRecOdd (hrec n (LTESucc (lteAddRight _)))
-
-||| Covering function for the `HalfRec` view
 export
 halfRec : (n : Nat) -> HalfRec n
-halfRec n = accInd halfRecFix n (ltAccessible n)
-
+halfRec n with (sizeAccessible n)
+  halfRec  Z | acc = HalfRecZ
+  halfRec (S n) | acc with (half n)
+    halfRec' (S (S (k + k))) | Access acc | HalfOdd
+      = rewrite plusSuccRightSucc (S k) k
+          in HalfRecEven (halfRec' (S k) | acc (S k) (LTESucc (LTESucc (lteAddRight _))))
+    halfRec' (S (k + k)) | Access acc | HalfEven
+      = HalfRecOdd (halfRec' k | acc k (LTESucc (lteAddRight _)))
