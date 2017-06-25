@@ -4,7 +4,11 @@
 
 + Added `Text.Lexer` and `Text.Parser` to `contrib`. These are small libraries
   for implementing total lexical analysers and parsers.
-
++ New instances:
+    + Added `Catchable` for `ReaderT`, `WriterT`, and `RWST`.
+    + Added `MonadTrans` for `RWST`.
++ Added utility functions to `Data.SortedMap` and `Data.SortedSet` (`contrib`),
+  most notably `merge`, merging two maps by their `Semigroup` op (`<+>`)
 + Added utility functions to `Data.SortedMap` and `Data.SortedSet` (`contrib`),
   most notably `merge`, merging two maps by their `Semigroup` op (`<+>`)
   
