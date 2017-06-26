@@ -45,8 +45,8 @@ This is achieved by the already seen ``:load-file`` command.
 
 The available commands include:
 
-  ``(:load-file FILENAME)``
-    Load the named file.
+  ``(:load-file FILENAME [LINE])``
+    Load the named file.  If a ``LINE`` number is provided, the file is only loaded up to that line.  Otherwise, the entire file is loaded.
 
   ``(:interpret STRING)``
     Interpret ``STRING`` at the Idris REPL, returning a highlighted result.
@@ -88,9 +88,12 @@ The available commands include:
     Attempt to fill out the holes on ``LINE`` named ``NAME`` by proof search.
     ``HINTS`` is a possibly-empty list of additional things to try while searching.
 
-  ``(:docs-for NAME)``
-    Look up the documentation for ``NAME``, and return it as a highlighted string.
-
+  ``(:docs-for NAME [MODE])``
+    Look up the documentation for ``NAME``, and return it as a highlighted string. If ``MODE`` is ``:overview``, only the first paragraph of documentation is provided for ``NAME``.  If ``MODE`` is ``:full``, or omitted, the full documentation is returned for ``NAME``.
+ 
+  ``(:apropos STRING)``
+    Search the documentation for mentions of ``STRING``, and return any found as a list of highlighted strings.
+ 
   ``(:metavariables WIDTH)``
     List the currently-active holes, with their types pretty-printed with ``WIDTH`` columns.
 
@@ -121,7 +124,7 @@ The available commands include:
   ``(:repl-completions NAME)``
     Search names, types and documentations which contain ``NAME``.
 
-  ``(:version UID)``
+  ``:version``
     Return the version information of the Idris compiler.
 
 
