@@ -9,9 +9,6 @@
     + Added `MonadTrans` for `RWST`.
 + Added utility functions to `Data.SortedMap` and `Data.SortedSet` (`contrib`),
   most notably `merge`, merging two maps by their `Semigroup` op (`<+>`)
-+ Added utility functions to `Data.SortedMap` and `Data.SortedSet` (`contrib`),
-  most notably `merge`, merging two maps by their `Semigroup` op (`<+>`)
-  
 + `Prelude.WellFounded` now contains an interface `Sized a` that defines a size
   mapping from `a` to `Nat`. For example, there is an implementation for lists,
   where `size = length`.
