@@ -34,8 +34,8 @@ flatten : Monad m => m (m a) -> m a
 flatten = join
 %deprecate flatten "Please use `join`, which is the standard name."
 
-||| Similar to 'foldl', but uses a function wrapping its result in a 'Monad'.
-||| Consequently, the final value is wrapped in the same 'Monad'.
+||| Similar to `foldl`, but uses a function wrapping its result in a `Monad`.
+||| Consequently, the final value is wrapped in the same `Monad`.
 foldlM : (Foldable t, Monad m) => (funcM: a -> b -> m a) -> (init: a) -> (input: t b) -> m a
 foldlM fm a0 = foldl (\ma,b => ma >>= flip fm b) (pure a0)
 
