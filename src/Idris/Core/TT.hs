@@ -536,17 +536,20 @@ instance Pretty [Name] OutputAnnotation where
 
 instance Show Name where
     show (UN n) = str n
-    show (NS n s) = showSep "." (map T.unpack (reverse s)) ++ "." ++ show n
+    show (NS n s) = show n
     show (MN _ u) | u == txt "underscore" = "_"
     show (MN i s) = "{" ++ str s ++ "_" ++ show i ++ "}"
     show (SN s) = show s
     show (SymRef i) = "##symbol" ++ show i ++ "##"
 
 instance Show SpecialName where
-    show (WhereN i p c) = show p ++ ", " ++ show c
+    show (WhereN i p c) = show p ++ "." ++ show c
     show (WithN i n) = "with block in " ++ show n
-    show (ImplementationN cl impl) = showSep ", " (map T.unpack impl) ++ " implementation of " ++ show cl
-    show (MethodN m) = "method " ++ show m
+    show (ImplementationN cl []) = "@{" ++ show cl ++ "}"
+    show (ImplementationN cl [impl]) = "@{" ++ show cl ++ " $ " ++ show impl ++ "}"
+    show (ImplementationN cl impl) = "@{" ++ show cl ++
+        showSep " " (map (("(" ++) . (++ ")") . show . T.unpack) impl) ++ "}"
+    show (MethodN m) = show m
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN fc n) = "case block in " ++ show n ++
                         if fc == FC' emptyFC then "" else " at " ++ show fc
