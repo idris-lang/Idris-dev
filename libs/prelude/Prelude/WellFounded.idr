@@ -106,7 +106,6 @@ sizeAccessible x = Access $ f (size x) (ltAccessible $ size x)
     -- prove well-foundedness of `Smaller` from well-foundedness of `LT`
     f : (sizeX : Nat) -> (acc : Accessible LT sizeX)
       -> (y : a) -> (size y `LT` sizeX) -> SizeAccessible y
-    f Z acc y pf = absurd pf
     f (S n) (Access acc) y (LTESucc yLEx)
       = Access (\z, zLTy =>
           f n (acc n $ LTESucc lteRefl) z (lteTransitive zLTy yLEx)
@@ -117,7 +116,6 @@ sizeAccessible x = Access $ f (size x) (ltAccessible $ size x)
     ltAccessible n = Access (\v, prf => ltAccessible' {n'=v} n prf)
       where
         ltAccessible' : (m : Nat) -> LT n' m -> Accessible LT n'
-        ltAccessible' Z x = absurd x
         ltAccessible' (S k) (LTESucc x)
             = Access (\val, p => ltAccessible' k (lteTransitive p x))
 
