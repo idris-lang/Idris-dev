@@ -200,6 +200,7 @@ primDB =
   , item (LIntFloat ITNative) False PTAny $ head
   , item (LIntFloat ITBig) True PTAny $ JsForeign "%0.intValue()"
   , item (LFloatInt ITNative) False PTAny $ JsForeign "%0|0"
+  , item (LFloatInt ITBig) True PTAny $ JsForeign "new $JSRTS.jsbn.BigInteger(Math.trunc(%0)+ '')"
   , item (LIntStr ITNative) False PTAny $ JsForeign "''+%0"
   , item (LIntStr ITBig) True PTAny $ JsForeign "%0.toString()"
   , item (LStrInt ITNative) False PTAny $ JsForeign "parseInt(%0)|0"
