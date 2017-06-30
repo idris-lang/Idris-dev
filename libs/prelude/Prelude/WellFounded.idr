@@ -101,23 +101,12 @@ SizeAccessible = Accessible Smaller
 ||| Proof of well-foundedness of `Smaller`.
 ||| Constructs accessibility for any given element of `a`, provided `Sized a`.
 sizeAccessible : Sized a => (x : a) -> SizeAccessible x
-sizeAccessible x = Access $ f (size x) (ltAccessible $ size x)
+sizeAccessible x = Access (f $ size x)
   where
     -- prove well-foundedness of `Smaller` from well-foundedness of `LT`
-    f : (sizeX : Nat) -> (acc : Accessible LT sizeX)
-      -> (y : a) -> (size y `LT` sizeX) -> SizeAccessible y
-    f (S n) (Access acc) y (LTESucc yLEx)
-      = Access (\z, zLTy =>
-          f n (acc n $ LTESucc lteRefl) z (lteTransitive zLTy yLEx)
-        )
-
-    ||| LT is a well-founded relation on numbers
-    ltAccessible : (n : Nat) -> Accessible LT n
-    ltAccessible n = Access (\v, prf => ltAccessible' {n'=v} n prf)
-      where
-        ltAccessible' : (m : Nat) -> LT n' m -> Accessible LT n'
-        ltAccessible' (S k) (LTESucc x)
-            = Access (\val, p => ltAccessible' k (lteTransitive p x))
+    f : (sizeX : Nat) -> (y : a) -> (size y `LT` sizeX) -> SizeAccessible y
+    f (S x') y (LTESucc yLEx')
+        = Access (\z, zLTy => f x' z (lteTransitive zLTy yLEx'))
 
 ||| Strong induction principle for sized types.
 sizeInd : Sized a
