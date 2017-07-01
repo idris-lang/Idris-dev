@@ -27,16 +27,6 @@ issue the following command:
     $ idris --codegen javascript hello.idr -o hello.js
 
 
-Generating code for NodeJS is slightly different. Idris outputs a
-JavaScript file that can be directly executed via node.
-
-::
-
-    $ idris --codegen node hello.idr -o hello
-    $ ./hello
-    Hello world
-
-
 Idris can produce very big chunks of JavaScript code (hello world
 weighs in at 1500 lines). However, the generated code can be minified
 using the `closure-compiler
@@ -49,6 +39,16 @@ using the `closure-compiler
 
 Node.js
 -------
+
+Generating code for NodeJS is slightly different. Idris outputs a
+JavaScript file that can be directly executed via node.
+
+::
+
+    $ idris --codegen node hello.idr -o hello
+    $ ./hello
+    Hello world
+
 
 
 Third Party
