@@ -19,19 +19,18 @@ import IRTS.System
 import Util.System
 
 import Control.Monad
+import Control.Monad
+import Control.Monad.RWS
 import Data.Bits
 import Data.Char
-import Numeric
 import Data.List (find, intercalate, nubBy, partition)
 import qualified Data.Text as T
+import Numeric
+import System.Directory
 import System.Exit
 import System.FilePath ((<.>), (</>))
 import System.IO
 import System.Process
-import System.Directory
-import System.FilePath ((</>), (<.>))
-import Control.Monad
-import Control.Monad.RWS
 
 import Debug.Trace
 
@@ -69,9 +68,9 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
          let bc = map toBC defs
          let wrappers = genWrappers bc
          let h = concatMap toDecl (map fst bc)
-         let (state, cc) = execRWS (generateSrc bc) 0 
+         let (state, cc) = execRWS (generateSrc bc) 0
                                          (CS { fnName = Nothing,
-                                                level = 1 }) 
+                                                level = 1 })
          let hi = concatMap ifaceC (concatMap getExp exports)
          d <- getIdrisCRTSDir
          mprog <- readFile (d </> "idris_main" <.> "c")
@@ -142,7 +141,7 @@ toDecl :: Name -> String
 toDecl f = "void " ++ cname f ++ "(VM*, VAL*);\n"
 
 generateSrc :: [(Name, [BC])] -> RWS Int String CState ()
-generateSrc bc = mapM_ toC bc 
+generateSrc bc = mapM_ toC bc
 
 toC :: (Name, [BC]) -> RWS Int String CState ()
 toC (f, code) = do
@@ -150,7 +149,7 @@ toC (f, code) = do
     s <- get
     tell $ "void " ++ cname f ++ "(VM* vm, VAL* oldbase) {\n"
     tell $  indent (level s) ++ "INITFRAME;\n"
-    bcc code 
+    bcc code
     tell $ "}\n\n"
 
 showCStr :: String -> String
