@@ -84,8 +84,11 @@ includeLibs =
     repl '\\' = '_'
     repl '/' = '_'
     repl c   = c
+
+    trimPeriod ('.' : xs) = '_' : xs
+    trimPeriod s = s
   in
-    concatMap (\lib -> "var " ++ (repl <$> lib) ++ " = require(\"" ++ lib ++"\");\n")
+    concatMap (\lib -> "var " ++ (trimPeriod $ repl <$> lib) ++ " = require(\"" ++ lib ++"\");\n")
 
 isYes :: Maybe String -> Bool
 isYes (Just "Y") = True
