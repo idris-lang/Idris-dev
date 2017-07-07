@@ -71,7 +71,7 @@ smallerPlusR {m} {k} = rewrite sym (plusSuccRightSucc m k) in
 
 ||| Covering function for the `SplitRec` view
 ||| Constructs the view in O(n lg n)
-export
+public export total
 splitRec : (xs : Vect n a) -> SplitRec xs
 splitRec {n} input with (sizeAccessible n)
   splitRec input | acc with (split input)
