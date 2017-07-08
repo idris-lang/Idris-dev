@@ -63,7 +63,7 @@ data SplitRec : List a -> Type where
 
 ||| Covering function for the `SplitRec` view
 ||| Constructs the view in O(n lg n)
-export total
+public export total
 splitRec : (xs : List a) -> SplitRec xs
 splitRec xs with (sizeAccessible xs)
   splitRec xs | acc with (split xs)
@@ -109,7 +109,7 @@ filteredROK p x xs = LTESucc (filterSmaller xs)
 
 ||| Covering function for the `Filtered` view
 ||| Constructs the view in O(n lg n)
-export
+public export total
 filtered : (p : a -> a -> Bool) -> (xs : List a) -> Filtered p xs
 filtered p inp with (sizeAccessible inp)
   filtered p [] | _ = FNil

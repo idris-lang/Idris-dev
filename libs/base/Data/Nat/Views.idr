@@ -22,7 +22,7 @@ half (S k) with (half k)
                                            HalfEven {n=S n}
   half (S (n + n)) | HalfEven = HalfOdd
 
-export
+public export total
 halfRec : (n : Nat) -> HalfRec n
 halfRec n with (sizeAccessible n)
   halfRec  Z | acc = HalfRecZ
