@@ -22,6 +22,9 @@
   with a (strictly) smaller `size`.
 
   A good example of this idiom at work is `Data.List.Views.splitRec` from `base`.
++ Added utility lemma `decEqSelfIsYes : decEq x x = Yes Refl` to
+  `Decidable.Equality`. This is primarily useful for proving properties of
+  functions defined with the help of `decEq`.
 
 ## Tool Updates
 
