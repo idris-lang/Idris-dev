@@ -117,7 +117,7 @@ codegenJs conf ci =
         writeFile (outputFile ci ++ ".LDeclsDebug") $ (unlines $ intersperse "" $ map show used) ++ "\n\n\n"
         putStrLn $ "Finished calculating used"
 
-    let (out, stats) = doCodegen conf defs used
+    let (out, stats) = doCodegen defs used
 
     path <- getIdrisJSRTSDir
     jsbn <- if usedBigInt stats
@@ -175,15 +175,15 @@ doHiddenClasses x =
 -- LFunctions are turned into JS function declarations. They are
 -- preceded by a comment that gives their name. Constructor
 -- declarations are ignored.
-doCodegen :: CGConf -> Map Name LDecl -> [LDecl] -> (Text, CGStats)
-doCodegen conf defs decls = foldMap (doCodegenDecl conf defs) decls
+doCodegen :: Map Name LDecl -> [LDecl] -> (Text, CGStats)
+doCodegen defs = foldMap (doCodegenDecl defs)
   where
-    doCodegenDecl :: CGConf -> Map Name LDecl -> LDecl -> (Text, CGStats)
-    doCodegenDecl conf defs (LFun _ name args def) =
-      let (ast, stats) = cgFun conf defs name args def
+    doCodegenDecl :: Map Name LDecl -> LDecl -> (Text, CGStats)
+    doCodegenDecl defs (LFun _ name args def) =
+      let (ast, stats) = cgFun defs name args def
           fnComment = jsStmt2Text (JsComment $ T.pack $ show name)
       in (T.concat [fnComment, "\n", jsStmt2Text ast, "\n"], stats)
-    doCodegenDecl conf defs (LConstructor n i sz) = ("", mempty)
+    doCodegenDecl defs (LConstructor n i sz) = ("", mempty)
 
 
 seqJs :: [JsStmt] -> JsStmt
@@ -197,7 +197,6 @@ data CGBodyState = CGBodyState { defs :: Map Name LDecl
                                , currentFnNameAndArgs :: (Text, [Text])
                                , usedArgsTailCallOptim :: Set (Text, Text)
                                , isTailRec :: Bool
-                               , conf :: CGConf
                                , usedITBig :: Bool
                                , partialApps :: Set Partial
                                , hiddenCls :: Set HiddenClass
@@ -249,8 +248,8 @@ data BodyResTarget = ReturnBT
                    | DecConstBT Text
                    | GetExpBT
 
-cgFun :: CGConf -> Map Name LDecl -> Name -> [Name] -> LExp -> (JsStmt, CGStats)
-cgFun cnf dfs n args def = do
+cgFun :: Map Name LDecl -> Name -> [Name] -> LExp -> (JsStmt, CGStats)
+cgFun dfs n args def = do
   let fnName = jsName n
   let argNames = map jsName args
   let ((decs, res),st) = runState
@@ -261,7 +260,6 @@ cgFun cnf dfs n args def = do
                                        , currentFnNameAndArgs = (fnName, argNames)
                                        , usedArgsTailCallOptim = Set.empty
                                        , isTailRec = False
-                                       , conf = cnf
                                        , usedITBig = False
                                        , partialApps = Set.empty
                                        , hiddenCls = Set.empty
