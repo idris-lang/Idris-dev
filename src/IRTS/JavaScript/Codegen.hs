@@ -25,10 +25,12 @@ import IRTS.System
 
 import Control.Monad
 import Control.Monad.Trans.State
+import Data.Foldable (foldMap)
 import Data.List (nub)
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromJust)
+import Data.Monoid
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
@@ -45,16 +47,26 @@ import Data.Generics.Uniplate.Data
 import Data.List
 import GHC.Generics (Generic)
 
+-- | Code generation stats hold information about the generated user
+-- code. Based on that information we add additional code to make
+-- things work.
 data CGStats = CGStats { usedBigInt :: Bool
                        , partialApplications :: Set Partial
                        , hiddenClasses :: Set HiddenClass
                        }
 
-emptyStats :: CGStats
-emptyStats = CGStats { partialApplications = Set.empty
-                     , hiddenClasses = Set.empty
-                     , usedBigInt = False
-                     }
+-- If we generate code for two declarations we want to merge their code
+-- generation stats.
+instance Monoid CGStats where
+  mempty = CGStats { partialApplications = Set.empty
+                   , hiddenClasses = Set.empty
+                   , usedBigInt = False
+                   }
+  mappend x y = CGStats { partialApplications = partialApplications x `Set.union` partialApplications y
+                        , hiddenClasses = hiddenClasses x `Set.union` hiddenClasses y
+                        , usedBigInt = usedBigInt x || usedBigInt y
+                        }
+
 
 data CGConf = CGConf { header :: Text
                      , footer :: Text
@@ -101,11 +113,9 @@ codegenJs conf ci =
     let defs' = Map.fromList $ liftDecls ci
     let defs = globlToCon defs'
     let used = Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
-    if debug then
-      do
+    when debug $ do
         writeFile (outputFile ci ++ ".LDeclsDebug") $ (unlines $ intersperse "" $ map show used) ++ "\n\n\n"
         putStrLn $ "Finished calculating used"
-      else pure ()
 
     let (out, stats) = doCodegen conf defs used
 
@@ -160,20 +170,21 @@ doHiddenClasses x =
              JsFun (jsNameHiddenClass p) vars $ JsSeq (JsSet (JsProp JsThis "type") (JsInt id)) $ seqJs
                $ map (\tv -> JsSet (JsProp JsThis tv) (JsVar tv)) vars
 
-doCodegen :: CGConf -> Map Name LDecl -> [LDecl] -> (Text, CGStats)
-doCodegen conf defs decls =
-  let xs = map (doCodegenDecl conf defs) decls
-      groupCGStats x y = CGStats { partialApplications = partialApplications x `Set.union` partialApplications y
-                                 , hiddenClasses = hiddenClasses x `Set.union` hiddenClasses y
-                                 , usedBigInt = usedBigInt x || usedBigInt y
-                                 }
-  in (T.intercalate "\n" $ map fst xs, foldl' groupCGStats emptyStats (map snd xs) )
 
-doCodegenDecl :: CGConf -> Map Name LDecl -> LDecl -> (Text, CGStats)
-doCodegenDecl conf defs (LFun _ n args def) =
-  let (ast, stats) = cgFun conf defs n args def
-  in (T.concat [jsStmt2Text (JsComment $ T.pack $ show n), "\n", jsStmt2Text ast], stats)
-doCodegenDecl conf defs (LConstructor n i sz) = ("", emptyStats)
+-- | Generate code for each declaration and collect stats.
+-- LFunctions are turned into JS function declarations. They are
+-- preceded by a comment that gives their name. Constructor
+-- declarations are ignored.
+doCodegen :: CGConf -> Map Name LDecl -> [LDecl] -> (Text, CGStats)
+doCodegen conf defs decls = foldMap (doCodegenDecl conf defs) decls
+  where
+    doCodegenDecl :: CGConf -> Map Name LDecl -> LDecl -> (Text, CGStats)
+    doCodegenDecl conf defs (LFun _ name args def) =
+      let (ast, stats) = cgFun conf defs name args def
+          fnComment = jsStmt2Text (JsComment $ T.pack $ show name)
+      in (T.concat [fnComment, "\n", jsStmt2Text ast, "\n"], stats)
+    doCodegenDecl conf defs (LConstructor n i sz) = ("", mempty)
+
 
 seqJs :: [JsStmt] -> JsStmt
 seqJs [] = JsEmpty
