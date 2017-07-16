@@ -7,9 +7,7 @@ import Control.Monad
 import Data.Char (isLetter)
 import qualified Data.IntMap as IMap
 import Data.List
-#if MIN_VERSION_optparse_applicative(0,13,0)
 import Data.Monoid ((<>))
-#endif
 import Data.Proxy
 import Data.Typeable
 import Options.Applicative

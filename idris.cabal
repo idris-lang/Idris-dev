@@ -279,7 +279,7 @@ Library
                 , ieee754 >= 0.7 && <= 0.8.0
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7
-                , optparse-applicative >= 0.11 && < 0.14
+                , optparse-applicative >= 0.13 && < 0.14
                 , parsers >= 0.9 && < 0.13
                 , pretty < 1.2
                 , regex-tdfa >= 1.2
