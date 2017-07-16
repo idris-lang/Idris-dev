@@ -222,10 +222,6 @@ addUsedArgsTailCallOptim :: Set (Text, Text) -> State CGBodyState ()
 addUsedArgsTailCallOptim p =
   modify (\s -> s {usedArgsTailCallOptim = Set.union p (usedArgsTailCallOptim s) })
 
-getNewCGNames :: Int -> State CGBodyState [Text]
-getNewCGNames n =
-  mapM (\_ -> getNewCGName) [1..n]
-
 getConsId :: Name -> State CGBodyState (Int, Int)
 getConsId n =
     do
@@ -272,16 +268,6 @@ cgFun dfs n args def = do
                        , usedBigInt = usedITBig st
                        }
   (fn, state')
-
-getSwitchJs :: JsExpr -> [LAlt] -> JsExpr
-getSwitchJs x alts =
-  if any conCase alts then JsArrayProj (JsInt 0) x
-    else if any constBigIntCase alts then JsForeign "%0.toString()" [x]
-            else x
-  where conCase (LConCase _ _ _ _) = True
-        conCase _ = False
-        constBigIntCase (LConstCase (BI _) _) = True
-        constBigIntCase _ = False
 
 addRT :: BodyResTarget -> JsExpr -> JsStmt
 addRT ReturnBT x = JsReturn x
