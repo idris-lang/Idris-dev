@@ -387,9 +387,15 @@ Totality
 ::
 
     total
-    implicit
     partial
     covering
+
+Implicit Coercion
+^^^^^^^^^^^^^^^^^
+
+::
+
+    implicit
 
 Options
 ^^^^^^^
