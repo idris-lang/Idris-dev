@@ -20,17 +20,16 @@ import IRTS.JavaScript.Name
 import IRTS.JavaScript.PrimOp
 import IRTS.JavaScript.Specialize
 import IRTS.Lang
-import IRTS.LangOpts
 import IRTS.System
 
+import Control.Applicative (pure, (<$>))
 import Control.Monad
 import Control.Monad.Trans.State
 import Data.Foldable (foldMap)
-import Data.List (nub)
+import Data.Generics.Uniplate.Data
+import Data.List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Data.Maybe (fromJust)
-import Data.Monoid
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Text (Text)
@@ -40,12 +39,6 @@ import System.Directory (doesFileExist)
 import System.Environment
 import System.FilePath
 
-import Control.Applicative (pure, (<$>))
-import Data.Char
-import Data.Data
-import Data.Generics.Uniplate.Data
-import Data.List
-import GHC.Generics (Generic)
 
 -- | Code generation stats hold information about the generated user
 -- code. Based on that information we add additional code to make
