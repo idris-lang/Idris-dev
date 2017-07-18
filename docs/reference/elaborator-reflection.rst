@@ -88,7 +88,9 @@ that fills the hole.
 
 The interactive elaboration shell accepts a limited number of commands,
 including a subset of the commands understood by the normal Idris REPL
-as well as some elaboration-specific commands.
+as well as some elaboration-specific commands. It also supports the 
+``do``-syntax, meaning you can write ``res <- command`` to bind the result of 
+``command`` to variable ``res``.
 
 General-purpose commands:
 
