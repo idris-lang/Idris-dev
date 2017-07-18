@@ -133,10 +133,6 @@ implementation Ord a => Monoid (MaxiphobicHeap a) where
 --------------------------------------------------------------------------------
 
 total
-absurdBoolDischarge : False = True -> Void
-absurdBoolDischarge Refl impossible
-
-total
 isEmptySizeZero : (h : MaxiphobicHeap a) -> (isEmpty h = True) -> size h = Z
 isEmptySizeZero Empty          p = Refl
 isEmptySizeZero (Node s l e r) Refl impossible
