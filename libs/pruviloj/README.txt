@@ -18,7 +18,16 @@ those eliminators to do induction.
 
 
 Q: How do I use Pruviloj?
-A: Call Idris with the "-p pruviloj" option and add:
+A: When running from the command line, call Idris with the
+   "-p pruviloj" option. When running in emacs, add the following section
+   at the end of the file and make sure that there is no empty line after
+   the section. Then restart emacs.
+
+    -- Local Variables:
+    -- idris-load-packages: ("pruviloj")
+    -- End:
+
+   In your code, add:
       import Pruviloj
    to the top of your file. If you want to do induction, then
    add:
