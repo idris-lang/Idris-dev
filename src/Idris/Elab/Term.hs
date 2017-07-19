@@ -2658,9 +2658,11 @@ withErrorReflection x = idrisCatch x (\ e -> handle e >>= ierror)
                                     concat (intersperse ", " (map show handlers))
                          let reports = map (\n -> RApp (Var n) (reflectErr err)) handlers
 
-                         -- Typecheck error handlers - if this fails, then something else was wrong earlier!
+                         -- Typecheck error handlers - if this fails, most
+                         -- likely something which is needed by it has not
+                         -- been imported, so keep the original error.
                          handlers <- case mapM (check (tt_ctxt ist) []) reports of
-                                       Error e -> ierror $ ReflectionFailed "Type error while constructing reflected error" e
+                                       Error _ -> return [] -- ierror $ ReflectionFailed "Type error while constructing reflected error" e
                                        OK hs   -> return hs
 
                          -- Normalize error handler terms to produce the new messages
