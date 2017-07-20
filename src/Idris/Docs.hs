@@ -15,7 +15,7 @@ module Idris.Docs (
   , FunDoc, FunDoc'(..), Docs, Docs'(..)
   ) where
 
-import Idris.AbsSyntax (FixDecl(..), Fixity, HowMuchDocs(..), IState(..), Idris,
+import Idris.AbsSyntax (FixDecl(..), Fixity, IState(..), Idris,
                         InterfaceInfo(..), PArg'(..), PDecl'(..), PPOption(..),
                         PTerm(..), Plicity(..), RecordInfo(..), basename,
                         getIState, modDocName, ppOptionIst, pprintPTerm,
@@ -26,6 +26,7 @@ import Idris.Delaborate
 import Idris.Docstrings (DocTerm, Docstring, emptyDocstring, noDocs,
                          nullDocstring, overview, renderDocTerm,
                          renderDocstring)
+import Idris.Options (HowMuchDocs(..))
 
 import Util.Pretty
 

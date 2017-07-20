@@ -13,6 +13,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Docstrings
 import Idris.DSL
+import Idris.Options
 import Idris.Parser.Expr
 import Idris.Parser.Helpers
 import Idris.Parser.Ops

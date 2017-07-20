@@ -18,6 +18,7 @@ import Idris.Core.TT (Name(..), OutputAnnotation(..), SpecialName(..),
 import Idris.Docs
 import Idris.Docstrings (nullDocstring)
 import qualified Idris.Docstrings as Docstrings
+import Idris.Options
 import Idris.Parser.Helpers (opChars)
 import IRTS.System (getIdrisDataFileByName)
 
