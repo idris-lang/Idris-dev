@@ -11,6 +11,7 @@ import Idris.CmdOptions
 import Idris.Error
 import Idris.Info.Show
 import Idris.Main
+import Idris.Options
 import Idris.Package
 
 import Util.System (setupBundledCC)

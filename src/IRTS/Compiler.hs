@@ -17,6 +17,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Erasure
 import Idris.Error
+import Idris.Options
 import Idris.Output
 import IRTS.CodegenC
 import IRTS.CodegenCommon

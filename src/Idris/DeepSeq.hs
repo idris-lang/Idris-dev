@@ -18,6 +18,7 @@ import Idris.Core.DeepSeq
 import Idris.Core.TT
 import Idris.Docstrings
 import qualified Idris.Docstrings as D
+import Idris.Options
 import IRTS.CodegenCommon (OutputType(..))
 import IRTS.Lang (PrimFn(..))
 
