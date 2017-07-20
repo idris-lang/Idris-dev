@@ -99,7 +99,7 @@ codegenJs conf ci =
   do
     debug <- isYes <$> lookupEnv "IDRISJS_DEBUG"
     let defs' = Map.fromList $ liftDecls ci
-    let defs = globlToCon defs' 
+    let defs = globlToCon defs'
     let used = Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
     if debug then
       do
