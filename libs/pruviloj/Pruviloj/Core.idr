@@ -225,13 +225,19 @@ refine tm =
         countPi (RBind _ (Pi _ _) body) = S (countPi body)
         countPi _ = Z
 
+||| A helper to extract the type representation for term.
+getTTType : Raw -> Elab TT
+getTTType r = do
+    env <- getEnv
+    rty <- check env r
+    pure $ snd rty
 
 ||| Split a pair into its projections, binding them in the context
 ||| with the supplied names. A special case of Coq's `inversion`.
 both : Raw -> TTName -> TTName -> Elab ()
 both tm n1 n2 =
     do -- We don't know that the term is canonical, so let-bind projections applied to it
-       (A, B) <- isPairTy (snd !(check !getEnv tm))
+       (A, B) <- isPairTy !(getTTType tm)
        remember n1 A; apply `(fst {a=~A} {b=~B} ~tm) []; solve
        remember n2 B; apply `(snd {a=~A} {b=~B} ~tm) []; solve
   where
@@ -268,3 +274,37 @@ reflexivity =
                 , NamePart `{reflexivity}
                 , TextPart "is not applicable."
                 ]
+
+||| Attempt to swap the sides of equality in a goal.
+symmetry : Elab ()
+symmetry = do
+    [_,_,_,_,_] <- apply (Var `{{sym}}) [True, True, True, True, False]
+       | _ => fail [TextPart "Failed while applying", NamePart `{symmetry} ]
+    solve
+    attack
+
+||| Swap the sides of an equality and bind the result to supplied name.
+symmetryIn : Raw -> TTName -> Elab ()
+symmetryIn t n = do
+    tt <- getTTType t
+    case tt of
+      `((=) {A=~A} {B=~B} ~l ~r) => do
+        af <- forget A
+        bf <- forget B
+        lf <- forget l
+        rf <- forget r
+        let ts = the Raw $ `(sym {a=~af} {b=~bf} {left=~lf} {right=~rf} ~t)
+        tsty <- forget !(getTTType ts)
+        letbind n tsty ts
+      _ => fail [TermPart tt, TextPart "is not an equality"]
+
+||| Apply argument term to a function term and bind the result to supplied name.
+applyIn : Raw -> Raw -> TTName -> Elab ()
+applyIn f x n = do
+    ftt <- getTTType f
+    case ftt of
+      `(~xty -> ~yty) => do
+          let fx = RApp f x
+          fxty <- forget !(getTTType fx)
+          letbind n fxty fx
+      _ => fail [TermPart ftt, TextPart "is not a function"]
