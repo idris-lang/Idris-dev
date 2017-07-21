@@ -227,10 +227,7 @@ refine tm =
 
 ||| A helper to extract the type representation for term.
 getTTType : Raw -> Elab TT
-getTTType r = do
-    env <- getEnv
-    rty <- check env r
-    pure $ snd rty
+getTTType r = snd <$> check !getEnv r
 
 ||| Split a pair into its projections, binding them in the context
 ||| with the supplied names. A special case of Coq's `inversion`.
@@ -259,7 +256,6 @@ unproduct tm =
        try (unproduct (Var n1))
        try (unproduct (Var n2))
 
-
 ||| A special-purpose tactic that attempts to solve a goal using
 ||| `Refl`. This is useful for ensuring that goals in fact are trivial
 ||| when developing or testing other tactics; otherwise, consider
@@ -275,36 +271,46 @@ reflexivity =
                 , TextPart "is not applicable."
                 ]
 
-||| Attempt to swap the sides of equality in a goal.
+||| Attempt to swap the sides of equality in a goal. If the goal is `x = y`,
+||| after the invocation the focus will be on a hole of type `y = x`.
 symmetry : Elab ()
-symmetry = do
-    [_,_,_,_,_] <- apply (Var `{{sym}}) [True, True, True, True, False]
-       | _ => fail [TextPart "Failed while applying", NamePart `{symmetry} ]
-    solve
-    attack
+symmetry =
+    do [_,_,_,_,res] <- apply (Var `{{sym}}) [True, True, True, True, False]
+          | _ => fail [TextPart "Failed while applying", NamePart `{symmetry}]
+       solve
+       focus res
 
-||| Swap the sides of an equality and bind the result to supplied name.
-symmetryIn : Raw -> TTName -> Elab ()
-symmetryIn t n = do
-    tt <- getTTType t
-    case tt of
-      `((=) {A=~A} {B=~B} ~l ~r) => do
-        af <- forget A
-        bf <- forget B
-        lf <- forget l
-        rf <- forget r
-        let ts = the Raw $ `(sym {a=~af} {b=~bf} {left=~lf} {right=~rf} ~t)
-        tsty <- forget !(getTTType ts)
-        letbind n tsty ts
-      _ => fail [TermPart tt, TextPart "is not an equality"]
+||| Swap the sides of an equality, saving the result in a `let`-binding.
+||| Returns the generated name.
+|||
+||| @ t the equality proof to swap
+||| @ hint a hint to use for generating the variable name for the result
+symmetryAs : (t : Raw) -> (hint : String) -> Elab TTName
+symmetryAs t hint =
+    case !(getTTType t) of
+      `((=) {A=~A} {B=~B} ~l ~r) =>
+        do af <- forget A
+           bf <- forget B
+           lf <- forget l
+           rf <- forget r
+           let ts = the Raw $ `(sym {a=~af} {b=~bf} {left=~lf} {right=~rf} ~t)
+           n <- gensym hint
+           letbind n !(forget !(getTTType ts)) ts
+           pure n
+      tt => fail [TermPart tt, TextPart "is not an equality"]
 
-||| Apply argument term to a function term and bind the result to supplied name.
-applyIn : Raw -> Raw -> TTName -> Elab ()
-applyIn f x n = do
-    ftt <- getTTType f
-    case ftt of
-      `(~xty -> ~yty) => do
-          let fx = RApp f x
-          fxty <- forget !(getTTType fx)
-          letbind n fxty fx
-      _ => fail [TermPart ftt, TextPart "is not a function"]
+||| Apply a function term to an argument term, saving the result in a
+||| `let`-binding. Returns the generated name.
+|||
+||| @ f the function to apply
+||| @ x the term to apply to
+||| @ hint a hint to use for generating the variable name for the result
+applyAs : (f : Raw) -> (x : Raw) -> (hint : String) -> Elab TTName
+applyAs f x hint =
+    case !(getTTType f) of
+      `(~xty -> ~yty) =>
+         do let fx = RApp f x
+            n <- gensym hint
+            letbind n !(forget !(getTTType fx)) fx
+            pure n
+      ftt => fail [TermPart ftt, TextPart "is not a function"]
