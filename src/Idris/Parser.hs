@@ -26,6 +26,7 @@ import Idris.ElabDecls
 import Idris.Error
 import Idris.IBC
 import Idris.Imports
+import Idris.Options
 import Idris.Output
 import Idris.Parser.Data
 import Idris.Parser.Expr

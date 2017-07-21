@@ -14,6 +14,7 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Docstrings
+import Idris.Options
 import IRTS.CodegenCommon
 import IRTS.Lang
 import Util.DynamicLinker
@@ -146,8 +147,7 @@ data PPOption = PPOption {
   , ppopt_depth       :: Maybe Int
   } deriving (Show)
 
-data Optimisation = PETransform -- ^ partial eval and associated transforms
-  deriving (Show, Eq, Generic)
+
 
 defaultOptimise :: [Optimisation]
 defaultOptimise = []
@@ -183,21 +183,12 @@ ppOption opt = PPOption {
 ppOptionIst :: IState -> PPOption
 ppOptionIst = ppOption . idris_options
 
-data LanguageExt = TypeProviders | ErrorReflection | UniquenessTypes
-                 | DSLNotation   | ElabReflection  | FCReflection
-                 | LinearTypes
-  deriving (Show, Eq, Read, Ord, Generic)
 
 -- | The output mode in use
 data OutputMode = RawOutput Handle       -- ^ Print user output directly to the handle
                 | IdeMode Integer Handle -- ^ Send IDE output for some request ID to the handle
                 deriving Show
 
--- | How wide is the console?
-data ConsoleWidth = InfinitelyWide -- ^ Have pretty-printer assume that lines should not be broken
-                  | ColsWide Int   -- ^ Manually specified - must be positive
-                  | AutomaticWidth -- ^ Attempt to determine width, or 80 otherwise
-   deriving (Show, Eq, Generic)
 
 -- | If a function has no totality annotation, what do we assume?
 data DefaultTotality = DefaultCheckingTotal    -- ^ Total
@@ -434,53 +425,7 @@ throwError = Trans.lift . throwE
 
 -- Commands in the REPL
 
-data Codegen = Via IRFormat String
-             | Bytecode
-    deriving (Show, Eq, Generic)
 
-data IRFormat = IBCFormat | JSONFormat deriving (Show, Eq, Generic)
-
-data HowMuchDocs = FullDocs | OverviewDocs
-
-data OutputFmt = HTMLOutput | LaTeXOutput
-
--- | Recognised logging categories for the Idris compiler.
---
--- @TODO add in sub categories.
-data LogCat = IParse
-            | IElab
-            | ICodeGen
-            | IErasure
-            | ICoverage
-            | IIBC
-            deriving (Show, Eq, Ord, Generic)
-
-strLogCat :: LogCat -> String
-strLogCat IParse    = "parser"
-strLogCat IElab     = "elab"
-strLogCat ICodeGen  = "codegen"
-strLogCat IErasure  = "erasure"
-strLogCat ICoverage = "coverage"
-strLogCat IIBC      = "ibc"
-
-codegenCats :: [LogCat]
-codegenCats =  [ICodeGen]
-
-parserCats :: [LogCat]
-parserCats = [IParse]
-
-elabCats :: [LogCat]
-elabCats = [IElab]
-
-loggingCatsStr :: String
-loggingCatsStr = unlines
-    [ (strLogCat IParse)
-    , (strLogCat IElab)
-    , (strLogCat ICodeGen)
-    , (strLogCat IErasure)
-    , (strLogCat ICoverage)
-    , (strLogCat IIBC)
-    ]
 
 
 data ElabShellCmd = EQED
@@ -494,83 +439,8 @@ data ElabShellCmd = EQED
                   | EDocStr (Either Name Const)
   deriving (Show, Eq)
 
-data Opt = Filename String
-         | Quiet
-         | NoBanner
-         | ColourREPL Bool
-         | Idemode
-         | IdemodeSocket
-         | IndentWith Int
-         | IndentClause Int
-         | ShowAll
-         | ShowLibs
-         | ShowLibDir
-         | ShowDocDir
-         | ShowIncs
-         | ShowPkgs
-         | ShowLoggingCats
-         | NoBasePkgs
-         | NoPrelude
-         | NoBuiltins -- only for the really primitive stuff!
-         | NoREPL
-         | OLogging Int
-         | OLogCats [LogCat]
-         | Output String
-         | Interface
-         | TypeCase
-         | TypeInType
-         | DefaultTotal
-         | DefaultPartial
-         | WarnPartial
-         | WarnReach
-         | AuditIPkg
-         | EvalTypes
-         | NoCoverage
-         | ErrContext
-         | ShowImpl
-         | Verbose Int
-         | Port REPLPort -- ^ REPL TCP port
-         | IBCSubDir String
-         | ImportDir String
-         | SourceDir String
-         | PkgBuild String
-         | PkgInstall String
-         | PkgClean String
-         | PkgCheck String
-         | PkgREPL String
-         | PkgDocBuild String -- IdrisDoc
-         | PkgDocInstall String
-         | PkgTest String
-         | PkgIndex FilePath
-         | WarnOnly
-         | Pkg String
-         | BCAsm String
-         | DumpDefun String
-         | DumpCases String
-         | UseCodegen Codegen
-         | CodegenArgs String
-         | OutputTy OutputType
-         | Extension LanguageExt
-         | InterpretScript String
-         | EvalExpr String
-         | TargetTriple String
-         | TargetCPU String
-         | OptLevel Int
-         | AddOpt Optimisation
-         | RemoveOpt Optimisation
-         | Client String
-         | ShowOrigErr
-         | AutoWidth -- ^ Automatically adjust terminal width
-         | AutoSolve -- ^ Automatically issue "solve" tactic in old-style interactive prover
-         | UseConsoleWidth ConsoleWidth
-         | DumpHighlights
-         | DesugarNats
-         | NoElimDeprecationWarnings      -- ^ Don't show deprecation warnings for %elim
-         | NoOldTacticDeprecationWarnings -- ^ Don't show deprecation warnings for old-style tactics
-    deriving (Show, Eq, Generic)
 
-data REPLPort = DontListen | ListenPort PortNumber
-  deriving (Eq, Generic, Show)
+
 
 -- Parsed declarations
 

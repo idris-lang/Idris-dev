@@ -27,6 +27,7 @@ import Idris.Elab.Rewrite
 import Idris.Elab.Utils
 import Idris.Error
 import Idris.ErrReverse (errReverse)
+import Idris.Options
 import Idris.Output (pshow)
 import Idris.ProofSearch
 import Idris.Reflection

@@ -32,6 +32,7 @@ import Idris.Elab.Value
 import Idris.ElabDecls
 import Idris.Error
 import qualified Idris.IdeMode as IdeMode
+import Idris.Options
 import Idris.Output
 import Idris.Parser hiding (params)
 import Idris.TypeSearch (searchByType)

@@ -23,6 +23,7 @@ import Idris.Docstrings (Docstring)
 import qualified Idris.Docstrings as D
 import Idris.Error
 import Idris.Imports
+import Idris.Options
 import Idris.Output
 import IRTS.System (getIdrisLibDir)
 

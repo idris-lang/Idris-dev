@@ -8,6 +8,7 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings, StandaloneDeriving #-}
 
 module IRTS.JavaScript.LangTransforms( removeDeadCode
+                                     , globlToCon
                                      ) where
 
 
@@ -94,3 +95,15 @@ removeDeadCode dcls start =
       remCons = removeUnusedBranches (getUsedConstructors used) used
   in if Map.keys remCons == Map.keys dcls then remCons
         else removeDeadCode remCons start
+
+
+globlToCon :: Map Name LDecl -> Map Name LDecl
+globlToCon x =
+  transformBi (f x) x
+  where
+    f :: Map Name LDecl -> LExp -> LExp
+    f y x@(LV (Glob n)) =
+      case Map.lookup n y of
+        Just (LConstructor _ conId arity) -> LCon Nothing conId n []
+        _ -> x
+    f y x = x

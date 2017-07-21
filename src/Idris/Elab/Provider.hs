@@ -30,6 +30,7 @@ import Idris.Elab.Value
 import Idris.Error
 import Idris.Imports
 import Idris.Inliner
+import Idris.Options
 import Idris.Output (iWarn, iputStrLn, pshow)
 import Idris.PartialEval
 import Idris.Primitives

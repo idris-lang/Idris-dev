@@ -12,6 +12,7 @@ module Idris.Parser.Expr where
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.DSL
+import Idris.Options
 import Idris.Parser.Helpers
 import Idris.Parser.Ops
 

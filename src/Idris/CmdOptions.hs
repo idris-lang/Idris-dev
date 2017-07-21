@@ -16,11 +16,8 @@ module Idris.CmdOptions
   , getPkgREPL, getPkgTest, getPort, getIBCSubDir
   ) where
 
-import Idris.AbsSyntax (getClient, getIBCSubDir, getPkg, getPkgCheck,
-                        getPkgClean, getPkgMkDoc, getPkgREPL, getPkgTest,
-                        getPort, opt)
-import Idris.AbsSyntaxTree
 import Idris.Info (getIdrisVersion)
+import Idris.Options
 import IRTS.CodegenCommon
 
 import Control.Monad.Trans (lift)
