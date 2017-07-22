@@ -31,6 +31,7 @@ import Idris.Elab.Utils
 import Idris.Error
 import Idris.Imports
 import Idris.Inliner
+import Idris.Options
 import Idris.Output (iRenderResult, iWarn, iputStrLn, pshow, sendHighlighting)
 import Idris.PartialEval
 import Idris.Primitives

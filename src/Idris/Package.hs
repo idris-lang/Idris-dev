@@ -35,7 +35,7 @@ import Idris.IBC
 import Idris.IdrisDoc
 import Idris.Imports
 import Idris.Main (idris, idrisMain)
-import Idris.Output (pshow)
+import Idris.Options
 import Idris.Output
 import Idris.Parser (loadModule)
 import Idris.REPL

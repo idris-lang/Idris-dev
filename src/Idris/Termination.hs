@@ -14,6 +14,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Error
+import Idris.Options
 import Idris.Output (iWarn, iputStrLn)
 
 import Control.Monad.State.Strict

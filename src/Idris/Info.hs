@@ -25,8 +25,8 @@ module Idris.Info
   , getIdrisDataFileByName
   ) where
 
-import Idris.AbsSyntax (loggingCatsStr)
 import Idris.Imports (installedPackages)
+import Idris.Options (loggingCatsStr)
 import qualified IRTS.System as S
 
 import Paths_idris

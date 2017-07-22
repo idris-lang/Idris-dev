@@ -52,5 +52,5 @@ main : IO ()
 main =
   do
     c <- foldFree interpret2 readFileF
-    putStr' c
+    putStrLn' c
 
