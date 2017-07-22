@@ -1,0 +1,2 @@
+interfaces008.idr:20:18:
+Default implementations must be for a super interface constraint on the containing interface.
