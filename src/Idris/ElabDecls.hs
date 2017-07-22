@@ -6,8 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
-             PatternGuards #-}
+{-# LANGUAGE DeriveFunctor, PatternGuards #-}
 
 module Idris.ElabDecls where
 

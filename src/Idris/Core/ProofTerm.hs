@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE FlexibleInstances, MultiParamTypeClasses, PatternGuards #-}
+{-# LANGUAGE PatternGuards #-}
 module Idris.Core.ProofTerm(
     ProofTerm, Goal(..), mkProofTerm, getProofTerm
   , resetProofTerm

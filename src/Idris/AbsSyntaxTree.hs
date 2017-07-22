@@ -5,8 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-
-{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, PatternGuards #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric,
+             PatternGuards, TypeSynonymInstances #-}
 
 module Idris.AbsSyntaxTree where
 

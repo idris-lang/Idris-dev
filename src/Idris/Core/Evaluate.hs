@@ -5,8 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE BangPatterns, DeriveGeneric, FlexibleInstances,
-             MultiParamTypeClasses, PatternGuards #-}
+{-# LANGUAGE BangPatterns, DeriveGeneric, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
