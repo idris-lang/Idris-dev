@@ -21,11 +21,6 @@ import Idris.AbsSyntaxTree (ArgOpt(..), ElabD, Fixity(..), IState(idris_datatype
                             initEState, pairCon, pairTy)
 import Idris.Delaborate (delab)
 
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative (pure, (<$>), (<*>))
-import Data.Traversable (mapM)
-import Prelude hiding (mapM)
-#endif
 import Control.Monad (liftM, liftM2, liftM4)
 import Control.Monad.State.Strict (lift)
 import Data.List (findIndex, (\\))

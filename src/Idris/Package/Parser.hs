@@ -6,9 +6,6 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE CPP, ConstraintKinds #-}
-#if !(MIN_VERSION_base(4,8,0))
-{-# LANGUAGE OverlappingInstances #-}
-#endif
 module Idris.Package.Parser where
 
 import Idris.AbsSyntaxTree
@@ -50,11 +47,7 @@ instance {-# OVERLAPPING #-} DeltaParsing PParser where
   {-# INLINE restOfLine #-}
 #endif
 
-#if MIN_VERSION_base(4,8,0)
 instance {-# OVERLAPPING #-} TokenParsing PParser where
-#else
-instance TokenParsing PParser where
-#endif
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
 
