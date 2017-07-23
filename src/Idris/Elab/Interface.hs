@@ -270,11 +270,11 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
         = do when (not $ null cs) . tclift
                 $ tfail (At fc (Msg "Default super interface implementations can't have constraints."))
              i <- getIState
-             let isConstrained = any (checkConstrained i n (map pexp ps)) (map snd constraints)                
+             let isConstrained = any (checkConstrained i n (map pexp ps)) (map snd constraints)
              when (not isConstrained) . tclift
                 $ tfail (At fc (Msg "Default implementations must be for a super interface constraint on the containing interface."))
              return ()
-            where 
+            where
                 -- First, Check that interface "constraint" has same name & args as default implementation name & args (not checking FC)
                 -- If not the case, recursively lookup in context for parent interface & recheck the same with parent constraints
                 checkConstrained i n args constraint =

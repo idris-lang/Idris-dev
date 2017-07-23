@@ -18,8 +18,8 @@ allows casing on arbitrary terms, here we choose to maintain the distinction
 in order to allow for better optimisation opportunities.
 
 -}
-{-# LANGUAGE DeriveFunctor, DeriveGeneric, PatternGuards, TypeSynonymInstances
-             #-}
+{-# LANGUAGE DeriveFunctor, DeriveGeneric, PatternGuards,
+             TypeSynonymInstances #-}
 
 module Idris.Core.CaseTree (
     CaseDef(..), SC, SC'(..), CaseAlt, CaseAlt'(..), ErasureInfo
