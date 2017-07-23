@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE BangPatterns, ViewPatterns #-}
+{-# LANGUAGE BangPatterns, CPP, ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Core.DeepSeq where
@@ -27,7 +27,9 @@ forceDefCtxt (force -> !ctxt) = ctxt
 
 instance NFData NameOutput
 instance NFData TextFormatting
+#if !(MIN_VERSION_base(4,10,0))
 instance NFData Ordering
+#endif
 instance NFData OutputAnnotation
 instance NFData SpecialName
 instance NFData Universe
