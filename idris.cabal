@@ -44,7 +44,7 @@ Cabal-Version:  >= 1.8.1
 
 Build-type:     Custom
 
-Tested-With:    GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
+Tested-With:    GHC == 7.10.3, GHC == 8.0.1
 
 Data-files:            idrisdoc/styles.css
                        jsrts/jsbn/jsbn-browser.js
@@ -259,7 +259,7 @@ Library
                 , Tools_idris
 
   Build-depends:  base >=4 && <5
-                , aeson >= 0.6 && < 1.2
+                , aeson >= 0.6 && < 1.3
                 , annotated-wl-pprint >= 0.7 && < 0.8
                 , ansi-terminal < 0.7
                 , ansi-wl-pprint < 0.7
@@ -277,20 +277,22 @@ Library
                 , filepath < 1.5
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
-                , ieee754 >= 0.7 && <= 0.8.0
+                , ieee754 >= 0.7 && < 0.9
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7
-                , optparse-applicative >= 0.13 && < 0.14
+                , optparse-applicative >= 0.13 && < 0.15
                 , parsers >= 0.9 && < 0.13
                 , pretty < 1.2
+                , process < 1.7
                 , regex-tdfa >= 1.2
+                , safe >= 0.3.9
                 , split < 0.3
                 , terminal-size < 0.4
                 , text >=1.2.1.0 && < 1.3
-                , time >= 1.4 && < 1.7
+                , time >= 1.4 && < 1.9
                 , transformers < 0.6
                 , transformers-compat >= 0.3
-                , trifecta >= 1.6 && < 1.7
+                , trifecta >= 1.6 && < 1.8
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
                 , utf8-string < 1.1
@@ -299,26 +301,6 @@ Library
                 , zip-archive > 0.2.3.5 && < 0.4
                 , fsnotify >= 0.2 && < 2.2
                 , async < 2.2
-
-
-  -- zlib >= 0.6.1 is broken with GHC < 7.10.3
-  -- Travis is broken for 7.6 and 7.8 with a newer process
-  if impl(ghc < 7.10.3)
-     build-depends: zlib < 0.6.1
-                  , process < 1.3
-  else
-     build-depends: process < 1.5
-
-  -- safe 0.3.10 is having issues with cabal 1.20 and ghc 7.6.3, the
-  -- hvr ghc ppa doesn't provide a new enough cabal library. Temporary
-  -- fix until hvr ghc ppa is fixed or we deprecate support for 7.6.3.
-  if impl(ghc < 7.8.4)
-     build-depends: safe == 0.3.9
-  else
-     build-depends: safe >= 0.3.9
-
-  if impl(ghc < 7.8.4)
-     build-depends: tagsoup < 0.14.1
 
   Extensions:     MultiParamTypeClasses
                 , DeriveFoldable
@@ -389,9 +371,6 @@ Test-suite regression-and-feature-tests
                , tasty-rerun >= 1.0.0
                , bytestring
                , transformers
-  if impl(ghc < 7.10)
-    Extensions: DeriveDataTypeable
-
 
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -with-rtsopts=-N -funbox-strict-fields
