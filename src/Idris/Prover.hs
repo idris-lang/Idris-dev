@@ -350,6 +350,7 @@ elabloop info fn d prompt prf e prev h env
               Success (Right cmd') ->
                 case cmd' of
                   DoLetP  {} -> ifail "Pattern-matching let not supported here"
+                  DoRewrite  {} -> ifail "Pattern-matching do-rewrite not supported here"
                   DoBindP {} -> ifail "Pattern-matching <- not supported here"
                   DoLet fc i ifc Placeholder expr ->
                     do (tm, ty) <- elabVal (recinfo proverfc) ERHS (inLets ist env expr)
