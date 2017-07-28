@@ -112,7 +112,7 @@ before_script:
 script:
 ###
   - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
-  - cabal configure -f FFI -f CI --enable-tests
+  - cabal configure -f FFI -f CI --enable-tests --ghc-options="-j +RTS -A128m -n2m -s -RTS"
   - echo -en 'travis_fold:end:script.configure\\r'
 ###
   - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'
