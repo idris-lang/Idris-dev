@@ -2,6 +2,9 @@
 
 ## Library Updates
 
++ Added `Text.PrettyPrint.WL` an implementation of the Wadler-Leijen
+  Pretty-Print algorithm.  Useful for those wishing to pretty print
+  things.
 + Added `Text.Lexer` and `Text.Parser` to `contrib`. These are small libraries
   for implementing total lexical analysers and parsers.
 + New instances:
