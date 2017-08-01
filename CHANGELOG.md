@@ -1,4 +1,4 @@
-# New in 1.0.1
+# New in 1.1.0
 
 ## Library Updates
 
