@@ -5,7 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, GeneralizedNewtypeDeriving, PatternGuards #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
+             PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
                     module Idris.Parser.Expr,
@@ -1569,7 +1570,8 @@ parseImports fname input
                                  [ImportInfo],
                                  Maybe Delta),
                                 [(FC, OutputAnnotation)], IState)
-        imports = do whiteSpace
+        imports = do optional shebang
+                     whiteSpace
                      (mdoc, mname, annots) <- moduleHeader
                      ps_exp        <- many import_
                      mrk           <- mark
@@ -1593,6 +1595,9 @@ parseImports fname input
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =
            (fc, AnnNamespace ns (Just path)) : addPath annots path
         addPath (annot:annots) path = annot : addPath annots path
+
+        shebang :: IdrisParser ()
+        shebang = string "#!" *> many (satisfy $ not . isEol) *> eol *> pure ()
 
 -- | There should be a better way of doing this...
 findFC :: Doc -> (FC, String)

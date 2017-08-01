@@ -19,7 +19,7 @@ To defunctionalise:
 8. Add explicit EVAL to case, primitives, and foreign calls
 
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleContexts, PatternGuards #-}
 module IRTS.Defunctionalise(module IRTS.Defunctionalise
                           , module IRTS.Lang
                           ) where

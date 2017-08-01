@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor, PatternGuards #-}
+{-# LANGUAGE DeriveFunctor, FlexibleContexts, PatternGuards #-}
 
 module Idris.AbsSyntax(
     module Idris.AbsSyntax

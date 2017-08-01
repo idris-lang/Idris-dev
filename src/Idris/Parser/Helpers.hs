@@ -5,8 +5,9 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, ConstraintKinds, GeneralizedNewtypeDeriving, PatternGuards,
-             StandaloneDeriving #-}
+{-# LANGUAGE CPP, ConstraintKinds, FlexibleInstances,
+             GeneralizedNewtypeDeriving, PatternGuards, StandaloneDeriving,
+             TypeSynonymInstances #-}
 module Idris.Parser.Helpers where
 
 import Idris.AbsSyntax

@@ -11,7 +11,7 @@ Returns a list of hole names paired with the term which solves them, and
 a list of things which need to be injective.
 
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleContexts, PatternGuards #-}
 
 module Idris.Core.Unify(
     match_unify, unify

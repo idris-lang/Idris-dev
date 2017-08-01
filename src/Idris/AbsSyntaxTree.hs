@@ -6,7 +6,9 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, PatternGuards #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric,
+             DeriveTraversable, FlexibleContexts, FlexibleInstances,
+             MultiParamTypeClasses, PatternGuards, TypeSynonymInstances #-}
 
 module Idris.AbsSyntaxTree where
 
@@ -1047,6 +1049,7 @@ mapPTermFC f g (PDoBlock dos) = PDoBlock (map mapPDoFC dos)
           DoBindP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (map (\(l,r)-> (mapPTermFC f g l, mapPTermFC f g r)) alts)
         mapPDoFC (DoLet fc n nfc t1 t2) = DoLet (f fc) n (g nfc) (mapPTermFC f g t1) (mapPTermFC f g t2)
         mapPDoFC (DoLetP fc t1 t2) = DoLetP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2)
+        mapPDoFC (DoRewrite fc h) = DoRewrite (f fc) (mapPTermFC f g h)
 mapPTermFC f g (PIdiom fc t)                  = PIdiom (f fc) (mapPTermFC f g t)
 mapPTermFC f g (PMetavar fc n)                = PMetavar (g fc) n
 mapPTermFC f g (PProof tacs)                  = PProof (map (fmap (mapPTermFC f g)) tacs)
@@ -1171,6 +1174,7 @@ data PDo' t = DoExp  FC t
             | DoBindP FC t t [(t,t)]
             | DoLet  FC Name FC t t   -- ^ second FC is precise name location
             | DoLetP FC t t
+            | DoRewrite FC t          -- rewrite in do block
     deriving (Eq, Ord, Functor, Data, Generic, Typeable)
 {-!
 deriving instance Binary PDo'
@@ -1182,6 +1186,7 @@ instance Sized a => Sized (PDo' a) where
   size (DoBindP fc l r alts)  = 1 + size fc + size l  + size r   + size alts
   size (DoLet fc nm nfc l r)  = 1 + size fc + size nm + size l   + size r
   size (DoLetP fc l r)        = 1 + size fc + size l  + size r
+  size (DoRewrite fc h)       = 1 + size fc + size h
 
 type PDo = PDo' PTerm
 
@@ -1277,6 +1282,7 @@ highestFC (PDoBlock lines) =
     getDoFC (DoBindP fc l r alts) = fc
     getDoFC (DoLet fc nm nfc l r) = fc
     getDoFC (DoLetP fc l r)       = fc
+    getDoFC (DoRewrite fc h)      = fc
 
 highestFC (PIdiom fc _)           = Just fc
 highestFC (PMetavar fc _)         = Just fc
@@ -1949,6 +1955,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
                 group (align (hang 2 (prettySe (decD d) startPrec bnd v)))) :
                ppdo ((ln, False):bnd) dos
              ppdo bnd (DoLetP _ _ _ : dos) = -- ok because never made by delab
+               text "no pretty printer for pattern-matching do binding" :
+               ppdo bnd dos
+             ppdo bnd (DoRewrite _ _ : dos) = -- ok because never made by delab
                text "no pretty printer for pattern-matching do binding" :
                ppdo bnd dos
              ppdo _ [] = []

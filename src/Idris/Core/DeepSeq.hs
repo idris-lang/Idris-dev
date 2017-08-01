@@ -5,7 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE BangPatterns, CPP, ViewPatterns #-}
+{-# LANGUAGE BangPatterns, CPP, FlexibleInstances, TypeSynonymInstances,
+             ViewPatterns #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Core.DeepSeq where

@@ -1,5 +1,5 @@
 Name:           idris
-Version:        1.0
+Version:        1.1.0
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -40,7 +40,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 .
                 * Hugs style interactive environment
 
-Cabal-Version:  >= 1.8.1
+Cabal-Version:  >= 1.18
 
 Build-type:     Custom
 
@@ -302,14 +302,6 @@ Library
                 , fsnotify >= 0.2 && < 2.2
                 , async < 2.2
 
-  Extensions:     MultiParamTypeClasses
-                , DeriveFoldable
-                , DeriveTraversable
-                , FunctionalDependencies
-                , FlexibleContexts
-                , FlexibleInstances
-                , TemplateHaskell
-
   ghc-prof-options: -auto-all -caf-all
 
   if os(linux)
@@ -347,6 +339,7 @@ Executable idris
                 , haskeline >= 0.7
                 , transformers
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields -with-rtsopts=-I0
 
@@ -372,6 +365,8 @@ Test-suite regression-and-feature-tests
                , bytestring
                , transformers
 
+
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -with-rtsopts=-N -funbox-strict-fields
 
@@ -385,6 +380,7 @@ Executable idris-codegen-c
                 , haskeline >= 0.7
                 , transformers
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
@@ -398,6 +394,7 @@ Executable idris-codegen-javascript
                 , haskeline >= 0.7
                 , transformers
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
@@ -411,5 +408,6 @@ Executable idris-codegen-node
                 , haskeline >= 0.7
                 , transformers
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
