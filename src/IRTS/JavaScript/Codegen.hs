@@ -64,7 +64,14 @@ data CGConf = CGConf { header :: Text
 
 
 getInclude :: FilePath -> IO Text
-getInclude p = TIO.readFile p
+getInclude p =
+  do
+    libs <- getIdrisLibDir
+    let libPath = libs </> p
+    exitsInLib <- doesFileExist libPath
+    if exitsInLib then
+      TIO.readFile libPath
+      else TIO.readFile p
 
 getIncludes :: [FilePath] -> IO Text
 getIncludes l = do
@@ -76,6 +83,7 @@ includeLibs =
   let
     repl '\\' = '_'
     repl '/' = '_'
+    repl '.' = '_'
     repl c   = c
   in
     concatMap (\lib -> "var " ++ (repl <$> lib) ++ " = require(\"" ++ lib ++"\");\n")
@@ -90,7 +98,8 @@ codegenJs :: CGConf -> CodeGenerator
 codegenJs conf ci =
   do
     debug <- isYes <$> lookupEnv "IDRISJS_DEBUG"
-    let defs = Map.fromList $ liftDecls ci
+    let defs' = Map.fromList $ liftDecls ci
+    let defs = globlToCon defs'
     let used = Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
     if debug then
       do

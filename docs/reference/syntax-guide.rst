@@ -223,7 +223,7 @@ Every occurence of the the defined type in a constructor argument will be
 wrapped in the ``Inf`` type constructor. This has the effect of delaying the
 evaluation of the second argument when the data constructor is applied.
 An ``Inf`` argument is constructed using ``Delay`` (which Idris will insert
-implicitly) adn evaluated using ``Force`` (again inserted implicitly).
+implicitly) and evaluated using ``Force`` (again inserted implicitly).
 
 Furthermore, recursive calls under a ``Delay`` must be guarded by a constructor
 to pass the totality checker.
@@ -387,9 +387,15 @@ Totality
 ::
 
     total
-    implicit
     partial
     covering
+
+Implicit Coercion
+^^^^^^^^^^^^^^^^^
+
+::
+
+    implicit
 
 Options
 ^^^^^^^

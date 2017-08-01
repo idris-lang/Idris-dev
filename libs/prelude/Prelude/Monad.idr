@@ -6,6 +6,7 @@ import Builtins
 import Prelude.Functor
 import public Prelude.Applicative
 import Prelude.Basics
+import Prelude.Foldable
 import IO
 
 %access public export
@@ -33,6 +34,11 @@ flatten : Monad m => m (m a) -> m a
 flatten = join
 %deprecate flatten "Please use `join`, which is the standard name."
 
+||| Similar to `foldl`, but uses a function wrapping its result in a `Monad`.
+||| Consequently, the final value is wrapped in the same `Monad`.
+foldlM : (Foldable t, Monad m) => (funcM: a -> b -> m a) -> (init: a) -> (input: t b) -> m a
+foldlM fm a0 = foldl (\ma,b => ma >>= flip fm b) (pure a0)
+
 -- Annoyingly, these need to be here, so that we can use them in other
 -- Prelude modules other than the top level.
 
@@ -48,4 +54,3 @@ Applicative (IO' ffi) where
 
 Monad (IO' ffi) where
     b >>= k = io_bind b k
-

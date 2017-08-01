@@ -7,6 +7,8 @@
 #include "mini-gmp.h"
 #endif
 
+#include "idris_rts.h"
+
 // Set memory allocation functions
 void init_gmpalloc(void);
 

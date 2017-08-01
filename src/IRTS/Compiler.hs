@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, FlexibleContexts, PatternGuards, TypeSynonymInstances #-}
 
 module IRTS.Compiler(compile, generate) where
 
@@ -17,6 +17,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Erasure
 import Idris.Error
+import Idris.Options
 import Idris.Output
 import IRTS.CodegenC
 import IRTS.CodegenCommon

@@ -1,5 +1,5 @@
 MAIN-PASS
-Faulty.idr:6:9-12:WARNING: num is bound as an implicit
+Faulty.idr:6:9-12:num is bound as an implicit
 	Did you mean to refer to A.num?
 Faulty.idr:7:7:When checking right hand side of fault with expected type
         num = 0

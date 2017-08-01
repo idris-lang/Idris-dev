@@ -18,6 +18,7 @@ import Idris.Core.TT (Name(..), OutputAnnotation(..), SpecialName(..),
 import Idris.Docs
 import Idris.Docstrings (nullDocstring)
 import qualified Idris.Docstrings as Docstrings
+import Idris.Options
 import Idris.Parser.Helpers (opChars)
 import IRTS.System (getIdrisDataFileByName)
 
@@ -343,6 +344,7 @@ extractPDo (DoBindP _ p1 p2 ps)  = let (ps1, ps2) = unzip ps
                                    in  concatMap extract (p1 : p2 : ps')
 extractPDo (DoLet   _ n _ p1 p2) = n : concatMap extract [p1, p2]
 extractPDo (DoLetP  _ p1 p2)     = concatMap extract [p1, p2]
+extractPDo (DoRewrite  _ p)      = extract p
 
 -- | Helper function for extractPTermNames
 extractPTactic :: PTactic -> [Name]

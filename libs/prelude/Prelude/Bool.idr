@@ -35,3 +35,12 @@ not : Bool -> Bool
 not True = False
 not False = True
 
+--------------------------------------------------------------------------------
+-- Properties
+--------------------------------------------------------------------------------
+
+Uninhabited (True = False) where
+  uninhabited Refl impossible
+
+Uninhabited (False = True) where
+  uninhabited Refl impossible

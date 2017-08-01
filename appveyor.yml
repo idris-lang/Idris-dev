@@ -1,7 +1,7 @@
 version: 1.0.{build}
 init:
 - ps: >-
-    choco install cabal
+    choco install cabal --no-progress
 
     mkdir C:\ghc
 

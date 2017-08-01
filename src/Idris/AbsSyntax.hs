@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor, PatternGuards #-}
+{-# LANGUAGE DeriveFunctor, FlexibleContexts, PatternGuards #-}
 
 module Idris.AbsSyntax(
     module Idris.AbsSyntax
@@ -19,6 +19,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Docstrings
 import Idris.IdeMode hiding (Opt(..))
+import Idris.Options
 import IRTS.CodegenCommon
 
 import System.Directory (canonicalizePath, doesFileExist)
@@ -2602,126 +2603,4 @@ mkUniqueNames env shadows tm
 
   mkUniq ql nmap tm = descendM (mkUniq ql nmap) tm
 
-getFile :: Opt -> Maybe String
-getFile (Filename s) = Just s
-getFile _ = Nothing
 
-getBC :: Opt -> Maybe String
-getBC (BCAsm s) = Just s
-getBC _ = Nothing
-
-getOutput :: Opt -> Maybe String
-getOutput (Output s) = Just s
-getOutput _ = Nothing
-
-getIBCSubDir :: Opt -> Maybe String
-getIBCSubDir (IBCSubDir s) = Just s
-getIBCSubDir _ = Nothing
-
-getImportDir :: Opt -> Maybe String
-getImportDir (ImportDir s) = Just s
-getImportDir _ = Nothing
-
-getSourceDir :: Opt -> Maybe String
-getSourceDir (SourceDir s) = Just s
-getSourceDir _ = Nothing
-
-getPkgDir :: Opt -> Maybe String
-getPkgDir (Pkg s) = Just s
-getPkgDir _ = Nothing
-
-getPkg :: Opt -> Maybe (Bool, String)
-getPkg (PkgBuild s)   = Just (False, s)
-getPkg (PkgInstall s) = Just (True, s)
-getPkg _ = Nothing
-
-getPkgClean :: Opt -> Maybe String
-getPkgClean (PkgClean s) = Just s
-getPkgClean _ = Nothing
-
-getPkgREPL :: Opt -> Maybe String
-getPkgREPL (PkgREPL s) = Just s
-getPkgREPL _ = Nothing
-
-getPkgCheck :: Opt -> Maybe String
-getPkgCheck (PkgCheck s) = Just s
-getPkgCheck _              = Nothing
-
--- | Returns None if given an Opt which is not PkgMkDoc
---   Otherwise returns Just x, where x is the contents of PkgMkDoc
-getPkgMkDoc :: Opt                  -- ^ Opt to extract
-            -> Maybe (Bool, String) -- ^ Result
-getPkgMkDoc (PkgDocBuild  str)  = Just (False,str)
-getPkgMkDoc (PkgDocInstall str) = Just (True,str)
-getPkgMkDoc _              = Nothing
-
-getPkgTest :: Opt          -- ^ the option to extract
-           -> Maybe String -- ^ the package file to test
-getPkgTest (PkgTest f) = Just f
-getPkgTest _ = Nothing
-
-getCodegen :: Opt -> Maybe Codegen
-getCodegen (UseCodegen x) = Just x
-getCodegen _ = Nothing
-
-getCodegenArgs :: Opt -> Maybe String
-getCodegenArgs (CodegenArgs args) = Just args
-getCodegenArgs _ = Nothing
-
-getConsoleWidth :: Opt -> Maybe ConsoleWidth
-getConsoleWidth (UseConsoleWidth x) = Just x
-getConsoleWidth _ = Nothing
-
-getExecScript :: Opt -> Maybe String
-getExecScript (InterpretScript expr) = Just expr
-getExecScript _ = Nothing
-
-getPkgIndex :: Opt -> Maybe FilePath
-getPkgIndex (PkgIndex file) = Just file
-getPkgIndex _ = Nothing
-
-getEvalExpr :: Opt -> Maybe String
-getEvalExpr (EvalExpr expr) = Just expr
-getEvalExpr _ = Nothing
-
-getOutputTy :: Opt -> Maybe OutputType
-getOutputTy (OutputTy t) = Just t
-getOutputTy _ = Nothing
-
-getLanguageExt :: Opt -> Maybe LanguageExt
-getLanguageExt (Extension e) = Just e
-getLanguageExt _ = Nothing
-
-getTriple :: Opt -> Maybe String
-getTriple (TargetTriple x) = Just x
-getTriple _ = Nothing
-
-getCPU :: Opt -> Maybe String
-getCPU (TargetCPU x) = Just x
-getCPU _ = Nothing
-
-getOptLevel :: Opt -> Maybe Int
-getOptLevel (OptLevel x) = Just x
-getOptLevel _ = Nothing
-
-getOptimisation :: Opt -> Maybe (Bool,Optimisation)
-getOptimisation (AddOpt p)    = Just (True,  p)
-getOptimisation (RemoveOpt p) = Just (False, p)
-getOptimisation _             = Nothing
-
-getColour :: Opt -> Maybe Bool
-getColour (ColourREPL b) = Just b
-getColour _ = Nothing
-
-getClient :: Opt -> Maybe String
-getClient (Client x) = Just x
-getClient _ = Nothing
-
--- Get the first valid port
-getPort :: [Opt] -> Maybe REPLPort
-getPort []            = Nothing
-getPort (Port p : _ ) = Just p
-getPort (_      : xs) = getPort xs
-
-opt :: (Opt -> Maybe a) -> [Opt] -> [a]
-opt = mapMaybe

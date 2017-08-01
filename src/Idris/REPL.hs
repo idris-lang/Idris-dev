@@ -5,7 +5,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleContexts, PatternGuards #-}
 
 module Idris.REPL
   ( idemodeStart
@@ -68,6 +68,7 @@ import Idris.Info
 import Idris.Inliner
 import Idris.Interactive
 import Idris.ModeCommon
+import Idris.Options
 import Idris.Output
 import Idris.Parser hiding (indent)
 import Idris.Prover

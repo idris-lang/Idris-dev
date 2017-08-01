@@ -14,6 +14,7 @@ module Util.System( tempfile
                   , writeSource
                   , writeSourceText
                   , readSource
+                  , readSourceStrict
                   , setupBundledCC
                   , isATTY
                   ) where
@@ -59,6 +60,15 @@ readSource :: FilePath -> IO String
 readSource f = do h <- openFile f ReadMode
                   hSetEncoding h utf8
                   hGetContents h
+
+-- | Read a source file, make sure that the it all has been read before exiting the function.
+-- | This is useful when we want to write the file again and need it to be closed.
+readSourceStrict :: FilePath -> IO String
+readSourceStrict f = withFile f ReadMode $
+                      \h ->  do
+                          hSetEncoding h utf8
+                          src <- hGetContents h
+                          length src `seq` return src
 
 -- | Write a source file, same as writeFile except the encoding is set to utf-8
 writeSource :: FilePath -> String -> IO ()

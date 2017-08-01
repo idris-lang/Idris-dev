@@ -5,6 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+{-# LANGUAGE FlexibleContexts #-}
 module IRTS.Simplified(simplifyDefs, SDecl(..), SExp(..), SAlt(..)) where
 
 import Idris.Core.CaseTree

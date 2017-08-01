@@ -16,11 +16,8 @@ module Idris.CmdOptions
   , getPkgREPL, getPkgTest, getPort, getIBCSubDir
   ) where
 
-import Idris.AbsSyntax (getClient, getIBCSubDir, getPkg, getPkgCheck,
-                        getPkgClean, getPkgMkDoc, getPkgREPL, getPkgTest,
-                        getPort, opt)
-import Idris.AbsSyntaxTree
 import Idris.Info (getIdrisVersion)
+import Idris.Options
 import IRTS.CodegenCommon
 
 import Control.Monad.Trans (lift)
@@ -28,9 +25,7 @@ import Control.Monad.Trans.Except (throwE)
 import Control.Monad.Trans.Reader (ask)
 import Data.Char
 import Data.Maybe
-#if MIN_VERSION_optparse_applicative(0,13,0)
 import Data.Monoid ((<>))
-#endif
 import Options.Applicative
 import Options.Applicative.Arrows
 import Options.Applicative.Types (ReadM(..))

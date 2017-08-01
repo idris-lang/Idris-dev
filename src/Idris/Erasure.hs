@@ -15,6 +15,7 @@ import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Error
+import Idris.Options
 import Idris.Primitives
 
 import Prelude hiding (id, (.))

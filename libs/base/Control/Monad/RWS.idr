@@ -14,7 +14,7 @@ interface (Monoid w, MonadReader r m, MonadWriter w m, MonadState s m) => MonadR
 record RWST (r : Type) (w : Type) (s : Type) (m : Type -> Type) (a : Type) where
   constructor MkRWST
   runRWST : r -> s -> m (a, s, w)
-  
+
 implementation Monad m => Functor (RWST r w s m) where
     map f (MkRWST m) = MkRWST $ \r,s => do  (a, s', w) <- m r s
                                             pure (f a, s', w)
@@ -47,6 +47,12 @@ implementation (Monoid w, Monad m) => MonadState s (RWST r w s m) where
     put s = MkRWST $ \_,_ => pure ((), s, neutral)
 
 implementation (Monoid w, Monad m) => MonadRWS r w s (RWST r w s m) where {}
+
+||| Adapted from https://hackage.haskell.org/package/transformers-0.5.4.0/docs/src/Control-Monad-Trans-RWS-Lazy.html
+implementation Monoid w => MonadTrans (RWST r w s) where
+    lift x = MkRWST $ \ _, s => do
+        a <- x
+        pure (a, s, neutral)
 
 ||| The RWS monad. See the MonadRWS interface
 RWS : Type -> Type -> Type -> Type -> Type

@@ -494,6 +494,15 @@ And for use in the browser:
       %include JavaScript "path/to/external.js"
 
 The given files will be added to the top of the generated code.
+For library packages you can also use the ipkg objs option to include the
+js file in the installation, and use
+
+.. code-block:: idris
+
+      %include Node "package/external.js"
+
+This javascript and node backends idris will also lookup for the file on
+on that location.
 
 Including *NodeJS* modules
 --------------------------

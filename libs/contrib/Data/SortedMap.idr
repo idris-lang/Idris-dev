@@ -1,6 +1,6 @@
 module Data.SortedMap
 
--- TODO: write merge and split
+-- TODO: write split
 
 private
 data Tree : Nat -> (k : Type) -> Type -> Ord k -> Type where
@@ -215,6 +215,10 @@ insert k v (M _ t) =
     Right t' => (M _ t')
 
 export
+insertFrom : Foldable f => f (k, v) -> SortedMap k v -> SortedMap k v
+insertFrom = flip $ foldl $ flip $ uncurry insert
+
+export
 delete : k -> SortedMap k v -> SortedMap k v
 delete _ Empty = Empty
 delete k (M Z t) =
@@ -235,6 +239,16 @@ toList : SortedMap k v -> List (k, v)
 toList Empty = []
 toList (M _ t) = treeToList t
 
+||| Gets the keys of the map.
+export
+keys : SortedMap k v -> List k
+keys = map fst . toList
+
+||| Gets the values of the map. Could contain duplicates.
+export
+values : SortedMap k v -> List v
+values = map snd . toList
+
 treeMap : (a -> b) -> Tree n k a o -> Tree n k b o
 treeMap f (Leaf k v) = Leaf k (f v)
 treeMap f (Branch2 t1 k t2) = Branch2 (treeMap f t1) k (treeMap f t2)
@@ -245,3 +259,40 @@ export
 implementation Functor (SortedMap k) where
   map _ Empty = Empty
   map f (M n t) = M _ (treeMap f t)
+
+||| Merge two maps. When encountering duplicate keys, using a function to combine the values.
+||| Uses the ordering of the first map given.
+export
+mergeWith : (v -> v -> v) -> SortedMap k v -> SortedMap k v -> SortedMap k v
+mergeWith f x y = insertFrom inserted x where
+  inserted : List (k, v)
+  inserted = do
+    (k, v) <- toList y
+    let v' = (maybe id f $ lookup k x) v
+    pure (k, v')
+
+||| Merge two maps using the Semigroup (and by extension, Monoid) operation.
+||| Uses mergeWith internally, so the ordering of the left map is kept.
+export
+merge : Semigroup v => SortedMap k v -> SortedMap k v -> SortedMap k v
+merge = mergeWith (<+>)
+
+||| Left-biased merge, also keeps the ordering specified  by the left map.
+export
+mergeLeft : SortedMap k v -> SortedMap k v -> SortedMap k v
+mergeLeft = mergeWith const
+
+-- TODO: is this the right variant of merge to use for this? I think it is, but
+-- I could also see the advantages of using `mergeLeft`. The current approach is
+-- strictly more powerful I believe, because `mergeLeft` can be emulated with
+-- the `First` monoid. However, this does require more code to do the same
+-- thing.
+export
+Semigroup v => Semigroup (SortedMap k v) where
+  (<+>) = merge
+
+||| For `neutral <+> y`, y is rebuilt in `Ord k`, so this is not a "strict" Monoid.
+||| However, semantically, it should be equal.
+export
+(Ord k, Semigroup v) => Monoid (SortedMap k v) where
+  neutral = empty

@@ -6,6 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Output where
@@ -17,6 +18,7 @@ import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Docstrings
 import Idris.IdeMode
+import Idris.Options
 
 import Util.Pretty
 import Util.ScreenSize (getScreenWidth)

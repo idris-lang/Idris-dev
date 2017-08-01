@@ -7,7 +7,7 @@ import public Builtins
 
 ||| Interface for transforming an instance of a data type to another type.
 interface Cast from to where
-    ||| Perform a cast operation.
+    ||| Perform a (potentially lossy!) cast operation.
     |||
     ||| @orig The original type.
     cast : (orig : from) -> to

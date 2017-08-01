@@ -437,7 +437,7 @@ using the SDL bindings as follows:
 
 .. code-block:: idris
 
-  interface Draw IO where
+  implementation Draw IO where
     Surface = State SDLSurface
 
     initWindow x y = do Just srf <- lift (startSDL x y)

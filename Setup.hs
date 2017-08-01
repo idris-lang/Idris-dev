@@ -274,26 +274,15 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
 -- -----------------------------------------------------------------------------
 -- Test
 
--- FIXME: We use the __GLASGOW_HASKELL__ macro because MIN_VERSION_cabal seems
--- to be broken !
-
 -- There are two "dataDir" in cabal, and they don't relate to each other.
 -- When fetching modules, idris uses the second path (in the pkg record),
 -- which by default is the root folder of the project.
 -- We want it to be the install directory where we put the idris libraries.
 fixPkg pkg target = pkg { dataDir = target }
 
--- The "Args" argument of the testHooks has been added in cabal 1.22.0,
--- and should therefore be ignored for prior versions.
-#if __GLASGOW_HASKELL__ < 710
-originalTestHook _ = testHook simpleUserHooks
-#else
-originalTestHook = testHook simpleUserHooks
-#endif
-
 idrisTestHook args pkg local hooks flags = do
   let target = datadir $ L.absoluteInstallDirs pkg local NoCopyDest
-  originalTestHook args (fixPkg pkg target) local hooks flags
+  testHook simpleUserHooks args (fixPkg pkg target) local hooks flags
 
 -- -----------------------------------------------------------------------------
 -- Main
@@ -314,9 +303,5 @@ main = defaultMainWithHooks $ simpleUserHooks
    , preSDist = idrisPreSDist
    , sDistHook = idrisSDist (sDistHook simpleUserHooks)
    , postSDist = idrisPostSDist
-#if __GLASGOW_HASKELL__ < 710
-   , testHook = idrisTestHook ()
-#else
    , testHook = idrisTestHook
-#endif
    }

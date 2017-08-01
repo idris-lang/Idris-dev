@@ -6,8 +6,8 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
-             PatternGuards #-}
+{-# LANGUAGE DeriveFunctor, FlexibleContexts, FlexibleInstances,
+             MultiParamTypeClasses, PatternGuards #-}
 
 module Idris.Core.Typecheck where
 

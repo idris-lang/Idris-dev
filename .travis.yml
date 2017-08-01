@@ -1,3 +1,4 @@
+dist: trusty
 sudo: false
 
 language: c
@@ -10,15 +11,6 @@ matrix:
   include:
     - env: CABALVER="1.24" GHCVER="8.0.1" STACKVER="7.14" STYLISH=YES
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,hscolour], sources: [hvr-ghc]}}
-    - os: osx
-      env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
-      compiler: ": #GHC 8.0.1"
-    - env: CABALVER="1.20" GHCVER="7.6.3" TESTS="test_c"
-      compiler: ": #GHC 7.6.3"
-      addons: {apt: {packages: [cabal-install-1.20,ghc-7.6.3,cppcheck,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="1.20" GHCVER="7.8.4" TESTS="test_c"
-      compiler: ": #GHC 7.8.4"
-      addons: {apt: {packages: [cabal-install-1.20,ghc-7.8.4,cppcheck,hscolour], sources: [hvr-ghc]}}
     - env: CABALVER="1.22" GHCVER="7.10.3" TESTS="lib_doc doc"
       compiler: ": #GHC 7.10.3"
       addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.3,cppcheck,hscolour], sources: [hvr-ghc]}}
@@ -37,10 +29,6 @@ matrix:
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
-  allow_failures:
-    - os: osx
-      env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
-      compiler: ": #GHC 8.0.1"
   fast-finish: true
 
 cache:
@@ -153,7 +141,9 @@ script:
   - echo -en 'travis_fold:end:script.tests\\r'
 ###
   - echo 'Benchmarks...' && echo -en 'travis_fold:start:script.benchmarks\\r'
-  - cd benchmarks && ./build.pl && ./run.pl && cd ..
+  - if [[ "$TESTS" == "test_c" ]]; then
+      cd benchmarks && ./build.pl && ./run.pl && cd ..;
+    fi
   - echo -en 'travis_fold:end:script.benchmarks\\r'
 ###
 # EOF
