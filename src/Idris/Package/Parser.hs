@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, ConstraintKinds #-}
+{-# LANGUAGE CPP, ConstraintKinds, FlexibleInstances, TypeSynonymInstances #-}
 module Idris.Package.Parser where
 
 import Idris.AbsSyntaxTree

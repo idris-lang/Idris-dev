@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances, OverloadedStrings, TypeSynonymInstances #-}
 module IRTS.Portable (writePortable) where
 
 import Idris.Core.CaseTree

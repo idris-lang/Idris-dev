@@ -5,7 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, GeneralizedNewtypeDeriving, PatternGuards #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
+             PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
 module Idris.Parser(module Idris.Parser,
                     module Idris.Parser.Expr,

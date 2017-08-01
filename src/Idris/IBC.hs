@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.IBC (loadIBC, loadPkgIndex,

@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleInstances, PatternGuards #-}
 
 module Idris.DataOpts(applyOpts) where
 

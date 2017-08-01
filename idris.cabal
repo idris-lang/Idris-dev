@@ -40,7 +40,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 .
                 * Hugs style interactive environment
 
-Cabal-Version:  >= 1.8.1
+Cabal-Version:  >= 1.18
 
 Build-type:     Custom
 
@@ -320,13 +320,7 @@ Library
   if impl(ghc < 7.8.4)
      build-depends: tagsoup < 0.14.1
 
-  Extensions:     MultiParamTypeClasses
-                , DeriveFoldable
-                , DeriveTraversable
-                , FunctionalDependencies
-                , FlexibleContexts
-                , FlexibleInstances
-                , TemplateHaskell
+  Default-Language: Haskell2010
 
   ghc-prof-options: -auto-all -caf-all
 
@@ -365,6 +359,7 @@ Executable idris
                 , haskeline >= 0.7
                 , transformers
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields -with-rtsopts=-I0
 
@@ -389,10 +384,9 @@ Test-suite regression-and-feature-tests
                , tasty-rerun >= 1.0.0
                , bytestring
                , transformers
-  if impl(ghc < 7.10)
-    Extensions: DeriveDataTypeable
 
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -with-rtsopts=-N -funbox-strict-fields
 
@@ -406,6 +400,7 @@ Executable idris-codegen-c
                 , haskeline >= 0.7
                 , transformers
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
@@ -419,6 +414,7 @@ Executable idris-codegen-javascript
                 , haskeline >= 0.7
                 , transformers
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields
 
@@ -432,5 +428,6 @@ Executable idris-codegen-node
                 , haskeline >= 0.7
                 , transformers
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
   ghc-options:      -threaded -rtsopts -funbox-strict-fields

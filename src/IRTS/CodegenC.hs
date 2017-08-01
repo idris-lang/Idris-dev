@@ -5,6 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+{-# LANGUAGE FlexibleContexts #-}
+
 module IRTS.CodegenC (codegenC) where
 
 import Idris.AbsSyntax hiding (getBC)
