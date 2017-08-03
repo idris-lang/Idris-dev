@@ -4,7 +4,7 @@ Static Arguments and Partial Evaluation
 
 As of version 0.9.15, Idris has support for *partial evaluation* of
 statically known arguments. This involves creating specialised versions
-of functions with arguments annotated as ``[static]``.
+of functions with arguments annotated as ``%static``.
 
 (This is an implementation of the partial evaluator described in `this
 ICFP 2010
@@ -66,18 +66,18 @@ Automatic specialisation of ``pow``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The trick is to mark the statically known arguments with the
-``[static]`` flag:
+``%static`` flag:
 
 ::
 
-    my_pow : Nat -> [static] Nat -> Nat
+    my_pow : Nat -> %static Nat -> Nat
     my_pow k Z = 1
     my_pow k (S j) = mult k (my_pow k j)
 
 When an argument is annotated in this way, Idris will try to create a
 specialised version whenever it accounts a call with a concrete value
 (i.e. a constant, constructor form, or globally defined function) in a
-``[static]`` position. If ``my_pow`` is defined this way, and ``powFn``
+``%static`` position. If ``my_pow`` is defined this way, and ``powFn``
 defined as above, we can see the effect by typing ``:printdef powFn`` at
 the REPL:
 
@@ -108,7 +108,7 @@ Specialising Type Classes
 -------------------------
 
 Type class dictionaries are very often statically known, so Idris
-automatically marks any type class constraint as ``[static]`` and builds
+automatically marks any type class constraint as ``%static`` and builds
 specialised versions of top level functions where the class is
 instantiated. For example, given:
 
@@ -177,7 +177,7 @@ writing ``map`` as follows:
 
 ::
 
-    my_map : [static] (a -> b) -> List a -> List b
+    my_map : %static (a -> b) -> List a -> List b
     my_map f [] = []
     my_map f (x :: xs) = f x :: my_map f xs
 
@@ -246,11 +246,11 @@ Then, a function which calculates the factorial of its input:
                 (App (App eMult (App eFac (Op (-) x (Val 1)))) x))
 
 The interpreter's type is written as follows, marking the expression to
-be evaluated as ``[static]``:
+be evaluated as ``%static``:
 
 ::
 
-    interp : (env : Env gamma) -> [static] (e : Expr gamma t) -> interpTy t
+    interp : (env : Env gamma) -> %static (e : Expr gamma t) -> interpTy t
 
 This means that if we write an Idris program to calculate a factorial by
 calling ``interp`` on ``eFac``, the resulting definition will be
