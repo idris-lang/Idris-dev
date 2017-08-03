@@ -9,10 +9,17 @@ if [ ! -d $RUNIDRIS_DIR ]; then
     mkdir $RUNIDRIS_DIR
     chmod 700 $RUNIDRIS_DIR
 fi
-TEMP_NAME="runidris-`sha1sum $1 | cut -c1-40`"
+
+OS=`uname -s`
+case $OS in
+    OpenBSD ) TEMP_NAME="runidris-`sha1 -q $1`" ;;
+          * ) TEMP_NAME="runidris-`sha1sum $1 | cut -c1-40`" ;;
+esac
+
 FP="$RUNIDRIS_DIR/$TEMP_NAME"
+cp "$1" "$FP.idr" # idris won't compile the script unless it ends in .idr
 if [ ! -e $FP ]; then
-    "${IDRIS:-idris}" $1 --ibcsubdir "$RUNIDRIS_DIR" -i "." -o $FP
+    "${IDRIS:-idris}" "$FP.idr" --ibcsubdir "$RUNIDRIS_DIR" -i "." -o $FP
 fi
 shift
 "$FP" "$@"
