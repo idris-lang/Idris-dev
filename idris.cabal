@@ -269,7 +269,7 @@ Library
                 , blaze-html >= 0.6.1.3 && < 0.10
                 , blaze-markup >= 0.5.2.1 && < 0.9
                 , bytestring < 0.11
-                , cheapskate < 0.2
+                , cheapskate < 0.1.1
                 , code-page >= 0.1 && < 0.2
                 , containers >= 0.5 && < 0.6
                 , deepseq < 1.5
@@ -304,17 +304,11 @@ Library
 
   ghc-prof-options: -auto-all -caf-all
 
-  if os(linux)
-     build-depends: unix < 2.8
-  if os(freebsd)
-     build-depends: unix < 2.8
-  if os(dragonfly)
-     build-depends: unix < 2.8
-  if os(darwin)
-     build-depends: unix < 2.8
   if os(windows)
      build-depends: mintty >= 0.1 && < 0.2
                   , Win32 < 2.4
+  else
+     build-depends: unix < 2.8
   if flag(FFI)
      build-depends: libffi < 0.2
      cpp-options:   -DIDRIS_FFI
