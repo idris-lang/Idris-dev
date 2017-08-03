@@ -97,6 +97,14 @@ source-repository head
   type:     git
   location: git://github.com/idris-lang/Idris-dev.git
 
+custom-setup
+  setup-depends:
+    Cabal >= 1.10 && <2.1,
+    base  >= 4 && <5,
+    directory,
+    filepath,
+    process
+
 Flag FFI
   Description:  Build support for libffi
   Default:      False

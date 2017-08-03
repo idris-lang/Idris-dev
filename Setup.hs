@@ -1,5 +1,9 @@
 {-# LANGUAGE CPP #-}
 
+#if !defined(MIN_VERSION_Cabal)
+# define MIN_VERSION_Cabal(x,y,z) 0
+#endif
+
 import Control.Monad
 import Data.IORef
 import Control.Exception (SomeException, catch)
