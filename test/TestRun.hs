@@ -65,7 +65,8 @@ test testName path = goldenVsFileDiff testName diff ref output
   where
     ref = path </> "expected"
     output = path </> "output"
-    diff ref new = ["diff", "-u", new, ref]
+    diff ref new | os == "openbsd" = ["diff", "-u", new, ref]
+                 | otherwise = ["diff", "--strip-trailing-cr", "-u", new, ref]
 
 -- Should always output a 3-charater string from a postive Int
 indexToString :: Int -> String
