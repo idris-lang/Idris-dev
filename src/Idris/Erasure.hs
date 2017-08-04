@@ -1,6 +1,6 @@
 {-|
 Module      : Idris.Erasure
-Description : Utilities to erase irrelevant stuff.
+Description : Utilities to erase stuff not necessary for runtime.
 Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
@@ -145,10 +145,54 @@ performUsageAnalysis startNames = do
         fmt n rs = show n ++ " from " ++ intercalate ", " [show rn ++ " arg# " ++ show ri | (rn,ri) <- rs]
         warn = logErasure 0
 
+type Constraint = (Cond, DepSet)
+
 -- | Find the minimal consistent usage by forward chaining.
+--
+-- We use a cleverer implementation that:
+-- 1. First transforms Deps into a collection of numbered constraints
+-- 2. For each node, we remember the numbers of constraints
+--    that contain that node among their preconditions.
+-- 3. When performing forward chaining, we perform unit propagation
+--    only on the relevant constraints, not all constraints.
+--
+-- Typical numbers from the current version of Blodwen:
+-- * 56 iterations until fixpoint
+-- * out of 20k constraints total, 5-1000 are relevant per iteration
 minimalUsage :: Deps -> (Deps, (Set Name, UseMap))
-minimalUsage = second gather . forwardChain
+minimalUsage deps
+    = fromNumbered *** gather
+    $ forwardChain (index numbered) seedDeps seedDeps numbered
   where
+    numbered = toNumbered deps
+
+    -- The initial solution. Consists of nodes that are
+    -- reachable immediately, without any preconditions.
+    seedDeps :: DepSet
+    seedDeps = M.unionsWith S.union [ds | (cond, ds) <- IM.elems numbered, S.null cond]
+
+    toNumbered :: Deps -> IntMap Constraint
+    toNumbered = IM.fromList . zip [0..] . M.toList
+
+    fromNumbered :: IntMap Constraint -> Deps
+    fromNumbered = IM.foldr addConstraint M.empty
+      where
+        addConstraint (ns, vs) = M.insertWith (M.unionWith S.union) ns vs
+
+    -- Build an index that maps every node to the set of constraints
+    -- where the node appears among the preconditions.
+    index :: IntMap Constraint -> Map Node IntSet
+    index = IM.foldrWithKey (
+            -- for each clause (i. ns --> _ds)
+            \i (ns, _ds) ix -> foldr (
+                -- for each node `n` in `ns`
+                \n ix' -> M.insertWith IS.union n (IS.singleton i) ix'
+              ) ix (S.toList ns)
+        ) M.empty
+
+    -- Convert a solution of constraints into:
+    -- 1. the list of names used in the program
+    -- 2. the list of arguments used, together with their reasons
     gather :: DepSet -> (Set Name, UseMap)
     gather = foldr ins (S.empty, M.empty) . M.toList
        where
@@ -156,17 +200,81 @@ minimalUsage = second gather . forwardChain
         ins ((n, Result), rs) (ns, umap) = (S.insert n ns, umap)
         ins ((n, Arg i ), rs) (ns, umap) = (ns, M.insertWith (IM.unionWith S.union) n (IM.singleton i rs) umap)
 
-forwardChain :: Deps -> (Deps, DepSet)
-forwardChain deps
-    | Just trivials <- M.lookup S.empty deps
-        = (M.unionWith S.union trivials)
-            `second` forwardChain (remove trivials . M.delete S.empty $ deps)
-    | otherwise = (deps, M.empty)
+-- | In each iteration, we find the set of nodes immediately reachable
+-- from the current set of constraints, and then reduce the set of constraints
+-- based on that knowledge.
+--
+-- In the implementation, this is phase-shifted. We first reduce the set
+-- of constraints, given the newly reachable nodes from the previous iteration,
+-- and then compute the set of currently reachable nodes.
+-- Then we decide whether to iterate further.
+forwardChain
+    :: Map Node IntSet   -- ^ node index
+    -> DepSet            -- ^ all reachable nodes found so far
+    -> DepSet            -- ^ nodes reached in the previous iteration
+    -> IntMap Constraint -- ^ numbered constraints
+    -> (IntMap Constraint, DepSet)
+forwardChain index solution previouslyNew constrs
+    -- no newly reachable nodes, fixed point has been reached
+    | M.null currentlyNew
+    = (constrs, solution)
+
+    -- some newly reachable nodes, iterate more
+    | otherwise
+    = forwardChain index
+        (M.unionWith S.union solution currentlyNew)
+        currentlyNew
+        constrs'
   where
-    -- Remove the given nodes from the Deps entirely,
-    -- possibly creating new empty Conds.
-    remove :: DepSet -> Deps -> Deps
-    remove ds = M.mapKeysWith (M.unionWith S.union) (S.\\ M.keysSet ds)
+    -- which constraints could give new results,
+    -- given that `previouslyNew` has been derived in the last iteration
+    affectedIxs = IS.unions [
+        M.findWithDefault IS.empty n index
+        | n <- M.keys previouslyNew
+      ]
+
+    -- traverse all (potentially) affected constraints, building:
+    -- 1. a set of newly reached nodes
+    -- 2. updated set of constraints where the previously
+    --    reached nodes have been removed
+    (currentlyNew, constrs')
+        = IS.foldr
+            (reduceConstraint $ M.keysSet previouslyNew)
+            (M.empty, constrs)
+            affectedIxs
+
+    -- Update the pair (newly reached nodes, numbered constraint set)
+    -- by reducing the constraint with the given number.
+    reduceConstraint
+        :: Set Node  -- ^ nodes reached in the previous iteration
+        -> Int       -- ^ constraint number
+        -> (DepSet, IntMap (Cond, DepSet))
+        -> (DepSet, IntMap (Cond, DepSet))
+    reduceConstraint previouslyNew i (news, constrs)
+        | Just (cond, deps) <- IM.lookup i constrs
+        = case cond S.\\ previouslyNew of
+            cond'
+                -- This constraint's set of preconditions has shrunk
+                -- to the empty set. We can add its RHS to the set of newly
+                -- reached nodes, and remove the constraint altogether.
+                | S.null cond'
+                -> (M.unionWith S.union news deps, IM.delete i constrs)
+
+                -- This constraint's set of preconditions has shrunk
+                -- so we need to overwrite the numbered slot
+                -- with the updated constraint.
+                | S.size cond' < S.size cond
+                -> (news, IM.insert i (cond', deps) constrs)
+
+                -- This constraint's set of preconditions hasn't changed
+                -- so we do not do anything about it.
+                | otherwise
+                -> (news, constrs)
+
+        -- Constraint number present in index but not found
+        -- among the constraints. This happens more and more frequently
+        -- as we delete constraints from the set.
+        | otherwise = (news, constrs)
 
 -- | Build the dependency graph, starting the depth-first search from
 -- a list of Names.
