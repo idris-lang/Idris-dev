@@ -128,10 +128,10 @@ showPrettyDoc : (doc : PrettyDoc) -> String
 showPrettyDoc doc = showPrettyDocS doc ""
   where
     showPrettyDocS : (doc : PrettyDoc) -> (acc : String) -> String
-    showPrettyDocS Empty               = id
-    showPrettyDocS (Chara c rest)      = strCons c . showPrettyDocS rest
-    showPrettyDocS (Text len str rest) = (str ++) . showPrettyDocS rest
-    showPrettyDocS (Line lvl rest)     = (('\n' `strCons` indentation lvl) ++) . showPrettyDocS rest
+    showPrettyDocS Empty               acc = acc
+    showPrettyDocS (Chara c rest)      acc = strCons c (showPrettyDocS rest acc)
+    showPrettyDocS (Text len str rest) acc = str ++ (showPrettyDocS rest acc)
+    showPrettyDocS (Line lvl rest)     acc = (strCons '\n' (indentation lvl)) ++ showPrettyDocS rest acc
 
 private
 fits : (w : Int) -> (x : PrettyDoc) -> Bool

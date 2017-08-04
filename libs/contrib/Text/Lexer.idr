@@ -23,11 +23,11 @@ public export
 inf : Bool -> Type -> Type
 inf True t = Inf t
 inf False t = t
-  
+
 ||| Sequence two recognisers. If either consumes a character, the sequence
 ||| is guaranteed to consume a character.
 export %inline
-(<+>) : {c1 : Bool} -> 
+(<+>) : {c1 : Bool} ->
         Recognise c1 -> inf c1 (Recognise c2) -> Recognise (c1 || c2)
 (<+>) {c1 = False} = SeqEmpty
 (<+>) {c1 = True} = SeqEat
@@ -59,6 +59,17 @@ export
 many : Lexer -> Recognise False
 many l = some l <|> Empty
 
+||| Recognise many instances of `l` until an instance of `end` is
+||| encountered.
+|||
+||| Useful for defining comments.
+export
+manyTill : (l : Lexer)
+        -> (end : Lexer) -> Recognise False
+manyTill l end = end
+             <|> (l <+> manyTill l end)
+             <|> Empty
+
 ||| Recognise any character
 export
 any : Lexer
@@ -86,7 +97,7 @@ getString : StrLen -> String
 getString (MkStrLen str n) = str
 
 strIndex : StrLen -> Nat -> Maybe Char
-strIndex (MkStrLen str len) i 
+strIndex (MkStrLen str len) i
     = if i >= len then Nothing
                   else Just (assert_total (prim__strIndex str (cast i)))
 
@@ -102,25 +113,25 @@ strTail start (MkStrLen str len)
 scan : Recognise c -> Nat -> StrLen -> Maybe Nat
 scan Empty idx str = pure idx
 scan Fail idx str = Nothing
-scan (Pred f) idx str 
+scan (Pred f) idx str
     = do c <- strIndex str idx
          if f c
             then Just (idx + 1)
             else Nothing
-scan (SeqEat r1 r2) idx str 
+scan (SeqEat r1 r2) idx str
     = do idx' <- scan r1 idx str
          -- TODO: Can we prove totality instead by showing idx has increased?
          assert_total (scan r2 idx' str)
-scan (SeqEmpty r1 r2) idx str 
+scan (SeqEmpty r1 r2) idx str
     = do idx' <- scan r1 idx str
          scan r2 idx' str
-scan (Alt r1 r2) idx str 
+scan (Alt r1 r2) idx str
     = case scan r1 idx str of
            Nothing => scan r2 idx str
            Just idx => Just idx
 
 takeToken : Lexer -> StrLen -> Maybe (String, StrLen)
-takeToken lex str 
+takeToken lex str
     = do i <- scan lex 0 str -- i must be > 0 if successful
          pure (substr 0 i (getString str), strTail i str)
 
@@ -134,7 +145,7 @@ export
 exact : String -> Lexer
 exact str with (unpack str)
   exact str | [] = Fail -- Not allowed, Lexer has to consume
-  exact str | (x :: xs) 
+  exact str | (x :: xs)
       = foldl SeqEmpty (is x) (map is xs)
 
 ||| Recognise a whitespace character
@@ -185,8 +196,8 @@ record TokenData a where
 
 fspanEnd : Nat -> (Char -> Bool) -> String -> (Nat, String)
 fspanEnd k p "" = (k, "")
-fspanEnd k p xxs 
-    = assert_total $ 
+fspanEnd k p xxs
+    = assert_total $
       let x = prim__strHead xxs
           xs = prim__strTail xxs in
           if p x then fspanEnd (S k) p xs
@@ -195,14 +206,14 @@ fspanEnd k p xxs
 -- Faster version of 'span' from the prelude (avoids unpacking)
 export
 fspan : (Char -> Bool) -> String -> (String, String)
-fspan p xs 
+fspan p xs
     = let (end, rest) = fspanEnd 0 p xs in
           (substr 0 end xs, rest)
 
 tokenise : (line : Int) -> (col : Int) ->
-           List (TokenData a) -> TokenMap a -> 
+           List (TokenData a) -> TokenMap a ->
            StrLen -> (List (TokenData a), (Int, Int, StrLen))
-tokenise line col acc tmap str 
+tokenise line col acc tmap str
     = case getFirstToken tmap str of
            Just (tok, line', col', rest) =>
            -- assert total because getFirstToken must consume something
@@ -213,7 +224,7 @@ tokenise line col acc tmap str
     countNLs str = List.length (filter (== '\n') str)
 
     getCols : String -> Int -> Int
-    getCols x c 
+    getCols x c
          = case fspan (/= '\n') (reverse x) of
                 (incol, "") => c + cast (length incol)
                 (incol, _) => cast (length incol)
@@ -223,7 +234,7 @@ tokenise line col acc tmap str
     getFirstToken ((lex, fn) :: ts) str
         = case takeToken lex str of
                Just (tok, rest) => Just (MkToken line col (fn tok),
-                                         line + cast (countNLs (unpack tok)), 
+                                         line + cast (countNLs (unpack tok)),
                                          getCols tok col, rest)
                Nothing => getFirstToken ts str
 
@@ -235,4 +246,3 @@ export
 lex : TokenMap a -> String -> (List (TokenData a), (Int, Int, String))
 lex tmap str = let (ts, (l, c, str')) = tokenise 0 0 [] tmap (mkStr str) in
                    (ts, (l, c, getString str'))
-
