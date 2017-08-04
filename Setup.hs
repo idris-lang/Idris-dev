@@ -1,11 +1,15 @@
 {-# LANGUAGE CPP #-}
 
+#if !defined(MIN_VERSION_Cabal)
+# define MIN_VERSION_Cabal(x,y,z) 0
+#endif
+
 import Control.Monad
 import Data.IORef
 import Control.Exception (SomeException, catch)
 
 import Distribution.Simple
-import Distribution.Simple.BuildPaths (autogenModulesDir)
+import Distribution.Simple.BuildPaths
 import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
@@ -56,31 +60,36 @@ windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation
 
 usesGMP :: S.ConfigFlags -> Bool
 usesGMP flags =
-  case lookup (FlagName "gmp") (S.configConfigurationsFlags flags) of
+  case lookup (mkFlagName "gmp") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
 
 execOnly :: S.ConfigFlags -> Bool
 execOnly flags =
-  case lookup (FlagName "execonly") (S.configConfigurationsFlags flags) of
+  case lookup (mkFlagName "execonly") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
 
 isRelease :: S.ConfigFlags -> Bool
 isRelease flags =
-    case lookup (FlagName "release") (S.configConfigurationsFlags flags) of
+    case lookup (mkFlagName "release") (S.configConfigurationsFlags flags) of
       Just True -> True
       Just False -> False
       Nothing -> False
 
 isFreestanding :: S.ConfigFlags -> Bool
 isFreestanding flags =
-  case lookup (FlagName "freestanding") (S.configConfigurationsFlags flags) of
+  case lookup (mkFlagName "freestanding") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
+
+#if !(MIN_VERSION_Cabal(2,0,0))
+mkFlagName :: String -> FlagName
+mkFlagName = FlagName
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Clean
@@ -151,20 +160,22 @@ generateToolchainModule verbosity srcDir toolDir = do
     createDirectoryIfMissingVerbose verbosity True srcDir
     rewriteFile toolPath (commonContent ++ toolContent)
 
-idrisConfigure _ flags _ local = do
+idrisConfigure _ flags pkgdesc local = do
     configureRTS
-    generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
-    if isFreestanding $ configFlags local
-        then do
-                toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
-                generateToolchainModule verbosity (autogenModulesDir local) toolDir
-                targetDir <- lookupEnv "IDRIS_LIB_DIR"
-                case targetDir of
-                     Just d -> generateTargetModule verbosity (autogenModulesDir local) d
-                     Nothing -> error $ "Trying to build freestanding without a target directory."
-                                  ++ " Set it by defining IDRIS_LIB_DIR."
-        else
-                generateToolchainModule verbosity (autogenModulesDir local) Nothing
+    withLibLBI pkgdesc local $ \_ libcfg -> do
+      let libAutogenDir = autogenComponentModulesDir local libcfg
+      generateVersionModule verbosity libAutogenDir (isRelease (configFlags local))
+      if isFreestanding $ configFlags local
+          then do
+                  toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
+                  generateToolchainModule verbosity libAutogenDir toolDir
+                  targetDir <- lookupEnv "IDRIS_LIB_DIR"
+                  case targetDir of
+                       Just d -> generateTargetModule verbosity libAutogenDir d
+                       Nothing -> error $ "Trying to build freestanding without a target directory."
+                                    ++ " Set it by defining IDRIS_LIB_DIR."
+          else
+                  generateToolchainModule verbosity libAutogenDir Nothing
     where
       verbosity = S.fromFlag $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
@@ -174,6 +185,10 @@ idrisConfigure _ flags _ local = do
       -- distribution if it's not there, so instead I just delete
       -- the file after configure.
       configureRTS = make verbosity ["-C", "rts", "clean"]
+
+#if !(MIN_VERSION_Cabal(2,0,0))
+      autogenComponentModulesDir lbi _ = autogenModulesDir lbi
+#endif
 
 idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
