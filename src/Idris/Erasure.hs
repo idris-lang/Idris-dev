@@ -207,6 +207,7 @@ minimalUsage deps
 -- In the implementation, this is phase-shifted. We first reduce the set
 -- of constraints, given the newly reachable nodes from the previous iteration,
 -- and then compute the set of currently reachable nodes.
+-- Then we decide whether to iterate further.
 forwardChain
     :: Map Node IntSet   -- ^ node index
     -> DepSet            -- ^ all reachable nodes found so far
