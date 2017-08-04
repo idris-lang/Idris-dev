@@ -9,7 +9,7 @@ Maintainer  : The Idris Community.
 
 module IRTS.CodegenC (codegenC) where
 
-import Idris.AbsSyntax hiding (getBC)
+import Idris.AbsSyntax
 import Idris.Core.TT
 import IRTS.Bytecode
 import IRTS.CodegenCommon
@@ -21,20 +21,16 @@ import IRTS.System
 import Util.System
 
 import Control.Monad
-import Control.Monad
-import Control.Monad.RWS
 import Data.Bits
 import Data.Char
-import Data.List (find, intercalate, nubBy, partition)
-import qualified Data.Text as T
+import Data.List (intercalate, nubBy)
+import Debug.Trace
 import Numeric
 import System.Directory
 import System.Exit
 import System.FilePath ((<.>), (</>))
 import System.IO
 import System.Process
-
-import Debug.Trace
 
 codegenC :: CodeGenerator
 codegenC ci = do codegenC' (simpleDecls ci)
@@ -70,9 +66,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
          let bc = map toBC defs
          let wrappers = genWrappers bc
          let h = concatMap toDecl (map fst bc)
-         let (state, cc) = execRWS (generateSrc bc) 0
-                                         (CS { fnName = Nothing,
-                                                level = 1 })
+         let cc = concatMap (uncurry toC) bc
          let hi = concatMap ifaceC (concatMap getExp exports)
          d <- getIdrisCRTSDir
          mprog <- readFile (d </> "idris_main" <.> "c")
@@ -142,17 +136,12 @@ creg Tmp = "REG1"
 toDecl :: Name -> String
 toDecl f = "void " ++ cname f ++ "(VM*, VAL*);\n"
 
-generateSrc :: [(Name, [BC])] -> RWS Int String CState ()
-generateSrc bc = mapM_ toC bc
-
-toC :: (Name, [BC]) -> RWS Int String CState ()
-toC (f, code) = do
-    modify (\s -> s { fnName = Just f })
-    s <- get
-    tell $ "void " ++ cname f ++ "(VM* vm, VAL* oldbase) {\n"
-    tell $  indent (level s) ++ "INITFRAME;\n"
-    bcc code
-    tell $ "}\n\n"
+toC :: Name -> [BC] -> String
+toC f code
+    = -- "/* " ++ show code ++ "*/\n\n" ++
+      "void " ++ cname f ++ "(VM* vm, VAL* oldbase) {\n" ++
+                 indent 1 ++ "INITFRAME;\n" ++
+                 concatMap (bcc 1) code ++ "}\n\n"
 
 showCStr :: String -> String
 showCStr s = '"' : foldr ((++) . showChar) "\"" s
@@ -188,22 +177,10 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
                  2 -> s
                  _ -> error $ "Can't happen: String of invalid length " ++ show s
 
-data CState = CS {
-    fnName :: Maybe Name,
-    level :: Int
-}
-
-
-bcc :: [BC] -> RWS Int String CState ()
-bcc [] = return ()
-bcc ((ASSIGN l r):xs) = do
-    i <- get
-    tell $ indent (level i) ++ creg l ++ " = " ++ creg r ++ ";\n"
-    bcc xs
-bcc ((ASSIGNCONST l c):xs) = do
-    i <- get
-    tell $ indent (level i) ++ creg l ++ " = " ++ mkConst c ++ ";\n"
-    bcc xs
+bcc :: Int -> BC -> String
+bcc i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
+bcc i (ASSIGNCONST l c)
+    = indent i ++ creg l ++ " = " ++ mkConst c ++ ";\n"
   where
     mkConst (I i) = "MKINT(" ++ show i ++ ")"
     mkConst (BI i) | i < (2^30) = "MKINT(" ++ show i ++ ")"
@@ -221,21 +198,16 @@ bcc ((ASSIGNCONST l c):xs) = do
     mkConst c | isTypeConst c = "MKINT(42424242)"
     mkConst c = error $ "mkConst of (" ++ show c ++ ") not implemented"
 
-bcc ((UPDATE l r):xs) = do
-    i <- get
-    tell $ indent (level i) ++ creg l ++ " = " ++ creg r ++ ";\n"
-    bcc xs
-bcc ((MKCON l loc tag []):xs) | tag < 256 = do
-    i <- get
-    tell $ indent (level i) ++ creg l ++ " = NULL_CON(" ++ show tag ++ ");\n"
-    bcc xs
-bcc ((MKCON l loc tag args):xs) = do
-    i <- get
-    let tab = indent (level i)
-    tell $ tab ++ alloc loc tag ++
-           tab ++ setArgs 0 args ++ "\n" ++
-           tab ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
-    bcc xs
+bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
+bcc i (MKCON l loc tag []) | tag < 256
+    = indent i ++ creg l ++ " = NULL_CON(" ++ show tag ++ ");\n"
+bcc i (MKCON l loc tag args)
+    = indent i ++ alloc loc tag ++
+      indent i ++ setArgs 0 args ++ "\n" ++
+      indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
+
+--         "MKCON(vm, " ++ creg l ++ ", " ++ show tag ++ ", " ++
+--         show (length args) ++ concatMap showArg args ++ ");\n"
   where showArg r = ", " ++ creg r
         setArgs i [] = ""
         setArgs i (x : xs) = "SETARG(" ++ creg Tmp ++ ", " ++ show i ++ ", " ++ creg x ++
@@ -247,94 +219,52 @@ bcc ((MKCON l loc tag args):xs) = do
             = "updateCon(" ++ creg Tmp ++ ", " ++ creg old ++ ", " ++ show tag ++ ", " ++
                     show (length args) ++ ");\n"
 
-bcc ((PROJECT l loc a):xs) = do
-    i <- get
-    tell $ indent (level i) ++ "PROJECT(vm, " ++ creg l ++ ", "
-                ++ show loc ++ ", " ++ show a ++ ");\n"
-    bcc xs
-bcc ((PROJECTINTO r t idx):xs) = do
-    i <- get
-    tell $ indent (level i) ++ creg r ++ " = GETARG(" ++ creg t
-            ++ ", " ++ show idx ++ ");\n"
-    bcc xs
-bcc ((CASE True r code def):xs)
-    | length code < 4 = do
-        showCases def code
-        bcc xs
+bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++
+                                      ", " ++ show a ++ ");\n"
+bcc i (PROJECTINTO r t idx)
+    = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n"
+bcc i (CASE True r code def)
+    | length code < 4 = showCase i def code
   where
-    showCode bc = do
-        w <- getBC bc xs
-        i <- get
-        tell $ "{\n" ++ w ++ indent (level i) ++ "}\n"
+    showCode :: Int -> [BC] -> String
+    showCode i bc = "{\n" ++ concatMap (bcc (i + 1)) bc ++
+                    indent i ++ "}\n"
 
-    showCases Nothing [(t, c)] = do
-        i <- get
-        tell $ indent (level i)
-        showCode c
-    showCases (Just def) [] = do
-        i <- get
-        tell $ indent (level i)
-        showCode def
-    showCases def ((t, c) : cs) = do
-        i <- get
-        tell $ indent (level i) ++ "if (CTAG(" ++ creg r ++ ") == "
-               ++ show t ++ ") "
-        showCode c
-        tell $ indent (level i) ++ "else\n"
-        showCases def cs
+    showCase :: Int -> Maybe [BC] -> [(Int, [BC])] -> String
+    showCase i Nothing [(t, c)] = indent i ++ showCode i c
+    showCase i (Just def) [] = indent i ++ showCode i def
+    showCase i def ((t, c) : cs)
+        = indent i ++ "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
+           ++ indent i ++ "else\n" ++ showCase i def cs
 
-bcc ((CASE safe r code def):xs) = do
-    i <- get
-    tell $ indent (level i) ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n"
-    mapM showCase code
-    showDef def
-    tell $ indent (level i) ++ "}\n"
-    bcc xs
+bcc i (CASE safe r code def)
+    = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++
+      concatMap (showCase i) code ++
+      showDef i def ++
+      indent i ++ "}\n"
   where
     ctag True = "CTAG"
     ctag False = "TAG"
 
-    showCase (t, bc) = do
-        w <- getBC bc xs
-        is <- get
-        let i = level is
-        tell $ indent i ++ "case " ++ show t ++ ":\n"
-                ++ w ++ indent (i + 1) ++ "break;\n"
-    showDef Nothing = return $ ()
-    showDef (Just c) = do
-        w <- getBC c xs
-        is <- get
-        let i = level is
-        tell $ indent i ++ "default:\n" ++ w ++ indent (i + 1) ++ "break;\n"
-
-bcc ((CONSTCASE r code def):xs)
+    showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
+                         ++ concatMap (bcc (i+1)) bc ++ indent (i + 1) ++ "break;\n"
+    showDef i Nothing = ""
+    showDef i (Just c) = indent i ++ "default:\n"
+                         ++ concatMap (bcc (i+1)) c ++ indent (i + 1) ++ "break;\n"
+bcc i (CONSTCASE r code def)
    | intConsts code
-     = do
-         is <- get
-         let i = level is
-         codes <- mapM getCode code
-         defs <- showDefS def
-         tell $ concatMap (iCase i (creg r)) codes
-         tell $ indent i ++ "{\n" ++ defs ++ indent i ++ "}\n"
-         bcc xs
+--      = indent i ++ "switch(GETINT(" ++ creg r ++ ")) {\n" ++
+--        concatMap (showCase i) code ++
+--        showDef i def ++
+--        indent i ++ "}\n"
+     = concatMap (iCase (creg r)) code ++
+       indent i ++ "{\n" ++ showDefS i def ++ indent i ++ "}\n"
    | strConsts code
-     = do
-         is <- get
-         let i = level is
-         codes <- mapM getCode code
-         defs <- showDefS def
-         tell $ concatMap (strCase i ("GETSTR(" ++ creg r ++ ")")) codes
-             ++ indent i ++ "{\n" ++ defs ++ indent i ++ "}\n"
-         bcc xs
+     = concatMap (strCase ("GETSTR(" ++ creg r ++ ")")) code ++
+       indent i ++ "{\n" ++ showDefS i def ++ indent i ++ "}\n"
    | bigintConsts code
-     = do
-         is <- get
-         let i = level is
-         codes <- mapM getCode code
-         defs <- showDefS def
-         tell $ concatMap (biCase i (creg r)) codes ++
-            indent i ++ "{\n" ++ defs ++ indent i ++ "}\n"
-         bcc xs
+     = concatMap (biCase (creg r)) code ++
+       indent i ++ "{\n" ++ showDefS i def ++ indent i ++ "}\n"
    | otherwise = error $ "Can't happen: Can't compile const case " ++ show code
   where
     intConsts ((I _, _ ) : _) = True
@@ -351,118 +281,71 @@ bcc ((CONSTCASE r code def):xs)
     strConsts ((Str _, _ ) : _) = True
     strConsts _ = False
 
-    getCode (x, code) = do
-        c <- getBC code xs
-        return (x, c)
-
-    strCase i sv (s, bc) =
+    strCase sv (s, bc) =
         indent i ++ "if (strcmp(" ++ sv ++ ", " ++ show s ++ ") == 0) {\n" ++
-            bc ++ indent i ++ "} else\n"
-    biCase i bv (BI b, bc) =
+           concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    biCase bv (BI b, bc) =
         indent i ++ "if (bigEqConst(" ++ bv ++ ", " ++ show b ++ ")) {\n"
-           ++  bc ++ indent i ++ "} else\n"
-    iCase i v (I b, bc) =
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (I b, bc) =
         indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show b ++ ") {\n"
-           ++ bc ++ indent i ++ "} else\n"
-    iCase i v (Ch b, bc) =
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (Ch b, bc) =
         indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show (fromEnum b) ++ ") {\n"
-           ++ bc ++ indent i ++ "} else\n"
-    iCase i v (B8 w, bc) =
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (B8 w, bc) =
         indent i ++ "if (GETBITS8(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ bc ++ indent i ++ "} else\n"
-    iCase i v (B16 w, bc) =
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (B16 w, bc) =
         indent i ++ "if (GETBITS16(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ bc ++ indent i ++ "} else\n"
-    iCase i v (B32 w, bc) =
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (B32 w, bc) =
         indent i ++ "if (GETBITS32(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ bc ++ indent i ++ "} else\n"
-    iCase i v (B64 w, bc) =
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    iCase v (B64 w, bc) =
         indent i ++ "if (GETBITS64(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+    showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
+                         ++ concatMap (bcc (i+1)) bc ++
+                            indent (i + 1) ++ "break;\n"
+    showDef i Nothing = ""
+    showDef i (Just c) = indent i ++ "default:\n"
+                         ++ concatMap (bcc (i+1)) c ++
+                            indent (i + 1) ++ "break;\n"
+    showDefS i Nothing = ""
+    showDefS i (Just c) = concatMap (bcc (i+1)) c
 
-    showDefS Nothing = return ""
-    showDefS (Just c) = getBC c xs
-
-bcc (CALL n:xs) = do
-    i <- get
-    tell $ indent (level i) ++ "CALL(" ++ cname n ++ ");\n"
-    bcc xs
-bcc (TAILCALL n:xs) = do
-    i <- get
-    tell $ indent (level i) ++ "TAILCALL(" ++ cname n ++ ");\n"
-    bcc xs
-bcc ((SLIDE n):xs) = do
-    i <- get
-    tell $ indent (level i) ++ "SLIDE(vm, " ++ show n ++ ");\n"
-    bcc xs
-bcc (REBASE:xs) = do
-    i <- get
-    tell $ indent (level i)++ "REBASE;\n"
-    bcc xs
-bcc ((RESERVE 0):xs) = bcc xs
-bcc ((RESERVE n):xs) = do
-    i <- get
-    tell $ indent (level i) ++ "RESERVE(" ++ show n ++ ");\n"
-    bcc xs
-bcc ((ADDTOP 0):xs) = bcc xs
-bcc ((ADDTOP n):xs) = do
-    i <- get
-    tell $ indent (level i) ++ "ADDTOP(" ++ show n ++ ");\n"
-    bcc xs
-bcc ((TOPBASE n):xs) = do
-    i <- get
-    tell $ indent (level i) ++ "TOPBASE(" ++ show n ++ ");\n"
-    bcc xs
-bcc ((BASETOP n):xs) = do
-    i <- get
-    tell $ indent (level i) ++ "BASETOP(" ++ show n ++ ");\n"
-    bcc xs
-bcc (STOREOLD:xs) = do
-    i <- get
-    tell $ indent (level i) ++ "STOREOLD;\n"
-    bcc xs
-bcc ((OP l fn args):xs) = do
-    i <- get
-    tell $ indent (level i) ++ doOp (creg l ++ " = ") fn args ++ ";\n"
-    bcc xs
-bcc ((FOREIGNCALL l rty (FStr fn@('&':name)) []):xs) = do
-    i <- get
-    tell $ indent (level i) ++ c_irts (toFType rty) (creg l ++ " = ") fn ++ ";\n"
-    bcc xs
-bcc ((FOREIGNCALL l rty (FStr fn) (x:xs)):zs) | fn == "%wrapper"
-      = do
-          i <- get
-          tell $ indent (level i) ++ c_irts (toFType rty) (creg l ++ " = ")
+bcc i (CALL n) = indent i ++ "CALL(" ++ cname n ++ ");\n"
+bcc i (TAILCALL n) = indent i ++ "TAILCALL(" ++ cname n ++ ");\n"
+bcc i (SLIDE n) = indent i ++ "SLIDE(vm, " ++ show n ++ ");\n"
+bcc i REBASE = indent i ++ "REBASE;\n"
+bcc i (RESERVE 0) = ""
+bcc i (RESERVE n) = indent i ++ "RESERVE(" ++ show n ++ ");\n"
+bcc i (ADDTOP 0) = ""
+bcc i (ADDTOP n) = indent i ++ "ADDTOP(" ++ show n ++ ");\n"
+bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
+bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
+bcc i STOREOLD = indent i ++ "STOREOLD;\n"
+bcc i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
+bcc i (FOREIGNCALL l rty (FStr fn@('&':name)) [])
+      = indent i ++
+        c_irts (toFType rty) (creg l ++ " = ") fn ++ ";\n"
+bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%wrapper"
+      = indent i ++
+        c_irts (toFType rty) (creg l ++ " = ")
             ("_idris_get_wrapper(" ++ creg (snd x) ++ ")") ++ ";\n"
-          bcc zs
-bcc ((FOREIGNCALL l rty (FStr fn) (x:xs)):zs) | fn == "%dynamic"
-      = do
-          i <- get
-          tell $ indent (level i) ++ c_irts (toFType rty) (creg l ++ " = ")
+bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%dynamic"
+      = indent i ++ c_irts (toFType rty) (creg l ++ " = ")
             ("(*(" ++ cFnSig "" rty xs ++ ") GETPTR(" ++ creg (snd x) ++ "))" ++
              "(" ++ showSep "," (map fcall xs) ++ ")") ++ ";\n"
-          bcc zs
-bcc ((FOREIGNCALL l rty (FStr fn) args):xs) = do
-    i <- get
-    tell $ indent (level i) ++ c_irts (toFType rty) (creg l ++ " = ")
-                 (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
-    bcc xs
-bcc ((FOREIGNCALL l rty _ args):_) = error "Foreign Function calls cannot be partially applied, without being inlined."
-bcc ((NULL r):xs) = do
-    i <- get
-    tell $ indent (level i) ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
-    bcc xs
-bcc ((ERROR str):xs) = do
-    i <- get
-    tell $ indent (level i) ++ "fprintf(stderr, "
-        ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
-    bcc xs
+bcc i (FOREIGNCALL l rty (FStr fn) args)
+      = indent i ++
+        c_irts (toFType rty) (creg l ++ " = ")
+                   (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
+bcc i (FOREIGNCALL l rty _ args) = error "Foreign Function calls cannot be partially applied, without being inlined."
+bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
+bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
 -- bcc i c = error (show c) -- indent i ++ "// not done yet\n"
-
-getBC code xs = do
-    i <- get
-    let (a, s, w) = runRWS (bcc code) 0 (i { level = level i + 1 })
-    return w
 
 fcall (t, arg) = irts_c (toFType t) (creg arg)
 -- Deconstruct the Foreign type in the defunctionalised expression and build
