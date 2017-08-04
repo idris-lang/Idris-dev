@@ -9,10 +9,17 @@ if [ ! -d $RUNIDRIS_DIR ]; then
     mkdir $RUNIDRIS_DIR
     chmod 700 $RUNIDRIS_DIR
 fi
-TEMP_NAME="runidris-`sha1sum $1 | cut -c1-40`.js"
+
+OS=`uname -s`
+case $OS in
+    OpenBSD ) TEMP_NAME="runidris-`sha1 -q $1`" ;;
+          * ) TEMP_NAME="runidris-`sha1sum $1 | cut -c1-40`" ;;
+esac
+
 FP="$RUNIDRIS_DIR/$TEMP_NAME"
-if [ ! -e $FP ]; then
-    "${IDRIS:-idris}" --codegen node --ibcsubdir "$RUNIDRIS_DIR" -i "." $1 -o $FP
+cp "$1" "$FP.idr" # idris won't compile the script unless it ends in .idr
+if [ ! -e "$FP.js" ]; then
+    "${IDRIS:-idris}" --codegen node --ibcsubdir "$RUNIDRIS_DIR" -i "." "$FP.idr" -o "$FP.js"
 fi
 shift
-node "$FP" "$@"
+node "$FP.js" "$@"
