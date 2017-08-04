@@ -1,3 +1,4 @@
+#recheck extra-deps next on resolver or cabal file change
 resolver: lts-9.0
 
 packages:
@@ -9,7 +10,8 @@ flags:
     GMP: true
 
 extra-deps:
-  - libffi-0.1
+  - binary-0.8.5.1
+  - cheapskate-0.1.1
 
 nix:
   enable: false
