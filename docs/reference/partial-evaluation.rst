@@ -11,8 +11,8 @@ ICFP 2010
 paper <http://eb.host.cs.st-andrews.ac.uk/writings/icfp10.pdf>`__.
 Please refer to this for more precise definitions of what follows.)
 
-Partial evaluation is switched on by default. It can be disabled with
-the ``--no-partial-eval`` flag.
+Partial evaluation is switched off by default since Idris 1.0. It can
+be enabled with the ``--partial-eval`` flag.
 
 Introductory Example
 --------------------
