@@ -21,12 +21,12 @@ import Prelude.Strings
 -- Convert to `List Bits8`
 --------------------------------------------------------------------------------
 
-||| Convert to list of `Bits8` with the most signficant byte at the
+||| Convert to list of `Bits8` with the most significant byte at the
 ||| head.
 b8ToBytes : Bits8 -> List Bits8
 b8ToBytes b = [b]
 
-||| Convert to list of `Bits8` with the most signficant byte at the
+||| Convert to list of `Bits8` with the most significant byte at the
 ||| head.
 b16ToBytes : Bits16 -> List Bits8
 b16ToBytes b =
@@ -34,7 +34,7 @@ b16ToBytes b =
   , prim__truncB16_B8 b
   ]
 
-||| Convert to list of `Bits8` with the most signficant byte at the
+||| Convert to list of `Bits8` with the most significant byte at the
 ||| head.
 b32ToBytes : Bits32 -> List Bits8
 b32ToBytes b =
@@ -44,7 +44,7 @@ b32ToBytes b =
   , prim__truncB32_B8 b
   ]
 
-||| Convert to list of `Bits8` with the most signficant byte at the
+||| Convert to list of `Bits8` with the most significant byte at the
 ||| head.
 b64ToBytes : Bits64 -> List Bits8
 b64ToBytes b =
