@@ -63,6 +63,8 @@ compile codegen f mtm = do
                              Nothing -> []
                              Just t -> freeNames t
 
+        logCodeGen 1 "Running Erasure Analysis"
+        iReport 3 "Running Erasure Analysis"
         reachableNames <- performUsageAnalysis
                               (rootNames ++ getExpNames exports)
         maindef <- case mtm of
