@@ -69,8 +69,8 @@ bang = char '!'
 tick : Doc
 tick = char '`'
 
-tilda : Doc
-tilda = char '~'
+tilde : Doc
+tilde = char '~'
 
 hash : Doc
 hash = char '#'
