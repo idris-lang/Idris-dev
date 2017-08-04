@@ -1,4 +1,4 @@
-# New in ...
+# New in 1.1.1
 
 + Erasure analysis is now faster thanks to a bit smarter constraint solving.
 
