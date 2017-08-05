@@ -310,6 +310,7 @@ Library
                 , fsnotify >= 0.2 && < 2.2
                 , async < 2.2
 
+  Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all
 
   if os(windows)
