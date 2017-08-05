@@ -20,6 +20,21 @@ Here are a few guidelines that we would like contributors to follow so that we c
 Before you report an issue, or wish to add cool functionality please try and check to see if there are existing [issues](https://github.com/idris-lang/Idris-dev/issues) and [pull requests](https://github.com/idris-lang/Idris-dev/pulls).
 We do not want you wasting your time, duplicating somebody's work!
 
+### Template
+Try as closely as possible to describe the issue, ensuring that it has sections that match the following headings:
+> \# Steps to Reproduce
+>
+> \# Expected Behavior
+> 
+> \# Observed Behavior
+> 
+>
+
+In addition, please attach complete source files that exhibit the issue to quoting from them in the issue.
+
+### Feature Requests
+We would be delighted to receive feature requests only if they are feasible to implement and the author is willing to implement the suggested features themself. The current Idris developer team consists mostly of volunteers, and so it is unfortunately hard to accommodate implementing nice-to-have ideas that are not essential for core language development.
+
 ## The Campsite Rule
 
 We try to follow the **campsite rule**: leave the code base in better condition than you found it.
