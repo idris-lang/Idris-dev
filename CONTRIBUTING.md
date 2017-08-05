@@ -33,7 +33,7 @@ Try as closely as possible to describe the issue, ensuring that it has sections 
 In addition, please attach complete source files that exhibit the issue to quoting from them in the issue.
 
 ### Feature Requests
-We would appreciate to only receive requests for new features in case they are feasible to implement and the author is willing to implement the suggested features themself. The current Idris developer team consists mostly of volunteers, and so it is unfortunately hard to accommodate implementing nice-to-have ideas that are not essential for core language development.
+We would be delighted to receive feature requests only if they are feasible to implement and the author is willing to implement the suggested features themself. The current Idris developer team consists mostly of volunteers, and so it is unfortunately hard to accommodate implementing nice-to-have ideas that are not essential for core language development.
 
 ## The Campsite Rule
 
