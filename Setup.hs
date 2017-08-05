@@ -240,9 +240,10 @@ idrisPreBuild args flags = do
         return (Nothing, [])
 #endif
 
-idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
-      buildStdLib
-      buildRTS
+idrisBuild _ flags _ local 
+   = if (execOnly (configFlags local)) then buildRTS
+        else do buildStdLib
+                buildRTS
    where
       verbosity = S.fromFlag $ S.buildVerbosity flags
 
@@ -261,10 +262,11 @@ idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
 -- -----------------------------------------------------------------------------
 -- Copy/Install
 
-idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ do
-      installStdLib
-      installRTS
-      installManPage
+idrisInstall verbosity copy pkg local 
+   = if (execOnly (configFlags local)) then installRTS
+        else do installStdLib
+                installRTS
+                installManPage
    where
       target = datadir $ L.absoluteInstallDirs pkg local copy
 
