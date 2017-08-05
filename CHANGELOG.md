@@ -1,6 +1,8 @@
 # New in 1.1.1
 
 + Erasure analysis is now faster thanks to a bit smarter constraint solving.
++ Fixed installation issue
++ Fixed a potential segfault when concatenating strings
 
 # New in 1.1.0
 
