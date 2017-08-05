@@ -26,6 +26,11 @@ import System.Directory
 import qualified System.FilePath.Posix as Px
 import System.Process
 
+#if (MIN_VERSION_Cabal(2,0,0))
+import Distribution.Types.UnqualComponentName
+#endif
+
+
 -- After Idris is built, we need to check and install the prelude and other libs
 
 -- -----------------------------------------------------------------------------
@@ -228,11 +233,16 @@ getVersion args flags = do
       let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
       return (Just buildinfo, [])
 
+
+#if !(MIN_VERSION_Cabal(2,0,0))
+mkUnqualComponentName = id
+#endif
+
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
         createDirectoryIfMissingVerbose verbosity True dir
         windres verbosity ["icons/idris_icon.rc","-o", dir++"/idris_icon.o"]
-        return (Nothing, [("idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
+        return (Nothing, [(mkUnqualComponentName "idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
      where
         verbosity = S.fromFlag $ S.buildVerbosity flags
         dir = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
