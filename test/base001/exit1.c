@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __OpenBSD__
+#include <sys/wait.h>
+#endif
+
 void doSystem(const char cmd[]) {
   printf("exit1: Executing cmd '%s'\n", cmd);
   int exitStatus = system(cmd);
