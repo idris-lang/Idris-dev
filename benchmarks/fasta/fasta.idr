@@ -38,10 +38,6 @@ replicate : Int -> Char -> String
 replicate 0 c = ""
 replicate n c = singleton c <+> replicate (n-1) c
 
-scanl : (f : acc -> a -> acc) -> acc -> List a -> List acc
-scanl f q ls = q :: (case ls of
-                        []    => []
-                        x::xs => scanl f (f q x) xs)
 
 accum : (Char,Double) -> (Char,Double) -> (Char,Double)
 accum (_,p) (c,q) = (c,p+q)
