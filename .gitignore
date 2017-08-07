@@ -1,5 +1,6 @@
 # Build artefacts
 dist
+dist-newstyle
 *.ibc
 *.o
 *.a
