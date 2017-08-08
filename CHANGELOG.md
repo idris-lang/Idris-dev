@@ -1,3 +1,8 @@
+# New in 1.1.*
+
++ Addition of `Text.Literate`, a module for working with literate
+  source files.
+
 # New in 1.1.1
 
 + Erasure analysis is now faster thanks to a bit smarter constraint solving.

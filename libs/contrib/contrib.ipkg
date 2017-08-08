@@ -37,4 +37,6 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Text.PrettyPrint.WL.Characters,
           Text.PrettyPrint.WL.Combinators,
 
+          Text.Literate,
+
           Data.Fin.Extra
