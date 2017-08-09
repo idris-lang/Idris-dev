@@ -1,12 +1,25 @@
 ||| A simple module to process 'literate' documents.
 |||
-||| The underlying tokeniser is greedy. Once it identifies a line
-||| marker it reads until the end of line, and once it recognises a
-||| start block, it will consume until the next identifiable end
-||| block. Thus, the input literate files must be well-formed w.r.t to
-||| line markers and code blocks. A further restriction is that
-||| literate documents cannot contain the markers within the
-||| document's main text: This will confuse the lexer..
+||| The module uses a lexer to split the document into code blocks,
+||| delineated by user-defined markers, and code lines that are
+||| indicated be a line marker. The lexer returns a document stripped
+||| of non-code elements but preserving the original document's line
+||| count. Column numbering of code lines are not preserved.
+|||
+||| The underlying tokeniser is greedy.
+|||
+||| Once it identifies a line marker it reads a prettifying space then
+||| consumes until the end of line. Once identifies a starting code
+||| block marker, the lexer will consume input until the next
+||| identifiable end block is encountered. Any other content is
+||| treated as part of the original document.
+|||
+||| Thus, the input literate files *must* be well-formed w.r.t
+||| to code line markers and code blocks.
+|||
+||| A further restriction is that literate documents cannot contain
+||| the markers within the document's main text: This will confuse the
+||| lexer.
 |||
 module Text.Literate
 
@@ -20,7 +33,7 @@ untilEOL : Recognise False
 untilEOL = manyTill any (is '\n')
 
 line : String -> Lexer
-line s = exact s <+> untilEOL
+line s = exact s <+> space <+> untilEOL
 
 block : String -> String -> Lexer
 block s e = exact s <+> manyTill any (exact e)
@@ -45,15 +58,25 @@ rawTokens delims ls =
 ||| Merge the tokens into a single source file.
 reduce : List (TokenData Token) -> String -> String
 reduce [] acc = acc
-reduce (MkToken _ _ (Any x) :: rest) acc = reduce rest acc
-
-reduce (MkToken _ _ (CodeLine m src) :: rest) acc = reduce rest (acc ++ (substr (length m) (length src) src))
+reduce (MkToken _ _ (Any x) :: rest) acc = reduce rest (acc ++ blank_content)
+  where
+    -- Preserve the original document's line count.
+    blank_content : String
+    blank_content = if elem '\n' (unpack x)
+      then concat $ replicate (length (lines x)) "\n"
+      else ""
+reduce (MkToken _ _ (CodeLine m src) :: rest) acc =
+    reduce rest (acc ++ (substr
+                           (length m + 1) -- remove space to right of marker.
+                           (length src)
+                           src))
 
 reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc with (lines src) -- Strip the deliminators surrounding the block.
   reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | [] = reduce rest acc -- 1
   reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: ys) with (snocList ys)
     reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: []) | Empty = reduce rest acc -- 2
-    reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: (srcs ++ [f])) | (Snoc rec) = reduce rest (acc ++ unlines srcs)
+    reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: (srcs ++ [f])) | (Snoc rec) =
+        reduce rest (acc ++ "\n" ++ unlines srcs ++ "\n")
 
 -- [ NOTE ] 1 & 2 shouldn't happen as code blocks are well formed i.e. have two deliminators.
 
