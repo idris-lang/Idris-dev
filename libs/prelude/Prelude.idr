@@ -280,8 +280,7 @@ namespace JSNull
 
 ||| Pointer equality
 eqPtr : Ptr -> Ptr -> IO Bool
-eqPtr x y = do eq <- foreign FFI_C "idris_eqPtr" (Ptr -> Ptr -> IO Int) x y
-               pure (eq /= 0)
+eqPtr x y = pure $ prim__eqPtr x y /= 0
 
 ||| Loop while some test is true
 |||
