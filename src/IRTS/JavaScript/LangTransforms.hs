@@ -57,7 +57,7 @@ mapMapListKeys f (t:r) x = mapMapListKeys f r $ Map.adjust f t x
 extractGlobs :: Map Name LDecl -> LDecl -> [Name]
 extractGlobs defs (LConstructor _ _ _) = []
 extractGlobs defs (LFun _ _ _ e) =
-  let f (LV (Glob x)) = Just x
+  let f (LV x) = Just x
       f (LLazyApp x _) = Just x
       f _ = Nothing
   in [x | Just x <- map f $ universe e, Map.member x defs]
@@ -102,7 +102,7 @@ globlToCon x =
   transformBi (f x) x
   where
     f :: Map Name LDecl -> LExp -> LExp
-    f y x@(LV (Glob n)) =
+    f y x@(LV n) =
       case Map.lookup n y of
         Just (LConstructor _ conId arity) -> LCon Nothing conId n []
         _ -> x

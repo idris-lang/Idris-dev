@@ -345,15 +345,15 @@ cgBody rt expr =
     expr -> cgBody' rt expr
 
 cgBody' :: BodyResTarget -> LExp -> State CGBodyState ([JsStmt], JsStmt)
-cgBody' rt (LV (Glob n)) =
+cgBody' rt (LV n) =
   do
     argsFn <- getArgList n
     case argsFn of
-      Just a -> cgBody' rt (LApp False (LV (Glob n)) [])
+      Just a -> cgBody' rt (LApp False (LV n) [])
       Nothing -> do
         n' <- cgName n
         pure $ ([], addRT rt n')
-cgBody' rt (LApp tailcall (LV (Glob fn)) args) =
+cgBody' rt (LApp tailcall (LV fn) args) =
   do
     let fname = jsName fn
     st <- get
@@ -372,10 +372,10 @@ cgBody' rt (LApp tailcall (LV (Glob fn)) args) =
         app <- formApp fn argVals
         pure (preDecs, addRT rt app)
 
-cgBody' rt (LForce (LLazyApp n args)) = cgBody rt (LApp False (LV (Glob n)) args)
+cgBody' rt (LForce (LLazyApp n args)) = cgBody rt (LApp False (LV n) args)
 cgBody' rt (LLazyApp n args) =
   do
-    (d,v) <- cgBody ReturnBT (LApp False (LV (Glob n)) args)
+    (d,v) <- cgBody ReturnBT (LApp False (LV n) args)
     pure ([], addRT rt $ jsLazy $ jsStmt2Expr $ JsSeq (seqJs d) v)
 cgBody' rt (LForce e) =
   do
