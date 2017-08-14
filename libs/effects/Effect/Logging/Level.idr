@@ -58,15 +58,15 @@ implementation Cast (LogLevel n) Nat where
   cast {n} _ = n
 
 implementation Show (LogLevel n) where
-  show OFF        = "OFF"
-  show TRACE      = "TRACE"
-  show DEBUG      = "DEBUG"
-  show INFO       = "INFO"
-  show WARN       = "WARN"
-  show FATAL      = "FATAL"
-  show ERROR      = "ERROR"
-  show ALL        = "ALL"
-  show (CUSTOM n) = unwords ["CUSTOM", show n]
+  showPrec d OFF        = "OFF"
+  showPrec d TRACE      = "TRACE"
+  showPrec d DEBUG      = "DEBUG"
+  showPrec d INFO       = "INFO"
+  showPrec d WARN       = "WARN"
+  showPrec d FATAL      = "FATAL"
+  showPrec d ERROR      = "ERROR"
+  showPrec d ALL        = "ALL"
+  showPrec d (CUSTOM n) = showCon d "CUSTOM" $ showArg n
 
 implementation Eq (LogLevel n) where
   (==) x y = lvlEq x y

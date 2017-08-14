@@ -29,11 +29,11 @@ Show CType where
     show PTR = "PTR"
 
 Show Composite where
-    show (T ct) = show ct
-    show (ARRAY n t) = "ARRAY " ++ show n ++ " " ++ show t
-    show (STRUCT xs) = "STRUCT " ++ show xs
-    show (UNION xs) = "UNION " ++ show xs
-    show (PACKEDSTRUCT xs) = "PACKEDSTRUCT " ++ show xs
+    showPrec d (T ct) = showPrec d ct
+    showPrec d (ARRAY n t) = showCon d "ARRAY" $ showArg n ++ showArg t
+    showPrec d (STRUCT xs) = showCon d "STRUCT" $ showArg xs
+    showPrec d (UNION xs) = showCon d "UNION" $ showArg xs
+    showPrec d (PACKEDSTRUCT xs) = showCon d "PACKEDSTRUCT" $ showArg xs
 
 ||| What Idris type the C type is marshalled to
 translate : CType -> Type

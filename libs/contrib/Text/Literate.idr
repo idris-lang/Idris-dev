@@ -42,10 +42,10 @@ data Token = CodeBlock String String String
            | Any String
            | CodeLine String String
 
-Show (Token) where
-  show (CodeBlock l r x) = unwords ["CodeBlock", show (l,r), show x]
-  show (Any x)           = unwords ["Any", show x]
-  show (CodeLine m x)    = unwords ["CodeLine", show m, show x]
+Show Token where
+  showPrec d (CodeBlock l r x) = showCon d "CodeBlock" $ showArg l ++ showArg r ++ showArg x
+  showPrec d (Any x)           = showCon d "Any" $ showArg x
+  showPrec d (CodeLine m x)    = showCon d "CodeLine" $ showArg m ++ showArg x
 
 rawTokens : (delims  : List (String, String))
          -> (markers : List String)

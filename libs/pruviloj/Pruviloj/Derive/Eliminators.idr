@@ -130,8 +130,8 @@ getElimTy info ctors =
 data ElimArg = IHArgument TTName | NormalArgument TTName
 
 implementation Show ElimArg where
-  show (IHArgument x) = "IHArgument " ++ show x
-  show (NormalArgument x) = "NormalArgument " ++ show x
+  showPrec d (IHArgument x) = showCon d "IHArgument" $ showArg x
+  showPrec d (NormalArgument x) = showCon d "NormalArgument" $ showArg x
 
 getElimClause : TyConInfo -> (elimn : TTName) -> (methCount : Nat) ->
                 (TTName, List CtorArg, Raw) -> Nat -> Elab (FunClause Raw)
