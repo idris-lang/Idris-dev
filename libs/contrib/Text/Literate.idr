@@ -71,14 +71,14 @@ reduce (MkToken _ _ (CodeLine m src) :: rest) acc =
                            (length src)
                            src))
 
-reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc with (lines src) -- Strip the deliminators surrounding the block.
+reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc with (lines src) -- Strip the delimiters surrounding the block.
   reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | [] = reduce rest acc -- 1
   reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: ys) with (snocList ys)
     reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: []) | Empty = reduce rest acc -- 2
     reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: (srcs ++ [f])) | (Snoc rec) =
         reduce rest (acc ++ "\n" ++ unlines srcs ++ "\n")
 
--- [ NOTE ] 1 & 2 shouldn't happen as code blocks are well formed i.e. have two deliminators.
+-- [ NOTE ] 1 & 2 shouldn't happen as code blocks are well formed i.e. have two delimiters.
 
 
 public export
@@ -92,7 +92,7 @@ record LiterateError where
 |||
 ||| A 'literate' style comprises of
 |||
-||| + a list of code block deliminators (`deliminators`);
+||| + a list of code block delimiters (`delimiters`);
 ||| + a list of code line markers (`line_markers`); and
 ||| + a list of known file extensions `file_extensions`.
 |||
@@ -124,7 +124,7 @@ public export
 record LiterateStyle where
   constructor MkLitStyle
   ||| The pairs of start and end tags for code blocks.
-  deliminators : List (String, String)
+  delimiters : List (String, String)
 
   ||| Line markers that indicate a line contains code.
   line_markers : List String
