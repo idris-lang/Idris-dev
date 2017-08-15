@@ -76,7 +76,7 @@ compile codegen f mtm = do
         libs <- getLibs codegen
         flags <- getFlags codegen
         hdrs <- getHdrs codegen
-        impdirs <- allImportDirs
+        impdirs <- rankedImportDirs f
         ttDeclarations <- getDeclarations reachableNames
         defsIn <- mkDecls reachableNames
         -- if no 'main term' given, generate interface files

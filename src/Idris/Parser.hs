@@ -1664,7 +1664,7 @@ loadModule' f phase
    = do i <- getIState
         let file = takeWhile (/= ' ') f
         ibcsd <- valIBCSubDir i
-        ids <- allImportDirs
+        ids <- rankedImportDirs file
         fp <- findImport ids ibcsd file
         if file `elem` imported i
           then do logParser 1 $ "Already read " ++ file
@@ -1717,7 +1717,7 @@ loadSource lidr f toline
                   (mdocs, mname, imports_in, pos) <- parseImports f file
                   ai <- getAutoImports
                   let imports = map (\n -> ImportInfo True n Nothing [] NoFC NoFC) ai ++ imports_in
-                  ids <- allImportDirs
+                  ids <- rankedImportDirs f
                   ibcsd <- valIBCSubDir i
                   mapM_ (\(re, f, ns, nfc) ->
                                do fp <- findImport ids ibcsd f

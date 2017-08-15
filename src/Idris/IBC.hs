@@ -146,7 +146,7 @@ loadIBC reexport phase fp
                         Right archive -> do
                             if fullLoad
                                 then process reexport phase archive fp
-                                else unhide phase archive
+                                else unhide phase fp archive
                             addImported reexport fp
 
 -- | Load an entire package from its index file
@@ -359,9 +359,9 @@ getEntry alt f a = case findEntryByPath f a of
                 Nothing -> return alt
                 Just e -> return $! (force . decode . fromEntry) e
 
-unhide :: IBCPhase -> Archive -> Idris ()
-unhide phase ar = do
-    processImports True phase ar
+unhide :: IBCPhase -> FilePath -> Archive -> Idris ()
+unhide phase fp ar = do
+    processImports True phase fp ar
     processAccess True phase ar
 
 process :: Bool -- ^ Reexporting
@@ -393,7 +393,7 @@ process reexp phase archive fn = do
                 when srcok $ timestampOlder source fn
                 processImportDirs archive
                 processSourceDirs archive
-                processImports reexp phase archive
+                processImports reexp phase fn archive
                 processImplicits archive
                 processInfix archive
                 processStatics archive
@@ -405,7 +405,7 @@ process reexp phase archive fn = do
                 processOptimise  archive
                 processSyntax archive
                 processKeywords archive
-                processObjectFiles archive
+                processObjectFiles fn archive
                 processLibs archive
                 processCodegenFlags archive
                 processDynamicLibs archive
@@ -509,28 +509,21 @@ processSourceDirs ar = do
     fs <- getEntry [] "ibc_sourcedirs" ar
     mapM_ addSourceDir fs
 
-processImports :: Bool -> IBCPhase -> Archive -> Idris ()
-processImports reexp phase ar = do
+processImports :: Bool -> IBCPhase -> FilePath -> Archive -> Idris ()
+processImports reexp phase fname ar = do
     fs <- getEntry [] "ibc_imports" ar
     mapM_ (\(re, f) -> do
         i <- getIState
         ibcsd <- valIBCSubDir i
-        ids <- allImportDirs
-        fp <- findImport ids ibcsd f
---                        if (f `elem` imported i)
---                         then logLvl 1 $ "Already read " ++ f
+        ids <- rankedImportDirs fname
         putIState (i { imported = f : imported i })
         let phase' = case phase of
                          IBC_REPL _ -> IBC_REPL False
                          p -> p
+        fp <- findIBC ids ibcsd f
         case fp of
-            LIDR fn -> do
-                logIBC 2 $ "Failed at " ++ fn
-                ifail "Must be an ibc"
-            IDR fn -> do
-                logIBC 2 $ "Failed at " ++ fn
-                ifail "Must be an ibc"
-            IBC fn src -> loadIBC (reexp && re) phase' fn) fs
+            Nothing -> do logIBC 2 $ "Failed to load ibc " ++ f
+            Just fn -> do loadIBC (reexp && re) phase' fn) fs
 
 processImplicits :: Archive -> Idris ()
 processImplicits ar = do
@@ -605,11 +598,11 @@ processKeywords ar = do
     k <- getEntry [] "ibc_keywords" ar
     updateIState (\i -> i { syntax_keywords = k ++ syntax_keywords i })
 
-processObjectFiles :: Archive -> Idris ()
-processObjectFiles ar = do
+processObjectFiles :: FilePath -> Archive -> Idris ()
+processObjectFiles fn ar = do
     os <- getEntry [] "ibc_objs" ar
     mapM_ (\ (cg, obj) -> do
-        dirs <- allImportDirs
+        dirs <- rankedImportDirs fn
         o <- runIO $ findInPath dirs obj
         addObjectFile cg o) os
 
