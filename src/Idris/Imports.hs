@@ -6,13 +6,14 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 module Idris.Imports(
-    IFileType(..), findImport, findInPath, findPkgIndex
+    IFileType(..), findIBC, findImport, findInPath, findPkgIndex
   , ibcPathNoFallback, installedPackages, pkgIndex
   ) where
 
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Error
+import Idris.Output
 import IRTS.System (getIdrisLibDir)
 
 import Control.Applicative ((<$>))
@@ -76,6 +77,17 @@ findImport (d:ds) ibcsd fp = do let fp_full = d </> fp
                                   else if (idr || lidr)
                                        then return isrc
                                        else findImport ds ibcsd fp
+
+-- Only look for IBCs and not source
+findIBC :: [FilePath] -> FilePath -> FilePath -> Idris (Maybe FilePath)
+findIBC [] _ fp = return Nothing
+findIBC (d:ds) ibcsd fp = do let fp_full = d </> fp
+                             ibcp <- runIO $ ibcPathWithFallback ibcsd fp_full
+                             ibc <- runIO $ doesFileExist' ibcp
+                             if ibc
+                                then return $ Just ibcp
+                                else findIBC ds ibcsd fp
+
 
 -- find a specific filename somewhere in a path
 
