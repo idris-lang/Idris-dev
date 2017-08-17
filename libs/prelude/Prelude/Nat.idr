@@ -160,6 +160,11 @@ lteAddRight : (n : Nat) -> LTE n (plus n m)
 lteAddRight Z = LTEZero
 lteAddRight (S k) = LTESucc (lteAddRight k)
 
+||| If a number is not less than another, it is greater than or equal to it
+notLTImpliesGTE : Not (LT a b) -> GTE a b
+notLTImpliesGTE {b = Z} _ = LTEZero
+notLTImpliesGTE {a = Z} {b = S k} notLt = absurd (notLt (LTESucc LTEZero))
+notLTImpliesGTE {a = S k} {b = S j} notLt = LTESucc (notLTImpliesGTE (notLt . LTESucc))
 
 ||| Boolean test than one Nat is less than or equal to another
 total lte : Nat -> Nat -> Bool
