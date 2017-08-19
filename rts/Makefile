@@ -31,7 +31,7 @@ LIBTARGET = libidris_rts.a
 build: $(LIBTARGET) $(DYLIBTARGET)
 
 $(LIBTARGET) : $(OBJS)
-	$(AR) r $(LIBTARGET) $(OBJS)
+	$(AR) rc $(LIBTARGET) $(OBJS)
 	$(RANLIB) $(LIBTARGET)
 
 install :
