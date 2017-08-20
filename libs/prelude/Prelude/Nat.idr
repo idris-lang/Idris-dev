@@ -238,6 +238,9 @@ Cast Integer Nat where
 Cast String Nat where
     cast str = cast (the Integer (cast str))
 
+Cast Nat String where
+  cast n = cast (the Integer (cast n))
+
 ||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (*)
 record Multiplicative where
   constructor GetMultiplicative
