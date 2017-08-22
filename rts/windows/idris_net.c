@@ -94,7 +94,7 @@ int idrnet_connect(int sockfd, int family, int socket_type, char* host, int port
 
     // Get info about the remote host (DNS lookup etc)
     int addr_res = getaddrinfo(host, str_port, &hints, &remote_host);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         return -1;
     }
 

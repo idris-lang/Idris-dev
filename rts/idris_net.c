@@ -65,7 +65,7 @@ int idrnet_getaddrinfo(struct addrinfo** address_res, char* host, int port,
 int idrnet_bind(int sockfd, int family, int socket_type, char* host, int port) {
     struct addrinfo* address_res;
     int addr_res = idrnet_getaddrinfo(&address_res, host, port, family, socket_type);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         //printf("Lib err: bind getaddrinfo\n");
         return -1;
     }
@@ -189,7 +189,7 @@ int idrnet_sendto(int sockfd, char* data, char* host, int port, int family) {
 
     struct addrinfo* remote_host;
     int addr_res = idrnet_getaddrinfo(&remote_host, host, port, family, SOCK_DGRAM);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         return -1;
     }
 
@@ -203,7 +203,7 @@ int idrnet_sendto_buf(int sockfd, void* buf, int buf_len, char* host, int port, 
 
     struct addrinfo* remote_host;
     int addr_res = idrnet_getaddrinfo(&remote_host, host, port, family, SOCK_DGRAM);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         //printf("lib err: sendto getaddrinfo \n");
         return -1;
     }
