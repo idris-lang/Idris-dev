@@ -34,7 +34,6 @@ matrix:
 cache:
   directories:
     - $HOME/.cabsnap
-    - $HOME/.cabal/packages
     - $HOME/.stack
 
 before_cache:
@@ -68,39 +67,36 @@ install:
   - which ghc
   - cabal --version
   - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
+  - if [ -d $HOME/.cabsnap ];
+    then
+      rm -rfv .ghc;
+      cp -a $HOME/.cabsnap/ghc $HOME/.ghc;
+      cp -a $HOME/.cabsnap/lib $HOME/.cabsnap/share $HOME/.cabsnap/bin $HOME/.cabsnap/packages $HOME/.cabal/;
+      rm -rf $HOME/.cabsnap;
+    else
+      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
+    fi
+  - travis_retry cabal update -v
   - if [ -f $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz ];
     then
       $ZCAT $HOME/.cabal/packages/hackage.haskell.org/00-index.tar.gz >
               $HOME/.cabal/packages/hackage.haskell.org/00-index.tar;
     fi
-  - travis_retry cabal update -v
   # Run build with 2 parallel jobs
   # The container environment reports 16 cores,
   # causing cabal's default configuration (jobs: $ncpus)
   # to run into the GHC #9221 bug which can result in longer build-times.
   - $SED -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
-  - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
-  - $SED -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
-  # check whether current requested install-plan matches cached package-db snapshot
-  - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
+  # if we fail to install, try to force the reinstall but don't save the resulting packages
+  # So the next time will be a clean install.
+  - if ! cabal install -f FFI --only-dependencies --enable-tests --upgrade-dependencies;
     then
-      echo "cabal build-cache HIT";
-      rm -rfv .ghc;
-      cp -a $HOME/.cabsnap/ghc $HOME/.ghc;
-      cp -a $HOME/.cabsnap/lib $HOME/.cabsnap/share $HOME/.cabsnap/bin $HOME/.cabal/;
+      cabal install -f FFI --only-dependencies --enable-tests --force-reinstalls;
     else
-      echo "cabal build-cache MISS";
-      rm -rf $HOME/.cabsnap;
-      mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-      cabal install -f FFI --only-dependencies --enable-tests;
-    fi
-  # snapshot package-db on cache miss
-  - if [ ! -d $HOME/.cabsnap ];
-    then
       echo "snapshotting package-db to build-cache";
       mkdir $HOME/.cabsnap;
       cp -a $HOME/.ghc $HOME/.cabsnap/ghc;
-      cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
+      cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin $HOME/.cabal/packages $HOME/.cabsnap/;
     fi
 
 before_script:
