@@ -82,7 +82,7 @@ int idrnet_bind(int sockfd, int family, int socket_type, char* host, int port) {
 int idrnet_connect(int sockfd, int family, int socket_type, char* host, int port) {
     struct addrinfo* remote_host;
     int addr_res = idrnet_getaddrinfo(&remote_host, host, port, family, socket_type);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         return -1;
     }
 
