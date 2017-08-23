@@ -1,6 +1,17 @@
 #ifndef IDRISNET_H
 #define IDRISNET_H
 
+// Includes used by the idris-file.
+#ifdef WIN32
+#include <winsock2.h>
+#include <Ws2tcpip.h>
+#else
+#include <netdb.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#endif
+
 struct sockaddr_storage;
 struct addrinfo;
 
@@ -23,6 +34,8 @@ void idrnet_free(void* ptr);
 
 // Gets value of errno
 int idrnet_errno(); 
+
+int idrnet_socket(int domain, int type, int protocol);
 
 // Bind
 int idrnet_bind(int sockfd, int family, int socket_type, char* host, int port);
