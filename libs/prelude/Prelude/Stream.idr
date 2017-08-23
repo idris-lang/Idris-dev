@@ -8,6 +8,7 @@ import Prelude.Applicative
 import Prelude.Monad
 import Prelude.Nat
 import Prelude.List
+import Prelude.Foldable
 
 %access public export
 %default total
@@ -108,6 +109,12 @@ cycle {a} (x :: xs) {ok = IsNonEmpty} = x :: cycle' xs
   where cycle' : List a -> Stream a
         cycle' []        = x :: cycle' xs
         cycle' (y :: ys) = y :: cycle' ys
+
+||| Produce a Stream that is prefixed by elements from a Foldable
+||| @ pfx the Foldable containing elements to prepend
+||| @ stream the Stream to prepend the elements to
+startWith : Foldable t => (pfx : t a) -> (stream : Stream a) -> Stream a
+startWith pfx stream = foldr (\x, xs => x :: xs) stream pfx        
 
 Applicative Stream where
   pure = repeat
