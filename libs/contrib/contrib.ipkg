@@ -22,7 +22,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Data.Heap,
           Data.SortedMap, Data.SortedSet,
           Data.CoList, Data.Storable,
-	  Data.List.Zipper,
+          Data.List.Zipper,
 
           Decidable.Decidable, Decidable.Order,
 
@@ -39,4 +39,5 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
 
           Text.Literate,
 
-          Data.Fin.Extra
+          Data.Fin.Extra,
+          Data.Stream.Extra
