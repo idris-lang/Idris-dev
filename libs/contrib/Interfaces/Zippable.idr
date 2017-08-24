@@ -35,14 +35,10 @@ unzip3 : Functor t => t (a, b, c) -> (t a, t b, t c)
 unzip3 xs = (map fst xs, unzip (map snd xs))
 
 Zippable Maybe where
-  zipWith f Nothing _         = Nothing
-  zipWith f (Just x) Nothing  = Nothing
-  zipWith f (Just x) (Just y) = Just (f x y)
+  zipWith = liftA2
 
 Zippable (Either a) where
-  zipWith f (Left lx) _         = Left lx
-  zipWith f (Right x) (Left ly) = Left ly
-  zipWith f (Right x) (Right y) = Right (f x y)
+  zipWith = liftA2
 
 Zippable List where
   zipWith = Prelude.List.zipWith
