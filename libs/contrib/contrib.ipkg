@@ -12,6 +12,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Control.ST, Control.ST.ImplicitCall, Control.ST.Exception,
 
           Interfaces.Verified,
+          Interfaces.Zippable,
 
           Data.Fun, Data.Rel,
           Data.Hash,
