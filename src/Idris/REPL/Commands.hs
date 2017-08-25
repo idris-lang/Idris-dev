@@ -4,6 +4,7 @@ import Idris.AbsSyntaxTree
 import Idris.Colours
 import Idris.Core.TT
 import Idris.Options
+import Idris.Imports
 
 -- | REPL commands
 data Command = Quit
@@ -43,7 +44,7 @@ data Command = Quit
              | DynamicLink FilePath
              | ListDynamic
              | Pattelab PTerm
-             | Search [String] PTerm
+             | Search [PkgName] PTerm
              | CaseSplitAt Bool Int Name
              | AddClauseFrom Bool Int Name
              | AddProofClauseFrom Bool Int Name
@@ -65,7 +66,7 @@ data Command = Quit
              | ListErrorHandlers
              | SetConsoleWidth ConsoleWidth
              | SetPrinterDepth (Maybe Int)
-             | Apropos [String] String
+             | Apropos [PkgName] String
              | WhoCalls Name
              | CallsWho Name
              | Browse [String]

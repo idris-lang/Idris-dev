@@ -11,6 +11,7 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Package.Common
 import Idris.Parser.Helpers hiding (stringLiteral)
+import Idris.Imports
 
 import Control.Applicative
 import Control.Monad.State.Strict
@@ -64,7 +65,8 @@ parseDesc fp = do
 pPkg :: PParser PkgDesc
 pPkg = do
     reserved "package"
-    p <- filename
+    p <- pPkgName
+    someSpace
     st <- get
     put (st { pkgname = p })
     some pClause
@@ -72,6 +74,8 @@ pPkg = do
     eof
     return st
 
+pPkgName :: PParser PkgName
+pPkgName = (pkgName <$> packageName) <?> "PkgName"
 
 -- | Parses a filename.
 -- |
@@ -139,9 +143,9 @@ pClause = do reserved "executable"; lchar '=';
              put (st { idris_opts = args ++ idris_opts st })
 
       <|> do reserved "pkgs"; lchar '=';
-             ps <- sepBy1 (fst <$> identifier) (lchar ',')
+             ps <- sepBy1 (pPkgName <* someSpace) (lchar ',')
              st <- get
-             let pkgs = pureArgParser $ concatMap (\x -> ["-p", x]) ps
+             let pkgs = pureArgParser $ concatMap (\x -> ["-p", unPkgName x]) ps
 
              put (st { pkgdeps    = ps `union` (pkgdeps st)
                      , idris_opts = pkgs ++ idris_opts st})

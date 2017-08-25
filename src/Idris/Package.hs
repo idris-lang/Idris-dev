@@ -201,7 +201,7 @@ documentPkg copts (install,fp) = do
   pkgdesc        <- parseDesc fp
   cd             <- getCurrentDirectory
   let pkgDir      = cd </> takeDirectory fp
-      outputDir   = cd </> pkgname pkgdesc ++ "_doc"
+      outputDir   = cd </> unPkgName (pkgname pkgdesc) ++ "_doc"
       popts       = NoREPL : Verbose 1 : idris_opts pkgdesc
       mods        = modules pkgdesc
       fs          = map (foldl1' (</>) . splitOn "." . showCG) mods
@@ -228,10 +228,10 @@ documentPkg copts (install,fp) = do
           exitWith (ExitFailure 1)
         Right ist -> do
           iDocDir   <- getIdrisDocDir
-          pkgDocDir <- makeAbsolute (iDocDir </> pkgname pkgdesc)
+          pkgDocDir <- makeAbsolute (iDocDir </> unPkgName (pkgname pkgdesc))
           let out_dir = if install then pkgDocDir else outputDir
           when install $ do
-              putStrLn $ unwords ["Attempting to install IdrisDocs for", pkgname pkgdesc, "in:", out_dir]
+              putStrLn $ unwords ["Attempting to install IdrisDocs for", unPkgName $ pkgname pkgdesc, "in:", out_dir]
 
           docRes <- generateDocs ist mods out_dir
           case docRes of
@@ -356,7 +356,7 @@ buildMods opts ns = do let f = map (toPath . showCG) ns
     where
       toPath n = foldl1' (</>) $ splitOn "." n
 
-testLib :: Bool -> String -> String -> IO Bool
+testLib :: Bool -> PkgName -> String -> IO Bool
 testLib warn p f
     = do d <- getIdrisCRTSDir
          gcc <- getCC
@@ -367,7 +367,7 @@ testLib warn p f
          case e of
             ExitSuccess -> return True
             _ -> do if warn
-                       then do putStrLn $ "Not building " ++ p ++
+                       then do putStrLn $ "Not building " ++ unPkgName p ++
                                           " due to missing library " ++ f
                                return False
                        else fail $ "Missing library " ++ f
@@ -375,7 +375,7 @@ testLib warn p f
 rmIBC :: Name -> IO ()
 rmIBC m = rmFile $ toIBCFile m
 
-rmIdx :: String -> IO ()
+rmIdx :: PkgName -> IO ()
 rmIdx p = do let f = pkgIndex p
              ex <- doesFileExist f
              when ex $ rmFile f
@@ -389,10 +389,10 @@ rmExe p = do
 toIBCFile (UN n) = str n ++ ".ibc"
 toIBCFile (NS n ns) = foldl1' (</>) (reverse (toIBCFile n : map str ns))
 
-installIBC :: String -> String -> Name -> IO ()
+installIBC :: String -> PkgName -> Name -> IO ()
 installIBC dest p m = do
     let f = toIBCFile m
-    let destdir = dest </> p </> getDest m
+    let destdir = dest </> unPkgName p </> getDest m
     putStrLn $ "Installing " ++ f ++ " to " ++ destdir
     createDirectoryIfMissing True destdir
     copyFile f (destdir </> takeFileName f)
@@ -401,18 +401,18 @@ installIBC dest p m = do
     getDest (UN n) = ""
     getDest (NS n ns) = foldl1' (</>) (reverse (getDest n : map str ns))
 
-installIdx :: String -> String -> IO ()
+installIdx :: String -> PkgName -> IO ()
 installIdx dest p = do
   let f = pkgIndex p
-  let destdir = dest </> p
+  let destdir = dest </> unPkgName p
   putStrLn $ "Installing " ++ f ++ " to " ++ destdir
   createDirectoryIfMissing True destdir
   copyFile f (destdir </> takeFileName f)
   return ()
 
-installObj :: String -> String -> String -> IO ()
+installObj :: String -> PkgName -> String -> IO ()
 installObj dest p o = do
-  let destdir = addTrailingPathSeparator (dest </> p)
+  let destdir = addTrailingPathSeparator (dest </> unPkgName p)
   putStrLn $ "Installing " ++ o ++ " to " ++ destdir
   createDirectoryIfMissing True destdir
   copyFile o (destdir </> takeFileName o)

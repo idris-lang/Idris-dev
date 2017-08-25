@@ -1,4 +1,4 @@
-package "test-pkg"
+package test-pkg
 
 pkgs = effects
 

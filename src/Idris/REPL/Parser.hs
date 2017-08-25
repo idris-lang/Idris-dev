@@ -16,6 +16,7 @@ import Idris.Colours
 import Idris.Core.TT
 import Idris.Help
 import Idris.Options
+import Idris.Imports
 import qualified Idris.Parser as P
 import qualified Idris.Parser.Expr as P
 import qualified Idris.Parser.Helpers as P
@@ -507,11 +508,11 @@ idChar = oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_'])
 cmd_apropos :: String -> P.IdrisParser (Either String Command)
 cmd_apropos = packageBasedCmd (some idChar) Apropos
 
-packageBasedCmd :: P.IdrisParser a -> ([String] -> a -> Command)
+packageBasedCmd :: P.IdrisParser a -> ([PkgName] -> a -> Command)
                 -> String -> P.IdrisParser (Either String Command)
 packageBasedCmd valParser cmd name =
   try (do P.lchar '('
-          pkgs <- sepBy (some idChar) (P.lchar ',')
+          pkgs <- sepBy (pkgName <$> some idChar) (P.lchar ',')
           P.lchar ')'
           val <- valParser
           return (Right (cmd pkgs val)))

@@ -8,6 +8,7 @@ Maintainer  : The Idris Community.
 module Idris.Imports(
     IFileType(..), findIBC, findImport, findInPath, findPkgIndex
   , ibcPathNoFallback, installedPackages, pkgIndex
+  , PkgName, pkgName, unPkgName, unInitializedPkgName
   ) where
 
 import Idris.AbsSyntax
@@ -24,9 +25,18 @@ import System.FilePath
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
     deriving (Show, Eq)
 
+newtype PkgName = PkgName { unPkgName :: String }
+  deriving (Show, Eq)
+
+unInitializedPkgName :: PkgName
+unInitializedPkgName = PkgName ""
+
+pkgName :: String -> PkgName
+pkgName = PkgName
+
 -- | Get the index file name for a package name
-pkgIndex :: String -> FilePath
-pkgIndex s = "00" ++ s ++ "-idx.ibc"
+pkgIndex :: PkgName -> FilePath
+pkgIndex s = "00" ++ unPkgName s ++ "-idx.ibc"
 
 srcPath :: FilePath -> FilePath
 srcPath fp = let (_, ext) = splitExtension fp in
@@ -96,7 +106,7 @@ findInPath (d:ds) fp = do let p = d </> fp
                           e <- doesFileExist' p
                           if e then return p else findInPath ds fp
 
-findPkgIndex :: String -> Idris FilePath
+findPkgIndex :: PkgName -> Idris FilePath
 findPkgIndex p = do let idx = pkgIndex p
                     ids <- allImportDirs
                     runIO $ findInPath ids idx
