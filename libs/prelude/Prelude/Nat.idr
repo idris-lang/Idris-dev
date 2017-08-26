@@ -147,7 +147,7 @@ lteSuccRight : LTE n m -> LTE n (S m)
 lteSuccRight LTEZero     = LTEZero
 lteSuccRight (LTESucc x) = LTESucc (lteSuccRight x)
 
-||| n + 1 < m implies n < m 
+||| n + 1 < m implies n < m
 lteSuccLeft : LTE (S n) m -> LTE n m
 lteSuccLeft (LTESucc x) = lteSuccRight x
 
@@ -236,7 +236,10 @@ Cast Integer Nat where
   cast = fromInteger
 
 Cast String Nat where
-    cast str = cast (the Integer (cast str))
+  cast str = cast (the Integer (cast str))
+
+Cast Nat String where
+  cast n = cast (the Integer (cast n))
 
 ||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (*)
 record Multiplicative where
