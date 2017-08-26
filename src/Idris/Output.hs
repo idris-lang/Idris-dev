@@ -234,14 +234,15 @@ sendParserHighlighting =
 
 sendHighlighting :: [(FC, OutputAnnotation)] -> Idris ()
 sendHighlighting highlights =
-  do ist <- getIState
+  do let highlights_uniq = nub highlights
+     ist <- getIState
      case idris_outputmode ist of
        RawOutput _ -> updateIState $
                       \ist -> ist { idris_highlightedRegions =
-                                      highlights ++ idris_highlightedRegions ist }
+                                      highlights_uniq ++ idris_highlightedRegions ist }
        IdeMode n h ->
          let fancier = [ toSExp (fc, fancifyAnnots ist False annot)
-                       | (fc, annot) <- highlights, fullFC fc
+                       | (fc, annot) <- highlights_uniq, fullFC fc
                        ]
          in case fancier of
               [] -> return ()
