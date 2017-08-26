@@ -59,6 +59,12 @@ export
 many : Lexer -> Recognise False
 many l = some l <|> Empty
 
+||| Recognize the first matching lexer from a non-empty list.
+export
+choice : (xs : List Lexer) -> {auto ok : NonEmpty xs} -> Lexer
+choice (x :: [])          = x
+choice (x :: xs@(_ :: _)) = x <|> choice xs
+
 ||| Recognise many instances of `l` until an instance of `end` is
 ||| encountered.
 |||
