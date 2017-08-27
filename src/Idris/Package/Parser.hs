@@ -75,7 +75,7 @@ pPkg = do
     return st
 
 pPkgName :: PParser PkgName
-pPkgName = (pkgName <$> packageName) <?> "PkgName"
+pPkgName = (either fail pure . pkgName =<< packageName) <?> "PkgName"
 
 -- | Parses a filename.
 -- |

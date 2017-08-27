@@ -512,12 +512,14 @@ packageBasedCmd :: P.IdrisParser a -> ([PkgName] -> a -> Command)
                 -> String -> P.IdrisParser (Either String Command)
 packageBasedCmd valParser cmd name =
   try (do P.lchar '('
-          pkgs <- sepBy (pkgName <$> some idChar) (P.lchar ',')
+          pkgs <- sepBy (pkg <* P.whiteSpace) (P.lchar ',')
           P.lchar ')'
           val <- valParser
           return (Right (cmd pkgs val)))
    <|> do val <- valParser
           return (Right (cmd [] val))
+  where
+    pkg = either fail pure . pkgName =<< P.packageName
 
 cmd_search :: String -> P.IdrisParser (Either String Command)
 cmd_search = packageBasedCmd

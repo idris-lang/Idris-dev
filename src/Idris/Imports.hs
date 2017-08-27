@@ -19,6 +19,7 @@ import IRTS.System (getIdrisLibDir)
 import Control.Applicative ((<$>))
 import Control.Monad.State.Strict
 import Data.List (isSuffixOf)
+import Data.Char (isLower, isDigit)
 import System.Directory
 import System.FilePath
 
@@ -31,8 +32,14 @@ newtype PkgName = PkgName { unPkgName :: String }
 unInitializedPkgName :: PkgName
 unInitializedPkgName = PkgName ""
 
-pkgName :: String -> PkgName
-pkgName = PkgName
+pkgName :: String -> Either String PkgName
+pkgName ""      = Left "empty package name"
+pkgName s@(f:l)
+    | not $ isLower f =
+        Left "package name need to start by a lower alpha"
+    | not $ all (\c -> isLower c || isDigit c || c `elem` "-_") l =
+        Left "package name need to contain only lower alpha, digits, and -_"
+    | otherwise = Right $ PkgName s
 
 -- | Get the index file name for a package name
 pkgIndex :: PkgName -> FilePath
