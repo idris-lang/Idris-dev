@@ -177,7 +177,8 @@ stringLit = is '"' <+> many strChar <+> is '"'
 ||| (Note: doesn't yet handle escape sequences such as \123)
 export
 charLit : Lexer
-charLit = is '\'' <+> strChar <+> is '\''
+charLit = let q = '\'' in
+              is q <+> ((is '\\' <+> any) <|> isNot q) <+> is q
 
 ||| Recognise an integer literal (possibly with a '-' prefix)
 export
