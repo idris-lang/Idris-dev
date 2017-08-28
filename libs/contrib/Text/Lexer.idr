@@ -212,15 +212,25 @@ export
 alphaNums : Lexer
 alphaNums = some alphaNum
 
-||| Recognise a whitespace character
+||| Recognise a single whitespace character
 export
 space : Lexer
-space = some (pred isSpace)
+space = pred isSpace
 
-||| Recognise a non-alphanumeric, non-whitespace character
+||| Recognise one or more whitespace characters
+export
+spaces : Lexer
+spaces = some space
+
+||| Recognise a single non-whitespace, non-alphanumeric character
 export
 symbol : Lexer
-symbol = some (pred (\x => not (isAlphaNum x) && not (isSpace x)))
+symbol = pred (\x => not (isSpace x || isAlphaNum x))
+
+||| Recognise one or more non-whitespace, non-alphanumeric characters
+export
+symbols : Lexer
+symbols = some symbol
 
 ||| Recognise zero or more occurrences of a sub-lexer between
 ||| delimiting lexers
