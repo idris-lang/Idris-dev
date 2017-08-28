@@ -144,12 +144,12 @@ takeToken lex str
     = do i <- scan lex 0 str -- i must be > 0 if successful
          pure (substr 0 i (getString str), strTail i str)
 
-||| Recognise a digit 0-9
+||| Recognise a single digit 0-9
 export
 digit : Lexer
 digit = pred isDigit
 
-||| Recognise one or more digits 0-9
+||| Recognise one or more digits
 export
 digits : Lexer
 digits = some digit
@@ -162,7 +162,17 @@ exact str with (unpack str)
   exact str | (x :: xs)
       = foldl SeqEmpty (is x) (map is xs)
 
-||| Recognise an alpha character
+||| Recognise a single hexidecimal digit
+export
+hexDigit : Lexer
+hexDigit = digit <|> oneOf "abcdefABCDEF"
+
+||| Recognise one or more hexidecimal digits
+export
+hexDigits : Lexer
+hexDigits = some hexDigit
+
+||| Recognise a single alpha character
 export
 alpha : Lexer
 alpha = pred isAlpha
@@ -246,6 +256,11 @@ charLit = let q = '\'' in
 export
 intLit : Lexer
 intLit = opt (is '-') <+> digits
+
+||| Recognise a hexidecimal literal, prefixed by "0x" or "0X"
+export
+hexLit : Lexer
+hexLit = is '0' <+> oneOf "xX" <+> hexDigits
 
 ||| A mapping from lexers to the tokens they produce.
 ||| This is a list of pairs `(Lexer, String -> tokenType)`
