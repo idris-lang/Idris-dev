@@ -164,21 +164,35 @@ export
 symbol : Lexer
 symbol = some (pred (\x => not (isAlphaNum x) && not (isSpace x)))
 
-strChar : Lexer
-strChar = (is '\\' <+> any) <|> isNot '"'
+||| Recognise zero or more occurrences of a sub-lexer between
+||| delimiting lexers
+export
+surround : (start : Lexer) -> (end : Lexer) -> (l : Lexer) -> Lexer
+surround start end l = start <+> manyTill l end
+
+||| Recognise zero or more occurrences of a sub-lexer surrounded
+||| by the same quote lexer on both sides (useful for strings)
+export
+quote : (q : Lexer) -> (l : Lexer) -> Lexer
+quote q l = surround q q l
+
+||| Recognise an escape character (often '\\') followed by a sub-lexer
+export
+escape : (esc : Char) -> Lexer -> Lexer
+escape esc l = is esc <+> l
 
 ||| Recognise a string literal, including escaped characters.
 ||| (Note: doesn't yet handle escape sequences such as \123)
 export
 stringLit : Lexer
-stringLit = is '"' <+> many strChar <+> is '"'
+stringLit = quote (is '"') (escape '\\' any <|> any)
 
 ||| Recognise a character literal, including escaped characters.
 ||| (Note: doesn't yet handle escape sequences such as \123)
 export
 charLit : Lexer
 charLit = let q = '\'' in
-              is q <+> ((is '\\' <+> any) <|> isNot q) <+> is q
+              is q <+> (escape '\\' any <|> isNot q) <+> is q
 
 ||| Recognise an integer literal (possibly with a '-' prefix)
 export
