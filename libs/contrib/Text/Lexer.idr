@@ -57,13 +57,13 @@ opt l = l <|> Empty
 ||| Recognise a sequence of at least one sub-lexers
 export
 some : Lexer -> Lexer
-some l = l <+> (some l <|> Empty)
+some l = l <+> opt (some l)
 
 ||| Recognise a sequence of at zero or more sub-lexers. This is not
 ||| guaranteed to consume input
 export
 many : Lexer -> Recognise False
-many l = some l <|> Empty
+many l = opt (some l)
 
 ||| Recognise the first matching lexer from a non-empty list.
 export
@@ -76,11 +76,8 @@ choice (x :: xs@(_ :: _)) = x <|> choice xs
 |||
 ||| Useful for defining comments.
 export
-manyTill : (l : Lexer)
-        -> (end : Lexer) -> Recognise False
-manyTill l end = end
-             <|> (l <+> manyTill l end)
-             <|> Empty
+manyTill : (l : Lexer) -> (end : Lexer) -> Recognise False
+manyTill l end = end <|> opt (l <+> manyTill l end)
 
 ||| Recognise any character
 export
@@ -188,7 +185,7 @@ charLit = is '\'' <+> strChar <+> is '\''
 ||| Recognise an integer literal (possibly with a '-' prefix)
 export
 intLit : Lexer
-intLit = (is '-' <|> Empty) <+> digits
+intLit = opt (is '-') <+> digits
 
 ||| A mapping from lexers to the tokens they produce.
 ||| This is a list of pairs `(Lexer, String -> tokenType)`
