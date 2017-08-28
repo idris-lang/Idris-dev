@@ -48,6 +48,12 @@ export
 isNot : Char -> Lexer
 isNot x = Pred (/=x)
 
+||| Recognise a lexer or recognise no input. This is not guaranteed
+||| to consume input
+export
+opt : Lexer -> Recognise False
+opt l = l <|> Empty
+
 ||| Recognise a sequence of at least one sub-lexers
 export
 some : Lexer -> Lexer
@@ -59,7 +65,7 @@ export
 many : Lexer -> Recognise False
 many l = some l <|> Empty
 
-||| Recognize the first matching lexer from a non-empty list.
+||| Recognise the first matching lexer from a non-empty list.
 export
 choice : (xs : List Lexer) -> {auto ok : NonEmpty xs} -> Lexer
 choice (x :: [])          = x
