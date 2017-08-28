@@ -172,6 +172,26 @@ export
 alphas : Lexer
 alphas = some alpha
 
+||| Recognise a lowercase alpha character
+export
+lower : Lexer
+lower = pred isLower
+
+||| Recognise one or more lowercase alpha characters
+export
+lowers : Lexer
+lowers = some lower
+
+||| Recognise an uppercase alpha character
+export
+upper : Lexer
+upper = pred isUpper
+
+||| Recognise one or more uppercase alpha characters
+export
+uppers : Lexer
+uppers = some upper
+
 ||| Recognise an alphanumeric character
 export
 alphaNum : Lexer
