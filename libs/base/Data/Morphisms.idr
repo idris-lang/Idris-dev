@@ -40,3 +40,15 @@ infixr 1 ~>
 
 (~>) : Type -> Type -> Type
 a ~> b = Morphism a b
+
+Cast (Endomorphism a) (Morphism a a) where
+  cast (Endo f) = Mor f
+
+Cast (Morphism a a) (Endomorphism a) where
+  cast (Mor f) = Endo f
+
+Monad m => Cast (Morphism a (m b)) (Kleislimorphism m a b) where
+  cast (Mor f) = Kleisli f
+
+Cast (Kleislimorphism m a b) (Morphism a (m b)) where
+  cast (Kleisli f) = Mor f
