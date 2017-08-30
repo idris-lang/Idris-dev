@@ -15,8 +15,8 @@ import Idris.AbsSyntax
 import Idris.Colours
 import Idris.Core.TT
 import Idris.Help
-import Idris.Options
 import Idris.Imports
+import Idris.Options
 import qualified Idris.Parser as P
 import qualified Idris.Parser.Expr as P
 import qualified Idris.Parser.Helpers as P

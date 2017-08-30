@@ -9,9 +9,9 @@ Maintainer  : The Idris Community.
 module Idris.Package.Parser where
 
 import Idris.CmdOptions
+import Idris.Imports
 import Idris.Package.Common
 import Idris.Parser.Helpers hiding (stringLiteral)
-import Idris.Imports
 
 import Control.Applicative
 import Control.Monad.State.Strict
