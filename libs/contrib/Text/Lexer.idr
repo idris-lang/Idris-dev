@@ -179,28 +179,48 @@ export
 quote : (q : Lexer) -> (l : Lexer) -> Lexer
 quote q l = surround q q l
 
-||| Recognise an escape character (often '\\') followed by a sub-lexer
+||| Recognise an escape character (such as `'\\'`) followed by a sub-lexer.
 export
-escape : (esc : Char) -> Lexer -> Lexer
-escape esc l = is esc <+> l
+escape : (c : Char) -> Lexer -> Lexer
+escape c l = is c <+> l
 
-||| Recognise a string literal, including escaped characters.
-||| (Note: doesn't yet handle escape sequences such as \123)
+||| Recognise a sub-lexer escaped by `'\\'`.
+||| Prefer using `escape` to changing the implicit argument of
+||| this function.
+||| @ c The escape character
 export
-stringLit : Lexer
-stringLit = quote (is '"') (escape '\\' any <|> any)
+escaped : {default '\\' c : Char} -> Lexer -> Lexer
+escaped {c} l = escape c l
 
-||| Recognise a character literal, including escaped characters.
-||| (Note: doesn't yet handle escape sequences such as \123)
+||| Recognise a string literal, including escape sequences.
+||| Customisable using implicit arguments.
+||| @ q   The quote character
+||| @ ql  The quote lexer. Overrides quote character if passed
+||| @ c   The escape character
+||| @ esc Sub-lexer that can follow an escape character
 export
-charLit : Lexer
-charLit = let q = '\'' in
-              is q <+> (escape '\\' any <|> isNot q) <+> is q
+stringLit : {default '"' q : Lexer} -> {default (is q) ql : Lexer} ->
+            {default '\\' c : Char} -> {default any esc : Lexer} ->
+            Lexer
+stringLit {ql} {c} {esc} = quote ql (escape c esc <|> any)
 
-||| Recognise an integer literal (possibly with a '-' prefix)
+||| Recognise a character literal, including escape sequences.
+||| Customisable using implicit arguments.
+||| @ q   The quote character
+||| @ c   The escape character
+||| @ esc Sub-lexer that can follow an escape character
 export
-intLit : Lexer
-intLit = opt (is '-') <+> digits
+charLit : {default '\'' q : Char} ->
+          {default '\\' c : Char} -> {default any esc : Lexer} ->
+          Lexer
+charLit {q} {c} {esc} = is q <+> (escape c esc <|> isNot q) <+> is q
+
+||| Recognise an integer literal preceded by an optional sign.
+||| Customisable using implicit arguments.
+||| @ sign A sign lexer that can optionally appear before the digits
+export
+intLit : {default (is '-') sign : Lexer} -> Lexer
+intLit {sign} = opt sign <+> digits
 
 ||| A mapping from lexers to the tokens they produce.
 ||| This is a list of pairs `(Lexer, String -> tokenType)`
