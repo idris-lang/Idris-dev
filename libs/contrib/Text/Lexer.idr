@@ -39,6 +39,11 @@ export
 (<|>) : Recognise c1 -> Recognise c2 -> Recognise (c1 && c2)
 (<|>) = Alt
 
+||| A recogniser that always fails.
+export
+fail : Recognise c
+fail = Fail
+
 ||| Positive lookahead. Never consumes input.
 export
 expect : Recognise c -> Recognise False
