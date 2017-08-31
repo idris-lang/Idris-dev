@@ -3,12 +3,13 @@ module Text.Lexer
 %default total
 
 ||| A language of token recognisers.
-||| The `consumes` flag is True is the recogniser is guaranteed to consume
-||| at least one character
+||| @ consumes If `True`, this recogniser is guaranteed to consume at
+|||            least one character of input when it succeeds.
 export
 data Recognise : (consumes : Bool) -> Type where
      Empty : Recognise False
      Fail : Recognise c
+     Expect : Recognise c -> Recognise False
      Pred : (Char -> Bool) -> Recognise True
      SeqEat : Recognise True -> Inf (Recognise e) -> Recognise True
      SeqEmpty : Recognise e1 -> Recognise e2 -> Recognise (e1 || e2)
@@ -37,6 +38,22 @@ export %inline
 export
 (<|>) : Recognise c1 -> Recognise c2 -> Recognise (c1 && c2)
 (<|>) = Alt
+
+||| Positive lookahead. Never consumes input.
+export
+expect : Recognise c -> Recognise False
+expect = Expect
+
+||| Negative lookahead. Never consumes input.
+export
+reject : Recognise c -> Recognise False
+reject Empty            = Fail
+reject Fail             = Empty
+reject (Expect x)       = reject x
+reject (Pred f)         = Expect (Pred (not . f))
+reject (SeqEat r1 r2)   = reject r1 <|> Expect (SeqEat r1 (reject r2))
+reject (SeqEmpty r1 r2) = reject r1 <|> Expect (SeqEmpty r1 (reject r2))
+reject (Alt r1 r2)      = reject r1 <+> reject r2
 
 ||| Recognise a specific character
 export
@@ -122,6 +139,10 @@ strTail start (MkStrLen str len)
 scan : Recognise c -> Nat -> StrLen -> Maybe Nat
 scan Empty idx str = pure idx
 scan Fail idx str = Nothing
+scan (Expect r) idx str
+    = case scan r idx str of
+           Just _  => pure idx
+           Nothing => Nothing
 scan (Pred f) idx str
     = do c <- strIndex str idx
          if f c
