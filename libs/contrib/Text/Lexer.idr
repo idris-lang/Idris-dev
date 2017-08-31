@@ -101,6 +101,10 @@ export
 any : Lexer
 any = Pred (const True)
 
+||| Recognise any character if the sub-lexer `l` fails.
+non : (l : Lexer) -> Lexer
+non l = reject l <+> any
+
 ||| Recognise no input (doesn't consume any input)
 export
 empty : Recognise False
