@@ -5,11 +5,9 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, ConstraintKinds, GeneralizedNewtypeDeriving, PatternGuards,
-             StandaloneDeriving #-}
-#if !(MIN_VERSION_base(4,8,0))
-{-# LANGUAGE OverlappingInstances #-}
-#endif
+{-# LANGUAGE CPP, ConstraintKinds, FlexibleInstances,
+             GeneralizedNewtypeDeriving, PatternGuards, StandaloneDeriving,
+             TypeSynonymInstances #-}
 module Idris.Parser.Helpers where
 
 import Idris.AbsSyntax
@@ -70,11 +68,7 @@ instance {-# OVERLAPPING #-} DeltaParsing IdrisParser where
 
 #endif
 
-#if MIN_VERSION_base(4,8,0)
 instance {-# OVERLAPPING #-} TokenParsing IdrisParser where
-#else
-instance TokenParsing IdrisParser where
-#endif
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
   token p = do s <- get
                (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC

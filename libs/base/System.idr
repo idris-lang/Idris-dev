@@ -97,5 +97,6 @@ time = do MkRaw t <- foreign FFI_C "idris_time" (IO (Raw Integer))
 usleep : (i : Int) -> { auto prf : So (i >= 0 && i <= 1000000) } -> IO ()
 usleep i = foreign FFI_C "usleep" (Int -> IO ()) i
 
+||| Execute a program and returns its exit status code.
 system : String -> IO Int
 system cmd = foreign FFI_C "system" (String -> IO Int) cmd

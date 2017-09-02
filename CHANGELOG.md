@@ -1,7 +1,21 @@
-# New in 1.0.1
+# New in 1.1.*
+
++ Addition of `Text.Literate`, a module for working with literate
+  source files.
+
+# New in 1.1.1
+
++ Erasure analysis is now faster thanks to a bit smarter constraint solving.
++ Fixed installation issue
++ Fixed a potential segfault when concatenating strings
+
+# New in 1.1.0
 
 ## Library Updates
 
++ Added `Text.PrettyPrint.WL` an implementation of the Wadler-Leijen
+  Pretty-Print algorithm.  Useful for those wishing to pretty print
+  things.
 + Added `Text.Lexer` and `Text.Parser` to `contrib`. These are small libraries
   for implementing total lexical analysers and parsers.
 + New instances:

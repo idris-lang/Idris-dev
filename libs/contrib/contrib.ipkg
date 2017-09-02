@@ -11,6 +11,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Control.Pipeline,
           Control.ST, Control.ST.ImplicitCall, Control.ST.Exception,
 
+          Interfaces.Correlative,
           Interfaces.Verified,
 
           Data.Fun, Data.Rel,
@@ -22,7 +23,8 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Data.Heap,
           Data.SortedMap, Data.SortedSet,
           Data.CoList, Data.Storable,
-	  Data.List.Zipper,
+          Data.List.Zipper,
+          Data.Pairs.Implicit,
 
           Decidable.Decidable, Decidable.Order,
 
@@ -32,4 +34,12 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
 
           Text.Lexer, Text.Parser,
 
-          Data.Fin.Extra
+          Text.PrettyPrint.WL,
+          Text.PrettyPrint.WL.Core,
+          Text.PrettyPrint.WL.Characters,
+          Text.PrettyPrint.WL.Combinators,
+
+          Text.Literate,
+
+          Data.Fin.Extra,
+          Data.Stream.Extra

@@ -10,7 +10,7 @@ using (xs : List a, ys : List a, G : List (List a))
 
   data Elem : a -> List a -> Type where
        Stop : Elem x (x :: xs)
-       Pop  : Elem x ys -> Elem x (y :: xs)
+       Pop  : Elem x ys -> Elem x (y :: ys)
 
 -- Expr is a reflection of a list, indexed over the concrete list,
 -- and over a set of list variables.

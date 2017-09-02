@@ -5,7 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, PatternGuards #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, FlexibleContexts,
+             PatternGuards #-}
 
 module IRTS.Lang where
 
@@ -27,7 +28,7 @@ data LVar = Loc Int | Glob Name
 
 -- ASSUMPTION: All variable bindings have unique names here
 -- Constructors commented as lifted are not present in the LIR provided to the different backends.
-data LExp = LV LVar
+data LExp = LV Name
           | LApp Bool LExp [LExp]    -- True = tail call
           | LLazyApp Name [LExp]     -- True = tail call
           | LLazyExp LExp            -- lifted out before compiling
@@ -35,7 +36,7 @@ data LExp = LV LVar
           | LLet Name LExp LExp      -- name just for pretty printing
           | LLam [Name] LExp         -- lambda, lifted out before compiling
           | LProj LExp Int           -- projection
-          | LCon (Maybe LVar)        -- Location to reallocate, if available
+          | LCon (Maybe Name)        -- Location to reallocate, if available
                  Int Name [LExp]
           | LCase CaseType LExp [LAlt]
           | LConst Const
@@ -167,13 +168,13 @@ addFn fn d = do LS n i ds <- get
 
 lift :: [Name] -> LExp -> State LiftState LExp
 lift env (LV v) = return (LV v) -- Lifting happens before these can exist...
-lift env (LApp tc (LV (Glob n)) args) = do args' <- mapM (lift env) args
-                                           return (LApp tc (LV (Glob n)) args')
+lift env (LApp tc (LV n) args) = do args' <- mapM (lift env) args
+                                    return (LApp tc (LV n) args')
 lift env (LApp tc f args) = do f' <- lift env f
                                fn <- getNextName
                                addFn fn (LFun [Inline] fn env f')
                                args' <- mapM (lift env) args
-                               return (LApp tc (LV (Glob fn)) (map (LV . Glob) env ++ args'))
+                               return (LApp tc (LV fn) (map LV env ++ args'))
 lift env (LLazyApp n args) = do args' <- mapM (lift env) args
                                 return (LLazyApp n args')
 lift env (LLazyExp (LConst c)) = return (LConst c)
@@ -183,7 +184,7 @@ lift env (LLazyExp e) = do e' <- lift env e
                            let usedArgs = nub $ usedIn env e'
                            fn <- getNextName
                            addFn fn (LFun [NoInline] fn usedArgs e')
-                           return (LLazyApp fn (map (LV . Glob) usedArgs))
+                           return (LLazyApp fn (map LV usedArgs))
 lift env (LForce e) = do e' <- lift env e
                          return (LForce e')
 lift env (LLet n v e) = do v' <- lift env v
@@ -193,7 +194,7 @@ lift env (LLam args e) = do e' <- lift (env ++ args) e
                             let usedArgs = nub $ usedIn env e'
                             fn <- getNextName
                             addFn fn (LFun [Inline] fn (usedArgs ++ args) e')
-                            return (LApp False (LV (Glob fn)) (map (LV . Glob) usedArgs))
+                            return (LApp False (LV fn) (map LV usedArgs))
 lift env (LProj t i) = do t' <- lift env t
                           return (LProj t' i)
 lift env (LCon loc i n args) = do args' <- mapM (lift env) args
@@ -228,11 +229,11 @@ allocUnique defs (n, LFun opts fn args e)
     -- Keep track of 'updatable' names in the state, i.e. names whose heap
     -- entry may be reused, along with the arity which was there
     findUp :: LExp -> State [(Name, Int)] LExp
-    findUp (LApp t (LV (Glob n)) as)
+    findUp (LApp t (LV n) as)
        | Just (LConstructor _ i ar) <- lookupCtxtExact n defs,
          ar == length as
           = findUp (LCon Nothing i n as)
-    findUp (LV (Glob n))
+    findUp (LV n)
        | Just (LConstructor _ i 0) <- lookupCtxtExact n defs
           = return $ LCon Nothing i n [] -- nullary cons are global, no need to update
     findUp (LApp t f as) = LApp t <$> findUp f <*> mapM findUp as
@@ -252,7 +253,7 @@ allocUnique defs (n, LFun opts fn args e)
            = LForeign t s <$> mapM (\ (t, e) -> do e' <- findUp e
                                                    return (t, e')) es
     findUp (LOp o es) = LOp o <$> mapM findUp es
-    findUp (LCase Updatable e@(LV (Glob n)) as)
+    findUp (LCase Updatable e@(LV n) as)
            = LCase Updatable e <$> mapM (doUpAlt n) as
     findUp (LCase t e as)
            = LCase t <$> findUp e <*> mapM findUpAlt as
@@ -276,7 +277,7 @@ allocUnique defs (n, LFun opts fn args e)
 
     findVar _ [] i = return Nothing
     findVar acc ((n, l) : ns) i | l == i = do put (reverse acc ++ ns)
-                                              return (Just (Glob n))
+                                              return (Just n)
     findVar acc (n : ns) i = findVar (n : acc) ns i
 
 
@@ -286,7 +287,7 @@ usedArg env n | n `elem` env = [n]
               | otherwise = []
 
 usedIn :: [Name] -> LExp -> [Name]
-usedIn env (LV (Glob n)) = usedArg env n
+usedIn env (LV n) = usedArg env n
 usedIn env (LApp _ e args) = usedIn env e ++ concatMap (usedIn env) args
 usedIn env (LLazyApp n args) = concatMap (usedIn env) args ++ usedArg env n
 usedIn env (LLazyExp e) = usedIn env e
@@ -296,7 +297,7 @@ usedIn env (LLam ns e) = usedIn (env \\ ns) e
 usedIn env (LCon v i n args) = let rest = concatMap (usedIn env) args in
                                    case v of
                                       Nothing -> rest
-                                      Just (Glob n) -> usedArg env n ++ rest
+                                      Just n -> usedArg env n ++ rest
 usedIn env (LProj t i) = usedIn env t
 usedIn env (LCase up e alts) = usedIn env e ++ concatMap (usedInA env) alts
   where usedInA env (LConCase i n ns e) = usedIn env e
@@ -307,7 +308,7 @@ usedIn env (LOp f args) = concatMap (usedIn env) args
 usedIn env _ = []
 
 lsubst :: Name -> LExp -> LExp -> LExp
-lsubst n new (LV (Glob x)) | n == x = new
+lsubst n new (LV x) | n == x = new
 lsubst n new (LApp t e args) = let e' = lsubst n new e
                                    args' = map (lsubst n new) args in
                                    LApp t e' args'
@@ -332,8 +333,7 @@ lsubst n new tm = tm
 
 instance Show LExp where
    show e = show' [] "" e where
-     show' env ind (LV (Loc i)) = env!!i
-     show' env ind (LV (Glob n)) = show n
+     show' env ind (LV n) = show n
 
      show' env ind (LLazyApp e args)
         = show e ++ "|(" ++ showSep ", " (map (show' env ind) args) ++")"

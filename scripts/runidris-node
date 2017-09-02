@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# This is a script that runs an idris program, suitable for use
+# in a shebang line. We cache the executables by naming them after
+# the SHA hash of the idris source and looking for it before
+# compiling. This is the node version.
+RUNIDRIS_DIR="${TEMP:-/tmp}/runidris-node"
+if [ ! -d $RUNIDRIS_DIR ]; then
+    mkdir $RUNIDRIS_DIR
+    chmod 700 $RUNIDRIS_DIR
+fi
+
+OS=`uname -s`
+case $OS in
+    OpenBSD ) TEMP_NAME="runidris-`sha1 -q $1`" ;;
+          * ) TEMP_NAME="runidris-`sha1sum $1 | cut -c1-40`" ;;
+esac
+
+FP="$RUNIDRIS_DIR/$TEMP_NAME"
+cp "$1" "$FP.idr" # idris won't compile the script unless it ends in .idr
+if [ ! -e "$FP.js" ]; then
+    "${IDRIS:-idris}" --codegen node --ibcsubdir "$RUNIDRIS_DIR" -i "." "$FP.idr" -o "$FP.js"
+fi
+shift
+node "$FP.js" "$@"

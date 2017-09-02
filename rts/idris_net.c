@@ -3,15 +3,34 @@
 // MIT Licensed. Have fun!
 #include "idris_net.h"
 #include <errno.h>
-#include <netdb.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+
+#ifndef WIN32
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#else
+static int socket_inited = 0;
+static WSADATA wsa_data;
+
+static void clean_sockets(void) {
+    WSACleanup();
+}
+
+static int check_init(void) {
+    if (!socket_inited) {
+        int result = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+        if (result == NO_ERROR) {
+            socket_inited = 1;
+            atexit(clean_sockets);
+        }
+    }
+    return socket_inited;
+}
+#endif
+
 
 void buf_htonl(void* buf, int len) {
     int* buf_i = (int*) buf;
@@ -35,6 +54,16 @@ void* idrnet_malloc(int size) {
 
 void idrnet_free(void* ptr) {
     free(ptr);
+}
+
+
+int idrnet_socket(int domain, int type, int protocol) {
+#ifdef WIN32
+    if (!check_init()) {
+        return -1;
+    }
+#endif
+    return socket(domain, type, protocol);
 }
 
 // We call this from quite a few functions. Given a textual host and an int port,
@@ -65,7 +94,7 @@ int idrnet_getaddrinfo(struct addrinfo** address_res, char* host, int port,
 int idrnet_bind(int sockfd, int family, int socket_type, char* host, int port) {
     struct addrinfo* address_res;
     int addr_res = idrnet_getaddrinfo(&address_res, host, port, family, socket_type);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         //printf("Lib err: bind getaddrinfo\n");
         return -1;
     }
@@ -82,7 +111,7 @@ int idrnet_bind(int sockfd, int family, int socket_type, char* host, int port) {
 int idrnet_connect(int sockfd, int family, int socket_type, char* host, int port) {
     struct addrinfo* remote_host;
     int addr_res = idrnet_getaddrinfo(&remote_host, host, port, family, socket_type);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         return -1;
     }
 
@@ -189,7 +218,7 @@ int idrnet_sendto(int sockfd, char* data, char* host, int port, int family) {
 
     struct addrinfo* remote_host;
     int addr_res = idrnet_getaddrinfo(&remote_host, host, port, family, SOCK_DGRAM);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         return -1;
     }
 
@@ -203,7 +232,7 @@ int idrnet_sendto_buf(int sockfd, void* buf, int buf_len, char* host, int port, 
 
     struct addrinfo* remote_host;
     int addr_res = idrnet_getaddrinfo(&remote_host, host, port, family, SOCK_DGRAM);
-    if (addr_res == -1) {
+    if (addr_res != 0) {
         //printf("lib err: sendto getaddrinfo \n");
         return -1;
     }

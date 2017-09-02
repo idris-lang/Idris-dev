@@ -5,6 +5,9 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Util.Pretty (
     module Text.PrettyPrint.Annotated.Leijen
   , Sized(..)

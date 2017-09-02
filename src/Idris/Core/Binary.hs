@@ -5,6 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+{-# LANGUAGE FlexibleInstances #-}
+
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.Binary where
 
@@ -14,6 +16,8 @@ import Control.Applicative ((<$>), (<*>))
 import Control.DeepSeq (($!!))
 import Control.Monad (liftM2)
 import Data.Binary
+import Data.Binary.Get
+import Data.Binary.Put
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import Data.Vector.Binary
@@ -398,7 +402,7 @@ instance Binary Const where
                 BI x1 -> do putWord8 1
                             put x1
                 Fl x1 -> do putWord8 2
-                            put x1
+                            putDoublele x1
                 Ch x1 -> do putWord8 3
                             put x1
                 Str x1 -> do putWord8 4
@@ -425,7 +429,7 @@ instance Binary Const where
                            return (I x1)
                    1 -> do x1 <- get
                            return (BI x1)
-                   2 -> do x1 <- get
+                   2 -> do x1 <- getDoublele
                            return (Fl x1)
                    3 -> do x1 <- get
                            return (Ch x1)

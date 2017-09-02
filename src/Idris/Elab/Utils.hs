@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleContexts, PatternGuards #-}
 module Idris.Elab.Utils where
 
 import Idris.AbsSyntax
@@ -449,9 +449,12 @@ displayWarnings est
      = mapM_ displayImpWarning (implicit_warnings est)
   where
     displayImpWarning :: (FC, Name) -> Idris ()
-    displayImpWarning (fc, n) =
-       iputStrLn $ show fc ++ ":WARNING: " ++ show (nsroot n) ++ " is bound as an implicit\n"
-                   ++ "\tDid you mean to refer to " ++ show n ++ "?"
+    displayImpWarning (fc, n) = do
+        ist <- getIState
+        let msg = show (nsroot n)
+               ++ " is bound as an implicit\n"
+               ++ "\tDid you mean to refer to " ++ show n ++ "?"
+        iWarn fc (pprintErr ist (Msg msg))
 
 propagateParams :: IState -> [Name] -> Type -> [Name] -> PTerm -> PTerm
 propagateParams i ps t bound tm@(PApp _ (PRef fc hls n) args)
@@ -767,5 +770,3 @@ isPlausible ist var env n ty
      collectConstraints env tcs t
          | (V i, _) <- unApply t = (Just (env !! i), tcs)
          | otherwise = (Nothing, tcs)
-
-

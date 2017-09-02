@@ -6,6 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Output where

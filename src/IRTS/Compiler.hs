@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, FlexibleContexts, PatternGuards, TypeSynonymInstances #-}
 
 module IRTS.Compiler(compile, generate) where
 
@@ -63,6 +63,8 @@ compile codegen f mtm = do
                              Nothing -> []
                              Just t -> freeNames t
 
+        logCodeGen 1 "Running Erasure Analysis"
+        iReport 3 "Running Erasure Analysis"
         reachableNames <- performUsageAnalysis
                               (rootNames ++ getExpNames exports)
         maindef <- case mtm of
@@ -74,7 +76,7 @@ compile codegen f mtm = do
         libs <- getLibs codegen
         flags <- getFlags codegen
         hdrs <- getHdrs codegen
-        impdirs <- allImportDirs
+        impdirs <- rankedImportDirs f
         ttDeclarations <- getDeclarations reachableNames
         defsIn <- mkDecls reachableNames
         -- if no 'main term' given, generate interface files
@@ -212,7 +214,7 @@ build (n, d)
               Just (ar, op) ->
                   let args = map (\x -> sMN x "op") [0..] in
                       return (n, (LFun [] n (take ar args)
-                                         (LOp op (map (LV . Glob) (take ar args)))))
+                                         (LOp op (map LV (take ar args)))))
               _ -> do def <- mkLDecl n d
                       logCodeGen 3 $ "Compiled " ++ show n ++ " =\n\t" ++ show def
                       return (n, def)
@@ -396,7 +398,7 @@ irTerm top vs env tm@(App _ f a) = do
                 -> irTerm top vs env (head argsPruned)
 
                 | otherwise  -- not newtype, plain data ctor
-                -> buildApp (LV $ Glob n) argsPruned
+                -> buildApp (LV n) argsPruned
 
             -- not saturated, underapplied
             LT  | isNewtype               -- newtype
@@ -405,11 +407,11 @@ irTerm top vs env tm@(App _ f a) = do
                     <$> irTerm top vs env (head argsPruned)
 
                 | isNewtype  -- newtype but the value is not among args yet
-                -> return . padLams $ \[vn] -> LApp False (LV $ Glob n) [LV $ Glob vn]
+                -> return . padLams $ \[vn] -> LApp False (LV n) [LV vn]
 
                 -- not a newtype, just apply to a constructor
                 | otherwise
-                -> padLams . applyToNames <$> buildApp (LV $ Glob n) argsPruned
+                -> padLams . applyToNames <$> buildApp (LV n) argsPruned
 
     -- type constructor
     (P (TCon t a) n _, args) -> return LNothing
@@ -444,7 +446,7 @@ irTerm top vs env tm@(App _ f a) = do
 
     applyToNames :: LExp -> [Name] -> LExp
     applyToNames tm [] = tm
-    applyToNames tm ns = LApp False tm $ map (LV . Glob) ns
+    applyToNames tm ns = LApp False tm $ map LV ns
 
     padLambdas :: [Int] -> Int -> Int -> ([Name] -> LExp) -> LExp
     padLambdas used startIdx endSIdx mkTerm
@@ -455,7 +457,7 @@ irTerm top vs env tm@(App _ f a) = do
 
     applyName :: Name -> IState -> [Term] -> Idris LExp
     applyName n ist args =
-        LApp False (LV $ Glob n) <$> mapM (irTerm top vs env . erase) (zip [0..] args)
+        LApp False (LV n) <$> mapM (irTerm top vs env . erase) (zip [0..] args)
       where
         erase (i, x)
             | i >= arity || i `elem` used = x
@@ -477,9 +479,9 @@ irTerm top vs env tm@(App _ f a) = do
         used = maybe [] (map fst . usedpos) $ lookupCtxtExact uName (idris_callgraph ist)
         fst4 (x,_,_,_,_,_) = x
 
-irTerm top vs env (P _ n _) = return $ LV (Glob n)
+irTerm top vs env (P _ n _) = return $ LV n
 irTerm top vs env (V i)
-    | i >= 0 && i < length env = return $ LV (Glob (env!!i))
+    | i >= 0 && i < length env = return $ LV (env!!i)
     | otherwise = ifail $ "bad de bruijn index: " ++ show i
 
 irTerm top vs env (Bind n (Lam _ _) sc) = LLam [n'] <$> irTerm top vs (n':env) sc
@@ -544,7 +546,7 @@ irSC top vs (ProjCase tm alts) = do
 irSC top vs (Case up n [ConCase (UN delay) i [_, _, n'] sc])
     | delay == txt "Delay"
     = do sc' <- irSC top vs sc -- mkForce n' n sc
-         return $ lsubst n' (LForce (LV (Glob n))) sc'
+         return $ lsubst n' (LForce (LV n)) sc'
 
 -- There are two transformations in this case:
 --
@@ -581,10 +583,10 @@ irSC top vs (Case up n [alt]) = do
     case replacement of
         Just sc -> irSC top vs sc
         _ -> do
-            alt' <- irAlt top vs (LV (Glob n)) alt
+            alt' <- irAlt top vs (LV n) alt
             return $ case namesBoundIn alt' `usedIn` subexpr alt' of
                 [] -> subexpr alt'  -- strip the unused top-most case
-                _  -> LCase up (LV (Glob n)) [alt']
+                _  -> LCase up (LV n) [alt']
   where
     namesBoundIn :: LAlt -> [Name]
     namesBoundIn (LConCase cn i ns sc) = ns
@@ -616,7 +618,7 @@ irSC top vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
     detag <- fgetState (opt_detaggable . ist_optimisation cn)
     if detag
         then irSC top vs (Case up n [ConCase cn a ns sc])
-        else LCase up (LV (Glob n)) <$> mapM (irAlt top vs (LV (Glob n))) alts
+        else LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
 
 irSC top vs sc@(Case up n alts) = do
     -- check that neither alternative needs the newtype optimisation,
@@ -626,7 +628,7 @@ irSC top vs sc@(Case up n alts) = do
         $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
 
     -- everything okay
-    LCase up (LV (Glob n)) <$> mapM (irAlt top vs (LV (Glob n))) alts
+    LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
   where
     isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
     isDetaggable  _                 = return False

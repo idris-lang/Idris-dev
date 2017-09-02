@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor, PatternGuards #-}
+{-# LANGUAGE DeriveFunctor, FlexibleContexts, PatternGuards #-}
 
 module Idris.AbsSyntax(
     module Idris.AbsSyntax
@@ -1107,6 +1107,14 @@ allImportDirs :: Idris [FilePath]
 allImportDirs = do i <- getIState
                    let optdirs = opt_importdirs (idris_options i)
                    return ("." : reverse optdirs)
+
+-- Like allImportDirs but the dirs that are a prefix of
+-- the files path first. This makes it look in the current
+-- package first.
+rankedImportDirs :: FilePath -> Idris [FilePath]
+rankedImportDirs fp = do ids <- allImportDirs
+                         let (prefixes, rest) = partition (`isPrefixOf`fp) ids
+                         return $ prefixes ++ rest
 
 addSourceDir :: FilePath -> Idris ()
 addSourceDir fp = do i <- getIState

@@ -75,6 +75,7 @@ extractDoUnquotes d (DoLet  fc n nfc v b)
        (b', ex2) <- extractUnquotes d b
        return (DoLet fc n nfc v' b', ex1 ++ ex2)
 extractDoUnquotes d (DoLetP fc t t') = fail "Pattern-matching lets cannot be quasiquoted"
+extractDoUnquotes d (DoRewrite fc h) = fail "Rewrites in Do block cannot be quasiquoted"
 
 
 extractUnquotes :: Int -> PTerm -> Elab' aux (PTerm, [(Name, PTerm)])

@@ -5,6 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+{-# LANGUAGE FlexibleContexts #-}
 module IRTS.Simplified(simplifyDefs, SDecl(..), SExp(..), SAlt(..)) where
 
 import Idris.Core.CaseTree
@@ -52,8 +53,7 @@ ldefs = do (l, h) <- get
 -- The boolean parameter indicates whether the expression is at tail
 -- call position.
 simplify :: Bool -> DExp -> State (DDefs, Int) SExp
-simplify tl (DV (Loc i)) = return (SV (Loc i))
-simplify tl (DV (Glob x))
+simplify tl (DV x)
     = do ctxt <- ldefs
          case lookupCtxtExact x ctxt of
               Just (DConstructor _ t 0) -> return $ SCon Nothing t x []
@@ -67,7 +67,7 @@ simplify tl (DLet n v e) = do v' <- simplify False v
                               return (SLet (Glob n) v' e')
 simplify tl (DUpdate n e) = do e' <- simplify False e
                                return (SUpdate (Glob n) e')
-simplify tl (DC loc i n args) = bindExprs args (SCon loc i n)
+simplify tl (DC loc i n args) = bindExprs args (SCon (Glob <$> loc) i n)
 simplify tl (DProj t i) = bindExpr t (\var -> SProj var i)
 simplify tl (DCase up e alts)
     = do alts' <- mapM (sAlt tl) alts
@@ -96,12 +96,11 @@ bindExpr :: DExp -> (LVar -> SExp) -> State (DDefs, Int) SExp
 bindExpr e f = bindExprM e (return . f)
 
 bindExprM :: DExp -> (LVar -> State (DDefs, Int) SExp) -> State (DDefs, Int) SExp
-bindExprM (DV (Glob x)) f
+bindExprM (DV x) f
     = do ctxt <- ldefs
          case lookupCtxtExact x ctxt of
               Just (DConstructor _ t 0) -> bindExprM (DC Nothing t x []) f
               _ -> f (Glob x)
-bindExprM (DV var) f = f var
 bindExprM e f =
     do e' <- simplify False e
        var <- freshVar

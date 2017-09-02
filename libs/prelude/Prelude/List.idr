@@ -378,7 +378,7 @@ scanl : (b -> a -> b) -> b -> List a -> List b
 scanl f q []      = [q]
 scanl f q (x::xs) = q :: scanl f (f q x) xs
 
-||| The scanl1 function is a variant of scanl that doesn't require an explicit 
+||| The scanl1 function is a variant of scanl that doesn't require an explicit
 ||| starting value.
 ||| It assumes the first element of the list to be the starting value and then
 ||| starts the fold with the element following it.
@@ -854,6 +854,10 @@ catMaybes (x::xs) =
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
+
+||| (::) is injective
+consInjective : (x :: xs) = (y :: ys) -> (x = y, xs = ys)
+consInjective Refl = (Refl, Refl)
 
 ||| The empty list is a right identity for append.
 appendNilRightNeutral : (l : List a) ->

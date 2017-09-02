@@ -22,7 +22,7 @@ $JSRTS.prim_readStr = function () {
         }
         i++;
         if (i == b.length) {
-            nb = new Buffer(b.length * 2);
+            var nb = new Buffer(b.length * 2);
             b.copy(nb)
             b = nb;
         }

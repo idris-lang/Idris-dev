@@ -7,9 +7,7 @@ import Control.Monad
 import Data.Char (isLetter)
 import qualified Data.IntMap as IMap
 import Data.List
-#if MIN_VERSION_optparse_applicative(0,13,0)
 import Data.Monoid ((<>))
-#endif
 import Data.Proxy
 import Data.Typeable
 import Options.Applicative
@@ -67,7 +65,8 @@ test testName path = goldenVsFileDiff testName diff ref output
   where
     ref = path </> "expected"
     output = path </> "output"
-    diff ref new = ["diff", "--strip-trailing-cr", "-u", new, ref]
+    diff ref new | os == "openbsd" = ["diff", "-u", new, ref]
+                 | otherwise = ["diff", "--strip-trailing-cr", "-u", new, ref]
 
 -- Should always output a 3-charater string from a postive Int
 indexToString :: Int -> String

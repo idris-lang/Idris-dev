@@ -5,6 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+{-# LANGUAGE FlexibleInstances #-}
 module Idris.Apropos (apropos, aproposModules) where
 
 import Idris.AbsSyntax

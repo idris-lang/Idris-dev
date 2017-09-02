@@ -25,9 +25,7 @@ import Control.Monad.Trans.Except (throwE)
 import Control.Monad.Trans.Reader (ask)
 import Data.Char
 import Data.Maybe
-#if MIN_VERSION_optparse_applicative(0,13,0)
 import Data.Monoid ((<>))
-#endif
 import Options.Applicative
 import Options.Applicative.Arrows
 import Options.Applicative.Types (ReadM(..))

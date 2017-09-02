@@ -22,8 +22,10 @@ TT is the core language of Idris. The language has:
    * We have a simple collection of tactics which we use to elaborate source
      programs with implicit syntax into fully explicit terms.
 -}
-{-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, FlexibleContexts,
-             FunctionalDependencies, MultiParamTypeClasses, PatternGuards #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric,
+             DeriveTraversable, FlexibleContexts, FlexibleInstances,
+             FunctionalDependencies, MultiParamTypeClasses, PatternGuards,
+             TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.TT(
     AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)

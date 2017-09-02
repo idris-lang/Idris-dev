@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleContexts, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.WHNF(whnf, whnfArgs, WEnv) where
 

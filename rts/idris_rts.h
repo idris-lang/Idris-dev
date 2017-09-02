@@ -206,14 +206,9 @@ typedef void(*func)(VM*, VAL*);
 #define CTAG(x) (((x)->info.c.tag_arity) >> 8)
 #define CARITY(x) ((x)->info.c.tag_arity & 0x000000ff)
 
-// Use top 16 bits for saying which heap value is in
-// Bottom 16 bits for closure type
 
-#define GETTY(x) ((x)->ty & 0x0000ffff)
-#define SETTY(x,t) (x)->ty = (((x)->ty & 0xffff0000) | (t))
-
-#define GETHEAP(x) ((x)->ty >> 16)
-#define SETHEAP(x,y) (x)->ty = (((x)->ty & 0x0000ffff) | ((y) << 16))
+#define GETTY(x) ((x)->ty)
+#define SETTY(x,t) ((x)->ty = t)
 
 // Integers, floats and operators
 

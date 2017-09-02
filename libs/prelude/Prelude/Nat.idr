@@ -147,7 +147,7 @@ lteSuccRight : LTE n m -> LTE n (S m)
 lteSuccRight LTEZero     = LTEZero
 lteSuccRight (LTESucc x) = LTESucc (lteSuccRight x)
 
-||| n + 1 < m implies n < m 
+||| n + 1 < m implies n < m
 lteSuccLeft : LTE (S n) m -> LTE n m
 lteSuccLeft (LTESucc x) = lteSuccRight x
 
@@ -160,6 +160,11 @@ lteAddRight : (n : Nat) -> LTE n (plus n m)
 lteAddRight Z = LTEZero
 lteAddRight (S k) = LTESucc (lteAddRight k)
 
+||| If a number is not less than another, it is greater than or equal to it
+notLTImpliesGTE : Not (LT a b) -> GTE a b
+notLTImpliesGTE {b = Z} _ = LTEZero
+notLTImpliesGTE {a = Z} {b = S k} notLt = absurd (notLt (LTESucc LTEZero))
+notLTImpliesGTE {a = S k} {b = S j} notLt = LTESucc (notLTImpliesGTE (notLt . LTESucc))
 
 ||| Boolean test than one Nat is less than or equal to another
 total lte : Nat -> Nat -> Bool
@@ -231,7 +236,10 @@ Cast Integer Nat where
   cast = fromInteger
 
 Cast String Nat where
-    cast str = cast (the Integer (cast str))
+  cast str = cast (the Integer (cast str))
+
+Cast Nat String where
+  cast n = cast (the Integer (cast n))
 
 ||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (*)
 record Multiplicative where

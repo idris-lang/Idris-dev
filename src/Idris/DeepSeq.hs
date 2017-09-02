@@ -29,20 +29,6 @@ import Control.DeepSeq
 import Network.Socket (PortNumber)
 
 -- These types don't have Generic instances
-instance NFData CT.Options where
-  rnf (CT.Options x1 x2 x3 x4) = rnf x1 `seq` rnf x2 `seq` rnf x3 `seq` rnf x4 `seq` ()
-
-instance NFData CT.ListType where
-  rnf (CT.Bullet c) = rnf c `seq` ()
-  rnf (CT.Numbered nw i) = rnf nw `seq` rnf i `seq` ()
-
-instance NFData CT.CodeAttr where
-  rnf (CT.CodeAttr a b) = rnf a `seq` rnf b `seq` ()
-
-instance NFData CT.NumWrapper where
-  rnf CT.PeriodFollowing = ()
-  rnf CT.ParenFollowing = ()
-
 instance NFData DynamicLib where
     rnf (Lib x _) = rnf x `seq` ()
 

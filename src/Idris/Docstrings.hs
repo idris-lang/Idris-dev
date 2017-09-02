@@ -6,7 +6,8 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor, DeriveGeneric, ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable,
+             ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Docstrings (
     Docstring(..), Block(..), Inline(..), parseDocstring, renderDocstring

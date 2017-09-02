@@ -1,11 +1,15 @@
 {-# LANGUAGE CPP #-}
 
+#if !defined(MIN_VERSION_Cabal)
+# define MIN_VERSION_Cabal(x,y,z) 0
+#endif
+
 import Control.Monad
 import Data.IORef
 import Control.Exception (SomeException, catch)
 
 import Distribution.Simple
-import Distribution.Simple.BuildPaths (autogenModulesDir)
+import Distribution.Simple.BuildPaths
 import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
@@ -21,6 +25,11 @@ import System.FilePath ((</>), splitDirectories,isAbsolute)
 import System.Directory
 import qualified System.FilePath.Posix as Px
 import System.Process
+
+#if (MIN_VERSION_Cabal(2,0,0))
+import Distribution.Types.UnqualComponentName
+#endif
+
 
 -- After Idris is built, we need to check and install the prelude and other libs
 
@@ -56,31 +65,36 @@ windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation
 
 usesGMP :: S.ConfigFlags -> Bool
 usesGMP flags =
-  case lookup (FlagName "gmp") (S.configConfigurationsFlags flags) of
+  case lookup (mkFlagName "gmp") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
 
 execOnly :: S.ConfigFlags -> Bool
 execOnly flags =
-  case lookup (FlagName "execonly") (S.configConfigurationsFlags flags) of
+  case lookup (mkFlagName "execonly") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
 
 isRelease :: S.ConfigFlags -> Bool
 isRelease flags =
-    case lookup (FlagName "release") (S.configConfigurationsFlags flags) of
+    case lookup (mkFlagName "release") (S.configConfigurationsFlags flags) of
       Just True -> True
       Just False -> False
       Nothing -> False
 
 isFreestanding :: S.ConfigFlags -> Bool
 isFreestanding flags =
-  case lookup (FlagName "freestanding") (S.configConfigurationsFlags flags) of
+  case lookup (mkFlagName "freestanding") (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
+
+#if !(MIN_VERSION_Cabal(2,0,0))
+mkFlagName :: String -> FlagName
+mkFlagName = FlagName
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Clean
@@ -151,20 +165,22 @@ generateToolchainModule verbosity srcDir toolDir = do
     createDirectoryIfMissingVerbose verbosity True srcDir
     rewriteFile toolPath (commonContent ++ toolContent)
 
-idrisConfigure _ flags _ local = do
+idrisConfigure _ flags pkgdesc local = do
     configureRTS
-    generateVersionModule verbosity (autogenModulesDir local) (isRelease (configFlags local))
-    if isFreestanding $ configFlags local
-        then do
-                toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
-                generateToolchainModule verbosity (autogenModulesDir local) toolDir
-                targetDir <- lookupEnv "IDRIS_LIB_DIR"
-                case targetDir of
-                     Just d -> generateTargetModule verbosity (autogenModulesDir local) d
-                     Nothing -> error $ "Trying to build freestanding without a target directory."
-                                  ++ " Set it by defining IDRIS_LIB_DIR."
-        else
-                generateToolchainModule verbosity (autogenModulesDir local) Nothing
+    withLibLBI pkgdesc local $ \_ libcfg -> do
+      let libAutogenDir = autogenComponentModulesDir local libcfg
+      generateVersionModule verbosity libAutogenDir (isRelease (configFlags local))
+      if isFreestanding $ configFlags local
+          then do
+                  toolDir <- lookupEnv "IDRIS_TOOLCHAIN_DIR"
+                  generateToolchainModule verbosity libAutogenDir toolDir
+                  targetDir <- lookupEnv "IDRIS_LIB_DIR"
+                  case targetDir of
+                       Just d -> generateTargetModule verbosity libAutogenDir d
+                       Nothing -> error $ "Trying to build freestanding without a target directory."
+                                    ++ " Set it by defining IDRIS_LIB_DIR."
+          else
+                  generateToolchainModule verbosity libAutogenDir Nothing
     where
       verbosity = S.fromFlag $ S.configVerbosity flags
       version   = pkgVersion . package $ localPkgDescr local
@@ -174,6 +190,10 @@ idrisConfigure _ flags _ local = do
       -- distribution if it's not there, so instead I just delete
       -- the file after configure.
       configureRTS = make verbosity ["-C", "rts", "clean"]
+
+#if !(MIN_VERSION_Cabal(2,0,0))
+      autogenComponentModulesDir lbi _ = autogenModulesDir lbi
+#endif
 
 idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
@@ -213,11 +233,16 @@ getVersion args flags = do
       let buildinfo = (emptyBuildInfo { cppOptions = ["-DVERSION="++hash] }) :: BuildInfo
       return (Just buildinfo, [])
 
+
+#if !(MIN_VERSION_Cabal(2,0,0))
+mkUnqualComponentName = id
+#endif
+
 idrisPreBuild args flags = do
 #ifdef mingw32_HOST_OS
         createDirectoryIfMissingVerbose verbosity True dir
         windres verbosity ["icons/idris_icon.rc","-o", dir++"/idris_icon.o"]
-        return (Nothing, [("idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
+        return (Nothing, [(mkUnqualComponentName "idris", emptyBuildInfo { ldOptions = [dir ++ "/idris_icon.o"] })])
      where
         verbosity = S.fromFlag $ S.buildVerbosity flags
         dir = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
@@ -225,9 +250,10 @@ idrisPreBuild args flags = do
         return (Nothing, [])
 #endif
 
-idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
-      buildStdLib
-      buildRTS
+idrisBuild _ flags _ local 
+   = if (execOnly (configFlags local)) then buildRTS
+        else do buildStdLib
+                buildRTS
    where
       verbosity = S.fromFlag $ S.buildVerbosity flags
 
@@ -246,10 +272,11 @@ idrisBuild _ flags _ local = unless (execOnly (configFlags local)) $ do
 -- -----------------------------------------------------------------------------
 -- Copy/Install
 
-idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ do
-      installStdLib
-      installRTS
-      installManPage
+idrisInstall verbosity copy pkg local 
+   = if (execOnly (configFlags local)) then installRTS
+        else do installStdLib
+                installRTS
+                installManPage
    where
       target = datadir $ L.absoluteInstallDirs pkg local copy
 
@@ -274,26 +301,15 @@ idrisInstall verbosity copy pkg local = unless (execOnly (configFlags local)) $ 
 -- -----------------------------------------------------------------------------
 -- Test
 
--- FIXME: We use the __GLASGOW_HASKELL__ macro because MIN_VERSION_cabal seems
--- to be broken !
-
 -- There are two "dataDir" in cabal, and they don't relate to each other.
 -- When fetching modules, idris uses the second path (in the pkg record),
 -- which by default is the root folder of the project.
 -- We want it to be the install directory where we put the idris libraries.
 fixPkg pkg target = pkg { dataDir = target }
 
--- The "Args" argument of the testHooks has been added in cabal 1.22.0,
--- and should therefore be ignored for prior versions.
-#if __GLASGOW_HASKELL__ < 710
-originalTestHook _ = testHook simpleUserHooks
-#else
-originalTestHook = testHook simpleUserHooks
-#endif
-
 idrisTestHook args pkg local hooks flags = do
   let target = datadir $ L.absoluteInstallDirs pkg local NoCopyDest
-  originalTestHook args (fixPkg pkg target) local hooks flags
+  testHook simpleUserHooks args (fixPkg pkg target) local hooks flags
 
 -- -----------------------------------------------------------------------------
 -- Main
@@ -314,9 +330,5 @@ main = defaultMainWithHooks $ simpleUserHooks
    , preSDist = idrisPreSDist
    , sDistHook = idrisSDist (sDistHook simpleUserHooks)
    , postSDist = idrisPostSDist
-#if __GLASGOW_HASKELL__ < 710
-   , testHook = idrisTestHook ()
-#else
    , testHook = idrisTestHook
-#endif
    }

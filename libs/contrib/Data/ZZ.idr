@@ -24,8 +24,8 @@ absZ (Pos n) = n
 absZ (NegS n) = S n
 
 implementation Show ZZ where
-  show (Pos n) = show n
-  show (NegS n) = "-" ++ show (S n)
+  showPrec d (Pos n) = showPrec d n
+  showPrec d (NegS n) = showParens (d >= PrefixMinus) $ "-" ++ showPrec PrefixMinus (S n)
 
 negNat : Nat -> ZZ
 negNat Z = Pos Z

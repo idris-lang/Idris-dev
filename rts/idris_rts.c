@@ -460,6 +460,11 @@ void dumpVal(VAL v) {
     case CT_STRING:
         printf("STR[%s]", v->info.str.str);
         break;
+    case CT_STROFFSET:
+        printf("OFFSET[");
+        dumpVal((VAL)(v->info.str_offset->str));
+        printf("]");
+        break;
     case CT_FWD:
         printf("CT_FWD ");
         dumpVal((VAL)(v->info.ptr));
@@ -591,15 +596,16 @@ VAL idris_castStrFloat(VM* vm, VAL i) {
 VAL idris_concat(VM* vm, VAL l, VAL r) {
     char *rs = GETSTR(r);
     char *ls = GETSTR(l);
-    // dumpVal(l);
-    // printf("\n");
-    Closure* cl = allocate(sizeof(Closure) + GETSTRLEN(l) + GETSTRLEN(r) + 1, 0);
+    int llen = GETSTRLEN(l);
+    int rlen = GETSTRLEN(r);
+
+    Closure* cl = allocate(sizeof(Closure) + llen + rlen + 1, 0);
     SETTY(cl, CT_STRING);
     cl->info.str.str = (char*)cl + sizeof(Closure);
     strcpy(cl->info.str.str, ls);
     strcat(cl->info.str.str, rs);
 
-    cl->info.str.len = GETSTRLEN(l) + GETSTRLEN(r);
+    cl->info.str.len = llen + rlen;
     return cl;
 }
 

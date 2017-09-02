@@ -5,7 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE FlexibleContexts, PatternGuards #-}
 
 module Idris.PartialEval(
     partial_eval, getSpecApps, specType

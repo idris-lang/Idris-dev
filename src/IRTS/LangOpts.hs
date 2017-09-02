@@ -35,14 +35,14 @@ nextN = do i <- get
 doInline :: LDefs -> LDecl -> LDecl
 doInline defs d@(LConstructor _ _ _) = d
 doInline defs (LFun opts topn args exp)
-      = let res = evalState (inlineWith [topn] (map (\n -> (n, LV (Glob n))) args) exp) 0 in
+      = let res = evalState (inlineWith [topn] (map (\n -> (n, LV n)) args) exp) 0 in
             LFun opts topn args res
   where
     inlineWith :: [Name] -> [(Name, LExp)] -> LExp -> State Int LExp
-    inlineWith done env var@(LV (Glob n))
-                                     = case lookup n env of
-                                            Just t -> return t
-                                            Nothing -> return var
+    inlineWith done env var@(LV n)
+        = case lookup n env of
+               Just t -> return t
+               Nothing -> return var
     inlineWith done env (LLazyApp n es) = LLazyApp n <$> (mapM (inlineWith done env) es)
     inlineWith done env (LForce e) = LForce <$> inlineWith done env e
     inlineWith done env (LLazyExp e) = LLazyExp <$> inlineWith done env e
@@ -51,12 +51,12 @@ doInline defs (LFun opts topn args exp)
     inlineWith done env (LLet n val sc)
        = do n' <- nextN
             LLet n' <$> inlineWith done env val <*>
-                        inlineWith done ((n, LV (Glob n')) : env) sc
+                        inlineWith done ((n, LV n') : env) sc
     inlineWith done env (LLam args sc)
        = do ns' <- mapM (\n -> do n' <- nextN
                                   return (n, n')) args
             LLam (map snd ns') <$>
-                 inlineWith done (map (\ (n,n') -> (n, LV (Glob n'))) ns' ++ env) sc
+                 inlineWith done (map (\ (n,n') -> (n, LV n')) ns' ++ env) sc
     inlineWith done env (LProj exp i) = LProj <$> inlineWith done env exp <*> return i
     inlineWith done env (LCon loc i n es)
        = LCon loc i n <$> mapM (inlineWith done env) es
@@ -64,7 +64,7 @@ doInline defs (LFun opts topn args exp)
        = LCase ty <$> inlineWith done env e <*> mapM (inlineWithAlt done env) alts
     inlineWith done env (LOp f es) = LOp f <$> mapM (inlineWith done env) es
     -- the interesting case!
-    inlineWith done env (LApp t (LV (Glob n)) es)
+    inlineWith done env (LApp t (LV n) es)
        | n `notElem` done,
          [LFun opts _ args body] <- lookupCtxt n defs,
          Inline `elem` opts,
@@ -82,6 +82,6 @@ doInline defs (LFun opts topn args exp)
        = do ns' <- mapM (\n -> do n' <- nextN
                                   return (n, n')) es
             LConCase i n (map snd ns') <$>
-              inlineWith done (map (\ (n,n') -> (n, LV (Glob n'))) ns' ++ env) rhs
+              inlineWith done (map (\ (n,n') -> (n, LV n')) ns' ++ env) rhs
     inlineWithAlt done env (LConstCase c e) = LConstCase c <$> inlineWith done env e
     inlineWithAlt done env (LDefaultCase e) = LDefaultCase <$> inlineWith done env e

@@ -29,8 +29,6 @@ VAL idris_getString(VM* vm, void* buffer);
 void* do_popen(const char* cmd, const char* mode);
 int fpoll(void* h);
 
-
-int idris_eqPtr(void* x, void* y);
 int isNull(void* ptr);
 void* idris_stdin();
 

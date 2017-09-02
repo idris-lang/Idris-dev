@@ -8,10 +8,6 @@ import public Network.Socket.Data
 import Network.Socket.Raw
 
 %include C "idris_net.h"
-%include C "sys/types.h"
-%include C "sys/socket.h"
-%include C "unistd.h"
-%include C "netdb.h"
 
 %access export
 
@@ -24,7 +20,7 @@ socket : (fam  : SocketFamily)
       -> (pnum : ProtocolNumber)
       -> IO (Either SocketError Socket)
 socket sf st pn = do
-  socket_res <- foreign FFI_C "socket"
+  socket_res <- foreign FFI_C "idrnet_socket"
                         (Int -> Int -> Int -> IO Int)
                         (toCode sf) (toCode st) pn
 
