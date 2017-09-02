@@ -1666,7 +1666,9 @@ loadModule' f phase
         ibcsd <- valIBCSubDir i
         ids <- rankedImportDirs file
         fp <- findImport ids ibcsd file
-        if file `elem` imported i
+        let noLoad = (file `elem` imported i)
+                 && (fromMaybe False (file `lookup` idris_imported i))
+        if noLoad
           then do logParser 1 $ "Already read " ++ file
                   return Nothing
           else do putIState (i { imported = file : imported i })
