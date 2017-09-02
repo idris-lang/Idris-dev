@@ -14,7 +14,7 @@ module Util.DynamicLinker ( ForeignFun(..)
 
 #ifdef IDRIS_FFI
 import Foreign.LibFFI
-import Foreign.Ptr (FunPtr, Ptr(), castPtrToFunPtr, nullFunPtr, nullPtr)
+import Foreign.Ptr (FunPtr, Ptr, castPtrToFunPtr, nullFunPtr, nullPtr)
 import System.Directory
 #ifndef mingw32_HOST_OS
 import Control.Exception (IOException, throwIO, try)
