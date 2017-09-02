@@ -144,10 +144,15 @@ takeToken lex str
     = do i <- scan lex 0 str -- i must be > 0 if successful
          pure (substr 0 i (getString str), strTail i str)
 
-||| Recognise a digit 0-9
+||| Recognise a single digit 0-9
+export
+digit : Lexer
+digit = pred isDigit
+
+||| Recognise one or more digits
 export
 digits : Lexer
-digits = some (Pred isDigit)
+digits = some digit
 
 ||| Recognise a specific string
 export
@@ -157,15 +162,75 @@ exact str with (unpack str)
   exact str | (x :: xs)
       = foldl SeqEmpty (is x) (map is xs)
 
-||| Recognise a whitespace character
+||| Recognise a single hexidecimal digit
+export
+hexDigit : Lexer
+hexDigit = digit <|> oneOf "abcdefABCDEF"
+
+||| Recognise one or more hexidecimal digits
+export
+hexDigits : Lexer
+hexDigits = some hexDigit
+
+||| Recognise a single alpha character
+export
+alpha : Lexer
+alpha = pred isAlpha
+
+||| Recognise one or more alpha characters
+export
+alphas : Lexer
+alphas = some alpha
+
+||| Recognise a lowercase alpha character
+export
+lower : Lexer
+lower = pred isLower
+
+||| Recognise one or more lowercase alpha characters
+export
+lowers : Lexer
+lowers = some lower
+
+||| Recognise an uppercase alpha character
+export
+upper : Lexer
+upper = pred isUpper
+
+||| Recognise one or more uppercase alpha characters
+export
+uppers : Lexer
+uppers = some upper
+
+||| Recognise an alphanumeric character
+export
+alphaNum : Lexer
+alphaNum = pred isAlphaNum
+
+||| Recognise one or more alphanumeric characters
+export
+alphaNums : Lexer
+alphaNums = some alphaNum
+
+||| Recognise a single whitespace character
 export
 space : Lexer
-space = some (pred isSpace)
+space = pred isSpace
 
-||| Recognise a non-alphanumeric, non-whitespace character
+||| Recognise one or more whitespace characters
+export
+spaces : Lexer
+spaces = some space
+
+||| Recognise a single non-whitespace, non-alphanumeric character
 export
 symbol : Lexer
-symbol = some (pred (\x => not (isAlphaNum x) && not (isSpace x)))
+symbol = pred (\x => not (isSpace x || isAlphaNum x))
+
+||| Recognise one or more non-whitespace, non-alphanumeric characters
+export
+symbols : Lexer
+symbols = some symbol
 
 ||| Recognise zero or more occurrences of a sub-lexer between
 ||| delimiting lexers
@@ -201,6 +266,11 @@ charLit = let q = '\'' in
 export
 intLit : Lexer
 intLit = opt (is '-') <+> digits
+
+||| Recognise a hexidecimal literal, prefixed by "0x" or "0X"
+export
+hexLit : Lexer
+hexLit = is '0' <+> oneOf "xX" <+> hexDigits
 
 ||| A mapping from lexers to the tokens they produce.
 ||| This is a list of pairs `(Lexer, String -> tokenType)`
