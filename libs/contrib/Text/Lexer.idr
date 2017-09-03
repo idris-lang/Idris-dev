@@ -169,6 +169,12 @@ takeToken lex str
     = do i <- scan lex 0 str -- i must be > 0 if successful
          pure (substr 0 i (getString str), strTail i str)
 
+||| Recognise a character range [`a`-`b`]. Also works in reverse!
+export
+range : (start : Char) -> (end : Char) -> Lexer
+range start end = pred (\x => (x >= min start end)
+                           && (x <= max start end))
+
 ||| Recognise a single digit 0-9
 export
 digit : Lexer
