@@ -1,0 +1,4 @@
+bar_private : Nat -> Nat
+bar_visible : Nat -> Nat
+No such variable foo_private
+foo_visible : Nat -> Nat
