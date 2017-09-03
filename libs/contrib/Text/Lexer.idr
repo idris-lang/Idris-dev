@@ -258,6 +258,17 @@ export
 spaces : Lexer
 spaces = some space
 
+||| Recognise a single newline sequence. Understands CRLF, CR, and LF
+export
+newline : Lexer
+newline = let crlf = "\r\n" in
+              exact crlf <|> oneOf crlf
+
+||| Recognise one or more newline sequences. Understands CRLF, CR, and LF
+export
+newlines : Lexer
+newlines = some newline
+
 ||| Recognise a single non-whitespace, non-alphanumeric character
 export
 symbol : Lexer
