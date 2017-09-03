@@ -119,6 +119,20 @@ choice : (xs : List Lexer) -> {auto ok : NonEmpty xs} -> Lexer
 choice (x :: [])          = x
 choice (x :: xs@(_ :: _)) = x <|> choice xs
 
+||| Repeat the sub-lexer `l` zero or more times until the lexer
+||| `stopBefore` is encountered. `stopBefore` will not be consumed.
+||| Not guaranteed to consume input.
+export
+manyUntil : (stopBefore : Recognise c) -> (l : Lexer) -> Recognise False
+manyUntil stopBefore l = many (reject stopBefore <+> l)
+
+||| Repeat the sub-lexer `l` zero or more times until the lexer
+||| `stopAfter` is encountered, and consume it. Guaranteed to
+||| consume if `stopAfter` consumes.
+export
+manyThen : (stopAfter : Recognise c) -> (l : Lexer) -> Recognise c
+manyThen stopAfter l = manyUntil stopAfter l <+> stopAfter
+
 ||| Recognise many instances of `l` until an instance of `end` is
 ||| encountered.
 |||
@@ -291,7 +305,7 @@ symbols = some symbol
 ||| delimiting lexers
 export
 surround : (start : Lexer) -> (end : Lexer) -> (l : Lexer) -> Lexer
-surround start end l = start <+> many (reject end <+> l) <+> end
+surround start end l = start <+> manyThen end l
 
 ||| Recognise zero or more occurrences of a sub-lexer surrounded
 ||| by the same quote lexer on both sides (useful for strings)
