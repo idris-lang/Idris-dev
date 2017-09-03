@@ -140,6 +140,8 @@ manyThen stopAfter l = manyUntil stopAfter l <+> stopAfter
 export
 manyTill : (l : Lexer) -> (end : Lexer) -> Recognise False
 manyTill l end = end <|> opt (l <+> manyTill l end)
+%deprecate manyTill
+    "Prefer `lineComment`, or `manyUntil`/`manyThen` (argument order is flipped)."
 
 ||| Recognise any character
 export
