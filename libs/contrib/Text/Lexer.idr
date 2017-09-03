@@ -291,6 +291,17 @@ export
 spaces : Lexer
 spaces = some space
 
+||| Recognise a single newline sequence. Understands CRLF, CR, and LF
+export
+newline : Lexer
+newline = let crlf = "\r\n" in
+              exact crlf <|> oneOf crlf
+
+||| Recognise one or more newline sequences. Understands CRLF, CR, and LF
+export
+newlines : Lexer
+newlines = some newline
+
 ||| Recognise a single non-whitespace, non-alphanumeric character
 export
 symbol : Lexer
@@ -340,6 +351,25 @@ intLit = opt (is '-') <+> digits
 export
 hexLit : Lexer
 hexLit = approx "0x" <+> hexDigits
+
+||| Recognise `start`, then recognise all input until a newline is encountered,
+||| and consume the newline. Will succeed if end-of-input is encountered before
+||| a newline.
+export
+lineComment : (start : Lexer) -> Lexer
+lineComment start = start <+> manyUntil newline any <+> opt newline
+
+||| Recognise all input between `start` and `end` lexers.
+||| Supports balanced nesting.
+|||
+||| For block comments that don't support nesting (such as C-style comments),
+||| use `surround`.
+export
+blockComment : (start : Lexer) -> (end : Lexer) -> Lexer
+blockComment start end = start <+> middle <+> end
+  where
+    middle : Recognise False
+    middle = manyUntil end (blockComment start end <|> any)
 
 ||| A mapping from lexers to the tokens they produce.
 ||| This is a list of pairs `(Lexer, String -> tokenType)`
