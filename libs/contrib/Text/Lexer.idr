@@ -70,6 +70,32 @@ export
 isNot : Char -> Lexer
 isNot x = Pred (/=x)
 
+||| Recognise a character case-insensitively
+export
+like : Char -> Lexer
+like x = Pred (\y => toUpper x == toUpper y)
+
+||| Recognise anything but the given character case-insensitively
+export
+notLike : Char -> Lexer
+notLike x = Pred (\y => toUpper x /= toUpper y)
+
+||| Recognise a specific string
+export
+exact : String -> Lexer
+exact str with (unpack str)
+  exact str | [] = Fail -- Not allowed, Lexer has to consume
+  exact str | (x :: xs)
+      = foldl SeqEmpty (is x) (map is xs)
+
+||| Recognise a specific string case-insensitively
+export
+approx : String -> Lexer
+approx str with (unpack str)
+  approx str | [] = Fail -- Not allowed, Lexer has to consume
+  approx str | (x :: xs)
+      = foldl SeqEmpty (like x) (map like xs)
+
 ||| Recognise a lexer or recognise no input. This is not guaranteed
 ||| to consume input
 export
@@ -190,14 +216,6 @@ digit = pred isDigit
 export
 digits : Lexer
 digits = some digit
-
-||| Recognise a specific string
-export
-exact : String -> Lexer
-exact str with (unpack str)
-  exact str | [] = Fail -- Not allowed, Lexer has to consume
-  exact str | (x :: xs)
-      = foldl SeqEmpty (is x) (map is xs)
 
 ||| Recognise a single hexidecimal digit
 export
