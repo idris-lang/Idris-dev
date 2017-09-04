@@ -127,6 +127,34 @@ export
 manyTill : (l : Lexer) -> (end : Lexer) -> Recognise False
 manyTill l end = end <|> opt (l <+> manyTill l end)
 
+||| Recognise a sub-lexer at least `min` times. Consumes input unless
+||| min is zero.
+export
+atLeast : (min : Nat) -> (l : Lexer) -> Recognise (min > 0)
+atLeast Z l       = many l
+atLeast (S min) l = l <+> atLeast min l
+
+||| Recognise a sub-lexer at most `max` times. Not guaranteed to
+||| consume input.
+export
+atMost : (max : Nat) -> (l : Lexer) -> Recognise False
+atMost Z _     = Empty
+atMost (S k) l = atMost k l <+> opt l
+
+||| Recognise a sub-lexer repeated between `min` and `max` times. Fails
+||| if the inputs are out of order. Consumes input unless min is zero.
+export
+between : (min : Nat) -> (max : Nat) -> (l : Lexer) -> Recognise (min > 0)
+between Z max l           = atMost max l
+between (S min) Z _       = Fail
+between (S min) (S max) l = l <+> between min max l
+
+||| Recognise exactly `count` repeated occurrences of a sub-lexer.
+||| Consumes input unless count is zero.
+export
+exactly : (count : Nat) -> (l : Lexer) -> Recognise (count > 0)
+exactly n l = between n n l
+
 ||| Recognise any character
 export
 any : Lexer
