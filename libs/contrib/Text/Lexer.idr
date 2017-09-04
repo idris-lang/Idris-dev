@@ -113,11 +113,11 @@ export
 many : Lexer -> Recognise False
 many l = opt (some l)
 
-||| Recognise the first matching lexer from a non-empty list.
+||| Recognise the first matching lexer from a Foldable. Always consumes input
+||| if one of the options succeeds. Fails if the foldable is empty.
 export
-choice : (xs : List Lexer) -> {auto ok : NonEmpty xs} -> Lexer
-choice (x :: [])          = x
-choice (x :: xs@(_ :: _)) = x <|> choice xs
+choice : Foldable t => t Lexer -> Lexer
+choice xs = foldr Alt Fail xs
 
 ||| Recognise many instances of `l` until an instance of `end` is
 ||| encountered.
