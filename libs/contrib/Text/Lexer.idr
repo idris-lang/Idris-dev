@@ -291,7 +291,7 @@ symbols = some symbol
 ||| delimiting lexers
 export
 surround : (start : Lexer) -> (end : Lexer) -> (l : Lexer) -> Lexer
-surround start end l = start <+> manyTill l end
+surround start end l = start <+> many (reject end <+> l) <+> end
 
 ||| Recognise zero or more occurrences of a sub-lexer surrounded
 ||| by the same quote lexer on both sides (useful for strings)
