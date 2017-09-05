@@ -1474,6 +1474,17 @@ process fn (PPrint fmt width t)
             ty' = normaliseC ctxt [] ty
         iPrintResult =<< renderExternal fmt width (pprintDelab ist tm)
 
+
+process fn Quit = iPrintError "Unimplemented pattern for command Quit"
+process fn Reload = iPrintError "Unimplemented pattern for command Reload"
+process fn Watch = iPrintError "Unimplemented pattern for command Watch"
+process fn (Load _ _) = iPrintError "Unimplemented pattern for command Load"
+process fn Edit = iPrintError "Unimplemented pattern for command Edit"
+process fn Proofs = iPrintError "Unimplemented pattern for command Proofs"
+process fn (Verbosity _)
+   = iPrintError "Unimplemented pattern for command Verbosity"
+
+
 showTotal :: Totality -> IState -> Doc OutputAnnotation
 showTotal t@(Partial (Other ns)) i
    = text "possibly not total due to:" <$>
