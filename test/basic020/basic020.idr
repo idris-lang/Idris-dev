@@ -28,5 +28,15 @@ fn3 m@(Ctor _) = y (Ctor 99)
 nestedWhereShadowsAsPattern : fn3 (Ctor 42) = Ctor 99
 nestedWhereShadowsAsPattern = Refl
 
+fn4 : Ty -> Ty
+fn4 m@(Ctor _) = y (Ctor 99)
+  where
+    y _ = z
+      where
+        z = m -- should be @ pattern
+
+nestedWhereExposesAsPattern : fn4 (Ctor 42) = Ctor 42
+nestedWhereExposesAsPattern = Refl
+
 main : IO ()
 main = putStrLn "OK"
