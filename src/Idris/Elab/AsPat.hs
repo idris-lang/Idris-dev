@@ -15,10 +15,10 @@ import Control.Monad.State.Strict
 import Data.Generics.Uniplate.Data (transformM)
 
 -- | Desugar by changing x@y on lhs to let x = y in ... or rhs
-desugarAs :: PTerm -> PTerm -> (PTerm, PTerm)
-desugarAs lhs rhs
+desugarAs :: PTerm -> PTerm -> [PDecl] -> (PTerm, PTerm, [PDecl])
+desugarAs lhs rhs whereblock
     = let (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) [] in
-          (lhs', bindPats pats rhs)
+          (lhs', bindPats pats rhs, whereblock)
   where
     bindPats :: [(Name, FC, PTerm)] -> PTerm -> PTerm
     bindPats [] rhs = rhs
