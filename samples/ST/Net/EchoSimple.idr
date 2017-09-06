@@ -1,5 +1,5 @@
 import Network.Socket
-import Network
+import ST.Net.Network
 import Control.ST
 import Control.ST.ImplicitCall
 

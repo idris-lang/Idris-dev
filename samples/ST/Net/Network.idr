@@ -1,4 +1,4 @@
-module Network
+module ST.Net.Network
 
 import Control.ST
 import Network.Socket
