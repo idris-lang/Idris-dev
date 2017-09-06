@@ -17,25 +17,25 @@ import Data.Generics.Uniplate.Data (transformM, universe)
 -- | Desugar by changing x@y on lhs to let x = y in ... or rhs
 desugarAs :: PTerm -> PTerm -> [PDecl] -> (PTerm, PTerm, [PDecl])
 desugarAs lhs rhs whereblock
-    = (lhs', bindPats rhs pats, map (fixDecl pats) whereblock)
+    = (lhs', bindOnRight rhs pats, map (bindInWhereDecl pats) whereblock)
   where
     (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) []
 
-    bindPats :: PTerm -> [(Name, FC, PTerm)] -> PTerm
-    bindPats = foldr (\(n, fc, tm) -> PLet fc n NoFC Placeholder tm)
+    bindOnRight :: PTerm -> [(Name, FC, PTerm)] -> PTerm
+    bindOnRight = foldr (\(n, fc, tm) -> PLet fc n NoFC Placeholder tm)
 
-    fixDecl :: [(Name, FC, PTerm)] -> PDecl -> PDecl
-    fixDecl pats (PClauses fc opts n clauses)
-       = PClauses fc opts n $ map (fixClause pats) clauses
-    fixDecl _ d = d
+    bindInWhereDecl :: [(Name, FC, PTerm)] -> PDecl -> PDecl
+    bindInWhereDecl pats (PClauses fc opts n clauses)
+       = PClauses fc opts n $ map (bindInWhereClause pats) clauses
+    bindInWhereDecl _ d = d
 
-    fixClause :: [(Name, FC, PTerm)] -> PClause -> PClause
-    fixClause pats (PClause fc n lhs ws rhs wb)
+    bindInWhereClause :: [(Name, FC, PTerm)] -> PClause -> PClause
+    bindInWhereClause pats (PClause fc n lhs ws rhs wb)
        = let bound = [ n | (PRef _ _ n) <- universe lhs ]
              pats' = filter (not . (`elem` bound) . \(n,_,_) -> n) pats
-             rhs'  = bindPats rhs pats' in
-         PClause fc n lhs ws rhs' $ map (fixDecl pats') wb
-    fixClause _ c = c
+             rhs'  = bindOnRight rhs pats' in
+         PClause fc n lhs ws rhs' $ map (bindInWhereDecl pats') wb
+    bindInWhereClause _ c = c
 
 collectAs :: PTerm -> State [(Name, FC, PTerm)] PTerm
 collectAs (PAs fc n tm) = do tm' <- collectAs tm
