@@ -17,14 +17,12 @@ import Data.Generics.Uniplate.Data (transformM, universe)
 -- | Desugar by changing x@y on lhs to let x = y in ... or rhs
 desugarAs :: PTerm -> PTerm -> [PDecl] -> (PTerm, PTerm, [PDecl])
 desugarAs lhs rhs whereblock
-    = (lhs', bindPats pats rhs, map (fixDecl pats) whereblock)
+    = (lhs', bindPats rhs pats, map (fixDecl pats) whereblock)
   where
     (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) []
 
-    bindPats :: [(Name, FC, PTerm)] -> PTerm -> PTerm
-    bindPats [] rhs = rhs
-    bindPats ((n, fc, tm) : ps) rhs
-       = PLet fc n NoFC Placeholder tm (bindPats ps rhs)
+    bindPats :: PTerm -> [(Name, FC, PTerm)] -> PTerm
+    bindPats = foldr (\(n, fc, tm) -> PLet fc n NoFC Placeholder tm)
 
     fixDecl :: [(Name, FC, PTerm)] -> PDecl -> PDecl
     fixDecl pats (PClauses fc opts n clauses)
@@ -35,7 +33,7 @@ desugarAs lhs rhs whereblock
     fixClause pats (PClause fc n lhs ws rhs wb)
        = let bound = [ n | (PRef _ _ n) <- universe lhs ]
              pats' = filter (not . (`elem` bound) . \(n,_,_) -> n) pats
-             rhs'  = bindPats pats' rhs in
+             rhs'  = bindPats rhs pats' in
          PClause fc n lhs ws rhs' $ map (fixDecl pats') wb
     fixClause _ c = c
 
