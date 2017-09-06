@@ -11,7 +11,7 @@ Maintainer  : The Idris Community.
 
 module Idris.Completion (replCompletion, proverCompletion) where
 
-import Idris.AbsSyntax (runIO, getIState)
+import Idris.AbsSyntax (getIState, runIO)
 import Idris.AbsSyntaxTree
 import Idris.Colours
 import Idris.Core.Evaluate (ctxtAlist, visibleDefinitions)
