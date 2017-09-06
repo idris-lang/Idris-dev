@@ -18,5 +18,15 @@ fn2 m@(Ctor _) = y (Ctor 99)
 lhsVariablesShadowAsPattern : fn2 (Ctor 42) = Ctor 99
 lhsVariablesShadowAsPattern = Refl
 
+fn3 : Ty -> Ty
+fn3 m@(Ctor _) = y (Ctor 99)
+  where
+    y m = z
+      where
+        z = m -- should be y's arg `m`, not @ pattern
+
+nestedWhereShadowsAsPattern : fn3 (Ctor 42) = Ctor 99
+nestedWhereShadowsAsPattern = Refl
+
 main : IO ()
 main = putStrLn "OK"

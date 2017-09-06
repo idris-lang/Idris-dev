@@ -17,7 +17,7 @@ import Data.Generics.Uniplate.Data (transformM, universe)
 -- | Desugar by changing x@y on lhs to let x = y in ... or rhs
 desugarAs :: PTerm -> PTerm -> [PDecl] -> (PTerm, PTerm, [PDecl])
 desugarAs lhs rhs whereblock
-    = (lhs', bindPats pats rhs, map fixDecl whereblock)
+    = (lhs', bindPats pats rhs, map (fixDecl pats) whereblock)
   where
     (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) []
 
@@ -26,18 +26,18 @@ desugarAs lhs rhs whereblock
     bindPats ((n, fc, tm) : ps) rhs
        = PLet fc n NoFC Placeholder tm (bindPats ps rhs)
 
-    fixDecl :: PDecl -> PDecl
-    fixDecl (PClauses fc opts n clauses)
-       = PClauses fc opts n (map fixClause clauses)
-    fixDecl d = d
+    fixDecl :: [(Name, FC, PTerm)] -> PDecl -> PDecl
+    fixDecl pats (PClauses fc opts n clauses)
+       = PClauses fc opts n $ map (fixClause pats) clauses
+    fixDecl _ d = d
 
-    fixClause :: PClause -> PClause
-    fixClause (PClause fc n lhs ws rhs wb)
+    fixClause :: [(Name, FC, PTerm)] -> PClause -> PClause
+    fixClause pats (PClause fc n lhs ws rhs wb)
        = let bound = [ n | (PRef _ _ n) <- universe lhs ]
              pats' = filter (not . (`elem` bound) . \(n,_,_) -> n) pats
              rhs'  = bindPats pats' rhs in
-         PClause fc n lhs ws rhs' (map fixDecl wb)
-    fixClause c = c
+         PClause fc n lhs ws rhs' $ map (fixDecl pats') wb
+    fixClause _ c = c
 
 collectAs :: PTerm -> State [(Name, FC, PTerm)] PTerm
 collectAs (PAs fc n tm) = do tm' <- collectAs tm
