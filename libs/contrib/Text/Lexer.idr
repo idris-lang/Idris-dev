@@ -220,7 +220,7 @@ digits = some digit
 ||| Recognise a single hexidecimal digit
 export
 hexDigit : Lexer
-hexDigit = digit <|> oneOf "abcdefABCDEF"
+hexDigit = pred isHexDigit
 
 ||| Recognise one or more hexidecimal digits
 export
@@ -325,7 +325,7 @@ intLit = opt (is '-') <+> digits
 ||| Recognise a hexidecimal literal, prefixed by "0x" or "0X"
 export
 hexLit : Lexer
-hexLit = is '0' <+> oneOf "xX" <+> hexDigits
+hexLit = approx "0x" <+> hexDigits
 
 ||| A mapping from lexers to the tokens they produce.
 ||| This is a list of pairs `(Lexer, String -> tokenType)`
