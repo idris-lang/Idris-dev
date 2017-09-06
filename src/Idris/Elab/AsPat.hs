@@ -12,7 +12,7 @@ import Idris.Core.TT
 
 import Control.Applicative
 import Control.Monad.State.Strict
-import Data.Generics.Uniplate.Data (transformM)
+import Data.Generics.Uniplate.Data (transformM, universe)
 
 -- | Desugar by changing x@y on lhs to let x = y in ... or rhs
 desugarAs :: PTerm -> PTerm -> [PDecl] -> (PTerm, PTerm, [PDecl])
@@ -33,9 +33,11 @@ desugarAs lhs rhs whereblock
 
     fixClause :: PClause -> PClause
     fixClause (PClause fc n lhs ws rhs wb)
-       = PClause fc n lhs ws (bindPats pats rhs) (map fixDecl wb)
+       = let bound = [ n | (PRef _ _ n) <- universe lhs ]
+             pats' = filter (not . (`elem` bound) . \(n,_,_) -> n) pats
+             rhs'  = bindPats pats' rhs in
+         PClause fc n lhs ws rhs' (map fixDecl wb)
     fixClause c = c
-
 
 collectAs :: PTerm -> State [(Name, FC, PTerm)] PTerm
 collectAs (PAs fc n tm) = do tm' <- collectAs tm

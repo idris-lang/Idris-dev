@@ -1,13 +1,22 @@
+%default total
+
 data Ty = Ctor Int
 
-total
 fn : Ty -> Ty
 fn m@(Ctor _) = y
   where
-    y = m
+    y = m -- from @ pattern
 
 asPatternVisibleInWhere : fn (Ctor 42) = Ctor 42
 asPatternVisibleInWhere = Refl
+
+fn2 : Ty -> Ty
+fn2 m@(Ctor _) = y (Ctor 99)
+  where
+    y m = m -- should be the arg `m`, not the @ pattern
+
+lhsVariablesShadowAsPattern : fn2 (Ctor 42) = Ctor 99
+lhsVariablesShadowAsPattern = Refl
 
 main : IO ()
 main = putStrLn "OK"
