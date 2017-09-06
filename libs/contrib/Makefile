@@ -2,6 +2,7 @@ IDRIS := idris
 PKG := contrib
 
 build:
+	gcc -c CFFI/cffi_errno.c -o CFFI/cffi_errno.o
 	$(IDRIS) --build ${PKG}.ipkg
 
 install:

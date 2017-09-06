@@ -1,7 +1,7 @@
 package contrib
 
 opts = "--nobasepkgs --partial-eval --total -i ../prelude -i ../base"
-modules = CFFI, CFFI.Types, CFFI.Memory,
+modules = CFFI, CFFI.Types, CFFI.Memory, CFFI.Errno,
 
           Control.Algebra,
           Control.Algebra.Lattice, Control.Algebra.VectorSpace,
@@ -28,7 +28,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
 
           Decidable.Decidable, Decidable.Order,
 
-          Network.Cgi, Network.Socket.Data, Network.Socket.Raw, Network.Socket,
+          Network.Cgi, Network.Socket.Data, Network.Socket.Raw, Network.Socket, Network.Socket.ST,
 
           System.Concurrency.Process,
 
