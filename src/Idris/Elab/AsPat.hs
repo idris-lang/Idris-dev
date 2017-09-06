@@ -17,13 +17,25 @@ import Data.Generics.Uniplate.Data (transformM)
 -- | Desugar by changing x@y on lhs to let x = y in ... or rhs
 desugarAs :: PTerm -> PTerm -> [PDecl] -> (PTerm, PTerm, [PDecl])
 desugarAs lhs rhs whereblock
-    = let (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) [] in
-          (lhs', bindPats pats rhs, whereblock)
+    = (lhs', bindPats pats rhs, map fixDecl whereblock)
   where
+    (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) []
+
     bindPats :: [(Name, FC, PTerm)] -> PTerm -> PTerm
     bindPats [] rhs = rhs
     bindPats ((n, fc, tm) : ps) rhs
        = PLet fc n NoFC Placeholder tm (bindPats ps rhs)
+
+    fixDecl :: PDecl -> PDecl
+    fixDecl (PClauses fc opts n clauses)
+       = PClauses fc opts n (map fixClause clauses)
+    fixDecl d = d
+
+    fixClause :: PClause -> PClause
+    fixClause (PClause fc n lhs ws rhs wb)
+       = PClause fc n lhs ws (bindPats pats rhs) (map fixDecl wb)
+    fixClause c = c
+
 
 collectAs :: PTerm -> State [(Name, FC, PTerm)] PTerm
 collectAs (PAs fc n tm) = do tm' <- collectAs tm
