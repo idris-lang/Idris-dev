@@ -1475,14 +1475,14 @@ process fn (PPrint fmt width t)
         iPrintResult =<< renderExternal fmt width (pprintDelab ist tm)
 
 
-process fn Quit = iPrintError "Unimplemented pattern for command Quit"
-process fn Reload = iPrintError "Unimplemented pattern for command Reload"
-process fn Watch = iPrintError "Unimplemented pattern for command Watch"
-process fn (Load _ _) = iPrintError "Unimplemented pattern for command Load"
-process fn Edit = iPrintError "Unimplemented pattern for command Edit"
-process fn Proofs = iPrintError "Unimplemented pattern for command Proofs"
+process fn Quit = iPrintError "Command ':quit' is currently unsupported"
+process fn Reload = iPrintError "Command ':reload' is currently unsupported"
+process fn Watch = iPrintError "Command ':watch' is currently unsupported"
+process fn (Load _ _) = iPrintError "Command ':load' is currently unsupported"
+process fn Edit = iPrintError "Command ':edit' is currently unsupported"
+process fn Proofs = iPrintError "Command ':proofs' is currently unsupported"
 process fn (Verbosity _)
-   = iPrintError "Unimplemented pattern for command Verbosity"
+   = iPrintError "Command ':verbosity' is currently unsupported"
 
 
 showTotal :: Totality -> IState -> Doc OutputAnnotation
