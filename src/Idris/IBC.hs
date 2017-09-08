@@ -511,10 +511,11 @@ processImports reexp phase fname ar = do
         ibcsd <- valIBCSubDir i
         ids <- rankedImportDirs fname
         putIState (i { imported = f : imported i })
-        let (phase', reexp') = case phase of
-                         IBC_REPL True -> (IBC_REPL False, reexp)
-                         IBC_REPL False -> (IBC_Building, reexp && re)
-                         p -> (p, reexp && re)
+        let (phase', reexp') =
+              case phase of
+                IBC_REPL True -> (IBC_REPL False, reexp)
+                IBC_REPL False -> (IBC_Building, reexp && re)
+                p -> (p, reexp && re)
         fp <- findIBC ids ibcsd f
         logIBC 4 $ "processImports (fp, phase')" ++ show (fp, phase')
         case fp of
