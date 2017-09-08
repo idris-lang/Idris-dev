@@ -46,7 +46,6 @@ import qualified Data.Text as T
 import Data.Traversable (Traversable)
 import Data.Typeable
 import GHC.Generics (Generic)
-import Network.Socket (PortNumber)
 
 
 data ElabWhat = ETypes | EDefns | EAll

@@ -16,7 +16,6 @@ module Idris.Core.Elaborate (
   , module Idris.Core.ProofState
   ) where
 
-import Idris.Core.DeepSeq
 import Idris.Core.Evaluate
 import Idris.Core.ProofState
 import Idris.Core.ProofTerm (bound_in, bound_in_term, getProofTerm, mkProofTerm,
@@ -24,15 +23,9 @@ import Idris.Core.ProofTerm (bound_in, bound_in_term, getProofTerm, mkProofTerm,
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.Unify
-import Idris.Core.WHNF
 
-import Util.Pretty hiding (fill)
-
-import Control.DeepSeq
 import Control.Monad.State.Strict
-import Data.Char
 import Data.List
-import Debug.Trace
 
 data ElabState aux = ES (ProofState, aux) String (Maybe (ElabState aux))
   deriving Show

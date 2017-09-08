@@ -49,7 +49,6 @@ import Idris.Core.Execute (execute)
 import Idris.Core.TT
 import Idris.Core.Unify
 import Idris.Core.WHNF
-import Idris.Coverage
 import Idris.DataOpts
 import Idris.Delaborate
 import Idris.Docs
@@ -97,8 +96,6 @@ import Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort)
 import Util.Pretty hiding ((</>))
 import Util.System
 import Version_idris (gitHash)
-
-import Debug.Trace
 
 -- | Run the REPL
 repl :: IState -- ^ The initial state

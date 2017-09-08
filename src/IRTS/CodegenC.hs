@@ -9,12 +9,10 @@ Maintainer  : The Idris Community.
 
 module IRTS.CodegenC (codegenC) where
 
-import Idris.AbsSyntax
 import Idris.Core.TT
 import IRTS.Bytecode
 import IRTS.CodegenCommon
 import IRTS.Defunctionalise
-import IRTS.Lang
 import IRTS.Simplified
 import IRTS.System
 
@@ -24,9 +22,7 @@ import Control.Monad
 import Data.Bits
 import Data.Char
 import Data.List (intercalate, nubBy)
-import Debug.Trace
 import Numeric
-import System.Directory
 import System.Exit
 import System.FilePath ((<.>), (</>))
 import System.IO

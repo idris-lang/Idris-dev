@@ -13,14 +13,24 @@ module Util.DynamicLinker ( ForeignFun(..)
                           ) where
 
 #ifdef IDRIS_FFI
-import Foreign.LibFFI
-import Foreign.Ptr (FunPtr, Ptr, castPtrToFunPtr, nullFunPtr, nullPtr)
+import Foreign.Ptr ( FunPtr
+#ifdef mingw32_HOST_OS
+                   , castPtrToFunPtr
+#endif
+                   , nullFunPtr
+                   , nullPtr)
 import System.Directory
 #ifndef mingw32_HOST_OS
 import Control.Exception (IOException, throwIO, try)
-import Data.Array (Array, bounds, inRange, (!))
+import Data.Array ( bounds
+#ifdef linux_HOST_OS
+                  , inRange
+#endif
+                  , (!))
+#ifdef linux_HOST_OS
 import Data.Functor ((<$>))
 import Data.Maybe (catMaybes)
+#endif
 import System.FilePath.Posix ((</>))
 import System.Posix.DynamicLinker
 import Text.Regex.TDFA

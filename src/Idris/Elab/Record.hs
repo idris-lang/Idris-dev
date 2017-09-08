@@ -11,25 +11,12 @@ module Idris.Elab.Record(elabRecord) where
 import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
 import Idris.Elab.Data
-import Idris.Elab.Data
-import Idris.Elab.Term
-import Idris.Elab.Type
-import Idris.Elab.Utils
 import Idris.Error
-import Idris.Imports
-import Idris.Inliner
-import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
+import Idris.Output (sendHighlighting)
 import Idris.Parser.Expr (tryFullExpr)
-import Idris.PartialEval
-import Idris.Primitives
-import Idris.Providers
-import IRTS.Lang
 
 import Control.Monad
 import Data.List

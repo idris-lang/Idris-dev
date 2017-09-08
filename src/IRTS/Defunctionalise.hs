@@ -32,7 +32,6 @@ import Control.Monad
 import Control.Monad.State
 import Data.List
 import Data.Maybe
-import Debug.Trace
 
 data DExp = DV Name
           | DApp Bool Name [DExp] -- True = tail call

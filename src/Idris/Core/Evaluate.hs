@@ -33,13 +33,9 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
 import Idris.Core.CaseTree
 import Idris.Core.TT
 
-import Control.Applicative hiding (Const)
 import Control.Monad.State
-import Data.Binary hiding (get, put)
-import qualified Data.Binary as B
 import Data.List
 import Data.Maybe (listToMaybe)
-import Debug.Trace
 import GHC.Generics (Generic)
 
 data EvalState = ES { limited :: [(Name, Int)],

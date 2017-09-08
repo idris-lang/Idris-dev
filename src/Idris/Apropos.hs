@@ -11,7 +11,7 @@ module Idris.Apropos (apropos, aproposModules) where
 import Idris.AbsSyntax
 import Idris.Core.Evaluate (Def(..), ctxtAlist)
 import Idris.Core.TT (Binder(..), Const(..), Name(..), NameType(..), TT(..),
-                      Type, lookupCtxtExact, toAlist)
+                      Type, toAlist)
 import Idris.Docstrings (DocTerm, Docstring, containsText)
 
 import Data.List (intersperse, nub, nubBy)

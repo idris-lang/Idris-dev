@@ -20,7 +20,6 @@ import Idris.Primitives
 
 import Prelude hiding (id, (.))
 
-import Control.Applicative
 import Control.Arrow
 import Control.Category
 import Control.Monad.State
@@ -36,8 +35,6 @@ import Data.Set (Set)
 import qualified Data.Set as S
 import Data.Text (pack)
 import qualified Data.Text as T
-import Debug.Trace
-import System.IO.Unsafe
 
 -- | UseMap maps names to the set of used (reachable) argument
 -- positions.

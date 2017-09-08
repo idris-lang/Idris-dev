@@ -16,14 +16,11 @@ module Idris.ProofSearch(
   ) where
 
 import Idris.AbsSyntax
-import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.Typecheck
 import Idris.Core.Unify
 import Idris.Delaborate
-import Idris.Error
 
 import Control.Applicative ((<$>))
 import Control.Monad

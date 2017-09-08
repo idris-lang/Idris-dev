@@ -16,10 +16,7 @@ module Idris.Transforms(
   ) where
 
 import Idris.AbsSyntax
-import Idris.Core.CaseTree
 import Idris.Core.TT
-
-import Debug.Trace
 
 transformPats :: IState -> [Either Term (Term, Term)] ->
                 [Either Term (Term, Term)]

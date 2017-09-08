@@ -8,7 +8,6 @@ Maintainer  : The Idris Community.
 module IRTS.BCImp where
 
 import Idris.Core.TT
-import IRTS.Lang
 import IRTS.Simplified
 
 data Reg = RVal | L Int

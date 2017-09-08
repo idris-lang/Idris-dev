@@ -13,12 +13,10 @@ module Idris.IBC (loadIBC, loadPkgIndex,
                   hasValidIBCVersion, IBCPhase(..)) where
 
 import Idris.AbsSyntax
-import Idris.Core.Binary
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.DeepSeq
-import Idris.Delaborate
+import Idris.DeepSeq ()
 import Idris.Docstrings (Docstring)
 import qualified Idris.Docstrings as D
 import Idris.Error
@@ -27,23 +25,15 @@ import Idris.Options
 import Idris.Output
 import IRTS.System (getIdrisLibDir)
 
-import Paths_idris
-
 import qualified Cheapskate.Types as CT
 import Codec.Archive.Zip
 import Control.DeepSeq
 import Control.Monad
-import Control.Monad.State.Strict hiding (get, put)
-import qualified Control.Monad.State.Strict as ST
 import Data.Binary
 import Data.ByteString.Lazy as B hiding (elem, length, map)
-import Data.Functor
 import Data.List as L
 import Data.Maybe (catMaybes)
 import qualified Data.Set as S
-import qualified Data.Text as T
-import Data.Vector.Binary
-import Debug.Trace
 import System.Directory
 import System.FilePath
 

@@ -8,7 +8,6 @@ Maintainer  : The Idris Community.
 module Idris.Directives(directiveAction) where
 
 import Idris.AbsSyntax
-import Idris.ASTUtils
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Imports

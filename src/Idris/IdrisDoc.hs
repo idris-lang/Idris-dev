@@ -10,11 +10,10 @@ Maintainer  : The Idris Community.
 module Idris.IdrisDoc (generateDocs) where
 
 import Idris.AbsSyntax
-import Idris.Core.Evaluate (Accessibility(..), Def(..), ctxtAlist, isDConName,
-                            isFnName, isTConName, lookupDefAcc)
-import Idris.Core.TT (Name(..), OutputAnnotation(..), SpecialName(..),
-                      TextFormatting(..), constIsType, nsroot, sUN, str,
-                      toAlist, txt)
+import Idris.Core.Evaluate (Accessibility(..), ctxtAlist, isDConName, isFnName,
+                            isTConName, lookupDefAcc)
+import Idris.Core.TT (Name(..), OutputAnnotation(..), TextFormatting(..),
+                      constIsType, nsroot, sUN, str, toAlist, txt)
 import Idris.Docs
 import Idris.Docstrings (nullDocstring)
 import qualified Idris.Docstrings as Docstrings
@@ -26,17 +25,13 @@ import Control.Applicative ((<|>))
 import Control.Monad (forM_)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.State.Strict
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BS2
 import qualified Data.List as L
-import qualified Data.List.Split as LS
 import qualified Data.Map as M hiding ((!))
 import Data.Maybe
 import Data.Monoid (mempty)
-import qualified Data.Ord (compare)
 import qualified Data.Set as S
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
 import System.Directory
 import System.FilePath
 import System.IO

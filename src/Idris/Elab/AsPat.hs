@@ -10,7 +10,6 @@ module Idris.Elab.AsPat(desugarAs) where
 import Idris.AbsSyntax
 import Idris.Core.TT
 
-import Control.Applicative
 import Control.Monad.State.Strict
 import Data.Generics.Uniplate.Data (transformM)
 

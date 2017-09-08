@@ -39,7 +39,6 @@ import System.IO.Error (tryIOError)
 
 import Data.Generics.Uniplate.Data (descend, descendM)
 
-import Debug.Trace
 import Util.DynamicLinker
 import Util.Pretty
 import Util.System

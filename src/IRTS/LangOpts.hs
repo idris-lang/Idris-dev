@@ -9,14 +9,10 @@ Maintainer  : The Idris Community.
 
 module IRTS.LangOpts where
 
-import Idris.Core.CaseTree
 import Idris.Core.TT
 import IRTS.Lang
 
-import Control.Applicative hiding (Const)
 import Control.Monad.State hiding (lift)
-import Data.List
-import Debug.Trace
 
 inlineAll :: [(Name, LDecl)] -> [(Name, LDecl)]
 inlineAll lds = let defs = addAlist lds emptyContext in

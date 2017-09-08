@@ -12,7 +12,7 @@ import System.Directory
 import System.Directory (copyFile, createDirectoryIfMissing)
 import System.Exit
 import System.FilePath (addExtension, addTrailingPathSeparator, dropExtension,
-                        hasExtension, normalise, takeDirectory, takeExtension,
+                        hasExtension, takeDirectory, takeExtension,
                         takeFileName, (</>))
 import System.IO
 import System.Process
@@ -23,10 +23,8 @@ import Control.Monad
 import Control.Monad.Trans.Except (runExceptT)
 import Control.Monad.Trans.State.Strict (execStateT)
 import Data.Either (partitionEithers)
-import Data.Either (partitionEithers)
 import Data.List
 import Data.List.Split (splitOn)
-import Data.Maybe (fromMaybe)
 
 import Idris.AbsSyntax
 import Idris.Core.TT
@@ -38,7 +36,6 @@ import Idris.Main (idris, idrisMain)
 import Idris.Options
 import Idris.Output
 import Idris.Parser (loadModule)
-import Idris.REPL
 
 import Idris.Package.Common
 import Idris.Package.Parser

@@ -14,7 +14,6 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.WHNF
-import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
 import Idris.Error
@@ -22,14 +21,11 @@ import Idris.Output
 
 import Util.Pretty
 
-import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Traversable as Traversable
-import Debug.Trace
 
 recheckC = recheckC_borrowing False True []
 

@@ -26,10 +26,9 @@ import Prelude hiding ((<$>))
 import Control.Applicative (Alternative((<|>)))
 import Control.Monad.State
 import Data.Generics.Uniplate.Data (transform)
-import Data.List (intersperse, nub)
+import Data.List (nub)
 import Data.Maybe (mapMaybe)
 import qualified Data.Text as T
-import Debug.Trace
 
 bugaddr = "https://github.com/idris-lang/Idris-dev/issues"
 

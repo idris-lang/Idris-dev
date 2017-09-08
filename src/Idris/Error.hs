@@ -14,23 +14,16 @@ import Idris.AbsSyntax
 import Idris.Core.Constraints
 import Idris.Core.Evaluate (ctxtAlist)
 import Idris.Core.TT
-import Idris.Core.Typecheck
 import Idris.Delaborate
 import Idris.Output
 
 import Prelude hiding (catch)
 
 import Control.Monad (when)
-import Control.Monad.State.Strict
-import Data.Char
 import qualified Data.Foldable as Foldable
 import Data.List (intercalate, isPrefixOf)
 import qualified Data.Set as S
 import qualified Data.Text as T
-import qualified Data.Traversable as Traversable
-import Data.Typeable
-import System.Console.Haskeline
-import System.Console.Haskeline.MonadException
 import System.IO.Error (ioeGetErrorString, isUserError)
 
 iucheck :: Idris ()

@@ -19,10 +19,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
 
-import Control.Applicative
 import Control.Monad.State
-import Data.Maybe
-import Debug.Trace
 
 -- | Data type representing binding-time annotations for partial evaluation of arguments
 data PEArgType = ImplicitS Name -- ^ Implicit static argument

@@ -13,7 +13,7 @@ module Idris.Output where
 
 import Idris.AbsSyntax
 import Idris.Colours (hEndColourise, hStartColourise)
-import Idris.Core.Evaluate (isDConName, isFnName, isTConName, normaliseAll)
+import Idris.Core.Evaluate (normaliseAll)
 import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Docstrings
@@ -27,13 +27,12 @@ import Util.System (isATTY)
 import Prelude hiding ((<$>))
 
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
-import Data.Char (isAlpha)
 import Data.List (intersperse, nub)
 import Data.Maybe (fromMaybe)
 import System.Console.Haskeline.MonadException (MonadException(controlIO),
                                                 RunIO(RunIO))
 import System.FilePath (replaceExtension)
-import System.IO (Handle, hPutStr, hPutStrLn, stdout)
+import System.IO (Handle, hPutStr, hPutStrLn)
 
 instance MonadException m => MonadException (ExceptT Err m) where
     controlIO f = ExceptT $ controlIO $ \(RunIO run) -> let
