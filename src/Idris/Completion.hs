@@ -46,7 +46,7 @@ tactics = map fst tacticArgs
 names :: Idris [String]
 names = do ctxt <- tt_ctxt <$> getIState
            return $
-             mapMaybe nameString (allNames (visibleDefinitions ctxt)) ++
+             mapMaybe nameString (allNames $ visibleDefinitions ctxt) ++
              "Type" : map fst Idris.Parser.Expr.constants
   where
     -- We need both fully qualified names and identifiers that map to them
