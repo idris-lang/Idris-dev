@@ -44,11 +44,6 @@ deriving instance Data LOpt
 restrictKeys :: Ord k => Map k a -> Set k -> Map k a
 restrictKeys m s = Map.filterWithKey (\k _ -> k `Set.member` s) m
 
-mapMapListKeys :: Ord k => (a->a) -> [k] -> Map k a -> Map k a
-mapMapListKeys _ [] x = x
-mapMapListKeys f (t:r) x = mapMapListKeys f r $ Map.adjust f t x
-
-
 extractGlobs :: Map Name LDecl -> LDecl -> [Name]
 extractGlobs defs (LConstructor _ _ _) = []
 extractGlobs defs (LFun _ _ _ e) =

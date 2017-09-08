@@ -169,11 +169,6 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          addIBC (IBCLineApp (fc_fname fc) (fst . fc_start $ fc) (PTyped (PRef fc [] n) ty')) -- (mergeTy ty' (delab i nty')))
 
          let (fam, _) = unApply (getRetTy nty')
-         let corec = case fam of
-                        P _ rcty _ -> case lookupCtxt rcty (idris_datatypes i) of
-                                        [TI _ True _ _ _ _] -> True
-                                        _ -> False
-                        _ -> False
          -- Productivity checking now via checking for guarded 'Delay'
          let opts' = opts -- if corec then (Coinductive : opts) else opts
          let usety = if norm then nty' else nty
@@ -224,14 +219,6 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
               _ -> return ()
          return usety
   where
-    -- for making an internalapp, we only want the explicit ones, and don't
-    -- want the parameters, so just take the arguments which correspond to the
-    -- user declared explicit ones
-    mergeTy (PPi e n fc ty sc) (PPi e' n' _ _ sc')
-         | e == e' = PPi e n fc ty (mergeTy sc sc')
-         | otherwise = mergeTy sc sc'
-    mergeTy _ sc = sc
-
     ffiexport = sNS (sUN "FFI_Export") ["FFI_Export"]
 
     err = txt "Err"

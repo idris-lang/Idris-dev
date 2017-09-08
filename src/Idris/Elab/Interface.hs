@@ -94,8 +94,7 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
              ims <- mapM (tdecl impps mnames) mdecls
              defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint)
                           (filter clause ds)
-             let (methods, imethods)
-                  = unzip (map (\ (x, y, z) -> (x, y)) ims)
+             let imethods = map (\ (x, y, z) -> y) ims
              let defaults = map (\ (x, (y, z)) -> (x,y)) defs
 
              addInterface tn (CI cn (map nodoc imethods) defaults idecls
@@ -367,13 +366,6 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
              return (PTy doc [] syn fc o m mfc ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []])
 
-    updateIMethod :: [(Name, PTerm)] ->
-                     (Name, (a, b, c, d, PTerm)) ->
-                     (Name, (a, b, c, d, PTerm))
-    updateIMethod ns tm@(n, (isf, mfc, doc, o, ty))
-       | Just ty' <- lookup (nsroot n) ns = (n, (isf, mfc, doc, o, ty'))
-       | otherwise = tm
-
     getMArgs (PPi (Imp _ _ _ _ _ _) n _ ty sc) = IA n : getMArgs sc
     getMArgs (PPi (Exp _ _ _ _) n _ ty sc) = EA n : getMArgs sc
     getMArgs (PPi (Constraint _ _ _) n _ ty sc) = CA : getMArgs sc
@@ -422,12 +414,6 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
         | otherwise = PPi (e l s p r) n fc ty (toExp ns e sc)
     toExp ns e (PPi p n fc ty sc) = PPi p n fc ty (toExp ns e sc)
     toExp ns e sc = sc
-
--- | Get the method declaration name corresponding to a user-provided name
-mdec :: Name -> Name
-mdec (UN n) = SN (MethodN (UN n))
-mdec (NS x n) = NS (mdec x) n
-mdec x = x
 
 -- | Get the docstring corresponding to a member, if one exists
 memberDocs :: PDecl -> Maybe (Name, Docstring (Either Err PTerm))

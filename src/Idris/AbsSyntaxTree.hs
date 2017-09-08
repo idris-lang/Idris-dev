@@ -2200,7 +2200,6 @@ showName ist bnd ppo colour n = case ist of
           showbasic (MN i s)  = str s
           showbasic (NS n s)  = showSep "." (map str (reverse s)) ++ "." ++ showbasic n
           showbasic (SN s)    = show s
-          fst3 (x, _, _) = x
           colourise n t = let ctxt' = fmap tt_ctxt ist in
                           case ctxt' of
                             Nothing -> name
@@ -2347,20 +2346,6 @@ implicitNamesIn uvars ist tm
                   put (n : imps, fns)
     addFn n = do (imps, fns) <- get
                  put (imps, n: fns)
-
-    notCAF []                 = False
-    notCAF (PExp _ _ _ _ : _) = True
-    notCAF (_ : xs)           = notCAF xs
-
-    notHidden (n, _) = case getAccessibility n of
-                            Hidden  -> False
-                            Private -> False
-                            _       -> True
-
-    getAccessibility n
-             = case lookupDefAccExact n False (tt_ctxt ist) of
-                    Just (n,t)  -> t
-                    _           -> Public
 
     ni 0 env (PRef _ _ n@(NS _ _))
         | not (n `elem` env)

@@ -12,7 +12,6 @@ module Idris.ErrReverse(errReverse) where
 import Idris.AbsSyntax
 import Idris.Core.Evaluate (unfold)
 import Idris.Core.TT
-import Util.Pretty
 
 import Data.List
 
@@ -72,13 +71,3 @@ errReverse ist t = rewrite 5 (do_unfold t) -- (elideLambdas t)
                                              Just (fs ++ as)
     -- no matching Binds, for now...
     match' ns x y = if x == y then Just [] else Nothing
-
-    -- if the term under a lambda is huge, there's no much point in showing
-    -- it as it won't be very enlightening.
-
-    elideLambdas (App s f a) = App s (elideLambdas f) (elideLambdas a)
-    elideLambdas (Bind n (Lam _ t) sc)
-       | size sc > 200 = P Ref (sUN "...") Erased
-    elideLambdas (Bind n b sc)
-       = Bind n (fmap elideLambdas b) (elideLambdas sc)
-    elideLambdas t = t

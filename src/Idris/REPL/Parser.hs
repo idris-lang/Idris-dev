@@ -178,8 +178,6 @@ namespaceArgCmd names command doc =
   (names, NamespaceArg, doc, namespaceArg command)
 exprArgCmd names command doc =
   (names, ExprArg, doc, exprArg command)
-metavarArgCmd names command doc =
-  (names, MetaVarArg, doc, fnNameArg command)
 optArgCmd names command doc =
   (names, OptionArg, doc, optArg command)
 proofArgCmd names command doc =

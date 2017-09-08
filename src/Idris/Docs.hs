@@ -240,10 +240,6 @@ pprintDocs ist (InterfaceDoc n doc meths params constraints implementations sub_
     updateRef nm (PRef fc _ _) = PRef fc [] nm
     updateRef _  pt          = pt
 
-    isSubInterface (PPi (Constraint _ _ _) _ _ (PApp _ _ args) (PApp _ (PRef _ _ nm) args')) = nm == n && map getTm args == map getTm args'
-    isSubInterface (PPi _   _            _ _ pt)                                           = isSubInterface pt
-    isSubInterface _                                                                       = False
-
     prettyConstraints =
       cat (punctuate (comma <> space) (map (pprintPTerm ppo params' [] infixes) constraints))
 

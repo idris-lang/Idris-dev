@@ -201,11 +201,7 @@ bcc i (MKCON l loc tag args)
     = indent i ++ alloc loc tag ++
       indent i ++ setArgs 0 args ++ "\n" ++
       indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
-
---         "MKCON(vm, " ++ creg l ++ ", " ++ show tag ++ ", " ++
---         show (length args) ++ concatMap showArg args ++ ");\n"
-  where showArg r = ", " ++ creg r
-        setArgs i [] = ""
+  where setArgs i [] = ""
         setArgs i (x : xs) = "SETARG(" ++ creg Tmp ++ ", " ++ show i ++ ", " ++ creg x ++
                              "); " ++ setArgs (i + 1) xs
         alloc Nothing tag
@@ -301,13 +297,6 @@ bcc i (CONSTCASE r code def)
     iCase v (B64 w, bc) =
         indent i ++ "if (GETBITS64(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
            ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
-    showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
-                         ++ concatMap (bcc (i+1)) bc ++
-                            indent (i + 1) ++ "break;\n"
-    showDef i Nothing = ""
-    showDef i (Just c) = indent i ++ "default:\n"
-                         ++ concatMap (bcc (i+1)) c ++
-                            indent (i + 1) ++ "break;\n"
     showDefS i Nothing = ""
     showDefS i (Just c) = concatMap (bcc (i+1)) c
 

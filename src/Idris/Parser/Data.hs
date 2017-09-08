@@ -9,7 +9,6 @@ Maintainer  : The Idris Community.
 module Idris.Parser.Data where
 
 import Idris.AbsSyntax
-import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Docstrings
 import Idris.Options
@@ -55,17 +54,8 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                 return $ PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn
              <?> "record type declaration"
   where
-    getRecNames :: SyntaxInfo -> PTerm -> [Name]
-    getRecNames syn (PPi _ n _ _ sc) = [expandNS syn n, expandNS syn (mkType n)]
-                                         ++ getRecNames syn sc
-    getRecNames _ _ = []
-
     getName (Just (n, _), _, _, _) = Just n
     getName _ = Nothing
-
-    toFreeze :: Maybe Accessibility -> Maybe Accessibility
-    toFreeze (Just Frozen) = Just Private
-    toFreeze x = x
 
     recordBody :: SyntaxInfo -> Name -> IdrisParser ([((Maybe (Name, FC)), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))], Maybe (Name, FC), Docstring (Either Err PTerm))
     recordBody syn tyn = do

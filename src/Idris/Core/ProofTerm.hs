@@ -195,16 +195,6 @@ updateSolvedTerm' xs x = updateSolved' xs x where
     updateSolvedB' xs b = let (ty', u) = updateSolved' xs (binderTy b) in
                               if u then (b { binderTy = ty' }, u) else (b, False)
 
-    noneOf ns (P _ n _) | n `elem` ns = False
-    noneOf ns (App s f a) = noneOf ns a && noneOf ns f
-    noneOf ns (Bind n (Hole ty) t) = n `notElem` ns && noneOf ns ty && noneOf ns t
-    noneOf ns (Bind n b t) = noneOf ns t && noneOfB ns b
-      where
-        noneOfB ns (Let t v) = noneOf ns t && noneOf ns v
-        noneOfB ns (Guess t v) = noneOf ns t && noneOf ns v
-        noneOfB ns b = noneOf ns (binderTy b)
-    noneOf ns _ = True
-
 -- | As 'subst', in TT, but takes advantage of knowing not to substitute
 -- under Complete applications.
 updsubst :: Eq n => n {-^ The id to replace -} ->

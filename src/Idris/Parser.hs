@@ -790,7 +790,6 @@ mutual :: SyntaxInfo -> IdrisParser [PDecl]
 mutual syn =
     do reservedHL "mutual"
        openBlock
-       let pvars = syn_params syn
        ds <- many (decl (syn { mut_nesting = mut_nesting syn + 1 } ))
        closeBlock
        fc <- getFC
@@ -1141,7 +1140,6 @@ clause syn
                         Just t -> return t
                         Nothing -> fail "Invalid clause"
               (do r <- rhs syn n
-                  let ctxt = tt_ctxt ist
                   let wsyn = syn { syn_namespace = [], syn_toplevel = False }
                   (wheres, nmap) <- choice [do x <- whereBlock n wsyn
                                                popIndent
@@ -1165,8 +1163,6 @@ clause syn
               fc <- getFC
               n_in <- fst <$> fnName; let n = expandNS syn n_in
               r <- rhs syn n
-              ist <- get
-              let ctxt = tt_ctxt ist
               let wsyn = syn { syn_namespace = [] }
               (wheres, nmap) <- choice [do x <- whereBlock n wsyn
                                            popIndent
@@ -1223,8 +1219,6 @@ clause syn
               wargs <- many (wExpr syn)
               let capp = PApp fc (PRef nfc [nfc] n) args
               (do r <- rhs syn n
-                  ist <- get
-                  let ctxt = tt_ctxt ist
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <- choice [do x <- whereBlock n wsyn
                                                popIndent
@@ -1569,11 +1563,6 @@ parseImports fname input
                      let ps = ps_exp -- imp "Builtins" : imp "Prelude" : ps_exp
                      return ((mdoc, mname, ps, mrk'), annots, i)
 
-        imp m = ImportInfo False (toPath m)
-                           Nothing [] NoFC NoFC
-        ns = Spl.splitOn "."
-        toPath = foldl1' (</>) . ns
-
         addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC, OutputAnnotation)]
         addPath [] _ = []
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =
@@ -1877,8 +1866,6 @@ loadSource lidr f toline
 
 {-| Adds names to hide list -}
 addHides :: Ctxt Accessibility -> Idris ()
-addHides xs = do i <- getIState
-                 let defh = default_access i
-                 mapM_ doHide (toAlist xs)
+addHides xs = mapM_ doHide (toAlist xs)
   where doHide (n, a) = do setAccessibility n a
                            addIBC (IBCAccess n a)

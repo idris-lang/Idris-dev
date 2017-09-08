@@ -167,8 +167,7 @@ var dsl n t i = v' i t where
     setFC fc t = t
 
 unIdiom :: PTerm -> PTerm -> FC -> PTerm -> PTerm
-unIdiom ap pure fc e@(PApp _ _ _) = let f = getFn e in
-                                        mkap (getFn e)
+unIdiom ap pure fc e@(PApp _ _ _) = mkap (getFn e)
   where
     getFn (PApp fc f args) = (PApp fc pure [pexp f], args)
     getFn f = (f, [])

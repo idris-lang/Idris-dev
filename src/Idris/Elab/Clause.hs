@@ -27,7 +27,6 @@ import Idris.Elab.Transform
 import Idris.Elab.Type
 import Idris.Elab.Utils
 import Idris.Error
-import Idris.Inliner
 import Idris.Options
 import Idris.Output (iputStrLn, pshow, sendHighlighting)
 import Idris.PartialEval
@@ -140,12 +139,6 @@ elabClauses info' fc opts n_in cs =
            -- optimisation applied to LHS
            let pdef = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $
                           map debind pats_forced
-           -- pdef_cov is the pattern definition without forcing, which
-           -- we feed to the coverage checker (we need to know what the
-           -- programmer wrote before forcing erasure)
-           let pdef_cov
-                    = map (\(ns, lhs, rhs) -> (map fst ns, lhs, rhs)) $
-                          map debind pats_raw
            -- pdef_pe is the one which will get further optimised
            -- for run-time, with no forcing optimisation of the LHS because
            -- the affects erasure. Also, it's partially evaluated
@@ -160,8 +153,6 @@ elabClauses info' fc opts n_in cs =
            -- help with later inlinings.
 
            ist <- getIState
-           let pdef_inl = inlineDef ist pdef
-
            numArgs <- tclift $ sameLength pdef
 
            case specNames opts of
@@ -184,7 +175,6 @@ elabClauses info' fc opts n_in cs =
                               missing' <- checkPossibles info fc True n missing
                               -- Filter out the ones which match one of the
                               -- given cases (including impossible ones)
-                              let clhs = map getLHS pdef
                               logElab 2 $ "Must be unreachable (" ++ show (length missing') ++ "):\n" ++
                                           showSep "\n" (map showTmImpls missing') ++
                                          "\nAgainst: " ++
@@ -232,7 +222,6 @@ elabClauses info' fc opts n_in cs =
            logElab 3 $ "Optimised: " ++ show tree'
            ctxt <- getContext
            ist <- getIState
-           let opt = idris_optimisation ist
            putIState (ist { idris_patdefs = addDef n (force pdef_pe, force pmissing)
                                                 (idris_patdefs ist) })
            let caseInfo = CaseInfo (inlinable opts) (inlinable opts) (dictionary opts)
@@ -302,15 +291,6 @@ elabClauses info' fc opts n_in cs =
                                   return ()
 
   where
-    noMatch i cs tm = all (\x -> case trim_matchClause i (delab' i x True True) tm of
-                                      Right _ -> False
-                                      Left miss -> True) cs
-      where
-        trim_matchClause i (PApp fcl fl ls) (PApp fcr fr rs)
-            = let args = min (length ls) (length rs) in
-                  matchClause i (PApp fcl fl (take args ls))
-                                (PApp fcr fr (take args rs))
-
     checkUndefined n ctxt = case lookupDef n ctxt of
                                  [] -> return ()
                                  [TyDecl _ _] -> return ()
@@ -358,7 +338,7 @@ elabClauses info' fc opts n_in cs =
 
     sameLength ((_, x, _) : xs)
         = do l <- sameLength xs
-             let (f, as) = unApply x
+             let (_, as) = unApply x
              if (null xs || l == length as) then return (length as)
                 else tfail (At fc (Msg "Clauses have differing numbers of arguments "))
     sameLength [] = return 0
@@ -671,8 +651,7 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
                                       "\n" ++ show ptm
                           return (Left ptm, lhs)
 elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock)
-   = do let tcgen = Dictionary `elem` opts
-        push_estack fname False
+   = do push_estack fname False
         ctxt <- getContext
         let (lhs_in, rhs_in) = desugarAs lhs_in_as rhs_in_as
 
@@ -903,8 +882,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
     pinfo info ns ds i
           = let newps = params info ++ ns
                 dsParams = map (\n -> (n, map fst newps)) ds
-                newb = addAlist dsParams (inblock info)
-                l = liftname info in
+                newb = addAlist dsParams (inblock info) in
                 info { params = newps,
                        inblock = newb,
                        liftname = id -- (\n -> case lookupCtxt n newb of
@@ -953,8 +931,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
     isOutsideWith _ = True
 
 elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
-   = do let tcgen = Dictionary `elem` opts
-        ctxt <- getContext
+   = do ctxt <- getContext
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
         i <- getIState
@@ -1176,9 +1153,6 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
     mkAux pn wname toplhs ns ns' c
         = ifail $ show fc ++ ":badly formed with clause"
 
-    addArg (PApp fc f args) w = PApp fc f (args ++ [pexp w])
-    addArg (PRef fc hls f) w = PApp fc (PRef fc hls f) [pexp w]
-
     -- ns, arguments which don't depend on the with argument
     -- ns', arguments which do
     updateLHS n pn wname mvars ns_in ns_in' (PApp fc (PRef fc' hls' n') args) w
@@ -1202,11 +1176,6 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
     updateWithTerm ist pn wname toplhs ns_in ns_in' tm
           = mapPT updateApp tm
        where
-         arity (PApp _ _ as) = length as
-         arity _ = 0
-
-         lhs_arity = arity toplhs
-
          currentFn fname (PAlternative _ _ as)
               | Just tm <- getApp as = tm
             where getApp (tm@(PApp _ (PRef _ _ f) _) : as)

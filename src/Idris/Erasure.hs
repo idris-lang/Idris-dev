@@ -287,7 +287,6 @@ buildDepMap ci used externs ctx startNames
         -- mini-DSL for postulates
         (==>) ds rs = (S.fromList ds, M.fromList [(r, S.empty) | r <- rs])
         it n is = [(sUN n, Arg i) | i <- is]
-        mn n is = [(MN 0 $ pack n, Arg i) | i <- is]
 
         -- believe_me is special because it does not use all its arguments
         specialPrims = S.fromList [sUN "prim__believe_me"]
@@ -623,9 +622,6 @@ buildDepMap ci used externs ctx startNames
 
     union :: Deps -> Deps -> Deps
     union = M.unionWith (M.unionWith S.union)
-
-    unions :: [Deps] -> Deps
-    unions = M.unionsWith (M.unionWith S.union)
 
     unionMap :: (a -> Deps) -> [a] -> Deps
     unionMap f = M.unionsWith (M.unionWith S.union) . map f

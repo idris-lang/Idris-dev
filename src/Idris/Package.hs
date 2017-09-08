@@ -333,10 +333,8 @@ auditPackage True  ipkg = do
     getIdrisFiles :: FilePath -> IO [FilePath]
     getIdrisFiles dir = do
       contents <- getDirectoryContents dir
-      let contents' = filter (\fname -> fname /= "." && fname /= "..") contents
 
       -- [ NOTE ] Directory >= 1.2.5.0 introduced `listDirectory` but later versions of directory appear to be causing problems with ghc 7.10.3 and cabal 1.22 in travis. Let's reintroduce the old ranges for directory to be sure.
-
 
       files <- forM contents (findRest dir)
       return $ filter (isIdrisFile) (concat files)

@@ -38,7 +38,6 @@ elabTransform info fc safe lhs_in@(PApp _ (PRef _ _ tf) _) rhs_in
          sendHighlighting highlights
          updateIState $ \i -> i { idris_name = newGName }
          let lhs_tm = orderPats (getInferTerm lhs')
-         let lhs_ty = getInferType lhs'
          let newargs = pvars i lhs_tm
 
          (clhs_tm_in, clhs_ty) <- recheckC_borrowing False False [] (constraintNS info) fc id [] lhs_tm

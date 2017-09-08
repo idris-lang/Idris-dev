@@ -56,7 +56,6 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
                   [] -> ifail $ show fc ++ ":" ++ show n ++ " is not an interface"
                   cs -> tclift $ tfail $ At fc
                            (CantResolveAlts (map fst cs))
-    let constraint = PApp fc (PRef fc [] n) (map pexp ps)
     let iname = mkiname n (namespace info) ps expn
     putIState (ist { hide_list = addDef iname acc (hide_list ist) })
     ist <- getIState
@@ -144,7 +143,6 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          let wbVals_orig = map (decorateid (decorate ns iname)) ds'
          ist <- getIState
          let wbVals = map (expandParamsD False ist id pextra (map methName mtys)) wbVals_orig
-         let wb = wbTys ++ wbVals
 
          logElab 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
          logElab 3 $ "Implementation is " ++ show ps ++ " implicits " ++ show (concat (nub wparams))
@@ -277,8 +275,6 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
     mkMethApp ps (n, _, _, ty)
               = lamBind 0 ty (papp fc (PRef fc [] n)
                      (ps ++ map (toExp . fst) pextra ++ methArgs 0 ty))
-       where
-          needed is p = pname p `elem` map pname is
 
     lamBind i (PPi (Constraint _ _ _) _ _ _ sc) sc'
           = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')

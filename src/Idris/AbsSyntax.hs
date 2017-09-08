@@ -1464,28 +1464,7 @@ expandImplementationScope ist dec ps ns d = d
 -- * if there's a function type, next (2)
 -- * finally, everything else (3)
 getPriority :: IState -> PTerm -> Int
-getPriority i tm = 1 -- pri tm
-  where
-    pri (PRef _ _ n) =
-        case lookupP n (tt_ctxt i) of
-            ((P (DCon _ _ _) _ _):_) -> 1
-            ((P (TCon _ _) _ _):_) -> 1
-            ((P Ref _ _):_) -> 1
-            [] -> 0 -- must be locally bound, if it's not an error...
-    pri (PPi _ _ _ x y) = max 5 (max (pri x) (pri y))
-    pri (PTrue _ _) = 0
-    pri (PRewrite _ _ l r _) = max 1 (max (pri l) (pri r))
-    pri (PApp _ f as) = max 1 (max (pri f) (foldr (max . pri . getTm) 0 as))
-    pri (PAppBind _ f as) = max 1 (max (pri f) (foldr (max . pri . getTm) 0 as))
-    pri (PCase _ f as) = max 1 (max (pri f) (foldr (max . pri . snd) 0 as))
-    pri (PTyped l r) = pri l
-    pri (PPair _ _ _ l r) = max 1 (max (pri l) (pri r))
-    pri (PDPair _ _ _ l t r) = max 1 (max (pri l) (max (pri t) (pri r)))
-    pri (PAlternative _ a as) = maximum (map pri as)
-    pri (PConstant _ _) = 0
-    pri Placeholder = 1
-    pri _ = 3
-
+getPriority i tm = 1
 
 addStatics :: Name -> Term -> PTerm -> Idris ()
 addStatics n tm ptm =
@@ -2012,9 +1991,6 @@ aiFn topname inpat True qq imp_meths ist fc f ffc ds []
           unqualified (NS _ _) = False
           unqualified _ = True
 
-          constructor (TyDecl (DCon _ _ _) _) = True
-          constructor _ = False
-
           conCaf ctxt (n, cia) = (isDConName n ctxt || (qq && isTConName n ctxt)) && allImp cia
 
           vname (UN n) = True -- non qualified
@@ -2201,12 +2177,8 @@ stripUnmatchable i (PApp fc fn args) = PApp fc fn (fmap (fmap su) args) where
        -- check will not necessarily fully resolve constructor names,
        -- and these bare names will otherwise get in the way of
        -- impossbility checking.
-       | -- Just fn <- getFn f,
-         canBeDConName fn ctxt
+       | canBeDConName fn ctxt
           = PApp fc f (fmap (fmap su) args)
-      where getFn (PRef _ _ fn) = Just fn
-            getFn (PApp _ f args) = getFn f
-            getFn _ = Nothing
     su (PApp fc f args)
           = PHidden (PApp fc f args)
     su (PAlternative ms b alts)
@@ -2262,8 +2234,6 @@ findStatics ist tm = let (ns, ss) = fs tm
             | otherwise = let (ns, ss) = fs sc in
                               (ns, ss)
         fs _ = ([], [])
-
-        inOne n ns = length (filter id (map (elem n) ns)) == 1
 
         pos ns ss (PPi p n fc t sc)
             | elem n ss = do sc' <- pos ns ss sc
