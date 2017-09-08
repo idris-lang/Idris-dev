@@ -7,7 +7,6 @@ Maintainer  : The Idris Community.
 -}
 
 {-# LANGUAGE DeriveFunctor, FlexibleContexts, PatternGuards #-}
--- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 module Idris.AbsSyntax(
