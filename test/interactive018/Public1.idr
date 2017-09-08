@@ -7,4 +7,4 @@ public1_private a = a
 
 export
 public1_visible : a -> a
-public1_visible a = a
+public1_visible = public1_private
