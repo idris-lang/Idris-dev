@@ -517,14 +517,8 @@ exact _ _ _ _ = fail "Can't fill here."
 fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
---        let valtyn = normalise ctxt env valty
---        let tyn = normalise ctxt env ty
-       ns <- unify' ctxt env (valty, Just $ SourceTerm val)
-                             (ty, Just (chkPurpose val ty))
-       ps <- get
---        let (uh, uns) = unified ps
---        put (ps { unified = (uh, uns ++ ns) })
---        addLog (show (uh, uns ++ ns))
+       unify' ctxt env (valty, Just $ SourceTerm val)
+                       (ty, Just (chkPurpose val ty))
        return $ Bind x (Guess ty val) sc
   where
     -- some expected types show up commonly in errors and indicate a
@@ -540,14 +534,8 @@ fill _ _ _ _ = fail "Can't fill here."
 match_fill :: Raw -> RunTactic
 match_fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
---        let valtyn = normalise ctxt env valty
---        let tyn = normalise ctxt env ty
-       ns <- match_unify' ctxt env (valty, Just $ SourceTerm val)
-                                   (ty, Just ExpectedType)
-       ps <- get
---        let (uh, uns) = unified ps
---        put (ps { unified = (uh, uns ++ ns) })
---        addLog (show (uh, uns ++ ns))
+       match_unify' ctxt env (valty, Just $ SourceTerm val)
+                             (ty, Just ExpectedType)
        return $ Bind x (Guess ty val) sc
 match_fill _ _ _ _ = fail "Can't fill here."
 
@@ -561,11 +549,8 @@ complete_fill :: RunTactic
 complete_fill ctxt env (Bind x (Guess ty val) sc) =
     do let guess = forget val
        (val', valty) <- lift $ check ctxt env guess
-       ns <- unify' ctxt env (valty, Just $ SourceTerm val')
-                             (ty, Just ExpectedType)
-       ps <- get
---        let (uh, uns) = unified ps
---        put (ps { unified = (uh, uns ++ ns) })
+       unify' ctxt env (valty, Just $ SourceTerm val')
+                       (ty, Just ExpectedType)
        return $ Bind x (Guess ty val) sc
 complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 
@@ -642,13 +627,9 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     x@(Bind y (Pi _ _ s _) _) -> x
                     _ -> normalise ctxt env t
        (tyv, tyt) <- lift $ check ctxt env ty
---        ns <- lift $ unify ctxt env tyv t'
        case t' of
            Bind y (Pi rig _ s _) t -> let t' = updsubst y (P Bound n s) t in
-                                        do ns <- unify' ctxt env (s, Nothing) (tyv, Nothing)
-                                           ps <- get
---                                            let (uh, uns) = unified ps
---                                            put (ps { unified = (uh, uns ++ ns) })
+                                        do unify' ctxt env (s, Nothing) (tyv, Nothing)
                                            return $ Bind n (Lam rig tyv) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 introTy ty n ctxt env _ = fail "Can't introduce here."
