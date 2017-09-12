@@ -375,6 +375,7 @@ Test-suite regression-and-feature-tests
 
 Executable idris-codegen-c
   Main-is:        Main.hs
+  other-modules:  Paths_idris
   hs-source-dirs: codegen/idris-codegen-c
 
   Build-depends:  idris
@@ -389,6 +390,7 @@ Executable idris-codegen-c
 
 Executable idris-codegen-javascript
   Main-is:        Main.hs
+  other-modules:  Paths_idris
   hs-source-dirs: codegen/idris-codegen-javascript
 
   Build-depends:  idris
@@ -403,6 +405,7 @@ Executable idris-codegen-javascript
 
 Executable idris-codegen-node
   Main-is:        Main.hs
+  other-modules:  Paths_idris
   hs-source-dirs: codegen/idris-codegen-node
 
   Build-depends:  idris
