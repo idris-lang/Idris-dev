@@ -1474,6 +1474,17 @@ process fn (PPrint fmt width t)
             ty' = normaliseC ctxt [] ty
         iPrintResult =<< renderExternal fmt width (pprintDelab ist tm)
 
+
+process fn Quit = iPrintError "Command ':quit' is currently unsupported"
+process fn Reload = iPrintError "Command ':reload' is currently unsupported"
+process fn Watch = iPrintError "Command ':watch' is currently unsupported"
+process fn (Load _ _) = iPrintError "Command ':load' is currently unsupported"
+process fn Edit = iPrintError "Command ':edit' is currently unsupported"
+process fn Proofs = iPrintError "Command ':proofs' is currently unsupported"
+process fn (Verbosity _)
+   = iPrintError "Command ':verbosity' is currently unsupported"
+
+
 showTotal :: Totality -> IState -> Doc OutputAnnotation
 showTotal t@(Partial (Other ns)) i
    = text "possibly not total due to:" <$>
