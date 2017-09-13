@@ -56,14 +56,24 @@ codegenJavaScript ci =
 codegenNode :: CodeGenerator
 codegenNode ci =
   do
-    codegenJs (CGConf { header = "#!/usr/bin/env node\n"
-                      , footer = ""
-                      , jsbnPath = "jsbn/jsbn-browser.js"
-                      , extraRunTime = "Runtime-node.js"
-                      }
-              )
-              ci
-    setPermissions (outputFile ci) (emptyPermissions { readable   = True
-                                                     , executable = True
-                                                     , writable   = True
-                                                     })
+    if outputType ci == Executable then
+      do
+        codegenJs (CGConf { header = "#!/usr/bin/env node\n"
+                          , footer = ""
+                          , jsbnPath = "jsbn/jsbn-browser.js"
+                          , extraRunTime = "Runtime-node.js"
+                          }
+                  )
+                  ci
+        setPermissions (outputFile ci) (emptyPermissions { readable   = True
+                                                         , executable = True
+                                                         , writable   = True
+                                                         })
+      else
+        codegenJs (CGConf { header = ""
+                          , footer = ""
+                          , jsbnPath = "jsbn/jsbn-browser.js"
+                          , extraRunTime = "Runtime-node.js"
+                          }
+                  )
+                  ci

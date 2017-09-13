@@ -21,6 +21,7 @@ import IRTS.JavaScript.PrimOp
 import IRTS.JavaScript.Specialize
 import IRTS.Lang
 import IRTS.System
+import IRTS.Exports
 
 import Control.Applicative (pure, (<$>))
 import Control.Monad
@@ -98,6 +99,14 @@ isYes (Just "Y") = True
 isYes (Just "y") = True
 isYes _ = False
 
+makeExportDecls :: ExportIFace -> [Text]
+makeExportDecls (Export _ _ e) =
+  concatMap makeExport e
+  where
+    makeExport (ExportData _) =
+      []
+    makeExport (ExportFun name (FStr exportname) _ _) =
+      [T.concat [T.pack $ exportname,  ": ", jsName name]]
 
 codegenJs :: CGConf -> CodeGenerator
 codegenJs conf ci =
@@ -105,7 +114,11 @@ codegenJs conf ci =
     debug <- isYes <$> lookupEnv "IDRISJS_DEBUG"
     let defs' = Map.fromList $ liftDecls ci
     let defs = globlToCon defs'
-    let used = Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
+    let isExec = outputType ci == Executable
+    putStrLn $ show $ isExec
+    let used = if isExec then
+                  Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
+                  else Map.elems $ removeDeadCode defs (getExpNames $ exportDecls ci)
     when debug $ do
         writeFile (outputFile ci ++ ".LDeclsDebug") $ (unlines $ intersperse "" $ map show used) ++ "\n\n\n"
         putStrLn $ "Finished calculating used"
@@ -136,7 +149,8 @@ codegenJs conf ci =
                                              , doPartials (partialApplications stats), "\n"
                                              , doHiddenClasses (hiddenClasses stats), "\n"
                                              , out, "\n"
-                                             , jsName (sMN 0 "runMain"), "();\n"
+                                             , if isExec then jsName (sMN 0 "runMain") `T.append` "();\n"
+                                                  else T.concat ["module.exports = {\n", T.intercalate ";\n" $ concatMap makeExportDecls (exportDecls ci), "\n};\n"]
                                              , "}.call(this))"
                                              , footer conf
                                              ]
