@@ -2,6 +2,9 @@
 
 + Addition of `Text.Literate`, a module for working with literate
   source files.
++ In `@`-patterns such as `x@p`, `x` is now in scope on the right-hand side
+  of any definitions in `where` clauses, provided the left-hand side of the
+  definition does not shadow it.
 
 # New in 1.1.1
 
