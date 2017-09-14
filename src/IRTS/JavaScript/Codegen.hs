@@ -14,6 +14,7 @@ module IRTS.JavaScript.Codegen( codegenJs
 
 import Idris.Core.TT
 import IRTS.CodegenCommon
+import IRTS.Exports
 import IRTS.JavaScript.AST
 import IRTS.JavaScript.LangTransforms
 import IRTS.JavaScript.Name
@@ -21,7 +22,6 @@ import IRTS.JavaScript.PrimOp
 import IRTS.JavaScript.Specialize
 import IRTS.Lang
 import IRTS.System
-import IRTS.Exports
 
 import Control.Applicative (pure, (<$>))
 import Control.Monad

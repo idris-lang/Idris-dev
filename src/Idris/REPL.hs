@@ -78,8 +78,8 @@ import Idris.REPL.Parser
 import Idris.Termination
 import Idris.TypeSearch (searchByType)
 import Idris.WhoCalls
-import IRTS.Compiler
 import IRTS.CodegenCommon
+import IRTS.Compiler
 import Network
 import Prelude hiding (id, (.), (<$>))
 import System.Console.Haskeline as H
