@@ -79,6 +79,7 @@ import Idris.Termination
 import Idris.TypeSearch (searchByType)
 import Idris.WhoCalls
 import IRTS.Compiler
+import IRTS.CodegenCommon
 import Network
 import Prelude hiding (id, (.), (<$>))
 import System.Console.Haskeline as H
@@ -1284,7 +1285,8 @@ process fn (Compile codegen f)
                                return (Just m')
                        ir <- compile codegen f m
                        i <- getIState
-                       runIO $ generate codegen (fst (head (idris_imported i))) ir
+                       let ir' = ir {interfaces = iface}
+                       runIO $ generate codegen (fst (head (idris_imported i))) ir'
   where fc = fileFC "main"
 process fn (LogLvl i) = setLogLevel i
 process fn (LogCategory cs) = setLogCats cs

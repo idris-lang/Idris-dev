@@ -55,8 +55,15 @@ codegenJavaScript ci =
 
 codegenNode :: CodeGenerator
 codegenNode ci =
-  do
-    if outputType ci == Executable then
+  if interfaces ci then
+    codegenJs (CGConf { header = ""
+                      , footer = ""
+                      , jsbnPath = "jsbn/jsbn-browser.js"
+                      , extraRunTime = "Runtime-node.js"
+                      }
+              )
+              ci
+    else
       do
         codegenJs (CGConf { header = "#!/usr/bin/env node\n"
                           , footer = ""
@@ -69,11 +76,3 @@ codegenNode ci =
                                                          , executable = True
                                                          , writable   = True
                                                          })
-      else
-        codegenJs (CGConf { header = ""
-                          , footer = ""
-                          , jsbnPath = "jsbn/jsbn-browser.js"
-                          , extraRunTime = "Runtime-node.js"
-                          }
-                  )
-                  ci

@@ -114,11 +114,10 @@ codegenJs conf ci =
     debug <- isYes <$> lookupEnv "IDRISJS_DEBUG"
     let defs' = Map.fromList $ liftDecls ci
     let defs = globlToCon defs'
-    let isExec = outputType ci == Executable
-    putStrLn $ show $ isExec
-    let used = if isExec then
-                  Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
-                  else Map.elems $ removeDeadCode defs (getExpNames $ exportDecls ci)
+    let iface = interfaces ci
+    let used = if iface then
+                  Map.elems $ removeDeadCode defs (getExpNames $ exportDecls ci)
+                  else Map.elems $ removeDeadCode defs [sMN 0 "runMain"]
     when debug $ do
         writeFile (outputFile ci ++ ".LDeclsDebug") $ (unlines $ intersperse "" $ map show used) ++ "\n\n\n"
         putStrLn $ "Finished calculating used"
@@ -149,8 +148,8 @@ codegenJs conf ci =
                                              , doPartials (partialApplications stats), "\n"
                                              , doHiddenClasses (hiddenClasses stats), "\n"
                                              , out, "\n"
-                                             , if isExec then jsName (sMN 0 "runMain") `T.append` "();\n"
-                                                  else T.concat ["module.exports = {\n", T.intercalate ";\n" $ concatMap makeExportDecls (exportDecls ci), "\n};\n"]
+                                             , if iface then T.concat ["module.exports = {\n", T.intercalate ";\n" $ concatMap makeExportDecls (exportDecls ci), "\n};\n"]
+                                                  else jsName (sMN 0 "runMain") `T.append` "();\n"
                                              , "}.call(this))"
                                              , footer conf
                                              ]
