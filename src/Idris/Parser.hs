@@ -58,7 +58,7 @@ import System.FilePath
 import Text.PrettyPrint.ANSI.Leijen (Doc, plain)
 import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
 import Text.Trifecta hiding (Err, char, charLiteral, natural, span, string,
-                             stringLiteral, symbol, whiteSpace)
+                      stringLiteral, symbol, whiteSpace)
 import Text.Trifecta.Delta
 
 {-

@@ -18,8 +18,8 @@ import Idris.Core.Typecheck
 import Idris.Core.WHNF
 import Idris.Coverage
 import Idris.DataOpts
-import Idris.Delaborate
 import Idris.DeepSeq ()
+import Idris.Delaborate
 import Idris.Docstrings hiding (Unchecked)
 import Idris.Elab.AsPat
 import Idris.Elab.Term
@@ -650,10 +650,10 @@ elabClause info opts (_, PClause fc fname lhs_in [] PImpossible [])
                           logElab 5 $ "Elaborated impossible case " ++ showTmImpls lhs ++
                                       "\n" ++ show ptm
                           return (Left ptm, lhs)
-elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock)
+elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as whereblock_as)
    = do push_estack fname False
         ctxt <- getContext
-        let (lhs_in, rhs_in) = desugarAs lhs_in_as rhs_in_as
+        let (lhs_in, rhs_in, whereblock) = desugarAs lhs_in_as rhs_in_as whereblock_as
 
         -- Build the LHS as an "Infer", and pull out its type and
         -- pattern bindings
