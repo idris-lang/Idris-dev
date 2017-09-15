@@ -18,8 +18,8 @@ import Idris.Core.Typecheck
 import Idris.Core.WHNF
 import Idris.Coverage
 import Idris.DataOpts
-import Idris.Delaborate
 import Idris.DeepSeq ()
+import Idris.Delaborate
 import Idris.Docstrings hiding (Unchecked)
 import Idris.Elab.AsPat
 import Idris.Elab.Term
