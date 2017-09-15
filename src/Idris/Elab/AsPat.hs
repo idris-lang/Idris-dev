@@ -11,18 +11,30 @@ import Idris.AbsSyntax
 import Idris.Core.TT
 
 import Control.Monad.State.Strict
-import Data.Generics.Uniplate.Data (transformM)
+import Data.Generics.Uniplate.Data (transformM, universe)
 
 -- | Desugar by changing x@y on lhs to let x = y in ... or rhs
-desugarAs :: PTerm -> PTerm -> (PTerm, PTerm)
-desugarAs lhs rhs
-    = let (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) [] in
-          (lhs', bindPats pats rhs)
+desugarAs :: PTerm -> PTerm -> [PDecl] -> (PTerm, PTerm, [PDecl])
+desugarAs lhs rhs whereblock
+    = (lhs', bindOnRight rhs pats, map (bindInWhereDecl pats) whereblock)
   where
-    bindPats :: [(Name, FC, PTerm)] -> PTerm -> PTerm
-    bindPats [] rhs = rhs
-    bindPats ((n, fc, tm) : ps) rhs
-       = PLet fc n NoFC Placeholder tm (bindPats ps rhs)
+    (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) []
+
+    bindOnRight :: PTerm -> [(Name, FC, PTerm)] -> PTerm
+    bindOnRight = foldr (\(n, fc, tm) -> PLet fc n NoFC Placeholder tm)
+
+    bindInWhereDecl :: [(Name, FC, PTerm)] -> PDecl -> PDecl
+    bindInWhereDecl pats (PClauses fc opts n clauses)
+       = PClauses fc opts n $ map (bindInWhereClause pats) clauses
+    bindInWhereDecl _ d = d
+
+    bindInWhereClause :: [(Name, FC, PTerm)] -> PClause -> PClause
+    bindInWhereClause pats (PClause fc n lhs ws rhs wb)
+       = let bound = [ n | (PRef _ _ n) <- universe lhs ]
+             pats' = filter (not . (`elem` bound) . \(n,_,_) -> n) pats
+             rhs'  = bindOnRight rhs pats' in
+         PClause fc n lhs ws rhs' $ map (bindInWhereDecl pats') wb
+    bindInWhereClause _ c = c
 
 collectAs :: PTerm -> State [(Name, FC, PTerm)] PTerm
 collectAs (PAs fc n tm) = do tm' <- collectAs tm
