@@ -13,32 +13,29 @@ module Util.DynamicLinker ( ForeignFun(..)
                           ) where
 
 #ifdef IDRIS_FFI
-import Foreign.Ptr ( FunPtr
-#ifdef mingw32_HOST_OS
-                   , castPtrToFunPtr
-#endif
-                   , nullFunPtr
-                   , nullPtr)
 import System.Directory
-#ifndef mingw32_HOST_OS
+#ifdef mingw32_HOST_OS
+import qualified Control.Exception as Exception (IOException, catch)
+import Foreign.Ptr (FunPtr, castPtrToFunPtr, nullFunPtr, nullPtr)
+import System.FilePath.Windows ((</>))
+import System.Win32.DLL
+import System.Win32.Types
+#else
 import Control.Exception (IOException, throwIO, try)
-import Data.Array ( bounds
+import Foreign.Ptr (FunPtr, nullFunPtr, nullPtr)
 #ifdef linux_HOST_OS
-                  , inRange
-#endif
-                  , (!))
-#ifdef linux_HOST_OS
+import Data.Array (bounds, inRange, (!))
 import Data.Functor ((<$>))
 import Data.Maybe (catMaybes)
+#else
+import Data.Array (bounds, (!))
 #endif
 import System.FilePath.Posix ((</>))
 import System.Posix.DynamicLinker
 import Text.Regex.TDFA
-#else
-import qualified Control.Exception as Exception (IOException, catch)
-import System.FilePath.Windows ((</>))
-import System.Win32.DLL
-import System.Win32.Types
+#endif
+
+#ifdef mingw32_HOST_OS
 type DL = HMODULE
 #endif
 
