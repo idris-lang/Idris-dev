@@ -40,18 +40,72 @@ inf False t = t
 ||| consumed and therefore the input is smaller)
 export %inline
 (>>=) : {c1 : Bool} ->
-        Grammar tok c1 a -> inf c1 (a -> Grammar tok c2 b) ->
+        Grammar tok c1 a ->
+        inf c1 (a -> Grammar tok c2 b) ->
         Grammar tok (c1 || c2) b
 (>>=) {c1 = False} = SeqEmpty
 (>>=) {c1 = True} = SeqEat
 
+||| Sequence a grammar followed by the grammar it returns.
+export
+join : {c1 : Bool} ->
+       Grammar tok c1 (Grammar tok c2 a) ->
+       Grammar tok (c1 || c2) a
+join {c1 = False} p = SeqEmpty p id
+join {c1 = True} p = SeqEat p id
+
 ||| Give two alternative grammars. If both consume, the combination is
 ||| guaranteed to consume.
 export
-(<|>) : Grammar tok c1 ty -> Grammar tok c2 ty ->
+(<|>) : Grammar tok c1 ty ->
+        Grammar tok c2 ty ->
         Grammar tok (c1 && c2) ty
 (<|>) = Alt
 
+||| Allows the result of a grammar to be mapped to a different value.
+export
+Functor (Grammar tok c) where
+  map f (Empty val)  = Empty (f val)
+  map f (Fail msg)   = Fail msg
+  map f (Terminal g) = Terminal (\t => map f (g t))
+  map f (Alt x y)    = Alt (map f x) (map f y)
+  map f (SeqEat act next)
+      = SeqEat act (\val => map f (next val))
+  map f (SeqEmpty act next)
+      = SeqEmpty act (\val => map f (next val))
+  -- The remaining constructors (NextIs, EOF, Commit) have a fixed type,
+  -- so a sequence must be used.
+  map {c = False} f p = SeqEmpty p (Empty . f)
+
+||| Sequence a grammar with value type `a -> b` and a grammar
+||| with value type `a`. If both succeed, apply the function
+||| from the first grammar to the value from the second grammar.
+||| Guaranteed to consume if either grammar consumes.
+export
+(<*>) : {c1 : Bool} ->
+        Grammar tok c1 (a -> b) ->
+        inf c1 (Grammar tok c2 a) ->
+        Grammar tok (c1 || c2) b
+(<*>) {c1 = False} x y = SeqEmpty x (\f => map f y)
+(<*>) {c1 = True} x y = SeqEat x (\f => map f y)
+
+||| Sequence two grammars. If both succeed, use the value of the first one.
+||| Guaranteed to consume if either grammar consumes.
+export
+(<*) : Grammar tok c1 a ->
+       inf c1 (Grammar tok c2 b) ->
+       Grammar tok (c1 || c2) a
+(<*) x y = map const x <*> y
+
+||| Sequence two grammars. If both succeed, use the value of the second one.
+||| Guaranteed to consume if either grammar consumes.
+export
+(*>) : Grammar tok c1 a ->
+       inf c1 (Grammar tok c2 b) ->
+       Grammar tok (c1 || c2) b
+(*>) x y = map (const id) x <*> y
+
+||| Always succeed with the given value.
 export
 pure : (val : ty) -> Grammar tok False ty
 pure = Empty
@@ -226,6 +280,9 @@ optional : Grammar tok True a -> (ifNothing : a) ->
            Grammar tok False a
 optional p def = p <|> pure def
 
+||| Fold over a list of grammars until the first one succeeds.
+choice : Foldable t => t (Grammar tok True a) -> Grammar tok True a
+choice xs = foldr Alt (Fail "No more options") xs
 
 ||| Parse an instance of `p` that is between `left` and `right`.
 export
