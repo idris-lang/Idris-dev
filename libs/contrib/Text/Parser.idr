@@ -152,12 +152,16 @@ data ParseResult : List tok -> (consumes : Bool) -> Type -> Type where
                    (val : ty) -> (more : List tok) ->
                    ParseResult (x :: xs ++ more) c ty
 
+-- Take the result of an alternative branch, reset the commit flag to
+-- the commit flag from the outer alternative, and weaken the 'consumes'
+-- flag to take both alternatives into account
 weakenRes : {whatever, c : Bool} -> {xs : List tok} ->
-            ParseResult xs c ty -> ParseResult xs (whatever && c) ty
-weakenRes (Failure com msg ts) = Failure com msg ts
-weakenRes {whatever=True} (EmptyRes com val xs) = EmptyRes com val xs
-weakenRes {whatever=False} (EmptyRes com val xs) = EmptyRes com val xs
-weakenRes (NonEmptyRes com val more) = NonEmptyRes com val more
+            (com' : Bool) ->
+						ParseResult xs c ty -> ParseResult xs (whatever && c) ty
+weakenRes com' (Failure com msg ts) = Failure com' msg ts
+weakenRes {whatever=True} com' (EmptyRes com val xs) = EmptyRes com' val xs
+weakenRes {whatever=False} com' (EmptyRes com val xs) = EmptyRes com' val xs
+weakenRes com' (NonEmptyRes com val more) = NonEmptyRes com' val more
 
 shorter : (more : List tok) -> .(ys : List tok) ->
           LTE (S (length more)) (S (length (ys ++ more)))
@@ -192,7 +196,7 @@ doParse com xs act with (sizeAccessible xs)
           = if com' -- If the alternative had committed, don't try the
                     -- other branch (and reset commit flag)
                then Failure com msg ts
-               else weakenRes (doParse False xs y | sml)
+               else weakenRes com (doParse False xs y | sml)
     -- Successfully parsed the first option, so use the outer commit flag
     doParse com xs (Alt x y) | sml | (EmptyRes _ val xs)
           = EmptyRes com val xs
