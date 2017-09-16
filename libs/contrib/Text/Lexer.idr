@@ -119,6 +119,20 @@ choice : (xs : List Lexer) -> {auto ok : NonEmpty xs} -> Lexer
 choice (x :: [])          = x
 choice (x :: xs@(_ :: _)) = x <|> choice xs
 
+||| Repeat the sub-lexer `l` zero or more times until the lexer
+||| `stopBefore` is encountered. `stopBefore` will not be consumed.
+||| Not guaranteed to consume input.
+export
+manyUntil : (stopBefore : Recognise c) -> (l : Lexer) -> Recognise False
+manyUntil stopBefore l = many (reject stopBefore <+> l)
+
+||| Repeat the sub-lexer `l` zero or more times until the lexer
+||| `stopAfter` is encountered, and consume it. Guaranteed to
+||| consume if `stopAfter` consumes.
+export
+manyThen : (stopAfter : Recognise c) -> (l : Lexer) -> Recognise c
+manyThen stopAfter l = manyUntil stopAfter l <+> stopAfter
+
 ||| Recognise many instances of `l` until an instance of `end` is
 ||| encountered.
 |||
@@ -126,6 +140,8 @@ choice (x :: xs@(_ :: _)) = x <|> choice xs
 export
 manyTill : (l : Lexer) -> (end : Lexer) -> Recognise False
 manyTill l end = end <|> opt (l <+> manyTill l end)
+%deprecate manyTill
+    "Prefer `lineComment`, or `manyUntil`/`manyThen` (argument order is flipped)."
 
 ||| Recognise any character
 export
@@ -220,7 +236,7 @@ digits = some digit
 ||| Recognise a single hexidecimal digit
 export
 hexDigit : Lexer
-hexDigit = digit <|> oneOf "abcdefABCDEF"
+hexDigit = pred isHexDigit
 
 ||| Recognise one or more hexidecimal digits
 export
@@ -277,6 +293,17 @@ export
 spaces : Lexer
 spaces = some space
 
+||| Recognise a single newline sequence. Understands CRLF, CR, and LF
+export
+newline : Lexer
+newline = let crlf = "\r\n" in
+              exact crlf <|> oneOf crlf
+
+||| Recognise one or more newline sequences. Understands CRLF, CR, and LF
+export
+newlines : Lexer
+newlines = some newline
+
 ||| Recognise a single non-whitespace, non-alphanumeric character
 export
 symbol : Lexer
@@ -291,7 +318,7 @@ symbols = some symbol
 ||| delimiting lexers
 export
 surround : (start : Lexer) -> (end : Lexer) -> (l : Lexer) -> Lexer
-surround start end l = start <+> manyTill l end
+surround start end l = start <+> manyThen end l
 
 ||| Recognise zero or more occurrences of a sub-lexer surrounded
 ||| by the same quote lexer on both sides (useful for strings)
@@ -325,7 +352,26 @@ intLit = opt (is '-') <+> digits
 ||| Recognise a hexidecimal literal, prefixed by "0x" or "0X"
 export
 hexLit : Lexer
-hexLit = is '0' <+> oneOf "xX" <+> hexDigits
+hexLit = approx "0x" <+> hexDigits
+
+||| Recognise `start`, then recognise all input until a newline is encountered,
+||| and consume the newline. Will succeed if end-of-input is encountered before
+||| a newline.
+export
+lineComment : (start : Lexer) -> Lexer
+lineComment start = start <+> manyUntil newline any <+> opt newline
+
+||| Recognise all input between `start` and `end` lexers.
+||| Supports balanced nesting.
+|||
+||| For block comments that don't support nesting (such as C-style comments),
+||| use `surround`.
+export
+blockComment : (start : Lexer) -> (end : Lexer) -> Lexer
+blockComment start end = start <+> middle <+> end
+  where
+    middle : Recognise False
+    middle = manyUntil end (blockComment start end <|> any)
 
 ||| A mapping from lexers to the tokens they produce.
 ||| This is a list of pairs `(Lexer, String -> tokenType)`
