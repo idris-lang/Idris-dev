@@ -5,9 +5,11 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE BangPatterns, DeriveGeneric, FlexibleInstances,
              MultiParamTypeClasses, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 normaliseAll, normaliseBlocking, toValue, quoteTerm,
@@ -28,19 +30,18 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 conGuarded,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
+                visibleDefinitions,
                 isUniverse, linearCheck, linearCheckArg) where
 
 import Idris.Core.CaseTree
 import Idris.Core.TT
 
-import Control.Applicative hiding (Const)
 import Control.Monad.State
-import Data.Binary hiding (get, put)
-import qualified Data.Binary as B
 import Data.List
 import Data.Maybe (listToMaybe)
-import Debug.Trace
 import GHC.Generics (Generic)
+
+import qualified Data.Map.Strict as Map
 
 data EvalState = ES { limited :: [(Name, Int)],
                       nexthole :: Int,
@@ -1151,6 +1152,14 @@ conGuarded ctxt n tm = guarded n tm
         | (P _ f _, as) <- unApply ap,
           isConName f ctxt = any (guarded n) as
     guarded _ _ = False
+
+visibleDefinitions :: Context -> Ctxt TTDecl
+visibleDefinitions ctxt =
+  Map.filter (\m -> length m > 0) . Map.map onlyVisible . definitions $ ctxt
+  where
+    onlyVisible = Map.filter visible
+    visible (_def, _rigCount, _injectivity, accessibility, _totality, _metaInformation) =
+      accessibility `notElem` [Hidden, Private]
 
 lookupP :: Name -> Context -> [Term]
 lookupP = lookupP_all False False

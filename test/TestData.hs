@@ -158,7 +158,11 @@ testFamiliesData = [
       ( 13, ANY  ),
       ( 14, C_CG ),
       ( 15, ANY  ),
-      ( 16, ANY  )]),
+      ( 16, ANY  ),
+-- FIXME: Re-enable interactive017 once it works with and without node.
+-- FIXME: See https://github.com/idris-lang/Idris-dev/pull/4046#issuecomment-326910042
+--      ( 17, ANY  ),
+      ( 18, ANY  )]),
   ("interfaces",      "Interfaces",
     [ (  1, ANY  ),
       (  2, ANY  ),
