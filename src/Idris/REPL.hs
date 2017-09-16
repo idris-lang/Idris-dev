@@ -6,6 +6,8 @@ Maintainer  : The Idris Community.
 -}
 
 {-# LANGUAGE FlexibleContexts, PatternGuards #-}
+-- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 module Idris.REPL
   ( idemodeStart
@@ -974,7 +976,7 @@ process fn (Check (PRef _ _ n))
    = do ctxt <- getContext
         ist <- getIState
         let ppo = ppOptionIst ist
-        case lookupNames n ctxt of
+        case lookupVisibleNames n ctxt of
           ts@(t:_) ->
             case lookup t (idris_metavars ist) of
                 Just (_, i, _, _, _) -> iRenderResult . fmap (fancifyAnnots ist True) $
@@ -982,6 +984,9 @@ process fn (Check (PRef _ _ n))
                 Nothing -> iPrintFunTypes [] n (map (\n -> (n, pprintDelabTy ist n)) ts)
           [] -> iPrintError $ "No such variable " ++ show n
   where
+    lookupVisibleNames :: Name -> Context -> [Name]
+    lookupVisibleNames n ctxt = map fst $ lookupCtxtName n (visibleDefinitions ctxt)
+
     showMetavarInfo ppo ist n i
          = case lookupTy n (tt_ctxt ist) of
                 (ty:_) -> let ty' = normaliseC (tt_ctxt ist) [] ty in

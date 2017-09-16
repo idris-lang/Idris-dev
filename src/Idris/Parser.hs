@@ -5,9 +5,13 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
              PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
+-- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-unused-imports #-}
+
 module Idris.Parser(module Idris.Parser,
                     module Idris.Parser.Expr,
                     module Idris.Parser.Data,
@@ -1658,6 +1662,7 @@ loadModule' f phase
 loadFromIFile :: Bool -> IBCPhase -> IFileType -> Maybe Int -> Idris ()
 loadFromIFile reexp phase i@(IBC fn src) maxline
    = do logParser 1 $ "Skipping " ++ getSrcFile i
+        logParser 3 $ "loadFromIFile i" ++ show i
         idrisCatch (loadIBC reexp phase fn)
                 (\err -> ierror $ LoadingFailed fn err)
   where

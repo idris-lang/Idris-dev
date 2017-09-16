@@ -5,8 +5,10 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 module Idris.IBC (loadIBC, loadPkgIndex,
                   writeIBC, writePkgIndex,
@@ -120,7 +122,9 @@ loadIBC :: Bool -- ^ True = reexport, False = make everything private
         -> IBCPhase
         -> FilePath -> Idris ()
 loadIBC reexport phase fp
-           = do imps <- getImported
+           = do logIBC 1 $ "loadIBC (reexport, phase, fp)" ++ show (reexport, phase, fp)
+                imps <- getImported
+                logIBC 3 $ "loadIBC imps" ++ show imps
                 case lookup fp imps of
                     Nothing -> load True
                     Just p -> if (not p && reexport) then load False else return ()
@@ -506,13 +510,16 @@ processImports reexp phase fname ar = do
         ibcsd <- valIBCSubDir i
         ids <- rankedImportDirs fname
         putIState (i { imported = f : imported i })
-        let phase' = case phase of
-                         IBC_REPL _ -> IBC_REPL False
-                         p -> p
+        let (phase', reexp') =
+              case phase of
+                IBC_REPL True -> (IBC_REPL False, reexp)
+                IBC_REPL False -> (IBC_Building, reexp && re)
+                p -> (p, reexp && re)
         fp <- findIBC ids ibcsd f
+        logIBC 4 $ "processImports (fp, phase')" ++ show (fp, phase')
         case fp of
             Nothing -> do logIBC 2 $ "Failed to load ibc " ++ f
-            Just fn -> do loadIBC (reexp && re) phase' fn) fs
+            Just fn -> do loadIBC reexp' phase' fn) fs
 
 processImplicits :: Archive -> Idris ()
 processImplicits ar = do
@@ -628,6 +635,7 @@ processPatternDefs ar = do
 processDefs :: Archive -> Idris ()
 processDefs ar = do
         ds <- getEntry [] "ibc_defs" ar
+        logIBC 4 $ "processDefs ds" ++ show ds
         mapM_ (\ (n, d) -> do
             d' <- updateDef d
             case d' of
@@ -724,8 +732,11 @@ processAccess :: Bool -- ^ Reexporting?
            -> IBCPhase
            -> Archive -> Idris ()
 processAccess reexp phase ar = do
+    logIBC 3 $ "processAccess (reexp, phase)" ++ show (reexp, phase)
     ds <- getEntry [] "ibc_access" ar
+    logIBC 3 $ "processAccess ds" ++ show ds
     mapM_ (\ (n, a_in) -> do
+
         let a = if reexp then a_in else Hidden
         logIBC 3 $ "Setting " ++ show (a, n) ++ " to " ++ show a
         updateIState (\i -> i { tt_ctxt = setAccess n a (tt_ctxt i) })
@@ -734,10 +745,15 @@ processAccess reexp phase ar = do
             then do
                 logIBC 2 $ "Not exporting " ++ show n
                 setAccessibility n Hidden
-            else logIBC 2 $ "Exporting " ++ show n
+            else
+                logIBC 2 $ "Exporting " ++ show n
+
         -- Everything should be available at the REPL from
-        -- things imported publicly
-        when (phase == IBC_REPL True) $ setAccessibility n Public) ds
+        -- things imported publicly.
+        when (phase == IBC_REPL True) $ do
+            logIBC 2 $ "Top level, exporting " ++ show n
+            setAccessibility n Public
+      ) ds
 
 processFlags :: Archive -> Idris ()
 processFlags ar = do

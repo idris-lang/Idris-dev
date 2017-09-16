@@ -5,12 +5,16 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-unused-imports #-}
+
 module Idris.Completion (replCompletion, proverCompletion) where
 
-import Idris.AbsSyntax (runIO)
+import Idris.AbsSyntax (getIState, runIO)
 import Idris.AbsSyntaxTree
 import Idris.Colours
-import Idris.Core.Evaluate (ctxtAlist, definitions)
+import Idris.Core.Evaluate (ctxtAlist, visibleDefinitions)
 import Idris.Core.TT
 import Idris.Help
 import Idris.Imports (installedPackages)
@@ -28,19 +32,21 @@ import qualified Data.Text as T
 import System.Console.ANSI (Color)
 import System.Console.Haskeline
 
+commands :: [String]
 commands = [ n | (names, _, _) <- allHelp ++ extraHelp, n <- names ]
 
 tacticArgs :: [(String, Maybe TacticArg)]
 tacticArgs = [ (name, args) | (names, args, _) <- Idris.Parser.Expr.tactics
                             , name <- names ]
+
+tactics :: [String]
 tactics = map fst tacticArgs
 
 -- | Get the user-visible names from the current interpreter state.
 names :: Idris [String]
-names = do i <- get
-           let ctxt = tt_ctxt i
+names = do ctxt <- tt_ctxt <$> getIState
            return $
-             mapMaybe nameString (allNames $ definitions ctxt) ++
+             mapMaybe nameString (allNames $ visibleDefinitions ctxt) ++
              "Type" : map fst Idris.Parser.Expr.constants
   where
     -- We need both fully qualified names and identifiers that map to them

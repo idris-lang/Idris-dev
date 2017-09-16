@@ -1,0 +1,20 @@
+1 : Integer
+top_private : a -> a
+1 : Integer
+top_visible : a -> a
+No such variable imported1_private
+No such variable imported1_private
+1 : Integer
+imported1_visible : a -> a
+No such variable imported2_private
+No such variable imported2_private
+No such variable imported2_visible
+No such variable imported2_visible
+No such variable public1_private
+No such variable public1_private
+1 : Integer
+public1_visible : a -> a
+No such variable public2_private
+No such variable public2_private
+1 : Integer
+public2_visible : a -> a

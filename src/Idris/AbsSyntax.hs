@@ -7,6 +7,7 @@ Maintainer  : The Idris Community.
 -}
 
 {-# LANGUAGE DeriveFunctor, FlexibleContexts, PatternGuards #-}
+{-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 module Idris.AbsSyntax(
     module Idris.AbsSyntax
@@ -596,7 +597,7 @@ getHdrs :: Codegen -> Idris [String]
 getHdrs tgt = do i <- getIState; return (forCodegen tgt $ idris_hdrs i)
 
 getImported ::  Idris [(FilePath, Bool)]
-getImported = do i <- getIState; return (idris_imported i)
+getImported = idris_imported `fmap` getIState
 
 setErrSpan :: FC -> Idris ()
 setErrSpan x = do i <- getIState;
