@@ -9,7 +9,7 @@ export
 data Recognise : (consumes : Bool) -> Type where
      Empty : Recognise False
      Fail : Recognise c
-     Expect : Recognise c -> Recognise False
+     Lookahead : (positive : Bool) -> Recognise c -> Recognise False
      Pred : (Char -> Bool) -> Recognise True
      SeqEat : Recognise True -> Inf (Recognise e) -> Recognise True
      SeqEmpty : Recognise e1 -> Recognise e2 -> Recognise (e1 || e2)
@@ -47,18 +47,12 @@ fail = Fail
 ||| Positive lookahead. Never consumes input.
 export
 expect : Recognise c -> Recognise False
-expect = Expect
+expect = Lookahead True
 
 ||| Negative lookahead. Never consumes input.
 export
 reject : Recognise c -> Recognise False
-reject Empty            = Fail
-reject Fail             = Empty
-reject (Expect x)       = reject x
-reject (Pred f)         = Expect (Pred (not . f))
-reject (SeqEat r1 r2)   = reject r1 <|> Expect (SeqEat r1 (reject r2))
-reject (SeqEmpty r1 r2) = reject r1 <|> Expect (SeqEmpty r1 (reject r2))
-reject (Alt r1 r2)      = reject r1 <+> reject r2
+reject = Lookahead False
 
 ||| Recognise a specific character
 export
@@ -191,10 +185,10 @@ strTail start (MkStrLen str len)
 scan : Recognise c -> Nat -> StrLen -> Maybe Nat
 scan Empty idx str = pure idx
 scan Fail idx str = Nothing
-scan (Expect r) idx str
-    = case scan r idx str of
-           Just _  => pure idx
-           Nothing => Nothing
+scan (Lookahead positive r) idx str
+    = if isJust (scan r idx str) == positive
+         then Just idx
+         else Nothing
 scan (Pred f) idx str
     = do c <- strIndex str idx
          if f c
