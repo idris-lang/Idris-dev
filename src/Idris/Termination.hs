@@ -15,10 +15,9 @@ import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Error
 import Idris.Options
-import Idris.Output (iWarn, iputStrLn)
+import Idris.Output (iWarn)
 
 import Control.Monad.State.Strict
-import Data.Char
 import Data.Either
 import Data.List
 import Data.Maybe

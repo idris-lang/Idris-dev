@@ -8,19 +8,13 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE CPP, ConstraintKinds, FlexibleInstances, TypeSynonymInstances #-}
 module Idris.Package.Parser where
 
-import Idris.AbsSyntaxTree
 import Idris.CmdOptions
-import Idris.Core.TT
 import Idris.Package.Common
 import Idris.Parser.Helpers hiding (stringLiteral)
-import Idris.REPL
-
-import Util.System
 
 import Control.Applicative
 import Control.Monad.State.Strict
 import Data.List (union)
-import Data.Maybe (fromJust, isNothing)
 import System.Directory (doesFileExist)
 import System.Exit
 import System.FilePath (isValid, takeExtension, takeFileName)

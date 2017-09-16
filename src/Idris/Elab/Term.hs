@@ -10,30 +10,25 @@ Maintainer  : The Idris Community.
 module Idris.Elab.Term where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
-import Idris.Core.CaseTree (SC, SC'(STerm), findCalls, findUsedArgs)
+import Idris.Core.CaseTree (SC'(STerm), findCalls)
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.TT
 import Idris.Core.Typecheck (check, converts, isType, recheck)
 import Idris.Core.Unify
-import Idris.Core.WHNF (whnf, whnfArgs)
-import Idris.Coverage (genClauses, recoverableCoverage, validCoverageCase)
+import Idris.Core.WHNF (whnf)
+import Idris.Coverage (genClauses, recoverableCoverage)
 import Idris.Delaborate
-import Idris.DSL
 import Idris.Elab.Quasiquote (extractUnquotes)
 import Idris.Elab.Rewrite
 import Idris.Elab.Utils
 import Idris.Error
 import Idris.ErrReverse (errReverse)
 import Idris.Options
-import Idris.Output (pshow)
 import Idris.ProofSearch
 import Idris.Reflection
 import Idris.Termination (buildSCG, checkDeclTotality, checkPositive)
-
-import qualified Util.Pretty as U
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -41,9 +36,8 @@ import Control.Monad.State.Strict
 import Data.Foldable (for_)
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import qualified Data.Set as S
-import qualified Data.Text as T
 import Debug.Trace
 
 data ElabMode = ETyDecl | ETransLHS | ELHS | EImpossible | ERHS

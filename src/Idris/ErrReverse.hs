@@ -15,7 +15,6 @@ import Idris.Core.TT
 import Util.Pretty
 
 import Data.List
-import Debug.Trace
 
 -- | For display purposes, apply any 'error reversal' transformations
 -- so that errors will be more readable,

@@ -14,7 +14,7 @@ module Idris.TypeSearch (
   ) where
 
 import Idris.AbsSyntax (addImpl, addUsingConstraints, getIState, implicit,
-                        logLvl, putIState)
+                        putIState)
 import Idris.AbsSyntaxTree (IState(idris_docstrings, idris_interfaces, idris_outputmode, tt_ctxt),
                             Idris, InterfaceInfo, OutputMode(..), PTerm,
                             defaultSyntax, eqTy, implicitAllowed,

@@ -60,29 +60,24 @@ import Util.Pretty hiding (Str)
 -- Work around AMP without CPP
 import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Functor(..), Int,
                 Integer, Maybe(..), Monad(..), Num(..), Ord(..), Ordering(..),
-                Read(..), Show(..), String, div, error, flip, fst, mod, not,
-                otherwise, read, snd, ($), (&&), (.), (||))
+                Show(..), String, div, error, fst, mod, not, otherwise, read,
+                snd, ($), (&&), (.), (||))
 
 import Control.Applicative (Alternative, Applicative(..))
 import qualified Control.Applicative as A (Alternative(..))
 import Control.DeepSeq (($!!))
 import Control.Monad.State.Strict
-import Control.Monad.Trans.Except (Except(..))
 import Data.Binary hiding (get, put)
-import qualified Data.Binary as B
 import Data.Char
 import Data.Data (Data)
 import Data.Foldable (Foldable)
 import Data.List hiding (group, insert)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (listToMaybe)
-import Data.Monoid (mconcat)
 import Data.Set (Set, fromList, insert, member)
 import qualified Data.Text as T
 import Data.Traversable (Traversable)
 import Data.Typeable (Typeable)
-import Data.Vector.Unboxed (Vector)
-import qualified Data.Vector.Unboxed as V
 import Debug.Trace
 import Foreign.Storable (sizeOf)
 import GHC.Generics (Generic)

@@ -18,11 +18,8 @@ module Idris.Core.ProofTerm(
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.Typecheck
 
 import Control.Monad.State.Strict
-import Data.List
-import Debug.Trace
 
 -- | A zipper over terms, in order to efficiently update proof terms.
 data TermPath = Top

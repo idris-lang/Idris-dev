@@ -31,14 +31,11 @@ module Idris.Core.CaseTree (
 
 import Idris.Core.TT
 
-import Control.Applicative hiding (Const)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.List hiding (partition)
 import qualified Data.List (partition)
-import Data.Maybe
 import qualified Data.Set as S
-import Debug.Trace
 import GHC.Generics (Generic)
 
 data CaseDef = CaseDef [Name] !SC [Term]

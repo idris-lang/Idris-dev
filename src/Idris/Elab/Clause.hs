@@ -13,51 +13,38 @@ import Idris.ASTUtils
 import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
-import Idris.Core.Execute
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.WHNF
 import Idris.Coverage
 import Idris.DataOpts
-import Idris.DeepSeq
+import Idris.DeepSeq ()
 import Idris.Delaborate
 import Idris.Docstrings hiding (Unchecked)
-import Idris.DSL
 import Idris.Elab.AsPat
 import Idris.Elab.Term
 import Idris.Elab.Transform
 import Idris.Elab.Type
 import Idris.Elab.Utils
 import Idris.Error
-import Idris.Imports
 import Idris.Inliner
 import Idris.Options
-import Idris.Output (iRenderResult, iWarn, iputStrLn, pshow, sendHighlighting)
+import Idris.Output (iputStrLn, pshow, sendHighlighting)
 import Idris.PartialEval
-import Idris.Primitives
-import Idris.Providers
 import Idris.Termination
 import Idris.Transforms
-import IRTS.Lang
 
 import Util.Pretty hiding ((<$>))
-import Util.Pretty (pretty, text)
 
 import Prelude hiding (id, (.))
 
-import Control.Applicative hiding (Const)
 import Control.Category
 import Control.DeepSeq
 import Control.Monad
 import qualified Control.Monad.State.Lazy as LState
 import Control.Monad.State.Strict as State
-import Data.Char (isLetter, toLower)
 import Data.List
-import Data.List.Split (splitOn)
-import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as S
-import qualified Data.Text as T
 import Data.Word
 import Debug.Trace
 import Numeric

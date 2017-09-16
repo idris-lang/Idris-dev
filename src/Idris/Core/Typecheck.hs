@@ -13,11 +13,8 @@ module Idris.Core.Typecheck where
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.WHNF
 
 import Control.Monad.State
-import qualified Data.Vector.Unboxed as V (length)
-import Debug.Trace
 
 -- To check conversion, normalise each term wrt the current environment.
 -- Since we haven't converted everything to de Bruijn indices yet, we'll have to

@@ -11,7 +11,6 @@ Maintainer  : The Idris Community.
 module Idris.Core.Execute (execute) where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -22,15 +21,11 @@ import IRTS.Lang (FDesc(..), FType(..))
 import Util.DynamicLinker
 import Util.System
 
-import Control.Applicative hiding (Const)
 import Control.Exception
-import Control.Monad hiding (forM)
 import Control.Monad.Trans
 import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Control.Monad.Trans.State.Strict
-import Data.Bits
 import Data.IORef
-import qualified Data.Map as M
 import Data.Maybe
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Traversable (forM)
@@ -42,7 +37,6 @@ import System.IO.Unsafe
 #ifdef IDRIS_FFI
 import Foreign.C.String
 import Foreign.LibFFI
-import Foreign.Marshal.Alloc (free)
 import Foreign.Ptr
 #endif
 

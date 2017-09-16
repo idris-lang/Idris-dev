@@ -16,14 +16,11 @@ import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Elab.Utils
 import Idris.Error
-import Idris.Output (iWarn, iputStrLn)
 
 import Control.Monad.State.Strict
 import Data.Char
-import Data.Either
 import Data.List
 import Data.Maybe
-import Debug.Trace
 
 -- | Generate a pattern from an 'impossible' LHS.
 --

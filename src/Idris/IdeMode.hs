@@ -11,7 +11,7 @@ Maintainer  : The Idris Community.
 
 module Idris.IdeMode(parseMessage, convSExp, WhatDocs(..), IdeModeCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideModeEpoch, getLen, getNChar, sExpToString) where
 
-import Idris.Core.Binary
+import Idris.Core.Binary ()
 import Idris.Core.TT
 
 import Control.Applicative hiding (Const)

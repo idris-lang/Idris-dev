@@ -1,14 +1,11 @@
 module Main where
 
 import Idris.AbsSyntax
-import Idris.Core.TT
 import Idris.ElabDecls
 import Idris.Main
 import Idris.Options
 import IRTS.CodegenJavaScript
 import IRTS.Compiler
-
-import Paths_idris
 
 import System.Environment
 import System.Exit

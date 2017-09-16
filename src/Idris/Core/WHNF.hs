@@ -12,10 +12,7 @@ module Idris.Core.WHNF(whnf, whnfArgs, WEnv) where
 
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate hiding (quote)
-import qualified Idris.Core.Evaluate as Evaluate
 import Idris.Core.TT
-
-import Debug.Trace
 
 -- | A stack entry consists of a term and the environment it is to be
 -- evaluated in (i.e. it's a thunk)

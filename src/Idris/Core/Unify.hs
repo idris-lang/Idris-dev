@@ -22,11 +22,9 @@ module Idris.Core.Unify(
 import Idris.Core.Evaluate
 import Idris.Core.TT
 
-import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 import Data.Maybe
-import Debug.Trace
 
 -- terms which need to be injective, with the things we're trying to unify
 -- at the time

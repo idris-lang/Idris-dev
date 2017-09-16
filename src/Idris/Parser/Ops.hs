@@ -18,23 +18,10 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import qualified Data.ByteString.UTF8 as UTF8
-import Data.Char
-import qualified Data.HashSet as HS
 import Data.List
-import qualified Data.List.Split as Spl
-import Data.Maybe
-import Data.Monoid
-import qualified Data.Text as T
-import Debug.Trace
-import qualified Text.Parser.Char as Chr
 import Text.Parser.Expression
-import Text.Parser.LookAhead
-import qualified Text.Parser.Token as Tok
-import qualified Text.Parser.Token.Highlight as Hi
 import Text.Trifecta hiding (char, charLiteral, natural, span, string,
                       stringLiteral, symbol, whiteSpace)
-import Text.Trifecta.Delta
 
 -- | Creates table for fixity declarations to build expression parser
 -- using pre-build and user-defined operator/fixity declarations

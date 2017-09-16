@@ -13,7 +13,6 @@ module Idris.Imports(
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Error
-import Idris.Output
 import IRTS.System (getIdrisLibDir)
 
 import Control.Applicative ((<$>))

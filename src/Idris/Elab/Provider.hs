@@ -9,51 +9,24 @@ Maintainer  : The Idris Community.
 module Idris.Elab.Provider(elabProvider) where
 
 import Idris.AbsSyntax
-import Idris.ASTUtils
-import Idris.Core.CaseTree
-import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.Execute
 import Idris.Core.TT
 import Idris.Core.Typecheck
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
-import Idris.DSL
 import Idris.Elab.Clause
 import Idris.Elab.Term
 import Idris.Elab.Type
-import Idris.Elab.Utils
 import Idris.Elab.Value
 import Idris.Error
-import Idris.Imports
-import Idris.Inliner
 import Idris.Options
-import Idris.Output (iWarn, iputStrLn, pshow)
-import Idris.PartialEval
-import Idris.Primitives
 import Idris.Providers
-import IRTS.Lang
-
-import Util.Pretty (pretty, text)
 
 import Prelude hiding (id, (.))
 
-import Control.Applicative hiding (Const)
 import Control.Category
-import Control.DeepSeq
 import Control.Monad
-import Control.Monad.State.Strict as State
-import Data.Char (isLetter, toLower)
-import Data.List
-import Data.List.Split (splitOn)
-import qualified Data.Map as Map
-import Data.Maybe
-import qualified Data.Set as S
-import qualified Data.Text as T
-import Debug.Trace
 
 -- | Elaborate a type provider
 elabProvider :: Docstring (Either Err PTerm) -> ElabInfo -> SyntaxInfo -> FC -> FC -> ProvideWhat -> Name -> Idris ()

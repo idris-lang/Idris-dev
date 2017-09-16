@@ -10,7 +10,6 @@ Maintainer  : The Idris Community.
 module IRTS.Compiler(compile, generate) where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
 import Idris.ASTUtils
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
@@ -21,33 +20,24 @@ import Idris.Options
 import Idris.Output
 import IRTS.CodegenC
 import IRTS.CodegenCommon
-import IRTS.CodegenJavaScript
 import IRTS.Defunctionalise
 import IRTS.DumpBC
 import IRTS.Exports
 import IRTS.Inliner
-import IRTS.Lang
 import IRTS.LangOpts
 import IRTS.Portable
 import IRTS.Simplified
 
 import Prelude hiding (id, (.))
 
-import Control.Applicative
 import Control.Category
 import Control.Monad.State
-import Data.IntSet (IntSet)
-import qualified Data.IntSet as IS
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe
 import Data.Ord
 import qualified Data.Set as S
-import Debug.Trace
 import System.Directory
-import System.Environment
 import System.Exit
-import System.FilePath (addTrailingPathSeparator, (</>))
 import System.IO
 import System.Process
 
