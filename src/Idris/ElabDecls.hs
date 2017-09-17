@@ -280,6 +280,8 @@ elabDecl' _ info (PDSL n dsl)
            ifail "You must turn on the DSLNotation extension to use a dsl block"
          putIState (i { idris_dsls = addDef n dsl (idris_dsls i) })
          addIBC (IBCDSL n)
+elabDecl' what info (PDirective i@(DLogging _))
+  = directiveAction i
 elabDecl' what info (PDirective i)
   | what /= EDefns = directiveAction i
 elabDecl' what info (PProvider doc syn fc nfc provWhat n)

@@ -506,7 +506,9 @@ doForeign vs env (ret : fname : world : args)
         = do let l' = toFDesc l
              r' <- irTerm (sMN 0 "__foreignCall") vs env r
              return (l', r')
-    splitArg _ = ifail "Badly formed foreign function call"
+    splitArg _ = ifail $ "Badly formed foreign function call: " ++
+                         show (ret : fname : world : args)
+     
 
     toFDesc (Constant (Str str)) = FStr str
     toFDesc tm
