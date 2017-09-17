@@ -176,9 +176,6 @@ instance SExpable OutputAnnotation where
 encodeName :: Name -> String
 encodeName n = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $ n
 
-decodeName :: String -> Name
-decodeName = Binary.decode . Lazy.fromStrict . Base64.decodeLenient . UTF8.fromString
-
 encodeTerm :: [(Name, Bool)] -> Term -> String
 encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $
                     (bnd, tm)

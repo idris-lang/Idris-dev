@@ -382,9 +382,7 @@ makeLemma fn updatefile l n
                                                                  StringAtom lem_app]]]
                         in runIO . hPutStrLn h $ convSExp "return" good n
 
-  where getIndent s = length (takeWhile isSpace s)
-
-        appArgs skip 0 _ = ""
+  where appArgs skip 0 _ = ""
         appArgs skip i (Bind n@(UN c) (Pi _ _ _ _) sc)
            | (thead c /= '_' && n `notElem` skip)
                 = " " ++ show n ++ appArgs skip (i - 1) sc

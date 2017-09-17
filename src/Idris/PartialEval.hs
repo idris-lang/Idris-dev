@@ -258,10 +258,6 @@ mkNewPats ist d ns newname sname lhs rhs =
     mkRHSargs (_ : ns) as = mkRHSargs ns as
     mkRHSargs _ _ = []
 
-    mkSubst :: (Term, Term) -> Maybe (Name, Term)
-    mkSubst (P _ n _, t) = Just (n, t)
-    mkSubst _ = Nothing
-
 -- | Creates a new declaration for a specialised function application.
 -- Simple version at the moment: just create a version which is a direct
 -- application of the function to be specialised.

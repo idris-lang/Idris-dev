@@ -51,7 +51,6 @@ data IBCPhase = IBC_Building  -- ^ when building the module tree
 data IBCFile = IBCFile {
     ver                        :: Word16
   , sourcefile                 :: FilePath
-  , ibc_reachablenames         :: ![Name]
   , ibc_imports                :: ![(Bool, FilePath)]
   , ibc_importdirs             :: ![FilePath]
   , ibc_sourcedirs             :: ![FilePath]
@@ -108,7 +107,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -1122,16 +1121,6 @@ instance Binary Accessibility where
                    2 -> return Private
                    3 -> return Hidden
                    _ -> error "Corrupted binary data for Accessibility"
-
-safeToEnum :: (Enum a, Bounded a, Integral int) => String -> int -> a
-safeToEnum label x' = result
-  where
-    x = fromIntegral x'
-    result
-        |  x < fromEnum (minBound `asTypeOf` result)
-        || x > fromEnum (maxBound `asTypeOf` result)
-            = error $ label ++ ": corrupted binary representation in IBC"
-        | otherwise = toEnum x
 
 instance Binary PReason where
         put x

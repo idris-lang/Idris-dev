@@ -67,11 +67,6 @@ metavars :: Idris [String]
 metavars = do i <- get
               return . map (show . nsroot) $ map fst (filter (\(_, (_,_,_,t,_)) -> not t) (idris_metavars i)) \\ primDefs
 
-
-modules :: Idris [String]
-modules = do i <- get
-             return $ map show $ imported i
-
 namespaces :: Idris [String]
 namespaces = do
   ctxt <- fmap tt_ctxt get

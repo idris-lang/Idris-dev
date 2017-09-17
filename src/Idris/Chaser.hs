@@ -58,9 +58,6 @@ getModuleFiles ts = nub $ execState (modList ts) [] where
 --                 when (not (ibc p) || rechk) $
                 mapM_ (modTree (getSrc p : path)) deps
 
-   ibc (IBC _ _) = True
-   ibc _ = False
-
    chkReload False p = p
    chkReload True (IBC fn src) = chkReload True src
    chkReload True p = p

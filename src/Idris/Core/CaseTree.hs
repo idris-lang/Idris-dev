@@ -268,7 +268,6 @@ simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
                  = return $ CaseDef [] (UnmatchedCase (show fc ++ ":No pattern clauses")) []
  sc' tc defcase phase fc cs
       = let proj       = phase == RunTime
-            vnames     = fstT (head cs)
             pats       = map (\ (avs, l, r) ->
                                    (avs, toPats reflect tc l, (l, r))) cs
             chkPats    = mapM chkAccessible pats in
@@ -285,10 +284,7 @@ simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
                                 else return t
                 Error err -> Error (At fc err)
     where args = map (\i -> sMN i "e") [0..]
-          defaultCase True = STerm Erased
-          defaultCase False = UnmatchedCase "Error"
           fstT (x, _, _) = x
-          lstT (_, _, x) = x
 
           -- Check that all pattern variables are reachable by a case split
           -- Otherwise, they won't make sense on the RHS.
@@ -302,48 +298,6 @@ simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
           acc (PCon _ _ _ ps : xs) n = acc (ps ++ xs) n
           acc (PSuc p : xs) n = acc (p : xs) n
           acc (_ : xs) n = acc xs n
-
--- For each 'Case', make sure every choice is in the same type family,
--- as directed by the variable type (i.e. there is no implicit type casing
--- going on).
-
-checkSameTypes :: [(Name, Type)] -> SC -> Bool
-checkSameTypes tys (Case _ n alts)
-        = case lookup n tys of
-               Just t -> and (map (checkAlts t) alts)
-               _ -> and (map ((checkSameTypes tys).getSC) alts)
-  where
-    checkAlts t (ConCase n _ _ sc) = isType n t && checkSameTypes tys sc
-    checkAlts (Constant t) (ConstCase c sc) = isConstType c t && checkSameTypes tys sc
-    checkAlts _ (ConstCase c sc) = False
-    checkAlts _ _ = True
-
-    getSC (ConCase _ _ _ sc) = sc
-    getSC (FnCase _ _ sc) = sc
-    getSC (ConstCase _ sc) = sc
-    getSC (SucCase _ sc) = sc
-    getSC (DefaultCase sc) = sc
-checkSameTypes _ _ = True
-
--- FIXME: All we're actually doing here is checking that we haven't arrived
--- at a specific constructor for a polymorphic argument. I *think* this
--- is sufficient, but if it turns out not to be, fix it!
---
--- Issue #1718 on the issue tracker: https://github.com/idris-lang/Idris-dev/issues/1718
-isType n t | (P (TCon _ _) _ _, _) <- unApply t = True
-isType n t | (P Ref _ _, _) <- unApply t = True
-isType n t = False
-
-isConstType (I _) (AType (ATInt ITNative)) = True
-isConstType (BI _) (AType (ATInt ITBig)) = True
-isConstType (Fl _) (AType ATFloat) = True
-isConstType (Ch _) (AType (ATInt ITChar)) = True
-isConstType (Str _) StrType = True
-isConstType (B8 _) (AType (ATInt _)) = True
-isConstType (B16 _) (AType (ATInt _)) = True
-isConstType (B32 _) (AType (ATInt _)) = True
-isConstType (B64 _) (AType (ATInt _)) = True
-isConstType _ _ = False
 
 data Pat = PCon Bool Name Int [Pat]
          | PConst Const
@@ -399,12 +353,6 @@ toPat reflect tc = map $ toPat' []
         = PReflected n $ map (toPat' []) args
 
     toPat' _ t = PAny
-
-    fixedN IT8 = "Bits8"
-    fixedN IT16 = "Bits16"
-    fixedN IT32 = "Bits32"
-    fixedN IT64 = "Bits64"
-
 
 data Partition = Cons [Clause]
                | Vars [Clause]
@@ -663,9 +611,6 @@ argsToAlt inacc rs@((r, m) : rest) = do
       where
         (acc, inacc) = partitionAcc r
 
-    uniq i (UN n) = MN i n
-    uniq i n = n
-
 getVar :: String -> CaseBuilder Name
 getVar b = do (t, v, ntys) <- get; put (t, v+1, ntys); return (sMN v b)
 
@@ -869,5 +814,3 @@ mkForce = mkForceSC
         = SucCase sn (mkForceSC n arg rhs)
     mkForceAlt n arg (DefaultCase rhs)
         = DefaultCase (mkForceSC n arg rhs)
-
-    forceTm n arg t = subst n arg t

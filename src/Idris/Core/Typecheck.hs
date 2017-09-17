@@ -205,12 +205,6 @@ check' holes tcns ctxt env top
                            Just v' -> v'
            (tv, tt, tns) <- chk Rig0 st (Just maxu) ((n, Rig0, Pi Rig0 i sv kv) : envZero env) t
 
---            convertsC ctxt env st (TType maxu)
---            convertsC ctxt env tt (TType maxu)
---            when holes $ put (v, cs)
---            return (Bind n (Pi i (uniqueBinders (map fst env) sv) (TType maxu))
---                      (pToV n tv), TType maxu)
-
            case (normalise ctxt env st, normalise ctxt env tt) of
                 (TType su, TType tu) -> do
                     when (not holes) $ do (v, cs) <- get
@@ -223,21 +217,6 @@ check' holes tcns ctxt env top
                    let k' = st `smaller` kv `smaller` un `smaller` un' `smaller` u in
                     return (Bind n (Pi rig i (uniqueBinders (map fstEnv env) sv) k')
                                 (pToV n tv), k', sns ++ tns)
-
-      where mkUniquePi kv (Bind n (Pi rig i s k) sc)
-                    = let k' = smaller kv k in
-                          Bind n (Pi rig i s k') (mkUniquePi k' sc)
-            mkUniquePi kv (Bind n (Lam rig t) sc)
-                    = Bind n (Lam rig (mkUniquePi kv t)) (mkUniquePi kv sc)
-            mkUniquePi kv (Bind n (Let t v) sc)
-                    = Bind n (Let (mkUniquePi kv t) v) (mkUniquePi kv sc)
-            mkUniquePi kv t = t
-
-            -- Kind of the whole thing is the kind of the most unique thing
-            -- in the environment (because uniqueness taints everything...)
-            mostUnique [] k = k
-            mostUnique (Pi _ _ _ pk : es) k = mostUnique es (smaller pk k)
-            mostUnique (_ : es) k = mostUnique es k
 
   chk rigc u lvl env (RBind n b sc)
       = do (b', bt', bns) <- checkBinder b
@@ -261,7 +240,6 @@ check' holes tcns ctxt env top
 
           checkBinder (Lam rig t)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
-                 let tv' = normalise ctxt env tv
                  convType tcns ctxt env tt
                  return (Lam rig tv, tt, [])
           checkBinder (Let t v)
@@ -270,14 +248,12 @@ check' holes tcns ctxt env top
                  -- (or rather, like an application of a lambda, multiply)
                  -- (Consider: adding a single use let?)
                  (vv, vt, vns) <- chk (rigMult rigc RigW) u Nothing env v
-                 let tv' = normalise ctxt env tv
                  convertsC ctxt env vt tv
                  convType tcns ctxt env tt
                  return (Let tv vv, tt, vns)
           checkBinder (NLet t v)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
                  (vv, vt, vns) <- chk rigc u Nothing env v
-                 let tv' = normalise ctxt env tv
                  convertsC ctxt env vt tv
                  convType tcns ctxt env tt
                  return (NLet tv vv, tt, vns)
@@ -285,12 +261,10 @@ check' holes tcns ctxt env top
             | not holes = lift $ tfail (IncompleteTerm undefined)
             | otherwise
                    = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
-                        let tv' = normalise ctxt env tv
                         convType tcns ctxt env tt
                         return (Hole tv, tt, [])
           checkBinder (GHole i ns t)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
-                 let tv' = normalise ctxt env tv
                  convType tcns ctxt env tt
                  return (GHole i ns tv, tt, [])
           checkBinder (Guess t v)
@@ -298,20 +272,15 @@ check' holes tcns ctxt env top
             | otherwise
                    = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
                         (vv, vt, vns) <- chk rigc u Nothing env v
-                        let tv' = normalise ctxt env tv
                         convertsC ctxt env vt tv
                         convType tcns ctxt env tt
                         return (Guess tv vv, tt, vns)
           checkBinder (PVar rig t)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
-                 let tv' = normalise ctxt env tv
                  convType tcns ctxt env tt
-                 -- Normalised version, for erasure purposes (it's easier
-                 -- to tell if it's a collapsible variable)
                  return (PVar rig tv, tt, [])
           checkBinder (PVTy t)
             = do (tv, tt, _) <- chk Rig0 u Nothing (envZero env) t
-                 let tv' = normalise ctxt env tv
                  convType tcns ctxt env tt
                  return (PVTy tv, tt, [])
 

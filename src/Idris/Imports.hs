@@ -29,13 +29,13 @@ pkgIndex :: String -> FilePath
 pkgIndex s = "00" ++ s ++ "-idx.ibc"
 
 srcPath :: FilePath -> FilePath
-srcPath fp = let (n, ext) = splitExtension fp in
+srcPath fp = let (_, ext) = splitExtension fp in
                  case ext of
                     ".idr" -> fp
                     _ -> fp ++ ".idr"
 
 lsrcPath :: FilePath -> FilePath
-lsrcPath fp = let (n, ext) = splitExtension fp in
+lsrcPath fp = let (_, ext) = splitExtension fp in
                   case ext of
                      ".lidr" -> fp
                      _ -> fp ++ ".lidr"

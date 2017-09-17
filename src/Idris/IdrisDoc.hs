@@ -248,13 +248,6 @@ getAccess ist n =
      [(_, acc)] -> acc
      _          -> Private
 
--- | Simple predicate for whether an NsItem has Docs
-hasDoc :: NsItem -- ^ The NsItem to test
-       -> Bool   -- ^ The result
-hasDoc (_, Just _, _) = True
-hasDoc _              = False
-
-
 -- | Predicate saying whether a Name possibly may have docs defined
 --   Without this, getDocs from Idris.Docs may fail a pattern match.
 mayHaveDocs :: Name -- ^ The Name to test

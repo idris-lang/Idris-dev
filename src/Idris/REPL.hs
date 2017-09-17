@@ -402,7 +402,6 @@ runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
                          | (n, (_, i, _, _, _)) <- idris_metavars ist
                          , not (n `elem` primDefs)
                          ]
-     let ppo = ppOptionIst ist
      -- splitMvs is a list of pairs of names and their split types
      let splitMvs = [ (n, (premises, concl, tm))
                     | (n, i, ty) <- mvTys ist mvs
@@ -420,14 +419,11 @@ runIdeModeCommand h id orig fn mods (IdeMode.Metavariables cols) =
      runIO . hPutStrLn h $
        IdeMode.convSExp "return" (IdeMode.SymbolAtom "ok", mvOutput) id
   where mapPair f g xs = zip (map (f . fst) xs) (map (g . snd) xs)
-        firstOfThree (x, y, z) = x
-        mapThird f xs = map (\(x, y, z) -> (x, y, f z)) xs
-
         -- | Split a function type into a pair of premises, conclusion.
         -- Each maintains both the original and delaborated versions.
         splitPi :: IState -> Int -> Type -> ([(Name, Type, PTerm)], Type, PTerm)
         splitPi ist i (Bind n (Pi _ _ t _) rest) | i > 0 =
-          let (hs, c, pc) = splitPi ist (i - 1) rest in
+          let (hs, c, _) = splitPi ist (i - 1) rest in
             ((n, t, delabTy' ist [] [] t False False True):hs,
              c, delabTy' ist [] [] c False False True)
         splitPi ist i tm = ([], tm, delabTy' ist [] [] tm False False True)
@@ -1021,8 +1017,7 @@ process fn (Check t)
    = do (tm, ty) <- elabREPL (recinfo (fileFC "toplevel")) ERHS t
         ctxt <- getContext
         ist <- getIState
-        let ppo = ppOptionIst ist
-            ty' = if opt_evaltypes (idris_options ist)
+        let ty' = if opt_evaltypes (idris_options ist)
                      then normaliseC ctxt [] ty
                      else ty
         case tm of
@@ -1127,7 +1122,6 @@ process fn (DebugInfo n)
         when (not (null imps)) $ iputStrLn (show imps)
         let d = lookupDefAcc n False (tt_ctxt i)
         when (not (null d)) $ iputStrLn $ "Definition: " ++ (show (head d))
-        let cg = lookupCtxtName n (idris_callgraph i)
         i <- getIState
         let cg' = lookupCtxtName n (idris_callgraph i)
         sc <- checkSizeChange n
@@ -1457,12 +1451,6 @@ process fn (TransformInfo n)
                     ts' = showTrans i ts in
                     ppTm lhs <+> text " ==> " <+> ppTm rhs : ts'
 
---               iRenderOutput (pretty lhs)
---                    iputStrLn "  ==>  "
---                    iPrintTermWithType (pprintDelab i rhs)
---                    iputStrLn "---------------"
---                    showTrans i ts
-
 process fn (PPrint fmt width (PRef _ _ n))
    = do outs <- pprintDef False n
         iPrintResult =<< renderExternal fmt width (vsep outs)
@@ -1470,10 +1458,7 @@ process fn (PPrint fmt width (PRef _ _ n))
 
 process fn (PPrint fmt width t)
    = do (tm, ty) <- elabVal (recinfo (fileFC "toplevel")) ERHS t
-        ctxt <- getContext
         ist <- getIState
-        let ppo = ppOptionIst ist
-            ty' = normaliseC ctxt [] ty
         iPrintResult =<< renderExternal fmt width (pprintDelab ist tm)
 
 

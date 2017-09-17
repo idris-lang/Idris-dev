@@ -244,12 +244,6 @@ elabDecl' what info (PParams f ns ps)
          let nblock = pblock i
          mapM_ (elabDecl' what info) nblock
   where
-    pinfo = let ds = concatMap tldeclared ps
-                newps = params info ++ ns
-                dsParams = map (\n -> (n, map fst newps)) ds
-                newb = addAlist dsParams (inblock info) in
-                info { params = newps,
-                       inblock = newb }
     pblock i = map (expandParamsD False i id ns
                       (concatMap tldeclared ps)) ps
 

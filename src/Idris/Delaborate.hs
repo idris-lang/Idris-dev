@@ -191,13 +191,6 @@ delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
     de tys env _ (TType i) = PType un
     de tys env _ (UType u) = PUniverse un u
 
-    dens x | fullname = x
-    dens ns@(NS n _) = case lookupCtxt n (idris_implicits ist) of
-                              [_] -> n -- just one thing
-                              [] -> n -- metavariables have no implicits
-                              _ -> ns
-    dens n = n
-
     deFn tys env (App _ f a) args = deFn tys env f (a:args)
     deFn tys env (P _ n _) [l,r]
          | n == pairTy    = PPair un [] IsType (de tys env [] l) (de tys env [] r)
@@ -353,7 +346,7 @@ pprintErr' i (CantUnify _ (x_in, xprov) (y_in, yprov) e sc s) =
              then text "Unification failure" <$> showSc i sc
              else empty
 pprintErr' i (CantConvert x_in y_in env) =
- let (x_ns, y_ns, nms) = renameMNs x_in y_in
+ let (x_ns, y_ns, _) = renameMNs x_in y_in
      (x, y) = addImplicitDiffs (delabSugared i (flagUnique x_ns))
                                (delabSugared i (flagUnique y_ns)) in
   text "Type mismatch between" <>

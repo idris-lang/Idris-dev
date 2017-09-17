@@ -164,7 +164,7 @@ dumpState ist inElab menv ps | (h : hs) <- holes ps = do
   iputGoal rendered
 
   where
-    (h : hs) = holes ps -- apparently the pattern guards don't give us this
+    (h : _) = holes ps -- apparently the pattern guards don't give us this
 
     ppo = ppOptionIst ist
 
@@ -500,7 +500,6 @@ checkType e prf t = do
         putIState ist { tt_ctxt = ctxt' }
         (tm, ty) <- elabVal (recinfo proverfc) ERHS t
         let ppo = ppOptionIst ist
-            ty'     = normaliseC ctxt [] ty
             infixes = idris_infixes ist
             action = case tm of
               TType _ ->

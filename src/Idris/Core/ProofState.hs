@@ -179,7 +179,6 @@ match_unify' :: Context -> Env ->
 match_unify' ctxt env (topx, xfrom) (topy, yfrom) =
    do ps <- get
       let while = while_elaborating ps
-      let dont = dontunify ps
       let inj = injective ps
       traceWhen (unifylog ps)
                 ("Matching " ++ show (topx, topy) ++
@@ -492,15 +491,6 @@ deferType n fty_in args ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                   Nothing -> error ("deferType can't find " ++ show n)
 deferType _ _ _ _ _ _ = fail "Can't defer a non-hole focus."
 
-regret :: RunTactic
-regret ctxt env (Bind x (Hole t) sc) | noOccurrence x sc =
-    do action (\ps -> let hs = holes ps in
-                          ps { holes = hs \\ [x] })
-       return sc
-regret ctxt env (Bind x (Hole t) _)
-    = fail $ show x ++ " : " ++ show t ++ " is not solved..."
-regret _ _ _ = fail "The current focus is not a hole."
-
 unifyGoal :: Raw -> RunTactic
 unifyGoal tm ctxt env h@(Bind x b sc) =
     do (tmv, _) <- lift $ check ctxt env tm
@@ -527,14 +517,8 @@ exact _ _ _ _ = fail "Can't fill here."
 fill :: Raw -> RunTactic
 fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
---        let valtyn = normalise ctxt env valty
---        let tyn = normalise ctxt env ty
-       ns <- unify' ctxt env (valty, Just $ SourceTerm val)
-                             (ty, Just (chkPurpose val ty))
-       ps <- get
-       let (uh, uns) = unified ps
---        put (ps { unified = (uh, uns ++ ns) })
---        addLog (show (uh, uns ++ ns))
+       unify' ctxt env (valty, Just $ SourceTerm val)
+                       (ty, Just (chkPurpose val ty))
        return $ Bind x (Guess ty val) sc
   where
     -- some expected types show up commonly in errors and indicate a
@@ -550,14 +534,8 @@ fill _ _ _ _ = fail "Can't fill here."
 match_fill :: Raw -> RunTactic
 match_fill guess ctxt env (Bind x (Hole ty) sc) =
     do (val, valty) <- lift $ check ctxt env guess
---        let valtyn = normalise ctxt env valty
---        let tyn = normalise ctxt env ty
-       ns <- match_unify' ctxt env (valty, Just $ SourceTerm val)
-                                   (ty, Just ExpectedType)
-       ps <- get
-       let (uh, uns) = unified ps
---        put (ps { unified = (uh, uns ++ ns) })
---        addLog (show (uh, uns ++ ns))
+       match_unify' ctxt env (valty, Just $ SourceTerm val)
+                             (ty, Just ExpectedType)
        return $ Bind x (Guess ty val) sc
 match_fill _ _ _ _ = fail "Can't fill here."
 
@@ -571,11 +549,8 @@ complete_fill :: RunTactic
 complete_fill ctxt env (Bind x (Guess ty val) sc) =
     do let guess = forget val
        (val', valty) <- lift $ check ctxt env guess
-       ns <- unify' ctxt env (valty, Just $ SourceTerm val')
-                             (ty, Just ExpectedType)
-       ps <- get
-       let (uh, uns) = unified ps
---        put (ps { unified = (uh, uns ++ ns) })
+       unify' ctxt env (valty, Just $ SourceTerm val')
+                       (ty, Just ExpectedType)
        return $ Bind x (Guess ty val) sc
 complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 
@@ -586,7 +561,6 @@ complete_fill ctxt env t = fail $ "Can't complete fill at " ++ show t
 solve :: RunTactic
 solve ctxt env (Bind x (Guess ty val) sc)
    = do ps <- get
-        let (uh, uns) = unified ps
         dropdots <-
              case lookup x (notunified ps) of
                 Just tm -> -- trace ("NEED MATCH: " ++ show (x, tm, val) ++ "\nIN " ++ show (pterm ps)) $
@@ -603,7 +577,7 @@ solve ctxt env (Bind x (Guess ty val) sc)
                             recents = x : recents ps,
                             implementations = implementations ps \\ [x],
                             dotted = dropUnified dropdots (dotted ps) })
-        let (locked, did) = tryLock (holes ps \\ [x]) (updsubst x val sc) in
+        let (locked, _) = tryLock (holes ps \\ [x]) (updsubst x val sc) in
             return locked
   where dropUnified ddots [] = []
         dropUnified ddots ((x, es) : ds)
@@ -628,7 +602,6 @@ solve ctxt env (Bind x (Guess ty val) sc)
                   (Bind n (Let ty' val') sc', tyl && vall && scl)
         tryLock hs t@(Bind n b sc)
             = let (bt', btl) = tryLock hs (binderTy b)
-                  (val', vall) = tryLock hs val
                   (sc', scl) = tryLock hs sc in
                   (Bind n (b { binderTy = bt' }) sc', btl && scl)
         tryLock hs t = (t, True)
@@ -654,13 +627,9 @@ introTy ty mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
                     x@(Bind y (Pi _ _ s _) _) -> x
                     _ -> normalise ctxt env t
        (tyv, tyt) <- lift $ check ctxt env ty
---        ns <- lift $ unify ctxt env tyv t'
        case t' of
            Bind y (Pi rig _ s _) t -> let t' = updsubst y (P Bound n s) t in
-                                        do ns <- unify' ctxt env (s, Nothing) (tyv, Nothing)
-                                           ps <- get
-                                           let (uh, uns) = unified ps
---                                            put (ps { unified = (uh, uns ++ ns) })
+                                        do unify' ctxt env (s, Nothing) (tyv, Nothing)
                                            return $ Bind n (Lam rig tyv) (Bind x (Hole t') (P Bound x t'))
            _ -> lift $ tfail $ CantIntroduce t'
 introTy ty n ctxt env _ = fail "Can't introduce here."
@@ -758,7 +727,7 @@ casetac :: Raw -> Bool -> RunTactic
 casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
   (tmv, tmt) <- lift $ check ctxt env tm
   let tmt' = normalise ctxt env tmt
-  let (tacn, tacstr, tactt) = if induction
+  let (tacn, tacstr, _) = if induction
               then (ElimN, "eliminator", "Induction")
               else (CaseN (FC' emptyFC), "case analysis", "Case analysis")
   case unApply tmt' of
@@ -771,13 +740,9 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
                                _ -> return []
              let (params, indicies) = splitTyArgs param_pos tyargs
              let args     = getArgTys elimTy
-             let pmargs   = take (length params) args
              let args'    = drop (length params) args
-             let propTy   = head args'
              let restargs = init $ tail args'
              let consargs = take (length restargs - length indicies) restargs
-             let indxargs = drop (length restargs - length indicies) restargs
-             let scr      = last $ tail args'
              let indxnames = makeIndexNames indicies
              currentNames <- query $ allTTNames . getProofTerm . pterm
              let tmnm = case tm of
@@ -799,8 +764,7 @@ casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
           xs -> lift $ tfail $ Msg $ "Multiple definitions found when searching for " ++ tacstr ++ "of " ++ show tnm
     _ -> lift $ tfail $ NoEliminator (if induction then "induction" else "case analysis")
                                      tmt'
-    where scname = sMN 0 "scarg"
-          makeConsArg (nm, ty) = P Bound nm ty
+    where makeConsArg (nm, ty) = P Bound nm ty
           bindConsArgs ((nm, ty):args) v = Bind nm (Hole ty) $ bindConsArgs args v
           bindConsArgs [] v = v
           addConsHole (nm, ty) =
@@ -879,8 +843,6 @@ start_unify :: Name -> RunTactic
 start_unify n ctxt env tm = do -- action (\ps -> ps { unified = (n, []) })
                                return tm
 
-tmap f (a, b, c) = (f a, b, c)
-
 solve_unified :: RunTactic
 solve_unified ctxt env tm =
     do ps <- get
@@ -928,14 +890,6 @@ updateError ns (CantUnify b (l,lp) (r,rp) e xs sc)
  = CantUnify b (updateSolvedTerm ns l, fmap (updateProv ns) lp)
                (updateSolvedTerm ns r, fmap (updateProv ns) rp) (updateError ns e) xs sc
 updateError ns e = e
-
-updateRes ns [] = []
-updateRes ns ((x, t) : ts) = (x, updateSolvedTerm ns t) : updateRes ns ts
-
-solveInProblems x val [] = []
-solveInProblems x val ((l, r, env, err) : ps)
-   = ((psubst x val l, psubst x val r,
-       updateEnv [(x, val)] env, err) : solveInProblems x val ps)
 
 mergeNotunified :: Env -> [Name] -> [(Name, Term)] -> ([(Name, Term)], Fails)
 mergeNotunified env holes ns = mnu ns [] [] where
