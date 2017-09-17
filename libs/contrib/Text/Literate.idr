@@ -30,13 +30,13 @@ import Data.List.Views
 %default total
 
 untilEOL : Recognise False
-untilEOL = manyTill any (is '\n')
+untilEOL = manyUntil (is '\n') any
 
 line : String -> Lexer
 line s = exact s <+> space <+> untilEOL
 
 block : String -> String -> Lexer
-block s e = exact s <+> manyTill any (exact e)
+block s e = exact s <+> manyUntil (exact e) any 
 
 data Token = CodeBlock String String String
            | Any String
