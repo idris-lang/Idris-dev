@@ -12,23 +12,18 @@ module IRTS.JavaScript.LangTransforms( removeDeadCode
                                      ) where
 
 
-import Control.DeepSeq
-import Control.Monad.Trans.State
 import Data.List
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Data.Set (Set)
 import qualified Data.Set as Set
-import Data.Text (Text)
-import qualified Data.Text as T
 import Idris.Core.CaseTree
 import Idris.Core.TT
 import IRTS.Lang
 
 import Data.Data
 import Data.Generics.Uniplate.Data
-import GHC.Generics (Generic)
 
 deriving instance Typeable FDesc
 deriving instance Data FDesc
@@ -48,11 +43,6 @@ deriving instance Data LOpt
 
 restrictKeys :: Ord k => Map k a -> Set k -> Map k a
 restrictKeys m s = Map.filterWithKey (\k _ -> k `Set.member` s) m
-
-mapMapListKeys :: Ord k => (a->a) -> [k] -> Map k a -> Map k a
-mapMapListKeys _ [] x = x
-mapMapListKeys f (t:r) x = mapMapListKeys f r $ Map.adjust f t x
-
 
 extractGlobs :: Map Name LDecl -> LDecl -> [Name]
 extractGlobs defs (LConstructor _ _ _) = []

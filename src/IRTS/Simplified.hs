@@ -10,12 +10,9 @@ module IRTS.Simplified(simplifyDefs, SDecl(..), SExp(..), SAlt(..)) where
 
 import Idris.Core.CaseTree
 import Idris.Core.TT
-import Idris.Core.Typecheck
 import IRTS.Defunctionalise
 
 import Control.Monad.State
-import Data.Maybe
-import Debug.Trace
 
 data SExp = SV LVar
           | SApp Bool Name [LVar]

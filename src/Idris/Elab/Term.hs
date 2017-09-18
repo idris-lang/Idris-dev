@@ -10,30 +10,25 @@ Maintainer  : The Idris Community.
 module Idris.Elab.Term where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
-import Idris.Core.CaseTree (SC, SC'(STerm), findCalls, findUsedArgs)
+import Idris.Core.CaseTree (SC'(STerm), findCalls)
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.ProofTerm (getProofTerm)
 import Idris.Core.TT
 import Idris.Core.Typecheck (check, converts, isType, recheck)
 import Idris.Core.Unify
-import Idris.Core.WHNF (whnf, whnfArgs)
-import Idris.Coverage (genClauses, recoverableCoverage, validCoverageCase)
+import Idris.Core.WHNF (whnf)
+import Idris.Coverage (genClauses, recoverableCoverage)
 import Idris.Delaborate
-import Idris.DSL
 import Idris.Elab.Quasiquote (extractUnquotes)
 import Idris.Elab.Rewrite
 import Idris.Elab.Utils
 import Idris.Error
 import Idris.ErrReverse (errReverse)
 import Idris.Options
-import Idris.Output (pshow)
 import Idris.ProofSearch
 import Idris.Reflection
 import Idris.Termination (buildSCG, checkDeclTotality, checkPositive)
-
-import qualified Util.Pretty as U
 
 import Control.Applicative ((<$>))
 import Control.Monad
@@ -41,9 +36,8 @@ import Control.Monad.State.Strict
 import Data.Foldable (for_)
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import qualified Data.Set as S
-import qualified Data.Text as T
 import Debug.Trace
 
 data ElabMode = ETyDecl | ETransLHS | ELHS | EImpossible | ERHS
@@ -85,7 +79,6 @@ build :: IState
       -> ElabD ElabResult
 build ist info emode opts fn tm
     = do elab ist info emode opts fn tm
-         let tmIn = tm
          let inf = case lookupCtxt fn (idris_tyinfodata ist) of
                         [TIPartial] -> True
                         _ -> False
@@ -163,8 +156,7 @@ buildTC :: IState -> ElabInfo -> ElabMode -> FnOpts -> Name ->
          PTerm ->
          ElabD ElabResult
 buildTC ist info emode opts fn ns tm
-    = do let tmIn = tm
-         let inf = case lookupCtxt fn (idris_tyinfodata ist) of
+    = do let inf = case lookupCtxt fn (idris_tyinfodata ist) of
                         [TIPartial] -> True
                         _ -> False
          -- set name supply to begin after highest index in tm
@@ -190,7 +182,6 @@ buildTC ist info emode opts fn ns tm
          if (log /= "")
             then trace log $ return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
             else return (ElabResult tm ds (map snd is) ctxt impls highlights g_nextname)
-  where pattern = emode == ELHS || emode == EImpossible
 
 -- | return whether arguments of the given constructor name can be
 -- matched on. If they're polymorphic, no, unless the type has beed
@@ -247,7 +238,6 @@ elab ist info emode opts fn tm
     = do let loglvl = opt_logLevel (idris_options ist)
          when (loglvl > 5) $ unifyLog True
          compute -- expand type synonyms, etc
-         let fc = maybe "(unknown)"
          elabE initElabCtxt (elabFC info) tm -- (in argument, guarded, in type, in qquote)
          est <- getAux
          sequence_ (get_delayed_elab est)
@@ -282,14 +272,6 @@ elab ist info emode opts fn tm
     isph arg = case getTm arg of
         Placeholder -> (True, priority arg)
         tm -> (False, priority arg)
-
-    toElab ina arg = case getTm arg of
-        Placeholder -> Nothing
-        v -> Just (priority arg, elabE ina (elabFC info) v)
-
-    toElab' ina arg = case getTm arg of
-        Placeholder -> Nothing
-        v -> Just (elabE ina (elabFC info) v)
 
     mkPat = do hs <- get_holes
                tm <- get_term
@@ -355,18 +337,6 @@ elab ist info emode opts fn tm
 
     notDelay t@(PApp _ (PRef _ _ (UN l)) _) | l == txt "Delay" = False
     notDelay _ = True
-
-    local f = do e <- get_env
-                 return (f `elem` map fstEnv e)
-
-    -- | Is a constant a type?
-    constType :: Const -> Bool
-    constType (AType _) = True
-    constType StrType = True
-    constType VoidType = True
-    constType _ = False
-
-    -- "guarded" means immediately under a constructor, to help find patvars
 
     elab' :: ElabCtxt  -- ^ (in an argument, guarded, in a type, in a quasiquote)
           -> Maybe FC -- ^ The closest FC in the syntax tree, if applicable
@@ -603,13 +573,6 @@ elab ist info emode opts fn tm
                          (P _ n' _, _) -> n == n'
                          _ -> False
 
-        showQuick (CantUnify _ (l, _) (r, _) _ _ _)
-            = show (l, r)
-        showQuick (ElaboratingArg _ _ _ e) = showQuick e
-        showQuick (At _ e) = showQuick e
-        showQuick (ProofSearchFail (Msg _)) = "search fail"
-        showQuick _ = "No chance"
-
     elab' ina _ (PPatvar fc n) | bindfree
         = do patvar n
              update_term liftPats
@@ -627,8 +590,6 @@ elab ist info emode opts fn tm
         = do ty <- goal
              testImplicitWarning fc n ty
              let ina = e_inarg ec
-                 guarded = e_guarded ec
-                 inty = e_intype ec
              ctxt <- get_context
              env <- get_env
 
@@ -890,7 +851,6 @@ elab ist info emode opts fn tm
                         _ -> do mapM_ setInjective (map getTm args)
                                 -- maybe more things are solvable now
                                 unifyProblems
-                    let guarded = isConName f ctxt
 --                    trace ("args is " ++ show args) $ return ()
                     ns <- apply (Var f) (map isph args)
 --                    trace ("ns is " ++ show ns) $ return ()
@@ -1000,10 +960,6 @@ elab ist info emode opts fn tm
             getDets i ds (a : as) | i `elem` ds = a : getDets (i + 1) ds as
                                   | otherwise = getDets (i + 1) ds as
 
-            tacTm (PTactics _) = True
-            tacTm (PProof _) = True
-            tacTm _ = False
-
             setInjective (PRef _ _ n) = setinj n
             setInjective (PApp _ (PRef _ _ n) _) = setinj n
             setInjective _ = return ()
@@ -1078,7 +1034,6 @@ elab ist info emode opts fn tm
              matchProblems True
              args <- get_env
              envU <- mapM (getKind args) args
-             let namesUsedInRHS = nub $ scvn : concatMap (\(_,rhs) -> allNamesIn rhs) opts
 
              -- Drop the unique arguments used in the term already
              -- and in the scrutinee (since it's
@@ -1156,12 +1111,6 @@ elab ist info emode opts fn tm
                                     UType AllTypes -> return (n, True)
                                     _ -> return (n, False)
 
-              tcName tm | (P _ n _, _) <- unApply tm
-                  = case lookupCtxt n (idris_interfaces ist) of
-                         [_] -> True
-                         _ -> False
-              tcName _ = False
-
               isNotLift env n
                  = case lookupBinder n env of
                         Just ty ->
@@ -1169,10 +1118,6 @@ elab ist info emode opts fn tm
                                   (P _ n _, _) -> n `elem` noCaseLift info
                                   _ -> False
                         _ -> False
-
-              usedIn ns (n, b)
-                 = n `elem` ns
-                     || any (\x -> x `elem` ns) (allTTNames (binderTy b))
 
     elab' ina fc (PUnifyLog t) = do unifyLog True
                                     elab' ina fc t
@@ -2716,7 +2661,6 @@ processTacticDecls info steps =
 
     RDatatypeDefnInstrs tyn tyconTy ctors ->
       do let cn (n, _, _) = n
-             cimpls (_, impls, _) = impls
              cty (_, _, t) = t
          addIBC (IBCDef tyn)
          mapM_ (addIBC . IBCDef . cn) ctors

@@ -16,21 +16,17 @@ module Idris.ProofSearch(
   ) where
 
 import Idris.AbsSyntax
-import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.Typecheck
 import Idris.Core.Unify
 import Idris.Delaborate
-import Idris.Error
 
 import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 import qualified Data.Set as S
-import Debug.Trace
 
 -- Pass in a term elaborator to avoid a cyclic dependency with ElabTerm
 
@@ -52,7 +48,6 @@ trivialHoles psnames ok elab ist
         tryAll ((x, _, b):xs)
            = do -- if type of x has any holes in it, move on
                 hs <- get_holes
-                let badhs = hs -- filter (flip notElem holesOK) hs
                 g <- goal
                 -- anywhere but the top is okay for a hole, if holesOK set
                 if -- all (\n -> not (n `elem` badhs)) (freeNames (binderTy b))
@@ -88,7 +83,6 @@ trivialTCs ok elab ist
         tryAll ((x, _, b):xs)
            = do -- if type of x has any holes in it, move on
                 hs <- get_holes
-                let badhs = hs -- filter (flip notElem holesOK) hs
                 g <- goal
                 env <- get_env
                 -- anywhere but the top is okay for a hole, if holesOK set
@@ -232,9 +226,6 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
     notHole hs (fa, c)
        | (P _ fn _, args@(_:_)) <- unApply fa = fn `notElem` hs
     notHole _ _ = True
-
-    inHS hs (P _ n _) = n `elem` hs
-    isHS _ _ = False
 
     toUN t@(P nt (MN i n) ty)
        | ('_':xs) <- str n = t
@@ -444,12 +435,6 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
     isMeta ns (P _ n _) = n `elem` ns
     isMeta _ _ = False
 
-    notHole hs (P _ n _, c)
-       | (P _ cn _, _) <- unApply (getRetTy c),
-         n `elem` hs && isConName cn (tt_ctxt ist) = False
-       | Constant _ <- c = not (n `elem` hs)
-    notHole _ _ = True
-
     numinterface = sNS (sUN "Num") ["Interfaces","Prelude"]
 
     addDefault t num@(P _ nc _) [P Bound a _] | nc == numinterface && defaultOn
@@ -487,7 +472,6 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
        | otherwise
            = do lams <- introImps
                 t <- goal
-                let (tc, ttypes) = trace (show t) $ unApply (getRetTy t)
 --                 if (all boundVar ttypes) then resolveTC (depth - 1) fn impls ist
 --                   else do
                    -- if there's a hole in the goal, don't even try
@@ -505,7 +489,7 @@ resTC' tcs defaultOn openOK topholes depth topg fn elab ist
 --                 traceWhen (all boundVar ttypes) ("Progress: " ++ show t ++ " with " ++ show n) $
                 mapM_ (\ (_,n) -> do focus n
                                      t' <- goal
-                                     let (tc', ttype) = unApply (getRetTy t')
+                                     let (tc', _) = unApply (getRetTy t')
                                      let got = fst (unApply (getRetTy t))
                                      let depth' = if tc' `elem` tcs
                                                      then depth - 1 else depth

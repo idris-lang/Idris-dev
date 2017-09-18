@@ -776,6 +776,26 @@ VAL idris_strRev(VM* vm, VAL str) {
     return cl;
 }
 
+VAL idris_newRefLock(VAL x, int outerlock) {
+    Closure* cl = allocate(sizeof(Closure), outerlock);
+    SETTY(cl, CT_REF);
+    cl->info.ptr = (void*)x;
+    return cl;
+}
+
+VAL idris_newRef(VAL x) {
+    return idris_newRefLock(x, 0);
+}
+
+void idris_writeRef(VAL ref, VAL x) {
+    ref->info.ptr = (void*)x;
+    SETTY(ref, CT_REF);
+}
+
+VAL idris_readRef(VAL ref) {
+    return (VAL)(ref->info.ptr);
+}
+
 VAL idris_systemInfo(VM* vm, VAL index) {
     int i = GETINT(index);
     switch(i) {

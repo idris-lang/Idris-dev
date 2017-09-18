@@ -22,11 +22,9 @@ module Idris.Core.Unify(
 import Idris.Core.Evaluate
 import Idris.Core.TT
 
-import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 import Data.Maybe
-import Debug.Trace
 
 -- terms which need to be injective, with the things we're trying to unify
 -- at the time
@@ -39,7 +37,6 @@ data FailContext = FailContext { fail_sourceloc :: FC,
                                }
   deriving (Eq, Show)
 
-type Injs = [(TT Name, TT Name, TT Name)]
 type Fails = [(TT Name, TT Name, -- unification error
                Bool, -- ready to retry yet
                Env, Err, [FailContext], FailAt)]
@@ -56,10 +53,6 @@ unrecoverable = any bad
 
 data UInfo = UI Int Fails
      deriving Show
-
-data UResult a = UOK a
-               | UPartOK a
-               | UFail Err
 
 -- | Smart constructor for unification errors that takes into account the FailContext
 cantUnify :: [FailContext] -> Bool -> (t, Maybe Provenance) -> (t, Maybe Provenance) -> (Err' t) -> [(Name, t)] -> Int -> Err' t
@@ -191,16 +184,10 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
         | otherwise = checkScope ns (x, tm)
 
     checkScope ns (x, tm) =
---           case boundVs (envPos x 0 env) tm of
---                [] -> return [(x, tm)]
---                (i:_) -> lift $ tfail (UnifyScope x (fst (fst (ns!!i)))
---                                      (impl ns tm) (errEnv env))
         let v = highV (-1) tm in
             if v >= length ns
                then lift $ tfail (Msg "SCOPE ERROR")
                else return [(x, bind v ns tm)]
-      where impl [] tm = tm
-            impl ((n, _) : ns) tm = impl ns (substV (P Bound n Erased) tm)
 
     bind i ns tm
       | i < 0 = tm
@@ -257,20 +244,6 @@ trimSolutions (topx, xfrom) (topy, yfrom) from env topns = followSols [] (dropPa
         followSols vs (n : ns) = do ns' <- followSols vs ns
                                     return $ n : ns'
 
-expandLets env (x, tm) = (x, doSubst (reverse env) tm)
-  where
-    doSubst [] tm = tm
-    doSubst ((n, Let v t) : env) tm
-        = doSubst env (subst n v tm)
-    doSubst (_ : env) tm
-        = doSubst env tm
-
-hasv :: TT Name -> Bool
-hasv (V x) = True
-hasv (App _ f a) = hasv f || hasv a
-hasv (Bind x b sc) = hasv (binderTy b) || hasv sc
-hasv _ = False
-
 unify :: Context -> Env ->
          (TT Name, Maybe Provenance) ->
          (TT Name, Maybe Provenance) ->
@@ -297,10 +270,6 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
 --         Error e@(CantUnify False _ _ _ _ _)  -> tfail e
                        Error e -> tfail e
   where
-    headDiff (P (DCon _ _ _) x _) (P (DCon _ _ _) y _) = x /= y
-    headDiff (P (TCon _ _) x _) (P (TCon _ _) y _) = x /= y
-    headDiff _ _ = False
-
     injective (P (DCon _ _ _) _ _) = True
     injective (P (TCon _ _) _ _) = True
 --     injective (P Ref n _)
@@ -327,10 +296,6 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
     sc i = do UI s f <- get
               put (UI (s+i) f)
 
-    errors :: StateT UInfo TC Bool
-    errors = do UI s f <- get
-                return (not (null f))
-
     uplus u1 u2 = do UI s f <- get
                      r <- u1
                      UI s f' <- get
@@ -342,12 +307,6 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
           StateT UInfo
           TC [(Name, TT Name)]
     un = un' env
---     un fn names x y
---         = let (xf, _) = unApply x
---               (yf, _) = unApply y in
---               if headDiff xf yf then unifyFail x y else
---                   uplus (un' fn names x y)
---                         (un' fn names (hnf ctxt env x) (hnf ctxt env y))
 
     un' :: Env -> Bool -> [((Name, Name), TT Name)] -> TT Name -> TT Name ->
            StateT UInfo
@@ -577,26 +536,11 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                 = unifyFail appx appy
             checkHeads _ _ = return []
 
-            numArgs tm = let (f, args) = unApply tm in length args
-
             metavarApp tm = let (f, args) = unApply tm in
                                 (metavar f &&
                                  all (\x -> metavarApp x) args
                                     && nub args == args) ||
                                        globmetavar tm
-            metavarArgs tm = let (f, args) = unApply tm in
-                                 all (\x -> metavar x || inenv x) args
-                                   && nub args == args
-            metavarApp' tm = let (f, args) = unApply tm in
-                                 all (\x -> pat x || metavar x) (f : args)
-                                   && nub args == args
-
-            rigid (P (DCon _ _ _) _ _) = True
-            rigid (P (TCon _ _) _ _) = True
-            rigid t@(P Ref _ _)  = inenv t || globmetavar t
-            rigid (Constant _)       = True
-            rigid (App _ f a)        = rigid f && rigid a
-            rigid t                  = not (metavar t) || globmetavar t
 
             globmetavar t = case unApply t  of
                                 (P _ x _, _) ->
@@ -610,14 +554,6 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                                              (x `elem` holes || holeIn env x))
                                           || globmetavar t
                              _ -> False
-            pat t = case t of
-                         P _ x _ -> x `elem` holes || patIn env x
-                         _ -> False
-            inenv t = case t of
-                           P _ x _ -> x `elem` (map fstEnv env)
-                           _ -> False
-
-            notFn t = injective t || metavar t || inenv t
 
             injectiveTC t@(P Ref n _) t'@(P Ref n' _)
                 | Just ni <- lookupInjectiveExact n ctxt,
@@ -682,16 +618,10 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
         | otherwise = checkScope ns (x, tm)
 
     checkScope ns (x, tm) | pureTerm tm =
---           case boundVs (envPos x 0 env) tm of
---                [] -> return [(x, tm)]
---                (i:_) -> lift $ tfail (UnifyScope x (fst (fst (ns!!i)))
---                                      (impl ns tm) (errEnv env))
         let v = highV (-1) tm in
             if v >= length ns
                then lift $ tfail (Msg "SCOPE ERROR")
                else return [(x, bind v ns tm)]
-      where impl [] tm = tm
-            impl (((n, _), _) : ns) tm = impl ns (substV (P Bound n Erased) tm)
     checkScope ns (x, tm) = lift $ tfail (Msg "HOLE ERROR")
 
     bind i ns tm
@@ -710,26 +640,12 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                           sc 1
                           combine env bnames as (ns' ++ bs)
 
-boundVs :: Int -> Term -> [Int]
-boundVs i (V j) | j < i = []
-                | otherwise = [j]
-boundVs i (Bind n b sc) = boundVs (i + 1) sc
-boundVs i (App _ f x) = let fs = boundVs i f
-                            xs = boundVs i x in
-                            nub (fs ++ xs)
-boundVs i _ = []
-
 highV :: Int -> Term -> Int
 highV i (V j) | j > i = j
                 | otherwise = i
 highV i (Bind n b sc) = maximum [i, highV i (binderTy b), (highV i sc - 1)]
 highV i (App _ f x) = max (highV i f) (highV i x)
 highV i _ = i
-
-envPos x i [] = 0
-envPos x i ((y, _) : ys) | x == y = i
-                         | otherwise = envPos x (i + 1) ys
-
 
 -- If there are any clashes of constructors, deem it unrecoverable, otherwise some
 -- more work may help.
@@ -795,10 +711,4 @@ holeIn :: Env -> Name -> Bool
 holeIn env n = case lookupBinder n env of
                     Just (Hole _) -> True
                     Just (Guess _ _) -> True
-                    _ -> False
-
-patIn :: Env -> Name -> Bool
-patIn env n = case lookupBinder n env of
-                    Just (PVar _ _) -> True
-                    Just (PVTy _) -> True
                     _ -> False

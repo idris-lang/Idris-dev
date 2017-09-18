@@ -15,10 +15,9 @@ import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Error
 import Idris.Options
-import Idris.Output (iWarn, iputStrLn)
+import Idris.Output (iWarn)
 
 import Control.Monad.State.Strict
-import Data.Char
 import Data.Either
 import Data.List
 import Data.Maybe
@@ -143,9 +142,6 @@ checkPositive mut_ns (cn, ty')
 calcTotality :: FC -> Name -> [([Name], Term, Term)] -> Idris Totality
 calcTotality fc n pats
     = do i <- getIState
-         let opts = case lookupCtxt n (idris_flags i) of
-                            [fs] -> fs
-                            _ -> []
          case mapMaybe (checkLHS i) (map (\ (_, l, r) -> l) pats) of
             (failure : _) -> return failure
             _ -> checkSizeChange n
@@ -302,7 +298,7 @@ buildSCG' :: IState -> Name -> [(Term, Term)] -> [Name] -> [SCGEntry]
 buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
   scgPat (lhs, rhs) = let lhs' = delazy lhs
                           rhs' = delazy rhs
-                          (f, pargs) = unApply (dePat lhs') in
+                          (_, pargs) = unApply (dePat lhs') in
                             findCalls [] Toplevel (dePat rhs') (patvars lhs')
                                       (zip pargs [0..])
 
@@ -393,7 +389,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
   fccPat cases pvs pargs args g (lhs, rhs)
       = let lhs' = delazy lhs
             rhs' = delazy rhs
-            (f, pargs_case) = unApply (dePat lhs')
+            (_, pargs_case) = unApply (dePat lhs')
             -- pargs is a pair of a term, and the argument position that
             -- term appears in. If any of the arguments to the case block
             -- are also on the lhs, we also want those patterns to appear
@@ -545,10 +541,6 @@ checkMP ist topfn i mp = if i > 0
                                collapse paths
                      else tryPath 0 [] mp 0
   where
-    tryPath' d path mp arg
-           = let res = tryPath d path mp arg in
-                 trace (show mp ++ "\n" ++ show arg ++ " " ++ show res) res
-
     mkBig (e, d) = (e, 10000)
 
     tryPath :: Int -> [((SCGEntry, Int), Int)] -> MultiPath -> Int -> Totality

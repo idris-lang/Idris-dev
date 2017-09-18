@@ -11,12 +11,11 @@ module Idris.Prover (prover, showProof, showRunElab) where
 -- Hack for GHC 7.10 and earlier compat without CPP or warnings
 -- This exludes (<$>) as fmap, because wl-pprint uses it for newline
 import Prelude (Bool(..), Either(..), Eq(..), Maybe(..), Show(..), String,
-                concatMap, elem, error, flip, foldl, foldr, fst, id, init,
-                length, lines, map, not, null, repeat, reverse, tail, zip, ($),
-                (&&), (++), (.), (||))
+                concatMap, elem, error, foldl, foldr, fst, id, init, length,
+                lines, map, not, null, repeat, reverse, tail, zip, ($), (&&),
+                (++), (.), (||))
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
 import Idris.Completion
 import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
@@ -41,7 +40,6 @@ import Util.Pretty
 
 import Control.DeepSeq
 import Control.Monad.State.Strict
-import Debug.Trace
 import System.Console.Haskeline
 import System.Console.Haskeline.History
 import System.IO (Handle, hPutStrLn, stdin, stdout)
@@ -166,7 +164,7 @@ dumpState ist inElab menv ps | (h : hs) <- holes ps = do
   iputGoal rendered
 
   where
-    (h : hs) = holes ps -- apparently the pattern guards don't give us this
+    (h : _) = holes ps -- apparently the pattern guards don't give us this
 
     ppo = ppOptionIst ist
 
@@ -502,7 +500,6 @@ checkType e prf t = do
         putIState ist { tt_ctxt = ctxt' }
         (tm, ty) <- elabVal (recinfo proverfc) ERHS t
         let ppo = ppOptionIst ist
-            ty'     = normaliseC ctxt [] ty
             infixes = idris_infixes ist
             action = case tm of
               TType _ ->

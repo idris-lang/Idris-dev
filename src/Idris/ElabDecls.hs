@@ -12,20 +12,10 @@ Maintainer  : The Idris Community.
 module Idris.ElabDecls where
 
 import Idris.AbsSyntax
-import Idris.ASTUtils
-import Idris.Core.CaseTree
-import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
-import Idris.Core.Execute
 import Idris.Core.TT
-import Idris.Core.Typecheck
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.DeepSeq
-import Idris.Delaborate
 import Idris.Directives
 import Idris.Docstrings hiding (Unchecked)
-import Idris.DSL
 import Idris.Elab.Clause
 import Idris.Elab.Data
 import Idris.Elab.Implementation
@@ -36,36 +26,21 @@ import Idris.Elab.RunElab
 import Idris.Elab.Term
 import Idris.Elab.Transform
 import Idris.Elab.Type
-import Idris.Elab.Utils
 import Idris.Elab.Value
 import Idris.Error
-import Idris.Imports
-import Idris.Inliner
 import Idris.Options
-import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
-import Idris.PartialEval
+import Idris.Output (sendHighlighting)
 import Idris.Primitives
-import Idris.Providers
 import Idris.Termination
 import IRTS.Lang
 
-import Util.Pretty (pretty, text)
-
 import Prelude hiding (id, (.))
 
-import Control.Applicative hiding (Const)
 import Control.Category
-import Control.DeepSeq
 import Control.Monad
 import Control.Monad.State.Strict as State
-import Data.Char (isLetter, toLower)
-import Data.List
-import Data.List.Split (splitOn)
-import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as S
 import qualified Data.Text as T
-import Debug.Trace
 
 -- | Top level elaborator info, supporting recursive elaboration
 recinfo :: FC -> ElabInfo
@@ -269,12 +244,6 @@ elabDecl' what info (PParams f ns ps)
          let nblock = pblock i
          mapM_ (elabDecl' what info) nblock
   where
-    pinfo = let ds = concatMap tldeclared ps
-                newps = params info ++ ns
-                dsParams = map (\n -> (n, map fst newps)) ds
-                newb = addAlist dsParams (inblock info) in
-                info { params = newps,
-                       inblock = newb }
     pblock i = map (expandParamsD False i id ns
                       (concatMap tldeclared ps)) ps
 
@@ -311,6 +280,8 @@ elabDecl' _ info (PDSL n dsl)
            ifail "You must turn on the DSLNotation extension to use a dsl block"
          putIState (i { idris_dsls = addDef n dsl (idris_dsls i) })
          addIBC (IBCDSL n)
+elabDecl' what info (PDirective i@(DLogging _))
+  = directiveAction i
 elabDecl' what info (PDirective i)
   | what /= EDefns = directiveAction i
 elabDecl' what info (PProvider doc syn fc nfc provWhat n)

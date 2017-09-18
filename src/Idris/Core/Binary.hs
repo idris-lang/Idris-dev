@@ -13,14 +13,10 @@ module Idris.Core.Binary where
 import Idris.Core.TT
 
 import Control.Applicative ((<$>), (<*>))
-import Control.DeepSeq (($!!))
 import Control.Monad (liftM2)
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as E
-import Data.Vector.Binary
 
 instance Binary ErrorReportPart where
   put (TextPart msg) = do putWord8 0 ; put msg

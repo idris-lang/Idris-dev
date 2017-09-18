@@ -10,49 +10,30 @@ module Idris.Elab.Data(elabData) where
 
 import Idris.AbsSyntax
 import Idris.ASTUtils
-import Idris.Core.CaseTree
-import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
-import Idris.Core.Execute
 import Idris.Core.TT
 import Idris.Core.Typecheck
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
-import Idris.DSL
 import Idris.Elab.Rewrite
-import Idris.Elab.Term
 import Idris.Elab.Type
 import Idris.Elab.Utils
 import Idris.Elab.Value
 import Idris.Error
-import Idris.Imports
-import Idris.Inliner
-import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
-import Idris.PartialEval
-import Idris.Primitives
-import Idris.Providers
-import IRTS.Lang
+import Idris.Output (iWarn, sendHighlighting)
 
 import Util.Pretty
 
 import Prelude hiding (id, (.))
 
-import Control.Applicative hiding (Const)
 import Control.Category
-import Control.DeepSeq
 import Control.Monad
 import Control.Monad.State.Strict as State
 import Data.Char (isLetter, toLower)
 import Data.List
-import Data.List.Split (splitOn)
 import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as S
 import qualified Data.Text as T
-import Debug.Trace
 
 warnLC :: FC -> Name -> Idris ()
 warnLC fc n
@@ -61,8 +42,7 @@ warnLC fc n
 
 elabData :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] -> FC -> DataOpts -> PData -> Idris ()
 elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
-    = do let codata = Codata `elem` opts
-         logElab 1 (show (fc, doc))
+    = do logElab 1 (show (fc, doc))
          checkUndefined fc n
          when (implicitable (nsroot n)) $ warnLC fc n
          (cty, _, t, inacc) <- buildType info syn fc [] n t_in
@@ -92,7 +72,6 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
                         rt -> tclift $ tfail (At fc (Elaborating "type constructor " n Nothing (Msg "Not a valid type constructor")))
          cons <- mapM (elabCon cnameinfo syn n codata (getRetTy cty) ckind) dcons
          ttag <- getName
-         let as = map (const (Left (Msg ""))) (getArgTys cty)
 
          ctxt <- getContext
          let params = findParams n (normalise ctxt [] cty) (map snd cons)
@@ -170,8 +149,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
         cinfo info ds
           = let newps = params info
                 dsParams = map (\n -> (n, [])) ds
-                newb = addAlist dsParams (inblock info)
-                l = liftname info in
+                newb = addAlist dsParams (inblock info) in
                 info { params = newps,
                        inblock = newb,
                        liftname = id -- Is this appropriate?
@@ -244,12 +222,6 @@ elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcen
     getTyName (PApp _ (PRef _ _ n) _) = n == nsroot tn
     getTyName (PRef _ _ n) = n == nsroot tn
     getTyName _ = False
-
-
-    getNamePos :: Int -> PTerm -> Name -> Maybe Int
-    getNamePos i (PPi _ n _ _ sc) x | n == x = Just i
-                                    | otherwise = getNamePos (i + 1) sc x
-    getNamePos _ _ _ = Nothing
 
     -- if the constructor is a UniqueType, the datatype must be too
     -- (AnyType is fine, since that is checked for uniqueness too)
@@ -358,7 +330,7 @@ elabCaseFun ind paramPos n ty cons info = do
   elimLog "Elaborating case function"
   put (Map.fromList $ zip (concatMap (\(_, p, _, _, ty, _, _) -> (map show $ boundNamesIn ty) ++ map (show . fst) p) cons ++ (map show $ boundNamesIn ty)) (repeat 0))
   let (cnstrs, _) = splitPi ty
-  let (splittedTy@(pms, idxs)) = splitPms cnstrs
+  let (pms, idxs) = splitPms cnstrs
   generalParams <- namePis False pms
   motiveIdxs    <- namePis False idxs
   let motive = mkMotive n paramPos generalParams motiveIdxs
@@ -395,10 +367,6 @@ elabCaseFun ind paramPos n ty cons info = do
 
         elimDeclName :: Name
         elimDeclName = if ind then SN . ElimN $ n else SN . CaseN (FC' elimFC) $ n
-
-        applyNS :: Name -> [String] -> Name
-        applyNS n []  = n
-        applyNS n ns  = sNS n ns
 
         splitPi :: PTerm -> ([(Name, Plicity, PTerm)], PTerm)
         splitPi = splitPi' []
@@ -439,10 +407,6 @@ elabCaseFun ind paramPos n ty cons info = do
         simpleName (NS n _) = simpleName n
         simpleName (MN i n) = str n ++ show i
         simpleName n        = show n
-
-        nameSpaces :: Name -> [String]
-        nameSpaces (NS _ ns) = map str ns
-        nameSpaces _         = []
 
         freshName :: String -> EliminatorState Name
         freshName key = do

@@ -5,9 +5,11 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE BangPatterns, DeriveGeneric, FlexibleInstances,
              MultiParamTypeClasses, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 normaliseAll, normaliseBlocking, toValue, quoteTerm,
@@ -28,19 +30,18 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 isCanonical, isDConName, canBeDConName, isTConName, isConName, isFnName,
                 conGuarded,
                 Value(..), Quote(..), initEval, uniqueNameCtxt, uniqueBindersCtxt, definitions,
+                visibleDefinitions,
                 isUniverse, linearCheck, linearCheckArg) where
 
 import Idris.Core.CaseTree
 import Idris.Core.TT
 
-import Control.Applicative hiding (Const)
 import Control.Monad.State
-import Data.Binary hiding (get, put)
-import qualified Data.Binary as B
 import Data.List
 import Data.Maybe (listToMaybe)
-import Debug.Trace
 import GHC.Generics (Generic)
+
+import qualified Data.Map.Strict as Map
 
 data EvalState = ES { limited :: [(Name, Int)],
                       nexthole :: Int,
@@ -204,16 +205,6 @@ unfold ctxt env ns t
 
 finalEntry :: (Name, RigCount, Binder (TT Name)) -> (Name, RigCount, Binder (TT Name))
 finalEntry (n, r, b) = (n, r, fmap finalise b)
-
-bindEnv :: EnvTT n -> TT n -> TT n
-bindEnv [] tm = tm
-bindEnv ((n, r, Let t v):bs) tm = Bind n (NLet t v) (bindEnv bs tm)
-bindEnv ((n, r, b):bs)       tm = Bind n b (bindEnv bs tm)
-
-unbindEnv :: EnvTT n -> TT n -> TT n
-unbindEnv [] tm = tm
-unbindEnv (_:bs) (Bind n b sc) = unbindEnv bs sc
-unbindEnv env tm = error "Impossible case occurred: couldn't unbind env."
 
 usable :: Bool -- specialising
           -> Bool -- unfolding only
@@ -391,22 +382,6 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
           = evApply ntimes stk top env (a:args) f
     evApply ntimes stk top env args f
           = apply ntimes stk top env f args
-
-    reapply ntimes stk top env f@(VP Ref n ty) args
-       = let val = lookupDefAccExact n (spec || (atRepl && noFree env) || runtime) ctxt in
-         case val of
-              Just (CaseOp ci _ _ _ _ cd, acc) ->
-                 let (ns, tree) = getCases cd in
-                     do c <- evCase ntimes n (n:stk) top env ns args tree
-                        case c of
-                             (Nothing, _) -> return $ unload env (VP Ref n ty) args
-                             (Just v, rest) -> evApply ntimes stk top env rest v
-              _ -> case args of
-                        (a : as) -> return $ unload env f (a : as)
-                        [] -> return f
-    reapply ntimes stk top env (VApp f a) args
-            = reapply ntimes stk top env f (a : args)
-    reapply ntimes stk top env v args = return v
 
     apply ntimes stk top env (VBind True n (Lam _ t) sc) (a:as)
          = do a' <- sc a
@@ -740,13 +715,6 @@ convEq ctxt holes topx topy = ceq [] topx topy where
                                   (caseeq ((x,y):ps) xdef ydef)
                  _ -> return False
 
--- SPECIALISATION -----------------------------------------------------------
--- We need too much control to be able to do this by tweaking the main
--- evaluator
-
-spec :: Context -> Ctxt [Bool] -> Env -> TT Name -> Eval (TT Name)
-spec ctxt statics genv tm = error "spec undefined"
-
 -- CONTEXTS -----------------------------------------------------------------
 
 {-| A definition is either a simple function (just an expression with a type),
@@ -983,8 +951,7 @@ addCasedef n ei ci@(CaseInfo inline alwaysInline tcdict)
                     ( CaseDef args_ct sc_ct _,
                      CaseDef args_rt sc_rt _) ->
                        let inl = alwaysInline -- tcdict
-                           inlc = (inl || small n args_ct sc_ct) && (not asserted)
-                           inlr = inl || small n args_rt sc_rt
+                           inlc = (inl || small n args_rt sc_rt) && (not asserted)
                            cdef = CaseDefs (args_ct, sc_ct)
                                            (args_rt, sc_rt)
                            op = (CaseOp (ci { case_inlinable = inlc })
@@ -1152,6 +1119,14 @@ conGuarded ctxt n tm = guarded n tm
           isConName f ctxt = any (guarded n) as
     guarded _ _ = False
 
+visibleDefinitions :: Context -> Ctxt TTDecl
+visibleDefinitions ctxt =
+  Map.filter (\m -> length m > 0) . Map.map onlyVisible . definitions $ ctxt
+  where
+    onlyVisible = Map.filter visible
+    visible (_def, _rigCount, _injectivity, accessibility, _totality, _metaInformation) =
+      accessibility `notElem` [Hidden, Private]
+
 lookupP :: Name -> Context -> [Term]
 lookupP = lookupP_all False False
 
@@ -1239,13 +1214,6 @@ linearCheckArg ctxt ty = mapM_ checkNameOK (allTTNames ty)
               Just Rig1 ->
                   tfail $ Msg $ show f ++ " can only appear in a linear binding"
               _ -> return ()
-
-    checkArgs (Bind n (Pi RigW _ ty _) sc)
-        = do mapM_ checkNameOK (allTTNames ty)
-             checkArgs (substV (P Bound n Erased) sc)
-    checkArgs (Bind n (Pi _ _ _ _) sc)
-          = checkArgs (substV (P Bound n Erased) sc)
-    checkArgs _ = return ()
 
 -- Check if a name is reducible in the type checker. Partial definitions
 -- are not reducible (so treated as a constant)

@@ -14,7 +14,6 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.WHNF
-import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
 import Idris.Error
@@ -22,14 +21,11 @@ import Idris.Output
 
 import Util.Pretty
 
-import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Traversable as Traversable
-import Debug.Trace
 
 recheckC = recheckC_borrowing False True []
 
@@ -122,7 +118,6 @@ elabCaseBlock :: ElabInfo -> FnOpts -> PDecl -> Idris ()
 elabCaseBlock info opts d@(PClauses f o n ps)
         = do addIBC (IBCDef n)
              logElab 5 $ "CASE BLOCK: " ++ show (n, d)
-             let opts' = nub (o ++ opts)
              -- propagate totality assertion to the new definitions
              let opts' = filter propagatable opts
              setFlags n opts'
@@ -750,7 +745,7 @@ pruneByType _ _ t _ _ as = as
 -- to it later - just returns 'var' for now. EB)
 isPlausible :: IState -> Bool -> Env -> Name -> Type -> Bool
 isPlausible ist var env n ty
-    = let (hvar, interfaces) = collectConstraints [] [] ty in
+    = let (hvar, _) = collectConstraints [] [] ty in
           case hvar of
                Nothing -> True
                Just rth -> var -- trace (show (rth, interfaces)) var

@@ -9,6 +9,9 @@ flags:
     FFI: true
     GMP: true
 
+ghc-options:
+  idris: -fwarn-unused-imports -fwarn-unused-binds
+
 extra-deps:
   - binary-0.8.5.1
   - cheapskate-0.1.1

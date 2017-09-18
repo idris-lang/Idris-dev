@@ -18,11 +18,8 @@ module Idris.Core.ProofTerm(
 
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.Typecheck
 
 import Control.Monad.State.Strict
-import Data.List
-import Debug.Trace
 
 -- | A zipper over terms, in order to efficiently update proof terms.
 data TermPath = Top
@@ -197,16 +194,6 @@ updateSolvedTerm' xs x = updateSolved' xs x where
                                                       else (b, False)
     updateSolvedB' xs b = let (ty', u) = updateSolved' xs (binderTy b) in
                               if u then (b { binderTy = ty' }, u) else (b, False)
-
-    noneOf ns (P _ n _) | n `elem` ns = False
-    noneOf ns (App s f a) = noneOf ns a && noneOf ns f
-    noneOf ns (Bind n (Hole ty) t) = n `notElem` ns && noneOf ns ty && noneOf ns t
-    noneOf ns (Bind n b t) = noneOf ns t && noneOfB ns b
-      where
-        noneOfB ns (Let t v) = noneOf ns t && noneOf ns v
-        noneOfB ns (Guess t v) = noneOf ns t && noneOf ns v
-        noneOfB ns b = noneOf ns (binderTy b)
-    noneOf ns _ = True
 
 -- | As 'subst', in TT, but takes advantage of knowing not to substitute
 -- under Complete applications.

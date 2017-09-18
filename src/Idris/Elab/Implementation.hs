@@ -9,50 +9,27 @@ Maintainer  : The Idris Community.
 module Idris.Elab.Implementation(elabImplementation) where
 
 import Idris.AbsSyntax
-import Idris.ASTUtils
 import Idris.Core.CaseTree
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
-import Idris.Core.Execute
 import Idris.Core.TT
-import Idris.Core.Typecheck
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
-import Idris.DSL
-import Idris.Elab.Data
 import Idris.Elab.Term
 import Idris.Elab.Type
 import Idris.Elab.Utils
 import Idris.Error
-import Idris.Imports
-import Idris.Inliner
-import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
-import Idris.PartialEval
-import Idris.Primitives
-import Idris.Providers
-import IRTS.Lang
+import Idris.Output (iWarn, sendHighlighting)
 
-import Util.Pretty (pretty, text)
+import Util.Pretty (text)
 
 import Prelude hiding (id, (.))
 
-import Control.Applicative hiding (Const)
 import Control.Category
-import Control.DeepSeq
 import Control.Monad
-import Control.Monad.State.Strict as State
-import Data.Char (isLetter, toLower)
 import Data.List
-import Data.List.Split (splitOn)
-import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as S
 import qualified Data.Text as T
-import Debug.Trace
-
 
 elabImplementation :: ElabInfo
                    -> SyntaxInfo
@@ -79,7 +56,6 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
                   [] -> ifail $ show fc ++ ":" ++ show n ++ " is not an interface"
                   cs -> tclift $ tfail $ At fc
                            (CantResolveAlts (map fst cs))
-    let constraint = PApp fc (PRef fc [] n) (map pexp ps)
     let iname = mkiname n (namespace info) ps expn
     putIState (ist { hide_list = addDef iname acc (hide_list ist) })
     ist <- getIState
@@ -167,7 +143,6 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          let wbVals_orig = map (decorateid (decorate ns iname)) ds'
          ist <- getIState
          let wbVals = map (expandParamsD False ist id pextra (map methName mtys)) wbVals_orig
-         let wb = wbTys ++ wbVals
 
          logElab 3 $ "Method types " ++ showSep "\n" (map (show . showDeclImp verbosePPOption . mkTyDecl) mtys)
          logElab 3 $ "Implementation is " ++ show ps ++ " implicits " ++ show (concat (nub wparams))
@@ -300,8 +275,6 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
     mkMethApp ps (n, _, _, ty)
               = lamBind 0 ty (papp fc (PRef fc [] n)
                      (ps ++ map (toExp . fst) pextra ++ methArgs 0 ty))
-       where
-          needed is p = pname p `elem` map pname is
 
     lamBind i (PPi (Constraint _ _ _) _ _ _ sc) sc'
           = PLam fc (sMN i "meth") NoFC Placeholder (lamBind (i+1) sc sc')

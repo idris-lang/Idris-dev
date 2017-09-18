@@ -9,7 +9,7 @@ export
 data Recognise : (consumes : Bool) -> Type where
      Empty : Recognise False
      Fail : Recognise c
-     Expect : Recognise c -> Recognise False
+     Lookahead : (positive : Bool) -> Recognise c -> Recognise False
      Pred : (Char -> Bool) -> Recognise True
      SeqEat : Recognise True -> Inf (Recognise e) -> Recognise True
      SeqEmpty : Recognise e1 -> Recognise e2 -> Recognise (e1 || e2)
@@ -47,18 +47,12 @@ fail = Fail
 ||| Positive lookahead. Never consumes input.
 export
 expect : Recognise c -> Recognise False
-expect = Expect
+expect = Lookahead True
 
 ||| Negative lookahead. Never consumes input.
 export
 reject : Recognise c -> Recognise False
-reject Empty            = Fail
-reject Fail             = Empty
-reject (Expect x)       = reject x
-reject (Pred f)         = Expect (Pred (not . f))
-reject (SeqEat r1 r2)   = reject r1 <|> Expect (SeqEat r1 (reject r2))
-reject (SeqEmpty r1 r2) = reject r1 <|> Expect (SeqEmpty r1 (reject r2))
-reject (Alt r1 r2)      = reject r1 <+> reject r2
+reject = Lookahead False
 
 ||| Recognise a specific character
 export
@@ -113,11 +107,25 @@ export
 many : Lexer -> Recognise False
 many l = opt (some l)
 
-||| Recognise the first matching lexer from a non-empty list.
+||| Recognise the first matching lexer from a Foldable. Always consumes input
+||| if one of the options succeeds. Fails if the foldable is empty.
 export
-choice : (xs : List Lexer) -> {auto ok : NonEmpty xs} -> Lexer
-choice (x :: [])          = x
-choice (x :: xs@(_ :: _)) = x <|> choice xs
+choice : Foldable t => t Lexer -> Lexer
+choice xs = foldr Alt Fail xs
+
+||| Repeat the sub-lexer `l` zero or more times until the lexer
+||| `stopBefore` is encountered. `stopBefore` will not be consumed.
+||| Not guaranteed to consume input.
+export
+manyUntil : (stopBefore : Recognise c) -> (l : Lexer) -> Recognise False
+manyUntil stopBefore l = many (reject stopBefore <+> l)
+
+||| Repeat the sub-lexer `l` zero or more times until the lexer
+||| `stopAfter` is encountered, and consume it. Guaranteed to
+||| consume if `stopAfter` consumes.
+export
+manyThen : (stopAfter : Recognise c) -> (l : Lexer) -> Recognise c
+manyThen stopAfter l = manyUntil stopAfter l <+> stopAfter
 
 ||| Recognise many instances of `l` until an instance of `end` is
 ||| encountered.
@@ -126,6 +134,36 @@ choice (x :: xs@(_ :: _)) = x <|> choice xs
 export
 manyTill : (l : Lexer) -> (end : Lexer) -> Recognise False
 manyTill l end = end <|> opt (l <+> manyTill l end)
+%deprecate manyTill
+    "Prefer `lineComment`, or `manyUntil`/`manyThen` (argument order is flipped)."
+
+||| Recognise a sub-lexer at least `min` times. Consumes input unless
+||| min is zero.
+export
+atLeast : (min : Nat) -> (l : Lexer) -> Recognise (min > 0)
+atLeast Z l       = many l
+atLeast (S min) l = l <+> atLeast min l
+
+||| Recognise a sub-lexer at most `max` times. Not guaranteed to
+||| consume input.
+export
+atMost : (max : Nat) -> (l : Lexer) -> Recognise False
+atMost Z _     = Empty
+atMost (S k) l = atMost k l <+> opt l
+
+||| Recognise a sub-lexer repeated between `min` and `max` times. Fails
+||| if the inputs are out of order. Consumes input unless min is zero.
+export
+between : (min : Nat) -> (max : Nat) -> (l : Lexer) -> Recognise (min > 0)
+between Z max l           = atMost max l
+between (S min) Z _       = Fail
+between (S min) (S max) l = l <+> between min max l
+
+||| Recognise exactly `count` repeated occurrences of a sub-lexer.
+||| Consumes input unless count is zero.
+export
+exactly : (count : Nat) -> (l : Lexer) -> Recognise (count > 0)
+exactly n l = between n n l
 
 ||| Recognise any character
 export
@@ -175,10 +213,10 @@ strTail start (MkStrLen str len)
 scan : Recognise c -> Nat -> StrLen -> Maybe Nat
 scan Empty idx str = pure idx
 scan Fail idx str = Nothing
-scan (Expect r) idx str
-    = case scan r idx str of
-           Just _  => pure idx
-           Nothing => Nothing
+scan (Lookahead positive r) idx str
+    = if isJust (scan r idx str) == positive
+         then Just idx
+         else Nothing
 scan (Pred f) idx str
     = do c <- strIndex str idx
          if f c
@@ -220,7 +258,7 @@ digits = some digit
 ||| Recognise a single hexidecimal digit
 export
 hexDigit : Lexer
-hexDigit = digit <|> oneOf "abcdefABCDEF"
+hexDigit = pred isHexDigit
 
 ||| Recognise one or more hexidecimal digits
 export
@@ -277,6 +315,17 @@ export
 spaces : Lexer
 spaces = some space
 
+||| Recognise a single newline sequence. Understands CRLF, CR, and LF
+export
+newline : Lexer
+newline = let crlf = "\r\n" in
+              exact crlf <|> oneOf crlf
+
+||| Recognise one or more newline sequences. Understands CRLF, CR, and LF
+export
+newlines : Lexer
+newlines = some newline
+
 ||| Recognise a single non-whitespace, non-alphanumeric character
 export
 symbol : Lexer
@@ -291,7 +340,7 @@ symbols = some symbol
 ||| delimiting lexers
 export
 surround : (start : Lexer) -> (end : Lexer) -> (l : Lexer) -> Lexer
-surround start end l = start <+> manyTill l end
+surround start end l = start <+> manyThen end l
 
 ||| Recognise zero or more occurrences of a sub-lexer surrounded
 ||| by the same quote lexer on both sides (useful for strings)
@@ -325,7 +374,26 @@ intLit = opt (is '-') <+> digits
 ||| Recognise a hexidecimal literal, prefixed by "0x" or "0X"
 export
 hexLit : Lexer
-hexLit = is '0' <+> oneOf "xX" <+> hexDigits
+hexLit = approx "0x" <+> hexDigits
+
+||| Recognise `start`, then recognise all input until a newline is encountered,
+||| and consume the newline. Will succeed if end-of-input is encountered before
+||| a newline.
+export
+lineComment : (start : Lexer) -> Lexer
+lineComment start = start <+> manyUntil newline any <+> opt newline
+
+||| Recognise all input between `start` and `end` lexers.
+||| Supports balanced nesting.
+|||
+||| For block comments that don't support nesting (such as C-style comments),
+||| use `surround`.
+export
+blockComment : (start : Lexer) -> (end : Lexer) -> Lexer
+blockComment start end = start <+> middle <+> end
+  where
+    middle : Recognise False
+    middle = manyUntil end (blockComment start end <|> any)
 
 ||| A mapping from lexers to the tokens they produce.
 ||| This is a list of pairs `(Lexer, String -> tokenType)`

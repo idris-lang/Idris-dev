@@ -9,7 +9,6 @@ module IRTS.DumpBC where
 
 import Idris.Core.TT
 import IRTS.Bytecode
-import IRTS.Lang
 import IRTS.Simplified
 
 import Data.List

@@ -10,13 +10,7 @@ Maintainer  : The Idris Community.
 module Idris.DataOpts(applyOpts) where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
 import Idris.Core.TT
-
-import Control.Applicative
-import Data.List
-import Data.Maybe
-import Debug.Trace
 
 class Optimisable term where
     applyOpts :: term -> Idris term

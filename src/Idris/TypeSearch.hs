@@ -13,8 +13,7 @@ module Idris.TypeSearch (
   , defaultScoreFunction
   ) where
 
-import Idris.AbsSyntax (addImpl, addUsingConstraints, getIState, implicit,
-                        logLvl, putIState)
+import Idris.AbsSyntax (addUsingConstraints, getIState, implicit, putIState)
 import Idris.AbsSyntaxTree (IState(idris_docstrings, idris_interfaces, idris_outputmode, tt_ctxt),
                             Idris, InterfaceInfo, OutputMode(..), PTerm,
                             defaultSyntax, eqTy, implicitAllowed,
@@ -58,7 +57,6 @@ searchByType pkgs pterm = do
   mapM_ loadPkgIndex pkgs
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn name pterm'
-  let pterm'''  = addImpl [] i pterm''
   ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] name NoFC pterm'
   let names = searchUsing searchPred i ty
   let names' = take numLimit names
@@ -304,7 +302,7 @@ interfaceUnify interfaceInfo ctxt ty tyTry = do
 
 isInterfaceArg :: Ctxt InterfaceInfo -> Type -> Bool
 isInterfaceArg interfaceInfo ty = not (null (getInterfaceName clss >>= flip lookupCtxt interfaceInfo)) where
-  (clss, args) = unApply ty
+  (clss, _) = unApply ty
   getInterfaceName (P (TCon _ _) interfaceName _) = [interfaceName]
   getInterfaceName _ = []
 
@@ -357,8 +355,6 @@ matchTypesBulk istate maxScore type1 types = getAllResults startQueueOfQueues wh
     argNames2 = map fst dag2
     usedns = map fst startingHoles
     startingHoles = argNames1 ++ argNames2
-
-    startingTypes = [(retTy1, retTy2)]
 
 
   startQueueOfQueues :: Q.PQueue Score (info, Q.PQueue Score State)

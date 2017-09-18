@@ -17,10 +17,7 @@ module IRTS.JavaScript.Specialize
   , qualifyN
   ) where
 
-import Data.Char
-import Data.List
 import qualified Data.Map.Strict as Map
-import Data.Text (Text)
 import qualified Data.Text as T
 import Idris.Core.TT
 import IRTS.JavaScript.AST
@@ -62,23 +59,12 @@ constructorOptimizeDB =
     ]
     -- constructors
   where
-    nil = const $ JsArray []
-    cons [h, t] = JsMethod (JsArray [h]) "concat" [t]
-    -- tests
-    --trueTest e = JsUniOp (T.pack "!") $ JsUniOp (T.pack "!") e
     trueTest = id
     falseTest e = JsUniOp (T.pack "!") e
-    emptyList e = JsBinOp "===" (JsProp e "length") (JsInt 0)
-    fillList e = JsBinOp ">" (JsProp e "length") (JsInt 0)
     ltTest e = JsBinOp "<" e (JsInt 0)
     eqTest e = JsBinOp "===" e (JsInt 0)
     gtTest e = JsBinOp ">" e (JsInt 0)
-    noneTest e = JsBinOp "===" e JsUndefined
-    notNoneTest e = JsBinOp "!==" e JsUndefined
     -- projections
-    justProj x n = x
-    uncons x 1 = JsArrayProj (JsInt 0) x
-    uncons x 2 = JsMethod x "slice" [JsInt 1]
     cantProj x j = error $ "This type should be projected"
     item :: String
          -> String
