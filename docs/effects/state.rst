@@ -452,7 +452,7 @@ There are the following three versions:
     TransEff.Eff  : (t : Type) -> (input_effs : List EFFECT) ->
                                   (output_effs : List EFFECT) -> Type
     DepEff.Eff    : (t : Type) -> (input_effs : List EFFECT) ->
-                                  (output_effs_fn : x -> List EFFECT) -> Type
+                                  (output_effs_fn : t -> List EFFECT) -> Type
 
 So far, we have used only the first version, ``SimpleEff.Eff``, which
 is defined as follows:
