@@ -8,15 +8,13 @@ Maintainer  : The Idris Community.
 -}
 module Idris.Core.Constraints ( ucheck ) where
 
-import Idris.Core.TT (ConstraintFC(..), Err'(..), FC(..), TC(..),
-                      UConstraint(..), UExp(..))
+import Idris.Core.TT (ConstraintFC(..), Err'(..), TC(..), UConstraint(..),
+                      UExp(..))
 
-import Control.Applicative
 import Control.Monad.State.Strict
 import Data.List (partition)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import Debug.Trace
 
 -- | Check that a list of universe constraints can be satisfied.
 ucheck :: S.Set ConstraintFC -> TC ()

@@ -13,12 +13,10 @@ module IRTS.Lang where
 import Idris.Core.CaseTree
 import Idris.Core.TT
 
-import Control.Applicative hiding (Const)
 import Control.Monad.State hiding (lift)
 import Data.Data (Data)
 import Data.List
 import Data.Typeable (Typeable)
-import Debug.Trace
 import GHC.Generics (Generic)
 
 data Endianness = Native | BE | LE deriving (Show, Eq)

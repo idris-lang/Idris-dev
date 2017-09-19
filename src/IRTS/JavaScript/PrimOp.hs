@@ -16,11 +16,7 @@ module IRTS.JavaScript.PrimOp
   , jsPrimCoerce
   ) where
 
-import Data.Char
-import Data.List
 import qualified Data.Map.Strict as Map
-import Data.Text (Text)
-import qualified Data.Text as T
 import Idris.Core.TT
 import IRTS.JavaScript.AST
 import IRTS.Lang

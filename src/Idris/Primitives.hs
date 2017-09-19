@@ -9,7 +9,6 @@ Maintainer  : The Idris Community.
 
 module Idris.Primitives(primitives, Prim(..)) where
 
-import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import IRTS.Lang
@@ -18,9 +17,6 @@ import Data.Bits
 import Data.Char
 import Data.Function (on)
 import Data.Int
-import qualified Data.Vector.Unboxed as V
-import Data.Word
-import Debug.Trace
 
 data Prim = Prim { p_name  :: Name,
                    p_type  :: Type,
@@ -34,10 +30,9 @@ ty :: [Const] -> Const -> Type
 ty []     x = Constant x
 ty (t:ts) x = Bind (sMN 0 "T") (Pi RigW Nothing (Constant t) (TType (UVar [] (-3)))) (ty ts x)
 
-total, partial, iopartial :: Totality
+total, partial :: Totality
 total = Total []
 partial = Partial NotCovering
-iopartial = Partial ExternalIO
 
 primitives :: [Prim]
 primitives =
@@ -235,36 +230,6 @@ intConv ity =
                (1, LFloatInt ity) total
     ]
 
-bitcastPrim :: ArithTy -> ArithTy -> (ArithTy -> [Const] -> Maybe Const) -> PrimFn -> Prim
-bitcastPrim from to impl prim =
-    Prim (sUN $ "prim__bitcast" ++ aTyName from ++ "_" ++ aTyName to) (ty [AType from] (AType to)) 1 (impl to)
-         (1, prim) total
-
-concatWord8 :: (Word8, Word8) -> Word16
-concatWord8 (high, low) = fromIntegral high .|. (fromIntegral low `shiftL` 8)
-
-concatWord16 :: (Word16, Word16) -> Word32
-concatWord16 (high, low) = fromIntegral high .|. (fromIntegral low `shiftL` 16)
-
-concatWord32 :: (Word32, Word32) -> Word64
-concatWord32 (high, low) = fromIntegral high .|. (fromIntegral low `shiftL` 32)
-
-truncWord16 :: Bool -> Word16 -> Word8
-truncWord16 True x = fromIntegral (x `shiftR` 8)
-truncWord16 False x = fromIntegral x
-
-truncWord32 :: Bool -> Word32 -> Word16
-truncWord32 True x = fromIntegral (x `shiftR` 16)
-truncWord32 False x = fromIntegral x
-
-truncWord64 :: Bool -> Word64 -> Word32
-truncWord64 True x = fromIntegral (x `shiftR` 32)
-truncWord64 False x = fromIntegral x
-
-aTyName :: ArithTy -> String
-aTyName (ATInt t) = intTyName t
-aTyName ATFloat = "Float"
-
 iCmp  :: IntTy -> String -> Bool -> ([Const] -> Maybe Const) -> (IntTy -> PrimFn) -> Totality -> Prim
 iCmp ity op self impl irop totality
     = Prim (sUN $ "prim__" ++ op ++ intTyName ity)
@@ -294,11 +259,6 @@ bfBin :: (Double -> Double -> Bool) -> [Const] -> Maybe Const
 bfBin op [Fl x, Fl y] = let i = (if op x y then 1 else 0) in
                         Just $ I i
 bfBin _ _ = Nothing
-
-bcBin :: (Char -> Char -> Bool) -> [Const] -> Maybe Const
-bcBin op [Ch x, Ch y] = let i = (if op x y then 1 else 0) in
-                        Just $ I i
-bcBin _ _ = Nothing
 
 bsBin :: (String -> String -> Bool) -> [Const] -> Maybe Const
 bsBin op [Str x, Str y]

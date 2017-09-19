@@ -52,7 +52,6 @@ import Idris.Options
 
 import Prelude hiding (id, (.))
 
-import Control.Applicative
 import Control.Category
 import Control.Monad.State.Class
 import Data.Maybe

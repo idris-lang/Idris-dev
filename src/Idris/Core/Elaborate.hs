@@ -16,7 +16,6 @@ module Idris.Core.Elaborate (
   , module Idris.Core.ProofState
   ) where
 
-import Idris.Core.DeepSeq
 import Idris.Core.Evaluate
 import Idris.Core.ProofState
 import Idris.Core.ProofTerm (bound_in, bound_in_term, getProofTerm, mkProofTerm,
@@ -24,15 +23,9 @@ import Idris.Core.ProofTerm (bound_in, bound_in_term, getProofTerm, mkProofTerm,
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.Unify
-import Idris.Core.WHNF
 
-import Util.Pretty hiding (fill)
-
-import Control.DeepSeq
 import Control.Monad.State.Strict
-import Data.Char
 import Data.List
-import Debug.Trace
 
 data ElabState aux = ES (ProofState, aux) String (Maybe (ElabState aux))
   deriving Show
@@ -614,9 +607,6 @@ prepare_apply fn imps =
                         lift $ tfail $ TooManyArguments n
             | otherwise = fail $ "Too many arguments for " ++ show fn
 
-    doClaim ((i, _), n, t) = do claim n t
-                                when i (movelast n)
-
     mkMN n@(MN i _) = n
     mkMN n@(UN x) = MN 99999 x
     mkMN n@(SN s) = sMN 99999 (show s)
@@ -673,8 +663,6 @@ apply' fillt fn imps =
            | i = getNonUnify acc is as
            | otherwise = getNonUnify (t : acc) is as
 
---         getNonUnify imps args = map fst (filter (not . snd) (zip (map snd args) (map fst imps)))
-
 
 apply2 :: Raw -> [Maybe (Elab' aux ())] -> Elab' aux ()
 apply2 fn elabs =
@@ -682,7 +670,6 @@ apply2 fn elabs =
        fill (raw_apply fn (map (Var . snd) args))
        elabArgs (map snd args) elabs
        ES (p, a) s prev <- get
-       let (n, hs) = unified p
        end_unify
        solve
   where elabArgs [] [] = return $! ()
@@ -700,16 +687,10 @@ apply_elab n args =
        env <- get_env
        claims <- doClaims (normalise ctxt env ty) args []
        prep_fill n (map fst claims)
-       let eclaims = sortBy (\ (_, x) (_,y) -> priOrder x y) claims
        elabClaims [] False claims
        complete_fill
        end_unify
   where
-    priOrder Nothing Nothing = EQ
-    priOrder Nothing _ = LT
-    priOrder _ Nothing = GT
-    priOrder (Just (x, _)) (Just (y, _)) = compare x y
-
     doClaims (Bind n' (Pi _ _ t _) sc) (i : is) claims =
         do n <- unique_hole (mkMN n')
            when (null claims) (start_unify n)

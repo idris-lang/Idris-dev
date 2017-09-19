@@ -32,7 +32,6 @@ import Control.Monad
 import Control.Monad.State
 import Data.List
 import Data.Maybe
-import Debug.Trace
 
 data DExp = DV Name
           | DApp Bool Name [DExp] -- True = tail call
@@ -165,32 +164,6 @@ addApps defs (n, LFun _ _ args e)
 --          = chainAPPLY (DApp False (sMN 0 "APPLY2") [f, a, b]) as
     chainAPPLY f (a : as) = chainAPPLY (DApp False (sMN 0 "APPLY") [f, a]) as
 
-    -- if anything in the DExp is projected from, we'll need to evaluate it,
-    -- but we only want to do it once, rather than every time we project.
-
-    preEval [] t = t
-    preEval (x : xs) t
-       | needsEval x t = DLet x (DV x) (preEval xs t)
-       | otherwise = preEval xs t
-
-    needsEval x (DApp _ _ args) = any (needsEval x) args
-    needsEval x (DC _ _ _ args) = any (needsEval x) args
-    needsEval x (DCase up e alts) = needsEval x e || any nec alts
-      where nec (DConCase _ _ _ e) = needsEval x e
-            nec (DConstCase _ e) = needsEval x e
-            nec (DDefaultCase e) = needsEval x e
-    needsEval x (DChkCase e alts) = needsEval x e || any nec alts
-      where nec (DConCase _ _ _ e) = needsEval x e
-            nec (DConstCase _ e) = needsEval x e
-            nec (DDefaultCase e) = needsEval x e
-    needsEval x (DLet n v e)
-          | x == n = needsEval x v
-          | otherwise = needsEval x v || needsEval x e
-    needsEval x (DForeign _ _ args) = any (needsEval x) (map snd args)
-    needsEval x (DOp op args) = any (needsEval x) args
-    needsEval x (DProj (DV x') _) = x == x'
-    needsEval x _ = False
-
 eEVAL x = DApp False (sMN 0 "EVAL") [x]
 
 data EvalApply a = EvalCase (Name -> a)
@@ -222,7 +195,6 @@ toConsA ns (n, i)
 --                 (DApp False n (map DV (take i (genArgs 0))))))))
           = mkApplyCase n ar i
     | otherwise = []
-  where dupdate tlarg x = x
 
 mkApplyCase fname n ar | n == ar = []
 mkApplyCase fname n ar
@@ -331,30 +303,7 @@ instance Show DExp where
 -- 'max' branches
 mkBigCase cn max arg branches
    | length branches <= max = DChkCase arg branches
-   | otherwise = -- DChkCase arg branches -- until I think of something...
-       -- divide the branches into groups of at most max (by tag),
-       -- generate a new case and shrink, recursively
-       let bs = sortBy tagOrd branches
-           (all, def) = case (last bs) of
-                    DDefaultCase t -> (init all, Just (DDefaultCase t))
-                    _ -> (all, Nothing)
-           bss = groupsOf max all
-           cs = map mkCase bss in
-           DChkCase arg branches
-
-    where mkCase bs = DChkCase arg bs
-
-          tagOrd (DConCase t _ _ _) (DConCase t' _ _ _) = compare t t'
-          tagOrd (DConstCase c _) (DConstCase c' _) = compare c c'
-          tagOrd (DDefaultCase _) (DDefaultCase _) = EQ
-
-          tagOrd (DConCase _ _ _ _) (DDefaultCase _) = LT
-          tagOrd (DConCase _ _ _ _) (DConstCase _ _) = LT
-          tagOrd (DConstCase _ _) (DDefaultCase _) = LT
-
-          tagOrd (DDefaultCase _) (DConCase _ _ _ _) = GT
-          tagOrd (DConstCase _ _) (DConCase _ _ _ _) = GT
-          tagOrd (DDefaultCase _) (DConstCase _ _) = GT
+   | otherwise = DChkCase arg branches
 
 groupsOf :: Int -> [DAlt] -> [[DAlt]]
 groupsOf x [] = []

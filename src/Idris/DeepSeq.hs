@@ -24,7 +24,6 @@ import IRTS.Lang (PrimFn(..))
 
 import Util.DynamicLinker
 
-import qualified Cheapskate.Types as CT
 import Control.DeepSeq
 import Network.Socket (PortNumber)
 

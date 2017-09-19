@@ -10,7 +10,6 @@ Maintainer  : The Idris Community.
 module Idris.Elab.Rewrite(elabRewrite, elabRewriteLemma) where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
 import Idris.Core.Elaborate
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -20,8 +19,6 @@ import Idris.Error
 
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.List
-import Debug.Trace
 
 elabRewrite :: (PTerm -> ElabD ()) -> IState ->
                FC -> Maybe Name -> PTerm -> PTerm -> Maybe PTerm -> ElabD ()

@@ -11,12 +11,10 @@ Maintainer  : The Idris Community.
 module Idris.DSL where
 
 import Idris.AbsSyntax
-import Idris.Core.Evaluate
 import Idris.Core.TT
 
 import Control.Monad.State.Strict
 import Data.Generics.Uniplate.Data (transform)
-import Debug.Trace
 
 debindApp :: SyntaxInfo -> PTerm -> PTerm
 debindApp syn t = debind (dsl_bind (dsl_info syn)) t
@@ -169,8 +167,7 @@ var dsl n t i = v' i t where
     setFC fc t = t
 
 unIdiom :: PTerm -> PTerm -> FC -> PTerm -> PTerm
-unIdiom ap pure fc e@(PApp _ _ _) = let f = getFn e in
-                                        mkap (getFn e)
+unIdiom ap pure fc e@(PApp _ _ _) = mkap (getFn e)
   where
     getFn (PApp fc f args) = (PApp fc pure [pexp f], args)
     getFn f = (f, [])

@@ -5,9 +5,13 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+
 {-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
              PatternGuards #-}
 {-# OPTIONS_GHC -O0 #-}
+-- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
+{-# OPTIONS_GHC -fwarn-unused-imports #-}
+
 module Idris.Parser(module Idris.Parser,
                     module Idris.Parser.Expr,
                     module Idris.Parser.Data,
@@ -17,11 +21,9 @@ module Idris.Parser(module Idris.Parser,
 import Idris.AbsSyntax hiding (namespace, params)
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Coverage
 import Idris.Delaborate
 import Idris.Docstrings hiding (Unchecked)
 import Idris.DSL
-import Idris.Elab.Term
 import Idris.Elab.Value
 import Idris.ElabDecls
 import Idris.Error
@@ -33,15 +35,11 @@ import Idris.Parser.Data
 import Idris.Parser.Expr
 import Idris.Parser.Helpers
 import Idris.Parser.Ops
-import Idris.Providers
 import Idris.Termination
 import Idris.Unlit
 
-import Util.DynamicLinker
 import qualified Util.Pretty as P
-import Util.System (readSource, writeSource)
-
-import Paths_idris
+import Util.System (readSource)
 
 import Prelude hiding (pi)
 
@@ -53,24 +51,14 @@ import Data.Char
 import Data.Foldable (asum)
 import Data.Function
 import Data.Generics.Uniplate.Data (descendM)
-import qualified Data.HashSet as HS
 import Data.List
 import qualified Data.List.Split as Spl
 import qualified Data.Map as M
 import Data.Maybe
-import Data.Monoid
 import Data.Ord
-import qualified Data.Set as S
 import qualified Data.Text as T
-import Debug.Trace
 import qualified System.Directory as Dir (makeAbsolute)
 import System.FilePath
-import System.IO
-import qualified Text.Parser.Char as Chr
-import Text.Parser.Expression
-import Text.Parser.LookAhead
-import qualified Text.Parser.Token as Tok
-import qualified Text.Parser.Token.Highlight as Hi
 import Text.PrettyPrint.ANSI.Leijen (Doc, plain)
 import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
 import Text.Trifecta hiding (Err, char, charLiteral, natural, span, string,
@@ -806,7 +794,6 @@ mutual :: SyntaxInfo -> IdrisParser [PDecl]
 mutual syn =
     do reservedHL "mutual"
        openBlock
-       let pvars = syn_params syn
        ds <- many (decl (syn { mut_nesting = mut_nesting syn + 1 } ))
        closeBlock
        fc <- getFC
@@ -1157,7 +1144,6 @@ clause syn
                         Just t -> return t
                         Nothing -> fail "Invalid clause"
               (do r <- rhs syn n
-                  let ctxt = tt_ctxt ist
                   let wsyn = syn { syn_namespace = [], syn_toplevel = False }
                   (wheres, nmap) <- choice [do x <- whereBlock n wsyn
                                                popIndent
@@ -1181,8 +1167,6 @@ clause syn
               fc <- getFC
               n_in <- fst <$> fnName; let n = expandNS syn n_in
               r <- rhs syn n
-              ist <- get
-              let ctxt = tt_ctxt ist
               let wsyn = syn { syn_namespace = [] }
               (wheres, nmap) <- choice [do x <- whereBlock n wsyn
                                            popIndent
@@ -1239,8 +1223,6 @@ clause syn
               wargs <- many (wExpr syn)
               let capp = PApp fc (PRef nfc [nfc] n) args
               (do r <- rhs syn n
-                  ist <- get
-                  let ctxt = tt_ctxt ist
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <- choice [do x <- whereBlock n wsyn
                                                popIndent
@@ -1585,11 +1567,6 @@ parseImports fname input
                      let ps = ps_exp -- imp "Builtins" : imp "Prelude" : ps_exp
                      return ((mdoc, mname, ps, mrk'), annots, i)
 
-        imp m = ImportInfo False (toPath m)
-                           Nothing [] NoFC NoFC
-        ns = Spl.splitOn "."
-        toPath = foldl1' (</>) . ns
-
         addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC, OutputAnnotation)]
         addPath [] _ = []
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =
@@ -1685,6 +1662,7 @@ loadModule' f phase
 loadFromIFile :: Bool -> IBCPhase -> IFileType -> Maybe Int -> Idris ()
 loadFromIFile reexp phase i@(IBC fn src) maxline
    = do logParser 1 $ "Skipping " ++ getSrcFile i
+        logParser 3 $ "loadFromIFile i" ++ show i
         idrisCatch (loadIBC reexp phase fn)
                 (\err -> ierror $ LoadingFailed fn err)
   where
@@ -1893,8 +1871,6 @@ loadSource lidr f toline
 
 {-| Adds names to hide list -}
 addHides :: Ctxt Accessibility -> Idris ()
-addHides xs = do i <- getIState
-                 let defh = default_access i
-                 mapM_ doHide (toAlist xs)
+addHides xs = mapM_ doHide (toAlist xs)
   where doHide (n, a) = do setAccessibility n a
                            addIBC (IBCAccess n a)

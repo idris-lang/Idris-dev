@@ -10,51 +10,22 @@ Maintainer  : The Idris Community.
 module Idris.Elab.Interface(elabInterface) where
 
 import Idris.AbsSyntax
-import Idris.ASTUtils
-import Idris.Core.CaseTree
-import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
-import Idris.Core.Execute
 import Idris.Core.TT
-import Idris.Core.Typecheck
-import Idris.Coverage
-import Idris.DataOpts
-import Idris.DeepSeq
 import Idris.Delaborate
 import Idris.Docstrings
-import Idris.DSL
 import Idris.Elab.Data
-import Idris.Elab.Term
-import Idris.Elab.Type
 import Idris.Elab.Utils
 import Idris.Error
-import Idris.Imports
-import Idris.Inliner
-import Idris.Output (iWarn, iputStrLn, pshow, sendHighlighting)
-import Idris.PartialEval
-import Idris.Primitives
-import Idris.Providers
-import IRTS.Lang
-
-import Util.Pretty (pretty, text)
+import Idris.Output (sendHighlighting)
 
 import Prelude hiding (id, (.))
 
-import Control.Applicative hiding (Const)
 import Control.Category
-import Control.DeepSeq
 import Control.Monad
-import Control.Monad.State.Strict as State
-import Data.Char (isLetter, toLower)
 import Data.Generics.Uniplate.Data (transform)
 import Data.List
-import Data.List.Split (splitOn)
-import qualified Data.Map as Map
 import Data.Maybe
-import qualified Data.Set as S
-import qualified Data.Text as T
-import Debug.Trace
-
 
 data MArgTy = IA Name | EA Name | CA deriving Show
 
@@ -123,8 +94,7 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
              ims <- mapM (tdecl impps mnames) mdecls
              defs <- mapM (defdecl (map (\ (x,y,z) -> z) ims) constraint)
                           (filter clause ds)
-             let (methods, imethods)
-                  = unzip (map (\ (x, y, z) -> (x, y)) ims)
+             let imethods = map (\ (x, y, z) -> y) ims
              let defaults = map (\ (x, (y, z)) -> (x,y)) defs
 
              addInterface tn (CI cn (map nodoc imethods) defaults idecls
@@ -396,13 +366,6 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
              return (PTy doc [] syn fc o m mfc ty',
                      PClauses fc [Inlinable] m [PClause fc m lhs [] rhs []])
 
-    updateIMethod :: [(Name, PTerm)] ->
-                     (Name, (a, b, c, d, PTerm)) ->
-                     (Name, (a, b, c, d, PTerm))
-    updateIMethod ns tm@(n, (isf, mfc, doc, o, ty))
-       | Just ty' <- lookup (nsroot n) ns = (n, (isf, mfc, doc, o, ty'))
-       | otherwise = tm
-
     getMArgs (PPi (Imp _ _ _ _ _ _) n _ ty sc) = IA n : getMArgs sc
     getMArgs (PPi (Exp _ _ _ _) n _ ty sc) = EA n : getMArgs sc
     getMArgs (PPi (Constraint _ _ _) n _ ty sc) = CA : getMArgs sc
@@ -451,12 +414,6 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
         | otherwise = PPi (e l s p r) n fc ty (toExp ns e sc)
     toExp ns e (PPi p n fc ty sc) = PPi p n fc ty (toExp ns e sc)
     toExp ns e sc = sc
-
--- | Get the method declaration name corresponding to a user-provided name
-mdec :: Name -> Name
-mdec (UN n) = SN (MethodN (UN n))
-mdec (NS x n) = NS (mdec x) n
-mdec x = x
 
 -- | Get the docstring corresponding to a member, if one exists
 memberDocs :: PDecl -> Maybe (Name, Docstring (Either Err PTerm))

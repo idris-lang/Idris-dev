@@ -11,7 +11,7 @@ module Idris.Apropos (apropos, aproposModules) where
 import Idris.AbsSyntax
 import Idris.Core.Evaluate (Def(..), ctxtAlist)
 import Idris.Core.TT (Binder(..), Const(..), Name(..), NameType(..), TT(..),
-                      Type, lookupCtxtExact, toAlist)
+                      toAlist)
 import Idris.Docstrings (DocTerm, Docstring, containsText)
 
 import Data.List (intersperse, nub, nubBy)
@@ -104,9 +104,3 @@ instance (Apropos a) => Apropos (Maybe a) where
 
 instance (Apropos a) => Apropos [a] where
   isApropos str xs = any (isApropos str) xs
-
-defType :: Def -> Type
-defType (Function t _) = t
-defType (TyDecl _ t) = t
-defType (Operator t _ _) = t
-defType (CaseOp _ t _ _ _ _) = t

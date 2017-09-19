@@ -60,31 +60,25 @@ import Util.Pretty hiding (Str)
 -- Work around AMP without CPP
 import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Functor(..), Int,
                 Integer, Maybe(..), Monad(..), Num(..), Ord(..), Ordering(..),
-                Read(..), Show(..), String, div, error, flip, fst, mod, not,
-                otherwise, read, snd, ($), (&&), (.), (||))
+                Show(..), String, div, error, fst, mod, not, otherwise, read,
+                snd, ($), (&&), (.), (||))
 
 import Control.Applicative (Alternative, Applicative(..))
 import qualified Control.Applicative as A (Alternative(..))
 import Control.DeepSeq (($!!))
 import Control.Monad.State.Strict
-import Control.Monad.Trans.Except (Except(..))
 import Data.Binary hiding (get, put)
-import qualified Data.Binary as B
 import Data.Char
 import Data.Data (Data)
 import Data.Foldable (Foldable)
 import Data.List hiding (group, insert)
 import qualified Data.Map.Strict as Map
 import Data.Maybe (listToMaybe)
-import Data.Monoid (mconcat)
 import Data.Set (Set, fromList, insert, member)
 import qualified Data.Text as T
 import Data.Traversable (Traversable)
 import Data.Typeable (Typeable)
-import Data.Vector.Unboxed (Vector)
-import qualified Data.Vector.Unboxed as V
 import Debug.Trace
-import Foreign.Storable (sizeOf)
 import GHC.Generics (Generic)
 import Numeric (showIntAtBase)
 import Numeric.IEEE (IEEE(identicalIEEE))
@@ -436,13 +430,6 @@ instance Show a => Show (TC a) where
 tfail :: Err -> TC a
 tfail e = Error e
 
-failMsg :: String -> TC a
-failMsg str = Error (Msg str)
-
-trun :: FC -> TC a -> TC a
-trun fc (OK a)    = OK a
-trun fc (Error e) = Error (At fc e)
-
 discard :: Monad m => m a -> m ()
 discard f = f >> return ()
 
@@ -514,9 +501,6 @@ deriving instance Binary SpecialName
 
 sImplementationN :: Name -> [String] -> SpecialName
 sImplementationN n ss = ImplementationN n (map T.pack ss)
-
-sParentN :: Name -> String -> SpecialName
-sParentN n s = ParentN n (T.pack s)
 
 instance Sized Name where
   size (UN n)     = 1
@@ -703,13 +687,6 @@ nativeTyWidth IT8 = 8
 nativeTyWidth IT16 = 16
 nativeTyWidth IT32 = 32
 nativeTyWidth IT64 = 64
-
-{-# DEPRECATED intTyWidth "Non-total function, use nativeTyWidth and appropriate casing" #-}
-intTyWidth :: IntTy -> Int
-intTyWidth (ITFixed n) = nativeTyWidth n
-intTyWidth ITNative = 8 * sizeOf (0 :: Int)
-intTyWidth ITChar = error "IRTS.Lang.intTyWidth: Characters have platform and backend dependent width"
-intTyWidth ITBig = error "IRTS.Lang.intTyWidth: Big integers have variable width"
 
 data Const = I Int | BI Integer | Fl Double | Ch Char | Str String
            | B8 Word8 | B16 Word16 | B32 Word32 | B64 Word64

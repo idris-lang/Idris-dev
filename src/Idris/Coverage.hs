@@ -16,14 +16,11 @@ import Idris.Core.TT
 import Idris.Delaborate
 import Idris.Elab.Utils
 import Idris.Error
-import Idris.Output (iWarn, iputStrLn)
 
 import Control.Monad.State.Strict
 import Data.Char
-import Data.Either
 import Data.List
 import Data.Maybe
-import Debug.Trace
 
 -- | Generate a pattern from an 'impossible' LHS.
 --
@@ -284,10 +281,6 @@ addMissingConsSt ist (Case t n alts) = liftM (Case t n) (addMissingAlts n alts)
     collectConsts (ConstCase c sc) = Just c
     collectConsts _ = Nothing
 
-    hasDefault (DefaultCase (UnmatchedCase _)) = False
-    hasDefault (DefaultCase _) = True
-    hasDefault _ = False
-
     getConType n = do ty <- lookupTyExact n (tt_ctxt ist)
                       case unApply (getRetTy (normalise (tt_ctxt ist) [] ty)) of
                            (P _ tyn _, _) -> Just tyn
@@ -335,9 +328,6 @@ trimOverlapping sc = trim [] [] sc
         = SucCase n (trim cs nots sc) : trimAlts cs nots vn rest
     trimAlts cs nots vn (DefaultCase sc : rest)
         = DefaultCase (trim cs nots sc) : trimAlts cs nots vn rest
-
-    isConMatch c (ConCase cn t args sc) = c == cn
-    isConMatch _ _ = False
 
     substMatch :: (Name, [Name]) -> [CaseAlt] -> [CaseAlt]
     substMatch ca [] = []

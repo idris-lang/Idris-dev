@@ -26,8 +26,8 @@
 // Closures
 typedef enum {
     CT_CON, CT_INT, CT_BIGINT, CT_FLOAT, CT_STRING, CT_STROFFSET,
-    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_UNIT, CT_PTR, CT_FWD,
-    CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
+    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_UNIT, CT_PTR, CT_REF,
+    CT_FWD, CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
 } ClosureType;
 
 typedef struct Closure *VAL;
@@ -400,6 +400,12 @@ VAL idris_strCons(VM* vm, VAL x, VAL xs);
 VAL idris_strIndex(VM* vm, VAL str, VAL i);
 VAL idris_strRev(VM* vm, VAL str);
 VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str);
+
+// Support for IORefs
+VAL idris_newRefLock(VAL x, int outerlock);
+VAL idris_newRef(VAL x);
+void idris_writeRef(VAL ref, VAL x);
+VAL idris_readRef(VAL ref);
 
 // system infox
 // used indices:

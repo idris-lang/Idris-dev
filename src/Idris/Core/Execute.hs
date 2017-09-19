@@ -11,7 +11,6 @@ Maintainer  : The Idris Community.
 module Idris.Core.Execute (execute) where
 
 import Idris.AbsSyntax
-import Idris.AbsSyntaxTree
 import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
@@ -22,15 +21,11 @@ import IRTS.Lang (FDesc(..), FType(..))
 import Util.DynamicLinker
 import Util.System
 
-import Control.Applicative hiding (Const)
 import Control.Exception
-import Control.Monad hiding (forM)
 import Control.Monad.Trans
 import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Control.Monad.Trans.State.Strict
-import Data.Bits
 import Data.IORef
-import qualified Data.Map as M
 import Data.Maybe
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Traversable (forM)
@@ -42,7 +37,6 @@ import System.IO.Unsafe
 #ifdef IDRIS_FFI
 import Foreign.C.String
 import Foreign.LibFFI
-import Foreign.Marshal.Alloc (free)
 import Foreign.Ptr
 #endif
 
@@ -51,10 +45,6 @@ execute :: Term -> Idris Term
 execute tm = fail "libffi not supported, rebuild Idris with -f FFI"
 #else
 -- else is rest of file
-readMay :: (Read a) => String -> Maybe a
-readMay s = case reads s of
-              [(x, "")] -> Just x
-              _         -> Nothing
 
 data Lazy = Delayed ExecEnv Context Term | Forced ExecVal deriving Show
 
@@ -169,9 +159,6 @@ runExec ex st = fst <$> runStateT (runExceptT ex) st
 
 getExecState :: Exec ExecState
 getExecState = lift get
-
-putExecState :: ExecState -> Exec ()
-putExecState = lift . put
 
 execFail :: Err -> Exec a
 execFail = throwE
@@ -481,8 +468,8 @@ execForeign env ctxt arity ty fn xs onfail
 execForeign env ctxt arity ty fn xs onfail
    = case foreignFromTT arity ty fn xs of
         Just ffun@(FFun f argTs retT) | length xs >= arity ->
-           do let (args', xs') = (take arity xs, -- foreign args
-                                  drop arity xs) -- rest
+           do let (_, xs') = (take arity xs, -- foreign args
+                              drop arity xs) -- rest
               res <- call ffun (map snd argTs)
               case res of
                    Nothing -> fail $ "Could not call foreign function \"" ++ f ++
@@ -710,26 +697,6 @@ foreignFromTT arity ty (EConstant (Str name)) args
          return $ FFun name argFTyVals (toFDesc ty)
 foreignFromTT arity ty fn args = trace ("failed to construct ffun from " ++ show (ty,fn,args)) Nothing
 
-getFTy :: ExecVal -> Maybe FType
-getFTy (EApp (EP _ (UN fi) _) (EP _ (UN intTy) _))
-  | fi == txt "FIntT" =
-    case str intTy of
-      "ITNative" -> Just (FArith (ATInt ITNative))
-      "ITChar" -> Just (FArith (ATInt ITChar))
-      "IT8" -> Just (FArith (ATInt (ITFixed IT8)))
-      "IT16" -> Just (FArith (ATInt (ITFixed IT16)))
-      "IT32" -> Just (FArith (ATInt (ITFixed IT32)))
-      "IT64" -> Just (FArith (ATInt (ITFixed IT64)))
-      _ -> Nothing
-getFTy (EP _ (UN t) _) =
-    case str t of
-      "FFloat"  -> Just (FArith ATFloat)
-      "FString" -> Just FString
-      "FPtr"    -> Just FPtr
-      "FUnit"   -> Just FUnit
-      _         -> Nothing
-getFTy _ = Nothing
-
 unEList :: ExecVal -> Maybe [ExecVal]
 unEList tm = case unApplyV tm of
                (nil, [_]) -> Just []
@@ -738,10 +705,6 @@ unEList tm = case unApplyV tm of
                       return $ x:rest
                (f, args) -> Nothing
 
-
-toConst :: Term -> Maybe Const
-toConst (Constant c) = Just c
-toConst _ = Nothing
 
 mapMaybeM :: (Functor m, Monad m) => (a -> m (Maybe b)) -> [a] -> m [b]
 mapMaybeM f [] = return []

@@ -11,7 +11,7 @@ Maintainer  : The Idris Community.
 
 module Idris.IdeMode(parseMessage, convSExp, WhatDocs(..), IdeModeCommand(..), sexpToCommand, toSExp, SExp(..), SExpable, Opt(..), ideModeEpoch, getLen, getNChar, sExpToString) where
 
-import Idris.Core.Binary
+import Idris.Core.Binary ()
 import Idris.Core.TT
 
 import Control.Applicative hiding (Const)
@@ -175,9 +175,6 @@ instance SExpable OutputAnnotation where
 
 encodeName :: Name -> String
 encodeName n = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $ n
-
-decodeName :: String -> Name
-decodeName = Binary.decode . Lazy.fromStrict . Base64.decodeLenient . UTF8.fromString
 
 encodeTerm :: [(Name, Bool)] -> Term -> String
 encodeTerm bnd tm = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $

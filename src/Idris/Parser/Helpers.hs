@@ -18,8 +18,6 @@ import Idris.Docstrings
 import Idris.Options
 import Idris.Output (iWarn)
 
-import qualified Util.Pretty as Pretty (text)
-
 import Prelude hiding (pi)
 
 import Control.Applicative
@@ -29,15 +27,11 @@ import qualified Data.ByteString.UTF8 as UTF8
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
-import qualified Data.List.Split as Spl
 import qualified Data.Map as M
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Text as T
-import Debug.Trace
 import System.FilePath
 import qualified Text.Parser.Char as Chr
-import Text.Parser.Expression
 import Text.Parser.LookAhead
 import qualified Text.Parser.Token as Tok
 import qualified Text.Parser.Token.Highlight as Hi

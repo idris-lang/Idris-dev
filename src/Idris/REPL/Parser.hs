@@ -21,17 +21,14 @@ import Idris.REPL.Commands
 
 import Control.Applicative
 import Control.Monad.State.Strict
-import qualified Data.ByteString.UTF8 as UTF8
 import Data.Char (isSpace, toLower)
 import Data.List
 import Data.List.Split (splitOn)
-import Debug.Trace
 import System.Console.ANSI (Color(..))
 import System.FilePath ((</>))
 import Text.Parser.Char (anyChar, oneOf)
 import Text.Parser.Combinators
-import Text.Trifecta (Result, parseString)
-import Text.Trifecta.Delta
+import Text.Trifecta (Result)
 
 parseCmd :: IState -> String -> String -> Result (Either String Command)
 parseCmd i inputname = P.runparser pCmd i inputname . trim
@@ -181,8 +178,6 @@ namespaceArgCmd names command doc =
   (names, NamespaceArg, doc, namespaceArg command)
 exprArgCmd names command doc =
   (names, ExprArg, doc, exprArg command)
-metavarArgCmd names command doc =
-  (names, MetaVarArg, doc, fnNameArg command)
 optArgCmd names command doc =
   (names, OptionArg, doc, optArg command)
 proofArgCmd names command doc =

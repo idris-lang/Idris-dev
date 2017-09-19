@@ -14,12 +14,10 @@ import Idris.Core.TT
 import IRTS.Bytecode
 import IRTS.CodegenCommon
 import IRTS.Defunctionalise
-import IRTS.Lang
 import IRTS.Simplified
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy as B
-import qualified Data.Text as T
 import System.IO
 
 data CodegenFile = CGFile {

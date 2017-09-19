@@ -19,10 +19,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
 
-import Control.Applicative
 import Control.Monad.State
-import Data.Maybe
-import Debug.Trace
 
 -- | Data type representing binding-time annotations for partial evaluation of arguments
 data PEArgType = ImplicitS Name -- ^ Implicit static argument
@@ -260,10 +257,6 @@ mkNewPats ist d ns newname sname lhs rhs =
           = pconst (delab ist t) : mkRHSargs ns as
     mkRHSargs (_ : ns) as = mkRHSargs ns as
     mkRHSargs _ _ = []
-
-    mkSubst :: (Term, Term) -> Maybe (Name, Term)
-    mkSubst (P _ n _, t) = Just (n, t)
-    mkSubst _ = Nothing
 
 -- | Creates a new declaration for a specialised function application.
 -- Simple version at the moment: just create a version which is a direct
