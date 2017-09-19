@@ -1,7 +1,6 @@
 module TestData where
 
 import Data.IntMap as IMap
-import Data.Map.Strict as Map
 import Data.Set as Set
 
 data Codegen = C | JS deriving (Show, Eq, Ord)
