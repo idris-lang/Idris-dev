@@ -40,7 +40,6 @@ import System.Directory (doesFileExist)
 import System.Environment
 import System.FilePath
 
-
 -- | Code generation stats hold information about the generated user
 -- code. Based on that information we add additional code to make
 -- things work.
@@ -99,14 +98,31 @@ isYes (Just "Y") = True
 isYes (Just "y") = True
 isYes _ = False
 
-makeExportDecls :: ExportIFace -> [Text]
-makeExportDecls (Export _ _ e) =
+makeExportDecls :: Map Name LDecl -> ExportIFace -> [Text]
+makeExportDecls defs (Export _ _ e) =
   concatMap makeExport e
   where
+    uncurryF name argTy (Just args) =
+      if length argTy == length args then name
+        else T.concat [ "function(){ return "
+                      , name
+                      , ".apply(this, Array.prototype.slice.call(arguments, 0,", T.pack $ show $ length args,"))"
+                      , T.concat $ map (\x -> T.concat ["(arguments[", T.pack $ show x , "])"]) [length args .. (length argTy - 1)]
+                      , "}"
+                      ]
+    uncurryF name argTy Nothing = name
+
+    addApplyForIO (FIO _) f = T.concat ["function(){ return (",f, ").apply(this,arguments)()}"]
+    addApplyForIO _ f = f
+
     makeExport (ExportData _) =
       []
-    makeExport (ExportFun name (FStr exportname) _ _) =
-      [T.concat [T.pack $ exportname,  ": ", jsName name]]
+    makeExport (ExportFun name (FStr exportname) retTy argTy) =
+      [T.concat [ T.pack $ exportname
+                ,  ": "
+                , addApplyForIO retTy $ uncurryF (jsName name) argTy (getArgList' name defs)
+                ]
+      ]
 
 codegenJs :: CGConf -> CodeGenerator
 codegenJs conf ci =
@@ -148,7 +164,7 @@ codegenJs conf ci =
                                              , doPartials (partialApplications stats), "\n"
                                              , doHiddenClasses (hiddenClasses stats), "\n"
                                              , out, "\n"
-                                             , if iface then T.concat ["module.exports = {\n", T.intercalate ";\n" $ concatMap makeExportDecls (exportDecls ci), "\n};\n"]
+                                             , if iface then T.concat ["module.exports = {\n", T.intercalate ",\n" $ concatMap (makeExportDecls defs) (exportDecls ci), "\n};\n"]
                                                   else jsName (sMN 0 "runMain") `T.append` "();\n"
                                              , "}.call(this))"
                                              , footer conf
@@ -236,13 +252,17 @@ getConsId n =
         Just (LConstructor _ conId arity) -> pure (conId, arity)
         _ -> error $ "Internal JS Backend error " ++ showCG n ++ " is not a constructor."
 
+getArgList' :: Name -> Map Name LDecl -> Maybe [Name]
+getArgList' n defs =
+    case Map.lookup n defs of
+      Just (LFun _ _ a _) -> Just a
+      _ -> Nothing
+
 getArgList :: Name -> State CGBodyState (Maybe [Name])
 getArgList n =
   do
     st <- get
-    case Map.lookup n (defs st) of
-      Just (LFun _ _ a _) -> pure $ Just a
-      _ -> pure Nothing
+    pure $ getArgList' n (defs st)
 
 data BodyResTarget = ReturnBT
                    | DecBT Text
