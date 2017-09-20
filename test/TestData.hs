@@ -72,7 +72,7 @@ testFamiliesData = [
       ( 18, ANY  ),
       ( 19, ANY  ),
       ( 20, ANY  ),
-      ( 21, ANY  )]),
+      ( 21, C_CG  )]),
   ("bignum",          "Bignum",
     [ (  1, ANY  ),
       (  2, ANY  )]),
@@ -129,6 +129,7 @@ testFamiliesData = [
     , (  8, C_CG )
     , (  9, C_CG )
     , ( 10, NODE_CG )
+    , ( 11, NODE_CG )
     ]),
   ("folding",         "Folding",
     [ (  1, ANY  )]),

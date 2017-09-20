@@ -15,6 +15,7 @@
 ## Tool Updates
 + Private functions are no longer visible in the REPL except for modules
   that are explicitly loaded.
++ The --interface option now creates CommonJS modules on the node backend.
 
 # New in 1.1.1
 

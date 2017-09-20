@@ -142,7 +142,7 @@ generate codegen mainmod ir
                                         return fn
                        let cmd = "idris-codegen-" ++ cg
                            args = [input, "-o", outputFile ir] ++ compilerFlags ir
-                       exit <- rawSystem cmd args
+                       exit <- rawSystem cmd (if interfaces ir then "--interface" : args else args)
                        when (exit /= ExitSuccess) $
                             putStrLn ("FAILURE: " ++ show cmd ++ " " ++ show args)
        Bytecode -> dumpBC (simpleDecls ir) (outputFile ir)
