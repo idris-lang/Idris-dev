@@ -508,7 +508,7 @@ doForeign vs env (ret : fname : world : args)
              return (l', r')
     splitArg _ = ifail $ "Badly formed foreign function call: " ++
                          show (ret : fname : world : args)
-     
+
 
     toFDesc (Constant (Str str)) = FStr str
     toFDesc tm
