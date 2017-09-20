@@ -73,7 +73,7 @@ testFamiliesData = [
       ( 18, ANY  ),
       ( 19, ANY  ),
       ( 20, ANY  ),
-      ( 21, ANY  )]),
+      ( 21, C_CG  )]),
   ("bignum",          "Bignum",
     [ (  1, ANY  ),
       (  2, ANY  )]),
