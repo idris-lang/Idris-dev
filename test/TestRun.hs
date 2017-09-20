@@ -6,13 +6,11 @@ import TestData
 import Control.Monad
 import Data.Char (isLetter)
 import qualified Data.IntMap as IMap
-import Data.List
 import Data.Monoid ((<>))
 import Data.Proxy
 import Data.Typeable
 import Options.Applicative
 import System.Directory
-import System.Environment
 import System.Exit
 import System.FilePath ((</>))
 import System.Info
