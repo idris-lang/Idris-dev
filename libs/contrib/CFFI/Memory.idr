@@ -40,10 +40,11 @@ free : CPtr -> IO ()
 free (CPt p _ ) = mfree p
 
 ||| Perform an IO action with memory that is freed afterwards
-withAlloc : Composite -> (CPtr -> IO ()) -> IO ()
+withAlloc : Composite -> (CPtr -> IO a) -> IO a
 withAlloc t f = do m <- alloc t
-                   f m
+                   r <- f m
                    free m
+                   pure r
 
 infixl 1 ~~>
 ||| Perform an IO action with memory that is freed afterwards

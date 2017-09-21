@@ -18,6 +18,9 @@ mystruct = foreign FFI_C "&mystruct" (IO Ptr)
 print_mystruct : IO ()
 print_mystruct = foreign FFI_C "print_mystruct" (IO ())
 
+calc_struct : Ptr -> IO Ptr
+calc_struct = foreign FFI_C "calc_struct" (Ptr -> IO Ptr)
+
 test1 : Composite
 test1 = STRUCT [I8, I64]
 
@@ -46,3 +49,10 @@ main = do
         print !(peek I32 f1)
     withAlloc PTR $ \p =>
         poke PTR p fms
+    res <- withAlloc test1 $ \p => do
+        let f1 = (test1 # 0) p
+        let f2 = (test1 # 1) p
+        poke I8 f1 42
+        poke I64 f2 1125899906842624
+        calc_struct p
+    free res
