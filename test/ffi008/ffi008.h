@@ -15,3 +15,5 @@ struct test2 mystruct;
 int size1(void);
 int size2(void);
 void print_mystruct();
+
+struct test2* calc_struct(struct test1*);
