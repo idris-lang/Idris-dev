@@ -527,7 +527,7 @@ irTree top args tree = do
 
 irSC :: Name -> Vars -> SC -> Idris LExp
 irSC top vs (STerm t) = irTerm top vs [] t
-irSC top vs (UnmatchedCase str) = return $ LError str
+irSC top vs (UnmatchedCase str) = return $ LLazyExp $ LError str
 
 irSC top vs (ProjCase tm alts) = do
     tm'   <- irTerm top vs [] tm
