@@ -17,6 +17,10 @@ import Idris.Core.TT
 import Idris.Help
 import Idris.Options
 import qualified Idris.Parser as P
+import qualified Idris.Parser.Expr as P
+import qualified Idris.Parser.Helpers as P
+import qualified Idris.Parser.Ops as P
+
 import Idris.REPL.Commands
 
 import Control.Applicative
