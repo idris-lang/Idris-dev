@@ -12,11 +12,9 @@ Maintainer  : The Idris Community.
 -- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
-module Idris.Parser(module Idris.Parser,
-                    module Idris.Parser.Expr,
-                    module Idris.Parser.Data,
-                    module Idris.Parser.Helpers,
-                    module Idris.Parser.Ops) where
+module Idris.Parser(IdrisParser(..), ImportInfo(..), addReplSyntax, clearParserWarnings,
+                    decl, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
+                    runparser) where
 
 import Idris.AbsSyntax hiding (namespace, params)
 import Idris.Core.Evaluate
