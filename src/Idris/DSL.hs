@@ -8,7 +8,7 @@ Maintainer  : The Idris Community.
 
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.DSL where
+module Idris.DSL (debindApp, desugar) where
 
 import Idris.AbsSyntax
 import Idris.Core.TT
