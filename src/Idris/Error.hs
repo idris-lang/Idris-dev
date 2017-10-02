@@ -8,7 +8,8 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Error where
+module Idris.Error (getErrSpan, idrisCatch, ierror, ifail, iucheck, report,
+                    setAndReport, showErr, tclift, tcliftAt, tctry, warnDisamb) where
 
 import Idris.AbsSyntax
 import Idris.Core.Constraints
