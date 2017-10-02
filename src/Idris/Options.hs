@@ -7,7 +7,15 @@ Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE DeriveDataTypeable, DeriveFunctor, DeriveGeneric, PatternGuards #-}
 
-module Idris.Options where
+module Idris.Options (Codegen(..), ConsoleWidth(..), HowMuchDocs(..), IRFormat(..),
+                      LanguageExt(..), LogCat(..), Opt(..), Optimisation(..),
+                      OutputFmt(..), REPLPort(..), codegenCats, elabCats, getBC,
+                      getClient, getCodegen, getCodegenArgs, getColour, getConsoleWidth,
+                      getEvalExpr, getExecScript, getFile, getIBCSubDir, getImportDir,
+                      getLanguageExt, getOptLevel, getOptimisation, getOutput,
+                      getOutputTy, getPkg, getPkgCheck, getPkgClean, getPkgDir,
+                      getPkgIndex, getPkgMkDoc, getPkgREPL, getPkgTest, getPort,
+                      getSourceDir, loggingCatsStr, opt, parserCats, strLogCat) where
 
 import Data.Maybe
 import GHC.Generics (Generic)
