@@ -13,7 +13,7 @@
 
 + Added `Text.Literate`, a module for working with literate source files.
 + Added `Data.IORef`, for working with mutable references in `IO`.
-+ Added `discriminate` and `splitPair` tactics to Pruviloj.
++ Added `discriminate` and `construct` tactics to Pruviloj.
 
 ## Tool Updates
 + Private functions are no longer visible in the REPL except for modules

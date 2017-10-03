@@ -256,21 +256,6 @@ unproduct tm =
        try (unproduct (Var n1))
        try (unproduct (Var n2))
 
-||| If the goal is a tuple or a dependent pair, then split it into
-||| two goals and return the new goal names.
-||| It fails if the goal is neither a `Pair` nor a `DPair`.
-splitPair : Elab (TTName, TTName)
-splitPair =
-  let bug = [TextPart "Splitting created wrong number of holes"] in
-  case !goalType of
-    `(Pair ~A ~B)   => do [x, y] <- apply `(MkPair {A=~A} {B=~B}) [False, False]
-                                | _ => fail bug
-                          solve ; pure (x, y)
-    `(DPair ~A ~Pr) => do [x, y] <- apply `(MkDPair {a=~A} {P=~Pr}) [False, False]
-                              | _ => fail bug
-                          solve ; pure (x, y)
-    _ => fail [TextPart "Goal is not a pair"]
-
 ||| Try to apply the constructors of the goal data type one by one,
 ||| and apply the first one that works.
 ||| Similar to `constructor` in Coq.
