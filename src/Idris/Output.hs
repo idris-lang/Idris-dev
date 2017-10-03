@@ -9,7 +9,12 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Output where
+module Idris.Output (clearHighlights, idemodePutSExp, iPrintError, iPrintFunTypes,
+                     iPrintResult, iPrintTermWithType, iputGoal, iputStr, iputStrLn,
+                     iRender, iRenderError, iRenderOutput, iRenderResult, iWarn,
+                     prettyDocumentedIst, printUndefinedNames, pshow, renderExternal,
+                     sendHighlighting, sendParserHighlighting, warnTotality,
+                     writeHighlights) where
 
 import Idris.AbsSyntax
 import Idris.Colours (hEndColourise, hStartColourise)

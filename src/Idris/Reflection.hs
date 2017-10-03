@@ -8,7 +8,19 @@ Maintainer  : The Idris Community.
 
 {-# LANGUAGE CPP, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
-module Idris.Reflection where
+module Idris.Reflection (RConstructorDefn(..), RDataDefn(..),RFunArg(..),
+                         RFunClause(..), RFunDefn(..), RTyDecl(..),
+                         buildDatatypes, buildFunDefns, envTupleType, fromTTMaybe,
+                         getArgs, mkList, rawList, rawPair, rawPairTy, reflect,
+                         reflectArg, reflectDatatype, reflectEnv, reflectErr,
+                         reflectFC, reflectFixity, reflectFunDefn, reflectList,
+                         reflectName, reflectNameType, reflectRaw,
+                         reflectRawQuotePattern, reflectRawQuote, reflectTTQuote,
+                         reflectTTQuotePattern, reflm, reify, reifyBool, reifyEnv,
+                         reifyFunDefn, reifyList, reifyRDataDefn, reifyRaw,
+                         reifyReportPart, reifyReportParts, reifyTT, reifyTTName,
+                         reifyTyDecl, rFunArgToPArg, tacN
+                         ) where
 
 import Idris.Core.Elaborate (claim, fill, focus, getNameFrom, initElaborator,
                              movelast, runElab, solve)

@@ -6,7 +6,9 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE PatternGuards #-}
-module Idris.Termination where
+module Idris.Termination (buildSCG, checkAllCovering, checkDeclTotality,
+                          checkIfGuarded, checkPositive, checkSizeChange,
+                          verifyTotality) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree

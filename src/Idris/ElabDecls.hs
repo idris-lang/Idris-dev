@@ -9,7 +9,8 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE DeriveFunctor, FlexibleInstances, MultiParamTypeClasses,
              PatternGuards #-}
 
-module Idris.ElabDecls where
+module Idris.ElabDecls(elabDecl, elabDecl', elabDecls, elabMain, elabPrims,
+                       recinfo) where
 
 import Idris.AbsSyntax
 import Idris.Core.Evaluate

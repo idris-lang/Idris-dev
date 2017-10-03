@@ -9,7 +9,7 @@ Maintainer  : The Idris Community.
 {-# OPTIONS_GHC -fwarn-unused-binds #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
-module Idris.ModeCommon where
+module Idris.ModeCommon (banner, defaultPort, loadInputs, warranty) where
 
 import Idris.AbsSyntax
 import Idris.Chaser
