@@ -181,7 +181,7 @@ dumpState ist inElab menv ps | (h : hs) <- holes ps = do
         | not all && r == txt "rewrite_rule" = prettyPs all g ((n, False):bnd) bs
     prettyPs all g bnd ((n@(MN _ _), _, _) : bs)
         | not (all || n `elem` freeEnvNames bs || n `elem` goalNames g) = prettyPs all g bnd bs
-    prettyPs all g bnd ((n, _, Let t v) : bs) =
+    prettyPs all g bnd ((n, _, Let rig t v) : bs) =
       line <> bindingOf n False <+> text "=" <+> tPretty bnd v <+> colon <+>
         align (tPretty bnd t) <> prettyPs all g ((n, False):bnd) bs
     prettyPs all g bnd ((n, _, b) : bs) =
@@ -350,13 +350,13 @@ elabloop info fn d prompt prf e prev h env
                   DoLetP  {} -> ifail "Pattern-matching let not supported here"
                   DoRewrite  {} -> ifail "Pattern-matching do-rewrite not supported here"
                   DoBindP {} -> ifail "Pattern-matching <- not supported here"
-                  DoLet fc i ifc Placeholder expr ->
+                  DoLet fc rig i ifc Placeholder expr ->
                     do (tm, ty) <- elabVal (recinfo proverfc) ERHS (inLets ist env expr)
                        ctxt <- getContext
                        let tm' = normaliseAll ctxt [] tm
                            ty' = normaliseAll ctxt [] ty
                        return (True, LetStep:prev, e, False, prf ++ [step], (i, ty', tm' ) : env, Right (iPrintResult ""))
-                  DoLet fc i ifc ty expr ->
+                  DoLet fc rig i ifc ty expr ->
                     do (tm, ty) <- elabVal (recinfo proverfc) ERHS
                                      (PApp NoFC (PRef NoFC [] (sUN "the"))
                                                 [ pexp (inLets ist env ty)
@@ -402,7 +402,7 @@ elabloop info fn d prompt prf e prev h env
     -- the elaborator with a custom environment here to avoid the
     -- delab step.
     inLets :: IState -> [(Name, Type, Term)] -> PTerm -> PTerm
-    inLets ist lets tm = foldr (\(n, ty, v) b -> PLet NoFC n NoFC (delab ist ty) (delab ist v) b) tm (reverse lets)
+    inLets ist lets tm = foldr (\(n, ty, v) b -> PLet NoFC RigW n NoFC (delab ist ty) (delab ist v) b) tm (reverse lets)
 
 
 

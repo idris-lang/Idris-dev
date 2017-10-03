@@ -21,7 +21,7 @@ desugarAs lhs rhs whereblock
     (lhs', pats) = runState (collectAs (replaceUnderscore lhs)) []
 
     bindOnRight :: PTerm -> [(Name, FC, PTerm)] -> PTerm
-    bindOnRight = foldr (\(n, fc, tm) -> PLet fc n NoFC Placeholder tm)
+    bindOnRight = foldr (\(n, fc, tm) -> PLet fc RigW n NoFC Placeholder tm)
 
     bindInWhereDecl :: [(Name, FC, PTerm)] -> PDecl -> PDecl
     bindInWhereDecl pats (PClauses fc opts n clauses)

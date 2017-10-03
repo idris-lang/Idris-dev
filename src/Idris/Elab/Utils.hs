@@ -26,6 +26,7 @@ import Control.Monad.State
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
+import Debug.Trace
 
 recheckC = recheckC_borrowing False True []
 
@@ -286,6 +287,40 @@ paramNames args env (p : ps)
                           _ -> paramNames args env ps
    | otherwise = paramNames args env ps
 
+-- Get all the names with multiplicity '1' used in a partial proof term
+getLinearUsed :: Context -> Term -> [Name]
+getLinearUsed ctxt tm = execState (getLin [] [] tm) []
+  where
+    getLin :: Env -> [(Name, Bool)] -> Term -> State [Name] ()
+    getLin env us (Bind n b sc)
+        = do getLinB env us b
+             let r = getRig b
+             let lin = case r of
+                            Rig1 -> True
+                            _ -> False
+             getLin ((n, getRig b, b) : env) ((n, lin) : us) sc
+    getLin env us (App _ f a) = do getLin env us f; getLin env us a
+    getLin env us (V i)
+       | i < length us = if snd (us!!i) then use (fst (us!!1)) else return ()
+    getLin env us (P _ n _)
+       | Just u <- lookup n us = if u then use n else return ()
+    getLin env us _ = return ()
+
+    getLinB env us (Let Rig0 t v) = return ()
+    getLinB env us (Let rig t v) = getLin env us v
+    getLinB env us (Guess t v) = getLin env us v
+    getLinB env us (NLet t v) = getLin env us v
+    getLinB env us b = return ()
+
+    use n = do ns <- get; put (n : ns)
+
+    getRig :: Binder Term -> RigCount
+    getRig (Pi rig _ _ _) = rig
+    getRig (PVar rig _) = rig
+    getRig (Lam rig _) = rig
+    getRig (Let rig _ _) = rig
+    getRig _ = RigW
+
 getUniqueUsed :: Context -> Term -> [Name]
 getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
   where
@@ -307,7 +342,7 @@ getUniqueUsed ctxt tm = execState (getUniq [] [] tm) []
 
     use n = do ns <- get; put (n : ns)
 
-    getUniqB env us (Let t v) = getUniq env us v
+    getUniqB env us (Let rig t v) = getUniq env us v
     getUniqB env us (Guess t v) = getUniq env us v
 --     getUniqB env us (Pi _ _ t v) = do getUniq env us t; getUniq env us v
     getUniqB env us (NLet t v) = getUniq env us v
@@ -523,10 +558,10 @@ liftPats tm = let (tm', ps) = runState (getPats tm) [] in
                                          v' <- getPats v
                                          sc' <- getPats sc
                                          return (Bind n (Guess t' v') sc')
-    getPats (Bind n (Let t v) sc) = do t' <- getPats t
-                                       v' <- getPats v
-                                       sc' <- getPats sc
-                                       return (Bind n (Let t' v') sc')
+    getPats (Bind n (Let rig t v) sc) = do t' <- getPats t
+                                           v' <- getPats v
+                                           sc' <- getPats sc
+                                           return (Bind n (Let rig t' v') sc')
     getPats (Bind n (Pi rig i t k) sc) = do t' <- getPats t
                                             k' <- getPats k
                                             sc' <- getPats sc
@@ -574,24 +609,43 @@ hasEmptyPat ctxt tyctxt (Bind n (PVar _ ty) sc)
     = isEmpty ctxt tyctxt ty || hasEmptyPat ctxt tyctxt sc
 hasEmptyPat ctxt tyctxt _ = False
 
--- Find names which are applied to a function in a Rig1 position
-findLinear :: IState -> [Name] -> Term -> [(Name, RigCount)]
-findLinear ist env tm | (P _ f _, args) <- unApply tm,
-                        f `notElem` env,
-                        Just ty_in <- lookupTyExact f (tt_ctxt ist)
+-- Find names which are applied to a function in a Rig1/Rig0 position
+-- 'rig' is the multiplicity of the outer argument. When we go under a
+-- function application, multiply them (it only needs to be Rig1 if it's
+-- a linear argument to a linear argument; it needs to be a Rig0 if it's
+-- Rig0 at any level)
+findLinear :: RigCount -> IState -> [Name] -> Term -> [(Name, RigCount)]
+findLinear rig ist env tm
+      | (P _ f _, args) <- unApply tm,
+        f `notElem` env,
+        Just ty_in <- lookupTyExact f (tt_ctxt ist)
     = let ty = whnfArgs (tt_ctxt ist) [] ty_in in
-          nub $ concatMap (findLinear ist env) args ++ findLinArg ty args
+           combineRig $ findLinArg ty args
   where
     findLinArg (Bind n (Pi c _ _ _) sc) (P _ a _ : as)
-         | Rig0 <- c = (a, c) : findLinArg sc as
-         | Rig1 <- c = (a, c) : findLinArg sc as
-    findLinArg (Bind n (Pi _ _ _ _) sc) (a : as)
-          = findLinArg (whnf (tt_ctxt ist) [] (substV a sc)) as
-    findLinArg _ _ = []
-findLinear ist env (App _ f a)
-    = nub $ findLinear ist env f ++ findLinear ist env a
-findLinear ist env (Bind n b sc) = findLinear ist (n : env) sc
-findLinear ist _ _ = []
+          = (a, rigMult rig c) : findLinArg sc as
+    findLinArg (Bind n (Pi c _ _ _) sc) (a : as)
+          = findLinear (rigMult c rig) ist env a ++
+               findLinArg (whnf (tt_ctxt ist) [] (substV a sc)) as
+    findLinArg ty (a : as)
+          = findLinear rig ist env a ++ findLinArg ty as
+    findLinArg _ [] = []
+
+    -- If a name is used multiple times in a pattern, take the least restrictive
+    -- use of it
+    combineRig [] = []
+    combineRig ((n, r) : rs)
+        = let (rs', rig) = findRestrictive n r [] rs in
+              (n, rig) : combineRig rs'
+    findRestrictive n r acc [] = (acc, r)
+    findRestrictive n r acc ((n', r') : rs)
+        | n == n' = findRestrictive n (max r r') acc rs
+        | otherwise = findRestrictive n r ((n', r') : acc) rs
+
+findLinear rig ist env (App _ f a)
+    = nub $ findLinear rig ist env f ++ findLinear rig ist env a
+findLinear rig ist env (Bind n b sc) = findLinear rig ist (n : env) sc
+findLinear rig ist _ _ = []
 
 setLinear :: [(Name, RigCount)] -> Term -> Term
 setLinear ns (Bind n b@(PVar r t) sc)

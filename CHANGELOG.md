@@ -5,7 +5,9 @@
 + In `@`-patterns such as `x@p`, `x` is now in scope on the right-hand side
   of any definitions in `where` clauses, provided the left-hand side of the
   definition does not shadow it.
-
++ The `LinearTypes` language extension has been revised. It implements the
+  rules from Bob Atkey's draft "The Syntax and Semantics of Quantitative
+  Type Theory" and now works with holes and case expressions.
 
 ## Library Updates
 

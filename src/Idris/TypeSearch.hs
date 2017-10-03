@@ -153,7 +153,7 @@ usedVars :: Ord n => TT n -> Map n (TT n, Bool)
 usedVars = f True where
   f b (P Bound n t) = M.singleton n (t, b) `M.union` f b t
   f b (Bind n binder t2) = (M.delete n (f b t2) `M.union`) $ case binder of
-    Let t v ->   f b t `M.union` f b v
+    Let rig t v -> f b t `M.union` f b v
     Guess t v -> f b t `M.union` f b v
     bind -> f b (binderTy bind)
   f b (App _ t1 t2) = f b t1 `M.union` f (b && isInjective t1) t2

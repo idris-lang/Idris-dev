@@ -476,7 +476,7 @@ buildDepMap ci used externs ctx startNames
 
         -- let-bound variables can get partially evaluated
         -- it is sufficient just to plug the Cond in when the bound names are used
-        |  Let ty t <- bdr = var t cd `union` getDepsTerm vs ((n, const M.empty) : bs) cd body
+        | Let rig ty t <- bdr = var t cd `union` getDepsTerm vs ((n, const M.empty) : bs) cd body
         | NLet ty t <- bdr = var t cd `union` getDepsTerm vs ((n, const M.empty) : bs) cd body
       where
         var t cd = getDepsTerm vs bs cd t
@@ -529,7 +529,7 @@ buildDepMap ci used externs ctx startNames
             Bind n (Lam _ ty) t -> getDepsTerm vs bs cd (lamToLet app)
 
             -- and we interpret applied lets as lambdas
-            Bind n ( Let ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam RigW ty) t) t')
+            Bind n (Let _ ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam RigW ty) t) t')
             Bind n (NLet ty t') t -> getDepsTerm vs bs cd (App Complete (Bind n (Lam RigW ty) t) t')
 
             Proj t i
@@ -609,7 +609,7 @@ buildDepMap ci used externs ctx startNames
         (f, args) = unApply tm
 
     lamToLet' :: [Term] -> Term -> Term
-    lamToLet' (v:vs) (Bind n (Lam _ ty) tm) = Bind n (Let ty v) $ lamToLet' vs tm
+    lamToLet' (v:vs) (Bind n (Lam rig ty) tm) = Bind n (Let rig ty v) $ lamToLet' vs tm
     lamToLet'    []  tm = tm
     lamToLet'    vs  tm = error $
         "Erasure.hs:lamToLet': unexpected input: "

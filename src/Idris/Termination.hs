@@ -77,7 +77,7 @@ checkIfGuarded n
     allGuarded names i _ = True
 
     guardedTerm names i (P _ v _) = v `elem` names || guard v i
-    guardedTerm names i (Bind n (Let t v) sc)
+    guardedTerm names i (Bind n (Let rig t v) sc)
           = guardedTerm names i v && guardedTerm names i sc
     guardedTerm names i (Bind n b sc) = False
     guardedTerm names i ap@(App _ _ _)
@@ -364,7 +364,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
           notPartial _ = True
   findCalls cases guarded (App _ f a) pvs pargs
         = findCalls cases Unguarded f pvs pargs ++ findCalls cases Unguarded a pvs pargs
-  findCalls cases guarded (Bind n (Let t v) e) pvs pargs
+  findCalls cases guarded (Bind n (Let rig t v) e) pvs pargs
         = findCalls cases Unguarded t pvs pargs ++
           findCalls cases Unguarded v pvs pargs ++
           -- Substitute in the scope since this might reveal some useful

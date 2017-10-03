@@ -190,9 +190,9 @@ updateSynMatch = update
       = let (n', nfc') = updateB ns (n, fc)
         in PPi (updTacImp ns p) n' nfc'
                (update ns ty) (update (dropn n ns) sc)
-    update ns (PLet fc n nfc ty val sc)
+    update ns (PLet fc rc n nfc ty val sc)
       = let (n', nfc') = updateB ns (n, nfc)
-        in PLet fc n' nfc' (update ns ty)
+        in PLet fc rc n' nfc' (update ns ty)
                 (update ns val) (update (dropn n ns) sc)
     update ns (PApp fc t args)
       = PApp fc (update ns t) (map (fmap (update ns)) args)
@@ -217,7 +217,7 @@ updateSynMatch = update
       where upd :: [(Name, SynMatch)] -> PDo -> PDo
             upd ns (DoExp fc t) = DoExp fc (update ns t)
             upd ns (DoBind fc n nfc t) = DoBind fc n nfc (update ns t)
-            upd ns (DoLet fc n nfc ty t) = DoLet fc n nfc (update ns ty) (update ns t)
+            upd ns (DoLet fc rc n nfc ty t) = DoLet fc rc n nfc (update ns ty) (update ns t)
             upd ns (DoBindP fc i t ts)
                     = DoBindP fc (update ns i) (update ns t)
                                  (map (\(l,r) -> (update ns l, update ns r)) ts)
@@ -669,7 +669,7 @@ app syn = do f <- simpleExpr syn
              (do try $ reservedOp "<=="
                  fc <- getFC
                  ff <- fst <$> fnName
-                 return (PLet fc (sMN 0 "match") NoFC
+                 return (PLet fc RigW (sMN 0 "match") NoFC
                                f
                                (PMatchApp fc ff)
                                (PRef fc [] (sMN 0 "match")))
@@ -995,7 +995,7 @@ let_ syn = try (do kw <- reservedFC "let"
            <?> "let binding"
   where buildLets [] sc = sc
         buildLets ((fc, PRef nfc _ n, ty, v, []) : ls) sc
-          = PLet fc n nfc ty v (buildLets ls sc)
+          = PLet fc RigW n nfc ty v (buildLets ls sc)
         buildLets ((fc, pat, ty, v, alts) : ls) sc
           = PCase fc v ((pat, buildLets ls sc) : alts)
 
@@ -1349,7 +1349,7 @@ do_ syn
                fc <- getFC
                e <- expr syn
                highlightP kw AnnKeyword
-               return (DoLet fc i ifc ty e))
+               return (DoLet fc RigW i ifc ty e))
    <|> try (do kw <- reservedFC "let"
                i <- expr' syn
                reservedOp "="

@@ -40,7 +40,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 163
+ibcVersion = 164
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -100,6 +100,7 @@ data IBCFile = IBCFile {
   , ibc_access                 :: ![(Name, Accessibility)]
   , ibc_fragile                :: ![(Name, String)]
   , ibc_constraints            :: ![(FC, UConstraint)]
+  , ibc_langexts               :: ![LanguageExt]
   }
   deriving Show
 {-!
@@ -107,7 +108,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -206,7 +207,8 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_total"  (ibc_total i),
                        makeEntry "ibc_injective"  (ibc_injective i),
                        makeEntry "ibc_access"  (ibc_access i),
-                       makeEntry "ibc_fragile" (ibc_fragile i)]
+                       makeEntry "ibc_fragile" (ibc_fragile i),
+                       makeEntry "ibc_langexts" (ibc_langexts i)]
 -- TODO: Put this back in shortly after minimising/pruning constraints
 --                        makeEntry "ibc_constraints" (ibc_constraints i)]
 
@@ -221,7 +223,8 @@ writeIBC src f
          iReport 2 $ "Writing IBC for: " ++ show f
          i <- getIState
          resetNameIdx
-         ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src })
+         ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src,
+                                                ibc_langexts = idris_language_extensions i })
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
                         logIBC 2 "Written")
@@ -238,7 +241,8 @@ writePkgIndex f
          logIBC 2 $ "Writing package index " ++ show f ++ " including\n" ++
                 show (map snd imps)
          resetNameIdx
-         let ibcf = initIBC { ibc_imports = imps }
+         let ibcf = initIBC { ibc_imports = imps,
+                              ibc_langexts = idris_language_extensions i }
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
                         logIBC 2 "Written")
@@ -430,6 +434,7 @@ process reexp phase archive fn = do
                 processAccess reexp phase archive
                 processFragile archive
                 processConstraints archive
+                processLangExts phase archive
 
 timestampOlder :: FilePath -> FilePath -> Idris ()
 timestampOlder src ibc = do
@@ -705,7 +710,7 @@ processDefs ar = do
             sc' <- update sc
             return $ Bind n b' sc'
                 where
-                    updateB (Let t v) = liftM2 Let (update' t) (update' v)
+                    updateB (Let rig t v) = liftM2 (Let rig) (update' t) (update' v)
                     updateB b = do
                         ty' <- update' (binderTy b)
                         return (b { binderTy = ty' })
@@ -832,6 +837,13 @@ processMetaVars :: Archive -> Idris ()
 processMetaVars ar = do
     ns <- getEntry [] "ibc_metavars" ar
     updateIState (\i -> i { idris_metavars = L.reverse ns ++ idris_metavars i })
+
+-- We only want the language extensions when reading the top level thing
+processLangExts :: IBCPhase -> Archive -> Idris ()
+processLangExts (IBC_REPL True) ar
+    = do ds <- getEntry [] "ibc_langexts" ar
+         mapM_ addLangExt ds
+processLangExts _ _ = return ()
 
 ----- For Cheapskate and docstrings
 

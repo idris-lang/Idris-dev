@@ -31,12 +31,12 @@ names (Proj t _) = names t
 names _ = []
 
 occursBinder :: Name -> Binder Term -> Bool
-occursBinder n (Let ty val) = occurs n ty || occurs n val
+occursBinder n (Let rc ty val) = occurs n ty || occurs n val
 occursBinder n (NLet ty val) = occurs n ty || occurs n val
 occursBinder n b = occurs n (binderTy b)
 
 namesBinder :: Binder Term -> [Name]
-namesBinder (Let ty val) = names ty ++ names val
+namesBinder (Let rc ty val) = names ty ++ names val
 namesBinder (NLet ty val) = names ty ++ names val
 namesBinder b = names (binderTy b)
 

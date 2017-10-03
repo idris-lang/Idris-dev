@@ -108,10 +108,6 @@ buildType info syn fc opts n ty' = do
              setFnInfo n fninfo
              addIBC (IBCFnInfo n fninfo)
 
-         -- If we use any types with linear constructor arguments, we'd better
-         -- make sure they are use-once
-         tcliftAt fc $ linearCheck ctxt (whnfArgs ctxt [] cty)
-
          return (cty, ckind, ty, inacc)
   where
     patToImp (Bind n (PVar rig t) sc) = Bind n (Pi rig Nothing t (TType (UVar [] 0))) (patToImp sc)

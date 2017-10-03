@@ -478,7 +478,7 @@ irTerm top vs env (Bind n (Lam _ _) sc) = LLam [n'] <$> irTerm top vs (n':env) s
   where
     n' = uniqueName n env
 
-irTerm top vs env (Bind n (Let _ v) sc)
+irTerm top vs env (Bind n (Let _ _ v) sc)
     = LLet n <$> irTerm top vs env v <*> irTerm top vs (n : env) sc
 
 irTerm top vs env (Bind _ _ _) = return $ LNothing

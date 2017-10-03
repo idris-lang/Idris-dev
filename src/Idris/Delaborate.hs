@@ -55,13 +55,13 @@ resugar ist = transform flattenDoLet . transform resugarApp
       = PConstant fc (BI i)
     resugarApp tm = tm
 
-    flattenDoLet (PLet _ ln _ ty v bdy)
+    flattenDoLet (PLet _ rc ln _ ty v bdy)
       | PDoBlock dos <- flattenDoLet bdy
-      = PDoBlock (DoLet NoFC ln NoFC ty v : dos)
+      = PDoBlock (DoLet NoFC rc ln NoFC ty v : dos)
     flattenDoLet (PDoBlock dos) =
       PDoBlock $ concatMap fixExp dos
-        where fixExp (DoExp _ (PLet _ ln _ ty v bdy)) =
-                DoLet NoFC ln NoFC ty v : fixExp (DoExp NoFC bdy)
+        where fixExp (DoExp _ (PLet _ rc ln _ ty v bdy)) =
+                DoLet NoFC rc ln NoFC ty v : fixExp (DoExp NoFC bdy)
               fixExp d = [d]
     flattenDoLet tm = tm
 
@@ -172,13 +172,13 @@ delabTy' ist imps genv tm fullname mvs docases = de genv [] imps tm
           = PPi (expl { pcount = rig }) n NoFC (de tys env [] ty)
                 (de ((n, ty) : tys) ((n,n):env) [] sc)
 
-    de tys env imps (Bind n (Let ty val) sc)
+    de tys env imps (Bind n (Let rc ty val) sc)
           | docases
           , isCaseApp sc
           , (P _ cOp _, args) <- unApply sc
           , Just caseblock    <- delabCase tys env imps val cOp args = caseblock
           | otherwise    =
-              PLet un n NoFC (de tys env [] ty)
+              PLet un rc n NoFC (de tys env [] ty)
                    (de tys env [] val) (de ((n, ty) : tys) ((n,n):env) [] sc)
     de tys env _ (Bind n (Hole ty) sc) = de ((n, ty) : tys) ((n, sUN "[__]"):env) [] sc
     de tys env _ (Bind n (Guess ty val) sc) = de ((n, ty) : tys) ((n, sUN "[__]"):env) [] sc
@@ -441,7 +441,7 @@ pprintErr' i (IncompleteTerm t)
        = getMissing (n : hs) (n : env) sc
    getMissing hs env (Bind n (Guess _ _) sc)
        = getMissing (n : hs) (n : env) sc
-   getMissing hs env (Bind n (Let t v) sc)
+   getMissing hs env (Bind n (Let rc t v) sc)
        = getMissing hs env t ++
          getMissing hs env v ++
          getMissing hs (n : env) sc

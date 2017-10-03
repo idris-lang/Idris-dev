@@ -141,7 +141,7 @@ namesUsed sc = nub $ nu' [] sc where
                      | otherwise = [n]
     nut ps (App _ f a) = nut ps f ++ nut ps a
     nut ps (Proj t _) = nut ps t
-    nut ps (Bind n (Let t v) sc) = nut ps v ++ nut (n:ps) sc
+    nut ps (Bind n (Let _ t v) sc) = nut ps v ++ nut (n:ps) sc
     nut ps (Bind n b sc) = nut (n:ps) sc
     nut ps _ = []
 
@@ -176,7 +176,7 @@ findCalls' ignoreasserts sc topargs = S.toList $ nu' topargs sc where
                                    (S.unions $ map (nut ps) args)
         | (P (TCon _ _) n _, _) <- unApply fn = S.empty
         | otherwise = S.union (nut ps f) (nut ps a)
-    nut ps (Bind n (Let t v) sc) = S.union (nut ps v) (nut (n:ps) sc)
+    nut ps (Bind n (Let _ t v) sc) = S.union (nut ps v) (nut (n:ps) sc)
     nut ps (Proj t _) = nut ps t
     nut ps (Bind n b sc) = nut (n:ps) sc
     nut ps _ = S.empty
@@ -188,7 +188,7 @@ findCalls' ignoreasserts sc topargs = S.toList $ nu' topargs sc where
 
 directUse :: TT Name -> [Name]
 directUse (P _ n _) = [n]
-directUse (Bind n (Let t v) sc) = nub $ directUse v ++ (directUse sc \\ [n])
+directUse (Bind n (Let _ t v) sc) = nub $ directUse v ++ (directUse sc \\ [n])
                                         ++ directUse t
 directUse (Bind n b sc) = nub $ directUse (binderTy b) ++ (directUse sc \\ [n])
 directUse fn@(App _ f a)

@@ -994,11 +994,12 @@ process fn (Check (PRef _ _ n))
                               putTy ppo ist i [] (delab ist (errReverse ist ty'))
     putTy :: PPOption -> IState -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     putTy ppo ist 0 bnd sc = putGoal ppo ist bnd sc
-    putTy ppo ist i bnd (PPi _ n _ t sc)
+    putTy ppo ist i bnd (PPi p n _ t sc)
                = let current = case n of
                                    MN _ _ -> text ""
                                    UN nm | ('_':'_':_) <- str nm -> text ""
-                                   _ -> text "  " <>
+                                   _ -> countOf (pcount p)
+                                            (LinearTypes `elem` idris_language_extensions ist) <+>
                                         bindingOf n False
                                             <+> colon
                                             <+> align (tPretty bnd ist t)
@@ -1010,6 +1011,11 @@ process fn (Check (PRef _ _ n))
                = text "--------------------------------------" <$>
                  annotate (AnnName n Nothing Nothing Nothing) (text $ show n) <+> colon <+>
                  align (tPretty bnd ist g)
+
+    -- Only display count if linear types extension is enabled
+    countOf Rig0 True = text "0"
+    countOf Rig1 True = text "1"
+    countOf _ _ = text " "
 
     tPretty bnd ist t = pprintPTerm (ppOptionIst ist) bnd [] (idris_infixes ist) t
 

@@ -31,6 +31,7 @@ import Util.Pretty hiding (fill)
 import Control.Arrow ((***))
 import Control.Monad.State.Strict
 import Data.List
+import Debug.Trace
 
 data ProofState = PS { thname            :: Name,
                        holes             :: [Name], -- ^ holes still to be solved
@@ -88,7 +89,7 @@ data Tactic = Attack
             | Intro (Maybe Name)
             | IntroTy Raw (Maybe Name)
             | Forall Name RigCount (Maybe ImplicitInfo) Raw
-            | LetBind Name Raw Raw
+            | LetBind Name RigCount Raw Raw
             | ExpandLet Name Term
             | Rewrite Raw
             | Induction Raw
@@ -97,7 +98,7 @@ data Tactic = Attack
             | PatVar Name
             | PatBind Name RigCount
             | Focus Name
-            | Defer [Name] Name
+            | Defer [Name] [Name] Name
             | DeferType Name Raw [Name]
             | Implementation Name
             | AutoArg Name
@@ -128,7 +129,7 @@ instance Show ProofState where
                 ") -------\n  " ++
                 show h ++ " : " ++ showG wkenv (goalType g) ++ "\n"
          where showPs env [] = ""
-               showPs env ((n, _, Let t v):bs)
+               showPs env ((n, _, Let _ t v):bs)
                    = "  " ++ show n ++ " : " ++
                      showEnv env ({- normalise ctxt env -} t) ++ "   =   " ++
                      showEnv env ({- normalise ctxt env -} v) ++
@@ -159,7 +160,7 @@ instance Pretty ProofState OutputAnnotation where
       prettyGoal ps b = prettyEnv ps $ binderTy b
 
       prettyPs env [] = empty
-      prettyPs env ((n, _, Let t v):bs) =
+      prettyPs env ((n, _, Let _ t v):bs) =
         nest nestingSize (pretty n <+> colon <+>
         prettyEnv env t <+> text "=" <+> prettyEnv env v <+>
         nest nestingSize (prettyPs env bs))
@@ -358,9 +359,9 @@ tactic h f = do ps <- get
 
 computeLet :: Context -> Name -> Term -> Term
 computeLet ctxt n tm = cl [] tm where
-   cl env (Bind n' (Let t v) sc)
+   cl env (Bind n' (Let r t v) sc)
        | n' == n = let v' = normalise ctxt env v in
-                       Bind n' (Let t v') sc
+                       Bind n' (Let r t v') sc
    cl env (Bind n' b sc) = Bind n' (fmap (cl env) b) (cl ((n, Rig0, b):env) sc)
    cl env (App s f a) = App s (cl env f) (cl env a)
    cl env t = t
@@ -412,7 +413,7 @@ reorder_claims ctxt env t
         insertB x (y:ys) | all (noOcc x) (y:ys) = x : y : ys
                          | otherwise = y : insertB x ys
 
-        noOcc (n, _) (_, Let t v) = noOccurrence n t && noOccurrence n v
+        noOcc (n, _) (_, Let _ t v) = noOccurrence n t && noOccurrence n v
         noOcc (n, _) (_, Guess t v) = noOccurrence n t && noOccurrence n v
         noOcc (n, _) (_, b) = noOccurrence n (binderTy b)
 
@@ -459,8 +460,8 @@ setinj n ctxt env (Bind x b sc)
                             ps { injective = n : is })
          return (Bind x b sc)
 
-defer :: [Name] -> Name -> RunTactic
-defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
+defer :: [Name] -> [Name] -> Name -> RunTactic
+defer dropped linused n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
     do let env' = filter (\(n, _, t) -> n `notElem` dropped) env
        action (\ps -> let hs = holes ps in
                           ps { usedns = n : usedns ps,
@@ -470,10 +471,13 @@ defer dropped n ctxt env (Bind x (Hole t) (P nt x' ty)) | x == x' =
                       (mkApp (P Ref n ty) (map getP (reverse env'))))
   where
     mkTy []           t = t
-    mkTy ((n,rig,b) : bs) t = Bind n (Pi RigW Nothing (binderTy b) (TType (UVar [] 0))) (mkTy bs t)
+    mkTy ((n,rig,b) : bs) t = Bind n (Pi (setRig rig n) Nothing (binderTy b) (TType (UVar [] 0))) (mkTy bs t)
+
+    setRig Rig1 n | n `elem` linused = Rig0
+    setRig rig n = rig
 
     getP (n, rig, b) = P Bound n (binderTy b)
-defer dropped n ctxt env _ = fail "Can't defer a non-hole focus."
+defer dropped linused n ctxt env _ = fail "Can't defer a non-hole focus."
 
 -- as defer, but build the type and application explicitly
 deferType :: Name -> Raw -> [Name] -> RunTactic
@@ -595,11 +599,11 @@ solve ctxt env (Bind x (Guess ty val) sc)
         tryLock hs t@(P _ n _) = (t, not $ n `elem` hs)
         tryLock hs t@(Bind n (Hole _) sc) = (t, False)
         tryLock hs t@(Bind n (Guess _ _) sc) = (t, False)
-        tryLock hs t@(Bind n (Let ty val) sc)
+        tryLock hs t@(Bind n (Let r ty val) sc)
             = let (ty', tyl) = tryLock hs ty
                   (val', vall) = tryLock hs val
                   (sc', scl) = tryLock hs sc in
-                  (Bind n (Let ty' val') sc', tyl && vall && scl)
+                  (Bind n (Let r ty' val') sc', tyl && vall && scl)
         tryLock hs t@(Bind n b sc)
             = let (bt', btl) = tryLock hs (binderTy b)
                   (sc', scl) = tryLock hs sc in
@@ -611,7 +615,7 @@ solve _ _ h@(Bind x t sc)
         case findType x sc of
              Just t -> lift $ tfail (CantInferType (show t))
              _ -> lift $ tfail (IncompleteTerm h)
-   where findType x (Bind n (Let t v) sc)
+   where findType x (Bind n (Let r t v) sc)
               = findType x v `mplus` findType x sc
          findType x (Bind n t sc)
               | P _ x' _ <- binderTy t, x == x' = Just n
@@ -675,13 +679,13 @@ patvar n ctxt env (Bind x (Hole t) sc) =
                       | otherwise = ps
 patvar n ctxt env tm = fail $ "Can't add pattern var at " ++ show tm
 
-letbind :: Name -> Raw -> Raw -> RunTactic
-letbind n ty val ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+letbind :: Name -> RigCount -> Raw -> Raw -> RunTactic
+letbind n rig ty val ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv,  tyt)  <- lift $ check ctxt env ty
        (valv, valt) <- lift $ check ctxt env val
        lift $ isType ctxt env tyt
-       return $ Bind n (Let tyv valv) (Bind x (Hole t) (P Bound x t))
-letbind n ty val ctxt env _ = fail "Can't let bind here"
+       return $ Bind n (Let rig tyv valv) (Bind x (Hole t) (P Bound x t))
+letbind n rig ty val ctxt env _ = fail "Can't let bind here"
 
 expandLet :: Name -> Term -> RunTactic
 expandLet n v ctxt env tm =
@@ -715,9 +719,9 @@ mkP lt l r (Bind n b sc)
                      = let b' = mkPB b
                            sc' = if (r /= sc) then mkP lt l r sc else sc in
                            Bind n b' sc'
-    where mkPB (Let t v) = let t' = if (r /= t) then mkP lt l r t else t
-                               v' = if (r /= v) then mkP lt l r v else v in
-                               Let t' v'
+    where mkPB (Let c t v) = let t' = if (r /= t) then mkP lt l r t else t
+                                 v' = if (r /= v) then mkP lt l r v else v in
+                                 Let c t' v'
           mkPB b = let ty = binderTy b
                        ty' = if (r /= ty) then mkP lt l r ty else ty in
                              b { binderTy = ty' }
@@ -1103,7 +1107,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (Intro n)         = intro n
          mktac (IntroTy ty n)    = introTy ty n
          mktac (Forall n r i t)  = forall n r i t
-         mktac (LetBind n t v)   = letbind n t v
+         mktac (LetBind n r t v) = letbind n r t v
          mktac (ExpandLet n b)   = expandLet n b
          mktac (Rewrite t)       = rewrite t
          mktac (Induction t)     = casetac t True
@@ -1114,7 +1118,7 @@ process t h = tactic (Just h) (mktac t)
          mktac (CheckIn r)       = check_in r
          mktac (EvalIn r)        = eval_in r
          mktac (Focus n)         = focus n
-         mktac (Defer ns n)      = defer ns n
+         mktac (Defer ns ls n)   = defer ns ls n
          mktac (DeferType n t a) = deferType n t a
          mktac (Implementation n)= implementationArg n
          mktac (AutoArg n)       = autoArg n

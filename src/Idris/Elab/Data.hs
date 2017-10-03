@@ -99,8 +99,6 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
          -- TMP HACK! Make this a data option
          updateContext (addDatatype (Data n ttag cty unique cons))
          updateContext (setMetaInformation n metainf)
-         when (any linearArg (map snd cons)) $
-            updateContext (setRigCount n Rig1)
 
          mapM_ totcheck (zip (repeat fc) (map fst cons))
 --          mapM_ (checkPositive n) cons

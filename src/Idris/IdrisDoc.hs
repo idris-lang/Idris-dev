@@ -279,7 +279,7 @@ extractPTermNames (PInferRef _ _ n)  = [n]
 extractPTermNames (PPatvar _ n)      = [n]
 extractPTermNames (PLam _ n _ p1 p2) = n : concatMap extract [p1, p2]
 extractPTermNames (PPi _ n _ p1 p2)  = n : concatMap extract [p1, p2]
-extractPTermNames (PLet _ n _ p1 p2 p3) = n : concatMap extract [p1, p2, p3]
+extractPTermNames (PLet _ _ n _ p1 p2 p3) = n : concatMap extract [p1, p2, p3]
 extractPTermNames (PTyped p1 p2)     = concatMap extract [p1, p2]
 extractPTermNames (PApp _ p pas)     = let names = concatMap extractPArg pas
                                        in  (extract p) ++ names
@@ -330,7 +330,7 @@ extractPDo (DoBind  _ n _ p)     = n : extract p
 extractPDo (DoBindP _ p1 p2 ps)  = let (ps1, ps2) = unzip ps
                                        ps'        = ps1 ++ ps2
                                    in  concatMap extract (p1 : p2 : ps')
-extractPDo (DoLet   _ n _ p1 p2) = n : concatMap extract [p1, p2]
+extractPDo (DoLet _ _ n _ p1 p2) = n : concatMap extract [p1, p2]
 extractPDo (DoLetP  _ p1 p2)     = concatMap extract [p1, p2]
 extractPDo (DoRewrite  _ p)      = extract p
 

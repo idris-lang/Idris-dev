@@ -320,7 +320,7 @@ instance (ToJSON t) => ToJSON (AppStatus t) where
 instance (ToJSON t) => ToJSON (Binder t) where
     toJSON (Lam rc bty) = object ["Lam" .= (rc, bty)]
     toJSON (Pi c i t k) = object ["Pi" .= (c, i, t, k)]
-    toJSON (Let t v) = object ["Let" .= (t, v)]
+    toJSON (Let rc t v) = object ["Let" .= (t, v)]
     toJSON (NLet t v) = object ["NLet" .= (t, v)]
     toJSON (Hole t) = object ["Hole" .= (t)]
     toJSON (GHole l ns t) = object ["GHole" .= (l, ns, t)]

@@ -139,7 +139,7 @@ proofSearch False fromProver ambigok deferonfail depth elab _ nroot psnames [fn]
   where
     -- if nothing worked, make a new metavariable
     tryAllFns [] | fromProver = cantSolveGoal
-    tryAllFns [] = do attack; defer [] nroot; solve
+    tryAllFns [] = do attack; defer [] [] nroot; solve
     tryAllFns (f : fs) = try' (tryFn f) (tryAllFns fs) True
 
     tryFn (f, args) = do let imps = map isImp args
@@ -155,7 +155,7 @@ proofSearch False fromProver ambigok deferonfail depth elab _ nroot psnames [fn]
                          if fromProver then cantSolveGoal
                            else do
                              mapM_ (\ h -> do focus h
-                                              attack; defer [] nroot; solve)
+                                              attack; defer [] [] nroot; solve)
                                  (hs' \\ hs)
 --                                  (filter (\ (x, y) -> not x) (zip (map fst imps) args))
                              solve
@@ -242,7 +242,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
     -- that's no use)
     psRec :: Bool -> Int -> [Name] -> S.Set Type -> ElabD ()
     psRec _ 0 locs tys | fromProver = cantSolveGoal
-    psRec rec 0 locs tys = do attack; defer [] nroot; solve --fail "Maximum depth reached"
+    psRec rec 0 locs tys = do attack; defer [] [] nroot; solve --fail "Maximum depth reached"
     psRec False d locs tys = tryCons d locs tys hints
     psRec True d locs tys
                  = do compute
@@ -258,7 +258,7 @@ proofSearch rec fromProver ambigok deferonfail maxDepth elab fn nroot psnames hi
              -- if all else fails, make a new metavariable
                          (if fromProver
                              then fail "cantSolveGoal"
-                             else do attack; defer [] nroot; solve) True) True
+                             else do attack; defer [] [] nroot; solve) True) True
 
     -- get recursive function name. Only user given names make sense.
     getFn d (Just f) | d < maxDepth-1 && usersname f = [f]
