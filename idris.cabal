@@ -282,7 +282,7 @@ Library
                 , deepseq < 1.5
                 , directory >= 1.2.2.0 && < 1.2.3.0 || > 1.2.3.0
                 , filepath < 1.5
-                , fingertree >= 0.1 && < 0.2
+                , fingertree >= 0.1 && < 0.1.2
                 , haskeline >= 0.7 && < 0.8
                 , ieee754 >= 0.7 && < 0.9
                 , mtl >= 2.1 && < 2.3
