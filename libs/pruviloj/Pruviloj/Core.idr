@@ -271,6 +271,24 @@ splitPair =
                           solve ; pure (x, y)
     _ => fail [TextPart "Goal is not a pair"]
 
+||| Try to apply the constructors of the goal data type one by one,
+||| and apply the first one that works.
+||| Similar to `constructor` in Coq.
+construct : Elab (List TTName)
+construct =
+    do g <- goalType
+       case headName g of
+         Nothing =>
+           fail [RawPart g, TextPart "is not a type declared with the data keyword"]
+         Just h =>
+           choiceMap (\(n, xs, _) => apply (Var n) (map shouldUnify xs) <* solve)
+                     !(constructors <$> lookupDatatypeExact h)
+  where
+    shouldUnify : CtorArg -> Bool
+    shouldUnify (CtorParameter _) = True
+    shouldUnify (CtorField (MkFunArg _ _ Explicit _)) = False
+    shouldUnify (CtorField (MkFunArg _ _ _ _)) = True
+
 ||| A special-purpose tactic that attempts to solve a goal using
 ||| `Refl`. This is useful for ensuring that goals in fact are trivial
 ||| when developing or testing other tactics; otherwise, consider
