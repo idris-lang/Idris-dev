@@ -1,6 +1,6 @@
-pruviloj001.idr:74:9:
+pruviloj001.idr:73:9:
 Main.evenZ has a name which may be implicitly bound.
 This is likely to lead to problems!
-pruviloj001.idr:75:10:
+pruviloj001.idr:74:10:
 Main.evenSS has a name which may be implicitly bound.
 This is likely to lead to problems!
