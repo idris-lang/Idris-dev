@@ -66,6 +66,19 @@ appendNilRightId : (l : List a) ->
                    l ++ [] = l
 appendNilRightId = %runElab mush
 
+pair : a -> b -> (a, b)
+pair = %runElab (do intros ; construct ; hypothesis ; hypothesis)
+
+data Even : Nat -> Type where
+  EvenZ : Even Z
+  EvenSS : Even n -> Even (S (S n))
+
+even6 : Even 6
+even6 = %runElab (do construct ; construct ; construct ; construct ; skip)
+
+even6' : Even 6
+even6' = %runElab (repeatUntilFail (ignore construct))
+
 -- Local Variables:
 -- idris-load-packages: ("pruviloj")
 -- End:
