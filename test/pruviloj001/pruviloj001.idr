@@ -70,8 +70,8 @@ pair : a -> b -> (a, b)
 pair = %runElab (do intros ; construct ; hypothesis ; hypothesis)
 
 data Even : Nat -> Type where
-  evenZ : Even Z
-  evenSS : Even n -> Even (S (S n))
+  EvenZ : Even Z
+  EvenSS : Even n -> Even (S (S n))
 
 even6 : Even 6
 even6 = %runElab (do construct ; construct ; construct ; construct ; skip)
