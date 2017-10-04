@@ -257,22 +257,23 @@ unproduct tm =
        try (unproduct (Var n2))
 
 ||| Try to apply the constructors of the goal data type one by one,
-||| and apply the first one that works.
+||| and apply the first one that works. If one of the constructors work,
+||| the explicit arguments to the constructor are created as new holes and
+||| the hole names are returned in a list. The parameters of the type and
+||| the implicit arguments of the constructor will be solved by unification.
 ||| Similar to `constructor` in Coq.
 construct : Elab (List TTName)
-construct =
-    do g <- goalType
-       case headName g of
-         Nothing =>
-           fail [RawPart g, TextPart "is not a type declared with the data keyword"]
-         Just h =>
-           choiceMap (\(n, xs, _) => apply (Var n) (map shouldUnify xs) <* solve)
-                     !(constructors <$> lookupDatatypeExact h)
+construct = case headName !goalType of
+    Nothing =>
+      fail [TextPart "Goal is not of a type declared with the data keyword"]
+    Just h =>
+      choiceMap (\(n, xs, _) => apply (Var n) (map shouldUnify xs) <* solve)
+                !(constructors <$> lookupDatatypeExact h)
+      <|> fail [TextPart "No constructors apply"]
   where
     shouldUnify : CtorArg -> Bool
-    shouldUnify (CtorParameter _) = True
     shouldUnify (CtorField (MkFunArg _ _ Explicit _)) = False
-    shouldUnify (CtorField (MkFunArg _ _ _ _)) = True
+    shouldUnify _ = True
 
 ||| A special-purpose tactic that attempts to solve a goal using
 ||| `Refl`. This is useful for ensuring that goals in fact are trivial
