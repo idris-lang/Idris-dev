@@ -1,14 +1,16 @@
 module Data.IORef
 
+export
+data IORef a = MkIORef a
+
 public export
 interface HasReference (ffi : FFI) where
-  IORef' : Type -> Type
-  newIORef' : a -> IO' ffi (IORef' a)
-  readIORef' : IORef' a -> IO' ffi a
-  writeIORef' : IORef' a -> a -> IO' ffi ()
+  newIORef' : a -> IO' ffi (IORef a)
+  readIORef' : IORef a -> IO' ffi a
+  writeIORef' : IORef a -> a -> IO' ffi ()
 
 export
-modifyIORef': HasReference ffi => IORef' {ffi = ffi} a -> (a -> a) -> IO' ffi ()
+modifyIORef': HasReference ffi => IORef a -> (a -> a) -> IO' ffi ()
 modifyIORef' ref fn =
   do
     val <- readIORef' ref
@@ -16,20 +18,24 @@ modifyIORef' ref fn =
 
 export
 implementation HasReference FFI_C where
-  IORef' = Raw
-  newIORef' val =
-    foreign FFI_C "idris_newRef" (Raw a -> IO (Raw a)) (MkRaw val)
-  readIORef' ref =
-    do
-      MkRaw val <- foreign FFI_C "idris_readRef" (Raw a -> IO (Raw a)) ref
-      pure val
-  writeIORef' ref val =
-    foreign FFI_C "idris_writeRef" (Raw a -> Raw a -> IO ())
-              ref (MkRaw val)
+  newIORef' val
+    = do MkRaw ref <- foreign FFI_C "idris_newRef" (Raw a -> IO (Raw a)) (MkRaw val)
+         pure (MkIORef ref)
+  readIORef' (MkIORef ref)
+    = do MkRaw val <- foreign FFI_C "idris_readRef" (Raw a -> IO (Raw a)) (MkRaw ref)
+         pure val
+  writeIORef' (MkIORef ref) val
+    = foreign FFI_C "idris_writeRef" (Raw a -> Raw a -> IO ())
+              (MkRaw ref) (MkRaw val)
 
 export
-IORef : Type -> Type
-IORef = IORef' {ffi = FFI_C}
+implementation HasReference FFI_JS where
+  newIORef' val =
+    (MkIORef . believe_me) <$> foreign FFI_JS "{val: %0}" (Ptr -> JS_IO Ptr) (believe_me val)
+  readIORef' (MkIORef ref) =
+    believe_me <$> foreign FFI_JS "%0.val" (Ptr -> JS_IO Ptr) (believe_me ref)
+  writeIORef' (MkIORef ref) val =
+    foreign FFI_JS "%0.val = %1" (Ptr -> Ptr -> JS_IO ()) (believe_me ref) (believe_me val)
 
 export
 newIORef : a -> IO (IORef a)
@@ -46,31 +52,3 @@ writeIORef = writeIORef'
 export
 modifyIORef : IORef a -> (a -> a) -> IO ()
 modifyIORef = modifyIORef'
-{-
-export
-data IORef a = MkIORef a
-
-export
-newIORef : a -> IO (IORef a)
-newIORef val
-    = do MkRaw ref <- foreign FFI_C "idris_newRef" (Raw a -> IO (Raw a)) (MkRaw val)
-         pure (MkIORef ref)
-
-export
-readIORef : IORef a -> IO a
-readIORef (MkIORef ref)
-    = do MkRaw val <- foreign FFI_C "idris_readRef" (Raw a -> IO (Raw a)) (MkRaw ref)
-         pure val
-
-export
-writeIORef : IORef a -> a -> IO ()
-writeIORef (MkIORef old) val
-    = foreign FFI_C "idris_writeRef" (Raw a -> Raw a -> IO ())
-              (MkRaw old) (MkRaw val)
-
-export
-modifyIORef : IORef a -> (a -> a) -> IO ()
-modifyIORef ref fn
-    = do val <- readIORef ref
-         writeIORef ref (fn val)
--}
