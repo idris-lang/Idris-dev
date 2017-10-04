@@ -362,6 +362,7 @@ renderExternal fmt width doc
                     [".idris-data { color: red; } ",
                      ".idris-type { color: blue; }",
                      ".idris-function {color: green; }",
+                     ".idris-metavar {color: turquoise; }",
                      ".idris-keyword { font-weight: bold; }",
                      ".idris-bound { color: purple; }",
                      ".idris-implicit { font-style: italic; }",
@@ -375,7 +376,8 @@ renderExternal fmt width doc
                "\\newcommand{\\"++ cmd ++
                "}[1]{\\textcolor{"++ color ++"}{#1}}")
              [("IdrisData", "red"), ("IdrisType", "blue"),
-              ("IdrisBound", "magenta"), ("IdrisFunction", "green")] ++
+              ("IdrisBound", "magenta"), ("IdrisFunction", "green"),
+              ("IdrisMetavar", "cyan")] ++
         ["\\newcommand{\\IdrisKeyword}[1]{{\\underline{#1}}}",
          "\\newcommand{\\IdrisImplicit}[1]{{\\itshape \\IdrisBound{#1}}}",
          "\n",
