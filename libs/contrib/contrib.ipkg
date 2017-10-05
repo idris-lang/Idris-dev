@@ -32,7 +32,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
 
           System.Concurrency.Process,
 
-          Text.Lexer, Text.Parser,
+          Text.Lexer, Text.Parser, Text.Parser.Core,
 
           Text.PrettyPrint.WL,
           Text.PrettyPrint.WL.Core,
