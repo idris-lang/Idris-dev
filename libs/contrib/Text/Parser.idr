@@ -60,7 +60,9 @@ export
 (<|>) : Grammar tok c1 ty ->
         Grammar tok c2 ty ->
         Grammar tok (c1 && c2) ty
-(<|>) = Alt
+(<|>) (Alt {c1 = True} x y) z = Alt x (y <|> z)
+(<|>) (Alt {c1 = False} x y) z = Alt x (y <|> z)
+(<|>) x y = Alt x y
 
 ||| Allows the result of a grammar to be mapped to a different value.
 export
