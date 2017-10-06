@@ -75,7 +75,7 @@ instance Apropos Def where
 instance Apropos (Binder (TT Name)) where
   isApropos str (Lam _ ty)    = str == T.pack "\\" || isApropos str ty
   isApropos str (Pi _ _ ty _) = str == T.pack "->" || isApropos str ty
-  isApropos str (Let ty val)  = str == T.pack "let" || isApropos str ty || isApropos str val
+  isApropos str (Let _ ty val)  = str == T.pack "let" || isApropos str ty || isApropos str val
   isApropos str (NLet ty val) = str == T.pack "let" || isApropos str ty || isApropos str val
   isApropos str _             = False -- these shouldn't occur in defined libraries
 

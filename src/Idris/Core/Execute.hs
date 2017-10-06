@@ -113,7 +113,7 @@ toTT (EBind n b body) = do n' <- newN n
                            Bind n' b' <$> toTT body'
     where fixBinder (Lam rig t)    = Lam rig  <$> toTT t
           fixBinder (Pi rig i t k) = Pi rig i <$> toTT t <*> toTT k
-          fixBinder (Let t1 t2)   = Let     <$> toTT t1 <*> toTT t2
+          fixBinder (Let rig t1 t2)   = Let rig <$> toTT t1 <*> toTT t2
           fixBinder (NLet t1 t2)  = NLet    <$> toTT t1 <*> toTT t2
           fixBinder (Hole t)      = Hole    <$> toTT t
           fixBinder (GHole i ns t) = GHole i ns <$> toTT t
@@ -134,7 +134,7 @@ toTT (EConstant c) = return (Constant c)
 toTT (EThunk ctxt env tm) = do env' <- mapM toBinder env
                                return $ normalise ctxt env' tm
   where toBinder (n, v) = do v' <- toTT v
-                             return (n, RigW, Let Erased v')
+                             return (n, RigW, Let RigW Erased v')
 toTT (EHandle _) = execFail $ Msg "Can't convert handles back to TT after execution."
 toTT (EPtr ptr) = execFail $ Msg "Can't convert pointers back to TT after execution."
 toTT (EStringBuf ptr) = execFail $ Msg "Can't convert string buffers back to TT after execution."
@@ -207,8 +207,9 @@ doExec env ctxt (P (DCon a b u) n _) = return (EP (DCon a b u) n EErased)
 doExec env ctxt (P (TCon a b) n _) = return (EP (TCon a b) n EErased)
 doExec env ctxt v@(V i) | i < length env = return (snd (env !! i))
                         | otherwise      = execFail . Msg $ "env too small"
-doExec env ctxt (Bind n (Let t v) body) = do v' <- doExec env ctxt v
-                                             doExec ((n, v'):env) ctxt body
+doExec env ctxt (Bind n (Let rig t v) body)
+     = do v' <- doExec env ctxt v
+          doExec ((n, v'):env) ctxt body
 doExec env ctxt (Bind n (NLet t v) body) = undefined
 doExec env ctxt tm@(Bind n b body) = do b' <- forM b (doExec env ctxt)
                                         return $

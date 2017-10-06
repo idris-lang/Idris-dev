@@ -478,7 +478,7 @@ irTerm top vs env (Bind n (Lam _ _) sc) = LLam [n'] <$> irTerm top vs (n':env) s
   where
     n' = uniqueName n env
 
-irTerm top vs env (Bind n (Let _ v) sc)
+irTerm top vs env (Bind n (Let _ _ v) sc)
     = LLet n <$> irTerm top vs env v <*> irTerm top vs (n : env) sc
 
 irTerm top vs env (Bind _ _ _) = return $ LNothing
@@ -527,7 +527,7 @@ irTree top args tree = do
 
 irSC :: Name -> Vars -> SC -> Idris LExp
 irSC top vs (STerm t) = irTerm top vs [] t
-irSC top vs (UnmatchedCase str) = return $ LError str
+irSC top vs (UnmatchedCase str) = return $ LLazyExp $ LError str
 
 irSC top vs (ProjCase tm alts) = do
     tm'   <- irTerm top vs [] tm

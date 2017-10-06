@@ -31,8 +31,8 @@ data TermPath = Top
 
 -- | A zipper over binders, because terms and binders are mutually defined.
 data BinderPath = Binder (Binder TermPath)
-                | LetT TermPath Term
-                | LetV Term TermPath
+                | LetT RigCount TermPath Term
+                | LetV RigCount Term TermPath
                 | GuessT TermPath Term
                 | GuessV Term TermPath
   deriving Show
@@ -46,8 +46,8 @@ replaceTop p (AppR s t r) = AppR s t (replaceTop p r)
 replaceTop p (InBind n bp sc) = InBind n (replaceTopB p bp) sc
   where
     replaceTopB p (Binder b) = Binder (fmap (replaceTop p) b)
-    replaceTopB p (LetT t v) = LetT (replaceTop p t) v
-    replaceTopB p (LetV t v) = LetV t (replaceTop p v)
+    replaceTopB p (LetT c t v) = LetT c (replaceTop p t) v
+    replaceTopB p (LetV c t v) = LetV c t (replaceTop p v)
     replaceTopB p (GuessT t v) = GuessT (replaceTop p t) v
     replaceTopB p (GuessV t v) = GuessV t (replaceTop p v)
 replaceTop p (InScope n b sc) = InScope n b (replaceTop p sc)
@@ -63,8 +63,8 @@ rebuildTerm tm (InBind n bp sc) = Bind n (rebuildBinder tm bp) sc
 -- | Build a binder from a zipper, given something to put in the hole.
 rebuildBinder :: Term -> BinderPath -> Binder Term
 rebuildBinder tm (Binder p) = fmap (rebuildTerm tm) p
-rebuildBinder tm (LetT p t) = Let (rebuildTerm tm p) t
-rebuildBinder tm (LetV v p) = Let v (rebuildTerm tm p)
+rebuildBinder tm (LetT c p t) = Let c (rebuildTerm tm p) t
+rebuildBinder tm (LetV c v p) = Let c v (rebuildTerm tm p)
 rebuildBinder tm (GuessT p t) = Guess (rebuildTerm tm p) t
 rebuildBinder tm (GuessV v p) = Guess v (rebuildTerm tm p)
 
@@ -81,12 +81,12 @@ findHole n env t = fh' env Top t where
       | Just (p, env', tm) <- fh' env path f = Just (AppL s p a, env', tm)
   fh' env path (Bind x b sc)
       | Just (bp, env', tm) <- fhB env path b = Just (InBind x bp sc, env', tm)
-      | Just (p, env', tm) <- fh' ((x,RigW,b):env) path sc = Just (InScope x b p, env', tm)
+      | Just (p, env', tm) <- fh' ((x,getRig b,b):env) path sc = Just (InScope x b p, env', tm)
   fh' _ _ _ = Nothing
 
-  fhB env path (Let t v)
-      | Just (p, env', tm) <- fh' env path t = Just (LetT p v, env', tm)
-      | Just (p, env', tm) <- fh' env path v = Just (LetV t p, env', tm)
+  fhB env path (Let c t v)
+      | Just (p, env', tm) <- fh' env path t = Just (LetT c p v, env', tm)
+      | Just (p, env', tm) <- fh' env path v = Just (LetV c t p, env', tm)
   fhB env path (Guess t v)
       | Just (p, env', tm) <- fh' env path t = Just (GuessT p v, env', tm)
       | Just (p, env', tm) <- fh' env path v = Just (GuessV t p, env', tm)
@@ -184,10 +184,10 @@ updateSolvedTerm' xs x = updateSolved' xs x where
               if ut then (P nt n ty', True) else (t, False)
     updateSolved' xs t = (t, False)
 
-    updateSolvedB' xs b@(Let t v) = let (t', ut) = updateSolved' xs t
-                                        (v', uv) = updateSolved' xs v in
-                                        if ut || uv then (Let t' v', True)
-                                                    else (b, False)
+    updateSolvedB' xs b@(Let c t v) = let (t', ut) = updateSolved' xs t
+                                          (v', uv) = updateSolved' xs v in
+                                          if ut || uv then (Let c t' v', True)
+                                                      else (b, False)
     updateSolvedB' xs b@(Guess t v) = let (t', ut) = updateSolved' xs t
                                           (v', uv) = updateSolved' xs v in
                                           if ut || uv then (Guess t' v', True)
@@ -226,10 +226,10 @@ updsubst n v tm = fst $ subst' 0 tm
                                   if u then (Proj x' idx, u) else (t, False)
     subst' i t = (t, False)
 
-    substB' i b@(Let t v) = let (t', ut) = subst' i t
-                                (v', uv) = subst' i v in
-                                if ut || uv then (Let t' v', True)
-                                            else (b, False)
+    substB' i b@(Let c t v) = let (t', ut) = subst' i t
+                                  (v', uv) = subst' i v in
+                                  if ut || uv then (Let c t' v', True)
+                                              else (b, False)
     substB' i b@(Guess t v) = let (t', ut) = subst' i t
                                   (v', uv) = subst' i v in
                                   if ut || uv then (Guess t' v', True)
@@ -256,8 +256,8 @@ updateSolvedPath ns (InBind n b sc)
     = InBind n (updateSolvedPathB b) (updateSolvedTerm ns sc)
   where
     updateSolvedPathB (Binder b) = Binder (fmap (updateSolvedPath ns) b)
-    updateSolvedPathB (LetT p v) = LetT (updateSolvedPath ns p) (updateSolvedTerm ns v)
-    updateSolvedPathB (LetV v p) = LetV (updateSolvedTerm ns v) (updateSolvedPath ns p)
+    updateSolvedPathB (LetT c p v) = LetT c (updateSolvedPath ns p) (updateSolvedTerm ns v)
+    updateSolvedPathB (LetV c v p) = LetV c (updateSolvedTerm ns v) (updateSolvedPath ns p)
     updateSolvedPathB (GuessT p v) = GuessT (updateSolvedPath ns p) (updateSolvedTerm ns v)
     updateSolvedPathB (GuessV v p) = GuessV (updateSolvedTerm ns v) (updateSolvedPath ns p)
 updateSolvedPath ns (InScope n (Hole ty) t)
@@ -275,6 +275,13 @@ updateSolved xs pt@(PT path env sub ups)
           (updateSolvedTerm xs sub)
           (ups ++ xs)
 
+getRig :: Binder Term -> RigCount
+getRig (Pi rig _ _ _) = rig
+getRig (PVar rig _) = rig
+getRig (Lam rig _) = rig
+getRig (Let rig _ _) = rig
+getRig _ = RigW
+
 goal :: Hole -> ProofTerm -> TC Goal
 goal h pt@(PT path env sub ups)
 --      | OK ginf <- g env sub = return ginf
@@ -287,12 +294,13 @@ goal h pt@(PT path env sub ups)
                            = gb env b `mplus` g ((n, RigW, b):env) sc
     g env (Bind n b sc) | hole b && same h n = return $ GD env b
                         | otherwise
-                           = g ((n, RigW, b):env) sc `mplus` gb env b
+                           = g ((n, getRig b, b):env) sc `mplus` gb env b
+
     g env (App Complete f a) = fail "Can't find hole"
     g env (App _ f a) = g env a `mplus` g env f
     g env t           = fail "Can't find hole"
 
-    gb env (Let t v) = g env v `mplus` g env t
+    gb env (Let c t v) = g env v `mplus` g env t
     gb env (Guess t v) = g env v `mplus` g env t
     gb env t = g env (binderTy t)
 
@@ -330,14 +338,14 @@ atHole h f c e pt -- @(PT path env sub)
     atH f c env binder@(Bind n b sc)
         | hole b && same h n = updated (f c env binder)
         | otherwise -- scope first
-            = do (sc', u) <- atH f c ((n, RigW, b) : env) sc
+            = do (sc', u) <- atH f c ((n, getRig b, b) : env) sc
                  if u then return (Bind n b sc', True)
                       else do (b', u) <- atHb f c env b
                               return (Bind n b' sc', u)
     atH tac c env (App s f a)  = ulift2 tac c env (App s) f a
     atH tac c env t            = return (t, False)
 
-    atHb f c env (Let t v)   = ulift2 f c env Let t v
+    atHb f c env (Let rc t v)   = ulift2 f c env (Let rc) t v
     atHb f c env (Guess t v) = ulift2 f c env Guess t v
     atHb f c env t           = do (ty', u) <- atH f c env (binderTy t)
                                   return (t { binderTy = ty' }, u)
@@ -348,7 +356,7 @@ bound_in (PT path _ tm ups) = bound_in_term (rebuildTerm tm (updateSolvedPath up
 bound_in_term :: Term -> [Name]
 bound_in_term (Bind n b sc) = n : bi b ++ bound_in_term sc
   where
-    bi (Let t v) = bound_in_term t ++ bound_in_term v
+    bi (Let c t v) = bound_in_term t ++ bound_in_term v
     bi (Guess t v) = bound_in_term t ++ bound_in_term v
     bi b = bound_in_term (binderTy b)
 bound_in_term (App _ f a) = bound_in_term f ++ bound_in_term a

@@ -8,7 +8,19 @@ Maintainer  : The Idris Community.
 
 {-# LANGUAGE CPP, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-unused-imports #-}
-module Idris.Reflection where
+module Idris.Reflection (RConstructorDefn(..), RDataDefn(..),RFunArg(..),
+                         RFunClause(..), RFunDefn(..), RTyDecl(..),
+                         buildDatatypes, buildFunDefns, envTupleType, fromTTMaybe,
+                         getArgs, mkList, rawList, rawPair, rawPairTy, reflect,
+                         reflectArg, reflectDatatype, reflectEnv, reflectErr,
+                         reflectFC, reflectFixity, reflectFunDefn, reflectList,
+                         reflectName, reflectNameType, reflectRaw,
+                         reflectRawQuotePattern, reflectRawQuote, reflectTTQuote,
+                         reflectTTQuotePattern, reflm, reify, reifyBool, reifyEnv,
+                         reifyFunDefn, reifyList, reifyRDataDefn, reifyRaw,
+                         reifyReportPart, reifyReportParts, reifyTT, reifyTTName,
+                         reifyTyDecl, rFunArgToPArg, tacN
+                         ) where
 
 import Idris.Core.Elaborate (claim, fill, focus, getNameFrom, initElaborator,
                              movelast, runElab, solve)
@@ -313,7 +325,7 @@ reifyTTBinderApp reif f [t]
 reifyTTBinderApp reif f [t, k]
                       | f == reflm "Pi" = liftM2 (Pi RigW Nothing) (reif t) (reif k)
 reifyTTBinderApp reif f [x, y]
-                      | f == reflm "Let" = liftM2 Let (reif x) (reif y)
+                      | f == reflm "Let" = liftM2 (Let RigW) (reif x) (reif y)
 reifyTTBinderApp reif f [t]
                       | f == reflm "Hole" = liftM Hole (reif t)
 reifyTTBinderApp reif f [t]
@@ -533,9 +545,9 @@ reflectRawQuotePattern unq (RBind n b sc) =
      focus scH; reflectRawQuotePattern unq sc
      focus bH; reflectBinderQuotePattern reflectRawQuotePattern (Var $ reflm "Raw") unq b
   where freeNamesR (Var n) = [n]
-        freeNamesR (RBind n (Let t v) body) = concat [freeNamesR v,
-                                                      freeNamesR body \\ [n],
-                                                      freeNamesR t]
+        freeNamesR (RBind n (Let rc t v) body) = concat [freeNamesR v,
+                                                         freeNamesR body \\ [n],
+                                                         freeNamesR t]
         freeNamesR (RBind n b body) = freeNamesR (binderTy b) ++
                                       (freeNamesR body \\ [n])
         freeNamesR (RApp f x) = freeNamesR f ++ freeNamesR x
@@ -583,7 +595,7 @@ reflectBinderQuotePattern q ty unq (Pi _ _ t k)
         fill $ reflCall "Pi" [ty, Var t', Var k']
         solve
         focus t'; q unq t
-reflectBinderQuotePattern q ty unq (Let x y)
+reflectBinderQuotePattern q ty unq (Let rc x y)
    = do x' <- claimTy (sMN 0 "ty") ty; movelast x';
         y' <- claimTy (sMN 0 "v")ty; movelast y';
         fill $ reflCall "Let" [ty, Var x', Var y']
@@ -748,7 +760,7 @@ reflectBinderQuote q ty unq (Lam _ t)
    = reflCall "Lam" [Var ty, q unq t]
 reflectBinderQuote q ty unq (Pi _ _ t k)
    = reflCall "Pi" [Var ty, q unq t, q unq k]
-reflectBinderQuote q ty unq (Let x y)
+reflectBinderQuote q ty unq (Let rc x y)
    = reflCall "Let" [Var ty, q unq x, q unq y]
 reflectBinderQuote q ty unq (NLet x y)
    = reflCall "Let" [Var ty, q unq x, q unq y]

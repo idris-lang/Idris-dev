@@ -12,11 +12,9 @@ Maintainer  : The Idris Community.
 -- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
-module Idris.Parser(module Idris.Parser,
-                    module Idris.Parser.Expr,
-                    module Idris.Parser.Data,
-                    module Idris.Parser.Helpers,
-                    module Idris.Parser.Ops) where
+module Idris.Parser(IdrisParser(..), ImportInfo(..), addReplSyntax, clearParserWarnings,
+                    decl, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
+                    runparser) where
 
 import Idris.AbsSyntax hiding (namespace, params)
 import Idris.Core.Evaluate
@@ -503,8 +501,8 @@ syntaxRule syn
                n' <- gensym n
                body' <- fixBind 0 ((n,n'):rens) body
                return $ (PPi plic n' nfc ty' body')
-        fixBind 0 rens (PLet fc n nfc ty val body)
-          | n `elem` userNames = liftM3 (PLet fc n nfc)
+        fixBind 0 rens (PLet fc rig n nfc ty val body)
+          | n `elem` userNames = liftM3 (PLet fc rig n nfc)
                                         (fixBind 0 rens ty)
                                         (fixBind 0 rens val)
                                         (fixBind 0 rens body)
@@ -513,7 +511,7 @@ syntaxRule syn
                val' <- fixBind 0 rens val
                n' <- gensym n
                body' <- fixBind 0 ((n,n'):rens) body
-               return $ PLet fc n' nfc ty' val' body'
+               return $ PLet fc rig n' nfc ty' val' body'
         fixBind 0 rens (PMatchApp fc n) | Just n' <- lookup n rens =
           return $ PMatchApp fc n'
         -- Also rename resolved quotations, to allow syntax rules to
@@ -1106,10 +1104,10 @@ rhs syn n = do lchar '='
         n' :: Name
         n' = mkN n
         addLet :: FC -> Name -> PTerm -> PTerm
-        addLet fc nm (PLet fc' n nfc ty val r) = PLet fc' n nfc ty val (addLet fc nm r)
+        addLet fc nm (PLet fc' rig n nfc ty val r) = PLet fc' rig n nfc ty val (addLet fc nm r)
         addLet fc nm (PCase fc' t cs) = PCase fc' t (map addLetC cs)
           where addLetC (l, r) = (l, addLet fc nm r)
-        addLet fc nm r = (PLet fc (sUN "value") NoFC Placeholder r (PMetavar NoFC nm))
+        addLet fc nm r = (PLet fc RigW (sUN "value") NoFC Placeholder r (PMetavar NoFC nm))
 
 {-|Parses a function clause
 
@@ -1173,7 +1171,7 @@ clause syn
                                            return x,
                                         do terminator
                                            return ([], [])]
-              let capp = PLet fc (sMN 0 "match") NoFC
+              let capp = PLet fc RigW (sMN 0 "match") NoFC
                               ty
                               (PMatchApp fc n)
                               (PRef fc [] (sMN 0 "match"))

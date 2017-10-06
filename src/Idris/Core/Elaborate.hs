@@ -437,8 +437,8 @@ introTy ty n = processTactic' (IntroTy ty n)
 forall :: Name -> RigCount -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
 forall n r i t = processTactic' (Forall n r i t)
 
-letbind :: Name -> Raw -> Raw -> Elab' aux ()
-letbind n t v = processTactic' (LetBind n t v)
+letbind :: Name -> RigCount -> Raw -> Raw -> Elab' aux ()
+letbind n rig t v = processTactic' (LetBind n rig t v)
 
 expandLet :: Name -> Term -> Elab' aux ()
 expandLet n v = processTactic' (ExpandLet n v)
@@ -503,7 +503,7 @@ dotterm = do ES (p, a) s m <- get
       = union (foB b)
               (findOuter h env (instantiate (P Bound n (binderTy b)) sc))
      where foB (Guess t v) = union (findOuter h env t) (findOuter h (n:env) v)
-           foB (Let t v) = union (findOuter h env t) (findOuter h env v)
+           foB (Let _ t v) = union (findOuter h env t) (findOuter h env v)
            foB b = findOuter h env (binderTy b)
   findOuter h env (App _ f a)
       = union (findOuter h env f) (findOuter h env a)
@@ -527,10 +527,11 @@ matchProblems all = processTactic' (MatchProblems all)
 unifyProblems :: Elab' aux ()
 unifyProblems = processTactic' UnifyProblems
 
-defer :: [Name] -> Name -> Elab' aux Name
-defer ds n = do n' <- unique_hole n
-                processTactic' (Defer ds n')
-                return n'
+defer :: [Name] -> [Name] -> Name -> Elab' aux Name
+defer ds ls n
+    = do n' <- unique_hole n
+         processTactic' (Defer ds ls n')
+         return n'
 
 deferType :: Name -> Raw -> [Name] -> Elab' aux ()
 deferType n ty ns = processTactic' (DeferType n ty ns)

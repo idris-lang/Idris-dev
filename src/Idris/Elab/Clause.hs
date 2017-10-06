@@ -509,7 +509,7 @@ elabPE info fc caller r =
     concreteTm ist (Constant _) = True
     concreteTm ist (Bind n (Lam _ _) sc) = True
     concreteTm ist (Bind n (Pi _ _ _ _) sc) = True
-    concreteTm ist (Bind n (Let _ _) sc) = concreteTm ist sc
+    concreteTm ist (Bind n (Let _ _ _) sc) = concreteTm ist sc
     concreteTm ist _ = False
 
     -- get the type of a specialised application
@@ -902,7 +902,7 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
          getVs _ = []
     borrowedNames env (App _ f a) = nub $ borrowedNames env f ++ borrowedNames env a
     borrowedNames env (Bind n b sc) = nub $ borrowedB b ++ borrowedNames (n:env) sc
-       where borrowedB (Let t v) = nub $ borrowedNames env t ++ borrowedNames env v
+       where borrowedB (Let _ t v) = nub $ borrowedNames env t ++ borrowedNames env v
              borrowedB b = borrowedNames env (binderTy b)
     borrowedNames _ _ = []
 

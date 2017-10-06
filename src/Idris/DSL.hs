@@ -8,7 +8,7 @@ Maintainer  : The Idris Community.
 
 {-# LANGUAGE PatternGuards #-}
 
-module Idris.DSL where
+module Idris.DSL (debindApp, desugar) where
 
 import Idris.AbsSyntax
 import Idris.Core.TT
@@ -54,12 +54,12 @@ expandSugar dsl (PLam fc n nfc ty tm)
         = PApp fc lam [ pexp (mkTTName fc n)
                       , pexp (expandSugar dsl (var dsl n tm 0))]
 expandSugar dsl (PLam fc n nfc ty tm) = PLam fc n nfc (expandSugar dsl ty) (expandSugar dsl tm)
-expandSugar dsl (PLet fc n nfc ty v tm)
+expandSugar dsl (PLet fc rc n nfc ty v tm)
     | Just letb <- dsl_let dsl
         = PApp (fileFC "(dsl)") letb [ pexp (mkTTName fc n)
                                      , pexp (expandSugar dsl v)
                                      , pexp (expandSugar dsl (var dsl n tm 0))]
-expandSugar dsl (PLet fc n nfc ty v tm) = PLet fc n nfc (expandSugar dsl ty) (expandSugar dsl v) (expandSugar dsl tm)
+expandSugar dsl (PLet fc rc n nfc ty v tm) = PLet fc rc n nfc (expandSugar dsl ty) (expandSugar dsl v) (expandSugar dsl tm)
 expandSugar dsl (PPi p n fc ty tm)
     | Just pi <- dsl_pi dsl
         = PApp (fileFC "(dsl)") pi [ pexp (mkTTName (fileFC "(dsl)") n)
@@ -103,8 +103,8 @@ expandSugar dsl (PDoBlock ds)
         = PApp fc b [pexp tm, pexp (PLam fc (sMN 0 "__bpat") NoFC Placeholder
                                    (PCase fc (PRef fc [] (sMN 0 "__bpat"))
                                              ((p, block b rest) : alts)))]
-    block b (DoLet fc n nfc ty tm : rest)
-        = PLet fc n nfc ty tm (block b rest)
+    block b (DoLet fc rc n nfc ty tm : rest)
+        = PLet fc rc n nfc ty tm (block b rest)
     block b (DoLetP fc p tm : rest)
         = PCase fc tm [(p, block b rest)]
     block b (DoRewrite fc h : rest)
@@ -134,10 +134,10 @@ var dsl n t i = v' i t where
         | Nothing <- dsl_lambda dsl
             = PLam fc n nfc ty (v' i sc)
         | otherwise = PLam fc n nfc (v' i ty) (v' (i + 1) sc)
-    v' i (PLet fc n nfc ty val sc)
+    v' i (PLet fc rc n nfc ty val sc)
         | Nothing <- dsl_let dsl
-            = PLet fc n nfc (v' i ty) (v' i val) (v' i sc)
-        | otherwise = PLet fc n nfc (v' i ty) (v' i val) (v' (i + 1) sc)
+            = PLet fc rc n nfc (v' i ty) (v' i val) (v' i sc)
+        | otherwise = PLet fc rc n nfc (v' i ty) (v' i val) (v' (i + 1) sc)
     v' i (PPi p n fc ty sc)
         | Nothing <- dsl_pi dsl
             = PPi p n fc (v' i ty) (v' i sc)
@@ -200,8 +200,9 @@ debind b tm = let (tm', (bs, _)) = runState (db' tm) ([], 0) in
               arg' <- db' arg
               return (PWithApp fc t' arg')
     db' (PLam fc n nfc ty sc) = return (PLam fc n nfc ty (debind b sc))
-    db' (PLet fc n nfc ty v sc) = do v' <- db' v
-                                     return (PLet fc n nfc ty v' (debind b sc))
+    db' (PLet fc rc n nfc ty v sc)
+        = do v' <- db' v
+             return (PLet fc rc n nfc ty v' (debind b sc))
     db' (PCase fc s opts) = do s' <- db' s
                                return (PCase fc s' (map (pmap (debind b)) opts))
     db' (PPair fc hls p l r) = do l' <- db' l

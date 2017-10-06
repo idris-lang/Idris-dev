@@ -58,19 +58,19 @@ getObjectFiles :: Codegen -> Idris [FilePath]
 getObjectFiles tgt = do i <- getIState; return (forCodegen tgt $ idris_objs i)
 
 addObjectFile :: Codegen -> FilePath -> Idris ()
-addObjectFile tgt f = do i <- getIState; putIState $ i { idris_objs = nub $ (tgt, f) : idris_objs i }
+addObjectFile tgt f = do i <- getIState; putIState $ i { idris_objs = nub $ idris_objs i ++ [(tgt, f)] }
 
 getLibs :: Codegen -> Idris [String]
 getLibs tgt = do i <- getIState; return (forCodegen tgt $ idris_libs i)
 
 addLib :: Codegen -> String -> Idris ()
-addLib tgt f = do i <- getIState; putIState $ i { idris_libs = nub $ (tgt, f) : idris_libs i }
+addLib tgt f = do i <- getIState; putIState $ i { idris_libs = nub $ idris_libs i ++ [(tgt, f)] }
 
 getFlags :: Codegen -> Idris [String]
 getFlags tgt = do i <- getIState; return (forCodegen tgt $ idris_cgflags i)
 
 addFlag :: Codegen -> String -> Idris ()
-addFlag tgt f = do i <- getIState; putIState $ i { idris_cgflags = nub $ (tgt, f) : idris_cgflags i }
+addFlag tgt f = do i <- getIState; putIState $ i { idris_cgflags = nub $ idris_cgflags i ++ [(tgt, f)] }
 
 addDyLib :: [String] -> Idris (Either DynamicLib String)
 addDyLib libs = do i <- getIState
@@ -142,6 +142,12 @@ addLangExt e = do i <- getIState
                   putIState $ i {
                     idris_language_extensions = e : idris_language_extensions i
                   }
+
+dropLangExt :: LanguageExt -> Idris ()
+dropLangExt e = do i <- getIState
+                   putIState $ i {
+                     idris_language_extensions = idris_language_extensions i \\ [e]
+                   }
 
 -- | Transforms are organised by the function being applied on the lhs
 -- of the transform, to make looking up appropriate transforms quicker
@@ -1284,11 +1290,11 @@ expandParams dec ps ns infs tm = en 0 tm
                = let n' = mkShadow n in -- TODO THINK SHADOWING TacImp?
                      PPi (enTacImp 0 p) n' nfc (en 0 t) (en 0 (shadow n n' s))
        | otherwise = PPi (enTacImp 0 p) n nfc (en 0 t) (en 0 s)
-    en 0 (PLet fc n nfc ty v s)
+    en 0 (PLet fc rc n nfc ty v s)
        | n `elem` (map fst ps ++ ns)
                = let n' = mkShadow n in
-                     PLet fc n' nfc (en 0 ty) (en 0 v) (en 0 (shadow n n' s))
-       | otherwise = PLet fc n nfc (en 0 ty) (en 0 v) (en 0 s)
+                     PLet fc rc n' nfc (en 0 ty) (en 0 v) (en 0 (shadow n n' s))
+       | otherwise = PLet fc rc n nfc (en 0 ty) (en 0 v) (en 0 s)
     -- FIXME: Should only do this in a type signature!
     en 0 (PDPair f hls p (PRef f' fcs n) t r)
        | n `elem` (map fst ps ++ ns) && t /= Placeholder
@@ -1929,13 +1935,13 @@ addImpl' inpat env infns imp_meths ist ptm
              else let ty' = ai inpat qq env ds ty
                       sc' = ai inpat qq ((n, Just ty):env) ds sc in
                       PLam fc n nfc ty' sc'
-    ai inpat qq env ds (PLet fc n nfc ty val sc)
+    ai inpat qq env ds (PLet fc rc n nfc ty val sc)
       = if canBeDConName n (tt_ctxt ist)
            then ai inpat qq env ds (PCase fc val [(PRef fc [] n, sc)])
            else let ty' = ai inpat qq env ds ty
                     val' = ai inpat qq env ds val
                     sc' = ai inpat qq ((n, Just ty):env) ds sc in
-                    PLet fc n nfc ty' val' sc'
+                    PLet fc rc n nfc ty' val' sc'
     ai inpat qq env ds (PPi p n nfc ty sc)
       = let ty' = ai inpat qq env ds ty
             env' = if n `elem` imp_meths then env
@@ -2345,10 +2351,11 @@ matchClause' names i x y = checkRpts $ match (fullApp x) (fullApp y) where
     match (PLam _ _ _ t s) (PLam _ _ _ t' s') = do mt <- match' t t'
                                                    ms <- match' s s'
                                                    return (mt ++ ms)
-    match (PLet _ _ _ t ty s) (PLet _ _ _ t' ty' s') = do mt <- match' t t'
-                                                          mty <- match' ty ty'
-                                                          ms <- match' s s'
-                                                          return (mt ++ mty ++ ms)
+    match (PLet _ _ _ _ t ty s) (PLet _ _ _ _ t' ty' s')
+         = do mt <- match' t t'
+              mty <- match' ty ty'
+              ms <- match' s s'
+              return (mt ++ mty ++ ms)
     match (PHidden x) (PHidden y)
           | RightOK xs <- match x y = return xs -- to collect variables
           | otherwise = return [] -- Otherwise hidden things are unmatchable
@@ -2401,8 +2408,8 @@ substMatchesShadow nmap shs t = sm shs t where
                    PPi p x' fc (sm (x':xs) (substMatch x (PRef emptyFC [] x') t))
                                (sm (x':xs) (substMatch x (PRef emptyFC [] x') sc))
          | otherwise = PPi p x fc (sm xs t) (sm (x : xs) sc)
-    sm xs (PLet fc x xfc val t sc)
-         = PLet fc x xfc (sm xs val) (sm xs t) (sm xs sc)
+    sm xs (PLet fc rc x xfc val t sc)
+         = PLet fc rc x xfc (sm xs val) (sm xs t) (sm xs sc)
     sm xs (PApp f x as) = fullApp $ PApp f (sm xs x) (map (fmap (sm xs)) as)
     sm xs (PCase f x as) = PCase f (sm xs x) (map (pmap (sm xs)) as)
     sm xs (PIfThenElse fc c t f) = PIfThenElse fc (sm xs c) (sm xs t) (sm xs f)
@@ -2429,8 +2436,8 @@ shadow n n' t = sm 0 t where
                             | otherwise = PLam fc x xfc (sm 0 t) sc
     sm 0 (PPi p x fc t sc) | n /= x = PPi p x fc (sm 0 t) (sm 0 sc)
                          | otherwise = PPi p x fc (sm 0 t) sc
-    sm 0 (PLet fc x xfc t v sc) | n /= x = PLet fc x xfc (sm 0 t) (sm 0 v) (sm 0 sc)
-                              | otherwise = PLet fc x xfc (sm 0 t) (sm 0 v) sc
+    sm 0 (PLet fc rc x xfc t v sc) | n /= x = PLet fc rc x xfc (sm 0 t) (sm 0 v) (sm 0 sc)
+                              | otherwise = PLet fc rc x xfc (sm 0 t) (sm 0 v) sc
     sm 0 (PApp f x as) = PApp f (sm 0 x) (map (fmap (sm 0)) as)
     sm 0 (PAppBind f x as) = PAppBind f (sm 0 x) (map (fmap (sm 0)) as)
     sm 0 (PCase f x as) = PCase f (sm 0 x) (map (pmap (sm 0)) as)
@@ -2507,7 +2514,7 @@ mkUniqueNames env shadows tm
               ty' <- mkUniq 0 nmap ty
               sc'' <- mkUniq 0 nmap' sc'
               return $! PPi p n' fc ty' sc''
-  mkUniq 0 nmap (PLet fc n nfc ty val sc)
+  mkUniq 0 nmap (PLet fc rc n nfc ty val sc)
          = do env <- get
               (n', sc') <-
                     if n `S.member` env
@@ -2519,7 +2526,7 @@ mkUniqueNames env shadows tm
               let nmap' = M.insert n n' nmap
               ty' <- mkUniq 0 nmap ty; val' <- mkUniq 0 nmap val
               sc'' <- mkUniq 0 nmap' sc'
-              return $! PLet fc n' nfc ty' val' sc''
+              return $! PLet fc rc n' nfc ty' val' sc''
   mkUniq 0 nmap (PApp fc t args)
          = do t' <- mkUniq 0 nmap t
               args' <- mapM (mkUniqA 0 nmap) args

@@ -252,7 +252,7 @@ elab ist info emode opts fn tm
          ptm <- get_term
          when pattern $
               -- Look for Rig1 (linear) pattern bindings
-              do let pnms = findLinear ist [] ptm
+              do let pnms = findLinear Rig1 ist [] ptm
                  update_term (setLinear pnms)
   where
     pattern = emode == ELHS || emode == EImpossible
@@ -695,7 +695,7 @@ elab ist info emode opts fn tm
                elabE ec' fc sc
                solve
                highlightSource nfc (AnnBoundName n False)
-    elab' ina _ tm@(PLet fc n nfc ty val sc)
+    elab' ina _ tm@(PLet fc rig n nfc ty val sc)
           = do attack
                ivs <- get_implementations
                tyn <- getNameFrom (sMN 0 "letty")
@@ -703,7 +703,7 @@ elab ist info emode opts fn tm
                valn <- getNameFrom (sMN 0 "letval")
                claim valn (Var tyn)
                explicit valn
-               letbind n (Var tyn) (Var valn)
+               letbind n rig (Var tyn) (Var valn)
                addPSname n
                case ty of
                    Placeholder -> return ()
@@ -730,7 +730,7 @@ elab ist info emode opts fn tm
                -- HACK: If the name leaks into its type, it may leak out of
                -- scope outside, so substitute in the outer scope.
                expandLet n (case lookupBinder n env of
-                                 Just (Let t v) -> v
+                                 Just (Let rig t v) -> v
                                  other -> error ("Value not a let binding: " ++ show other))
                solve
                highlightSource nfc (AnnBoundName n False)
@@ -741,7 +741,7 @@ elab ist info emode opts fn tm
          claim tyn RType
          valn <- getNameFrom (sMN 0 "letval")
          claim valn (Var tyn)
-         letbind n (Var tyn) (Var valn)
+         letbind n RigW (Var tyn) (Var valn)
          focus valn
          elabE (ina { e_inarg = True, e_intype = True }) (Just fc) (PApp fc r [pexp (delab ist rty)])
          env <- get_env
@@ -991,11 +991,13 @@ elab ist info emode opts fn tm
              -- When building the metavar application, leave out the unique
              -- names which have been used elsewhere in the term, since we
              -- won't be able to use them in the resulting application.
+             env <- get_env
              let unique_used = getUniqueUsed (tt_ctxt ist) ptm
+             let lin_used = getLinearUsed (tt_ctxt ist) ptm
              let n' = metavarName (namespace info) n
              attack
              psns <- getPSnames
-             n' <- defer unique_used n'
+             n' <- defer unique_used lin_used n'
              solve
              highlightSource nfc (AnnName n' (Just MetavarOutput) Nothing Nothing)
     elab' ina fc (PProof ts) = do compute; mapM_ (runTac True ist (elabFC info) fn) ts
@@ -1016,7 +1018,10 @@ elab ist info emode opts fn tm
              valn <- getNameFrom (sMN 0 "scval")
              scvn <- getNameFrom (sMN 0 "scvar")
              claim valn (Var tyn)
-             letbind scvn (Var tyn) (Var valn)
+             env <- get_env
+
+             let scrnames = allNamesIn scr
+             letbind scvn (letrig scrnames env) (Var tyn) (Var valn)
 
              -- Start filling in the scrutinee type, if we can work one
              -- out from the case options
@@ -1047,13 +1052,15 @@ elab ist info emode opts fn tm
              let inOpts = (filter (/= scvn) (map fstEnv args)) \\ (concatMap (\x -> allNamesIn (snd x)) opts)
 
              let argsDropped = filter (\t -> isUnique envU t || isNotLift args t)
-                                   (nub $ allNamesIn scr ++ inApp ptm ++
+                                   (nub $ scrnames ++ inApp ptm ++
                                     inOpts)
+             let lin_used = getLinearUsed (tt_ctxt ist) ptm
 
              let args' = filter (\(n, _, _) -> n `notElem` argsDropped) args
 
+             -- trace (show lin_used ++ "\n" ++ show args ++ "\n" ++ show ptm) attack
              attack
-             cname' <- defer argsDropped (mkN (mkCaseName fc fn))
+             cname' <- defer argsDropped lin_used (mkN (mkCaseName fc fn))
              solve
 
              -- if the scrutinee is one of the 'args' in env, we should
@@ -1075,6 +1082,17 @@ elab ist info emode opts fn tm
                         xs@(_:_) -> sNS n xs
                         _ -> n
 
+              -- If any variables in the scrutinee are in the environment with
+              -- multiplicity other than RigW, let bind the scrutinee variable
+              -- with the smallest multiplicity
+              letrig ns [] = RigW
+              letrig ns env = letrig' Rig1 ns env
+
+              letrig' def ns [] = def
+              letrig' def ns ((n, r, _) : env)
+                   | n `elem` ns = letrig' (rigMult def r) ns env
+                   | otherwise = letrig' def ns env
+
               getScrType [] = Nothing
               getScrType (f : os) = maybe (getScrType os) Just (getAppType f)
 
@@ -1092,7 +1110,7 @@ elab ist info emode opts fn tm
 
               inApp (P _ n _) = [n]
               inApp (App _ f a) = inApp f ++ inApp a
-              inApp (Bind n (Let _ v) sc) = inApp v ++ inApp sc
+              inApp (Bind n (Let _ _ v) sc) = inApp v ++ inApp sc
               inApp (Bind n (Guess _ v) sc) = inApp v ++ inApp sc
               inApp (Bind n b sc) = inApp sc
               inApp _ = []
@@ -1163,7 +1181,7 @@ elab ist info emode opts fn tm
              -- Let-bind the result of elaborating the contained term, so that
              -- the hole doesn't disappear
              nTm <- getNameFrom (sMN 0 "quotedTerm")
-             letbind nTm (Var qTy) (Var qTm)
+             letbind nTm RigW (Var qTy) (Var qTm)
 
              -- Fill out the goal type, if relevant
              case goalt of
@@ -1290,7 +1308,7 @@ elab ist info emode opts fn tm
          -- In order to intercept the elaborated value, we need to
          -- let-bind it.
          attack
-         letbind n g (Var n')
+         letbind n RigW g (Var n')
          focus n'
          elab' ina fc tm
          env <- get_env
@@ -1319,8 +1337,10 @@ elab ist info emode opts fn tm
     delayElab pri t
        = updateAux (\e -> e { delayed_elab = delayed_elab e ++ [(pri, t)] })
 
+    -- If the variable in the environment is the scrutinee of the case,
+    -- and has multiplicity W, keep it available
     isScr :: PTerm -> (Name, RigCount, Binder Term) -> (Name, (Bool, Binder Term))
-    isScr (PRef _ _ n) (n', _, b) = (n', (n == n', b))
+    isScr (PRef _ _ n) (n', RigW, b) = (n', (n == n', b))
     isScr _ (n', _, b) = (n', (False, b))
 
     caseBlock :: FC -> Name
@@ -1332,8 +1352,8 @@ elab ist info emode opts fn tm
               map (mkClause args) opts
 
        where -- Find the variable we want as the scrutinee and mark it as
-             -- 'True'. If the scrutinee is in the environment, match on that
-             -- otherwise match on the new argument we're adding.
+             -- 'True'. If the scrutinee is available in the environment,
+             -- match on that otherwise match on the new argument we're adding.
              findScr ((n, (True, t)) : xs)
                         = (n, (True, t)) : scrName n xs
              findScr [(n, (_, t))] = [(n, (True, t))]
@@ -1721,7 +1741,7 @@ collectDeferred top casenames ctxt tm = cd [] tm
               t' <- cd ((n, b) : env) t
               return (Bind n b' t')
       where
-        cdb (Let t v)   = liftM2 Let (cd env t) (cd env v)
+        cdb (Let rig t v) = liftM2 (Let rig) (cd env t) (cd env v)
         cdb (Guess t v) = liftM2 Guess (cd env t) (cd env v)
         cdb b           = do ty' <- cd env (binderTy b)
                              return (b { binderTy = ty' })
@@ -1737,7 +1757,7 @@ case_ ind autoSolve ist fn tm = do
   valn <- getNameFrom (sMN 0 "ival")
   claim valn (Var tyn)
   letn <- getNameFrom (sMN 0 "irule")
-  letbind letn (Var tyn) (Var valn)
+  letbind letn RigW (Var tyn) (Var valn)
   focus valn
   elab ist toplevel ERHS [] (sMN 0 "tac") tm
   env <- get_env
@@ -2115,7 +2135,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            n' <- reifyTTName n
            ty' <- reifyRaw ty
            tm' <- reifyRaw tm
-           letbind n' ty' tm'
+           letbind n' RigW ty' tm'
            returnUnit
       | n == tacN "Prim__Compute"
       = do ~[] <- tacTmArgs 0 tac args; compute ; returnUnit
@@ -2270,9 +2290,10 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            ptm <- get_term
            -- See documentation above in the elab case for PMetavar
            let unique_used = getUniqueUsed ctxt ptm
+           let lin_used = getLinearUsed ctxt ptm
            let mvn = metavarName ns n'
            attack
-           defer unique_used mvn
+           defer unique_used lin_used mvn
            solve
            returnUnit
       | n == tacN "Prim__Fixity"
@@ -2377,7 +2398,7 @@ runTac autoSolve ist perhapsFC fn tac
                    valn <- getNameFrom (sMN 0 "eqval")
                    claim valn (Var tyn)
                    letn <- getNameFrom (sMN 0 "equiv_val")
-                   letbind letn (Var tyn) (Var valn)
+                   letbind letn RigW (Var tyn) (Var valn)
                    focus tyn
                    elab ist toplevel ERHS [] (sMN 0 "tac") tm
                    focus valn
@@ -2390,7 +2411,7 @@ runTac autoSolve ist perhapsFC fn tac
                    valn <- getNameFrom (sMN 0 "rval")
                    claim valn (Var tyn)
                    letn <- getNameFrom (sMN 0 "rewrite_rule")
-                   letbind letn (Var tyn) (Var valn)
+                   letbind letn RigW (Var tyn) (Var valn)
                    focus valn
                    elab ist toplevel ERHS [] (sMN 0 "tac") tm
                    rewrite (Var letn)
@@ -2406,7 +2427,7 @@ runTac autoSolve ist perhapsFC fn tac
                    valn <- getNameFrom (sMN 0 "letval")
                    claim valn (Var tyn)
                    letn <- unique_hole n
-                   letbind letn (Var tyn) (Var valn)
+                   letbind letn RigW (Var tyn) (Var valn)
                    focus valn
                    elab ist toplevel ERHS [] (sMN 0 "tac") tm
                    when autoSolve solveAll
@@ -2417,7 +2438,7 @@ runTac autoSolve ist perhapsFC fn tac
                    valn <- getNameFrom (sMN 0 "letval")
                    claim valn (Var tyn)
                    letn <- unique_hole n
-                   letbind letn (Var tyn) (Var valn)
+                   letbind letn RigW (Var tyn) (Var valn)
                    focus tyn
                    elab ist toplevel ERHS [] (sMN 0 "tac") ty
                    focus valn
@@ -2443,7 +2464,7 @@ runTac autoSolve ist perhapsFC fn tac
                                script <- getNameFrom (sMN 0 "script")
                                claim script scriptTy
                                scriptvar <- getNameFrom (sMN 0 "scriptvar" )
-                               letbind scriptvar scriptTy (Var script)
+                               letbind scriptvar RigW scriptTy (Var script)
                                focus script
                                elab ist toplevel ERHS [] (sMN 0 "tac") tm
                                (script', _) <- get_type_val (Var scriptvar)
@@ -2475,7 +2496,7 @@ runTac autoSolve ist perhapsFC fn tac
              script <- getNameFrom (sMN 0 "script")
              claim script scriptTy
              scriptvar <- getNameFrom (sMN 0 "scriptvar" )
-             letbind scriptvar scriptTy (Var script)
+             letbind scriptvar RigW scriptTy (Var script)
              focus script
              ptm <- get_term
              env <- get_env
@@ -2506,7 +2527,7 @@ runTac autoSolve ist perhapsFC fn tac
                           valn <- getNameFrom (sMN 0 "letval")
                           claim valn (Var tyn)
                           letn <- getNameFrom (sMN 0 "letvar")
-                          letbind letn (Var tyn) (Var valn)
+                          letbind letn RigW (Var tyn) (Var valn)
                           focus valn
                           elab ist toplevel ERHS [] (sMN 0 "tac") v
                           (value, _) <- get_type_val (Var letn)
@@ -2520,7 +2541,7 @@ runTac autoSolve ist perhapsFC fn tac
                        valn <- getNameFrom (sMN 0 "letval")
                        claim valn (Var tyn)
                        letn <- getNameFrom (sMN 0 "letvar")
-                       letbind letn (Var tyn) (Var valn)
+                       letbind letn RigW (Var tyn) (Var valn)
                        focus valn
                        elab ist toplevel ERHS [] (sMN 0 "tac") v
                        (value, _) <- get_type_val (Var letn)

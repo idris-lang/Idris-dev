@@ -9,11 +9,8 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE Arrows #-}
 
 module Idris.CmdOptions
-  (
-    module Idris.CmdOptions
-  , opt
-  , getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc
-  , getPkgREPL, getPkgTest, getPort, getIBCSubDir
+  ( opt, getClient, getPkg, getPkgCheck, getPkgClean, getPkgMkDoc,
+    getPkgREPL, getPkgTest, getPort, getIBCSubDir, pureArgParser, runArgParser
   ) where
 
 import Idris.Info (getIdrisVersion)

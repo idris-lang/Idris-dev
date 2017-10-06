@@ -19,6 +19,34 @@ disjointName : TTName -> TTName -> TTName
 disjointName l r = NS (SN (MetaN (UN "disjoint") (SN (MetaN l r))))
                       ["Disjoint", "Pruviloj"]
 
+||| Compute the type to use for a disjointness lemma.
+covering
+disjointnessType : (l, r : TTName) -> Elab (TTName, List FunArg, Raw)
+disjointnessType l r =
+   do (l', DCon _ _, lty) <- lookupTyExact l
+        | _ => notConstructor l
+      (r', DCon _ _, rty) <- lookupTyExact r
+        | _ => notConstructor r
+      let fn = disjointName l' r'
+      when (l' == r') $
+        fail [ NamePart l', TextPart "and"
+             , NamePart r', TextPart "are clearly not disjoint!"
+             ]
+      (argsl, resl) <- stealBindings !(forget lty) noRenames
+      (argsr, resr) <- stealBindings !(forget rty) noRenames
+      let args = map {b=FunArg}
+                    (\(n, b) => MkFunArg n (binderTy b) Implicit NotErased)
+                    (argsl ++ argsr)
+      let eq : Raw = `((=) {A=~resl}
+                          {B=~resr}
+                          ~(mkApp (Var l') (map (Var . fst) argsl))
+                          ~(mkApp (Var r') (map (Var . fst) argsr)))
+      h <- gensym "h"
+      pure (fn, args ++ [MkFunArg h eq Explicit NotErased], `(Void))
+  where
+    notConstructor : TTName -> Elab a
+    notConstructor c = fail [NamePart c, TextPart "is not a constructor"]
+
 ||| Return the name of the disjointness lemma for two constructors,
 ||| defining it if necessary.
 |||
@@ -27,36 +55,13 @@ disjointName l r = NS (SN (MetaN (UN "disjoint") (SN (MetaN l r))))
 covering
 getDisjointness : (l, r : TTName) -> Elab TTName
 getDisjointness l r = exists <|> declare
-
   where exists : Elab TTName
         exists = do (yep, _, _) <- lookupTyExact (disjointName l r)
                     pure yep
-
-        notConstructor : TTName -> Elab a
-        notConstructor c = fail [NamePart c, TextPart "is not a constructor"]
-
         covering
         declare : Elab TTName
-        declare = do (l', DCon _ _, lty) <- lookupTyExact l
-                       | _ => notConstructor l
-                     (r', DCon _ _, rty) <- lookupTyExact r
-                       | _ => notConstructor r
-                     let fn = disjointName l' r'
-                     when (l' == r') $
-                       fail [ NamePart l', TextPart "and"
-                            , NamePart r', TextPart "are clearly not disjoint!"
-                            ]
-                     (argsl, resl) <- stealBindings !(forget lty) noRenames
-                     (argsr, resr) <- stealBindings !(forget rty) noRenames
-                     let args = map {b=FunArg}
-                                    (\(n, b) => MkFunArg n (binderTy b) Implicit NotErased)
-                                    (argsl ++ argsr)
-                     let eq : Raw = `((=) {A=~resl}
-                                          {B=~resr}
-                                          ~(mkApp (Var l') (map (Var . fst) argsl))
-                                          ~(mkApp (Var r') (map (Var . fst) argsr)))
-                     h <- gensym "h"
-                     declareType $ Declare fn (args ++ [MkFunArg h eq Explicit NotErased]) `(Void)
+        declare = do (fn, args, ret) <- disjointnessType l r
+                     declareType $ Declare fn args ret
                      defineFunction $ DefineFun fn []
                      pure fn
 
@@ -83,3 +88,38 @@ disjoint =
             skip
        ty =>
          fail [NamePart `{disjoint}, TextPart "is not applicable to goal", TermPart ty]
+
+||| Solve a goal when there is an hypothesis of the form
+||| `(C1 x1 x2 ... xn = C2 x1 x2 ... xn)`
+||| for disjoint constructors `C1` and `C2`.
+||| Similar to `discriminate` in Coq.
+public export covering
+discriminate : Elab ()
+discriminate =
+   do compute
+      g <- goalType
+      -- for each thing in the context, until we find one that succeeds
+      flip choiceMap !getEnv $ \(n, b) =>
+        do -- 1) check if it is an equality
+           `(((=) {A=~A} {B=~B} ~a ~b)) <- forget (binderTy b)
+             | _ => fail [TextPart "Not equality type"]
+           -- 2) check if both sides of the equality have heads
+           case (headName a, headName b) of
+             (Just lHead, Just rHead) =>
+               do lemma <- Var <$> getDisjointness lHead rHead
+                  -- 3) learn how many arguments the lemma takes
+                  (_, x :: xs, _) <- disjointnessType lHead rHead
+                    | _ => fail [TextPart "Disjointness type takes no argument"]
+                  -- 4) try to apply and focus on the last hole
+                  apply `(void {a=~g}) [False]
+                  solve
+                  -- 5) try to call the disjointness lemma
+                  -- We only want to pass the last arg explicitly to the lemma
+                  let bools = map (const True) xs ++ [False]
+                  (h :: hs) <- apply lemma bools
+                    | _ => fail [TextPart "Disjointness lemma produces no holes"]
+                  solve
+                  -- 6) try to pass the current equality as an argument
+                  focus (last (h :: hs))
+                  exact (Var n)
+             _ => fail [TextPart "Equality sides don't have a name at the head"]

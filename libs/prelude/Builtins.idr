@@ -3,6 +3,7 @@
 %access public export
 %default total
 %language UniquenessTypes
+%language LinearTypes
 
 ||| The canonical single-element type, also known as the trivially
 ||| true proposition.
@@ -18,7 +19,7 @@ namespace Builtins
      ||| A pair of elements
      ||| @a the left element of the pair
      ||| @b the right element of the pair
-     MkPair : {A, B : Type} -> (a : A) -> (b : B) -> Pair A B
+     MkPair : {A, B : Type} -> (1 a : A) -> (1 b : B) -> Pair A B
 
   -- Usage hints for erasure analysis
   %used MkPair a

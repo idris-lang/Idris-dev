@@ -5,17 +5,22 @@
 + In `@`-patterns such as `x@p`, `x` is now in scope on the right-hand side
   of any definitions in `where` clauses, provided the left-hand side of the
   definition does not shadow it.
-
++ The `LinearTypes` language extension has been revised. It implements the
+  rules from Bob Atkey's draft "The Syntax and Semantics of Quantitative
+  Type Theory" and now works with holes and case expressions.
 
 ## Library Updates
 
 + Added `Text.Literate`, a module for working with literate source files.
 + Added `Data.IORef`, for working with mutable references in `IO` and `JS_IO`.
++ Added `discriminate` and `construct` tactics to Pruviloj.
 
 ## Tool Updates
 + Private functions are no longer visible in the REPL except for modules
   that are explicitly loaded.
 + The --interface option now creates CommonJS modules on the node backend.
++ The C backend now pass arguments to the C compiler in the same order
+  as they were given in the source files.
 
 # New in 1.1.1
 

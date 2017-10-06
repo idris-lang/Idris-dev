@@ -50,14 +50,14 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
                       Nothing -> return sc_in
                       Just t -> do
                          letn <- getNameFrom (sMN 0 "rewrite_result")
-                         return $ PLet fc letn fc t sc_in
+                         return $ PLet fc RigW letn fc t sc_in
                                        (PRef fc [] letn)
              tyn <- getNameFrom (sMN 0 "rty")
              claim tyn RType
              valn <- getNameFrom (sMN 0 "rval")
              claim valn (Var tyn)
              letn <- getNameFrom (sMN 0 "_rewrite_rule")
-             letbind letn (Var tyn) (Var valn)
+             letbind letn RigW (Var tyn) (Var valn)
              focus valn
              elab rule
              compute
@@ -95,9 +95,10 @@ elabRewrite elab ist fc substfn_in rule sc_in newg
              = let b' = mkPB b
                    sc' = if (r /= sc) then mkP lt l r sc else sc in
                    Bind n b' sc'
-            where mkPB (Let t v) = let t' = if (r /= t) then mkP lt l r t else t
-                                       v' = if (r /= v) then mkP lt l r v else v in
-                                       Let t' v'
+            where mkPB (Let rig t v)
+                       = let t' = if (r /= t) then mkP lt l r t else t
+                             v' = if (r /= v) then mkP lt l r v else v in
+                             Let rig t' v'
                   mkPB b = let ty = binderTy b
                                ty' = if (r /= ty) then mkP lt l r ty else ty in
                                      b { binderTy = ty' }

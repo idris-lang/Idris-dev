@@ -157,10 +157,10 @@ idrisMain opts =
 
        mapM_ addPkgDir pkgdirs
        elabPrims
-       when (not (NoBuiltins `elem` opts)) $ do x <- loadModule "Builtins" (IBC_REPL True)
+       when (not (NoBuiltins `elem` opts)) $ do x <- loadModule "Builtins" (IBC_REPL False)
                                                 addAutoImport "Builtins"
                                                 return ()
-       when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude" (IBC_REPL True)
+       when (not (NoPrelude `elem` opts)) $ do x <- loadModule "Prelude" (IBC_REPL False)
                                                addAutoImport "Prelude"
                                                return ()
        when (runrepl && not idesl) initScript

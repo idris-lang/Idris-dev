@@ -13,6 +13,14 @@ infixl 2 </>
 interface Functor f => Correlative (f : Type -> Type) where
   (</>) : f (a -> b) -> f a -> f b
 
+infixl 2 </
+(</) : Correlative f => f a -> f b -> f a
+x </ y = map const x </> y
+
+infixl 2 />
+(/>) : Correlative f => f a -> f b -> f b
+x /> y = map (const id) x </> y
+
 ||| Combine two containers elementwise using some function.
 zipWith : Correlative f => (a -> b -> c) -> f a -> f b -> f c
 zipWith f xs ys = (map f xs) </> ys

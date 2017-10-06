@@ -94,12 +94,12 @@ specType args ty = let (t, args') = runState (unifyEq args ty) [] in
   where
     -- Specialise static argument in type by let-binding provided value instead
     -- of expecting it as a function argument
-    st ((ExplicitS, v) : xs) (Bind n (Pi _ _ t _) sc)
-         = Bind n (Let t v) (st xs sc)
-    st ((ImplicitS _, v) : xs) (Bind n (Pi _ _ t _) sc)
-         = Bind n (Let t v) (st xs sc)
-    st ((ConstraintS, v) : xs) (Bind n (Pi _ _ t _) sc)
-         = Bind n (Let t v) (st xs sc)
+    st ((ExplicitS, v) : xs) (Bind n (Pi rc _ t _) sc)
+         = Bind n (Let rc t v) (st xs sc)
+    st ((ImplicitS _, v) : xs) (Bind n (Pi rc _ t _) sc)
+         = Bind n (Let rc t v) (st xs sc)
+    st ((ConstraintS, v) : xs) (Bind n (Pi rc _ t _) sc)
+         = Bind n (Let rc t v) (st xs sc)
     -- Erase argument from function type
     st ((UnifiedD, _) : xs) (Bind n (Pi _ _ t _) sc)
          = st xs sc
@@ -364,7 +364,7 @@ getSpecApps ist env tm = ga env (explicitNames tm) where
 --                            _ -> []
                       else []
                _ -> []
-    ga env (Bind n (Let t v) sc) = ga env v ++ ga (n : env) sc
+    ga env (Bind n (Let rc t v) sc) = ga env v ++ ga (n : env) sc
     ga env (Bind n t sc) = ga (n : env) sc
     ga env t = []
 

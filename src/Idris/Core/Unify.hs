@@ -130,9 +130,10 @@ match_unify ctxt env (topx, xfrom) (topy, yfrom) inj holes from =
                                    lift $ tfail err
 
 
-    uB bnames (Let tx vx) (Let ty vy) = do h1 <- un bnames tx ty
-                                           h2 <- un bnames vx vy
-                                           combine bnames h1 h2
+    uB bnames (Let _ tx vx) (Let _ ty vy)
+         = do h1 <- un bnames tx ty
+              h2 <- un bnames vx vy
+              combine bnames h1 h2
     uB bnames (Lam _ tx) (Lam _ ty) = un bnames tx ty
     uB bnames (Pi r i tx _) (Pi r' i' ty _) = un bnames tx ty
     uB bnames x y = do UI s f <- get
@@ -585,7 +586,7 @@ unify ctxt env (topx, xfrom) (topy, yfrom) inj holes usersupp from =
                        lift $ tfail err
 
 
-    uB env bnames (Let tx vx) (Let ty vy)
+    uB env bnames (Let _ tx vx) (Let _ ty vy)
         = do h1 <- un' env False bnames tx ty
              h2 <- un' env False bnames vx vy
              sc 1

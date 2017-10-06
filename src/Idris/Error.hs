@@ -8,7 +8,8 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Error where
+module Idris.Error (getErrSpan, idrisCatch, ierror, ifail, iucheck, report,
+                    setAndReport, showErr, tclift, tcliftAt, tctry, warnDisamb) where
 
 import Idris.AbsSyntax
 import Idris.Core.Constraints
@@ -100,7 +101,7 @@ warnDisamb ist (PInferRef _ _ _) = return ()
 warnDisamb ist (PPatvar _ _) = return ()
 warnDisamb ist (PLam _ _ _ t b) = warnDisamb ist t >> warnDisamb ist b
 warnDisamb ist (PPi _ _ _ t b) = warnDisamb ist t >> warnDisamb ist b
-warnDisamb ist (PLet _ _ _ x t b) = warnDisamb ist x >> warnDisamb ist t >> warnDisamb ist b
+warnDisamb ist (PLet _ _ _ _ x t b) = warnDisamb ist x >> warnDisamb ist t >> warnDisamb ist b
 warnDisamb ist (PTyped x t) = warnDisamb ist x >> warnDisamb ist t
 warnDisamb ist (PApp _ t args) = warnDisamb ist t >>
                                  mapM_ (warnDisamb ist . getTm) args
@@ -129,7 +130,7 @@ warnDisamb ist (PDoBlock steps) = mapM_ wStep steps
         wStep (DoBind _ _ _ x) = warnDisamb ist x
         wStep (DoBindP _ x y cs) = warnDisamb ist x >> warnDisamb ist y >>
                                    mapM_ (\(x,y) -> warnDisamb ist x >> warnDisamb ist y) cs
-        wStep (DoLet _ _ _ x y) = warnDisamb ist x >> warnDisamb ist y
+        wStep (DoLet _ _ _ _ x y) = warnDisamb ist x >> warnDisamb ist y
         wStep (DoLetP _ x y) = warnDisamb ist x >> warnDisamb ist y
         wStep (DoRewrite _ h) = warnDisamb ist h
 warnDisamb ist (PIdiom _ x) = warnDisamb ist x

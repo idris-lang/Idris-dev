@@ -43,7 +43,7 @@ instance Optimisable Raw where
 
 -- Erase types (makes ibc smaller, and we don't need them)
 instance Optimisable (Binder (TT Name)) where
-    applyOpts (Let t v) = Let <$> return Erased <*> applyOpts v
+    applyOpts (Let r t v) = Let r <$> return Erased <*> applyOpts v
     applyOpts b = return (b { binderTy = Erased })
 
 instance Optimisable (Binder Raw) where

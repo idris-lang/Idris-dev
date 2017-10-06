@@ -66,7 +66,7 @@ data Value = VP NameType Name Value
              -- True for Bool indicates safe to reduce
            | VBind Bool Name (Binder Value) (Value -> Eval Value)
              -- For frozen let bindings when simplifying
-           | VBLet Int Name Value Value Value
+           | VBLet RigCount Int Name Value Value Value
            | VApp Value Value
            | VType UExp
            | VUType Universe
@@ -278,7 +278,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 | otherwise = cases_compiletime cd
 
     ev ntimes stk top env (P _ n ty)
-        | Just (Let t v) <- lookupBinder n genv = ev ntimes stk top env v
+        | Just (Let _ t v) <- lookupBinder n genv = ev ntimes stk top env v
     ev ntimes_in stk top env (P Ref n ty)
          = do let limit = if simpl then 100 else 10000
               (u, ntimes) <- usable spec unfold limit n ntimes_in
@@ -311,7 +311,7 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
     ev ntimes stk top env (V i)
         | i < length env && i >= 0 = return $ snd (env !! i)
         | otherwise      = return $ VV i
-    ev ntimes stk top env (Bind n (Let t v) sc)
+    ev ntimes stk top env (Bind n (Let c t v) sc)
         | (not (runtime || simpl_inline || unfold)) || occurrences n sc < 2
            = do v' <- ev ntimes stk top env v --(finalise v)
                 sc' <- ev ntimes stk top ((n, v') : env) sc
@@ -325,12 +325,12 @@ eval traceon ctxt ntimes genv tm opts = ev ntimes [] True [] tm where
                 let vd = nexthole hs
                 put (hs { nexthole = vd + 1 })
                 sc' <- ev ntimes stk top ((n, VP Bound (sMN vd "vlet") VErased) : env) sc
-                return $ VBLet vd n t' v' sc'
+                return $ VBLet c vd n t' v' sc'
     ev ntimes stk top env (Bind n (NLet t v) sc)
            = do t' <- ev ntimes stk top env (finalise t)
                 v' <- ev ntimes stk top env (finalise v)
                 sc' <- ev ntimes stk top ((n, v') : env) sc
-                return $ VBind True n (Let t' v') (\x -> return sc')
+                return $ VBind True n (Let RigW t' v') (\x -> return sc')
     ev ntimes stk top env (Bind n b sc)
            = do b' <- vbind env b
                 let n' = uniqueName n (map fstEnv genv ++ map fst env)
@@ -574,12 +574,12 @@ instance Quote Value where
                                   b' <- quoteB b
                                   liftM (Bind n b') (quote (i+1) sc')
        where quoteB t = fmapMB (quote i) t
-    quote i (VBLet vd n t v sc)
+    quote i (VBLet c vd n t v sc)
                            = do sc' <- quote i sc
                                 t' <- quote i t
                                 v' <- quote i v
                                 let sc'' = pToV (sMN vd "vlet") (addBinder sc')
-                                return (Bind n (Let t' v') sc'')
+                                return (Bind n (Let c t' v') sc'')
     quote i (VApp f a)     = liftM2 (App MaybeHoles) (quote i f) (quote i a)
     quote i (VType u)      = return (TType u)
     quote i (VUType u)     = return (UType u)
@@ -632,7 +632,7 @@ convEq ctxt holes topx topy = ceq [] topx topy where
     ceq ps (Bind n xb xs) (Bind n' yb ys)
                              = liftM2 (&&) (ceqB ps xb yb) (ceq ((n,n'):ps) xs ys)
         where
-            ceqB ps (Let v t) (Let v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
+            ceqB ps (Let c v t) (Let c' v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Guess v t) (Guess v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps (Pi r i v t) (Pi r' i' v' t') = liftM2 (&&) (ceq ps v v') (ceq ps t t')
             ceqB ps b b' = ceq ps (binderTy b) (binderTy b')
@@ -1014,7 +1014,7 @@ simplifyCasedef n ufnames umethss ei uctxt
                        getNames under f ++ concatMap (getNames under') args
         getNames (Just under) (P _ ref _)
             = if ref `elem` inames then [under] else []
-        getNames under (Bind n (Let t v) sc)
+        getNames under (Bind n (Let c t v) sc)
             = getNames Nothing t ++
               getNames Nothing v ++
               getNames Nothing sc
