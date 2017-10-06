@@ -10,7 +10,7 @@
 ## Library Updates
 
 + Added `Text.Literate`, a module for working with literate source files.
-+ Added `Data.IORef`, for working with mutable references in `IO`.
++ Added `Data.IORef`, for working with mutable references in `IO` and `JS_IO`.
 
 ## Tool Updates
 + Private functions are no longer visible in the REPL except for modules
