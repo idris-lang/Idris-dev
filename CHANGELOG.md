@@ -12,7 +12,7 @@
 ## Library Updates
 
 + Added `Text.Literate`, a module for working with literate source files.
-+ Added `Data.IORef`, for working with mutable references in `IO`.
++ Added `Data.IORef`, for working with mutable references in `IO` and `JS_IO`.
 + Added `discriminate` and `construct` tactics to Pruviloj.
 
 ## Tool Updates
