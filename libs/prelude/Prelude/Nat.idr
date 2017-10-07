@@ -38,6 +38,11 @@ total isSucc : Nat -> Bool
 isSucc Z     = False
 isSucc (S n) = True
 
+
+||| Proof that `n` is not equal to Z
+data IsSucc : (n : Nat) -> Type where
+  ItIsSucc : IsSucc (S n)
+
 --------------------------------------------------------------------------------
 -- Basic arithmetic functions
 --------------------------------------------------------------------------------
