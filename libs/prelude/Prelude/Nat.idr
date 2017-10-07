@@ -43,6 +43,14 @@ isSucc (S n) = True
 data IsSucc : (n : Nat) -> Type where
   ItIsSucc : IsSucc (S n)
 
+Uninhabited (IsSucc Z) where
+  uninhabited ItIsSucc impossible
+
+||| A decision procedure for `IsSucc`
+isItSucc : (n : Nat) -> Dec (IsSucc n)
+isItSucc Z = No absurd
+isItSucc (S n) = Yes ItIsSucc
+
 --------------------------------------------------------------------------------
 -- Basic arithmetic functions
 --------------------------------------------------------------------------------
