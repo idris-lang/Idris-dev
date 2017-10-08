@@ -169,7 +169,8 @@ implementation DecEq Int where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> Void
+             primitiveNotEq : x = y -> Void
+             primitiveNotEq = really_believe_me (id {a = x = y})
 
 --------------------------------------------------------------------------------
 -- Char
@@ -181,7 +182,8 @@ implementation DecEq Char where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> Void
+             primitiveNotEq : x = y -> Void
+             primitiveNotEq = really_believe_me (id {a = x = y})
 
 --------------------------------------------------------------------------------
 -- Integer
@@ -193,7 +195,8 @@ implementation DecEq Integer where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> Void
+             primitiveNotEq : x = y -> Void
+             primitiveNotEq = really_believe_me (id {a = x = y})
 
 --------------------------------------------------------------------------------
 -- String
@@ -205,7 +208,8 @@ implementation DecEq String where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> Void
+             primitiveNotEq : x = y -> Void
+             primitiveNotEq = really_believe_me (id {a = x = y})
 
 --------------------------------------------------------------------------------
 -- Ptr
@@ -217,7 +221,8 @@ implementation DecEq Ptr where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> Void
+             primitiveNotEq : x = y -> Void
+             primitiveNotEq = really_believe_me (id {a = x = y})
 
 --------------------------------------------------------------------------------
 -- ManagedPtr
@@ -229,4 +234,5 @@ implementation DecEq ManagedPtr where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             postulate primitiveNotEq : x = y -> Void
+             primitiveNotEq : x = y -> Void
+             primitiveNotEq = really_believe_me (id {a = x = y})
