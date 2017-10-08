@@ -1,8 +1,8 @@
 with (import <nixpkgs> {});
 
 let
-  # MUST match resolver in stack.yaml
-  resolver = haskell.packages.lts-9_0.ghc;
+  # MUST match GHC of resolver in stack.yaml
+  ghc = haskell.packages.ghc802.ghc;
 
   native_libs = [
     libffi
@@ -19,7 +19,7 @@ in stdenv.mkDerivation {
 
   name = "idrisBuildEnv";
 
-  buildInputs = [ resolver ] ++ native_libs;
+  buildInputs = [ ghc ] ++ native_libs;
 
   STACK_IN_NIX_EXTRA_ARGS = builtins.foldl'
     (acc: lib:
