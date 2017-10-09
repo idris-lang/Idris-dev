@@ -11,6 +11,7 @@
 
 ## Library Updates
 
++ Removed `oldeffects` library from `libs` folder, use `effects` or `Control.ST` instead.
 + Added `Text.Literate`, a module for working with literate source files.
 + Added `Data.IORef`, for working with mutable references in `IO` and `JS_IO`.
 + Added `discriminate` and `construct` tactics to Pruviloj.
