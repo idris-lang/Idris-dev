@@ -7,11 +7,10 @@ import Prelude.Bool
 %access public export
 
 -- Numerical Operator Precedence
-infixl 5 ==, /=
-infixl 6 <, <=, >, >=
-infixl 7 <<, >>
-infixl 8 +,-
-infixl 9 *,/
+infix 6 ==, /=, <, <=, >, >=
+infixl 7 <<, >> -- unused
+infixl 8 +, -
+infixl 9 *, /
 
 -- ------------------------------------------------------------- [ Boolean Ops ]
 intToBool : Int -> Bool
