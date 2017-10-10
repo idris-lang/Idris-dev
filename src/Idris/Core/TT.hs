@@ -224,6 +224,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                         -- from that file.
                       | AnnQuasiquote
                       | AnnAntiquote
+                      | AnnSyntax String -- ^ type of syntax element: backslash or braces etc.
   deriving (Show, Eq, Generic)
 
 -- | Used for error reflection
