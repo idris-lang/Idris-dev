@@ -42,6 +42,10 @@ implementation MonadTrans (StateT stateType) where
     lift x = ST (\st => do r <- x
                            pure (r, st))
 
+implementation (Monad f, Alternative f) => Alternative (StateT st f) where
+    empty = lift empty
+    (ST f) <|> (ST g) = ST (\st => f st <|> g st)
+
 ||| Apply a function to modify the context of this computation
 modify : MonadState stateType m => (stateType -> stateType) -> m ()
 modify f = do s <- get
