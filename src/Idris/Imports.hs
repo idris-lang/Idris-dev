@@ -18,7 +18,7 @@ import IRTS.System (getIdrisLibDir)
 
 import Control.Applicative ((<$>))
 import Control.Monad.State.Strict
-import Data.Char (isDigit, isAlpha, toLower)
+import Data.Char (isAlpha, isDigit, toLower)
 import Data.List (isSuffixOf)
 import System.Directory
 import System.FilePath
