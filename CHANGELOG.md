@@ -23,6 +23,10 @@
 + The C backend now pass arguments to the C compiler in the same order
   as they were given in the source files.
 
+## Packaging Updates
++ Package names now only accept a restrictive charset of letters, numbers and the `-_` characters.
+  Package names are also case insensitive
+
 # New in 1.1.1
 
 + Erasure analysis is now faster thanks to a bit smarter constraint solving.
