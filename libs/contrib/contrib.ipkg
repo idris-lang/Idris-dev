@@ -25,6 +25,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Data.CoList, Data.Storable,
           Data.List.Zipper,
           Data.Pairs.Implicit,
+          Data.Combinators, Data.Combinators.Applicative, Data.Combinators.Arrow,
 
           Decidable.Decidable, Decidable.Order,
 
