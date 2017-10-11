@@ -18,7 +18,7 @@ import IRTS.System (getIdrisLibDir)
 
 import Control.Applicative ((<$>))
 import Control.Monad.State.Strict
-import Data.Char (isDigit, isLower)
+import Data.Char (isDigit, isAlpha, toLower)
 import Data.List (isSuffixOf)
 import System.Directory
 import System.FilePath
@@ -26,8 +26,15 @@ import System.FilePath
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
     deriving (Show, Eq)
 
-newtype PkgName = PkgName { unPkgName :: String }
-  deriving (Show, Eq)
+newtype PkgName = PkgName String
+
+unPkgName :: PkgName -> String
+unPkgName (PkgName s) = map toLower s
+
+instance Show PkgName where
+    show (PkgName pkg) = pkg
+instance Eq PkgName where
+    a == b = unPkgName a == unPkgName b
 
 unInitializedPkgName :: PkgName
 unInitializedPkgName = PkgName ""
@@ -35,10 +42,10 @@ unInitializedPkgName = PkgName ""
 pkgName :: String -> Either String PkgName
 pkgName ""      = Left "empty package name"
 pkgName s@(f:l)
-    | not $ isLower f =
-        Left "package name need to start by a lower alpha"
-    | not $ all (\c -> isLower c || isDigit c || c `elem` "-_") l =
-        Left "package name need to contain only lower alpha, digits, and -_"
+    | not $ isAlpha f =
+        Left "package name need to start by a letter"
+    | not $ all (\c -> isAlpha c || isDigit c || c `elem` "-_") l =
+        Left "package name need to contain only letter, digits, and -_"
     | otherwise = Right $ PkgName s
 
 -- | Get the index file name for a package name

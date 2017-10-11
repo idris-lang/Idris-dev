@@ -231,7 +231,7 @@ documentPkg copts (install,fp) = do
           pkgDocDir <- makeAbsolute (iDocDir </> unPkgName (pkgname pkgdesc))
           let out_dir = if install then pkgDocDir else outputDir
           when install $ do
-              putStrLn $ unwords ["Attempting to install IdrisDocs for", unPkgName $ pkgname pkgdesc, "in:", out_dir]
+              putStrLn $ unwords ["Attempting to install IdrisDocs for", show $ pkgname pkgdesc, "in:", out_dir]
 
           docRes <- generateDocs ist mods out_dir
           case docRes of
@@ -367,7 +367,7 @@ testLib warn p f
          case e of
             ExitSuccess -> return True
             _ -> do if warn
-                       then do putStrLn $ "Not building " ++ unPkgName p ++
+                       then do putStrLn $ "Not building " ++ show p ++
                                           " due to missing library " ++ f
                                return False
                        else fail $ "Missing library " ++ f

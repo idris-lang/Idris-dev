@@ -26,7 +26,7 @@ import Idris.Delaborate (delabTy)
 import Idris.Docstrings (noDocs, overview)
 import Idris.Elab.Type (elabType)
 import Idris.IBC
-import Idris.Imports (PkgName, unPkgName)
+import Idris.Imports (PkgName)
 import Idris.Output (iPrintResult, iRenderError, iRenderOutput, iRenderResult,
                      iputStrLn, prettyDocumentedIst)
 
@@ -53,7 +53,7 @@ searchByType :: [PkgName] -> PTerm -> Idris ()
 searchByType pkgs pterm = do
   i <- getIState -- save original
   when (not (null pkgs)) $
-     iputStrLn $ "Searching packages: " ++ showSep ", " (map unPkgName pkgs)
+     iputStrLn $ "Searching packages: " ++ showSep ", " (map show pkgs)
 
   mapM_ loadPkgIndex pkgs
   pterm' <- addUsingConstraints syn emptyFC pterm

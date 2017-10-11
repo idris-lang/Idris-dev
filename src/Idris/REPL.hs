@@ -65,7 +65,6 @@ import Idris.Help
 import Idris.IBC
 import qualified Idris.IdeMode as IdeMode
 import Idris.IdrisDoc
-import Idris.Imports
 import Idris.Info
 import Idris.Inliner
 import Idris.Interactive
@@ -1374,7 +1373,7 @@ process fn (SetPrinterDepth d) = setDepth d
 process fn (Apropos pkgs a) =
   do orig <- getIState
      when (not (null pkgs)) $
-       iputStrLn $ "Searching packages: " ++ showSep ", " (map unPkgName pkgs)
+       iputStrLn $ "Searching packages: " ++ showSep ", " (map show pkgs)
      mapM_ loadPkgIndex pkgs
      ist <- getIState
      let mods = aproposModules ist (T.pack a)

@@ -398,8 +398,8 @@ operatorLetter = oneOf opChars
 -- | Parse a package name
 packageName :: MonadicParsing m => m String
 packageName = (:) <$> oneOf firstChars <*> many (oneOf remChars)
-  where firstChars = ['a'..'z']
-        remChars = ['a'..'z'] ++ ['0'..'9'] ++ ['-','_']
+  where firstChars = ['a'..'z'] ++ ['A'..'Z']
+        remChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['-','_']
 
 commentMarkers :: [String]
 commentMarkers = [ "--", "|||" ]

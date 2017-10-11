@@ -145,7 +145,7 @@ pClause = do reserved "executable"; lchar '=';
       <|> do reserved "pkgs"; lchar '=';
              ps <- sepBy1 (pPkgName <* someSpace) (lchar ',')
              st <- get
-             let pkgs = pureArgParser $ concatMap (\x -> ["-p", unPkgName x]) ps
+             let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
 
              put (st { pkgdeps    = ps `union` (pkgdeps st)
                      , idris_opts = pkgs ++ idris_opts st})
