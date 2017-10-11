@@ -479,18 +479,17 @@ bracketed' open syn =
                          (PApp fc (PRef fc [] (sUN o)) [pexp (PRef fc [] (sMN 1000 "ARG")),
                                                         pexp e]))
         <|> try (do l <- simpleExpr syn
-                    op <- option Nothing (do opName <- (sUN <$> operator) <|> backtickOperator
-                                             lchar ')'
-                                             return (Just opName))
-                    fc0 <- getFC
-                    case op of
-                         Nothing -> bracketedExpr syn open l
-                         Just opName -> return $ PLam fc0 (sMN 1000 "ARG") NoFC Placeholder
-                             (PApp fc0 (PRef fc0 [] opName) [pexp l,
-                                                             pexp (PRef fc0 [] (sMN 1000 "ARG"))]))
+                    (do opName <- operatorName
+                        lchar ')'
+                        fc <- getFC
+                        return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
+                          (PApp fc (PRef fc [] opName) [pexp l,
+                                                        pexp (PRef fc [] (sMN 1000 "ARG"))])) <|>
+                      bracketedExpr syn open l)
         <|> do l <- expr (allowConstr syn)
                bracketedExpr (allowConstr syn) open l
   where
+    operatorName = (sUN <$> operator) <|> backtickOperator
     backtickOperator = do lchar '`'
                           (n, _) <- fnName
                           lchar '`'
