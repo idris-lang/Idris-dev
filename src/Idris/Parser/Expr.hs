@@ -468,7 +468,10 @@ bracketed' open syn =
                lchar ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
         <|> try (dependentPair TypeOrTerm [] open syn)
-        <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
+        <|> try (do fc <- getFC
+                    o <- operator
+                    e <- expr syn
+                    lchar ')'
                     -- No prefix operators! (bit of a hack here...)
                     if (o == "-" || o == "!")
                       then fail "minus not allowed in section"
@@ -485,8 +488,24 @@ bracketed' open syn =
                          Just o -> return $ PLam fc0 (sMN 1000 "ARG") NoFC Placeholder
                              (PApp fc0 (PRef fc0 [] (sUN o)) [pexp l,
                                                               pexp (PRef fc0 [] (sMN 1000 "ARG"))]))
+        <|> try (do l <- simpleExpr syn
+                    op <- option Nothing (do opName <- backtickOperator
+                                             lchar ')'
+                                             return (Just opName))
+                    fc0 <- getFC
+                    case op of
+                         Nothing -> bracketedExpr syn open l
+                         Just opName -> return $ PLam fc0 (sMN 1000 "ARG") NoFC Placeholder
+                             (PApp fc0 (PRef fc0 [] opName) [pexp l,
+                                                             pexp (PRef fc0 [] (sMN 1000 "ARG"))]))
         <|> do l <- expr (allowConstr syn)
                bracketedExpr (allowConstr syn) open l
+  where
+    backtickOperator = do lchar '`'
+                          (n, _) <- fnName
+                          lchar '`'
+                          return n
+
 
 
 
