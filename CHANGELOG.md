@@ -23,6 +23,8 @@
 + The --interface option now creates CommonJS modules on the node backend.
 + The C backend now pass arguments to the C compiler in the same order
   as they were given in the source files.
++ Backslash, braces and percent symbols are now correctly pretty printed
+  in LaTeX.
 
 # New in 1.1.1
 
