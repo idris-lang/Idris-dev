@@ -318,6 +318,7 @@ renderExternal fmt width doc
       \txt -> "<a href=\"" ++ url ++ "\">" ++ txt ++ "</a>"
     decorate HTMLOutput AnnQuasiquote = id
     decorate HTMLOutput AnnAntiquote = id
+    decorate HTMLOutput (AnnSyntax c) = \txt -> c
 
     decorate LaTeXOutput (AnnName _ (Just TypeOutput) _ _) =
       latex "IdrisType"
@@ -349,6 +350,13 @@ renderExternal fmt width doc
     decorate LaTeXOutput (AnnLink url) = (++ "(\\url{" ++ url ++ "})")
     decorate LaTeXOutput AnnQuasiquote = id
     decorate LaTeXOutput AnnAntiquote = id
+    decorate LaTeXOutput (AnnSyntax c) = \txt ->
+      case c of
+        "\\" -> "\\textbackslash"
+        "{" -> "\\{"
+        "}" -> "\\}"
+        "%" -> "\\%"
+        _ -> c
 
     tag cls docs str = "<span class=\""++cls++"\""++title++">" ++ str ++ "</span>"
       where title = maybe "" (\d->" title=\"" ++ d ++ "\"") docs
