@@ -2,4 +2,6 @@ preInc : Nat -> Nat
 preInc = (1 `plus`)
 
 main : IO ()
-main = putStrLn $ show $ preInc 42
+main = do
+  putStrLn $ show $ (1 `plus`) 42
+  putStrLn $ show $ (1 +) 79
