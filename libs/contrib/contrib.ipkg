@@ -9,7 +9,7 @@ modules = CFFI, CFFI.Types, CFFI.Memory,
           Control.Isomorphism.Primitives,
           Control.Partial,
           Control.Pipeline,
-          Control.ST, Control.ST.ImplicitCall, Control.ST.Exception,
+          Control.ST, Control.ST.ImplicitCall, Control.ST.Exception, Control.ST.Random,
 
           Interfaces.Correlative,
           Interfaces.Verified,
