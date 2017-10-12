@@ -470,10 +470,10 @@ bracketed' open syn =
         <|> try (dependentPair TypeOrTerm [] open syn)
         <|> try (do fc <- getFC
                     opName <- operatorName
-                    e <- expr syn
-                    lchar ')'
                     -- No prefix operators! (bit of a hack here...)
                     guard $ opName /= sUN "-" && opName /= sUN "!"
+                    e <- expr syn
+                    lchar ')'
                     return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
                       (PApp fc (PRef fc [] opName) [pexp (PRef fc [] (sMN 1000 "ARG")),
                                                     pexp e]))
