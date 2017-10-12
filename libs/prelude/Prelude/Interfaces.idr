@@ -83,10 +83,11 @@ inverse GT = LT
 data Down a = MkDown a
 
 Eq a => Eq (Down a) where
-  Down x == Down y = x == y
+  (MkDown x) == (MkDown y) = x == y
 
 Ord a => Ord (Down a) where
-  compare (Down x) (Down y) = inverse (compare x y)
+  compare (MkDown x) (MkDown y) = inverse (compare x y)
+
 
 ||| Compose two comparisons into the lexicographic product
 thenCompare : Ordering -> Lazy Ordering -> Ordering
