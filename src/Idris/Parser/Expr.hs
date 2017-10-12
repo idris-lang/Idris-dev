@@ -488,14 +488,9 @@ bracketed' open syn =
         <|> do l <- expr (allowConstr syn)
                bracketedExpr (allowConstr syn) open l
   where
-    operatorName = (sUN <$> operator) <|> backtickOperator
-    backtickOperator = do lchar '`'
-                          (n, _) <- fnName
-                          lchar '`'
-                          return n
-
-
-
+    operatorName :: IdrisParser Name
+    operatorName =     sUN <$> operator
+                   <|> fst <$> between (lchar '`') (lchar '`') fnName
 
 {-| Parses the rest of a dependent pair after '(' or '(Expr **' -}
 dependentPair :: PunInfo -> [(PTerm, Maybe (FC, PTerm), FC)] -> FC -> SyntaxInfo -> IdrisParser PTerm
