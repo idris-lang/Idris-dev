@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-${IDRIS:-idris} $@ basic023.idr -o basic023
-./basic023
-rm -f basic023 *.ibc
+${IDRIS:-idris} $@ sections.idr -o sections
+./sections
+rm -f sections *.ibc

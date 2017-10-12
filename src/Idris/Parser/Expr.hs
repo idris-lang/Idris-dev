@@ -473,11 +473,10 @@ bracketed' open syn =
                     e <- expr syn
                     lchar ')'
                     -- No prefix operators! (bit of a hack here...)
-                    if (opName == (sUN "-") || opName == (sUN "!"))
-                      then fail "minus not allowed in section"
-                      else return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
-                         (PApp fc (PRef fc [] opName) [pexp (PRef fc [] (sMN 1000 "ARG")),
-                                                       pexp e]))
+                    guard $ (opName /= (sUN "-")) && (opName /= (sUN "!"))
+                    return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
+                      (PApp fc (PRef fc [] opName) [pexp (PRef fc [] (sMN 1000 "ARG")),
+                                                    pexp e]))
         <|> try (do l <- simpleExpr syn
                     (do opName <- operatorName
                         lchar ')'
