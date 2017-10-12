@@ -26,6 +26,10 @@
 + Backslash, braces and percent symbols are now correctly pretty printed
   in LaTeX.
 
+## Packaging Updates
++ Package names now only accept a restrictive charset of letters, numbers and the `-_` characters.
+  Package names are also case insensitive
+
 # New in 1.1.1
 
 + Erasure analysis is now faster thanks to a bit smarter constraint solving.

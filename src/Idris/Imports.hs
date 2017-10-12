@@ -8,6 +8,7 @@ Maintainer  : The Idris Community.
 module Idris.Imports(
     IFileType(..), findIBC, findImport, findInPath, findPkgIndex
   , ibcPathNoFallback, installedPackages, pkgIndex
+  , PkgName, pkgName, unPkgName, unInitializedPkgName
   ) where
 
 import Idris.AbsSyntax
@@ -17,6 +18,7 @@ import IRTS.System (getIdrisLibDir)
 
 import Control.Applicative ((<$>))
 import Control.Monad.State.Strict
+import Data.Char (isAlpha, isDigit, toLower)
 import Data.List (isSuffixOf)
 import System.Directory
 import System.FilePath
@@ -24,9 +26,31 @@ import System.FilePath
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
     deriving (Show, Eq)
 
+newtype PkgName = PkgName String
+
+unPkgName :: PkgName -> String
+unPkgName (PkgName s) = map toLower s
+
+instance Show PkgName where
+    show (PkgName pkg) = pkg
+instance Eq PkgName where
+    a == b = unPkgName a == unPkgName b
+
+unInitializedPkgName :: PkgName
+unInitializedPkgName = PkgName ""
+
+pkgName :: String -> Either String PkgName
+pkgName ""      = Left "empty package name"
+pkgName s@(f:l)
+    | not $ isAlpha f =
+        Left "package name need to start by a letter"
+    | not $ all (\c -> isAlpha c || isDigit c || c `elem` "-_") l =
+        Left "package name need to contain only letter, digits, and -_"
+    | otherwise = Right $ PkgName s
+
 -- | Get the index file name for a package name
-pkgIndex :: String -> FilePath
-pkgIndex s = "00" ++ s ++ "-idx.ibc"
+pkgIndex :: PkgName -> FilePath
+pkgIndex s = "00" ++ unPkgName s ++ "-idx.ibc"
 
 srcPath :: FilePath -> FilePath
 srcPath fp = let (_, ext) = splitExtension fp in
@@ -96,7 +120,7 @@ findInPath (d:ds) fp = do let p = d </> fp
                           e <- doesFileExist' p
                           if e then return p else findInPath ds fp
 
-findPkgIndex :: String -> Idris FilePath
+findPkgIndex :: PkgName -> Idris FilePath
 findPkgIndex p = do let idx = pkgIndex p
                     ids <- allImportDirs
                     runIO $ findInPath ids idx

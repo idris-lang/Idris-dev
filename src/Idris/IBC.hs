@@ -144,9 +144,9 @@ loadIBC reexport phase fp
                             addImported reexport fp
 
 -- | Load an entire package from its index file
-loadPkgIndex :: String -> Idris ()
+loadPkgIndex :: PkgName -> Idris ()
 loadPkgIndex pkg = do ddir <- runIO getIdrisLibDir
-                      addImportDir (ddir </> pkg)
+                      addImportDir (ddir </> unPkgName pkg)
                       fp <- findPkgIndex pkg
                       loadIBC True IBC_Building fp
 
