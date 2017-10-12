@@ -477,14 +477,14 @@ bracketed' open syn =
                     return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
                       (PApp fc (PRef fc [] opName) [pexp (PRef fc [] (sMN 1000 "ARG")),
                                                     pexp e]))
-        <|> try (do l <- simpleExpr syn
-                    (do opName <- operatorName
+        <|> try (simpleExpr syn >>= \l ->
+                     do opName <- operatorName
                         lchar ')'
                         fc <- getFC
                         return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
                           (PApp fc (PRef fc [] opName) [pexp l,
-                                                        pexp (PRef fc [] (sMN 1000 "ARG"))])) <|>
-                      bracketedExpr syn open l)
+                                                        pexp (PRef fc [] (sMN 1000 "ARG"))])
+                 <|> bracketedExpr syn open l)
         <|> do l <- expr (allowConstr syn)
                bracketedExpr (allowConstr syn) open l
   where
