@@ -1,11 +1,12 @@
-preInc : Nat -> Nat
-preInc = (1 `plus`)
-
 postInc : Nat -> Nat
 postInc = (`plus` 1)
 
 cons : Int -> List Int -> List Int
 cons = (::)
+
+prefix 1 :/
+(:/) : Nat -> Nat
+(:/) = (1 `plus`)
 
 main : IO ()
 main = do
@@ -17,3 +18,4 @@ main = do
   printLn $ (- x) == -4         -- prefix, not section
   let io : IO Integer = pure 9
   printLn $ (! io) == 9         -- prefix, not section
+  printLn $ (:/ 3) == 4         -- custom prefix operator (#2571)

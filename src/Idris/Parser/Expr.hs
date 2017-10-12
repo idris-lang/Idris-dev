@@ -470,8 +470,8 @@ bracketed' open syn =
         <|> try (dependentPair TypeOrTerm [] open syn)
         <|> try (do fc <- getFC
                     opName <- operatorName
-                    -- No prefix operators! (bit of a hack here...)
-                    guard $ opName /= sUN "-" && opName /= sUN "!"
+                    guardNotPrefix opName
+
                     e <- expr syn
                     lchar ')'
                     return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
@@ -491,6 +491,18 @@ bracketed' open syn =
     operatorName :: IdrisParser Name
     operatorName =     sUN <$> operator
                    <|> fst <$> between (lchar '`') (lchar '`') fnName
+
+    justPrefix                          :: FixDecl -> Maybe Name
+    justPrefix (Fix (PrefixN _) opName) = Just (sUN opName)
+    justPrefix _                        = Nothing
+
+    guardNotPrefix        :: Name -> IdrisParser ()
+    guardNotPrefix opName = do
+      guard $ opName /= sUN "-"
+      guard $ opName /= sUN "!"
+
+      ops <- idris_infixes <$> get
+      guard . not . (opName `elem`) . mapMaybe justPrefix $ ops
 
 {-| Parses the rest of a dependent pair after '(' or '(Expr **' -}
 dependentPair :: PunInfo -> [(PTerm, Maybe (FC, PTerm), FC)] -> FC -> SyntaxInfo -> IdrisParser PTerm
