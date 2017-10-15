@@ -20,6 +20,8 @@ main = do putStrLn foo
           putStrLn (reverse (foo ++ bar))
           printLn (length foo)
           printLn baz
+          printLn (strCons '\x141' "")
+          printLn (singleton (chr 0x141))
           let x = 4
           let newstr = appMany (toNat x)
           putStrLn newstr
