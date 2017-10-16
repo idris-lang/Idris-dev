@@ -73,6 +73,22 @@ Eq Ordering where
     GT == GT = True
     _  == _  = False
 
+||| Inverse an ordering
+inverse : Ordering -> Ordering
+inverse LT = GT
+inverse EQ = EQ
+inverse GT = LT
+
+-- https://hackage.haskell.org/package/base-4.10.0.0/docs/Data-Ord.html#t:Down
+data Down a = MkDown a
+
+Eq a => Eq (Down a) where
+  (MkDown x) == (MkDown y) = x == y
+
+Ord a => Ord (Down a) where
+  compare (MkDown x) (MkDown y) = inverse (compare x y)
+
+
 ||| Compose two comparisons into the lexicographic product
 thenCompare : Ordering -> Lazy Ordering -> Ordering
 thenCompare LT y = LT
