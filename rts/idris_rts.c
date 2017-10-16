@@ -714,7 +714,7 @@ VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     int xval = GETINT(x);
     int xlen = GETSTRLEN(xs);
 
-    if ((xval & 0x80) == 0) { // ASCII char
+    if (xval < 0x80) { // ASCII char
         Closure* cl = allocate(sizeof(Closure) +
                                xlen + 2, 0);
         SETTY(cl, CT_STRING);
