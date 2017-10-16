@@ -25,6 +25,9 @@ import Prelude.Uninhabited
 
 Uninhabited (Z = S n) where
   uninhabited Refl impossible
+  
+Uninhabited (S n = Z) where
+  uninhabited Refl impossible  
 
 --------------------------------------------------------------------------------
 -- Syntactic tests
