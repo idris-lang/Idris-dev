@@ -1,48 +1,43 @@
 package base
 
 opts = "--nobasepkgs --total --no-elim-deprecation-warnings --partial-eval -i ../prelude"
-modules = System,
 
-          Debug.Error, Debug.Trace,
-
-          System.Info,
-
-          Language.Reflection.Utils,
-
-          Syntax.PreorderReasoning,
-
-          Data.Morphisms,
-          Data.Bits,
-          Data.Mod2,
-          Data.Fin,
-          Data.Vect,
-          Data.Vect.Views,
-          Data.Vect.Quantifiers,
-          Data.HVect,
-          Data.Complex,
-          Data.Erased,
-          Data.IORef,
-          Data.List,
-          Data.List.Views,
-          Data.List.Quantifiers,
-          Data.Nat.Views,
-          Data.Primitives.Views,
-          Data.String.Views,
-          Data.So,
-          Data.String,
-          Data.Buffer,
-
-          Control.Isomorphism,
-          Control.Monad.Identity,
-          Control.Monad.RWS,
-          Control.Monad.Trans,
-          Control.Monad.State,
-          Control.Monad.Writer,
-          Control.Monad.Reader,
-          Control.Category,
-          Control.Arrow,
-          Control.Catchable,
-          Control.IOExcept,
-
-          System.Concurrency.Raw,
-          System.Concurrency.Channels
+modules = Control.Arrow
+        , Control.Catchable
+        , Control.Category
+        , Control.IOExcept
+        , Control.Isomorphism
+        , Control.Monad.Identity
+        , Control.Monad.Reader
+        , Control.Monad.RWS
+        , Control.Monad.State
+        , Control.Monad.Trans
+        , Control.Monad.Writer
+        , Data.Bits
+        , Data.Buffer
+        , Data.Complex
+        , Data.Erased
+        , Data.Fin
+        , Data.HVect
+        , Data.IORef
+        , Data.List
+        , Data.List.Quantifiers
+        , Data.List.Views
+        , Data.Mod2
+        , Data.Morphisms
+        , Data.Nat.Views
+        , Data.Primitives.Views
+        , Data.So
+        , Data.String
+        , Data.String.Views
+        , Data.Vect
+        , Data.Vect.Quantifiers
+        , Data.Vect.Views
+        , Debug.Error
+        , Debug.Trace
+        , Language.Reflection.Utils
+        , Syntax.PreorderReasoning
+        , System
+        , System.Concurrency.Channels
+        , System.Concurrency.Raw
+        , System.Info

@@ -1,46 +1,57 @@
 package contrib
 
 opts = "--nobasepkgs --partial-eval --total -i ../prelude -i ../base"
-modules = CFFI, CFFI.Types, CFFI.Memory,
 
-          Control.Algebra,
-          Control.Algebra.Lattice, Control.Algebra.VectorSpace,
-          Control.Algebra.NumericImplementations,
-          Control.Isomorphism.Primitives,
-          Control.Partial,
-          Control.Pipeline,
-          Control.ST, Control.ST.ImplicitCall, Control.ST.Exception, Control.ST.Random,
-
-          Interfaces.Correlative,
-          Interfaces.Verified,
-
-          Data.Fun, Data.Rel,
-          Data.Hash,
-          Data.Matrix, Data.Matrix.Algebraic, Data.Matrix.Numeric,
-          Data.Nat.DivMod, Data.Nat.DivMod.IteratedSubtraction,
-          Data.ZZ, Data.Sign,
-          Data.BoundedList,
-          Data.Heap,
-          Data.SortedMap, Data.SortedSet,
-          Data.CoList, Data.Storable,
-          Data.List.Zipper,
-          Data.Pairs.Implicit,
-          Data.Combinators, Data.Combinators.Applicative, Data.Combinators.Arrow,
-
-          Decidable.Decidable, Decidable.Order,
-
-          Network.Cgi, Network.Socket.Data, Network.Socket.Raw, Network.Socket,
-
-          System.Concurrency.Process,
-
-          Text.Lexer, Text.Parser,
-
-          Text.PrettyPrint.WL,
-          Text.PrettyPrint.WL.Core,
-          Text.PrettyPrint.WL.Characters,
-          Text.PrettyPrint.WL.Combinators,
-
-          Text.Literate,
-
-          Data.Fin.Extra,
-          Data.Stream.Extra
+modules = CFFI
+        , CFFI.Memory
+        , CFFI.Types
+        , Control.Algebra
+        , Control.Algebra.Lattice
+        , Control.Algebra.NumericImplementations
+        , Control.Algebra.VectorSpace
+        , Control.Isomorphism.Primitives
+        , Control.Partial
+        , Control.Pipeline
+        , Control.ST
+        , Control.ST.Exception
+        , Control.ST.ImplicitCall
+        , Control.ST.Random
+        , Data.BoundedList
+        , Data.CoList
+        , Data.Combinators
+        , Data.Combinators.Applicative
+        , Data.Combinators.Arrow
+        , Data.Fin.Extra
+        , Data.Fun
+        , Data.Hash
+        , Data.Heap
+        , Data.List.Zipper
+        , Data.Matrix
+        , Data.Matrix.Algebraic
+        , Data.Matrix.Numeric
+        , Data.Nat.DivMod
+        , Data.Nat.DivMod.IteratedSubtraction
+        , Data.Pairs.Implicit
+        , Data.Rel
+        , Data.Sign
+        , Data.SortedMap
+        , Data.SortedSet
+        , Data.Storable
+        , Data.Stream.Extra
+        , Data.ZZ
+        , Decidable.Decidable
+        , Decidable.Order
+        , Interfaces.Correlative
+        , Interfaces.Verified
+        , Network.Cgi
+        , Network.Socket
+        , Network.Socket.Data
+        , Network.Socket.Raw
+        , System.Concurrency.Process
+        , Text.Lexer
+        , Text.Literate
+        , Text.Parser
+        , Text.PrettyPrint.WL
+        , Text.PrettyPrint.WL.Characters
+        , Text.PrettyPrint.WL.Combinators
+        , Text.PrettyPrint.WL.Core
