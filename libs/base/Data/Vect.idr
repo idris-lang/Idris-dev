@@ -634,6 +634,14 @@ mapElem : {xs : Vect k t} -> {f : t -> u} -> Elem x xs -> Elem (f x) (map f xs)
 mapElem Here = Here
 mapElem (There e) = There (mapElem e)
 
+||| Remove the element at the given position.
+|||
+||| @xs The vector to be removed from
+||| @p A proof that the element to be removed is in the vector
+dropElem : (xs : Vect (S k) t) -> (p : Elem x xs) -> Vect k t
+dropElem (x :: ys) Here = ys
+dropElem {k = (S k)} (x :: ys) (There later) = x :: dropElem ys later
+
 -- Some convenience functions for testing lengths
 
 ||| If the given Vect is the required length, return a Vect with that
