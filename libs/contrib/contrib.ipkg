@@ -38,6 +38,7 @@ modules = CFFI
         , Data.SortedSet
         , Data.Storable
         , Data.Stream.Extra
+        , Data.String.Extra
         , Data.ZZ
         , Decidable.Decidable
         , Decidable.Order

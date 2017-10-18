@@ -1,4 +1,4 @@
-module Data.String
+module Data.String.Extra
 
 infixl 5 +>
 infixr 5 <+
