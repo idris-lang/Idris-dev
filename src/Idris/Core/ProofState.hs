@@ -31,7 +31,6 @@ import Util.Pretty hiding (fill)
 import Control.Arrow ((***))
 import Control.Monad.State.Strict
 import Data.List
-import Debug.Trace
 
 data ProofState = PS { thname            :: Name,
                        holes             :: [Name], -- ^ holes still to be solved
