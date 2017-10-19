@@ -195,7 +195,7 @@ VAL bigMod(VM* vm, VAL x, VAL y) {
     VAL cl = allocate(sizeof(Closure) + sizeof(mpz_t), 0);
     idris_doneAlloc();
     bigint = (mpz_t*)(((char*)cl) + sizeof(Closure));
-    mpz_mod(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
+    mpz_tdiv_r(*bigint, GETMPZ(GETBIG(vm,x)), GETMPZ(GETBIG(vm,y)));
     SETTY(cl, CT_BIGINT);
     cl -> info.ptr = (void*)bigint;
     return cl;

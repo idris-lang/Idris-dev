@@ -205,7 +205,7 @@ intArith ity =
     [ iBinOp ity "add" (bitBin ity (+)) (LPlus . ATInt) total
     , iBinOp ity "sub" (bitBin ity (-)) (LMinus . ATInt) total
     , iBinOp ity "mul" (bitBin ity (*)) (LTimes . ATInt) total
-    , iBinOp ity "udiv" (bitBin ity div) LUDiv partial
+    , iBinOp ity "udiv" (bitBin ity quot) LUDiv partial
     , iBinOp ity "sdiv" (bsdiv ity) (LSDiv . ATInt) partial
     , iBinOp ity "urem" (bitBin ity rem) LURem partial
     , iBinOp ity "srem" (bsrem ity) (LSRem . ATInt) partial
@@ -285,17 +285,17 @@ bsrem ITChar [Ch x, Ch y] = Just $ Ch (chr $ (ord x) `rem` (ord y))
 bsrem _ _ = Nothing
 
 bsdiv :: IntTy -> [Const] -> Maybe Const
-bsdiv ITBig [BI x, BI y] = Just . BI $ x `div` y
+bsdiv ITBig [BI x, BI y] = Just . BI $ x `quot` y
 bsdiv (ITFixed IT8) [B8 x, B8 y]
-    = Just $ B8 (fromIntegral (fromIntegral x `div` fromIntegral y :: Int8))
+    = Just $ B8 (fromIntegral (fromIntegral x `quot` fromIntegral y :: Int8))
 bsdiv (ITFixed IT16) [B16 x, B16 y]
-    = Just $ B16 (fromIntegral (fromIntegral x `div` fromIntegral y :: Int16))
+    = Just $ B16 (fromIntegral (fromIntegral x `quot` fromIntegral y :: Int16))
 bsdiv (ITFixed IT32) [B32 x, B32 y]
-    = Just $ B32 (fromIntegral (fromIntegral x `div` fromIntegral y :: Int32))
+    = Just $ B32 (fromIntegral (fromIntegral x `quot` fromIntegral y :: Int32))
 bsdiv (ITFixed IT64) [B64 x, B64 y]
-    = Just $ B64 (fromIntegral (fromIntegral x `div` fromIntegral y :: Int64))
-bsdiv ITNative [I x, I y] = Just $ I (x `div` y)
-bsdiv ITChar [Ch x, Ch y] = Just $ Ch (chr $ (ord x) `div` (ord y))
+    = Just $ B64 (fromIntegral (fromIntegral x `quot` fromIntegral y :: Int64))
+bsdiv ITNative [I x, I y] = Just $ I (x `quot` y)
+bsdiv ITChar [Ch x, Ch y] = Just $ Ch (chr $ (ord x) `quot` (ord y))
 bsdiv _ _ = Nothing
 
 bashr :: IntTy -> [Const] -> Maybe Const
