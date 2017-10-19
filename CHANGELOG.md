@@ -18,6 +18,7 @@
 + Added `Data.IORef`, for working with mutable references in `IO` and `JS_IO`.
 + Added `discriminate` and `construct` tactics to Pruviloj.
 + Added `IsSucc` type to `Prelude`, which proves that a `Nat` is a successor.
++ Added `Data.IOArray`, containing primitives for mutable arrays.
 
 ## Tool Updates
 + Private functions are no longer visible in the REPL except for modules
