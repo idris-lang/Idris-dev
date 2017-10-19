@@ -1,6 +1,7 @@
 postInc : Nat -> Nat
 postInc = (`plus` 1)
 
+infixr 4 `cons`
 cons : Int -> List Int -> List Int
 cons = (::)
 

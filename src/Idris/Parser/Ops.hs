@@ -120,7 +120,7 @@ Fixity ::=
 fixity :: IdrisParser PDecl
 fixity = do pushIndent
             f <- fixityType; i <- fst <$> natural;
-            ops <- sepBy1 operator (lchar ',')
+            ops <- sepBy1 operatorName (lchar ',')
             terminator
             let prec = fromInteger i
             istate <- get
@@ -137,14 +137,21 @@ fixity = do pushIndent
                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity:\n\t\""
                                                 ++ show f ++ "\" overrides \"" ++ show x ++ "\"") ill
          <?> "fixity declaration"
-             where alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
-                   alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
+  where
+    alreadyDeclared :: [FixDecl] -> FixDecl -> (FixDecl, [FixDecl])
+    alreadyDeclared fs f = (f, filter ((extractName f ==) . extractName) fs)
 
-                   checkValidity :: (FixDecl, [FixDecl]) -> Bool
-                   checkValidity (f, fs) = all (== f) fs
+    checkValidity :: (FixDecl, [FixDecl]) -> Bool
+    checkValidity (f, fs) = all (== f) fs
 
-                   extractName :: FixDecl -> String
-                   extractName (Fix _ n) = n
+    extractName :: FixDecl -> String
+    extractName (Fix _ n) = n
+
+    tickedOp :: IdrisParser String
+    tickedOp = show . nsroot . fst <$> between (lchar '`') (lchar '`') fnName
+
+    operatorName :: IdrisParser String
+    operatorName = operator <|> tickedOp
 
 -- | Check that a declaration of an operator also has fixity declared
 checkDeclFixity :: IdrisParser PDecl -> IdrisParser PDecl
