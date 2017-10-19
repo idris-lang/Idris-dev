@@ -1,7 +1,7 @@
 postInc : Nat -> Nat
 postInc = (`plus` 1)
 
-infixr 4 `cons`
+infixr 8 `cons`
 cons : Int -> List Int -> List Int
 cons = (::)
 
@@ -20,3 +20,4 @@ main = do
   let io : IO Integer = pure 9
   printLn $ (! io) == 9         -- prefix, not section
   printLn $ (:/ 3) == 4         -- custom prefix operator (#2571)
+  printLn $ 1 `cons` 2 `cons` [3] == [1,2,3]

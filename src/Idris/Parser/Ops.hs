@@ -18,6 +18,7 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
+import Data.Char (isAlpha)
 import Data.List
 import Text.Parser.Expression
 import Text.Trifecta hiding (char, charLiteral, natural, span, string,
@@ -53,10 +54,17 @@ toTable fs = map (map toBin)
 
 -- | Binary operator
 binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
-binary name f = Infix (do indentPropHolds gtProp
-                          fc <- reservedOpFC name
-                          indentPropHolds gtProp
-                          return (f fc))
+binary name f
+  | isBacktick name = Infix (do indentPropHolds gtProp
+                                lchar '`'; (n, fc) <- fnName
+                                guard (show (nsroot n) == name)
+                                lchar '`'
+                                indentPropHolds gtProp
+                                return (f fc))
+  | otherwise       = Infix (do indentPropHolds gtProp
+                                fc <- reservedOpFC name
+                                indentPropHolds gtProp
+                                return (f fc))
 
 -- | Prefix operator
 prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
@@ -64,6 +72,12 @@ prefix name f = Prefix (do reservedOp name
                            fc <- getFC
                            indentPropHolds gtProp
                            return (f fc))
+
+isBacktick :: String -> Bool
+isBacktick (c : _)
+  | isAlpha c = True
+  | c == '_'  = True
+  | otherwise = False
 
 -- | Backtick operator
 backtick :: Operator IdrisParser PTerm
