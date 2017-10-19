@@ -1,6 +1,7 @@
 package pruviloj
 
-opts    = "--nobasepkgs --partial-eval -i ../prelude -i ../base"
+opts = "--nobasepkgs --partial-eval -i ../prelude -i ../base"
+
 modules = Pruviloj
         , Pruviloj.Core
         , Pruviloj.Derive.DecEq

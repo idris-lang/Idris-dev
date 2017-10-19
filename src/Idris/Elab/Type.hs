@@ -16,7 +16,6 @@ import Idris.ASTUtils
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Core.WHNF
 import Idris.Docstrings (Docstring)
 import Idris.Elab.Term
 import Idris.Elab.Utils
