@@ -14,7 +14,7 @@ namespace Integer
                Divides ((d * div) + rem) d
     
   ||| Covering function for the `Divides` view
-  export
+  public export
   divides : (val : Integer) -> (d : Integer) -> Divides val d
   divides val 0 = DivByZero
   divides val d
@@ -51,7 +51,7 @@ namespace Int
   -- TODO: Someone please check this and fix if necessary...
 
   ||| Covering function for the `Divides` view
-  export
+  public export
   divides : (val : Int) -> (d : Int) -> Divides val d
   divides val 0 = DivByZero
   divides val d
