@@ -30,7 +30,7 @@ table :: [FixDecl] -> OperatorTable IdrisParser PTerm
 table fixes
    = [[prefix "-" (\fc x -> PApp fc (PRef fc [fc] (sUN "negate")) [pexp x])]] ++
       toTable (reverse fixes) ++
-     [[backtick],
+     [[noFixityBacktickOperator],
       [binary "$" (\fc x y -> flatten $ PApp fc x [pexp y]) AssocRight],
       [binary "="  (\fc x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]) AssocLeft],
       [nofixityoperator]]
@@ -39,10 +39,10 @@ table fixes
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
     flatten t = t
 
-    -- | Backtick operator
-    backtick :: Operator IdrisParser PTerm
-    backtick = Infix (do (n, fc) <- backtickOperator
-                         return (\x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y])) AssocNone
+    noFixityBacktickOperator :: Operator IdrisParser PTerm
+    noFixityBacktickOperator =
+      Infix (do (n, fc) <- backtickOperator
+                return (\x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y])) AssocNone
 
 
 -- | Calculates table for fixity declarations
