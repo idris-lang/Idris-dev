@@ -490,7 +490,7 @@ bracketed' open syn =
   where
     operatorName :: IdrisParser Name
     operatorName =     sUN <$> operator
-                   <|> fst <$> between (lchar '`') (lchar '`') fnName
+                   <|> fst <$> backtickOperator
 
     justPrefix                          :: FixDecl -> Maybe Name
     justPrefix (Fix (PrefixN _) opName) = Just (sUN opName)

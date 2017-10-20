@@ -39,6 +39,11 @@ table fixes
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
     flatten t = t
 
+    -- | Backtick operator
+    backtick :: Operator IdrisParser PTerm
+    backtick = Infix (do (n, fc) <- backtickOperator
+                         return (\x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y])) AssocNone
+
 
 -- | Calculates table for fixity declarations
 toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
@@ -55,11 +60,8 @@ toTable fs = map (map toBin)
 -- | Binary operator
 binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
 binary name f
-  | isBacktick name = Infix (do indentPropHolds gtProp
-                                lchar '`'; (n, fc) <- fnName
+  | isBacktick name = Infix (do (n, fc) <- backtickOperator
                                 guard (show (nsroot n) == name)
-                                lchar '`'
-                                indentPropHolds gtProp
                                 return (f fc))
   | otherwise       = Infix (do indentPropHolds gtProp
                                 fc <- reservedOpFC name
@@ -79,13 +81,9 @@ isBacktick (c : _)
   | c == '_'  = True
   | otherwise = False
 
--- | Backtick operator
-backtick :: Operator IdrisParser PTerm
-backtick = Infix (do indentPropHolds gtProp
-                     lchar '`'; (n, fc) <- fnName
-                     lchar '`'
-                     indentPropHolds gtProp
-                     return (\x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y])) AssocNone
+backtickOperator :: IdrisParser (Name, FC)
+backtickOperator =
+  between (indentPropHolds gtProp *> lchar '`') (lchar '`' <* indentPropHolds gtProp) fnName
 
 -- | Operator without fixity (throws an error)
 nofixityoperator :: Operator IdrisParser PTerm
@@ -161,11 +159,9 @@ fixity = do pushIndent
     extractName :: FixDecl -> String
     extractName (Fix _ n) = n
 
-    tickedOp :: IdrisParser String
-    tickedOp = show . nsroot . fst <$> between (lchar '`') (lchar '`') fnName
-
     operatorName :: IdrisParser String
-    operatorName = operator <|> tickedOp
+    operatorName =     operator
+                   <|> show . nsroot . fst <$> backtickOperator
 
 -- | Check that a declaration of an operator also has fixity declared
 checkDeclFixity :: IdrisParser PDecl -> IdrisParser PDecl
