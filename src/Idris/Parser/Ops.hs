@@ -50,46 +50,51 @@ table fixes
                                  op <- try operator
                                  unexpected $ "Operator without known fixity: " ++ op) AssocNone
 
+    -- | Calculates table for fixity declarations
+    toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
+    toTable fs = map (map toBin)
+                     (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
+       where toBin (Fix (PrefixN _) op) = prefix op
+                                           (\fc x -> PApp fc (PRef fc [] (sUN op)) [pexp x])
+             toBin (Fix f op)
+                = binary op (\fc x y -> PApp fc (PRef fc [] (sUN op)) [pexp x,pexp y]) (assoc f)
+             assoc (Infixl _) = AssocLeft
+             assoc (Infixr _) = AssocRight
+             assoc (InfixN _) = AssocNone
 
--- | Calculates table for fixity declarations
-toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
-toTable fs = map (map toBin)
-                 (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
-   where toBin (Fix (PrefixN _) op) = prefix op
-                                       (\fc x -> PApp fc (PRef fc [] (sUN op)) [pexp x])
-         toBin (Fix f op)
-            = binary op (\fc x y -> PApp fc (PRef fc [] (sUN op)) [pexp x,pexp y]) (assoc f)
-         assoc (Infixl _) = AssocLeft
-         assoc (Infixr _) = AssocRight
-         assoc (InfixN _) = AssocNone
+    isBacktick :: String -> Bool
+    isBacktick (c : _)
+      | isAlpha c = True
+      | c == '_'  = True
+      | otherwise = False
 
--- | Binary operator
-binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
-binary name f
-  | isBacktick name = Infix (do (n, fc) <- backtickOperator
-                                guard (show (nsroot n) == name)
-                                return (f fc))
-  | otherwise       = Infix (do indentPropHolds gtProp
-                                fc <- reservedOpFC name
-                                indentPropHolds gtProp
-                                return (f fc))
+    binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
+    binary name f
+      | isBacktick name = Infix (do (n, fc) <- backtickOperator
+                                    guard (show (nsroot n) == name)
+                                    return (f fc))
+      | otherwise       = Infix (do indentPropHolds gtProp
+                                    fc <- reservedOpFC name
+                                    indentPropHolds gtProp
+                                    return (f fc))
 
--- | Prefix operator
-prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
-prefix name f = Prefix (do reservedOp name
-                           fc <- getFC
-                           indentPropHolds gtProp
-                           return (f fc))
+    prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
+    prefix name f = Prefix (do reservedOp name
+                               fc <- getFC
+                               indentPropHolds gtProp
+                               return (f fc))
 
-isBacktick :: String -> Bool
-isBacktick (c : _)
-  | isAlpha c = True
-  | c == '_'  = True
-  | otherwise = False
+{- | Parses a function used as an operator -- enclosed in backticks
 
+@
+  BacktickOperator ::=
+    '`' Name '`'
+    ;
+@
+ -}
 backtickOperator :: IdrisParser (Name, FC)
 backtickOperator =
-  between (indentPropHolds gtProp *> lchar '`') (lchar '`' <* indentPropHolds gtProp) fnName
+  between (indentPropHolds gtProp *> lchar '`') (lchar '`' <* indentPropHolds gtProp) name
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace
