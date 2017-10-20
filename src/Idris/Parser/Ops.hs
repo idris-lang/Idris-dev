@@ -48,7 +48,7 @@ table fixes
     -- | Operator without fixity (throws an error)
     noFixityOperator :: Operator IdrisParser PTerm
     noFixityOperator = Infix (do indentGt
-                                 op <- try operator
+                                 op <- try symbolicOperator
                                  unexpected $ "Operator without known fixity: " ++ op) AssocNone
 
     -- | Calculates table for fixity declarations
@@ -125,7 +125,7 @@ operatorFront = try (do (FC f (l, c) _) <- getFC
                         op <- lchar '(' *> reservedOp "="  <* lchar ')'
                         return (eqTy, FC f (l, c) (l, c+3)))
             <|> maybeWithNS (do (FC f (l, c) _) <- getFC
-                                op <- lchar '(' *> operator
+                                op <- lchar '(' *> symbolicOperator
                                 (FC _ _ (l', c')) <- getFC
                                 lchar ')'
                                 return (op, (FC f (l, c) (l', c' + 1)))) False []

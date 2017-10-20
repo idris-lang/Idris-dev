@@ -408,16 +408,16 @@ invalidOperators :: [String]
 invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%", "~", "?", "!", "@"]
 
 -- | Parses an operator
-operator :: MonadicParsing m => m String
-operator = do op <- token . some $ operatorLetter
-              when (op `elem` (invalidOperators ++ commentMarkers)) $
-                   fail $ op ++ " is not a valid operator"
-              return op
+symbolicOperator :: MonadicParsing m => m String
+symbolicOperator = do op <- token . some $ operatorLetter
+                      when (op `elem` (invalidOperators ++ commentMarkers)) $
+                           fail $ op ++ " is not a valid operator"
+                      return op
 
 -- | Parses an operator
 operatorFC :: MonadicParsing m => m (String, FC)
 operatorFC = do (FC f (l, c) _) <- getFC
-                op <- operator
+                op <- symbolicOperator
                 return (op, FC f (l, c) (l, c + length op))
 
 {- * Position helpers -}
