@@ -93,7 +93,7 @@ table fixes
 @
  -}
 backtickOperator :: IdrisParser (Name, FC)
-backtickOperator = between (indentGt *> lchar '`') (lchar '`' <* indentGt) name
+backtickOperator = between (indentGt *> lchar '`') (indentGt *> lchar '`') name
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace
