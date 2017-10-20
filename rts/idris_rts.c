@@ -798,8 +798,9 @@ VAL idris_readRef(VAL ref) {
 
 VAL idris_newArray(VM* vm, int size, VAL def) {
     Closure* cl;
+    int i;
     allocArray(cl, vm, size, 0);
-    for(int i=0; i<size; ++i) {
+    for(i=0; i<size; ++i) {
 	cl->info.arr.content[i] = def;
     }
     return cl;
