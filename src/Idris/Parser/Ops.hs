@@ -33,7 +33,7 @@ table fixes
      [[noFixityBacktickOperator],
       [binary "$" (\fc x y -> flatten $ PApp fc x [pexp y]) AssocRight],
       [binary "="  (\fc x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]) AssocLeft],
-      [nofixityoperator]]
+      [noFixityOperator]]
   where
     flatten :: PTerm -> PTerm -- flatten application
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
@@ -43,6 +43,12 @@ table fixes
     noFixityBacktickOperator =
       Infix (do (n, fc) <- backtickOperator
                 return (\x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y])) AssocNone
+
+    -- | Operator without fixity (throws an error)
+    noFixityOperator :: Operator IdrisParser PTerm
+    noFixityOperator = Infix (do indentPropHolds gtProp
+                                 op <- try operator
+                                 unexpected $ "Operator without known fixity: " ++ op) AssocNone
 
 
 -- | Calculates table for fixity declarations
@@ -84,13 +90,6 @@ isBacktick (c : _)
 backtickOperator :: IdrisParser (Name, FC)
 backtickOperator =
   between (indentPropHolds gtProp *> lchar '`') (lchar '`' <* indentPropHolds gtProp) fnName
-
--- | Operator without fixity (throws an error)
-nofixityoperator :: Operator IdrisParser PTerm
-nofixityoperator = Infix (do indentPropHolds gtProp
-                             op <- try operator
-                             unexpected $ "Operator without known fixity: " ++ op) AssocNone
-
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace
