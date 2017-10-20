@@ -468,8 +468,7 @@ bracketed' open syn =
                lchar ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
         <|> try (dependentPair TypeOrTerm [] open syn)
-        <|> try (do fc <- getFC
-                    opName <- operatorName
+        <|> try (do (opName, fc) <- operatorName
                     guardNotPrefix opName
 
                     e <- expr syn
@@ -478,7 +477,7 @@ bracketed' open syn =
                       (PApp fc (PRef fc [] opName) [pexp (PRef fc [] (sMN 1000 "ARG")),
                                                     pexp e]))
         <|> try (simpleExpr syn >>= \l ->
-                     try (do opName <- operatorName
+                     try (do (opName, _) <- operatorName
                              lchar ')'
                              fc <- getFC
                              return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
@@ -488,10 +487,6 @@ bracketed' open syn =
         <|> do l <- expr (allowConstr syn)
                bracketedExpr (allowConstr syn) open l
   where
-    operatorName :: IdrisParser Name
-    operatorName =     sUN <$> operator
-                   <|> fst <$> backtickOperator
-
     justPrefix                          :: FixDecl -> Maybe Name
     justPrefix (Fix (PrefixN _) opName) = Just (sUN opName)
     justPrefix _                        = Nothing

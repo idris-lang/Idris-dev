@@ -15,6 +15,7 @@ import Idris.Parser.Helpers
 
 import Prelude hiding (pi)
 
+import Control.Arrow (first)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
@@ -91,9 +92,22 @@ table fixes
     '`' Name '`'
     ;
 @
- -}
+-}
 backtickOperator :: IdrisParser (Name, FC)
 backtickOperator = between (indentGt *> lchar '`') (indentGt *> lchar '`') name
+
+{- | Parses an operator name (either a symbolic name or a backtick-quoted name)
+
+@
+  OperatorName ::=
+      SymbolicOperator
+    | BacktickOperator
+    ;
+@
+-}
+operatorName :: IdrisParser (Name, FC)
+operatorName =     first sUN <$> operatorFC
+               <|> backtickOperator
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace
@@ -135,7 +149,7 @@ Fixity ::=
 fixity :: IdrisParser PDecl
 fixity = do pushIndent
             f <- fixityType; i <- fst <$> natural;
-            ops <- sepBy1 operatorName (lchar ',')
+            ops <- sepBy1 (show . nsroot . fst <$> operatorName) (lchar ',')
             terminator
             let prec = fromInteger i
             istate <- get
@@ -161,10 +175,6 @@ fixity = do pushIndent
 
     extractName :: FixDecl -> String
     extractName (Fix _ n) = n
-
-    operatorName :: IdrisParser String
-    operatorName =     operator
-                   <|> show . nsroot . fst <$> backtickOperator
 
 -- | Check that a declaration of an operator also has fixity declared
 checkDeclFixity :: IdrisParser PDecl -> IdrisParser PDecl
