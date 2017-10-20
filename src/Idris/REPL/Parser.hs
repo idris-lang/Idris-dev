@@ -234,7 +234,7 @@ exprArg cmd name = do
           return $ Left ("Usage is :" ++ name ++ " <expression>")
 
     let justOperator = do
-          (op, fc) <- P.operatorFC
+          (op, fc) <- P.symbolicOperatorFC
           eof
           return $ Right $ cmd (PRef fc [] (sUN op))
 

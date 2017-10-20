@@ -1181,7 +1181,7 @@ clause syn
        <|> do (l, op, nfc) <- try (do
                 pushIndent
                 l <- argExpr syn
-                (op, nfc) <- operatorFC
+                (op, nfc) <- symbolicOperatorFC
                 when (op == "=" || op == "?=" ) $
                      fail "infix clause definition with \"=\" and \"?=\" not supported "
                 return (l, op, nfc))

@@ -106,7 +106,7 @@ backtickOperator = between (indentGt *> lchar '`') (indentGt *> lchar '`') name
 @
 -}
 operatorName :: IdrisParser (Name, FC)
-operatorName =     first sUN <$> operatorFC
+operatorName =     first sUN <$> symbolicOperatorFC
                <|> backtickOperator
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
