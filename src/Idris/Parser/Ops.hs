@@ -46,7 +46,7 @@ table fixes
 
     -- | Operator without fixity (throws an error)
     noFixityOperator :: Operator IdrisParser PTerm
-    noFixityOperator = Infix (do indentPropHolds gtProp
+    noFixityOperator = Infix (do indentGt
                                  op <- try operator
                                  unexpected $ "Operator without known fixity: " ++ op) AssocNone
 
@@ -73,15 +73,15 @@ table fixes
       | isBacktick name = Infix (do (n, fc) <- backtickOperator
                                     guard (show (nsroot n) == name)
                                     return (f fc))
-      | otherwise       = Infix (do indentPropHolds gtProp
+      | otherwise       = Infix (do indentGt
                                     fc <- reservedOpFC name
-                                    indentPropHolds gtProp
+                                    indentGt
                                     return (f fc))
 
     prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
     prefix name f = Prefix (do reservedOp name
                                fc <- getFC
-                               indentPropHolds gtProp
+                               indentGt
                                return (f fc))
 
 {- | Parses a function used as an operator -- enclosed in backticks
@@ -93,8 +93,7 @@ table fixes
 @
  -}
 backtickOperator :: IdrisParser (Name, FC)
-backtickOperator =
-  between (indentPropHolds gtProp *> lchar '`') (lchar '`' <* indentPropHolds gtProp) name
+backtickOperator = between (indentGt *> lchar '`') (lchar '`' <* indentGt) name
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
  optional namespace

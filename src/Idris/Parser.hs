@@ -1086,7 +1086,7 @@ RHSName ::= '{' FnName '}';
 -}
 rhs :: SyntaxInfo -> Name -> IdrisParser PTerm
 rhs syn n = do lchar '='
-               indentPropHolds gtProp
+               indentGt
                expr syn
         <|> do symbol "?=";
                fc <- getFC
@@ -1533,7 +1533,7 @@ parseElabShellStep ist = runparser (fmap Right (do_ defaultSyntax) <|> fmap Left
               t <- spaced (expr defaultSyntax)
               i <- get
               return $ tactic (desugar defaultSyntax i t)
-        spaced parser = indentPropHolds gtProp *> parser
+        spaced parser = indentGt *> parser
 
 -- | Parse module header and imports
 parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe Delta)
