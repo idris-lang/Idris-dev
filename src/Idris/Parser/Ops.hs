@@ -71,13 +71,15 @@ table fixes
 
     binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
     binary name f
-      | isBacktick name = Infix (do (n, fc) <- backtickOperator
-                                    guard (show (nsroot n) == name)
-                                    return (f fc))
-      | otherwise       = Infix (do indentGt
-                                    fc <- reservedOpFC name
-                                    indentGt
-                                    return (f fc))
+      | isBacktick name = Infix $ do
+                            (n, fc) <- backtickOperator
+                            guard $ show (nsroot n) == name
+                            return $ f fc
+      | otherwise       = Infix $ do
+                            indentGt
+                            fc <- reservedOpFC name
+                            indentGt
+                            return $ f fc
 
     prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
     prefix name f = Prefix (do reservedOp name
