@@ -12,9 +12,9 @@ namespace Integer
        DivByZero : Divides x 0
        DivBy : (prf : rem >= 0 && rem < d = True) ->
                Divides ((d * div) + rem) d
-    
+
   ||| Covering function for the `Divides` view
-  export
+  public export
   divides : (val : Integer) -> (d : Integer) -> Divides val d
   divides val 0 = DivByZero
   divides val d
@@ -22,21 +22,23 @@ namespace Integer
              let dividend = if d < 0 then -(val `div` abs d)
                                      else val `div` d
                  remainder = abs (val - dividend * d) in
-                 believe_me (DivBy {d} {div = dividend} {rem = remainder}
-                                   (believe_me (Refl {x = True})))
+                 really_believe_me (DivBy {d} {div = dividend} {rem = remainder}
+                                   (really_believe_me (Refl {x = True})))
 
   ||| View for recursion over Integers
+  public export
   data IntegerRec : Integer -> Type where
        IntegerZ : IntegerRec 0
        IntegerSucc : IntegerRec (n - 1) -> IntegerRec n
        IntegerPred : IntegerRec ((-n) + 1) -> IntegerRec (-n)
-  
+
   ||| Covering function for `IntegerRec`
+  public export
   integerRec : (x : Integer) -> IntegerRec x
   integerRec 0 = IntegerZ
   integerRec x = if x > 0 then IntegerSucc (assert_total (integerRec (x - 1)))
-                      else believe_me (IntegerPred {n=-x} 
-                                (assert_total (believe_me (integerRec (x + 1)))))
+                      else really_believe_me (IntegerPred {n=-x}
+                                (assert_total (really_believe_me (integerRec (x + 1)))))
 
 namespace Int
   ||| View for expressing a number as a multiplication + a remainder
@@ -45,13 +47,13 @@ namespace Int
        DivByZero : Int.Divides x 0
        DivBy : (prf : rem >= 0 && rem < d = True) ->
                Int.Divides ((d * div) + rem) d
-   
+
   -- I have assumed, but not actually verified, that this will still
   -- give a right result (i.e. still adding up) when the Ints overflow.
   -- TODO: Someone please check this and fix if necessary...
 
   ||| Covering function for the `Divides` view
-  export
+  public export
   divides : (val : Int) -> (d : Int) -> Divides val d
   divides val 0 = DivByZero
   divides val d
@@ -59,19 +61,21 @@ namespace Int
              let dividend = if d < 0 then -(val `div` abs d)
                                      else val `div` d
                  remainder = abs (val - dividend * d) in
-                 believe_me (DivBy {d} {div = dividend} {rem = remainder}
-                                   (believe_me (Refl {x = True})))
+                 really_believe_me (DivBy {d} {div = dividend} {rem = remainder}
+                                   (really_believe_me (Refl {x = True})))
 
   ||| View for recursion over Ints
+  public export
   data IntRec : Int -> Type where
        IntZ : IntRec 0
        IntSucc : IntRec (n - 1) -> IntRec n
        IntPred : IntRec ((-n) + 1) -> IntRec (-n)
-  
+
   ||| Covering function for `IntRec`
+  public export
   intRec : (x : Int) -> IntRec x
   intRec 0 = IntZ
   intRec x = if x > 0 then IntSucc (assert_total (intRec (x - 1)))
-                      else believe_me (IntPred {n=-x}
-                                (assert_total (believe_me (intRec (x + 1)))))
-  
+                      else really_believe_me (IntPred {n=-x}
+                                (assert_total (really_believe_me (intRec (x + 1)))))
+

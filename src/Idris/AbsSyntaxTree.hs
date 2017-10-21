@@ -1697,6 +1697,9 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
   where
     startPrec = 0
     funcAppPrec = 10
+    lbrace = annotate (AnnSyntax "{") (text "{")
+    rbrace = annotate (AnnSyntax "}") (text "}")
+    percent = annotate (AnnSyntax "%") (text "%")
 
     prettySe :: Maybe Int -> Int -> [(Name, Bool)] -> PTerm -> Doc OutputAnnotation
     prettySe d p bnd (PQuote r) =
@@ -1709,7 +1712,8 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettySe d p bnd (PLam fc n nfc ty sc) =
       let (ns, sc') = getLamNames [n] sc in
           depth d . bracket p startPrec . group . align . hang 2 $
-          text "\\" <> prettyBindingsOf ns False <+> text "=>" <$>
+          (annotate (AnnSyntax "\\") (text "\\"))
+          <> prettyBindingsOf ns False <+> text "=>" <$>
           prettySe (decD d) startPrec ((n, False):bnd) sc'
       where
         getLamNames acc (PLam fc n nfc ty sc) = getLamNames (n : acc) sc
@@ -1749,7 +1753,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
 
         st =
           case s of
-            Static -> text "%static" <> space
+            Static -> percent <> text "static" <> space
             _      -> empty
     prettySe d p bnd (PPi (Imp l s _ fa _ rig) n _ ty sc)
       | ppopt_impl ppo =
@@ -1769,7 +1773,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
 
         st =
           case s of
-            Static -> text "%static" <> space
+            Static -> percent <> text "static" <> space
             _      -> empty
     prettySe d p bnd (PPi (Constraint _ _ rig) n _ ty sc) =
       depth d . bracket p startPrec $
@@ -1876,7 +1880,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
         , kwd "else" <+> prettySe (decD d) startPrec bnd f
         ]
     prettySe d p bnd (PHidden tm)         = text "." <> prettySe (decD d) funcAppPrec bnd tm
-    prettySe d p bnd (PResolveTC _)       = kwd "%implementation"
+    prettySe d p bnd (PResolveTC _)       = percent <> kwd "implementation"
     prettySe d p bnd (PTrue _ IsType)     = annName unitTy $ text "()"
     prettySe d p bnd (PTrue _ IsTerm)     = annName unitCon $ text "()"
     prettySe d p bnd (PTrue _ TypeOrTerm) = text "()"
@@ -1981,7 +1985,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
             end = if res then "}" else "}}"
     prettySe d p bnd (PRunElab _ tm _)        =
       bracket p funcAppPrec . group . align . hang 2 $
-      text "%runElab" <$>
+      (percent <> text "runElab") <$>
       prettySe (decD d) funcAppPrec bnd tm
     prettySe d p bnd (PConstSugar fc tm)      = prettySe d p bnd tm -- should never occur, but harmless
     prettySe d p bnd _                        = text "missing pretty-printer for term"

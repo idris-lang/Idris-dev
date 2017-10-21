@@ -119,7 +119,7 @@ char* idris_utf8_fromChar(int x) {
     char* str;
     int bytes = 0, top = 0;
 
-    if ((x & 0x80) == 0) {
+    if (x < 0x80) {
         str = malloc(2);
         str[0] = (char)x;
         str[1] = '\0';

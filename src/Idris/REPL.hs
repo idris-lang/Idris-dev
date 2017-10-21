@@ -1373,7 +1373,7 @@ process fn (SetPrinterDepth d) = setDepth d
 process fn (Apropos pkgs a) =
   do orig <- getIState
      when (not (null pkgs)) $
-       iputStrLn $ "Searching packages: " ++ showSep ", " pkgs
+       iputStrLn $ "Searching packages: " ++ showSep ", " (map show pkgs)
      mapM_ loadPkgIndex pkgs
      ist <- getIState
      let mods = aproposModules ist (T.pack a)

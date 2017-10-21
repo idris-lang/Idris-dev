@@ -7,12 +7,13 @@ Maintainer  : The Idris Community.
 module Idris.Package.Common where
 
 import Idris.Core.TT (Name)
+import Idris.Imports
 import Idris.Options (Opt(..))
 
 -- | Description of an Idris package.
 data PkgDesc = PkgDesc {
-    pkgname       :: String       -- ^ Name associated with a package.
-  , pkgdeps       :: [String]     -- ^ List of packages this package depends on.
+    pkgname       :: PkgName      -- ^ Name associated with a package.
+  , pkgdeps       :: [PkgName]    -- ^ List of packages this package depends on.
   , pkgbrief      :: Maybe String -- ^ Brief description of the package.
   , pkgversion    :: Maybe String -- ^ Version string to associate with the package.
   , pkgreadme     :: Maybe String -- ^ Location of the README file.
@@ -35,6 +36,6 @@ data PkgDesc = PkgDesc {
 
 -- | Default settings for package descriptions.
 defaultPkg :: PkgDesc
-defaultPkg = PkgDesc "" [] Nothing Nothing Nothing Nothing
+defaultPkg = PkgDesc unInitializedPkgName [] Nothing Nothing Nothing Nothing
                         Nothing Nothing Nothing Nothing
                         Nothing [] [] Nothing [] "" [] Nothing Nothing []
