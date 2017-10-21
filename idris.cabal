@@ -314,7 +314,7 @@ Library
 
   if os(windows)
      build-depends: mintty >= 0.1 && < 0.2
-                  , Win32 < 2.4
+                  , Win32 < 2.7
   else
      build-depends: unix < 2.8
   if flag(FFI)

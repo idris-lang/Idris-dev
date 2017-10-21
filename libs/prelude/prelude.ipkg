@@ -1,17 +1,37 @@
 package prelude
 
 opts = "--nobuiltins --total --no-elim-deprecation-warnings --partial-eval"
-modules = Builtins, Prelude, IO,
 
-          Prelude.Algebra, Prelude.Basics, Prelude.Bool, Prelude.Cast,
-          Prelude.Interfaces, Prelude.Nat, Prelude.List,
-          Prelude.Maybe, Prelude.Monad, Prelude.Applicative, Prelude.Either,
-          Prelude.Strings, Prelude.Chars, Prelude.Show, Prelude.Functor,
-          Prelude.Foldable, Prelude.Traversable, Prelude.Bits, Prelude.Stream,
-          Prelude.Uninhabited, Prelude.Pairs, Prelude.Providers,
-          Prelude.Interactive, Prelude.File, Prelude.Doubles,
-          Prelude.WellFounded,
-
-          Language.Reflection, Language.Reflection.Errors, Language.Reflection.Elab,
-
-          Decidable.Equality
+modules = Builtins
+        , Decidable.Equality
+        , IO
+        , Language.Reflection
+        , Language.Reflection.Elab
+        , Language.Reflection.Errors
+        , Prelude
+        , Prelude.Algebra
+        , Prelude.Applicative
+        , Prelude.Basics
+        , Prelude.Bits
+        , Prelude.Bool
+        , Prelude.Cast
+        , Prelude.Chars
+        , Prelude.Doubles
+        , Prelude.Either
+        , Prelude.File
+        , Prelude.Foldable
+        , Prelude.Functor
+        , Prelude.Interactive
+        , Prelude.Interfaces
+        , Prelude.List
+        , Prelude.Maybe
+        , Prelude.Monad
+        , Prelude.Nat
+        , Prelude.Pairs
+        , Prelude.Providers
+        , Prelude.Show
+        , Prelude.Stream
+        , Prelude.Strings
+        , Prelude.Traversable
+        , Prelude.Uninhabited
+        , Prelude.WellFounded

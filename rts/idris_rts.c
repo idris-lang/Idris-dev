@@ -714,7 +714,7 @@ VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     int xval = GETINT(x);
     int xlen = GETSTRLEN(xs);
 
-    if ((xval & 0x80) == 0) { // ASCII char
+    if (xval < 0x80) { // ASCII char
         Closure* cl = allocate(sizeof(Closure) +
                                xlen + 2, 0);
         SETTY(cl, CT_STRING);
@@ -794,6 +794,24 @@ void idris_writeRef(VAL ref, VAL x) {
 
 VAL idris_readRef(VAL ref) {
     return (VAL)(ref->info.ptr);
+}
+
+VAL idris_newArray(VM* vm, int size, VAL def) {
+    Closure* cl;
+    int i;
+    allocArray(cl, vm, size, 0);
+    for(i=0; i<size; ++i) {
+	cl->info.arr.content[i] = def;
+    }
+    return cl;
+}
+
+void idris_arraySet(VAL arr, int index, VAL newval) {
+     arr->info.arr.content[index] = newval;
+}
+
+VAL idris_arrayGet(VAL arr, int index) {
+     return arr->info.arr.content[index];
 }
 
 VAL idris_systemInfo(VM* vm, VAL index) {
@@ -877,7 +895,7 @@ void* idris_stopThread(VM* vm) {
 // VM is assumed to be a different vm from the one x lives on
 
 VAL doCopyTo(VM* vm, VAL x) {
-    int i, ar;
+    int i, ar, len;
     VAL* argptr;
     Closure* cl;
     if (x==NULL || ISINT(x)) {
@@ -897,6 +915,16 @@ VAL doCopyTo(VM* vm, VAL x) {
                 argptr++;
             }
         }
+        break;
+    case CT_ARRAY:
+        len = x->info.arr.length;
+	allocArray(cl, vm, len, 1);
+
+	argptr = (VAL*)(cl->info.arr.content);
+	for(i = 0; i < len; ++i) {
+	    *argptr = doCopyTo(vm, *((VAL*)(x->info.arr.content)+i)); // recursive version
+	    argptr++;
+	}
         break;
     case CT_FLOAT:
         cl = MKFLOATc(vm, x->info.f);

@@ -41,7 +41,7 @@ DataStore IO where
 
   disconnect store = delete store
 
-  readSecret store = readSecret store
+  readSecret store = read store
 
   login store = do putStr "Enter password: "
                    p <- getStr

@@ -172,6 +172,7 @@ instance SExpable OutputAnnotation where
              maybeProps [("source-file", file)]
   toSExp AnnQuasiquote = toSExp [(SymbolAtom "quasiquotation", True)]
   toSExp AnnAntiquote = toSExp [(SymbolAtom "antiquotation", True)]
+  toSExp (AnnSyntax c) = SexpList []
 
 encodeName :: Name -> String
 encodeName n = UTF8.toString . Base64.encode . Lazy.toStrict . Binary.encode $ n

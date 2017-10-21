@@ -8,13 +8,17 @@
 + The `LinearTypes` language extension has been revised. It implements the
   rules from Bob Atkey's draft "The Syntax and Semantics of Quantitative
   Type Theory" and now works with holes and case expressions.
++ Backticked operators can appear in sections, e.g. `(\`LTE\` 42)` or
+  `(1 \`plus\`)`.
 
 ## Library Updates
 
++ Removed `oldeffects` library from `libs` folder, use `effects` or `Control.ST` instead.
 + Added `Text.Literate`, a module for working with literate source files.
 + Added `Data.IORef`, for working with mutable references in `IO` and `JS_IO`.
 + Added `discriminate` and `construct` tactics to Pruviloj.
 + Added `IsSucc` type to `Prelude`, which proves that a `Nat` is a successor.
++ Added `Data.IOArray`, containing primitives for mutable arrays.
 + The operator `<|>` is now right-associative (it retains the same precedence).
 
 ## Tool Updates
@@ -23,6 +27,12 @@
 + The --interface option now creates CommonJS modules on the node backend.
 + The C backend now pass arguments to the C compiler in the same order
   as they were given in the source files.
++ Backslash, braces and percent symbols are now correctly pretty printed
+  in LaTeX.
+
+## Packaging Updates
++ Package names now only accept a restrictive charset of letters, numbers and the `-_` characters.
+  Package names are also case insensitive
 
 # New in 1.1.1
 

@@ -5,7 +5,7 @@
 #include <assert.h>
 
 VAL copy(VM* vm, VAL x) {
-    int ar;
+    int ar, len;
     Closure* cl = NULL;
     if (x==NULL || ISINT(x)) {
         return x;
@@ -19,6 +19,11 @@ VAL copy(VM* vm, VAL x) {
             allocCon(cl, vm, CTAG(x), ar, 1);
             memcpy(&(cl->info.c.args), &(x->info.c.args), sizeof(VAL)*ar);
         }
+        break;
+    case CT_ARRAY:
+        len = x->info.arr.length;
+	allocArray(cl, vm, len, 1);
+        memcpy(&(cl->info.arr.content), &(x->info.arr.content), sizeof(VAL)*len);
         break;
     case CT_FLOAT:
         cl = MKFLOATc(vm, x->info.f);
@@ -58,7 +63,7 @@ VAL copy(VM* vm, VAL x) {
     case CT_RAWDATA:
         {
             size_t size = x->info.size + sizeof(Closure);
-            cl = allocate(size, 0);
+            cl = allocate(size, 1);
             memcpy(cl, x, size);
         }
         break;
@@ -76,7 +81,7 @@ VAL copy(VM* vm, VAL x) {
 
 void cheney(VM *vm) {
     int i;
-    int ar;
+    int ar, len;
     char* scan = aligned_heap_pointer(vm->heap.heap);
 
     while(scan < vm->heap.next) {
@@ -89,6 +94,13 @@ void cheney(VM *vm) {
            for(i = 0; i < ar; ++i) {
                VAL newptr = copy(vm, heap_item->info.c.args[i]);
                heap_item->info.c.args[i] = newptr;
+           }
+           break;
+       case CT_ARRAY:
+           len = heap_item->info.arr.length;
+           for(i = 0; i < len; ++i) {
+               VAL newptr = copy(vm, heap_item->info.arr.content[i]);
+               heap_item->info.arr.content[i] = newptr;
            }
            break;
        case CT_REF:

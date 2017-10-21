@@ -468,27 +468,41 @@ bracketed' open syn =
                lchar ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
         <|> try (dependentPair TypeOrTerm [] open syn)
-        <|> try (do fc <- getFC; o <- operator; e <- expr syn; lchar ')'
-                    -- No prefix operators! (bit of a hack here...)
-                    if (o == "-" || o == "!")
-                      then fail "minus not allowed in section"
-                      else return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
-                         (PApp fc (PRef fc [] (sUN o)) [pexp (PRef fc [] (sMN 1000 "ARG")),
-                                                        pexp e]))
-        <|> try (do l <- simpleExpr syn
-                    op <- option Nothing (do o <- operator
-                                             lchar ')'
-                                             return (Just o))
-                    fc0 <- getFC
-                    case op of
-                         Nothing -> bracketedExpr syn open l
-                         Just o -> return $ PLam fc0 (sMN 1000 "ARG") NoFC Placeholder
-                             (PApp fc0 (PRef fc0 [] (sUN o)) [pexp l,
-                                                              pexp (PRef fc0 [] (sMN 1000 "ARG"))]))
+        <|> try (do fc <- getFC
+                    opName <- operatorName
+                    guardNotPrefix opName
+
+                    e <- expr syn
+                    lchar ')'
+                    return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
+                      (PApp fc (PRef fc [] opName) [pexp (PRef fc [] (sMN 1000 "ARG")),
+                                                    pexp e]))
+        <|> try (simpleExpr syn >>= \l ->
+                     try (do opName <- operatorName
+                             lchar ')'
+                             fc <- getFC
+                             return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
+                               (PApp fc (PRef fc [] opName) [pexp l,
+                                                             pexp (PRef fc [] (sMN 1000 "ARG"))]))
+                 <|> bracketedExpr syn open l)
         <|> do l <- expr (allowConstr syn)
                bracketedExpr (allowConstr syn) open l
+  where
+    operatorName :: IdrisParser Name
+    operatorName =     sUN <$> operator
+                   <|> fst <$> between (lchar '`') (lchar '`') fnName
 
+    justPrefix                          :: FixDecl -> Maybe Name
+    justPrefix (Fix (PrefixN _) opName) = Just (sUN opName)
+    justPrefix _                        = Nothing
 
+    guardNotPrefix        :: Name -> IdrisParser ()
+    guardNotPrefix opName = do
+      guard $ opName /= sUN "-"
+      guard $ opName /= sUN "!"
+
+      ops <- idris_infixes <$> get
+      guard . not . (opName `elem`) . mapMaybe justPrefix $ ops
 
 {-| Parses the rest of a dependent pair after '(' or '(Expr **' -}
 dependentPair :: PunInfo -> [(PTerm, Maybe (FC, PTerm), FC)] -> FC -> SyntaxInfo -> IdrisParser PTerm
