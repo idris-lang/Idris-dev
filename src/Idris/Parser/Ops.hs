@@ -65,7 +65,7 @@ table fixes
     assoc (Infixr _) = AssocRight
     assoc (InfixN _) = AssocNone
 
-    isBacktick :: String -> Bool
+    isBacktick         :: String -> Bool
     isBacktick (c : _) = c == '_' || isAlpha c
     isBacktick _       = False
 
