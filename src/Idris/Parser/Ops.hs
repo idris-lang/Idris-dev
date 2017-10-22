@@ -36,20 +36,21 @@ table fixes
       [binary "=" AssocLeft  $ \fc _ x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]],
       [noFixityOperator]]
   where
-    flatten :: PTerm -> PTerm -- flatten application
+    flatten                            :: PTerm -> PTerm -- flatten application
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
-    flatten t = t
+    flatten t                          = t
 
     noFixityBacktickOperator :: Operator IdrisParser PTerm
-    noFixityBacktickOperator =
-      Infix (do (n, fc) <- backtickOperator
-                return (\x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y])) AssocNone
+    noFixityBacktickOperator = flip Infix AssocNone $ do
+                                 (n, fc) <- backtickOperator
+                                 return $ \x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y]
 
     -- | Operator without fixity (throws an error)
     noFixityOperator :: Operator IdrisParser PTerm
-    noFixityOperator = Infix (do indentGt
-                                 op <- try symbolicOperator
-                                 unexpected $ "Operator without known fixity: " ++ op) AssocNone
+    noFixityOperator = flip Infix AssocNone $ do
+                         indentGt
+                         op <- try symbolicOperator
+                         unexpected $ "Operator without known fixity: " ++ op
 
     -- | Calculates table for fixity declarations
     toTable    :: [FixDecl] -> OperatorTable IdrisParser PTerm
