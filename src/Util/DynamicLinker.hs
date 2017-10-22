@@ -21,7 +21,7 @@ import System.FilePath.Windows ((</>))
 import System.Win32.DLL
 import System.Win32.Types
 #else
-import Control.Exception (IOException, try, throwIO)
+import Control.Exception (IOException, throwIO, try)
 import Foreign.Ptr (FunPtr, nullFunPtr, nullPtr)
 #ifdef linux_HOST_OS
 import Data.Array (bounds, inRange, (!))

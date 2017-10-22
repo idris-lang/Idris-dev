@@ -15,8 +15,8 @@ import Idris.Parser.Helpers
 
 import Prelude hiding (pi)
 
-import Control.Arrow (first)
 import Control.Applicative
+import Control.Arrow (first)
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Char (isAlpha)
