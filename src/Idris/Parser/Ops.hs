@@ -32,8 +32,8 @@ table fixes
    = [[prefix "-" (\fc x -> PApp fc (PRef fc [fc] (sUN "negate")) [pexp x])]] ++
       toTable (reverse fixes) ++
      [[noFixityBacktickOperator],
-      [binary "$" (\fc _ x y -> flatten $ PApp fc x [pexp y]) AssocRight],
-      [binary "="  (\fc _ x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]) AssocLeft],
+      [binary "$" AssocRight $ \fc _ x y -> flatten $ PApp fc x [pexp y]],
+      [binary "=" AssocLeft  $ \fc _ x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]],
       [noFixityOperator]]
   where
     flatten :: PTerm -> PTerm -- flatten application
@@ -52,16 +52,17 @@ table fixes
                                  unexpected $ "Operator without known fixity: " ++ op) AssocNone
 
     -- | Calculates table for fixity declarations
-    toTable :: [FixDecl] -> OperatorTable IdrisParser PTerm
-    toTable fs = map (map toBin)
-                     (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
-       where toBin (Fix (PrefixN _) op) = prefix op
-                                           (\fc x -> PApp fc (PRef fc [] (sUN op)) [pexp x])
-             toBin (Fix f op)
-                = binary op (\fc n x y -> PApp fc (PRef fc [] n) [pexp x,pexp y]) (assoc f)
-             assoc (Infixl _) = AssocLeft
-             assoc (Infixr _) = AssocRight
-             assoc (InfixN _) = AssocNone
+    toTable    :: [FixDecl] -> OperatorTable IdrisParser PTerm
+    toTable fs = map (map toBin) (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
+
+    toBin (Fix (PrefixN _) op) = prefix op $ \fc x ->
+                                   PApp fc (PRef fc [] (sUN op)) [pexp x]
+    toBin (Fix f op)           = binary op (assoc f) $ \fc n x y ->
+                                   PApp fc (PRef fc [] n) [pexp x,pexp y]
+
+    assoc (Infixl _) = AssocLeft
+    assoc (Infixr _) = AssocRight
+    assoc (InfixN _) = AssocNone
 
     isBacktick :: String -> Bool
     isBacktick (c : _)
@@ -69,13 +70,13 @@ table fixes
       | c == '_'  = True
       | otherwise = False
 
-    binary :: String -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
-    binary name f
-      | isBacktick name = Infix $ try $ do
+    binary :: String -> Assoc -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> Operator IdrisParser PTerm
+    binary name assoc f
+      | isBacktick name = flip Infix assoc $ try $ do
                             (n, fc) <- backtickOperator
                             guard $ show (nsroot n) == name
                             return $ f fc n
-      | otherwise       = Infix $ do
+      | otherwise       = flip Infix assoc $ do
                             indentGt
                             fc <- reservedOpFC name
                             indentGt
