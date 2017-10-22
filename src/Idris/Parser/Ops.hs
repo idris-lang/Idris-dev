@@ -32,8 +32,8 @@ table fixes
    = [[prefix "-" (\fc x -> PApp fc (PRef fc [fc] (sUN "negate")) [pexp x])]] ++
       toTable (reverse fixes) ++
      [[noFixityBacktickOperator],
-      [binary "$" (\fc x y -> flatten $ PApp fc x [pexp y]) AssocRight],
-      [binary "="  (\fc x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]) AssocLeft],
+      [binary "$" (\fc _ x y -> flatten $ PApp fc x [pexp y]) AssocRight],
+      [binary "="  (\fc _ x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]) AssocLeft],
       [noFixityOperator]]
   where
     flatten :: PTerm -> PTerm -- flatten application
@@ -58,7 +58,7 @@ table fixes
        where toBin (Fix (PrefixN _) op) = prefix op
                                            (\fc x -> PApp fc (PRef fc [] (sUN op)) [pexp x])
              toBin (Fix f op)
-                = binary op (\fc x y -> PApp fc (PRef fc [] (sUN op)) [pexp x,pexp y]) (assoc f)
+                = binary op (\fc n x y -> PApp fc (PRef fc [] n) [pexp x,pexp y]) (assoc f)
              assoc (Infixl _) = AssocLeft
              assoc (Infixr _) = AssocRight
              assoc (InfixN _) = AssocNone
@@ -69,17 +69,17 @@ table fixes
       | c == '_'  = True
       | otherwise = False
 
-    binary :: String -> (FC -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
+    binary :: String -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> Assoc -> Operator IdrisParser PTerm
     binary name f
-      | isBacktick name = Infix $ do
+      | isBacktick name = Infix $ try $ do
                             (n, fc) <- backtickOperator
                             guard $ show (nsroot n) == name
-                            return $ f fc
+                            return $ f fc n
       | otherwise       = Infix $ do
                             indentGt
                             fc <- reservedOpFC name
                             indentGt
-                            return $ f fc
+                            return $ f fc (sUN name)
 
     prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
     prefix name f = Prefix (do reservedOp name
