@@ -65,10 +65,8 @@ table fixes
     assoc (InfixN _) = AssocNone
 
     isBacktick :: String -> Bool
-    isBacktick (c : _)
-      | isAlpha c = True
-      | c == '_'  = True
-      | otherwise = False
+    isBacktick (c : _) = c == '_' || isAlpha c
+    isBacktick _       = False
 
     binary :: String -> Assoc -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> Operator IdrisParser PTerm
     binary name assoc f
