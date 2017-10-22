@@ -8,10 +8,10 @@
 + The `LinearTypes` language extension has been revised. It implements the
   rules from Bob Atkey's draft "The Syntax and Semantics of Quantitative
   Type Theory" and now works with holes and case expressions.
-+ Backticked operators can appear in sections, e.g. `(\`LTE\` 42)` or
-  `(1 \`plus\`)`.
++ Backticked operators can appear in sections, e.g. ``(`LTE` 42)`` or
+  ``(1 `plus`)``.
 + Backticked operators can have their precendence and associativity set like
-  other operators, e.g. `infixr 8 \`cons\``.
+  other operators, e.g. ``infixr 8 `cons` ``.
 
 ## Library Updates
 
