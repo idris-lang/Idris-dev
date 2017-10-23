@@ -19,6 +19,7 @@
 + Added `discriminate` and `construct` tactics to Pruviloj.
 + Added `IsSucc` type to `Prelude`, which proves that a `Nat` is a successor.
 + Added `Data.IOArray`, containing primitives for mutable arrays.
++ The operator `<|>` is now right-associative (it retains the same precedence).
 
 ## Tool Updates
 + Private functions are no longer visible in the REPL except for modules

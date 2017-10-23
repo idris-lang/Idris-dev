@@ -38,7 +38,7 @@ liftA2 f a b = (map f a) <*> b
 liftA3 : Applicative f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
 liftA3 f a b c = (map f a) <*> b <*> c
 
-infixl 3 <|>
+infixr 3 <|>
 interface Applicative f => Alternative (f : Type -> Type) where
     empty : f a
     (<|>) : f a -> f a -> f a
