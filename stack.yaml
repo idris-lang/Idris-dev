@@ -1,5 +1,5 @@
 #recheck extra-deps next on resolver or cabal file change
-resolver: lts-9.0
+resolver: nightly-2017-10-23
 
 packages:
   - location: .
@@ -11,10 +11,6 @@ flags:
 
 ghc-options:
   idris: -fwarn-unused-imports -fwarn-unused-binds
-
-extra-deps:
-  - binary-0.8.5.1
-  - cheapskate-0.1.1
 
 nix:
   enable: false
