@@ -468,8 +468,7 @@ bracketed' open syn =
                lchar ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
         <|> try (dependentPair TypeOrTerm [] open syn)
-        <|> try (do fc <- getFC
-                    opName <- operatorName
+        <|> try (do (opName, fc) <- operatorName
                     guardNotPrefix opName
 
                     e <- expr syn
@@ -478,7 +477,7 @@ bracketed' open syn =
                       (PApp fc (PRef fc [] opName) [pexp (PRef fc [] (sMN 1000 "ARG")),
                                                     pexp e]))
         <|> try (simpleExpr syn >>= \l ->
-                     try (do opName <- operatorName
+                     try (do (opName, _) <- operatorName
                              lchar ')'
                              fc <- getFC
                              return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
@@ -488,10 +487,6 @@ bracketed' open syn =
         <|> do l <- expr (allowConstr syn)
                bracketedExpr (allowConstr syn) open l
   where
-    operatorName :: IdrisParser Name
-    operatorName =     sUN <$> operator
-                   <|> fst <$> between (lchar '`') (lchar '`') fnName
-
     justPrefix                          :: FixDecl -> Maybe Name
     justPrefix (Fix (PrefixN _) opName) = Just (sUN opName)
     justPrefix _                        = Nothing
@@ -1558,8 +1553,8 @@ tactics =
           imps <- many imp
           return $ Refine n imps)
   , (["claim"], Nothing, \syn ->
-       do n <- indentPropHolds gtProp *> (fst <$> name)
-          goal <- indentPropHolds gtProp *> expr syn
+       do n <- indentGt *> (fst <$> name)
+          goal <- indentGt *> expr syn
           return $ Claim n goal)
   , (["mrefine"], Just ExprTArg, const $
        do n <- spaced (fst <$> fnName)
@@ -1569,15 +1564,15 @@ tactics =
   , expressionTactic ["induction"] Induction
   , expressionTactic ["equiv"] Equiv
   , (["let"], Nothing, \syn -> -- FIXME syntax for let
-       do n <- (indentPropHolds gtProp *> (fst <$> name))
-          (do indentPropHolds gtProp *> lchar ':'
-              ty <- indentPropHolds gtProp *> expr' syn
-              indentPropHolds gtProp *> lchar '='
-              t <- indentPropHolds gtProp *> expr syn
+       do n <- (indentGt *> (fst <$> name))
+          (do indentGt *> lchar ':'
+              ty <- indentGt *> expr' syn
+              indentGt *> lchar '='
+              t <- indentGt *> expr syn
               i <- get
               return $ LetTacTy n (desugar syn i ty) (desugar syn i t))
-            <|> (do indentPropHolds gtProp *> lchar '='
-                    t <- indentPropHolds gtProp *> expr syn
+            <|> (do indentGt *> lchar '='
+                    t <- indentGt *> expr syn
                     i <- get
                     return $ LetTac n (desugar syn i t)))
 
@@ -1628,7 +1623,7 @@ tactics =
         i <- get
         return $ tactic (desugar syn i t))
   noArgs names tactic = (names, Nothing, const (return tactic))
-  spaced parser = indentPropHolds gtProp *> parser
+  spaced parser = indentGt *> parser
   imp :: IdrisParser Bool
   imp = do lchar '?'; return False
     <|> do lchar '_'; return True

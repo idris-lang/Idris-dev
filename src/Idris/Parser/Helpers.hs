@@ -408,17 +408,17 @@ invalidOperators :: [String]
 invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%", "~", "?", "!", "@"]
 
 -- | Parses an operator
-operator :: MonadicParsing m => m String
-operator = do op <- token . some $ operatorLetter
-              when (op `elem` (invalidOperators ++ commentMarkers)) $
-                   fail $ op ++ " is not a valid operator"
-              return op
+symbolicOperator :: MonadicParsing m => m String
+symbolicOperator = do op <- token . some $ operatorLetter
+                      when (op `elem` (invalidOperators ++ commentMarkers)) $
+                           fail $ op ++ " is not a valid operator"
+                      return op
 
 -- | Parses an operator
-operatorFC :: MonadicParsing m => m (String, FC)
-operatorFC = do (FC f (l, c) _) <- getFC
-                op <- operator
-                return (op, FC f (l, c) (l, c + length op))
+symbolicOperatorFC :: MonadicParsing m => m (String, FC)
+symbolicOperatorFC = do (FC f (l, c) _) <- getFC
+                        op <- symbolicOperator
+                        return (op, FC f (l, c) (l, c + length op))
 
 {- * Position helpers -}
 {- | Get filename from position (returns "(interactive)" when no source file is given)  -}
@@ -590,36 +590,11 @@ notEndBlock = do ist <- get
                                           when (i < lvl || isParen) (fail "end of block")
                       _ -> return ()
 
--- | Representation of an operation that can compare the current indentation with the last indentation, and an error message if it fails
-data IndentProperty = IndentProperty (Int -> Int -> Bool) String
-
--- | Allows comparison of indent, and fails if property doesn't hold
-indentPropHolds :: IndentProperty -> IdrisParser ()
-indentPropHolds (IndentProperty op msg) = do
+indentGt :: IdrisParser ()
+indentGt = do
   li <- lastIndent
   i <- indent
-  when (not $ op i li) $ fail ("Wrong indention: " ++ msg)
-
--- | Greater-than indent property
-gtProp :: IndentProperty
-gtProp = IndentProperty (>) "should be greater than context indentation"
-
--- | Greater-than or equal to indent property
-gteProp :: IndentProperty
-gteProp = IndentProperty (>=) "should be greater than or equal context indentation"
-
--- | Equal indent property
-eqProp :: IndentProperty
-eqProp = IndentProperty (==) "should be equal to context indentation"
-
--- | Less-than indent property
-ltProp :: IndentProperty
-ltProp = IndentProperty (<) "should be less than context indentation"
-
--- | Less-than or equal to indent property
-lteProp :: IndentProperty
-lteProp = IndentProperty (<=) "should be less than or equal to context indentation"
-
+  when (i <= li) $ fail "Wrong indention: should be greater than context indentation"
 
 -- | Checks that there are no braces that are not closed
 notOpenBraces :: IdrisParser ()
