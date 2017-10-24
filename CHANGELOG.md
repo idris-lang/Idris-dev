@@ -24,6 +24,7 @@
 + Added `IsSucc` type to `Prelude`, which proves that a `Nat` is a successor.
 + Added `Data.IOArray`, containing primitives for mutable arrays.
 + The operator `<|>` is now right-associative (it retains the same precedence).
++ Reworked operator fixity for `&&` and `||`, as well as the comparison operators: `==`, `/=`, `<`, `<=`, `>`, and `>=`.
 
 ## Tool Updates
 + Private functions are no longer visible in the REPL except for modules
