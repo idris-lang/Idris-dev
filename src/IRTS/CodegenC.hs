@@ -179,8 +179,10 @@ bcc i (ASSIGNCONST l c)
     = indent i ++ creg l ++ " = " ++ mkConst c ++ ";\n"
   where
     mkConst (I i) = "MKINT(" ++ show i ++ ")"
-    mkConst (BI i) | i > ((-2)^30) && i < (2^30) = "MKINT(" ++ show i ++ ")"
-                   | otherwise = "MKBIGC(vm,\"" ++ show i ++ "\")"
+    mkConst (BI i) = let maxInt = 2^30
+                     in if i >= -maxInt && i < maxInt
+                        then "MKINT(" ++ show i ++ ")"
+                        else "MKBIGC(vm,\"" ++ show i ++ "\")"
     mkConst (Fl f) = "MKFLOAT(vm, " ++ (map toUpper $ show f) ++ ")"
     mkConst (Ch c) = "MKINT(" ++ show (fromEnum c) ++ ")"
     mkConst (Str s) = "MKSTR(vm, " ++ showCStr s ++ ")"
