@@ -43,6 +43,15 @@ export %inline
 (>>=) {c1 = False} = SeqEmpty
 (>>=) {c1 = True} = SeqEat
 
+||| Sequence two grammars. If either consumes some input, the sequence is
+||| guaranteed to consume input. This is an explicitly non-infinite version
+||| of `>>=`.
+export
+seq : Grammar tok c1 a ->
+      (a -> Grammar tok c2 b) ->
+      Grammar tok (c1 || c2) b
+seq = SeqEmpty
+
 ||| Sequence a grammar followed by the grammar it returns.
 export
 join : {c1 : Bool} ->
@@ -79,18 +88,16 @@ Functor (Grammar tok c) where
 ||| from the first grammar to the value from the second grammar.
 ||| Guaranteed to consume if either grammar consumes.
 export
-(<*>) : {c1 : Bool} ->
-        Grammar tok c1 (a -> b) ->
-        inf c1 (Grammar tok c2 a) ->
+(<*>) : Grammar tok c1 (a -> b) ->
+        Grammar tok c2 a ->
         Grammar tok (c1 || c2) b
-(<*>) {c1 = False} x y = SeqEmpty x (\f => map f y)
-(<*>) {c1 = True} x y = SeqEat x (\f => map f y)
+(<*>) x y = SeqEmpty x (\f => map f y)
 
 ||| Sequence two grammars. If both succeed, use the value of the first one.
 ||| Guaranteed to consume if either grammar consumes.
 export
 (<*) : Grammar tok c1 a ->
-       inf c1 (Grammar tok c2 b) ->
+       Grammar tok c2 b ->
        Grammar tok (c1 || c2) a
 (<*) x y = map const x <*> y
 
@@ -98,7 +105,7 @@ export
 ||| Guaranteed to consume if either grammar consumes.
 export
 (*>) : Grammar tok c1 a ->
-       inf c1 (Grammar tok c2 b) ->
+       Grammar tok c2 b ->
        Grammar tok (c1 || c2) b
 (*>) x y = map (const id) x <*> y
 
