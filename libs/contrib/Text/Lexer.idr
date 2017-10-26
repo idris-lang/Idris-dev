@@ -5,19 +5,37 @@ import public Text.Lexer.Core
 %default total
 %access export
 
-||| Recognise a specific character
+||| Recognise any character
+any : Lexer
+any = pred (const True)
+
+||| Recognise a lexer or recognise no input. This is not guaranteed
+||| to consume input
+opt : Lexer -> Recognise False
+opt l = l <|> empty
+
+||| Recognise any character if the sub-lexer `l` fails.
+non : (l : Lexer) -> Lexer
+non l = reject l <+> any
+
+||| Recognise the first matching lexer in a container. Always consumes input
+||| if an option succeeds. Fails if the container is empty.
+choice : Foldable t => t Lexer -> Lexer
+choice xs = foldr (<|>) fail xs
+
+||| Recognise a specific character.
 is : Char -> Lexer
 is x = pred (==x)
 
-||| Recognise anything but the given character
+||| Recognise anything but the given character.
 isNot : Char -> Lexer
 isNot x = pred (/=x)
 
-||| Recognise a character case-insensitively
+||| Recognise a specific character (case-insensitive).
 like : Char -> Lexer
 like x = pred (\y => toUpper x == toUpper y)
 
-||| Recognise anything but the given character case-insensitively
+||| Recognise anything but the given character (case-insensitive).
 notLike : Char -> Lexer
 notLike x = pred (\y => toUpper x /= toUpper y)
 
@@ -35,24 +53,24 @@ approx str = case map like (unpack str) of
                   [] => fail
                   (x :: xs) => concat (x :: xs)
 
-||| Recognise a lexer or recognise no input. This is not guaranteed
-||| to consume input
-opt : Lexer -> Recognise False
-opt l = l <|> empty
+||| Recognise any of the characters in the given string
+oneOf : String -> Lexer
+oneOf cs = pred (\x => x `elem` unpack cs)
 
-||| Recognise a sequence of at least one sub-lexers
-some : Lexer -> Lexer
-some l = l <+> opt (some l)
+||| Recognise a character range [`a`-`b`]. Also works in reverse!
+range : (start : Char) -> (end : Char) -> Lexer
+range start end = pred (\x => (x >= min start end)
+                           && (x <= max start end))
 
-||| Recognise a sequence of at zero or more sub-lexers. This is not
-||| guaranteed to consume input
-many : Lexer -> Recognise False
-many l = opt (some l)
+mutual
+  ||| Recognise a sequence of at least one sub-lexers
+  some : Lexer -> Lexer
+  some l = l <+> many l
 
-||| Recognise the first matching lexer from a Foldable. Always consumes input
-||| if one of the options succeeds. Fails if the foldable is empty.
-choice : Foldable t => t Lexer -> Lexer
-choice xs = foldr (<|>) fail xs
+  ||| Recognise a sequence of at zero or more sub-lexers. This is not
+  ||| guaranteed to consume input
+  many : Lexer -> Recognise False
+  many l = opt (some l)
 
 ||| Repeat the sub-lexer `l` zero or more times until the lexer
 ||| `stopBefore` is encountered. `stopBefore` will not be consumed.
@@ -98,23 +116,6 @@ between (S min) (S max) l = l <+> between min max l
 ||| Consumes input unless count is zero.
 exactly : (count : Nat) -> (l : Lexer) -> Recognise (count > 0)
 exactly n l = between n n l
-
-||| Recognise any character
-any : Lexer
-any = pred (const True)
-
-||| Recognise any character if the sub-lexer `l` fails.
-non : (l : Lexer) -> Lexer
-non l = reject l <+> any
-
-||| Recognise any of the characters in the given string
-oneOf : String -> Lexer
-oneOf cs = pred (\x => x `elem` unpack cs)
-
-||| Recognise a character range [`a`-`b`]. Also works in reverse!
-range : (start : Char) -> (end : Char) -> Lexer
-range start end = pred (\x => (x >= min start end)
-                           && (x <= max start end))
 
 ||| Recognise a single digit 0-9
 digit : Lexer
