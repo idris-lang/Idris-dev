@@ -18,6 +18,7 @@ import Idris.Parser.Ops
 
 import Prelude hiding (pi)
 
+import Control.Arrow (left)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
@@ -58,10 +59,7 @@ fullExpr syn = do x <- expr syn
                   return $ debindApp syn (desugar syn i x)
 
 tryFullExpr :: SyntaxInfo -> IState -> String -> Either Err PTerm
-tryFullExpr syn st input =
-  case runparser (fullExpr syn) st "" input of
-    P.Success tm -> Right tm
-    P.Failure e -> Left (Msg (show e))
+tryFullExpr syn st = left (Msg . show) . runparser (fullExpr syn) st ""
 
 {- | Parses an expression
 @

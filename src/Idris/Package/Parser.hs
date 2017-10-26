@@ -56,8 +56,8 @@ parseDesc fp = do
       then do
         p <- readFile fp
         case runparser pPkg defaultPkg fp p of
-          P.Failure (P.ErrInfo err _) -> fail (show $ PP.plain err)
-          P.Success x -> return x
+          Left (P.ErrInfo err _) -> fail (show $ PP.plain err)
+          Right x -> return x
       else do
         putStrLn $ unwords [ "The presented iPKG file does not exist:", show fp]
         exitWith (ExitFailure 1)

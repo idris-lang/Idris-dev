@@ -82,10 +82,12 @@ instance HasLastTokenSpan IdrisParser where
   getLastTokenSpan = lastTokenSpan <$> get
 
 -- | Helper to run Idris inner parser based stateT parsers
-runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> P.Result res
-runparser p i inputname =
-  P.parseString (runInnerParser (evalStateT p i))
-                (P.Directed (UTF8.fromString inputname) 0 0 0 0)
+runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either P.ErrInfo res
+runparser p i inputname s =
+  case P.parseString (runInnerParser (evalStateT p i))
+                     (P.Directed (UTF8.fromString inputname) 0 0 0 0) s of
+    P.Failure errInfo -> Left errInfo
+    P.Success result -> Right result
 
 highlightP :: FC -> OutputAnnotation -> IdrisParser ()
 highlightP fc annot = do ist <- get

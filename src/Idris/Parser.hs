@@ -1478,20 +1478,20 @@ runElabDecl syn =
 
 {- * Loading and parsing -}
 {-| Parses an expression from input -}
-parseExpr :: IState -> String -> P.Result PTerm
+parseExpr :: IState -> String -> Either P.ErrInfo PTerm
 parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
 
 {-| Parses a constant form input -}
-parseConst :: IState -> String -> P.Result Const
+parseConst :: IState -> String -> Either P.ErrInfo Const
 parseConst st = runparser (fmap fst constant) st "(input)"
 
 {-| Parses a tactic from input -}
-parseTactic :: IState -> String -> P.Result PTactic
+parseTactic :: IState -> String -> Either P.ErrInfo PTactic
 parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
 
 {-| Parses a do-step from input (used in the elab shell) -}
-parseElabShellStep :: IState -> String -> P.Result (Either ElabShellCmd PDo)
-parseElabShellStep ist = runparser (fmap Right (do_ defaultSyntax) <|> fmap Left elabShellCmd) ist "(input)"
+parseElabShellStep :: IState -> String -> Either P.ErrInfo (Either ElabShellCmd PDo)
+parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> elabShellCmd) ist "(input)"
   where elabShellCmd = char ':' >>
                        (reserved "qed"     >> pure EQED       ) <|>
                        (reserved "abandon" >> pure EAbandon   ) <|>
@@ -1579,7 +1579,7 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe P.Delta ->
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            P.Failure (P.ErrInfo doc _)     -> do -- FIXME: Get error location from trifecta
+            Left (P.ErrInfo doc _) -> do -- FIXME: Get error location from trifecta
                                   -- this can't be the solution!
                                   -- Issue #1575 on the issue tracker.
                                   --    https://github.com/idris-lang/Idris-dev/issues/1575
@@ -1590,9 +1590,9 @@ parseProg syn fname input mrk
                                     IdeMode n h -> iWarn fc (Util.Pretty.text msg)
                                   putIState (i { errSpan = Just fc })
                                   return []
-            P.Success (x, i)  -> do putIState i
-                                    reportParserWarnings
-                                    return $ collect x
+            Right (x, i)  -> do putIState i
+                                reportParserWarnings
+                                return $ collect x
   where mainProg :: IdrisParser ([PDecl], IState)
         mainProg = case mrk of
                         Nothing -> do i <- get; return ([], i)

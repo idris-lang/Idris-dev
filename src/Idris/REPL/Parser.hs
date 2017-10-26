@@ -35,7 +35,7 @@ import Text.Parser.Char (anyChar, oneOf)
 import Text.Parser.Combinators
 import qualified Text.Trifecta as P
 
-parseCmd :: IState -> String -> String -> P.Result (Either String Command)
+parseCmd :: IState -> String -> String -> Either P.ErrInfo (Either String Command)
 parseCmd i inputname = IP.runparser pCmd i inputname . trim
     where trim = f . f
               where f = reverse . dropWhile isSpace
