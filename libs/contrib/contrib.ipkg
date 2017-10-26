@@ -54,6 +54,7 @@ modules = CFFI
         , Text.Lexer
         , Text.Literate
         , Text.Parser
+        , Text.Parser.Core
         , Text.PrettyPrint.WL
         , Text.PrettyPrint.WL.Characters
         , Text.PrettyPrint.WL.Combinators
