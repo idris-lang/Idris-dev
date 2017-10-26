@@ -82,14 +82,14 @@ class HasLastTokenSpan m where
 instance HasLastTokenSpan IdrisParser where
   getLastTokenSpan = lastTokenSpan <$> get
 
-type ParseError = PP.Doc
+newtype ParseError = ParseError { parseErrorDoc :: PP.Doc }
 
 -- | Helper to run Idris inner parser based stateT parsers
 runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
 runparser p i inputname s =
   case P.parseString (runInnerParser (evalStateT p i))
                      (P.Directed (UTF8.fromString inputname) 0 0 0 0) s of
-    P.Failure (P.ErrInfo doc _) -> Left doc
+    P.Failure (P.ErrInfo doc _) -> Left (ParseError doc)
     P.Success value -> Right value
 
 highlightP :: FC -> OutputAnnotation -> IdrisParser ()

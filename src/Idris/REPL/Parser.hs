@@ -33,7 +33,6 @@ import System.Console.ANSI (Color(..))
 import System.FilePath ((</>))
 import Text.Parser.Char (anyChar, oneOf)
 import Text.Parser.Combinators
-import qualified Text.Trifecta as P
 
 parseCmd :: IState -> String -> String -> Either IP.ParseError (Either String Command)
 parseCmd i inputname = IP.runparser pCmd i inputname . trim

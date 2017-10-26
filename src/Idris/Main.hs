@@ -25,6 +25,7 @@ import Idris.ModeCommon
 import Idris.Options
 import Idris.Output
 import Idris.Parser hiding (indent)
+import Idris.Parser.Helpers (parseErrorDoc)
 import Idris.REPL
 import Idris.REPL.Commands
 import Idris.REPL.Parser
@@ -195,7 +196,7 @@ idrisMain opts =
                      mapM_ (\str -> do ist <- getIState
                                        c <- colourise
                                        case parseExpr ist str of
-                                         Left err -> do iputStrLn $ show (fixColour c err)
+                                         Left err -> do iputStrLn . show . fixColour c . parseErrorDoc $ err
                                                         runIO $ exitWith (ExitFailure 1)
                                          Right e -> process "" (Eval e))
                            exprs
@@ -272,7 +273,7 @@ execScript :: String -> Idris ()
 execScript expr = do i <- getIState
                      c <- colourise
                      case parseExpr i expr of
-                          Left err -> do iputStrLn $ show (fixColour c err)
+                          Left err -> do iputStrLn . show . fixColour c . parseErrorDoc $ err
                                          runIO $ exitWith (ExitFailure 1)
                           Right term -> do ctxt <- getContext
                                            (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
@@ -299,7 +300,7 @@ initScript = do script <- runIO $ getIdrisInitScript
                            runInit h
           processLine i cmd input clr =
               case parseCmd i input cmd of
-                   Left err -> runIO $ print (fixColour clr err)
+                   Left err -> runIO . print . fixColour clr . parseErrorDoc $ err
                    Right (Right Reload) -> iPrintError "Init scripts cannot reload the file"
                    Right (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
                    Right (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"

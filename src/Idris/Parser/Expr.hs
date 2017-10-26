@@ -59,7 +59,7 @@ fullExpr syn = do x <- expr syn
                   return $ debindApp syn (desugar syn i x)
 
 tryFullExpr :: SyntaxInfo -> IState -> String -> Either Err PTerm
-tryFullExpr syn st = left (Msg . show) . runparser (fullExpr syn) st ""
+tryFullExpr syn st = left (Msg . show . parseErrorDoc) . runparser (fullExpr syn) st ""
 
 {- | Parses an expression
 @

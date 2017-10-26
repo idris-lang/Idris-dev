@@ -72,6 +72,7 @@ import Idris.ModeCommon
 import Idris.Options
 import Idris.Output
 import Idris.Parser hiding (indent)
+import Idris.Parser.Helpers (parseErrorDoc)
 import Idris.Prover
 import Idris.REPL.Browse (namesInNS, namespacesInNS)
 import Idris.REPL.Commands
@@ -294,7 +295,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.Interpret cmd) =
   do c <- colourise
      i <- getIState
      case parseCmd i "(input)" cmd of
-       Left err -> iPrintError $ show (fixColour False err)
+       Left err -> iPrintError . show . fixColour False . parseErrorDoc $ err
        Right (Right (Prove mode n')) ->
          idrisCatch
            (do process fn (Prove mode n')
@@ -726,7 +727,7 @@ processInput cmd orig inputs efile
          let fn = fromMaybe "" (listToMaybe inputs)
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Left err -> Just inputs <$ iputStrLn (show (fixColour c err))
+            Left err -> Just inputs <$ iputStrLn (show . fixColour c . parseErrorDoc $ err)
             Right (Right Reload) ->
                 reload orig inputs
             Right (Right Watch) ->

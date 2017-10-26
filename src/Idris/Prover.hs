@@ -34,6 +34,7 @@ import qualified Idris.IdeMode as IdeMode
 import Idris.Options
 import Idris.Output
 import Idris.Parser hiding (params)
+import Idris.Parser.Helpers (parseErrorDoc)
 import Idris.TypeSearch (searchByType)
 
 import Util.Pretty
@@ -43,7 +44,6 @@ import Control.Monad.State.Strict
 import System.Console.Haskeline
 import System.Console.Haskeline.History
 import System.IO (Handle, hPutStrLn, stdin, stdout)
-import qualified Text.Trifecta.Result as P
 
 -- | Launch the proof shell
 prover :: ElabInfo -> Bool -> Bool -> Name -> Idris ()
@@ -319,7 +319,7 @@ elabloop info fn d prompt prf e prev h env
          idrisCatch
            (case cmd of
               Left err ->
-                return (False, prev, e, False, prf, env, Left . Msg . show . fixColour (idris_colourRepl ist) $ err)
+                return (False, prev, e, False, prf, env, Left . Msg . show . fixColour (idris_colourRepl ist) . parseErrorDoc $ err)
               Right (Left cmd') ->
                 case cmd' of
                   EQED -> do hs <- lifte e get_holes
@@ -434,7 +434,7 @@ ploop fn d prompt prf e h
             _ -> return ()
          (d, st, done, prf', res) <- idrisCatch
            (case cmd of
-              Left err -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
+              Left err -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) . parseErrorDoc $ err)
               Right Undo -> do (_, st) <- elabStep e loadState
                                return (True, st, False, init prf, Right $ iPrintResult "")
               Right ProofState -> return (True, e, False, prf, Right $ iPrintResult "")
