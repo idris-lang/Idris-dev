@@ -1,5 +1,7 @@
 module Text.Lexer
 
+import Data.Bool.Extra
+
 import public Control.Delayed
 
 %default total
@@ -60,6 +62,14 @@ expect = Lookahead True
 export
 reject : Recognise c -> Recognise False
 reject = Lookahead False
+
+||| Sequence a list of recognisers.
+export
+concat : {c : Bool} -> (xs : List (Recognise c)) -> Recognise (c && isCons xs)
+concat {c} [] = rewrite andFalseFalse c in Empty
+concat {c} (x :: xs) = rewrite andTrueNeutral c in
+                       rewrite sym (orSameAndRightNeutral c (isCons xs)) in
+                               SeqEmpty x (concat xs)
 
 data StrLen : Type where
      MkStrLen : String -> Nat -> StrLen

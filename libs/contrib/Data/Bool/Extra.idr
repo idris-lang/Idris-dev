@@ -26,3 +26,7 @@ orFalseNeutral True = Refl
 orTrueTrue : (x : Bool) -> x || True = True
 orTrueTrue False = Refl
 orTrueTrue True = Refl
+
+orSameAndRightNeutral : (x, right : Bool) -> x || (x && right) = x
+orSameAndRightNeutral False _ = Refl
+orSameAndRightNeutral True _ = Refl
