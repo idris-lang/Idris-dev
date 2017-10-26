@@ -9,6 +9,7 @@ modules = CFFI
         , Control.Algebra.Lattice
         , Control.Algebra.NumericImplementations
         , Control.Algebra.VectorSpace
+        , Control.Delayed
         , Control.Isomorphism.Primitives
         , Control.Partial
         , Control.Pipeline

@@ -1,5 +1,7 @@
 module Text.Lexer
 
+import public Control.Delayed
+
 %default total
 
 ||| A language of token recognisers.
@@ -19,11 +21,6 @@ data Recognise : (consumes : Bool) -> Type where
 public export
 Lexer : Type
 Lexer = Recognise True
-
-public export
-inf : Bool -> Type -> Type
-inf True t = Inf t
-inf False t = t
 
 ||| Sequence two recognisers. If either consumes a character, the sequence
 ||| is guaranteed to consume a character.

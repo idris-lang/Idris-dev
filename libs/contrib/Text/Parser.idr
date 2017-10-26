@@ -1,5 +1,7 @@
 module Text.Parser
 
+import public Control.Delayed
+
 %default total
 
 -- TODO: Add some primitives for helping with error messages.
@@ -28,11 +30,6 @@ data Grammar : (tok : Type) -> (consumes : Bool) -> Type -> Type where
      Alt : {c1, c2 : Bool} ->
            Grammar tok c1 ty -> Grammar tok c2 ty ->
            Grammar tok (c1 && c2) ty
-
-public export
-inf : Bool -> Type -> Type
-inf True t = Inf t
-inf False t = t
 
 ||| Sequence two grammars. If either consumes some input, the sequence is
 ||| guaranteed to consume some input. If the first one consumes input, the
