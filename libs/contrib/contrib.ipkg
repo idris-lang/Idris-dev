@@ -17,6 +17,7 @@ modules = CFFI
         , Control.ST.Exception
         , Control.ST.ImplicitCall
         , Control.ST.Random
+        , Data.Bool.Extra
         , Data.BoundedList
         , Data.CoList
         , Data.Combinators
