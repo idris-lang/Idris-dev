@@ -93,7 +93,6 @@ import System.FSNotify (watchDir, withManager)
 import System.FSNotify.Devel (allEvents, doAllEvents)
 import System.IO
 import System.Process
-import qualified Text.Trifecta.Result as P
 import Util.DynamicLinker
 import Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort)
 import Util.Pretty hiding ((</>))
@@ -177,7 +176,7 @@ processNetCmd :: IState -> IState -> Handle -> FilePath -> String ->
                  IO (IState, FilePath)
 processNetCmd orig i h fn cmd
     = do res <- case parseCmd i "(net)" cmd of
-                  Left (P.ErrInfo err _) -> return (Left (Msg " invalid command"))
+                  Left err -> return (Left (Msg " invalid command"))
                   Right (Right c) -> runExceptT $ evalStateT (processNet fn c) i
                   Right (Left err) -> return (Left (Msg err))
          case res of
@@ -295,7 +294,7 @@ runIdeModeCommand h id orig fn mods (IdeMode.Interpret cmd) =
   do c <- colourise
      i <- getIState
      case parseCmd i "(input)" cmd of
-       Left (P.ErrInfo err _) -> iPrintError $ show (fixColour False err)
+       Left err -> iPrintError $ show (fixColour False err)
        Right (Right (Prove mode n')) ->
          idrisCatch
            (do process fn (Prove mode n')
@@ -727,7 +726,7 @@ processInput cmd orig inputs efile
          let fn = fromMaybe "" (listToMaybe inputs)
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Left (P.ErrInfo err _) -> Just inputs <$ iputStrLn (show (fixColour c err))
+            Left err -> Just inputs <$ iputStrLn (show (fixColour c err))
             Right (Right Reload) ->
                 reload orig inputs
             Right (Right Watch) ->

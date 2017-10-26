@@ -35,6 +35,7 @@ import qualified Text.Parser.Char as Chr
 import Text.Parser.LookAhead
 import qualified Text.Parser.Token as Tok
 import qualified Text.Parser.Token.Highlight as Hi
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Trifecta ((<?>))
 import qualified Text.Trifecta as P
 import qualified Text.Trifecta.Delta as P
@@ -81,13 +82,15 @@ class HasLastTokenSpan m where
 instance HasLastTokenSpan IdrisParser where
   getLastTokenSpan = lastTokenSpan <$> get
 
+type ParseError = PP.Doc
+
 -- | Helper to run Idris inner parser based stateT parsers
-runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either P.ErrInfo res
+runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
 runparser p i inputname s =
   case P.parseString (runInnerParser (evalStateT p i))
                      (P.Directed (UTF8.fromString inputname) 0 0 0 0) s of
-    P.Failure errInfo -> Left errInfo
-    P.Success result -> Right result
+    P.Failure (P.ErrInfo doc _) -> Left doc
+    P.Success value -> Right value
 
 highlightP :: FC -> OutputAnnotation -> IdrisParser ()
 highlightP fc annot = do ist <- get

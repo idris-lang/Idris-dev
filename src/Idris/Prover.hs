@@ -318,7 +318,7 @@ elabloop info fn d prompt prf e prev h env
        (d, prev', st, done, prf', env', res) <-
          idrisCatch
            (case cmd of
-              Left (P.ErrInfo err _) ->
+              Left err ->
                 return (False, prev, e, False, prf, env, Left . Msg . show . fixColour (idris_colourRepl ist) $ err)
               Right (Left cmd') ->
                 case cmd' of
@@ -434,7 +434,7 @@ ploop fn d prompt prf e h
             _ -> return ()
          (d, st, done, prf', res) <- idrisCatch
            (case cmd of
-              Left (P.ErrInfo err _) -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
+              Left err -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
               Right Undo -> do (_, st) <- elabStep e loadState
                                return (True, st, False, init prf, Right $ iPrintResult "")
               Right ProofState -> return (True, e, False, prf, Right $ iPrintResult "")

@@ -57,8 +57,7 @@ import Data.Ord
 import qualified Data.Text as T
 import qualified System.Directory as Dir (makeAbsolute)
 import System.FilePath
-import Text.PrettyPrint.ANSI.Leijen (Doc, plain)
-import qualified Text.PrettyPrint.ANSI.Leijen as ANSI
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Trifecta ((<?>))
 import qualified Text.Trifecta as P
 import qualified Text.Trifecta.Delta as P
@@ -1478,19 +1477,19 @@ runElabDecl syn =
 
 {- * Loading and parsing -}
 {-| Parses an expression from input -}
-parseExpr :: IState -> String -> Either P.ErrInfo PTerm
+parseExpr :: IState -> String -> Either ParseError PTerm
 parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
 
 {-| Parses a constant form input -}
-parseConst :: IState -> String -> Either P.ErrInfo Const
+parseConst :: IState -> String -> Either ParseError Const
 parseConst st = runparser (fmap fst constant) st "(input)"
 
 {-| Parses a tactic from input -}
-parseTactic :: IState -> String -> Either P.ErrInfo PTactic
+parseTactic :: IState -> String -> Either ParseError PTactic
 parseTactic st = runparser (fullTactic defaultSyntax) st "(input)"
 
 {-| Parses a do-step from input (used in the elab shell) -}
-parseElabShellStep :: IState -> String -> Either P.ErrInfo (Either ElabShellCmd PDo)
+parseElabShellStep :: IState -> String -> Either ParseError (Either ElabShellCmd PDo)
 parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> elabShellCmd) ist "(input)"
   where elabShellCmd = char ':' >>
                        (reserved "qed"     >> pure EQED       ) <|>
@@ -1553,8 +1552,8 @@ parseImports fname input
         shebang = string "#!" *> many (P.satisfy $ not . isEol) *> eol *> pure ()
 
 -- | There should be a better way of doing this...
-findFC :: Doc -> (FC, String)
-findFC x = let s = show (plain x) in findFC' s
+findFC :: PP.Doc -> (FC, String)
+findFC x = let s = show (PP.plain x) in findFC' s
   where findFC' s = case span (/= ':') s of
                       -- Horrid kludge to prevent crashes on Windows
                       (prefix, ':':'\\':rest) ->
@@ -1568,8 +1567,8 @@ findFC x = let s = show (plain x) in findFC' s
                                                 (FC failname pos pos, msg)
 
 -- | Check if the coloring matches the options and corrects if necessary
-fixColour :: Bool -> ANSI.Doc -> ANSI.Doc
-fixColour False doc = ANSI.plain doc
+fixColour :: Bool -> PP.Doc -> PP.Doc
+fixColour False doc = PP.plain doc
 fixColour True doc  = doc
 
 -- | A program is a list of declarations, possibly with associated
@@ -1579,17 +1578,17 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe P.Delta ->
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            Left (P.ErrInfo doc _) -> do -- FIXME: Get error location from trifecta
-                                  -- this can't be the solution!
-                                  -- Issue #1575 on the issue tracker.
-                                  --    https://github.com/idris-lang/Idris-dev/issues/1575
-                                  let (fc, msg) = findFC doc
-                                  i <- getIState
-                                  case idris_outputmode i of
-                                    RawOutput h  -> iputStrLn (show $ fixColour (idris_colourRepl i) doc)
-                                    IdeMode n h -> iWarn fc (Util.Pretty.text msg)
-                                  putIState (i { errSpan = Just fc })
-                                  return []
+            Left doc -> do -- FIXME: Get error location from trifecta
+                           -- this can't be the solution!
+                           -- Issue #1575 on the issue tracker.
+                           --    https://github.com/idris-lang/Idris-dev/issues/1575
+                           let (fc, msg) = findFC doc
+                           i <- getIState
+                           case idris_outputmode i of
+                             RawOutput h  -> iputStrLn (show $ fixColour (idris_colourRepl i) doc)
+                             IdeMode n h -> iWarn fc (Util.Pretty.text msg)
+                           putIState (i { errSpan = Just fc })
+                           return []
             Right (x, i)  -> do putIState i
                                 reportParserWarnings
                                 return $ collect x

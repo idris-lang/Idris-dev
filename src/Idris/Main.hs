@@ -47,7 +47,6 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.CodePage (withCP65001)
-import qualified Text.Trifecta.Result as P
 
 -- | How to run Idris programs.
 runMain :: Idris () -> IO ()
@@ -196,8 +195,8 @@ idrisMain opts =
                      mapM_ (\str -> do ist <- getIState
                                        c <- colourise
                                        case parseExpr ist str of
-                                         Left (P.ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
-                                                                      runIO $ exitWith (ExitFailure 1)
+                                         Left err -> do iputStrLn $ show (fixColour c err)
+                                                        runIO $ exitWith (ExitFailure 1)
                                          Right e -> process "" (Eval e))
                            exprs
                      runIO exitSuccess
@@ -273,8 +272,8 @@ execScript :: String -> Idris ()
 execScript expr = do i <- getIState
                      c <- colourise
                      case parseExpr i expr of
-                          Left (P.ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
-                                                       runIO $ exitWith (ExitFailure 1)
+                          Left err -> do iputStrLn $ show (fixColour c err)
+                                         runIO $ exitWith (ExitFailure 1)
                           Right term -> do ctxt <- getContext
                                            (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
                                            res <- execute tm
@@ -300,7 +299,7 @@ initScript = do script <- runIO $ getIdrisInitScript
                            runInit h
           processLine i cmd input clr =
               case parseCmd i input cmd of
-                   Left (P.ErrInfo err _) -> runIO $ print (fixColour clr err)
+                   Left err -> runIO $ print (fixColour clr err)
                    Right (Right Reload) -> iPrintError "Init scripts cannot reload the file"
                    Right (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
                    Right (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"
