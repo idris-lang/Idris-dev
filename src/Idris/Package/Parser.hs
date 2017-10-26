@@ -20,8 +20,8 @@ import System.Directory (doesFileExist)
 import System.Exit
 import System.FilePath (isValid, takeExtension, takeFileName)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import Text.Trifecta hiding (char, charLiteral, natural, span, string, symbol,
-                      whiteSpace)
+import Text.Trifecta ((<?>))
+import qualified Text.Trifecta as P
 
 type PParser = StateT PkgDesc IdrisInnerParser
 
@@ -29,20 +29,20 @@ instance HasLastTokenSpan PParser where
   getLastTokenSpan = return Nothing
 
 #if MIN_VERSION_base(4,9,0)
-instance {-# OVERLAPPING #-} DeltaParsing PParser where
-  line = lift line
+instance {-# OVERLAPPING #-} P.DeltaParsing PParser where
+  line = lift P.line
   {-# INLINE line #-}
-  position = lift position
+  position = lift P.position
   {-# INLINE position #-}
-  slicedWith f (StateT m) = StateT $ \s -> slicedWith (\(a,s') b -> (f a b, s')) $ m s
+  slicedWith f (StateT m) = StateT $ \s -> P.slicedWith (\(a,s') b -> (f a b, s')) $ m s
   {-# INLINE slicedWith #-}
-  rend = lift rend
+  rend = lift P.rend
   {-# INLINE rend #-}
-  restOfLine = lift restOfLine
+  restOfLine = lift P.restOfLine
   {-# INLINE restOfLine #-}
 #endif
 
-instance {-# OVERLAPPING #-} TokenParsing PParser where
+instance {-# OVERLAPPING #-} P.TokenParsing PParser where
   someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
 
@@ -56,8 +56,8 @@ parseDesc fp = do
       then do
         p <- readFile fp
         case runparser pPkg defaultPkg fp p of
-          Failure (ErrInfo err _) -> fail (show $ PP.plain err)
-          Success x -> return x
+          P.Failure (P.ErrInfo err _) -> fail (show $ PP.plain err)
+          P.Success x -> return x
       else do
         putStrLn $ unwords [ "The presented iPKG file does not exist:", show fp]
         exitWith (ExitFailure 1)
@@ -66,12 +66,12 @@ pPkg :: PParser PkgDesc
 pPkg = do
     reserved "package"
     p <- pPkgName
-    someSpace
+    P.someSpace
     st <- get
     put (st { pkgname = p })
     some pClause
     st <- get
-    eof
+    P.eof
     return st
 
 pPkgName :: PParser PkgName
@@ -82,12 +82,12 @@ pPkgName = (either fail pure . pkgName =<< packageName) <?> "PkgName"
 -- | Treated for now as an identifier or a double-quoted string.
 filename :: (MonadicParsing m, HasLastTokenSpan m) => m String
 filename = (do
-    filename <- token $
+    filename <- P.token $
         -- Treat a double-quoted string as a filename to support spaces.
         -- This also moves away from tying filenames to identifiers, so
         -- it will also accept hyphens
         -- (https://github.com/idris-lang/Idris-dev/issues/2721)
-        stringLiteral
+        P.stringLiteral
         <|>
         -- Through at least version 0.9.19.1, IPKG executable values were
         -- possibly namespaced identifiers, like foo.bar.baz.
@@ -137,13 +137,13 @@ pClause = do reserved "executable"; lchar '=';
              put (st { sourcedir = src })
 
       <|> do reserved "opts"; lchar '=';
-             opts <- stringLiteral
+             opts <- P.stringLiteral
              st <- get
              let args = pureArgParser (words opts)
              put (st { idris_opts = args ++ idris_opts st })
 
       <|> do reserved "pkgs"; lchar '=';
-             ps <- sepBy1 (pPkgName <* someSpace) (lchar ',')
+             ps <- P.sepBy1 (pPkgName <* P.someSpace) (lchar ',')
              st <- get
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
 
@@ -151,17 +151,17 @@ pClause = do reserved "executable"; lchar '=';
                      , idris_opts = pkgs ++ idris_opts st})
 
       <|> do reserved "modules"; lchar '=';
-             ms <- sepBy1 (fst <$> iName []) (lchar ',')
+             ms <- P.sepBy1 (fst <$> iName []) (lchar ',')
              st <- get
              put (st { modules = modules st ++ ms })
 
       <|> do reserved "libs"; lchar '=';
-             ls <- sepBy1 (fst <$> identifier) (lchar ',')
+             ls <- P.sepBy1 (fst <$> identifier) (lchar ',')
              st <- get
              put (st { libdeps = libdeps st ++ ls })
 
       <|> do reserved "objs"; lchar '=';
-             ls <- sepBy1 (fst <$> identifier) (lchar ',')
+             ls <- P.sepBy1 (fst <$> identifier) (lchar ',')
              st <- get
              put (st { objs = objs st ++ ls })
 
@@ -171,74 +171,74 @@ pClause = do reserved "executable"; lchar '=';
              put (st { makefile = Just (show mk) })
 
       <|> do reserved "tests"; lchar '=';
-             ts <- sepBy1 (fst <$> iName []) (lchar ',')
+             ts <- P.sepBy1 (fst <$> iName []) (lchar ',')
              st <- get
              put st { idris_tests = idris_tests st ++ ts }
 
       <|> do reserved "version"
              lchar '='
-             vStr <- many (satisfy (not . isEol))
+             vStr <- many (P.satisfy (not . isEol))
              eol
-             someSpace
+             P.someSpace
              st <- get
              put st {pkgversion = Just vStr}
 
       <|> do reserved "readme"
              lchar '='
-             rme <- many (satisfy (not . isEol))
+             rme <- many (P.satisfy (not . isEol))
              eol
-             someSpace
+             P.someSpace
              st <- get
              put (st { pkgreadme = Just rme })
 
       <|> do reserved "license"
              lchar '='
-             lStr <- many (satisfy (not . isEol))
+             lStr <- many (P.satisfy (not . isEol))
              eol
              st <- get
              put st {pkglicense = Just lStr}
 
       <|> do reserved "homepage"
              lchar '='
-             www <- many (satisfy (not . isEol))
+             www <- many (P.satisfy (not . isEol))
              eol
-             someSpace
+             P.someSpace
              st <- get
              put st {pkghomepage = Just www}
 
       <|> do reserved "sourceloc"
              lchar '='
-             srcpage <- many (satisfy (not . isEol))
+             srcpage <- many (P.satisfy (not . isEol))
              eol
-             someSpace
+             P.someSpace
              st <- get
              put st {pkgsourceloc = Just srcpage}
 
       <|> do reserved "bugtracker"
              lchar '='
-             src <- many (satisfy (not . isEol))
+             src <- many (P.satisfy (not . isEol))
              eol
-             someSpace
+             P.someSpace
              st <- get
              put st {pkgbugtracker = Just src}
 
       <|> do reserved "brief"
              lchar '='
-             brief <- stringLiteral
+             brief <- P.stringLiteral
              st <- get
-             someSpace
+             P.someSpace
              put st {pkgbrief = Just brief}
 
       <|> do reserved "author"; lchar '=';
-             author <- many (satisfy (not . isEol))
+             author <- many (P.satisfy (not . isEol))
              eol
-             someSpace
+             P.someSpace
              st <- get
              put st {pkgauthor = Just author}
 
       <|> do reserved "maintainer"; lchar '=';
-             maintainer <- many (satisfy (not . isEol))
+             maintainer <- many (P.satisfy (not . isEol))
              eol
-             someSpace
+             P.someSpace
              st <- get
              put st {pkgmaintainer = Just maintainer}

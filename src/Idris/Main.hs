@@ -47,7 +47,7 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.CodePage (withCP65001)
-import Text.Trifecta.Result (ErrInfo(..), Result(..))
+import qualified Text.Trifecta.Result as P
 
 -- | How to run Idris programs.
 runMain :: Idris () -> IO ()
@@ -196,9 +196,9 @@ idrisMain opts =
                      mapM_ (\str -> do ist <- getIState
                                        c <- colourise
                                        case parseExpr ist str of
-                                         Failure (ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
-                                                                       runIO $ exitWith (ExitFailure 1)
-                                         Success e -> process "" (Eval e))
+                                         P.Failure (P.ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
+                                                                           runIO $ exitWith (ExitFailure 1)
+                                         P.Success e -> process "" (Eval e))
                            exprs
                      runIO exitSuccess
 
@@ -273,12 +273,12 @@ execScript :: String -> Idris ()
 execScript expr = do i <- getIState
                      c <- colourise
                      case parseExpr i expr of
-                          Failure (ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
-                                                        runIO $ exitWith (ExitFailure 1)
-                          Success term -> do ctxt <- getContext
-                                             (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
-                                             res <- execute tm
-                                             runIO $ exitSuccess
+                          P.Failure (P.ErrInfo err _) -> do iputStrLn $ show (fixColour c err)
+                                                            runIO $ exitWith (ExitFailure 1)
+                          P.Success term -> do ctxt <- getContext
+                                               (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
+                                               res <- execute tm
+                                               runIO $ exitSuccess
 
 -- | Run the initialisation script
 initScript :: Idris ()
@@ -300,12 +300,12 @@ initScript = do script <- runIO $ getIdrisInitScript
                            runInit h
           processLine i cmd input clr =
               case parseCmd i input cmd of
-                   Failure (ErrInfo err _) -> runIO $ print (fixColour clr err)
-                   Success (Right Reload) -> iPrintError "Init scripts cannot reload the file"
-                   Success (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
-                   Success (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"
-                   Success (Right Edit) -> iPrintError "Init scripts cannot invoke the editor"
-                   Success (Right Proofs) -> proofs i
-                   Success (Right Quit) -> iPrintError "Init scripts cannot quit Idris"
-                   Success (Right cmd ) -> process [] cmd
-                   Success (Left err) -> runIO $ print err
+                   P.Failure (P.ErrInfo err _) -> runIO $ print (fixColour clr err)
+                   P.Success (Right Reload) -> iPrintError "Init scripts cannot reload the file"
+                   P.Success (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
+                   P.Success (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"
+                   P.Success (Right Edit) -> iPrintError "Init scripts cannot invoke the editor"
+                   P.Success (Right Proofs) -> proofs i
+                   P.Success (Right Quit) -> iPrintError "Init scripts cannot quit Idris"
+                   P.Success (Right cmd ) -> process [] cmd
+                   P.Success (Left err) -> runIO $ print err

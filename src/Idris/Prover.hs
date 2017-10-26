@@ -43,7 +43,7 @@ import Control.Monad.State.Strict
 import System.Console.Haskeline
 import System.Console.Haskeline.History
 import System.IO (Handle, hPutStrLn, stdin, stdout)
-import Text.Trifecta.Result (ErrInfo(..), Result(..))
+import qualified Text.Trifecta.Result as P
 
 -- | Launch the proof shell
 prover :: ElabInfo -> Bool -> Bool -> Name -> Idris ()
@@ -312,15 +312,15 @@ elabloop info fn d prompt prf e prev h env
 
        -- if we're abandoning, it has to be outside the scope of the catch
        case cmd of
-         Success (Left EAbandon) -> do iPrintError ""; ifail "Abandoned"
+         P.Success (Left EAbandon) -> do iPrintError ""; ifail "Abandoned"
          _ -> return ()
 
        (d, prev', st, done, prf', env', res) <-
          idrisCatch
            (case cmd of
-              Failure (ErrInfo err _) ->
+              P.Failure (P.ErrInfo err _) ->
                 return (False, prev, e, False, prf, env, Left . Msg . show . fixColour (idris_colourRepl ist) $ err)
-              Success (Left cmd') ->
+              P.Success (Left cmd') ->
                 case cmd' of
                   EQED -> do hs <- lifte e get_holes
                              unless (null hs) $ ifail "Incomplete proof"
@@ -345,7 +345,7 @@ elabloop info fn d prompt prf e prev h env
                                    return (d', prev, st', done, prf', env, go)
                   EDocStr d -> do (d', st', done, prf', go) <- docStr e prf d
                                   return (d', prev, st', done, prf', env, go)
-              Success (Right cmd') ->
+              P.Success (Right cmd') ->
                 case cmd' of
                   DoLetP  {} -> ifail "Pattern-matching let not supported here"
                   DoRewrite  {} -> ifail "Pattern-matching do-rewrite not supported here"
@@ -430,27 +430,27 @@ ploop fn d prompt prf e h
             Nothing -> do iPrintError ""; ifail "Abandoned"
             Just input -> return (parseTactic i input, input)
          case cmd of
-            Success Abandon -> do iPrintError ""; ifail "Abandoned"
+            P.Success Abandon -> do iPrintError ""; ifail "Abandoned"
             _ -> return ()
          (d, st, done, prf', res) <- idrisCatch
            (case cmd of
-              Failure (ErrInfo err _) -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
-              Success Undo -> do (_, st) <- elabStep e loadState
-                                 return (True, st, False, init prf, Right $ iPrintResult "")
-              Success ProofState -> return (True, e, False, prf, Right $ iPrintResult "")
-              Success ProofTerm -> do tm <- lifte e get_term
-                                      iputStrLn $ "TT: " ++ show tm ++ "\n"
-                                      return (False, e, False, prf, Right $ iPrintResult "")
-              Success Qed -> do hs <- lifte e get_holes
-                                unless (null hs) $ ifail "Incomplete proof"
-                                iputStrLn "Proof completed!"
-                                return (False, e, True, prf, Right $ iPrintResult "")
-              Success (TCheck (PRef _ _ n)) -> checkNameType e prf n
-              Success (TCheck t) -> checkType e prf t
-              Success (TEval t)  -> evalTerm e prf t
-              Success (TDocStr x) -> docStr e prf x
-              Success (TSearch t) -> search e prf t
-              Success tac ->
+              P.Failure (P.ErrInfo err _) -> return (False, e, False, prf, Left . Msg . show . fixColour (idris_colourRepl i) $ err)
+              P.Success Undo -> do (_, st) <- elabStep e loadState
+                                   return (True, st, False, init prf, Right $ iPrintResult "")
+              P.Success ProofState -> return (True, e, False, prf, Right $ iPrintResult "")
+              P.Success ProofTerm -> do tm <- lifte e get_term
+                                        iputStrLn $ "TT: " ++ show tm ++ "\n"
+                                        return (False, e, False, prf, Right $ iPrintResult "")
+              P.Success Qed -> do hs <- lifte e get_holes
+                                  unless (null hs) $ ifail "Incomplete proof"
+                                  iputStrLn "Proof completed!"
+                                  return (False, e, True, prf, Right $ iPrintResult "")
+              P.Success (TCheck (PRef _ _ n)) -> checkNameType e prf n
+              P.Success (TCheck t) -> checkType e prf t
+              P.Success (TEval t)  -> evalTerm e prf t
+              P.Success (TDocStr x) -> docStr e prf x
+              P.Success (TSearch t) -> search e prf t
+              P.Success tac ->
                 do (_, e) <- elabStep e saveState
                    (_, st) <- elabStep e (runTac autoSolve i (Just proverFC) fn tac)
                    return (True, st, False, prf ++ [step], Right $ iPrintResult ""))

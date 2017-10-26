@@ -22,16 +22,16 @@ import Control.Applicative
 import Control.Monad.State.Strict
 import Data.List
 import Data.Maybe
-import Text.Trifecta hiding (Err, char, charLiteral, natural, span, string,
-                      stringLiteral, symbol, whiteSpace)
+import Text.Trifecta ((<?>))
+import qualified Text.Trifecta as P
 
 {- | Parses a record type declaration
 Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do (doc, paramDocs, acc, opts) <- try (do
-                      (doc, paramDocs) <- option noDocs docComment
+record syn = do (doc, paramDocs, acc, opts) <- P.try (do
+                      (doc, paramDocs) <- P.option noDocs docComment
                       ist <- get
                       let doc' = annotCode (tryFullExpr syn ist) doc
                           paramDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
@@ -45,7 +45,7 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
-                params <- manyTill (recordParameter rsyn) (reservedHL "where")
+                params <- P.manyTill (recordParameter rsyn) (reservedHL "where")
                 (fields, cname, cdoc) <- indentedBlockS $ recordBody rsyn tyn
                 let fnames = map (expandNS rsyn) (mapMaybe getName fields)
                 case cname of
@@ -62,8 +62,8 @@ record syn = do (doc, paramDocs, acc, opts) <- try (do
         ist <- get
         fc  <- getFC
 
-        (constructorName, constructorDoc) <- option (Nothing, emptyDocstring)
-                                             (do (doc, _) <- option noDocs docComment
+        (constructorName, constructorDoc) <- P.option (Nothing, emptyDocstring)
+                                             (do (doc, _) <- P.option noDocs docComment
                                                  n <- constructor
                                                  return (Just n, doc))
 
@@ -170,8 +170,8 @@ SimpleConstructorList ::=
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
 data_ syn = checkDeclFixity $
-            do (doc, argDocs, acc, dataOpts) <- try (do
-                    (doc, argDocs) <- option noDocs docComment
+            do (doc, argDocs, acc, dataOpts) <- P.try (do
+                    (doc, argDocs) <- P.option noDocs docComment
                     pushIndent
                     acc <- accessibility
                     elim <- dataOpts []
@@ -184,10 +184,10 @@ data_ syn = checkDeclFixity $
                     return (doc', argDocs', acc, dataOpts))
                fc <- getFC
                (tyn_in, nfc) <- fnName
-               (do try (lchar ':')
+               (do P.try (lchar ':')
                    ty <- typeExpr (allowImp syn)
                    let tyn = expandNS syn tyn_in
-                   d <- option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
+                   d <- P.option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
                      reservedHL "where"
                      cons <- indentedBlock (constructor syn)
                      accData acc tyn (map (\ (_, _, n, _, _, _, _) -> n) cons)
@@ -199,19 +199,19 @@ data_ syn = checkDeclFixity $
                                      return x)
                     let ty = bindArgs (map (const (PType fc)) args) (PType fc)
                     let tyn = expandNS syn tyn_in
-                    d <- option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
-                      try (lchar '=') <|> do reservedHL "where"
-                                             let kw = (if DefaultEliminator `elem` dataOpts then "%elim" else "") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
-                                             let n  = show tyn_in ++ " "
-                                             let s  = kw ++ n
-                                             let as = unwords (map show args) ++ " "
-                                             let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : Type)") . show) args)
-                                             let ss = concat (intersperse " -> " $ map (const "Type") args)
-                                             let fix1 = s ++ as ++ " = ..."
-                                             let fix2 = s ++ ": " ++ ns ++ " -> Type where\n  ..."
-                                             let fix3 = s ++ ": " ++ ss ++ " -> Type where\n  ..."
-                                             fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
-                      cons <- sepBy1 (simpleConstructor (syn { withAppAllowed = False })) (reservedOp "|")
+                    d <- P.option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
+                      P.try (lchar '=') <|> do reservedHL "where"
+                                               let kw = (if DefaultEliminator `elem` dataOpts then "%elim" else "") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
+                                               let n  = show tyn_in ++ " "
+                                               let s  = kw ++ n
+                                               let as = unwords (map show args) ++ " "
+                                               let ns = concat (intersperse " -> " $ map ((\x -> "(" ++ x ++ " : Type)") . show) args)
+                                               let ss = concat (intersperse " -> " $ map (const "Type") args)
+                                               let fix1 = s ++ as ++ " = ..."
+                                               let fix2 = s ++ ": " ++ ns ++ " -> Type where\n  ..."
+                                               let fix3 = s ++ ": " ++ ss ++ " -> Type where\n  ..."
+                                               fail $ fixErrorMsg "unexpected \"where\"" [fix1, fix2, fix3]
+                      cons <- P.sepBy1 (simpleConstructor (syn { withAppAllowed = False })) (reservedOp "|")
                       let conty = mkPApp fc (PRef fc [] tyn) (map (PRef fc []) args)
                       cons' <- mapM (\ (doc, argDocs, x, xfc, cargs, cfc, fs) ->
                                    do let cty = bindArgs cargs conty
@@ -238,12 +238,12 @@ data_ syn = checkDeclFixity $
 -}
 constructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name])
 constructor syn
-    = do (doc, argDocs) <- option noDocs docComment
+    = do (doc, argDocs) <- P.option noDocs docComment
          (cn_in, nfc) <- fnName; fc <- getFC
          let cn = expandNS syn cn_in
          lchar ':'
-         fs <- option [] (do lchar '%'; reserved "erase"
-                             sepBy1 (fst <$> name) (lchar ','))
+         fs <- P.option [] (do lchar '%'; reserved "erase"
+                               P.sepBy1 (fst <$> name) (lchar ','))
          ty <- typeExpr (allowImp syn)
          ist <- get
          let doc' = annotCode (tryFullExpr syn ist) doc
@@ -258,7 +258,7 @@ constructor syn
 -}
 simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, [PTerm], FC, [Name])
 simpleConstructor syn
-     = do (doc, _) <- option noDocs (try docComment)
+     = do (doc, _) <- P.option noDocs (P.try docComment)
           ist <- get
           let doc' = annotCode (tryFullExpr syn ist) doc
           (cn_in, nfc) <- fnName
