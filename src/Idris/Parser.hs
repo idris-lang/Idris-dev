@@ -14,7 +14,7 @@ Maintainer  : The Idris Community.
 
 module Idris.Parser(IdrisParser(..), ImportInfo(..), addReplSyntax, clearParserWarnings,
                     decl, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
-                    runparser) where
+                    runparser, ParseError, parseErrorDoc) where
 
 import Idris.AbsSyntax hiding (namespace, params)
 import Idris.Core.Evaluate

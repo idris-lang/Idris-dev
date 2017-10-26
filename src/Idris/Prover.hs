@@ -34,7 +34,6 @@ import qualified Idris.IdeMode as IdeMode
 import Idris.Options
 import Idris.Output
 import Idris.Parser hiding (params)
-import Idris.Parser.Helpers (parseErrorDoc)
 import Idris.TypeSearch (searchByType)
 
 import Util.Pretty

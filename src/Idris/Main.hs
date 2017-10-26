@@ -25,7 +25,6 @@ import Idris.ModeCommon
 import Idris.Options
 import Idris.Output
 import Idris.Parser hiding (indent)
-import Idris.Parser.Helpers (parseErrorDoc)
 import Idris.REPL
 import Idris.REPL.Commands
 import Idris.REPL.Parser
