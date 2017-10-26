@@ -209,21 +209,19 @@ export
 notLike : Char -> Lexer
 notLike x = Pred (\y => toUpper x /= toUpper y)
 
-||| Recognise a specific string
-export
+||| Recognise a specific string.
+||| Fails if the string is empty.
 exact : String -> Lexer
-exact str with (unpack str)
-  exact str | [] = Fail -- Not allowed, Lexer has to consume
-  exact str | (x :: xs)
-      = foldl SeqEmpty (is x) (map is xs)
+exact str = case map is (unpack str) of
+                 [] => fail
+                 (x :: xs) => concat (x :: xs)
 
-||| Recognise a specific string case-insensitively
-export
+||| Recognise a specific string (case-insensitive).
+||| Fails if the string is empty.
 approx : String -> Lexer
-approx str with (unpack str)
-  approx str | [] = Fail -- Not allowed, Lexer has to consume
-  approx str | (x :: xs)
-      = foldl SeqEmpty (like x) (map like xs)
+approx str = case map like (unpack str) of
+                  [] => fail
+                  (x :: xs) => concat (x :: xs)
 
 ||| Recognise a lexer or recognise no input. This is not guaranteed
 ||| to consume input
