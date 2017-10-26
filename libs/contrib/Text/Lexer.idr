@@ -192,22 +192,22 @@ lex tmap str = let (ts, (l, c, str')) = tokenise 0 0 [] tmap (mkStr str) in
 ||| Recognise a specific character
 export
 is : Char -> Lexer
-is x = Pred (==x)
+is x = pred (==x)
 
 ||| Recognise anything but the given character
 export
 isNot : Char -> Lexer
-isNot x = Pred (/=x)
+isNot x = pred (/=x)
 
 ||| Recognise a character case-insensitively
 export
 like : Char -> Lexer
-like x = Pred (\y => toUpper x == toUpper y)
+like x = pred (\y => toUpper x == toUpper y)
 
 ||| Recognise anything but the given character case-insensitively
 export
 notLike : Char -> Lexer
-notLike x = Pred (\y => toUpper x /= toUpper y)
+notLike x = pred (\y => toUpper x /= toUpper y)
 
 ||| Recognise a specific string.
 ||| Fails if the string is empty.
@@ -227,7 +227,7 @@ approx str = case map like (unpack str) of
 ||| to consume input
 export
 opt : Lexer -> Recognise False
-opt l = l <|> Empty
+opt l = l <|> empty
 
 ||| Recognise a sequence of at least one sub-lexers
 export
@@ -244,7 +244,7 @@ many l = opt (some l)
 ||| if one of the options succeeds. Fails if the foldable is empty.
 export
 choice : Foldable t => t Lexer -> Lexer
-choice xs = foldr Alt Fail xs
+choice xs = foldr (<|>) fail xs
 
 ||| Repeat the sub-lexer `l` zero or more times until the lexer
 ||| `stopBefore` is encountered. `stopBefore` will not be consumed.
@@ -281,7 +281,7 @@ atLeast (S min) l = l <+> atLeast min l
 ||| consume input.
 export
 atMost : (max : Nat) -> (l : Lexer) -> Recognise False
-atMost Z _     = Empty
+atMost Z _     = empty
 atMost (S k) l = atMost k l <+> opt l
 
 ||| Recognise a sub-lexer repeated between `min` and `max` times. Fails
@@ -289,7 +289,7 @@ atMost (S k) l = atMost k l <+> opt l
 export
 between : (min : Nat) -> (max : Nat) -> (l : Lexer) -> Recognise (min > 0)
 between Z max l           = atMost max l
-between (S min) Z _       = Fail
+between (S min) Z _       = fail
 between (S min) (S max) l = l <+> between min max l
 
 ||| Recognise exactly `count` repeated occurrences of a sub-lexer.
@@ -301,7 +301,7 @@ exactly n l = between n n l
 ||| Recognise any character
 export
 any : Lexer
-any = Pred (const True)
+any = pred (const True)
 
 ||| Recognise any character if the sub-lexer `l` fails.
 export
