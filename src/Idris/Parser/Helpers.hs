@@ -288,12 +288,12 @@ lcharFC ch = do (FC file (l, c) _) <- getFC
                 return $ FC file (l, c) (l, c+1)
 
 -- | Parses string as a token
-symbol :: MonadicParsing m => String -> m String
-symbol = Tok.symbol
+symbol :: MonadicParsing m => String -> m ()
+symbol = void . Tok.symbol
 
 symbolFC :: MonadicParsing m => String -> m FC
 symbolFC str = do (FC file (l, c) _) <- getFC
-                  Tok.symbol str
+                  symbol str
                   return $ FC file (l, c) (l, c + length str)
 
 -- | Parses a reserved identifier
