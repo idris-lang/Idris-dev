@@ -34,7 +34,6 @@ import System.FilePath
 import qualified Text.Parser.Char as Chr
 import Text.Parser.LookAhead
 import qualified Text.Parser.Token as Tok
-import qualified Text.Parser.Token.Highlight as Hi
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Trifecta ((<?>))
 import qualified Text.Trifecta as P
@@ -255,23 +254,22 @@ float = do f <- Tok.double
 
 {- * Symbols, identifiers, names and operators -}
 
+reservedIdentifiers :: HS.HashSet String
+reservedIdentifiers = HS.fromList
+  [ "Type"
+  , "abstract", "case", "class", "codata", "constructor", "corecord", "data"
+  , "do", "dsl", "else", "export", "if", "implementation", "implicit"
+  , "import", "impossible", "in", "infix", "infixl", "infixr", "instance"
+  , "interface", "let", "mutual", "namespace", "of", "parameters", "partial"
+  , "postulate", "private", "proof", "public", "quoteGoal", "record"
+  , "rewrite", "syntax", "then", "total", "using", "where", "with"
+  ]
 
--- | Idris Style for parsing identifiers/reserved keywords
-idrisStyle :: MonadicParsing m => P.IdentifierStyle m
-idrisStyle = P.IdentifierStyle {
-    P._styleName = "Idris"
-  , P._styleStart = P.satisfy isAlpha <|> P.oneOf "_"
-  , P._styleLetter = P.satisfy isAlphaNum <|> P.oneOf "_'."
-  , P._styleReserved = HS.fromList
-      ["let", "in", "data", "codata", "record", "corecord", "Type", "do", "dsl",
-      "import", "impossible", "case", "of", "total", "partial", "mutual",
-      "infix", "infixl", "infixr", "rewrite", "where", "with", "syntax",
-      "proof", "postulate", "using", "namespace", "class", "instance",
-      "interface", "implementation", "parameters", "public", "private",
-      "export", "abstract", "implicit", "quoteGoal", "constructor", "if",
-      "then", "else"]
-  , P._styleHighlight = Hi.Identifier
-  , P._styleReservedHighlight = Hi.ReservedIdentifier }
+identifierOrReserved :: MonadicParsing m => m String
+identifierOrReserved = P.token $ P.try $ do
+  c <- P.satisfy isAlpha <|> P.oneOf "_"
+  cs <- P.many (P.satisfy isAlphaNum <|> P.oneOf "_'.")
+  return $ c : cs
 
 char :: MonadicParsing m => Char -> m Char
 char = Chr.char
@@ -300,7 +298,9 @@ symbolFC str = do (FC file (l, c) _) <- getFC
 
 -- | Parses a reserved identifier
 reserved :: MonadicParsing m => String -> m ()
-reserved = Tok.reserve idrisStyle
+reserved name = P.token $ P.try $ do
+  P.string name
+  P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
 
 -- | Parses a reserved identifier, computing its span. Assumes that
 -- reserved identifiers never contain line breaks.
@@ -318,7 +318,7 @@ reservedHL str = reservedFC str >>= flip highlightP AnnKeyword
 reservedOp :: MonadicParsing m => String -> m ()
 reservedOp name = P.token $ P.try $
   do string name
-     P.notFollowedBy (operatorLetter) <?> ("end of " ++ show name)
+     P.notFollowedBy operatorLetter <?> ("end of " ++ show name)
 
 reservedOpFC :: MonadicParsing m => String -> m FC
 reservedOpFC name = do (FC f (l, c) _) <- getFC
@@ -327,12 +327,12 @@ reservedOpFC name = do (FC f (l, c) _) <- getFC
 
 -- | Parses an identifier as a token
 identifier :: (MonadicParsing m) => m (String, FC)
-identifier = P.try(do (i, fc) <-
-                        P.token $ do (FC f (l, c) _) <- getFC
-                                     i <- Tok.ident idrisStyle
-                                     return (i, FC f (l, c) (l, c + length i))
-                      when (i == "_") $ P.unexpected "wildcard"
-                      return (i, fc))
+identifier = P.try $ do
+  (FC f (l, c) _) <- getFC
+  ident <- identifierOrReserved
+  when (ident `HS.member` reservedIdentifiers) $ P.unexpected $ "reserved " ++ ident
+  when (ident == "_") $ P.unexpected "wildcard"
+  return (ident, FC f (l, c) (l, c + length ident))
 
 -- | Parses an identifier with possible namespace as a name
 iName :: (MonadicParsing m, HasLastTokenSpan m) => [String] -> m (Name, FC)
