@@ -12,17 +12,17 @@ import Prelude.Functor
 
 ---- Applicative functors/Idioms
 
-infixl 2 <*>
+infixl 3 <*>
 
 interface Functor f => Applicative (f : Type -> Type) where
     pure  : a -> f a
     (<*>) : f (a -> b) -> f a -> f b
 
-infixl 2 <*
+infixl 3 <*
 (<*) : Applicative f => f a -> f b -> f a
 a <* b = map const a <*> b
 
-infixl 2 *>
+infixl 3 *>
 (*>) : Applicative f => f a -> f b -> f b
 a *> b = map (const id) a <*> b
 
@@ -38,7 +38,7 @@ liftA2 f a b = (map f a) <*> b
 liftA3 : Applicative f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
 liftA3 f a b c = (map f a) <*> b <*> c
 
-infixr 3 <|>
+infixr 2 <|>
 interface Applicative f => Alternative (f : Type -> Type) where
     empty : f a
     (<|>) : f a -> f a -> f a

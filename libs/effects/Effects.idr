@@ -303,8 +303,6 @@ staticEff = id
 toEff : .(xs' : List EFFECT) -> EffM m a xs (\v => xs') -> EffM m a xs (\v => xs')
 toEff xs' = id
 
-infixl 2 <*>
-
 pure : a -> EffM m a xs (\v => xs)
 pure = Value
 
