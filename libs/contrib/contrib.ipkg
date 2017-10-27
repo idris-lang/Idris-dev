@@ -53,6 +53,7 @@ modules = CFFI
         , Network.Socket.Raw
         , System.Concurrency.Process
         , Text.Lexer
+        , Text.Lexer.Core
         , Text.Literate
         , Text.Parser
         , Text.Parser.Core
