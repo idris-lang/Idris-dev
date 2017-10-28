@@ -23,6 +23,11 @@ non l = reject l <+> any
 choice : Foldable t => t Lexer -> Lexer
 choice xs = foldr (<|>) fail xs
 
+||| Sequence a list of recognisers. Guaranteed to consume input if the list is
+||| non-empty and the recognisers consume.
+concat : (xs : List (Recognise c)) -> Recognise (c && isCons xs)
+concat = concatMap id
+
 ||| Recognise a specific character.
 is : Char -> Lexer
 is x = pred (==x)
@@ -42,16 +47,16 @@ notLike x = pred (\y => toUpper x /= toUpper y)
 ||| Recognise a specific string.
 ||| Fails if the string is empty.
 exact : String -> Lexer
-exact str = case map is (unpack str) of
+exact str = case unpack str of
                  [] => fail
-                 (x :: xs) => concat (x :: xs)
+                 (x :: xs) => concatMap is (x :: xs)
 
 ||| Recognise a specific string (case-insensitive).
 ||| Fails if the string is empty.
 approx : String -> Lexer
-approx str = case map like (unpack str) of
+approx str = case unpack str of
                   [] => fail
-                  (x :: xs) => concat (x :: xs)
+                  (x :: xs) => concatMap like (x :: xs)
 
 ||| Recognise any of the characters in the given string
 oneOf : String -> Lexer

@@ -63,13 +63,16 @@ export
 reject : Recognise c -> Recognise False
 reject = Lookahead False
 
-||| Sequence a list of recognisers.
+||| Sequence the recognisers resulting from applying a function to each element
+||| of a list. The resulting recogniser will consume input if the produced
+||| recognisers consume and the list is non-empty.
 export
-concat : {c : Bool} -> (xs : List (Recognise c)) -> Recognise (c && isCons xs)
-concat {c} [] = rewrite andFalseFalse c in Empty
-concat {c} (x :: xs) = rewrite andTrueNeutral c in
-                       rewrite sym (orSameAndRightNeutral c (isCons xs)) in
-                               SeqEmpty x (concat xs)
+concatMap : {c : Bool} ->
+            (a -> Recognise c) -> (xs : List a) -> Recognise (c && isCons xs)
+concatMap {c} _ [] = rewrite andFalseFalse c in Empty
+concatMap {c} f (x :: xs) = rewrite andTrueNeutral c in
+                            rewrite sym (orSameAndRightNeutral c (isCons xs)) in
+                                    SeqEmpty (f x) (concatMap f xs)
 
 data StrLen : Type where
      MkStrLen : String -> Nat -> StrLen
