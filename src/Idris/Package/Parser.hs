@@ -126,116 +126,33 @@ filename = (do
 textUntilEol :: MonadicParsing m => m String
 textUntilEol = many (P.satisfy (not . isEol)) <* eol <* P.someSpace
 
+clause          :: String -> PParser a -> (PkgDesc -> a -> PkgDesc) -> PParser ()
+clause name p f = do value <- reserved name *> lchar '=' *> p
+                     modify $ \st -> f st value
+
+commaSep   :: MonadicParsing m => m a -> m [a]
+commaSep p = P.sepBy1 p (lchar ',')
+
 pClause :: PParser ()
-pClause = do reserved "executable"; lchar '=';
-             exec <- filename
-             st <- get
-             put (st { execout = Just exec })
-
-      <|> do reserved "main"; lchar '=';
-             main <- fst <$> iName []
-             st <- get
-             put (st { idris_main = Just main })
-
-      <|> do reserved "sourcedir"; lchar '=';
-             src <- fst <$> identifier
-             st <- get
-             put (st { sourcedir = src })
-
-      <|> do reserved "opts"; lchar '=';
-             opts <- P.stringLiteral
-             st <- get
-             let args = pureArgParser (words opts)
-             put (st { idris_opts = args ++ idris_opts st })
-
-      <|> do reserved "pkgs"; lchar '=';
-             ps <- P.sepBy1 (pPkgName <* P.someSpace) (lchar ',')
-             st <- get
+pClause = clause "executable" filename (\st v -> st { execout = Just v })
+      <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
+      <|> clause "sourcedir" (fst <$> identifier) (\st v -> st { sourcedir = v })
+      <|> clause "opts" (pureArgParser . words <$> P.stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
+      <|> clause "pkgs" (commaSep (pPkgName <* P.someSpace)) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
-
-             put (st { pkgdeps    = ps `union` (pkgdeps st)
-                     , idris_opts = pkgs ++ idris_opts st})
-
-      <|> do reserved "modules"; lchar '=';
-             ms <- P.sepBy1 (fst <$> iName []) (lchar ',')
-             st <- get
-             put (st { modules = modules st ++ ms })
-
-      <|> do reserved "libs"; lchar '=';
-             ls <- P.sepBy1 (fst <$> identifier) (lchar ',')
-             st <- get
-             put (st { libdeps = libdeps st ++ ls })
-
-      <|> do reserved "objs"; lchar '=';
-             ls <- P.sepBy1 (fst <$> identifier) (lchar ',')
-             st <- get
-             put (st { objs = objs st ++ ls })
-
-      <|> do reserved "makefile"; lchar '=';
-             mk <- fst <$> iName []
-             st <- get
-             put (st { makefile = Just (show mk) })
-
-      <|> do reserved "tests"; lchar '=';
-             ts <- P.sepBy1 (fst <$> iName []) (lchar ',')
-             st <- get
-             put st { idris_tests = idris_tests st ++ ts }
-
-      <|> do reserved "version"
-             lchar '='
-             vStr <- many (P.satisfy (not . isEol))
-             eol
-             P.someSpace
-             st <- get
-             put st {pkgversion = Just vStr}
-
-      <|> do reserved "readme"
-             lchar '='
-             rme <- textUntilEol
-             st <- get
-             put (st { pkgreadme = Just rme })
-
-      <|> do reserved "license"
-             lchar '='
-             lStr <- textUntilEol
-             st <- get
-             put st {pkglicense = Just lStr}
-
-      <|> do reserved "homepage"
-             lchar '='
-             www <- textUntilEol
-             st <- get
-             put st {pkghomepage = Just www}
-
-      <|> do reserved "sourceloc"
-             lchar '='
-             srcpage <- textUntilEol
-             st <- get
-             put st {pkgsourceloc = Just srcpage}
-
-      <|> do reserved "bugtracker"
-             lchar '='
-             src <- textUntilEol
-             st <- get
-             put st {pkgbugtracker = Just src}
-
-      <|> do reserved "brief"
-             lchar '='
-             brief <- P.stringLiteral
-             st <- get
-             P.someSpace
-             put st {pkgbrief = Just brief}
-
-      <|> do reserved "author"; lchar '=';
-             author <- many (P.satisfy (not . isEol))
-             eol
-             P.someSpace
-             st <- get
-             put st {pkgauthor = Just author}
-
-      <|> do reserved "maintainer"; lchar '=';
-             maintainer <- many (P.satisfy (not . isEol))
-             eol
-             P.someSpace
-             st <- get
-             put st {pkgmaintainer = Just maintainer}
+             in st { pkgdeps    = ps `union` pkgdeps st
+                   , idris_opts = pkgs ++ idris_opts st })
+      <|> clause "modules" (commaSep (fst <$> iName [])) (\st v -> st { modules = modules st ++ v })
+      <|> clause "libs" (commaSep (fst <$> identifier)) (\st v -> st { libdeps = libdeps st ++ v })
+      <|> clause "objs" (commaSep (fst <$> identifier)) (\st v -> st { objs = objs st ++ v })
+      <|> clause "makefile" (fst <$> iName []) (\st v -> st { makefile = Just (show v) })
+      <|> clause "tests" (commaSep (fst <$> iName [])) (\st v -> st { idris_tests = idris_tests st ++ v })
+      <|> clause "version" textUntilEol (\st v -> st { pkgversion = Just v })
+      <|> clause "readme" textUntilEol (\st v -> st { pkgreadme = Just v })
+      <|> clause "license" textUntilEol (\st v -> st { pkglicense = Just v })
+      <|> clause "homepage" textUntilEol (\st v -> st { pkghomepage = Just v })
+      <|> clause "sourceloc" textUntilEol (\st v -> st { pkgsourceloc = Just v })
+      <|> clause "bugtracker" textUntilEol (\st v -> st { pkgbugtracker = Just v })
+      <|> clause "brief" (P.stringLiteral <* P.someSpace) (\st v -> st { pkgbrief = Just v })
+      <|> clause "author" textUntilEol (\st v -> st { pkgauthor = Just v })
+      <|> clause "maintainer" textUntilEol (\st v -> st { pkgmaintainer = Just v })
