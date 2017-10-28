@@ -123,6 +123,8 @@ filename = (do
                     checkThat (path == takeFileName path)
                         "filename must contain no directory component"
 
+textUntilEol :: MonadicParsing m => m String
+textUntilEol = many (P.satisfy (not . isEol)) <* eol <* P.someSpace
 
 pClause :: PParser ()
 pClause = do reserved "executable"; lchar '=';
@@ -189,40 +191,31 @@ pClause = do reserved "executable"; lchar '=';
 
       <|> do reserved "readme"
              lchar '='
-             rme <- many (P.satisfy (not . isEol))
-             eol
-             P.someSpace
+             rme <- textUntilEol
              st <- get
              put (st { pkgreadme = Just rme })
 
       <|> do reserved "license"
              lchar '='
-             lStr <- many (P.satisfy (not . isEol))
-             eol
+             lStr <- textUntilEol
              st <- get
              put st {pkglicense = Just lStr}
 
       <|> do reserved "homepage"
              lchar '='
-             www <- many (P.satisfy (not . isEol))
-             eol
-             P.someSpace
+             www <- textUntilEol
              st <- get
              put st {pkghomepage = Just www}
 
       <|> do reserved "sourceloc"
              lchar '='
-             srcpage <- many (P.satisfy (not . isEol))
-             eol
-             P.someSpace
+             srcpage <- textUntilEol
              st <- get
              put st {pkgsourceloc = Just srcpage}
 
       <|> do reserved "bugtracker"
              lchar '='
-             src <- many (P.satisfy (not . isEol))
-             eol
-             P.someSpace
+             src <- textUntilEol
              st <- get
              put st {pkgbugtracker = Just src}
 
