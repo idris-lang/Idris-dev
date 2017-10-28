@@ -29,14 +29,22 @@ choose : (l : Grammar tok c1 a) ->
          Grammar tok (c1 && c2) (Either a b)
 choose l r = map Left l <|> map Right r
 
+||| Produce a grammar by applying a function to each element of a container,
+||| then try each resulting grammar until the first one succeeds. Fails if the
+||| container is empty.
+choiceMap : {c : Bool} ->
+            (a -> Grammar tok c b) ->
+            Foldable t => t a ->
+            Grammar tok c b
+choiceMap {c} f xs = foldr (\x, acc => rewrite sym (andSameNeutral c) in
+                                               f x <|> acc)
+                           (fail "No more options") xs
+
 ||| Try each grammar in a container until the first one succeeds.
 ||| Fails if the container is empty.
-choice : {c : Bool} ->
-         Foldable t => t (Grammar tok c a) ->
+choice : Foldable t => t (Grammar tok c a) ->
          Grammar tok c a
-choice {c} xs = foldr (\x, acc => rewrite sym (andSameNeutral c) in
-                                          x <|> acc)
-                      (fail "No more options") xs
+choice = choiceMap id
 
 mutual
   ||| Parse one or more things

@@ -1,5 +1,7 @@
 module Text.Lexer
 
+import Data.Bool.Extra
+
 import public Text.Lexer.Core
 
 %default total
@@ -18,10 +20,19 @@ opt l = l <|> empty
 non : (l : Lexer) -> Lexer
 non l = reject l <+> any
 
-||| Recognise the first matching lexer in a container. Always consumes input
-||| if an option succeeds. Fails if the container is empty.
-choice : Foldable t => t Lexer -> Lexer
-choice xs = foldr (<|>) fail xs
+||| Produce recognisers by applying a function to elements of a container, and
+||| recognise the first match. Consumes input if the function produces consuming
+||| recognisers. Fails if the container is empty.
+choiceMap : {c : Bool} ->
+            Foldable t => (a -> Recognise c) -> t a -> Recognise c
+choiceMap {c} f xs = foldr (\x, acc => rewrite sym (andSameNeutral c) in
+                                               f x <|> acc)
+                           fail xs
+
+||| Recognise the first matching recogniser in a container. Consumes input if
+||| recognisers in the list consume. Fails if the container is empty.
+choice : Foldable t => t (Recognise c) -> Recognise c
+choice = choiceMap id
 
 ||| Sequence a list of recognisers. Guaranteed to consume input if the list is
 ||| non-empty and the recognisers consume.
