@@ -59,7 +59,6 @@ instance {-# OVERLAPPING #-} P.DeltaParsing IdrisParser where
   {-# INLINE rend #-}
   restOfLine = lift P.restOfLine
   {-# INLINE restOfLine #-}
-
 #endif
 
 instance {-# OVERLAPPING #-} P.TokenParsing IdrisParser where
@@ -72,8 +71,9 @@ instance {-# OVERLAPPING #-} P.TokenParsing IdrisParser where
                whiteSpace
                put (s { lastTokenSpan = Just (FC fn (sl, sc) (el, ec)) })
                return r
+
 -- | Generalized monadic parsing constraint type
-type MonadicParsing m = (P.DeltaParsing m, LookAheadParsing m, P.TokenParsing m, Monad m)
+type MonadicParsing m = (P.DeltaParsing m, LookAheadParsing m, Monad m)
 
 class HasLastTokenSpan m where
   getLastTokenSpan :: m (Maybe FC)
@@ -335,13 +335,11 @@ identifier = P.try $ do
   return (ident, FC f (l, c) (l, c + length ident))
 
 -- | Parses an identifier with possible namespace as a name
-iName :: (MonadicParsing m, HasLastTokenSpan m) => [String] -> m (Name, FC)
-iName bad = do (n, fc) <- maybeWithNS identifier False bad
-               return (n, fc)
-            <?> "name"
+iName :: (MonadicParsing m) => [String] -> m (Name, FC)
+iName bad = maybeWithNS identifier False bad <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
-maybeWithNS :: (MonadicParsing m, HasLastTokenSpan m) => m (String, FC) -> Bool -> [String] -> m (Name, FC)
+maybeWithNS :: (MonadicParsing m) => m (String, FC) -> Bool -> [String] -> m (Name, FC)
 maybeWithNS parser ascend bad = do
   fc <- getFC
   i <- P.option "" (lookAhead (fst <$> identifier))

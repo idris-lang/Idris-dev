@@ -11,10 +11,9 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
-import Idris.Parser.Helpers (HasLastTokenSpan, IdrisInnerParser, MonadicParsing,
-                             eol, getLastTokenSpan, iName, identifier, isEol,
-                             lchar, multiLineComment, packageName,
-                             parseErrorDoc, reserved, runparser,
+import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName,
+                             identifier, isEol, lchar, multiLineComment,
+                             packageName, parseErrorDoc, reserved, runparser,
                              simpleWhiteSpace, singleLineComment)
 
 import Control.Applicative
@@ -28,9 +27,6 @@ import Text.Trifecta ((<?>))
 import qualified Text.Trifecta as P
 
 type PParser = StateT PkgDesc IdrisInnerParser
-
-instance HasLastTokenSpan PParser where
-  getLastTokenSpan = return Nothing
 
 #if MIN_VERSION_base(4,9,0)
 instance {-# OVERLAPPING #-} P.DeltaParsing PParser where
@@ -83,7 +79,7 @@ pPkgName = (either fail pure . pkgName =<< packageName) <?> "PkgName"
 -- | Parses a filename.
 -- |
 -- | Treated for now as an identifier or a double-quoted string.
-filename :: (MonadicParsing m, HasLastTokenSpan m) => m String
+filename :: (MonadicParsing m) => m String
 filename = (do
     filename <- P.token $
         -- Treat a double-quoted string as a filename to support spaces.
