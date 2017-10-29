@@ -11,7 +11,7 @@ import IO
 
 %access public export
 
-infixl 5 >>=
+infixl 1 >>=
 
 interface Applicative m => Monad (m : Type -> Type) where
     ||| Also called `bind`.

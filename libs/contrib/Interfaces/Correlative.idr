@@ -5,7 +5,7 @@ import Data.Vect
 %access public export
 %default total
 
-infixl 2 </>
+infixl 3 </>
 
 ||| A Correlative functor is a functor where, given `(xs, ys : Correlative f)`,
 ||| certain elements from xs and ys can be paired with one another due to some
@@ -13,11 +13,11 @@ infixl 2 </>
 interface Functor f => Correlative (f : Type -> Type) where
   (</>) : f (a -> b) -> f a -> f b
 
-infixl 2 </
+infixl 3 </
 (</) : Correlative f => f a -> f b -> f a
 x </ y = map const x </> y
 
-infixl 2 />
+infixl 3 />
 (/>) : Correlative f => f a -> f b -> f b
 x /> y = map (const id) x </> y
 

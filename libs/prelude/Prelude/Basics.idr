@@ -29,7 +29,7 @@ fst (x, y) = x
 snd : (a, b) -> b
 snd (x, y) = y
 
-infixl 9 .
+infixr 9 .
 
 ||| Function composition
 (.) : (b -> c) -> (a -> b) -> a -> c
@@ -58,4 +58,3 @@ data Dec : Type -> Type where
   ||| The case where the property holding would be a contradiction
   ||| @ contra a demonstration that prop would be a contradiction
   No  : (contra : prop -> Void) -> Dec prop
-
