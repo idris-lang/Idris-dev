@@ -12,9 +12,8 @@ import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
 import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName,
-                             identifier, isEol, lchar, multiLineComment,
-                             packageName, parseErrorDoc, reserved, runparser,
-                             simpleWhiteSpace, singleLineComment)
+                             identifier, isEol, lchar, packageName,
+                             parseErrorDoc, reserved, runparser, someSpace')
 
 import Control.Applicative
 import Control.Monad.State.Strict
@@ -43,7 +42,7 @@ instance {-# OVERLAPPING #-} P.DeltaParsing PParser where
 #endif
 
 instance {-# OVERLAPPING #-} P.TokenParsing PParser where
-  someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+  someSpace = someSpace'
 
 
 parseDesc :: FilePath -> IO PkgDesc
@@ -66,7 +65,7 @@ pPkg :: PParser PkgDesc
 pPkg = do
     reserved "package"
     p <- pPkgName
-    P.someSpace
+    someSpace'
     modify $ \st -> st { pkgname = p }
     some pClause
     st <- get
@@ -119,10 +118,10 @@ filename = (do
                         "filename must contain no directory component"
 
 textUntilEol :: MonadicParsing m => m String
-textUntilEol = many (P.satisfy (not . isEol)) <* eol <* P.someSpace
+textUntilEol = many (P.satisfy (not . isEol)) <* eol <* someSpace'
 
 clause          :: String -> PParser a -> (PkgDesc -> a -> PkgDesc) -> PParser ()
-clause name p f = do value <- reserved name *> lchar '=' *> p <* P.someSpace
+clause name p f = do value <- reserved name *> lchar '=' *> p <* someSpace'
                      modify $ \st -> f st value
 
 commaSep   :: MonadicParsing m => m a -> m [a]
@@ -133,7 +132,7 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
       <|> clause "sourcedir" (fst <$> identifier) (\st v -> st { sourcedir = v })
       <|> clause "opts" (pureArgParser . words <$> P.stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
-      <|> clause "pkgs" (commaSep (pPkgName <* P.someSpace)) (\st ps ->
+      <|> clause "pkgs" (commaSep (pPkgName <* someSpace')) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
                    , idris_opts = pkgs ++ idris_opts st })

@@ -61,8 +61,11 @@ instance {-# OVERLAPPING #-} P.DeltaParsing IdrisParser where
   {-# INLINE restOfLine #-}
 #endif
 
+someSpace' :: MonadicParsing m => m ()
+someSpace' = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+
 instance {-# OVERLAPPING #-} P.TokenParsing IdrisParser where
-  someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+  someSpace = someSpace'
   token p = do s <- get
                (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
                                            -- See Issue #1594
@@ -206,7 +209,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                    contents <- P.option "" (do first <- P.satisfy (\c -> not (isEol c || c == '@'))
                                                                res <- many (P.satisfy (not . isEol))
                                                                return $ first:res)
-                                   eol ; P.someSpace
+                                   eol ; someSpace'
                                    return contents)
                         <?> ""
 
@@ -217,7 +220,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                n <- fst <$> name
                                many (P.satisfy isSpace)
                                docs <- many (P.satisfy (not . isEol))
-                               eol ; P.someSpace
+                               eol ; someSpace'
                                return (n, docs)
 
 -- | Parses some white space
