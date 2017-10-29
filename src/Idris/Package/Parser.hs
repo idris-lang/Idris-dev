@@ -71,8 +71,7 @@ pPkg = do
     reserved "package"
     p <- pPkgName
     P.someSpace
-    st <- get
-    put (st { pkgname = p })
+    modify $ \st -> st { pkgname = p }
     some pClause
     st <- get
     P.eof
