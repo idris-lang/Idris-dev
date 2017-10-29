@@ -641,6 +641,8 @@ wrapper ns inner =
       indexPage  = base ++ "index.html" :: String
   in  H.docTypeHtml $ do
     H.head $ do
+      H.meta ! charset "utf-8"
+      H.meta ! name "viewport" ! content "width=device-width, initial-scale=1, shrink-to-fit=no"
       H.title $ do
         "IdrisDoc"
         if index then " Index" else do
