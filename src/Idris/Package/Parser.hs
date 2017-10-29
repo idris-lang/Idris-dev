@@ -127,7 +127,7 @@ textUntilEol :: MonadicParsing m => m String
 textUntilEol = many (P.satisfy (not . isEol)) <* eol <* P.someSpace
 
 clause          :: String -> PParser a -> (PkgDesc -> a -> PkgDesc) -> PParser ()
-clause name p f = do value <- reserved name *> lchar '=' *> p
+clause name p f = do value <- reserved name *> lchar '=' *> p <* P.someSpace
                      modify $ \st -> f st value
 
 commaSep   :: MonadicParsing m => m a -> m [a]
@@ -153,6 +153,6 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "homepage" textUntilEol (\st v -> st { pkghomepage = Just v })
       <|> clause "sourceloc" textUntilEol (\st v -> st { pkgsourceloc = Just v })
       <|> clause "bugtracker" textUntilEol (\st v -> st { pkgbugtracker = Just v })
-      <|> clause "brief" (P.stringLiteral <* P.someSpace) (\st v -> st { pkgbrief = Just v })
+      <|> clause "brief" P.stringLiteral (\st v -> st { pkgbrief = Just v })
       <|> clause "author" textUntilEol (\st v -> st { pkgauthor = Just v })
       <|> clause "maintainer" textUntilEol (\st v -> st { pkgmaintainer = Just v })
