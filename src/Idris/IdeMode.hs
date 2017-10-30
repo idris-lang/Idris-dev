@@ -25,8 +25,8 @@ import qualified Data.Text as T
 import Numeric
 import System.IO
 import Text.Printf
-import Text.Trifecta hiding (Err)
-import Text.Trifecta.Delta
+import qualified Text.Trifecta as P
+import qualified Text.Trifecta.Delta as P
 
 getNChar :: Handle -> Int -> String -> IO (String)
 getNChar _ 0 s = return (reverse s)
@@ -205,28 +205,27 @@ escape = concatMap escapeChar
     escapeChar '"'  = "\\\""
     escapeChar c    = [c]
 
-pSExp = do xs <- between (char '(') (char ')') (pSExp `sepBy` (char ' '))
-           return (SexpList xs)
+pSExp = SexpList <$> P.between (P.char '(') (P.char ')') (pSExp `P.sepBy` (P.char ' '))
     <|> atom
 
-atom = do string "nil"; return (SexpList [])
-   <|> do char ':'; x <- atomC; return x
-   <|> do char '"'; xs <- many quotedChar; char '"'; return (StringAtom xs)
-   <|> do ints <- some digit
+atom = SexpList [] <$ P.string "nil"
+   <|> P.char ':' *> atomC
+   <|> StringAtom <$> P.between (P.char '"') (P.char '"') (P.many quotedChar)
+   <|> do ints <- some P.digit
           case readDec ints of
             ((num, ""):_) -> return (IntegerAtom (toInteger num))
             _ -> return (StringAtom ints)
 
-atomC = do string "True"; return (BoolAtom True)
-    <|> do string "False"; return (BoolAtom False)
-    <|> do xs <- many (noneOf " \n\t\r\"()"); return (SymbolAtom xs)
+atomC = BoolAtom True  <$ P.string "True"
+    <|> BoolAtom False <$ P.string "False"
+    <|> SymbolAtom <$> many (P.noneOf " \n\t\r\"()")
 
-quotedChar = try (string "\\\\" >> return '\\')
-         <|> try (string "\\\"" >> return '"')
-         <|> noneOf "\""
+quotedChar = P.try ('\\' <$ P.string "\\\\")
+         <|> P.try ('"' <$ P.string "\\\"")
+         <|> P.noneOf "\""
 
-parseSExp :: String -> Result SExp
-parseSExp = parseString pSExp (Directed (UTF8.fromString "(unknown)") 0 0 0 0)
+parseSExp :: String -> P.Result SExp
+parseSExp = P.parseString pSExp (P.Directed (UTF8.fromString "(unknown)") 0 0 0 0)
 
 data Opt = ShowImpl | ErrContext deriving Show
 
@@ -324,8 +323,8 @@ parseMessage x = case receiveString x of
 receiveString :: String -> Either Err SExp
 receiveString x =
   case parseSExp x of
-    Failure _ -> Left . Msg $ "parse failure"
-    Success r -> Right r
+    P.Failure _ -> Left . Msg $ "parse failure"
+    P.Success r -> Right r
 
 convSExp :: SExpable a => String -> a -> Integer -> String
 convSExp pre s id =

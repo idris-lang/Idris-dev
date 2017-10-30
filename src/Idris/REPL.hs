@@ -93,7 +93,6 @@ import System.FSNotify (watchDir, withManager)
 import System.FSNotify.Devel (allEvents, doAllEvents)
 import System.IO
 import System.Process
-import Text.Trifecta.Result (ErrInfo(..), Result(..))
 import Util.DynamicLinker
 import Util.Net (listenOnLocalhost, listenOnLocalhostAnyPort)
 import Util.Pretty hiding ((</>))
@@ -177,9 +176,9 @@ processNetCmd :: IState -> IState -> Handle -> FilePath -> String ->
                  IO (IState, FilePath)
 processNetCmd orig i h fn cmd
     = do res <- case parseCmd i "(net)" cmd of
-                  Failure (ErrInfo err _) -> return (Left (Msg " invalid command"))
-                  Success (Right c) -> runExceptT $ evalStateT (processNet fn c) i
-                  Success (Left err) -> return (Left (Msg err))
+                  Left err -> return (Left (Msg " invalid command"))
+                  Right (Right c) -> runExceptT $ evalStateT (processNet fn c) i
+                  Right (Left err) -> return (Left (Msg err))
          case res of
               Right x -> return x
               Left err -> do hPutStrLn h (show err)
@@ -295,8 +294,8 @@ runIdeModeCommand h id orig fn mods (IdeMode.Interpret cmd) =
   do c <- colourise
      i <- getIState
      case parseCmd i "(input)" cmd of
-       Failure (ErrInfo err _) -> iPrintError $ show (fixColour False err)
-       Success (Right (Prove mode n')) ->
+       Left err -> iPrintError . show . fixColour False . parseErrorDoc $ err
+       Right (Right (Prove mode n')) ->
          idrisCatch
            (do process fn (Prove mode n')
                isetPrompt (mkPrompt mods)
@@ -315,10 +314,10 @@ runIdeModeCommand h id orig fn mods (IdeMode.Interpret cmd) =
                            IdeMode.convSExp "abandon-proof" "Abandoned" n
                        _ -> return ()
                      iRenderError $ pprintErr ist e)
-       Success (Right cmd) -> idrisCatch
+       Right (Right cmd) -> idrisCatch
                         (idemodeProcess fn cmd)
                         (\e -> getIState >>= iRenderError . flip pprintErr e)
-       Success (Left err) -> iPrintError err
+       Right (Left err) -> iPrintError err
 runIdeModeCommand h id orig fn mods (IdeMode.REPLCompletions str) =
   do (unused, compls) <- replCompletion (reverse str, "")
      let good = IdeMode.SexpList [IdeMode.SymbolAtom "ok",
@@ -353,8 +352,8 @@ runIdeModeCommand h id orig fn mods (IdeMode.TypeOf name) =
                  (Check (PRef (FC "(idemode)" (0,0) (0,0)) [] n))
 runIdeModeCommand h id orig fn mods (IdeMode.DocsFor name w) =
   case parseConst orig name of
-    Success c -> process "(idemode)" (DocStr (Right c) (howMuch w))
-    Failure _ ->
+    Right c -> process "(idemode)" (DocStr (Right c) (howMuch w))
+    Left _ ->
      case splitName name of
        Left err -> iPrintError err
        Right n -> process "(idemode)" (DocStr (Left n) (howMuch w))
@@ -727,11 +726,10 @@ processInput cmd orig inputs efile
          let fn = fromMaybe "" (listToMaybe inputs)
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Failure (ErrInfo err _) ->   do iputStrLn $ show (fixColour c err)
-                                            return (Just inputs)
-            Success (Right Reload) ->
+            Left err -> Just inputs <$ iputStrLn (show . fixColour c . parseErrorDoc $ err)
+            Right (Right Reload) ->
                 reload orig inputs
-            Success (Right Watch) ->
+            Right (Right Watch) ->
                 if null inputs then
                   do iputStrLn "No loaded files to watch."
                      return (Just inputs)
@@ -739,7 +737,7 @@ processInput cmd orig inputs efile
                   do iputStrLn efile
                      iputStrLn $ "Watching for .idr changes in " ++ show inputs ++ ", press enter to cancel."
                      watch orig inputs
-            Success (Right (Load f toline)) ->
+            Right (Right (Load f toline)) ->
                 -- The $!! here prevents a space leak on reloading.
                 -- This isn't a solution - but it's a temporary stopgap.
                 -- See issue #2386
@@ -749,22 +747,20 @@ processInput cmd orig inputs efile
                    clearErr
                    mod <- loadInputs [f] toline
                    return (Just mod)
-            Success (Right (ModImport f)) ->
+            Right (Right (ModImport f)) ->
                 do clearErr
                    fmod <- loadModule f (IBC_REPL True)
                    return (Just (inputs ++ maybe [] (:[]) fmod))
-            Success (Right Edit) -> do -- takeMVar stvar
+            Right (Right Edit) -> do -- takeMVar stvar
                                edit efile orig
                                return (Just inputs)
-            Success (Right Proofs) -> do proofs orig
-                                         return (Just inputs)
-            Success (Right Quit) -> do when (not quiet) (iputStrLn "Bye bye")
-                                       return Nothing
-            Success (Right cmd ) -> do idrisCatch (process fn cmd)
-                                          (\e -> do msg <- showErr e ; iputStrLn msg)
-                                       return (Just inputs)
-            Success (Left err) -> do runIO $ putStrLn err
+            Right (Right Proofs) -> Just inputs <$ proofs orig
+            Right (Right Quit) -> Nothing <$ when (not quiet) (iputStrLn "Bye bye")
+            Right (Right cmd ) -> do idrisCatch (process fn cmd)
+                                            (\e -> do msg <- showErr e ; iputStrLn msg)
                                      return (Just inputs)
+            Right (Left err) -> do runIO $ putStrLn err
+                                   return (Just inputs)
 
 resolveProof :: Name -> Idris Name
 resolveProof n'
@@ -1429,7 +1425,7 @@ process fn (Browse ns) =
 process fn (MakeDoc s) =
   do     istate        <- getIState
          let names      = words s
-             parse n    | Success x <- runparser (fmap fst name) istate fn n = Right x
+             parse n    | Right x <- runparser (fmap fst name) istate fn n = Right x
              parse n    = Left n
              (bad, nss) = partitionEithers $ map parse names
          cd            <- runIO getCurrentDirectory

@@ -22,8 +22,8 @@ import Control.Monad.State.Strict
 import Data.Char (isAlpha)
 import Data.List
 import Text.Parser.Expression
-import Text.Trifecta hiding (char, charLiteral, natural, span, string,
-                      stringLiteral, symbol, whiteSpace)
+import Text.Trifecta ((<?>))
+import qualified Text.Trifecta as P
 
 -- | Creates table for fixity declarations to build expression parser
 -- using pre-build and user-defined operator/fixity declarations
@@ -49,8 +49,8 @@ table fixes
     noFixityOperator :: Operator IdrisParser PTerm
     noFixityOperator = flip Infix AssocNone $ do
                          indentGt
-                         op <- try symbolicOperator
-                         unexpected $ "Operator without known fixity: " ++ op
+                         op <- P.try symbolicOperator
+                         P.unexpected $ "Operator without known fixity: " ++ op
 
     -- | Calculates table for fixity declarations
     toTable    :: [FixDecl] -> OperatorTable IdrisParser PTerm
@@ -71,7 +71,7 @@ table fixes
 
     binary :: String -> Assoc -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> Operator IdrisParser PTerm
     binary name assoc f
-      | isBacktick name = flip Infix assoc $ try $ do
+      | isBacktick name = flip Infix assoc $ P.try $ do
                             (n, fc) <- backtickOperator
                             guard $ show (nsroot n) == name
                             return $ f fc n
@@ -96,7 +96,7 @@ table fixes
 @
 -}
 backtickOperator :: IdrisParser (Name, FC)
-backtickOperator = between (indentGt *> lchar '`') (indentGt *> lchar '`') name
+backtickOperator = P.between (indentGt *> lchar '`') (indentGt *> lchar '`') name
 
 {- | Parses an operator name (either a symbolic name or a backtick-quoted name)
 
@@ -123,9 +123,9 @@ operatorName =     first sUN <$> symbolicOperatorFC
 
 -}
 operatorFront :: IdrisParser (Name, FC)
-operatorFront = try (do (FC f (l, c) _) <- getFC
-                        op <- lchar '(' *> reservedOp "="  <* lchar ')'
-                        return (eqTy, FC f (l, c) (l, c+3)))
+operatorFront = P.try (do (FC f (l, c) _) <- getFC
+                          op <- lchar '(' *> reservedOp "="  <* lchar ')'
+                          return (eqTy, FC f (l, c) (l, c+3)))
             <|> maybeWithNS (do (FC f (l, c) _) <- getFC
                                 op <- lchar '(' *> symbolicOperator
                                 (FC _ _ (l', c')) <- getFC
@@ -139,7 +139,7 @@ operatorFront = try (do (FC f (l, c) _) <- getFC
 @
 -}
 fnName :: IdrisParser (Name, FC)
-fnName = try operatorFront <|> name <?> "function name"
+fnName = P.try operatorFront <|> name <?> "function name"
 
 {- | Parses a fixity declaration
 @
@@ -151,7 +151,7 @@ Fixity ::=
 fixity :: IdrisParser PDecl
 fixity = do pushIndent
             f <- fixityType; i <- fst <$> natural;
-            ops <- sepBy1 (show . nsroot . fst <$> operatorName) (lchar ',')
+            ops <- P.sepBy1 (show . nsroot . fst <$> operatorName) (lchar ',')
             terminator
             let prec = fromInteger i
             istate <- get

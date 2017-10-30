@@ -1141,15 +1141,6 @@ isInjective (Bind _ (Pi _ _ _ _) sc) = True
 isInjective (App _ f a)        = isInjective f
 isInjective _                  = False
 
--- | Count the number of instances of a de Bruijn index in a term
-vinstances :: Int -> TT n -> Int
-vinstances i (V x) | i == x = 1
-vinstances i (App _ f a) = vinstances i f + vinstances i a
-vinstances i (Bind x b sc) = instancesB b + vinstances (i + 1) sc
-  where instancesB (Let c t v) = vinstances i v
-        instancesB _ = 0
-vinstances i t = 0
-
 -- | Replace the outermost (index 0) de Bruijn variable with the given term
 instantiate :: TT n -> TT n -> TT n
 instantiate e = subst 0 where
