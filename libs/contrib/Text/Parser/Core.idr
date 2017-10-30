@@ -242,9 +242,9 @@ data ParseError tok = Error String (List tok)
 ||| returns a pair of the parse result and the unparsed tokens (the remaining
 ||| input).
 export
-parse : (xs : List tok) -> (act : Grammar tok c ty) ->
+parse : (act : Grammar tok c ty) -> (xs : List tok) ->
         Either (ParseError tok) (ty, List tok)
-parse xs act
+parse act xs
     = case doParse False xs act of
            Failure _ msg ts => Left (Error msg ts)
            EmptyRes _ val rest => pure (val, rest)
