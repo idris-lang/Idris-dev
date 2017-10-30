@@ -40,12 +40,7 @@ import qualified Text.Trifecta as P
 import qualified Text.Trifecta.Delta as P
 
 -- | Idris parser with state used during parsing
-type IdrisParser = StateT IState IdrisInnerParser
-
-newtype IdrisInnerParser a = IdrisInnerParser { runInnerParser :: P.Parser a }
-  deriving (Monad, Functor, MonadPlus, Applicative, Alternative, P.CharParsing, LookAheadParsing, P.DeltaParsing, P.MarkParsing P.Delta, Monoid, P.TokenParsing)
-
-deriving instance P.Parsing IdrisInnerParser
+type IdrisParser = StateT IState P.Parser
 
 #if MIN_VERSION_base(4,9,0)
 instance {-# OVERLAPPING #-} P.DeltaParsing IdrisParser where
@@ -87,9 +82,9 @@ instance HasLastTokenSpan IdrisParser where
 newtype ParseError = ParseError { parseErrorDoc :: PP.Doc }
 
 -- | Helper to run Idris inner parser based stateT parsers
-runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
+runparser :: StateT st P.Parser res -> st -> String -> String -> Either ParseError res
 runparser p i inputname s =
-  case P.parseString (runInnerParser (evalStateT p i))
+  case P.parseString (evalStateT p i)
                      (P.Directed (UTF8.fromString inputname) 0 0 0 0) s of
     P.Failure (P.ErrInfo doc _) -> Left (ParseError doc)
     P.Success value -> Right value

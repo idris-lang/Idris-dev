@@ -1516,7 +1516,7 @@ parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> ela
 parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe P.Delta)
 parseImports fname input
     = do i <- getIState
-         case P.parseString (runInnerParser (evalStateT imports i)) (P.Directed (UTF8.fromString fname) 0 0 0 0) input of
+         case P.parseString (evalStateT imports i) (P.Directed (UTF8.fromString fname) 0 0 0 0) input of
               P.Failure (P.ErrInfo err _) -> ifail $ show err
               P.Success (x, annots, i) ->
                 do putIState i

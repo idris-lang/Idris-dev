@@ -11,7 +11,7 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
-import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName,
+import Idris.Parser.Helpers (MonadicParsing, eol, iName,
                              identifier, isEol, lchar, packageName,
                              parseErrorDoc, reserved, runparser, someSpace')
 
@@ -25,7 +25,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Trifecta ((<?>))
 import qualified Text.Trifecta as P
 
-type PParser = StateT PkgDesc IdrisInnerParser
+type PParser = StateT PkgDesc P.Parser
 
 #if MIN_VERSION_base(4,9,0)
 instance {-# OVERLAPPING #-} P.DeltaParsing PParser where
