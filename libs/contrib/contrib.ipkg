@@ -61,3 +61,4 @@ modules = CFFI
         , Text.PrettyPrint.WL.Characters
         , Text.PrettyPrint.WL.Combinators
         , Text.PrettyPrint.WL.Core
+        , Text.Quantity

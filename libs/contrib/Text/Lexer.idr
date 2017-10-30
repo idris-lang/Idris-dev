@@ -3,6 +3,7 @@ module Text.Lexer
 import Data.Bool.Extra
 
 import public Text.Lexer.Core
+import public Text.Quantity
 
 %default total
 %access export
@@ -109,29 +110,15 @@ manyTill l end = end <|> opt (l <+> manyTill l end)
 %deprecate manyTill
     "Prefer `lineComment`, or `manyUntil`/`manyThen` (argument order is flipped)."
 
-||| Recognise a sub-lexer at least `min` times. Consumes input unless
-||| min is zero.
-atLeast : (min : Nat) -> (l : Lexer) -> Recognise (min > 0)
-atLeast Z l       = many l
-atLeast (S min) l = l <+> atLeast min l
-
-||| Recognise a sub-lexer at most `max` times. Not guaranteed to
-||| consume input.
-atMost : (max : Nat) -> (l : Lexer) -> Recognise False
-atMost Z _     = empty
-atMost (S k) l = atMost k l <+> opt l
-
-||| Recognise a sub-lexer repeated between `min` and `max` times. Fails
-||| if the inputs are out of order. Consumes input unless min is zero.
-between : (min : Nat) -> (max : Nat) -> (l : Lexer) -> Recognise (min > 0)
-between Z max l           = atMost max l
-between (S min) Z _       = fail
-between (S min) (S max) l = l <+> between min max l
-
-||| Recognise exactly `count` repeated occurrences of a sub-lexer.
-||| Consumes input unless count is zero.
-exactly : (count : Nat) -> (l : Lexer) -> Recognise (count > 0)
-exactly n l = between n n l
+||| Recognise a sub-lexer repeated as specified by `q`. Fails if `q` has
+||| `min` and `max` in the wrong order. Consumes input unless `min q` is zero.
+count : (q : Quantity) -> (l : Lexer) -> Recognise (isSucc (min q))
+count (Qty Z Nothing) l = many l
+count (Qty Z (Just Z)) _ = empty
+count (Qty Z (Just (S max))) l = opt $ l <+> count (atMost max) l
+count (Qty (S min) Nothing) l = l <+> count (atLeast min) l
+count (Qty (S min) (Just Z)) _ = fail
+count (Qty (S min) (Just (S max))) l = l <+> count (between min max) l
 
 ||| Recognise a single digit 0-9
 digit : Lexer

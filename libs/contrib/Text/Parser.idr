@@ -3,6 +3,7 @@ module Text.Parser
 import Data.Bool.Extra
 
 import public Text.Parser.Core
+import public Text.Quantity
 
 %access export
 %default total
@@ -12,8 +13,8 @@ import public Text.Parser.Core
 option : {c : Bool} ->
          (def : a) -> (p : Grammar tok c a) ->
          Grammar tok False a
-option {c} def p = rewrite sym (andFalseFalse c) in
-                           p <|> pure def
+option {c = False} def p = p <|> pure def
+option {c = True} def p = p <|> pure def
 
 ||| Optionally parse a thing.
 ||| To provide a default value, use `option` instead.
@@ -62,6 +63,26 @@ mutual
 some' : (p : Grammar tok True a) ->
         Grammar tok True (xs : List a ** NonEmpty xs)
 some' p = pure (!p :: !(many p) ** IsNonEmpty)
+
+mutual
+  private
+  count1 : (q : Quantity) ->
+           (p : Grammar tok True a) ->
+           Grammar tok True (List a)
+  count1 q p = do x <- p
+                  seq (count q p)
+                      (\xs => pure (x :: xs))
+
+  ||| Parse `p`, repeated as specified by `q`, returning the list of values.
+  count : (q : Quantity) ->
+          (p : Grammar tok True a) ->
+          Grammar tok (isSucc (min q)) (List a)
+  count (Qty Z Nothing) p = many p
+  count (Qty Z (Just Z)) _ = pure []
+  count (Qty Z (Just (S max))) p = option [] $ count1 (atMost max) p
+  count (Qty (S min) Nothing) p = count1 (atLeast min) p
+  count (Qty (S min) (Just Z)) _ = fail "Quantity out of order"
+  count (Qty (S min) (Just (S max))) p = count1 (between (S min) max) p
 
 mutual
   ||| Parse one or more instances of `p` until `end` succeeds, returning the
