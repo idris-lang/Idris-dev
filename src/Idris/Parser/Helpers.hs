@@ -214,7 +214,7 @@ docComment = do dc <- pushIndent *> docCommentLine
 
 -- | Parses some white space
 whiteSpace :: MonadicParsing m => m ()
-whiteSpace = Tok.whiteSpace
+whiteSpace = someSpace' <|> pure ()
 
 -- | Parses a string literal
 stringLiteral :: IdrisParser (String, FC)
