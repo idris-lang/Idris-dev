@@ -234,10 +234,6 @@ natural = do n <- Tok.natural
              fc <- lastTokenSpan <$> get
              return (n, fromMaybe NoFC fc)
 
--- | Parses an integral number
-integer :: IdrisParser Integer
-integer = Tok.integer
-
 -- | Parses a floating point number
 float :: IdrisParser (Double, FC)
 float = do f <- Tok.double
