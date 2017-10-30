@@ -59,7 +59,7 @@ instance {-# OVERLAPPING #-} P.DeltaParsing IdrisParser where
 someSpace' :: MonadicParsing m => m ()
 someSpace' = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
-instance {-# OVERLAPPING #-} P.TokenParsing IdrisParser where
+instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
   someSpace = someSpace'
   token p = do s <- get
                (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC

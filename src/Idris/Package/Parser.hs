@@ -21,6 +21,7 @@ import Data.List (union)
 import System.Directory (doesFileExist)
 import System.Exit
 import System.FilePath (isValid, takeExtension, takeFileName)
+import Text.Parser.Token (TokenParsing)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Trifecta ((<?>))
 import qualified Text.Trifecta as P
@@ -41,7 +42,7 @@ instance {-# OVERLAPPING #-} P.DeltaParsing PParser where
   {-# INLINE restOfLine #-}
 #endif
 
-instance {-# OVERLAPPING #-} P.TokenParsing PParser where
+instance {-# OVERLAPPING #-} TokenParsing PParser where
   someSpace = someSpace'
 
 
