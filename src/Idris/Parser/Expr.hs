@@ -18,8 +18,8 @@ import Idris.Parser.Ops
 
 import Prelude hiding (pi)
 
-import Control.Arrow (left)
 import Control.Applicative
+import Control.Arrow (left)
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Function (on)
