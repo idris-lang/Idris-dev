@@ -80,16 +80,14 @@ pPkgName = (either fail pure . pkgName =<< packageName) <?> "PkgName"
 -- | Treated for now as an identifier or a double-quoted string.
 filename :: (MonadicParsing m) => m String
 filename = (do
-    filename <- P.token $
-        -- Treat a double-quoted string as a filename to support spaces.
-        -- This also moves away from tying filenames to identifiers, so
-        -- it will also accept hyphens
-        -- (https://github.com/idris-lang/Idris-dev/issues/2721)
-        P.stringLiteral
-        <|>
-        -- Through at least version 0.9.19.1, IPKG executable values were
-        -- possibly namespaced identifiers, like foo.bar.baz.
-        show <$> fst <$> iName []
+                -- Treat a double-quoted string as a filename to support spaces.
+                -- This also moves away from tying filenames to identifiers, so
+                -- it will also accept hyphens
+                -- (https://github.com/idris-lang/Idris-dev/issues/2721)
+    filename <- P.stringLiteral <* someSpace'
+                -- Through at least version 0.9.19.1, IPKG executable values were
+                -- possibly namespaced identifiers, like foo.bar.baz.
+            <|> show . fst <$> iName []
     case filenameErrorMessage filename of
       Just errorMessage -> fail errorMessage
       Nothing -> return filename)
