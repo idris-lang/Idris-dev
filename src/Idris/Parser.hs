@@ -49,6 +49,7 @@ import Data.Foldable (asum)
 import Data.Function
 import Data.Generics.Uniplate.Data (descendM)
 import Data.List
+import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.Split as Spl
 import qualified Data.Map as M
 import Data.Maybe
@@ -57,9 +58,9 @@ import qualified Data.Text as T
 import qualified System.Directory as Dir (makeAbsolute)
 import System.FilePath
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import Text.Trifecta ((<?>))
-import qualified Text.Trifecta as P
-import qualified Text.Trifecta.Delta as P
+import Text.Megaparsec ((<?>))
+import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
 
 {-
 @
@@ -432,20 +433,20 @@ syntaxRule syn
             reservedHL "syntax"
             return sty)
          syms <- some syntaxSym
-         when (all isExpr syms) $ P.unexpected "missing keywords in syntax rule"
+         when (all isExpr syms) $ P.unexpected . P.Label $ 'm' :| "issing keywords in syntax rule"
          let ns = mapMaybe getName syms
          when (length ns /= length (nub ns))
-            $ P.unexpected "repeated variable in syntax rule"
+            $ P.unexpected . P.Label $ 'r' :| "epeated variable in syntax rule"
          lchar '='
          tm <- typeExpr (allowImp syn) >>= uniquifyBinders [n | Binding n <- syms]
          terminator
          return (Rule (mkSimple syms) tm sty)
   <|> do reservedHL "decl"; reservedHL "syntax"
          syms <- some syntaxSym
-         when (all isExpr syms) $ P.unexpected "missing keywords in syntax rule"
+         when (all isExpr syms) $ P.unexpected . P.Label $ 'm' :| "issing keywords in syntax rule"
          let ns = mapMaybe getName syms
          when (length ns /= length (nub ns))
-            $ P.unexpected "repeated variable in syntax rule"
+            $ P.unexpected . P.Label $ 'r' :| "epeated variable in syntax rule"
          lchar '='
          openBlock
          dec <- some (decl syn)
@@ -576,7 +577,7 @@ fnDecl syn = P.try (do notEndBlock
 @
 -}
 fnDecl' :: SyntaxInfo -> IdrisParser PDecl
-fnDecl' syn = checkDeclFixity $
+fnDecl' syn = (checkDeclFixity $
               do (doc, argDocs, fc, opts', n, nfc, acc) <- P.try (do
                         pushIndent
                         (doc, argDocs) <- docstring syn
@@ -594,7 +595,7 @@ fnDecl' syn = checkDeclFixity $
                  return (PTy doc argDocs syn fc opts' n nfc ty)
             <|> postulate syn
             <|> caf syn
-            <|> pattern syn
+            <|> pattern syn)
             <?> "function declaration"
 
 {-| Parses a series of function and accessbility options
@@ -1512,7 +1513,7 @@ parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> ela
         spaced parser = indentGt *> parser
 
 -- | Parse module header and imports
-parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe P.Delta)
+parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe ParseState)
 parseImports fname input
     = do i <- getIState
          case runparser imports i fname input of
@@ -1524,13 +1525,13 @@ parseImports fname input
                    return x
   where imports :: IdrisParser ((Maybe (Docstring ()), [String],
                                  [ImportInfo],
-                                 Maybe P.Delta),
+                                 Maybe ParseState),
                                 [(FC, OutputAnnotation)], IState)
         imports = do optional shebang
                      whiteSpace
                      (mdoc, mname, annots) <- moduleHeader
                      ps_exp        <- many import_
-                     mrk           <- P.mark
+                     mrk           <- P.getParserState
                      isEof         <- lookAheadMatches P.eof
                      let mrk' = if isEof
                                    then Nothing
@@ -1572,8 +1573,7 @@ fixColour True doc  = doc
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
-parseProg :: SyntaxInfo -> FilePath -> String -> Maybe P.Delta ->
-             Idris [PDecl]
+parseProg :: SyntaxInfo -> FilePath -> String -> Maybe ParseState -> Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
@@ -1595,7 +1595,7 @@ parseProg syn fname input mrk
         mainProg = case mrk of
                         Nothing -> do i <- get; return ([], i)
                         Just mrk -> do
-                          P.release mrk
+                          P.setParserState mrk
                           ds <- prog syn
                           i' <- get
                           return (ds, i')

@@ -5,8 +5,8 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, GeneralizedNewtypeDeriving, PatternGuards,
-             TupleSections #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
+             PatternGuards, TupleSections #-}
 module Idris.Parser.Expr where
 
 import Idris.AbsSyntax
@@ -26,8 +26,8 @@ import Data.Function (on)
 import Data.List
 import Data.Maybe
 import Text.Parser.Expression
-import Text.Trifecta ((<?>))
-import qualified Text.Trifecta as P
+import Text.Megaparsec ((<?>))
+import qualified Text.Megaparsec as P
 
 -- | Allow implicit type declarations
 allowImp :: SyntaxInfo -> SyntaxInfo
@@ -1466,7 +1466,7 @@ VerbatimString_t ::=
 ;
 @
  -}
-verbatimStringLiteral :: MonadicParsing m => m (String, FC)
+verbatimStringLiteral :: IdrisParser (String, FC)
 verbatimStringLiteral = P.token $ do (FC f start _) <- getFC
                                      P.try $ string "\"\"\""
                                      str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")

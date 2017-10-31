@@ -5,9 +5,9 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, ConstraintKinds, FlexibleInstances,
+{-# LANGUAGE CPP, ConstraintKinds, FlexibleContexts, FlexibleInstances,
              GeneralizedNewtypeDeriving, PatternGuards, StandaloneDeriving,
-             TypeSynonymInstances #-}
+             TypeSynonymInstances, UndecidableInstances #-}
 module Idris.Parser.Helpers where
 
 import Idris.AbsSyntax
@@ -23,7 +23,6 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import qualified Data.ByteString.UTF8 as UTF8
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
@@ -31,33 +30,39 @@ import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Text as T
 import System.FilePath
-import qualified Text.Parser.Char as Chr
-import Text.Parser.LookAhead
+import Data.List.NonEmpty (fromList)
+import qualified Text.Parser.Char
+import qualified Text.Parser.Combinators
 import qualified Text.Parser.Token as Tok
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import Text.Trifecta ((<?>))
-import qualified Text.Trifecta as P
-import qualified Text.Trifecta.Delta as P
+import Text.Megaparsec ((<?>))
+import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
+import qualified Text.Megaparsec.Char.Lexer as P hiding (space)
+
+newtype ParseError = ParseError { parseErrorDoc :: PP.Doc }
 
 -- | Idris parser with state used during parsing
-type IdrisParser = StateT IState P.Parser
+type IdrisParser = StateT IState IdrisInnerParser
+type IdrisInnerParser = P.Parsec () String
+type ParseState = P.State String
 
-#if MIN_VERSION_base(4,9,0)
-instance {-# OVERLAPPING #-} P.DeltaParsing IdrisParser where
-  line = lift P.line
-  {-# INLINE line #-}
-  position = lift P.position
-  {-# INLINE position #-}
-  slicedWith f (StateT m) = StateT $ \s -> P.slicedWith (\(a,s') b -> (f a b, s')) $ m s
-  {-# INLINE slicedWith #-}
-  rend = lift P.rend
-  {-# INLINE rend #-}
-  restOfLine = lift P.restOfLine
-  {-# INLINE restOfLine #-}
-#endif
+-- | Generalized monadic parsing constraint type
+type MonadicParsing m = (P.MonadParsec () String m, Tok.TokenParsing m)
 
 someSpace' :: MonadicParsing m => m ()
 someSpace' = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+
+instance Text.Parser.Combinators.Parsing IdrisInnerParser where
+  eof = P.eof
+  unexpected msg = P.unexpected . P.Label . fromList $ msg
+  try = P.try
+  p <?> s = p <?> s --FIXME:?
+  notFollowedBy = P.notFollowedBy
+  --FIXME:
+instance Text.Parser.Char.CharParsing IdrisInnerParser where
+  satisfy = P.satisfy
+  --FIXME:??
 
 instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
   someSpace = someSpace'
@@ -70,18 +75,12 @@ instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
                put (s { lastTokenSpan = Just (FC fn (sl, sc) (el, ec)) })
                return r
 
--- | Generalized monadic parsing constraint type
-type MonadicParsing m = (P.DeltaParsing m, LookAheadParsing m, Monad m)
-
-newtype ParseError = ParseError { parseErrorDoc :: PP.Doc }
-
 -- | Helper to run Idris inner parser based stateT parsers
-runparser :: StateT st P.Parser res -> st -> String -> String -> Either ParseError res
+runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
 runparser p i inputname s =
-  case P.parseString (evalStateT p i)
-                     (P.Directed (UTF8.fromString inputname) 0 0 0 0) s of
-    P.Failure (P.ErrInfo doc _) -> Left (ParseError doc)
-    P.Success value -> Right value
+  case P.parse (evalStateT p i) inputname s of
+    Left _      -> Left $ ParseError undefined --FIXME:
+    Right value -> Right value
 
 highlightP :: FC -> OutputAnnotation -> IdrisParser ()
 highlightP fc annot = do ist <- get
@@ -130,7 +129,7 @@ isEol  _   = False
 
 -- | A parser that succeeds at the end of the line
 eol :: MonadicParsing m => m ()
-eol = () <$ P.satisfy isEol <|> lookAhead P.eof <?> "end of line"
+eol = () <$ P.satisfy isEol <|> P.lookAhead P.eof <?> "end of line"
 
 {- | Consumes a single-line comment
 
@@ -202,14 +201,15 @@ docComment = do dc <- pushIndent *> docCommentLine
                                    return contents)
                         <?> ""
 
-        argDocCommentLine = do string "|||"
-                               many (P.satisfy isSpace)
-                               char '@'
-                               many (P.satisfy isSpace)
+        argDocCommentLine :: IdrisParser (Name, String)
+        argDocCommentLine = do P.string "|||"
+                               P.many (P.satisfy isSpace)
+                               P.char '@'
+                               P.many (P.satisfy isSpace)
                                n <- fst <$> name
-                               many (P.satisfy isSpace)
-                               docs <- many (P.satisfy (not . isEol))
-                               eol ; someSpace'
+                               P.many (P.satisfy isSpace)
+                               docs <- P.many (P.satisfy (not . isEol))
+                               P.eol ; someSpace'
                                return (n, docs)
 
 -- | Parses some white space
@@ -254,30 +254,29 @@ reservedIdentifiers = HS.fromList
   ]
 
 identifierOrReserved :: MonadicParsing m => m String
-identifierOrReserved = P.token $ P.try $ do
+identifierOrReserved = Tok.token $ P.try $ do
   c <- P.satisfy isAlpha <|> P.oneOf "_"
   cs <- P.many (P.satisfy isAlphaNum <|> P.oneOf "_'.")
   return $ c : cs
 
 char :: MonadicParsing m => Char -> m Char
-char = Chr.char
+char = P.char
 
 string :: MonadicParsing m => String -> m String
-string = Chr.string
+string = P.string
 
 -- | Parses a character as a token
 lchar :: MonadicParsing m => Char -> m Char
-lchar = P.token . P.char
+lchar = Tok.token . P.char
 
 -- | Parses a character as a token, returning the source span of the character
 lcharFC :: MonadicParsing m => Char -> m FC
 lcharFC ch = do (FC file (l, c) _) <- getFC
-                _ <- P.token (char ch)
+                _ <- Tok.token (P.char ch)
                 return $ FC file (l, c) (l, c+1)
 
--- | Parses string as a token
 symbol :: MonadicParsing m => String -> m ()
-symbol = void . Tok.symbol
+symbol = void . P.symbol someSpace'
 
 symbolFC :: MonadicParsing m => String -> m FC
 symbolFC str = do (FC file (l, c) _) <- getFC
@@ -286,7 +285,7 @@ symbolFC str = do (FC file (l, c) _) <- getFC
 
 -- | Parses a reserved identifier
 reserved :: MonadicParsing m => String -> m ()
-reserved name = P.token $ P.try $ do
+reserved name = Tok.token $ P.try $ do
   P.string name
   P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
 
@@ -304,7 +303,7 @@ reservedHL str = reservedFC str >>= flip highlightP AnnKeyword
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
 reservedOp :: MonadicParsing m => String -> m ()
-reservedOp name = P.token $ P.try $
+reservedOp name = Tok.token $ P.try $
   do string name
      P.notFollowedBy operatorLetter <?> ("end of " ++ show name)
 
@@ -318,8 +317,8 @@ identifier :: (MonadicParsing m) => m (String, FC)
 identifier = P.try $ do
   (FC f (l, c) _) <- getFC
   ident <- identifierOrReserved
-  when (ident `HS.member` reservedIdentifiers) $ P.unexpected $ "reserved " ++ ident
-  when (ident == "_") $ P.unexpected "wildcard"
+  when (ident `HS.member` reservedIdentifiers) $ P.unexpected undefined --FIXME: $ "reserved " ++ ident
+  when (ident == "_") $ P.unexpected undefined --FIXME: "wildcard"
   return (ident, FC f (l, c) (l, c + length ident))
 
 -- | Parses an identifier with possible namespace as a name
@@ -330,8 +329,8 @@ iName bad = maybeWithNS identifier False bad <?> "name"
 maybeWithNS :: (MonadicParsing m) => m (String, FC) -> Bool -> [String] -> m (Name, FC)
 maybeWithNS parser ascend bad = do
   fc <- getFC
-  i <- P.option "" (lookAhead (fst <$> identifier))
-  when (i `elem` bad) $ P.unexpected "reserved identifier"
+  i <- P.option "" (P.lookAhead (fst <$> identifier))
+  when (i `elem` bad) $ P.unexpected undefined --FIXME: "reserved identifier"
   let transf = if ascend then id else reverse
   (x, xs, fc) <- P.choice (transf (parserNoNS parser : parsersNS parser i))
   return (mkName (x, xs), fc)
@@ -400,7 +399,7 @@ invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%
 
 -- | Parses an operator
 symbolicOperator :: MonadicParsing m => m String
-symbolicOperator = do op <- P.token . some $ operatorLetter
+symbolicOperator = do op <- Tok.token . some $ operatorLetter
                       when (op `elem` (invalidOperators ++ commentMarkers)) $
                            fail $ op ++ " is not a valid operator"
                       return op
@@ -412,31 +411,16 @@ symbolicOperatorFC = do (FC f (l, c) _) <- getFC
                         return (op, FC f (l, c) (l, c + length op))
 
 {- * Position helpers -}
-{- | Get filename from position (returns "(interactive)" when no source file is given)  -}
-fileName :: P.Delta -> String
-fileName (P.Directed fn _ _ _ _) = UTF8.toString fn
-fileName _                       = "(interactive)"
-
-{- | Get line number from position -}
-lineNum :: P.Delta -> Int
-lineNum (P.Lines l _ _ _)      = fromIntegral l + 1
-lineNum (P.Directed _ l _ _ _) = fromIntegral l + 1
-lineNum _ = 0
-
-{- | Get column number from position -}
-columnNum :: P.Delta -> Int
-columnNum pos = fromIntegral (P.column pos) + 1
-
-
 {- | Get file position as FC -}
 getFC :: MonadicParsing m => m FC
-getFC = do s <- P.position
-           let (dir, file) = splitFileName (fileName s)
-           let f = if dir == addTrailingPathSeparator "." then file else fileName s
-           return $ FC f (lineNum s, columnNum s) (lineNum s, columnNum s) -- TODO: Change to actual spanning
+getFC = do pos <- P.getPosition
+           let columnNumber = P.unPos . P.sourceColumn $ pos
+           let lineNumber = P.unPos . P.sourceLine $ pos
+           let (dir, file) = splitFileName (P.sourceName pos)
+           let f = if dir == addTrailingPathSeparator "." then file else P.sourceName pos
+           return $ FC f (lineNumber, columnNumber) (lineNumber, columnNumber) -- TODO: Change to actual spanning
            -- Issue #1594 on the Issue Tracker.
            -- https://github.com/idris-lang/Idris-dev/issues/1594
-
 
 {-* Syntax helpers-}
 -- | Bind constraints to term
@@ -447,15 +431,15 @@ bindList b ((r, n, fc, t):bs) sc = b r n fc t (bindList b bs sc)
 {- | @commaSeparated p@ parses one or more occurences of `p`,
      separated by commas and optional whitespace. -}
 commaSeparated :: MonadicParsing m => m a -> m [a]
-commaSeparated p = p `P.sepBy1` (P.spaces >> P.char ',' >> P.spaces)
+commaSeparated p = p `P.sepBy1` (P.space >> P.char ',' >> P.space)
 
 {- * Layout helpers -}
 
 -- | Push indentation to stack
 pushIndent :: IdrisParser ()
-pushIndent = do pos <- P.position
+pushIndent = do columnNumber <- indent
                 ist <- get
-                put (ist { indent_stack = (fromIntegral (P.column pos) + 1) : indent_stack ist })
+                put (ist { indent_stack = columnNumber : indent_stack ist })
 
 -- | Pops indentation from stack
 popIndent :: IdrisParser ()
@@ -466,8 +450,8 @@ popIndent = do ist <- get
 
 
 -- | Gets current indentation
-indent :: IdrisParser Int
-indent = liftM ((+1) . fromIntegral . P.column) P.position
+indent :: MonadicParsing m => m Int
+indent = P.unPos . P.sourceColumn <$> P.getPosition
 
 -- | Gets last indentation
 lastIndent :: IdrisParser Int
@@ -510,8 +494,7 @@ indentedBlockS p = do openBlock
 
 -- | Checks if the following character matches provided parser
 lookAheadMatches :: MonadicParsing m => m a -> m Bool
-lookAheadMatches p = do match <- lookAhead (optional p)
-                        return $ isJust match
+lookAheadMatches p = isJust <$> P.lookAhead (P.optional p)
 
 -- | Parses a start of block
 openBlock :: IdrisParser ()
@@ -555,7 +538,7 @@ terminator =     do lchar ';'; popIndent
                     if c <= l then popIndent else fail "not a terminator"
              <|> do isParen <- lookAheadMatches (P.oneOf ")}")
                     if isParen then popIndent else fail "not a terminator"
-             <|> lookAhead P.eof
+             <|> P.lookAhead P.eof
 
 -- | Parses and keeps a terminator
 keepTerminator :: IdrisParser ()
@@ -565,7 +548,7 @@ keepTerminator =  () <$ lchar ';'
               <|> do isParen <- lookAheadMatches (P.oneOf ")}|")
                      isIn <- lookAheadMatches (reserved "in")
                      unless (isIn || isParen) $ fail "not a terminator"
-              <|> lookAhead P.eof
+              <|> P.lookAhead P.eof
 
 -- | Checks if application expression does not end
 notEndApp :: IdrisParser ()
@@ -577,7 +560,7 @@ notEndBlock :: IdrisParser ()
 notEndBlock = do ist <- get
                  case brace_stack ist of
                       Just lvl : xs -> do i <- indent
-                                          isParen <- lookAheadMatches (char ')')
+                                          isParen <- lookAheadMatches (P.char ')')
                                           when (i < lvl || isParen) (fail "end of block")
                       _ -> return ()
 

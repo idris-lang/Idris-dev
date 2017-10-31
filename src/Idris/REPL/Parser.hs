@@ -4,6 +4,7 @@ Description : Parser for the REPL commands.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+{-# LANGUAGE FlexibleContexts #-}
 module Idris.REPL.Parser (
     parseCmd
   , help

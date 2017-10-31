@@ -5,13 +5,13 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, ConstraintKinds, FlexibleInstances, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, ConstraintKinds, FlexibleContexts, FlexibleInstances, TypeSynonymInstances #-}
 module Idris.Package.Parser where
 
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
-import Idris.Parser.Helpers (MonadicParsing, eol, iName, identifier, isEol,
+import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName, identifier, isEol,
                              lchar, packageName, parseErrorDoc, reserved,
                              runparser, someSpace')
 
@@ -21,26 +21,13 @@ import Data.List (union)
 import System.Directory (doesFileExist)
 import System.Exit
 import System.FilePath (isValid, takeExtension, takeFileName)
-import Text.Parser.Token (TokenParsing)
+import Text.Parser.Token (TokenParsing(..), stringLiteral)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
-import Text.Trifecta ((<?>))
-import qualified Text.Trifecta as P
+import Text.Megaparsec ((<?>))
+import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
 
-type PParser = StateT PkgDesc P.Parser
-
-#if MIN_VERSION_base(4,9,0)
-instance {-# OVERLAPPING #-} P.DeltaParsing PParser where
-  line = lift P.line
-  {-# INLINE line #-}
-  position = lift P.position
-  {-# INLINE position #-}
-  slicedWith f (StateT m) = StateT $ \s -> P.slicedWith (\(a,s') b -> (f a b, s')) $ m s
-  {-# INLINE slicedWith #-}
-  rend = lift P.rend
-  {-# INLINE rend #-}
-  restOfLine = lift P.restOfLine
-  {-# INLINE restOfLine #-}
-#endif
+type PParser = StateT PkgDesc IdrisInnerParser
 
 instance {-# OVERLAPPING #-} TokenParsing PParser where
   someSpace = someSpace'
@@ -85,7 +72,7 @@ filename = (do
                 -- This also moves away from tying filenames to identifiers, so
                 -- it will also accept hyphens
                 -- (https://github.com/idris-lang/Idris-dev/issues/2721)
-    filename <- P.stringLiteral <* someSpace'
+    filename <- stringLiteral <* someSpace'
                 -- Through at least version 0.9.19.1, IPKG executable values were
                 -- possibly namespaced identifiers, like foo.bar.baz.
             <|> show . fst <$> iName []
@@ -130,7 +117,7 @@ pClause :: PParser ()
 pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
       <|> clause "sourcedir" (fst <$> identifier) (\st v -> st { sourcedir = v })
-      <|> clause "opts" (pureArgParser . words <$> P.stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
+      <|> clause "opts" (pureArgParser . words <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
       <|> clause "pkgs" (commaSep (pPkgName <* someSpace')) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
@@ -146,6 +133,6 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "homepage" textUntilEol (\st v -> st { pkghomepage = Just v })
       <|> clause "sourceloc" textUntilEol (\st v -> st { pkgsourceloc = Just v })
       <|> clause "bugtracker" textUntilEol (\st v -> st { pkgbugtracker = Just v })
-      <|> clause "brief" P.stringLiteral (\st v -> st { pkgbrief = Just v })
+      <|> clause "brief" stringLiteral (\st v -> st { pkgbrief = Just v })
       <|> clause "author" textUntilEol (\st v -> st { pkgauthor = Just v })
       <|> clause "maintainer" textUntilEol (\st v -> st { pkgmaintainer = Just v })
