@@ -21,9 +21,10 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Data.Char (isAlpha)
 import Data.List
+import Data.List.NonEmpty (fromList)
 import Text.Parser.Expression
-import Text.Trifecta ((<?>))
-import qualified Text.Trifecta as P
+import Text.Megaparsec ((<?>))
+import qualified Text.Megaparsec as P
 
 -- | Creates table for fixity declarations to build expression parser
 -- using pre-build and user-defined operator/fixity declarations
@@ -50,7 +51,7 @@ table fixes
     noFixityOperator = flip Infix AssocNone $ do
                          indentGt
                          op <- P.try symbolicOperator
-                         P.unexpected $ "Operator without known fixity: " ++ op
+                         P.unexpected . P.Label . fromList $ "Operator without known fixity: " ++ op
 
     -- | Calculates table for fixity declarations
     toTable    :: [FixDecl] -> OperatorTable IdrisParser PTerm
