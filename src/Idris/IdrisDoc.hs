@@ -17,7 +17,9 @@ import Idris.Core.TT (Name(..), OutputAnnotation(..), TextFormatting(..),
 import Idris.Docs
 import Idris.Docstrings (nullDocstring)
 import qualified Idris.Docstrings as Docstrings
+import Idris.Imports
 import Idris.Options
+import Idris.Package.Common
 import Idris.Parser.Helpers (opChars)
 import IRTS.System (getIdrisDataFileByName)
 
@@ -51,18 +53,19 @@ import Text.PrettyPrint.Annotated.Leijen (displayDecorated, renderCompact)
 --   and their dependencies.
 generateDocs :: IState   -- ^ IState where all necessary information is
                          --   extracted from.
+	     -> PkgDesc  --  
              -> [Name]   -- ^ List of namespaces to generate
                          --   documentation for.
              -> FilePath -- ^ The directory to which documentation will
                          --   be written.
              -> IO (Either String ())
-generateDocs ist nss' out =
+generateDocs ist pkg nss' out =
   do let nss     = map toNsName nss'
      docs       <- fetchInfo ist nss
      let (c, io) = foldl (checker docs) (0, return ()) nss
      io
      if c < length nss
-        then catchIOError (createDocs ist docs out) (err . show)
+	then catchIOError (createDocs ist pkg docs out) (err . show)
         else err "No namespaces to generate documentation for"
 
   where checker docs st ns | M.member ns docs = st
@@ -370,11 +373,12 @@ extractPTactic _                  = []
 --         runs, thus not always containing all items referred from other
 --         namespace .html files.
 createDocs :: IState -- ^ Needed to determine the types of names
+           -> PkgDesc
            -> NsDict   -- ^ All info from which to generate docs
            -> FilePath -- ^ The base directory to which
                        --   documentation will be written.
            -> IO (Failable ())
-createDocs ist nsd out =
+createDocs ist pkg nsd out =
   do new                <- not `fmap` (doesFileExist $ out </> "IdrisDoc")
      existing_nss       <- existingNamespaces out
      let nss             = S.union (M.keysSet nsd) existing_nss
@@ -384,7 +388,7 @@ createDocs ist nsd out =
        else do
          createDirectoryIfMissing True out
          foldl docGen (return ()) (M.toList nsd)
-         createIndex nss out
+	 createIndex nss pkg out
          -- Create an empty IdrisDoc file to signal 'out' is used for IdrisDoc
          if new -- But only if it not already existed...
             then withFile (out </> "IdrisDoc") WriteMode ((flip hPutStr) "")
@@ -394,18 +398,60 @@ createDocs ist nsd out =
 
   where docGen io (n, c) = do io; createNsDoc ist n c out
 
-
 -- | (Over)writes the 'index.html' file in the given directory with
 --   an (updated) index of namespaces in the documentation
 createIndex :: S.Set NsName -- ^ Set of namespace names to
                             --   include in the index
+            -> PkgDesc
             -> FilePath     -- ^ The base directory to which
                             --   documentation will be written.
             -> IO ()
-createIndex nss out =
+createIndex nss pkg out =
   do (path, h) <- openTempFile out "index.html"
      BS2.hPut h $ renderHtml $ wrapper Nothing $ do
-       H.h1 "Namespaces"
+       H.h1 ! A.id "info" $ "Package Info"
+       H.dl $ do
+         H.dt "Package Name"
+	 H.dd $ toHtml (unPkgName $ pkgname pkg)
+	 H.dt "Package Brief"
+	 H.dd $ toHtml (fromMaybe "" $ pkgbrief pkg)
+	 H.dt "Package Version"
+	 H.dd $ toHtml (fromMaybe "" $ pkgversion pkg)
+	 H.dt "Package License"
+	 H.dd $ toHtml (fromMaybe "" $ pkglicense pkg)
+	 H.dt "Package Author"
+	 H.dd $ toHtml (fromMaybe "" $ pkgauthor pkg)
+	 H.dt "Package Maintainer"
+	 H.dd $ toHtml (fromMaybe "" $ pkgmaintainer pkg)
+	 H.dt "Package Homepage"
+	 H.dd $ toHtml (fromMaybe "" $ pkghomepage pkg)
+	 H.dt "Package Bug Tracker"
+	 H.dd $ toHtml (fromMaybe "" $ pkgbugtracker pkg)
+	 H.dt "Package Dependencies"
+	 H.dd $ toHtml (L.intercalate ", " (map unPkgName $ pkgdeps pkg))
+	 H.dt "External Dependencies"
+	 H.dd $ toHtml (L.intercalate ", " $ libdeps pkg)
+	 {-H.dt "Package README Location"-}
+	 {-H.dd $ toHtml (fromMaybe "" $ pkgreadme pkg)-}
+	 {-H.dt "Package Source Location"-}
+	 {-H.dd $ toHtml (fromMaybe "" $ pkgsourceloc pkg)-}
+	 {-H.dt "Required Object Files"-}
+	 {-H.dd $ toHtml (L.intercalate ", " $ objs pkg)-}
+	 {-H.dt "Makefile Location"-}
+	 {-H.dd $ toHtml (fromMaybe "" $ makefile pkg)-}
+	 {-H.dt "Idris Compiler Options"-}
+	 {-H.dd $ -}
+	 {-H.dt "Source Directory"-}
+	 {-H.dd $ toHtml $ sourcedir pkg-}
+	 {-H.dt "Modules"-}
+	 {-H.dd $ -}
+	 {-H.dt "Main Module"-}
+	 {-H.dd $ toHtml (fromMaybe "" $ idirs_main pkg)-}
+	 {-H.dt "Executable Name"-}
+	 {-H.dd $ toHtml (fromMaybe "" $ execout pkg)-}
+	 {-H.dt "Tests"-}
+	 {-H.dd $ -}
+       H.h1 ! A.id "namespaces" $ "Namespaces"
        H.ul ! class_ "names" $ do
          let path ns  = "docs" ++ "/" ++ genRelNsPath ns "html"
              item ns  = do let n    = toHtml $ nsName2Str ns
@@ -657,7 +703,9 @@ wrapper ns inner =
           if index then mempty else do
             ": "
             toHtml str
-          H.nav $ H.a ! href (toValue indexPage) $ "Index"
+	  H.nav $ do 
+	   H.a ! href (toValue $ indexPage ++ "#info") $ "Package Info"
+	   H.a ! href (toValue $ indexPage ++ "#namespaces") $ "Namespaces"
         H.div ! class_ "container" $ inner
       H.footer $ do
         "Produced by IdrisDoc version "

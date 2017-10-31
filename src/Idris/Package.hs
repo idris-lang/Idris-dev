@@ -233,7 +233,7 @@ documentPkg copts (install,fp) = do
           when install $ do
               putStrLn $ unwords ["Attempting to install IdrisDocs for", show $ pkgname pkgdesc, "in:", out_dir]
 
-          docRes <- generateDocs ist mods out_dir
+	  docRes <- generateDocs ist pkgdesc mods out_dir
           case docRes of
             Right _  -> return ()
             Left msg -> do
