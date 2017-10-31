@@ -7,14 +7,18 @@ Usage is :printdef <functionname>
 pat {ty_503} : Type toplevel.u. pat {__interface_504} : Prelude.Interfaces.Fractional {ty_503}. Prelude.Interfaces./ {ty_503} {__interface_504}
 
  : pty {ty_503} : Type toplevel.u. pty {__interface_504} : Prelude.Interfaces.Fractional {ty_503}. {ty_503} -> {ty_503} -> {ty_503}
-(input):1:1: error: expected: ":",
-    dependent type signature,
-    end of input
-/<EOF> 
-^      
-(input):1:1: error: expected: ":",
-    dependent type signature,
-    end of input
-++<EOF> 
-^       
+(input):1:1:
+  |
+1 | /
+  | ^
+unexpected '/'
+expecting ':', dependent type signature, or end of input
+
+(input):1:1:
+  |
+1 | ++
+  | ^
+unexpected "++"
+expecting ':', dependent type signature, or end of input
+
 Can't find implementation for Fractional ty
