@@ -318,8 +318,8 @@ identifier :: (MonadicParsing m) => m (String, FC)
 identifier = P.try $ do
   (FC f (l, c) _) <- getFC
   ident <- identifierOrReserved
-  when (ident `HS.member` reservedIdentifiers) $ P.unexpected undefined --FIXME: $ "reserved " ++ ident
-  when (ident == "_") $ P.unexpected undefined --FIXME: "wildcard"
+  when (ident `HS.member` reservedIdentifiers) $ P.unexpected . P.Label . fromList $ "reserved " ++ ident
+  when (ident == "_") $ P.unexpected . P.Label . fromList $ "wildcard"
   return (ident, FC f (l, c) (l, c + length ident))
 
 -- | Parses an identifier with possible namespace as a name
@@ -331,7 +331,7 @@ maybeWithNS :: (MonadicParsing m) => m (String, FC) -> Bool -> [String] -> m (Na
 maybeWithNS parser ascend bad = do
   fc <- getFC
   i <- P.option "" (P.lookAhead (fst <$> identifier))
-  when (i `elem` bad) $ P.unexpected undefined --FIXME: "reserved identifier"
+  when (i `elem` bad) $ P.unexpected . P.Label . fromList $ "reserved identifier"
   let transf = if ascend then id else reverse
   (x, xs, fc) <- P.choice (transf (parserNoNS parser : parsersNS parser i))
   return (mkName (x, xs), fc)
