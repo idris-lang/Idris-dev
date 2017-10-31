@@ -269,7 +269,6 @@ data IState = IState {
   , lastParse                    :: Maybe Name
   , indent_stack                 :: [Int]
   , brace_stack                  :: [Maybe Int]
-  , lastTokenSpan                :: Maybe FC                      -- ^ What was the span of the latest token parsed?
   , idris_parsedSpan             :: Maybe FC
   , hide_list                    :: Ctxt Accessibility
   , default_access               :: Accessibility
@@ -407,7 +406,7 @@ idrisInit = IState initContext S.empty []
                    emptyContext emptyContext emptyContext emptyContext
                    emptyContext
                    [] [] [] defaultOpts 6 [] [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
-                   [] [] Nothing [] Nothing [] [] Nothing Nothing emptyContext Private DefaultCheckingPartial [] Nothing [] []
+                   [] [] Nothing [] Nothing [] [] Nothing emptyContext Private DefaultCheckingPartial [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
                    AutomaticWidth S.empty S.empty [] [] [] M.empty [] [] []
                    emptyContext S.empty M.empty emptyContext initialInteractiveOpts

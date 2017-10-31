@@ -72,16 +72,18 @@ instance Text.Parser.Char.CharParsing IdrisInnerParser where
   char = P.char
   string = P.string
 
-instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
-  someSpace = someSpace'
-  token p = do s <- get
+tokenFC :: IdrisParser a -> IdrisParser (a, FC)
+tokenFC p = do s <- get
                (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
                                            -- See Issue #1594
                r <- p
                (FC fn _ (el, ec)) <- getFC
                whiteSpace
-               put (s { lastTokenSpan = Just (FC fn (sl, sc) (el, ec)) })
-               return r
+               return (r, FC fn (sl, sc) (el, ec))
+
+instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
+  someSpace = someSpace'
+  token p = p <* whiteSpace
 
 -- | Helper to run Idris inner parser based stateT parsers
 runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
@@ -227,27 +229,21 @@ whiteSpace = someSpace' <|> pure ()
 
 -- | Parses a string literal
 stringLiteral :: IdrisParser (String, FC)
-stringLiteral = do str <- Tok.stringLiteral
-                   fc <- lastTokenSpan <$> get
-                   return (str, fromMaybe NoFC fc)
+stringLiteral = tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
 
 -- | Parses a char literal
 charLiteral :: IdrisParser (Char, FC)
-charLiteral = do ch <- Tok.charLiteral
-                 fc <- lastTokenSpan <$> get
-                 return (ch, fromMaybe NoFC fc)
+charLiteral = tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
 
 -- | Parses a natural number
 natural :: IdrisParser (Integer, FC)
-natural = do n <- Tok.natural
-             fc <- lastTokenSpan <$> get
-             return (n, fromMaybe NoFC fc)
+natural = tokenFC (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
+                   <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
+                   <|> P.try P.decimal)
 
 -- | Parses a floating point number
 float :: IdrisParser (Double, FC)
-float = do f <- Tok.double
-           fc <- lastTokenSpan <$> get
-           return (f, fromMaybe NoFC fc)
+float = tokenFC . P.try $ P.float
 
 {- * Symbols, identifiers, names and operators -}
 
