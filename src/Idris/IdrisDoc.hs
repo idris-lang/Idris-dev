@@ -683,7 +683,8 @@ wrapper :: Maybe NsName -- ^ Namespace name, unless it is the index
 wrapper ns inner =
   let (index, str) = extract ns
       base       = if index then "" else "../"
-      styles     = base ++ "styles.css" :: String
+      css_reset  = base ++ "reset.css" :: String
+      css_main   = base ++ "styles.css" :: String
       indexPage  = base ++ "index.html" :: String
   in  H.docTypeHtml $ do
     H.head $ do
@@ -695,7 +696,9 @@ wrapper ns inner =
           ": "
           toHtml str
       H.link ! type_ "text/css" ! rel "stylesheet"
-             ! href (toValue styles)
+             ! href (toValue css_reset)
+      H.link ! type_ "text/css" ! rel "stylesheet"
+             ! href (toValue css_main)
     H.body ! class_ (if index then "index" else "namespace") $ do
       H.div ! class_ "wrapper" $ do
         H.header $ do
@@ -747,5 +750,8 @@ copyDependencies :: FilePath -- ^ The base directory to which
                              --   dependencies should be written
                  -> IO ()
 copyDependencies dir =
-  do styles <- getIdrisDataFileByName $ "idrisdoc" </> "styles.css"
-     copyFile styles (dir </> "styles.css")
+  let copyDependency filename = do
+          src <- getIdrisDataFileByName $ "idrisdoc" </> filename
+          copyFile src (dir </> filename)
+  in
+  mapM_ copyDependency ["styles.css", "reset.css"]
