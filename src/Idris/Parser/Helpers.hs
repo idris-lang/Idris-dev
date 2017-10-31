@@ -26,26 +26,63 @@ import Control.Monad.State.Strict
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
+import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map as M
 import Data.Maybe
+import qualified Data.Set as Set
 import qualified Data.Text as T
 import System.FilePath
-import Data.List.NonEmpty (fromList)
 import qualified Text.Parser.Char
 import qualified Text.Parser.Combinators
 import qualified Text.Parser.Token as Tok
+import Text.PrettyPrint.ANSI.Leijen ((<>), (<+>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
 import qualified Text.Megaparsec.Char.Lexer as P hiding (space)
 
-newtype ParseError = ParseError { parseErrorDoc :: PP.Doc }
 
 -- | Idris parser with state used during parsing
 type IdrisParser = StateT IState IdrisInnerParser
 type IdrisInnerParser = P.Parsec () String
 type ParseState = P.State String
+type ParseError = P.ParseError (P.Token String) ()
+
+parseErrorDoc :: ParseError -> PP.Doc
+parseErrorDoc (P.TrivialError (pos :| _) un ex)
+  = ppLocation pos <> PP.text ": error:" <+> ppCommas (ppUnexpected un ++ ppExpected ex)
+  where
+    ppCommas :: [PP.Doc] -> PP.Doc
+    ppCommas = PP.sep . PP.punctuate (PP.char ',')
+
+    ppUnexpected :: Maybe (P.ErrorItem (P.Token String)) -> [PP.Doc]
+    ppUnexpected Nothing     = []
+    ppUnexpected (Just item) = [PP.text "unexpected" <+> ppCommas (ppItem item)]
+
+    ppExpected :: Set.Set (P.ErrorItem (P.Token String)) -> [PP.Doc]
+    ppExpected items
+      | Set.null items = []
+      | otherwise      = [PP.text "expected" <+> ppCommas (join . map ppItem . Set.toList $ items)]
+
+    ppItem               :: P.ErrorItem (P.Token String) -> [PP.Doc]
+    ppItem (P.Tokens ts) = (PP.char '"' <>) . (<> PP.char '"') . PP.char <$> NonEmpty.toList ts
+    ppItem (P.Label lbl) = [PP.text $ NonEmpty.toList lbl]
+    ppItem P.EndOfInput  = [PP.text "end of input"]
+parseErrorDoc (P.FancyError (pos :| _) errs)    = PP.vcat $ (ppError pos <+>) . ppErrorFancy <$> Set.toList errs
+  where
+    ppErrorFancy :: P.ErrorFancy e -> PP.Doc
+    ppErrorFancy (P.ErrorFail msg)                = PP.text msg
+    ppErrorFancy (P.ErrorIndentation ord ref act) = undefined -- Not using megaparsec's indentation yet
+    ppErrorFancy (P.ErrorCustom _)                = undefined -- Not using custom errors yet
+
+ppLocation :: P.SourcePos -> PP.Doc
+ppLocation (P.SourcePos name line col) =
+  PP.text name <> PP.char ':' <> PP.int (P.unPos line) <> PP.char ':' <> PP.int (P.unPos col)
+
+ppError :: P.SourcePos -> PP.Doc
+ppError pos = ppLocation pos <> PP.char ':' <+> PP.text "error:"
 
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (P.MonadParsec () String m, Tok.TokenParsing m)
@@ -55,7 +92,7 @@ someSpace' = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) 
 
 instance Text.Parser.Combinators.Parsing IdrisInnerParser where
   eof = P.eof
-  unexpected msg = P.unexpected . P.Label . fromList $ msg
+  unexpected msg = P.unexpected . P.Label . NonEmpty.fromList $ msg
   try = P.try
   (<?>) = (P.<?>)
   notFollowedBy = P.notFollowedBy
@@ -78,10 +115,7 @@ instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
 
 -- | Helper to run Idris inner parser based stateT parsers
 runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
-runparser p i inputname s =
-  case P.parse (evalStateT p i) inputname s of
-    Left _      -> Left $ ParseError undefined --FIXME:
-    Right value -> Right value
+runparser p i inputname s = P.parse (evalStateT p i) inputname s
 
 highlightP :: FC -> OutputAnnotation -> IdrisParser ()
 highlightP fc annot = do ist <- get
@@ -318,8 +352,8 @@ identifier :: (MonadicParsing m) => m (String, FC)
 identifier = P.try $ do
   (FC f (l, c) _) <- getFC
   ident <- identifierOrReserved
-  when (ident `HS.member` reservedIdentifiers) $ P.unexpected . P.Label . fromList $ "reserved " ++ ident
-  when (ident == "_") $ P.unexpected . P.Label . fromList $ "wildcard"
+  when (ident `HS.member` reservedIdentifiers) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved " ++ ident
+  when (ident == "_") $ P.unexpected . P.Label . NonEmpty.fromList $ "wildcard"
   return (ident, FC f (l, c) (l, c + length ident))
 
 -- | Parses an identifier with possible namespace as a name
@@ -331,7 +365,7 @@ maybeWithNS :: (MonadicParsing m) => m (String, FC) -> Bool -> [String] -> m (Na
 maybeWithNS parser ascend bad = do
   fc <- getFC
   i <- P.option "" (P.lookAhead (fst <$> identifier))
-  when (i `elem` bad) $ P.unexpected . P.Label . fromList $ "reserved identifier"
+  when (i `elem` bad) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved identifier"
   let transf = if ascend then id else reverse
   (x, xs, fc) <- P.choice (transf (parserNoNS parser : parsersNS parser i))
   return (mkName (x, xs), fc)
