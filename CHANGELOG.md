@@ -23,8 +23,26 @@
 + Added `discriminate` and `construct` tactics to Pruviloj.
 + Added `IsSucc` type to `Prelude`, which proves that a `Nat` is a successor.
 + Added `Data.IOArray`, containing primitives for mutable arrays.
-+ The operator `<|>` is now right-associative (it retains the same precedence).
-+ Reworked operator fixity for `&&` and `||`, as well as the comparison operators: `==`, `/=`, `<`, `<=`, `>`, and `>=`.
++ Reworked operator fixity for many operators.
+  * Changed `&&` and `||` to be right-associative. Increased precedence of `&&`
+    to be higher than that of `||`.
+  * Removed associativity from Boolean comparison operators `==`, `/=`, `<`, `<=`,
+    `>`, and `>=`. Increased precedence of `/=` and `==` to match the others.
+  * Made `<|>`, `<$>`, and `.` right-associative.
+  * Swapped precedence of `<|>` and `<*>` (and its related operators, `<*` and
+    `*>`). Now `<|>` has a lower precedence.
+  * Lowered the precedence of `>>=` to be below that of `<|>`.
++ Added some useful string manipulation functions to `Data.String.Extra`.
++ Added `Control.Delayed`, a module for conditionally making a type `Inf` or `Lazy`.
++ Added `Data.Bool.Extra`, a module with properties of boolean operations.
++ Moved core of `Text.Lexer` to `Text.Lexer.Core`. Added several new combinators
+  and lexers to `Text.Lexer`.
++ Moved core of `Text.Parser` to `Text.Parser.Core`. Added several new combinators
+  to `Text.Parser`. Made the following changes.
+  * Flipped argument order of `parse`.
+  * Renamed `optional` to `option` and flip argument order.
+  * Renamed `maybe` to `optional`.
+  * Generalised many combinators to use an unknown `commit` flag where possible.
 
 ## Tool Updates
 + Private functions are no longer visible in the REPL except for modules
