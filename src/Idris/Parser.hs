@@ -44,7 +44,6 @@ import Prelude hiding (pi)
 import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State.Strict
-import qualified Data.ByteString.UTF8 as UTF8
 import Data.Char
 import Data.Foldable (asum)
 import Data.Function
@@ -1516,9 +1515,9 @@ parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> ela
 parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe P.Delta)
 parseImports fname input
     = do i <- getIState
-         case P.parseString (evalStateT imports i) (P.Directed (UTF8.fromString fname) 0 0 0 0) input of
-              P.Failure (P.ErrInfo err _) -> ifail $ show err
-              P.Success (x, annots, i) ->
+         case runparser imports i fname input of
+              Left err -> ifail . show . parseErrorDoc $ err
+              Right (x, annots, i) ->
                 do putIState i
                    fname' <- runIO $ Dir.makeAbsolute fname
                    sendHighlighting $ addPath annots fname'
