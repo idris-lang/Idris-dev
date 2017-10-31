@@ -19,6 +19,11 @@ implementation Uninhabited (Elem {a} x []) where
      uninhabited Here impossible
      uninhabited (There p) impossible
 
+||| An item not in the head and not in the tail is not in the List at all
+neitherHereNorThere : {x, y : a} -> {xs : List a} -> Not (x = y) -> Not (Elem x xs) -> Not (Elem x (y :: xs))
+neitherHereNorThere xneqy xninxs Here = xneqy Refl
+neitherHereNorThere xneqy xninxs (There xinxs) = xninxs xinxs
+
 ||| Is the given element a member of the given list.
 |||
 ||| @x The element to be tested.
@@ -27,15 +32,9 @@ isElem : DecEq a => (x : a) -> (xs : List a) -> Dec (Elem x xs)
 isElem x [] = No absurd
 isElem x (y :: xs) with (decEq x y)
   isElem x (x :: xs) | (Yes Refl) = Yes Here
-  isElem x (y :: xs) | (No contra) with (isElem x xs)
-    isElem x (y :: xs) | (No contra) | (Yes prf) = Yes (There prf)
-    isElem x (y :: xs) | (No contra) | (No f) = No (mkNo contra f)
-      where
-        mkNo : {xs' : List a} ->
-               ((x' = y') -> Void) -> (Elem x' xs' -> Void) ->
-               Elem x' (y' :: xs') -> Void
-        mkNo f g Here = f Refl
-        mkNo f g (There x) = g x
+  isElem x (y :: xs) | (No xneqy) with (isElem x xs)
+    isElem x (y :: xs) | (No xneqy) | (Yes xinxs) = Yes (There xinxs)
+    isElem x (y :: xs) | (No xneqy) | (No xninxs) = No (neitherHereNorThere xneqy xninxs)
 
 ||| Remove the element at the given position.
 |||
