@@ -57,12 +57,13 @@ instance Text.Parser.Combinators.Parsing IdrisInnerParser where
   eof = P.eof
   unexpected msg = P.unexpected . P.Label . fromList $ msg
   try = P.try
-  p <?> s = p <?> s --FIXME:?
+  (<?>) = (P.<?>)
   notFollowedBy = P.notFollowedBy
-  --FIXME:
+
 instance Text.Parser.Char.CharParsing IdrisInnerParser where
   satisfy = P.satisfy
-  --FIXME:??
+  char = P.char
+  string = P.string
 
 instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
   someSpace = someSpace'
