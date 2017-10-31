@@ -26,17 +26,15 @@ import Control.Monad.State.Strict
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
-import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map as M
 import Data.Maybe
-import qualified Data.Set as Set
 import qualified Data.Text as T
+import Data.Void (Void(..))
 import System.FilePath
 import qualified Text.Parser.Char
 import qualified Text.Parser.Combinators
 import qualified Text.Parser.Token as Tok
-import Text.PrettyPrint.ANSI.Leijen ((<>), (<+>))
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
@@ -46,46 +44,15 @@ import qualified Text.Megaparsec.Char.Lexer as P hiding (space)
 
 -- | Idris parser with state used during parsing
 type IdrisParser = StateT IState IdrisInnerParser
-type IdrisInnerParser = P.Parsec () String
+type IdrisInnerParser = P.Parsec Void String
 type ParseState = P.State String
-type ParseError = P.ParseError (P.Token String) ()
+type ParseError = P.ParseError (P.Token String) Void
 
 parseErrorDoc :: ParseError -> PP.Doc
-parseErrorDoc (P.TrivialError (pos :| _) un ex)
-  = ppLocation pos <> PP.text ": error:" <+> ppCommas (ppUnexpected un ++ ppExpected ex)
-  where
-    ppCommas :: [PP.Doc] -> PP.Doc
-    ppCommas = PP.sep . PP.punctuate (PP.char ',')
-
-    ppUnexpected :: Maybe (P.ErrorItem (P.Token String)) -> [PP.Doc]
-    ppUnexpected Nothing     = []
-    ppUnexpected (Just item) = [PP.text "unexpected" <+> ppCommas (ppItem item)]
-
-    ppExpected :: Set.Set (P.ErrorItem (P.Token String)) -> [PP.Doc]
-    ppExpected items
-      | Set.null items = []
-      | otherwise      = [PP.text "expected" <+> ppCommas (join . map ppItem . Set.toList $ items)]
-
-    ppItem               :: P.ErrorItem (P.Token String) -> [PP.Doc]
-    ppItem (P.Tokens ts) = (PP.char '"' <>) . (<> PP.char '"') . PP.char <$> NonEmpty.toList ts
-    ppItem (P.Label lbl) = [PP.text $ NonEmpty.toList lbl]
-    ppItem P.EndOfInput  = [PP.text "end of input"]
-parseErrorDoc (P.FancyError (pos :| _) errs)    = PP.vcat $ (ppError pos <+>) . ppErrorFancy <$> Set.toList errs
-  where
-    ppErrorFancy :: P.ErrorFancy e -> PP.Doc
-    ppErrorFancy (P.ErrorFail msg)                = PP.text msg
-    ppErrorFancy (P.ErrorIndentation ord ref act) = undefined -- Not using megaparsec's indentation yet
-    ppErrorFancy (P.ErrorCustom _)                = undefined -- Not using custom errors yet
-
-ppLocation :: P.SourcePos -> PP.Doc
-ppLocation (P.SourcePos name line col) =
-  PP.text name <> PP.char ':' <> PP.int (P.unPos line) <> PP.char ':' <> PP.int (P.unPos col)
-
-ppError :: P.SourcePos -> PP.Doc
-ppError pos = ppLocation pos <> PP.char ':' <+> PP.text "error:"
+parseErrorDoc = PP.string . P.parseErrorPretty
 
 -- | Generalized monadic parsing constraint type
-type MonadicParsing m = (P.MonadParsec () String m, Tok.TokenParsing m)
+type MonadicParsing m = (P.MonadParsec Void String m, Tok.TokenParsing m)
 
 someSpace' :: MonadicParsing m => m ()
 someSpace' = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
