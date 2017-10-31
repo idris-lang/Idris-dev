@@ -46,10 +46,13 @@ import qualified Text.Megaparsec.Char.Lexer as P hiding (space)
 type IdrisParser = StateT IState IdrisInnerParser
 type IdrisInnerParser = P.Parsec Void String
 type ParseState = P.State String
-type ParseError = P.ParseError (P.Token String) Void
+data ParseError = ParseError String (P.ParseError (P.Token String) Void)
+
+parseErrorPretty                    :: ParseError -> String
+parseErrorPretty (ParseError s err) = P.parseErrorPretty' s err
 
 parseErrorDoc :: ParseError -> PP.Doc
-parseErrorDoc = PP.string . P.parseErrorPretty
+parseErrorDoc = PP.string . parseErrorPretty
 
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (P.MonadParsec Void String m, Tok.TokenParsing m)
@@ -82,7 +85,11 @@ instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
 
 -- | Helper to run Idris inner parser based stateT parsers
 runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
-runparser p i inputname s = P.parse (evalStateT p i) inputname s
+runparser p i inputname s =
+  case P.parse (evalStateT p i) inputname s of
+    Left err -> Left $ ParseError s err
+    Right v  -> Right v
+
 
 highlightP :: FC -> OutputAnnotation -> IdrisParser ()
 highlightP fc annot = do ist <- get

@@ -72,16 +72,18 @@ reg049.idr:5:6:When checking right hand side of uhOh with expected type
         Void
 
 No such variable Bogus
-./badbangop.idr:7:1: error: ! is
-    not a valid
-    operator, expected: space
-(!) : List a -> Nat -> Maybe a 
-^                              
-./baddoublebang.idr:6:28: error: unexpected
-    Operator without known fixity:
-    !!, expected: space
-doubleBang mmn = do pure !!mmn 
-                           ^   
+./badbangop.idr:7:1:
+  |
+7 | (!) : List a -> Nat -> Maybe a
+  | ^
+! is not a valid operator
+
+./baddoublebang.idr:6:28:
+  |
+6 | doubleBang mmn = do pure !!mmn
+  |                            ^
+unexpected Operator without known fixity: !!
+
 reg054.idr:18:5:When checking left hand side of inf:
 When checking an application of constructor Main.MkInfer:
         Attempting concrete match on polymorphic argument: 0
