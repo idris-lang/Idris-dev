@@ -300,7 +300,6 @@ Library
                 , time >= 1.4 && < 1.9
                 , transformers < 0.6
                 , transformers-compat >= 0.3
-                , trifecta >= 1.6 && < 1.8
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
                 , utf8-string < 1.1
