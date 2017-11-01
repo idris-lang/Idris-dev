@@ -73,8 +73,7 @@ instance Text.Parser.Char.CharParsing IdrisInnerParser where
   string = P.string
 
 tokenFC :: IdrisParser a -> IdrisParser (a, FC)
-tokenFC p = do s <- get
-               (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
+tokenFC p = do (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
                                            -- See Issue #1594
                r <- p
                (FC fn _ (el, ec)) <- getFC
