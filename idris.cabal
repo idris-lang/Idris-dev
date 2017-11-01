@@ -48,6 +48,8 @@ Tested-With:    GHC == 7.10.3, GHC == 8.0.1
 
 Data-files:            idrisdoc/styles.css
                        idrisdoc/reset.css
+                       idrisdoc/idrisdoc-logo.svg
+                       idrisdoc/script.js
                        jsrts/jsbn/jsbn-browser.js
                        jsrts/jsbn/jsbn-node.js
                        jsrts/Runtime-common.js

@@ -409,48 +409,51 @@ createIndex :: S.Set NsName -- ^ Set of namespace names to
 createIndex nss pkg out =
   do (path, h) <- openTempFile out "index.html"
      BS2.hPut h $ renderHtml $ wrapper Nothing $ do
-       H.h1 ! A.id "info" $ "Package Info"
-       H.dl $ do
-         H.dt "Package Name"
-	 H.dd $ toHtml (unPkgName $ pkgname pkg)
-	 H.dt "Package Brief"
-	 H.dd $ toHtml (fromMaybe "" $ pkgbrief pkg)
-	 H.dt "Package Version"
-	 H.dd $ toHtml (fromMaybe "" $ pkgversion pkg)
-	 H.dt "Package License"
-	 H.dd $ toHtml (fromMaybe "" $ pkglicense pkg)
-	 H.dt "Package Author"
-	 H.dd $ toHtml (fromMaybe "" $ pkgauthor pkg)
-	 H.dt "Package Maintainer"
-	 H.dd $ toHtml (fromMaybe "" $ pkgmaintainer pkg)
-	 H.dt "Package Homepage"
-	 H.dd $ toHtml (fromMaybe "" $ pkghomepage pkg)
-	 H.dt "Package Bug Tracker"
-	 H.dd $ toHtml (fromMaybe "" $ pkgbugtracker pkg)
-	 H.dt "Package Dependencies"
-	 H.dd $ toHtml (L.intercalate ", " (map unPkgName $ pkgdeps pkg))
-	 H.dt "External Dependencies"
-	 H.dd $ toHtml (L.intercalate ", " $ libdeps pkg)
-	 {-H.dt "Package README Location"-}
-	 {-H.dd $ toHtml (fromMaybe "" $ pkgreadme pkg)-}
-	 {-H.dt "Package Source Location"-}
-	 {-H.dd $ toHtml (fromMaybe "" $ pkgsourceloc pkg)-}
-	 {-H.dt "Required Object Files"-}
-	 {-H.dd $ toHtml (L.intercalate ", " $ objs pkg)-}
-	 {-H.dt "Makefile Location"-}
-	 {-H.dd $ toHtml (fromMaybe "" $ makefile pkg)-}
-	 {-H.dt "Idris Compiler Options"-}
-	 {-H.dd $ -}
-	 {-H.dt "Source Directory"-}
-	 {-H.dd $ toHtml $ sourcedir pkg-}
-	 {-H.dt "Modules"-}
-	 {-H.dd $ -}
-	 {-H.dt "Main Module"-}
-	 {-H.dd $ toHtml (fromMaybe "" $ idirs_main pkg)-}
-	 {-H.dt "Executable Name"-}
-	 {-H.dd $ toHtml (fromMaybe "" $ execout pkg)-}
-	 {-H.dt "Tests"-}
-	 {-H.dd $ -}
+       H.div ! A.id "info" $ do
+	 H.div ! A.id "pkginfo-switch" $
+          H.div ! class_ "button-group" $ do
+             H.a ! href "#" $ "rendered"
+             H.a ! href "#" $ "list"
+         H.h1 $ do
+           "Package "
+           H.span ! class_ "" $ toHtml $ unPkgName (pkgname pkg)
+	 H.div ! A.id "pkginfo-rendered" $ do
+           H.div ! class_ "important-facts" $ do
+             H.dt "Package Version"
+             H.dd $ toHtml (fromMaybe "" $ pkgversion pkg)
+             H.dt "Package License"
+             H.dd $ toHtml (fromMaybe "" $ pkglicense pkg)
+           H.p $ toHtml (fromMaybe "" $ pkgbrief pkg)
+           H.ul $ do
+             ifPresentLink "Homepage" (pkghomepage pkg) 
+             ifPresentLink "Bug Tracker" (pkgbugtracker pkg) 
+             ifPresentLink "Repository" (pkgsourceloc pkg) 
+	 H.dl ! A.id "pkginfo-list" $ do
+           ifPresentDd ("Package Name", Just $ unPkgName $ pkgname pkg)
+           ifPresentDd ("Package Brief", pkgbrief pkg)
+           ifPresentDd ("Package Version", pkgversion pkg)
+           ifPresentDd ("Package License", pkglicense pkg)
+           ifPresentDd ("Package Author", pkgauthor pkg)
+           ifPresentDd ("Package Maintainer", pkgmaintainer pkg)
+           ifPresentLinkDd ("Package Homepage", pkghomepage pkg)
+           ifPresentLinkDd ("Package Bug Tracker", pkgbugtracker pkg)
+           ifPresentDd ("Package README Location", pkgreadme pkg)
+           ifPresentDd ("Package Source Location", pkgsourceloc pkg)
+           ifPresentDd ("Package Makefile Location", makefile pkg)
+           ifPresentDd ("Package Main Module", idris_main pkg)
+           ifPresentDd ("Executable Name", execout pkg)
+           H.dt "Package Dependencies"
+           H.dd $ toHtml (L.intercalate ", " (map unPkgName $ pkgdeps pkg))
+           {-H.dt "External Dependencies"-}
+           {-H.dd $ toHtml (L.intercalate ", " $ libdeps pkg)-}
+           {-H.dt "Required Object Files"-}
+           {-H.dd $ toHtml (L.intercalate ", " $ objs pkg)-}
+           {-H.dt "Idris Compiler Options"-}
+           {-H.dd $ -}
+           {-H.dt "Modules"-}
+           {-H.dd $ -}
+           {-H.dt "Tests"-}
+           {-H.dd $ -}
        H.h1 ! A.id "namespaces" $ "Namespaces"
        H.ul ! class_ "names" $ do
          let path ns  = "docs" ++ "/" ++ genRelNsPath ns "html"
@@ -461,6 +464,13 @@ createIndex nss pkg out =
          forM_ (sort $ S.toList nss) item
      hClose h
      renameFile path (out </> "index.html")
+     where
+             ifPresentLinkDd (title, Just link) = (H.dt title) >> (H.dd (H.a ! href (toValue link) $ toHtml link))
+             ifPresentLinkDd (title, Nothing) = (H.dt title) >> (H.dd ! class_ "not-available" $ "not available")
+             ifPresentDd (title, Just link) = (H.dt title) >> (H.dd (toHtml link))
+             ifPresentDd (title, Nothing) = (H.dt title) >> (H.dd ! class_ "not-available" $ "not available")
+             ifPresentLink text (Just link) = H.li $ H.a ! href (toValue link) $ text
+             ifPresentLink _ Nothing = mempty
 
 
 -- | Generates a HTML file for a namespace and its contents.
@@ -681,7 +691,7 @@ wrapper :: Maybe NsName -- ^ Namespace name, unless it is the index
         -> H.Html         -- ^ Inner HTML
         -> H.Html
 wrapper ns inner =
-  let (index, str) = extract ns
+  let (index, nsstr) = extract ns
       base       = if index then "" else "../"
       css_reset  = base ++ "reset.css" :: String
       css_main   = base ++ "styles.css" :: String
@@ -694,18 +704,16 @@ wrapper ns inner =
         "IdrisDoc"
         if index then " Index" else do
           ": "
-          toHtml str
+          toHtml nsstr
       H.link ! type_ "text/css" ! rel "stylesheet"
              ! href (toValue css_reset)
       H.link ! type_ "text/css" ! rel "stylesheet"
              ! href (toValue css_main)
-    H.body ! class_ (if index then "index" else "namespace") $ do
-      H.div ! class_ "wrapper" $ do
+    H.body ! class_ (if index then "page-index" else "page-namespace") $ do
+      H.div ! class_ "page" $ do
         H.header $ do
-          H.strong "IdrisDoc"
-          if index then mempty else do
-            ": "
-            toHtml str
+	  H.div ! class_ "idrisdoc-logo" $ "IdrisDoc"
+	  H.div ! class_ "nsname" $ mapM_ (H.span . toHtml . T.unpack) (L.reverse $fromMaybe [] ns)
 	  H.nav $ do 
 	   H.a ! href (toValue $ indexPage ++ "#info") $ "Package Info"
 	   H.a ! href (toValue $ indexPage ++ "#namespaces") $ "Namespaces"
@@ -713,6 +721,7 @@ wrapper ns inner =
       H.footer $ do
         "Produced by IdrisDoc version "
         toHtml version
+      H.script ! src "script.js" $ ""
 
   where extract (Just ns) = (False, nsName2Str ns)
         extract _         = (True,  "")
@@ -754,4 +763,4 @@ copyDependencies dir =
           src <- getIdrisDataFileByName $ "idrisdoc" </> filename
           copyFile src (dir </> filename)
   in
-  mapM_ copyDependency ["styles.css", "reset.css"]
+  mapM_ copyDependency ["styles.css", "reset.css", "idrisdoc-logo.svg", "script.js"]
