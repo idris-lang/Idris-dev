@@ -34,7 +34,6 @@ import Data.Void (Void(..))
 import System.FilePath
 import qualified Text.Parser.Char
 import qualified Text.Parser.Combinators
-import qualified Text.Parser.Token as Tok
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
@@ -55,7 +54,7 @@ parseErrorDoc :: ParseError -> PP.Doc
 parseErrorDoc = PP.string . parseErrorPretty
 
 -- | Generalized monadic parsing constraint type
-type MonadicParsing m = (P.MonadParsec Void String m, Tok.TokenParsing m)
+type MonadicParsing m = (P.MonadParsec Void String m)
 
 someSpace' :: MonadicParsing m => m ()
 someSpace' = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
@@ -72,7 +71,7 @@ instance Text.Parser.Char.CharParsing IdrisInnerParser where
   char = P.char
   string = P.string
 
-tokenFC :: IdrisParser a -> IdrisParser (a, FC)
+tokenFC :: MonadicParsing m => m a -> m (a, FC)
 tokenFC p = do (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
                                            -- See Issue #1594
                r <- p
@@ -80,9 +79,8 @@ tokenFC p = do (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
                whiteSpace
                return (r, FC fn (sl, sc) (el, ec))
 
-instance {-# OVERLAPPING #-} Tok.TokenParsing IdrisParser where
-  someSpace = someSpace'
-  token p = p <* whiteSpace
+token :: MonadicParsing m => m a -> m a
+token p = p <* whiteSpace
 
 -- | Helper to run Idris inner parser based stateT parsers
 runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
@@ -227,7 +225,7 @@ whiteSpace :: MonadicParsing m => m ()
 whiteSpace = someSpace' <|> pure ()
 
 -- | Parses a string literal
-stringLiteral :: IdrisParser (String, FC)
+stringLiteral :: MonadicParsing m => m (String, FC)
 stringLiteral = tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
 
 -- | Parses a char literal
@@ -258,7 +256,7 @@ reservedIdentifiers = HS.fromList
   ]
 
 identifierOrReserved :: MonadicParsing m => m String
-identifierOrReserved = Tok.token $ P.try $ do
+identifierOrReserved = token $ P.try $ do
   c <- P.satisfy isAlpha <|> P.oneOf "_"
   cs <- P.many (P.satisfy isAlphaNum <|> P.oneOf "_'.")
   return $ c : cs
@@ -271,12 +269,12 @@ string = P.string
 
 -- | Parses a character as a token
 lchar :: MonadicParsing m => Char -> m Char
-lchar = Tok.token . P.char
+lchar = token . P.char
 
 -- | Parses a character as a token, returning the source span of the character
 lcharFC :: MonadicParsing m => Char -> m FC
 lcharFC ch = do (FC file (l, c) _) <- getFC
-                _ <- Tok.token (P.char ch)
+                _ <- token (P.char ch)
                 return $ FC file (l, c) (l, c+1)
 
 symbol :: MonadicParsing m => String -> m ()
@@ -289,7 +287,7 @@ symbolFC str = do (FC file (l, c) _) <- getFC
 
 -- | Parses a reserved identifier
 reserved :: MonadicParsing m => String -> m ()
-reserved name = Tok.token $ P.try $ do
+reserved name = token $ P.try $ do
   P.string name
   P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
 
@@ -307,7 +305,7 @@ reservedHL str = reservedFC str >>= flip highlightP AnnKeyword
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
 reservedOp :: MonadicParsing m => String -> m ()
-reservedOp name = Tok.token $ P.try $
+reservedOp name = token $ P.try $
   do string name
      P.notFollowedBy operatorLetter <?> ("end of " ++ show name)
 
@@ -403,7 +401,7 @@ invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%
 
 -- | Parses an operator
 symbolicOperator :: MonadicParsing m => m String
-symbolicOperator = do op <- Tok.token . some $ operatorLetter
+symbolicOperator = do op <- token . some $ operatorLetter
                       when (op `elem` (invalidOperators ++ commentMarkers)) $
                            fail $ op ++ " is not a valid operator"
                       return op

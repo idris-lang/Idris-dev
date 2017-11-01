@@ -25,7 +25,6 @@ import Control.Monad.State.Strict
 import Data.Function (on)
 import Data.List
 import Data.Maybe
-import qualified Text.Parser.Token as Tok
 import Text.Parser.Expression
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
@@ -1285,9 +1284,9 @@ ExprList ::=
 listExpr :: SyntaxInfo -> IdrisParser PTerm
 listExpr syn = do (FC f (l, c) _) <- getFC
                   lchar '['; fc <- getFC;
-                  (P.try . Tok.token $ do (char ']' <?> "end of list expression")
-                                          (FC _ _ (l', c')) <- getFC
-                                          return (mkNil (FC f (l, c) (l', c'))))
+                  (P.try . token $ do (char ']' <?> "end of list expression")
+                                      (FC _ _ (l', c')) <- getFC
+                                      return (mkNil (FC f (l, c) (l', c'))))
                    <|> (do x <- expr (syn { withAppAllowed = False }) <?> "expression"
                            (do P.try (lchar '|') <?> "list comprehension"
                                qs <- P.sepBy1 (do_ syn) (lchar ',')
@@ -1469,11 +1468,11 @@ VerbatimString_t ::=
 @
  -}
 verbatimStringLiteral :: IdrisParser (String, FC)
-verbatimStringLiteral = Tok.token $ do (FC f start _) <- getFC
-                                       P.try $ string "\"\"\""
-                                       str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")
-                                       (FC _ _ end) <- getFC
-                                       return (str, FC f start end)
+verbatimStringLiteral = token $ do (FC f start _) <- getFC
+                                   P.try $ string "\"\"\""
+                                   str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")
+                                   (FC _ _ end) <- getFC
+                                   return (str, FC f start end)
 
 {- | Parses a static modifier
 

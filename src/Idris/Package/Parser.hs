@@ -13,7 +13,7 @@ import Idris.Imports
 import Idris.Package.Common
 import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName, identifier, isEol,
                              lchar, packageName, parseErrorDoc, reserved,
-                             runparser, someSpace')
+                             runparser, someSpace', stringLiteral)
 
 import Control.Applicative
 import Control.Monad.State.Strict
@@ -21,17 +21,12 @@ import Data.List (union)
 import System.Directory (doesFileExist)
 import System.Exit
 import System.FilePath (isValid, takeExtension, takeFileName)
-import Text.Parser.Token (TokenParsing(..), stringLiteral)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
 
 type PParser = StateT PkgDesc IdrisInnerParser
-
-instance {-# OVERLAPPING #-} TokenParsing PParser where
-  someSpace = someSpace'
-
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do
@@ -72,7 +67,7 @@ filename = (do
                 -- This also moves away from tying filenames to identifiers, so
                 -- it will also accept hyphens
                 -- (https://github.com/idris-lang/Idris-dev/issues/2721)
-    filename <- stringLiteral <* someSpace'
+    filename <- fst <$> stringLiteral
                 -- Through at least version 0.9.19.1, IPKG executable values were
                 -- possibly namespaced identifiers, like foo.bar.baz.
             <|> show . fst <$> iName []
@@ -117,7 +112,7 @@ pClause :: PParser ()
 pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
       <|> clause "sourcedir" (fst <$> identifier) (\st v -> st { sourcedir = v })
-      <|> clause "opts" (pureArgParser . words <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
+      <|> clause "opts" (pureArgParser . words . fst <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
       <|> clause "pkgs" (commaSep (pPkgName <* someSpace')) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
@@ -133,6 +128,6 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "homepage" textUntilEol (\st v -> st { pkghomepage = Just v })
       <|> clause "sourceloc" textUntilEol (\st v -> st { pkgsourceloc = Just v })
       <|> clause "bugtracker" textUntilEol (\st v -> st { pkgbugtracker = Just v })
-      <|> clause "brief" stringLiteral (\st v -> st { pkgbrief = Just v })
+      <|> clause "brief" (fst <$> stringLiteral) (\st v -> st { pkgbrief = Just v })
       <|> clause "author" textUntilEol (\st v -> st { pkgauthor = Just v })
       <|> clause "maintainer" textUntilEol (\st v -> st { pkgmaintainer = Just v })
