@@ -25,10 +25,10 @@ import Control.Monad.State.Strict
 import Data.Function (on)
 import Data.List
 import Data.Maybe
-import Text.Parser.Expression
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
+import qualified Text.Megaparsec.Expr as P
 
 -- | Allow implicit type declarations
 allowImp :: SyntaxInfo -> SyntaxInfo
@@ -77,8 +77,7 @@ expr = pi
 -}
 opExpr :: SyntaxInfo -> IdrisParser PTerm
 opExpr syn = do i <- get
-                buildExpressionParser (table (idris_infixes i))
-                                      (expr' syn)
+                P.makeExprParser (expr' syn) (table (idris_infixes i))
 
 {- | Parses either an internally defined expression or
     a user-defined one

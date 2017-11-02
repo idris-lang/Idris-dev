@@ -22,39 +22,39 @@ import Control.Monad.State.Strict
 import Data.Char (isAlpha)
 import Data.List
 import Data.List.NonEmpty (fromList)
-import Text.Parser.Expression
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Expr as P
 
 -- | Creates table for fixity declarations to build expression parser
 -- using pre-build and user-defined operator/fixity declarations
-table :: [FixDecl] -> OperatorTable IdrisParser PTerm
+table :: [FixDecl] -> [[P.Operator IdrisParser PTerm]]
 table fixes
    = [[prefix "-" (\fc x -> PApp fc (PRef fc [fc] (sUN "negate")) [pexp x])]] ++
       toTable (reverse fixes) ++
      [[noFixityBacktickOperator],
-      [binary "$" AssocRight $ \fc _ x y -> flatten $ PApp fc x [pexp y]],
-      [binary "=" AssocLeft  $ \fc _ x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]],
+      [binary "$" P.InfixR $ \fc _ x y -> flatten $ PApp fc x [pexp y]],
+      [binary "=" P.InfixL $ \fc _ x y -> PApp fc (PRef fc [fc] eqTy) [pexp x, pexp y]],
       [noFixityOperator]]
   where
     flatten                            :: PTerm -> PTerm -- flatten application
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
     flatten t                          = t
 
-    noFixityBacktickOperator :: Operator IdrisParser PTerm
-    noFixityBacktickOperator = flip Infix AssocNone $ do
+    noFixityBacktickOperator :: P.Operator IdrisParser PTerm
+    noFixityBacktickOperator = P.InfixN $ do
                                  (n, fc) <- backtickOperator
                                  return $ \x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y]
 
     -- | Operator without fixity (throws an error)
-    noFixityOperator :: Operator IdrisParser PTerm
-    noFixityOperator = flip Infix AssocNone $ do
+    noFixityOperator :: P.Operator IdrisParser PTerm
+    noFixityOperator = P.InfixN $ do
                          indentGt
                          op <- P.try symbolicOperator
                          P.unexpected . P.Label . fromList $ "Operator without known fixity: " ++ op
 
     -- | Calculates table for fixity declarations
-    toTable    :: [FixDecl] -> OperatorTable IdrisParser PTerm
+    toTable    :: [FixDecl] -> [[P.Operator IdrisParser PTerm]]
     toTable fs = map (map toBin) (groupBy (\ (Fix x _) (Fix y _) -> prec x == prec y) fs)
 
     toBin (Fix (PrefixN _) op) = prefix op $ \fc x ->
@@ -62,31 +62,32 @@ table fixes
     toBin (Fix f op)           = binary op (assoc f) $ \fc n x y ->
                                    PApp fc (PRef fc [] n) [pexp x,pexp y]
 
-    assoc (Infixl _) = AssocLeft
-    assoc (Infixr _) = AssocRight
-    assoc (InfixN _) = AssocNone
+    assoc (Infixl _) = P.InfixL
+    assoc (Infixr _) = P.InfixR
+    assoc (InfixN _) = P.InfixN
 
     isBacktick         :: String -> Bool
     isBacktick (c : _) = c == '_' || isAlpha c
     isBacktick _       = False
 
-    binary :: String -> Assoc -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> Operator IdrisParser PTerm
-    binary name assoc f
-      | isBacktick name = flip Infix assoc $ P.try $ do
+    binary :: String -> (IdrisParser (PTerm -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm) -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
+    binary name ctor f
+      | isBacktick name = ctor $ P.try $ do
                             (n, fc) <- backtickOperator
                             guard $ show (nsroot n) == name
                             return $ f fc n
-      | otherwise       = flip Infix assoc $ do
+      | otherwise       = ctor $ do
                             indentGt
                             fc <- reservedOpFC name
                             indentGt
                             return $ f fc (sUN name)
 
-    prefix :: String -> (FC -> PTerm -> PTerm) -> Operator IdrisParser PTerm
-    prefix name f = Prefix (do reservedOp name
-                               fc <- getFC
-                               indentGt
-                               return (f fc))
+    prefix :: String -> (FC -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
+    prefix name f = P.Prefix $ do
+                      reservedOp name
+                      fc <- getFC
+                      indentGt
+                      return (f fc)
 
 {- | Parses a function used as an operator -- enclosed in backticks
 

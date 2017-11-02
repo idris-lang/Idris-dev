@@ -32,8 +32,6 @@ import Data.Maybe
 import qualified Data.Text as T
 import Data.Void (Void(..))
 import System.FilePath
-import qualified Text.Parser.Char
-import qualified Text.Parser.Combinators
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
@@ -58,18 +56,6 @@ type MonadicParsing m = (P.MonadParsec Void String m)
 
 someSpace' :: MonadicParsing m => m ()
 someSpace' = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
-
-instance Text.Parser.Combinators.Parsing IdrisInnerParser where
-  eof = P.eof
-  unexpected msg = P.unexpected . P.Label . NonEmpty.fromList $ msg
-  try = P.try
-  (<?>) = (P.<?>)
-  notFollowedBy = P.notFollowedBy
-
-instance Text.Parser.Char.CharParsing IdrisInnerParser where
-  satisfy = P.satisfy
-  char = P.char
-  string = P.string
 
 tokenFC :: MonadicParsing m => m a -> m (a, FC)
 tokenFC p = do (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
