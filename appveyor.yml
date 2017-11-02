@@ -11,7 +11,7 @@ init:
 
     7z x C:\ghc\ghc.tar -oC:\ghc
 
-    $env:PATH="$env:PATH;c:\ghc\ghc-7.10.3\bin;$HOME\AppData\Roaming\cabal\bin"
+    $env:PATH="$env:PATH;c:\ghc\ghc-8.2.1\bin;$HOME\AppData\Roaming\cabal\bin"
 
     cabal update
 
