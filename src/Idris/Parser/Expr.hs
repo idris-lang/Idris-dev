@@ -5,8 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
-             PatternGuards, TupleSections #-}
+{-# LANGUAGE FlexibleContexts, TupleSections #-}
 module Idris.Parser.Expr where
 
 import Idris.AbsSyntax
