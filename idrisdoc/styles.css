@@ -1,320 +1,202 @@
-html, body {
-
-  margin: 0;
-  padding: 0;
-  border: 0;
-  
-  height: 100%;
-
-  font-family: "Trebuchet MS", Helvetica, sans-serif;
-  font-size: 11pt;
-
-  background-color: #FFF;
+.idrisdoc-logo {
+	font-weight: bold;
+	font-size: 1.4em;
+	padding: .5em;
 }
 
-a, a:active, a:visited {
-
-  text-decoration: none;
-  color: inherit;
+.idrisdoc-logo:before {
+	content: url(idrisdoc-logo.svg);
+	display: inline-block;
+	width: .5em;
+	vertical-align: middle;
+	margin-right: .5em;
 }
 
-a:hover {
-
-  text-decoration: underline;
+body {
+	font-family: "Trebuchet MS", Helvetica, sans-serif;
 }
 
 header {
-
-  padding: 5px 11px;
-
-  border-bottom: 3px solid #659FDB;
-  box-shadow: 0 -8px 22px 0px;
-  
-  background-color: #252525;
-  color: white;
-  
-  font-size: 9pt;
+	background-color: #252525;
+	color: white;
 }
 
-.wrapper {
-
-  min-height: 100%;
+header nav,
+header,
+dl,
+#pkginfo-rendered ul,
+.button-group,
+.box {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 }
 
-header nav, header strong {
-
-  font-size: 11pt;
+header > *,
+header nav > *,
+#pkginfo-rendered ul > *,
+dl > *,
+.box > * {
+	flex-grow: 1; 
 }
 
-header nav {
-
-  float: right;
+.idrisdoc-logo,
+header nav,
+.is-narrow {
+	flex-grow: 0;
 }
 
-footer {
+nav a:link,
+nav a:visited,
+.button-group a
+{
+	padding: 1em;
+	display: block;
+	text-decoration: none;
+	color: white;
+}
 
-  height: 30px;
-  width: 100%;
-  border-top: 1px solid #AAAAAA;
-  
-  margin-top: -31px;
-  
-  text-align: center;
-  color: #666;
-  line-height: 30px;
-  font-size: 9pt;
-  
-  background: none repeat scroll 0 0 #DDDDDD;
+nav a:hover {
+	background: #AAA;
 }
 
 .container {
-  
-  padding: 10px 10px 41px 20px;
+	max-width: 50em;
+	padding: 1em;
+	margin: 0 auto;
 }
 
-body.index .container a:visited {
-
-  color: #666;
+.nsname {
+	padding: 1em;
 }
 
-body.index .container a:hover {
+.nsname span:before {
+	content: "/";
+	color: #AAA;
+}
 
-  color: #04819E;
+.nsname span:first-child:before {
+	content: "";
 }
 
 h1 {
-
-  margin: 0;
-  margin-bottom: 5px;
-  font-size: 14pt;
-  
-  font-family: "Trebuchet MS", Helvetica, sans-serif;
+	font-size: 2em;
+	margin-top: 1em;
 }
 
-body.namespace h1 {
-
-  border-bottom: 1px solid #BBB;
-  padding-bottom: 2px;
+dd {
+	width: 60%;
+	margin-left: auto;
 }
 
-ul {
-
-  list-style-type: none;
-
-  margin: 0;
-  padding: 0;
+dt {
+	width: 39.9%;
+	font-weight: bold;
 }
 
-hr {
-
-  margin: 0;
-  padding: 0;
-  border: 0;
-  
-  border-bottom: 1px solid #BBB;
+dd,dt {
+	box-sizing: border-box;
+	padding: .5em;
 }
 
-p {
-
-  margin: 0;
-  padding: 0;
+#pkginfo-switch {
+	float: right;
+	font-size: .8em;
 }
 
-.code {
-
-  font-family: "Lucida Console", Monaco, monospace;
-  font-size: 10pt;
+.button-group {
+	border-radius: .5em;
+	overflow: hidden;
+	background: #E6E6E6;
+	box-shadow: .1em .1em .1em rgba(0,0,0,.5);
 }
 
-.decls {
-
-  margin-top: 15px;
+.button-group a {
+	color: #333;
+	padding: .8em;
+	border-right: 1px solid #BBB;
+	background-image: linear-gradient(transparent,rgba(0,0,0,.05) 45%,rgba(0,0,0,.1));
+}
+.button-group a:hover {
+	background-color: #DDD;
+	border-right: 1px solid #AAA;
+}
+.button-group a:first-child {
+	border-radius: .5em 0 0 .5em;
 }
 
-.decls > dt {
-
-  font-family: "Lucida Console", Monaco, monospace;
-  font-size: 10pt;
-  line-height: 20px;
-  
-  padding: 2px 0;
-  
-  border: 1px solid #CCC;
-  background-color: #F0F0F0;
-  
-  display: table;
-  width: 100%;
+.button-group a:last-child {
+	border-radius: 0 .5em .5em 0;
+	border-right: 0;
 }
 
-.decls > dt > :first-child {
-
-  padding-left: 6px;
+.button-group .is-active,
+.button-group .is-active:hover
+{
+	background-color: #D0D0FF;
 }
 
-.decls > dt > :last-child {
-
-  padding-right: 6px;
+#info h1 span {
+	font-weight: bold;
+	text-transform: uppercase;
 }
 
-.decls > dd {
-
-  margin: 10px 0 10px 20px;
-  
-  font-family: Arial, sans-serif;
-  font-size: 10pt;
+#pkginfo-rendered {
+	font-size: 1.2em;
+	line-height: 1.2;
 }
 
-.decls > dd > p {
-
-  margin-bottom: 8px;
+.hidden {
+	display: none;
 }
 
-.decls > dd > dl:not(.decls):not(:first-child) {
-  
-  padding-top: 5px;
-  border-top: 1px solid #EEE;
+#pkginfo-list {
+	margin-top: 1em;
+	border: 1px solid #CCC;
 }
 
-.decls > dd > dl:not(.decls) > dt {
-
-  display: block;
-  min-width: 70px;
-  
-  float: left;
-  
-  font-weight: bold;
+#pkginfo-list dt:nth-child(4n+1),
+#pkginfo-list dd:nth-child(4n+2)
+{
+	background: #EEE;
 }
 
-.decls > dd > dl:not(.decls) > dd {
-
-  margin-bottom: 2px;
+.important-facts * {
+	display: inline;
+	font-size: .6em;
+	padding: 0;
 }
 
-.fixity {
-
-  font-style: italic;
-  font-weight: normal !important;
+.important-facts dt:after {
+	content: ": ";
 }
 
-dd.fixity {
-
-  cursor: default;
+.important-facts dd:after {
+	content: " | ";
+	color: #CCC;
 }
 
-.word {
-
-  display: table-cell;
-  white-space: nowrap;
-  width: 0;
+.important-facts dd:last-child:after {
+	content: "";
 }
 
-.signature {
-
-  display: table-cell;
-  width: 100%;
+#pkginfo-rendered p {
+	margin-top: 1em;
 }
 
-.name {
-  
-  display: table-cell;
-  white-space: nowrap;
-  width: 0;
+#pkginfo-rendered a {
+	text-align: center;
+	display: block;
+	padding: 1em;
+	margin: 1em;
+	margin-left: 0;
+	background: #EEE;
+	font-size: .8em;
+}
+#pkginfo-rendered li:last-child a {
+	margin-right: 0;
 }
 
-.documented, .name {
-
-  cursor: default;
-}
-
-.documented {
-
-  font-weight: bold;
-}
-
-a.function {
-
-  color: #00BA00;
-}
-
-.function {
-
-  color: #007C21;
-}
-
-a.constructor {
-
-  color: #FF0000;
-}
-
-.constructor {
-
-  color: #BF3030;
-}
-
-a.type {
-
-  color: #0000FF;
-}
-
-.type {
-
-  color: #050599;
-}
-
-.keyword {
-
-  color: inherit;
-}
-
-.boundvar {
-
-  color: #BF30BF; /* Too much colour makes it hard to differ the rest of the colours */
-  color: inherit;
-}
-
-.boundvar.implicit {
-
-  text-decoration: underline;
-}
-
-/******************* Old colours
-
-a {
-
-  color: #04819E;
-}
-
-a:visited {
-
-  color: #26A3BF;
-}
-
-********************/
-
-ul.names {
-
-  border: 1px solid #666;
-}
-
-ul.names li:nth-child(odd) {
-
-  background-color: #EEEEEF;
-}
-
-ul.names li:nth-child(even) {
-
-  background-color: white;
-}
-
-ul.names li {
-
-  padding-left: 5px;
-}
-
-ul.names li a {
-
-  display: inline-block;
-  width: 100%;
-  
-  padding: 2px 0;
+#pkginfo-rendered a:hover {
+	background: #DDD;
 }
