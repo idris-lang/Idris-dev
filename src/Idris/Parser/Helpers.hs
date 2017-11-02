@@ -130,10 +130,7 @@ eol = () <$ P.satisfy isEol <|> P.lookAhead P.eof <?> "end of line"
 @
  -}
 singleLineComment :: MonadicParsing m => m ()
-singleLineComment = (string "--" *>
-                     many (P.satisfy (not . isEol)) *>
-                     eol *> pure ())
-                    <?> ""
+singleLineComment = P.hidden (() <$ string "--" *> many (P.satisfy (not . isEol)) *> eol)
 
 {- | Consumes a multi-line comment
 
@@ -153,9 +150,8 @@ singleLineComment = (string "--" *>
 @
 -}
 multiLineComment :: MonadicParsing m => m ()
-multiLineComment =     P.try (string "{-" *> (string "-}") *> pure ())
-                   <|> string "{-" *> inCommentChars
-                   <?> ""
+multiLineComment = P.hidden $ P.try (string "{-" *> string "-}" *> pure ())
+                              <|> string "{-" *> inCommentChars
   where inCommentChars :: MonadicParsing m => m ()
         inCommentChars =     string "-}" *> pure ()
                          <|> P.try (multiLineComment) *> inCommentChars
@@ -184,14 +180,14 @@ docComment = do dc <- pushIndent *> docCommentLine
                         map (\(n, d) -> (n, parseDocstring (T.pack d))) args)
 
   where docCommentLine :: MonadicParsing m => m String
-        docCommentLine = P.try (do string "|||"
-                                   many (P.satisfy (==' '))
-                                   contents <- P.option "" (do first <- P.satisfy (\c -> not (isEol c || c == '@'))
-                                                               res <- many (P.satisfy (not . isEol))
-                                                               return $ first:res)
-                                   eol ; someSpace'
-                                   return contents)
-                        <?> ""
+        docCommentLine = P.hidden $ P.try $ do
+                           string "|||"
+                           many (P.satisfy (==' '))
+                           contents <- P.option "" (do first <- P.satisfy (\c -> not (isEol c || c == '@'))
+                                                       res <- many (P.satisfy (not . isEol))
+                                                       return $ first:res)
+                           eol ; someSpace'
+                           return contents
 
         argDocCommentLine :: IdrisParser (Name, String)
         argDocCommentLine = do P.string "|||"
