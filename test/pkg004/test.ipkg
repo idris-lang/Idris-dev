@@ -5,4 +5,4 @@ modules = Main
 opts = "--warnpartial --warnreach --nocolour --quiet --consolewidth 80"
 
 main = Main
-executable = "filenames/cannot include\a directory separator"
+executable = "filenames/cannot include\\a directory separator"
