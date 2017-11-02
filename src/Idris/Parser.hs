@@ -49,7 +49,7 @@ import Data.Foldable (asum)
 import Data.Function
 import Data.Generics.Uniplate.Data (descendM)
 import Data.List
-import Data.List.NonEmpty (NonEmpty(..))
+import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.List.Split as Spl
 import qualified Data.Map as M
 import Data.Maybe
@@ -433,20 +433,20 @@ syntaxRule syn
             reservedHL "syntax"
             return sty)
          syms <- some syntaxSym
-         when (all isExpr syms) $ P.unexpected . P.Label $ 'm' :| "issing keywords in syntax rule"
+         when (all isExpr syms) $ P.unexpected . P.Label . NonEmpty.fromList $ "missing keywords in syntax rule"
          let ns = mapMaybe getName syms
          when (length ns /= length (nub ns))
-            $ P.unexpected . P.Label $ 'r' :| "epeated variable in syntax rule"
+            $ P.unexpected . P.Label . NonEmpty.fromList $ "repeated variable in syntax rule"
          lchar '='
          tm <- typeExpr (allowImp syn) >>= uniquifyBinders [n | Binding n <- syms]
          terminator
          return (Rule (mkSimple syms) tm sty)
   <|> do reservedHL "decl"; reservedHL "syntax"
          syms <- some syntaxSym
-         when (all isExpr syms) $ P.unexpected . P.Label $ 'm' :| "issing keywords in syntax rule"
+         when (all isExpr syms) $ P.unexpected . P.Label . NonEmpty.fromList $ "missing keywords in syntax rule"
          let ns = mapMaybe getName syms
          when (length ns /= length (nub ns))
-            $ P.unexpected . P.Label $ 'r' :| "epeated variable in syntax rule"
+            $ P.unexpected . P.Label . NonEmpty.fromList $ "repeated variable in syntax rule"
          lchar '='
          openBlock
          dec <- some (decl syn)
