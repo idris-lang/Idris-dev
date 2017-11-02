@@ -21,7 +21,7 @@ rndInt : (rnd : Var) -> Integer -> Integer -> ST m Integer [rnd ::: Random]
 rndInt rnd lower upper = do v <- getRandom rnd
                             pure $ assert_total ((v `prim__sremBigInt` (upper - lower)) + lower)
 
-||| Generate a random number in Fin (S `k`)
+||| Generate a random number in `Fin (S k)`
 |||
 ||| Note that rndFin k takes values 0, 1, ..., k.
 rndFin : (rnd : Var) -> (k : Nat) -> ST m (Fin (S k)) [rnd ::: Random]
@@ -36,7 +36,7 @@ rndFin rnd k = do let v = assert_total $ !(getRandom rnd) `prim__sremBigInt` (ca
 rndSelect' : (rnd : Var) -> Vect (S k) a -> ST m a [rnd ::: Random]
 rndSelect' {k} rnd xs = pure (Vect.index !(rndFin rnd k)  xs)
 
-||| Select a random element from a list, or Nothing if the list is empty
-rndSelect : (rnd : Var) -> List a -> ST m (Maybe a) [rnd ::: Random]
-rndSelect rnd []      = pure Nothing
-rndSelect rnd (x::xs) = pure (Just !(rndSelect' rnd (x::(fromList xs))))
+||| Select a random element from a non-empty list
+rndSelect : (rnd : Var) -> (xs : List a) -> {auto ok : NonEmpty xs} -> ST m a [rnd ::: Random]
+rndSelect rnd (x::xs) {ok=NonEmpty} = pure ( !(rndSelect' rnd (x::(fromList xs))))
+rndSelect rnd [] {ok=NonEmpty} impossible
