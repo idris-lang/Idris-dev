@@ -1435,7 +1435,7 @@ process fn (MakeDoc s) =
              (bad, nss) = partitionEithers $ map parse names
          cd            <- runIO getCurrentDirectory
          let outputDir  = cd </> "doc"
-	 result        <- if null bad then runIO $ generateDocs istate defaultPkg nss outputDir
+	 result        <- if null bad then runIO $ generateDocs istate Nothing nss outputDir
                                       else return . Left $ "Illegal name: " ++ head bad
          case result of Right _   -> iputStrLn "IdrisDoc generated"
                         Left  err -> iPrintError err

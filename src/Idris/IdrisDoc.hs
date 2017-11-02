@@ -53,7 +53,7 @@ import Text.PrettyPrint.Annotated.Leijen (displayDecorated, renderCompact)
 --   and their dependencies.
 generateDocs :: IState   -- ^ IState where all necessary information is
                          --   extracted from.
-	     -> PkgDesc  --  
+	     -> Maybe PkgDesc  --  
              -> [Name]   -- ^ List of namespaces to generate
                          --   documentation for.
              -> FilePath -- ^ The directory to which documentation will
@@ -373,7 +373,7 @@ extractPTactic _                  = []
 --         runs, thus not always containing all items referred from other
 --         namespace .html files.
 createDocs :: IState -- ^ Needed to determine the types of names
-           -> PkgDesc
+	   -> Maybe PkgDesc
            -> NsDict   -- ^ All info from which to generate docs
            -> FilePath -- ^ The base directory to which
                        --   documentation will be written.
@@ -398,17 +398,8 @@ createDocs ist pkg nsd out =
 
   where docGen io (n, c) = do io; createNsDoc ist n c out
 
--- | (Over)writes the 'index.html' file in the given directory with
---   an (updated) index of namespaces in the documentation
-createIndex :: S.Set NsName -- ^ Set of namespace names to
-                            --   include in the index
-            -> PkgDesc
-            -> FilePath     -- ^ The base directory to which
-                            --   documentation will be written.
-            -> IO ()
-createIndex nss pkg out =
-  do (path, h) <- openTempFile out "index.html"
-     BS2.hPut h $ renderHtml $ wrapper Nothing $ do
+createPackageInfo Nothing = mempty
+createPackageInfo (Just pkg) =
        H.div ! A.id "info" $ do
 	 H.div ! A.id "pkginfo-switch" $
           H.div ! class_ "button-group" $ do
@@ -440,7 +431,7 @@ createIndex nss pkg out =
            ifPresentDd ("Package README Location", pkgreadme pkg)
            ifPresentDd ("Package Source Location", pkgsourceloc pkg)
            ifPresentDd ("Package Makefile Location", makefile pkg)
-           ifPresentDd ("Package Main Module", idris_main pkg)
+           {-ifPresentDd ("Package Main Module", idris_main pkg)-}
            ifPresentDd ("Executable Name", execout pkg)
            H.dt "Package Dependencies"
            H.dd $ toHtml (L.intercalate ", " (map unPkgName $ pkgdeps pkg))
@@ -454,6 +445,26 @@ createIndex nss pkg out =
            {-H.dd $ -}
            {-H.dt "Tests"-}
            {-H.dd $ -}
+     where
+             ifPresentLinkDd (title, Just link) = (H.dt title) >> (H.dd (H.a ! href (toValue link) $ toHtml link))
+             ifPresentLinkDd (title, Nothing) = (H.dt title) >> (H.dd ! class_ "not-available" $ "not available")
+             ifPresentDd (title, Just link) = (H.dt title) >> (H.dd (toHtml link))
+             ifPresentDd (title, Nothing) = (H.dt title) >> (H.dd ! class_ "not-available" $ "not available")
+             ifPresentLink text (Just link) = H.li $ H.a ! href (toValue link) $ text
+             ifPresentLink _ Nothing = mempty
+
+-- | (Over)writes the 'index.html' file in the given directory with
+--   an (updated) index of namespaces in the documentation
+createIndex :: S.Set NsName -- ^ Set of namespace names to
+                            --   include in the index
+	    -> Maybe PkgDesc
+            -> FilePath     -- ^ The base directory to which
+                            --   documentation will be written.
+            -> IO ()
+createIndex nss pkg out =
+  do (path, h) <- openTempFile out "index.html"
+     BS2.hPut h $ renderHtml $ wrapper Nothing $ do
+       createPackageInfo pkg
        H.h1 ! A.id "namespaces" $ "Namespaces"
        H.ul ! class_ "names" $ do
          let path ns  = "docs" ++ "/" ++ genRelNsPath ns "html"
@@ -464,13 +475,6 @@ createIndex nss pkg out =
          forM_ (sort $ S.toList nss) item
      hClose h
      renameFile path (out </> "index.html")
-     where
-             ifPresentLinkDd (title, Just link) = (H.dt title) >> (H.dd (H.a ! href (toValue link) $ toHtml link))
-             ifPresentLinkDd (title, Nothing) = (H.dt title) >> (H.dd ! class_ "not-available" $ "not available")
-             ifPresentDd (title, Just link) = (H.dt title) >> (H.dd (toHtml link))
-             ifPresentDd (title, Nothing) = (H.dt title) >> (H.dd ! class_ "not-available" $ "not available")
-             ifPresentLink text (Just link) = H.li $ H.a ! href (toValue link) $ text
-             ifPresentLink _ Nothing = mempty
 
 
 -- | Generates a HTML file for a namespace and its contents.
