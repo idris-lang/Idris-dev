@@ -13,7 +13,7 @@ import Idris.Imports
 import Idris.Package.Common
 import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName, identifier, isEol,
                              lchar, packageName, parseErrorDoc, reserved,
-                             runparser, someSpace', stringLiteral)
+                             runparser, someSpace, stringLiteral)
 
 import Control.Applicative
 import Control.Monad.State.Strict
@@ -48,7 +48,7 @@ pPkg :: PParser PkgDesc
 pPkg = do
     reserved "package"
     p <- pPkgName
-    someSpace'
+    someSpace
     modify $ \st -> st { pkgname = p }
     some pClause
     st <- get
@@ -99,10 +99,10 @@ filename = (do
                         "filename must contain no directory component"
 
 textUntilEol :: MonadicParsing m => m String
-textUntilEol = many (P.satisfy (not . isEol)) <* eol <* someSpace'
+textUntilEol = many (P.satisfy (not . isEol)) <* eol <* someSpace
 
 clause          :: String -> PParser a -> (PkgDesc -> a -> PkgDesc) -> PParser ()
-clause name p f = do value <- reserved name *> lchar '=' *> p <* someSpace'
+clause name p f = do value <- reserved name *> lchar '=' *> p <* someSpace
                      modify $ \st -> f st value
 
 commaSep   :: MonadicParsing m => m a -> m [a]
@@ -113,7 +113,7 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
       <|> clause "sourcedir" (fst <$> identifier) (\st v -> st { sourcedir = v })
       <|> clause "opts" (pureArgParser . words . fst <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
-      <|> clause "pkgs" (commaSep (pPkgName <* someSpace')) (\st ps ->
+      <|> clause "pkgs" (commaSep (pPkgName <* someSpace)) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
                    , idris_opts = pkgs ++ idris_opts st })

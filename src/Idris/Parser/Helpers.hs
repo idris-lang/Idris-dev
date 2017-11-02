@@ -52,8 +52,8 @@ parseErrorDoc = PP.string . parseErrorPretty
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (P.MonadParsec Void String m)
 
-someSpace' :: MonadicParsing m => m ()
-someSpace' = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
+someSpace :: MonadicParsing m => m ()
+someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
 tokenFC :: MonadicParsing m => m a -> m (a, FC)
 tokenFC p = do (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
@@ -186,7 +186,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                            contents <- P.option "" (do first <- P.satisfy (\c -> not (isEol c || c == '@'))
                                                        res <- many (P.satisfy (not . isEol))
                                                        return $ first:res)
-                           eol ; someSpace'
+                           eol ; someSpace
                            return contents
 
         argDocCommentLine :: IdrisParser (Name, String)
@@ -197,12 +197,12 @@ docComment = do dc <- pushIndent *> docCommentLine
                                n <- fst <$> name
                                P.many (P.satisfy isSpace)
                                docs <- P.many (P.satisfy (not . isEol))
-                               P.eol ; someSpace'
+                               P.eol ; someSpace
                                return (n, docs)
 
 -- | Parses some white space
 whiteSpace :: MonadicParsing m => m ()
-whiteSpace = someSpace' <|> pure ()
+whiteSpace = someSpace <|> pure ()
 
 -- | Parses a string literal
 stringLiteral :: MonadicParsing m => m (String, FC)
@@ -258,7 +258,7 @@ lcharFC ch = do (FC file (l, c) _) <- getFC
                 return $ FC file (l, c) (l, c+1)
 
 symbol :: MonadicParsing m => String -> m ()
-symbol = void . P.symbol someSpace'
+symbol = void . P.symbol someSpace
 
 symbolFC :: MonadicParsing m => String -> m FC
 symbolFC str = do (FC file (l, c) _) <- getFC
