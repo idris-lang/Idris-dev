@@ -25,9 +25,9 @@ import Data.Maybe (isJust)
 import qualified Data.Text as T
 import Numeric
 import System.IO
-import Text.Printf
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
+import Text.Printf
 
 getNChar :: Handle -> Int -> String -> IO (String)
 getNChar _ 0 s = return (reverse s)

@@ -11,9 +11,10 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
-import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName, identifier, isEol,
-                             lchar, packageName, parseErrorDoc, reserved,
-                             runparser, someSpace, stringLiteral)
+import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName,
+                             identifier, isEol, lchar, packageName,
+                             parseErrorDoc, reserved, runparser, someSpace,
+                             stringLiteral)
 
 import Control.Applicative
 import Control.Monad.State.Strict
@@ -21,10 +22,10 @@ import Data.List (union)
 import System.Directory (doesFileExist)
 import System.Exit
 import System.FilePath (isValid, takeExtension, takeFileName)
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 type PParser = StateT PkgDesc IdrisInnerParser
 

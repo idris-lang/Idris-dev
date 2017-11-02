@@ -30,11 +30,11 @@ import Data.Maybe
 import qualified Data.Text as T
 import Data.Void (Void(..))
 import System.FilePath
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
 import qualified Text.Megaparsec.Char.Lexer as P hiding (space)
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 -- | Idris parser with state used during parsing
