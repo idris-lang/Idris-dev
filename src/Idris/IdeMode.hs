@@ -208,8 +208,8 @@ escape = concatMap escapeChar
 
 type Parser a = P.Parsec () String a
 
-pSExp :: Parser SExp
-pSExp = SexpList <$> P.between (P.char '(') (P.char ')') (pSExp `P.sepBy` (P.char ' '))
+sexp :: Parser SExp
+sexp = SexpList <$> P.between (P.char '(') (P.char ')') (sexp `P.sepBy` (P.char ' '))
     <|> atom
 
 atom :: Parser SExp
@@ -325,7 +325,7 @@ parseMessage x = case receiveString x of
                    Left err -> Left err
 
 receiveString :: String -> Either Err SExp
-receiveString = left (const $ Msg "parse failure") . P.parse pSExp "(unknown)"
+receiveString = left (const $ Msg "parse failure") . P.parse sexp "(unknown)"
 
 convSExp :: SExpable a => String -> a -> Integer -> String
 convSExp pre s id =
