@@ -249,6 +249,7 @@ Library
 
                 , Idris.Package
                 , Idris.Package.Common
+                , Idris.Package.Parser
 
                 , Util.DynamicLinker
                 , Util.ScreenSize
@@ -258,7 +259,7 @@ Library
                   Util.Pretty
                 , Util.Net
 
-                , Idris.Package.Parser
+                
 
                 -- Auto Generated
                 , Paths_idris

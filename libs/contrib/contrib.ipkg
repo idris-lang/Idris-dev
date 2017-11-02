@@ -9,6 +9,7 @@ modules = CFFI
         , Control.Algebra.Lattice
         , Control.Algebra.NumericImplementations
         , Control.Algebra.VectorSpace
+        , Control.Delayed
         , Control.Isomorphism.Primitives
         , Control.Partial
         , Control.Pipeline
@@ -16,6 +17,7 @@ modules = CFFI
         , Control.ST.Exception
         , Control.ST.ImplicitCall
         , Control.ST.Random
+        , Data.Bool.Extra
         , Data.BoundedList
         , Data.CoList
         , Data.Combinators
@@ -51,9 +53,12 @@ modules = CFFI
         , Network.Socket.Raw
         , System.Concurrency.Process
         , Text.Lexer
+        , Text.Lexer.Core
         , Text.Literate
         , Text.Parser
+        , Text.Parser.Core
         , Text.PrettyPrint.WL
         , Text.PrettyPrint.WL.Characters
         , Text.PrettyPrint.WL.Combinators
         , Text.PrettyPrint.WL.Core
+        , Text.Quantity
