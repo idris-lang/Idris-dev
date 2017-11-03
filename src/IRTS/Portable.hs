@@ -184,6 +184,7 @@ instance ToJSON PrimFn where
     toJSON LFASin = object ["LFASin" .= Null]
     toJSON LFACos = object ["LFACos" .= Null]
     toJSON LFATan = object ["LFATan" .= Null]
+    toJSON LFATan2 = object ["LFATan2" .= Null]
     toJSON LFSqrt = object ["LFSqrt" .= Null]
     toJSON LFFloor = object ["LFFloor" .= Null]
     toJSON LFCeil = object ["LFCeil" .= Null]

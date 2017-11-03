@@ -576,6 +576,7 @@ doOp v LFSqrt [x] = v ++ flUnOp "sqrt" (creg x)
 doOp v LFFloor [x] = v ++ flUnOp "floor" (creg x)
 doOp v LFCeil [x] = v ++ flUnOp "ceil" (creg x)
 doOp v LFNegate [x] = v ++ "MKFLOAT(vm, -GETFLOAT(" ++ (creg x) ++ "))"
+doOp v LFATan2 [y, x] = v ++ "MKFLOAT(vm, atan2(GETFLOAT(" ++ creg y ++ "), GETFLOAT(" ++ creg x ++ ")))"
 
 -- String functions which don't need to know we're UTF8
 doOp v LStrConcat [l,r] = v ++ "idris_concat(vm, " ++ creg l ++ ", " ++ creg r ++ ")"

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+${IDRIS:-idris} $@ --quiet --port none < input
+${IDRIS:-idris} $@ -o basic025 basic025.idr
+
+./basic025 input
+
+rm -f basic025 *.ibc

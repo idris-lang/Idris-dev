@@ -148,6 +148,8 @@ primitives =
      (1, LFACos) total,
    Prim (sUN "prim__floatATan") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatATan)
      (1, LFATan) total,
+   Prim (sUN "prim__floatATan2") (ty [(AType ATFloat), (AType ATFloat)] (AType ATFloat)) 2 (p_floatATan2)
+     (2, LFATan2) total,
    Prim (sUN "prim__floatSqrt") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatSqrt)
      (1, LFSqrt) total,
    Prim (sUN "prim__floatFloor") (ty [(AType ATFloat)] (AType ATFloat)) 1 (p_floatFloor)
@@ -461,6 +463,10 @@ p_floatATan = p_fPrim atan
 p_floatSqrt = p_fPrim sqrt
 p_floatFloor = p_fPrim (fromInteger . floor)
 p_floatCeil = p_fPrim (fromInteger . ceiling)
+
+p_floatATan2 :: [Const] -> Maybe Const
+p_floatATan2 [Fl y, Fl x] = Just $ Fl (atan2 y x)
+p_floatATan2 _ = Nothing
 
 p_strLen, p_strHead, p_strTail, p_strIndex, p_strCons, p_strRev, p_strSubstr :: [Const] -> Maybe Const
 p_strLen [Str xs] = Just $ I (length xs)
