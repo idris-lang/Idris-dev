@@ -49,6 +49,15 @@ parseErrorPretty (ParseError s err) = P.parseErrorPretty' s err
 parseErrorDoc :: ParseError -> PP.Doc
 parseErrorDoc = PP.string . parseErrorPretty
 
+parseErrorFC :: ParseError -> FC
+parseErrorFC (ParseError _ err) = sourcePositionFC pos
+  where
+    (pos NonEmpty.:| _) = P.errorPos err
+
+parseErrorMessage :: ParseError -> String
+parseErrorMessage (ParseError _ err) = P.parseErrorTextPretty err
+
+
 -- | Generalized monadic parsing constraint type
 type MonadicParsing m = (P.MonadParsec Void String m)
 
@@ -393,16 +402,24 @@ symbolicOperatorFC = do (FC f (l, c) _) <- getFC
                         return (op, FC f (l, c) (l, c + length op))
 
 {- * Position helpers -}
+
+sourcePositionFC :: P.SourcePos -> FC
+sourcePositionFC (P.SourcePos name line column) =
+  -- TODO: Change to actual spanning
+  -- Issue #1594 on the Issue Tracker.
+  -- https://github.com/idris-lang/Idris-dev/issues/1594
+  FC f (lineNumber, columnNumber) (lineNumber, columnNumber)
+  where
+    lineNumber = P.unPos line
+    columnNumber = P.unPos column
+    (dir, file) = splitFileName name
+    f = if dir == addTrailingPathSeparator "."
+        then file
+        else name
+
 {- | Get file position as FC -}
 getFC :: MonadicParsing m => m FC
-getFC = do pos <- P.getPosition
-           let columnNumber = P.unPos . P.sourceColumn $ pos
-           let lineNumber = P.unPos . P.sourceLine $ pos
-           let (dir, file) = splitFileName (P.sourceName pos)
-           let f = if dir == addTrailingPathSeparator "." then file else P.sourceName pos
-           return $ FC f (lineNumber, columnNumber) (lineNumber, columnNumber) -- TODO: Change to actual spanning
-           -- Issue #1594 on the Issue Tracker.
-           -- https://github.com/idris-lang/Idris-dev/issues/1594
+getFC = sourcePositionFC <$> P.getPosition
 
 {-* Syntax helpers-}
 -- | Bind constraints to term

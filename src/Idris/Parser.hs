@@ -1551,21 +1551,6 @@ parseImports fname input
         shebang :: IdrisParser ()
         shebang = string "#!" *> many (P.satisfy $ not . isEol) *> eol *> pure ()
 
--- | There should be a better way of doing this...
-findFC :: PP.Doc -> (FC, String)
-findFC x = let s = show (PP.plain x) in findFC' s
-  where findFC' s = case span (/= ':') s of
-                      -- Horrid kludge to prevent crashes on Windows
-                      (prefix, ':':'\\':rest) ->
-                        case findFC' rest of
-                          (NoFC, msg) -> (NoFC, msg)
-                          (FileFC f, msg) -> (FileFC (prefix ++ ":\\" ++ f), msg)
-                          (FC f start end, msg) -> (FC (prefix ++ ":\\" ++ f) start end, msg)
-                      (failname, ':':rest) -> case span isDigit rest of
-                        (line, ':':rest') -> case span isDigit rest' of
-                          (col, ':':msg) -> let pos = (read line, read col) in
-                                                (FC failname pos pos, msg)
-
 -- | Check if the coloring matches the options and corrects if necessary
 fixColour :: Bool -> PP.Doc -> PP.Doc
 fixColour False doc = PP.plain doc
@@ -1577,15 +1562,11 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe ParseState -> Idris [PDec
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            Left err -> do -- FIXME: Get error location from trifecta
-                           -- this can't be the solution!
-                           -- Issue #1575 on the issue tracker.
-                           --    https://github.com/idris-lang/Idris-dev/issues/1575
-                           let (fc, msg) = findFC $ parseErrorDoc err
+            Left err -> do let fc = parseErrorFC err
                            i <- getIState
                            case idris_outputmode i of
                              RawOutput h  -> iputStrLn (show . fixColour (idris_colourRepl i) . parseErrorDoc $ err)
-                             IdeMode n h -> iWarn fc (Util.Pretty.text msg)
+                             IdeMode n h -> iWarn fc (Util.Pretty.text $ parseErrorMessage err)
                            putIState (i { errSpan = Just fc })
                            return []
             Right (x, i)  -> do putIState i
