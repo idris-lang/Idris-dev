@@ -5,8 +5,7 @@ Copyright   :
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, GeneralizedNewtypeDeriving, PatternGuards,
-             TupleSections #-}
+{-# LANGUAGE FlexibleContexts, TupleSections #-}
 module Idris.Parser.Expr where
 
 import Idris.AbsSyntax
@@ -25,9 +24,10 @@ import Control.Monad.State.Strict
 import Data.Function (on)
 import Data.List
 import Data.Maybe
-import Text.Parser.Expression
-import Text.Trifecta ((<?>))
-import qualified Text.Trifecta as P
+import Text.Megaparsec ((<?>))
+import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
+import qualified Text.Megaparsec.Expr as P
 
 -- | Allow implicit type declarations
 allowImp :: SyntaxInfo -> SyntaxInfo
@@ -76,8 +76,7 @@ expr = pi
 -}
 opExpr :: SyntaxInfo -> IdrisParser PTerm
 opExpr syn = do i <- get
-                buildExpressionParser (table (idris_infixes i))
-                                      (expr' syn)
+                P.makeExprParser (expr' syn) (table (idris_infixes i))
 
 {- | Parses either an internally defined expression or
     a user-defined one
@@ -1283,9 +1282,9 @@ ExprList ::=
 listExpr :: SyntaxInfo -> IdrisParser PTerm
 listExpr syn = do (FC f (l, c) _) <- getFC
                   lchar '['; fc <- getFC;
-                  (P.try . P.token $ do (char ']' <?> "end of list expression")
-                                        (FC _ _ (l', c')) <- getFC
-                                        return (mkNil (FC f (l, c) (l', c'))))
+                  (P.try . token $ do (char ']' <?> "end of list expression")
+                                      (FC _ _ (l', c')) <- getFC
+                                      return (mkNil (FC f (l, c) (l', c'))))
                    <|> (do x <- expr (syn { withAppAllowed = False }) <?> "expression"
                            (do P.try (lchar '|') <?> "list comprehension"
                                qs <- P.sepBy1 (do_ syn) (lchar ',')
@@ -1466,12 +1465,12 @@ VerbatimString_t ::=
 ;
 @
  -}
-verbatimStringLiteral :: MonadicParsing m => m (String, FC)
-verbatimStringLiteral = P.token $ do (FC f start _) <- getFC
-                                     P.try $ string "\"\"\""
-                                     str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")
-                                     (FC _ _ end) <- getFC
-                                     return (str, FC f start end)
+verbatimStringLiteral :: IdrisParser (String, FC)
+verbatimStringLiteral = token $ do (FC f start _) <- getFC
+                                   P.try $ string "\"\"\""
+                                   str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")
+                                   (FC _ _ end) <- getFC
+                                   return (str, FC f start end)
 
 {- | Parses a static modifier
 

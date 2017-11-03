@@ -45,6 +45,7 @@
   * Generalised many combinators to use an unknown `commit` flag where possible.
 
 ## Tool Updates
+
 + Private functions are no longer visible in the REPL except for modules
   that are explicitly loaded.
 + The --interface option now creates CommonJS modules on the node backend.
@@ -52,8 +53,12 @@
   as they were given in the source files.
 + Backslash, braces and percent symbols are now correctly pretty printed
   in LaTeX.
++ Parse errors have a new format, similar to GHC 8.2's default, due to a
+  switch from Trifecta to Megaparsec for parsing.  This could possibly cause
+  some subtle deviations in parsing from previous versions of Idris.
 
 ## Packaging Updates
+
 + Package names now only accept a restrictive charset of letters, numbers and the `-_` characters.
   Package names are also case insensitive
 

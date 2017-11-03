@@ -15,6 +15,7 @@ import Idris.Core.Binary ()
 import Idris.Core.TT
 
 import Control.Applicative hiding (Const)
+import Control.Arrow (left)
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString.Lazy as Lazy
@@ -24,9 +25,9 @@ import Data.Maybe (isJust)
 import qualified Data.Text as T
 import Numeric
 import System.IO
+import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
 import Text.Printf
-import qualified Text.Trifecta as P
-import qualified Text.Trifecta.Delta as P
 
 getNChar :: Handle -> Int -> String -> IO (String)
 getNChar _ 0 s = return (reverse s)
@@ -205,27 +206,30 @@ escape = concatMap escapeChar
     escapeChar '"'  = "\\\""
     escapeChar c    = [c]
 
-pSExp = SexpList <$> P.between (P.char '(') (P.char ')') (pSExp `P.sepBy` (P.char ' '))
+type Parser a = P.Parsec () String a
+
+sexp :: Parser SExp
+sexp = SexpList <$> P.between (P.char '(') (P.char ')') (sexp `P.sepBy` (P.char ' '))
     <|> atom
 
+atom :: Parser SExp
 atom = SexpList [] <$ P.string "nil"
    <|> P.char ':' *> atomC
    <|> StringAtom <$> P.between (P.char '"') (P.char '"') (P.many quotedChar)
-   <|> do ints <- some P.digit
+   <|> do ints <- some P.digitChar
           case readDec ints of
             ((num, ""):_) -> return (IntegerAtom (toInteger num))
             _ -> return (StringAtom ints)
 
+atomC :: Parser SExp
 atomC = BoolAtom True  <$ P.string "True"
     <|> BoolAtom False <$ P.string "False"
     <|> SymbolAtom <$> many (P.noneOf " \n\t\r\"()")
 
+quotedChar :: Parser Char
 quotedChar = P.try ('\\' <$ P.string "\\\\")
          <|> P.try ('"' <$ P.string "\\\"")
          <|> P.noneOf "\""
-
-parseSExp :: String -> P.Result SExp
-parseSExp = P.parseString pSExp (P.Directed (UTF8.fromString "(unknown)") 0 0 0 0)
 
 data Opt = ShowImpl | ErrContext deriving Show
 
@@ -321,10 +325,7 @@ parseMessage x = case receiveString x of
                    Left err -> Left err
 
 receiveString :: String -> Either Err SExp
-receiveString x =
-  case parseSExp x of
-    P.Failure _ -> Left . Msg $ "parse failure"
-    P.Success r -> Right r
+receiveString = left (const $ Msg "parse failure") . P.parse sexp "(unknown)"
 
 convSExp :: SExpable a => String -> a -> Integer -> String
 convSExp pre s id =

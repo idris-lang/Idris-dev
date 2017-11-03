@@ -286,10 +286,10 @@ Library
                 , fingertree >= 0.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
                 , ieee754 >= 0.7 && < 0.9
+                , megaparsec >= 6.2 && <6.3
                 , mtl >= 2.1 && < 2.3
                 , network < 2.7
                 , optparse-applicative >= 0.13 && < 0.15
-                , parsers >= 0.9 && < 0.13
                 , pretty < 1.2
                 , process < 1.7
                 , regex-tdfa >= 1.2
@@ -300,7 +300,6 @@ Library
                 , time >= 1.4 && < 1.9
                 , transformers < 0.6
                 , transformers-compat >= 0.3
-                , trifecta >= 1.6 && < 1.8
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
                 , utf8-string < 1.1
@@ -309,6 +308,9 @@ Library
                 , zip-archive > 0.2.3.5 && < 0.4
                 , fsnotify >= 0.2 && < 2.2
                 , async < 2.2
+
+  if !impl(ghc >= 8.0)
+    Build-Depends: semigroups == 0.18.*
 
   Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all

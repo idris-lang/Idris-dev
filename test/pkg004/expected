@@ -1,5 +1,6 @@
-Uncaught error: user error (test.ipkg:9:1: error: filename
-    must contain no directory
-    component, expected: space
-<EOF> 
-^     )
+Uncaught error: user error (test.ipkg:9:1:
+  |
+9 | <empty line>
+  | ^
+filename must contain no directory component
+)

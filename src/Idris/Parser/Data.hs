@@ -22,8 +22,8 @@ import Control.Applicative
 import Control.Monad.State.Strict
 import Data.List
 import Data.Maybe
-import Text.Trifecta ((<?>))
-import qualified Text.Trifecta as P
+import Text.Megaparsec ((<?>))
+import qualified Text.Megaparsec as P
 
 {- | Parses a record type declaration
 Record ::=
@@ -169,7 +169,7 @@ SimpleConstructorList ::=
   ;
 -}
 data_ :: SyntaxInfo -> IdrisParser PDecl
-data_ syn = checkDeclFixity $
+data_ syn = (checkDeclFixity $
             do (doc, argDocs, acc, dataOpts) <- P.try (do
                     (doc, argDocs) <- P.option noDocs docComment
                     pushIndent
@@ -219,7 +219,7 @@ data_ syn = checkDeclFixity $
                       accData acc tyn (map (\ (_, _, n, _, _, _, _) -> n) cons')
                       return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn nfc ty cons'))
                     terminator
-                    return d)
+                    return d))
            <?> "data type declaration"
   where
     mkPApp :: FC -> PTerm -> [PTerm] -> PTerm

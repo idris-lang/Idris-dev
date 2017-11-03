@@ -4,6 +4,7 @@ Description : Parser for the REPL commands.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
+{-# LANGUAGE FlexibleContexts #-}
 module Idris.REPL.Parser (
     parseCmd
   , help
@@ -31,8 +32,8 @@ import Data.List
 import Data.List.Split (splitOn)
 import System.Console.ANSI (Color(..))
 import System.FilePath ((</>))
-import Text.Parser.Char (anyChar, oneOf)
-import Text.Parser.Combinators
+import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
 
 parseCmd :: IState -> String -> String -> Either IP.ParseError (Either String Command)
 parseCmd i inputname = IP.runparser pCmd i inputname . trim
@@ -67,7 +68,7 @@ parserCommandsForHelp =
   , nameArgCmd ["miss", "missing"] Missing "Show missing clauses"
   , (["doc"], NameArg, "Show internal documentation", cmd_doc)
   , (["mkdoc"], NamespaceArg, "Generate IdrisDoc for namespace(s) and dependencies"
-    , genArg "namespace" (many anyChar) MakeDoc)
+    , genArg "namespace" (P.many P.anyChar) MakeDoc)
   , (["apropos"], SeqArgs (OptionalArg PkgArgs) NameArg, " Search names, types, and documentation"
     , cmd_apropos)
   , (["s", "search"], SeqArgs (OptionalArg PkgArgs) ExprArg
@@ -169,7 +170,7 @@ parserCommands =
     , "(Debugging) Try to unify two expressions", const $ do
        l <- IP.simpleExpr defaultSyntax
        r <- IP.simpleExpr defaultSyntax
-       eof
+       P.eof
        return (Right (DebugUnify l r))
     )
   ]
@@ -188,25 +189,25 @@ proofArgCmd names command doc =
   (names, NoArg, doc, proofArg command)
 
 pCmd :: IP.IdrisParser (Either String Command)
-pCmd = choice [ do c <- cmd names; parser c
-              | (names, _, _, parser) <- parserCommandsForHelp ++ parserCommands ]
+pCmd = P.choice [ do c <- cmd names; parser c
+                | (names, _, _, parser) <- parserCommandsForHelp ++ parserCommands ]
      <|> unrecognized
      <|> nop
      <|> eval
-    where nop = do eof; return (Right NOP)
+    where nop = do P.eof; return (Right NOP)
           unrecognized = do
               IP.lchar ':'
-              cmd <- many anyChar
+              cmd <- P.many P.anyChar
               let cmd' = takeWhile (/=' ') cmd
               return (Left $ "Unrecognized command: " ++ cmd')
 
 cmd :: [String] -> IP.IdrisParser String
-cmd xs = try $ do
+cmd xs = P.try $ do
     IP.lchar ':'
     docmd sorted_xs
 
     where docmd [] = fail "Could not parse command"
-          docmd (x:xs) = try (IP.reserved x >> return x) <|> docmd xs
+          docmd (x:xs) = P.try (IP.reserved x >> return x) <|> docmd xs
 
           sorted_xs = sortBy (\x y -> compare (length y) (length x)) xs
 
@@ -214,7 +215,7 @@ cmd xs = try $ do
 noArgs :: Command -> String -> IP.IdrisParser (Either String Command)
 noArgs cmd name = do
     let emptyArgs = do
-          eof
+          P.eof
           return (Right cmd)
 
     let failure = return (Left $ ":" ++ name ++ " takes no arguments")
@@ -229,27 +230,27 @@ eval = do
 exprArg :: (PTerm -> Command) -> String -> IP.IdrisParser (Either String Command)
 exprArg cmd name = do
     let noArg = do
-          eof
+          P.eof
           return $ Left ("Usage is :" ++ name ++ " <expression>")
 
     let justOperator = do
           (op, fc) <- IP.symbolicOperatorFC
-          eof
+          P.eof
           return $ Right $ cmd (PRef fc [] (sUN op))
 
     let properArg = do
           t <- IP.fullExpr defaultSyntax
           return $ Right (cmd t)
-    try noArg <|> try justOperator <|> properArg
+    P.try noArg <|> P.try justOperator <|> properArg
 
 genArg :: String -> IP.IdrisParser a -> (a -> Command)
            -> String -> IP.IdrisParser (Either String Command)
 genArg argName argParser cmd name = do
-    let emptyArgs = do eof; failure
+    let emptyArgs = do P.eof; failure
         oneArg = do arg <- argParser
-                    eof
+                    P.eof
                     return (Right (cmd arg))
-    try emptyArgs <|> oneArg <|> failure
+    P.try emptyArgs <|> oneArg <|> failure
     where
     failure = return $ Left ("Usage is :" ++ name ++ " <" ++ argName ++ ">")
 
@@ -258,7 +259,7 @@ nameArg = genArg "name" $ fst <$> IP.name
 fnNameArg = genArg "functionname" $ fst <$> IP.fnName
 
 strArg :: (String -> Command) -> String -> IP.IdrisParser (Either String Command)
-strArg = genArg "string" (many anyChar)
+strArg = genArg "string" (P.many P.anyChar)
 
 moduleArg :: (FilePath -> Command) -> String -> IP.IdrisParser (Either String Command)
 moduleArg = genArg "module" (fmap (toPath . fst) IP.identifier)
@@ -273,18 +274,18 @@ namespaceArg = genArg "namespace" (fmap (toNS . fst) IP.identifier)
 optArg :: (Opt -> Command) -> String -> IP.IdrisParser (Either String Command)
 optArg cmd name = do
     let emptyArgs = do
-            eof
+            P.eof
             return $ Left ("Usage is :" ++ name ++ " <option>")
 
     let oneArg = do
           o <- pOption
           IP.whiteSpace
-          eof
+          P.eof
           return (Right (cmd o))
 
     let failure = return $ Left "Unrecognized setting"
 
-    try emptyArgs <|> oneArg <|> failure
+    P.try emptyArgs <|> oneArg <|> failure
 
     where
         pOption :: IP.IdrisParser Opt
@@ -292,7 +293,7 @@ optArg cmd name = do
 
 proofArg :: (Bool -> Int -> Name -> Command) -> String -> IP.IdrisParser (Either String Command)
 proofArg cmd name = do
-    upd <- option False $ do
+    upd <- P.option False $ do
         IP.lchar '!'
         return True
     l <- fst <$> IP.natural
@@ -303,17 +304,17 @@ cmd_doc :: String -> IP.IdrisParser (Either String Command)
 cmd_doc name = do
     let constant = do
           c <- fmap fst IP.constant
-          eof
+          P.eof
           return $ Right (DocStr (Right c) FullDocs)
 
     let pType = do
           IP.reserved "Type"
-          eof
+          P.eof
           return $ Right (DocStr (Left $ IP.mkName ("Type", "")) FullDocs)
 
     let fnName = fnNameArg (\n -> DocStr (Left n) FullDocs) name
 
-    try constant <|> pType <|> fnName
+    P.try constant <|> pType <|> fnName
 
 cmd_consolewidth :: String -> IP.IdrisParser (Either String Command)
 cmd_consolewidth name = do
@@ -333,19 +334,19 @@ cmd_printdepth _ = do d <- optional (fmap (fromInteger . fst) IP.natural)
 
 cmd_execute :: String -> IP.IdrisParser (Either String Command)
 cmd_execute name = do
-    tm <- option maintm (IP.fullExpr defaultSyntax)
+    tm <- P.option maintm (IP.fullExpr defaultSyntax)
     return (Right (Execute tm))
   where
     maintm = PRef (fileFC "(repl)") [] (sNS (sUN "main") ["Main"])
 
 cmd_dynamic :: String -> IP.IdrisParser (Either String Command)
 cmd_dynamic name = do
-    let optArg = do l <- many anyChar
+    let optArg = do l <- P.many P.anyChar
                     if (l /= "")
                         then return $ Right (DynamicLink l)
                         else return $ Right ListDynamic
     let failure = return $ Left $ "Usage is :" ++ name ++ " [<library>]"
-    try optArg <|> failure
+    P.try optArg <|> failure
 
 cmd_pprint :: String -> IP.IdrisParser (Either String Command)
 cmd_pprint name = do
@@ -375,43 +376,43 @@ cmd_compile name = do
     let hasOneArg = do
           i <- get
           f <- fst <$> IP.identifier
-          eof
+          P.eof
           return $ Right (Compile defaultCodegen f)
 
     let hasTwoArgs = do
           i <- get
           codegen <- codegenOption
           f <- fst <$> IP.identifier
-          eof
+          P.eof
           return $ Right (Compile codegen f)
 
     let failure = return $ Left $ "Usage is :" ++ name ++ " [<codegen>] <filename>"
-    try hasTwoArgs <|> try hasOneArg <|> failure
+    P.try hasTwoArgs <|> P.try hasOneArg <|> failure
 
 cmd_addproof :: String -> IP.IdrisParser (Either String Command)
 cmd_addproof name = do
-    n <- option Nothing $ do
+    n <- P.option Nothing $ do
         x <- fst <$> IP.name
         return (Just x)
-    eof
+    P.eof
     return (Right (AddProof n))
 
 cmd_log :: String -> IP.IdrisParser (Either String Command)
 cmd_log name = do
     i <- fmap (fromIntegral . fst) IP.natural
-    eof
+    P.eof
     return (Right (LogLvl i))
 
 cmd_verb :: String -> IP.IdrisParser (Either String Command)
 cmd_verb name = do
     i <- fmap (fromIntegral . fst) IP.natural
-    eof
+    P.eof
     return (Right (Verbosity i))
 
 cmd_cats :: String -> IP.IdrisParser (Either String Command)
 cmd_cats name = do
-    cs <- sepBy pLogCats (IP.whiteSpace)
-    eof
+    cs <- P.sepBy pLogCats (IP.whiteSpace)
+    P.eof
     return $ Right $ LogCategory (concat cs)
   where
     badCat = do
@@ -419,26 +420,26 @@ cmd_cats name = do
       fail $ "Category: " ++ c ++ " is not recognised."
 
     pLogCats :: IP.IdrisParser [LogCat]
-    pLogCats = try (parserCats  <$ IP.symbol (strLogCat IParse))
-           <|> try (elabCats    <$ IP.symbol (strLogCat IElab))
-           <|> try (codegenCats <$ IP.symbol (strLogCat ICodeGen))
-           <|> try ([ICoverage] <$ IP.symbol (strLogCat ICoverage))
-           <|> try ([IIBC]      <$ IP.symbol (strLogCat IIBC))
-           <|> try ([IErasure]  <$ IP.symbol (strLogCat IErasure))
+    pLogCats = P.try (parserCats  <$ IP.symbol (strLogCat IParse))
+           <|> P.try (elabCats    <$ IP.symbol (strLogCat IElab))
+           <|> P.try (codegenCats <$ IP.symbol (strLogCat ICodeGen))
+           <|> P.try ([ICoverage] <$ IP.symbol (strLogCat ICoverage))
+           <|> P.try ([IIBC]      <$ IP.symbol (strLogCat IIBC))
+           <|> P.try ([IErasure]  <$ IP.symbol (strLogCat IErasure))
            <|> badCat
 
 cmd_let :: String -> IP.IdrisParser (Either String Command)
 cmd_let name = do
-    defn <- concat <$> many (IP.decl defaultSyntax)
+    defn <- concat <$> P.many (IP.decl defaultSyntax)
     return (Right (NewDefn defn))
 
 cmd_unlet :: String -> IP.IdrisParser (Either String Command)
-cmd_unlet name = (Right . Undefine) `fmap` many (fst <$> IP.name)
+cmd_unlet name = (Right . Undefine) `fmap` P.many (fst <$> IP.name)
 
 cmd_loadto :: String -> IP.IdrisParser (Either String Command)
 cmd_loadto name = do
     toline <- fmap (fromInteger . fst) IP.natural
-    f <- many anyChar;
+    f <- P.many P.anyChar
     return (Right (Load f (Just toline)))
 
 cmd_colour :: String -> IP.IdrisParser (Either String Command)
@@ -460,27 +461,27 @@ cmd_colour name = fmap Right pSetColourCmd
         pSetColourCmd :: IP.IdrisParser Command
         pSetColourCmd = (do c <- pColourType
                             let defaultColour = IdrisColour Nothing True False False False
-                            opts <- sepBy pColourMod (IP.whiteSpace)
+                            opts <- P.sepBy pColourMod (IP.whiteSpace)
                             let colour = foldr ($) defaultColour $ reverse opts
                             return $ SetColour c colour)
-                    <|> try (IP.symbol "on" >> return ColourOn)
-                    <|> try (IP.symbol "off" >> return ColourOff)
+                    <|> P.try (IP.symbol "on" >> return ColourOn)
+                    <|> P.try (IP.symbol "off" >> return ColourOff)
 
         pColour :: IP.IdrisParser (Maybe Color)
         pColour = doColour colours
             where doColour [] = fail "Unknown colour"
-                  doColour ((s, c):cs) = (try (IP.symbol s) >> return c) <|> doColour cs
+                  doColour ((s, c):cs) = (P.try (IP.symbol s) >> return c) <|> doColour cs
 
         pColourMod :: IP.IdrisParser (IdrisColour -> IdrisColour)
-        pColourMod = try (doVivid <$ IP.symbol "vivid")
-                 <|> try (doDull <$ IP.symbol "dull")
-                 <|> try (doUnderline <$ IP.symbol "underline")
-                 <|> try (doNoUnderline <$ IP.symbol "nounderline")
-                 <|> try (doBold <$ IP.symbol "bold")
-                 <|> try (doNoBold <$ IP.symbol "nobold")
-                 <|> try (doItalic <$ IP.symbol "italic")
-                 <|> try (doNoItalic <$ IP.symbol "noitalic")
-                 <|> try (pColour >>= return . doSetColour)
+        pColourMod = P.try (doVivid <$ IP.symbol "vivid")
+                 <|> P.try (doDull <$ IP.symbol "dull")
+                 <|> P.try (doUnderline <$ IP.symbol "underline")
+                 <|> P.try (doNoUnderline <$ IP.symbol "nounderline")
+                 <|> P.try (doBold <$ IP.symbol "bold")
+                 <|> P.try (doNoBold <$ IP.symbol "nobold")
+                 <|> P.try (doItalic <$ IP.symbol "italic")
+                 <|> P.try (doNoItalic <$ IP.symbol "noitalic")
+                 <|> P.try (pColour >>= return . doSetColour)
             where doVivid i       = i { vivid = True }
                   doDull i        = i { vivid = False }
                   doUnderline i   = i { underline = True }
@@ -500,9 +501,9 @@ cmd_colour name = fmap Right pSetColourCmd
         pColourType = doColourType colourTypes
             where doColourType [] = fail $ "Unknown colour category. Options: " ++
                                            (concat . intersperse ", " . map fst) colourTypes
-                  doColourType ((s,ct):cts) = (try (IP.symbol s) >> return ct) <|> doColourType cts
+                  doColourType ((s,ct):cts) = (P.try (IP.symbol s) >> return ct) <|> doColourType cts
 
-idChar = oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_'])
+idChar = P.oneOf (['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['_'])
 
 cmd_apropos :: String -> IP.IdrisParser (Either String Command)
 cmd_apropos = packageBasedCmd (some idChar) Apropos
@@ -510,11 +511,11 @@ cmd_apropos = packageBasedCmd (some idChar) Apropos
 packageBasedCmd :: IP.IdrisParser a -> ([PkgName] -> a -> Command)
                 -> String -> IP.IdrisParser (Either String Command)
 packageBasedCmd valParser cmd name =
-  try (do IP.lchar '('
-          pkgs <- sepBy (pkg <* IP.whiteSpace) (IP.lchar ',')
-          IP.lchar ')'
-          val <- valParser
-          return (Right (cmd pkgs val)))
+  P.try (do IP.lchar '('
+            pkgs <- P.sepBy (pkg <* IP.whiteSpace) (IP.lchar ',')
+            IP.lchar ')'
+            val <- valParser
+            return (Right (cmd pkgs val)))
    <|> do val <- valParser
           return (Right (cmd [] val))
   where
@@ -526,14 +527,14 @@ cmd_search = packageBasedCmd
 
 cmd_proofsearch :: String -> IP.IdrisParser (Either String Command)
 cmd_proofsearch name = do
-    upd <- option False (True <$ IP.lchar '!')
+    upd <- P.option False (True <$ IP.lchar '!')
     l <- fmap (fromInteger . fst) IP.natural; n <- fst <$> IP.name
-    hints <- many (fst <$> IP.fnName)
+    hints <- P.many (fst <$> IP.fnName)
     return (Right (DoProofSearch upd True l n hints))
 
 cmd_refine :: String -> IP.IdrisParser (Either String Command)
 cmd_refine name = do
-   upd <- option False (do IP.lchar '!'; return True)
+   upd <- P.option False (do IP.lchar '!'; return True)
    l <- fmap (fromInteger . fst) IP.natural; n <- fst <$> IP.name
    hint <- fst <$> IP.fnName
    return (Right (DoProofSearch upd False l n [hint]))
