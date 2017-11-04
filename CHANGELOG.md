@@ -43,6 +43,8 @@
   * Renamed `optional` to `option` and flip argument order.
   * Renamed `maybe` to `optional`.
   * Generalised many combinators to use an unknown `commit` flag where possible.
++ `Prelude.Doubles.atan2` is now implemented as a primitive instead of
+  being coded in Idris.
 
 ## Tool Updates
 

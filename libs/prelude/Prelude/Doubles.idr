@@ -43,7 +43,7 @@ atan : Double -> Double
 atan x = prim__floatATan x
 
 atan2 : Double -> Double -> Double
-atan2 y x = atan (y/x)
+atan2 y x = prim__floatATan2 y x
 
 sinh : Double -> Double
 sinh x = (exp x - exp (-x)) / 2

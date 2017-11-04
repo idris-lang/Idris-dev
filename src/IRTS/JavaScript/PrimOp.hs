@@ -217,6 +217,7 @@ primDB =
   , item LFASin False PTAny $ jsAppN "Math.asin"
   , item LFACos False PTAny $ jsAppN "Math.acos"
   , item LFATan False PTAny $ jsAppN "Math.atan"
+  , item LFATan2 False PTAny $ jsAppN "Math.atan2"
   , item LFSqrt False PTAny $ jsAppN "Math.sqrt"
   , item LFFloor False PTAny $ jsAppN "Math.floor"
   , item LFCeil False PTAny $ jsAppN "Math.ceil"
