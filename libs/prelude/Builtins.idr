@@ -78,38 +78,47 @@ void : Void -> a
 ||| Arbitrary-precision integers
 Integer : Type
 Integer = prim__Integer
+%used Integer
 
 ||| Fixed-precision integers of undefined size
 Int : Type
 Int = prim__Int
+%used Int
 
 ||| Characters in some unspecified encoding
 Char : Type
 Char = prim__Char
+%used Char
 
 ||| Double-precision floating-point numbers
 Double : Type
 Double = prim__Double
+%used Double
 
 ||| Strings in some unspecified encoding
 String : Type
 String = prim__String
+%used String
 
 ||| Eight bits (unsigned)
 Bits8 : Type
 Bits8 = prim__Bits8
+%used Bits8
 
 ||| Sixteen bits (unsigned)
 Bits16 : Type
 Bits16 = prim__Bits16
+%used Bits16
 
 ||| Thirty-two bits (unsigned)
 Bits32 : Type
 Bits32 = prim__Bits32
+%used Bits32
 
 ||| Sixty-four bits (unsigned)
 Bits64 : Type
 Bits64 = prim__Bits64
+%used Bits64
 
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
