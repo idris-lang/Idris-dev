@@ -73,6 +73,53 @@ void : Void -> a
 -- it, Prelude.Nat depends on Prelude.Uninhabited, and Language.Reflection.Elab
 -- depends on Prelude.Nat. Instead, void is defined in Prelude.idr
 
+-- Aliases for primitive types, facilitating lookup by name
+
+||| Arbitrary-precision integers
+Integer : Type
+Integer = prim__Integer
+%used Integer
+
+||| Fixed-precision integers of undefined size
+Int : Type
+Int = prim__Int
+%used Int
+
+||| Characters in some unspecified encoding
+Char : Type
+Char = prim__Char
+%used Char
+
+||| Double-precision floating-point numbers
+Double : Type
+Double = prim__Double
+%used Double
+
+||| Strings in some unspecified encoding
+String : Type
+String = prim__String
+%used String
+
+||| Eight bits (unsigned)
+Bits8 : Type
+Bits8 = prim__Bits8
+%used Bits8
+
+||| Sixteen bits (unsigned)
+Bits16 : Type
+Bits16 = prim__Bits16
+%used Bits16
+
+||| Thirty-two bits (unsigned)
+Bits32 : Type
+Bits32 = prim__Bits32
+%used Bits32
+
+||| Sixty-four bits (unsigned)
+Bits64 : Type
+Bits64 = prim__Bits64
+%used Bits64
+
 ||| For 'symbol syntax. 'foo becomes Symbol_ "foo"
 data Symbol_ : String -> Type where
 
@@ -130,14 +177,14 @@ data Delayed : DelayReason -> Type -> Type where
 Force : {t, a : _} -> Delayed t a -> a
 Force (Delay x) = x
 
-||| Lazily evaluated values. 
+||| Lazily evaluated values.
 ||| At run time, the delayed value will only be computed when required by
 ||| a case split.
 %error_reverse
 Lazy : Type -> Type
 Lazy t = Delayed LazyValue t
 
-||| Possibly infinite data. 
+||| Possibly infinite data.
 ||| A value which may be infinite is accepted by the totality checker if
 ||| it appears under a data constructor. At run time, the delayed value will
 ||| only be computed when required by a case split.
@@ -187,20 +234,20 @@ idris_crash : (msg : String) -> a
 
 ||| Subvert the type checker. This function is abstract, so it will not reduce in
 ||| the type checker. Use it with care - it can result in segfaults or worse!
-export 
+export
 believe_me : a -> b
 believe_me x = assert_total (prim__believe_me _ _ x)
 
 ||| Subvert the type checker. This function *will*  reduce in the type checker.
 ||| Use it with extreme care - it can result in segfaults or worse!
-public export 
+public export
 really_believe_me : a -> b
 really_believe_me x = assert_total (prim__believe_me _ _ x)
 
 ||| Deprecated alias for `Double`, for the purpose of backwards
 ||| compatibility. Idris does not support 32 bit floats at present.
 Float : Type
-Float = Double
+Float = prim__Double
 %deprecate Float
 
 -- Pointers as external primitive; there's no literals for these, so no

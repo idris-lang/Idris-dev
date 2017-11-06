@@ -1,5 +1,6 @@
 module Prelude.Providers
 
+import Builtins
 import Prelude.Basics
 import Prelude.Functor
 import Prelude.Applicative

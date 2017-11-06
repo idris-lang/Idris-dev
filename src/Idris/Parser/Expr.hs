@@ -1412,15 +1412,17 @@ idiom syn
 
 @
 Constant ::=
-    'Integer'
-  | 'Int'
-  | 'Char'
-  | 'Double'
-  | 'String'
-  | 'Bits8'
-  | 'Bits16'
-  | 'Bits32'
-  | 'Bits64'
+    'prim__Integer'
+  | 'prim__Int'
+  | 'prim__Char'
+  | 'prim__Double'
+  | 'prim__String'
+  | 'prim__WorldType'
+  | 'prim__TheWorld'
+  | 'prim__Bits8'
+  | 'prim__Bits16'
+  | 'prim__Bits32'
+  | 'prim__Bits64'
   | Float_t
   | Natural_t
   | VerbatimString_t
@@ -1432,17 +1434,17 @@ Constant ::=
 
 constants :: [(String, Idris.Core.TT.Const)]
 constants =
-  [ ("Integer",            AType (ATInt ITBig))
-  , ("Int",                AType (ATInt ITNative))
-  , ("Char",               AType (ATInt ITChar))
-  , ("Double",             AType ATFloat)
-  , ("String",             StrType)
+  [ ("prim__Integer",      AType (ATInt ITBig))
+  , ("prim__Int",          AType (ATInt ITNative))
+  , ("prim__Char",         AType (ATInt ITChar))
+  , ("prim__Double",       AType ATFloat)
+  , ("prim__String",       StrType)
   , ("prim__WorldType",    WorldType)
   , ("prim__TheWorld",     TheWorld)
-  , ("Bits8",              AType (ATInt (ITFixed IT8)))
-  , ("Bits16",             AType (ATInt (ITFixed IT16)))
-  , ("Bits32",             AType (ATInt (ITFixed IT32)))
-  , ("Bits64",             AType (ATInt (ITFixed IT64)))
+  , ("prim__Bits8",        AType (ATInt (ITFixed IT8)))
+  , ("prim__Bits16",       AType (ATInt (ITFixed IT16)))
+  , ("prim__Bits32",       AType (ATInt (ITFixed IT32)))
+  , ("prim__Bits64",       AType (ATInt (ITFixed IT64)))
   ]
 
 -- | Parse a constant and its source span
