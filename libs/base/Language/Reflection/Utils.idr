@@ -308,7 +308,7 @@ implementation Show Raw where
           my_show d (RApp tm tm') = assert_total $ showCon d "RApp" $ " " ++ my_show App tm ++ " " ++ my_show App tm'
           my_show d RType = "RType"
           my_show d (RConstant c) = assert_total $ showCon d "RConstant" $ showArg c
-          my_show d (RUType u) = "RUType" 
+          my_show d (RUType u) = "RUType"
 
 
 implementation Show Err where
@@ -387,3 +387,10 @@ implementation Show tm => Show (FunClause tm) where
       showCon d "MkFunClause" $ showArg lhs ++ showArg rhs
   showPrec d (MkImpossibleClause lhs) =
       showCon d "MkImpossibleClause" $ showArg lhs
+
+implementation Functor FunClause where
+  map f (MkFunClause lhs rhs) = MkFunClause (f lhs) (f rhs)
+  map f (MkImpossibleClause lhs) = MkImpossibleClause (f lhs)
+
+implementation Functor FunDefn where
+  map f (DefineFun n clauses) = DefineFun n (map (map f) clauses)
