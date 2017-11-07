@@ -282,6 +282,9 @@ Law <http://www.haskell.org/haskellwiki/Wadler%27s_Law>`__ in action.
 This answer is based on Edwin Brady's response in the following
 `pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`__.
 
+Where can I find the community standards for the Idris community?
+=======================================
+The Idris Community Standards are stated in <https://www.idris-lang.org/documentation/community-standards/>.
 
 Where can I find more answers?
 ==============================
