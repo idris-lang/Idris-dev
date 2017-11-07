@@ -1,5 +1,8 @@
 module Data.String.Extra
 
+%access public export
+%default total
+
 infixl 5 +>
 infixr 5 <+
 
