@@ -284,7 +284,8 @@ This answer is based on Edwin Brady's response in the following
 
 Where can I find the community standards for the Idris community?
 =======================================
-The Idris Community Standards are stated in <https://www.idris-lang.org/documentation/community-standards/>.
+The Idris Community Standards are stated `here 
+<https://www.idris-lang.org/documentation/community-standards/>`_ .
 
 Where can I find more answers?
 ==============================
