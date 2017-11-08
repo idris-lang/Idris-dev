@@ -15,14 +15,14 @@
   undeclared fixity are treated as non-associative with precedence lower
   than all declared operators.
 + Allow non-injective implementations if explicitly named, e.g.,
-```idris
-LTB : Nat -> Type
-LTB b = DPair Nat (\ n  => LT n b)
+  ```idris
+  LTB : Nat -> Type
+  LTB b = DPair Nat (\ n  => LT n b)
 
-implementation [uninhabltb] Uninhabited (LTB Z) where
-  uninhabited (MkDPair n prf) = absurd prf
-```
-It is possible to use `using implementation uninhabltb` to add the implementation to the automated resolution, but if it fails to find the instance due to non-injectivity, one must pass it explicitly to target function, i.e. `absurd @{uninhabltb}`.
+  implementation [uninhabltb] Uninhabited (LTB Z) where
+    uninhabited (MkDPair n prf) = absurd prf
+  ```
+  It is possible to use `using implementation uninhabltb` to add the implementation to the automated resolution, but if it fails to find the instance due to non-injectivity, one must pass it explicitly to target function, i.e. `absurd @{uninhabltb}`.
 
 ## Library Updates
 
