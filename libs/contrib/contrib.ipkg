@@ -62,3 +62,8 @@ modules = CFFI
         , Text.PrettyPrint.WL.Combinators
         , Text.PrettyPrint.WL.Core
         , Text.Quantity
+        , Test.Unit.Display
+        , Test.Unit.Runners
+        , Test.Unit.Assertions
+        , Test.Unit.Generic
+        , Test.Unit
