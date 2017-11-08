@@ -77,7 +77,8 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
             _ -> addImplementation intImpl False n iname
 
     ist <- getIState
-    checkInjectiveArgs fc n (interface_determiners ci) (lookupTyExact iname (tt_ctxt ist))
+    when (isNothing expn) $
+      checkInjectiveArgs fc n (interface_determiners ci) (lookupTyExact iname (tt_ctxt ist))
 
     when (what /= ETypes && (not (null ds && not emptyinterface))) $ do
          -- Add the parent implementation names to the privileged set
