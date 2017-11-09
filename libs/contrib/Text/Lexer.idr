@@ -4,9 +4,13 @@ import Data.Bool.Extra
 
 import public Text.Lexer.Core
 import public Text.Quantity
+import public Text.Token
 
-%default total
 %access export
+%default total
+
+toTokenMap : List (Lexer, k) -> TokenMap (Token k)
+toTokenMap = map $ \(l, kind) => (l, Tok kind)
 
 ||| Recognise any character
 any : Lexer
