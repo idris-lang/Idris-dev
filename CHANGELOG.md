@@ -54,6 +54,7 @@
   * Generalised many combinators to use an unknown `commit` flag where possible.
 + `Prelude.Doubles.atan2` is now implemented as a primitive instead of
   being coded in Idris.
++ Added `Test.Unit` to `contrib` for simple unit testing.
 
 ## Tool Updates
 
