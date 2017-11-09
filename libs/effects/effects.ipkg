@@ -2,12 +2,16 @@ package effects
 
 opts = "--nobasepkgs --partial-eval --typeintype -i ../prelude -i ../base"
 
-modules = Effect.Default
+modules = Effects
+
+        , Effect.Default
         , Effect.Exception
         , Effect.File
+
         , Effect.Logging.Category
         , Effect.Logging.Default
         , Effect.Logging.Level
+
         , Effect.Memory
         , Effect.Monad
         , Effect.Perf
@@ -17,4 +21,3 @@ modules = Effect.Default
         , Effect.StdIO
         , Effect.System
         , Effect.Trans
-        , Effects

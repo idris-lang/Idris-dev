@@ -7,12 +7,14 @@ modules = Control.Arrow
         , Control.Category
         , Control.IOExcept
         , Control.Isomorphism
+
         , Control.Monad.Identity
         , Control.Monad.Reader
         , Control.Monad.RWS
         , Control.Monad.State
         , Control.Monad.Trans
         , Control.Monad.Writer
+
         , Data.Bits
         , Data.Buffer
         , Data.Complex
@@ -20,23 +22,31 @@ modules = Control.Arrow
         , Data.Fin
         , Data.HVect
         , Data.IORef
+
         , Data.List
         , Data.List.Quantifiers
         , Data.List.Views
+
         , Data.Mod2
         , Data.Morphisms
         , Data.Nat.Views
         , Data.Primitives.Views
         , Data.So
+
         , Data.String
         , Data.String.Views
+
         , Data.Vect
         , Data.Vect.Quantifiers
         , Data.Vect.Views
+
         , Debug.Error
         , Debug.Trace
+
         , Language.Reflection.Utils
+
         , Syntax.PreorderReasoning
+
         , System
         , System.Concurrency.Channels
         , System.Concurrency.Raw
