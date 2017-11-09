@@ -12,8 +12,8 @@ import Test.Unit.Display
 %access export
 
 namespace NonReporting
-  ||| Run the given set of tests, but don't report results.
-  runTests : List (IO a) -> IO ()
+  ||| Run the given set of tests, but don't return the results.
+  runTests : List (IO Bool) -> IO ()
   runTests Nil = do
            putStrLn "All Tests have been performed."
            putStrLn succLine
@@ -21,10 +21,11 @@ namespace NonReporting
 
 namespace Reporting
   ||| Run the given set of tests and return the results.
-  runTests : List (IO a) -> IO (List a)
+  runTests : List (IO Bool) -> IO (List Bool)
   runTests Nil = do
     putStrLn "All tests have been performed."
     putStrLn succLine
+    pure Nil
   runTests (x::xs) = do
        r  <- x
        rs <- Reporting.runTests xs

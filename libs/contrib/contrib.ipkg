@@ -5,18 +5,22 @@ opts = "--nobasepkgs --partial-eval --total -i ../prelude -i ../base"
 modules = CFFI
         , CFFI.Memory
         , CFFI.Types
+
         , Control.Algebra
         , Control.Algebra.Lattice
         , Control.Algebra.NumericImplementations
         , Control.Algebra.VectorSpace
+
         , Control.Delayed
         , Control.Isomorphism.Primitives
         , Control.Partial
         , Control.Pipeline
+
         , Control.ST
         , Control.ST.Exception
         , Control.ST.ImplicitCall
         , Control.ST.Random
+
         , Data.Bool.Extra
         , Data.BoundedList
         , Data.CoList
@@ -43,27 +47,35 @@ modules = CFFI
         , Data.Stream.Extra
         , Data.String.Extra
         , Data.ZZ
+
         , Decidable.Decidable
         , Decidable.Order
+
         , Interfaces.Correlative
         , Interfaces.Verified
+
         , Network.Cgi
         , Network.Socket
         , Network.Socket.Data
         , Network.Socket.Raw
+
         , System.Concurrency.Process
+
         , Text.Lexer
         , Text.Lexer.Core
         , Text.Literate
         , Text.Parser
         , Text.Parser.Core
-        , Text.PrettyPrint.WL
-        , Text.PrettyPrint.WL.Characters
-        , Text.PrettyPrint.WL.Combinators
+
         , Text.PrettyPrint.WL.Core
+        , Text.PrettyPrint.WL.Combinators
+        , Text.PrettyPrint.WL.Characters
+        , Text.PrettyPrint.WL
+
         , Text.Quantity
+
         , Test.Unit.Display
         , Test.Unit.Runners
-        , Test.Unit.Assertions
         , Test.Unit.Generic
+        , Test.Unit.Assertions
         , Test.Unit
