@@ -4,7 +4,7 @@
 The Idris Tutorial
 ##################
 
-This is the Idris Tutorial. 
+This is the Idris Tutorial.
 It provides a brief introduction to programming in the Idris Language.
 It covers the core language features, and assumes some familiarity with an
 existing functional programming language such as Haskell or OCaml.
@@ -30,6 +30,7 @@ existing functional programming language such as Haskell or OCaml.
    interp
    views
    theorems
+   provisional
    interactive
    syntax
    miscellany
