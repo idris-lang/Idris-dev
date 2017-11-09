@@ -33,11 +33,14 @@ modules = CFFI
         , Data.Heap
         , Data.IOArray
         , Data.List.Zipper
+
         , Data.Matrix
         , Data.Matrix.Algebraic
         , Data.Matrix.Numeric
+
         , Data.Nat.DivMod
         , Data.Nat.DivMod.IteratedSubtraction
+
         , Data.Pairs.Implicit
         , Data.Rel
         , Data.Sign
@@ -63,7 +66,9 @@ modules = CFFI
 
         , Text.Lexer
         , Text.Lexer.Core
+
         , Text.Literate
+
         , Text.Parser
         , Text.Parser.Core
 

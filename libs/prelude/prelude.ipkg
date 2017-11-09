@@ -3,12 +3,17 @@ package prelude
 opts = "--nobuiltins --total --no-elim-deprecation-warnings --partial-eval"
 
 modules = Builtins
+
         , Decidable.Equality
+
         , IO
+
         , Language.Reflection
         , Language.Reflection.Elab
         , Language.Reflection.Errors
+
         , Prelude
+
         , Prelude.Algebra
         , Prelude.Applicative
         , Prelude.Basics
