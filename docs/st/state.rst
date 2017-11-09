@@ -19,10 +19,10 @@ how those resources change when a function runs:
              Type
 
 A value of type ``STrans m resultType in_res out_res_fn`` represents a sequence
-of actions which can manipulate state. The arguments are: 
+of actions which can manipulate state. The arguments are:
 
 * ``m``, which is an underlying *computation context* in which the actions will be executed.
-  Usually, this will be a generic type with a ``Monad`` implementation, but 
+  Usually, this will be a generic type with a ``Monad`` implementation, but
   it isn't necessarily so. In particular, there is no need to understand monads
   to be able to use ``ST`` effectively!
 * ``resultType``, which is the type of the value the sequence will produce
@@ -76,10 +76,10 @@ resource is still a ``State Integer`` on output:
     same. We'll introduce a much more concise way of writing this type at the
     end of this section (:ref:`sttype`), when we describe the ``ST`` type
     itself.
-                   
+
 This function reads the value stored at the resource ``x`` with ``read``,
 increments it then writes the result back into the resource ``x`` with
-``write``. We'll see the types of ``read`` and ``write`` shortly 
+``write``. We'll see the types of ``read`` and ``write`` shortly
 (see :ref:`stransprimops`). We can also create and delete resources:
 
 .. code-block:: idris
@@ -104,7 +104,7 @@ can run it in *any* context. We can run it in the identity context with
 ``runPure``. For example, try entering the above definitions in a file
 ``Intro.idr`` then running the following at the REPL:
 
-.. code:: 
+.. code::
 
     *Intro> runPure (makeAndIncrement 93)
     94 : Integer
@@ -179,7 +179,7 @@ of ``lift`` shortly.
     Conceptually, at least, you can think of it as having the following type:
 
     .. code-block:: idris
-    
+
         (!) : STrans m a state_in state_out -> a
 
     It is syntactic sugar for binding a variable immediately before the
@@ -243,7 +243,7 @@ context. Here, we use ``run``, which allows us to execute an ``STrans`` program
 in any context (as long as it has an implementation of ``Applicative``) and we
 can execute ``ioMakeAndIncrement`` at the REPL as follows:
 
-.. code:: 
+.. code::
 
     *Intro> :exec run ioMakeAndIncrement
     Enter a number: 93
@@ -269,7 +269,7 @@ its length will change:
   addElement vec item = do xs <- read vec
                            write vec (item :: xs)
 
-Note that you'll need to ``import Data.Vect`` to try this example. 
+Note that you'll need to ``import Data.Vect`` to try this example.
 
 .. topic:: Updating a state directly with ``update``
 
@@ -344,7 +344,7 @@ if the input is valid. We can express this in the type as follows:
 Then, when we implement ``readAndAdd`` we need to return the appropriate
 value for the output state. If we've added an item to the vector, we need to
 return ``True``, otherwise we need to return ``False``:
-                                                     
+
 .. code-block:: idris
 
   readAndAdd : ConsoleIO io => (vec : Var) ->
@@ -435,7 +435,7 @@ we can do as follows:
 
 .. _stransprimops:
 
-``STrans`` Primitive operations 
+``STrans`` Primitive operations
 ===============================
 
 Now that we've written a few small examples of ``STrans`` functions, it's
@@ -485,7 +485,7 @@ of type ``State state``:
 
 .. code-block:: idris
 
-    new : (val : state) -> 
+    new : (val : state) ->
           STrans m Var res (\lbl => (lbl ::: State state) :: res)
 
 It's important that the new resource has type ``State state``, rather than
@@ -526,7 +526,7 @@ the resource list so that it is appropriate for returning that value:
 
 .. code-block:: idris
 
-    returning : (result : ty) -> 
+    returning : (result : ty) ->
                 STrans m () res (const (out_fn result)) ->
                 STrans m ty res out_fn
 
@@ -555,7 +555,7 @@ programming and reasoning in Idris.
 .. _sttype:
 
 `ST`: Representing state transitions directly
-============================================
+=============================================
 
 We've seen a few examples of small ``STrans`` functions now, and
 their types can become quite verbose given that we need to provide explicit
@@ -568,7 +568,7 @@ giving input and output resource lists in full. We can do this with
 .. code-block:: idris
 
     ST : (m : Type -> Type) ->
-         (resultType : Type) -> 
+         (resultType : Type) ->
          List (Action resultType) -> Type
 
 ``ST`` is a type level function which computes an appropriate ``STrans``
@@ -593,7 +593,7 @@ So, we can write some of the function types we've seen so far as follows:
 That is, ``increment`` begins and ends with ``x`` in state ``State Integer``.
 
 .. code-block:: idris
-  
+
   makeAndIncrement : Int -> ST m Int []
 
 That is, ``makeAndIncrement`` begins and ends with no resources.
@@ -652,5 +652,3 @@ the rare occasions we need the full precision of ``STrans``. In the next
 section, we'll see how to use the facilities provided by ``ST`` to write
 a precise API for a system with security properties: a data store requiring
 a login.
-
-

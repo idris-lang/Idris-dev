@@ -189,8 +189,6 @@ the ``public`` modifier on an ``import``. For example:
     import B
     import public C
 
-    public a : AType a = ...
-
 The module ``A`` will export the name ``a``, as well as any public or
 abstract names in module ``C``, but will not re-export anything from
 module ``B``.
@@ -277,5 +275,3 @@ which can be inferred by the type checker:
 
     *params> show (append _ _ (MkVects _ [1,2,3] [4,5,6]))
     "[1, 2, 3, 4, 5, 6]" : String
-
-
