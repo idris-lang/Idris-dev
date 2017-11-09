@@ -84,3 +84,4 @@ modules = CFFI
         , Text.PrettyPrint.WL
 
         , Text.Quantity
+        , Text.Token
