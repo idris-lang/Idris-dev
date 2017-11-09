@@ -16,7 +16,7 @@ data Doc : Type where
 
   Cat     : (x : Doc) -> (y : Doc) -> Doc
   Nest    : (lvl : Int) -> (x : Doc) -> Doc
-  Union   : (x : Doc) -> (y : Doc) -> Doc
+  Union   : (x : Doc) -> (y : Lazy Doc) -> Doc
 
   Column  : (f : Int -> Doc) -> Doc
   Nesting : (f : Int -> Doc) -> Doc
@@ -162,11 +162,12 @@ render rfrac w doc = best w 0 0 doc (const Empty)
     nicest : (lvl : Int)
           -> (col : Int)
           -> (x : PrettyDoc)
-          -> (y : PrettyDoc)
+          -> (y : Lazy PrettyDoc)
           -> PrettyDoc
     nicest n k x y =
-      let width = min (w - k) (rwidth - k + n)
-       in if fits width x then x else y
+      if fits (min (w - k) (rwidth - k + n)) x
+      then x
+      else y
 
     best : (lvl : Int)
         -> (col : Int)
