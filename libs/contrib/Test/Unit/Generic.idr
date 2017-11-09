@@ -6,6 +6,8 @@
 ||| Generic Tests
 module Test.Unit.Generic
 
+import Text.PrettyPrint.WL
+
 import Test.Unit.Display
 
 %default total
@@ -26,20 +28,16 @@ genericTest : Show a
 genericTest title g e eq = do
   putStrLn $ unwords ["Test:" , fromMaybe "Unnamed Test" title]
   let res = eq g e
-  when (not res) $ with List do
-     putStrLn $ unwords [
-             errLine
-           , "\n"
-           , "Error:\n\n"
-           , "Given:\n\t"
-           , show g
-           , "\n"
-           , "Expected:\n\t"
-           , show e
-           , "\n"
-           , errLine
-           , "\n"
-           ]
+  when (not res) $ do
+     let errMsg = vcat [
+           text errLine
+         , text "An error occured" <+> colon
+         , indent 2 $ text "Given" <+> colon
+         , indent 4 $ text (show g)
+         , indent 2 $ text "Expected" <+> colon
+         , indent 4 $ text (show e)
+         , text errLine]
+     putStrLn $ Default.toString errMsg
   pure res
 
 -- --------------------------------------------------------------------- [ EOF ]
