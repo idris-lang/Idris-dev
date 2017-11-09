@@ -137,7 +137,7 @@ of ``append``, rather than making the type of ``append`` equivalent to...
 
 ...which is probably not what was intended!  The reason for this rule is so
 that it is clear just from looking at the type of ``append``, and no other
-context, what the implicitly bound names are. 
+context, what the implicitly bound names are.
 
 If you want to use an unapplied name in a type, you have two options. You
 can either explicitly qualify it, for example, if ``ty`` is defined in the
@@ -149,7 +149,7 @@ namespace ``Main`` you can do the following:
 
 Alternatively, you can use a name which does not begin with a lower case
 letter, which will never be implicitly bound:
-    
+
 .. code-block:: idris
 
     Ty : Type
@@ -283,8 +283,9 @@ This answer is based on Edwin Brady's response in the following
 `pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`__.
 
 Where can I find the community standards for the Idris community?
-=======================================
-The Idris Community Standards are stated `here 
+==================================================================
+
+The Idris Community Standards are stated `here
 <https://www.idris-lang.org/documentation/community-standards/>`_ .
 
 Where can I find more answers?

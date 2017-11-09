@@ -1,3 +1,5 @@
+.. _sect-inductive:
+
 ****************
 Inductive Proofs
 ****************

@@ -11,7 +11,7 @@ Before installing Idris, you will need to make sure you have all
 of the necessary libraries and tools. You will need:
 
 - A fairly recent version of `GHC <https://www.haskell.org/ghc/>`_. The
-  earliest version we currently test with is 7.6.3.
+  earliest version we currently test with is 7.10.3.
 
 - The *GNU Multiple Precision Arithmetic Library* (GMP) is available  from MacPorts/Homebrew and all major Linux distributions.
 

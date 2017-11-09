@@ -48,7 +48,7 @@ For example, the
 Only one implementation of an interface can be given for a type — implementations may
 not overlap. Implementation declarations can themselves have constraints.
 To help with resolution, the arguments of an implementation must be
-constructors (either data or type constructors) or variables 
+constructors (either data or type constructors) or variables
 (i.e. you cannot give an implementation for a function).  For
 example, to define a ``Show`` implementation for vectors, we need to know
 that there is a ``Show`` implementation for the element type, because we are
@@ -157,7 +157,7 @@ Note: Interfaces and ``mutual`` blocks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Idris is strictly "define before use", except in ``mutual`` blocks.
-In a ``mutual`` block, Idris elaborates in two passes: types on the first 
+In a ``mutual`` block, Idris elaborates in two passes: types on the first
 pass and definitions on the second. When the mutual block contains an
 interface declaration, it elaborates the interface header but none of the
 method types on the first pass, and elaborates the method types and any
@@ -259,7 +259,7 @@ are both available, or return ``Nothing`` if one or both are not ("fail fast"). 
     Nothing : Maybe Int
 
 Pattern Matching Bind
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
 Sometimes we want to pattern match immediately on the result of a function
 in ``do`` notation. For example, let's say we have a function ``readNumber``
@@ -323,7 +323,7 @@ of the ``do`` block. The second part gives the alternative bindings, of which
 there may be more than one.
 
 ``!``-notation
---------------
+~~~~~~~~~~~~~~
 
 In many cases, using ``do``-notation can make programs unnecessarily
 verbose, particularly in cases such as ``m_add`` above where the value
@@ -367,7 +367,7 @@ is lifted to:
                      f g'
 
 Monad comprehensions
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 The list comprehension notation we saw in Section
 :ref:`sect-more-expr` is more general, and applies to anything which
@@ -461,7 +461,7 @@ application ``[| f a1 …an |]`` is translated into ``pure f <*> a1 <*>
     m_add' x y = [| x + y |]
 
 An error-handling interpreter
------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Idiom notation is commonly useful when defining evaluators. McBride
 and Paterson describe such an evaluator [1]_, for a language similar
