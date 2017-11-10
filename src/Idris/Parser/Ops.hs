@@ -84,8 +84,7 @@ table fixes
 
     prefix :: String -> (FC -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
     prefix name f = P.Prefix $ do
-                      reservedOp name
-                      fc <- getFC
+                      fc <- reservedOpFC name
                       indentGt
                       return (f fc)
 
@@ -126,7 +125,7 @@ operatorName =     first sUN <$> symbolicOperatorFC
 -}
 operatorFront :: IdrisParser (Name, FC)
 operatorFront = P.try (do (FC f (l, c) _) <- getFC
-                          op <- lchar '(' *> reservedOp "="  <* lchar ')'
+                          op <- lchar '(' *> reservedOp "=" <* lchar ')'
                           return (eqTy, FC f (l, c) (l, c+3)))
             <|> maybeWithNS (do (FC f (l, c) _) <- getFC
                                 op <- lchar '(' *> symbolicOperator

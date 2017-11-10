@@ -262,9 +262,7 @@ lchar = token . P.char
 
 -- | Parses a character as a token, returning the source span of the character
 lcharFC :: MonadicParsing m => Char -> m FC
-lcharFC ch = do (FC file (l, c) _) <- getFC
-                _ <- token (P.char ch)
-                return $ FC file (l, c) (l, c+1)
+lcharFC c = snd <$> tokenFC (P.char c)
 
 symbol :: MonadicParsing m => String -> m ()
 symbol = void . P.symbol someSpace
@@ -579,20 +577,18 @@ notOpenBraces = do ist <- get
 {- | Parses an accessibilty modifier (e.g. public, private) -}
 accessibility' :: IdrisParser Accessibility
 accessibility'
-              = do reserved "public";
+              = do fc <- reservedFC "public";
                    gotexp <- optional (reserved "export")
                    case gotexp of
                         Just _ -> return ()
                         Nothing -> do
                            ist <- get
-                           fc <- getFC
                            put ist { parserWarnings =
                               (fc, Msg "'public' is deprecated. Use 'public export' instead.")
                                    : parserWarnings ist }
                    return Public
-            <|> do reserved "abstract";
+            <|> do fc <- reservedFC "abstract";
                    ist <- get
-                   fc <- getFC
                    put ist { parserWarnings =
                       (fc, Msg "The 'abstract' keyword is deprecated. Use 'export' instead.")
                            : parserWarnings ist }

@@ -397,8 +397,8 @@ simpleExpr syn =
             P.try (simpleExternalExpr syn)
         <|> do (x, FC f (l, c) end) <- P.try (lchar '?' *> name)
                return (PMetavar (FC f (l, c-1) end) x)
-        <|> do lchar '%'; fc <- getFC; reserved "implementation"; return (PResolveTC fc)
-        <|> do lchar '%'; fc <- getFC; reserved "instance"
+        <|> do lchar '%'; fc <- reservedFC "implementation"; return (PResolveTC fc)
+        <|> do lchar '%'; fc <- reservedFC "instance"
                parserWarning fc Nothing $ Msg "The use of %instance is deprecated, use %implementation instead."
                return (PResolveTC fc)
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc [] (SN $ ElimN t))
@@ -412,7 +412,7 @@ simpleExpr syn =
         <|> do (c, cfc) <- constant
                fc <- getFC
                return (modifyConst syn fc (PConstant cfc c))
-        <|> do symbol "'"; fc <- getFC; str <- fst <$> name
+        <|> do symbol "'"; (str, fc) <- name
                return (PApp fc (PRef fc [] (sUN "Symbol_"))
                           [pexp (PConstant NoFC (Str (show str)))])
         <|> do (x, fc) <- fnName
@@ -443,8 +443,7 @@ Bracketed ::= '(' Bracketed'
 @
  -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
-bracketed syn = do (FC fn (sl, sc) _) <- getFC
-                   lchar '(' <?> "parenthesized expression"
+bracketed syn = do (FC fn (sl, sc) _) <- lcharFC '(' <?> "parenthesized expression"
                    bracketed' (FC fn (sl, sc) (sl, sc+1)) (syn { withAppAllowed = True })
 
 {- |Parses the rest of an expression in braces
@@ -461,8 +460,7 @@ Bracketed' ::=
 -}
 bracketed' :: FC -> SyntaxInfo -> IdrisParser PTerm
 bracketed' open syn =
-            do (FC f start (l, c)) <- getFC
-               lchar ')'
+            do (FC f start (l, c)) <- lcharFC ')'
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
         <|> P.try (dependentPair TypeOrTerm [] open syn)
         <|> P.try (do (opName, fc) <- operatorName
@@ -1481,9 +1479,8 @@ Static ::=
 @
 -}
 static :: IdrisParser Static
-static =     do reserved "%static"; return Static
-         <|> do reserved "[static]"
-                fc <- getFC
+static =     Static <$ reserved "%static"
+         <|> do fc <- reservedFC "[static]"
                 parserWarning fc Nothing (Msg "The use of [static] is deprecated, use %static instead.")
                 return Static
          <|> return Dynamic
