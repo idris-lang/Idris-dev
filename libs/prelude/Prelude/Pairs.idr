@@ -41,13 +41,5 @@ using (a : Type, P : a -> Type)
     snd : (x : DPair a P) -> P (fst x)
     snd (x ** pf) = pf
 
-    getWitness : DPair a P -> a
-    getWitness = fst
-    %deprecate DPair.getWitness "This is being deprecated in favour of `fst`."
-
-    getProof : (x : DPair a P) -> P (fst x)
-    getProof = snd
-    %deprecate DPair.getProof "This is being deprecated in favour of `snd`."
-
   -- Polymorphic (interface-based) projections have been removed
   -- because type-directed name disambiguation works better.

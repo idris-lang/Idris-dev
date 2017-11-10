@@ -51,14 +51,6 @@ namespace Builtins
   data DPair : (a : Type) -> (P : a -> Type) -> Type where
       MkDPair : .{P : a -> Type} -> (x : a) -> (pf : P x) -> DPair a P
 
-  Sigma : (a : Type) -> (P : a -> Type) -> Type
-  Sigma wit prf = DPair wit prf
-  %deprecate Sigma "This name is being deprecated in favour of `DPair`."
-
-  MkSigma : .{P : a -> Type} -> (x : a) -> (prf : P x) -> DPair a P
-  MkSigma wit prf = MkDPair wit prf
-  %deprecate MkSigma "This constructor is being deprecated in favour of `MkDPair`."
-
 ||| The empty type, also known as the trivially false proposition.
 |||
 ||| Use `void` or `absurd` to prove anything if you have a variable of type `Void` in scope.
