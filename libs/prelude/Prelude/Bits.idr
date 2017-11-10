@@ -111,28 +111,3 @@ b32ToBinString c = concatMap b8ToBinString (b32ToBytes c)
 ||| Encode `Bits64` as a 64-character binary string.
 b64ToBinString : Bits64 -> String
 b64ToBinString c = concatMap b8ToBinString (b64ToBytes c)
-
-
---------------------------------------------------------------------------------
--- Deprecated String Functions
---------------------------------------------------------------------------------
-
-||| Encode `Bits8` as a 2-character hex string.
-b8ToString : Bits8 -> String
-b8ToString = b8ToHexString
-%deprecate b8ToString "Please use `b8ToHexString` instead."
-
-||| Encode `Bits16` as a 4-character hex string.
-b16ToString : Bits16 -> String
-b16ToString = b16ToHexString
-%deprecate b16ToString "Please use `b16ToHexString` instead."
-
-||| Encode `Bits32` as a 8-character hex string.
-b32ToString : Bits32 -> String
-b32ToString = b32ToHexString
-%deprecate b32ToString "Please use `b32ToHexString` instead."
-
-||| Encode `Bits64` as a 16-character hex string.
-b64ToString : Bits64 -> String
-b64ToString = b64ToHexString
-%deprecate b64ToString "Please use `b64ToHexString` instead."
