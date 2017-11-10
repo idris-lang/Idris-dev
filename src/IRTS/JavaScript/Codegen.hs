@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.JavaScript.Codegen
 Description : The JavaScript common code generator.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

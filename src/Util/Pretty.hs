@@ -1,7 +1,7 @@
 {-|
 Module      : Util.Pretty
 Description : Utilities for Pretty Printing.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

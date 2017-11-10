@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.Binary
 Description : Binary instances for the core datatypes
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

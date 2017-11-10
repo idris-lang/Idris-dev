@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Interactive
 Description : Bits and pieces for editing source files interactively, called from the REPL
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Prover
 Description : Idris' theorem prover.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Transforms
 Description : A collection of transformations.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

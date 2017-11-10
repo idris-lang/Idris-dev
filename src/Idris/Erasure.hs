@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Erasure
 Description : Utilities to erase stuff not necessary for runtime.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

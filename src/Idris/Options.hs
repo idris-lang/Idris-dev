@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Options
 Description : Compiler options for Idris.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.TypeSearch
 Description : A Hoogle for Idris.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

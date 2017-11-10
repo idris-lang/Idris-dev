@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Package
 Description : Functionality for working with Idris packages.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Clause
 Description : Code to elaborate clauses.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      :  Idris.Docstrings
 Description : Wrapper around Markdown library.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

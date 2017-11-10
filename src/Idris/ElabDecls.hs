@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.ElabDecls
 Description : Code to elaborate declarations.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

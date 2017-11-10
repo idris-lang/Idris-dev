@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.ProofSearch
 Description : Searches current context for proofs'
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

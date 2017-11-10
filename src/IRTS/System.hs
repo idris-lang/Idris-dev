@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.System
 Description : Utilities for interacting with the System.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

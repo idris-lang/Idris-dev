@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Parser.Expr
 Description : Parse Expressions.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

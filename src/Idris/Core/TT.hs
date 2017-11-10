@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.TT
 Description : The core language of Idris, TT.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.DeepSeq
 Description : NFData instances for TT.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

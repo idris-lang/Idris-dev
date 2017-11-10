@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Core.Elaborate
 Description : A high level language of tactic composition, for building elaborators from a high level language into the core theory.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.LangOpts
 Description : Transformations to apply to Idris' IR.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

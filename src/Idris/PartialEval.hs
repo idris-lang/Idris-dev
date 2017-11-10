@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.PartialEval
 Description : Implementation of a partial evaluator.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

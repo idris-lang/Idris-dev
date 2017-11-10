@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.JavaScript.LangTransforms
 Description : The JavaScript LDecl Transformations.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

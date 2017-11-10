@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Imports
 Description : Code to handle import declarations.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
