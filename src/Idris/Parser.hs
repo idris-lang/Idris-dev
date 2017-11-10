@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Parser
 Description : Idris' parser.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Primitives
 Description : Provision of primitive data types.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

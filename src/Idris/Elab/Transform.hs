@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Transform
 Description : Transformations for elaborate terms.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

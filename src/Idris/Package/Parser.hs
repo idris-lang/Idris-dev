@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Package.Parser
 Description : `iPKG` file parser and package description information.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

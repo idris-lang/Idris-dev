@@ -2,7 +2,7 @@
 Module      : IRTS.Bytecode
 Description : Bytecode for a stack based VM (e.g. for generating C code with an accurate hand written GC)
 
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 

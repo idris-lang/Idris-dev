@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Data
 Description : Code to elaborate data structures.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

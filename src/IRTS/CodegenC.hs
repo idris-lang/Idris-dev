@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.CodegenC
 Description : The default code generator for Idris, generating C code.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

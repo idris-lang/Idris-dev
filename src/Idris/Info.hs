@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Info
 Description : Get information about Idris.
-Copyright   : 2016 The Idris Community
+ 2016 The Idris Community
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

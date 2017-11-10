@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Delaborate
 Description : Convert core TT back into high level syntax, primarily for display purposes.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

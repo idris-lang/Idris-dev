@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.DeepSeq
 Description : NFData instances for Idris' types
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

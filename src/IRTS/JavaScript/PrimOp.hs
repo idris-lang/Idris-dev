@@ -1,7 +1,7 @@
 {-|
 Module      : IRTS.JavaScript.PrimOp
 Description : The JavaScript primitive operations.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

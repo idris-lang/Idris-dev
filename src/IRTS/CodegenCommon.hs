@@ -2,7 +2,7 @@
 {-|
 Module      : IRTS.CodegenCommon
 Description : Common data structures required for all code generators.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Error
 Description : Utilities to deal with error reporting.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

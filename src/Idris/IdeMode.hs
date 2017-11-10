@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.IdeMode
 Description : Idris' IDE Mode
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}

@@ -1,7 +1,7 @@
 {-|
 Module      : Idris.Elab.Value
 Description : Code to elaborate values.
-Copyright   :
+
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
