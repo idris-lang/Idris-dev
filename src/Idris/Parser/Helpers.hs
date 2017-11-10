@@ -296,10 +296,10 @@ reservedOp name = token $ P.try $
   do string name
      P.notFollowedBy operatorLetter <?> ("end of " ++ show name)
 
-reservedOpFC :: MonadicParsing m => String -> m FC
+reservedOpFC :: MonadicParsing m => String -> m ((), FC)
 reservedOpFC name = do (FC f (l, c) _) <- getFC
                        reservedOp name
-                       return (FC f (l, c) (l, c + length name))
+                       return ((), FC f (l, c) (l, c + length name))
 
 -- | Parses an identifier as a token
 identifier :: (MonadicParsing m) => m (String, FC)

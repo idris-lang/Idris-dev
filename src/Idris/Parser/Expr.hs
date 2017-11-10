@@ -511,16 +511,16 @@ dependentPair pun prev openFC syn =
             colonFC <- lcharFC ':'
             return (ln, lnfc, colonFC)
           lty <- expr' syn
-          starsFC <- reservedOpFC "**"
+          (_, starsFC) <- reservedOpFC "**"
           dependentPair IsType ((PRef lnfc [] ln, Just (colonFC, lty), starsFC):prev) openFC syn
         namePart = P.try $ do
           (ln, lnfc) <- name
-          starsFC <- reservedOpFC "**"
+          (_, starsFC) <- reservedOpFC "**"
           dependentPair pun ((PRef lnfc [] ln, Nothing, starsFC):prev) openFC syn
         exprPart isEnd = do
           e <- expr syn
           sepFCE <-
-            let stars = (Left <$> reservedOpFC "**")
+            let stars = (Left . snd <$> reservedOpFC "**")
                 ending = (Right <$> lcharFC ')')
             in if isEnd then ending else stars <|> ending
           case sepFCE of
@@ -544,7 +544,7 @@ bracketedExpr syn openParenFC e =
                 closeParenFC <- lcharFC ')'
                 let hilite = [openParenFC, closeParenFC] ++ map snd exprs
                 return $ PPair openParenFC hilite TypeOrTerm e (mergePairs exprs)
-        <|>  do starsFC <- reservedOpFC "**"
+        <|>  do (_, starsFC) <- reservedOpFC "**"
                 dependentPair IsTerm [(e, Nothing, starsFC)] openParenFC syn
         <?> "end of bracketed expression"
   where mergePairs :: [(PTerm, FC)] -> PTerm
