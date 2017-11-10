@@ -25,9 +25,9 @@ import Prelude.Uninhabited
 
 Uninhabited (Z = S n) where
   uninhabited Refl impossible
-  
+
 Uninhabited (S n = Z) where
-  uninhabited Refl impossible  
+  uninhabited Refl impossible
 
 --------------------------------------------------------------------------------
 -- Syntactic tests
@@ -243,6 +243,9 @@ Num Nat where
   (*) = mult
 
   fromInteger = fromIntegerNat
+
+Abs Nat where
+  abs = id
 
 MinBound Nat where
   minBound = Z

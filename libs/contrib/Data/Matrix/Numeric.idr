@@ -30,8 +30,10 @@ implementation Num a => Num (Vect n a) where
 
 implementation Neg a => Neg (Vect n a) where
   (-) = zipWith (-)
-  abs = map abs
   negate = map negate
+
+implementation Abs a => Abs (Vect n a) where
+  abs = map abs
 
 -----------------------------------------------------------------------
 --                        Vector functions
