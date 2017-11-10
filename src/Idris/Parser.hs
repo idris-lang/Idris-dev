@@ -360,7 +360,7 @@ declExtension syn ns rules =
     ruleGroup _ _ = False
 
     extSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
-    extSymbol (Keyword n) = do fc <- reservedFC (show n)
+    extSymbol (Keyword n) = do (_, fc) <- reservedFC (show n)
                                highlightP fc AnnKeyword
                                return Nothing
     extSymbol (Expr n) = do tm <- expr syn
@@ -1420,7 +1420,7 @@ provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do doc <- P.try (do (doc, _) <- docstring syn
                                    fc1 <- getFC
                                    lchar '%'
-                                   fc2 <- reservedFC "provide"
+                                   (_, fc2) <- reservedFC "provide"
                                    highlightP (spanFC fc1 fc2) AnnKeyword
                                    return doc)
                   provideTerm doc <|> providePostulate doc
@@ -1468,7 +1468,7 @@ runElabDecl :: SyntaxInfo -> IdrisParser PDecl
 runElabDecl syn =
   do kwFC <- P.try (do fc <- getFC
                        lchar '%'
-                       fc' <- reservedFC "runElab"
+                       (_, fc') <- reservedFC "runElab"
                        return (spanFC fc fc'))
      script <- expr syn <?> "elaborator script"
      highlightP kwFC AnnKeyword

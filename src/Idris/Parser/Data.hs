@@ -141,10 +141,10 @@ DefaultEliminator ::= 'noelim'?
  -}
 dataOpts :: DataOpts -> IdrisParser DataOpts
 dataOpts opts
-    = do fc <- reservedFC "%elim"
+    = do (_, fc) <- reservedFC "%elim"
          warnElim fc
          dataOpts (DefaultEliminator : DefaultCaseFun : opts)
-  <|> do fc <- reservedFC "%case"
+  <|> do (_, fc) <- reservedFC "%case"
          warnElim fc
          dataOpts (DefaultCaseFun : opts)
   <|> do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
@@ -312,7 +312,7 @@ OverloadIdentifier ::= 'let' | Identifier;
 Overload ::= OverloadIdentifier '=' Expr;
 -}
 overload :: SyntaxInfo -> IdrisParser (String, PTerm)
-overload syn = do (o, fc) <- identifier <|> do fc <- reservedFC "let"
+overload syn = do (o, fc) <- identifier <|> do (_, fc) <- reservedFC "let"
                                                return ("let", fc)
                   if o `notElem` overloadable
                      then fail $ show o ++ " is not an overloading"

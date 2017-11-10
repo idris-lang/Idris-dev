@@ -280,14 +280,14 @@ reserved name = token $ P.try $ do
 
 -- | Parses a reserved identifier, computing its span. Assumes that
 -- reserved identifiers never contain line breaks.
-reservedFC :: MonadicParsing m => String -> m FC
+reservedFC :: MonadicParsing m => String -> m ((), FC)
 reservedFC str = do (FC file (l, c) _) <- getFC
                     reserved str
-                    return $ FC file (l, c) (l, c + length str)
+                    return $ ((), FC file (l, c) (l, c + length str))
 
 -- | Parse a reserved identfier, highlighting its span as a keyword
 reservedHL :: String -> IdrisParser ()
-reservedHL str = reservedFC str >>= flip highlightP AnnKeyword
+reservedHL str = snd <$> reservedFC str >>= flip highlightP AnnKeyword
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
@@ -577,7 +577,7 @@ notOpenBraces = do ist <- get
 {- | Parses an accessibilty modifier (e.g. public, private) -}
 accessibility' :: IdrisParser Accessibility
 accessibility'
-              = do fc <- reservedFC "public";
+              = do (_, fc) <- reservedFC "public"
                    gotexp <- optional (reserved "export")
                    case gotexp of
                         Just _ -> return ()
@@ -587,7 +587,7 @@ accessibility'
                               (fc, Msg "'public' is deprecated. Use 'public export' instead.")
                                    : parserWarnings ist }
                    return Public
-            <|> do fc <- reservedFC "abstract";
+            <|> do (_, fc) <- reservedFC "abstract";
                    ist <- get
                    put ist { parserWarnings =
                       (fc, Msg "The 'abstract' keyword is deprecated. Use 'export' instead.")
