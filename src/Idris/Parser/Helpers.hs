@@ -261,8 +261,8 @@ lchar :: MonadicParsing m => Char -> m Char
 lchar = token . P.char
 
 -- | Parses a character as a token, returning the source span of the character
-lcharFC :: MonadicParsing m => Char -> m FC
-lcharFC c = snd <$> tokenFC (P.char c)
+lcharFC :: MonadicParsing m => Char -> m (Char, FC)
+lcharFC = tokenFC . P.char
 
 symbol :: MonadicParsing m => String -> m ()
 symbol = void . P.symbol someSpace
