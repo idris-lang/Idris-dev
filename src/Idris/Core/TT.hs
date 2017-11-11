@@ -59,9 +59,9 @@ import Util.Pretty hiding (Str)
 
 -- Work around AMP without CPP
 import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Functor(..), Int,
-                Integer, Maybe(..), Monad(..), Num(..), Ord(..), Ordering(..),
-                Show(..), String, div, error, fst, max, min, mod, not,
-                otherwise, read, snd, ($), (&&), (.), (||))
+                Integer, Maybe(..), Monad(..), Monoid(..), Num(..), Ord(..),
+                Ordering(..), Show(..), String, div, error, fst, max, min, mod,
+                not, otherwise, read, snd, ($), (&&), (.), (||))
 
 import Control.Applicative (Alternative, Applicative(..))
 import qualified Control.Applicative as A (Alternative(..))
@@ -130,6 +130,10 @@ spanFC (FileFC f) (FileFC f') | f == f' = FileFC f
                               | otherwise = NoFC
 spanFC NoFC fc = fc
 spanFC fc NoFC = fc
+
+instance Monoid FC where
+  mempty = NoFC
+  mappend = spanFC
 
 -- | Determine whether the first argument is completely contained in the second
 fcIn :: FC -> FC -> Bool
