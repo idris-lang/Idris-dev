@@ -44,6 +44,7 @@ import Prelude hiding (pi)
 import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State.Strict
+import Control.Monad.Writer.Strict (execWriterT)
 import Data.Char
 import Data.Foldable (asum)
 import Data.Function
@@ -369,7 +370,7 @@ declExtension syn ns rules =
                                   return $ Just (n, SynTm tm)
     extSymbol (Binding n) = do (b, fc) <- name
                                return $ Just (n, SynBind fc b)
-    extSymbol (Symbol s) = do fc <- symbolFC s
+    extSymbol (Symbol s) = do fc <- execWriterT $ symbolFC s
                               highlightP fc AnnKeyword
                               return Nothing
 

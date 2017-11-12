@@ -161,7 +161,7 @@ extension syn ns rules =
                                         return $ Just (n, SynTm tm)
     extensionSymbol (Binding n)    = do (b, fc) <- name
                                         return $ Just (n, SynBind fc b)
-    extensionSymbol (Symbol s)     = do fc <- symbolFC s
+    extensionSymbol (Symbol s)     = do fc <- execWriterT $ symbolFC s
                                         highlightP fc AnnKeyword
                                         return Nothing
 
@@ -760,14 +760,14 @@ constraintArg syn = do symbol "@{"
 
 -}
 quasiquote :: SyntaxInfo -> IdrisParser PTerm
-quasiquote syn = do startFC <- symbolFC "`("
+quasiquote syn = do startFC <- execWriterT $ symbolFC "`("
                     e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
                                     inPattern = False }
                     g <- optional $
-                           do fc <- symbolFC ":"
+                           do fc <- execWriterT $ symbolFC ":"
                               ty <- expr syn { inPattern = False } -- don't allow antiquotes
                               return (ty, fc)
-                    endFC <- symbolFC ")"
+                    endFC <- execWriterT $ symbolFC ")"
                     mapM_ (uncurry highlightP) [(startFC, AnnKeyword), (endFC, AnnKeyword), (spanFC startFC endFC, AnnQuasiquote)]
                     case g of
                       Just (_, fc) -> highlightP fc AnnKeyword
@@ -782,7 +782,7 @@ quasiquote syn = do startFC <- symbolFC "`("
 -}
 unquote :: SyntaxInfo -> IdrisParser PTerm
 unquote syn = do guard (syn_in_quasiquote syn > 0)
-                 startFC <- symbolFC "~"
+                 startFC <- execWriterT $ symbolFC "~"
                  e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
                  endFC <- getFC
                  highlightP startFC AnnKeyword
@@ -797,12 +797,12 @@ unquote syn = do guard (syn_in_quasiquote syn > 0)
 -}
 namequote :: SyntaxInfo -> IdrisParser PTerm
 namequote syn = do (startFC, res) <-
-                     P.try (do fc <- symbolFC "`{{"
+                     P.try (do fc <- execWriterT $ symbolFC "`{{"
                                return (fc, False)) <|>
-                       (do fc <- symbolFC "`{"
+                       (do fc <- execWriterT $ symbolFC "`{"
                            return (fc, True))
                    (n, nfc) <- fnName
-                   endFC <- if res then symbolFC "}" else symbolFC "}}"
+                   endFC <- execWriterT $ if res then symbolFC "}" else symbolFC "}}"
                    mapM_ (uncurry highlightP)
                          [ (startFC, AnnKeyword)
                          , (endFC, AnnKeyword)

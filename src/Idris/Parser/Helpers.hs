@@ -268,10 +268,10 @@ lcharFC = WriterT . tokenFC . P.char
 symbol :: MonadicParsing m => String -> m ()
 symbol = void . P.symbol someSpace
 
-symbolFC :: MonadicParsing m => String -> m FC
-symbolFC str = do (FC file (l, c) _) <- getFC
-                  symbol str
-                  return $ FC file (l, c) (l, c + length str)
+symbolFC :: MonadicParsing m => String -> WriterT FC m ()
+symbolFC str = WriterT $ do (FC file (l, c) _) <- getFC
+                            symbol str
+                            return $ ((), FC file (l, c) (l, c + length str))
 
 -- | Parses a reserved identifier
 reserved :: MonadicParsing m => String -> m ()
