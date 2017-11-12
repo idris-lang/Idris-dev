@@ -303,8 +303,8 @@ reservedOpFC name = do (FC f (l, c) _) <- getFC
                        return ((), FC f (l, c) (l, c + length name))
 
 -- | Parses an identifier as a token
-identifier :: (MonadicParsing m) => m (String, FC)
-identifier = P.try $ do
+identifierFC :: (MonadicParsing m) => WriterT FC m String
+identifierFC = WriterT . P.try $ do
   (FC f (l, c) _) <- getFC
   ident <- identifierOrReserved
   when (ident `HS.member` reservedIdentifiers) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved " ++ ident
@@ -313,13 +313,13 @@ identifier = P.try $ do
 
 -- | Parses an identifier with possible namespace as a name
 iName :: (MonadicParsing m) => [String] -> m (Name, FC)
-iName bad = maybeWithNS identifier False bad <?> "name"
+iName bad = maybeWithNS (runWriterT identifierFC) False bad <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
 maybeWithNS :: (MonadicParsing m) => m (String, FC) -> Bool -> [String] -> m (Name, FC)
 maybeWithNS parser ascend bad = do
   fc <- getFC
-  i <- P.option "" (P.lookAhead (fst <$> identifier))
+  i <- P.option "" (P.lookAhead (fst <$> runWriterT identifierFC))
   when (i `elem` bad) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved identifier"
   let transf = if ascend then id else reverse
   (x, xs, fc) <- P.choice (transf (parserNoNS parser : parsersNS parser i))

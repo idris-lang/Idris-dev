@@ -44,7 +44,7 @@ import Prelude hiding (pi)
 import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (execWriterT)
+import Control.Monad.Writer.Strict (execWriterT, runWriterT)
 import Data.Char
 import Data.Foldable (asum)
 import Data.Function
@@ -87,7 +87,7 @@ moduleHeader :: IdrisParser (Maybe (Docstring ()), [String], [(FC, OutputAnnotat
 moduleHeader =     P.try (do docs <- optional docComment
                              noArgs docs
                              reservedHL "module"
-                             (i, ifc) <- identifier
+                             (i, ifc) <- runWriterT identifierFC
                              P.option ';' (lchar ';')
                              let modName = moduleName i
                              return (fmap fst docs,
@@ -120,9 +120,9 @@ import_ :: IdrisParser ImportInfo
 import_ = do fc <- getFC
              reservedHL "import"
              reexport <- P.option False (True <$ reservedHL "public")
-             (id, idfc) <- identifier
+             (id, idfc) <- runWriterT identifierFC
              newName <- optional (do reservedHL "as"
-                                     identifier)
+                                     runWriterT identifierFC)
              P.option ';' (lchar ';')
              return $ ImportInfo reexport (toPath id)
                         (fmap (\(n, fc) -> (toPath n, fc)) newName)
@@ -798,7 +798,7 @@ Namespace ::=
 namespace :: SyntaxInfo -> IdrisParser [PDecl]
 namespace syn =
     do reservedHL "namespace"
-       (n, nfc) <- identifier
+       (n, nfc) <- runWriterT identifierFC
        openBlock
        ds <- some (decl syn { syn_namespace = n : syn_namespace syn })
        closeBlock
@@ -1274,7 +1274,7 @@ Codegen ::= 'C'
 @
 -}
 codegen_ :: IdrisParser Codegen
-codegen_ = do n <- fst <$> identifier
+codegen_ = do n <- fst <$> runWriterT identifierFC
               return (Via IBCFormat (map toLower n))
        <|> do reserved "Bytecode"; return Bytecode
        <?> "code generation language"

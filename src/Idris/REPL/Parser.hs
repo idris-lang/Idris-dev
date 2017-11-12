@@ -27,6 +27,7 @@ import Idris.REPL.Commands
 
 import Control.Applicative
 import Control.Monad.State.Strict
+import Control.Monad.Writer.Strict
 import Data.Char (isSpace, toLower)
 import Data.List
 import Data.List.Split (splitOn)
@@ -262,12 +263,12 @@ strArg :: (String -> Command) -> String -> IP.IdrisParser (Either String Command
 strArg = genArg "string" (P.many P.anyChar)
 
 moduleArg :: (FilePath -> Command) -> String -> IP.IdrisParser (Either String Command)
-moduleArg = genArg "module" (fmap (toPath . fst) IP.identifier)
+moduleArg = genArg "module" (fmap (toPath . fst) (runWriterT IP.identifierFC))
   where
     toPath n = foldl1' (</>) $ splitOn "." n
 
 namespaceArg :: ([String] -> Command) -> String -> IP.IdrisParser (Either String Command)
-namespaceArg = genArg "namespace" (fmap (toNS . fst) IP.identifier)
+namespaceArg = genArg "namespace" (fmap (toNS . fst) (runWriterT IP.identifierFC))
   where
     toNS  = splitOn "."
 
@@ -369,20 +370,20 @@ cmd_compile name = do
     let codegenOption :: IP.IdrisParser Codegen
         codegenOption = do
             let bytecodeCodegen = discard (IP.symbol "bytecode") *> return Bytecode
-                viaCodegen = do x <- fst <$> IP.identifier
+                viaCodegen = do x <- fst <$> runWriterT IP.identifierFC
                                 return (Via IBCFormat (map toLower x))
             bytecodeCodegen <|> viaCodegen
 
     let hasOneArg = do
           i <- get
-          f <- fst <$> IP.identifier
+          f <- fst <$> runWriterT IP.identifierFC
           P.eof
           return $ Right (Compile defaultCodegen f)
 
     let hasTwoArgs = do
           i <- get
           codegen <- codegenOption
-          f <- fst <$> IP.identifier
+          f <- fst <$> runWriterT IP.identifierFC
           P.eof
           return $ Right (Compile codegen f)
 
@@ -416,7 +417,7 @@ cmd_cats name = do
     return $ Right $ LogCategory (concat cs)
   where
     badCat = do
-      c <- fst <$> IP.identifier
+      c <- fst <$> runWriterT IP.identifierFC
       fail $ "Category: " ++ c ++ " is not recognised."
 
     pLogCats :: IP.IdrisParser [LogCat]

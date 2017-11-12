@@ -12,12 +12,13 @@ import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
 import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName,
-                             identifier, isEol, lchar, packageName,
+                             identifierFC, isEol, lchar, packageName,
                              parseErrorDoc, reserved, runparser, someSpace,
                              stringLiteral)
 
 import Control.Applicative
 import Control.Monad.State.Strict
+import Control.Monad.Writer.Strict (runWriterT)
 import Data.List (union)
 import System.Directory (doesFileExist)
 import System.Exit
@@ -112,15 +113,15 @@ commaSep p = P.sepBy1 p (lchar ',')
 pClause :: PParser ()
 pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
-      <|> clause "sourcedir" (fst <$> identifier) (\st v -> st { sourcedir = v })
+      <|> clause "sourcedir" (fst <$> runWriterT identifierFC) (\st v -> st { sourcedir = v })
       <|> clause "opts" (pureArgParser . words . fst <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
       <|> clause "pkgs" (commaSep (pPkgName <* someSpace)) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
                    , idris_opts = pkgs ++ idris_opts st })
       <|> clause "modules" (commaSep (fst <$> iName [])) (\st v -> st { modules = modules st ++ v })
-      <|> clause "libs" (commaSep (fst <$> identifier)) (\st v -> st { libdeps = libdeps st ++ v })
-      <|> clause "objs" (commaSep (fst <$> identifier)) (\st v -> st { objs = objs st ++ v })
+      <|> clause "libs" (commaSep (fst <$> runWriterT identifierFC)) (\st v -> st { libdeps = libdeps st ++ v })
+      <|> clause "objs" (commaSep (fst <$> runWriterT identifierFC)) (\st v -> st { objs = objs st ++ v })
       <|> clause "makefile" (fst <$> iName []) (\st v -> st { makefile = Just (show v) })
       <|> clause "tests" (commaSep (fst <$> iName [])) (\st v -> st { idris_tests = idris_tests st ++ v })
       <|> clause "version" textUntilEol (\st v -> st { pkgversion = Just v })

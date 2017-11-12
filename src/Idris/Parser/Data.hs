@@ -20,6 +20,7 @@ import Prelude hiding (pi)
 
 import Control.Applicative
 import Control.Monad.State.Strict
+import Control.Monad.Writer.Strict (runWriterT)
 import Data.List
 import Data.Maybe
 import Text.Megaparsec ((<?>))
@@ -312,8 +313,8 @@ OverloadIdentifier ::= 'let' | Identifier;
 Overload ::= OverloadIdentifier '=' Expr;
 -}
 overload :: SyntaxInfo -> IdrisParser (String, PTerm)
-overload syn = do (o, fc) <- identifier <|> do (_, fc) <- reservedFC "let"
-                                               return ("let", fc)
+overload syn = do (o, fc) <- runWriterT identifierFC <|> do (_, fc) <- reservedFC "let"
+                                                            return ("let", fc)
                   if o `notElem` overloadable
                      then fail $ show o ++ " is not an overloading"
                      else do
