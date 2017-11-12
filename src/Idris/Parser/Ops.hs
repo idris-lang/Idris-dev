@@ -124,8 +124,8 @@ operatorName =     runWriterT (sUN <$> symbolicOperatorFC)
 
 -}
 operatorFront :: IdrisParser (Name, FC)
-operatorFront = P.try (runWriterT $ lcharFC '(' *> (eqTy <$ reservedOpFC "=") <* lcharFC ')')
-            <|> runWriterT (maybeWithNS (lcharFC '(' *> symbolicOperatorFC <* lcharFC ')') [])
+operatorFront = runWriterT $ do     P.try $ lcharFC '(' *> (eqTy <$ reservedOpFC "=") <* lcharFC ')'
+                                <|> maybeWithNS (lcharFC '(' *> symbolicOperatorFC <* lcharFC ')') []
 
 {- | Parses a function (either normal name or operator)
 
