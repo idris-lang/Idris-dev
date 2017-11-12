@@ -314,15 +314,14 @@ identifierFC = WriterT . P.try $ do
 
 -- | Parses an identifier with possible namespace as a name
 iName :: (MonadicParsing m) => [String] -> m (Name, FC)
-iName bad = maybeWithNS (runWriterT identifierFC) bad <?> "name"
+iName bad = runWriterT (maybeWithNS identifierFC bad) <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
-maybeWithNS :: (MonadicParsing m) => m (String, FC) -> [String] -> m (Name, FC)
-maybeWithNS parser bad = do
-  fc <- getFC
+maybeWithNS :: (MonadicParsing m) => WriterT FC m String -> [String] -> WriterT FC m Name
+maybeWithNS parser bad = WriterT $ do
   i <- P.option "" (P.lookAhead (fst <$> runWriterT identifierFC))
   when (i `elem` bad) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved identifier"
-  (x, xs, fc) <- P.choice (reverse (parserNoNS parser : parsersNS parser i))
+  (x, xs, fc) <- P.choice (reverse (parserNoNS (runWriterT parser) : parsersNS (runWriterT parser) i))
   return (mkName (x, xs), fc)
   where parserNoNS :: MonadicParsing m => m (String, FC) -> m (String, String, FC)
         parserNoNS parser = do startFC <- getFC
