@@ -361,7 +361,7 @@ declExtension syn ns rules =
     ruleGroup _ _ = False
 
     extSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
-    extSymbol (Keyword n) = do (_, fc) <- reservedFC (show n)
+    extSymbol (Keyword n) = do fc <- execWriterT $ reservedFC (show n)
                                highlightP fc AnnKeyword
                                return Nothing
     extSymbol (Expr n) = do tm <- expr syn
@@ -664,7 +664,7 @@ fnOpt = do reservedHL "total"; return TotalFn
         <|> NoImplicit <$ P.try (lchar '%' *> reserved "no_implicit")
         <|> Inlinable <$ P.try (lchar '%' *> reserved "inline")
         <|> StaticFn <$ P.try (lchar '%' *> reserved "static")
-        <|> do (_, fc) <- P.try (lchar '%' *> reservedFC "assert_total")
+        <|> do fc <- P.try $ execWriterT $ lcharFC '%' *> reservedFC "assert_total"
                parserWarning fc Nothing (Msg "%assert_total is deprecated. Use the 'assert_total' function instead.")
                return AssertTotal
         <|> ErrorHandler <$ P.try (lchar '%' *> reserved "error_handler")
@@ -1418,10 +1418,8 @@ ProviderWhat ::= 'proof' | 'term' | 'type' | 'postulate'
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do doc <- P.try (do (doc, _) <- docstring syn
-                                   fc1 <- getFC
-                                   lchar '%'
-                                   (_, fc2) <- reservedFC "provide"
-                                   highlightP (spanFC fc1 fc2) AnnKeyword
+                                   fc <- execWriterT $ lcharFC '%' *> reservedFC "provide"
+                                   highlightP fc AnnKeyword
                                    return doc)
                   provideTerm doc <|> providePostulate doc
                <?> "type provider"
@@ -1466,10 +1464,7 @@ RunElabDecl ::= '%' 'runElab' Expr
 -}
 runElabDecl :: SyntaxInfo -> IdrisParser PDecl
 runElabDecl syn =
-  do kwFC <- P.try (do fc <- getFC
-                       lchar '%'
-                       (_, fc') <- reservedFC "runElab"
-                       return (spanFC fc fc'))
+  do kwFC <- P.try (execWriterT $ lcharFC '%' *> reservedFC "runElab")
      script <- expr syn <?> "elaborator script"
      highlightP kwFC AnnKeyword
      return $ PRunElabDecl kwFC script (syn_namespace syn)

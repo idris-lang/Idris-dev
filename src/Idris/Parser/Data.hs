@@ -20,7 +20,7 @@ import Prelude hiding (pi)
 
 import Control.Applicative
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (runWriterT)
+import Control.Monad.Writer.Strict (execWriterT, runWriterT)
 import Data.List
 import Data.Maybe
 import Text.Megaparsec ((<?>))
@@ -142,10 +142,10 @@ DefaultEliminator ::= 'noelim'?
  -}
 dataOpts :: DataOpts -> IdrisParser DataOpts
 dataOpts opts
-    = do (_, fc) <- reservedFC "%elim"
+    = do fc <- execWriterT $ reservedFC "%elim"
          warnElim fc
          dataOpts (DefaultEliminator : DefaultCaseFun : opts)
-  <|> do (_, fc) <- reservedFC "%case"
+  <|> do fc <- execWriterT $ reservedFC "%case"
          warnElim fc
          dataOpts (DefaultCaseFun : opts)
   <|> do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
@@ -313,8 +313,7 @@ OverloadIdentifier ::= 'let' | Identifier;
 Overload ::= OverloadIdentifier '=' Expr;
 -}
 overload :: SyntaxInfo -> IdrisParser (String, PTerm)
-overload syn = do (o, fc) <- runWriterT identifierFC <|> do (_, fc) <- reservedFC "let"
-                                                            return ("let", fc)
+overload syn = do (o, fc) <- runWriterT $ identifierFC <|> "let" <$ reservedFC "let"
                   if o `notElem` overloadable
                      then fail $ show o ++ " is not an overloading"
                      else do
