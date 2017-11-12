@@ -21,6 +21,7 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
+import Control.Monad.Writer.Strict (WriterT(..))
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
@@ -261,8 +262,8 @@ lchar :: MonadicParsing m => Char -> m Char
 lchar = token . P.char
 
 -- | Parses a character as a token, returning the source span of the character
-lcharFC :: MonadicParsing m => Char -> m (Char, FC)
-lcharFC = tokenFC . P.char
+lcharFC :: MonadicParsing m => Char -> WriterT FC m Char
+lcharFC = WriterT . tokenFC . P.char
 
 symbol :: MonadicParsing m => String -> m ()
 symbol = void . P.symbol someSpace

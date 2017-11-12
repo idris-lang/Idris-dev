@@ -21,6 +21,7 @@ import Control.Applicative
 import Control.Arrow (left)
 import Control.Monad
 import Control.Monad.State.Strict
+import Control.Monad.Writer.Strict (execWriterT)
 import Data.Function (on)
 import Data.List
 import Data.Maybe
@@ -444,7 +445,7 @@ Bracketed ::= '(' Bracketed'
 @
  -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
-bracketed syn = do (_, FC fn (sl, sc) _) <- lcharFC '(' <?> "parenthesized expression"
+bracketed syn = do (FC fn (sl, sc) _) <- execWriterT (lcharFC '(') <?> "parenthesized expression"
                    bracketed' (FC fn (sl, sc) (sl, sc+1)) (syn { withAppAllowed = True })
 
 {- |Parses the rest of an expression in braces
@@ -461,7 +462,7 @@ Bracketed' ::=
 -}
 bracketed' :: FC -> SyntaxInfo -> IdrisParser PTerm
 bracketed' open syn =
-            do (_, FC f start (l, c)) <- lcharFC ')'
+            do (FC f start (l, c)) <- execWriterT (lcharFC ')')
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
         <|> P.try (dependentPair TypeOrTerm [] open syn)
         <|> P.try (do (opName, fc) <- operatorName
@@ -508,7 +509,7 @@ dependentPair pun prev openFC syn =
   where nametypePart = do
           (ln, lnfc, colonFC) <- P.try $ do
             (ln, lnfc) <- name
-            (_, colonFC) <- lcharFC ':'
+            colonFC <- execWriterT (lcharFC ':')
             return (ln, lnfc, colonFC)
           lty <- expr' syn
           (_, starsFC) <- reservedOpFC "**"
@@ -521,7 +522,7 @@ dependentPair pun prev openFC syn =
           e <- expr syn
           sepFCE <-
             let stars = (Left . snd <$> reservedOpFC "**")
-                ending = (Right . snd <$> lcharFC ')')
+                ending = (Right <$> execWriterT (lcharFC ')'))
             in if isEnd then ending else stars <|> ending
           case sepFCE of
             Left starsFC -> dependentPair IsTerm ((e, Nothing, starsFC):prev) openFC syn
@@ -538,10 +539,10 @@ dependentPair pun prev openFC syn =
 bracketedExpr :: SyntaxInfo -> FC -> PTerm -> IdrisParser PTerm
 bracketedExpr syn openParenFC e =
              do lchar ')'; return e
-        <|>  do exprs <- some (do (_, comma) <- lcharFC ','
+        <|>  do exprs <- some (do comma <- execWriterT (lcharFC ',')
                                   r <- expr syn
                                   return (r, comma))
-                (_, closeParenFC) <- lcharFC ')'
+                closeParenFC <- execWriterT (lcharFC ')')
                 let hilite = [openParenFC, closeParenFC] ++ map snd exprs
                 return $ PPair openParenFC hilite TypeOrTerm e (mergePairs exprs)
         <|>  do (_, starsFC) <- reservedOpFC "**"
