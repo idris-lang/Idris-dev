@@ -55,6 +55,7 @@
 + `Prelude.Doubles.atan2` is now implemented as a primitive instead of
   being coded in Idris.
 + Added `Test.Unit` to `contrib` for simple unit testing.
++ Removed several deprecated items from the libraries shipped with Idris.
 + Moved `abs` from the `Neg` interface into its own `Abs` interface.  `Nat`
   implements `Abs` with `abs = id`.
 

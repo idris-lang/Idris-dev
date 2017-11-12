@@ -33,24 +33,36 @@ rule, inspired by views in ``Epigram`` [1]_, which takes account of
 the fact that matching on a value in a dependently typed language can
 affect what we know about the forms of other values. In its simplest
 form, the ``with`` rule adds another argument to the function being
-defined, e.g. we have already seen a vector filter function, defined
-as follows:
+defined.
+
+We have already seen a vector filter function. This time, we define it
+using ``with`` as follows:
 
 .. code-block:: idris
 
     filter : (a -> Bool) -> Vect n a -> (p ** Vect p a)
     filter p [] = ( _ ** [] )
     filter p (x :: xs) with (filter p xs)
-      | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
+      filter p (x :: xs) | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 
 Here, the ``with`` clause allows us to deconstruct the result of
-``filter p xs``. Effectively, it adds this value as an extra argument,
-which we place after the vertical bar.
+``filter p xs``. The view refined argument pattern ``filter p (x ::
+xs)`` goes beneath the ``with`` clause, followed by a vertical bar
+``|``, followed by the deconstructed intermediate result ``( _ ** xs'
+)``. If the view refined argument pattern is unchanged from the
+original function argument pattern, then the left side of ``|`` is
+extraneous and may be omitted:
+
+.. code-block:: idris
+
+    filter p (x :: xs) with (filter p xs)
+      | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 
 If the intermediate computation itself has a dependent type, then the
 result can affect the forms of other arguments — we can learn the form
-of one value by testing another. For example, a ``Nat`` is either even
-or odd. If it’s even it will be the sum of two equal ``Nat``.
+of one value by testing another. In these cases, view refined argument
+patterns must be explicit. For example, a ``Nat`` is either even or
+odd. If it is even it will be the sum of two equal ``Nat``.
 Otherwise, it is the sum of two equal ``Nat`` plus one:
 
 .. code-block:: idris
@@ -80,14 +92,29 @@ rule:
        natToBin (j + j)     | Even = False :: natToBin j
        natToBin (S (j + j)) | Odd  = True  :: natToBin j
 
-The value of the result of ``parity k`` affects the form of ``k``,
-because the result of ``parity k`` depends on ``k``. So, as well as
-the patterns for the result of the intermediate computation (``Even``
-and ``odd``) right of the ``|``, we also write how the results
-affect the other patterns left of the ``|``. Note that there is
-a function in the patterns (``+``) and repeated occurrences of
-``j``—this is allowed because another argument has determined the form
-of these patterns.
+The value of ``parity k`` affects the form of ``k``, because the
+result of ``parity k`` depends on ``k``. So, as well as the patterns
+for the result of the intermediate computation (``Even`` and ``Odd``)
+right of the ``|``, we also write how the results affect the other
+patterns left of the ``|``. That is:
+
+- When ``parity k`` evaluates to ``Even``, we can refine the original
+  argument ``k`` to a refined pattern ``(j + j)`` according to
+  ``Parity (n + n)`` from the ``Even`` constructor definition. So
+  ``(j + j)`` replaces ``k`` on the left side of ``|``, and the
+  ``Even`` constructor appears on the right side. The natural number
+  ``j`` in the refined pattern can be used on the ride side of the
+  ``=`` sign.
+
+- Otherwise, when ``parity k`` evaluates to ``Odd``, the original
+  argument ``k`` is refined to ``S (j + j)`` according to ``Parity (S
+  (n + n))`` from the ``Odd`` constructor definition, and ``Odd`` now
+  appears on the ride side of ``|``, again with the natural number
+  ``j`` used on the ride side of the ``=`` sign.
+
+Note that there is a function in the patterns (``+``) and repeated
+occurrences of ``j`` - this is allowed because another argument has
+determined the form of these patterns.
 
 We will return to this function in the next section :ref:`sect-parity` to
 complete the definition of ``parity``.

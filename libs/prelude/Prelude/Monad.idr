@@ -1,6 +1,5 @@
+||| Monads and Functors
 module Prelude.Monad
-
--- Monads and Functors
 
 import Builtins
 import Prelude.Functor
@@ -28,11 +27,7 @@ interface Applicative m => Monad (m : Type -> Type) where
 ||| define `return` and `pure` differently!
 return : Monad m => a -> m a
 return = pure
-%deprecate return "Please use `pure`, which is equivalent."
-
-flatten : Monad m => m (m a) -> m a
-flatten = join
-%deprecate flatten "Please use `join`, which is the standard name."
+%fragile return "`return` is provided for those coming from Haskell. Please use `pure` instead, which is equivalent."
 
 ||| Similar to `foldl`, but uses a function wrapping its result in a `Monad`.
 ||| Consequently, the final value is wrapped in the same `Monad`.
