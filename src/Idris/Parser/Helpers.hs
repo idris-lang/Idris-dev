@@ -396,10 +396,10 @@ symbolicOperator = do op <- token . some $ operatorLetter
                       return op
 
 -- | Parses an operator
-symbolicOperatorFC :: MonadicParsing m => m (String, FC)
-symbolicOperatorFC = do (FC f (l, c) _) <- getFC
-                        op <- symbolicOperator
-                        return (op, FC f (l, c) (l, c + length op))
+symbolicOperatorFC :: MonadicParsing m => WriterT FC m String
+symbolicOperatorFC = WriterT $ do (FC f (l, c) _) <- getFC
+                                  op <- symbolicOperator
+                                  return (op, FC f (l, c) (l, c + length op))
 
 {- * Position helpers -}
 

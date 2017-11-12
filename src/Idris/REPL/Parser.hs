@@ -235,7 +235,7 @@ exprArg cmd name = do
           return $ Left ("Usage is :" ++ name ++ " <expression>")
 
     let justOperator = do
-          (op, fc) <- IP.symbolicOperatorFC
+          (op, fc) <- runWriterT IP.symbolicOperatorFC
           P.eof
           return $ Right $ cmd (PRef fc [] (sUN op))
 

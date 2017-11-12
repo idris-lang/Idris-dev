@@ -16,7 +16,6 @@ import Idris.Parser.Helpers
 import Prelude hiding (pi)
 
 import Control.Applicative
-import Control.Arrow (first)
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Monad.Writer.Strict
@@ -110,7 +109,7 @@ backtickOperator = P.between (indentGt *> lchar '`') (indentGt *> lchar '`') nam
 @
 -}
 operatorName :: IdrisParser (Name, FC)
-operatorName =     first sUN <$> symbolicOperatorFC
+operatorName =     runWriterT (sUN <$> symbolicOperatorFC)
                <|> backtickOperator
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
