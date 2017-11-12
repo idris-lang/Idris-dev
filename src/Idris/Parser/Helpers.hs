@@ -321,18 +321,16 @@ maybeWithNS :: (MonadicParsing m) => WriterT FC m String -> [String] -> WriterT 
 maybeWithNS parser bad = WriterT $ do
   i <- P.option "" (P.lookAhead (fst <$> runWriterT identifierFC))
   when (i `elem` bad) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved identifier"
-  (x, xs, fc) <- P.choice (reverse (parserNoNS (runWriterT parser) : parsersNS (runWriterT parser) i))
+  ((x, xs), fc) <- P.choice (reverse (runWriterT (parserNoNS parser) : parsersNS (runWriterT parser) i))
   return (mkName (x, xs), fc)
-  where parserNoNS :: MonadicParsing m => m (String, FC) -> m (String, String, FC)
-        parserNoNS parser = do startFC <- getFC
-                               (x, nameFC) <- parser
-                               return (x, "", spanFC startFC nameFC)
-        parserNS   :: MonadicParsing m => m (String, FC) -> String -> m (String, String, FC)
+  where parserNoNS :: MonadicParsing m => WriterT FC m String -> WriterT FC m (String, String)
+        parserNoNS = fmap (\x -> (x, ""))
+        parserNS   :: MonadicParsing m => m (String, FC) -> String -> m ((String, String), FC)
         parserNS   parser ns = do startFC <- getFC
                                   xs <- string ns
                                   lchar '.';  (x, nameFC) <- parser
-                                  return (x, xs, spanFC startFC nameFC)
-        parsersNS  :: MonadicParsing m => m (String, FC) -> String -> [m (String, String, FC)]
+                                  return ((x, xs), spanFC startFC nameFC)
+        parsersNS  :: MonadicParsing m => m (String, FC) -> String -> [m ((String, String), FC)]
         parsersNS parser i = [P.try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
 
 -- | Parses a name
