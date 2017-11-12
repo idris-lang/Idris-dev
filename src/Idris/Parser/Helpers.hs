@@ -314,16 +314,15 @@ identifierFC = WriterT . P.try $ do
 
 -- | Parses an identifier with possible namespace as a name
 iName :: (MonadicParsing m) => [String] -> m (Name, FC)
-iName bad = maybeWithNS (runWriterT identifierFC) False bad <?> "name"
+iName bad = maybeWithNS (runWriterT identifierFC) bad <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
-maybeWithNS :: (MonadicParsing m) => m (String, FC) -> Bool -> [String] -> m (Name, FC)
-maybeWithNS parser ascend bad = do
+maybeWithNS :: (MonadicParsing m) => m (String, FC) -> [String] -> m (Name, FC)
+maybeWithNS parser bad = do
   fc <- getFC
   i <- P.option "" (P.lookAhead (fst <$> runWriterT identifierFC))
   when (i `elem` bad) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved identifier"
-  let transf = if ascend then id else reverse
-  (x, xs, fc) <- P.choice (transf (parserNoNS parser : parsersNS parser i))
+  (x, xs, fc) <- P.choice (reverse (parserNoNS parser : parsersNS parser i))
   return (mkName (x, xs), fc)
   where parserNoNS :: MonadicParsing m => m (String, FC) -> m (String, String, FC)
         parserNoNS parser = do startFC <- getFC
