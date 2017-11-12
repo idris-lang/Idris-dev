@@ -19,6 +19,7 @@ import Control.Applicative
 import Control.Arrow (first)
 import Control.Monad
 import Control.Monad.State.Strict
+import Control.Monad.Writer.Strict
 import Data.Char (isAlpha)
 import Data.List
 import Data.List.NonEmpty (fromList)
@@ -78,13 +79,13 @@ table fixes
                             return $ f fc n
       | otherwise       = ctor $ do
                             indentGt
-                            (_, fc) <- reservedOpFC name
+                            fc <- execWriterT $ reservedOpFC name
                             indentGt
                             return $ f fc (sUN name)
 
     prefix :: String -> (FC -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
     prefix name f = P.Prefix $ do
-                      (_, fc) <- reservedOpFC name
+                      fc <- execWriterT $ reservedOpFC name
                       indentGt
                       return (f fc)
 
