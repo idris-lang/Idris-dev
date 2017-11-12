@@ -125,9 +125,7 @@ operatorName =     first sUN <$> symbolicOperatorFC
 
 -}
 operatorFront :: IdrisParser (Name, FC)
-operatorFront = P.try (do (FC f (l, c) _) <- getFC
-                          op <- lchar '(' *> reservedOp "=" <* lchar ')'
-                          return (eqTy, FC f (l, c) (l, c+3)))
+operatorFront = P.try (runWriterT $ lcharFC '(' *> (eqTy <$ reservedOpFC "=") <* lcharFC ')')
             <|> maybeWithNS (do (FC f (l, c) _) <- getFC
                                 op <- lchar '(' *> symbolicOperator
                                 (FC _ _ (l', c')) <- getFC
