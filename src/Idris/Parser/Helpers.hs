@@ -224,10 +224,10 @@ charLiteral :: MonadicParsing m => m (Char, FC)
 charLiteral = runWriterT . tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
 
 -- | Parses a natural number
-natural :: MonadicParsing m => m (Integer, FC)
-natural = runWriterT (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
-                      <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
-                      <|> P.try P.decimal)
+natural :: MonadicParsing m => WriterT FC m Integer
+natural = tokenFC (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
+                   <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
+                   <|> P.try P.decimal)
 
 -- | Parses a floating point number
 float :: MonadicParsing m => WriterT FC m Double

@@ -297,8 +297,8 @@ proofArg cmd name = do
     upd <- P.option False $ do
         IP.lchar '!'
         return True
-    l <- fst <$> IP.natural
-    n <- fst <$> IP.name;
+    l <- fst <$> runWriterT IP.natural
+    n <- fst <$> IP.name
     return (Right (cmd upd (fromInteger l) n))
 
 cmd_doc :: String -> IP.IdrisParser (Either String Command)
@@ -326,11 +326,11 @@ cmd_consolewidth name = do
         pConsoleWidth :: IP.IdrisParser ConsoleWidth
         pConsoleWidth = do discard (IP.symbol "auto"); return AutomaticWidth
                     <|> do discard (IP.symbol "infinite"); return InfinitelyWide
-                    <|> do n <- fmap (fromInteger . fst) IP.natural
+                    <|> do n <- fmap (fromInteger . fst) (runWriterT IP.natural)
                            return (ColsWide n)
 
 cmd_printdepth :: String -> IP.IdrisParser (Either String Command)
-cmd_printdepth _ = do d <- optional (fmap (fromInteger . fst) IP.natural)
+cmd_printdepth _ = do d <- optional (fmap (fromInteger . fst) (runWriterT IP.natural))
                       return (Right $ SetPrinterDepth d)
 
 cmd_execute :: String -> IP.IdrisParser (Either String Command)
@@ -353,7 +353,7 @@ cmd_pprint :: String -> IP.IdrisParser (Either String Command)
 cmd_pprint name = do
      fmt <- ppFormat
      IP.whiteSpace
-     n <- fmap (fromInteger . fst) IP.natural
+     n <- fmap (fromInteger . fst) (runWriterT IP.natural)
      IP.whiteSpace
      t <- IP.fullExpr defaultSyntax
      return (Right (PPrint fmt n t))
@@ -400,13 +400,13 @@ cmd_addproof name = do
 
 cmd_log :: String -> IP.IdrisParser (Either String Command)
 cmd_log name = do
-    i <- fmap (fromIntegral . fst) IP.natural
+    i <- fmap (fromIntegral . fst) (runWriterT IP.natural)
     P.eof
     return (Right (LogLvl i))
 
 cmd_verb :: String -> IP.IdrisParser (Either String Command)
 cmd_verb name = do
-    i <- fmap (fromIntegral . fst) IP.natural
+    i <- fmap (fromIntegral . fst) (runWriterT IP.natural)
     P.eof
     return (Right (Verbosity i))
 
@@ -439,7 +439,7 @@ cmd_unlet name = (Right . Undefine) `fmap` P.many (fst <$> IP.name)
 
 cmd_loadto :: String -> IP.IdrisParser (Either String Command)
 cmd_loadto name = do
-    toline <- fmap (fromInteger . fst) IP.natural
+    toline <- fmap (fromInteger . fst) (runWriterT IP.natural)
     f <- P.many P.anyChar
     return (Right (Load f (Just toline)))
 
@@ -529,13 +529,13 @@ cmd_search = packageBasedCmd
 cmd_proofsearch :: String -> IP.IdrisParser (Either String Command)
 cmd_proofsearch name = do
     upd <- P.option False (True <$ IP.lchar '!')
-    l <- fmap (fromInteger . fst) IP.natural; n <- fst <$> IP.name
+    l <- fmap (fromInteger . fst) (runWriterT IP.natural); n <- fst <$> IP.name
     hints <- P.many (fst <$> IP.fnName)
     return (Right (DoProofSearch upd True l n hints))
 
 cmd_refine :: String -> IP.IdrisParser (Either String Command)
 cmd_refine name = do
    upd <- P.option False (do IP.lchar '!'; return True)
-   l <- fmap (fromInteger . fst) IP.natural; n <- fst <$> IP.name
+   l <- fmap (fromInteger . fst) (runWriterT IP.natural); n <- fst <$> IP.name
    hint <- fst <$> IP.fnName
    return (Right (DoProofSearch upd False l n [hint]))

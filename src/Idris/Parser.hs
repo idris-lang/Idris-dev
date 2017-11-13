@@ -680,7 +680,7 @@ fnOpt = do reservedHL "total"; return TotalFn
         <?> "function modifier"
   where nameTimes :: IdrisParser (Name, Maybe Int)
         nameTimes = do n <- fst <$> fnName
-                       t <- P.option Nothing (do reds <- fmap fst natural
+                       t <- P.option Nothing (do reds <- fmap fst (runWriterT natural)
                                                  return (Just (fromInteger reds)))
                        return (n, t)
 
@@ -1351,7 +1351,7 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     put (i { default_total = tot } )
                     return [PDirective (DDefault tot)]
              <|> do P.try (lchar '%' *> reserved "logging")
-                    i <- fst <$> natural
+                    i <- fst <$> runWriterT natural
                     return [PDirective (DLogging i)]
              <|> do P.try (lchar '%' *> reserved "dynamic")
                     libs <- P.sepBy1 (fmap fst stringLiteral) (lchar ',')

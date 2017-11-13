@@ -1449,7 +1449,7 @@ constants =
 constant :: IdrisParser (Idris.Core.TT.Const, FC)
 constant = P.choice [ runWriterT (ty <$ reservedFC name) | (name, ty) <- constants ]
         <|> runWriterT (P.try (Fl <$> float))
-        <|> do (i, fc) <- natural; return (BI i, fc)
+        <|> runWriterT (BI <$> natural)
         <|> do (s, fc) <- verbatimStringLiteral; return (Str s, fc)
         <|> do (s, fc) <- stringLiteral;  return (Str s, fc)
         <|> do (c, fc) <- P.try charLiteral; return (Ch c, fc) --Currently ambigous with symbols
@@ -1586,7 +1586,7 @@ tactics =
   , noArgs ["trivial"] Trivial
   , noArgs ["unify"] DoUnify
   , (["search"], Nothing, const $
-      do depth <- P.option 10 $ fst <$> natural
+      do depth <- P.option 10 $ fst <$> runWriterT natural
          return (ProofSearch True True (fromInteger depth) Nothing [] []))
   , noArgs ["implementation"] TCImplementation
   , noArgs ["solve"] Solve
