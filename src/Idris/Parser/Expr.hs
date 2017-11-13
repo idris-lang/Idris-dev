@@ -1448,7 +1448,7 @@ constants =
 -- | Parse a constant and its source span
 constant :: IdrisParser (Idris.Core.TT.Const, FC)
 constant = P.choice [ runWriterT (ty <$ reservedFC name) | (name, ty) <- constants ]
-        <|> do (f, fc) <- P.try float; return (Fl f, fc)
+        <|> runWriterT (P.try (Fl <$> float))
         <|> do (i, fc) <- natural; return (BI i, fc)
         <|> do (s, fc) <- verbatimStringLiteral; return (Str s, fc)
         <|> do (s, fc) <- stringLiteral;  return (Str s, fc)

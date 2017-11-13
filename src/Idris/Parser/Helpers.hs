@@ -220,18 +220,18 @@ stringLiteral :: MonadicParsing m => m (String, FC)
 stringLiteral = runWriterT . tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
 
 -- | Parses a char literal
-charLiteral :: IdrisParser (Char, FC)
+charLiteral :: MonadicParsing m => m (Char, FC)
 charLiteral = runWriterT . tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
 
 -- | Parses a natural number
-natural :: IdrisParser (Integer, FC)
+natural :: MonadicParsing m => m (Integer, FC)
 natural = runWriterT (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
                       <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
                       <|> P.try P.decimal)
 
 -- | Parses a floating point number
-float :: IdrisParser (Double, FC)
-float = runWriterT . tokenFC . P.try $ P.float
+float :: MonadicParsing m => WriterT FC m Double
+float = tokenFC . P.try $ P.float
 
 {- * Symbols, identifiers, names and operators -}
 
