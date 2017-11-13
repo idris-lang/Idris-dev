@@ -1280,26 +1280,21 @@ ExprList ::=
 @
  -}
 listExpr :: SyntaxInfo -> IdrisParser PTerm
-listExpr syn = do (FC f (l, c) _) <- getFC
-                  lchar '['; fc <- getFC;
-                  (P.try . token $ do (char ']' <?> "end of list expression")
-                                      (FC _ _ (l', c')) <- getFC
-                                      return (mkNil (FC f (l, c) (l', c'))))
-                   <|> (do x <- expr (syn { withAppAllowed = False }) <?> "expression"
+listExpr syn = do (FC f (l, c) _) <- execWriterT (lcharFC '[')
+                  (do (FC _ _ (l', c')) <- execWriterT (lcharFC ']') <?> "end of list expression"
+                      return (mkNil (FC f (l, c) (l', c'))))
+                   <|> (do fc <- getFC
+                           x <- expr (syn { withAppAllowed = False }) <?> "expression"
                            (do P.try (lchar '|') <?> "list comprehension"
                                qs <- P.sepBy1 (do_ syn) (lchar ',')
                                lchar ']'
                                return (PDoBlock (map addGuard qs ++
                                           [DoExp fc (PApp fc (PRef fc [] (sUN "pure"))
                                                        [pexp x])]))) <|>
-                            (do xs <- many (do (FC fn (sl, sc) _) <- getFC
-                                               lchar ',' <?> "list element"
-                                               let commaFC = FC fn (sl, sc) (sl, sc + 1)
+                            (do xs <- many (do commaFC <- execWriterT (lcharFC ',') <?> "list element"
                                                elt <- expr syn
                                                return (elt, commaFC))
-                                (FC fn (sl, sc) _) <- getFC
-                                lchar ']' <?> "end of list expression"
-                                let rbrackFC = FC fn (sl, sc) (sl, sc+1)
+                                rbrackFC <- execWriterT (lcharFC ']') <?> "end of list expression"
                                 return (mkList fc rbrackFC ((x, (FC f (l, c) (l, c+1))) : xs))))
                 <?> "list expression"
   where
