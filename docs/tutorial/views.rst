@@ -94,7 +94,7 @@ rule:
 
 The value of ``parity k`` affects the form of ``k``, because the
 result of ``parity k`` depends on ``k``. So, as well as the patterns
-for the result of the intermediate computation (``Even`` and ``odd``)
+for the result of the intermediate computation (``Even`` and ``Odd``)
 right of the ``|``, we also write how the results affect the other
 patterns left of the ``|``. That is:
 
@@ -113,7 +113,7 @@ patterns left of the ``|``. That is:
   ``j`` used on the ride side of the ``=`` sign.
 
 Note that there is a function in the patterns (``+``) and repeated
-occurrences of ``j``—this is allowed because another argument has
+occurrences of ``j`` - this is allowed because another argument has
 determined the form of these patterns.
 
 We will return to this function in the next section :ref:`sect-parity` to
