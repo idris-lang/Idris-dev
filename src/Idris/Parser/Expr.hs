@@ -1451,8 +1451,8 @@ constant = P.choice [ runWriterT (ty <$ reservedFC name) | (name, ty) <- constan
         <|> runWriterT (P.try (Fl <$> float))
         <|> runWriterT (BI <$> natural)
         <|> do (s, fc) <- verbatimStringLiteral; return (Str s, fc)
-        <|> do (s, fc) <- stringLiteral;  return (Str s, fc)
-        <|> do (c, fc) <- P.try charLiteral; return (Ch c, fc) --Currently ambigous with symbols
+        <|> runWriterT (Str <$> stringLiteral)
+        <|> runWriterT (P.try (Ch <$> charLiteral)) --Currently ambigous with symbols
         <?> "constant or literal"
 
 {- | Parses a verbatim multi-line string literal (triple-quoted)
@@ -1602,7 +1602,7 @@ tactics =
   , expressionTactic [":t", ":type"] TCheck
   , expressionTactic [":search"] TSearch
   , (["fail"], Just StringLitTArg, const $
-       do msg <- fst <$> stringLiteral
+       do msg <- fst <$> runWriterT stringLiteral
           return $ TFail [Idris.Core.TT.TextPart msg])
   , ([":doc"], Just ExprTArg, const $
        do whiteSpace

@@ -549,7 +549,7 @@ syntaxSym =    P.try (do lchar '['; n <- fst <$> name; lchar ']'
                           return (Binding n))
             <|> do n <- fst <$> iName []
                    return (Keyword n)
-            <|> do sym <- fmap fst stringLiteral
+            <|> do sym <- fst <$> runWriterT stringLiteral
                    return (Symbol sym)
             <?> "syntax symbol"
 
@@ -659,7 +659,7 @@ fnOpt :: IdrisParser FnOpt
 fnOpt = do reservedHL "total"; return TotalFn
         <|> PartialFn <$ reservedHL "partial"
         <|> CoveringFn <$ reservedHL "covering"
-        <|> do P.try (lchar '%' *> reserved "export"); c <- fmap fst stringLiteral;
+        <|> do P.try (lchar '%' *> reserved "export"); c <- fst <$> runWriterT stringLiteral;
                       return $ CExport c
         <|> NoImplicit <$ P.try (lchar '%' *> reserved "no_implicit")
         <|> Inlinable <$ P.try (lchar '%' *> reserved "inline")
@@ -1315,17 +1315,17 @@ Directive' ::= 'lib'            CodeGen String_t
 directive :: SyntaxInfo -> IdrisParser [PDecl]
 directive syn = do P.try (lchar '%' *> reserved "lib")
                    cgn <- codegen_
-                   lib <- fmap fst stringLiteral
+                   lib <- fst <$> runWriterT stringLiteral
                    return [PDirective (DLib cgn lib)]
              <|> do P.try (lchar '%' *> reserved "link")
-                    cgn <- codegen_; obj <- fst <$> stringLiteral
+                    cgn <- codegen_; obj <- fst <$> runWriterT stringLiteral
                     return [PDirective (DLink cgn obj)]
              <|> do P.try (lchar '%' *> reserved "flag")
-                    cgn <- codegen_; flag <- fst <$> stringLiteral
+                    cgn <- codegen_; flag <- fst <$> runWriterT stringLiteral
                     return [PDirective (DFlag cgn flag)]
              <|> do P.try (lchar '%' *> reserved "include")
                     cgn <- codegen_
-                    hdr <- fst <$> stringLiteral
+                    hdr <- fst <$> runWriterT stringLiteral
                     return [PDirective (DInclude cgn hdr)]
              <|> do P.try (lchar '%' *> reserved "hide"); n <- fst <$> fnName
                     return [PDirective (DHide n)]
@@ -1354,7 +1354,7 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     i <- fst <$> runWriterT natural
                     return [PDirective (DLogging i)]
              <|> do P.try (lchar '%' *> reserved "dynamic")
-                    libs <- P.sepBy1 (fmap fst stringLiteral) (lchar ',')
+                    libs <- P.sepBy1 (fst <$> runWriterT stringLiteral) (lchar ',')
                     return [PDirective (DDynamicLibs libs)]
              <|> do P.try (lchar '%' *> reserved "name")
                     (ty, tyFC) <- fnName
@@ -1369,11 +1369,11 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     return [PDirective (DLanguage ext)]
              <|> do P.try (lchar '%' *> reserved "deprecate")
                     n <- fst <$> fnName
-                    alt <- P.option "" (fst <$> stringLiteral)
+                    alt <- P.option "" (fst <$> runWriterT stringLiteral)
                     return [PDirective (DDeprecate n alt)]
              <|> do P.try (lchar '%' *> reserved "fragile")
                     n <- fst <$> fnName
-                    alt <- P.option "" (fst <$> stringLiteral)
+                    alt <- P.option "" (fst <$> runWriterT stringLiteral)
                     return [PDirective (DFragile n alt)]
              <|> do fc <- getFC
                     P.try (lchar '%' *> reserved "used")

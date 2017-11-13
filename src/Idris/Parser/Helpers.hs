@@ -216,12 +216,12 @@ whiteSpace :: MonadicParsing m => m ()
 whiteSpace = someSpace <|> pure ()
 
 -- | Parses a string literal
-stringLiteral :: MonadicParsing m => m (String, FC)
-stringLiteral = runWriterT . tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
+stringLiteral :: MonadicParsing m => WriterT FC m String
+stringLiteral = tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
 
 -- | Parses a char literal
-charLiteral :: MonadicParsing m => m (Char, FC)
-charLiteral = runWriterT . tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
+charLiteral :: MonadicParsing m => WriterT FC m Char
+charLiteral = tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
 
 -- | Parses a natural number
 natural :: MonadicParsing m => WriterT FC m Integer
