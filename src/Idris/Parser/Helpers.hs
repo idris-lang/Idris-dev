@@ -65,8 +65,9 @@ type MonadicParsing m = (P.MonadParsec Void String m)
 someSpace :: MonadicParsing m => m ()
 someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
-tokenFC :: MonadicParsing m => m a -> m (a, FC)
-tokenFC p = do (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
+tokenFC :: MonadicParsing m => m a -> WriterT FC m a
+tokenFC p = WriterT $ do
+               (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
                                            -- See Issue #1594
                r <- p
                (FC fn _ (el, ec)) <- getFC
@@ -216,21 +217,21 @@ whiteSpace = someSpace <|> pure ()
 
 -- | Parses a string literal
 stringLiteral :: MonadicParsing m => m (String, FC)
-stringLiteral = tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
+stringLiteral = runWriterT . tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
 
 -- | Parses a char literal
 charLiteral :: IdrisParser (Char, FC)
-charLiteral = tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
+charLiteral = runWriterT . tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
 
 -- | Parses a natural number
 natural :: IdrisParser (Integer, FC)
-natural = tokenFC (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
-                   <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
-                   <|> P.try P.decimal)
+natural = runWriterT (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
+                      <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
+                      <|> P.try P.decimal)
 
 -- | Parses a floating point number
 float :: IdrisParser (Double, FC)
-float = tokenFC . P.try $ P.float
+float = runWriterT . tokenFC . P.try $ P.float
 
 {- * Symbols, identifiers, names and operators -}
 
@@ -263,7 +264,7 @@ lchar = token . P.char
 
 -- | Parses a character as a token, returning the source span of the character
 lcharFC :: MonadicParsing m => Char -> WriterT FC m Char
-lcharFC = WriterT . tokenFC . P.char
+lcharFC = tokenFC . P.char
 
 symbol :: MonadicParsing m => String -> m ()
 symbol = void . P.symbol someSpace
