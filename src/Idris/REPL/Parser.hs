@@ -304,7 +304,7 @@ proofArg cmd name = do
 cmd_doc :: String -> IP.IdrisParser (Either String Command)
 cmd_doc name = do
     let constant = do
-          c <- fmap fst IP.constant
+          c <- fst <$> runWriterT IP.constant
           P.eof
           return $ Right (DocStr (Right c) FullDocs)
 

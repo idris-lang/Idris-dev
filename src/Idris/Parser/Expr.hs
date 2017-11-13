@@ -21,7 +21,7 @@ import Control.Applicative
 import Control.Arrow (left)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (execWriterT, runWriterT)
+import Control.Monad.Writer.Strict (WriterT(..), execWriterT, runWriterT)
 import Data.Function (on)
 import Data.List
 import Data.Maybe
@@ -411,7 +411,7 @@ simpleExpr syn =
         <|> PType <$> execWriterT (reservedFC "Type")
         <|> do fc <- execWriterT $ reservedFC "UniqueType"; return $ PUniverse fc UniqueType
         <|> do fc <- execWriterT $ reservedFC "NullType"; return $ PUniverse fc NullType
-        <|> do (c, cfc) <- constant
+        <|> do (c, cfc) <- runWriterT constant
                fc <- getFC
                return (modifyConst syn fc (PConstant cfc c))
         <|> do symbol "'"; (str, fc) <- name
@@ -1446,14 +1446,14 @@ constants =
   ]
 
 -- | Parse a constant and its source span
-constant :: IdrisParser (Idris.Core.TT.Const, FC)
-constant = P.choice [ runWriterT (ty <$ reservedFC name) | (name, ty) <- constants ]
-        <|> runWriterT (P.try (Fl <$> float))
-        <|> runWriterT (BI <$> natural)
-        <|> do (s, fc) <- verbatimStringLiteral; return (Str s, fc)
-        <|> runWriterT (Str <$> stringLiteral)
-        <|> runWriterT (P.try (Ch <$> charLiteral)) --Currently ambigous with symbols
-        <?> "constant or literal"
+constant :: MonadicParsing m => WriterT FC m Idris.Core.TT.Const
+constant = P.choice [ ty <$ reservedFC name | (name, ty) <- constants ]
+       <|> P.try (Fl <$> float)
+       <|> BI <$> natural
+       <|> Str <$> verbatimStringLiteral
+       <|> Str <$> stringLiteral
+       <|> P.try (Ch <$> charLiteral) --Currently ambigous with symbols
+       <?> "constant or literal"
 
 {- | Parses a verbatim multi-line string literal (triple-quoted)
 
@@ -1463,12 +1463,9 @@ VerbatimString_t ::=
 ;
 @
  -}
-verbatimStringLiteral :: IdrisParser (String, FC)
-verbatimStringLiteral = token $ do (FC f start _) <- getFC
-                                   P.try $ string "\"\"\""
-                                   str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")
-                                   (FC _ _ end) <- getFC
-                                   return (str, FC f start end)
+verbatimStringLiteral :: MonadicParsing m => WriterT FC m String
+verbatimStringLiteral = tokenFC $ do P.try $ string "\"\"\""
+                                     P.manyTill P.anyChar $ P.try (string "\"\"\"")
 
 {- | Parses a static modifier
 
@@ -1606,7 +1603,7 @@ tactics =
           return $ TFail [Idris.Core.TT.TextPart msg])
   , ([":doc"], Just ExprTArg, const $
        do whiteSpace
-          doc <- (Right . fst <$> constant) <|> (Left . fst <$> fnName)
+          doc <- (Right . fst <$> runWriterT constant) <|> (Left . fst <$> fnName)
           P.eof
           return (TDocStr doc))
   ]

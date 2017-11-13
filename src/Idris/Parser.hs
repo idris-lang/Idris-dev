@@ -1477,7 +1477,7 @@ parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
 
 {-| Parses a constant form input -}
 parseConst :: IState -> String -> Either ParseError Const
-parseConst st = runparser (fmap fst constant) st "(input)"
+parseConst st = runparser (fst <$> runWriterT constant) st "(input)"
 
 {-| Parses a tactic from input -}
 parseTactic :: IState -> String -> Either ParseError PTactic
@@ -1496,7 +1496,7 @@ parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> ela
                        (expressionTactic ["t", "type"] ECheck) <|>
                        (expressionTactic ["search"] ESearch   ) <|>
                        (do reserved "doc"
-                           doc <- (Right . fst <$> constant) <|> (Left . fst <$> fnName)
+                           doc <- (Right . fst <$> runWriterT constant) <|> (Left . fst <$> fnName)
                            P.eof
                            return (EDocStr doc))
                        <?> "elab command"
