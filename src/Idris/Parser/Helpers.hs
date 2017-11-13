@@ -43,6 +43,7 @@ type BaseParser  = P.Parsec Void String     -- Parses text (base of parser stack
 type SpanParser  = WriterT FC BaseParser    -- Computes FC spans of all non-terminals
 type IdrisParser = StateT IState SpanParser -- Tracks IState
 
+type Parsing m = (P.MonadParsec Void String m)
 
 type ParseState = P.State String
 data ParseError = ParseError String (P.ParseError (P.Token String) Void)
@@ -62,13 +63,11 @@ parseErrorMessage :: ParseError -> String
 parseErrorMessage (ParseError _ err) = P.parseErrorTextPretty err
 
 
--- | Generalized monadic parsing constraint type
-type MonadicParsing m = (P.MonadParsec Void String m)
 
-someSpace :: MonadicParsing m => m ()
+someSpace :: Parsing m => m ()
 someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
-tokenFC :: MonadicParsing m => m a -> WriterT FC m a
+tokenFC :: Parsing m => m a -> WriterT FC m a
 tokenFC p = WriterT $ do
                (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
                                            -- See Issue #1594
@@ -77,7 +76,7 @@ tokenFC p = WriterT $ do
                whiteSpace
                return (r, FC fn (sl, sc) (el, ec))
 
-token :: MonadicParsing m => m a -> m a
+token :: Parsing m => m a -> m a
 token p = p <* whiteSpace
 
 -- | Helper to run Idris parser stack
@@ -125,7 +124,7 @@ parserWarning fc warnOpt warnErr = do
 {- * Space, comments and literals (token/lexing like parsers) -}
 
 -- | Consumes any simple whitespace (any character which satisfies Char.isSpace)
-simpleWhiteSpace :: MonadicParsing m => m ()
+simpleWhiteSpace :: Parsing m => m ()
 simpleWhiteSpace = () <$ P.satisfy isSpace
 
 -- | Checks if a charcter is end of line
@@ -134,7 +133,7 @@ isEol '\n' = True
 isEol  _   = False
 
 -- | A parser that succeeds at the end of the line
-eol :: MonadicParsing m => m ()
+eol :: Parsing m => m ()
 eol = () <$ P.satisfy isEol <|> P.lookAhead P.eof <?> "end of line"
 
 {- | Consumes a single-line comment
@@ -143,7 +142,7 @@ eol = () <$ P.satisfy isEol <|> P.lookAhead P.eof <?> "end of line"
      SingleLineComment_t ::= '--' ~EOL_t* EOL_t ;
 @
  -}
-singleLineComment :: MonadicParsing m => m ()
+singleLineComment :: Parsing m => m ()
 singleLineComment = P.hidden (() <$ string "--" *> many (P.satisfy (not . isEol)) *> eol)
 
 {- | Consumes a multi-line comment
@@ -163,10 +162,10 @@ singleLineComment = P.hidden (() <$ string "--" *> many (P.satisfy (not . isEol)
   ;
 @
 -}
-multiLineComment :: MonadicParsing m => m ()
+multiLineComment :: Parsing m => m ()
 multiLineComment = P.hidden $ P.try (string "{-" *> string "-}" *> pure ())
                               <|> string "{-" *> inCommentChars
-  where inCommentChars :: MonadicParsing m => m ()
+  where inCommentChars :: Parsing m => m ()
         inCommentChars =     string "-}" *> pure ()
                          <|> P.try (multiLineComment) *> inCommentChars
                          <|> string "|||" *> many (P.satisfy (not . isEol)) *> eol *> inCommentChars
@@ -193,7 +192,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                 return (parseDocstring $ T.pack (concat (intersperse "\n" (dc:rest))),
                         map (\(n, d) -> (n, parseDocstring (T.pack d))) args)
 
-  where docCommentLine :: MonadicParsing m => m String
+  where docCommentLine :: Parsing m => m String
         docCommentLine = P.hidden $ P.try $ do
                            string "|||"
                            many (P.satisfy (==' '))
@@ -215,25 +214,25 @@ docComment = do dc <- pushIndent *> docCommentLine
                                return (n, docs)
 
 -- | Parses some white space
-whiteSpace :: MonadicParsing m => m ()
+whiteSpace :: Parsing m => m ()
 whiteSpace = someSpace <|> pure ()
 
 -- | Parses a string literal
-stringLiteral :: MonadicParsing m => WriterT FC m String
+stringLiteral :: Parsing m => WriterT FC m String
 stringLiteral = tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
 
 -- | Parses a char literal
-charLiteral :: MonadicParsing m => WriterT FC m Char
+charLiteral :: Parsing m => WriterT FC m Char
 charLiteral = tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
 
 -- | Parses a natural number
-natural :: MonadicParsing m => WriterT FC m Integer
+natural :: Parsing m => WriterT FC m Integer
 natural = tokenFC (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
                    <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
                    <|> P.try P.decimal)
 
 -- | Parses a floating point number
-float :: MonadicParsing m => WriterT FC m Double
+float :: Parsing m => WriterT FC m Double
 float = tokenFC . P.try $ P.float
 
 {- * Symbols, identifiers, names and operators -}
@@ -249,43 +248,43 @@ reservedIdentifiers = HS.fromList
   , "rewrite", "syntax", "then", "total", "using", "where", "with"
   ]
 
-identifierOrReserved :: MonadicParsing m => m String
+identifierOrReserved :: Parsing m => m String
 identifierOrReserved = token $ P.try $ do
   c <- P.satisfy isAlpha <|> P.oneOf "_"
   cs <- P.many (P.satisfy isAlphaNum <|> P.oneOf "_'.")
   return $ c : cs
 
-char :: MonadicParsing m => Char -> m Char
+char :: Parsing m => Char -> m Char
 char = P.char
 
-string :: MonadicParsing m => String -> m String
+string :: Parsing m => String -> m String
 string = P.string
 
 -- | Parses a character as a token
-lchar :: MonadicParsing m => Char -> m Char
+lchar :: Parsing m => Char -> m Char
 lchar = token . P.char
 
 -- | Parses a character as a token, returning the source span of the character
-lcharFC :: MonadicParsing m => Char -> WriterT FC m Char
+lcharFC :: Parsing m => Char -> WriterT FC m Char
 lcharFC = tokenFC . P.char
 
-symbol :: MonadicParsing m => String -> m ()
+symbol :: Parsing m => String -> m ()
 symbol = void . P.symbol someSpace
 
-symbolFC :: MonadicParsing m => String -> WriterT FC m ()
+symbolFC :: Parsing m => String -> WriterT FC m ()
 symbolFC str = WriterT $ do (FC file (l, c) _) <- getFC
                             symbol str
                             return $ ((), FC file (l, c) (l, c + length str))
 
 -- | Parses a reserved identifier
-reserved :: MonadicParsing m => String -> m ()
+reserved :: Parsing m => String -> m ()
 reserved name = token $ P.try $ do
   P.string name
   P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
 
 -- | Parses a reserved identifier, computing its span. Assumes that
 -- reserved identifiers never contain line breaks.
-reservedFC :: MonadicParsing m => String -> WriterT FC m ()
+reservedFC :: Parsing m => String -> WriterT FC m ()
 reservedFC str = WriterT $ do (FC file (l, c) _) <- getFC
                               reserved str
                               return $ ((), FC file (l, c) (l, c + length str))
@@ -296,19 +295,19 @@ reservedHL str = execWriterT (reservedFC str) >>= flip highlightP AnnKeyword
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
-reservedOp :: MonadicParsing m => String -> m ()
+reservedOp :: Parsing m => String -> m ()
 reservedOp name = token $ P.try $
   do string name
      P.notFollowedBy operatorLetter <?> ("end of " ++ show name)
 
-reservedOpFC :: MonadicParsing m => String -> WriterT FC m ()
+reservedOpFC :: Parsing m => String -> WriterT FC m ()
 reservedOpFC name = WriterT $ do
                       (FC f (l, c) _) <- getFC
                       reservedOp name
                       return ((), FC f (l, c) (l, c + length name))
 
 -- | Parses an identifier as a token
-identifierFC :: (MonadicParsing m) => WriterT FC m String
+identifierFC :: (Parsing m) => WriterT FC m String
 identifierFC = WriterT . P.try $ do
   (FC f (l, c) _) <- getFC
   ident <- identifierOrReserved
@@ -317,24 +316,24 @@ identifierFC = WriterT . P.try $ do
   return (ident, FC f (l, c) (l, c + length ident))
 
 -- | Parses an identifier with possible namespace as a name
-iName :: (MonadicParsing m) => [String] -> m (Name, FC)
+iName :: (Parsing m) => [String] -> m (Name, FC)
 iName bad = runWriterT (maybeWithNS identifierFC bad) <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
-maybeWithNS :: (MonadicParsing m) => WriterT FC m String -> [String] -> WriterT FC m Name
+maybeWithNS :: (Parsing m) => WriterT FC m String -> [String] -> WriterT FC m Name
 maybeWithNS parser bad = WriterT $ do
   i <- P.option "" (P.lookAhead (fst <$> runWriterT identifierFC))
   when (i `elem` bad) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved identifier"
   ((x, xs), fc) <- P.choice (reverse (runWriterT (parserNoNS parser) : parsersNS (runWriterT parser) i))
   return (mkName (x, xs), fc)
-  where parserNoNS :: MonadicParsing m => WriterT FC m String -> WriterT FC m (String, String)
+  where parserNoNS :: Parsing m => WriterT FC m String -> WriterT FC m (String, String)
         parserNoNS = fmap (\x -> (x, ""))
-        parserNS   :: MonadicParsing m => m (String, FC) -> String -> m ((String, String), FC)
+        parserNS   :: Parsing m => m (String, FC) -> String -> m ((String, String), FC)
         parserNS   parser ns = do startFC <- getFC
                                   xs <- string ns
                                   lchar '.';  (x, nameFC) <- parser
                                   return ((x, xs), spanFC startFC nameFC)
-        parsersNS  :: MonadicParsing m => m (String, FC) -> String -> [m ((String, String), FC)]
+        parsersNS  :: Parsing m => m (String, FC) -> String -> [m ((String, String), FC)]
         parsersNS parser i = [P.try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
 
 -- | Parses a name
@@ -373,11 +372,11 @@ mkName (n, ns) = sNS (sUN n) (reverse (parseNS ns))
 opChars :: String
 opChars = ":!#$%&*+./<=>?@\\^|-~"
 
-operatorLetter :: MonadicParsing m => m Char
+operatorLetter :: Parsing m => m Char
 operatorLetter = P.oneOf opChars
 
 -- | Parse a package name
-packageName :: MonadicParsing m => m String
+packageName :: Parsing m => m String
 packageName = (:) <$> P.oneOf firstChars <*> many (P.oneOf remChars)
   where firstChars = ['a'..'z'] ++ ['A'..'Z']
         remChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['-','_']
@@ -389,14 +388,14 @@ invalidOperators :: [String]
 invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%", "~", "?", "!", "@"]
 
 -- | Parses an operator
-symbolicOperator :: MonadicParsing m => m String
+symbolicOperator :: Parsing m => m String
 symbolicOperator = do op <- token . some $ operatorLetter
                       when (op `elem` (invalidOperators ++ commentMarkers)) $
                            fail $ op ++ " is not a valid operator"
                       return op
 
 -- | Parses an operator
-symbolicOperatorFC :: MonadicParsing m => WriterT FC m String
+symbolicOperatorFC :: Parsing m => WriterT FC m String
 symbolicOperatorFC = WriterT $ do (FC f (l, c) _) <- getFC
                                   op <- symbolicOperator
                                   return (op, FC f (l, c) (l, c + length op))
@@ -418,7 +417,7 @@ sourcePositionFC (P.SourcePos name line column) =
         else name
 
 {- | Get file position as FC -}
-getFC :: MonadicParsing m => m FC
+getFC :: Parsing m => m FC
 getFC = sourcePositionFC <$> P.getPosition
 
 {-* Syntax helpers-}
@@ -429,7 +428,7 @@ bindList b ((r, n, fc, t):bs) sc = b r n fc t (bindList b bs sc)
 
 {- | @commaSeparated p@ parses one or more occurences of `p`,
      separated by commas and optional whitespace. -}
-commaSeparated :: MonadicParsing m => m a -> m [a]
+commaSeparated :: Parsing m => m a -> m [a]
 commaSeparated p = p `P.sepBy1` (P.space >> P.char ',' >> P.space)
 
 {- * Layout helpers -}
@@ -449,7 +448,7 @@ popIndent = do ist <- get
 
 
 -- | Gets current indentation
-indent :: MonadicParsing m => m Int
+indent :: Parsing m => m Int
 indent = P.unPos . P.sourceColumn <$> P.getPosition
 
 -- | Gets last indentation
@@ -492,7 +491,7 @@ indentedBlockS p = do openBlock
 
 
 -- | Checks if the following character matches provided parser
-lookAheadMatches :: MonadicParsing m => m a -> m Bool
+lookAheadMatches :: Parsing m => m a -> m Bool
 lookAheadMatches p = isJust <$> P.lookAhead (P.optional p)
 
 -- | Parses a start of block

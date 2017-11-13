@@ -11,7 +11,7 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
-import Idris.Parser.Helpers (MonadicParsing, SpanParser, eol, iName,
+import Idris.Parser.Helpers (Parsing, SpanParser, eol, iName,
                              identifierFC, isEol, lchar, packageName,
                              parseErrorDoc, reserved, runparser, someSpace,
                              stringLiteral)
@@ -63,7 +63,7 @@ pPkgName = (either fail pure . pkgName =<< packageName) <?> "PkgName"
 -- | Parses a filename.
 -- |
 -- | Treated for now as an identifier or a double-quoted string.
-filename :: (MonadicParsing m) => m String
+filename :: Parsing m => m String
 filename = (do
                 -- Treat a double-quoted string as a filename to support spaces.
                 -- This also moves away from tying filenames to identifiers, so
@@ -100,14 +100,14 @@ filename = (do
                     checkThat (path == takeFileName path)
                         "filename must contain no directory component"
 
-textUntilEol :: MonadicParsing m => m String
+textUntilEol :: Parsing m => m String
 textUntilEol = many (P.satisfy (not . isEol)) <* eol <* someSpace
 
 clause          :: String -> PParser a -> (PkgDesc -> a -> PkgDesc) -> PParser ()
 clause name p f = do value <- reserved name *> lchar '=' *> p <* someSpace
                      modify $ \st -> f st value
 
-commaSep   :: MonadicParsing m => m a -> m [a]
+commaSep   :: Parsing m => m a -> m [a]
 commaSep p = P.sepBy1 p (lchar ',')
 
 pClause :: PParser ()

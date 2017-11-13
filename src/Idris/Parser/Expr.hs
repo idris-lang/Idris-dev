@@ -1441,7 +1441,7 @@ constants =
   ]
 
 -- | Parse a constant and its source span
-constant :: MonadicParsing m => WriterT FC m Idris.Core.TT.Const
+constant :: Parsing m => WriterT FC m Idris.Core.TT.Const
 constant = P.choice [ ty <$ reservedFC name | (name, ty) <- constants ]
        <|> P.try (Fl <$> float)
        <|> BI <$> natural
@@ -1458,7 +1458,7 @@ VerbatimString_t ::=
 ;
 @
  -}
-verbatimStringLiteral :: MonadicParsing m => WriterT FC m String
+verbatimStringLiteral :: Parsing m => WriterT FC m String
 verbatimStringLiteral = tokenFC $ do P.try $ string "\"\"\""
                                      P.manyTill P.anyChar $ P.try (string "\"\"\"")
 
