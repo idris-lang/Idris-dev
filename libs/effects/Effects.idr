@@ -306,11 +306,6 @@ toEff xs' = id
 pure : a -> EffM m a xs (\v => xs)
 pure = Value
 
-return : a -> EffM m a xs (\v => xs)
-return = pure
-
-%deprecate Effects.return "Please use `pure`."
-
 pureM : (val : a) -> EffM m a (xs val) xs
 pureM = Value
 
