@@ -39,8 +39,11 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 -- | Idris parser with state used during parsing
-type IdrisParser = StateT IState IdrisInnerParser
-type IdrisInnerParser = P.Parsec Void String
+type BaseParser  = P.Parsec Void String     -- Parses text (base of parser stack)
+type SpanParser  = WriterT FC BaseParser    -- Computes FC spans of all non-terminals
+type IdrisParser = StateT IState SpanParser -- Tracks IState
+
+
 type ParseState = P.State String
 data ParseError = ParseError String (P.ParseError (P.Token String) Void)
 
@@ -77,12 +80,12 @@ tokenFC p = WriterT $ do
 token :: MonadicParsing m => m a -> m a
 token p = p <* whiteSpace
 
--- | Helper to run Idris inner parser based stateT parsers
-runparser :: StateT st IdrisInnerParser res -> st -> String -> String -> Either ParseError res
+-- | Helper to run Idris parser stack
+runparser :: StateT st SpanParser res -> st -> String -> String -> Either ParseError res
 runparser p i inputname s =
-  case P.parse (evalStateT p i) inputname s of
+  case P.parse (runWriterT (evalStateT p i)) inputname s of
     Left err -> Left $ ParseError s err
-    Right v  -> Right v
+    Right v  -> Right $ fst v
 
 
 highlightP :: FC -> OutputAnnotation -> IdrisParser ()
