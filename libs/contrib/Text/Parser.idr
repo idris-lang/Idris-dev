@@ -12,7 +12,7 @@ import public Text.Token
 ||| Parse a terminal based on a kind of token.
 match : (Eq k, TokenKind k) =>
         (kind : k) ->
-        Grammar (Token k) True (tokType kind)
+        Grammar (Token k) True (TokType kind)
 match kind = terminal $
   \(Tok kind' text) => if kind' == kind
                           then Just $ tokValue kind text
