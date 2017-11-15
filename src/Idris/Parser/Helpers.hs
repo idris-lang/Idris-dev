@@ -21,7 +21,7 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), execWriterT)
+import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..))
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
@@ -73,6 +73,9 @@ spanning p = do (FC f (sr, sc) _) <- getFC
                 (FC f _ (er, ec)) <- getFC
                 tell (FC f (sr, sc) (er, max 1 (ec - 1)))
                 return result
+
+extent :: Parsing m => m a -> m FC
+extent = fmap snd . listen
 
 token :: Parsing m => m a -> m a
 token p = spanning p <* whiteSpace
@@ -265,7 +268,7 @@ reserved name = token $ P.try $ do
 
 -- | Parse a reserved identfier, highlighting its span as a keyword
 reservedHL :: (Parsing m, MonadState IState m) => String -> m ()
-reservedHL str = execWriterT (reserved str) >>= flip highlightP AnnKeyword
+reservedHL str = extent (reserved str) >>= flip highlightP AnnKeyword
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
@@ -538,7 +541,7 @@ notOpenBraces = do ist <- get
 {- | Parses an accessibilty modifier (e.g. public, private) -}
 accessibility' :: IdrisParser Accessibility
 accessibility'
-              = do fc <- execWriterT $ reserved "public"
+              = do fc <- extent $ reserved "public"
                    gotexp <- optional (reserved "export")
                    case gotexp of
                         Just _ -> return ()
@@ -548,7 +551,7 @@ accessibility'
                               (fc, Msg "'public' is deprecated. Use 'public export' instead.")
                                    : parserWarnings ist }
                    return Public
-            <|> do fc <- execWriterT $ reserved "abstract"
+            <|> do fc <- extent $ reserved "abstract"
                    ist <- get
                    put ist { parserWarnings =
                       (fc, Msg "The 'abstract' keyword is deprecated. Use 'export' instead.")

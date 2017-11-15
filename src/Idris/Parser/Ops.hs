@@ -78,13 +78,13 @@ table fixes
                             return $ f fc n
       | otherwise       = ctor $ do
                             indentGt
-                            fc <- execWriterT $ reservedOp name
+                            fc <- extent $ reservedOp name
                             indentGt
                             return $ f fc (sUN name)
 
     prefix :: String -> (FC -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
     prefix name f = P.Prefix $ do
-                      fc <- execWriterT $ reservedOp name
+                      fc <- extent $ reservedOp name
                       indentGt
                       return (f fc)
 

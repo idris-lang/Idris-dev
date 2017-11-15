@@ -44,7 +44,7 @@ import Prelude hiding (pi)
 import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (execWriterT, listen)
+import Control.Monad.Writer.Strict (listen)
 import Data.Char
 import Data.Foldable (asum)
 import Data.Function
@@ -361,7 +361,7 @@ declExtension syn ns rules =
     ruleGroup _ _ = False
 
     extSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
-    extSymbol (Keyword n) = do fc <- execWriterT $ reserved (show n)
+    extSymbol (Keyword n) = do fc <- extent $ reserved (show n)
                                highlightP fc AnnKeyword
                                return Nothing
     extSymbol (Expr n) = do tm <- expr syn
@@ -370,7 +370,7 @@ declExtension syn ns rules =
                                   return $ Just (n, SynTm tm)
     extSymbol (Binding n) = do (b, fc) <- listen name
                                return $ Just (n, SynBind fc b)
-    extSymbol (Symbol s) = do fc <- execWriterT $ symbol s
+    extSymbol (Symbol s) = do fc <- extent $ symbol s
                               highlightP fc AnnKeyword
                               return Nothing
 
@@ -664,7 +664,7 @@ fnOpt = do reservedHL "total"; return TotalFn
         <|> NoImplicit <$ P.try (lchar '%' *> reserved "no_implicit")
         <|> Inlinable <$ P.try (lchar '%' *> reserved "inline")
         <|> StaticFn <$ P.try (lchar '%' *> reserved "static")
-        <|> do fc <- P.try $ execWriterT $ lchar '%' *> reserved "assert_total"
+        <|> do fc <- P.try $ extent $ lchar '%' *> reserved "assert_total"
                parserWarning fc Nothing (Msg "%assert_total is deprecated. Use the 'assert_total' function instead.")
                return AssertTotal
         <|> ErrorHandler <$ P.try (lchar '%' *> reserved "error_handler")
@@ -1418,7 +1418,7 @@ ProviderWhat ::= 'proof' | 'term' | 'type' | 'postulate'
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do doc <- P.try (do (doc, _) <- docstring syn
-                                   fc <- execWriterT $ lchar '%' *> reserved "provide"
+                                   fc <- extent $ lchar '%' *> reserved "provide"
                                    highlightP fc AnnKeyword
                                    return doc)
                   provideTerm doc <|> providePostulate doc
@@ -1464,7 +1464,7 @@ RunElabDecl ::= '%' 'runElab' Expr
 -}
 runElabDecl :: SyntaxInfo -> IdrisParser PDecl
 runElabDecl syn =
-  do kwFC <- P.try (execWriterT $ lchar '%' *> reserved "runElab")
+  do kwFC <- P.try (extent $ lchar '%' *> reserved "runElab")
      script <- expr syn <?> "elaborator script"
      highlightP kwFC AnnKeyword
      return $ PRunElabDecl kwFC script (syn_namespace syn)

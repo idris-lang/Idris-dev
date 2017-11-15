@@ -20,7 +20,7 @@ import Prelude hiding (pi)
 
 import Control.Applicative
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (execWriterT, listen)
+import Control.Monad.Writer.Strict (listen)
 import Data.List
 import Data.Maybe
 import Text.Megaparsec ((<?>))
@@ -141,10 +141,10 @@ DefaultEliminator ::= 'noelim'?
  -}
 dataOpts :: DataOpts -> IdrisParser DataOpts
 dataOpts opts
-    = do fc <- execWriterT $ reserved "%elim"
+    = do fc <- extent $ reserved "%elim"
          warnElim fc
          dataOpts (DefaultEliminator : DefaultCaseFun : opts)
-  <|> do fc <- execWriterT $ reserved "%case"
+  <|> do fc <- extent $ reserved "%case"
          warnElim fc
          dataOpts (DefaultCaseFun : opts)
   <|> do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
