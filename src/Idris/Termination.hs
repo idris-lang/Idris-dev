@@ -429,7 +429,7 @@ buildSCG' ist topfn pats args = nub $ concatMap scgPat pats where
             [ty] -> expand 0 (normalise (tt_ctxt ist) [] ty) args
             _ -> args
      where expand i (Bind n (Pi _ _ _ _) sc) (x : xs) = x : expand (i + 1) sc xs
-           expand i (Bind n (Pi _ _ _ _) sc) [] = Just (i, Same) : expand (i + 1) sc []
+           expand i (Bind n (Pi _ _ _ _) sc) [] = Nothing : expand (i + 1) sc []
            expand i _ xs = xs
 
   mkChange n args pargs = [(n, expandToArity n (sizes args))]
