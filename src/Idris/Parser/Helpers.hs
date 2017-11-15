@@ -88,14 +88,6 @@ highlightP :: FC -> OutputAnnotation -> IdrisParser ()
 highlightP fc annot = do ist <- get
                          put ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist}
 
-noDocCommentHere :: String -> IdrisParser ()
-noDocCommentHere msg =
-  optional (do fc <- getFC
-               docComment
-               ist <- get
-               put ist { parserWarnings = (fc, Msg msg) : parserWarnings ist}) *>
-  pure ()
-
 clearParserWarnings :: Idris ()
 clearParserWarnings = do ist <- getIState
                          putIState ist { parserWarnings = [] }
