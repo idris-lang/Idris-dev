@@ -1,4 +1,4 @@
-tutorial006a.idr:5:23-25:
+tutorial006a.idr:5:23-24:
 When checking right hand side of vapp with expected type
         Vect (S len + m) a
 

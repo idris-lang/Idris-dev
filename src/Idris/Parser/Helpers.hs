@@ -68,7 +68,11 @@ someSpace :: Parsing m => m ()
 someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
 spanning :: Parsing m => m a -> m a
-spanning p = (getFC >>= tell) *> p <* (getFC >>= tell)
+spanning p = do (FC f (sr, sc) _) <- getFC
+                result <- p
+                (FC f _ (er, ec)) <- getFC
+                tell (FC f (sr, sc) (er, max 1 (ec - 1)))
+                return result
 
 token :: Parsing m => m a -> m a
 token p = spanning p <* whiteSpace
@@ -273,7 +277,7 @@ reservedOp name = token $ P.try $
 -- | Parses an identifier as a token
 identifier :: Parsing m => m String
 identifier = P.try $ do
-  ident <- spanning identifierOrReserved
+  ident <- identifierOrReserved
   when (ident `HS.member` reservedIdentifiers) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved " ++ ident
   when (ident == "_") $ P.unexpected . P.Label . NonEmpty.fromList $ "wildcard"
   return ident

@@ -1,4 +1,4 @@
-DataDef.idr:74:1-9:
+DataDef.idr:74:1-8:
 While running an elaboration script, the following error occurred:
 Prelude.Either.Either is already defined as a datatype.
 Tacs.idr:299:15:
