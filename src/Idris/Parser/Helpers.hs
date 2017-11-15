@@ -21,7 +21,7 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (WriterT(..), execWriterT)
+import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), execWriterT)
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
@@ -43,7 +43,7 @@ type BaseParser  = P.Parsec Void String     -- Parses text (base of parser stack
 type SpanParser  = WriterT FC BaseParser    -- Computes FC spans of all non-terminals
 type IdrisParser = StateT IState SpanParser -- Tracks IState
 
-type Parsing m = (P.MonadParsec Void String m)
+type Parsing m = (P.MonadParsec Void String m, MonadWriter FC m)
 
 type ParseState = P.State String
 data ParseError = ParseError String (P.ParseError (P.Token String) Void)
@@ -67,14 +67,11 @@ parseErrorMessage (ParseError _ err) = P.parseErrorTextPretty err
 someSpace :: Parsing m => m ()
 someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
-tokenFC :: Parsing m => m a -> WriterT FC m a
-tokenFC p = WriterT $ do
-               (FC fn (sl, sc) _) <- getFC --TODO: Update after fixing getFC
-                                           -- See Issue #1594
-               r <- p
-               (FC fn _ (el, ec)) <- getFC
-               whiteSpace
-               return (r, FC fn (sl, sc) (el, ec))
+spanning :: Parsing m => m a -> m a
+spanning p = (getFC >>= tell) *> p <* (getFC >>= tell)
+
+tokenFC :: Parsing m => m a -> m a
+tokenFC p = spanning p <* whiteSpace
 
 token :: Parsing m => m a -> m a
 token p = p <* whiteSpace
@@ -218,21 +215,21 @@ whiteSpace :: Parsing m => m ()
 whiteSpace = someSpace <|> pure ()
 
 -- | Parses a string literal
-stringLiteral :: Parsing m => WriterT FC m String
+stringLiteral :: Parsing m => m String
 stringLiteral = tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
 
 -- | Parses a char literal
-charLiteral :: Parsing m => WriterT FC m Char
+charLiteral :: Parsing m => m Char
 charLiteral = tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
 
 -- | Parses a natural number
-natural :: Parsing m => WriterT FC m Integer
+natural :: Parsing m => m Integer
 natural = tokenFC (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
                    <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
                    <|> P.try P.decimal)
 
 -- | Parses a floating point number
-float :: Parsing m => WriterT FC m Double
+float :: Parsing m => m Double
 float = tokenFC . P.try $ P.float
 
 {- * Symbols, identifiers, names and operators -}
@@ -265,16 +262,14 @@ lchar :: Parsing m => Char -> m Char
 lchar = token . P.char
 
 -- | Parses a character as a token, returning the source span of the character
-lcharFC :: Parsing m => Char -> WriterT FC m Char
+lcharFC :: Parsing m => Char -> m Char
 lcharFC = tokenFC . P.char
 
 symbol :: Parsing m => String -> m ()
 symbol = void . P.symbol someSpace
 
-symbolFC :: Parsing m => String -> WriterT FC m ()
-symbolFC str = WriterT $ do (FC file (l, c) _) <- getFC
-                            symbol str
-                            return $ ((), FC file (l, c) (l, c + length str))
+symbolFC :: Parsing m => String -> m ()
+symbolFC = spanning . symbol
 
 -- | Parses a reserved identifier
 reserved :: Parsing m => String -> m ()
@@ -284,10 +279,8 @@ reserved name = token $ P.try $ do
 
 -- | Parses a reserved identifier, computing its span. Assumes that
 -- reserved identifiers never contain line breaks.
-reservedFC :: Parsing m => String -> WriterT FC m ()
-reservedFC str = WriterT $ do (FC file (l, c) _) <- getFC
-                              reserved str
-                              return $ ((), FC file (l, c) (l, c + length str))
+reservedFC :: Parsing m => String -> m ()
+reservedFC = spanning . reserved
 
 -- | Parse a reserved identfier, highlighting its span as a keyword
 reservedHL :: String -> IdrisParser ()
@@ -300,40 +293,35 @@ reservedOp name = token $ P.try $
   do string name
      P.notFollowedBy operatorLetter <?> ("end of " ++ show name)
 
-reservedOpFC :: Parsing m => String -> WriterT FC m ()
-reservedOpFC name = WriterT $ do
-                      (FC f (l, c) _) <- getFC
-                      reservedOp name
-                      return ((), FC f (l, c) (l, c + length name))
+reservedOpFC :: Parsing m => String -> m ()
+reservedOpFC = spanning . reservedOp
 
 -- | Parses an identifier as a token
-identifierFC :: (Parsing m) => WriterT FC m String
-identifierFC = WriterT . P.try $ do
-  (FC f (l, c) _) <- getFC
-  ident <- identifierOrReserved
+identifierFC :: Parsing m => m String
+identifierFC = P.try $ do
+  ident <- spanning identifierOrReserved
   when (ident `HS.member` reservedIdentifiers) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved " ++ ident
   when (ident == "_") $ P.unexpected . P.Label . NonEmpty.fromList $ "wildcard"
-  return (ident, FC f (l, c) (l, c + length ident))
+  return ident
 
 -- | Parses an identifier with possible namespace as a name
-iName :: (Parsing m) => [String] -> m (Name, FC)
-iName bad = runWriterT (maybeWithNS identifierFC bad) <?> "name"
+iName :: Parsing m => [String] -> m (Name, FC)
+iName bad = listen (maybeWithNS identifierFC bad) <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
-maybeWithNS :: (Parsing m) => WriterT FC m String -> [String] -> WriterT FC m Name
-maybeWithNS parser bad = WriterT $ do
-  i <- P.option "" (P.lookAhead (fst <$> runWriterT identifierFC))
+maybeWithNS :: Parsing m => m String -> [String] -> m Name
+maybeWithNS parser bad = do
+  i <- P.option "" (P.lookAhead identifierFC)
   when (i `elem` bad) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved identifier"
-  ((x, xs), fc) <- P.choice (reverse (runWriterT (parserNoNS parser) : parsersNS (runWriterT parser) i))
-  return (mkName (x, xs), fc)
-  where parserNoNS :: Parsing m => WriterT FC m String -> WriterT FC m (String, String)
+  mkName <$> P.choice (reverse (parserNoNS parser : parsersNS parser i))
+  where parserNoNS :: Parsing m => m String -> m (String, String)
         parserNoNS = fmap (\x -> (x, ""))
-        parserNS   :: Parsing m => m (String, FC) -> String -> m ((String, String), FC)
-        parserNS   parser ns = do startFC <- getFC
-                                  xs <- string ns
-                                  lchar '.';  (x, nameFC) <- parser
-                                  return ((x, xs), spanFC startFC nameFC)
-        parsersNS  :: Parsing m => m (String, FC) -> String -> [m ((String, String), FC)]
+        parserNS   :: Parsing m => m String -> String -> m (String, String)
+        parserNS   parser ns = do xs <- string ns
+                                  lchar '.'
+                                  x <- parser
+                                  return (x, xs)
+        parsersNS  :: Parsing m => m String -> String -> [m (String, String)]
         parsersNS parser i = [P.try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
 
 -- | Parses a name
@@ -395,10 +383,8 @@ symbolicOperator = do op <- token . some $ operatorLetter
                       return op
 
 -- | Parses an operator
-symbolicOperatorFC :: Parsing m => WriterT FC m String
-symbolicOperatorFC = WriterT $ do (FC f (l, c) _) <- getFC
-                                  op <- symbolicOperator
-                                  return (op, FC f (l, c) (l, c + length op))
+symbolicOperatorFC :: Parsing m => m String
+symbolicOperatorFC = spanning symbolicOperator
 
 {- * Position helpers -}
 

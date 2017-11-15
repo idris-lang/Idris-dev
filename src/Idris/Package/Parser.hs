@@ -18,7 +18,6 @@ import Idris.Parser.Helpers (Parsing, SpanParser, eol, iName,
 
 import Control.Applicative
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (runWriterT)
 import Data.List (union)
 import System.Directory (doesFileExist)
 import System.Exit
@@ -69,7 +68,7 @@ filename = (do
                 -- This also moves away from tying filenames to identifiers, so
                 -- it will also accept hyphens
                 -- (https://github.com/idris-lang/Idris-dev/issues/2721)
-    filename <- fst <$> runWriterT stringLiteral
+    filename <- stringLiteral
                 -- Through at least version 0.9.19.1, IPKG executable values were
                 -- possibly namespaced identifiers, like foo.bar.baz.
             <|> show . fst <$> iName []
@@ -113,15 +112,15 @@ commaSep p = P.sepBy1 p (lchar ',')
 pClause :: PParser ()
 pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
-      <|> clause "sourcedir" (fst <$> runWriterT identifierFC) (\st v -> st { sourcedir = v })
-      <|> clause "opts" (pureArgParser . words . fst <$> runWriterT stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
+      <|> clause "sourcedir" identifierFC (\st v -> st { sourcedir = v })
+      <|> clause "opts" (pureArgParser . words <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
       <|> clause "pkgs" (commaSep (pPkgName <* someSpace)) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
                    , idris_opts = pkgs ++ idris_opts st })
       <|> clause "modules" (commaSep (fst <$> iName [])) (\st v -> st { modules = modules st ++ v })
-      <|> clause "libs" (commaSep (fst <$> runWriterT identifierFC)) (\st v -> st { libdeps = libdeps st ++ v })
-      <|> clause "objs" (commaSep (fst <$> runWriterT identifierFC)) (\st v -> st { objs = objs st ++ v })
+      <|> clause "libs" (commaSep identifierFC) (\st v -> st { libdeps = libdeps st ++ v })
+      <|> clause "objs" (commaSep identifierFC) (\st v -> st { objs = objs st ++ v })
       <|> clause "makefile" (fst <$> iName []) (\st v -> st { makefile = Just (show v) })
       <|> clause "tests" (commaSep (fst <$> iName [])) (\st v -> st { idris_tests = idris_tests st ++ v })
       <|> clause "version" textUntilEol (\st v -> st { pkgversion = Just v })
@@ -130,6 +129,6 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "homepage" textUntilEol (\st v -> st { pkghomepage = Just v })
       <|> clause "sourceloc" textUntilEol (\st v -> st { pkgsourceloc = Just v })
       <|> clause "bugtracker" textUntilEol (\st v -> st { pkgbugtracker = Just v })
-      <|> clause "brief" (fst <$> runWriterT stringLiteral) (\st v -> st { pkgbrief = Just v })
+      <|> clause "brief" stringLiteral (\st v -> st { pkgbrief = Just v })
       <|> clause "author" textUntilEol (\st v -> st { pkgauthor = Just v })
       <|> clause "maintainer" textUntilEol (\st v -> st { pkgmaintainer = Just v })
