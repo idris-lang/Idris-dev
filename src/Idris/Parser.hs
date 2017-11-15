@@ -86,7 +86,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 moduleHeader :: IdrisParser (Maybe (Docstring ()), [String], [(FC, OutputAnnotation)])
 moduleHeader =     P.try (do docs <- optional docComment
                              noArgs docs
-                             reservedHL "module"
+                             keyword "module"
                              (i, ifc) <- listen identifier
                              P.option ';' (lchar ';')
                              let modName = moduleName i
@@ -118,10 +118,10 @@ data ImportInfo = ImportInfo { import_reexport :: Bool
  -}
 import_ :: IdrisParser ImportInfo
 import_ = do fc <- getFC
-             reservedHL "import"
-             reexport <- P.option False (True <$ reservedHL "public")
+             keyword "import"
+             reexport <- P.option False (True <$ keyword "public")
              (id, idfc) <- listen identifier
-             newName <- optional (do reservedHL "as"
+             newName <- optional (do keyword "as"
                                      listen identifier)
              P.option ';' (lchar ';')
              return $ ImportInfo reexport (toPath id)
@@ -429,9 +429,9 @@ syntaxRule syn
     = do sty <- P.try (do
             pushIndent
             sty <- P.option AnySyntax
-                            (TermSyntax <$ reservedHL "term"
-                             <|> PatternSyntax <$ reservedHL "pattern")
-            reservedHL "syntax"
+                            (TermSyntax <$ keyword "term"
+                             <|> PatternSyntax <$ keyword "pattern")
+            keyword "syntax"
             return sty)
          syms <- some syntaxSym
          when (all isExpr syms) $ P.unexpected . P.Label . NonEmpty.fromList $ "missing keywords in syntax rule"
@@ -442,7 +442,7 @@ syntaxRule syn
          tm <- typeExpr (allowImp syn) >>= uniquifyBinders [n | Binding n <- syms]
          terminator
          return (Rule (mkSimple syms) tm sty)
-  <|> do reservedHL "decl"; reservedHL "syntax"
+  <|> do keyword "decl"; keyword "syntax"
          syms <- some syntaxSym
          when (all isExpr syms) $ P.unexpected . P.Label . NonEmpty.fromList $ "missing keywords in syntax rule"
          let ns = mapMaybe getName syms
@@ -656,9 +656,9 @@ NameTimesList ::=
 @
 -}
 fnOpt :: IdrisParser FnOpt
-fnOpt = do reservedHL "total"; return TotalFn
-        <|> PartialFn <$ reservedHL "partial"
-        <|> CoveringFn <$ reservedHL "covering"
+fnOpt = do keyword "total"; return TotalFn
+        <|> PartialFn <$ keyword "partial"
+        <|> CoveringFn <$ keyword "covering"
         <|> do P.try (lchar '%' *> reserved "export"); c <- stringLiteral;
                       return $ CExport c
         <|> NoImplicit <$ P.try (lchar '%' *> reserved "no_implicit")
@@ -676,7 +676,7 @@ fnOpt = do reservedHL "total"; return TotalFn
         <|> do lchar '%'; reserved "specialise";
                lchar '['; ns <- P.sepBy nameTimes (lchar ','); lchar ']';
                return $ Specialise ns
-        <|> Implicit <$ reservedHL "implicit"
+        <|> Implicit <$ keyword "implicit"
         <?> "function modifier"
   where nameTimes :: IdrisParser (Name, Maybe Int)
         nameTimes = do n <- fnName
@@ -709,7 +709,7 @@ postulate syn = do (doc, ext)
                    addAcc n acc
                    return (PPostulate ext doc syn fc nfc opts n ty)
                  <?> "postulate"
-   where ppostDecl = do fc <- reservedHL "postulate"; return False
+   where ppostDecl = do fc <- keyword "postulate"; return False
                  <|> do lchar '%'; reserved "extern"; return True
 
 {-| Parses a using declaration
@@ -722,7 +722,7 @@ Using ::=
  -}
 using_ :: SyntaxInfo -> IdrisParser [PDecl]
 using_ syn =
-    do reservedHL "using"
+    do keyword "using"
        lchar '('; ns <- usingDeclList syn; lchar ')'
        openBlock
        let uvars = using syn
@@ -741,7 +741,7 @@ Params ::=
 -}
 params :: SyntaxInfo -> IdrisParser [PDecl]
 params syn =
-    do reservedHL "parameters"; lchar '('; ns <- typeDeclList syn; lchar ')'
+    do keyword "parameters"; lchar '('; ns <- typeDeclList syn; lchar ')'
        let ns' = [(n, ty) | (_, n, _, ty) <- ns]
        openBlock
        let pvars = syn_params syn
@@ -754,8 +754,8 @@ params syn =
 -- | Parses an open block
 openInterface :: SyntaxInfo -> IdrisParser [PDecl]
 openInterface syn =
-    do reservedHL "using"
-       reservedHL "implementation"
+    do keyword "using"
+       keyword "implementation"
        fc <- getFC
        ns <- P.sepBy1 (listen fnName) (lchar ',')
 
@@ -779,7 +779,7 @@ Mutual ::=
 -}
 mutual :: SyntaxInfo -> IdrisParser [PDecl]
 mutual syn =
-    do reservedHL "mutual"
+    do keyword "mutual"
        openBlock
        ds <- many (decl (syn { mut_nesting = mut_nesting syn + 1 } ))
        closeBlock
@@ -797,7 +797,7 @@ Namespace ::=
 -}
 namespace :: SyntaxInfo -> IdrisParser [PDecl]
 namespace syn =
-    do reservedHL "namespace"
+    do keyword "namespace"
        (n, nfc) <- listen identifier
        openBlock
        ds <- some (decl syn { syn_namespace = n : syn_namespace syn })
@@ -812,7 +812,7 @@ namespace syn =
 @
 -}
 implementationBlock :: SyntaxInfo -> IdrisParser [PDecl]
-implementationBlock syn = do reservedHL "where"
+implementationBlock syn = do keyword "where"
                              openBlock
                              ds <- many (fnDecl syn)
                              closeBlock
@@ -835,7 +835,7 @@ InterfaceBlock ::=
 @
 -}
 interfaceBlock :: SyntaxInfo -> IdrisParser (Maybe (Name, FC), Docstring (Either Err PTerm), [PDecl])
-interfaceBlock syn = do reservedHL "where"
+interfaceBlock syn = do keyword "where"
                         openBlock
                         (cn, cd) <- P.option (Nothing, emptyDocstring) $
                                     P.try (do (doc, _) <- P.option noDocs docComment
@@ -853,7 +853,7 @@ interfaceBlock syn = do reservedHL "where"
                      <?> "interface block"
   where
     constructor :: IdrisParser (Name, FC)
-    constructor = reservedHL "constructor" *> listen fnName
+    constructor = keyword "constructor" *> listen fnName
 
     annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
     annotate syn ist = annotCode $ tryFullExpr syn ist
@@ -895,8 +895,8 @@ interface_ syn = do (doc, argDocs, acc)
     fundeps = do lchar '|'; P.sepBy (listen name) (lchar ',')
 
     interfaceKeyword :: IdrisParser ()
-    interfaceKeyword = reservedHL "interface"
-               <|> do reservedHL "class"
+    interfaceKeyword = keyword "interface"
+               <|> do keyword "class"
                       fc <- getFC
                       parserWarning fc Nothing (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
 
@@ -946,13 +946,13 @@ implementation kwopt syn
                                 return n
                              <?> "implementation name"
         implementationKeyword :: IdrisParser ()
-        implementationKeyword = reservedHL "implementation"
-                         <|> do reservedHL "instance"
+        implementationKeyword = keyword "implementation"
+                         <|> do keyword "instance"
                                 fc <- getFC
                                 parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
 
         implementationUsing :: IdrisParser [Name]
-        implementationUsing = do reservedHL "using"
+        implementationUsing = do keyword "using"
                                  ns <- P.sepBy1 (listen fnName) (lchar ',')
                                  return (map fst ns)
                               <|> return []
@@ -1039,7 +1039,7 @@ CAF ::= 'let' FnName '=' Expr Terminator;
 @
 -}
 caf :: SyntaxInfo -> IdrisParser PDecl
-caf syn = do reservedHL "let"
+caf syn = do keyword "let"
              n_in <- fnName; let n = expandNS syn n_in
              pushIndent
              lchar '='
@@ -1136,7 +1136,7 @@ clause syn
                                     <|> ([], []) <$ terminator
                   return $ PClauseR fc wargs r wheres) <|> (do
                   popIndent
-                  reservedHL "with"
+                  keyword "with"
                   wval <- simpleExpr syn
                   pn <- optProof
                   openBlock
@@ -1181,7 +1181,7 @@ clause syn
                   put (ist { lastParse = Just n })
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
-                   reservedHL "with"
+                   keyword "with"
                    wval <- bracketed syn
                    pn <- optProof
                    openBlock
@@ -1207,7 +1207,7 @@ clause syn
                   ist <- get
                   put (ist { lastParse = Just n })
                   return $ PClause fc n capp wargs r wheres) <|> (do
-                   reservedHL "with"
+                   keyword "with"
                    ist <- get
                    put (ist { lastParse = Just n })
                    wval <- bracketed syn
@@ -1220,7 +1220,7 @@ clause syn
                    return $ PWith fc n capp wargs wval pn withs)
       <?> "function clause"
   where
-    optProof = P.option Nothing (do reservedHL "proof"
+    optProof = P.option Nothing (do keyword "proof"
                                     n <- listen fnName
                                     return (Just n))
 
@@ -1255,7 +1255,7 @@ WhereBlock ::= 'where' OpenBlock Decl+ CloseBlock;
 -}
 whereBlock :: Name -> SyntaxInfo -> IdrisParser ([PDecl], [(Name, Name)])
 whereBlock n syn
-    = do reservedHL "where"
+    = do keyword "where"
          ds <- indentedBlock1 (decl syn)
          let dns = concatMap (concatMap declared) ds
          return (concat ds, map (\x -> (x, decoration syn x)) dns)
@@ -1405,9 +1405,9 @@ Totality ::= 'partial' | 'total' | 'covering'
 -}
 totality :: IdrisParser DefaultTotality
 totality
-        = do reservedHL "total";   return DefaultCheckingTotal
-      <|> do reservedHL "partial"; return DefaultCheckingPartial
-      <|> do reservedHL "covering"; return DefaultCheckingCovering
+        = do keyword "total";   return DefaultCheckingTotal
+      <|> do keyword "partial"; return DefaultCheckingPartial
+      <|> do keyword "covering"; return DefaultCheckingCovering
 
 {-| Parses a type provider
 
@@ -1426,14 +1426,14 @@ provider syn = do doc <- P.try (do (doc, _) <- docstring syn
   where provideTerm doc =
           do lchar '('; (n, nfc) <- listen fnName; lchar ':'; t <- typeExpr syn; lchar ')'
              fc <- getFC
-             reservedHL "with"
+             keyword "with"
              e <- expr syn <?> "provider expression"
              return  [PProvider doc syn fc nfc (ProvTerm t e) n]
         providePostulate doc =
-          do reservedHL "postulate"
+          do keyword "postulate"
              (n, nfc) <- listen fnName
              fc <- getFC
-             reservedHL "with"
+             keyword "with"
              e <- expr syn <?> "provider expression"
              return [PProvider doc syn fc nfc (ProvPostulate e) n]
 

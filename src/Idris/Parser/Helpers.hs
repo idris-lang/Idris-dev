@@ -63,7 +63,6 @@ parseErrorMessage :: ParseError -> String
 parseErrorMessage (ParseError _ err) = P.parseErrorTextPretty err
 
 
-
 someSpace :: Parsing m => m ()
 someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
@@ -87,10 +86,19 @@ runparser p i inputname s =
     Left err -> Left $ ParseError s err
     Right v  -> Right $ fst v
 
+highlight :: (MonadState IState m, Parsing m) => OutputAnnotation -> m a -> m a
+highlight annot p = do
+  (result, fc) <- listen p
+  modify $ \ist -> ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist }
+  return result
 
 highlightP :: (MonadState IState m) => FC -> OutputAnnotation -> m ()
 highlightP fc annot = do ist <- get
                          put ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist}
+
+-- | Parse a reserved identfier, highlighting it as a keyword
+keyword :: (Parsing m, MonadState IState m) => String -> m ()
+keyword str = highlight AnnKeyword (reserved str)
 
 clearParserWarnings :: Idris ()
 clearParserWarnings = do ist <- getIState
@@ -265,10 +273,6 @@ reserved :: Parsing m => String -> m ()
 reserved name = token $ P.try $ do
   P.string name
   P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
-
--- | Parse a reserved identfier, highlighting its span as a keyword
-reservedHL :: (Parsing m, MonadState IState m) => String -> m ()
-reservedHL str = extent (reserved str) >>= flip highlightP AnnKeyword
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator

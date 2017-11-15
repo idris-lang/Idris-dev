@@ -612,10 +612,8 @@ UnifyLog ::=
   ;
 -}
 unifyLog :: SyntaxInfo -> IdrisParser PTerm
-unifyLog syn = do (FC fn (sl, sc) kwEnd) <- P.try $ extent $ lchar '%' *> reserved "unifyLog"
-                  tm <- simpleExpr syn
-                  highlightP (FC fn (sl, sc-1) kwEnd) AnnKeyword
-                  return (PUnifyLog tm)
+unifyLog syn = do highlight AnnKeyword $ lchar '%' *> reserved "unifyLog"
+                  PUnifyLog <$> simpleExpr syn
                <?> "unification log expression"
 
 {- | Parses a new-style tactics expression
@@ -760,20 +758,19 @@ constraintArg syn = do symbol "@{"
 
 -}
 quasiquote :: SyntaxInfo -> IdrisParser PTerm
-quasiquote syn = do startFC <- extent $ symbol "`("
-                    e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
-                                    inPattern = False }
-                    g <- optional $
-                           do fc <- extent $ symbol ":"
-                              ty <- expr syn { inPattern = False } -- don't allow antiquotes
-                              return (ty, fc)
-                    endFC <- extent $ symbol ")"
-                    mapM_ (uncurry highlightP) [(startFC, AnnKeyword), (endFC, AnnKeyword), (spanFC startFC endFC, AnnQuasiquote)]
-                    case g of
-                      Just (_, fc) -> highlightP fc AnnKeyword
-                      _ -> return ()
-                    return $ PQuasiquote e (fst <$> g)
-                 <?> "quasiquotation"
+quasiquote syn = (<?> "quasiquotation") . highlight AnnQuasiquote $ do
+                   highlight AnnKeyword $ symbol "`("
+                   e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
+                                   inPattern = False }
+                   g <- optional $
+                          do fc <- extent $ symbol ":"
+                             ty <- expr syn { inPattern = False } -- don't allow antiquotes
+                             return (ty, fc)
+                   highlight AnnKeyword $ symbol ")"
+                   case g of
+                     Just (_, fc) -> highlightP fc AnnKeyword
+                     _ -> return ()
+                   return $ PQuasiquote e (fst <$> g)
 
 {-| Parses an unquoting inside a quasiquotation (for building reflected terms using the elaborator)
 
@@ -781,14 +778,11 @@ quasiquote syn = do startFC <- extent $ symbol "`("
 
 -}
 unquote :: SyntaxInfo -> IdrisParser PTerm
-unquote syn = do guard (syn_in_quasiquote syn > 0)
-                 startFC <- extent $ symbol "~"
-                 e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
-                 endFC <- getFC
-                 highlightP startFC AnnKeyword
-                 highlightP (spanFC startFC endFC) AnnAntiquote
-                 return $ PUnquote e
-              <?> "unquotation"
+unquote syn = (<?> "unquotation") . highlight AnnAntiquote $ do
+                guard (syn_in_quasiquote syn > 0)
+                highlight AnnKeyword $ symbol "~"
+                e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
+                return $ PUnquote e
 
 {-| Parses a quotation of a name (for using the elaborator to resolve boring details)
 
@@ -796,19 +790,15 @@ unquote syn = do guard (syn_in_quasiquote syn > 0)
 
 -}
 namequote :: SyntaxInfo -> IdrisParser PTerm
-namequote syn = do (startFC, res) <-
-                     P.try (do fc <- extent $ symbol "`{{"
-                               return (fc, False)) <|>
-                       (do fc <- extent $ symbol "`{"
-                           return (fc, True))
-                   (n, nfc) <- listen fnName
-                   endFC <- extent $ if res then symbol "}" else symbol "}}"
-                   mapM_ (uncurry highlightP)
-                         [ (startFC, AnnKeyword)
-                         , (endFC, AnnKeyword)
-                         , (spanFC startFC endFC, AnnQuasiquote)
-                         ]
-                   return $ PQuoteName n res nfc
+namequote syn = highlight AnnQuasiquote ((P.try $ do
+                     highlight AnnKeyword $ symbol "`{{"
+                     (n, nfc) <- listen fnName
+                     highlight AnnKeyword $ symbol "}}"
+                     return (PQuoteName n False nfc))
+                  <|> (do highlight AnnKeyword $ symbol "`{"
+                          (n, nfc) <- listen fnName
+                          highlight AnnKeyword $ symbol "}"
+                          return (PQuoteName n True nfc)))
                 <?> "quoted name"
 
 

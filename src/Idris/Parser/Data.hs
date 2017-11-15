@@ -46,7 +46,7 @@ record syn = do (doc, paramDocs, acc, opts) <- P.try (do
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
-                params <- P.manyTill (recordParameter rsyn) (reservedHL "where")
+                params <- P.manyTill (recordParameter rsyn) (keyword "where")
                 (fields, cname, cdoc) <- indentedBlockS $ recordBody rsyn tyn
                 let fnames = map (expandNS rsyn) (mapMaybe getName fields)
                 case cname of
@@ -93,7 +93,7 @@ record syn = do (doc, paramDocs, acc, opts) <- P.try (do
             return $ map (\n -> (n, p, t, doc')) ns
 
         constructor :: (Parsing m, MonadState IState m) => m Name
-        constructor = reservedHL "constructor" *> fnName
+        constructor = keyword "constructor" *> fnName
 
         endPlicity :: Maybe Char -> IdrisParser Plicity
         endPlicity (Just _) = do lchar '}'
@@ -129,12 +129,12 @@ recordParameter syn =
 DataI ::= 'data' | 'codata';
 -}
 dataI :: IdrisParser DataOpts
-dataI = do reservedHL "data"; return []
-    <|> do reservedHL "codata"; return [Codata]
+dataI = do keyword "data"; return []
+    <|> do keyword "codata"; return [Codata]
 
 recordI :: IdrisParser DataOpts
-recordI = do reservedHL "record"; return []
-          <|> do reservedHL "corecord"; return [Codata]
+recordI = do keyword "record"; return []
+          <|> do keyword "corecord"; return [Codata]
 
 {- | Parses if a data should not have a default eliminator
 DefaultEliminator ::= 'noelim'?
@@ -188,7 +188,7 @@ data_ syn = (checkDeclFixity $
                    ty <- typeExpr (allowImp syn)
                    let tyn = expandNS syn tyn_in
                    d <- P.option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
-                     reservedHL "where"
+                     keyword "where"
                      cons <- indentedBlock (constructor syn)
                      accData acc tyn (map (\ (_, _, n, _, _, _, _) -> n) cons)
                      return $ PData doc argDocs syn fc dataOpts (PDatadecl tyn nfc ty cons))
@@ -200,7 +200,7 @@ data_ syn = (checkDeclFixity $
                     let ty = bindArgs (map (const (PType fc)) args) (PType fc)
                     let tyn = expandNS syn tyn_in
                     d <- P.option (PData doc argDocs syn fc dataOpts (PLaterdecl tyn nfc ty)) (do
-                      P.try (lchar '=') <|> do reservedHL "where"
+                      P.try (lchar '=') <|> do keyword "where"
                                                let kw = (if DefaultEliminator `elem` dataOpts then "%elim" else "") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
                                                let n  = show tyn_in ++ " "
                                                let s  = kw ++ n
@@ -274,7 +274,7 @@ simpleConstructor syn
 DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;
  -}
 dsl :: SyntaxInfo -> IdrisParser PDecl
-dsl syn = do reservedHL "dsl"
+dsl syn = do keyword "dsl"
              n <- fnName
              bs <- indentedBlock (overload syn)
              let dsl = mkDSL bs (dsl_info syn)
