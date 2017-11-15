@@ -152,7 +152,7 @@ extension syn ns rules =
     ruleGroup _ _ = False
 
     extensionSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
-    extensionSymbol (Keyword n)    = do fc <- execWriterT $ reservedFC (show n)
+    extensionSymbol (Keyword n)    = do fc <- execWriterT $ reserved (show n)
                                         highlightP fc AnnKeyword
                                         return Nothing
     extensionSymbol (Expr n)       = do tm <- expr syn
@@ -161,7 +161,7 @@ extension syn ns rules =
                                         return $ Just (n, SynTm tm)
     extensionSymbol (Binding n)    = do (b, fc) <- name
                                         return $ Just (n, SynBind fc b)
-    extensionSymbol (Symbol s)     = do fc <- execWriterT $ symbolFC s
+    extensionSymbol (Symbol s)     = do fc <- execWriterT $ symbol s
                                         highlightP fc AnnKeyword
                                         return Nothing
 
@@ -303,7 +303,7 @@ Impossible ::= 'impossible'
 @
 -}
 impossible :: IdrisParser PTerm
-impossible = do fc <- execWriterT $ reservedFC "impossible"
+impossible = do fc <- execWriterT $ reserved "impossible"
                 highlightP fc AnnKeyword
                 return PImpossible
 
@@ -314,9 +314,9 @@ CaseExpr ::=
 @
 -}
 caseExpr :: SyntaxInfo -> IdrisParser PTerm
-caseExpr syn = do kw1 <- execWriterT $ reservedFC "case"; fc <- getFC
+caseExpr syn = do kw1 <- execWriterT $ reserved "case"; fc <- getFC
                   scr <- expr syn
-                  kw2 <- execWriterT $ reservedFC "of";
+                  kw2 <- execWriterT $ reserved "of";
                   opts <- indentedBlock1 (caseOption syn)
                   highlightP kw1 AnnKeyword
                   highlightP kw2 AnnKeyword
@@ -348,7 +348,7 @@ ProofExpr ::=
 @
 -}
 proofExpr :: SyntaxInfo -> IdrisParser PTerm
-proofExpr syn = do kw <- execWriterT $ reservedFC "proof"
+proofExpr syn = do kw <- execWriterT $ reserved "proof"
                    ts <- indentedBlock1 (tactic syn)
                    highlightP kw AnnKeyword
                    warnTacticDeprecation kw
@@ -363,7 +363,7 @@ TacticsExpr :=
 @
 -}
 tacticsExpr :: SyntaxInfo -> IdrisParser PTerm
-tacticsExpr syn = do kw <- execWriterT $ reservedFC "tactics"
+tacticsExpr syn = do kw <- execWriterT $ reserved "tactics"
                      ts <- indentedBlock1 (tactic syn)
                      highlightP kw AnnKeyword
                      warnTacticDeprecation kw
@@ -399,18 +399,18 @@ simpleExpr syn =
             P.try (simpleExternalExpr syn)
         <|> do (x, FC f (l, c) end) <- P.try (lchar '?' *> name)
                return (PMetavar (FC f (l, c-1) end) x)
-        <|> do lchar '%'; fc <- execWriterT $ reservedFC "implementation"; return (PResolveTC fc)
-        <|> do lchar '%'; fc <- execWriterT $ reservedFC "instance"
+        <|> do lchar '%'; fc <- execWriterT $ reserved "implementation"; return (PResolveTC fc)
+        <|> do lchar '%'; fc <- execWriterT $ reserved "instance"
                parserWarning fc Nothing $ Msg "The use of %instance is deprecated, use %implementation instead."
                return (PResolveTC fc)
         <|> do reserved "elim_for"; fc <- getFC; t <- fst <$> fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
-        <|> P.try (do fc <- execWriterT (reservedFC "Type*"); return $ PUniverse fc AllTypes)
-        <|> do fc <- execWriterT $ reservedFC "AnyType"; return $ PUniverse fc AllTypes
-        <|> PType <$> execWriterT (reservedFC "Type")
-        <|> do fc <- execWriterT $ reservedFC "UniqueType"; return $ PUniverse fc UniqueType
-        <|> do fc <- execWriterT $ reservedFC "NullType"; return $ PUniverse fc NullType
+        <|> P.try (do fc <- execWriterT (reserved "Type*"); return $ PUniverse fc AllTypes)
+        <|> do fc <- execWriterT $ reserved "AnyType"; return $ PUniverse fc AllTypes
+        <|> PType <$> execWriterT (reserved "Type")
+        <|> do fc <- execWriterT $ reserved "UniqueType"; return $ PUniverse fc UniqueType
+        <|> do fc <- execWriterT $ reserved "NullType"; return $ PUniverse fc NullType
         <|> do (c, cfc) <- runWriterT constant
                fc <- getFC
                return (modifyConst syn fc (PConstant cfc c))
@@ -445,7 +445,7 @@ Bracketed ::= '(' Bracketed'
 @
  -}
 bracketed :: SyntaxInfo -> IdrisParser PTerm
-bracketed syn = do (FC fn (sl, sc) _) <- execWriterT (lcharFC '(') <?> "parenthesized expression"
+bracketed syn = do (FC fn (sl, sc) _) <- execWriterT (lchar '(') <?> "parenthesized expression"
                    bracketed' (FC fn (sl, sc) (sl, sc+1)) (syn { withAppAllowed = True })
 
 {- |Parses the rest of an expression in braces
@@ -462,7 +462,7 @@ Bracketed' ::=
 -}
 bracketed' :: FC -> SyntaxInfo -> IdrisParser PTerm
 bracketed' open syn =
-            do (FC f start (l, c)) <- execWriterT (lcharFC ')')
+            do (FC f start (l, c)) <- execWriterT (lchar ')')
                return $ PTrue (spanFC open (FC f start (l, c+1))) TypeOrTerm
         <|> P.try (dependentPair TypeOrTerm [] open syn)
         <|> P.try (do (opName, fc) <- operatorName
@@ -509,20 +509,20 @@ dependentPair pun prev openFC syn =
   where nametypePart = do
           (ln, lnfc, colonFC) <- P.try $ do
             (ln, lnfc) <- name
-            colonFC <- execWriterT (lcharFC ':')
+            colonFC <- execWriterT (lchar ':')
             return (ln, lnfc, colonFC)
           lty <- expr' syn
-          starsFC <- execWriterT $ reservedOpFC "**"
+          starsFC <- execWriterT $ reservedOp "**"
           dependentPair IsType ((PRef lnfc [] ln, Just (colonFC, lty), starsFC):prev) openFC syn
         namePart = P.try $ do
           (ln, lnfc) <- name
-          starsFC <- execWriterT $ reservedOpFC "**"
+          starsFC <- execWriterT $ reservedOp "**"
           dependentPair pun ((PRef lnfc [] ln, Nothing, starsFC):prev) openFC syn
         exprPart isEnd = do
           e <- expr syn
           sepFCE <-
-            let stars = (Left <$> execWriterT (reservedOpFC "**"))
-                ending = (Right <$> execWriterT (lcharFC ')'))
+            let stars = (Left <$> execWriterT (reservedOp "**"))
+                ending = (Right <$> execWriterT (lchar ')'))
             in if isEnd then ending else stars <|> ending
           case sepFCE of
             Left starsFC -> dependentPair IsTerm ((e, Nothing, starsFC):prev) openFC syn
@@ -539,13 +539,13 @@ dependentPair pun prev openFC syn =
 bracketedExpr :: SyntaxInfo -> FC -> PTerm -> IdrisParser PTerm
 bracketedExpr syn openParenFC e =
              do lchar ')'; return e
-        <|>  do exprs <- some (do comma <- execWriterT (lcharFC ',')
+        <|>  do exprs <- some (do comma <- execWriterT (lchar ',')
                                   r <- expr syn
                                   return (r, comma))
-                closeParenFC <- execWriterT (lcharFC ')')
+                closeParenFC <- execWriterT (lchar ')')
                 let hilite = [openParenFC, closeParenFC] ++ map snd exprs
                 return $ PPair openParenFC hilite TypeOrTerm e (mergePairs exprs)
-        <|>  do starsFC <- execWriterT $ reservedOpFC "**"
+        <|>  do starsFC <- execWriterT $ reservedOp "**"
                 dependentPair IsTerm [(e, Nothing, starsFC)] openParenFC syn
         <?> "end of bracketed expression"
   where mergePairs :: [(PTerm, FC)] -> PTerm
@@ -612,7 +612,7 @@ UnifyLog ::=
   ;
 -}
 unifyLog :: SyntaxInfo -> IdrisParser PTerm
-unifyLog syn = do (FC fn (sl, sc) kwEnd) <- P.try $ execWriterT $ lchar '%' *> reservedFC "unifyLog"
+unifyLog syn = do (FC fn (sl, sc) kwEnd) <- P.try $ execWriterT $ lchar '%' *> reserved "unifyLog"
                   tm <- simpleExpr syn
                   highlightP (FC fn (sl, sc-1) kwEnd) AnnKeyword
                   return (PUnifyLog tm)
@@ -624,7 +624,7 @@ RunTactics ::=
   ;
 -}
 runElab :: SyntaxInfo -> IdrisParser PTerm
-runElab syn = do (FC fn (sl, sc) kwEnd) <- P.try $ execWriterT $ lcharFC '%' *> reservedFC "runElab"
+runElab syn = do (FC fn (sl, sc) kwEnd) <- P.try $ execWriterT $ lchar '%' *> reserved "runElab"
                  fc <- getFC
                  tm <- simpleExpr syn
                  highlightP (FC fn (sl, sc-1) kwEnd) AnnKeyword
@@ -637,7 +637,7 @@ Disamb ::=
   ;
 -}
 disamb :: SyntaxInfo -> IdrisParser PTerm
-disamb syn = do kw <- execWriterT $ reservedFC "with"
+disamb syn = do kw <- execWriterT $ reserved "with"
                 ns <- P.sepBy1 (fst <$> name) (lchar ',')
                 tm <- expr' syn
                 highlightP kw AnnKeyword
@@ -760,14 +760,14 @@ constraintArg syn = do symbol "@{"
 
 -}
 quasiquote :: SyntaxInfo -> IdrisParser PTerm
-quasiquote syn = do startFC <- execWriterT $ symbolFC "`("
+quasiquote syn = do startFC <- execWriterT $ symbol "`("
                     e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
                                     inPattern = False }
                     g <- optional $
-                           do fc <- execWriterT $ symbolFC ":"
+                           do fc <- execWriterT $ symbol ":"
                               ty <- expr syn { inPattern = False } -- don't allow antiquotes
                               return (ty, fc)
-                    endFC <- execWriterT $ symbolFC ")"
+                    endFC <- execWriterT $ symbol ")"
                     mapM_ (uncurry highlightP) [(startFC, AnnKeyword), (endFC, AnnKeyword), (spanFC startFC endFC, AnnQuasiquote)]
                     case g of
                       Just (_, fc) -> highlightP fc AnnKeyword
@@ -782,7 +782,7 @@ quasiquote syn = do startFC <- execWriterT $ symbolFC "`("
 -}
 unquote :: SyntaxInfo -> IdrisParser PTerm
 unquote syn = do guard (syn_in_quasiquote syn > 0)
-                 startFC <- execWriterT $ symbolFC "~"
+                 startFC <- execWriterT $ symbol "~"
                  e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
                  endFC <- getFC
                  highlightP startFC AnnKeyword
@@ -797,12 +797,12 @@ unquote syn = do guard (syn_in_quasiquote syn > 0)
 -}
 namequote :: SyntaxInfo -> IdrisParser PTerm
 namequote syn = do (startFC, res) <-
-                     P.try (do fc <- execWriterT $ symbolFC "`{{"
+                     P.try (do fc <- execWriterT $ symbol "`{{"
                                return (fc, False)) <|>
-                       (do fc <- execWriterT $ symbolFC "`{"
+                       (do fc <- execWriterT $ symbol "`{"
                            return (fc, True))
                    (n, nfc) <- fnName
-                   endFC <- execWriterT $ if res then symbolFC "}" else symbolFC "}}"
+                   endFC <- execWriterT $ if res then symbol "}" else symbol "}}"
                    mapM_ (uncurry highlightP)
                          [ (startFC, AnnKeyword)
                          , (endFC, AnnKeyword)
@@ -834,7 +834,7 @@ data SetOrUpdate = FieldSet PTerm | FieldUpdate PTerm
 
 recordType :: SyntaxInfo -> IdrisParser PTerm
 recordType syn =
-      do kw <- execWriterT $ reservedFC "record"
+      do kw <- execWriterT $ reserved "record"
          lchar '{'
          fgs <- fieldGetOrSet
          lchar '}'
@@ -967,14 +967,14 @@ RewriteTerm ::=
 @
 -}
 rewriteTerm :: SyntaxInfo -> IdrisParser PTerm
-rewriteTerm syn = do kw <- execWriterT $ reservedFC "rewrite"
+rewriteTerm syn = do kw <- execWriterT $ reserved "rewrite"
                      fc <- getFC
                      prf <- expr syn
                      giving <- optional (do symbol "==>"; expr' syn)
                      using <- optional (do reserved "using"
                                            (n, _) <- name
                                            return n)
-                     kw' <- execWriterT $ reservedFC "in";  sc <- expr syn
+                     kw' <- execWriterT $ reserved "in";  sc <- expr syn
                      highlightP kw AnnKeyword
                      highlightP kw' AnnKeyword
                      return (PRewrite fc using prf sc giving)
@@ -992,9 +992,9 @@ TypeSig' ::=
 @
  -}
 let_ :: SyntaxInfo -> IdrisParser PTerm
-let_ syn = P.try (do kw <- execWriterT $ reservedFC "let"
+let_ syn = P.try (do kw <- execWriterT $ reserved "let"
                      ls <- indentedBlock (let_binding syn)
-                     kw' <- execWriterT $ reservedFC "in";  sc <- expr syn
+                     kw' <- execWriterT $ reserved "in";  sc <- expr syn
                      highlightP kw AnnKeyword; highlightP kw' AnnKeyword
                      return (buildLets ls sc))
            <?> "let binding"
@@ -1022,12 +1022,12 @@ If ::= 'if' Expr 'then' Expr 'else' Expr
 
 -}
 if_ :: SyntaxInfo -> IdrisParser PTerm
-if_ syn = (do ifFC <- execWriterT $ reservedFC "if"
+if_ syn = (do ifFC <- execWriterT $ reserved "if"
               fc <- getFC
               c <- expr syn
-              thenFC <- execWriterT $ reservedFC "then"
+              thenFC <- execWriterT $ reserved "then"
               t <- expr syn
-              elseFC <- execWriterT $ reservedFC "else"
+              elseFC <- execWriterT $ reserved "else"
               f <- expr syn
               mapM_ (flip highlightP AnnKeyword) [ifFC, thenFC, elseFC]
               return (PIfThenElse fc c t f))
@@ -1043,10 +1043,10 @@ QuoteGoal ::=
 @
  -}
 quoteGoal :: SyntaxInfo -> IdrisParser PTerm
-quoteGoal syn = do kw1 <- execWriterT $ reservedFC "quoteGoal"; n <- fst <$> name;
-                   kw2 <- execWriterT $ reservedFC "by"
+quoteGoal syn = do kw1 <- execWriterT $ reserved "quoteGoal"; n <- fst <$> name;
+                   kw2 <- execWriterT $ reserved "by"
                    r <- expr syn
-                   kw3 <- execWriterT $ reservedFC "in"
+                   kw3 <- execWriterT $ reserved "in"
                    fc <- getFC
                    sc <- expr syn
                    mapM_ (flip highlightP AnnKeyword) [kw1, kw2, kw3]
@@ -1081,7 +1081,7 @@ explicitPi opts st syn
         return (bindList (\r -> PPi (binder { pcount = r })) xt sc)
 
 autoImplicit opts st syn
-   = do kw <- execWriterT $ reservedFC "auto"
+   = do kw <- execWriterT $ reserved "auto"
         when (st == Static) $ fail "auto implicits can not be static"
         xt <- typeDeclList syn
         lchar '}'
@@ -1092,7 +1092,7 @@ autoImplicit opts st syn
           (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]) r)) xt sc)
 
 defaultImplicit opts st syn = do
-   kw <- execWriterT $ reservedFC "default"
+   kw <- execWriterT $ reserved "default"
    when (st == Static) $ fail "default implicits can not be static"
    ist <- get
    script' <- simpleExpr syn
@@ -1280,8 +1280,8 @@ ExprList ::=
 @
  -}
 listExpr :: SyntaxInfo -> IdrisParser PTerm
-listExpr syn = do (FC f (l, c) _) <- execWriterT (lcharFC '[')
-                  (do (FC _ _ (l', c')) <- execWriterT (lcharFC ']') <?> "end of list expression"
+listExpr syn = do (FC f (l, c) _) <- execWriterT (lchar '[')
+                  (do (FC _ _ (l', c')) <- execWriterT (lchar ']') <?> "end of list expression"
                       return (mkNil (FC f (l, c) (l', c'))))
                    <|> (do fc <- getFC
                            x <- expr (syn { withAppAllowed = False }) <?> "expression"
@@ -1291,10 +1291,10 @@ listExpr syn = do (FC f (l, c) _) <- execWriterT (lcharFC '[')
                                return (PDoBlock (map addGuard qs ++
                                           [DoExp fc (PApp fc (PRef fc [] (sUN "pure"))
                                                        [pexp x])]))) <|>
-                            (do xs <- many (do commaFC <- execWriterT (lcharFC ',') <?> "list element"
+                            (do xs <- many (do commaFC <- execWriterT (lchar ',') <?> "list element"
                                                elt <- expr syn
                                                return (elt, commaFC))
-                                rbrackFC <- execWriterT (lcharFC ']') <?> "end of list expression"
+                                rbrackFC <- execWriterT (lchar ']') <?> "end of list expression"
                                 return (mkList fc rbrackFC ((x, (FC f (l, c) (l, c+1))) : xs))))
                 <?> "list expression"
   where
@@ -1321,7 +1321,7 @@ DoBlock ::=
  -}
 doBlock :: SyntaxInfo -> IdrisParser PTerm
 doBlock syn
-    = do kw <- execWriterT $ reservedFC "do"
+    = do kw <- execWriterT $ reserved "do"
          ds <- indentedBlock1 (do_ syn)
          highlightP kw AnnKeyword
          return (PDoBlock ds)
@@ -1341,7 +1341,7 @@ Do ::=
 -}
 do_ :: SyntaxInfo -> IdrisParser PDo
 do_ syn
-     = P.try (do kw <- execWriterT $ reservedFC "let"
+     = P.try (do kw <- execWriterT $ reserved "let"
                  (i, ifc) <- name
                  ty <- P.option Placeholder (do lchar ':'
                                                 expr' syn)
@@ -1350,14 +1350,14 @@ do_ syn
                  e <- expr syn
                  highlightP kw AnnKeyword
                  return (DoLet fc RigW i ifc ty e))
-   <|> P.try (do kw <- execWriterT $ reservedFC "let"
+   <|> P.try (do kw <- execWriterT $ reserved "let"
                  i <- expr' syn
                  reservedOp "="
                  fc <- getFC
                  sc <- expr syn
                  highlightP kw AnnKeyword
                  return (DoLetP fc i sc))
-   <|> P.try (do kw <- execWriterT $ reservedFC "rewrite"
+   <|> P.try (do kw <- execWriterT $ reserved "rewrite"
                  fc <- getFC
                  sc <- expr syn
                  highlightP kw AnnKeyword
@@ -1442,7 +1442,7 @@ constants =
 
 -- | Parse a constant and its source span
 constant :: Parsing m => WriterT FC m Idris.Core.TT.Const
-constant = P.choice [ ty <$ reservedFC name | (name, ty) <- constants ]
+constant = P.choice [ ty <$ reserved name | (name, ty) <- constants ]
        <|> P.try (Fl <$> float)
        <|> BI <$> natural
        <|> Str <$> verbatimStringLiteral
@@ -1459,8 +1459,8 @@ VerbatimString_t ::=
 @
  -}
 verbatimStringLiteral :: Parsing m => WriterT FC m String
-verbatimStringLiteral = tokenFC $ do P.try $ string "\"\"\""
-                                     P.manyTill P.anyChar $ P.try (string "\"\"\"")
+verbatimStringLiteral = token $ do P.try $ string "\"\"\""
+                                   P.manyTill P.anyChar $ P.try (string "\"\"\"")
 
 {- | Parses a static modifier
 
@@ -1472,7 +1472,7 @@ Static ::=
 -}
 static :: IdrisParser Static
 static =     Static <$ reserved "%static"
-         <|> do fc <- execWriterT $ reservedFC "[static]"
+         <|> do fc <- execWriterT $ reserved "[static]"
                 parserWarning fc Nothing (Msg "The use of [static] is deprecated, use %static instead.")
                 return Static
          <|> return Dynamic

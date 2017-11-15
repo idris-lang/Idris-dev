@@ -78,13 +78,13 @@ table fixes
                             return $ f fc n
       | otherwise       = ctor $ do
                             indentGt
-                            fc <- execWriterT $ reservedOpFC name
+                            fc <- execWriterT $ reservedOp name
                             indentGt
                             return $ f fc (sUN name)
 
     prefix :: String -> (FC -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
     prefix name f = P.Prefix $ do
-                      fc <- execWriterT $ reservedOpFC name
+                      fc <- execWriterT $ reservedOp name
                       indentGt
                       return (f fc)
 
@@ -109,7 +109,7 @@ backtickOperator = P.between (indentGt *> lchar '`') (indentGt *> lchar '`') nam
 @
 -}
 operatorName :: IdrisParser (Name, FC)
-operatorName =     runWriterT (sUN <$> symbolicOperatorFC)
+operatorName =     runWriterT (sUN <$> symbolicOperator)
                <|> backtickOperator
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
@@ -124,8 +124,8 @@ operatorName =     runWriterT (sUN <$> symbolicOperatorFC)
 
 -}
 operatorFront :: IdrisParser (Name, FC)
-operatorFront = runWriterT $ do     P.try $ lcharFC '(' *> (eqTy <$ reservedOpFC "=") <* lcharFC ')'
-                                <|> maybeWithNS (lcharFC '(' *> symbolicOperatorFC <* lcharFC ')') []
+operatorFront = runWriterT $ do     P.try $ lchar '(' *> (eqTy <$ reservedOp "=") <* lchar ')'
+                                <|> maybeWithNS (lchar '(' *> symbolicOperator <* lchar ')') []
 
 {- | Parses a function (either normal name or operator)
 

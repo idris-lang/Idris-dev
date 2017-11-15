@@ -70,11 +70,8 @@ someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *
 spanning :: Parsing m => m a -> m a
 spanning p = (getFC >>= tell) *> p <* (getFC >>= tell)
 
-tokenFC :: Parsing m => m a -> m a
-tokenFC p = spanning p <* whiteSpace
-
 token :: Parsing m => m a -> m a
-token p = p <* whiteSpace
+token p = spanning p <* whiteSpace
 
 -- | Helper to run Idris parser stack
 runparser :: StateT st SpanParser res -> st -> String -> String -> Either ParseError res
@@ -208,21 +205,21 @@ whiteSpace = someSpace <|> pure ()
 
 -- | Parses a string literal
 stringLiteral :: Parsing m => m String
-stringLiteral = tokenFC . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
+stringLiteral = token . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '"')
 
 -- | Parses a char literal
 charLiteral :: Parsing m => m Char
-charLiteral = tokenFC . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
+charLiteral = token . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
 
 -- | Parses a natural number
 natural :: Parsing m => m Integer
-natural = tokenFC (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
-                   <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
-                   <|> P.try P.decimal)
+natural = token (    P.try (P.char '0' *> P.char' 'x' *> P.hexadecimal)
+                 <|> P.try (P.char '0' *> P.char' 'o' *> P.octal)
+                 <|> P.try P.decimal)
 
 -- | Parses a floating point number
 float :: Parsing m => m Double
-float = tokenFC . P.try $ P.float
+float = token . P.try $ P.float
 
 {- * Symbols, identifiers, names and operators -}
 
@@ -253,15 +250,8 @@ string = P.string
 lchar :: Parsing m => Char -> m Char
 lchar = token . P.char
 
--- | Parses a character as a token, returning the source span of the character
-lcharFC :: Parsing m => Char -> m Char
-lcharFC = tokenFC . P.char
-
 symbol :: Parsing m => String -> m ()
-symbol = void . P.symbol someSpace
-
-symbolFC :: Parsing m => String -> m ()
-symbolFC = spanning . symbol
+symbol = void . spanning . P.symbol someSpace
 
 -- | Parses a reserved identifier
 reserved :: Parsing m => String -> m ()
@@ -269,14 +259,9 @@ reserved name = token $ P.try $ do
   P.string name
   P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
 
--- | Parses a reserved identifier, computing its span. Assumes that
--- reserved identifiers never contain line breaks.
-reservedFC :: Parsing m => String -> m ()
-reservedFC = spanning . reserved
-
 -- | Parse a reserved identfier, highlighting its span as a keyword
 reservedHL :: String -> IdrisParser ()
-reservedHL str = execWriterT (reservedFC str) >>= flip highlightP AnnKeyword
+reservedHL str = execWriterT (reserved str) >>= flip highlightP AnnKeyword
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
 -- | Parses a reserved operator
@@ -285,12 +270,9 @@ reservedOp name = token $ P.try $
   do string name
      P.notFollowedBy operatorLetter <?> ("end of " ++ show name)
 
-reservedOpFC :: Parsing m => String -> m ()
-reservedOpFC = spanning . reservedOp
-
 -- | Parses an identifier as a token
-identifierFC :: Parsing m => m String
-identifierFC = P.try $ do
+identifier :: Parsing m => m String
+identifier = P.try $ do
   ident <- spanning identifierOrReserved
   when (ident `HS.member` reservedIdentifiers) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved " ++ ident
   when (ident == "_") $ P.unexpected . P.Label . NonEmpty.fromList $ "wildcard"
@@ -298,12 +280,12 @@ identifierFC = P.try $ do
 
 -- | Parses an identifier with possible namespace as a name
 iName :: Parsing m => [String] -> m (Name, FC)
-iName bad = listen (maybeWithNS identifierFC bad) <?> "name"
+iName bad = listen (maybeWithNS identifier bad) <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
 maybeWithNS :: Parsing m => m String -> [String] -> m Name
 maybeWithNS parser bad = do
-  i <- P.option "" (P.lookAhead identifierFC)
+  i <- P.option "" (P.lookAhead identifier)
   when (i `elem` bad) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved identifier"
   mkName <$> P.choice (reverse (parserNoNS parser : parsersNS parser i))
   where parserNoNS :: Parsing m => m String -> m (String, String)
@@ -373,10 +355,6 @@ symbolicOperator = do op <- token . some $ operatorLetter
                       when (op `elem` (invalidOperators ++ commentMarkers)) $
                            fail $ op ++ " is not a valid operator"
                       return op
-
--- | Parses an operator
-symbolicOperatorFC :: Parsing m => m String
-symbolicOperatorFC = spanning symbolicOperator
 
 {- * Position helpers -}
 
@@ -556,7 +534,7 @@ notOpenBraces = do ist <- get
 {- | Parses an accessibilty modifier (e.g. public, private) -}
 accessibility' :: IdrisParser Accessibility
 accessibility'
-              = do fc <- execWriterT $ reservedFC "public"
+              = do fc <- execWriterT $ reserved "public"
                    gotexp <- optional (reserved "export")
                    case gotexp of
                         Just _ -> return ()
@@ -566,7 +544,7 @@ accessibility'
                               (fc, Msg "'public' is deprecated. Use 'public export' instead.")
                                    : parserWarnings ist }
                    return Public
-            <|> do fc <- execWriterT $ reservedFC "abstract"
+            <|> do fc <- execWriterT $ reserved "abstract"
                    ist <- get
                    put ist { parserWarnings =
                       (fc, Msg "The 'abstract' keyword is deprecated. Use 'export' instead.")

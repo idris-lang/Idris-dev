@@ -235,7 +235,7 @@ exprArg cmd name = do
           return $ Left ("Usage is :" ++ name ++ " <expression>")
 
     let justOperator = do
-          (op, fc) <- runWriterT IP.symbolicOperatorFC
+          (op, fc) <- runWriterT IP.symbolicOperator
           P.eof
           return $ Right $ cmd (PRef fc [] (sUN op))
 
@@ -263,12 +263,12 @@ strArg :: (String -> Command) -> String -> IP.IdrisParser (Either String Command
 strArg = genArg "string" (P.many P.anyChar)
 
 moduleArg :: (FilePath -> Command) -> String -> IP.IdrisParser (Either String Command)
-moduleArg = genArg "module" (fmap (toPath . fst) (runWriterT IP.identifierFC))
+moduleArg = genArg "module" (fmap (toPath . fst) (runWriterT IP.identifier))
   where
     toPath n = foldl1' (</>) $ splitOn "." n
 
 namespaceArg :: ([String] -> Command) -> String -> IP.IdrisParser (Either String Command)
-namespaceArg = genArg "namespace" (fmap (toNS . fst) (runWriterT IP.identifierFC))
+namespaceArg = genArg "namespace" (fmap (toNS . fst) (runWriterT IP.identifier))
   where
     toNS  = splitOn "."
 
@@ -370,20 +370,20 @@ cmd_compile name = do
     let codegenOption :: IP.IdrisParser Codegen
         codegenOption = do
             let bytecodeCodegen = discard (IP.symbol "bytecode") *> return Bytecode
-                viaCodegen = do x <- fst <$> runWriterT IP.identifierFC
+                viaCodegen = do x <- IP.identifier
                                 return (Via IBCFormat (map toLower x))
             bytecodeCodegen <|> viaCodegen
 
     let hasOneArg = do
           i <- get
-          f <- fst <$> runWriterT IP.identifierFC
+          f <- IP.identifier
           P.eof
           return $ Right (Compile defaultCodegen f)
 
     let hasTwoArgs = do
           i <- get
           codegen <- codegenOption
-          f <- fst <$> runWriterT IP.identifierFC
+          f <- IP.identifier
           P.eof
           return $ Right (Compile codegen f)
 
@@ -417,7 +417,7 @@ cmd_cats name = do
     return $ Right $ LogCategory (concat cs)
   where
     badCat = do
-      c <- fst <$> runWriterT IP.identifierFC
+      c <- IP.identifier
       fail $ "Category: " ++ c ++ " is not recognised."
 
     pLogCats :: IP.IdrisParser [LogCat]
