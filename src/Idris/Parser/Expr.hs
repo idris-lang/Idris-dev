@@ -152,18 +152,14 @@ extension syn ns rules =
     ruleGroup _ _ = False
 
     extensionSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
-    extensionSymbol (Keyword n)    = do fc <- extent $ reserved (show n)
-                                        highlightP fc AnnKeyword
-                                        return Nothing
+    extensionSymbol (Keyword n)    = Nothing <$ keyword (show n)
     extensionSymbol (Expr n)       = do tm <- expr syn
                                         return $ Just (n, SynTm tm)
     extensionSymbol (SimpleExpr n) = do tm <- simpleExpr syn
                                         return $ Just (n, SynTm tm)
     extensionSymbol (Binding n)    = do (b, fc) <- listen name
                                         return $ Just (n, SynBind fc b)
-    extensionSymbol (Symbol s)     = do fc <- extent $ symbol s
-                                        highlightP fc AnnKeyword
-                                        return Nothing
+    extensionSymbol (Symbol s)     = Nothing <$ highlight AnnKeyword (symbol s)
 
     flatten :: PTerm -> PTerm -- flatten application
     flatten (PApp fc (PApp _ f as) bs) = flatten (PApp fc f (as ++ bs))
@@ -303,9 +299,7 @@ Impossible ::= 'impossible'
 @
 -}
 impossible :: IdrisParser PTerm
-impossible = do fc <- extent $ reserved "impossible"
-                highlightP fc AnnKeyword
-                return PImpossible
+impossible = PImpossible <$ keyword "impossible"
 
 {- | Parses a case expression
 @
@@ -314,12 +308,10 @@ CaseExpr ::=
 @
 -}
 caseExpr :: SyntaxInfo -> IdrisParser PTerm
-caseExpr syn = do kw1 <- extent $ reserved "case"; fc <- getFC
-                  scr <- expr syn
-                  kw2 <- extent $ reserved "of";
+caseExpr syn = do keyword "case"
+                  (scr, fc) <- listen $ expr syn
+                  keyword "of"
                   opts <- indentedBlock1 (caseOption syn)
-                  highlightP kw1 AnnKeyword
-                  highlightP kw2 AnnKeyword
                   return (PCase fc scr opts)
                <?> "case expression"
 
@@ -348,9 +340,8 @@ ProofExpr ::=
 @
 -}
 proofExpr :: SyntaxInfo -> IdrisParser PTerm
-proofExpr syn = do kw <- extent $ reserved "proof"
+proofExpr syn = do kw <- extent $ keyword "proof"
                    ts <- indentedBlock1 (tactic syn)
-                   highlightP kw AnnKeyword
                    warnTacticDeprecation kw
                    return $ PProof ts
                 <?> "proof block"
@@ -363,9 +354,8 @@ TacticsExpr :=
 @
 -}
 tacticsExpr :: SyntaxInfo -> IdrisParser PTerm
-tacticsExpr syn = do kw <- extent $ reserved "tactics"
+tacticsExpr syn = do kw <- extent $ keyword "tactics"
                      ts <- indentedBlock1 (tactic syn)
-                     highlightP kw AnnKeyword
                      warnTacticDeprecation kw
                      return $ PTactics ts
                   <?> "tactics block"
@@ -622,10 +612,8 @@ RunTactics ::=
   ;
 -}
 runElab :: SyntaxInfo -> IdrisParser PTerm
-runElab syn = do (FC fn (sl, sc) kwEnd) <- P.try $ extent $ lchar '%' *> reserved "runElab"
-                 fc <- getFC
-                 tm <- simpleExpr syn
-                 highlightP (FC fn (sl, sc-1) kwEnd) AnnKeyword
+runElab syn = do P.try $ highlight AnnKeyword $ lchar '%' *> reserved "runElab"
+                 (tm, fc) <- listen $ simpleExpr syn
                  return $ PRunElab fc tm (syn_namespace syn)
               <?> "new-style tactics expression"
 
@@ -635,10 +623,9 @@ Disamb ::=
   ;
 -}
 disamb :: SyntaxInfo -> IdrisParser PTerm
-disamb syn = do kw <- extent $ reserved "with"
+disamb syn = do keyword "with"
                 ns <- P.sepBy1 name (lchar ',')
                 tm <- expr' syn
-                highlightP kw AnnKeyword
                 return (PDisamb (map tons ns) tm)
                <?> "namespace disambiguation expression"
   where tons (NS n s) = txt (show n) : s
@@ -763,14 +750,10 @@ quasiquote syn = (<?> "quasiquotation") . highlight AnnQuasiquote $ do
                    e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
                                    inPattern = False }
                    g <- optional $
-                          do fc <- extent $ symbol ":"
-                             ty <- expr syn { inPattern = False } -- don't allow antiquotes
-                             return (ty, fc)
+                          do highlight AnnKeyword $ symbol ":"
+                             expr syn { inPattern = False } -- don't allow antiquotes
                    highlight AnnKeyword $ symbol ")"
-                   case g of
-                     Just (_, fc) -> highlightP fc AnnKeyword
-                     _ -> return ()
-                   return $ PQuasiquote e (fst <$> g)
+                   return $ PQuasiquote e g
 
 {-| Parses an unquoting inside a quasiquotation (for building reflected terms using the elaborator)
 
@@ -824,13 +807,12 @@ data SetOrUpdate = FieldSet PTerm | FieldUpdate PTerm
 
 recordType :: SyntaxInfo -> IdrisParser PTerm
 recordType syn =
-      do kw <- extent $ reserved "record"
+      do keyword "record"
          lchar '{'
          fgs <- fieldGetOrSet
          lchar '}'
          fc <- getFC
          rec <- optional (do notEndApp; simpleExpr syn)
-         highlightP kw AnnKeyword
          case fgs of
               Left fields ->
                 case rec of
@@ -957,16 +939,14 @@ RewriteTerm ::=
 @
 -}
 rewriteTerm :: SyntaxInfo -> IdrisParser PTerm
-rewriteTerm syn = do kw <- extent $ reserved "rewrite"
+rewriteTerm syn = do keyword "rewrite"
                      fc <- getFC
                      prf <- expr syn
                      giving <- optional (do symbol "==>"; expr' syn)
                      using <- optional (do reserved "using"
                                            n <- name
                                            return n)
-                     kw' <- extent $ reserved "in";  sc <- expr syn
-                     highlightP kw AnnKeyword
-                     highlightP kw' AnnKeyword
+                     keyword "in";  sc <- expr syn
                      return (PRewrite fc using prf sc giving)
                   <?> "term rewrite expression"
 
@@ -982,10 +962,9 @@ TypeSig' ::=
 @
  -}
 let_ :: SyntaxInfo -> IdrisParser PTerm
-let_ syn = P.try (do kw <- extent $ reserved "let"
+let_ syn = P.try (do keyword "let"
                      ls <- indentedBlock (let_binding syn)
-                     kw' <- extent $ reserved "in";  sc <- expr syn
-                     highlightP kw AnnKeyword; highlightP kw' AnnKeyword
+                     keyword "in";  sc <- expr syn
                      return (buildLets ls sc))
            <?> "let binding"
   where buildLets [] sc = sc
@@ -1012,14 +991,12 @@ If ::= 'if' Expr 'then' Expr 'else' Expr
 
 -}
 if_ :: SyntaxInfo -> IdrisParser PTerm
-if_ syn = (do ifFC <- extent $ reserved "if"
-              fc <- getFC
-              c <- expr syn
-              thenFC <- extent $ reserved "then"
+if_ syn = (do keyword "if"
+              (c, fc) <- listen $ expr syn
+              keyword "then"
               t <- expr syn
-              elseFC <- extent $ reserved "else"
+              keyword "else"
               f <- expr syn
-              mapM_ (flip highlightP AnnKeyword) [ifFC, thenFC, elseFC]
               return (PIfThenElse fc c t f))
           <?> "conditional expression"
 
@@ -1033,13 +1010,11 @@ QuoteGoal ::=
 @
  -}
 quoteGoal :: SyntaxInfo -> IdrisParser PTerm
-quoteGoal syn = do kw1 <- extent $ reserved "quoteGoal"; n <- name;
-                   kw2 <- extent $ reserved "by"
+quoteGoal syn = do keyword "quoteGoal"; n <- name;
+                   keyword "by"
                    r <- expr syn
-                   kw3 <- extent $ reserved "in"
-                   fc <- getFC
-                   sc <- expr syn
-                   mapM_ (flip highlightP AnnKeyword) [kw1, kw2, kw3]
+                   keyword "in"
+                   (sc, fc) <- listen $ expr syn
                    return (PGoal fc r n sc)
                 <?> "quote goal expression"
 
@@ -1071,18 +1046,17 @@ explicitPi opts st syn
         return (bindList (\r -> PPi (binder { pcount = r })) xt sc)
 
 autoImplicit opts st syn
-   = do kw <- extent $ reserved "auto"
+   = do keyword "auto"
         when (st == Static) $ fail "auto implicits can not be static"
         xt <- typeDeclList syn
         lchar '}'
         symbol "->"
         sc <- expr (allowConstr syn)
-        highlightP kw AnnKeyword
         return (bindList (\r -> PPi
           (TacImp [] Dynamic (PTactics [ProofSearch True True 100 Nothing [] []]) r)) xt sc)
 
 defaultImplicit opts st syn = do
-   kw <- extent $ reserved "default"
+   keyword "default"
    when (st == Static) $ fail "default implicits can not be static"
    ist <- get
    script' <- simpleExpr syn
@@ -1091,7 +1065,6 @@ defaultImplicit opts st syn = do
    lchar '}'
    symbol "->"
    sc <- expr (allowConstr syn)
-   highlightP kw AnnKeyword
    return (bindList (\r -> PPi (TacImp [] Dynamic script r)) xt sc)
 
 normalImplicit opts st syn = do
@@ -1310,10 +1283,8 @@ DoBlock ::=
  -}
 doBlock :: SyntaxInfo -> IdrisParser PTerm
 doBlock syn
-    = do kw <- extent $ reserved "do"
-         ds <- indentedBlock1 (do_ syn)
-         highlightP kw AnnKeyword
-         return (PDoBlock ds)
+    = do keyword "do"
+         PDoBlock <$> indentedBlock1 (do_ syn)
       <?> "do block"
 
 {- | Parses an expression inside a do block
@@ -1330,26 +1301,22 @@ Do ::=
 -}
 do_ :: SyntaxInfo -> IdrisParser PDo
 do_ syn
-     = P.try (do kw <- extent $ reserved "let"
+     = P.try (do keyword "let"
                  (i, ifc) <- listen name
                  ty <- P.option Placeholder (do lchar ':'
                                                 expr' syn)
                  reservedOp "="
                  fc <- getFC
                  e <- expr syn
-                 highlightP kw AnnKeyword
                  return (DoLet fc RigW i ifc ty e))
-   <|> P.try (do kw <- extent $ reserved "let"
+   <|> P.try (do keyword "let"
                  i <- expr' syn
                  reservedOp "="
-                 fc <- getFC
-                 sc <- expr syn
-                 highlightP kw AnnKeyword
+                 (sc, fc) <- listen $ expr syn
                  return (DoLetP fc i sc))
-   <|> P.try (do kw <- extent $ reserved "rewrite"
+   <|> P.try (do keyword "rewrite"
                  fc <- getFC
                  sc <- expr syn
-                 highlightP kw AnnKeyword
                  return (DoRewrite fc sc))
    <|> P.try (do (i, ifc) <- listen name
                  symbol "<-"

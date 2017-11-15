@@ -92,10 +92,6 @@ highlight annot p = do
   modify $ \ist -> ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist }
   return result
 
-highlightP :: (MonadState IState m) => FC -> OutputAnnotation -> m ()
-highlightP fc annot = do ist <- get
-                         put ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist}
-
 -- | Parse a reserved identfier, highlighting it as a keyword
 keyword :: (Parsing m, MonadState IState m) => String -> m ()
 keyword str = highlight AnnKeyword (reserved str)

@@ -361,18 +361,14 @@ declExtension syn ns rules =
     ruleGroup _ _ = False
 
     extSymbol :: SSymbol -> IdrisParser (Maybe (Name, SynMatch))
-    extSymbol (Keyword n) = do fc <- extent $ reserved (show n)
-                               highlightP fc AnnKeyword
-                               return Nothing
+    extSymbol (Keyword n) = Nothing <$ keyword (show n)
     extSymbol (Expr n) = do tm <- expr syn
                             return $ Just (n, SynTm tm)
     extSymbol (SimpleExpr n) = do tm <- simpleExpr syn
                                   return $ Just (n, SynTm tm)
     extSymbol (Binding n) = do (b, fc) <- listen name
                                return $ Just (n, SynBind fc b)
-    extSymbol (Symbol s) = do fc <- extent $ symbol s
-                              highlightP fc AnnKeyword
-                              return Nothing
+    extSymbol (Symbol s) = Nothing <$ highlight AnnKeyword (symbol s)
 
 {-| Parses a syntax extension declaration (and adds the rule to parser state)
 
@@ -1418,8 +1414,7 @@ ProviderWhat ::= 'proof' | 'term' | 'type' | 'postulate'
  -}
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do doc <- P.try (do (doc, _) <- docstring syn
-                                   fc <- extent $ lchar '%' *> reserved "provide"
-                                   highlightP fc AnnKeyword
+                                   highlight AnnKeyword $ lchar '%' *> reserved "provide"
                                    return doc)
                   provideTerm doc <|> providePostulate doc
                <?> "type provider"
@@ -1464,9 +1459,8 @@ RunElabDecl ::= '%' 'runElab' Expr
 -}
 runElabDecl :: SyntaxInfo -> IdrisParser PDecl
 runElabDecl syn =
-  do kwFC <- P.try (extent $ lchar '%' *> reserved "runElab")
+  do kwFC <- P.try (highlight AnnKeyword (extent $ lchar '%' *> reserved "runElab"))
      script <- expr syn <?> "elaborator script"
-     highlightP kwFC AnnKeyword
      return $ PRunElabDecl kwFC script (syn_namespace syn)
   <?> "top-level elaborator script"
 

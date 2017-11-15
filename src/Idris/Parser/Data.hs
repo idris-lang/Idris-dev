@@ -312,11 +312,10 @@ OverloadIdentifier ::= 'let' | Identifier;
 Overload ::= OverloadIdentifier '=' Expr;
 -}
 overload :: SyntaxInfo -> IdrisParser (String, PTerm)
-overload syn = do (o, fc) <- listen $ identifier <|> "let" <$ reserved "let"
+overload syn = do o <- highlight AnnKeyword $ identifier <|> "let" <$ reserved "let"
                   if o `notElem` overloadable
                      then fail $ show o ++ " is not an overloading"
                      else do
-                       highlightP fc AnnKeyword
                        lchar '='
                        t <- expr syn
                        return (o, t)
