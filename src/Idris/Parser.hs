@@ -44,7 +44,7 @@ import Prelude hiding (pi)
 import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (execWriterT, runWriterT)
+import Control.Monad.Writer.Strict (execWriterT, listen, runWriterT)
 import Data.Char
 import Data.Foldable (asum)
 import Data.Function
@@ -368,7 +368,7 @@ declExtension syn ns rules =
                             return $ Just (n, SynTm tm)
     extSymbol (SimpleExpr n) = do tm <- simpleExpr syn
                                   return $ Just (n, SynTm tm)
-    extSymbol (Binding n) = do (b, fc) <- name
+    extSymbol (Binding n) = do (b, fc) <- listen name
                                return $ Just (n, SynBind fc b)
     extSymbol (Symbol s) = do fc <- execWriterT $ symbol s
                               highlightP fc AnnKeyword
@@ -543,13 +543,13 @@ SyntaxSym ::=   '[' Name_t ']'
 @
  -}
 syntaxSym :: IdrisParser SSymbol
-syntaxSym =    P.try (do lchar '['; n <- fst <$> name; lchar ']'
+syntaxSym =    P.try (do lchar '['; n <- name; lchar ']'
                          return (Expr n))
-            <|> P.try (do lchar '{'; n <- fst <$> name; lchar '}'
+            <|> P.try (do lchar '{'; n <- name; lchar '}'
                           return (Binding n))
-            <|> do n <- fst <$> iName []
+            <|> do n <- iName []
                    return (Keyword n)
-            <|> do sym <- fst <$> runWriterT stringLiteral
+            <|> do sym <- stringLiteral
                    return (Symbol sym)
             <?> "syntax symbol"
 
@@ -583,7 +583,7 @@ fnDecl' syn = (checkDeclFixity $
                         pushIndent
                         (doc, argDocs) <- docstring syn
                         (opts, acc) <- fnOpts
-                        (n_in, nfc) <- fnName
+                        (n_in, nfc) <- listen fnName
                         let n = expandNS syn n_in
                         fc <- getFC
                         lchar ':'
@@ -679,7 +679,7 @@ fnOpt = do reservedHL "total"; return TotalFn
         <|> Implicit <$ reservedHL "implicit"
         <?> "function modifier"
   where nameTimes :: IdrisParser (Name, Maybe Int)
-        nameTimes = do n <- fst <$> fnName
+        nameTimes = do n <- fnName
                        t <- P.option Nothing (do reds <- fmap fst (runWriterT natural)
                                                  return (Just (fromInteger reds)))
                        return (n, t)
@@ -700,7 +700,7 @@ postulate syn = do (doc, ext)
                                      return (doc, ext)
                    ist <- get
                    (opts, acc) <- fnOpts
-                   (n_in, nfc) <- fnName
+                   (n_in, nfc) <- listen fnName
                    let n = expandNS syn n_in
                    lchar ':'
                    ty <- typeExpr (allowImp syn)
@@ -757,7 +757,7 @@ openInterface syn =
     do reservedHL "using"
        reservedHL "implementation"
        fc <- getFC
-       ns <- P.sepBy1 fnName (lchar ',')
+       ns <- P.sepBy1 (listen fnName) (lchar ',')
 
        openBlock
        ds <- many (decl syn)
@@ -853,7 +853,7 @@ interfaceBlock syn = do reservedHL "where"
                      <?> "interface block"
   where
     constructor :: IdrisParser (Name, FC)
-    constructor = reservedHL "constructor" *> fnName
+    constructor = reservedHL "constructor" *> listen fnName
 
     annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
     annotate syn ist = annotCode $ tryFullExpr syn ist
@@ -882,7 +882,7 @@ interface_ syn = do (doc, argDocs, acc)
                     fc <- getFC
                     cons <- constraintList syn
                     let cons' = [(c, ty) | (_, c, _, ty) <- cons]
-                    (n_in, nfc) <- fnName
+                    (n_in, nfc) <- listen fnName
                     let n = expandNS syn n_in
                     cs <- many carg
                     fds <- P.option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
@@ -892,7 +892,7 @@ interface_ syn = do (doc, argDocs, acc)
                  <?> "interface declaration"
   where
     fundeps :: IdrisParser [(Name, FC)]
-    fundeps = do lchar '|'; P.sepBy name (lchar ',')
+    fundeps = do lchar '|'; P.sepBy (listen name) (lchar ',')
 
     interfaceKeyword :: IdrisParser ()
     interfaceKeyword = reservedHL "interface"
@@ -901,9 +901,9 @@ interface_ syn = do (doc, argDocs, acc)
                       parserWarning fc Nothing (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
 
     carg :: IdrisParser (Name, FC, PTerm)
-    carg = do lchar '('; (i, ifc) <- name; lchar ':'; ty <- expr syn; lchar ')'
+    carg = do lchar '('; (i, ifc) <- listen name; lchar ':'; ty <- expr syn; lchar ')'
               return (i, ifc, ty)
-       <|> do (i, ifc) <- name
+       <|> do (i, ifc) <- listen name
               fc <- getFC
               return (i, ifc, PType fc)
 
@@ -932,7 +932,7 @@ implementation kwopt syn
                         en <- optional implementationName
                         cs <- constraintList syn
                         let cs' = [(c, ty) | (_, c, _, ty) <- cs]
-                        (cn, cnfc) <- fnName
+                        (cn, cnfc) <- listen fnName
                         args <- many (simpleExpr syn)
                         let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                         let t = bindList (\r -> PPi constraint { pcount = r }) cs sc
@@ -941,7 +941,7 @@ implementation kwopt syn
                         return [PImplementation doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
                       <?> "implementation declaration"
   where implementationName :: IdrisParser Name
-        implementationName = do lchar '['; n_in <- fst <$> fnName; lchar ']'
+        implementationName = do lchar '['; n_in <- fnName; lchar ']'
                                 let n = expandNS syn n_in
                                 return n
                              <?> "implementation name"
@@ -953,7 +953,7 @@ implementation kwopt syn
 
         implementationUsing :: IdrisParser [Name]
         implementationUsing = do reservedHL "using"
-                                 ns <- P.sepBy1 fnName (lchar ',')
+                                 ns <- P.sepBy1 (listen fnName) (lchar ',')
                                  return (map fst ns)
                               <|> return []
 
@@ -995,7 +995,7 @@ NameList ::=
 usingDeclList :: SyntaxInfo -> IdrisParser [Using]
 usingDeclList syn
                = P.try (P.sepBy1 (usingDecl syn) (lchar ','))
-             <|> do ns <- P.sepBy1 (fst <$> name) (lchar ',')
+             <|> do ns <- P.sepBy1 name (lchar ',')
                     lchar ':'
                     t <- typeExpr (disallowImp syn)
                     return (map (\x -> UImplicit x t) ns)
@@ -1011,12 +1011,12 @@ UsingDecl ::=
 @
 -}
 usingDecl :: SyntaxInfo -> IdrisParser Using
-usingDecl syn = P.try (do x <- fst <$> fnName
+usingDecl syn = P.try (do x <- fnName
                           lchar ':'
                           t <- typeExpr (disallowImp syn)
                           return (UImplicit x t))
-            <|> do c <- fst <$> fnName
-                   xs <- many (fst <$> fnName)
+            <|> do c <- fnName
+                   xs <- many fnName
                    return (UConstraint c xs)
             <?> "using declaration"
 
@@ -1040,7 +1040,7 @@ CAF ::= 'let' FnName '=' Expr Terminator;
 -}
 caf :: SyntaxInfo -> IdrisParser PDecl
 caf syn = do reservedHL "let"
-             n_in <- fst <$> fnName; let n = expandNS syn n_in
+             n_in <- fnName; let n = expandNS syn n_in
              pushIndent
              lchar '='
              t <- indented $ expr syn
@@ -1079,7 +1079,7 @@ rhs syn n = do lchar '='
                expr syn
         <|> do symbol "?=";
                fc <- getFC
-               name <- P.option n' (do symbol "{"; n <- fst <$> fnName; symbol "}";
+               name <- P.option n' (do symbol "{"; n <- fnName; symbol "}";
                                        return n)
                r <- expr syn
                return (addLet fc name r)
@@ -1149,7 +1149,7 @@ clause syn
                               symbol "<=="
                               return ty)
               fc <- getFC
-              n_in <- fst <$> fnName; let n = expandNS syn n_in
+              n_in <- fnName; let n = expandNS syn n_in
               r <- rhs syn n
               let wsyn = syn { syn_namespace = [] }
               (wheres, nmap) <-   whereBlock n wsyn <* popIndent
@@ -1193,7 +1193,7 @@ clause syn
                    put (ist { lastParse = Just n })
                    return $ PWith fc n capp wargs wval pn withs)
        <|> do pushIndent
-              (n_in, nfc) <- fnName; let n = expandNS syn n_in
+              (n_in, nfc) <- listen fnName; let n = expandNS syn n_in
               fc <- getFC
               args <- many (P.try (implicitArg (syn { inPattern = True } ))
                             <|> P.try (constraintArg (syn { inPattern = True }))
@@ -1221,7 +1221,7 @@ clause syn
       <?> "function clause"
   where
     optProof = P.option Nothing (do reservedHL "proof"
-                                    n <- fnName
+                                    n <- listen fnName
                                     return (Just n))
 
     fillLHS :: Name -> PTerm -> [PTerm] -> PClause -> PClause
@@ -1327,15 +1327,15 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     cgn <- codegen_
                     hdr <- fst <$> runWriterT stringLiteral
                     return [PDirective (DInclude cgn hdr)]
-             <|> do P.try (lchar '%' *> reserved "hide"); n <- fst <$> fnName
+             <|> do P.try (lchar '%' *> reserved "hide"); n <- fnName
                     return [PDirective (DHide n)]
-             <|> do P.try (lchar '%' *> reserved "freeze"); n <- fst <$> iName []
+             <|> do P.try (lchar '%' *> reserved "freeze"); n <- iName []
                     return [PDirective (DFreeze n)]
-             <|> do P.try (lchar '%' *> reserved "thaw"); n <- fst <$> iName []
+             <|> do P.try (lchar '%' *> reserved "thaw"); n <- iName []
                     return [PDirective (DThaw n)]
              -- injectivity assertins are intended for debugging purposes
              -- only, and won't be documented/could be removed at any point
-             <|> do P.try (lchar '%' *> reserved "assert_injective"); n <- fst <$> fnName
+             <|> do P.try (lchar '%' *> reserved "assert_injective"); n <- fnName
                     return [PDirective (DInjective n)]
              -- Assert totality of something after definition. This is
              -- here as a debugging aid, so commented out...
@@ -1357,28 +1357,28 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     libs <- P.sepBy1 (fst <$> runWriterT stringLiteral) (lchar ',')
                     return [PDirective (DDynamicLibs libs)]
              <|> do P.try (lchar '%' *> reserved "name")
-                    (ty, tyFC) <- fnName
-                    ns <- P.sepBy1 name (lchar ',')
+                    (ty, tyFC) <- listen fnName
+                    ns <- P.sepBy1 (listen name) (lchar ',')
                     return [PDirective (DNameHint ty tyFC ns)]
              <|> do P.try (lchar '%' *> reserved "error_handlers")
-                    (fn, nfc) <- fnName
-                    (arg, afc) <- fnName
-                    ns <- P.sepBy1 name (lchar ',')
+                    (fn, nfc) <- listen fnName
+                    (arg, afc) <- listen fnName
+                    ns <- P.sepBy1 (listen name) (lchar ',')
                     return [PDirective (DErrorHandlers fn nfc arg afc ns) ]
              <|> do P.try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (DLanguage ext)]
              <|> do P.try (lchar '%' *> reserved "deprecate")
-                    n <- fst <$> fnName
+                    n <- fnName
                     alt <- P.option "" (fst <$> runWriterT stringLiteral)
                     return [PDirective (DDeprecate n alt)]
              <|> do P.try (lchar '%' *> reserved "fragile")
-                    n <- fst <$> fnName
+                    n <- fnName
                     alt <- P.option "" (fst <$> runWriterT stringLiteral)
                     return [PDirective (DFragile n alt)]
              <|> do fc <- getFC
                     P.try (lchar '%' *> reserved "used")
-                    fn <- fst <$> fnName
-                    arg <- fst <$> iName []
+                    fn <- fnName
+                    arg <- iName []
                     return [PDirective (DUsed fc fn arg)]
              <|> do P.try (lchar '%' *> reserved "auto_implicits")
                     b <- on_off
@@ -1424,14 +1424,14 @@ provider syn = do doc <- P.try (do (doc, _) <- docstring syn
                   provideTerm doc <|> providePostulate doc
                <?> "type provider"
   where provideTerm doc =
-          do lchar '('; (n, nfc) <- fnName; lchar ':'; t <- typeExpr syn; lchar ')'
+          do lchar '('; (n, nfc) <- listen fnName; lchar ':'; t <- typeExpr syn; lchar ')'
              fc <- getFC
              reservedHL "with"
              e <- expr syn <?> "provider expression"
              return  [PProvider doc syn fc nfc (ProvTerm t e) n]
         providePostulate doc =
           do reservedHL "postulate"
-             (n, nfc) <- fnName
+             (n, nfc) <- listen fnName
              fc <- getFC
              reservedHL "with"
              e <- expr syn <?> "provider expression"
@@ -1496,7 +1496,7 @@ parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> ela
                        (expressionTactic ["t", "type"] ECheck) <|>
                        (expressionTactic ["search"] ESearch   ) <|>
                        (do reserved "doc"
-                           doc <- (Right . fst <$> runWriterT constant) <|> (Left . fst <$> fnName)
+                           doc <- (Right <$> constant) <|> (Left <$> fnName)
                            P.eof
                            return (EDocStr doc))
                        <?> "elab command"

@@ -43,7 +43,7 @@ table fixes
 
     noFixityBacktickOperator :: P.Operator IdrisParser PTerm
     noFixityBacktickOperator = P.InfixN $ do
-                                 (n, fc) <- backtickOperator
+                                 (n, fc) <- listen backtickOperator
                                  return $ \x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y]
 
     -- | Operator without fixity (throws an error)
@@ -73,7 +73,7 @@ table fixes
     binary :: String -> (IdrisParser (PTerm -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm) -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
     binary name ctor f
       | isBacktick name = ctor $ P.try $ do
-                            (n, fc) <- backtickOperator
+                            (n, fc) <- listen backtickOperator
                             guard $ show (nsroot n) == name
                             return $ f fc n
       | otherwise       = ctor $ do
@@ -96,7 +96,7 @@ table fixes
     ;
 @
 -}
-backtickOperator :: IdrisParser (Name, FC)
+backtickOperator :: (Parsing m, MonadState IState m) => m Name
 backtickOperator = P.between (indentGt *> lchar '`') (indentGt *> lchar '`') name
 
 {- | Parses an operator name (either a symbolic name or a backtick-quoted name)
@@ -108,8 +108,8 @@ backtickOperator = P.between (indentGt *> lchar '`') (indentGt *> lchar '`') nam
     ;
 @
 -}
-operatorName :: IdrisParser (Name, FC)
-operatorName =     runWriterT (sUN <$> symbolicOperator)
+operatorName :: (Parsing m, MonadState IState m) => m Name
+operatorName =     sUN <$> symbolicOperator
                <|> backtickOperator
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
@@ -123,9 +123,9 @@ operatorName =     runWriterT (sUN <$> symbolicOperator)
 @
 
 -}
-operatorFront :: IdrisParser (Name, FC)
-operatorFront = runWriterT $ do     P.try $ lchar '(' *> (eqTy <$ reservedOp "=") <* lchar ')'
-                                <|> maybeWithNS (lchar '(' *> symbolicOperator <* lchar ')') []
+operatorFront :: Parsing m => m Name
+operatorFront = do     P.try $ lchar '(' *> (eqTy <$ reservedOp "=") <* lchar ')'
+                   <|> maybeWithNS (lchar '(' *> symbolicOperator <* lchar ')') []
 
 {- | Parses a function (either normal name or operator)
 
@@ -133,7 +133,7 @@ operatorFront = runWriterT $ do     P.try $ lchar '(' *> (eqTy <$ reservedOp "="
   FnName ::= Name | OperatorFront;
 @
 -}
-fnName :: IdrisParser (Name, FC)
+fnName :: (Parsing m, MonadState IState m) => m Name
 fnName = P.try operatorFront <|> name <?> "function name"
 
 {- | Parses a fixity declaration
@@ -146,7 +146,7 @@ Fixity ::=
 fixity :: IdrisParser PDecl
 fixity = do pushIndent
             f <- fixityType; i <- fst <$> runWriterT natural
-            ops <- P.sepBy1 (show . nsroot . fst <$> operatorName) (lchar ',')
+            ops <- P.sepBy1 (show . nsroot <$> operatorName) (lchar ',')
             terminator
             let prec = fromInteger i
             istate <- get

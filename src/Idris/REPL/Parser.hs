@@ -256,8 +256,8 @@ genArg argName argParser cmd name = do
     failure = return $ Left ("Usage is :" ++ name ++ " <" ++ argName ++ ">")
 
 nameArg, fnNameArg :: (Name -> Command) -> String -> IP.IdrisParser (Either String Command)
-nameArg = genArg "name" $ fst <$> IP.name
-fnNameArg = genArg "functionname" $ fst <$> IP.fnName
+nameArg = genArg "name" IP.name
+fnNameArg = genArg "functionname" IP.fnName
 
 strArg :: (String -> Command) -> String -> IP.IdrisParser (Either String Command)
 strArg = genArg "string" (P.many P.anyChar)
@@ -297,8 +297,8 @@ proofArg cmd name = do
     upd <- P.option False $ do
         IP.lchar '!'
         return True
-    l <- fst <$> runWriterT IP.natural
-    n <- fst <$> IP.name
+    l <- IP.natural
+    n <- IP.name
     return (Right (cmd upd (fromInteger l) n))
 
 cmd_doc :: String -> IP.IdrisParser (Either String Command)
@@ -393,7 +393,7 @@ cmd_compile name = do
 cmd_addproof :: String -> IP.IdrisParser (Either String Command)
 cmd_addproof name = do
     n <- P.option Nothing $ do
-        x <- fst <$> IP.name
+        x <- IP.name
         return (Just x)
     P.eof
     return (Right (AddProof n))
@@ -435,7 +435,7 @@ cmd_let name = do
     return (Right (NewDefn defn))
 
 cmd_unlet :: String -> IP.IdrisParser (Either String Command)
-cmd_unlet name = (Right . Undefine) `fmap` P.many (fst <$> IP.name)
+cmd_unlet name = (Right . Undefine) `fmap` P.many IP.name
 
 cmd_loadto :: String -> IP.IdrisParser (Either String Command)
 cmd_loadto name = do
@@ -529,13 +529,13 @@ cmd_search = packageBasedCmd
 cmd_proofsearch :: String -> IP.IdrisParser (Either String Command)
 cmd_proofsearch name = do
     upd <- P.option False (True <$ IP.lchar '!')
-    l <- fmap (fromInteger . fst) (runWriterT IP.natural); n <- fst <$> IP.name
-    hints <- P.many (fst <$> IP.fnName)
+    l <- fmap (fromInteger . fst) (runWriterT IP.natural); n <- IP.name
+    hints <- P.many IP.fnName
     return (Right (DoProofSearch upd True l n hints))
 
 cmd_refine :: String -> IP.IdrisParser (Either String Command)
 cmd_refine name = do
    upd <- P.option False (do IP.lchar '!'; return True)
-   l <- fmap (fromInteger . fst) (runWriterT IP.natural); n <- fst <$> IP.name
-   hint <- fst <$> IP.fnName
+   l <- fmap (fromInteger . fst) (listen IP.natural); n <- IP.name
+   hint <- IP.fnName
    return (Right (DoProofSearch upd False l n [hint]))

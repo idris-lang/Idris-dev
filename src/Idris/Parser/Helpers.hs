@@ -81,7 +81,7 @@ runparser p i inputname s =
     Right v  -> Right $ fst v
 
 
-highlightP :: FC -> OutputAnnotation -> IdrisParser ()
+highlightP :: (MonadState IState m) => FC -> OutputAnnotation -> m ()
 highlightP fc annot = do ist <- get
                          put ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist}
 
@@ -193,7 +193,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                P.many (P.satisfy isSpace)
                                P.char '@'
                                P.many (P.satisfy isSpace)
-                               n <- fst <$> name
+                               n <- name
                                P.many (P.satisfy isSpace)
                                docs <- P.many (P.satisfy (not . isEol))
                                P.eol ; someSpace
@@ -260,7 +260,7 @@ reserved name = token $ P.try $ do
   P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
 
 -- | Parse a reserved identfier, highlighting its span as a keyword
-reservedHL :: String -> IdrisParser ()
+reservedHL :: (Parsing m, MonadState IState m) => String -> m ()
 reservedHL str = execWriterT (reserved str) >>= flip highlightP AnnKeyword
 
 -- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
@@ -279,8 +279,8 @@ identifier = P.try $ do
   return ident
 
 -- | Parses an identifier with possible namespace as a name
-iName :: Parsing m => [String] -> m (Name, FC)
-iName bad = listen (maybeWithNS identifier bad) <?> "name"
+iName :: Parsing m => [String] -> m Name
+iName bad = maybeWithNS identifier bad <?> "name"
 
 -- | Parses an string possibly prefixed by a namespace
 maybeWithNS :: Parsing m => m String -> [String] -> m Name
@@ -299,12 +299,12 @@ maybeWithNS parser bad = do
         parsersNS parser i = [P.try (parserNS parser ns) | ns <- (initsEndAt (=='.') i)]
 
 -- | Parses a name
-name :: IdrisParser (Name, FC)
+name :: (Parsing m, MonadState IState m) => m Name
 name = (<?> "name") $ do
     keywords <- syntax_keywords <$> get
     aliases  <- module_aliases  <$> get
-    (n, fc) <- iName keywords
-    return (unalias aliases n, fc)
+    n <- iName keywords
+    return (unalias aliases n)
   where
     unalias :: M.Map [T.Text] [T.Text] -> Name -> Name
     unalias aliases (NS n ns) | Just ns' <- M.lookup ns aliases = NS n ns'
@@ -408,7 +408,7 @@ indent :: Parsing m => m Int
 indent = P.unPos . P.sourceColumn <$> P.getPosition
 
 -- | Gets last indentation
-lastIndent :: IdrisParser Int
+lastIndent :: (MonadState IState m) => m Int
 lastIndent = do ist <- get
                 case indent_stack ist of
                   (x : xs) -> return x
@@ -518,7 +518,7 @@ notEndBlock = do ist <- get
                                           when (i < lvl || isParen) (fail "end of block")
                       _ -> return ()
 
-indentGt :: IdrisParser ()
+indentGt :: (Parsing m, MonadState IState m) => m ()
 indentGt = do
   li <- lastIndent
   i <- indent

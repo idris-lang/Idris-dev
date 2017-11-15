@@ -71,7 +71,7 @@ filename = (do
     filename <- stringLiteral
                 -- Through at least version 0.9.19.1, IPKG executable values were
                 -- possibly namespaced identifiers, like foo.bar.baz.
-            <|> show . fst <$> iName []
+            <|> show <$> iName []
     case filenameErrorMessage filename of
       Just errorMessage -> fail errorMessage
       Nothing -> return filename)
@@ -111,18 +111,18 @@ commaSep p = P.sepBy1 p (lchar ',')
 
 pClause :: PParser ()
 pClause = clause "executable" filename (\st v -> st { execout = Just v })
-      <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
+      <|> clause "main" (iName []) (\st v -> st { idris_main = Just v })
       <|> clause "sourcedir" identifier (\st v -> st { sourcedir = v })
       <|> clause "opts" (pureArgParser . words <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
       <|> clause "pkgs" (commaSep (pPkgName <* someSpace)) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
                    , idris_opts = pkgs ++ idris_opts st })
-      <|> clause "modules" (commaSep (fst <$> iName [])) (\st v -> st { modules = modules st ++ v })
+      <|> clause "modules" (commaSep (iName [])) (\st v -> st { modules = modules st ++ v })
       <|> clause "libs" (commaSep identifier) (\st v -> st { libdeps = libdeps st ++ v })
       <|> clause "objs" (commaSep identifier) (\st v -> st { objs = objs st ++ v })
-      <|> clause "makefile" (fst <$> iName []) (\st v -> st { makefile = Just (show v) })
-      <|> clause "tests" (commaSep (fst <$> iName [])) (\st v -> st { idris_tests = idris_tests st ++ v })
+      <|> clause "makefile" (iName []) (\st v -> st { makefile = Just (show v) })
+      <|> clause "tests" (commaSep (iName [])) (\st v -> st { idris_tests = idris_tests st ++ v })
       <|> clause "version" textUntilEol (\st v -> st { pkgversion = Just v })
       <|> clause "readme" textUntilEol (\st v -> st { pkgreadme = Just v })
       <|> clause "license" textUntilEol (\st v -> st { pkglicense = Just v })
