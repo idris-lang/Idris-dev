@@ -145,7 +145,7 @@ Fixity ::=
 -}
 fixity :: IdrisParser PDecl
 fixity = do pushIndent
-            f <- fixityType; i <- fst <$> runWriterT natural
+            f <- fixityType; i <- natural
             ops <- P.sepBy1 (show . nsroot <$> operatorName) (lchar ',')
             terminator
             let prec = fromInteger i

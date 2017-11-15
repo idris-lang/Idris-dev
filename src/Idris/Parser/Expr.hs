@@ -21,7 +21,7 @@ import Control.Applicative
 import Control.Arrow (left)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (WriterT(..), censor, execWriterT, listen, runWriterT)
+import Control.Monad.Writer.Strict (censor, execWriterT, listen)
 import Data.Function (on)
 import Data.List
 import Data.Maybe
@@ -411,7 +411,7 @@ simpleExpr syn =
         <|> PType <$> execWriterT (reserved "Type")
         <|> do fc <- execWriterT $ reserved "UniqueType"; return $ PUniverse fc UniqueType
         <|> do fc <- execWriterT $ reserved "NullType"; return $ PUniverse fc NullType
-        <|> do (c, cfc) <- runWriterT constant
+        <|> do (c, cfc) <- listen constant
                fc <- getFC
                return (modifyConst syn fc (PConstant cfc c))
         <|> do symbol "'"; (str, fc) <- listen name
@@ -1577,7 +1577,7 @@ tactics =
   , noArgs ["trivial"] Trivial
   , noArgs ["unify"] DoUnify
   , (["search"], Nothing, const $
-      do depth <- P.option 10 $ fst <$> runWriterT natural
+      do depth <- P.option 10 natural
          return (ProofSearch True True (fromInteger depth) Nothing [] []))
   , noArgs ["implementation"] TCImplementation
   , noArgs ["solve"] Solve
@@ -1593,7 +1593,7 @@ tactics =
   , expressionTactic [":t", ":type"] TCheck
   , expressionTactic [":search"] TSearch
   , (["fail"], Just StringLitTArg, const $
-       do msg <- fst <$> runWriterT stringLiteral
+       do msg <- stringLiteral
           return $ TFail [Idris.Core.TT.TextPart msg])
   , ([":doc"], Just ExprTArg, const $
        do whiteSpace

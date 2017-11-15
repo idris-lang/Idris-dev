@@ -44,7 +44,7 @@ import Prelude hiding (pi)
 import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (execWriterT, listen, runWriterT)
+import Control.Monad.Writer.Strict (execWriterT, listen)
 import Data.Char
 import Data.Foldable (asum)
 import Data.Function
@@ -87,7 +87,7 @@ moduleHeader :: IdrisParser (Maybe (Docstring ()), [String], [(FC, OutputAnnotat
 moduleHeader =     P.try (do docs <- optional docComment
                              noArgs docs
                              reservedHL "module"
-                             (i, ifc) <- runWriterT identifier
+                             (i, ifc) <- listen identifier
                              P.option ';' (lchar ';')
                              let modName = moduleName i
                              return (fmap fst docs,
@@ -120,9 +120,9 @@ import_ :: IdrisParser ImportInfo
 import_ = do fc <- getFC
              reservedHL "import"
              reexport <- P.option False (True <$ reservedHL "public")
-             (id, idfc) <- runWriterT identifier
+             (id, idfc) <- listen identifier
              newName <- optional (do reservedHL "as"
-                                     runWriterT identifier)
+                                     listen identifier)
              P.option ';' (lchar ';')
              return $ ImportInfo reexport (toPath id)
                         (fmap (\(n, fc) -> (toPath n, fc)) newName)
@@ -659,7 +659,7 @@ fnOpt :: IdrisParser FnOpt
 fnOpt = do reservedHL "total"; return TotalFn
         <|> PartialFn <$ reservedHL "partial"
         <|> CoveringFn <$ reservedHL "covering"
-        <|> do P.try (lchar '%' *> reserved "export"); c <- fst <$> runWriterT stringLiteral;
+        <|> do P.try (lchar '%' *> reserved "export"); c <- stringLiteral;
                       return $ CExport c
         <|> NoImplicit <$ P.try (lchar '%' *> reserved "no_implicit")
         <|> Inlinable <$ P.try (lchar '%' *> reserved "inline")
@@ -680,7 +680,7 @@ fnOpt = do reservedHL "total"; return TotalFn
         <?> "function modifier"
   where nameTimes :: IdrisParser (Name, Maybe Int)
         nameTimes = do n <- fnName
-                       t <- P.option Nothing (do reds <- fmap fst (runWriterT natural)
+                       t <- P.option Nothing (do reds <- natural
                                                  return (Just (fromInteger reds)))
                        return (n, t)
 
@@ -798,7 +798,7 @@ Namespace ::=
 namespace :: SyntaxInfo -> IdrisParser [PDecl]
 namespace syn =
     do reservedHL "namespace"
-       (n, nfc) <- runWriterT identifier
+       (n, nfc) <- listen identifier
        openBlock
        ds <- some (decl syn { syn_namespace = n : syn_namespace syn })
        closeBlock
@@ -1164,7 +1164,7 @@ clause syn
        <|> do (l, op, nfc) <- P.try (do
                 pushIndent
                 l <- argExpr syn
-                (op, nfc) <- runWriterT $ symbolicOperator
+                (op, nfc) <- listen symbolicOperator
                 when (op == "=" || op == "?=" ) $
                      fail "infix clause definition with \"=\" and \"?=\" not supported "
                 return (l, op, nfc))
@@ -1274,7 +1274,7 @@ Codegen ::= 'C'
 @
 -}
 codegen_ :: IdrisParser Codegen
-codegen_ = do n <- fst <$> runWriterT identifier
+codegen_ = do n <- identifier
               return (Via IBCFormat (map toLower n))
        <|> do reserved "Bytecode"; return Bytecode
        <?> "code generation language"
@@ -1315,17 +1315,17 @@ Directive' ::= 'lib'            CodeGen String_t
 directive :: SyntaxInfo -> IdrisParser [PDecl]
 directive syn = do P.try (lchar '%' *> reserved "lib")
                    cgn <- codegen_
-                   lib <- fst <$> runWriterT stringLiteral
+                   lib <- stringLiteral
                    return [PDirective (DLib cgn lib)]
              <|> do P.try (lchar '%' *> reserved "link")
-                    cgn <- codegen_; obj <- fst <$> runWriterT stringLiteral
+                    cgn <- codegen_; obj <- stringLiteral
                     return [PDirective (DLink cgn obj)]
              <|> do P.try (lchar '%' *> reserved "flag")
-                    cgn <- codegen_; flag <- fst <$> runWriterT stringLiteral
+                    cgn <- codegen_; flag <- stringLiteral
                     return [PDirective (DFlag cgn flag)]
              <|> do P.try (lchar '%' *> reserved "include")
                     cgn <- codegen_
-                    hdr <- fst <$> runWriterT stringLiteral
+                    hdr <- stringLiteral
                     return [PDirective (DInclude cgn hdr)]
              <|> do P.try (lchar '%' *> reserved "hide"); n <- fnName
                     return [PDirective (DHide n)]
@@ -1351,10 +1351,10 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     put (i { default_total = tot } )
                     return [PDirective (DDefault tot)]
              <|> do P.try (lchar '%' *> reserved "logging")
-                    i <- fst <$> runWriterT natural
+                    i <- natural
                     return [PDirective (DLogging i)]
              <|> do P.try (lchar '%' *> reserved "dynamic")
-                    libs <- P.sepBy1 (fst <$> runWriterT stringLiteral) (lchar ',')
+                    libs <- P.sepBy1 stringLiteral (lchar ',')
                     return [PDirective (DDynamicLibs libs)]
              <|> do P.try (lchar '%' *> reserved "name")
                     (ty, tyFC) <- listen fnName
@@ -1369,11 +1369,11 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     return [PDirective (DLanguage ext)]
              <|> do P.try (lchar '%' *> reserved "deprecate")
                     n <- fnName
-                    alt <- P.option "" (fst <$> runWriterT stringLiteral)
+                    alt <- P.option "" stringLiteral
                     return [PDirective (DDeprecate n alt)]
              <|> do P.try (lchar '%' *> reserved "fragile")
                     n <- fnName
-                    alt <- P.option "" (fst <$> runWriterT stringLiteral)
+                    alt <- P.option "" stringLiteral
                     return [PDirective (DFragile n alt)]
              <|> do fc <- getFC
                     P.try (lchar '%' *> reserved "used")
@@ -1477,7 +1477,7 @@ parseExpr st = runparser (fullExpr defaultSyntax) st "(input)"
 
 {-| Parses a constant form input -}
 parseConst :: IState -> String -> Either ParseError Const
-parseConst st = runparser (fst <$> runWriterT constant) st "(input)"
+parseConst st = runparser constant st "(input)"
 
 {-| Parses a tactic from input -}
 parseTactic :: IState -> String -> Either ParseError PTactic
