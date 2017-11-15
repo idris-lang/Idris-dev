@@ -77,6 +77,9 @@ implementation Num ZZ where
   (*) = multZ
   fromInteger = fromInt
 
+implementation Abs ZZ where
+    abs = cast . absZ
+
 mutual
   implementation Neg ZZ where
     negate (Pos Z)     = Pos Z
@@ -84,7 +87,6 @@ mutual
     negate (NegS n)    = Pos (S n)
 
     (-) = subZ
-    abs = cast . absZ
 
   ||| Subtract two `ZZ`s. Consider using `(-) {a=ZZ}`.
   subZ : ZZ -> ZZ -> ZZ
