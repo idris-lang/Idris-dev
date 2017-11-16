@@ -6,7 +6,83 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE ConstraintKinds, FlexibleContexts #-}
-module Idris.Parser.Helpers where
+module Idris.Parser.Helpers
+  ( -- * The parser
+    IdrisParser
+  , SpanParser -- iffy
+  , Parsing(..)
+  , ParseState
+  , ParseError
+  , runparser
+  , parseErrorMessage
+  , parseErrorDoc
+  , parseErrorFC
+    -- * Spans and file locations
+  , getFC
+  , extent
+    -- * Space
+  , whiteSpace
+  , someSpace
+  , eol
+    -- * Iffy parsers
+  , isEol
+  , char
+  , symbol
+  , string
+  , bindList
+  , lookAheadMatches
+    -- * Terminals
+  , lchar
+  , reserved
+  , docComment
+  , token
+  , natural
+  , charLiteral
+  , stringLiteral
+  , float
+    -- * Operators
+  , opChars
+  , reservedOp
+  , symbolicOperator
+    -- * Names
+  , maybeWithNS
+  , iName -- iffy
+  , name
+  , identifier
+  , packageName
+  , mkName -- iffy
+    -- * Access
+  , accessibility
+  , accData
+  , addAcc
+    -- * Warnings and errors
+  , fixErrorMsg
+  , parserWarning
+  , clearParserWarnings
+  , reportParserWarnings
+    -- * Highlighting
+  , highlight
+  , keyword
+    -- * Indentation
+  , pushIndent
+  , popIndent
+  , indentGt
+  , notOpenBraces
+    -- * Indented blocks
+  , openBlock
+  , closeBlock
+  , terminator
+  , notEndBlock
+  , indentedBlock
+  , indentedBlock1
+  , indentedBlockS
+  , indented
+    -- * Miscellaneous
+  , notEndApp
+  , commaSeparated
+  , collect -- iffy - move to call site
+  )
+where
 
 import Idris.AbsSyntax
 import Idris.Core.Evaluate
