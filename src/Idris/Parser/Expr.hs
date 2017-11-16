@@ -602,7 +602,7 @@ UnifyLog ::=
   ;
 -}
 unifyLog :: SyntaxInfo -> IdrisParser PTerm
-unifyLog syn = do highlight AnnKeyword $ lchar '%' *> reserved "unifyLog"
+unifyLog syn = do P.try $ highlight AnnKeyword $ lchar '%' *> reserved "unifyLog"
                   PUnifyLog <$> simpleExpr syn
                <?> "unification log expression"
 
