@@ -1131,8 +1131,7 @@ clause syn
                               ty <- simpleExpr syn
                               symbol "<=="
                               return ty)
-              fc <- getFC
-              n_in <- fnName; let n = expandNS syn n_in
+              (n, fc) <- withExtent (expandNS syn <$> fnName)
               r <- rhs syn n
               let wsyn = syn { syn_namespace = [] }
               (wheres, nmap) <-   whereBlock n wsyn <* popIndent
