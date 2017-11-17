@@ -1551,7 +1551,7 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe ParseState -> Idris [PDec
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            Left err -> do let fc = parseErrorFC err
+            Left err -> do let fc = errorSpan err
                            i <- getIState
                            case idris_outputmode i of
                              RawOutput h  -> iputStrLn (show . fixColour (idris_colourRepl i) . parseErrorDoc $ err)

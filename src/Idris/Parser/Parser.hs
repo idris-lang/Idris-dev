@@ -15,7 +15,7 @@ module Idris.Parser.Parser
   , ParseState
     -- * Parse errors
   , ParseError
-  , parseErrorFC
+  , errorSpan
   , parseErrorMessage
   , parseErrorPretty
     -- * Parse position
@@ -55,8 +55,9 @@ type ParseState = P.State String
 
 data ParseError = ParseError String (P.ParseError (P.Token String) Void)
 
-parseErrorFC :: ParseError -> FC
-parseErrorFC (ParseError _ err) = sourcePositionFC pos
+-- | Retrieve a parse error's FC
+errorSpan :: ParseError -> FC
+errorSpan (ParseError _ err) = sourcePositionFC pos
   where
     (pos NonEmpty.:| _) = P.errorPos err
 
