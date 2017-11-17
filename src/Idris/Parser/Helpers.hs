@@ -10,7 +10,6 @@ module Idris.Parser.Helpers
   ( module Idris.Parser.Parser
     -- * The parser
   , IdrisParser
-  , runparser
   , parseErrorDoc
     -- * Spans and file locations
   , extent
@@ -92,7 +91,7 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..))
+import Control.Monad.Writer.Strict (MonadWriter(..))
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
@@ -128,13 +127,6 @@ extent = fmap snd . listen
 
 token :: Parsing m => m a -> m a
 token p = spanning p <* whiteSpace
-
--- | Helper to run Idris parser stack
-runparser :: Parser st res -> st -> String -> String -> Either ParseError res
-runparser p i inputname s =
-  case P.parse (runWriterT (evalStateT p i)) inputname s of
-    Left err -> Left $ ParseError s err
-    Right v  -> Right $ fst v
 
 highlight :: (MonadState IState m, Parsing m) => OutputAnnotation -> m a -> m a
 highlight annot p = do

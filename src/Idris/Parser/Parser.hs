@@ -10,10 +10,11 @@ module Idris.Parser.Parser
   ( -- * Parsing
     Parser(..)
   , Parsing(..)
+  , runparser
     -- * Parse state
   , ParseState
     -- * Parse errors
-  , ParseError(..) -- hide!
+  , ParseError
   , parseErrorFC
   , parseErrorMessage
   , parseErrorPretty
@@ -24,8 +25,8 @@ where
 
 import Idris.Core.TT (FC(..))
 
-import Control.Monad.State.Strict (StateT(..))
-import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..))
+import Control.Monad.State.Strict (StateT(..), evalStateT)
+import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), runWriterT)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Void (Void(..))
 import System.FilePath (addTrailingPathSeparator, splitFileName)
@@ -36,7 +37,15 @@ import qualified Text.Megaparsec as P
 -- | Our parser stack with state of type @s@
 type Parser s = StateT s (WriterT FC (P.Parsec Void String))
 
+-- | A constraint for parsing without state
 type Parsing m = (P.MonadParsec Void String m, MonadWriter FC m)
+
+-- | Run the Idris parser stack
+runparser :: Parser st res -> st -> String -> String -> Either ParseError res
+runparser p i inputname s =
+  case P.parse (runWriterT (evalStateT p i)) inputname s of
+    Left err -> Left $ ParseError s err
+    Right v  -> Right $ fst v
 
 {- * Parse state -}
 
