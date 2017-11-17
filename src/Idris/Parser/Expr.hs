@@ -1305,8 +1305,7 @@ do_ syn
                  ty <- P.option Placeholder (do lchar ':'
                                                 expr' syn)
                  reservedOp "="
-                 fc <- getFC
-                 e <- expr syn
+                 (e, fc) <- withExtent $ expr syn
                  return (DoLet fc RigW i ifc ty e))
    <|> P.try (do keyword "let"
                  i <- expr' syn
@@ -1317,22 +1316,19 @@ do_ syn
                  return (DoRewrite fc sc))
    <|> P.try (do (i, ifc) <- withExtent name
                  symbol "<-"
-                 fc <- getFC
-                 e <- expr (syn { withAppAllowed = False });
+                 (e, fc) <- withExtent $ expr (syn { withAppAllowed = False });
                  P.option (DoBind fc i ifc e)
                           (do lchar '|'
                               ts <- P.sepBy1 (do_alt (syn { withAppAllowed = False })) (lchar '|')
                               return (DoBindP fc (PRef ifc [ifc] i) e ts)))
    <|> P.try (do i <- expr' syn
                  symbol "<-"
-                 fc <- getFC
-                 e <- expr (syn { withAppAllowed = False });
+                 (e, fc) <- withExtent $ expr (syn { withAppAllowed = False });
                  P.option (DoBindP fc i e [])
                           (do lchar '|'
                               ts <- P.sepBy1 (do_alt (syn { withAppAllowed = False })) (lchar '|')
                               return (DoBindP fc i e ts)))
-   <|> do e <- expr syn
-          fc <- getFC
+   <|> do (e, fc) <- withExtent $ expr syn
           return (DoExp fc e)
    <?> "do block expression"
 
@@ -1350,8 +1346,7 @@ Idiom ::= '[|' Expr '|]';
 idiom :: SyntaxInfo -> IdrisParser PTerm
 idiom syn
     = do symbol "[|"
-         fc <- getFC
-         e <- expr (syn { withAppAllowed = False })
+         (e, fc) <- withExtent $ expr (syn { withAppAllowed = False })
          symbol "|]"
          return (PIdiom fc e)
       <?> "expression in idiom brackets"
