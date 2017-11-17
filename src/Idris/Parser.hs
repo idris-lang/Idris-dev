@@ -1022,12 +1022,11 @@ CAF ::= 'let' FnName '=' Expr Terminator;
 -}
 caf :: SyntaxInfo -> IdrisParser PDecl
 caf syn = do keyword "let"
-             n_in <- fnName; let n = expandNS syn n_in
+             (n, fc) <- withExtent (expandNS syn <$> fnName)
              pushIndent
              lchar '='
              t <- indented $ expr syn
              terminator
-             fc <- getFC
              return (PCAF fc n t)
            <?> "constant applicative form declaration"
 
