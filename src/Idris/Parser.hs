@@ -116,8 +116,7 @@ data ImportInfo = ImportInfo { import_reexport :: Bool
 @
  -}
 import_ :: IdrisParser ImportInfo
-import_ = do fc <- getFC
-             keyword "import"
+import_ = do fc <- extent $ keyword "import"
              reexport <- P.option False (True <$ keyword "public")
              (id, idfc) <- withExtent identifier
              newName <- optional (do keyword "as"
@@ -248,13 +247,8 @@ decl' syn =    fixity
 externalDecl :: SyntaxInfo -> IdrisParser [PDecl]
 externalDecl syn = do i <- get
                       notEndBlock
-                      FC fn start _ <- getFC
-                      decls <- declExtensions syn (syntaxRulesList $ syntax_rules i)
-                      FC _ _ end <- getFC
-                      let outerFC = FC fn start end
-                      return $ map (mapPDeclFC (fixFC outerFC)
-                                               (fixFCH fn outerFC))
-                                   decls
+                      (decls, fc@(FC fn _ _)) <- withExtent $ declExtensions syn (syntaxRulesList $ syntax_rules i)
+                      return $ map (mapPDeclFC (fixFC fc) (fixFCH fn fc)) decls
   where
     -- | Fix non-highlighting FCs to prevent spurious error location reports
     fixFC :: FC -> FC -> FC
@@ -580,8 +574,7 @@ fnDecl' syn = (checkDeclFixity $
                         (opts, acc) <- fnOpts
                         (n_in, nfc) <- withExtent fnName
                         let n = expandNS syn n_in
-                        fc <- getFC
-                        lchar ':'
+                        fc <- extent $ lchar ':'
                         return (doc, argDocs, fc, opts, n, nfc, acc))
                  ty <- typeExpr (allowImp syn)
                  terminator
@@ -699,8 +692,7 @@ postulate syn = do (doc, ext)
                    let n = expandNS syn n_in
                    lchar ':'
                    ty <- typeExpr (allowImp syn)
-                   fc <- getFC
-                   terminator
+                   fc <- extent $ terminator
                    addAcc n acc
                    return (PPostulate ext doc syn fc nfc opts n ty)
                  <?> "postulate"
@@ -1700,8 +1692,8 @@ loadSource lidr f toline
                         ]
                       prep = map T.pack . reverse . Spl.splitOn [pathSeparator]
                       aliasNames = [ (alias, fc)
-                                   | ImportInfo { import_rename = Just (alias, _)
-                                                , import_location = fc } <- imports
+                                   | ImportInfo { import_rename = Just (alias, fc)
+                                                } <- imports
                                    ]
                       histogram = groupBy ((==) `on` fst) . sortBy (comparing fst) $ aliasNames
                   case map head . filter ((/= 1) . length) $ histogram of

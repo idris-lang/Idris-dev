@@ -14,4 +14,4 @@ Specifically:
                 0
         and
                 num
-Multiple.idr:3:1:import alias not unique: "X"
+Multiple.idr:3:21:import alias not unique: "X"
