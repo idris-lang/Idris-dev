@@ -206,6 +206,7 @@ Library
                 , Idris.ModeCommon
                 , Idris.Options
                 , Idris.Parser
+                , Idris.Parser.Parser
                 , Idris.Parser.Helpers
                 , Idris.Parser.Ops
                 , Idris.Parser.Expr

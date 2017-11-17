@@ -7,18 +7,12 @@ Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE ConstraintKinds, FlexibleContexts #-}
 module Idris.Parser.Helpers
-  ( -- * The parser
-    IdrisParser
-  , SpanParser -- iffy
-  , Parsing(..)
-  , ParseState
-  , ParseError
+  ( module Idris.Parser.Parser
+    -- * The parser
+  , IdrisParser
   , runparser
-  , parseErrorMessage
   , parseErrorDoc
-  , parseErrorFC
     -- * Spans and file locations
-  , getFC
   , extent
     -- * Space
   , whiteSpace
@@ -91,6 +85,7 @@ import Idris.Delaborate (pprintErr)
 import Idris.Docstrings
 import Idris.Options
 import Idris.Output (iWarn)
+import Idris.Parser.Parser
 
 import Prelude hiding (pi)
 
@@ -101,12 +96,10 @@ import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..))
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
-import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map as M
+import qualified Data.List.NonEmpty as NonEmpty
 import Data.Maybe
 import qualified Data.Text as T
-import Data.Void (Void(..))
-import System.FilePath
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
@@ -115,29 +108,10 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 
 -- | Idris parser with state used during parsing
-type BaseParser  = P.Parsec Void String     -- Parses text (base of parser stack)
-type SpanParser  = WriterT FC BaseParser    -- Computes FC spans of all non-terminals
-type IdrisParser = StateT IState SpanParser -- Tracks IState
-
-type Parsing m = (P.MonadParsec Void String m, MonadWriter FC m)
-
-type ParseState = P.State String
-data ParseError = ParseError String (P.ParseError (P.Token String) Void)
-
-parseErrorPretty                    :: ParseError -> String
-parseErrorPretty (ParseError s err) = P.parseErrorPretty' s err
+type IdrisParser = Parser IState
 
 parseErrorDoc :: ParseError -> PP.Doc
 parseErrorDoc = PP.string . parseErrorPretty
-
-parseErrorFC :: ParseError -> FC
-parseErrorFC (ParseError _ err) = sourcePositionFC pos
-  where
-    (pos NonEmpty.:| _) = P.errorPos err
-
-parseErrorMessage :: ParseError -> String
-parseErrorMessage (ParseError _ err) = P.parseErrorTextPretty err
-
 
 someSpace :: Parsing m => m ()
 someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
@@ -156,7 +130,7 @@ token :: Parsing m => m a -> m a
 token p = spanning p <* whiteSpace
 
 -- | Helper to run Idris parser stack
-runparser :: StateT st SpanParser res -> st -> String -> String -> Either ParseError res
+runparser :: Parser st res -> st -> String -> String -> Either ParseError res
 runparser p i inputname s =
   case P.parse (runWriterT (evalStateT p i)) inputname s of
     Left err -> Left $ ParseError s err
@@ -440,24 +414,6 @@ symbolicOperator = do op <- token . some $ operatorLetter
                       return op
 
 {- * Position helpers -}
-
-sourcePositionFC :: P.SourcePos -> FC
-sourcePositionFC (P.SourcePos name line column) =
-  -- TODO: Change to actual spanning
-  -- Issue #1594 on the Issue Tracker.
-  -- https://github.com/idris-lang/Idris-dev/issues/1594
-  FC f (lineNumber, columnNumber) (lineNumber, columnNumber)
-  where
-    lineNumber = P.unPos line
-    columnNumber = P.unPos column
-    (dir, file) = splitFileName name
-    f = if dir == addTrailingPathSeparator "."
-        then file
-        else name
-
-{- | Get file position as FC -}
-getFC :: Parsing m => m FC
-getFC = sourcePositionFC <$> P.getPosition
 
 {-* Syntax helpers-}
 -- | Bind constraints to term

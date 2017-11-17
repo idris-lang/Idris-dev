@@ -11,7 +11,7 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
-import Idris.Parser.Helpers (Parsing, SpanParser, eol, iName,
+import Idris.Parser.Helpers (Parser, Parsing, eol, iName,
                              identifier, isEol, lchar, packageName,
                              parseErrorDoc, reserved, runparser, someSpace,
                              stringLiteral)
@@ -27,7 +27,7 @@ import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
-type PParser = StateT PkgDesc SpanParser
+type PParser = Parser PkgDesc
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do
