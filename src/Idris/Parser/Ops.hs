@@ -23,6 +23,7 @@ import Data.List
 import Data.List.NonEmpty (fromList)
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
 import qualified Text.Megaparsec.Expr as P
 
 -- | Creates table for fixity declarations to build expression parser
@@ -211,3 +212,29 @@ fixityType = do reserved "infixl"; return Infixl
          <|> do reserved "infix";  return InfixN
          <|> do reserved "prefix"; return PrefixN
          <?> "fixity type"
+
+opChars :: String
+opChars = ":!#$%&*+./<=>?@\\^|-~"
+
+operatorLetter :: Parsing m => m Char
+operatorLetter = P.oneOf opChars
+
+commentMarkers :: [String]
+commentMarkers = [ "--", "|||" ]
+
+invalidOperators :: [String]
+invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%", "~", "?", "!", "@"]
+
+-- | Parses an operator
+symbolicOperator :: Parsing m => m String
+symbolicOperator = do op <- token . some $ operatorLetter
+                      when (op `elem` (invalidOperators ++ commentMarkers)) $
+                           fail $ op ++ " is not a valid operator"
+                      return op
+
+-- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
+-- | Parses a reserved operator
+reservedOp :: Parsing m => String -> m ()
+reservedOp name = token $ P.try $
+  do string name
+     P.notFollowedBy operatorLetter <?> ("end of " ++ show name)

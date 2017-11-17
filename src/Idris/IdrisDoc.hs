@@ -18,7 +18,7 @@ import Idris.Docs
 import Idris.Docstrings (nullDocstring)
 import qualified Idris.Docstrings as Docstrings
 import Idris.Options
-import Idris.Parser.Helpers (opChars)
+import Idris.Parser.Ops (opChars)
 import IRTS.System (getIdrisDataFileByName)
 
 import Control.Applicative ((<|>))

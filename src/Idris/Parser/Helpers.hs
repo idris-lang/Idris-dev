@@ -31,10 +31,6 @@ module Idris.Parser.Helpers
   , charLiteral
   , stringLiteral
   , float
-    -- * Operators
-  , opChars
-  , reservedOp
-  , symbolicOperator
     -- * Names
   , maybeWithNS
   , iName -- iffy
@@ -299,13 +295,6 @@ reserved name = token $ P.try $ do
   P.string name
   P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
 
--- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
--- | Parses a reserved operator
-reservedOp :: Parsing m => String -> m ()
-reservedOp name = token $ P.try $
-  do string name
-     P.notFollowedBy operatorLetter <?> ("end of " ++ show name)
-
 -- | Parses an identifier as a token
 identifier :: Parsing m => m String
 identifier = P.try $ do
@@ -367,30 +356,11 @@ mkName (n, ns) = sNS (sUN n) (reverse (parseNS ns))
                       (x, "")    -> [x]
                       (x, '.':y) -> x : parseNS y
 
-opChars :: String
-opChars = ":!#$%&*+./<=>?@\\^|-~"
-
-operatorLetter :: Parsing m => m Char
-operatorLetter = P.oneOf opChars
-
 -- | Parse a package name
 packageName :: Parsing m => m String
 packageName = (:) <$> P.oneOf firstChars <*> many (P.oneOf remChars)
   where firstChars = ['a'..'z'] ++ ['A'..'Z']
         remChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ ['-','_']
-
-commentMarkers :: [String]
-commentMarkers = [ "--", "|||" ]
-
-invalidOperators :: [String]
-invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%", "~", "?", "!", "@"]
-
--- | Parses an operator
-symbolicOperator :: Parsing m => m String
-symbolicOperator = do op <- token . some $ operatorLetter
-                      when (op `elem` (invalidOperators ++ commentMarkers)) $
-                           fail $ op ++ " is not a valid operator"
-                      return op
 
 {- * Position helpers -}
 
