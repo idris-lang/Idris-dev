@@ -370,10 +370,8 @@ declExtension syn ns rules =
 @
 -}
 syntaxDecl :: SyntaxInfo -> IdrisParser PDecl
-syntaxDecl syn = do s <- syntaxRule syn
-                    i <- get
-                    put (i `addSyntax` s)
-                    fc <- getFC
+syntaxDecl syn = do (s, fc) <- withExtent $ syntaxRule syn
+                    modify $ \i -> i `addSyntax` s
                     return (PSyntax fc s)
 
 -- | Extend an 'IState' with a new syntax extension. See also 'addReplSyntax'.
