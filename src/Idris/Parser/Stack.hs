@@ -1,12 +1,12 @@
 {-|
-Module      : Idris.Parser.Parser
-Description : Low-level parser wrappers and tools.
+Module      : Idris.Parser.Stack
+Description : Idris parser stack and its primitives.
 
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE ConstraintKinds, FlexibleContexts #-}
-module Idris.Parser.Parser
+module Idris.Parser.Stack
   ( -- * Parsing
     Parser(..)
   , Parsing(..)

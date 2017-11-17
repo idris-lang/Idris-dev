@@ -7,7 +7,7 @@ Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE ConstraintKinds, FlexibleContexts #-}
 module Idris.Parser.Helpers
-  ( module Idris.Parser.Parser
+  ( module Idris.Parser.Stack
     -- * The parser
   , IdrisParser
   , parseErrorDoc
@@ -78,7 +78,7 @@ import Idris.Delaborate (pprintErr)
 import Idris.Docstrings
 import Idris.Options
 import Idris.Output (iWarn)
-import Idris.Parser.Parser
+import Idris.Parser.Stack
 
 import Prelude hiding (pi)
 
