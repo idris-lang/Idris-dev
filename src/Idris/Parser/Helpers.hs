@@ -11,8 +11,6 @@ module Idris.Parser.Helpers
     -- * The parser
   , IdrisParser
   , parseErrorDoc
-    -- * Spans and file locations
-  , extent
     -- * Space
   , whiteSpace
   , someSpace
@@ -115,18 +113,8 @@ parseErrorDoc = PP.string . prettyError
 someSpace :: Parsing m => m ()
 someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()
 
-spanning :: Parsing m => m a -> m a
-spanning p = do (FC f (sr, sc) _) <- getFC
-                result <- p
-                (FC f _ (er, ec)) <- getFC
-                tell (FC f (sr, sc) (er, max 1 (ec - 1)))
-                return result
-
-extent :: Parsing m => m a -> m FC
-extent = fmap snd . listen
-
 token :: Parsing m => m a -> m a
-token p = spanning p <* whiteSpace
+token p = trackExtent p <* whiteSpace
 
 highlight :: (MonadState IState m, Parsing m) => OutputAnnotation -> m a -> m a
 highlight annot p = do
@@ -304,7 +292,7 @@ lchar :: Parsing m => Char -> m Char
 lchar = token . P.char
 
 symbol :: Parsing m => String -> m ()
-symbol = void . spanning . P.symbol someSpace
+symbol = void . trackExtent . P.symbol someSpace
 
 -- | Parses a reserved identifier
 reserved :: Parsing m => String -> m ()

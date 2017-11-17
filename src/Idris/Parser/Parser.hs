@@ -20,6 +20,8 @@ module Idris.Parser.Parser
   , prettyError
     -- * Parse position
   , getFC
+  , extent
+  , trackExtent
   )
 where
 
@@ -85,3 +87,15 @@ sourcePositionFC (P.SourcePos name line column) =
 -- | Get the current parse position.
 getFC :: Parsing m => m FC
 getFC = sourcePositionFC <$> P.getPosition
+
+-- | Run a parser and return only its extent.
+extent :: MonadWriter FC m => m a -> m FC
+extent = fmap snd . listen
+
+-- | Run a parser and track its extent.
+trackExtent :: Parsing m => m a -> m a
+trackExtent p = do (FC f (sr, sc) _) <- getFC
+                   result <- p
+                   (FC f _ (er, ec)) <- getFC
+                   tell (FC f (sr, sc) (er, max 1 (ec - 1)))
+                   return result
