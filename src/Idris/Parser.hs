@@ -739,10 +739,10 @@ params syn =
 -- | Parses an open block
 openInterface :: SyntaxInfo -> IdrisParser [PDecl]
 openInterface syn =
-    do keyword "using"
-       keyword "implementation"
-       fc <- getFC
-       ns <- P.sepBy1 (withExtent fnName) (lchar ',')
+    do (ns, fc) <- withExtent $ do
+         keyword "using"
+         keyword "implementation"
+         P.sepBy1 (withExtent fnName) (lchar ',')
 
        openBlock
        ds <- many (decl syn)
