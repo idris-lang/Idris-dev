@@ -21,7 +21,7 @@ import Control.Applicative
 import Control.Arrow (left)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (listen, tell)
+import Control.Monad.Writer.Strict (listen)
 import Data.Function (on)
 import Data.List
 import Data.Maybe
@@ -452,7 +452,7 @@ Bracketed' ::=
 -}
 bracketed' :: FC -> SyntaxInfo -> IdrisParser PTerm
 bracketed' open syn =
-            do fc <- extent (tell open *> lchar ')')
+            do fc <- extent (addExtent open *> lchar ')')
                return $ PTrue fc TypeOrTerm
         <|> P.try (dependentPair TypeOrTerm [] open syn)
         <|> P.try (do (opName, fc) <- listen operatorName

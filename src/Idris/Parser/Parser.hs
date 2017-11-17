@@ -21,6 +21,7 @@ module Idris.Parser.Parser
     -- * Parse position
   , getFC
   , extent
+  , addExtent
   , trackExtent
   , hideExtent
   )
@@ -29,7 +30,7 @@ where
 import Idris.Core.TT (FC(..))
 
 import Control.Monad.State.Strict (StateT(..), evalStateT)
-import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), censor, runWriterT)
+import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), censor, runWriterT, tell)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Void (Void(..))
 import System.FilePath (addTrailingPathSeparator, splitFileName)
@@ -93,12 +94,16 @@ getFC = sourcePositionFC <$> P.getPosition
 extent :: MonadWriter FC m => m a -> m FC
 extent = fmap snd . listen
 
+-- | Add an extent (widen) our current parsing context.
+addExtent :: MonadWriter FC m => FC -> m ()
+addExtent = tell
+
 -- | Run a parser and track its extent.
 trackExtent :: Parsing m => m a -> m a
 trackExtent p = do (FC f (sr, sc) _) <- getFC
                    result <- p
                    (FC f _ (er, ec)) <- getFC
-                   tell (FC f (sr, sc) (er, max 1 (ec - 1)))
+                   addExtent (FC f (sr, sc) (er, max 1 (ec - 1)))
                    return result
 
 -- | Run a parser, hiding its extent.
