@@ -310,7 +310,7 @@ cmd_doc name = do
     let pType = do
           IP.reserved "Type"
           P.eof
-          return $ Right (DocStr (Left $ IP.mkName ("Type", "")) FullDocs)
+          return $ Right (DocStr (Left $ sUN "Type") FullDocs)
 
     let fnName = fnNameArg (\n -> DocStr (Left n) FullDocs) name
 

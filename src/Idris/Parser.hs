@@ -1569,6 +1569,37 @@ parseProg syn fname input mrk
                           i' <- get
                           return (ds, i')
 
+-- | Collect 'PClauses' with the same function name
+collect :: [PDecl] -> [PDecl]
+collect (c@(PClauses _ o _ _) : ds)
+    = clauses (cname c) [] (c : ds)
+  where clauses :: Maybe Name -> [PClause] -> [PDecl] -> [PDecl]
+        clauses j@(Just n) acc (PClauses fc _ _ [PClause fc' n' l ws r w] : ds)
+           | n == n' = clauses j (PClause fc' n' l ws r (collect w) : acc) ds
+        clauses j@(Just n) acc (PClauses fc _ _ [PWith fc' n' l ws r pn w] : ds)
+           | n == n' = clauses j (PWith fc' n' l ws r pn (collect w) : acc) ds
+        clauses (Just n) acc xs = PClauses (fcOf c) o n (reverse acc) : collect xs
+        clauses Nothing acc (x:xs) = collect xs
+        clauses Nothing acc [] = []
+
+        cname :: PDecl -> Maybe Name
+        cname (PClauses fc _ _ [PClause _ n _ _ _ _]) = Just n
+        cname (PClauses fc _ _ [PWith   _ n _ _ _ _ _]) = Just n
+        cname (PClauses fc _ _ [PClauseR _ _ _ _]) = Nothing
+        cname (PClauses fc _ _ [PWithR _ _ _ _ _]) = Nothing
+        fcOf :: PDecl -> FC
+        fcOf (PClauses fc _ _ _) = fc
+collect (PParams f ns ps : ds) = PParams f ns (collect ps) : collect ds
+collect (POpenInterfaces f ns ps : ds) = POpenInterfaces f ns (collect ps) : collect ds
+collect (PMutual f ms : ds) = PMutual f (collect ms) : collect ds
+collect (PNamespace ns fc ps : ds) = PNamespace ns fc (collect ps) : collect ds
+collect (PInterface doc f s cs n nfc ps pdocs fds ds cn cd : ds')
+    = PInterface doc f s cs n nfc ps pdocs fds (collect ds) cn cd : collect ds'
+collect (PImplementation doc argDocs f s cs pnames acc opts n nfc ps pextra t en ds : ds')
+    = PImplementation doc argDocs f s cs pnames acc opts n nfc ps pextra t en (collect ds) : collect ds'
+collect (d : ds) = d : collect ds
+collect [] = []
+
 {-| Load idris module and show error if something wrong happens -}
 loadModule :: FilePath -> IBCPhase -> Idris (Maybe String)
 loadModule f phase
