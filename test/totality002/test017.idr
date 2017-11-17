@@ -49,13 +49,13 @@ vtrans : Vect n a -> Vect n a -> List a
 vtrans [] _         = []
 vtrans (x :: xs) ys = x :: vtrans ys ys
 
-even : Nat -> Bool
-even Z = True
-even (S k) = odd k
+even' : Nat -> Bool
+even' Z = True
+even' (S k) = odd' k
   where
-    odd : Nat -> Bool
-    odd Z = False
-    odd (S k) = even k
+    odd' : Nat -> Bool
+    odd' Z = False
+    odd' (S k) = even' k
 
 ack : Nat -> Nat -> Nat
 ack Z     n     = S n
