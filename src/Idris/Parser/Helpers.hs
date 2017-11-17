@@ -89,7 +89,6 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (MonadWriter(..))
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
@@ -118,7 +117,7 @@ token p = trackExtent p <* whiteSpace
 
 highlight :: (MonadState IState m, Parsing m) => OutputAnnotation -> m a -> m a
 highlight annot p = do
-  (result, fc) <- listen p
+  (result, fc) <- withExtent p
   modify $ \ist -> ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist }
   return result
 

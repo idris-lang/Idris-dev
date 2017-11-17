@@ -21,7 +21,6 @@ import Control.Applicative
 import Control.Arrow (left)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (listen)
 import Data.Function (on)
 import Data.List
 import Data.Maybe
@@ -157,7 +156,7 @@ extension syn ns rules =
                                         return $ Just (n, SynTm tm)
     extensionSymbol (SimpleExpr n) = do tm <- simpleExpr syn
                                         return $ Just (n, SynTm tm)
-    extensionSymbol (Binding n)    = do (b, fc) <- listen name
+    extensionSymbol (Binding n)    = do (b, fc) <- withExtent name
                                         return $ Just (n, SynBind fc b)
     extensionSymbol (Symbol s)     = Nothing <$ highlight AnnKeyword (symbol s)
 
@@ -309,7 +308,7 @@ CaseExpr ::=
 -}
 caseExpr :: SyntaxInfo -> IdrisParser PTerm
 caseExpr syn = do keyword "case"
-                  (scr, fc) <- listen $ expr syn
+                  (scr, fc) <- withExtent $ expr syn
                   keyword "of"
                   opts <- indentedBlock1 (caseOption syn)
                   return (PCase fc scr opts)
@@ -387,7 +386,7 @@ SimpleExpr ::=
 simpleExpr :: SyntaxInfo -> IdrisParser PTerm
 simpleExpr syn =
             P.try (simpleExternalExpr syn)
-        <|> do (x, FC f (l, c) end) <- P.try (lchar '?' *> listen name)
+        <|> do (x, FC f (l, c) end) <- P.try (lchar '?' *> withExtent name)
                return (PMetavar (FC f (l, c-1) end) x)
         <|> do lchar '%'; fc <- extent $ reserved "implementation"; return (PResolveTC fc)
         <|> do lchar '%'; fc <- extent $ reserved "instance"
@@ -401,13 +400,13 @@ simpleExpr syn =
         <|> PType <$> extent (reserved "Type")
         <|> do fc <- extent $ reserved "UniqueType"; return $ PUniverse fc UniqueType
         <|> do fc <- extent $ reserved "NullType"; return $ PUniverse fc NullType
-        <|> do (c, cfc) <- listen constant
+        <|> do (c, cfc) <- withExtent constant
                fc <- getFC
                return (modifyConst syn fc (PConstant cfc c))
-        <|> do symbol "'"; (str, fc) <- listen name
+        <|> do symbol "'"; (str, fc) <- withExtent name
                return (PApp fc (PRef fc [] (sUN "Symbol_"))
                           [pexp (PConstant NoFC (Str (show str)))])
-        <|> do (x, fc) <- listen fnName
+        <|> do (x, fc) <- withExtent fnName
                if inPattern syn
                   then P.option (PRef fc [fc] x)
                                 (do reservedOp "@"
@@ -455,7 +454,7 @@ bracketed' open syn =
             do fc <- extent (addExtent open *> lchar ')')
                return $ PTrue fc TypeOrTerm
         <|> P.try (dependentPair TypeOrTerm [] open syn)
-        <|> P.try (do (opName, fc) <- listen operatorName
+        <|> P.try (do (opName, fc) <- withExtent operatorName
                       guardNotPrefix opName
 
                       e <- expr syn
@@ -498,14 +497,14 @@ dependentPair pun prev openFC syn =
       TypeOrTerm -> nametypePart <|> namePart <|> exprPart False
   where nametypePart = do
           (ln, lnfc, colonFC) <- P.try $ do
-            (ln, lnfc) <- listen name
+            (ln, lnfc) <- withExtent name
             colonFC <- extent (lchar ':')
             return (ln, lnfc, colonFC)
           lty <- expr' syn
           starsFC <- extent $ reservedOp "**"
           dependentPair IsType ((PRef lnfc [] ln, Just (colonFC, lty), starsFC):prev) openFC syn
         namePart = P.try $ do
-          (ln, lnfc) <- listen name
+          (ln, lnfc) <- withExtent name
           starsFC <- extent $ reservedOp "**"
           dependentPair pun ((PRef lnfc [] ln, Nothing, starsFC):prev) openFC syn
         exprPart isEnd = do
@@ -613,7 +612,7 @@ RunTactics ::=
 -}
 runElab :: SyntaxInfo -> IdrisParser PTerm
 runElab syn = do P.try $ highlight AnnKeyword $ lchar '%' *> reserved "runElab"
-                 (tm, fc) <- listen $ simpleExpr syn
+                 (tm, fc) <- withExtent $ simpleExpr syn
                  return $ PRunElab fc tm (syn_namespace syn)
               <?> "new-style tactics expression"
 
@@ -717,7 +716,7 @@ ImplicitArg ::=
 -}
 implicitArg :: SyntaxInfo -> IdrisParser PArg
 implicitArg syn = do lchar '{'
-                     (n, nfc) <- listen name
+                     (n, nfc) <- withExtent name
                      fc <- getFC
                      v <- P.option (PRef nfc [nfc] n) (do lchar '='
                                                           expr syn)
@@ -775,11 +774,11 @@ unquote syn = (<?> "unquotation") . highlight AnnAntiquote $ do
 namequote :: SyntaxInfo -> IdrisParser PTerm
 namequote syn = highlight AnnQuasiquote ((P.try $ do
                      highlight AnnKeyword $ symbol "`{{"
-                     (n, nfc) <- listen fnName
+                     (n, nfc) <- withExtent fnName
                      highlight AnnKeyword $ symbol "}}"
                      return (PQuoteName n False nfc))
                   <|> (do highlight AnnKeyword $ symbol "`{"
-                          (n, nfc) <- listen fnName
+                          (n, nfc) <- withExtent fnName
                           highlight AnnKeyword $ symbol "}"
                           return (PQuoteName n True nfc)))
                 <?> "quoted name"
@@ -992,7 +991,7 @@ If ::= 'if' Expr 'then' Expr 'else' Expr
 -}
 if_ :: SyntaxInfo -> IdrisParser PTerm
 if_ syn = (do keyword "if"
-              (c, fc) <- listen $ expr syn
+              (c, fc) <- withExtent $ expr syn
               keyword "then"
               t <- expr syn
               keyword "else"
@@ -1014,7 +1013,7 @@ quoteGoal syn = do keyword "quoteGoal"; n <- name;
                    keyword "by"
                    r <- expr syn
                    keyword "in"
-                   (sc, fc) <- listen $ expr syn
+                   (sc, fc) <- withExtent $ expr syn
                    return (PGoal fc r n sc)
                 <?> "quote goal expression"
 
@@ -1158,7 +1157,7 @@ constraintList1 syn = P.try (do lchar '('
                                 reservedOp "=>"
                                 return [(RigW, defname, NoFC, t)])
                   <?> "type constraint list"
-  where nexpr = P.try (do (n, fc) <- listen name; lchar ':'
+  where nexpr = P.try (do (n, fc) <- withExtent name; lchar ':'
                           e <- expr (disallowImp syn)
                           return (RigW, n, fc, e))
                 <|> do e <- expr (disallowImp syn)
@@ -1182,12 +1181,12 @@ FunctionSignatureList ::=
 -}
 typeDeclList :: SyntaxInfo -> IdrisParser [(RigCount, Name, FC, PTerm)]
 typeDeclList syn = P.try (P.sepBy1 (do rig <- P.option RigW rigCount
-                                       (x, xfc) <- listen fnName
+                                       (x, xfc) <- withExtent fnName
                                        lchar ':'
                                        t <- typeExpr (disallowImp syn)
                                        return (rig, x, xfc, t))
                              (lchar ','))
-                   <|> do ns <- P.sepBy1 (listen name) (lchar ',')
+                   <|> do ns <- P.sepBy1 (withExtent name) (lchar ',')
                           lchar ':'
                           t <- typeExpr (disallowImp syn)
                           return (map (\(x, xfc) -> (RigW, x, xfc, t)) ns)
@@ -1209,7 +1208,7 @@ NameOrPlaceHolder ::= Name | '_';
 @
 -}
 tyOptDeclList :: SyntaxInfo -> IdrisParser [(RigCount, Name, FC, PTerm)]
-tyOptDeclList syn = P.sepBy1 (do (x, fc) <- listen nameOrPlaceholder
+tyOptDeclList syn = P.sepBy1 (do (x, fc) <- withExtent nameOrPlaceholder
                                  t <- P.option Placeholder (do lchar ':'
                                                                expr syn)
                                  return (RigW, x, fc, t))
@@ -1302,7 +1301,7 @@ Do ::=
 do_ :: SyntaxInfo -> IdrisParser PDo
 do_ syn
      = P.try (do keyword "let"
-                 (i, ifc) <- listen name
+                 (i, ifc) <- withExtent name
                  ty <- P.option Placeholder (do lchar ':'
                                                 expr' syn)
                  reservedOp "="
@@ -1312,13 +1311,13 @@ do_ syn
    <|> P.try (do keyword "let"
                  i <- expr' syn
                  reservedOp "="
-                 (sc, fc) <- listen $ expr syn
+                 (sc, fc) <- withExtent $ expr syn
                  return (DoLetP fc i sc))
    <|> P.try (do keyword "rewrite"
                  fc <- getFC
                  sc <- expr syn
                  return (DoRewrite fc sc))
-   <|> P.try (do (i, ifc) <- listen name
+   <|> P.try (do (i, ifc) <- withExtent name
                  symbol "<-"
                  fc <- getFC
                  e <- expr (syn { withAppAllowed = False });

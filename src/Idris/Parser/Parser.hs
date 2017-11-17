@@ -18,19 +18,20 @@ module Idris.Parser.Parser
   , errorSpan
   , errorMessage
   , prettyError
-    -- * Parse position
+    -- * Tracking the extent of productions
   , getFC
-  , extent
   , addExtent
   , trackExtent
   , hideExtent
+  , extent
+  , withExtent
   )
 where
 
 import Idris.Core.TT (FC(..))
 
 import Control.Monad.State.Strict (StateT(..), evalStateT)
-import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), censor, runWriterT, tell)
+import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), censor, listen, runWriterT, tell)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Void (Void(..))
 import System.FilePath (addTrailingPathSeparator, splitFileName)
@@ -73,7 +74,7 @@ errorMessage (ParseError _ err) = P.parseErrorTextPretty err
 prettyError                    :: ParseError -> String
 prettyError (ParseError s err) = P.parseErrorPretty' s err
 
-{- * Parse position -}
+{- * Tracking the extent of productions -}
 
 sourcePositionFC :: P.SourcePos -> FC
 sourcePositionFC (P.SourcePos name line column) =
@@ -90,10 +91,6 @@ sourcePositionFC (P.SourcePos name line column) =
 getFC :: Parsing m => m FC
 getFC = sourcePositionFC <$> P.getPosition
 
--- | Run a parser and return only its extent.
-extent :: MonadWriter FC m => m a -> m FC
-extent = fmap snd . listen
-
 -- | Add an extent (widen) our current parsing context.
 addExtent :: MonadWriter FC m => FC -> m ()
 addExtent = tell
@@ -109,3 +106,11 @@ trackExtent p = do (FC f (sr, sc) _) <- getFC
 -- | Run a parser, hiding its extent.
 hideExtent :: Parsing m => m a -> m a
 hideExtent = censor (const NoFC)
+
+-- | Run a parser and return only its extent.
+extent :: MonadWriter FC m => m a -> m FC
+extent = fmap snd . listen
+
+-- | Run a parser and return its value and extent.
+withExtent :: MonadWriter FC m => m a -> m (a, FC)
+withExtent = listen

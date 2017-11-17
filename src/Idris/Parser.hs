@@ -44,7 +44,6 @@ import Prelude hiding (pi)
 import Control.Applicative hiding (Const)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (listen)
 import Data.Char
 import Data.Foldable (asum)
 import Data.Function
@@ -87,7 +86,7 @@ moduleHeader :: IdrisParser (Maybe (Docstring ()), [String], [(FC, OutputAnnotat
 moduleHeader =     P.try (do docs <- optional docComment
                              noArgs docs
                              keyword "module"
-                             (i, ifc) <- listen identifier
+                             (i, ifc) <- withExtent identifier
                              P.option ';' (lchar ';')
                              let modName = moduleName i
                              return (fmap fst docs,
@@ -120,9 +119,9 @@ import_ :: IdrisParser ImportInfo
 import_ = do fc <- getFC
              keyword "import"
              reexport <- P.option False (True <$ keyword "public")
-             (id, idfc) <- listen identifier
+             (id, idfc) <- withExtent identifier
              newName <- optional (do keyword "as"
-                                     listen identifier)
+                                     withExtent identifier)
              P.option ';' (lchar ';')
              return $ ImportInfo reexport (toPath id)
                         (fmap (\(n, fc) -> (toPath n, fc)) newName)
@@ -366,7 +365,7 @@ declExtension syn ns rules =
                             return $ Just (n, SynTm tm)
     extSymbol (SimpleExpr n) = do tm <- simpleExpr syn
                                   return $ Just (n, SynTm tm)
-    extSymbol (Binding n) = do (b, fc) <- listen name
+    extSymbol (Binding n) = do (b, fc) <- withExtent name
                                return $ Just (n, SynBind fc b)
     extSymbol (Symbol s) = Nothing <$ highlight AnnKeyword (symbol s)
 
@@ -579,7 +578,7 @@ fnDecl' syn = (checkDeclFixity $
                         pushIndent
                         (doc, argDocs) <- docstring syn
                         (opts, acc) <- fnOpts
-                        (n_in, nfc) <- listen fnName
+                        (n_in, nfc) <- withExtent fnName
                         let n = expandNS syn n_in
                         fc <- getFC
                         lchar ':'
@@ -696,7 +695,7 @@ postulate syn = do (doc, ext)
                                      return (doc, ext)
                    ist <- get
                    (opts, acc) <- fnOpts
-                   (n_in, nfc) <- listen fnName
+                   (n_in, nfc) <- withExtent fnName
                    let n = expandNS syn n_in
                    lchar ':'
                    ty <- typeExpr (allowImp syn)
@@ -753,7 +752,7 @@ openInterface syn =
     do keyword "using"
        keyword "implementation"
        fc <- getFC
-       ns <- P.sepBy1 (listen fnName) (lchar ',')
+       ns <- P.sepBy1 (withExtent fnName) (lchar ',')
 
        openBlock
        ds <- many (decl syn)
@@ -794,7 +793,7 @@ Namespace ::=
 namespace :: SyntaxInfo -> IdrisParser [PDecl]
 namespace syn =
     do keyword "namespace"
-       (n, nfc) <- listen identifier
+       (n, nfc) <- withExtent identifier
        openBlock
        ds <- some (decl syn { syn_namespace = n : syn_namespace syn })
        closeBlock
@@ -849,7 +848,7 @@ interfaceBlock syn = do keyword "where"
                      <?> "interface block"
   where
     constructor :: IdrisParser (Name, FC)
-    constructor = keyword "constructor" *> listen fnName
+    constructor = keyword "constructor" *> withExtent fnName
 
     annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
     annotate syn ist = annotCode $ tryFullExpr syn ist
@@ -878,7 +877,7 @@ interface_ syn = do (doc, argDocs, acc)
                     fc <- getFC
                     cons <- constraintList syn
                     let cons' = [(c, ty) | (_, c, _, ty) <- cons]
-                    (n_in, nfc) <- listen fnName
+                    (n_in, nfc) <- withExtent fnName
                     let n = expandNS syn n_in
                     cs <- many carg
                     fds <- P.option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
@@ -888,7 +887,7 @@ interface_ syn = do (doc, argDocs, acc)
                  <?> "interface declaration"
   where
     fundeps :: IdrisParser [(Name, FC)]
-    fundeps = do lchar '|'; P.sepBy (listen name) (lchar ',')
+    fundeps = do lchar '|'; P.sepBy (withExtent name) (lchar ',')
 
     interfaceKeyword :: IdrisParser ()
     interfaceKeyword = keyword "interface"
@@ -897,9 +896,9 @@ interface_ syn = do (doc, argDocs, acc)
                       parserWarning fc Nothing (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
 
     carg :: IdrisParser (Name, FC, PTerm)
-    carg = do lchar '('; (i, ifc) <- listen name; lchar ':'; ty <- expr syn; lchar ')'
+    carg = do lchar '('; (i, ifc) <- withExtent name; lchar ':'; ty <- expr syn; lchar ')'
               return (i, ifc, ty)
-       <|> do (i, ifc) <- listen name
+       <|> do (i, ifc) <- withExtent name
               fc <- getFC
               return (i, ifc, PType fc)
 
@@ -928,7 +927,7 @@ implementation kwopt syn
                         en <- optional implementationName
                         cs <- constraintList syn
                         let cs' = [(c, ty) | (_, c, _, ty) <- cs]
-                        (cn, cnfc) <- listen fnName
+                        (cn, cnfc) <- withExtent fnName
                         args <- many (simpleExpr syn)
                         let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                         let t = bindList (\r -> PPi constraint { pcount = r }) cs sc
@@ -949,7 +948,7 @@ implementation kwopt syn
 
         implementationUsing :: IdrisParser [Name]
         implementationUsing = do keyword "using"
-                                 ns <- P.sepBy1 (listen fnName) (lchar ',')
+                                 ns <- P.sepBy1 (withExtent fnName) (lchar ',')
                                  return (map fst ns)
                               <|> return []
 
@@ -1160,7 +1159,7 @@ clause syn
        <|> do (l, op, nfc) <- P.try (do
                 pushIndent
                 l <- argExpr syn
-                (op, nfc) <- listen symbolicOperator
+                (op, nfc) <- withExtent symbolicOperator
                 when (op == "=" || op == "?=" ) $
                      fail "infix clause definition with \"=\" and \"?=\" not supported "
                 return (l, op, nfc))
@@ -1189,7 +1188,7 @@ clause syn
                    put (ist { lastParse = Just n })
                    return $ PWith fc n capp wargs wval pn withs)
        <|> do pushIndent
-              (n_in, nfc) <- listen fnName; let n = expandNS syn n_in
+              (n_in, nfc) <- withExtent fnName; let n = expandNS syn n_in
               fc <- getFC
               args <- many (P.try (implicitArg (syn { inPattern = True } ))
                             <|> P.try (constraintArg (syn { inPattern = True }))
@@ -1217,7 +1216,7 @@ clause syn
       <?> "function clause"
   where
     optProof = P.option Nothing (do keyword "proof"
-                                    n <- listen fnName
+                                    n <- withExtent fnName
                                     return (Just n))
 
     fillLHS :: Name -> PTerm -> [PTerm] -> PClause -> PClause
@@ -1353,13 +1352,13 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     libs <- P.sepBy1 stringLiteral (lchar ',')
                     return [PDirective (DDynamicLibs libs)]
              <|> do P.try (lchar '%' *> reserved "name")
-                    (ty, tyFC) <- listen fnName
-                    ns <- P.sepBy1 (listen name) (lchar ',')
+                    (ty, tyFC) <- withExtent fnName
+                    ns <- P.sepBy1 (withExtent name) (lchar ',')
                     return [PDirective (DNameHint ty tyFC ns)]
              <|> do P.try (lchar '%' *> reserved "error_handlers")
-                    (fn, nfc) <- listen fnName
-                    (arg, afc) <- listen fnName
-                    ns <- P.sepBy1 (listen name) (lchar ',')
+                    (fn, nfc) <- withExtent fnName
+                    (arg, afc) <- withExtent fnName
+                    ns <- P.sepBy1 (withExtent name) (lchar ',')
                     return [PDirective (DErrorHandlers fn nfc arg afc ns) ]
              <|> do P.try (lchar '%' *> reserved "language"); ext <- pLangExt;
                     return [PDirective (DLanguage ext)]
@@ -1419,14 +1418,14 @@ provider syn = do doc <- P.try (do (doc, _) <- docstring syn
                   provideTerm doc <|> providePostulate doc
                <?> "type provider"
   where provideTerm doc =
-          do lchar '('; (n, nfc) <- listen fnName; lchar ':'; t <- typeExpr syn; lchar ')'
+          do lchar '('; (n, nfc) <- withExtent fnName; lchar ':'; t <- typeExpr syn; lchar ')'
              fc <- getFC
              keyword "with"
              e <- expr syn <?> "provider expression"
              return  [PProvider doc syn fc nfc (ProvTerm t e) n]
         providePostulate doc =
           do keyword "postulate"
-             (n, nfc) <- listen fnName
+             (n, nfc) <- withExtent fnName
              fc <- getFC
              keyword "with"
              e <- expr syn <?> "provider expression"

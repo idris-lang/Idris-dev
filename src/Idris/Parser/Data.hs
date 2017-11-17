@@ -20,7 +20,6 @@ import Prelude hiding (pi)
 
 import Control.Applicative
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (listen)
 import Data.List
 import Data.Maybe
 import Text.Megaparsec ((<?>))
@@ -42,7 +41,7 @@ record syn = do (doc, paramDocs, acc, opts) <- P.try (do
                       co <- recordI
                       return (doc', paramDocs', acc, opts ++ co))
                 fc <- getFC
-                (tyn_in, nfc) <- listen fnName
+                (tyn_in, nfc) <- withExtent fnName
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
                                                     syn_namespace syn }
@@ -65,7 +64,7 @@ record syn = do (doc, paramDocs, acc, opts) <- P.try (do
 
         (constructorName, constructorDoc) <- P.option (Nothing, emptyDocstring)
                                              (do (doc, _) <- P.option noDocs docComment
-                                                 n <- listen constructor
+                                                 n <- withExtent constructor
                                                  return (Just n, doc))
 
         let constructorDoc' = annotate syn ist constructorDoc
@@ -78,7 +77,7 @@ record syn = do (doc, paramDocs, acc, opts) <- P.try (do
         fieldLine syn = do
             doc <- optional docComment
             c <- optional $ lchar '{'
-            let oneName = (do (n, nfc) <- listen fnName
+            let oneName = (do (n, nfc) <- withExtent fnName
                               return $ Just (expandNS syn n, nfc))
                           <|> (symbol "_" >> return Nothing)
             ns <- commaSeparated oneName
@@ -115,13 +114,13 @@ recordParameter syn =
   where
     namedTy :: SyntaxInfo -> IdrisParser (Name, FC, PTerm)
     namedTy syn =
-      do (n, nfc) <- listen fnName
+      do (n, nfc) <- withExtent fnName
          lchar ':'
          ty <- typeExpr (allowImp syn)
          return (expandNS syn n, nfc, ty)
     onlyName :: SyntaxInfo -> IdrisParser (Name, FC, PTerm)
     onlyName syn =
-      do (n, nfc) <- listen fnName
+      do (n, nfc) <- withExtent fnName
          fc <- getFC
          return (expandNS syn n, nfc, PType fc)
 
@@ -183,7 +182,7 @@ data_ syn = (checkDeclFixity $
                                    | (n, d) <- argDocs ]
                     return (doc', argDocs', acc, dataOpts))
                fc <- getFC
-               (tyn_in, nfc) <- listen fnName
+               (tyn_in, nfc) <- withExtent fnName
                (do P.try (lchar ':')
                    ty <- typeExpr (allowImp syn)
                    let tyn = expandNS syn tyn_in
@@ -239,7 +238,7 @@ data_ syn = (checkDeclFixity $
 constructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name])
 constructor syn
     = do (doc, argDocs) <- P.option noDocs docComment
-         (cn_in, nfc) <- listen fnName; fc <- getFC
+         (cn_in, nfc) <- withExtent fnName; fc <- getFC
          let cn = expandNS syn cn_in
          lchar ':'
          fs <- P.option [] (do lchar '%'; reserved "erase"
@@ -261,7 +260,7 @@ simpleConstructor syn
      = do (doc, _) <- P.option noDocs (P.try docComment)
           ist <- get
           let doc' = annotCode (tryFullExpr syn ist) doc
-          (cn_in, nfc) <- listen fnName
+          (cn_in, nfc) <- withExtent fnName
           let cn = expandNS syn cn_in
           fc <- getFC
           args <- many (do notEndApp

@@ -18,7 +18,6 @@ import Prelude hiding (pi)
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict
 import Data.Char (isAlpha)
 import Data.List
 import Data.List.NonEmpty (fromList)
@@ -43,7 +42,7 @@ table fixes
 
     noFixityBacktickOperator :: P.Operator IdrisParser PTerm
     noFixityBacktickOperator = P.InfixN $ do
-                                 (n, fc) <- listen backtickOperator
+                                 (n, fc) <- withExtent backtickOperator
                                  return $ \x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y]
 
     -- | Operator without fixity (throws an error)
@@ -73,7 +72,7 @@ table fixes
     binary :: String -> (IdrisParser (PTerm -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm) -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
     binary name ctor f
       | isBacktick name = ctor $ P.try $ do
-                            (n, fc) <- listen backtickOperator
+                            (n, fc) <- withExtent backtickOperator
                             guard $ show (nsroot n) == name
                             return $ f fc n
       | otherwise       = ctor $ do

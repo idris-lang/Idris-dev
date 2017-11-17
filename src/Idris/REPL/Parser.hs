@@ -27,7 +27,6 @@ import Idris.REPL.Commands
 
 import Control.Applicative
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict
 import Data.Char (isSpace, toLower)
 import Data.List
 import Data.List.Split (splitOn)
@@ -235,7 +234,7 @@ exprArg cmd name = do
           return $ Left ("Usage is :" ++ name ++ " <expression>")
 
     let justOperator = do
-          (op, fc) <- listen IP.symbolicOperator
+          (op, fc) <- IP.withExtent IP.symbolicOperator
           P.eof
           return $ Right $ cmd (PRef fc [] (sUN op))
 
