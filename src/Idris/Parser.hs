@@ -881,8 +881,7 @@ interface_ syn = do (doc, argDocs, acc)
 
     interfaceKeyword :: IdrisParser ()
     interfaceKeyword = keyword "interface"
-               <|> do keyword "class"
-                      fc <- getFC
+               <|> do fc <- extent $ keyword "class"
                       parserWarning fc Nothing (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
 
     carg :: IdrisParser (Name, FC, PTerm)
