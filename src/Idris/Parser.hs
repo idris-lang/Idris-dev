@@ -888,8 +888,7 @@ interface_ syn = do (doc, argDocs, acc)
     carg = do lchar '('; (i, ifc) <- withExtent name; lchar ':'; ty <- expr syn; lchar ')'
               return (i, ifc, ty)
        <|> do (i, ifc) <- withExtent name
-              fc <- getFC
-              return (i, ifc, PType fc)
+              return (i, ifc, PType ifc)
 
 {-| Parses an interface implementation declaration
 
