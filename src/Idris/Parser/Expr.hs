@@ -802,12 +802,13 @@ data SetOrUpdate = FieldSet PTerm | FieldUpdate PTerm
 
 recordType :: SyntaxInfo -> IdrisParser PTerm
 recordType syn =
-      do keyword "record"
-         lchar '{'
-         fgs <- fieldGetOrSet
-         lchar '}'
-         fc <- getFC
-         rec <- optional (do notEndApp; simpleExpr syn)
+      do ((fgs, rec), fc) <- withExtent $ do
+            keyword "record"
+            lchar '{'
+            fgs <- fieldGetOrSet
+            lchar '}'
+            rec <- optional (do notEndApp; simpleExpr syn)
+            return (fgs, rec)
          case fgs of
               Left fields ->
                 case rec of
