@@ -22,13 +22,14 @@ module Idris.Parser.Parser
   , getFC
   , extent
   , trackExtent
+  , hideExtent
   )
 where
 
 import Idris.Core.TT (FC(..))
 
 import Control.Monad.State.Strict (StateT(..), evalStateT)
-import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), runWriterT)
+import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), censor, runWriterT)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Void (Void(..))
 import System.FilePath (addTrailingPathSeparator, splitFileName)
@@ -99,3 +100,7 @@ trackExtent p = do (FC f (sr, sc) _) <- getFC
                    (FC f _ (er, ec)) <- getFC
                    tell (FC f (sr, sc) (er, max 1 (ec - 1)))
                    return result
+
+-- | Run a parser, hiding its extent.
+hideExtent :: Parsing m => m a -> m a
+hideExtent = censor (const NoFC)

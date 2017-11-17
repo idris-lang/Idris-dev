@@ -21,7 +21,7 @@ import Control.Applicative
 import Control.Arrow (left)
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Strict (censor, listen, tell)
+import Control.Monad.Writer.Strict (listen, tell)
 import Data.Function (on)
 import Data.List
 import Data.Maybe
@@ -1217,7 +1217,7 @@ tyOptDeclList syn = P.sepBy1 (do (x, fc) <- listen nameOrPlaceholder
                     <?> "type declaration list"
     where  nameOrPlaceholder :: IdrisParser Name
            nameOrPlaceholder = fnName
-                           <|> sMN 0 "underscore" <$ censor (const NoFC) (symbol "_")
+                           <|> sMN 0 "underscore" <$ hideExtent (symbol "_")
                            <?> "name or placeholder"
 
 {- | Parses a list literal expression e.g. [1,2,3] or a comprehension [ (x, y) | x <- xs , y <- ys ]
