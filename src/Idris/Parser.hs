@@ -1060,9 +1060,7 @@ rhs syn n = do lchar '='
                indentGt
                expr syn
         <|> do symbol "?=";
-               fc <- getFC
-               name <- P.option n' (do symbol "{"; n <- fnName; symbol "}";
-                                       return n)
+               (name, fc) <- withExtent $ P.option n' (symbol "{" *> fnName <* symbol "}")
                r <- expr syn
                return (addLet fc name r)
         <|> impossible
