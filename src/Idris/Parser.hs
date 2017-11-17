@@ -765,11 +765,10 @@ Mutual ::=
 -}
 mutual :: SyntaxInfo -> IdrisParser [PDecl]
 mutual syn =
-    do keyword "mutual"
+    do fc <- extent $ keyword "mutual"
        openBlock
        ds <- many (decl (syn { mut_nesting = mut_nesting syn + 1 } ))
        closeBlock
-       fc <- getFC
        return [PMutual fc (concat ds)]
     <?> "mutual block"
 
