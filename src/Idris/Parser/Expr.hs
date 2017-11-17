@@ -1313,9 +1313,7 @@ do_ syn
                  reservedOp "="
                  (sc, fc) <- withExtent $ expr syn
                  return (DoLetP fc i sc))
-   <|> P.try (do keyword "rewrite"
-                 fc <- getFC
-                 sc <- expr syn
+   <|> P.try (do (sc, fc) <- withExtent (keyword "rewrite" *> expr syn)
                  return (DoRewrite fc sc))
    <|> P.try (do (i, ifc) <- withExtent name
                  symbol "<-"
