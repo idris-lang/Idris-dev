@@ -1501,7 +1501,7 @@ parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> ela
         spaced parser = indentGt *> parser
 
 -- | Parse module header and imports
-parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe ParseState)
+parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe Mark)
 parseImports fname input
     = do i <- getIState
          case runparser imports i fname input of
@@ -1513,13 +1513,13 @@ parseImports fname input
                    return x
   where imports :: IdrisParser ((Maybe (Docstring ()), [String],
                                  [ImportInfo],
-                                 Maybe ParseState),
+                                 Maybe Mark),
                                 [(FC, OutputAnnotation)], IState)
         imports = do optional shebang
                      whiteSpace
                      (mdoc, mname, annots) <- moduleHeader
                      ps_exp        <- many import_
-                     mrk           <- P.getParserState
+                     mrk           <- mark
                      isEof         <- lookAheadMatches P.eof
                      let mrk' = if isEof
                                    then Nothing
@@ -1546,7 +1546,7 @@ fixColour True doc  = doc
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
-parseProg :: SyntaxInfo -> FilePath -> String -> Maybe ParseState -> Idris [PDecl]
+parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Mark -> Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
@@ -1564,7 +1564,7 @@ parseProg syn fname input mrk
         mainProg = case mrk of
                         Nothing -> do i <- get; return ([], i)
                         Just mrk -> do
-                          P.setParserState mrk
+                          restore mrk
                           ds <- prog syn
                           i' <- get
                           return (ds, i')

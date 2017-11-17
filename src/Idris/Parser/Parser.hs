@@ -11,13 +11,15 @@ module Idris.Parser.Parser
     Parser(..)
   , Parsing(..)
   , runparser
-    -- * Parse state
-  , ParseState
     -- * Parse errors
   , ParseError
   , errorSpan
   , errorMessage
   , prettyError
+    -- * Mark and restore
+  , Mark
+  , mark
+  , restore
     -- * Tracking the extent of productions
   , getFC
   , addExtent
@@ -52,10 +54,6 @@ runparser p i inputname s =
     Left err -> Left $ ParseError s err
     Right v  -> Right $ fst v
 
-{- * Parse state -}
-
-type ParseState = P.State String
-
 {- * Parse errors -}
 
 data ParseError = ParseError String (P.ParseError (P.Token String) Void)
@@ -73,6 +71,16 @@ errorMessage (ParseError _ err) = P.parseErrorTextPretty err
 -- | A fully formatted parse error, with caret and bar, etc.
 prettyError                    :: ParseError -> String
 prettyError (ParseError s err) = P.parseErrorPretty' s err
+
+{- * Mark and restore -}
+
+type Mark = P.State String
+
+mark :: Parsing m => m Mark
+mark = P.getParserState
+
+restore :: Parsing m => Mark -> m ()
+restore = P.setParserState
 
 {- * Tracking the extent of productions -}
 
