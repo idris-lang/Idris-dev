@@ -392,7 +392,7 @@ simpleExpr syn =
         <|> do lchar '%'; fc <- extent $ reserved "instance"
                parserWarning fc Nothing $ Msg "The use of %instance is deprecated, use %implementation instead."
                return (PResolveTC fc)
-        <|> do reserved "elim_for"; fc <- getFC; t <- fnName; return (PRef fc [] (SN $ ElimN t))
+        <|> do reserved "elim_for"; (t, fc) <- withExtent $ fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
         <|> P.try (do fc <- extent (reserved "Type*"); return $ PUniverse fc AllTypes)
@@ -410,16 +410,14 @@ simpleExpr syn =
                if inPattern syn
                   then P.option (PRef fc [fc] x)
                                 (do reservedOp "@"
-                                    s <- simpleExpr syn
-                                    fcIn <- getFC
+                                    (s, fcIn) <- withExtent $ simpleExpr syn
                                     return (PAs fcIn x s))
                   else return (PRef fc [fc] x)
         <|> idiom syn
         <|> listExpr syn
         <|> alt syn
         <|> do reservedOp "!"
-               s <- simpleExpr syn
-               fc <- getFC
+               (s, fc) <- withExtent $ simpleExpr syn
                return (PAppBind fc s [])
         <|> bracketed (disallowImp syn)
         <|> quasiquote syn
@@ -657,8 +655,7 @@ MatchApp ::=
 app :: SyntaxInfo -> IdrisParser PTerm
 app syn = do f <- simpleExpr syn
              (do P.try $ reservedOp "<=="
-                 fc <- getFC
-                 ff <- fnName
+                 (ff, fc) <- withExtent fnName
                  return (PLet fc RigW (sMN 0 "match") NoFC
                                f
                                (PMatchApp fc ff)
@@ -717,7 +714,6 @@ ImplicitArg ::=
 implicitArg :: SyntaxInfo -> IdrisParser PArg
 implicitArg syn = do lchar '{'
                      (n, nfc) <- withExtent name
-                     fc <- getFC
                      v <- P.option (PRef nfc [nfc] n) (do lchar '='
                                                           expr syn)
                      lchar '}'
