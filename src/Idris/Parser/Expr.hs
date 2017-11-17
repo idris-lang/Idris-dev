@@ -1461,7 +1461,7 @@ constant = P.choice [ do fc <- reservedFC name; return (ty, fc)
 
 @
 VerbatimString_t ::=
-  '\"\"\"' ~'\"\"\"' '\"\"\"'
+  '\"\"\"' ~'\"\"\"' '\"'* '\"\"\"'
 ;
 @
  -}
@@ -1469,8 +1469,9 @@ verbatimStringLiteral :: IdrisParser (String, FC)
 verbatimStringLiteral = token $ do (FC f start _) <- getFC
                                    P.try $ string "\"\"\""
                                    str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")
+                                   moreQuotes <- P.many $ P.char '"'
                                    (FC _ _ end) <- getFC
-                                   return (str, FC f start end)
+                                   return (str ++ moreQuotes, FC f start end)
 
 {- | Parses a static modifier
 
