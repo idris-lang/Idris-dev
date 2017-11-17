@@ -934,8 +934,7 @@ implementation kwopt syn
                              <?> "implementation name"
         implementationKeyword :: IdrisParser ()
         implementationKeyword = keyword "implementation"
-                         <|> do keyword "instance"
-                                fc <- getFC
+                         <|> do fc <- extent $ keyword "instance"
                                 parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
 
         implementationUsing :: IdrisParser [Name]
@@ -1362,8 +1361,7 @@ directive syn = do P.try (lchar '%' *> reserved "lib")
                     n <- fnName
                     alt <- P.option "" stringLiteral
                     return [PDirective (DFragile n alt)]
-             <|> do fc <- getFC
-                    P.try (lchar '%' *> reserved "used")
+             <|> do fc <- extent $ P.try (lchar '%' *> reserved "used")
                     fn <- fnName
                     arg <- iName []
                     return [PDirective (DUsed fc fn arg)]
@@ -1411,16 +1409,14 @@ provider syn = do doc <- P.try (do (doc, _) <- docstring syn
                <?> "type provider"
   where provideTerm doc =
           do lchar '('; (n, nfc) <- withExtent fnName; lchar ':'; t <- typeExpr syn; lchar ')'
-             fc <- getFC
              keyword "with"
-             e <- expr syn <?> "provider expression"
+             (e, fc) <- withExtent (expr syn) <?> "provider expression"
              return  [PProvider doc syn fc nfc (ProvTerm t e) n]
         providePostulate doc =
           do keyword "postulate"
              (n, nfc) <- withExtent fnName
-             fc <- getFC
              keyword "with"
-             e <- expr syn <?> "provider expression"
+             (e, fc) <- withExtent (expr syn) <?> "provider expression"
              return [PProvider doc syn fc nfc (ProvPostulate e) n]
 
 {-| Parses a transform
@@ -1436,8 +1432,7 @@ transform syn = do P.try (lchar '%' *> reserved "transform")
 --                     safety <- option True (do reserved "unsafe"
 --                                               return False)
                    l <- expr syn
-                   fc <- getFC
-                   symbol "==>"
+                   fc <- extent $ symbol "==>"
                    r <- expr syn
                    return [PTransform fc False l r]
                 <?> "transform"
