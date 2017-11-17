@@ -110,7 +110,7 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
 type IdrisParser = Parser IState
 
 parseErrorDoc :: ParseError -> PP.Doc
-parseErrorDoc = PP.string . parseErrorPretty
+parseErrorDoc = PP.string . prettyError
 
 someSpace :: Parsing m => m ()
 someSpace = many (simpleWhiteSpace <|> singleLineComment <|> multiLineComment) *> pure ()

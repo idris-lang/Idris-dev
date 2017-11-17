@@ -16,8 +16,8 @@ module Idris.Parser.Parser
     -- * Parse errors
   , ParseError
   , errorSpan
-  , parseErrorMessage
-  , parseErrorPretty
+  , errorMessage
+  , prettyError
     -- * Parse position
   , getFC
   )
@@ -61,11 +61,13 @@ errorSpan (ParseError _ err) = sourcePositionFC pos
   where
     (pos NonEmpty.:| _) = P.errorPos err
 
-parseErrorMessage :: ParseError -> String
-parseErrorMessage (ParseError _ err) = P.parseErrorTextPretty err
+-- | A single-line parse error message, including location.
+errorMessage :: ParseError -> String
+errorMessage (ParseError _ err) = P.parseErrorTextPretty err
 
-parseErrorPretty                    :: ParseError -> String
-parseErrorPretty (ParseError s err) = P.parseErrorPretty' s err
+-- | A fully formatted parse error, with caret and bar, etc.
+prettyError                    :: ParseError -> String
+prettyError (ParseError s err) = P.parseErrorPretty' s err
 
 {- * Parse position -}
 
