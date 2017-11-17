@@ -13,7 +13,7 @@ module Idris.Parser.Parser
   , runparser
     -- * Parse errors
   , ParseError
-  , errorSpan
+  , errorExtent
   , errorMessage
   , prettyError
     -- * Mark and restore
@@ -59,8 +59,8 @@ runparser p i inputname s =
 data ParseError = ParseError String (P.ParseError (P.Token String) Void)
 
 -- | Retrieve a parse error's FC
-errorSpan :: ParseError -> FC
-errorSpan (ParseError _ err) = sourcePositionFC pos
+errorExtent :: ParseError -> FC
+errorExtent (ParseError _ err) = sourcePositionFC pos
   where
     (pos NonEmpty.:| _) = P.errorPos err
 
@@ -76,6 +76,7 @@ prettyError (ParseError s err) = P.parseErrorPretty' s err
 
 type Mark = P.State String
 
+-- | Retrieve the parser state so we can restart from this point later.
 mark :: Parsing m => m Mark
 mark = P.getParserState
 
