@@ -726,13 +726,14 @@ Params ::=
 -}
 params :: SyntaxInfo -> IdrisParser [PDecl]
 params syn =
-    do keyword "parameters"; lchar '('; ns <- typeDeclList syn; lchar ')'
+    do (ns, fc) <- withExtent $ do
+          keyword "parameters"
+          lchar '(' *> typeDeclList syn <* lchar ')'
        let ns' = [(n, ty) | (_, n, _, ty) <- ns]
        openBlock
        let pvars = syn_params syn
        ds <- many (decl syn { syn_params = pvars ++ ns' })
        closeBlock
-       fc <- getFC
        return [PParams fc ns' (concat ds)]
     <?> "parameters declaration"
 
