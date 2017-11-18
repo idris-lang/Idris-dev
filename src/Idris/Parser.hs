@@ -904,8 +904,7 @@ ImplementationName ::= '[' Name ']';
 -}
 implementation :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
 implementation kwopt syn
-                   = do ist <- get
-                        (doc, argDocs) <- docstring syn
+                   = do (doc, argDocs) <- docstring syn
                         (opts, acc) <- fnOpts
                         if kwopt then optional implementationKeyword
                                  else do implementationKeyword
