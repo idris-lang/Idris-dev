@@ -907,12 +907,10 @@ LambdaTail ::=
 lambda :: SyntaxInfo -> IdrisParser PTerm
 lambda syn = do lchar '\\' <?> "lambda expression"
                 ((do xt <- P.try $ tyOptDeclList (disallowImp syn)
-                     fc <- getFC
-                     sc <- lambdaTail
+                     (sc, fc) <- withExtent lambdaTail
                      return (bindList (\r -> PLam fc) xt sc))
                  <|>
-                 (do ps <- P.sepBy (do fc <- getFC
-                                       e <- simpleExpr (disallowImp (syn { inPattern = True }))
+                 (do ps <- P.sepBy (do (e, fc) <- withExtent $ simpleExpr (disallowImp (syn { inPattern = True }))
                                        return (fc, e))
                                    (lchar ',')
                      sc <- lambdaTail
@@ -936,8 +934,7 @@ RewriteTerm ::=
 -}
 rewriteTerm :: SyntaxInfo -> IdrisParser PTerm
 rewriteTerm syn = do keyword "rewrite"
-                     fc <- getFC
-                     prf <- expr syn
+                     (prf, fc) <- withExtent $ expr syn
                      giving <- optional (do symbol "==>"; expr' syn)
                      using <- optional (do reserved "using"
                                            n <- name
@@ -969,8 +966,7 @@ let_ syn = P.try (do keyword "let"
         buildLets ((fc, pat, ty, v, alts) : ls) sc
           = PCase fc v ((pat, buildLets ls sc) : alts)
 
-let_binding syn = do fc <- getFC;
-                     pat <- expr' (syn { inPattern = True })
+let_binding syn = do (pat, fc) <- withExtent $ expr' (syn { inPattern = True })
                      ty <- P.option Placeholder (do lchar ':'; expr' syn)
                      lchar '='
                      v <- expr (syn { withAppAllowed = isVar pat })
@@ -1241,8 +1237,7 @@ listExpr :: SyntaxInfo -> IdrisParser PTerm
 listExpr syn = do (FC f (l, c) _) <- extent (lchar '[')
                   (do (FC _ _ (l', c')) <- extent (lchar ']') <?> "end of list expression"
                       return (mkNil (FC f (l, c) (l', c'))))
-                   <|> (do fc <- getFC
-                           x <- expr (syn { withAppAllowed = False }) <?> "expression"
+                   <|> (do (x, fc) <- withExtent (expr (syn { withAppAllowed = False })) <?> "expression"
                            (do P.try (lchar '|') <?> "list comprehension"
                                qs <- P.sepBy1 (do_ syn) (lchar ',')
                                lchar ']'
