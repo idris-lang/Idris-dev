@@ -398,8 +398,7 @@ simpleExpr syn =
         <|> do fc <- extent $ reserved "UniqueType"; return $ PUniverse fc UniqueType
         <|> do fc <- extent $ reserved "NullType"; return $ PUniverse fc NullType
         <|> do (c, cfc) <- withExtent constant
-               fc <- getFC
-               return (modifyConst syn fc (PConstant cfc c))
+               return (modifyConst syn cfc (PConstant cfc c))
         <|> do symbol "'"; (str, fc) <- withExtent name
                return (PApp fc (PRef fc [] (sUN "Symbol_"))
                           [pexp (PConstant NoFC (Str (show str)))])
@@ -458,9 +457,8 @@ bracketed' open syn =
                         (PApp fc (PRef fc [] opName) [pexp (PRef fc [] (sMN 1000 "ARG")),
                                                       pexp e]))
         <|> P.try (simpleExpr syn >>= \l ->
-                     P.try (do opName <- operatorName
+                     P.try (do (opName, fc) <- withExtent operatorName
                                lchar ')'
-                               fc <- getFC
                                return $ PLam fc (sMN 1000 "ARG") NoFC Placeholder
                                  (PApp fc (PRef fc [] opName) [pexp l,
                                                                pexp (PRef fc [] (sMN 1000 "ARG"))]))
@@ -659,7 +657,6 @@ app syn = do f <- simpleExpr syn
                                (PRef fc [] (sMN 0 "match")))
                    <?> "matching application expression") <|>
                (do fc <- getFC
-                   i <- get
                    args <- many (do notEndApp; arg syn)
                    wargs <- if withAppAllowed syn && not (inPattern syn)
                               then many (do notEndApp; reservedOp "|"; expr' syn)
