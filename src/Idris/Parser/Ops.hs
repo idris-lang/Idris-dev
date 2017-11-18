@@ -144,10 +144,12 @@ Fixity ::=
 @
 -}
 fixity :: IdrisParser PDecl
-fixity = do pushIndent
-            f <- fixityType; i <- natural
-            ops <- P.sepBy1 (show . nsroot <$> operatorName) (lchar ',')
-            terminator
+fixity = do ((f, i, ops), fc) <- withExtent $ do
+                pushIndent
+                f <- fixityType; i <- natural
+                ops <- P.sepBy1 (show . nsroot <$> operatorName) (lchar ',')
+                terminator
+                return (f, i, ops)
             let prec = fromInteger i
             istate <- get
             let infixes = idris_infixes istate
@@ -158,7 +160,6 @@ fixity = do pushIndent
                then do put (istate { idris_infixes = nub $ sort (fs ++ infixes)
                                      , ibc_write     = map IBCFix fs ++ ibc_write istate
                                    })
-                       fc <- getFC
                        return (PFix fc (f prec) ops)
                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity:\n\t\""
                                                 ++ show f ++ "\" overrides \"" ++ show x ++ "\"") ill
