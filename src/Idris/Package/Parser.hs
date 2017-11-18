@@ -11,10 +11,9 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
-import Idris.Parser.Helpers (Parser, Parsing, eol, iName,
-                             identifier, isEol, lchar, packageName,
-                             parseErrorDoc, reserved, runparser, someSpace,
-                             stringLiteral)
+import Idris.Parser.Helpers (Parser, Parsing, eol, iName, identifier, isEol,
+                             lchar, packageName, parseErrorDoc, reserved,
+                             runparser, someSpace, stringLiteral)
 
 import Control.Applicative
 import Control.Monad.State.Strict
