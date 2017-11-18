@@ -93,10 +93,7 @@ expr' syn = P.try (externalExpr syn)
 {- | Parses a user-defined expression -}
 externalExpr :: SyntaxInfo -> IdrisParser PTerm
 externalExpr syn = do i <- get
-                      (FC fn start _) <- getFC
-                      expr <- extensions syn (syntaxRulesList $ syntax_rules i)
-                      (FC _ _ end) <- getFC
-                      let outerFC = FC fn start end
+                      (expr, outerFC@(FC fn _ _)) <- withExtent $ extensions syn (syntaxRulesList $ syntax_rules i)
                       return (mapPTermFC (fixFC outerFC) (fixFCH fn outerFC) expr)
                    <?> "user-defined expression"
   where -- Fix non-highlighting FCs by approximating with the span of the syntax application
