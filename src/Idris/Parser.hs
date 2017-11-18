@@ -197,7 +197,7 @@ internalDecl syn
                      <|> fail "End of readable input"
   where declBody :: Bool -> IdrisParser [PDecl]
         declBody b =
-                   P.try (implementation True syn)
+                   P.try (implementation syn)
                    <|> P.try (openInterface syn)
                    <|> declBody' b
                    <|> using_ syn
@@ -829,7 +829,7 @@ interfaceBlock syn = do keyword "where"
                         ist <- get
                         let cd' = annotate syn ist cd
 
-                        ds <- many (notEndBlock >> P.try (implementation True syn)
+                        ds <- many (notEndBlock >> P.try (implementation syn)
                                                    <|> do x <- data_ syn
                                                           return [x]
                                                    <|> fnDecl syn)
@@ -902,13 +902,10 @@ interface_ syn = do (doc, argDocs, acc)
 ImplementationName ::= '[' Name ']';
 @
 -}
-implementation :: Bool -> SyntaxInfo -> IdrisParser [PDecl]
-implementation kwopt syn
-                   = do (doc, argDocs) <- docstring syn
+implementation :: SyntaxInfo -> IdrisParser [PDecl]
+implementation syn = do (doc, argDocs) <- docstring syn
                         (opts, acc) <- fnOpts
-                        if kwopt then optional implementationKeyword
-                                 else do implementationKeyword
-                                         return (Just ())
+                        optional implementationKeyword
 
                         fc <- getFC
                         en <- optional implementationName
