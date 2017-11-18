@@ -19,6 +19,7 @@ import Prelude hiding (pi)
 
 import Control.Applicative
 import Control.Arrow (left)
+import qualified Control.Arrow as Arrow
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Function (on)
@@ -648,24 +649,23 @@ MatchApp ::=
 @
 -}
 app :: SyntaxInfo -> IdrisParser PTerm
-app syn = do f <- simpleExpr syn
-             (do P.try $ reservedOp "<=="
-                 (ff, fc) <- withExtent fnName
-                 return (PLet fc RigW (sMN 0 "match") NoFC
-                               f
-                               (PMatchApp fc ff)
-                               (PRef fc [] (sMN 0 "match")))
-                   <?> "matching application expression") <|>
-               (do fc <- getFC
-                   args <- many (do notEndApp; arg syn)
-                   wargs <- if withAppAllowed syn && not (inPattern syn)
-                              then many (do notEndApp; reservedOp "|"; expr' syn)
-                              else return []
-                   case args of
-                     [] -> return f
-                     _  -> return (withApp fc (flattenFromInt fc f args) wargs))
-       <?> "function application"
-   where
+app syn = (<?> "function application") . fmap Arrow.app . withExtent $ do
+    f <- simpleExpr syn
+    (do P.try $ reservedOp "<=="
+        ff <- fnName
+        return (\fc -> (PLet fc RigW (sMN 0 "match") NoFC
+                          f
+                          (PMatchApp fc ff)
+                          (PRef fc [] (sMN 0 "match"))))
+          <?> "matching application expression") <|>
+      (do args <- many (do notEndApp; arg syn)
+          wargs <- if withAppAllowed syn && not (inPattern syn)
+                     then many (do notEndApp; reservedOp "|"; expr' syn)
+                     else return []
+          case args of
+            [] -> return $ \fc -> f
+            _  -> return $ \fc -> (withApp fc (flattenFromInt fc f args) wargs))
+  where
     -- bit of a hack to deal with the situation where we're applying a
     -- literal to an argument, which we may want for obscure applications
     -- of fromInteger, and this will help disambiguate better.

@@ -1,4 +1,4 @@
-error007.idr:26:17:
+error007.idr:26:7-29:
 When checking right hand side of answer_to_connection with expected type
         IO Int
 

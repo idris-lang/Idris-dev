@@ -16,7 +16,7 @@ error005.idr:20:11:When checking right hand side of notOk with expected type
 When checking argument prf to function Data.Fin.fromInteger:
         When using 2 as a literal for a Fin (S (S n)) 
                 2 is not strictly less than S (S n)
-error005.idr:23:24:When checking right hand side of b0rken with expected type
+error005.idr:23:12-24:When checking right hand side of b0rken with expected type
         Fin 3
 
 When checking argument prf to function Data.Fin.fromInteger:
