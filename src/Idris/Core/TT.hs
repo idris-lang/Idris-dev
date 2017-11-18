@@ -87,7 +87,7 @@ data Option = TTypeInTType
             | CheckConv
   deriving Eq
 
--- | Source location. These are typically produced by the parser 'Idris.Parser.getFC'
+-- | Source location. These are typically produced by 'Idris.Parser.Stack.withExtent'
 data FC = FC { _fc_fname :: String, -- ^ Filename
                _fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
                _fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
