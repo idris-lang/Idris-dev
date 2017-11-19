@@ -5,7 +5,7 @@ Description : Utilities for Idris' parser.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiParamTypeClasses #-}
 module Idris.Parser.Helpers
   ( module Idris.Parser.Stack
     -- * The parser
@@ -86,8 +86,8 @@ import Control.Monad.State.Strict
 import Data.Char
 import qualified Data.HashSet as HS
 import Data.List
-import qualified Data.Map as M
 import qualified Data.List.NonEmpty as NonEmpty
+import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Text as T
 import Text.Megaparsec ((<?>))

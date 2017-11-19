@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
-             PatternGuards #-}
+             MultiParamTypeClasses, PatternGuards #-}
 module Idris.Parser.Ops where
 
 import Idris.AbsSyntax

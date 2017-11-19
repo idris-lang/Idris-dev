@@ -5,7 +5,8 @@ Description : Parse Data declarations.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving, PatternGuards #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
+             MultiParamTypeClasses, PatternGuards #-}
 module Idris.Parser.Data where
 
 import Idris.AbsSyntax

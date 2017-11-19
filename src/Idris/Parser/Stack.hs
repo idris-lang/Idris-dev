@@ -5,7 +5,7 @@ Description : Idris parser stack and its primitives.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiParamTypeClasses #-}
 module Idris.Parser.Stack
   ( -- * Parsing
     Parser(..)
@@ -35,7 +35,8 @@ import Idris.Core.TT (FC(..))
 
 import Control.Arrow (app)
 import Control.Monad.State.Strict (StateT(..), evalStateT)
-import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), censor, listen, runWriterT, tell)
+import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), censor,
+                                    listen, runWriterT, tell)
 import qualified Data.List.NonEmpty as NonEmpty
 import Data.Void (Void(..))
 import System.FilePath (addTrailingPathSeparator, splitFileName)
