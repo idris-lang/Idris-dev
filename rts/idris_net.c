@@ -150,7 +150,7 @@ void* idrnet_create_sockaddr() {
 
 int idrnet_accept(int sockfd, void* sockaddr) {
     struct sockaddr* addr = (struct sockaddr*) sockaddr;
-    socklen_t addr_size = sizeof(struct sockaddr_storage);
+    socklen_t addr_size = 0;
     return accept(sockfd, addr, &addr_size);
 }
 
