@@ -27,11 +27,13 @@ module Idris.Parser.Stack
   , hideExtent
   , extent
   , withExtent
+  , appExtent
   )
 where
 
 import Idris.Core.TT (FC(..))
 
+import Control.Arrow (app)
 import Control.Monad.State.Strict (StateT(..), evalStateT)
 import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), censor, listen, runWriterT, tell)
 import qualified Data.List.NonEmpty as NonEmpty
@@ -123,3 +125,7 @@ extent = fmap snd . listen
 -- | Run a parser and return its value and extent.
 withExtent :: MonadWriter FC m => m a -> m (a, FC)
 withExtent = listen
+
+-- | Run a parser and inject the extent after via function application.
+appExtent :: MonadWriter FC m => m (FC -> a) -> m a
+appExtent = fmap app . withExtent

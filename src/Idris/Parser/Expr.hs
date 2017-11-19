@@ -19,7 +19,6 @@ import Prelude hiding (pi)
 
 import Control.Applicative
 import Control.Arrow (left)
-import qualified Control.Arrow as Arrow
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Function (on)
@@ -649,7 +648,7 @@ MatchApp ::=
 @
 -}
 app :: SyntaxInfo -> IdrisParser PTerm
-app syn = (<?> "function application") . fmap Arrow.app . withExtent $ do
+app syn = (<?> "function application") . appExtent $ do
     f <- simpleExpr syn
     (do P.try $ reservedOp "<=="
         ff <- fnName
