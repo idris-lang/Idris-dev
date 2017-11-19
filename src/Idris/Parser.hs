@@ -907,15 +907,18 @@ implementation syn = do (doc, argDocs) <- docstring syn
                         (opts, acc) <- fnOpts
                         optional implementationKeyword
 
-                        fc <- getFC
-                        en <- optional implementationName
-                        cs <- constraintList syn
-                        let cs' = [(c, ty) | (_, c, _, ty) <- cs]
-                        (cn, cnfc) <- withExtent fnName
-                        args <- many (simpleExpr syn)
+                        ((en, cs, cs', cn, cnfc, args, pnames), fc) <- withExtent $ do
+                            en <- optional implementationName
+                            cs <- constraintList syn
+                            let cs' = [(c, ty) | (_, c, _, ty) <- cs]
+                            (cn, cnfc) <- withExtent fnName
+                            args <- many (simpleExpr syn)
+                            pnames <- implementationUsing
+                            return (en, cs, cs', cn, cnfc, args, pnames)
+
                         let sc = PApp fc (PRef cnfc [cnfc] cn) (map pexp args)
                         let t = bindList (\r -> PPi constraint { pcount = r }) cs sc
-                        pnames <- implementationUsing
+
                         ds <- implementationBlock syn
                         return [PImplementation doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
                       <?> "implementation declaration"
