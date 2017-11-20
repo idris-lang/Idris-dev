@@ -1,6 +1,6 @@
-reg003a.idr:4:11:When checking type of Main.ECons:
+reg003a.idr:4:13-38:When checking type of Main.ECons:
 No such variable OddList
-reg003a.idr:7:11:When checking type of Main.OCons:
+reg003a.idr:7:13-38:When checking type of Main.OCons:
 No such variable EvenList
 reg003a.idr:9:6:When checking type of Main.test:
 No such variable EvenList
@@ -66,7 +66,7 @@ Specifically:
                 b
         and
                 a
-reg049.idr:2:9:When checking constructor Main.Bogus:
+reg049.idr:2:11-14:When checking constructor Main.Bogus:
 Void is not Main.Foo
 reg049.idr:5:6:When checking right hand side of uhOh with expected type
         Void
@@ -110,12 +110,12 @@ reg056.idr:7:7:dodgy n m Refl is a valid case
 reg056.idr:10:6:nonk Refl is a valid case
 reg068.idr:1:6:Main.nat has a name which may be implicitly bound.
 This is likely to lead to problems!
-reg068.idr:2:6:Main.ze has a name which may be implicitly bound.
+reg068.idr:2:8-10:Main.ze has a name which may be implicitly bound.
 This is likely to lead to problems!
 reg068.idr:2:8-10:
 nat is bound as an implicit
 	Did you mean to refer to Main.nat?
-reg068.idr:2:6:When checking constructor Main.ze:
+reg068.idr:2:8-10:When checking constructor Main.ze:
 Type level variable nat is not Main.nat
 Mod.idr:11:1:public export Mod.natexp can't refer to export Mod.natfn
 reg070.idr:7:1-7:

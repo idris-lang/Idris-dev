@@ -120,8 +120,7 @@ recordParameter syn =
     onlyName :: SyntaxInfo -> IdrisParser (Name, FC, PTerm)
     onlyName syn =
       do (n, nfc) <- withExtent fnName
-         fc <- getFC
-         return (expandNS syn n, nfc, PType fc)
+         return (expandNS syn n, nfc, PType nfc)
 
 {- | Parses data declaration type (normal or codata)
 DataI ::= 'data' | 'codata';
@@ -237,12 +236,12 @@ data_ syn = (checkDeclFixity $
 constructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name])
 constructor syn
     = do (doc, argDocs) <- P.option noDocs docComment
-         (cn_in, nfc) <- withExtent fnName; fc <- getFC
+         (cn_in, nfc) <- withExtent fnName
          let cn = expandNS syn cn_in
          lchar ':'
          fs <- P.option [] (do lchar '%'; reserved "erase"
                                P.sepBy1 name (lchar ','))
-         ty <- typeExpr (allowImp syn)
+         (ty, fc) <- withExtent $ typeExpr (allowImp syn)
          ist <- get
          let doc' = annotCode (tryFullExpr syn ist) doc
              argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
@@ -256,17 +255,16 @@ constructor syn
 -}
 simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, [PTerm], FC, [Name])
 simpleConstructor syn
-     = do (doc, _) <- P.option noDocs (P.try docComment)
+     = (<?> "constructor") . appExtent $ do
+          (doc, _) <- P.option noDocs (P.try docComment)
           ist <- get
           let doc' = annotCode (tryFullExpr syn ist) doc
           (cn_in, nfc) <- withExtent fnName
           let cn = expandNS syn cn_in
-          fc <- getFC
           args <- many (do notEndApp
                            simpleExpr syn)
           checkNameFixity cn
-          return (doc', [], cn, nfc, args, fc, [])
-       <?> "constructor"
+          return $ \fc -> (doc', [], cn, nfc, args, fc, [])
 
 {- | Parses a dsl block declaration
 DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;

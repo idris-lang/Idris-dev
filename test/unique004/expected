@@ -13,7 +13,7 @@ and
 unique001b.idr:18:7:Borrowed name xs must not be used on RHS
 unique001c.idr:47:6:Unique name f is used more than once
 unique001d.idr:4:7:Borrowed name x must not be used on RHS
-unique001e.idr:4:10:
+unique001e.idr:4:12-40:
 Constructor Main.Nil has a UniqueType, but the data type does not
 unique002.idr:17:5:Unique name xs is used more than once
 unique002a.idr:17:5:Type mismatch between
