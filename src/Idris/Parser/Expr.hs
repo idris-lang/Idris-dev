@@ -1387,13 +1387,15 @@ constant = P.choice [ ty <$ reserved name | (name, ty) <- constants ]
 
 @
 VerbatimString_t ::=
-  '\"\"\"' ~'\"\"\"' '\"\"\"'
+  '\"\"\"' ~'\"\"\"' '\"'* '\"\"\"'
 ;
 @
  -}
 verbatimStringLiteral :: Parsing m => m String
 verbatimStringLiteral = token $ do P.try $ string "\"\"\""
-                                   P.manyTill P.anyChar $ P.try (string "\"\"\"")
+                                   str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")
+                                   moreQuotes <- P.many $ P.char '"'
+                                   return $ str ++ moreQuotes
 
 {- | Parses a static modifier
 

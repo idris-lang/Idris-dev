@@ -95,8 +95,8 @@ inBounds (S k) (x :: xs) with (inBounds k xs)
 |||
 ||| Runs in linear time
 length : List a -> Nat
-length []      = 0
-length (x::xs) = 1 + length xs
+length []      = Z
+length (x::xs) = S (length xs)
 
 --------------------------------------------------------------------------------
 -- Indexing into lists

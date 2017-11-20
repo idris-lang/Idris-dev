@@ -326,9 +326,19 @@ foldl1 f (x::xs) = foldl f x xs
 -- Scans
 --------------------------------------------------------------------------------
 
+||| The scanl function is similar to foldl, but returns all the intermediate
+||| accumulator states in the form of a vector.
 scanl : (res -> elem -> res) -> res -> Vect len elem -> Vect (S len) res
 scanl f q []      = [q]
 scanl f q (x::xs) = q :: scanl f (f q x) xs
+
+||| The scanl1 function is a variant of scanl that doesn't require an explicit
+||| starting value.
+||| It assumes the first element of the vector to be the starting value and then
+||| starts the fold with the element following it.
+scanl1 : (elem -> elem -> elem) -> Vect len elem -> Vect len elem
+scanl1 f [] = []
+scanl1 f (x::xs) = scanl f x xs
 
 --------------------------------------------------------------------------------
 -- Membership tests
