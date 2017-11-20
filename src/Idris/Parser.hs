@@ -1104,8 +1104,8 @@ WhereOrTerminator ::= WhereBlock | Terminator;
 -}
 clause :: SyntaxInfo -> IdrisParser PClause
 clause syn
-         = do wargs <- P.try (do pushIndent; some (wExpr syn))
-              fc <- getFC
+         = appExtent (do
+              wargs <- P.try (do pushIndent; some (wExpr syn))
               ist <- get
               n <- case lastParse ist of
                         Just t -> return t
@@ -1114,7 +1114,7 @@ clause syn
                   let wsyn = syn { syn_namespace = [], syn_toplevel = False }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator
-                  return $ PClauseR fc wargs r wheres) <|> (do
+                  return $ \fc -> PClauseR fc wargs r wheres) <|> (do
                   popIndent
                   keyword "with"
                   wval <- simpleExpr syn
@@ -1123,7 +1123,7 @@ clause syn
                   ds <- some $ fnDecl syn
                   let withs = concat ds
                   closeBlock
-                  return $ PWithR fc wargs wval pn withs)
+                  return $ \fc -> PWithR fc wargs wval pn withs))
        <|> do ty <- P.try (do pushIndent
                               ty <- simpleExpr syn
                               symbol "<=="
