@@ -136,17 +136,17 @@ import_ = do fc <- extent $ keyword "import"
 @
  -}
 prog :: SyntaxInfo -> IdrisParser [PDecl]
-prog syn = do whiteSpace
-              decls <- many (decl syn)
-              let c = concat decls
-              case maxline syn of
-                   Nothing -> do notOpenBraces; P.eof
-                   _ -> return ()
+prog syn = do (decls, fc) <- withExtent $ do
+                  whiteSpace
+                  decls <- concat <$> many (decl syn)
+                  case maxline syn of
+                       Nothing -> do notOpenBraces; P.eof
+                       _ -> return ()
+                  return decls
               ist <- get
-              fc <- getFC
               put ist { idris_parsedSpan = Just (FC (fc_fname fc) (0,0) (fc_end fc)),
                         ibc_write = IBCParsedRegion fc : ibc_write ist }
-              return c
+              return decls
 
 {-| Parses a top-level declaration
 
