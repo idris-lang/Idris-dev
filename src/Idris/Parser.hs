@@ -864,13 +864,15 @@ interface_ syn = do (doc, argDocs, acc)
                                    acc <- accessibility
                                    interfaceKeyword
                                    return (doc, argDocs, acc))
-                    fc <- getFC
-                    cons <- constraintList syn
-                    let cons' = [(c, ty) | (_, c, _, ty) <- cons]
-                    (n_in, nfc) <- withExtent fnName
-                    let n = expandNS syn n_in
-                    cs <- many carg
-                    fds <- P.option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
+                    ((cons', n, nfc, cs, fds), fc) <- withExtent $ do
+                        cons <- constraintList syn
+                        let cons' = [(c, ty) | (_, c, _, ty) <- cons]
+                        (n_in, nfc) <- withExtent fnName
+                        let n = expandNS syn n_in
+                        cs <- many carg
+                        fds <- P.option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
+                        return (cons', n, nfc, cs, fds)
+
                     (cn, cd, ds) <- P.option (Nothing, fst noDocs, []) (interfaceBlock syn)
                     accData acc n (concatMap declared ds)
                     return [PInterface doc syn fc cons' n nfc cs argDocs fds ds cn cd]
