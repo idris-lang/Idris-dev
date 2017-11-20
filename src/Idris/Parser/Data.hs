@@ -31,7 +31,8 @@ Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = do (doc, paramDocs, acc, opts) <- P.try (do
+record syn = (<?> "record type declaration") . appExtent $ do
+                (doc, paramDocs, acc, opts) <- P.try (do
                       (doc, paramDocs) <- P.option noDocs docComment
                       ist <- get
                       let doc' = annotCode (tryFullExpr syn ist) doc
@@ -41,7 +42,6 @@ record syn = do (doc, paramDocs, acc, opts) <- P.try (do
                       opts <- dataOpts []
                       co <- recordI
                       return (doc', paramDocs', acc, opts ++ co))
-                fc <- getFC
                 (tyn_in, nfc) <- withExtent fnName
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
@@ -52,8 +52,7 @@ record syn = do (doc, paramDocs, acc, opts) <- P.try (do
                 case cname of
                      Just cn' -> accData acc tyn (fst cn' : fnames)
                      Nothing -> return ()
-                return $ PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn
-             <?> "record type declaration"
+                return $ \fc -> PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn
   where
     getName (Just (n, _), _, _, _) = Just n
     getName _ = Nothing
@@ -61,7 +60,6 @@ record syn = do (doc, paramDocs, acc, opts) <- P.try (do
     recordBody :: SyntaxInfo -> Name -> IdrisParser ([((Maybe (Name, FC)), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))], Maybe (Name, FC), Docstring (Either Err PTerm))
     recordBody syn tyn = do
         ist <- get
-        fc  <- getFC
 
         (constructorName, constructorDoc) <- P.option (Nothing, emptyDocstring)
                                              (do (doc, _) <- P.option noDocs docComment
