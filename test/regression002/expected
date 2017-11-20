@@ -4,9 +4,9 @@ reg003a.idr:7:13-38:When checking type of Main.OCons:
 No such variable EvenList
 reg003a.idr:9:6:When checking type of Main.test:
 No such variable EvenList
-reg006.idr:17:1:
+reg006.idr:17:1-23:
 RBTree.lookup is possibly not total due to recursive path RBTree.lookup --> RBTree.lookup
-reg007.lidr:8:3:A.n is already defined
+reg007.lidr:8:3-13:A.n is already defined
 reg007.lidr:12:13-18:When checking right hand side of hurrah with expected type
         0 = 1
 
@@ -23,17 +23,17 @@ Specifically:
 reg010.idr:5:15:
 When checking left hand side of with block in usubst.unsafeSubst:
 Can't match on with block in usubst.unsafeSubst warg a P x x px
-reg018a.idr:16:1:
+reg018a.idr:16:1-18:
 conat.minusCoNat is possibly not total due to recursive path conat.minusCoNat --> conat.minusCoNat
-reg018a.idr:21:1:
+reg018a.idr:21:1-42:
 conat.loopForever is possibly not total due to: conat.minusCoNat
-reg018b.idr:8:1:
+reg018b.idr:8:1-28:
 A.showB is possibly not total due to recursive path A.showB --> A.showB
 reg018b.idr:11:1-6:
 A.B implementation of Prelude.Show.Show is possibly not total due to: A.showB
-reg018c.idr:21:1:
+reg018c.idr:21:1-22:21:
 CodataTest.inf is possibly not total due to: with block in CodataTest.inf
-reg018d.idr:8:1:Main.pull is not total as there are missing cases
+reg018d.idr:8:1-39:Main.pull is not total as there are missing cases
 reg023.idr:7:5:When checking right hand side of bad with expected type
         f Nat
 
@@ -41,10 +41,10 @@ Type mismatch between
         Nat (Type of 0)
 and
         f Nat (Expected type)
-reg028.idr:5:1:tbad.bad is possibly not total due to: with block in tbad.bad
+reg028.idr:5:1-9:tbad.bad is possibly not total due to: with block in tbad.bad
 reg028a.idr:17:14-18:
 This style of tactic proof is deprecated. See %runElab for the replacement.
-reg028a.idr:11:1:
+reg028a.idr:11:1-14:
 tbad.qsort' is possibly not total due to: with block in tbad.qsort'
 reg034.idr:6:5:When checking left hand side of bar:
 Can't match on bar xs xs Refl
@@ -117,7 +117,7 @@ nat is bound as an implicit
 	Did you mean to refer to Main.nat?
 reg068.idr:2:8-10:When checking constructor Main.ze:
 Type level variable nat is not Main.nat
-Mod.idr:11:1:public export Mod.natexp can't refer to export Mod.natfn
+Mod.idr:11:1-22:public export Mod.natexp can't refer to export Mod.natfn
 reg070.idr:7:1-7:
 Test_show.Te implementation of Prelude.Show.Show is possibly not total due to: Prelude.Show.Test_show.Te implementation of Prelude.Show.Show, method show
 ./reg076.idr:8:1:
@@ -147,5 +147,5 @@ When checking argument value to function Prelude.Basics.the:
                         -0.0
                 and
                         0.0
-Canonicity.idr:9:1:Canonicity.f is not total as there are missing cases
-Canonicity.idr:12:1:Canonicity.NaN is possibly not total due to: Canonicity.f
+Canonicity.idr:9:1-9:Canonicity.f is not total as there are missing cases
+Canonicity.idr:12:1-20:Canonicity.NaN is possibly not total due to: Canonicity.f

@@ -1,9 +1,10 @@
-totality021.idr:8:1:
+totality021.idr:8:1-67:
 Main.sLevelNotSLevel' is possibly not total due to recursive path Main.sLevelNotSLevel' --> Main.sLevelNotSLevel'
-totality021.idr:12:1:
+totality021.idr:12:1-66:
 Main.sLevelNotSLevel is possibly not total due to: Main.sLevelNotSLevel'
-totality021.idr:18:1:Main.v is possibly not total due to: Main.sLevelNotSLevel
-totality021a.idr:9:1:
+totality021.idr:18:1-26:
+Main.v is possibly not total due to: Main.sLevelNotSLevel
+totality021a.idr:9:1-37:
 Main.noNonEmptyPointInt is not total as there are missing cases
-totality021a.idr:12:1:
+totality021a.idr:12:1-31:
 Main.myVoid is possibly not total due to: Main.noNonEmptyPointInt

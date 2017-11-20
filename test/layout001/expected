@@ -70,4 +70,4 @@ When checking an application of function Prelude.Applicative.pure:
    |                                     ^
 not end of block
 
-mplus3.idr:11:1:warning - Unreachable case: term
+mplus3.idr:11:1-16:warning - Unreachable case: term

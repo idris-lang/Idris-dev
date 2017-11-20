@@ -1010,8 +1010,7 @@ Pattern ::= Clause;
 @
 -}
 pattern :: SyntaxInfo -> IdrisParser PDecl
-pattern syn = do fc <- getFC
-                 clause <- clause syn
+pattern syn = do (clause, fc) <- withExtent (clause syn)
                  return (PClauses fc [] (sMN 2 "_") [clause]) -- collect together later
               <?> "pattern"
 

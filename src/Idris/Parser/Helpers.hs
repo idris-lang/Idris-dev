@@ -314,7 +314,7 @@ maybeWithNS parser bad = do
   where parserNoNS :: Parsing m => m String -> m (String, String)
         parserNoNS = fmap (\x -> (x, ""))
         parserNS   :: Parsing m => m String -> String -> m (String, String)
-        parserNS   parser ns = do xs <- string ns
+        parserNS   parser ns = do xs <- trackExtent (string ns)
                                   lchar '.'
                                   x <- parser
                                   return (x, xs)
