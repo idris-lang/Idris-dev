@@ -13,7 +13,7 @@ When checking argument xs to constructor Data.Vect.:::
                         plus len len
                 and
                         plus len m
-tutorial006b.idr:10:10:
+tutorial006b.idr:10:37-50:
 When checking right hand side of with block in Main.parity with expected type
         Parity (S (S (j + j)))
 

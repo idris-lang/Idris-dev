@@ -1,4 +1,5 @@
-proof011.idr:19:9:When checking right hand side of vassoc' with expected type
+proof011.idr:20:5-21:18:
+When checking right hand side of vassoc' with expected type
         (x :: xs) ++ ys ++ zs = ((x :: xs) ++ ys) ++ zs
 
 rewriting xs ++ ys ++ xs to (xs ++ ys) ++ xs did not change type x ::
@@ -7,7 +8,8 @@ rewriting xs ++ ys ++ xs to (xs ++ ys) ++ xs did not change type x ::
                                                                  x ::
                                                                  (xs ++ ys) ++
                                                                  zs
-proof011a.idr:13:9:When checking right hand side of vassoc' with expected type
+proof011a.idr:14:5-37:
+When checking right hand side of vassoc' with expected type
         (x :: xs) ++ ys ++ zs = ((x :: xs) ++ ys) ++ zs
 
 rewriting xs ++ ys ++ xs to (xs ++ ys) ++ xs did not change type x ::

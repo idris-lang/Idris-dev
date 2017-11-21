@@ -1148,9 +1148,8 @@ clause syn
                 return (l, op, nfc))
               let n = expandNS syn (sUN op)
               r <- argExpr syn
-              fc <- getFC
               wargs <- many (wExpr syn)
-              (do rs <- rhs syn n
+              (do (rs, fc) <- withExtent (rhs syn n)
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator
@@ -1159,9 +1158,11 @@ clause syn
                   put (ist { lastParse = Just n })
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
-                   keyword "with"
-                   wval <- bracketed syn
-                   pn <- optProof
+                   ((wval, pn), fc) <- withExtent $ do
+                       keyword "with"
+                       wval <- bracketed syn
+                       pn <- optProof
+                       return (wval, pn)
                    openBlock
                    ds <- some $ fnDecl syn
                    closeBlock
@@ -1172,13 +1173,12 @@ clause syn
                    return $ PWith fc n capp wargs wval pn withs)
        <|> do pushIndent
               (n_in, nfc) <- withExtent fnName; let n = expandNS syn n_in
-              fc <- getFC
               args <- many (P.try (implicitArg (syn { inPattern = True } ))
                             <|> P.try (constraintArg (syn { inPattern = True }))
                             <|> (fmap pexp (argExpr syn)))
               wargs <- many (wExpr syn)
-              let capp = PApp fc (PRef nfc [nfc] n) args
-              (do r <- rhs syn n
+              (do (r, fc) <- withExtent (rhs syn n)
+                  let capp = PApp fc (PRef nfc [nfc] n) args
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator
@@ -1188,13 +1188,16 @@ clause syn
                    keyword "with"
                    ist <- get
                    put (ist { lastParse = Just n })
-                   wval <- bracketed syn
-                   pn <- optProof
+                   ((wval, pn), fc) <- withExtent $ do
+                       wval <- bracketed syn
+                       pn <- optProof
+                       return (wval, pn)
                    openBlock
                    ds <- some $ fnDecl syn
-                   let withs = map (fillLHSD n capp wargs) $ concat ds
                    closeBlock
                    popIndent
+                   let capp = PApp fc (PRef nfc [nfc] n) args
+                   let withs = map (fillLHSD n capp wargs) $ concat ds
                    return $ PWith fc n capp wargs wval pn withs)
       <?> "function clause"
   where

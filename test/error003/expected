@@ -1,4 +1,5 @@
-ErrorReflection.idr:68:5:When checking right hand side of bad with expected type
+ErrorReflection.idr:68:5-20:
+When checking right hand side of bad with expected type
         Tm [] TUnit
 
 DSL type error: (t(504) => t'(503)) doesn't match ()

@@ -2,9 +2,9 @@ TestLambdaPossible.idr:9:25-34:Warning - TestLambdaPossible.case block in wrongP
 TestLambdaPossible.idr:9:1-35:Warning - TestLambdaPossible.wrongPossible is possibly not total due to: TestLambdaPossible.case block in wrongPossible at TestLambdaPossible.idr:9:25-34
 TestLambdaPossible.idr:12:25:Warning - TestLambdaPossible.case block in wrongPossible' at TestLambdaPossible.idr:12:25 is not total as there are missing cases
 TestLambdaPossible.idr:12:1-13:40:Warning - TestLambdaPossible.wrongPossible' is possibly not total due to: TestLambdaPossible.case block in wrongPossible' at TestLambdaPossible.idr:12:25
-TestLambdaPossible.idr:9:15:Warning - TestLambdaPossible.case block in wrongPossible at TestLambdaPossible.idr:9:25-34 is not total as there are missing cases
+TestLambdaPossible.idr:9:15-35:Warning - TestLambdaPossible.case block in wrongPossible at TestLambdaPossible.idr:9:25-34 is not total as there are missing cases
 TestLambdaPossible.idr:9:1-35:Warning - TestLambdaPossible.wrongPossible is possibly not total due to: TestLambdaPossible.case block in wrongPossible at TestLambdaPossible.idr:9:25-34
-TestLambdaPossible.idr:12:16:Warning - TestLambdaPossible.case block in wrongPossible' at TestLambdaPossible.idr:12:25 is not total as there are missing cases
+TestLambdaPossible.idr:12:18-13:40:Warning - TestLambdaPossible.case block in wrongPossible' at TestLambdaPossible.idr:12:25 is not total as there are missing cases
 TestLambdaPossible.idr:12:1-13:40:Warning - TestLambdaPossible.wrongPossible' is possibly not total due to: TestLambdaPossible.case block in wrongPossible' at TestLambdaPossible.idr:12:25
 TestLambdaPossible2.idr:10:1-35:TestLambdaPossible.wrongPossible is possibly not total due to: TestLambdaPossible.case block in wrongPossible at TestLambdaPossible2.idr:10:25-34
 TestLambdaPossible2.idr:14:1-15:40:TestLambdaPossible.wrongPossible' is possibly not total due to: TestLambdaPossible.case block in wrongPossible' at TestLambdaPossible2.idr:14:25

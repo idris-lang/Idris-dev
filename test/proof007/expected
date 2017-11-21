@@ -1,4 +1,4 @@
-DefaultArgUnknownName.idr:9:6:
+DefaultArgUnknownName.idr:9:6-23:
 When checking right hand side of test with expected type
         ()
 
