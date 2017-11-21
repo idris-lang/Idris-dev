@@ -1202,7 +1202,7 @@ tyOptDeclList syn = P.sepBy1 (do (x, fc) <- withExtent nameOrPlaceholder
                     <?> "type declaration list"
     where  nameOrPlaceholder :: IdrisParser Name
            nameOrPlaceholder = fnName
-                           <|> sMN 0 "underscore" <$ hideExtent (symbol "_")
+                           <|> sMN 0 "underscore" <$ reservedOp "_"
                            <?> "name or placeholder"
 
 {- | Parses a list literal expression e.g. [1,2,3] or a comprehension [ (x, y) | x <- xs , y <- ys ]
