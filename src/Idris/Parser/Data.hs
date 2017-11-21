@@ -141,17 +141,20 @@ DefaultEliminator ::= 'noelim'?
  -}
 dataOpts :: DataOpts -> IdrisParser DataOpts
 dataOpts opts
-    = do fc <- reservedFC "%elim"
-         warnElim fc
+    = do let kw = "%elim"
+         fc <- reservedFC kw
+         warnElim fc kw
          dataOpts (DefaultEliminator : DefaultCaseFun : opts)
-  <|> do fc <- reservedFC "%case"
-         warnElim fc
+  <|> do let kw = "%case"
+         fc <- reservedFC kw
+         warnElim fc kw
          dataOpts (DefaultCaseFun : opts)
   <|> do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
   <|> return opts
   <?> "data options"
-  where warnElim fc =
-          parserWarning fc (Just NoElimDeprecationWarnings) (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
+  where warnElim fc kw =
+          parserWarning fc (Just NoElimDeprecationWarnings)
+                           (Msg ("The '" ++ kw ++ "' directive is deprecated."))
 
 {- | Parses a data type declaration
 Data ::= DocComment? Accessibility? DataI DefaultEliminator FnName TypeSig ExplicitTypeDataRest?
