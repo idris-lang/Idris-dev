@@ -71,6 +71,7 @@ data Command = Quit
              | CallsWho Name
              | Browse [String]
              | MakeDoc String -- IdrisDoc
+             | ShowVersion
              | Warranty
              | PrintDef Name
              | PPrint OutputFmt Int PTerm

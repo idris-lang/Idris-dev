@@ -111,6 +111,7 @@ parserCommandsForHelp =
   , (["consolewidth"], ConsoleWidthArg, "Set the width of the console", cmd_consolewidth)
   , (["printerdepth"], OptionalArg NumberArg, "Set the maximum pretty-printer depth (no arg for infinite)", cmd_printdepth)
   , noArgCmd ["q", "quit"] Quit "Exit the Idris system"
+  , noArgCmd ["version"] ShowVersion "Display the Idris version"
   , noArgCmd ["warranty"] Warranty "Displays warranty information"
   , (["let"], ManyArgs DeclArg
     , "Evaluate a declaration, such as a function definition, instance implementation, or fixity declaration"
