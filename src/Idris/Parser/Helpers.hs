@@ -285,7 +285,7 @@ lchar :: Parsing m => Char -> m Char
 lchar = token . P.char
 
 symbol :: Parsing m => String -> m ()
-symbol = void . trackExtent . P.symbol someSpace
+symbol = void . token . P.string
 
 -- | Parses a reserved identifier
 reserved :: Parsing m => String -> m ()
