@@ -20,7 +20,11 @@ module Idris.Parser.Stack
   , Mark
   , mark
   , restore
+
     -- * Tracking the extent of productions
+    --
+    -- The parser stack automatically builds up the extent of any parse from
+    -- the extents of sub-parsers wrapped with @trackExtent@.
   , getFC
   , addExtent
   , trackExtent
@@ -99,6 +103,9 @@ sourcePositionFC (P.SourcePos name line column) =
         else name
 
 -- | Get the current parse position.
+--
+-- This is useful when the position is needed in a way unrelated to the
+-- heirarchy of parsers.  Prefer using @withExtent@ and friends.
 getFC :: Parsing m => m FC
 getFC = sourcePositionFC <$> P.getPosition
 
@@ -107,6 +114,11 @@ addExtent :: MonadWriter FC m => FC -> m ()
 addExtent = tell
 
 -- | Run a parser and track its extent.
+--
+-- Wrap bare Megaparsec parsers with this to make them "visible" in error
+-- messages.  Do not wrap whitespace or comment parsers.  If you find an
+-- extent is taking trailing whitespace, it's likely there's a double-wrapped
+-- parser (usually via @Idris.Parser.Helpers.token@).
 trackExtent :: Parsing m => m a -> m a
 trackExtent p = do (FC f (sr, sc) _) <- getFC
                    result <- p
@@ -114,9 +126,9 @@ trackExtent p = do (FC f (sr, sc) _) <- getFC
                    addExtent (FC f (sr, sc) (er, max 1 (ec - 1)))
                    return result
 
--- | Run a parser and return only its extent.
+-- | Run a parser, discard its value, and return its extent.
 extent :: MonadWriter FC m => m a -> m FC
-extent = fmap snd . listen
+extent = fmap snd . withExtent
 
 -- | Run a parser and return its value and extent.
 withExtent :: MonadWriter FC m => m a -> m (a, FC)
