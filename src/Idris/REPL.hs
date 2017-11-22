@@ -601,6 +601,7 @@ splitName s = case reverse $ splitOn "." s of
         unparen str = str
 
 idemodeProcess :: FilePath -> Command -> Idris ()
+idemodeProcess fn ShowVersion = process fn ShowVersion
 idemodeProcess fn Warranty = process fn Warranty
 idemodeProcess fn Help = process fn Help
 idemodeProcess fn (RunShellCommand cmd) =
@@ -828,6 +829,7 @@ insertScript prf (x : xs) = x : insertScript prf xs
 
 process :: FilePath -> Command -> Idris ()
 process fn Help = iPrintResult displayHelp
+process fn ShowVersion = iPrintResult getIdrisVersion
 process fn Warranty = iPrintResult warranty
 process fn (RunShellCommand cmd) = runIO $ system cmd >> return ()
 process fn (ChangeDirectory f)
