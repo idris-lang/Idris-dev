@@ -326,15 +326,16 @@ pred (S n) = n
 --------------------------------------------------------------------------------
 
 ||| Fibonacci numbers
-total fib : Nat -> Nat
-fib Z         = Z
-fib (S Z)     = S Z
-fib (S (S n)) = fib (S n) + fib n
+total
+fib : {default Z a : Nat} -> {default (S Z) b : Nat} -> Nat -> Nat
+fib {a} {b} Z = a
+fib {a} {b} (S n) = fib {a=b} {b=a + b} n
 
 ||| Factorial function
-total fact : Nat -> Nat
-fact Z     = S Z
-fact (S n) = (S n) * fact n
+total
+fact : {default (S Z) acc : Nat} -> Nat -> Nat
+fact {acc} Z = acc
+fact {acc} (S n) = fact {acc=S n * acc} n
 
 --------------------------------------------------------------------------------
 -- Division and modulus

@@ -8,6 +8,7 @@ import Prelude.Applicative
 import Prelude.Monad
 import Prelude.Nat
 import Prelude.List
+import Prelude.Interfaces
 
 %access public export
 %default total
@@ -108,6 +109,10 @@ cycle {a} (x :: xs) {ok = IsNonEmpty} = x :: cycle' xs
   where cycle' : List a -> Stream a
         cycle' []        = x :: cycle' xs
         cycle' (y :: ys) = y :: cycle' ys
+
+||| Produce a stream of Fibonacci numbers
+fibs : {default Z a : Nat} -> {default (S Z) b : Nat} -> Stream Nat
+fibs {a} {b} = a :: fibs {a=b} {b=a + b}
 
 Applicative Stream where
   pure = repeat
