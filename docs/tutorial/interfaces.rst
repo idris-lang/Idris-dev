@@ -201,7 +201,7 @@ abstracts the notion of function application:
 
     interface Functor f => Applicative (f : Type -> Type) where
         pure  : a -> f a
-        (<*>) : f (a -> b) -> f a -> f b
+        (<*>) : (f : a -> b) -> f a -> f b
 
 .. _monadsdo:
 
