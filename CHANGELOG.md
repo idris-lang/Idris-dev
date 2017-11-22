@@ -74,6 +74,13 @@
 + Parse errors have a new format, similar to GHC 8.2's default, due to a
   switch from Trifecta to Megaparsec for parsing.  This could possibly cause
   some subtle deviations in parsing from previous versions of Idris.
++ Many more errors now report beginning *and* ending position (which may be
+  on different lines), instead of just a single point.  The format is
+  `Foo.idr:9:7-15:` if ending column is on the same line or
+  `Foo.idr:9:7-10:15:` if the ending column is on a different line.
++ Error messages were changed so that the last column is inclusive, e.g.
+  `Foo.idr:9:7-15:` includes column 15.  Previously the error would have read
+  `Foo.idr:9:7-16:`.
 
 ## Packaging Updates
 
