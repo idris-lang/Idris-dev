@@ -1,6 +1,8 @@
 #include <stdint.h>
 typedef int (*callback)(int);
 
+#define THREE 3
+
 int32_t testvar = 887;
 
 void test_ffi(int (*cb)(int));
