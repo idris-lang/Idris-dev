@@ -366,6 +366,14 @@ is shown below :
     main = do
          putStrLn $ show $ factorial 3
 
+To compile the generated C with debugging information e.g. to use
+``gdb`` to debug segmentation faults in Idris programs, use the
+``%flag C`` pragma to include debugging symbols, as is shown below :
+
+.. code-block:: idris
+
+    %flag C "-g"
+
 JavaScript Target
 =================
 
