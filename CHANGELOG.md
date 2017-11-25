@@ -26,7 +26,12 @@
 + Verbatim strings now support trailing quote characters. All quote characters
   until the final three are considered part of the string. Now a string such as
   `""""hello""""` will parse, and is equivalent to `"\"hello\""`.
-
++ C FFI now supports pasting in any expression by prefixing it with '#', e.g.
+  ```idris
+  intMax : IO Int
+  intMax = foreign FFI_C "#INT_MAX" (IO Int) 
+  ```
+  
 ## Library Updates
 
 + Removed `oldeffects` library from `libs` folder, use `effects` or `Control.ST` instead.
