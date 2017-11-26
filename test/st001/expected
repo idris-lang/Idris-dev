@@ -1,0 +1,8 @@
+# test001:
+--test IO:
+["HELLO!!\n", "WORLD!!"]
+2
+--test IOExcept:
+["HELLO!!\n", "WORLD!!"]
+2
+()
