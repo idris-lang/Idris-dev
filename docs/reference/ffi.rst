@@ -217,8 +217,21 @@ global variable with the following name. The type must be just ``IO Ptr``.
     errno : IO Ptr
     errno = foreign FFI_C "&errno" (IO Ptr)
 
-For more complicated interactions with C (such as reading and setting fields of a C struct), there is
-a module CFFI available in the contrib package.
+If the foreign name is prefixed by a ``#``, the name is pasted in literally. This is
+useful to access constants that are preprocessor definitions (like ``INT_MAX``).
+
+..code-block:: idris
+    %include C "limits.h"
+
+    -- access the preprocessor definition INT_MAX
+    intMax : IO Int
+    intMax = foreign FFI_C "#INT_MAX" (IO Int)
+
+    main : IO ()
+    main = print !intMax
+
+For more complicated interactions with C (such as reading and setting fields
+of a C struct), there is a module CFFI available in the contrib package.
 
 FFI implementation
 ------------------

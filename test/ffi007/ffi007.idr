@@ -42,6 +42,10 @@ test8 : IO ()
 test8 = foreign FFI_C "test_mulpar" (CFnPtr (Int -> Int -> ()) -> IO ())
                                     (MkCFnPtr adder)
 
+
+test9 : IO Int
+test9 = foreign FFI_C "#THREE" (IO Int)
+
 main : IO ()
 main = do
             test
@@ -55,4 +59,5 @@ main = do
             i <- test7 fptr 3
             printLn i
             test8
+            printLn !test9
             pure ()
