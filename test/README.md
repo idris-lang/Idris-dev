@@ -91,6 +91,7 @@ Tests are categorised with the following test families (and their identifiers):
 + *reg*:            Regression tests, covering previous bug fixes
 + *regression*:     Regression tests, covering previous bug fixes
 + *sourceLocation*: Interaction with files from Idris
++ *st*:             ST, state transition systems
 + *sugar*:          Syntactic sugar, syntax extensions
 + *syntax*:         Syntax extensions
 + *tactics*:        Testing for tactics

@@ -1,0 +1,8 @@
+# test003:
+--test IO:
+HELLO!!
+WORLD!!
+--test IOExcept:
+HELLO!!
+WORLD!!
+()
