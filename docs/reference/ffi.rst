@@ -220,7 +220,8 @@ global variable with the following name. The type must be just ``IO Ptr``.
 If the foreign name is prefixed by a ``#``, the name is pasted in literally. This is
 useful to access constants that are preprocessor definitions (like ``INT_MAX``).
 
-..code-block:: idris
+.. code-block:: idris
+
     %include C "limits.h"
 
     -- access the preprocessor definition INT_MAX
