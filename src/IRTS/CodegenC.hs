@@ -314,6 +314,9 @@ bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
 bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
 bcc i STOREOLD = indent i ++ "STOREOLD;\n"
 bcc i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
+bcc i (FOREIGNCALL l rty (FStr ('#':name)) [])
+      = indent i ++
+        c_irts (toFType rty) (creg l ++ " = ") name ++ ";\n"
 bcc i (FOREIGNCALL l rty (FStr fn@('&':name)) [])
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ") fn ++ ";\n"

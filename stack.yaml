@@ -1,5 +1,5 @@
 #recheck extra-deps next on resolver or cabal file change
-resolver: nightly-2017-10-23
+resolver: nightly-2017-11-25
 
 packages:
   - location: .
