@@ -323,11 +323,12 @@ maybeWithNS parser bad = do
 
 -- | Parses a name
 name :: (Parsing m, MonadState IState m) => m Name
-name = (<?> "name") $ do
+name = do
     keywords <- syntax_keywords <$> get
     aliases  <- module_aliases  <$> get
     n <- iName keywords
     return (unalias aliases n)
+   <?> "name"
   where
     unalias :: M.Map [T.Text] [T.Text] -> Name -> Name
     unalias aliases (NS n ns) | Just ns' <- M.lookup ns aliases = NS n ns'

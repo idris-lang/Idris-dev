@@ -648,7 +648,7 @@ MatchApp ::=
 @
 -}
 app :: SyntaxInfo -> IdrisParser PTerm
-app syn = (<?> "function application") . appExtent $ do
+app syn = (appExtent $ do
     f <- simpleExpr syn
     (do P.try $ reservedOp "<=="
         ff <- fnName
@@ -663,7 +663,8 @@ app syn = (<?> "function application") . appExtent $ do
                      else return []
           case args of
             [] -> return $ \fc -> f
-            _  -> return $ \fc -> (withApp fc (flattenFromInt fc f args) wargs))
+            _  -> return $ \fc -> (withApp fc (flattenFromInt fc f args) wargs)))
+     <?> "function application"
   where
     -- bit of a hack to deal with the situation where we're applying a
     -- literal to an argument, which we may want for obscure applications
@@ -733,28 +734,28 @@ constraintArg syn = do symbol "@{"
 
 -}
 quasiquote :: SyntaxInfo -> IdrisParser PTerm
-quasiquote syn = (<?> "quasiquotation") . highlight AnnQuasiquote $ do
-                   highlight AnnKeyword $ symbol "`("
-                   e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
-                                   inPattern = False }
-                   g <- optional $
-                          do highlight AnnKeyword $ symbol ":"
-                             expr syn { inPattern = False } -- don't allow antiquotes
-                   highlight AnnKeyword $ symbol ")"
-                   return $ PQuasiquote e g
-
+quasiquote syn = (highlight AnnQuasiquote $ do
+                    highlight AnnKeyword $ symbol "`("
+                    e <- expr syn { syn_in_quasiquote = (syn_in_quasiquote syn) + 1 ,
+                                    inPattern = False }
+                    g <- optional $
+                           do highlight AnnKeyword $ symbol ":"
+                              expr syn { inPattern = False } -- don't allow antiquotes
+                    highlight AnnKeyword $ symbol ")"
+                    return $ PQuasiquote e g)
+                  <?> "quasiquotation"
 {-| Parses an unquoting inside a quasiquotation (for building reflected terms using the elaborator)
 
 > Unquote ::= ',' Expr
 
 -}
 unquote :: SyntaxInfo -> IdrisParser PTerm
-unquote syn = (<?> "unquotation") . highlight AnnAntiquote $ do
-                guard (syn_in_quasiquote syn > 0)
-                highlight AnnKeyword $ symbol "~"
-                e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
-                return $ PUnquote e
-
+unquote syn = (highlight AnnAntiquote $ do
+                 guard (syn_in_quasiquote syn > 0)
+                 highlight AnnKeyword $ symbol "~"
+                 e <- simpleExpr syn { syn_in_quasiquote = syn_in_quasiquote syn - 1 }
+                 return $ PUnquote e)
+               <?> "unquotation"
 {-| Parses a quotation of a name (for using the elaborator to resolve boring details)
 
 > NameQuote ::= '`{' Name '}'

@@ -31,7 +31,7 @@ Record ::=
     DocComment Accessibility? 'record' FnName TypeSig 'where' OpenBlock Constructor KeepTerminator CloseBlock;
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
-record syn = (<?> "record type declaration") . appExtent $ do
+record syn = (appExtent $ do
                 (doc, paramDocs, acc, opts) <- P.try (do
                       (doc, paramDocs) <- P.option noDocs docComment
                       ist <- get
@@ -52,7 +52,8 @@ record syn = (<?> "record type declaration") . appExtent $ do
                 case cname of
                      Just cn' -> accData acc tyn (fst cn' : fnames)
                      Nothing -> return ()
-                return $ \fc -> PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn
+                return $ \fc -> PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn)
+              <?> "record type declaration"
   where
     getName (Just (n, _), _, _, _) = Just n
     getName _ = Nothing
@@ -257,7 +258,7 @@ constructor syn
 -}
 simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, [PTerm], FC, [Name])
 simpleConstructor syn
-     = (<?> "constructor") . appExtent $ do
+     = (appExtent $ do
           (doc, _) <- P.option noDocs (P.try docComment)
           ist <- get
           let doc' = annotCode (tryFullExpr syn ist) doc
@@ -266,8 +267,8 @@ simpleConstructor syn
           args <- many (do notEndApp
                            simpleExpr syn)
           checkNameFixity cn
-          return $ \fc -> (doc', [], cn, nfc, args, fc, [])
-
+          return $ \fc -> (doc', [], cn, nfc, args, fc, []))
+        <?> "constructor"
 {- | Parses a dsl block declaration
 DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;
  -}
