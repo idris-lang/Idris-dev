@@ -4,7 +4,7 @@ import Data.Morphisms
 
 %access public export
 
-interface Category (cat : Type -> Type -> Type) where
+interface Category (cat : k -> k -> Type) where
   id  : cat a a
   (.) : cat b c -> cat a b -> cat a c
 
