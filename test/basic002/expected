@@ -1,5 +1,5 @@
-test006.idr:25:23-28:
+test006.idr:25:23-27:
 This style of tactic proof is deprecated. See %runElab for the replacement.
-test006.idr:32:23-28:
+test006.idr:32:23-27:
 This style of tactic proof is deprecated. See %runElab for the replacement.
 [False, True, False, True, False, True]

@@ -1,4 +1,4 @@
-hangman.idr:204:8-13:
+hangman.idr:204:8-12:
 This style of tactic proof is deprecated. See %runElab for the replacement.
 ------------
 

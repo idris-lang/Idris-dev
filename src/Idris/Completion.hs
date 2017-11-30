@@ -20,7 +20,7 @@ import Idris.Help
 import Idris.Imports (installedPackages)
 import Idris.Parser.Expr (TacticArg(..))
 import qualified Idris.Parser.Expr (constants, tactics)
-import Idris.Parser.Helpers (opChars)
+import Idris.Parser.Ops (opChars)
 import Idris.REPL.Parser (allHelp, setOptions)
 
 import Control.Monad.State.Strict

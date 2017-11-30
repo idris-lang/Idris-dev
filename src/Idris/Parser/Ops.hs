@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE ConstraintKinds, FlexibleContexts, GeneralizedNewtypeDeriving,
-             PatternGuards #-}
+             MultiParamTypeClasses, PatternGuards #-}
 module Idris.Parser.Ops where
 
 import Idris.AbsSyntax
@@ -16,7 +16,6 @@ import Idris.Parser.Helpers
 import Prelude hiding (pi)
 
 import Control.Applicative
-import Control.Arrow (first)
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Char (isAlpha)
@@ -24,6 +23,7 @@ import Data.List
 import Data.List.NonEmpty (fromList)
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
+import qualified Text.Megaparsec.Char as P
 import qualified Text.Megaparsec.Expr as P
 
 -- | Creates table for fixity declarations to build expression parser
@@ -43,7 +43,7 @@ table fixes
 
     noFixityBacktickOperator :: P.Operator IdrisParser PTerm
     noFixityBacktickOperator = P.InfixN $ do
-                                 (n, fc) <- backtickOperator
+                                 (n, fc) <- withExtent backtickOperator
                                  return $ \x y -> PApp fc (PRef fc [fc] n) [pexp x, pexp y]
 
     -- | Operator without fixity (throws an error)
@@ -73,19 +73,18 @@ table fixes
     binary :: String -> (IdrisParser (PTerm -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm) -> (FC -> Name -> PTerm -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
     binary name ctor f
       | isBacktick name = ctor $ P.try $ do
-                            (n, fc) <- backtickOperator
+                            (n, fc) <- withExtent backtickOperator
                             guard $ show (nsroot n) == name
                             return $ f fc n
       | otherwise       = ctor $ do
                             indentGt
-                            fc <- reservedOpFC name
+                            fc <- extent $ reservedOp name
                             indentGt
                             return $ f fc (sUN name)
 
     prefix :: String -> (FC -> PTerm -> PTerm) -> P.Operator IdrisParser PTerm
     prefix name f = P.Prefix $ do
-                      reservedOp name
-                      fc <- getFC
+                      fc <- extent $ reservedOp name
                       indentGt
                       return (f fc)
 
@@ -97,7 +96,7 @@ table fixes
     ;
 @
 -}
-backtickOperator :: IdrisParser (Name, FC)
+backtickOperator :: (Parsing m, MonadState IState m) => m Name
 backtickOperator = P.between (indentGt *> lchar '`') (indentGt *> lchar '`') name
 
 {- | Parses an operator name (either a symbolic name or a backtick-quoted name)
@@ -109,8 +108,8 @@ backtickOperator = P.between (indentGt *> lchar '`') (indentGt *> lchar '`') nam
     ;
 @
 -}
-operatorName :: IdrisParser (Name, FC)
-operatorName =     first sUN <$> symbolicOperatorFC
+operatorName :: (Parsing m, MonadState IState m) => m Name
+operatorName =     sUN <$> symbolicOperator
                <|> backtickOperator
 
 {- | Parses an operator in function position i.e. enclosed by `()', with an
@@ -124,15 +123,9 @@ operatorName =     first sUN <$> symbolicOperatorFC
 @
 
 -}
-operatorFront :: IdrisParser (Name, FC)
-operatorFront = P.try (do (FC f (l, c) _) <- getFC
-                          op <- lchar '(' *> reservedOp "="  <* lchar ')'
-                          return (eqTy, FC f (l, c) (l, c+3)))
-            <|> maybeWithNS (do (FC f (l, c) _) <- getFC
-                                op <- lchar '(' *> symbolicOperator
-                                (FC _ _ (l', c')) <- getFC
-                                lchar ')'
-                                return (op, (FC f (l, c) (l', c' + 1)))) False []
+operatorFront :: Parsing m => m Name
+operatorFront = do     P.try $ lchar '(' *> (eqTy <$ reservedOp "=") <* lchar ')'
+                   <|> maybeWithNS (lchar '(' *> symbolicOperator <* lchar ')') []
 
 {- | Parses a function (either normal name or operator)
 
@@ -140,7 +133,7 @@ operatorFront = P.try (do (FC f (l, c) _) <- getFC
   FnName ::= Name | OperatorFront;
 @
 -}
-fnName :: IdrisParser (Name, FC)
+fnName :: (Parsing m, MonadState IState m) => m Name
 fnName = P.try operatorFront <|> name <?> "function name"
 
 {- | Parses a fixity declaration
@@ -151,10 +144,12 @@ Fixity ::=
 @
 -}
 fixity :: IdrisParser PDecl
-fixity = do pushIndent
-            f <- fixityType; i <- fst <$> natural;
-            ops <- P.sepBy1 (show . nsroot . fst <$> operatorName) (lchar ',')
-            terminator
+fixity = do ((f, i, ops), fc) <- withExtent $ do
+                pushIndent
+                f <- fixityType; i <- natural
+                ops <- P.sepBy1 (show . nsroot <$> operatorName) (lchar ',')
+                terminator
+                return (f, i, ops)
             let prec = fromInteger i
             istate <- get
             let infixes = idris_infixes istate
@@ -165,7 +160,6 @@ fixity = do pushIndent
                then do put (istate { idris_infixes = nub $ sort (fs ++ infixes)
                                      , ibc_write     = map IBCFix fs ++ ibc_write istate
                                    })
-                       fc <- getFC
                        return (PFix fc (f prec) ops)
                else fail $ concatMap (\(f, (x:xs)) -> "Illegal redeclaration of fixity:\n\t\""
                                                 ++ show f ++ "\" overrides \"" ++ show x ++ "\"") ill
@@ -219,3 +213,29 @@ fixityType = do reserved "infixl"; return Infixl
          <|> do reserved "infix";  return InfixN
          <|> do reserved "prefix"; return PrefixN
          <?> "fixity type"
+
+opChars :: String
+opChars = ":!#$%&*+./<=>?@\\^|-~"
+
+operatorLetter :: Parsing m => m Char
+operatorLetter = P.oneOf opChars
+
+commentMarkers :: [String]
+commentMarkers = [ "--", "|||" ]
+
+invalidOperators :: [String]
+invalidOperators = [":", "=>", "->", "<-", "=", "?=", "|", "**", "==>", "\\", "%", "~", "?", "!", "@"]
+
+-- | Parses an operator
+symbolicOperator :: Parsing m => m String
+symbolicOperator = do op <- token . some $ operatorLetter
+                      when (op `elem` (invalidOperators ++ commentMarkers)) $
+                           fail $ op ++ " is not a valid operator"
+                      return op
+
+-- Taken from Parsec (c) Daan Leijen 1999-2001, (c) Paolo Martini 2007
+-- | Parses a reserved operator
+reservedOp :: Parsing m => String -> m ()
+reservedOp name = token $ P.try $
+  do string name
+     P.notFollowedBy operatorLetter <?> ("end of " ++ show name)

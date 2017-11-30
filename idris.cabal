@@ -206,10 +206,11 @@ Library
                 , Idris.ModeCommon
                 , Idris.Options
                 , Idris.Parser
+                , Idris.Parser.Data
+                , Idris.Parser.Expr
                 , Idris.Parser.Helpers
                 , Idris.Parser.Ops
-                , Idris.Parser.Expr
-                , Idris.Parser.Data
+                , Idris.Parser.Stack
                 , Idris.PartialEval
                 , Idris.Primitives
                 , Idris.ProofSearch

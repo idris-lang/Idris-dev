@@ -235,7 +235,7 @@ exprArg cmd name = do
           return $ Left ("Usage is :" ++ name ++ " <expression>")
 
     let justOperator = do
-          (op, fc) <- IP.symbolicOperatorFC
+          (op, fc) <- IP.withExtent IP.symbolicOperator
           P.eof
           return $ Right $ cmd (PRef fc [] (sUN op))
 
@@ -256,19 +256,19 @@ genArg argName argParser cmd name = do
     failure = return $ Left ("Usage is :" ++ name ++ " <" ++ argName ++ ">")
 
 nameArg, fnNameArg :: (Name -> Command) -> String -> IP.IdrisParser (Either String Command)
-nameArg = genArg "name" $ fst <$> IP.name
-fnNameArg = genArg "functionname" $ fst <$> IP.fnName
+nameArg = genArg "name" IP.name
+fnNameArg = genArg "functionname" IP.fnName
 
 strArg :: (String -> Command) -> String -> IP.IdrisParser (Either String Command)
 strArg = genArg "string" (P.many P.anyChar)
 
 moduleArg :: (FilePath -> Command) -> String -> IP.IdrisParser (Either String Command)
-moduleArg = genArg "module" (fmap (toPath . fst) IP.identifier)
+moduleArg = genArg "module" (fmap toPath IP.identifier)
   where
     toPath n = foldl1' (</>) $ splitOn "." n
 
 namespaceArg :: ([String] -> Command) -> String -> IP.IdrisParser (Either String Command)
-namespaceArg = genArg "namespace" (fmap (toNS . fst) IP.identifier)
+namespaceArg = genArg "namespace" (fmap toNS IP.identifier)
   where
     toNS  = splitOn "."
 
@@ -297,21 +297,21 @@ proofArg cmd name = do
     upd <- P.option False $ do
         IP.lchar '!'
         return True
-    l <- fst <$> IP.natural
-    n <- fst <$> IP.name;
+    l <- IP.natural
+    n <- IP.name
     return (Right (cmd upd (fromInteger l) n))
 
 cmd_doc :: String -> IP.IdrisParser (Either String Command)
 cmd_doc name = do
     let constant = do
-          c <- fmap fst IP.constant
+          c <- IP.constant
           P.eof
           return $ Right (DocStr (Right c) FullDocs)
 
     let pType = do
           IP.reserved "Type"
           P.eof
-          return $ Right (DocStr (Left $ IP.mkName ("Type", "")) FullDocs)
+          return $ Right (DocStr (Left $ sUN "Type") FullDocs)
 
     let fnName = fnNameArg (\n -> DocStr (Left n) FullDocs) name
 
@@ -326,11 +326,11 @@ cmd_consolewidth name = do
         pConsoleWidth :: IP.IdrisParser ConsoleWidth
         pConsoleWidth = do discard (IP.symbol "auto"); return AutomaticWidth
                     <|> do discard (IP.symbol "infinite"); return InfinitelyWide
-                    <|> do n <- fmap (fromInteger . fst) IP.natural
+                    <|> do n <- fromInteger <$> IP.natural
                            return (ColsWide n)
 
 cmd_printdepth :: String -> IP.IdrisParser (Either String Command)
-cmd_printdepth _ = do d <- optional (fmap (fromInteger . fst) IP.natural)
+cmd_printdepth _ = do d <- optional (fromInteger <$> IP.natural)
                       return (Right $ SetPrinterDepth d)
 
 cmd_execute :: String -> IP.IdrisParser (Either String Command)
@@ -353,7 +353,7 @@ cmd_pprint :: String -> IP.IdrisParser (Either String Command)
 cmd_pprint name = do
      fmt <- ppFormat
      IP.whiteSpace
-     n <- fmap (fromInteger . fst) IP.natural
+     n <- fromInteger <$> IP.natural
      IP.whiteSpace
      t <- IP.fullExpr defaultSyntax
      return (Right (PPrint fmt n t))
@@ -370,20 +370,20 @@ cmd_compile name = do
     let codegenOption :: IP.IdrisParser Codegen
         codegenOption = do
             let bytecodeCodegen = discard (IP.symbol "bytecode") *> return Bytecode
-                viaCodegen = do x <- fst <$> IP.identifier
+                viaCodegen = do x <- IP.identifier
                                 return (Via IBCFormat (map toLower x))
             bytecodeCodegen <|> viaCodegen
 
     let hasOneArg = do
           i <- get
-          f <- fst <$> IP.identifier
+          f <- IP.identifier
           P.eof
           return $ Right (Compile defaultCodegen f)
 
     let hasTwoArgs = do
           i <- get
           codegen <- codegenOption
-          f <- fst <$> IP.identifier
+          f <- IP.identifier
           P.eof
           return $ Right (Compile codegen f)
 
@@ -393,20 +393,20 @@ cmd_compile name = do
 cmd_addproof :: String -> IP.IdrisParser (Either String Command)
 cmd_addproof name = do
     n <- P.option Nothing $ do
-        x <- fst <$> IP.name
+        x <- IP.name
         return (Just x)
     P.eof
     return (Right (AddProof n))
 
 cmd_log :: String -> IP.IdrisParser (Either String Command)
 cmd_log name = do
-    i <- fmap (fromIntegral . fst) IP.natural
+    i <- fromIntegral <$> IP.natural
     P.eof
     return (Right (LogLvl i))
 
 cmd_verb :: String -> IP.IdrisParser (Either String Command)
 cmd_verb name = do
-    i <- fmap (fromIntegral . fst) IP.natural
+    i <- fromIntegral <$> IP.natural
     P.eof
     return (Right (Verbosity i))
 
@@ -417,7 +417,7 @@ cmd_cats name = do
     return $ Right $ LogCategory (concat cs)
   where
     badCat = do
-      c <- fst <$> IP.identifier
+      c <- IP.identifier
       fail $ "Category: " ++ c ++ " is not recognised."
 
     pLogCats :: IP.IdrisParser [LogCat]
@@ -435,11 +435,11 @@ cmd_let name = do
     return (Right (NewDefn defn))
 
 cmd_unlet :: String -> IP.IdrisParser (Either String Command)
-cmd_unlet name = (Right . Undefine) `fmap` P.many (fst <$> IP.name)
+cmd_unlet name = Right . Undefine <$> P.many IP.name
 
 cmd_loadto :: String -> IP.IdrisParser (Either String Command)
 cmd_loadto name = do
-    toline <- fmap (fromInteger . fst) IP.natural
+    toline <- fromInteger <$> IP.natural
     f <- P.many P.anyChar
     return (Right (Load f (Just toline)))
 
@@ -529,13 +529,13 @@ cmd_search = packageBasedCmd
 cmd_proofsearch :: String -> IP.IdrisParser (Either String Command)
 cmd_proofsearch name = do
     upd <- P.option False (True <$ IP.lchar '!')
-    l <- fmap (fromInteger . fst) IP.natural; n <- fst <$> IP.name
-    hints <- P.many (fst <$> IP.fnName)
+    l <- fromInteger <$> IP.natural; n <- IP.name
+    hints <- P.many IP.fnName
     return (Right (DoProofSearch upd True l n hints))
 
 cmd_refine :: String -> IP.IdrisParser (Either String Command)
 cmd_refine name = do
    upd <- P.option False (do IP.lchar '!'; return True)
-   l <- fmap (fromInteger . fst) IP.natural; n <- fst <$> IP.name
-   hint <- fst <$> IP.fnName
+   l <- fromInteger <$> IP.natural; n <- IP.name
+   hint <- IP.fnName
    return (Right (DoProofSearch upd False l n [hint]))

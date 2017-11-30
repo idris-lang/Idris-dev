@@ -47,7 +47,7 @@ module Idris.Core.TT(
   , pEraseType, pmap, pprintRaw, pprintTT, pprintTTClause, prettyEnv, psubst
   , pToV, pToVs, pureTerm, raw_apply, raw_unapply, refsIn, safeForget
   , safeForgetEnv, showCG, showEnv, showEnvDbg, showSep
-  , sImplementationN, sMN, sNS, spanFC, str, subst, substNames, substTerm
+  , sImplementationN, sMN, sNS, str, subst, substNames, substTerm
   , substV, sUN, tcname, termSmallerThan, tfail, thead, tnull
   , toAlist, traceWhen, txt, unApply, uniqueBinders, uniqueName
   , uniqueNameFrom, uniqueNameSet, unList, updateDef, vToP, weakenTm
@@ -59,9 +59,9 @@ import Util.Pretty hiding (Str)
 
 -- Work around AMP without CPP
 import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Functor(..), Int,
-                Integer, Maybe(..), Monad(..), Num(..), Ord(..), Ordering(..),
-                Show(..), String, div, error, fst, mod, not, otherwise, read,
-                snd, ($), (&&), (.), (||))
+                Integer, Maybe(..), Monad(..), Monoid(..), Num(..), Ord(..),
+                Ordering(..), Show(..), String, div, error, fst, max, min, mod,
+                not, otherwise, read, snd, ($), (&&), (.), (||))
 
 import Control.Applicative (Alternative, Applicative(..))
 import qualified Control.Applicative as A (Alternative(..))
@@ -87,7 +87,7 @@ data Option = TTypeInTType
             | CheckConv
   deriving Eq
 
--- | Source location. These are typically produced by the parser 'Idris.Parser.getFC'
+-- | Source location. These are typically produced by 'Idris.Parser.Stack.withExtent'
 data FC = FC { _fc_fname :: String, -- ^ Filename
                _fc_start :: (Int, Int), -- ^ Line and column numbers for the start of the location span
                _fc_end :: (Int, Int) -- ^ Line and column numbers for the end of the location span
@@ -117,29 +117,22 @@ fc_end (FC _ _ end) = end
 fc_end NoFC = (0, 0)
 fc_end (FileFC f) = (0, 0)
 
--- | Get the largest span containing the two FCs
-spanFC :: FC -> FC -> FC
-spanFC (FC f start end) (FC f' start' end')
-    | f == f' = FC f (minLocation start start') (maxLocation end end')
-    | otherwise = NoFC
-  where minLocation (l, c) (l', c') =
-          case compare l l' of
-            LT -> (l, c)
-            EQ -> (l, min c c')
-            GT -> (l', c')
-        maxLocation (l, c) (l', c') =
-          case compare l l' of
-            LT -> (l', c')
-            EQ -> (l, max c c')
-            GT -> (l, c)
-spanFC fc@(FC f _ _) (FileFC f') | f == f' = fc
+instance Monoid FC where
+  mempty = NoFC
+
+  -- | Get the largest span containing the two FCs
+  mappend (FC f start end) (FC f' start' end')
+      | f == f' = FC f (min start start') (max end end')
+      | otherwise = NoFC
+  mappend fc@(FC f _ _) (FileFC f') | f == f' = fc
+                                    | otherwise = NoFC
+  mappend (FileFC f') fc@(FC f _ _) | f == f' = fc
+                                    | otherwise = NoFC
+  mappend (FileFC f) (FileFC f') | f == f' = FileFC f
                                  | otherwise = NoFC
-spanFC (FileFC f') fc@(FC f _ _) | f == f' = fc
-                                 | otherwise = NoFC
-spanFC (FileFC f) (FileFC f') | f == f' = FileFC f
-                              | otherwise = NoFC
-spanFC NoFC fc = fc
-spanFC fc NoFC = fc
+  mappend NoFC fc = fc
+  mappend fc NoFC = fc
+
 
 -- | Determine whether the first argument is completely contained in the second
 fcIn :: FC -> FC -> Bool

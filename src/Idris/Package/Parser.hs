@@ -11,10 +11,9 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
-import Idris.Parser.Helpers (IdrisInnerParser, MonadicParsing, eol, iName,
-                             identifier, isEol, lchar, packageName,
-                             parseErrorDoc, reserved, runparser, someSpace,
-                             stringLiteral)
+import Idris.Parser.Helpers (Parser, Parsing, eol, iName, identifier, isEol,
+                             lchar, packageName, parseErrorDoc, reserved,
+                             runparser, someSpace, stringLiteral)
 
 import Control.Applicative
 import Control.Monad.State.Strict
@@ -27,7 +26,7 @@ import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
-type PParser = StateT PkgDesc IdrisInnerParser
+type PParser = Parser PkgDesc
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do
@@ -62,16 +61,16 @@ pPkgName = (either fail pure . pkgName =<< packageName) <?> "PkgName"
 -- | Parses a filename.
 -- |
 -- | Treated for now as an identifier or a double-quoted string.
-filename :: (MonadicParsing m) => m String
+filename :: Parsing m => m String
 filename = (do
                 -- Treat a double-quoted string as a filename to support spaces.
                 -- This also moves away from tying filenames to identifiers, so
                 -- it will also accept hyphens
                 -- (https://github.com/idris-lang/Idris-dev/issues/2721)
-    filename <- fst <$> stringLiteral
+    filename <- stringLiteral
                 -- Through at least version 0.9.19.1, IPKG executable values were
                 -- possibly namespaced identifiers, like foo.bar.baz.
-            <|> show . fst <$> iName []
+            <|> show <$> iName []
     case filenameErrorMessage filename of
       Just errorMessage -> fail errorMessage
       Nothing -> return filename)
@@ -99,36 +98,36 @@ filename = (do
                     checkThat (path == takeFileName path)
                         "filename must contain no directory component"
 
-textUntilEol :: MonadicParsing m => m String
+textUntilEol :: Parsing m => m String
 textUntilEol = many (P.satisfy (not . isEol)) <* eol <* someSpace
 
 clause          :: String -> PParser a -> (PkgDesc -> a -> PkgDesc) -> PParser ()
 clause name p f = do value <- reserved name *> lchar '=' *> p <* someSpace
                      modify $ \st -> f st value
 
-commaSep   :: MonadicParsing m => m a -> m [a]
+commaSep   :: Parsing m => m a -> m [a]
 commaSep p = P.sepBy1 p (lchar ',')
 
 pClause :: PParser ()
 pClause = clause "executable" filename (\st v -> st { execout = Just v })
-      <|> clause "main" (fst <$> iName []) (\st v -> st { idris_main = Just v })
-      <|> clause "sourcedir" (fst <$> identifier) (\st v -> st { sourcedir = v })
-      <|> clause "opts" (pureArgParser . words . fst <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
+      <|> clause "main" (iName []) (\st v -> st { idris_main = Just v })
+      <|> clause "sourcedir" identifier (\st v -> st { sourcedir = v })
+      <|> clause "opts" (pureArgParser . words <$> stringLiteral) (\st v -> st { idris_opts = v ++ idris_opts st })
       <|> clause "pkgs" (commaSep (pPkgName <* someSpace)) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
                    , idris_opts = pkgs ++ idris_opts st })
-      <|> clause "modules" (commaSep (fst <$> iName [])) (\st v -> st { modules = modules st ++ v })
-      <|> clause "libs" (commaSep (fst <$> identifier)) (\st v -> st { libdeps = libdeps st ++ v })
-      <|> clause "objs" (commaSep (fst <$> identifier)) (\st v -> st { objs = objs st ++ v })
-      <|> clause "makefile" (fst <$> iName []) (\st v -> st { makefile = Just (show v) })
-      <|> clause "tests" (commaSep (fst <$> iName [])) (\st v -> st { idris_tests = idris_tests st ++ v })
+      <|> clause "modules" (commaSep (iName [])) (\st v -> st { modules = modules st ++ v })
+      <|> clause "libs" (commaSep identifier) (\st v -> st { libdeps = libdeps st ++ v })
+      <|> clause "objs" (commaSep identifier) (\st v -> st { objs = objs st ++ v })
+      <|> clause "makefile" (iName []) (\st v -> st { makefile = Just (show v) })
+      <|> clause "tests" (commaSep (iName [])) (\st v -> st { idris_tests = idris_tests st ++ v })
       <|> clause "version" textUntilEol (\st v -> st { pkgversion = Just v })
       <|> clause "readme" textUntilEol (\st v -> st { pkgreadme = Just v })
       <|> clause "license" textUntilEol (\st v -> st { pkglicense = Just v })
       <|> clause "homepage" textUntilEol (\st v -> st { pkghomepage = Just v })
       <|> clause "sourceloc" textUntilEol (\st v -> st { pkgsourceloc = Just v })
       <|> clause "bugtracker" textUntilEol (\st v -> st { pkgbugtracker = Just v })
-      <|> clause "brief" (fst <$> stringLiteral) (\st v -> st { pkgbrief = Just v })
+      <|> clause "brief" stringLiteral (\st v -> st { pkgbrief = Just v })
       <|> clause "author" textUntilEol (\st v -> st { pkgauthor = Just v })
       <|> clause "maintainer" textUntilEol (\st v -> st { pkgmaintainer = Just v })

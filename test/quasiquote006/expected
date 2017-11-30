@@ -1,15 +1,15 @@
-quasiquote006.idr:9:3:
+quasiquote006.idr:9:3-10:
 When checking right hand side of b with expected type
         TTName
 
 Can't disambiguate name: ForeignEnv.Nil, 
                          Prelude.List.Nil
-quasiquote006.idr:12:3:
+quasiquote006.idr:12:3-17:
 When checking right hand side of c with expected type
         TTName
 
 No such variable alsdkjflkj
-quasiquote006.idr:15:3:
+quasiquote006.idr:15:3-11:
 When checking right hand side of d with expected type
         TTName
 

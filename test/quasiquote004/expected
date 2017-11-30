@@ -1,10 +1,10 @@
-Quasiquote004.idr:39:26-31:
+Quasiquote004.idr:39:26-30:
 This style of tactic proof is deprecated. See %runElab for the replacement.
-Quasiquote004.idr:42:28-33:
+Quasiquote004.idr:42:28-32:
 This style of tactic proof is deprecated. See %runElab for the replacement.
-Quasiquote004.idr:50:27-32:
+Quasiquote004.idr:50:27-31:
 This style of tactic proof is deprecated. See %runElab for the replacement.
-Quasiquote004.idr:50:25:
+Quasiquote004.idr:50:25-51:18:
 When checking right hand side of Quasiquote004.getMeNat' with expected type
         String
 
