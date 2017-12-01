@@ -4,9 +4,19 @@ import Data.Bool.Extra
 
 import public Text.Parser.Core
 import public Text.Quantity
+import public Text.Token
 
 %access export
 %default total
+
+||| Parse a terminal based on a kind of token.
+match : (Eq k, TokenKind k) =>
+        (kind : k) ->
+        Grammar (Token k) True (TokType kind)
+match kind = terminal $
+  \(Tok kind' text) => if kind' == kind
+                          then Just $ tokValue kind text
+                          else Nothing
 
 ||| Optionally parse a thing, with a default value if the grammar doesn't
 ||| match. May match the empty input.

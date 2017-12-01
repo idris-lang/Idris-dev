@@ -109,6 +109,20 @@ export
        Grammar tok (c1 || c2) b
 (*>) x y = map (const id) x <*> y
 
+||| Produce a grammar that can parse a different type of token by providing a
+||| function converting the new token type into the original one.
+export
+mapToken : (a -> b) -> Grammar b c ty -> Grammar a c ty
+mapToken f (Empty val) = Empty val
+mapToken f (Terminal g) = Terminal (g . f)
+mapToken f (NextIs g) = SeqEmpty (NextIs (g . f)) (Empty . f)
+mapToken f EOF = EOF
+mapToken f (Fail msg) = Fail msg
+mapToken f Commit = Commit
+mapToken f (SeqEat act next) = SeqEat (mapToken f act) (\x => mapToken f (next x))
+mapToken f (SeqEmpty act next) = SeqEmpty (mapToken f act) (\x => mapToken f (next x))
+mapToken f (Alt x y) = Alt (mapToken f x) (mapToken f y)
+
 ||| Always succeed with the given value.
 export
 pure : (val : ty) -> Grammar tok False ty

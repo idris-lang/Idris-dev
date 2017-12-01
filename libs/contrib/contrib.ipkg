@@ -65,6 +65,12 @@ modules = CFFI
 
         , System.Concurrency.Process
 
+        , Test.Unit.Display
+        , Test.Unit.Runners
+        , Test.Unit.Generic
+        , Test.Unit.Assertions
+        , Test.Unit
+
         , Text.Lexer
         , Text.Lexer.Core
 
@@ -79,9 +85,4 @@ modules = CFFI
         , Text.PrettyPrint.WL
 
         , Text.Quantity
-
-        , Test.Unit.Display
-        , Test.Unit.Runners
-        , Test.Unit.Generic
-        , Test.Unit.Assertions
-        , Test.Unit
+        , Text.Token
