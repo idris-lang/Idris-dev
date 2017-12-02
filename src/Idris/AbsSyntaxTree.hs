@@ -927,17 +927,6 @@ updateNs ns t = mapPT updateRef t
   where updateRef (PRef fc fcs f) = PRef fc fcs (updateN ns f)
         updateRef t = t
 
--- updateDNs :: [(Name, Name)] -> PDecl -> PDecl
--- updateDNs [] t = t
--- updateDNs ns (PTy s f n t)    | Just n' <- lookup n ns = PTy s f n' t
--- updateDNs ns (PClauses f n c) | Just n' <- lookup n ns = PClauses f n' (map updateCNs c)
---   where updateCNs ns (PClause n l ts r ds)
---             = PClause (updateN ns n) (fmap (updateNs ns) l)
---                                      (map (fmap (updateNs ns)) ts)
---                                      (fmap (updateNs ns) r)
---                                      (map (updateDNs ns) ds)
--- updateDNs ns c = c
-
 data PunInfo = IsType
              | IsTerm
              | TypeOrTerm
