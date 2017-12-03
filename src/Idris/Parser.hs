@@ -1164,25 +1164,26 @@ clause syn
                    return $ PWith fc n capp wargs wval pn withs)
       <?> "function clause"
   where
+    lhsInfixApp :: IdrisParser (Name, FC, [PArg], [PTerm])
+    lhsInfixApp = do l <- argExpr syn
+                     (op, nfc) <- withExtent symbolicOperator
+                     when (op == "=" || op == "?=" ) $
+                          fail "infix clause definition with \"=\" and \"?=\" not supported "
+                     let n = expandNS syn (sUN op)
+                     r <- argExpr syn
+                     wargs <- many (wExpr syn)
+                     return (n, nfc, [pexp l, pexp r], wargs)
+
+    lhsPrefixApp :: IdrisParser (Name, FC, [PArg], [PTerm])
+    lhsPrefixApp = do (n, nfc) <- withExtent (expandNS syn <$> fnName)
+                      args <- many (P.try (implicitArg (syn { inPattern = True } ))
+                                    <|> P.try (constraintArg (syn { inPattern = True }))
+                                    <|> (fmap pexp (argExpr syn)))
+                      wargs <- many (wExpr syn)
+                      return (n, nfc, args, wargs)
+
     lhs :: IdrisParser (Name, FC, PTerm, [PTerm])
-    lhs = do ((n, nfc, args, wargs), lhs_fc) <- P.try $ withExtent (do
-                 l <- argExpr syn
-                 (op, nfc) <- withExtent symbolicOperator
-                 when (op == "=" || op == "?=" ) $
-                      fail "infix clause definition with \"=\" and \"?=\" not supported "
-                 let n = expandNS syn (sUN op)
-                 r <- argExpr syn
-                 wargs <- many (wExpr syn)
-                 return (n, nfc, [pexp l, pexp r], wargs))
-             let capp = PApp lhs_fc (PRef nfc [nfc] n) args
-             return (n, nfc, capp, wargs)
-      <|> do ((n, nfc, args, wargs), lhs_fc) <- withExtent $ do
-                 (n, nfc) <- withExtent (expandNS syn <$> fnName)
-                 args <- many (P.try (implicitArg (syn { inPattern = True } ))
-                               <|> P.try (constraintArg (syn { inPattern = True }))
-                               <|> (fmap pexp (argExpr syn)))
-                 wargs <- many (wExpr syn)
-                 return (n, nfc, args, wargs)
+    lhs = do ((n, nfc, args, wargs), lhs_fc) <- withExtent (P.try lhsInfixApp <|> lhsPrefixApp)
              let capp = PApp lhs_fc (PRef nfc [nfc] n) args
              return (n, nfc, capp, wargs)
 
