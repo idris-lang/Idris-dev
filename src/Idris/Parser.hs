@@ -1144,11 +1144,11 @@ clause syn
            -- lhs application "with" clause or function clause
        <|> do pushIndent
               (n, nfc, capp, wargs) <- lhs
+              modify $ \ist -> ist { lastParse = Just n }
               (do (rs, fc) <- withExtent (rhs syn n)
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator
-                  modify $ \ist -> ist { lastParse = Just n }
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
                    ((wval, pn), fc) <- withExtent $ do
@@ -1159,7 +1159,6 @@ clause syn
                    openBlock
                    ds <- some $ fnDecl syn
                    closeBlock
-                   modify $ \ist -> ist { lastParse = Just n }
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    return $ PWith fc n capp wargs wval pn withs)
       <?> "function clause"
