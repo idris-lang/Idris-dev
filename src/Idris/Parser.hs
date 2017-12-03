@@ -1172,18 +1172,19 @@ clause syn
                    put (ist { lastParse = Just n })
                    return $ PWith fc n capp wargs wval pn withs)
        <|> do pushIndent
-              (n_in, nfc) <- withExtent fnName; let n = expandNS syn n_in
-              args <- many (P.try (implicitArg (syn { inPattern = True } ))
-                            <|> P.try (constraintArg (syn { inPattern = True }))
-                            <|> (fmap pexp (argExpr syn)))
-              wargs <- many (wExpr syn)
+              ((n, nfc, args, wargs), lhs_fc) <- withExtent $ do
+                  (n, nfc) <- withExtent (expandNS syn <$> fnName)
+                  args <- many (P.try (implicitArg (syn { inPattern = True } ))
+                                <|> P.try (constraintArg (syn { inPattern = True }))
+                                <|> (fmap pexp (argExpr syn)))
+                  wargs <- many (wExpr syn)
+                  return (n, nfc, args, wargs)
+              let capp = PApp lhs_fc (PRef nfc [nfc] n) args
               (do (r, fc) <- withExtent (rhs syn n)
-                  let capp = PApp fc (PRef nfc [nfc] n) args
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator
-                  ist <- get
-                  put (ist { lastParse = Just n })
+                  modify $ \ist -> ist { lastParse = Just n }
                   return $ PClause fc n capp wargs r wheres) <|> (do
                    keyword "with"
                    ist <- get
@@ -1196,7 +1197,6 @@ clause syn
                    ds <- some $ fnDecl syn
                    closeBlock
                    popIndent
-                   let capp = PApp fc (PRef nfc [nfc] n) args
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    return $ PWith fc n capp wargs wval pn withs)
       <?> "function clause"

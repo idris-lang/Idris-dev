@@ -662,8 +662,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
 
         -- Check if we have "with" patterns outside of "with" block
         when (isOutsideWith lhs_in && (not $ null withs)) $
-            ierror (At fc (Elaborating "left hand side of " fname Nothing
-                          (Msg "unexpected patterns outside of \"with\" block")))
+            ierror (At (fromMaybe NoFC $ highestFC lhs_in_as)
+                       (Elaborating "left hand side of " fname Nothing
+                        (Msg "unexpected patterns outside of \"with\" block")))
 
         -- get the parameters first, to pass through to any where block
         let fn_ty = case lookupTy fname ctxt of
@@ -689,7 +690,8 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         ((ElabResult lhs' dlhs [] ctxt' newDecls highlights newGName, probs, inj), _) <-
            tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
                     (do res <- errAt "left hand side of " fname Nothing
-                                 (erun fc (buildTC i info ELHS opts fname
+                                 (erun (fromMaybe NoFC $ highestFC lhs_in_as)
+                                       (buildTC i info ELHS opts fname
                                           (allNamesIn lhs_in)
                                           (infTerm lhs)))
                         probs <- get_probs
@@ -950,7 +952,8 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
         (ElabResult lhs' dlhs [] ctxt' newDecls highlights newGName, _) <-
             tclift $ elaborate (constraintNS info) ctxt (idris_datatypes i) (idris_name i) (sMN 0 "patLHS") infP initEState
               (errAt "left hand side of with in " fname Nothing
-                (erun fc (buildTC i info ELHS opts fname
+                (erun (fromMaybe NoFC $ highestFC lhs_in)
+                      (buildTC i info ELHS opts fname
                                   (allNamesIn lhs_in)
                                   (infTerm lhs))) )
         setContext ctxt'
