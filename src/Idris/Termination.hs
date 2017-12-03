@@ -35,12 +35,11 @@ checkAllCovering fc done top n | not (n `elem` done)
                     do let msg = show top ++ " is " ++ show tot ++ " due to " ++ show n
                        putIState i { idris_totcheckfail = (fc, msg) : idris_totcheckfail i }
                        addIBC (IBCTotCheckErr fc msg)
-             [Partial _] ->
-                case lookupCtxt n (idris_callgraph i) of
-                     [cg] -> mapM_ (checkAllCovering fc (n : done) top)
-                                   (calls cg)
-                     _ -> return ()
-             x -> return () -- stop if total
+             [Partial (Other ns)] ->
+                     -- Check that none of the partial functions it relies
+                     -- on are partial due to missing cases
+                     mapM_ (checkAllCovering fc (n : done) top) ns
+             x -> return () -- stop if total, or partial due to recursion
 checkAllCovering _ _ _ _ = return ()
 
 -- | Check whether all 'Inf' arguments to the name end up guaranteed to be
