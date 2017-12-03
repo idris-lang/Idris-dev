@@ -1141,24 +1141,14 @@ clause syn
               ist <- get
               put (ist { lastParse = Just n })
               return $ PClause fc n capp [] r wheres
-           -- infix with or function clause
+           -- lhs application "with" clause or function clause
        <|> do pushIndent
-              ((n, nfc, args, wargs), lhs_fc) <- P.try $ withExtent (do
-                  l <- argExpr syn
-                  (op, nfc) <- withExtent symbolicOperator
-                  when (op == "=" || op == "?=" ) $
-                       fail "infix clause definition with \"=\" and \"?=\" not supported "
-                  let n = expandNS syn (sUN op)
-                  r <- argExpr syn
-                  wargs <- many (wExpr syn)
-                  return (n, nfc, [pexp l, pexp r], wargs))
-              let capp = PApp lhs_fc (PRef nfc [nfc] n) args
+              (n, nfc, capp, wargs) <- lhs
               (do (rs, fc) <- withExtent (rhs syn n)
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator
-                  ist <- get
-                  put (ist { lastParse = Just n })
+                  modify $ \ist -> ist { lastParse = Just n }
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
                    ((wval, pn), fc) <- withExtent $ do
@@ -1169,41 +1159,33 @@ clause syn
                    openBlock
                    ds <- some $ fnDecl syn
                    closeBlock
-                   ist <- get
-                   let withs = map (fillLHSD n capp wargs) $ concat ds
-                   put (ist { lastParse = Just n })
-                   return $ PWith fc n capp wargs wval pn withs)
-           -- prefix with or function clause
-       <|> do pushIndent
-              ((n, nfc, args, wargs), lhs_fc) <- withExtent $ do
-                  (n, nfc) <- withExtent (expandNS syn <$> fnName)
-                  args <- many (P.try (implicitArg (syn { inPattern = True } ))
-                                <|> P.try (constraintArg (syn { inPattern = True }))
-                                <|> (fmap pexp (argExpr syn)))
-                  wargs <- many (wExpr syn)
-                  return (n, nfc, args, wargs)
-              let capp = PApp lhs_fc (PRef nfc [nfc] n) args
-              (do (r, fc) <- withExtent (rhs syn n)
-                  let wsyn = syn { syn_namespace = [] }
-                  (wheres, nmap) <-     whereBlock n wsyn <* popIndent
-                                    <|> ([], []) <$ terminator
-                  modify $ \ist -> ist { lastParse = Just n }
-                  return $ PClause fc n capp wargs r wheres) <|> (do
-                   keyword "with"
-                   ist <- get
-                   put (ist { lastParse = Just n })
-                   ((wval, pn), fc) <- withExtent $ do
-                       wval <- bracketed syn
-                       pn <- optProof
-                       return (wval, pn)
-                   openBlock
-                   ds <- some $ fnDecl syn
-                   closeBlock
-                   popIndent
+                   modify $ \ist -> ist { lastParse = Just n }
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    return $ PWith fc n capp wargs wval pn withs)
       <?> "function clause"
   where
+    lhs :: IdrisParser (Name, FC, PTerm, [PTerm])
+    lhs = do ((n, nfc, args, wargs), lhs_fc) <- P.try $ withExtent (do
+                 l <- argExpr syn
+                 (op, nfc) <- withExtent symbolicOperator
+                 when (op == "=" || op == "?=" ) $
+                      fail "infix clause definition with \"=\" and \"?=\" not supported "
+                 let n = expandNS syn (sUN op)
+                 r <- argExpr syn
+                 wargs <- many (wExpr syn)
+                 return (n, nfc, [pexp l, pexp r], wargs))
+             let capp = PApp lhs_fc (PRef nfc [nfc] n) args
+             return (n, nfc, capp, wargs)
+      <|> do ((n, nfc, args, wargs), lhs_fc) <- withExtent $ do
+                 (n, nfc) <- withExtent (expandNS syn <$> fnName)
+                 args <- many (P.try (implicitArg (syn { inPattern = True } ))
+                               <|> P.try (constraintArg (syn { inPattern = True }))
+                               <|> (fmap pexp (argExpr syn)))
+                 wargs <- many (wExpr syn)
+                 return (n, nfc, args, wargs)
+             let capp = PApp lhs_fc (PRef nfc [nfc] n) args
+             return (n, nfc, capp, wargs)
+
     optProof = P.option Nothing (do keyword "proof"
                                     n <- withExtent fnName
                                     return (Just n))
