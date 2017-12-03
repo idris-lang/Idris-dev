@@ -1103,6 +1103,7 @@ WhereOrTerminator ::= WhereBlock | Terminator;
 -}
 clause :: SyntaxInfo -> IdrisParser PClause
 clause syn
+           -- unnamed with or function clause (inside a with)
          = appExtent (do
               wargs <- P.try (do pushIndent; some (wExpr syn))
               ist <- get
@@ -1123,6 +1124,7 @@ clause syn
                   let withs = concat ds
                   closeBlock
                   return $ \fc -> PWithR fc wargs wval pn withs))
+           -- <==
        <|> do ty <- P.try (do pushIndent
                               ty <- simpleExpr syn
                               symbol "<=="
@@ -1139,22 +1141,23 @@ clause syn
               ist <- get
               put (ist { lastParse = Just n })
               return $ PClause fc n capp [] r wheres
-       <|> do (l, op, nfc) <- P.try (do
-                pushIndent
-                l <- argExpr syn
-                (op, nfc) <- withExtent symbolicOperator
-                when (op == "=" || op == "?=" ) $
-                     fail "infix clause definition with \"=\" and \"?=\" not supported "
-                return (l, op, nfc))
-              let n = expandNS syn (sUN op)
-              r <- argExpr syn
-              wargs <- many (wExpr syn)
+           -- infix with or function clause
+       <|> do pushIndent
+              ((n, nfc, args, wargs), lhs_fc) <- P.try $ withExtent (do
+                  l <- argExpr syn
+                  (op, nfc) <- withExtent symbolicOperator
+                  when (op == "=" || op == "?=" ) $
+                       fail "infix clause definition with \"=\" and \"?=\" not supported "
+                  let n = expandNS syn (sUN op)
+                  r <- argExpr syn
+                  wargs <- many (wExpr syn)
+                  return (n, nfc, [pexp l, pexp r], wargs))
+              let capp = PApp lhs_fc (PRef nfc [nfc] n) args
               (do (rs, fc) <- withExtent (rhs syn n)
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator
                   ist <- get
-                  let capp = PApp fc (PRef nfc [nfc] n) [pexp l, pexp r]
                   put (ist { lastParse = Just n })
                   return $ PClause fc n capp wargs rs wheres) <|> (do
                    popIndent
@@ -1167,10 +1170,10 @@ clause syn
                    ds <- some $ fnDecl syn
                    closeBlock
                    ist <- get
-                   let capp = PApp fc (PRef fc [] n) [pexp l, pexp r]
                    let withs = map (fillLHSD n capp wargs) $ concat ds
                    put (ist { lastParse = Just n })
                    return $ PWith fc n capp wargs wval pn withs)
+           -- prefix with or function clause
        <|> do pushIndent
               ((n, nfc, args, wargs), lhs_fc) <- withExtent $ do
                   (n, nfc) <- withExtent (expandNS syn <$> fnName)
