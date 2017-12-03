@@ -80,7 +80,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
              incFlags <- getIncFlags
              envFlags <- getEnvFlags
              let stackFlag = if isWindows then ["-Wl,--stack,16777216"] else []
-             let args = [gccDbg dbg] ++
+             let args = gccDbg dbg ++
                         gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
                         ["-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS",
@@ -112,9 +112,12 @@ debug _ = ""
 gccFlags i = if i then ["-fwrapv"]
                   else ["-fwrapv", "-fno-strict-overflow"]
 
-gccDbg DEBUG = "-g"
-gccDbg TRACE = "-O2"
-gccDbg _ = "-O2"
+gccDbg DEBUG = ["-g"]
+-- clang optimises sibling calls in O1, but gcc doesn't
+-- on the other hand, O1 compiles significantly faster in clang without
+-- any noticeable performance hit.
+gccDbg TRACE = ["-O1", "-foptimize-sibling-calls"]
+gccDbg _ = ["-O1", "-foptimize-sibling-calls"]
 
 cname :: Name -> String
 cname n = "_idris_" ++ concatMap cchar (showCG n)
