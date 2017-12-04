@@ -81,3 +81,8 @@ isHexDigit x = elem (toUpper x) hexChars where
 ||| Returns true if the character is an octal digit.
 isOctDigit : Char -> Bool
 isOctDigit x = (x >= '0' && x <= '7')
+
+||| Returns true if the character is a control character.
+isControl : Char -> Bool
+isControl x = (x >= '\x0000' && x <= '\x001f')
+           || (x >= '\x007f' && x <= '\x009f')
