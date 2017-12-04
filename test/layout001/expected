@@ -14,7 +14,6 @@ Wrong indention: should be greater than context indentation
   |
 3 | 2
   | ^
-= is not a valid operator
 Wrong indention: should be greater than context indentation
 
 ./layout001e.idr:6:1:
