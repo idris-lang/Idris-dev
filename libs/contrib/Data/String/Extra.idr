@@ -73,3 +73,16 @@ index n str with (unpack str)
   index n str | [] = Nothing
   index Z str | (x :: xs) = Just x
   index (S n) str | (x :: xs) = index n str | xs
+
+||| Produce a string by repeating the character `c` `n` times.
+replicate : (n : Nat) -> (c : Char) -> String
+replicate n c = pack $ replicate n c
+
+||| Indent a given string by `n` spaces.
+indent : (n : Nat) -> String -> String
+indent n x = replicate n ' ' ++ x
+
+||| Indent each line of a given string by `n` spaces.
+indentLines : (n : Nat) -> String -> String
+indentLines n str = unlines $ map (indent n) $ lines str
+
