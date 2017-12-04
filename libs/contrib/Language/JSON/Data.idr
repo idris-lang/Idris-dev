@@ -1,5 +1,7 @@
 module Language.JSON.Data
 
+import Data.String.Extra
+
 %access private
 %default total
 
@@ -61,3 +63,36 @@ stringify (JObject xs) = "{" ++ stringifyProps xs ++ "}"
 export
 Show JSON where
   show = stringify
+
+||| Format a JSON value, indenting by `n` spaces per nesting level.
+|||
+||| @curr The current indentation amount, measured in spaces.
+||| @n The amount of spaces to indent per nesting level.
+export
+format : {default 0 curr : Nat} -> (n : Nat) -> JSON -> String
+format {curr} n json = indent curr $ formatValue curr n json
+  where
+    formatValue : (curr, n : Nat) -> JSON -> String
+    formatValue _ _ (JArray []) = "[]"
+    formatValue curr n (JArray xs@(_ :: _)) = "[\n" ++ formatValues xs
+                                           ++ indent curr "]"
+      where
+        formatValues : (xs : List JSON) -> {auto ok : NonEmpty xs} -> String
+        formatValues (x :: xs) = format {curr=(curr + n)} n x
+                              ++ case nonEmpty xs of
+                                      Yes ok => ",\n" ++ formatValues xs
+                                      No _ => "\n"
+    formatValue _ _ (JObject []) = "{}"
+    formatValue curr n (JObject xs@(_ :: _)) = "{\n" ++ formatProps xs
+                                            ++ indent curr "}"
+      where
+        formatProp : (String, JSON) -> String
+        formatProp (key, value) = indent (curr + n) (showString key ++ ": ")
+                               ++ formatValue (curr + n) n value
+
+        formatProps : (xs : List (String, JSON)) -> {auto ok : NonEmpty xs} -> String
+        formatProps (x :: xs) = formatProp x
+                             ++ case nonEmpty xs of
+                                     Yes ok => ",\n" ++ formatProps xs
+                                     No _ => "\n"
+    formatValue _ _ x = stringify x
