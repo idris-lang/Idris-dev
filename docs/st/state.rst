@@ -594,7 +594,7 @@ That is, ``increment`` begins and ends with ``x`` in state ``State Integer``.
 
 .. code-block:: idris
 
-  makeAndIncrement : Int -> ST m Int []
+  makeAndIncrement : Integer -> ST m Integer []
 
 That is, ``makeAndIncrement`` begins and ends with no resources.
 
