@@ -31,9 +31,10 @@
   intMax : IO Int
   intMax = foreign FFI_C "#INT_MAX" (IO Int) 
   ```
-+ The deprecated keywords `%assert_total`, `abstract`, and `[static]` have been
-  removed.
-  
++ The deprecated keywords `%assert_total`, `abstract`, and `[static]` have
+  been removed as well as the use of "public" instead of "public export" to
+  expose a symbol.
+
 ## Library Updates
 
 + Removed `oldeffects` library from `libs` folder, use `effects` or `Control.ST` instead.

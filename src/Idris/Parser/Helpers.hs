@@ -520,20 +520,10 @@ notOpenBraces = do ist <- get
 
 {- | Parses an accessibilty modifier (e.g. public, private) -}
 accessibility' :: IdrisParser Accessibility
-accessibility'
-              = do fc <- extent $ reserved "public"
-                   gotexp <- optional (reserved "export")
-                   case gotexp of
-                        Just _ -> return ()
-                        Nothing -> do
-                           ist <- get
-                           put ist { parserWarnings =
-                              (fc, Msg "'public' is deprecated. Use 'public export' instead.")
-                                   : parserWarnings ist }
-                   return Public
-            <|> do reserved "export"; return Frozen
-            <|> do reserved "private";  return Private
-            <?> "accessibility modifier"
+accessibility' = Public  <$ reserved "public" <* reserved "export"
+             <|> Frozen  <$ reserved "export"
+             <|> Private <$ reserved "private"
+             <?> "accessibility modifier"
 
 accessibility :: IdrisParser Accessibility
 accessibility = do acc <- optional accessibility'
