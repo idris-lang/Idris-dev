@@ -1408,9 +1408,6 @@ Static ::=
 -}
 static :: IdrisParser Static
 static =     Static <$ reserved "%static"
-         <|> do fc <- extent $ reserved "[static]"
-                parserWarning fc Nothing (Msg "The use of [static] is deprecated, use %static instead.")
-                return Static
          <|> return Dynamic
          <?> "static modifier"
 

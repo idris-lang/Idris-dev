@@ -31,7 +31,8 @@
   intMax : IO Int
   intMax = foreign FFI_C "#INT_MAX" (IO Int) 
   ```
-+ The deprecated keywords `%assert_total` and `abstract` have been removed.
++ The deprecated keywords `%assert_total`, `abstract`, and `[static]` have been
+  removed.
   
 ## Library Updates
 
