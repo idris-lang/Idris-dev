@@ -650,9 +650,6 @@ fnOpt = do keyword "total"; return TotalFn
         <|> NoImplicit <$ P.try (lchar '%' *> reserved "no_implicit")
         <|> Inlinable <$ P.try (lchar '%' *> reserved "inline")
         <|> StaticFn <$ P.try (lchar '%' *> reserved "static")
-        <|> do fc <- P.try $ extent $ lchar '%' *> reserved "assert_total"
-               parserWarning fc Nothing (Msg "%assert_total is deprecated. Use the 'assert_total' function instead.")
-               return AssertTotal
         <|> ErrorHandler <$ P.try (lchar '%' *> reserved "error_handler")
         <|> ErrorReverse <$ P.try (lchar '%' *> reserved "error_reverse")
         <|> ErrorReduce  <$ P.try (lchar '%' *> reserved "error_reduce")
