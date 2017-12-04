@@ -260,7 +260,7 @@ float = token . P.try $ P.float
 reservedIdentifiers :: HS.HashSet String
 reservedIdentifiers = HS.fromList
   [ "Type"
-  , "abstract", "case", "class", "codata", "constructor", "corecord", "data"
+  , "case", "class", "codata", "constructor", "corecord", "data"
   , "do", "dsl", "else", "export", "if", "implementation", "implicit"
   , "import", "impossible", "in", "infix", "infixl", "infixr", "instance"
   , "interface", "let", "mutual", "namespace", "of", "parameters", "partial"
@@ -531,12 +531,6 @@ accessibility'
                               (fc, Msg "'public' is deprecated. Use 'public export' instead.")
                                    : parserWarnings ist }
                    return Public
-            <|> do fc <- extent $ reserved "abstract"
-                   ist <- get
-                   put ist { parserWarnings =
-                      (fc, Msg "The 'abstract' keyword is deprecated. Use 'export' instead.")
-                           : parserWarnings ist }
-                   return Frozen
             <|> do reserved "export"; return Frozen
             <|> do reserved "private";  return Private
             <?> "accessibility modifier"

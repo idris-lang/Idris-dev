@@ -31,6 +31,7 @@
   intMax : IO Int
   intMax = foreign FFI_C "#INT_MAX" (IO Int) 
   ```
++ The deprecated `abstract` keyword has been removed.
   
 ## Library Updates
 
