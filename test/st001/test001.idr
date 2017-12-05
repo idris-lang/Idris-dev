@@ -10,17 +10,6 @@ increment : (x : Var) -> STrans m () [ x ::: State Int ]
 increment x = do num <- read x
                  write x (num + 1)
 
-{-TestFileIO : Type -> (ConsoleIO m, STFile m) => ST m () []-}
-{-TestFileIO x = ?TestFileIO_rhs-}
-
-{-TestFileIO : Type -> Type-}
-{-TestFileIO : (ConsoleIO m, STFile m) => ST m () []-}
-
-{-TestFileCount : Type-}
-{-TestFileCount : ST m (Either FileError (List String)) -}
-                   {-[ count ::: (State Int), -}
-                     {-fileHandle ::: FileHandleI {m} mode ]-}
-
 readFileCount : (ConsoleIO m, File m) => 
                    (fileHandle : Var) 
                 -> (count : Var)

@@ -21,19 +21,25 @@ data ValidModeWrite : Mode -> Type where
   VMWReadW  : ValidModeWrite ReadWrite
   VMWReadWT : ValidModeWrite ReadWriteTruncate
 
+||| The file handle which will be used as a State Transition 
+||| resource in the `IO` and `IOExcept` implementations of `File`.
+|||
+||| @mode The `Mode` that the handle was generated under.
+|||
 public export
 data FileHandle : (mode : Mode) -> Type where
   FH : File -> FileHandle mode
 
+||| Description of state transition operations on a file.
 public export
 interface File (m : Type -> Type) where
   FileHandleI : Mode -> Type
 
   ||| Open a file.
   |||
-  ||| @ fname the filename.
-  ||| @ mode  the mode; either Read, WriteTruncate, Append, ReadWrite,
-  |||         ReadWriteTruncate, or ReadAppend
+  ||| @fname the filename.
+  ||| @mode  the mode; either Read, WriteTruncate, Append, ReadWrite,
+  |||        ReadWriteTruncate, or ReadAppend
   |||
   open     :  (fname : String)
            -> (mode  : Mode)
@@ -70,25 +76,35 @@ interface File (m : Type -> Type) where
   ||| to while being read.
   |||
   ||| Returns an error if fname is not a normal file.
+  |||
   readFile :  (fileName : String)
            -> ST m (Either FileError String) []
 
   ||| Write a complete line to the file.
+  |||
+  ||| @string The string to be written to file.
+  |||
   writeString : (fileHandle : Var)
            -> (string     : String) 
            -> {auto prf   : ValidModeWrite mode}
            -> ST m (Either FileError ()) [ fileHandle ::: (FileHandleI mode) ]
 
   ||| Write a complete line to the file.
+  |||
+  ||| @string The text to be written to file.
+  |||
   writeLine : (fileHandle : Var)
            -> (string     : String) 
            -> {auto prf   : ValidModeWrite mode}
            -> ST m (Either FileError ()) [ fileHandle ::: (FileHandleI mode) ]
 
-  -- ||| Create a file and write contents to the file.
-  -- writeFile
-  writeFile : (fileName : String)
-           -> (string   : String)
+  ||| Create a file and write contents to the file.
+  |||
+  ||| @fname  The fileName of the file.
+  ||| @string The text to be written to file.
+  |||
+  writeFile : (fname  : String)
+           -> (string : String)
            -> ST m (Either FileError ()) []
 
 public export

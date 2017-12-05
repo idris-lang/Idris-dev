@@ -66,6 +66,8 @@
 + Removed several deprecated items from the libraries shipped with Idris.
 + Moved `abs` from the `Neg` interface into its own `Abs` interface.  `Nat`
   implements `Abs` with `abs = id`.
++ Added `Control.ST.File`, an ST based implementation of the same behaviour 
+  implemented by `Effect.File` in the effects package.
 
 ## Tool Updates
 
