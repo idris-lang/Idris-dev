@@ -1,6 +1,24 @@
 totality017.idr:19:1-15:Main.g1 is not total as there are missing cases
+   |
+19 | g1 T1 T1 = True
+   | ~~~~~~~~~~~~~~~
 totality017.idr:25:1-17:Main.g2 is not total as there are missing cases
+   |
+25 | g2 T1' T1' = True
+   | ~~~~~~~~~~~~~~~~~
 totality017.idr:31:1-13:Main.g3 is not total as there are missing cases
+   |
+31 | g3 T1' = True
+   | ~~~~~~~~~~~~~
 totality017.idr:37:1-36:Main.g4 is not total as there are missing cases
+   |
+37 | g4 (MkTTPP (MkPP 0) (MkPP 0)) = True
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 totality017.idr:42:1-11:Main.f' is not total as there are missing cases
+   |
+42 | f' 0 = True
+   | ~~~~~~~~~~~
 totality017.idr:47:1-17:Main.f is not total as there are missing cases
+   |
+47 | f (MkPP 0) = True
+   | ~~~~~~~~~~~~~~~~~

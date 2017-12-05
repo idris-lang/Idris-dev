@@ -1,11 +1,23 @@
 SourceLoc.idr:12:19-25:
 This style of tactic proof is deprecated. See %runElab for the replacement.
+   |
+12 | getLoc : {default tactics { sourceLocation } x : SourceLocation} -> SourceLocation
+   |                   ~~~~~~~
 SourceLoc.idr:21:19-23:
 This style of tactic proof is deprecated. See %runElab for the replacement.
+   |
+21 | fromProofScript = proof sourceLocation
+   |                   ~~~~~
 SourceLoc.idr:41:20-26:
 This style of tactic proof is deprecated. See %runElab for the replacement.
+   |
+41 |     Die : {default tactics { sourceLocation } loc : SourceLocation} -> Tm ctxt t
+   |                    ~~~~~~~
 SourceLoc.idr:99:18-22:
 This style of tactic proof is deprecated. See %runElab for the replacement.
+   |
+99 | SourceLoc.meta = proof
+   |                  ~~~~~
 Testing using definition
 FileLoc "SourceLoc.idr" (17, 11) (17, 16)
 Testing using inline tactics

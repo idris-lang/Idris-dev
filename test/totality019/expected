@@ -1,2 +1,8 @@
 totality019.idr:8:1-36:Main.testCov is not total as there are missing cases
+  |
+8 | testCov False False = ?testCov_rhs_3
+  | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 totality019.idr:12:1-42:Main.testCov' is not total as there are missing cases
+   |
+12 | testCov' (False ** False) = ?testCov_rhs_3
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

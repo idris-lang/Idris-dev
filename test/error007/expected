@@ -13,3 +13,6 @@ When checking argument code to function Main.send_page:
                         Bits32
                 and
                         Int
+   |
+26 |       send_page conn str code -- (prim__zextB32_Int code)
+   |       ~~~~~~~~~~~~~~~~~~~~~~~

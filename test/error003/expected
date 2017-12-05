@@ -3,3 +3,6 @@ When checking right hand side of bad with expected type
         Tm [] TUnit
 
 DSL type error: (t(504) => t'(503)) doesn't match ()
+   |
+68 | bad = Lam (Var Here)
+   |     ~~~~~~~~~~~~~~~~

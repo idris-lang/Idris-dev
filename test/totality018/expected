@@ -1,1 +1,4 @@
 totality018.idr:12:1-10:Main.bar is not total as there are missing cases
+   |
+12 | bar FZ = 0
+   | ~~~~~~~~~~

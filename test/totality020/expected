@@ -1,2 +1,8 @@
 totality020.idr:4:14-23:bug _ _ Refl is a valid case
+  |
+4 | bug _ _ Refl impossible
+  |              ~~~~~~~~~~
 totality020.idr:7:14-23:foo a b Refl is a valid case
+  |
+7 | foo a b Refl impossible
+  |              ~~~~~~~~~~

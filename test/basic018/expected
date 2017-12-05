@@ -1,9 +1,15 @@
 basic018.idr:7:12-16:
 thing is bound as an implicit
 	Did you mean to refer to Main.thing?
+  |
+7 |       Vect thing elem
+  |            ~~~~~
 basic018.idr:12:8-12:
 thing is bound as an implicit
 	Did you mean to refer to Main.thing?
+   |
+12 | test : thing = S 41
+   |        ~~~~~
 basic018.idr:13:6-11:When checking right hand side of test with expected type
         thing = S 41
 
@@ -17,3 +23,6 @@ Specifically:
                 42
         and
                 thing
+   |
+13 | test = Refl
+   |      ~~~~~~

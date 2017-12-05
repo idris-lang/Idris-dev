@@ -33,11 +33,12 @@ import Prelude hiding ((<$>))
 
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
 import Data.List (intersperse, nub)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust, isJust, listToMaybe)
 import System.Console.Haskeline.MonadException (MonadException(controlIO),
                                                 RunIO(RunIO))
 import System.FilePath (replaceExtension)
 import System.IO (Handle, hPutStr, hPutStrLn)
+import System.IO.Error (tryIOError)
 
 instance MonadException m => MonadException (ExceptT Err m) where
     controlIO f = ExceptT $ controlIO $ \(RunIO run) -> let
@@ -49,15 +50,44 @@ pshow ist err = displayDecorated (consoleDecorate ist) .
                 renderPretty 1.0 80 .
                 fmap (fancifyAnnots ist True) $ pprintErr ist err
 
+formatWarning :: FC -> String -> Maybe String
+formatWarning (FC fn (si, sj) (ei, ej)) src =
+    if isJust sourceLine
+    then Just (top ++ "\n" ++ formattedLine ++ "\n" ++ bottom)
+    else Nothing
+  where
+    sourceLine = listToMaybe . drop (si - 1) . lines $ src
+    formattedLine = show si ++ " | " ++ fromJust sourceLine
+    top = take (length (show si)) (repeat ' ') ++ " |"
+    indicator = case (si == ei, sj == ej) of
+                  (True , True ) -> "^"
+                  (True , False) -> squiggles (ej - sj + 1)
+                  (False, _    ) -> squiggles (length (fromJust sourceLine) - sj + 1) ++ " ..."
+    bottom = top ++ " " ++ (take (sj - 1) (repeat ' ')) ++ indicator
+    squiggles n = take n (repeat '~')
+formatWarning _ _                           = Nothing
+
+readSource :: FC -> Idris (Maybe String)
+readSource (FC fn _ _) = do
+  result <- runIO $ tryIOError (readFile fn)
+  case result of
+    Left _  -> pure Nothing
+    Right v -> pure (Just v)
+readSource _           = pure Nothing
+
+
 iWarn :: FC -> Doc OutputAnnotation -> Idris ()
 iWarn fc err =
   do i <- getIState
      case idris_outputmode i of
        RawOutput h ->
-         do err' <- iRender . fmap (fancifyAnnots i True) $
-                      case fc of
-                        FC fn _ _ | fn /= "" -> text (show fc) <> colon <//> err
-                        _ -> err
+         do maybeSource <- readSource fc
+            let maybeFormattedSource = maybeSource >>= formatWarning fc
+            err' <- iRender . fmap (fancifyAnnots i True) $
+                      (case fc of
+                         FC fn _ _ | fn /= "" -> text (show fc) <> colon <//> err
+                         _ -> err) <>
+                      string (maybe "" ("\n" ++) maybeFormattedSource)
             hWriteDoc h i err'
        IdeMode n h ->
          do err' <- iRender . fmap (fancifyAnnots i True) $ err

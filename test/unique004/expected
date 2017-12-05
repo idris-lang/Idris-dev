@@ -2,25 +2,55 @@ unique001a.idr:35:14-43:50:Type mismatch between
         Int -> String
 and
         UniqueType (Int -> String)
+   |
+35 | showStuff xs = do
+   |              ~~~~ ...
 unique001a.idr:46:15-54:28:Type mismatch between
         Int -> String
 and
         UniqueType (Int -> String)
+   |
+46 | showStuff' xs = do
+   |               ~~~~ ...
 unique001a.idr:57:15-62:33:Type mismatch between
         UniqueType (Int -> String)
 and
         Int -> String
+   |
+57 | showThings xs = do
+   |               ~~~~ ...
 unique001b.idr:18:17-42:Borrowed name xs must not be used on RHS
+   |
+18 | showU (x :: xs) = show x ++ "," ++ free xs
+   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 unique001c.idr:47:12-62:Unique name f is used more than once
+   |
+47 | ndup {a} x = (\f : Int -> a => MkUPair (f 0) (f 1)) (uconst x)
+   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 unique001d.idr:4:16-18:Borrowed name x must not be used on RHS
+  |
+4 | steal (Read x) = x
+  |                ~~~
 unique001e.idr:4:12-40:
 Constructor Main.Nil has a UniqueType, but the data type does not
+  |
+4 |      Nil : {a : UniqueType} -> BadList a
+  |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 unique002.idr:17:8-20:19:Unique name xs is used more than once
+   |
+17 | foo xs = do -- let f = \x : Int => showU xs
+   |        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...
 unique002a.idr:17:8-20:19:Type mismatch between
         Int -> String
 and
         UniqueType (Int -> String)
+   |
+17 | foo xs = do let f = \x : Int => showU xs
+   |        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...
 unique003.idr:20:8-24:19:Type mismatch between
         Int -> String
 and
         UniqueType (Int -> String)
+   |
+20 | foo xs = do let f = \x : Int => showU xs -- can't build this in unique context
+   |        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...

@@ -1,1 +1,4 @@
 test023.idr:20:26-36:Type provider error: Always fails
+   |
+20 | %provide (t : Type) with badProvider
+   |                          ~~~~~~~~~~~

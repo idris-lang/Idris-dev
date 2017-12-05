@@ -4,11 +4,17 @@ When checking right hand side of b with expected type
 
 Can't disambiguate name: ForeignEnv.Nil, 
                          Prelude.List.Nil
+  |
+9 | b = `{Nil}
+  |   ~~~~~~~~
 quasiquote006.idr:12:3-17:
 When checking right hand side of c with expected type
         TTName
 
 No such variable alsdkjflkj
+   |
+12 | c = `{alsdkjflkj}
+   |   ~~~~~~~~~~~~~~~
 quasiquote006.idr:15:3-11:
 When checking right hand side of d with expected type
         TTName
@@ -16,4 +22,7 @@ When checking right hand side of d with expected type
 Can't disambiguate name: ForeignEnv.::, 
                          Prelude.List.::, 
                          Prelude.Stream.::
+   |
+15 | d = `{(::)}
+   |   ~~~~~~~~~
 quasiquote006.idr:17:3:Main.d already defined

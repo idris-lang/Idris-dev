@@ -1,3 +1,6 @@
 meta004.idr:50:1-8:
 While running an elaboration script, the following error occurred:
 Not an impossible case
+   |
+50 | %runElab domore
+   | ~~~~~~~~

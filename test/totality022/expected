@@ -1,1 +1,4 @@
 totality022.idr:7:20-29:f _ [] (RSnoc _ _) is a valid case
+  |
+7 | f _ [] (RSnoc _ _) impossible -- = ?wat
+  |                    ~~~~~~~~~~

@@ -1,3 +1,6 @@
 basic017a.idr:11:8:When checking type of Main.append:
 When checking an application of Main.Vect:
         No such variable n
+   |
+11 | append : Vect n a -> Vect m a -> Vect (n + m) a
+   |        ^

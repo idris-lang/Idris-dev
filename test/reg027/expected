@@ -1,2 +1,5 @@
 <<int fn>>
 reg027a.idr:9:16-30:Overlapping implementation: Show (Int -> a) already defined
+  |
+9 | implementation Show (Int -> b) where
+  |                ~~~~~~~~~~~~~~~

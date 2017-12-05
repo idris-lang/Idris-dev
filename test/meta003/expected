@@ -4,3 +4,6 @@ Type mismatch between
         ()
 and
         String
+   |
+14 | %runElab mkBadDef1
+   | ~~~~~~~~

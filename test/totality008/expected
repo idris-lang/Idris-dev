@@ -1,1 +1,4 @@
 totality008.idr:7:1-14:Main.ElimT is possibly not total due to: Main.C2
+  |
+7 | ElimT _ C1 = 3
+  | ~~~~~~~~~~~~~~

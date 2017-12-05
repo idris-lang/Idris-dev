@@ -6,6 +6,9 @@ When checking an application of function Prelude.Interfaces.+:
                 String (Type of "argh")
         and
                 Nat (Expected type)
+  |
+6 | foo = fnord "argh"
+  |       ~~~~~~~~~~~~
 SyntaxTest.idr:5:7-18:When checking right hand side of foo with expected type
         Nat
 
@@ -14,3 +17,6 @@ When checking an application of function Prelude.Interfaces.+:
                 String (Type of "argh")
         and
                 Nat (Expected type)
+  |
+5 | foo = fnord "argh"
+  |       ~~~~~~~~~~~~

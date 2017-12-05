@@ -1,2 +1,5 @@
 WithPatsNoWith.idr:4:1-13:When checking left hand side of foo:
 unexpected patterns outside of "with" block
+  |
+4 | foo 1 | 2 | 3 = True
+  | ~~~~~~~~~~~~~

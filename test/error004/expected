@@ -4,9 +4,15 @@ When checking right hand side of badCadr1 with expected type
 
 When checking argument cons2 to function FunErrTest.cadr:
         Could not prove that [] has at least two elements.
+   |
+35 | badCadr1 = cadr []
+   |            ~~~~~~~
 FunErrTest.idr:38:12-19:
 When checking right hand side of badCadr2 with expected type
         Int
 
 When checking argument cons2 to function FunErrTest.cadr:
         Could not prove that [] has at least two elements.
+   |
+38 | badCadr2 = cadr [1]
+   |            ~~~~~~~~
