@@ -58,6 +58,16 @@ modules = CFFI
         , Interfaces.Correlative
         , Interfaces.Verified
 
+        , Language.JSON
+        , Language.JSON.Data
+        , Language.JSON.Lexer
+        , Language.JSON.Parser
+        , Language.JSON.String
+        , Language.JSON.String.Lexer
+        , Language.JSON.String.Parser
+        , Language.JSON.String.Tokens
+        , Language.JSON.Tokens
+
         , Network.Cgi
         , Network.Socket
         , Network.Socket.Data

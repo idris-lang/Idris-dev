@@ -197,6 +197,14 @@ symbol = pred (\x => not (isSpace x || isAlphaNum x))
 symbols : Lexer
 symbols = some symbol
 
+||| Recognise a single control character
+control : Lexer
+control = pred isControl
+
+||| Recognise one or more control characters
+controls : Lexer
+controls = some control
+
 ||| Recognise zero or more occurrences of a sub-lexer between
 ||| delimiting lexers
 surround : (start : Lexer) -> (end : Lexer) -> (l : Lexer) -> Lexer
