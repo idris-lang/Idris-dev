@@ -31,6 +31,22 @@ data FileHandle : (mode : Mode) -> Type where
   FH : File -> FileHandle mode
 
 ||| Description of state transition operations on a file.
+|||
+||| +------------+-------------+----------------+----------------+----------------+
+||| | Operation  | State in    | Mode in        | State out      | Mode out       |
+||| +------------+-------------+----------------+----------------+----------------+
+||| | open       | -           | -              | file handle    | input paramater|
+||| | close      | file handle | any            | -              | -              |
+||| | eof        | file handle | ValidModeRead  | file handle    | ValidModeRead  |
+||| | flush      | file handle | any            | file handle    | unchanged      |
+||| | readLine   | file handle | ValidModeRead  | file handle    | ValidModeRead  |
+||| | readChar   | file handle | ValidModeRead  | file handle    | ValidModeRead  |
+||| | readFile   | -           | -              | -              | -              |
+||| | writeString| file handle | ValidModeWrite | file handle    | ValidModeWrite |
+||| | writeLine  | file handle | ValidModeWrite | file handle    | ValidModeWrite |
+||| | writeFile  | -           | -              | -              | -              |
+||| +------------+-------------+----------------+----------------+----------------+
+|||
 public export
 interface File (m : Type -> Type) where
   FileHandleI : Mode -> Type
