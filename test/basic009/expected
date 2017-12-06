@@ -1,10 +1,15 @@
 MAIN-PASS
-Faulty.idr:6:9-11:num is bound as an implicit
-	Did you mean to refer to A.num?
+Faulty.idr:6:9-11:
   |
 6 | fault : num = Z
   |         ~~~
-Faulty.idr:7:7-12:When checking right hand side of fault with expected type
+num is bound as an implicit
+	Did you mean to refer to A.num?
+Faulty.idr:7:7-12:
+  |
+7 | fault = Refl
+  |       ~~~~~~
+When checking right hand side of fault with expected type
         num = 0
 
 Type mismatch between
@@ -17,10 +22,8 @@ Specifically:
                 0
         and
                 num
-  |
-7 | fault = Refl
-  |       ~~~~~~
-Multiple.idr:3:21:import alias not unique: "X"
+Multiple.idr:3:21:
   |
 3 | import Data.Vect as X
   |                     ^
+import alias not unique: "X"

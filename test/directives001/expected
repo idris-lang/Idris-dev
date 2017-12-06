@@ -1,30 +1,36 @@
-directives001.idr:14:7:Use of deprecated name directives001.Foo
-To be replaced with `Bar`.
+directives001.idr:14:7:
    |
 14 | mkFoo : String -> Foo
    |       ^
-directives001.idr:14:7:Use of deprecated name directives001.Foo
+Use of deprecated name directives001.Foo
 To be replaced with `Bar`.
+directives001.idr:14:7:
    |
 14 | mkFoo : String -> Foo
    |       ^
-directives001.idr:15:7-13:Use of deprecated name directives001.Foo
+Use of deprecated name directives001.Foo
 To be replaced with `Bar`.
+directives001.idr:15:7-13:
    |
 15 | mkFoo = MkFoo
    |       ~~~~~~~
-directives001.idr:15:7-13:Use of deprecated name directives001.Foo
+Use of deprecated name directives001.Foo
 To be replaced with `Bar`.
+directives001.idr:15:7-13:
    |
 15 | mkFoo = MkFoo
    |       ~~~~~~~
-directives001.idr:26:8-28:28:Use of a fragile construct directives001.mkBar
-How `Bar`s are to be created is still being discussed, `mkBar` is subject to change.
+Use of deprecated name directives001.Foo
+To be replaced with `Bar`.
+directives001.idr:26:8-28:28:
    |
 26 |   main = do
    |        ~~~~ ...
-directives001.idr:26:8-28:28:Use of a fragile construct directives001.mkBar
+Use of a fragile construct directives001.mkBar
 How `Bar`s are to be created is still being discussed, `mkBar` is subject to change.
+directives001.idr:26:8-28:28:
    |
 26 |   main = do
    |        ~~~~ ...
+Use of a fragile construct directives001.mkBar
+How `Bar`s are to be created is still being discussed, `mkBar` is subject to change.

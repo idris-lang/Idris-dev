@@ -1,7 +1,8 @@
-NoInfer.idr:11:5-11:When checking right hand side of zzz with expected type
-        TT
-
-No such variable k
+NoInfer.idr:11:5-11:
    |
 11 | zzz = `(FZ)
    |     ~~~~~~~
+When checking right hand side of zzz with expected type
+        TT
+
+No such variable k

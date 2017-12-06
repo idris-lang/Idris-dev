@@ -1,19 +1,22 @@
 Reflect.idr:175:21-25:
-This style of tactic proof is deprecated. See %runElab for the replacement.
     |
 175 | Reflect.appRExpr1 = proof {
     |                     ~~~~~
-Reflect.idr:184:21-25:
 This style of tactic proof is deprecated. See %runElab for the replacement.
+Reflect.idr:184:21-25:
     |
 184 | Reflect.appRExpr2 = proof {
     |                     ~~~~~
-Reflect.idr:192:15-19:
 This style of tactic proof is deprecated. See %runElab for the replacement.
+Reflect.idr:192:15-19:
     |
 192 | Reflect.bp1 = proof {
     |               ~~~~~
+This style of tactic proof is deprecated. See %runElab for the replacement.
 test030a.idr:12:26-37:
+   |
+12 | testReflect1 {a} xs ys = AssocProof a
+   |                          ~~~~~~~~~~~~
 When checking right hand side of testReflect1 with expected type
         ys ++ x :: ys ++ xs = (xs ++ [x]) ++ ys ++ xs
 
@@ -28,6 +31,3 @@ When checking an application of function Reflect.getJust:
                         Just x
                 and
                         Nothing
-   |
-12 | testReflect1 {a} xs ys = AssocProof a
-   |                          ~~~~~~~~~~~~

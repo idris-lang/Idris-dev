@@ -1,8 +1,10 @@
-totality010.idr:27:1-35:Main.evenNotS is not total as there are missing cases
+totality010.idr:27:1-35:
    |
 27 | evenNotS MkEven ZeroEven impossible
    | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-totality010.idr:30:1-40:Main.bad is possibly not total due to: Main.evenNotS
+Main.evenNotS is not total as there are missing cases
+totality010.idr:30:1-40:
    |
 30 | bad = evenNotS ZeroEven $ MkBad ZeroEven
    | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Main.bad is possibly not total due to: Main.evenNotS

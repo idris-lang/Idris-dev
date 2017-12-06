@@ -1,4 +1,7 @@
 tutorial006a.idr:5:23-24:
+  |
+5 | vapp (x :: xs) ys = x :: vapp xs xs -- BROKEN
+  |                       ~~
 When checking right hand side of vapp with expected type
         Vect (S len + m) a
 
@@ -13,10 +16,10 @@ When checking argument xs to constructor Data.Vect.:::
                         plus len len
                 and
                         plus len m
-  |
-5 | vapp (x :: xs) ys = x :: vapp xs xs -- BROKEN
-  |                       ~~
 tutorial006b.idr:10:37-50:
+   |
+10 |   parity (S (S (j + j)))     | Even = Even {n=S j}
+   |                                     ~~~~~~~~~~~~~~
 When checking right hand side of with block in Main.parity with expected type
         Parity (S (S (j + j)))
 
@@ -30,6 +33,3 @@ Specifically:
                 plus (S j) (S j)
         and
                 S (S (plus j j))
-   |
-10 |   parity (S (S (j + j)))     | Even = Even {n=S j}
-   |                                     ~~~~~~~~~~~~~~

@@ -1,10 +1,10 @@
 totality012a.idr:9:1-10:27:
-Main.echo2 is possibly not total due to recursive path Main.echo2 --> Main.echo2
   |
 9 | echo2 x = if (x == "quit") then PutStr "Bye!\n"
   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...
+Main.echo2 is possibly not total due to recursive path Main.echo2 --> Main.echo2
 totality012b.idr:11:1-17:33:
-Main.echo is possibly not total due to recursive path Main.echo
    |
 11 | echo = do PutStr "$ "
    | ~~~~~~~~~~~~~~~~~~~~~ ...
+Main.echo is possibly not total due to recursive path Main.echo

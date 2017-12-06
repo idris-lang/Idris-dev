@@ -1,5 +1,5 @@
 totality023.idr:9:1-10:27:
-Main.run is possibly not total due to recursive path Main.run --> Main.run
   |
 9 | run (Do x f) = do r <- x
   | ~~~~~~~~~~~~~~~~~~~~~~~~ ...
+Main.run is possibly not total due to recursive path Main.run --> Main.run

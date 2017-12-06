@@ -1,4 +1,7 @@
 error007.idr:26:7-29:
+   |
+26 |       send_page conn str code -- (prim__zextB32_Int code)
+   |       ~~~~~~~~~~~~~~~~~~~~~~~
 When checking right hand side of answer_to_connection with expected type
         IO Int
 
@@ -13,6 +16,3 @@ When checking argument code to function Main.send_page:
                         Bits32
                 and
                         Int
-   |
-26 |       send_page conn str code -- (prim__zextB32_Int code)
-   |       ~~~~~~~~~~~~~~~~~~~~~~~

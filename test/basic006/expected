@@ -1,4 +1,8 @@
-test020a.idr:16:10-19:When checking right hand side of foo with expected type
+test020a.idr:16:10-19:
+   |
+16 | foo xs = reverse xs
+   |          ~~~~~~~~~~
+When checking right hand side of foo with expected type
         List a
 
 When checking an application of function Prelude.List.reverse:
@@ -6,8 +10,5 @@ When checking an application of function Prelude.List.reverse:
                 Vect n a (Type of xs)
         and
                 List a (Expected type)
-   |
-16 | foo xs = reverse xs
-   |          ~~~~~~~~~~
 [3, 2, 1]
 "Number 42"

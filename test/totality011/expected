@@ -1,5 +1,5 @@
 totality011.lidr:22:3-57:
-Main.weCanOnlyGetOlder is not total as there are missing cases
    |
 22 | > weCanOnlyGetOlder {t'' = Z} {t = Z}   _ _ _  =  LTEZero
    |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Main.weCanOnlyGetOlder is not total as there are missing cases

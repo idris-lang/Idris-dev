@@ -1,5 +1,5 @@
 ClaimAndUnfocus.idr:8:27-31:
-This style of tactic proof is deprecated. See %runElab for the replacement.
   |
 8 | ClaimAndUnfocus.foo_rhs = proof
   |                           ~~~~~
+This style of tactic proof is deprecated. See %runElab for the replacement.

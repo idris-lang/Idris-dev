@@ -1,13 +1,15 @@
-totality006.idr:8:1-29:Main.prf is not total as there are missing cases
+totality006.idr:8:1-29:
   |
 8 | prf Z     Z     Oh impossible
   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-totality006a.idr:11:21-30:prf' (S _) (S _) Oh is a valid case
+Main.prf is not total as there are missing cases
+totality006a.idr:11:21-30:
    |
 11 | prf' (S _) (S _) Oh impossible
    |                     ~~~~~~~~~~
+prf' (S _) (S _) Oh is a valid case
 totality006b.idr:10:1-34:
-totality006b.blargh is not total as there are missing cases
    |
 10 | blargh [] (y :: xs) so = absurd so
    | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+totality006b.blargh is not total as there are missing cases

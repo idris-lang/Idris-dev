@@ -1,5 +1,5 @@
 interfaces008.idr:20:18-23:
-Default implementations must be for a super interface constraint on the containing interface.
    |
 20 |   implementation Foo2 a where
    |                  ~~~~~~
+Default implementations must be for a super interface constraint on the containing interface.

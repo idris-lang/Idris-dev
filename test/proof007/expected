@@ -1,9 +1,9 @@
 DefaultArgUnknownName.idr:9:6-23:
+  |
+9 | test = funWithBadDefArg
+  |      ~~~~~~~~~~~~~~~~~~
 When checking right hand side of test with expected type
         ()
 
 When checking argument arg to function DefaultArgUnknownName.funWithBadDefArg:
         No such variable sadgjhsag
-  |
-9 | test = funWithBadDefArg
-  |      ~~~~~~~~~~~~~~~~~~

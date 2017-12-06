@@ -1,8 +1,10 @@
-totality020.idr:4:14-23:bug _ _ Refl is a valid case
+totality020.idr:4:14-23:
   |
 4 | bug _ _ Refl impossible
   |              ~~~~~~~~~~
-totality020.idr:7:14-23:foo a b Refl is a valid case
+bug _ _ Refl is a valid case
+totality020.idr:7:14-23:
   |
 7 | foo a b Refl impossible
   |              ~~~~~~~~~~
+foo a b Refl is a valid case

@@ -1,23 +1,23 @@
 Quasiquote004.idr:39:26-30:
-This style of tactic proof is deprecated. See %runElab for the replacement.
    |
 39 | Quasiquote004.getMeNat = proof
    |                          ~~~~~
-Quasiquote004.idr:42:28-32:
 This style of tactic proof is deprecated. See %runElab for the replacement.
+Quasiquote004.idr:42:28-32:
    |
 42 | Quasiquote004.fizzyIsAOK = proof
    |                            ~~~~~
-Quasiquote004.idr:50:27-31:
 This style of tactic proof is deprecated. See %runElab for the replacement.
+Quasiquote004.idr:50:27-31:
    |
 50 | Quasiquote004.getMeNat' = proof
    |                           ~~~~~
+This style of tactic proof is deprecated. See %runElab for the replacement.
 Quasiquote004.idr:50:25-51:18:
+   |
+50 | Quasiquote004.getMeNat' = proof
+   |                         ~~~~~~~ ...
 When checking right hand side of Quasiquote004.getMeNat' with expected type
         String
 
 Not a Nat goal
-   |
-50 | Quasiquote004.getMeNat' = proof
-   |                         ~~~~~~~ ...

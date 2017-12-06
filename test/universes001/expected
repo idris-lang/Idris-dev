@@ -1,4 +1,8 @@
-universes001.idr:7:5-21:Universe inconsistency.
+universes001.idr:7:5-21:
+  |
+7 | foo = Const (Const 0)
+  |     ~~~~~~~~~~~~~~~~~
+Universe inconsistency.
         Working on: ./universes001.idr.x
         Old domain: (5,5)
         New domain: (5,4)
@@ -7,6 +11,3 @@ universes001.idr:7:5-21:Universe inconsistency.
                 ConstraintFC {uconstraint = ./universes001.idr.x < ./universes001.idr.y, ufc = universes001.idr:1:6-8}
                 ConstraintFC {uconstraint = ./universes001.idr.z < ./universes001.idr.x, ufc = universes001.idr:1:6-8}
                 ConstraintFC {uconstraint = ./universes001.idr.x <= ./universes001.idr.z, ufc = universes001.idr:7:5-21}
-  |
-7 | foo = Const (Const 0)
-  |     ~~~~~~~~~~~~~~~~~

@@ -1,14 +1,15 @@
 test017.idr:94:26-30:
-This style of tactic proof is deprecated. See %runElab for the replacement.
    |
 94 | maxCommutativeStepCase = proof {
    |                          ~~~~~
+This style of tactic proof is deprecated. See %runElab for the replacement.
 test017a.idr:7:1-24:
-scg.vtrans is possibly not total due to recursive path scg.vtrans --> scg.vtrans
   |
 7 | vtrans [] _         = []
   | ~~~~~~~~~~~~~~~~~~~~~~~~
-test017b.idr:4:1-9:foo.foo is possibly not total due to recursive path foo.foo
+scg.vtrans is possibly not total due to recursive path scg.vtrans --> scg.vtrans
+test017b.idr:4:1-9:
   |
 4 | foo = foo
   | ~~~~~~~~~
+foo.foo is possibly not total due to recursive path foo.foo

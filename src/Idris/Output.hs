@@ -82,18 +82,24 @@ iWarn fc err =
      case idris_outputmode i of
        RawOutput h ->
          do maybeSource <- readSource fc
-            let maybeFormattedSource = maybeSource >>= formatWarning fc
+            let maybeFormattedSource = (maybeSource >>= formatWarning fc)
             err' <- iRender . fmap (fancifyAnnots i True) $
-                      (case fc of
-                         FC fn _ _ | fn /= "" -> text (show fc) <> colon <//> err
-                         _ -> err) <>
-                      string (maybe "" ("\n" ++) maybeFormattedSource)
+                      layoutError (formatFC fc) (fmap string maybeFormattedSource) err
             hWriteDoc h i err'
        IdeMode n h ->
          do err' <- iRender . fmap (fancifyAnnots i True) $ err
             let (str, spans) = displaySpans err'
             runIO . hPutStrLn h $
               convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
+  where
+    formatFC :: FC -> Doc OutputAnnotation
+    formatFC (FC fn _ _) | fn /= "" = text (show fc) <> colon
+    formatFC _                      = empty
+
+    layoutError :: Doc OutputAnnotation -> Maybe (Doc OutputAnnotation) -> Doc OutputAnnotation -> Doc OutputAnnotation
+    layoutError loc (Just src) err = loc <$$> src <$$> err
+    layoutError loc Nothing    err = loc </> err
+
 
 iRender :: Doc a -> Idris (SimpleDoc a)
 iRender d = do w <- getWidth

@@ -1,4 +1,5 @@
-totality022.idr:7:20-29:f _ [] (RSnoc _ _) is a valid case
+totality022.idr:7:20-29:
   |
 7 | f _ [] (RSnoc _ _) impossible -- = ?wat
   |                    ~~~~~~~~~~
+f _ [] (RSnoc _ _) is a valid case
