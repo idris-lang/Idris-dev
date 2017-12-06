@@ -50,41 +50,17 @@ pshow ist err = displayDecorated (consoleDecorate ist) .
                 renderPretty 1.0 80 .
                 fmap (fancifyAnnots ist True) $ pprintErr ist err
 
-formatWarning :: FC -> String -> Maybe String
-formatWarning (FC fn (si, sj) (ei, ej)) src =
-    if isJust sourceLine
-    then Just (top ++ "\n" ++ formattedLine ++ "\n" ++ bottom)
-    else Nothing
-  where
-    sourceLine = listToMaybe . drop (si - 1) . lines $ src
-    formattedLine = show si ++ " | " ++ fromJust sourceLine
-    top = take (length (show si)) (repeat ' ') ++ " |"
-    indicator = case (si == ei, sj == ej) of
-                  (True , True ) -> "^"
-                  (True , False) -> squiggles (ej - sj + 1)
-                  (False, _    ) -> squiggles (length (fromJust sourceLine) - sj + 1) ++ " ..."
-    bottom = top ++ " " ++ (take (sj - 1) (repeat ' ')) ++ indicator
-    squiggles n = take n (repeat '~')
-formatWarning _ _                           = Nothing
+type OutputDoc = Doc OutputAnnotation
 
-readSource :: FC -> Idris (Maybe String)
-readSource (FC fn _ _) = do
-  result <- runIO $ tryIOError (readFile fn)
-  case result of
-    Left _  -> pure Nothing
-    Right v -> pure (Just v)
-readSource _           = pure Nothing
-
-
-iWarn :: FC -> Doc OutputAnnotation -> Idris ()
+iWarn :: FC -> OutputDoc -> Idris ()
 iWarn fc err =
   do i <- getIState
      case idris_outputmode i of
        RawOutput h ->
          do maybeSource <- readSource fc
-            let maybeFormattedSource = (maybeSource >>= formatWarning fc)
+            let maybeFormattedSource = (maybeSource >>= layoutSource fc)
             err' <- iRender . fmap (fancifyAnnots i True) $
-                      layoutError (formatFC fc) (fmap string maybeFormattedSource) err
+                      layoutWarning (layoutFC fc) (fmap string maybeFormattedSource) err
             hWriteDoc h i err'
        IdeMode n h ->
          do err' <- iRender . fmap (fancifyAnnots i True) $ err
@@ -92,13 +68,38 @@ iWarn fc err =
             runIO . hPutStrLn h $
               convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
   where
-    formatFC :: FC -> Doc OutputAnnotation
-    formatFC (FC fn _ _) | fn /= "" = text (show fc) <> colon
-    formatFC _                      = empty
+    layoutFC :: FC -> OutputDoc
+    layoutFC (FC fn _ _) | fn /= "" = text (show fc) <> colon
+    layoutFC _                      = empty
 
-    layoutError :: Doc OutputAnnotation -> Maybe (Doc OutputAnnotation) -> Doc OutputAnnotation -> Doc OutputAnnotation
-    layoutError loc (Just src) err = loc <$$> src <$$> err
-    layoutError loc Nothing    err = loc </> err
+    readSource :: FC -> Idris (Maybe String)
+    readSource (FC fn _ _) = do
+      result <- runIO $ tryIOError (readFile fn)
+      case result of
+        Left _  -> pure Nothing
+        Right v -> pure (Just v)
+    readSource _           = pure Nothing
+
+    layoutSource :: FC -> String -> Maybe String
+    layoutSource (FC fn (si, sj) (ei, ej)) src =
+        if isJust sourceLine
+        then Just (top ++ "\n" ++ formattedLine ++ "\n" ++ bottom)
+        else Nothing
+      where
+        sourceLine = listToMaybe . drop (si - 1) . lines $ src
+        formattedLine = show si ++ " | " ++ fromJust sourceLine
+        top = take (length (show si)) (repeat ' ') ++ " |"
+        indicator = case (si == ei, sj == ej) of
+                      (True , True ) -> "^"
+                      (True , False) -> squiggles (ej - sj + 1)
+                      (False, _    ) -> squiggles (length (fromJust sourceLine) - sj + 1) ++ " ..."
+        bottom = top ++ " " ++ (take (sj - 1) (repeat ' ')) ++ indicator
+        squiggles n = take n (repeat '~')
+    layoutSource _ _                           = Nothing
+
+    layoutWarning :: OutputDoc -> Maybe OutputDoc -> OutputDoc -> OutputDoc
+    layoutWarning loc (Just src) err = loc <$$> src <$$> err
+    layoutWarning loc Nothing    err = loc </> err
 
 
 iRender :: Doc a -> Idris (SimpleDoc a)
