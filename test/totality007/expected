@@ -4,5 +4,6 @@ Totality.idr:4:1-9:
 4 | foo Z = Z
   | ~~~~~~~~~
 Totality.foo is not total as there are missing cases
+
 Totality.idr:4:1-9:Could not build: Totality.foo is not total as there are missing cases
 Leaving directory `./src'

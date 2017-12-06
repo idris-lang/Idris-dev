@@ -11,3 +11,4 @@ Universe inconsistency.
                 ConstraintFC {uconstraint = ./universes002.idr.b1 < ./universes002.idr.c1, ufc = universes002.idr:3:6-10}
                 ConstraintFC {uconstraint = ./universes002.idr.b1 <= ./universes002.idr.e7, ufc = universes002.idr:45:9-48}
                 ConstraintFC {uconstraint = ./universes002.idr.d1 <= ./universes002.idr.b1, ufc = universes002.idr:3:6-10}
+

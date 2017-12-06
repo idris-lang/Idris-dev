@@ -10,6 +10,7 @@ When checking an application of function Prelude.Interfaces.+:
                 String (Type of "argh")
         and
                 Nat (Expected type)
+
 SyntaxTest.idr:5:7-18:
   |
 5 | foo = fnord "argh"
@@ -22,3 +23,4 @@ When checking an application of function Prelude.Interfaces.+:
                 String (Type of "argh")
         and
                 Nat (Expected type)
+

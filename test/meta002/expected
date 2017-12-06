@@ -4,6 +4,7 @@ DataDef.idr:74:1-8:
    | ~~~~~~~~
 While running an elaboration script, the following error occurred:
 Prelude.Either.Either is already defined as a datatype.
+
 Tacs.idr:299:15-300:78:
     |
 299 |     testElab3 = %runElab (elaborateSTLC (App (Lam "x" (App (Var 0) (Var 0)))
@@ -12,6 +13,7 @@ When checking right hand side of testElab3 with expected type
         DPair Ty (Tm [])
 
 Unifying ty and ARR ty t would lead to infinite value
+
 AgdaStyleReflection.idr:315:5-20:
     |
 315 | baz = tactic trivial
@@ -20,3 +22,4 @@ When checking right hand side of baz with expected type
         (Nat, Void)
 
 PROOF SEARCH FAILURE is not defined.
+

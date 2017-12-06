@@ -16,6 +16,7 @@ When checking argument xs to constructor Data.Vect.:::
                         plus len len
                 and
                         plus len m
+
 tutorial006b.idr:10:37-50:
    |
 10 |   parity (S (S (j + j)))     | Even = Even {n=S j}
@@ -33,3 +34,4 @@ Specifically:
                 plus (S j) (S j)
         and
                 S (S (plus j j))
+

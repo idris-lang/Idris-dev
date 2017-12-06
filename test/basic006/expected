@@ -10,5 +10,6 @@ When checking an application of function Prelude.List.reverse:
                 Vect n a (Type of xs)
         and
                 List a (Expected type)
+
 [3, 2, 1]
 "Number 42"

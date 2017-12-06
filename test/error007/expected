@@ -16,3 +16,4 @@ When checking argument code to function Main.send_page:
                         Bits32
                 and
                         Int
+

@@ -3,3 +3,4 @@ totality003a.idr:5:1-13:
 5 | qsort [] = []
   | ~~~~~~~~~~~~~
 smaller.qsort is possibly not total due to recursive path smaller.qsort --> smaller.qsort --> smaller.qsort
+

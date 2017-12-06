@@ -4,3 +4,4 @@ WithPatsNoWith.idr:4:1-13:
   | ~~~~~~~~~~~~~
 When checking left hand side of foo:
 unexpected patterns outside of "with" block
+

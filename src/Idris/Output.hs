@@ -98,7 +98,7 @@ iWarn fc err =
     layoutSource _ _                           = Nothing
 
     layoutWarning :: OutputDoc -> Maybe OutputDoc -> OutputDoc -> OutputDoc
-    layoutWarning loc (Just src) err = loc <$$> src <$$> err
+    layoutWarning loc (Just src) err = loc <$$> src <$$> err <$$> empty
     layoutWarning loc Nothing    err = loc </> err
 
 

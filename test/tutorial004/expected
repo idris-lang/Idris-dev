@@ -3,8 +3,10 @@ tutorial004.idr:46:14-18:
 46 | plusredZ_S = proof {
    |              ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 tutorial004.idr:53:14-18:
    |
 53 | plusredZ_Z = proof {
    |              ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+

@@ -3,6 +3,7 @@ hangman.idr:204:8-12:
 204 | wlen = proof search
     |        ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 ------------
 
 6 guesses left

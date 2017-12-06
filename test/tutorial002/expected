@@ -3,13 +3,16 @@ tutorial002.idr:41:25-29:
 41 | Main.natToBin_lemma_1 = proof
    |                         ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 tutorial002.idr:48:18-22:
    |
 48 | parity_lemma_1 = proof
    |                  ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 tutorial002.idr:54:18-22:
    |
 54 | parity_lemma_2 = proof {
    |                  ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+

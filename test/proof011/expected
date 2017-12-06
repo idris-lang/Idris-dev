@@ -11,6 +11,7 @@ rewriting xs ++ ys ++ xs to (xs ++ ys) ++ xs did not change type x ::
                                                                  x ::
                                                                  (xs ++ ys) ++
                                                                  zs
+
 proof011a.idr:14:5-37:
    |
 14 |     = rewrite vassoc xs ys xs in Refl
@@ -24,3 +25,4 @@ rewriting xs ++ ys ++ xs to (xs ++ ys) ++ xs did not change type x ::
                                                                  x ::
                                                                  (xs ++ ys) ++
                                                                  zs
+

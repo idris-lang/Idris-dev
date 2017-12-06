@@ -4,12 +4,14 @@ basic018.idr:7:12-16:
   |            ~~~~~
 thing is bound as an implicit
 	Did you mean to refer to Main.thing?
+
 basic018.idr:12:8-12:
    |
 12 | test : thing = S 41
    |        ~~~~~
 thing is bound as an implicit
 	Did you mean to refer to Main.thing?
+
 basic018.idr:13:6-11:
    |
 13 | test = Refl
@@ -27,3 +29,4 @@ Specifically:
                 42
         and
                 thing
+

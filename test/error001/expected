@@ -10,3 +10,4 @@ Universe inconsistency.
                 ConstraintFC {uconstraint = ./test002.idr.z <= ./test002.idr.a1, ufc = test002.idr:1:6}
                 ConstraintFC {uconstraint = ./test002.idr.y < ./test002.idr.z, ufc = test002.idr:1:6}
                 ConstraintFC {uconstraint = ./test002.idr.z <= ./test002.idr.a1, ufc = test002.idr:1:6}
+
