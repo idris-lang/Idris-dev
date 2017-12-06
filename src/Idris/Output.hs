@@ -60,7 +60,7 @@ iWarn fc err =
          do maybeSource <- readSource fc
             let maybeFormattedSource = (maybeSource >>= layoutSource fc)
             err' <- iRender . fmap (fancifyAnnots i True) $
-                      layoutWarning (layoutFC fc) (fmap string maybeFormattedSource) err
+                      layoutWarning (layoutFC fc) maybeFormattedSource err
             hWriteDoc h i err'
        IdeMode n h ->
          do err' <- iRender . fmap (fancifyAnnots i True) $ err
@@ -80,10 +80,10 @@ iWarn fc err =
         Right v -> pure (Just v)
     readSource _           = pure Nothing
 
-    layoutSource :: FC -> String -> Maybe String
+    layoutSource :: FC -> String -> Maybe OutputDoc
     layoutSource (FC fn (si, sj) (ei, ej)) src =
         if isJust sourceLine
-        then Just (top ++ "\n" ++ formattedLine ++ "\n" ++ bottom)
+        then Just . string $ top ++ "\n" ++ formattedLine ++ "\n" ++ bottom
         else Nothing
       where
         sourceLine = listToMaybe . drop (si - 1) . lines $ src
