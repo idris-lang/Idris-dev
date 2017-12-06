@@ -43,6 +43,7 @@
 + Added `discriminate` and `construct` tactics to Pruviloj.
 + Added `IsSucc` type to `Prelude`, which proves that a `Nat` is a successor.
 + Added `Data.IOArray`, containing primitives for mutable arrays.
++ Added `Language.JSON`, for total serialization/deserialization of JSON data.
 + Reworked operator fixity for many operators.
   * Changed `&&` and `||` to be right-associative. Increased precedence of `&&`
     to be higher than that of `||`.
