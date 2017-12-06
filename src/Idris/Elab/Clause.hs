@@ -28,7 +28,7 @@ import Idris.Elab.Type
 import Idris.Elab.Utils
 import Idris.Error
 import Idris.Options
-import Idris.Output (iputStrLn, pshow, sendHighlighting)
+import Idris.Output (iWarn, pshow, sendHighlighting)
 import Idris.PartialEval
 import Idris.Termination
 import Idris.Transforms
@@ -205,9 +205,8 @@ elabClauses info' fc opts n_in cs =
            case tree of
                CaseDef _ _ [] -> return ()
                CaseDef _ _ xs -> mapM_ (\x ->
-                   iputStrLn $ show fc ++
-                                ":warning - Unreachable case: " ++
-                                   show (delab ist x)) xs
+                   iWarn fc $ text "Unreachable case:" </> text (show (delab ist x))
+                   ) xs
            let knowncovering = (pcover && cov) || AssertTotal `elem` opts
            let defaultcase = if knowncovering
                                 then STerm Erased
