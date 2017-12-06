@@ -1,7 +1,9 @@
 module Control.ST
 
-import Language.Reflection.Utils
 import Control.IOExcept
+import Language.Reflection.Utils
+
+import public Data.Fuel
 
 %default total
 
@@ -394,13 +396,6 @@ runST env (Call prog res_prf) k
 runST env (Read lbl prf) k = k (lookupEnv prf env) env
 runST env (Write lbl prf val) k = k () (updateEnv prf env val)
 
-export
-data Fuel = Empty | More (Lazy Fuel)
-
-export partial
-forever : Fuel
-forever = More forever
-
 runSTLoop : Fuel -> Env invars -> STransLoop m a invars outfn ->
             (k : (x : a) -> Env (outfn x) -> m b) ->
             (onDry : m b) -> m b
@@ -589,10 +584,10 @@ run prog = runST [] prog (\res, env' => pure res)
 
 export
 runLoop : Applicative m => Fuel -> STLoop m a [] ->
-          (onEmpty : m a) ->
+          (onDry : m a) ->
           m a
-runLoop fuel prog onEmpty
-    = runSTLoop fuel [] prog (\res, env' => pure res) onEmpty
+runLoop fuel prog onDry
+    = runSTLoop fuel [] prog (\res, env' => pure res) onDry
 
 ||| runWith allows running an STrans program with an initial environment,
 ||| which must be consumed.

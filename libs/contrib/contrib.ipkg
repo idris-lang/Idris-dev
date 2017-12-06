@@ -28,6 +28,7 @@ modules = CFFI
         , Data.Combinators.Applicative
         , Data.Combinators.Arrow
         , Data.Fin.Extra
+        , Data.Fuel
         , Data.Fun
         , Data.Hash
         , Data.Heap
