@@ -149,3 +149,9 @@ When checking argument value to function Prelude.Basics.the:
                         0.0
 Canonicity.idr:9:1-9:Canonicity.f is not total as there are missing cases
 Canonicity.idr:12:1-20:Canonicity.NaN is possibly not total due to: Canonicity.f
+./BadQuote.idr:2:7:
+  |
+2 | q = '''
+  |       ^
+"'" must be escaped in a character literal
+
