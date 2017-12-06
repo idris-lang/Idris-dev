@@ -1,7 +1,7 @@
-NoInfer.idr:11:5-11:
+NoInfer.idr:11:7-11:
    |
 11 | zzz = `(FZ)
-   |     ~~~~~~~
+   |       ~~~~~
 When checking right hand side of zzz with expected type
         TT
 

@@ -92,10 +92,10 @@ reg018d.idr:8:1-39:
   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Main.pull is not total as there are missing cases
 
-reg023.idr:7:5-7:
+reg023.idr:7:7:
   |
 7 | bad = Z
-  |     ~~~
+  |       ^
 When checking right hand side of bad with expected type
         f Nat
 
@@ -136,10 +136,10 @@ reg034.idr:9:1-14:
 When checking left hand side of foo:
 Can't match on foo f x x Refl
 
-reg035b.idr:8:12-38:
+reg035b.idr:8:14-38:
   |
 8 | fins Z     = ([] ** (finZEmpty {a=_}))
-  |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  |              ~~~~~~~~~~~~~~~~~~~~~~~~~
 No such variable __pi_arg
 
 reg044.idr:4:6-10:
@@ -148,10 +148,10 @@ reg044.idr:4:6-10:
   |      ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
 
-reg044.idr:4:4-6:13:
+reg044.idr:4:6-6:13:
   |
 4 | pf = proof
-  |    ~~~~~~~ ...
+  |      ~~~~~ ...
 When checking right hand side of Main.pf with expected type
         (b : Nat) -> (a : Nat) -> (S a = S b) -> a = b
 
@@ -173,10 +173,10 @@ reg049.idr:2:11-14:
 When checking constructor Main.Bogus:
 Void is not Main.Foo
 
-reg049.idr:5:6-12:
+reg049.idr:5:8-12:
   |
 5 | uhOh = Bogus
-  |      ~~~~~~~
+  |        ~~~~~
 When checking right hand side of uhOh with expected type
         Void
 

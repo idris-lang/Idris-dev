@@ -1,7 +1,7 @@
-proof011.idr:20:5-21:18:
+proof011.idr:20:7-21:18:
    |
 20 |     = rewrite vassoc xs ys xs using vreplace in 
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...
+   |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...
 When checking right hand side of vassoc' with expected type
         (x :: xs) ++ ys ++ zs = ((x :: xs) ++ ys) ++ zs
 
@@ -12,10 +12,10 @@ rewriting xs ++ ys ++ xs to (xs ++ ys) ++ xs did not change type x ::
                                                                  (xs ++ ys) ++
                                                                  zs
 
-proof011a.idr:14:5-37:
+proof011a.idr:14:7-37:
    |
 14 |     = rewrite vassoc xs ys xs in Refl
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 When checking right hand side of vassoc' with expected type
         (x :: xs) ++ ys ++ zs = ((x :: xs) ++ ys) ++ zs
 

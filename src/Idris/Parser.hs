@@ -1054,15 +1054,15 @@ RHS ::= '='            Expr
 RHSName ::= '{' FnName '}';
 @
 -}
-rhs :: SyntaxInfo -> Name -> IdrisParser PTerm
+rhs :: SyntaxInfo -> Name -> IdrisParser (PTerm, FC)
 rhs syn n = do lchar '='
                indentGt
-               expr syn
+               withExtent $ expr syn
         <|> do symbol "?=";
                (name, fc) <- withExtent $ P.option n' (symbol "{" *> fnName <* symbol "}")
                r <- expr syn
-               return (addLet fc name r)
-        <|> impossible
+               return (addLet fc name r, fc)
+        <|> withExtent impossible
         <?> "function right hand side"
   where mkN :: Name -> Name
         mkN (UN x)   = if (tnull x || not (isAlpha (thead x)))
@@ -1104,33 +1104,34 @@ WhereOrTerminator ::= WhereBlock | Terminator;
 clause :: SyntaxInfo -> IdrisParser PClause
 clause syn
            -- unnamed with or function clause (inside a with)
-         = appExtent (do
-              wargs <- P.try (do pushIndent; some (wExpr syn))
+         = do wargs <- P.try (do pushIndent; some (wExpr syn))
               ist <- get
               n <- case lastParse ist of
                         Just t -> return t
                         Nothing -> fail "Invalid clause"
-              (do r <- rhs syn n
+              (do (r, fc) <- rhs syn n
                   let wsyn = syn { syn_namespace = [], syn_toplevel = False }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator
-                  return $ \fc -> PClauseR fc wargs r wheres) <|> (do
+                  return $ PClauseR fc wargs r wheres) <|> (do
                   popIndent
-                  keyword "with"
-                  wval <- simpleExpr syn
-                  pn <- optProof
+                  ((wval, pn), fc) <- withExtent $ do
+                      keyword "with"
+                      wval <- bracketed syn
+                      pn <- optProof
+                      return (wval, pn)
                   openBlock
                   ds <- some $ fnDecl syn
                   let withs = concat ds
                   closeBlock
-                  return $ \fc -> PWithR fc wargs wval pn withs))
+                  return $ PWithR fc wargs wval pn withs)
            -- <==
        <|> do ty <- P.try (do pushIndent
                               ty <- simpleExpr syn
                               symbol "<=="
                               return ty)
               (n, fc) <- withExtent (expandNS syn <$> fnName)
-              r <- rhs syn n
+              (r, _) <- rhs syn n
               let wsyn = syn { syn_namespace = [] }
               (wheres, nmap) <-   whereBlock n wsyn <* popIndent
                                 <|> ([], []) <$ terminator
@@ -1145,7 +1146,7 @@ clause syn
        <|> do pushIndent
               (n, nfc, capp, wargs) <- lhs
               modify $ \ist -> ist { lastParse = Just n }
-              (do (rs, fc) <- withExtent (rhs syn n)
+              (do (rs, fc) <- rhs syn n
                   let wsyn = syn { syn_namespace = [] }
                   (wheres, nmap) <-     whereBlock n wsyn <* popIndent
                                     <|> ([], []) <$ terminator

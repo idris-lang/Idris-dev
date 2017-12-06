@@ -6,10 +6,10 @@ Faulty.idr:6:9-11:
 num is bound as an implicit
 	Did you mean to refer to A.num?
 
-Faulty.idr:7:7-12:
+Faulty.idr:7:9-12:
   |
 7 | fault = Refl
-  |       ~~~~~~
+  |         ~~~~
 When checking right hand side of fault with expected type
         num = 0
 

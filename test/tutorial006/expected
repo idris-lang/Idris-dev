@@ -17,10 +17,10 @@ When checking argument xs to constructor Data.Vect.:::
                 and
                         plus len m
 
-tutorial006b.idr:10:37-50:
+tutorial006b.idr:10:39-50:
    |
 10 |   parity (S (S (j + j)))     | Even = Even {n=S j}
-   |                                     ~~~~~~~~~~~~~~
+   |                                       ~~~~~~~~~~~~
 When checking right hand side of with block in Main.parity with expected type
         Parity (S (S (j + j)))
 

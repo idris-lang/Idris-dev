@@ -1,7 +1,7 @@
-ErrorReflection.idr:68:5-20:
+ErrorReflection.idr:68:7-20:
    |
 68 | bad = Lam (Var Here)
-   |     ~~~~~~~~~~~~~~~~
+   |       ~~~~~~~~~~~~~~
 When checking right hand side of bad with expected type
         Tm [] TUnit
 

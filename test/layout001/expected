@@ -58,10 +58,10 @@ Wrong indention: should be greater than context indentation
   | ^
 Wrong indention: should be greater than context indentation
 
-mplus1.idr:13:31-17:49:
+mplus1.idr:13:34-17:49:
    |
 13 | term                          =  do f <- factor
-   |                               ~~~~~~~~~~~~~~~~~ ...
+   |                                  ~~~~~~~~~~~~~~ ...
 When checking right hand side of term with expected type
         Maybe Int
 

@@ -22,10 +22,10 @@ TestLambdaPossible.idr:12:1-13:40:
    | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...
 Warning - TestLambdaPossible.wrongPossible' is possibly not total due to: TestLambdaPossible.case block in wrongPossible' at TestLambdaPossible.idr:12:25
 
-TestLambdaPossible.idr:9:15-35:
+TestLambdaPossible.idr:9:17-35:
   |
 9 | wrongPossible = (\Flase impossible)
-  |               ~~~~~~~~~~~~~~~~~~~~~
+  |                 ~~~~~~~~~~~~~~~~~~~
 Warning - TestLambdaPossible.case block in wrongPossible at TestLambdaPossible.idr:9:25-34 is not total as there are missing cases
 
 TestLambdaPossible.idr:9:1-35:
@@ -34,10 +34,10 @@ TestLambdaPossible.idr:9:1-35:
   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Warning - TestLambdaPossible.wrongPossible is possibly not total due to: TestLambdaPossible.case block in wrongPossible at TestLambdaPossible.idr:9:25-34
 
-TestLambdaPossible.idr:12:18-13:40:
+TestLambdaPossible.idr:12:20-13:40:
    |
 12 | wrongPossible' x = case x of
-   |                  ~~~~~~~~~~~ ...
+   |                    ~~~~~~~~~ ...
 Warning - TestLambdaPossible.case block in wrongPossible' at TestLambdaPossible.idr:12:25 is not total as there are missing cases
 
 TestLambdaPossible.idr:12:1-13:40:
