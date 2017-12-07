@@ -82,19 +82,35 @@ iWarn fc err =
 
     layoutSource :: FC -> String -> Maybe OutputDoc
     layoutSource (FC fn (si, sj) (ei, ej)) src =
-        if isJust sourceLine
-        then Just . string $ top ++ "\n" ++ formattedLine ++ "\n" ++ bottom
+        if haveSource
+        then Just (string source)
         else Nothing
       where
+        sourceLine :: Maybe String
         sourceLine = listToMaybe . drop (si - 1) . lines $ src
-        formattedLine = show si ++ " | " ++ fromJust sourceLine
-        top = take (length (show si)) (repeat ' ') ++ " |"
-        indicator = case (si == ei, sj == ej) of
-                      (True , True ) -> "^"
-                      (True , False) -> squiggles (ej - sj + 1)
-                      (False, _    ) -> squiggles (length (fromJust sourceLine) - sj + 1) ++ " ..."
-        bottom = top ++ " " ++ (take (sj - 1) (repeat ' ')) ++ indicator
-        squiggles n = take n (repeat '~')
+
+        haveSource :: Bool
+        haveSource = isJust sourceLine
+
+        line1 :: String
+        line1 = replicate (length (show si)) ' ' ++ " |"
+
+        line2 :: String
+        line2 = show si ++ " | " ++ fromJust sourceLine
+
+        highlight :: String
+        highlight = replicate (end - sj + 1) ch ++ ellipsis
+          where
+            (end, ch, ellipsis) = case (si == ei, sj == ej) of
+              (True , True ) -> (ej, '^', "")
+              (True , False) -> (ej, '~', "")
+              (False, _    ) -> (length (fromJust sourceLine), '~', " ...")
+
+        line3 :: String
+        line3 = line1 ++ " " ++ replicate (sj - 1) ' ' ++ highlight
+
+        source :: String
+        source = line1 ++ "\n" ++ line2 ++ "\n" ++ line3
     layoutSource _ _                           = Nothing
 
     layoutWarning :: OutputDoc -> Maybe OutputDoc -> OutputDoc -> OutputDoc
