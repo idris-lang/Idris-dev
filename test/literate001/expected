@@ -1,7 +1,7 @@
 ./test003a.lidr:1:0:
   |
 1 | Broken
-  | ^
+  |^
 Program line next to comment
 
 'a'

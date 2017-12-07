@@ -83,7 +83,7 @@ iWarn fc err =
     layoutSource :: FC -> String -> Maybe OutputDoc
     layoutSource (FC fn (si, sj) (ei, ej)) src =
         if haveSource
-        then Just (string source)
+        then Just source
         else Nothing
       where
         sourceLine :: Maybe String
@@ -92,25 +92,25 @@ iWarn fc err =
         haveSource :: Bool
         haveSource = isJust sourceLine
 
-        line1 :: String
-        line1 = replicate (length (show si)) ' ' ++ " |"
+        line1 :: OutputDoc
+        line1 = text $ replicate (length (show si)) ' ' ++ " |"
 
-        line2 :: String
-        line2 = show si ++ " | " ++ fromJust sourceLine
+        line2 :: OutputDoc
+        line2 = text $ show si ++ " | " ++ fromJust sourceLine
 
-        highlight :: String
-        highlight = replicate (end - sj + 1) ch ++ ellipsis
+        indicator :: OutputDoc
+        indicator = text (replicate (end - sj + 1) ch) <> ellipsis
           where
             (end, ch, ellipsis) = case (si == ei, sj == ej) of
-              (True , True ) -> (ej, '^', "")
-              (True , False) -> (ej, '~', "")
-              (False, _    ) -> (length (fromJust sourceLine), '~', " ...")
+              (True , True ) -> (ej, '^', empty)
+              (True , False) -> (ej, '~', empty)
+              (False, _    ) -> (length (fromJust sourceLine), '~', text " ...")
 
-        line3 :: String
-        line3 = line1 ++ " " ++ replicate (sj - 1) ' ' ++ highlight
+        line3 :: OutputDoc
+        line3 = line1 <> text (replicate sj ' ') <> indicator
 
-        source :: String
-        source = line1 ++ "\n" ++ line2 ++ "\n" ++ line3
+        source :: OutputDoc
+        source = line1 <$$> line2 <$$> line3
     layoutSource _ _                           = Nothing
 
     layoutWarning :: OutputDoc -> Maybe OutputDoc -> OutputDoc -> OutputDoc
