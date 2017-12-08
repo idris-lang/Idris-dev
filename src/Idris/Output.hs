@@ -31,6 +31,7 @@ import Util.System (isATTY)
 
 import Prelude hiding ((<$>))
 
+import Control.Arrow (first)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
 import Data.List (intersperse, nub)
 import Data.Maybe (fromMaybe, fromJust, isJust, listToMaybe)
@@ -52,13 +53,15 @@ pshow ist err = displayDecorated (consoleDecorate ist) .
 
 type OutputDoc = Doc OutputAnnotation
 
+data Ann = AText String | ATagged OutputAnnotation Ann | ASplit Ann Ann
+
 iWarn :: FC -> OutputDoc -> Idris ()
 iWarn fc err =
   do i <- getIState
      case idris_outputmode i of
        RawOutput h ->
          do maybeSource <- readSource fc
-            let maybeFormattedSource = (maybeSource >>= layoutSource fc)
+            let maybeFormattedSource = (maybeSource >>= layoutSource fc (idris_highlightedRegions i))
             err' <- iRender . fmap (fancifyAnnots i True) $
                       layoutWarning (layoutFC fc) maybeFormattedSource err
             hWriteDoc h i err'
@@ -80,8 +83,8 @@ iWarn fc err =
         Right v -> pure (Just v)
     readSource _           = pure Nothing
 
-    layoutSource :: FC -> String -> Maybe OutputDoc
-    layoutSource (FC fn (si, sj) (ei, ej)) src =
+    layoutSource :: FC -> [(FC, OutputAnnotation)] -> String -> Maybe OutputDoc
+    layoutSource (FC fn (si, sj) (ei, ej)) highlights src =
         if haveSource
         then Just source
         else Nothing
@@ -95,8 +98,51 @@ iWarn fc err =
         line1 :: OutputDoc
         line1 = text $ replicate (length (show si)) ' ' ++ " |"
 
+        lineFC :: FC
+        lineFC = FC fn (si, 1) (si, length (fromJust sourceLine))
+
+        intersection :: FC -> FC -> FC
+        intersection (FC fn1 s1 e1) (FC fn2 s2 e2) = FC fn1 (max s1 s2) (min e1 e2)
+        intersection _ _                           = NoFC
+
+        intersects :: FC -> FC -> Bool
+        intersects (FC fn1 s1 e1) (FC fn2 s2 e2)
+          | fn1 /= fn2 = False
+          | e1 < s2    = False
+          | e2 < s1    = False
+          | otherwise  = True
+        intersects _ _ = False
+
+        width :: Ann -> Int
+        width (AText s)     = length s
+        width (ATagged _ n) = width n
+        width (ASplit l r)  = width l + width r
+
+        buildHighlightedSource :: Ann -> OutputDoc
+        buildHighlightedSource (AText s)     = text s
+        buildHighlightedSource (ATagged a n) = annotate a (buildHighlightedSource n)
+        buildHighlightedSource (ASplit l r)  = buildHighlightedSource l <> buildHighlightedSource r
+
+        insertAnnotation :: ((Int, Int), OutputAnnotation) -> Ann -> Ann
+        insertAnnotation ((sj, ej), oa) (ATagged tag n) = ATagged tag (insertAnnotation ((sj, ej), oa) n)
+        insertAnnotation ((sj, ej), oa) (ASplit l r)
+          | w <- width l                   = ASplit (insertAnnotation ((sj, ej), oa) l) (insertAnnotation ((sj - w, ej - w), oa) r)
+        insertAnnotation ((sj, ej), oa) a@(AText t)
+          | sj <= 1, ej >= width a         = ATagged oa a
+          | sj > 1,  sj <= width a         = ASplit (AText $ take (sj - 1) t) (insertAnnotation ((1, ej - sj + 1), oa) (AText $ drop (sj - 1) t))
+          | sj == 1, ej >= 1, ej < width a = ASplit (insertAnnotation ((1, ej), oa) (AText $ take ej t)) (AText $ drop ej t)
+          | otherwise                      = a
+
+        highlightedSource :: OutputDoc
+        highlightedSource = buildHighlightedSource .
+                            foldr insertAnnotation (AText $ fromJust sourceLine) .
+                            map (\(FC _ (_, sj) (_, ej), ann) -> ((sj, ej), ann)) .
+                            map (first (intersection lineFC)) .
+                            filter (intersects lineFC . fst) $
+                            highlights
+
         line2 :: OutputDoc
-        line2 = text $ show si ++ " | " ++ fromJust sourceLine
+        line2 = text (show si ++ " | ") <> highlightedSource
 
         indicator :: OutputDoc
         indicator = text (replicate (end - sj + 1) ch) <> ellipsis
@@ -111,7 +157,7 @@ iWarn fc err =
 
         source :: OutputDoc
         source = line1 <$$> line2 <$$> line3
-    layoutSource _ _                           = Nothing
+    layoutSource _ _ _                                    = Nothing
 
     layoutWarning :: OutputDoc -> Maybe OutputDoc -> OutputDoc -> OutputDoc
     layoutWarning loc (Just src) err = loc <$$> src <$$> err <$$> empty
