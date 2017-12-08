@@ -118,10 +118,10 @@ iWarn fc err =
         width (ATagged _ n) = width n
         width (ASplit l r)  = width l + width r
 
-        buildHighlightedSource :: Ann -> OutputDoc
-        buildHighlightedSource (AText s)     = text s
-        buildHighlightedSource (ATagged a n) = annotate a (buildHighlightedSource n)
-        buildHighlightedSource (ASplit l r)  = buildHighlightedSource l <> buildHighlightedSource r
+        sourceDoc :: Ann -> OutputDoc
+        sourceDoc (AText s)     = text s
+        sourceDoc (ATagged a n) = annotate a (sourceDoc n)
+        sourceDoc (ASplit l r)  = sourceDoc l <> sourceDoc r
 
         insertAnnotation :: ((Int, Int), OutputAnnotation) -> Ann -> Ann
         insertAnnotation ((sj, ej), oa) (ATagged tag n) = ATagged tag (insertAnnotation ((sj, ej), oa) n)
@@ -134,7 +134,7 @@ iWarn fc err =
           | otherwise                      = a
 
         highlightedSource :: OutputDoc
-        highlightedSource = buildHighlightedSource .
+        highlightedSource = sourceDoc .
                             foldr insertAnnotation (AText $ fromJust sourceLine) .
                             map (\(FC _ (_, sj) (_, ej), ann) -> ((sj, ej), ann)) .
                             map (first (intersection lineFC)) .
