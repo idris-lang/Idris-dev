@@ -101,10 +101,6 @@ iWarn fc err =
         lineFC :: FC
         lineFC = FC fn (si, 1) (si, length (fromJust sourceLine))
 
-        intersection :: FC -> FC -> FC
-        intersection (FC fn1 s1 e1) (FC fn2 s2 e2) = FC fn1 (max s1 s2) (min e1 e2)
-        intersection _ _                           = NoFC
-
         intersects :: FC -> FC -> Bool
         intersects (FC fn1 s1 e1) (FC fn2 s2 e2)
           | fn1 /= fn2 = False
@@ -112,6 +108,12 @@ iWarn fc err =
           | e2 < s1    = False
           | otherwise  = True
         intersects _ _ = False
+
+        intersection :: FC -> FC -> FC
+        intersection fc1@(FC fn1 s1 e1) fc2@(FC _ s2 e2)
+          | intersects fc1 fc2 = FC fn1 (max s1 s2) (min e1 e2)
+          | otherwise          = NoFC
+        intersection _ _       = NoFC
 
         width :: Ann -> Int
         width (AText s)     = length s
