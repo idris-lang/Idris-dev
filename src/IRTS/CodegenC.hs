@@ -221,7 +221,7 @@ bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show l
 bcc i (PROJECTINTO r t idx)
     = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n"
 bcc i (CASE True r code def)
-    | length code < 4 = showCase i def code
+    | length code < 4 && length code > 0 = showCase i def code
   where
     showCode :: Int -> [BC] -> String
     showCode i bc = "{\n" ++ concatMap (bcc (i + 1)) bc ++
