@@ -31,7 +31,6 @@ import Idris.REPL.Parser
 import IRTS.CodegenCommon
 
 import Util.System
-import qualified Util.Pretty
 
 import Control.Category
 import Control.DeepSeq
@@ -196,7 +195,7 @@ idrisMain opts =
                      mapM_ (\str -> do ist <- getIState
                                        c <- colourise
                                        case parseExpr ist str of
-                                         Left err -> do iWarn (errorExtent err) (Util.Pretty.text $ errorMessage err)
+                                         Left err -> do emit err
                                                         runIO $ exitWith (ExitFailure 1)
                                          Right e -> process "" (Eval e))
                            exprs
@@ -273,7 +272,7 @@ execScript :: String -> Idris ()
 execScript expr = do i <- getIState
                      c <- colourise
                      case parseExpr i expr of
-                          Left err -> do iWarn (errorExtent err) (Util.Pretty.text $ errorMessage err)
+                          Left err -> do emit err
                                          runIO $ exitWith (ExitFailure 1)
                           Right term -> do ctxt <- getContext
                                            (tm, _) <- elabVal (recinfo (fileFC "toplevel")) ERHS term
@@ -300,7 +299,7 @@ initScript = do script <- runIO $ getIdrisInitScript
                            runInit h
           processLine i cmd input clr =
               case parseCmd i input cmd of
-                   Left err -> iWarn (errorExtent err) (Util.Pretty.text $ errorMessage err)
+                   Left err -> emit err
                    Right (Right Reload) -> iPrintError "Init scripts cannot reload the file"
                    Right (Right (Load f _)) -> iPrintError "Init scripts cannot load files"
                    Right (Right (ModImport f)) -> iPrintError "Init scripts cannot import modules"

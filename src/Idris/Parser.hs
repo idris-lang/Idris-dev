@@ -13,7 +13,7 @@ Maintainer  : The Idris Community.
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
 module Idris.Parser(IdrisParser(..), ImportInfo(..), addReplSyntax, clearParserWarnings,
-                    decl, errorExtent, errorMessage, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
+                    decl, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
                     runparser, ParseError, parseErrorDoc) where
 
 import Idris.AbsSyntax hiding (namespace, params)
@@ -36,7 +36,6 @@ import Idris.Parser.Ops
 import Idris.Termination
 import Idris.Unlit
 
-import qualified Util.Pretty
 import Util.System (readSource)
 
 import Prelude hiding (pi)
@@ -1518,10 +1517,9 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Mark -> Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            Left err -> do let fc = errorExtent err
-                           iWarn fc (Util.Pretty.string $ errorMessage err)
+            Left err -> do emit err
                            i <- getIState
-                           putIState (i { errSpan = Just fc })
+                           putIState (i { errSpan = Just (warningExtent err) })
                            return []
             Right (x, i)  -> do putIState i
                                 reportParserWarnings

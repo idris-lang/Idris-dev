@@ -9,12 +9,12 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Output (clearHighlights, idemodePutSExp, iPrintError, iPrintFunTypes,
+module Idris.Output (clearHighlights, emit, idemodePutSExp, iPrintError, iPrintFunTypes,
                      iPrintResult, iPrintTermWithType, iputGoal, iputStr, iputStrLn,
                      iRender, iRenderError, iRenderOutput, iRenderResult, iWarn,
                      prettyDocumentedIst, printUndefinedNames, pshow, renderExternal,
                      sendHighlighting, sendParserHighlighting, warnTotality,
-                     writeHighlights) where
+                     writeHighlights, OutputDoc(..), Warning(..)) where
 
 import Idris.AbsSyntax
 import Idris.Colours (hEndColourise, hStartColourise)
@@ -52,6 +52,10 @@ pshow ist err = displayDecorated (consoleDecorate ist) .
                 fmap (fancifyAnnots ist True) $ pprintErr ist err
 
 type OutputDoc = Doc OutputAnnotation
+
+class Warning a where
+  warningExtent :: a -> FC
+  warningMessage :: a -> OutputDoc
 
 data Ann = AText String | ATagged OutputAnnotation Ann | ASplit Ann Ann
 
@@ -165,6 +169,8 @@ iWarn fc err =
     layoutWarning loc (Just src) err = loc <$$> src <$$> err <$$> empty
     layoutWarning loc Nothing    err = loc </> err
 
+emit :: Warning w => w -> Idris ()
+emit w = iWarn (warningExtent w) (warningMessage w)
 
 iRender :: Doc a -> Idris (SimpleDoc a)
 iRender d = do w <- getWidth
