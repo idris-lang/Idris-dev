@@ -1519,10 +1519,8 @@ parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
             Left err -> do let fc = errorExtent err
+                           iWarn fc (Util.Pretty.string $ errorMessage err)
                            i <- getIState
-                           case idris_outputmode i of
-                             RawOutput h  -> iputStrLn (show . fixColour (idris_colourRepl i) . parseErrorDoc $ err)
-                             IdeMode n h -> iWarn fc (Util.Pretty.text $ errorMessage err)
                            putIState (i { errSpan = Just fc })
                            return []
             Right (x, i)  -> do putIState i

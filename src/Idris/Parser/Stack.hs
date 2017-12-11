@@ -72,7 +72,7 @@ errorExtent (ParseError _ err) = sourcePositionFC pos
 
 -- | A single-line parse error message, including location.
 errorMessage :: ParseError -> String
-errorMessage (ParseError _ err) = P.parseErrorTextPretty err
+errorMessage (ParseError _ err) = init (P.parseErrorTextPretty err)
 
 -- | A fully formatted parse error, with caret and bar, etc.
 prettyError                    :: ParseError -> String

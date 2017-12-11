@@ -90,7 +90,7 @@ iWarn fc err =
         else Nothing
       where
         sourceLine :: Maybe String
-        sourceLine = listToMaybe . drop (si - 1) . lines $ src
+        sourceLine = listToMaybe . drop (si - 1) . (++ ["<end of file>"]) . lines $ src
 
         haveSource :: Bool
         haveSource = isJust sourceLine
