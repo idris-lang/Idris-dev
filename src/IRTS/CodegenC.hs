@@ -697,29 +697,26 @@ ifaceC (ExportFun n cn ret args)
 
         argNames = zipWith (++) (repeat "arg") (map show [0..])
 
-mkBody n as t = indent 1 ++ "INITFRAME;\n" ++
-                indent 1 ++ "RESERVE(" ++ show (max (length as) 3) ++ ");\n" ++
-                push 0 as ++ call n ++ retval t
-  where push i [] = ""
-        push i ((n, t) : ts) = indent 1 ++ c_irts (toFType t)
-                                      ("TOP(" ++ show i ++ ") = ") n
-                                   ++ ";\n" ++ push (i + 1) ts
+mkBody n as_in t
+     = indent 1 ++ "INITFRAME;\n" ++
+       indent 1 ++ "RESERVE(" ++ show (max (length as) 3) ++ ");\n" ++
+       push 0 as ++ call n ++ retval t
+  where
+    as = case t of
+              FIO t -> as_in ++ [("NULL", FUnknown)] -- add world token
+              _ -> as_in
+    push i [] = ""
+    push i ((n, t) : ts) = indent 1 ++ c_irts (toFType t)
+                                  ("TOP(" ++ show i ++ ") = ") n
+                               ++ ";\n" ++ push (i + 1) ts
 
-        call _ = indent 1 ++ "STOREOLD;\n" ++
-                 indent 1 ++ "BASETOP(0);\n" ++
-                 indent 1 ++ "ADDTOP(" ++ show (length as) ++ ");\n" ++
-                 indent 1 ++ "CALL(" ++ cname n ++ ");\n"
-
-        retval (FIO t)
-           = indent 1 ++ "TOP(0) = NULL;\n" ++
-             indent 1 ++ "TOP(1) = NULL;\n" ++
-             indent 1 ++ "TOP(2) = RVAL;\n" ++
-             indent 1 ++ "STOREOLD;\n" ++
+    call _ = indent 1 ++ "STOREOLD;\n" ++
              indent 1 ++ "BASETOP(0);\n" ++
-             indent 1 ++ "ADDTOP(3);\n" ++
-             indent 1 ++ "CALL(" ++ cname (sUN "call__IO") ++ ");\n" ++
-             retval t
-        retval t = indent 1 ++ "return " ++ irts_c (toFType t) "RVAL" ++ ";\n"
+             indent 1 ++ "ADDTOP(" ++ show (length as) ++ ");\n" ++
+             indent 1 ++ "CALL(" ++ cname n ++ ");\n"
+
+    retval (FIO t) = retval t
+    retval t = indent 1 ++ "return " ++ irts_c (toFType t) "RVAL" ++ ";\n"
 
 ctype (FCon c)
   | c == sUN "C_Str" = "char*"

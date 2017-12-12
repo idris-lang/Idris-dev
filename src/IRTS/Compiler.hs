@@ -81,7 +81,14 @@ compile codegen f mtm = do
         let defsUniq = map (allocUnique (addAlist defsInlined emptyContext))
                            defsInlined
 
-        let (nexttag, tagged) = addTags 65536 (liftAll defsUniq)
+        logCodeGen 1 "Inlining"
+
+        dumpCases <- getDumpCases
+        case dumpCases of
+            Nothing -> return ()
+            Just f -> runIO $ writeFile f (showCaseTrees defsUniq)
+
+        let (nexttag, tagged) = addTags 65536 (liftAll defsInlined)
         let ctxtIn = addAlist tagged emptyContext
 
         logCodeGen 1 "Defunctionalising"
@@ -96,11 +103,7 @@ compile codegen f mtm = do
 
         let checked = simplifyDefs defuns (toAlist defuns)
         outty <- outputTy
-        dumpCases <- getDumpCases
         dumpDefun <- getDumpDefun
-        case dumpCases of
-            Nothing -> return ()
-            Just f -> runIO $ writeFile f (showCaseTrees defs)
         case dumpDefun of
             Nothing -> return ()
             Just f -> runIO $ writeFile f (dumpDefuns defuns)
@@ -168,9 +171,13 @@ getDeclarations used
 showCaseTrees :: [(Name, LDecl)] -> String
 showCaseTrees = showSep "\n\n" . map showCT . sortBy (comparing defnRank)
   where
-    showCT (n, LFun _ f args lexp)
-       = show n ++ " " ++ showSep " " (map show args) ++ " =\n\t"
+    showCT (n, LFun opts f args lexp)
+       = showOpts ++
+         show n ++ " " ++ showSep " " (map show args) ++ " =\n\t"
             ++ show lexp
+      where
+        showOpts | Inline `elem` opts = "%inline "
+                 | otherwise = ""
     showCT (n, LConstructor c t a) = "data " ++ show n ++ " " ++ show a
 
     defnRank :: (Name, LDecl) -> String
