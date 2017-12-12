@@ -346,8 +346,8 @@ instance Show LExp where
             ++ " in " ++ show' (env ++ [show n]) ind e
 
      show' env ind (LLam args e)
-        = "\\ " ++ showSep "," (map show args)
-            ++ " => " ++ show' (env ++ (map show args)) ind e
+        = "(\\ " ++ showSep "," (map show args)
+            ++ " => " ++ show' (env ++ (map show args)) ind e ++ ") "
 
      show' env ind (LProj t i) = show t ++ "!" ++ show i
 
