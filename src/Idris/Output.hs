@@ -9,7 +9,7 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Output (clearHighlights, emit, idemodePutSExp, iPrintError, iPrintFunTypes,
+module Idris.Output (clearHighlights, emit, formatMessage, idemodePutSExp, iPrintError, iPrintFunTypes,
                      iPrintResult, iPrintTermWithType, iputGoal, iputStr, iputStrLn,
                      iRender, iRenderError, iRenderOutput, iRenderResult, iWarn,
                      prettyDocumentedIst, printUndefinedNames, pshow, renderExternal,

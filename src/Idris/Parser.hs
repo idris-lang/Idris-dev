@@ -1472,7 +1472,7 @@ parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [Im
 parseImports fname input
     = do i <- getIState
          case runparser imports i fname input of
-              Left err -> ifail . show . parseErrorDoc $ err
+              Left err -> formatMessage err >>= ifail . show
               Right (x, annots, i) ->
                 do putIState i
                    fname' <- runIO $ Dir.makeAbsolute fname
