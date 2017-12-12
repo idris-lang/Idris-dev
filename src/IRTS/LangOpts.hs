@@ -93,8 +93,14 @@ eval stk env rec defs (LProj exp i)
 eval stk env rec defs (LCon loc i n es)
     = unload stk <$> (LCon loc i n <$> mapM (eval [] env rec defs) es)
 eval stk env rec defs (LCase ty e alts)
-    = LCase ty <$> eval [] env rec defs e
-               <*> mapM (evalAlt stk env rec defs) alts
+    = do alts' <- mapM (evalAlt stk env rec defs) alts
+         e' <- eval [] env rec defs e
+         -- If they're all lambdas, bind the lambda at the top
+         let prefix = getLams (map getRHS alts')
+         case prefix of
+              [] -> return $ LCase ty e' alts'
+              args -> do alts_red <- mapM (dropArgs args) alts'
+                         return $ LLam args (LCase ty e' alts_red)
 eval stk env rec defs (LOp f es)
     = unload stk <$> LOp f <$> mapM (eval [] env rec defs) es
 eval stk env rec defs (LForeign t s args)
@@ -135,6 +141,37 @@ evalAlt stk env rec defs (LConstCase c e)
     = LConstCase c <$> eval stk env rec defs e
 evalAlt stk env rec defs (LDefaultCase e)
     = LDefaultCase <$> eval stk env rec defs e
+
+dropArgs :: [Name] -> LAlt -> State Int LAlt
+dropArgs as (LConCase i n es (LLam args rhs))
+    = do let old = take (length as) args
+         rhs' <- eval [] (zipWith (\ o n -> (o, LV n)) old as) [] emptyContext rhs
+         return (LConCase i n es rhs')
+dropArgs as (LConstCase c (LLam args rhs))
+    = do let old = take (length as) args
+         rhs' <- eval [] (zipWith (\ o n -> (o, LV n)) old as) [] emptyContext rhs
+         return (LConstCase c rhs')
+dropArgs as (LDefaultCase (LLam args rhs))
+    = do let old = take (length as) args
+         rhs' <- eval [] (zipWith (\ o n -> (o, LV n)) old as) [] emptyContext rhs
+         return (LDefaultCase rhs')
+
+-- dropArgs as (LConstCase c rhs) = LConstCase c (dropRHS as rhs)
+-- dropArgs as (LDefaultCase rhs) = LDefaultCase (dropRHS as rhs)
+
+getRHS (LConCase i n es rhs) = rhs
+getRHS (LConstCase _ rhs) = rhs
+getRHS (LDefaultCase rhs) = rhs
+
+getLams [] = []
+getLams (LLam args tm : cs) = getLamPrefix args cs
+getLams _ = []
+
+getLamPrefix as [] = as
+getLamPrefix as (LLam args tm : cs)
+    | length args < length as = getLamPrefix args cs
+    | otherwise = getLamPrefix as cs
+getLamPrefix as (_ : cs) = []
 
 apply :: [LExp] -> [(Name, LExp)] -> [Name] -> LDefs -> LExp ->
          [Name] -> LExp -> State Int LExp
