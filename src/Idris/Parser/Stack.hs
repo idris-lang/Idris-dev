@@ -69,6 +69,7 @@ instance Warning ParseError where
     where
       (pos NonEmpty.:| _) = P.errorPos err
   warningMessage (ParseError _ err) = PP.text . init . P.parseErrorTextPretty $ err
+  warningSource (ParseError src _) = Just src
 
 -- | A fully formatted parse error, with caret and bar, etc.
 prettyError                    :: ParseError -> String

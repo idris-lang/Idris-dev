@@ -56,28 +56,31 @@ type OutputDoc = Doc OutputAnnotation
 class Warning a where
   warningExtent :: a -> FC
   warningMessage :: a -> OutputDoc
+  warningSource :: a -> Maybe String
 
 data Ann = AText String | ATagged OutputAnnotation Ann | ASplit Ann Ann
 
-iWarn :: FC -> OutputDoc -> Idris ()
-iWarn fc err =
-  do i <- getIState
-     case idris_outputmode i of
-       RawOutput h ->
-         do maybeSource <- readSource fc
-            let maybeFormattedSource = (maybeSource >>= layoutSource fc (idris_highlightedRegions i))
-            err' <- iRender . fmap (fancifyAnnots i True) $
-                      layoutWarning (layoutFC fc) maybeFormattedSource err
-            hWriteDoc h i err'
-       IdeMode n h ->
-         do err' <- iRender . fmap (fancifyAnnots i True) $ err
-            let (str, spans) = displaySpans err'
-            runIO . hPutStrLn h $
-              convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
+data Hack = Hack FC OutputDoc
+instance Warning Hack where
+  warningExtent (Hack extent _) = extent
+  warningMessage (Hack _ msg) = msg
+  warningSource _ = Nothing
+
+formatWarning :: Warning w => w -> Idris OutputDoc
+formatWarning w = do
+    i <- getIState
+    maybeSource <- case warningSource w of
+                     Just src -> pure (Just src)
+                     Nothing  -> readSource fc
+    let maybeFormattedSource = maybeSource >>= layoutSource fc (idris_highlightedRegions i)
+    return $ layoutWarning (layoutFC fc) maybeFormattedSource (warningMessage w)
   where
+    fc :: FC
+    fc = warningExtent w
+
     layoutFC :: FC -> OutputDoc
-    layoutFC (FC fn _ _) | fn /= "" = text (show fc) <> colon
-    layoutFC _                      = empty
+    layoutFC fc@(FC fn _ _) | fn /= "" = text (show $ fc) <> colon
+    layoutFC _                         = empty
 
     readSource :: FC -> Idris (Maybe String)
     readSource (FC fn _ _) = do
@@ -169,8 +172,23 @@ iWarn fc err =
     layoutWarning loc (Just src) err = loc <$$> src <$$> err <$$> empty
     layoutWarning loc Nothing    err = loc </> err
 
+iWarn :: FC -> OutputDoc -> Idris ()
+iWarn fc err = emit $ Hack fc err
+
 emit :: Warning w => w -> Idris ()
-emit w = iWarn (warningExtent w) (warningMessage w)
+emit w =
+  do i <- getIState
+     case idris_outputmode i of
+       RawOutput h ->
+         do formattedErr <- formatWarning w
+            err' <- iRender . fmap (fancifyAnnots i True) $ formattedErr
+            hWriteDoc h i err'
+       IdeMode n h ->
+         do err' <- iRender . fmap (fancifyAnnots i True) $ warningMessage w
+            let fc = warningExtent w
+            let (str, spans) = displaySpans err'
+            runIO . hPutStrLn h $
+              convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
 
 iRender :: Doc a -> Idris (SimpleDoc a)
 iRender d = do w <- getWidth

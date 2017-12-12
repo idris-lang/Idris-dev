@@ -727,7 +727,7 @@ processInput cmd orig inputs efile
          let fn = fromMaybe "" (listToMaybe inputs)
          c <- colourise
          case parseCmd i "(input)" cmd of
-            Left err -> Just inputs <$ iputStrLn (show . fixColour c . parseErrorDoc $ err)
+            Left err -> Just inputs <$ emit err
             Right (Right Reload) ->
                 reload orig inputs
             Right (Right Watch) ->
