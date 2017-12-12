@@ -1519,7 +1519,7 @@ parseProg syn fname input mrk
          case runparser mainProg i fname input of
             Left err -> do emit err
                            i <- getIState
-                           putIState (i { errSpan = Just (warningExtent err) })
+                           putIState (i { errSpan = Just (messageExtent err) })
                            return []
             Right (x, i)  -> do putIState i
                                 reportParserWarnings

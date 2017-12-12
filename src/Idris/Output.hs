@@ -14,7 +14,7 @@ module Idris.Output (clearHighlights, emit, idemodePutSExp, iPrintError, iPrintF
                      iRender, iRenderError, iRenderOutput, iRenderResult, iWarn,
                      prettyDocumentedIst, printUndefinedNames, pshow, renderExternal,
                      sendHighlighting, sendParserHighlighting, warnTotality,
-                     writeHighlights, OutputDoc(..), Warning(..)) where
+                     writeHighlights, OutputDoc(..), Message(..)) where
 
 import Idris.AbsSyntax
 import Idris.Colours (hEndColourise, hStartColourise)
@@ -53,30 +53,30 @@ pshow ist err = displayDecorated (consoleDecorate ist) .
 
 type OutputDoc = Doc OutputAnnotation
 
-class Warning a where
-  warningExtent :: a -> FC
-  warningMessage :: a -> OutputDoc
-  warningSource :: a -> Maybe String
+class Message a where
+  messageExtent :: a -> FC
+  messageText :: a -> OutputDoc
+  messageSource :: a -> Maybe String
 
 data Ann = AText String | ATagged OutputAnnotation Ann | ASplit Ann Ann
 
 data Hack = Hack FC OutputDoc
-instance Warning Hack where
-  warningExtent (Hack extent _) = extent
-  warningMessage (Hack _ msg) = msg
-  warningSource _ = Nothing
+instance Message Hack where
+  messageExtent (Hack extent _) = extent
+  messageText (Hack _ msg) = msg
+  messageSource _ = Nothing
 
-formatWarning :: Warning w => w -> Idris OutputDoc
-formatWarning w = do
+formatMessage :: Message w => w -> Idris OutputDoc
+formatMessage w = do
     i <- getIState
-    maybeSource <- case warningSource w of
+    maybeSource <- case messageSource w of
                      Just src -> pure (Just src)
                      Nothing  -> readSource fc
     let maybeFormattedSource = maybeSource >>= layoutSource fc (idris_highlightedRegions i)
-    return $ layoutWarning (layoutFC fc) maybeFormattedSource (warningMessage w)
+    return $ layoutMessage (layoutFC fc) maybeFormattedSource (messageText w)
   where
     fc :: FC
-    fc = warningExtent w
+    fc = messageExtent w
 
     layoutFC :: FC -> OutputDoc
     layoutFC fc@(FC fn _ _) | fn /= "" = text (show $ fc) <> colon
@@ -168,24 +168,24 @@ formatWarning w = do
         source = line1 <$$> line2 <$$> line3
     layoutSource _ _ _                                    = Nothing
 
-    layoutWarning :: OutputDoc -> Maybe OutputDoc -> OutputDoc -> OutputDoc
-    layoutWarning loc (Just src) err = loc <$$> src <$$> err <$$> empty
-    layoutWarning loc Nothing    err = loc </> err
+    layoutMessage :: OutputDoc -> Maybe OutputDoc -> OutputDoc -> OutputDoc
+    layoutMessage loc (Just src) err = loc <$$> src <$$> err <$$> empty
+    layoutMessage loc Nothing    err = loc </> err
 
 iWarn :: FC -> OutputDoc -> Idris ()
 iWarn fc err = emit $ Hack fc err
 
-emit :: Warning w => w -> Idris ()
+emit :: Message w => w -> Idris ()
 emit w =
   do i <- getIState
      case idris_outputmode i of
        RawOutput h ->
-         do formattedErr <- formatWarning w
+         do formattedErr <- formatMessage w
             err' <- iRender . fmap (fancifyAnnots i True) $ formattedErr
             hWriteDoc h i err'
        IdeMode n h ->
-         do err' <- iRender . fmap (fancifyAnnots i True) $ warningMessage w
-            let fc = warningExtent w
+         do err' <- iRender . fmap (fancifyAnnots i True) $ messageText w
+            let fc = messageExtent w
             let (str, spans) = displaySpans err'
             runIO . hPutStrLn h $
               convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
