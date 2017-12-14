@@ -1,5 +1,6 @@
 module Prelude.Cast
 
+import Prelude.Basics
 import Prelude.Bool
 import public Builtins
 
@@ -11,6 +12,11 @@ interface Cast from to where
     |||
     ||| @orig The original type.
     cast : (orig : from) -> to
+
+-- Self cast is identity
+
+Cast a a where
+    cast = id
 
 -- String casts
 
