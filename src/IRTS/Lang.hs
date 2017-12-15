@@ -15,7 +15,7 @@ import Idris.Core.TT
 
 import Control.Monad.State hiding (lift)
 import Data.Data (Data)
-import Data.List 
+import Data.List
 import qualified Data.Map.Strict as Map
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
@@ -141,7 +141,7 @@ addTags i ds = tag i ds []
         tag i (x : as) acc = tag i as (x : acc)
         tag i [] acc  = (i, reverse acc)
 
-data LiftState = LS (Maybe Name) Int [(Name, LDecl)] 
+data LiftState = LS (Maybe Name) Int [(Name, LDecl)]
                     (Map.Map ([Name], LExp) Name) -- map from args/expressions
                           -- to names, so we don't create the same function
                           -- multiple times
@@ -171,12 +171,12 @@ renameArgs args e
          (map snd newargs, rename newargs e)
 
 addFn :: Name -> LDecl -> State LiftState ()
-addFn fn d 
+addFn fn d
     = do LS n i ds done <- get
          put (LS n i ((fn, d) : ds) done)
 
 makeFn :: [Name] -> LExp -> State LiftState Name
-makeFn args exp 
+makeFn args exp
     = do fn <- getNextName
          let (args', exp') = renameArgs args exp
          LS n i ds done <- get
@@ -189,7 +189,7 @@ makeFn args exp
                    return fn
 
 liftAll :: [(Name, LDecl)] -> [(Name, LDecl)]
-liftAll xs = 
+liftAll xs =
   let (LS _ _ decls _) = execState (mapM_ liftDef xs) (LS Nothing 0 [] Map.empty) in
       decls
 
@@ -222,6 +222,7 @@ lift env (LForce e) = do e' <- lift env e
 lift env (LLet n v e) = do v' <- lift env v
                            e' <- lift (env ++ [n]) e
                            return (LLet n v' e')
+lift env (LLam args (LLam args' e)) = lift env (LLam (args ++ args') e)
 lift env (LLam args e) = do e' <- lift (env ++ args) e
                             let usedArgs = nub $ usedIn env e'
                             fn <- makeFn (usedArgs ++ args) e'
@@ -363,15 +364,15 @@ lsubst n new (LCase t e alts) = let e' = lsubst n new e
 lsubst n new tm = tm
 
 rename :: [(Name, Name)] -> LExp -> LExp
-rename ns tm@(LV x) 
+rename ns tm@(LV x)
    = case lookup x ns of
           Just n -> LV n
           _ -> tm
-rename ns (LApp t e args) 
+rename ns (LApp t e args)
     = let e' = rename ns e
           args' = map (rename ns) args in
           LApp t e' args'
-rename ns (LLazyApp fn args) 
+rename ns (LLazyApp fn args)
     = let args' = map (rename ns) args in
           LLazyApp fn args'
 rename ns (LLazyExp e) = LLazyExp (rename ns e)
