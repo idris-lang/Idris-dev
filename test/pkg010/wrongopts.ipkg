@@ -1,0 +1,3 @@
+package wrongopts
+
+opts = "-total"
