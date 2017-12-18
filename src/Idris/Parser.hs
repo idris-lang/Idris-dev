@@ -881,7 +881,7 @@ interface_ syn = do (doc, argDocs, acc)
     interfaceKeyword :: IdrisParser ()
     interfaceKeyword = keyword "interface"
                <|> do fc <- extent $ keyword "class"
-                      parserWarning fc Nothing (Msg "The 'class' keyword is deprecated. Use 'interface' instead.")
+                      parserWarning fc Nothing (Msg "The 'class' keyword exists to migrate from Haskell--use 'interface' instead.")
 
     carg :: IdrisParser (Name, FC, PTerm)
     carg = do lchar '('; (i, ifc) <- withExtent name; lchar ':'; ty <- expr syn; lchar ')'
@@ -929,7 +929,7 @@ implementation syn = do (doc, argDocs) <- docstring syn
         implementationKeyword :: IdrisParser ()
         implementationKeyword = keyword "implementation"
                          <|> do fc <- extent $ keyword "instance"
-                                parserWarning fc Nothing (Msg "The 'instance' keyword is deprecated. Use 'implementation' (or omit it) instead.")
+                                parserWarning fc Nothing (Msg "The 'instance' keyword exists to migrate from Haskell--use 'implementation' (or omit it) instead.")
 
         implementationUsing :: IdrisParser [Name]
         implementationUsing = do keyword "using"
