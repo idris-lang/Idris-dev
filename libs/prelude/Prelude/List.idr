@@ -447,7 +447,7 @@ transpose ((x::xs) :: xss) = assert_total $ (x :: (mapMaybe head' xss)) :: (tran
 --------------------------------------------------------------------------------
 
 ||| Check if something is a member of a list using a custom comparison.
-elemBy : (a -> a -> Bool) -> a -> List a -> Bool
+elemBy : %static (a -> a -> Bool) -> a -> List a -> Bool
 elemBy p e []      = False
 elemBy p e (x::xs) =
   if p e x then
@@ -460,7 +460,7 @@ elem : Eq a => a -> List a -> Bool
 elem = elemBy (==)
 
 ||| Find associated information in a list using a custom comparison.
-lookupBy : (a -> a -> Bool) -> a -> List (a, b) -> Maybe b
+lookupBy : %static (a -> a -> Bool) -> a -> List (a, b) -> Maybe b
 lookupBy p e []      = Nothing
 lookupBy p e (x::xs) =
   let (l, r) = x in
@@ -475,7 +475,7 @@ lookup = lookupBy (==)
 
 ||| Check if any elements of the first list are found in the second, using
 ||| a custom comparison.
-hasAnyBy : (a -> a -> Bool) -> List a -> List a -> Bool
+hasAnyBy : %static (a -> a -> Bool) -> List a -> List a -> Bool
 hasAnyBy p elems []      = False
 hasAnyBy p elems (x::xs) =
   if elemBy p x elems then
@@ -527,7 +527,7 @@ findIndices = findIndices' Z
         findIndices' (S cnt) p xs
 
 ||| Find the index of the first occurrence of an element in a list, using a custom equality test.
-elemIndexBy : (a -> a -> Bool) -> a -> List a -> Maybe Nat
+elemIndexBy : %static (a -> a -> Bool) -> a -> List a -> Maybe Nat
 elemIndexBy p e = findIndex $ p e
 
 ||| Find the index of the first occurrence of an element in a list,
@@ -536,7 +536,7 @@ elemIndex : Eq a => a -> List a -> Maybe Nat
 elemIndex = elemIndexBy (==)
 
 ||| Find all indices for an element in a list, using a custom equality test.
-elemIndicesBy : (a -> a -> Bool) -> a -> List a -> List Nat
+elemIndicesBy : %static (a -> a -> Bool) -> a -> List a -> List Nat
 elemIndicesBy p e = findIndices $ p e
 
 ||| Find all indices for an element in a list, using the default equality test for the type of list elements.
@@ -572,7 +572,7 @@ filterSmaller {p} (x :: xs) with (p x)
 
 ||| The nubBy function behaves just like nub, except it uses a user-supplied
 ||| equality predicate instead of the overloaded == function.
-nubBy : (a -> a -> Bool) -> List a -> List a
+nubBy : %static (a -> a -> Bool) -> List a -> List a
 nubBy = nubBy' []
   where
     nubBy' : List a -> (a -> a -> Bool) -> List a -> List a
@@ -595,7 +595,7 @@ nub : Eq a => List a -> List a
 nub = nubBy (==)
 
 ||| The deleteBy function behaves like delete, but takes a user-supplied equality predicate.
-deleteBy : (a -> a -> Bool) -> a -> List a -> List a
+deleteBy : %static (a -> a -> Bool) -> a -> List a -> List a
 deleteBy _  _ []      = []
 deleteBy eq x (y::ys) = if x `eq` y then ys else y :: deleteBy eq x ys
 
@@ -622,7 +622,7 @@ delete = deleteBy (==)
 (\\) =  foldl (flip delete)
 
 ||| The unionBy function returns the union of two lists by user-supplied equality predicate.
-unionBy : (a -> a -> Bool) -> List a -> List a -> List a
+unionBy : %static (a -> a -> Bool) -> List a -> List a -> List a
 unionBy eq xs ys = xs ++ foldl (flip (deleteBy eq)) (nubBy eq ys) xs
 
 ||| Compute the union of two lists according to their `Eq` implementation.
@@ -747,7 +747,7 @@ replaceOn a b l = map (\c => if c == a then b else c) l
 ||| @ eq the equality comparison
 ||| @ left the potential prefix
 ||| @ right the list that may have `left` as its prefix
-isPrefixOfBy : (eq : a -> a -> Bool) -> (left, right : List a) -> Bool
+isPrefixOfBy : %static (eq : a -> a -> Bool) -> (left, right : List a) -> Bool
 isPrefixOfBy p [] right        = True
 isPrefixOfBy p left []         = False
 isPrefixOfBy p (x::xs) (y::ys) =
@@ -760,7 +760,7 @@ isPrefixOfBy p (x::xs) (y::ys) =
 isPrefixOf : Eq a => List a -> List a -> Bool
 isPrefixOf = isPrefixOfBy (==)
 
-isSuffixOfBy : (a -> a -> Bool) -> List a -> List a -> Bool
+isSuffixOfBy : %static (a -> a -> Bool) -> List a -> List a -> Bool
 isSuffixOfBy p left right = isPrefixOfBy p (reverse left) (reverse right)
 
 ||| The isSuffixOf function takes two lists and returns True iff the first list is a suffix of the second.
@@ -795,7 +795,7 @@ sorted (x::xs) =
 ||| Merge two sorted lists using an arbitrary comparison
 ||| predicate. Note that the lists must have been sorted using this
 ||| predicate already.
-mergeBy : (a -> a -> Ordering) -> List a -> List a -> List a
+mergeBy : %static (a -> a -> Ordering) -> List a -> List a -> List a
 mergeBy order []      right   = right
 mergeBy order left    []      = left
 mergeBy order (x::xs) (y::ys) =
@@ -811,7 +811,7 @@ merge = mergeBy compare
 |||
 ||| @ cmp how to compare elements
 ||| @ xs the list to sort
-sortBy : (cmp : a -> a -> Ordering) -> (xs : List a) -> List a
+sortBy : %static (cmp : a -> a -> Ordering) -> (xs : List a) -> List a
 sortBy cmp []  = []
 sortBy cmp [x] = [x]
 sortBy cmp xs  = let (x, y) = split xs in

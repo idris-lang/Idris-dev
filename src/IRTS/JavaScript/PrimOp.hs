@@ -26,8 +26,6 @@ data JsPrimTy = PTBool | PTAny deriving (Eq, Ord)
 type PrimF = [JsExpr] -> JsExpr
 type PrimDec = (Bool, JsPrimTy, PrimF) -- the bool indicates if bigint library is used or not
 
-deriving instance Ord PrimFn
-
 primDB :: Map.Map PrimFn PrimDec
 primDB =
   Map.fromList [

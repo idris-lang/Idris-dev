@@ -279,7 +279,8 @@ simpleCase tc defcase reflect phase fc inacc argtys cs erInfo
                         (tree, st) = runCaseBuilder erInfo
                                          (match ns' ps' defcase)
                                          ([], numargs, [])
-                        t          = CaseDef ns (prune proj (depatt ns' tree)) (fstT st) in
+                        sc         = removeUnreachable (prune proj (depatt ns' tree))
+                        t          = CaseDef ns sc (fstT st) in
                         if proj then return (stripLambdas t)
                                 else return t
                 Error err -> Error (At fc err)
@@ -764,6 +765,56 @@ prune proj (Case up n alts) = case alts' of
     projRepTm arg n i t = subst arg (Proj (P Bound n Erased) i) t
 
 prune _ t = t
+
+-- Remove any branches we can't reach because of variables we've already
+-- tested
+removeUnreachable :: SC -> SC
+removeUnreachable sc = ru [] sc
+  where
+    -- keep a mapping from variable names, to the constructor tag we've
+    -- already checked it as in this branch
+    ru :: [(Name, Int)] -> SC -> SC
+    ru checked (Case t n alts)
+        = let alts' = map (ruAlt checked n) (dropImpossible (lookup n checked) alts) in
+              Case t n alts'
+    ru checked t = t
+
+    dropImpossible Nothing alts = alts
+    dropImpossible (Just t) [] = []
+    dropImpossible (Just t) (ConCase con tag args sc : rest)
+        | t == tag = [ConCase con tag args sc] -- must be this case
+        | otherwise = dropImpossible (Just t) rest -- can't be this case
+    dropImpossible (Just t) (c : rest)
+        = c : dropImpossible (Just t) rest
+
+    ruAlt :: [(Name, Int)] -> Name -> CaseAlt -> CaseAlt
+    ruAlt checked var (ConCase con tag args sc)
+        = let checked' = dropChecked args (updateChecked var tag checked)
+              sc' = ru checked' sc in
+              ConCase con tag args sc'
+    ruAlt checked var (FnCase n args sc)
+        = let checked' = dropChecked [var] checked
+              sc' = ru checked' sc in
+              FnCase n args sc'
+    ruAlt checked var (ConstCase c sc)
+        = let checked' = dropChecked [var] checked
+              sc' = ru checked' sc in
+              ConstCase c sc'
+    ruAlt checked var (SucCase n sc)
+        = let checked' = dropChecked [var] checked
+              sc' = ru checked' sc in
+              SucCase n sc'
+    ruAlt checked var (DefaultCase sc)
+        = let checked' = dropChecked [var] checked
+              sc' = ru checked' sc in
+              DefaultCase sc'
+
+    updateChecked :: Name -> Int -> [(Name, Int)] -> [(Name, Int)]
+    updateChecked n i checked
+        = (n, i) : filter (\x -> fst x /= n) checked
+
+    dropChecked :: [Name] -> [(Name, Int)] -> [(Name, Int)]
+    dropChecked ns checked = filter (\x -> fst x `notElem` ns) checked
 
 stripLambdas :: CaseDef -> CaseDef
 stripLambdas (CaseDef ns (STerm (Bind x (Lam _ _) sc)) tm)
