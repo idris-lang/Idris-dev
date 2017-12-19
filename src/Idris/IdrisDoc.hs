@@ -331,7 +331,9 @@ extractPDo (DoBindP _ p1 p2 ps)  = let (ps1, ps2) = unzip ps
                                        ps'        = ps1 ++ ps2
                                    in  concatMap extract (p1 : p2 : ps')
 extractPDo (DoLet _ _ n _ p1 p2) = n : concatMap extract [p1, p2]
-extractPDo (DoLetP  _ p1 p2)     = concatMap extract [p1, p2]
+extractPDo (DoLetP  _ p1 p2 ps)  = let (ps1, ps2) = unzip ps
+                                       ps'        = ps1 ++ ps2
+                                   in  concatMap extract (p1 : p2 : ps')
 extractPDo (DoRewrite  _ p)      = extract p
 
 -- | Helper function for extractPTermNames

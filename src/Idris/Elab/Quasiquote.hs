@@ -74,7 +74,7 @@ extractDoUnquotes d (DoLet  fc rc n nfc v b)
   = do (v', ex1) <- extractUnquotes d v
        (b', ex2) <- extractUnquotes d b
        return (DoLet fc rc n nfc v' b', ex1 ++ ex2)
-extractDoUnquotes d (DoLetP fc t t') = fail "Pattern-matching lets cannot be quasiquoted"
+extractDoUnquotes d (DoLetP fc t t' alts) = fail "Pattern-matching lets cannot be quasiquoted"
 extractDoUnquotes d (DoRewrite fc h) = fail "Rewrites in Do block cannot be quasiquoted"
 
 
