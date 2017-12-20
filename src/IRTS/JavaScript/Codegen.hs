@@ -112,15 +112,12 @@ makeExportDecls defs (Export _ _ e) =
                       ]
     uncurryF name argTy Nothing = name
 
-    addApplyForIO (FIO _) f = T.concat ["function(){ return (",f, ").apply(this,arguments)()}"]
-    addApplyForIO _ f = f
-
     makeExport (ExportData _) =
       []
     makeExport (ExportFun name (FStr exportname) retTy argTy) =
       [T.concat [ T.pack $ exportname
                 ,  ": "
-                , addApplyForIO retTy $ uncurryF (jsName name) argTy (getArgList' name defs)
+                , uncurryF (jsName name) argTy (getArgList' name defs)
                 ]
       ]
 
