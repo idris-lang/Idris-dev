@@ -1,4 +1,4 @@
-module Util
+module Control.Monad
 
 %default total
 %access public export
