@@ -8,6 +8,7 @@ modules = Control.Arrow
         , Control.IOExcept
         , Control.Isomorphism
 
+        , Control.Monad
         , Control.Monad.Identity
         , Control.Monad.Reader
         , Control.Monad.RWS
