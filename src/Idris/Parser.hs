@@ -878,10 +878,15 @@ interface_ syn = do (doc, argDocs, acc)
     fundeps :: IdrisParser [(Name, FC)]
     fundeps = do lchar '|'; P.sepBy (withExtent name) (lchar ',')
 
+    classWarning :: String
+    classWarning = "Use of a fragile keyword `class`. " ++
+                   "`class` is provided for those coming from Haskell. " ++
+                   "Please use `interface` instead, which is equivalent."
+
     interfaceKeyword :: IdrisParser ()
     interfaceKeyword = keyword "interface"
                <|> do fc <- extent $ keyword "class"
-                      parserWarning fc Nothing (Msg "The 'class' keyword exists to migrate from Haskell--use 'interface' instead.")
+                      parserWarning fc Nothing (Msg classWarning)
 
     carg :: IdrisParser (Name, FC, PTerm)
     carg = do lchar '('; (i, ifc) <- withExtent name; lchar ':'; ty <- expr syn; lchar ')'
@@ -926,10 +931,16 @@ implementation syn = do (doc, argDocs) <- docstring syn
                                 let n = expandNS syn n_in
                                 return n
                              <?> "implementation name"
+
+        instanceWarning :: String
+        instanceWarning = "Use of fragile keyword `instance`. " ++
+                          "`instance` is provided for those coming from Haskell. " ++
+                          "Please use `implementation` (which is equivalent) instead, or omit it."
+
         implementationKeyword :: IdrisParser ()
         implementationKeyword = keyword "implementation"
                          <|> do fc <- extent $ keyword "instance"
-                                parserWarning fc Nothing (Msg "The 'instance' keyword exists to migrate from Haskell--use 'implementation' (or omit it) instead.")
+                                parserWarning fc Nothing (Msg instanceWarning)
 
         implementationUsing :: IdrisParser [Name]
         implementationUsing = do keyword "using"
