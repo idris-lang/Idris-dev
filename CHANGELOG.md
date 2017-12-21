@@ -31,7 +31,10 @@
   intMax : IO Int
   intMax = foreign FFI_C "#INT_MAX" (IO Int) 
   ```
-  
++ The deprecated keywords `%assert_total`, `abstract`, and `[static]` have
+  been removed as well as the use of "public" instead of "public export" to
+  expose a symbol.
+
 ## Library Updates
 
 + Removed `oldeffects` library from `libs` folder, use `effects` or `Control.ST` instead.
@@ -52,6 +55,7 @@
   * Lowered the precedence of `>>=` to be below that of `<|>`.
 + Added some useful string manipulation functions to `Data.String.Extra`.
 + Added `Control.Delayed`, a module for conditionally making a type `Inf` or `Lazy`.
++ Added `Data.Fuel`, which implements the `Fuel` data type and the partial `forever` function.
 + Added `Data.Bool.Extra`, a module with properties of boolean operations.
 + Moved core of `Text.Lexer` to `Text.Lexer.Core`. Added several new combinators
   and lexers to `Text.Lexer`.
@@ -67,6 +71,8 @@
 + Removed several deprecated items from the libraries shipped with Idris.
 + Moved `abs` from the `Neg` interface into its own `Abs` interface.  `Nat`
   implements `Abs` with `abs = id`.
++ Added `Control.ST.File`, an ST based implementation of the same behaviour 
+  implemented by `Effect.File` in the effects package.
 
 ## Tool Updates
 

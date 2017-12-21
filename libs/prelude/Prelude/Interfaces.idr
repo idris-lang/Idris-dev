@@ -12,6 +12,8 @@ infixl 7 <<, >> -- unused
 infixl 8 +, -
 infixl 9 *, /
 
+infixl 9 `div`, `mod`
+
 -- ------------------------------------------------------------- [ Boolean Ops ]
 intToBool : Int -> Bool
 intToBool 0 = False

@@ -262,7 +262,7 @@ float = token . P.try $ P.float
 reservedIdentifiers :: HS.HashSet String
 reservedIdentifiers = HS.fromList
   [ "Type"
-  , "abstract", "case", "class", "codata", "constructor", "corecord", "data"
+  , "case", "class", "codata", "constructor", "corecord", "data"
   , "do", "dsl", "else", "export", "if", "implementation", "implicit"
   , "import", "impossible", "in", "infix", "infixl", "infixr", "instance"
   , "interface", "let", "mutual", "namespace", "of", "parameters", "partial"
@@ -522,26 +522,10 @@ notOpenBraces = do ist <- get
 
 {- | Parses an accessibilty modifier (e.g. public, private) -}
 accessibility' :: IdrisParser Accessibility
-accessibility'
-              = do fc <- extent $ reserved "public"
-                   gotexp <- optional (reserved "export")
-                   case gotexp of
-                        Just _ -> return ()
-                        Nothing -> do
-                           ist <- get
-                           put ist { parserWarnings =
-                              (fc, Msg "'public' is deprecated. Use 'public export' instead.")
-                                   : parserWarnings ist }
-                   return Public
-            <|> do fc <- extent $ reserved "abstract"
-                   ist <- get
-                   put ist { parserWarnings =
-                      (fc, Msg "The 'abstract' keyword is deprecated. Use 'export' instead.")
-                           : parserWarnings ist }
-                   return Frozen
-            <|> do reserved "export"; return Frozen
-            <|> do reserved "private";  return Private
-            <?> "accessibility modifier"
+accessibility' = Public  <$ reserved "public" <* reserved "export"
+             <|> Frozen  <$ reserved "export"
+             <|> Private <$ reserved "private"
+             <?> "accessibility modifier"
 
 accessibility :: IdrisParser Accessibility
 accessibility = do acc <- optional accessibility'
