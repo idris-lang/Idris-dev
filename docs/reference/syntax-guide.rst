@@ -407,7 +407,6 @@ Options
     %no_implicit
     %error_handler
     %error_reverse
-    %assert_total
     %reflection
     %specialise [<name list>]
 

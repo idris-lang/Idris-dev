@@ -20,6 +20,7 @@ modules = CFFI
         , Control.ST.Exception
         , Control.ST.ImplicitCall
         , Control.ST.Random
+        , Control.ST.File
 
         , Data.Bool.Extra
         , Data.BoundedList

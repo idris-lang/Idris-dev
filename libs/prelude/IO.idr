@@ -101,7 +101,7 @@ unsafePerformPrimIO : PrimIO a -> a
 prim_io_pure : a -> PrimIO a
 prim_io_pure x = Prim__IO x
 
--- %inline
+-- Don't %inline; the compiler treats it specially
 io_bind : IO' l a -> (a -> IO' l b) -> IO' l b
 io_bind (MkIO fn) 
    = \k => MkIO (\w => prim_io_bind (fn w)
