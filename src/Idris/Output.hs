@@ -60,10 +60,10 @@ class Message a where
 
 data Ann = AText String | ATagged OutputAnnotation Ann | ASplit Ann Ann
 
-data Hack = Hack FC OutputDoc
-instance Message Hack where
-  messageExtent (Hack extent _) = extent
-  messageText (Hack _ msg) = msg
+data SimpleWarning = SimpleWarning FC OutputDoc
+instance Message SimpleWarning where
+  messageExtent (SimpleWarning extent _) = extent
+  messageText (SimpleWarning _ msg) = msg
   messageSource _ = Nothing
 
 formatMessage :: Message w => w -> Idris OutputDoc
@@ -173,7 +173,7 @@ formatMessage w = do
     layoutMessage loc Nothing    err = loc </> err
 
 iWarn :: FC -> OutputDoc -> Idris ()
-iWarn fc err = emit $ Hack fc err
+iWarn fc err = emit $ SimpleWarning fc err
 
 emit :: Message w => w -> Idris ()
 emit w =
