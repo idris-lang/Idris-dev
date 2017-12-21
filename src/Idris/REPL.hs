@@ -726,7 +726,7 @@ processInput cmd orig inputs efile
          let quiet = opt_quiet opts
          let fn = fromMaybe "" (listToMaybe inputs)
          case parseCmd i "(input)" cmd of
-            Left err -> Just inputs <$ emit err
+            Left err -> Just inputs <$ emitWarning err
             Right (Right Reload) ->
                 reload orig inputs
             Right (Right Watch) ->

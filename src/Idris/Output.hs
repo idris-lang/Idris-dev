@@ -9,12 +9,13 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Output (clearHighlights, emit, formatMessage, idemodePutSExp, iPrintError, iPrintFunTypes,
-                     iPrintResult, iPrintTermWithType, iputGoal, iputStr, iputStrLn,
-                     iRender, iRenderError, iRenderOutput, iRenderResult, iWarn,
-                     prettyDocumentedIst, printUndefinedNames, pshow, renderExternal,
-                     sendHighlighting, sendParserHighlighting, warnTotality,
-                     writeHighlights, OutputDoc(..), Message(..)) where
+module Idris.Output (clearHighlights, emitWarning, formatMessage, idemodePutSExp,
+                     iPrintError, iPrintFunTypes, iPrintResult, iPrintTermWithType,
+                     iputGoal, iputStr, iputStrLn, iRender, iRenderError,
+                     iRenderOutput, iRenderResult, iWarn, prettyDocumentedIst,
+                     printUndefinedNames, pshow, renderExternal, sendHighlighting,
+                     sendParserHighlighting, warnTotality, writeHighlights,
+                     OutputDoc(..), Message(..)) where
 
 import Idris.AbsSyntax
 import Idris.Colours (hEndColourise, hStartColourise)
@@ -173,10 +174,10 @@ formatMessage w = do
     layoutMessage loc Nothing    err = loc </> err
 
 iWarn :: FC -> OutputDoc -> Idris ()
-iWarn fc err = emit $ SimpleWarning fc err
+iWarn fc err = emitWarning $ SimpleWarning fc err
 
-emit :: Message w => w -> Idris ()
-emit w =
+emitWarning :: Message w => w -> Idris ()
+emitWarning w =
   do i <- getIState
      case idris_outputmode i of
        RawOutput h ->

@@ -1525,7 +1525,7 @@ parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Mark -> Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
-            Left err -> do emit err
+            Left err -> do emitWarning err
                            i <- getIState
                            putIState (i { errSpan = Just (messageExtent err) })
                            return []
