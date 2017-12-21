@@ -34,7 +34,7 @@ import Prelude hiding ((<$>))
 import Control.Arrow (first)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
 import Data.List (intersperse, nub)
-import Data.Maybe (fromMaybe, fromJust, isJust, listToMaybe)
+import Data.Maybe (fromJust, fromMaybe, isJust, listToMaybe)
 import System.Console.Haskeline.MonadException (MonadException(controlIO),
                                                 RunIO(RunIO))
 import System.FilePath (replaceExtension)
