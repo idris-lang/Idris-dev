@@ -243,7 +243,9 @@ stringLiteral = token . P.try $ P.char '"' *> P.manyTill P.charLiteral (P.char '
 
 -- | Parses a char literal
 charLiteral :: Parsing m => m Char
-charLiteral = token . P.try $ P.char '\'' *> P.charLiteral <* P.char '\''
+charLiteral = token . P.try $ P.char '\'' *> (badChar <|> P.charLiteral) <* P.char '\''
+  where
+    badChar = P.char '\'' *> fail "\"'\" must be escaped in a character literal"
 
 -- | Parses a natural number
 natural :: Parsing m => m Integer
