@@ -318,7 +318,7 @@ elabloop info fn d prompt prf e prev h env
          idrisCatch
            (case cmd of
               Left err -> do
-                msg <- Left . Msg . show <$> formatMessage err
+                msg <- fmap (Left . Msg . show) (formatMessage err)
                 return (False, prev, e, False, prf, env, msg)
               Right (Left cmd') ->
                 case cmd' of
@@ -435,7 +435,7 @@ ploop fn d prompt prf e h
          (d, st, done, prf', res) <- idrisCatch
            (case cmd of
               Left err -> do
-                msg <- Left . Msg . show <$> formatMessage err
+                msg <- fmap (Left . Msg . show) (formatMessage err)
                 return (False, e, False, prf, msg)
               Right Undo -> do (_, st) <- elabStep e loadState
                                return (True, st, False, init prf, Right $ iPrintResult "")

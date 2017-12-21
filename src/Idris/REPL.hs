@@ -725,7 +725,6 @@ processInput cmd orig inputs efile
          let opts = idris_options i
          let quiet = opt_quiet opts
          let fn = fromMaybe "" (listToMaybe inputs)
-         c <- colourise
          case parseCmd i "(input)" cmd of
             Left err -> Just inputs <$ emit err
             Right (Right Reload) ->
