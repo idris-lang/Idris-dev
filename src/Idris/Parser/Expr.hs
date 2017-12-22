@@ -1295,13 +1295,11 @@ do_ syn
                  reservedOp "="
                  (e, fc) <- withExtent $ expr (syn { withAppAllowed = False })
                  -- If there is an explicit type, this can’t be a pattern-matching let, so do not parse alternatives
-                 case ty' of
-                   Just ty -> return (DoLet fc RigW i ifc ty e)
-                   Nothing ->
-                     P.option (DoLet fc RigW i ifc Placeholder e)
-                              (do lchar '|'
-                                  ts <- P.sepBy1 (do_alt (syn { withAppAllowed = False })) (lchar '|')
-                                  return (DoLetP fc (PRef ifc [ifc] i) e ts)))
+                 P.option (DoLet fc RigW i ifc (fromMaybe Placeholder ty') e)
+                          (do lchar '|'
+                              when (isJust ty') $ fail "a pattern-matching let may not have an explicit type annotation"
+                              ts <- P.sepBy1 (do_alt (syn { withAppAllowed = False })) (lchar '|')
+                              return (DoLetP fc (PRef ifc [ifc] i) e ts)))
    <|> P.try (do keyword "let"
                  i <- expr' syn
                  reservedOp "="
