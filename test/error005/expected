@@ -1,31 +1,56 @@
-error005.idr:11:7:When checking right hand side of two with expected type
+error005.idr:11:7:
+   |
+11 | two = 2
+   |       ^
+When checking right hand side of two with expected type
         Fin 2
 
 When checking argument prf to function Data.Fin.fromInteger:
         When using 2 as a literal for a Fin 2 
                 2 is not strictly less than 2
-error005.idr:14:12:When checking right hand side of hahaha with expected type
+
+error005.idr:14:12:
+   |
+14 | hahaha n = 0
+   |            ^
+When checking right hand side of hahaha with expected type
         Fin n
 
 When checking argument prf to function Data.Fin.fromInteger:
         When using 0 as a literal for a Fin n 
                 0 is not strictly less than n
-error005.idr:20:11:When checking right hand side of notOk with expected type
+
+error005.idr:20:11:
+   |
+20 | notOk n = 2
+   |           ^
+When checking right hand side of notOk with expected type
         Fin (plus 2 n)
 
 When checking argument prf to function Data.Fin.fromInteger:
         When using 2 as a literal for a Fin (S (S n)) 
                 2 is not strictly less than S (S n)
-error005.idr:23:12-24:When checking right hand side of b0rken with expected type
+
+error005.idr:23:12-24:
+   |
+23 | b0rken n = fromInteger n
+   |            ~~~~~~~~~~~~~
+When checking right hand side of b0rken with expected type
         Fin 3
 
 When checking argument prf to function Data.Fin.fromInteger:
         When using n as a literal for a Fin 3 
                 Could not show that n is less than 3 because n is a bound
                 variable instead of a constant Integer
-error005.idr:26:17:When checking right hand side of x with expected type
+
+error005.idr:26:17:
+   |
+26 | x = the (Fin 4) 5
+   |                 ^
+When checking right hand side of x with expected type
         Fin 4
 
 When checking argument prf to function Data.Fin.fromInteger:
         When using 5 as a literal for a Fin 4 
                 5 is not strictly less than 4
+

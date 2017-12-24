@@ -1,4 +1,9 @@
-./test003a.lidr:1:0:Program line next to comment
+./test003a.lidr:1:0:
+  |
+1 | Broken
+  |^
+Program line next to comment
+
 'a'
 'd'
 zabcdefg

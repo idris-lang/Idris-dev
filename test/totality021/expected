@@ -1,10 +1,30 @@
 totality021.idr:8:1-67:
+  |
+8 | sLevelNotSLevel' (SL (Delay level)) p = sLevelNotSLevel' level Refl
+  | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Main.sLevelNotSLevel' is possibly not total due to recursive path Main.sLevelNotSLevel' --> Main.sLevelNotSLevel'
+
 totality021.idr:12:1-66:
+   |
+12 | sLevelNotSLevel (SL (Delay level)) p = sLevelNotSLevel' level Refl
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Main.sLevelNotSLevel is possibly not total due to: Main.sLevelNotSLevel'
+
 totality021.idr:18:1-26:
+   |
+18 | v = sLevelNotSLevel l Refl
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~
 Main.v is possibly not total due to: Main.sLevelNotSLevel
+
 totality021a.idr:9:1-37:
+  |
+9 | noNonEmptyPointInt {n} Nil impossible
+  | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Main.noNonEmptyPointInt is not total as there are missing cases
+
 totality021a.idr:12:1-31:
+   |
+12 | myVoid = noNonEmptyPointInt [2]
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Main.myVoid is possibly not total due to: Main.noNonEmptyPointInt
+

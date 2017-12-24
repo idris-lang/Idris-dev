@@ -1,15 +1,39 @@
 Parity.idr:17:18-22:
+   |
+17 | parity_lemma_2 = proof {
+   |                  ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 Parity.idr:24:18-22:
+   |
+24 | parity_lemma_1 = proof {
+   |                  ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 test015.idr:88:15-19:
+   |
+88 | Main.ntbOdd = proof {
+   |               ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 test015.idr:97:16-20:
+   |
+97 | Main.ntbEven = proof {
+   |                ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 test015.idr:107:20-24:
+    |
+107 | Main.adc_lemma_2 = proof {
+    |                    ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 test015.idr:142:20-24:
+    |
+142 | Main.adc_lemma_1 = proof {
+    |                    ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 00101010
 01011001
 010000011

@@ -1,9 +1,14 @@
-universes002.idr:45:9-48:Universe inconsistency.
+universes002.idr:45:11-48:
+   |
+45 | russell = lemma (MkMPair (MkMPair R lemma) REFL) 
+   |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Universe inconsistency.
         Working on: ./universes002.idr.b1
         Old domain: (5,5)
         New domain: (5,4)
         Involved constraints: 
-                ConstraintFC {uconstraint = ./universes002.idr.b1 <= ./universes002.idr.e7, ufc = universes002.idr:45:9-48}
+                ConstraintFC {uconstraint = ./universes002.idr.b1 <= ./universes002.idr.e7, ufc = universes002.idr:45:11-48}
                 ConstraintFC {uconstraint = ./universes002.idr.b1 < ./universes002.idr.c1, ufc = universes002.idr:3:6-10}
-                ConstraintFC {uconstraint = ./universes002.idr.b1 <= ./universes002.idr.e7, ufc = universes002.idr:45:9-48}
+                ConstraintFC {uconstraint = ./universes002.idr.b1 <= ./universes002.idr.e7, ufc = universes002.idr:45:11-48}
                 ConstraintFC {uconstraint = ./universes002.idr.d1 <= ./universes002.idr.b1, ufc = universes002.idr:3:6-10}
+

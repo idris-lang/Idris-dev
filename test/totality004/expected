@@ -1,4 +1,13 @@
 [1, 2, 2, 4, 3, 6, 4, 8, 5, 10]
 totality004a.idr:13:1-44:
+   |
+13 | process (Get f) (x :: xs) = process (f x) xs
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Main.process is possibly not total due to recursive path Main.process --> Main.process --> Main.process
-totality004a.idr:24:1-60:Main.main is possibly not total due to: Main.process
+
+totality004a.idr:24:1-60:
+   |
+24 | main = printLn (take 10 (process doubleInt (countStream 1)))
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Main.main is possibly not total due to: Main.process
+

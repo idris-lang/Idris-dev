@@ -83,9 +83,21 @@
   as they were given in the source files.
 + Backslash, braces and percent symbols are now correctly pretty printed
   in LaTeX.
-+ Parse errors have a new format, similar to GHC 8.2's default, due to a
-  switch from Trifecta to Megaparsec for parsing.  This could possibly cause
-  some subtle deviations in parsing from previous versions of Idris.
++ Errors and warnings now consistently have the following format:
+  ```idris
+  reg068.idr:1:6-8:
+    |
+  1 | data nat : Type where --error
+    |      ~~~
+  Main.nat has a name which may be implicitly bound.
+  This is likely to lead to problems!
+  ```
+  The code is highlighted when highlighting information is available.  How
+  much highlighting information is available depends on where the error
+  occurred.
++ The parser provider has been switched from Trifecta to Megaparsec.  This
+  could possibly cause some subtle deviations in parsing from previous
+  versions of Idris.
 + Many more errors now report beginning *and* ending position (which may be
   on different lines), instead of just a single point.  The format is
   `Foo.idr:9:7-15:` if ending column is on the same line or
