@@ -87,7 +87,7 @@ VAL idris_getBufferString(void* buffer, int loc, int len) {
     SETTY(cl, CT_STRING);
     cl->info.str.str = (char*)cl + sizeof(Closure);
 
-    if (loc >= 0 && loc+len < b->size) {
+    if (loc >= 0 && loc+len <= b->size) {
         memcpy(cl->info.str.str, (b->data)+loc, len);
         cl->info.str.str[len]='\0';
         cl->info.str.len = len;
