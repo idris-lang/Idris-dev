@@ -43,7 +43,8 @@ VAL idris_castBigStr(VM* vm, VAL i);
 VAL idris_bigAnd(VM* vm, VAL x, VAL y);
 VAL idris_bigOr(VM* vm, VAL x, VAL y);
 VAL idris_bigShiftLeft(VM* vm, VAL x, VAL y);
-VAL idris_bigShiftRight(VM* vm, VAL x, VAL y);
+VAL idris_bigAShiftRight(VM* vm, VAL x, VAL y);
+VAL idris_bigLShiftRight(VM* vm, VAL x, VAL y);
 
 uint64_t idris_truncBigB64(const mpz_t bi);
 

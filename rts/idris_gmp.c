@@ -344,7 +344,7 @@ VAL idris_bigShiftLeft(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return INTOP(<<, x, y);
     } else {
-        return bigShiftLeft(vm, GETBIG(vm, x), GETBIG(vm, y));
+        return bigShiftLeft(vm, GETBIG(vm, x), y);
     }
 }
 
@@ -352,7 +352,7 @@ VAL idris_bigAShiftRight(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return INTOP(>>, x, y);
     } else {
-        return bigAShiftRight(vm, GETBIG(vm, x), GETBIG(vm, y));
+        return bigAShiftRight(vm, GETBIG(vm, x), y);
     }
 }
 
@@ -360,7 +360,7 @@ VAL idris_bigLShiftRight(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return INTOP(>>, x, y);
     } else {
-        return bigLShiftRight(vm, GETBIG(vm, x), GETBIG(vm, y));
+        return bigLShiftRight(vm, GETBIG(vm, x), y);
     }
 }
 
