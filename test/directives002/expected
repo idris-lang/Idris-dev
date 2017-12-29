@@ -1,2 +1,6 @@
 directives002.idr:12:3-14:28:
+   |
+12 |   main = do
+   |   ~~~~~~~~~ ...
 directives002.Main.main is possibly not total due to: directives002.loop
+

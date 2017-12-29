@@ -1,4 +1,8 @@
-test002.idr:1:6:Universe inconsistency.
+test002.idr:1:6:
+  |
+1 | myid : (a : Type) -> a -> a
+  |      ^
+Universe inconsistency.
         Working on: ./test002.idr.z
         Old domain: (6,6)
         New domain: (6,5)
@@ -6,3 +10,4 @@ test002.idr:1:6:Universe inconsistency.
                 ConstraintFC {uconstraint = ./test002.idr.z <= ./test002.idr.a1, ufc = test002.idr:1:6}
                 ConstraintFC {uconstraint = ./test002.idr.y < ./test002.idr.z, ufc = test002.idr:1:6}
                 ConstraintFC {uconstraint = ./test002.idr.z <= ./test002.idr.a1, ufc = test002.idr:1:6}
+

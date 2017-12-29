@@ -1,1 +1,1 @@
-Cycle detected in imports: CycleA.idr -> CycleB -> CycleC -> CycleA -> CycleB
+ Cycle detected in imports: CycleA.idr -> CycleB -> CycleC -> CycleA -> CycleB

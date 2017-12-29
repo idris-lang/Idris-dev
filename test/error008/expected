@@ -1,4 +1,14 @@
-error008.idr:3:4:When checking type of Main.s2:
+error008.idr:3:4:
+  |
+3 | s2 : x + sum Nil = x * fromInteger 0
+  |    ^
+When checking type of Main.s2:
 Can't disambiguate name: Prelude.List.Nil, Data.Vect.Nil
-error008a.idr:3:4:When checking type of Main.s1:
+
+error008a.idr:3:4:
+  |
+3 | s1 : Num a => {x : a} -> x + sum {a} Nil = x -- * fromInteger 0
+  |    ^
+When checking type of Main.s1:
 Can't disambiguate name: Prelude.List.Nil, Data.Vect.Nil
+

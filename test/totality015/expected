@@ -1,4 +1,18 @@
 totality015a.idr:52:3-53:
+   |
+52 |   quiz (num1 :: num2 :: nums) score = quiz nums score
+   |   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Main.quiz is possibly not total due to recursive path Main.quiz --> Main.quiz
-totality015a.idr:42:3-44:36:Main.correct is possibly not total due to: Main.quiz
-totality015a.idr:47:3-49:28:Main.wrong is possibly not total due to: Main.quiz
+
+totality015a.idr:42:3-44:36:
+   |
+42 |   correct nums score
+   |   ~~~~~~~~~~~~~~~~~~ ...
+Main.correct is possibly not total due to: Main.quiz
+
+totality015a.idr:47:3-49:28:
+   |
+47 |   wrong nums ans score
+   |   ~~~~~~~~~~~~~~~~~~~~ ...
+Main.wrong is possibly not total due to: Main.quiz
+

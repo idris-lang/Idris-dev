@@ -13,8 +13,6 @@ module Idris.Parser.Stack
   , runparser
     -- * Parse errors
   , ParseError
-  , errorExtent
-  , errorMessage
   , prettyError
     -- * Mark and restore
   , Mark
@@ -35,6 +33,7 @@ module Idris.Parser.Stack
 where
 
 import Idris.Core.TT (FC(..))
+import Idris.Output (Message(..))
 
 import Control.Arrow (app)
 import Control.Monad.State.Strict (StateT(..), evalStateT)
@@ -44,6 +43,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 import Data.Void (Void(..))
 import System.FilePath (addTrailingPathSeparator, splitFileName)
 import qualified Text.Megaparsec as P
+import qualified Util.Pretty as PP
 
 {- * Parsing -}
 
@@ -64,15 +64,12 @@ runparser p i inputname s =
 
 data ParseError = ParseError String (P.ParseError (P.Token String) Void)
 
--- | Retrieve a parse error's FC
-errorExtent :: ParseError -> FC
-errorExtent (ParseError _ err) = sourcePositionFC pos
-  where
-    (pos NonEmpty.:| _) = P.errorPos err
-
--- | A single-line parse error message, including location.
-errorMessage :: ParseError -> String
-errorMessage (ParseError _ err) = P.parseErrorTextPretty err
+instance Message ParseError where
+  messageExtent (ParseError _ err) = sourcePositionFC pos
+    where
+      (pos NonEmpty.:| _) = P.errorPos err
+  messageText (ParseError _ err) = PP.text . init . P.parseErrorTextPretty $ err
+  messageSource (ParseError src _) = Just src
 
 -- | A fully formatted parse error, with caret and bar, etc.
 prettyError                    :: ParseError -> String

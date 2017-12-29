@@ -1,13 +1,41 @@
-reg003a.idr:4:13-38:When checking type of Main.ECons:
+reg003a.idr:4:13-38:
+  |
+4 |     ECons : Nat -> OddList -> EvenList
+  |             ~~~~~~~~~~~~~~~~~~~~~~~~~~
+When checking type of Main.ECons:
 No such variable OddList
-reg003a.idr:7:13-38:When checking type of Main.OCons:
+
+reg003a.idr:7:13-38:
+  |
+7 |     OCons : Nat -> EvenList -> OddList
+  |             ~~~~~~~~~~~~~~~~~~~~~~~~~~
+When checking type of Main.OCons:
 No such variable EvenList
-reg003a.idr:9:6:When checking type of Main.test:
+
+reg003a.idr:9:6:
+  |
+9 | test : EvenList
+  |      ^
+When checking type of Main.test:
 No such variable EvenList
+
 reg006.idr:17:1-23:
+   |
+17 | lookup k Leaf = Nothing
+   | ~~~~~~~~~~~~~~~~~~~~~~~
 RBTree.lookup is possibly not total due to recursive path RBTree.lookup --> RBTree.lookup
-reg007.lidr:8:3-13:A.n is already defined
-reg007.lidr:12:13-18:When checking right hand side of hurrah with expected type
+
+reg007.lidr:8:3-13:
+  |
+8 | > A.n     = Z    -- This is where it's at!
+  |   ~~~~~~~~~~~
+A.n is already defined
+
+reg007.lidr:12:13-18:
+   |
+12 | > hurrah  = isSame
+   |             ~~~~~~
+When checking right hand side of hurrah with expected type
         0 = 1
 
 Type mismatch between
@@ -20,40 +48,111 @@ Specifically:
                 1
         and
                 0
+
 reg010.idr:5:3-26:
+  |
+5 |   unsafeSubst P x x px | _ = px
+  |   ~~~~~~~~~~~~~~~~~~~~~~~~
 When checking left hand side of with block in usubst.unsafeSubst:
 Can't match on with block in usubst.unsafeSubst warg a P x x px
+
 reg018a.idr:16:1-18:
+   |
+16 | minusCoNat Z n = Z
+   | ~~~~~~~~~~~~~~~~~~
 conat.minusCoNat is possibly not total due to recursive path conat.minusCoNat --> conat.minusCoNat
+
 reg018a.idr:21:1-42:
+   |
+21 | loopForever = minusCoNat infinity infinity
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 conat.loopForever is possibly not total due to: conat.minusCoNat
+
 reg018b.idr:8:1-28:
+  |
+8 | showB (I x) = "I" ++ showB x
+  | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 A.showB is possibly not total due to recursive path A.showB --> A.showB
+
 reg018b.idr:11:1-6:
+   |
+11 | Show B where show = showB
+   | ~~~~~~
 A.B implementation of Prelude.Show.Show is possibly not total due to: A.showB
+
 reg018c.idr:21:1-22:21:
+   |
+21 | inf (x :: xs) with (hdtl xs)
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ...
 CodataTest.inf is possibly not total due to: with block in CodataTest.inf
-reg018d.idr:8:1-39:Main.pull is not total as there are missing cases
-reg023.idr:7:5-7:When checking right hand side of bad with expected type
+
+reg018d.idr:8:1-39:
+  |
+8 | pull {n=Z}   _      (x :: xs) = (x, xs)
+  | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Main.pull is not total as there are missing cases
+
+reg023.idr:7:7:
+  |
+7 | bad = Z
+  |       ^
+When checking right hand side of bad with expected type
         f Nat
 
 Type mismatch between
         Nat (Type of 0)
 and
         f Nat (Expected type)
-reg028.idr:5:1-9:tbad.bad is possibly not total due to: with block in tbad.bad
+
+reg028.idr:5:1-9:
+  |
+5 | bad Z = Z
+  | ~~~~~~~~~
+tbad.bad is possibly not total due to: with block in tbad.bad
+
 reg028a.idr:17:14-18:
+   |
+17 | qsortLemma = proof
+   |              ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
+
 reg028a.idr:11:1-14:
+   |
+11 | qsort' [] = []
+   | ~~~~~~~~~~~~~~
 tbad.qsort' is possibly not total due to: with block in tbad.qsort'
-reg034.idr:6:1-14:When checking left hand side of bar:
+
+reg034.idr:6:1-14:
+  |
+6 | bar xs xs Refl = Refl
+  | ~~~~~~~~~~~~~~
+When checking left hand side of bar:
 Can't match on bar xs xs Refl
-reg034.idr:9:1-14:When checking left hand side of foo:
+
+reg034.idr:9:1-14:
+  |
+9 | foo f x x Refl = Refl
+  | ~~~~~~~~~~~~~~
+When checking left hand side of foo:
 Can't match on foo f x x Refl
-reg035b.idr:8:12-38:No such variable __pi_arg
+
+reg035b.idr:8:14-38:
+  |
+8 | fins Z     = ([] ** (finZEmpty {a=_}))
+  |              ~~~~~~~~~~~~~~~~~~~~~~~~~
+No such variable __pi_arg
+
 reg044.idr:4:6-10:
+  |
+4 | pf = proof
+  |      ~~~~~
 This style of tactic proof is deprecated. See %runElab for the replacement.
-reg044.idr:4:4-6:13:When checking right hand side of Main.pf with expected type
+
+reg044.idr:4:6-6:13:
+  |
+4 | pf = proof
+  |      ~~~~~ ...
+When checking right hand side of Main.pf with expected type
         (b : Nat) -> (a : Nat) -> (S a = S b) -> a = b
 
 Type mismatch between
@@ -66,73 +165,165 @@ Specifically:
                 b
         and
                 a
-reg049.idr:2:11-14:When checking constructor Main.Bogus:
+
+reg049.idr:2:11-14:
+  |
+2 |   Bogus : Void
+  |           ~~~~
+When checking constructor Main.Bogus:
 Void is not Main.Foo
-reg049.idr:5:6-12:When checking right hand side of uhOh with expected type
+
+reg049.idr:5:8-12:
+  |
+5 | uhOh = Bogus
+  |        ~~~~~
+When checking right hand side of uhOh with expected type
         Void
 
 No such variable Bogus
-./badbangop.idr:7:1:
+
+badbangop.idr:7:1:
   |
 7 | (!) : List a -> Nat -> Maybe a
   | ^
 ! is not a valid operator
 
-./baddoublebang.idr:6:28:
+baddoublebang.idr:6:28:
   |
 6 | doubleBang mmn = do pure !!mmn
   |                            ^
 unexpected Operator without known fixity: !!
 
-reg054.idr:18:1-17:When checking left hand side of inf:
+reg054.idr:18:1-17:
+   |
+18 | inf (MkInfer _ Z) = True
+   | ~~~~~~~~~~~~~~~~~
+When checking left hand side of inf:
 When checking an application of constructor Main.MkInfer:
         Attempting concrete match on polymorphic argument: 0
-reg054.idr:34:1-18:When checking left hand side of weird:
+
+reg054.idr:34:1-18:
+   |
+34 | weird {x = Char} y = '5'
+   | ~~~~~~~~~~~~~~~~~~
+When checking left hand side of weird:
 No explicit types on left hand side: Char
-reg054.idr:37:1-30:When checking left hand side of weird':
+
+reg054.idr:37:1-30:
+   |
+37 | weird' {x = Prelude.Nat.Nat} y = Z
+   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When checking left hand side of weird':
 No explicit types on left hand side: Nat
-reg054.idr:40:1-7:When checking left hand side of tctrick:
+
+reg054.idr:40:1-7:
+   |
+40 | tctrick (Just x) = x
+   | ~~~~~~~
+When checking left hand side of tctrick:
 When checking an application of Main.tctrick:
         Type mismatch between
                 Maybe a1 (Type of Just x)
         and
                 a (Expected type)
-reg055.idr:5:1-7:When checking left hand side of g:
+
+reg055.idr:5:1-7:
+  |
+5 | g (f Z) = 1    
+  | ~~~~~~~
+When checking left hand side of g:
 Can't match on g (f 0)
-reg055.idr:8:1-5:When checking left hand side of h:
+
+reg055.idr:8:1-5:
+  |
+8 | h x x = x
+  | ~~~~~
+When checking left hand side of h:
 Can't match on h x x
-reg055a.idr:8:1-18:When checking left hand side of foo:
+
+reg055a.idr:8:1-18:
+  |
+8 | foo (CAny Nothing) = 42 
+  | ~~~~~~~~~~~~~~~~~~
+When checking left hand side of foo:
 When checking an application of constructor Foo.CAny:
         Attempting concrete match on polymorphic argument: Nothing
-reg055a.idr:13:1-23:When checking left hand side of Foo.apply:
+
+reg055a.idr:13:1-23:
+   |
+13 | apply (\x => \y => x) a = a
+   | ~~~~~~~~~~~~~~~~~~~~~~~
+When checking left hand side of Foo.apply:
 Can't match on apply (\x, y => x) a
-reg056.idr:7:16-25:dodgy n m Refl is a valid case
-reg056.idr:10:11-20:nonk Refl is a valid case
-reg068.idr:1:6-8:Main.nat has a name which may be implicitly bound.
+
+reg056.idr:7:16-25:
+  |
+7 | dodgy n m Refl impossible
+  |                ~~~~~~~~~~
+dodgy n m Refl is a valid case
+
+reg056.idr:10:11-20:
+   |
+10 | nonk Refl impossible
+   |           ~~~~~~~~~~
+nonk Refl is a valid case
+
+reg068.idr:1:6-8:
+  |
+1 | data nat : Type where --error
+  |      ~~~
+Main.nat has a name which may be implicitly bound.
 This is likely to lead to problems!
-reg068.idr:2:8-10:Main.ze has a name which may be implicitly bound.
-This is likely to lead to problems!
+
 reg068.idr:2:8-10:
+  |
+2 |   ze : nat --hello.idr:10:6:When checking constructor Main.ze: !!V 0!! is not Main.nat
+  |        ~~~
+Main.ze has a name which may be implicitly bound.
+This is likely to lead to problems!
+
+reg068.idr:2:8-10:
+  |
+2 |   ze : nat --hello.idr:10:6:When checking constructor Main.ze: !!V 0!! is not Main.nat
+  |        ~~~
 nat is bound as an implicit
 	Did you mean to refer to Main.nat?
-reg068.idr:2:8-10:When checking constructor Main.ze:
-Type level variable nat is not Main.nat
-Mod.idr:11:1-22:public export Mod.natexp can't refer to export Mod.natfn
-reg070.idr:7:1-7:
-Test_show.Te implementation of Prelude.Show.Show is possibly not total due to: Prelude.Show.Test_show.Te implementation of Prelude.Show.Show, method show
-./reg076.idr:8:1:
+
+reg068.idr:2:8-10:
   |
-8 | <empty line>
+2 |   ze : nat --hello.idr:10:6:When checking constructor Main.ze: !!V 0!! is not Main.nat
+  |        ~~~
+When checking constructor Main.ze:
+Type level variable nat is not Main.nat
+
+Mod.idr:11:1-22:
+   |
+11 | natexp k = S (natfn k)
+   | ~~~~~~~~~~~~~~~~~~~~~~
+public export Mod.natexp can't refer to export Mod.natfn
+
+reg070.idr:7:1-7:
+  |
+7 | Show Te where
+  | ~~~~~~~
+Test_show.Te implementation of Prelude.Show.Show is possibly not total due to: Prelude.Show.Test_show.Te implementation of Prelude.Show.Show, method show
+
+reg076.idr:8:1:
+  |
+8 | <end of file>
   | ^
 Missing fixity declaration for Main.:>
 
-./reg077.idr:3:1:
+reg077.idr:3:1:
   |
-3 | <empty line>
+3 | <end of file>
   | ^
 Missing fixity declaration for Main.:>>
 
 DoubleEquality.idr:4:83-103:
+  |
+4 | oops = the ((False = True) -> Void) (\Refl impossible) $ cong {f = (>0) . (1/)} $ the (-0.0 = 0.0) Refl
+  |                                                                                   ~~~~~~~~~~~~~~~~~~~~~
 When checking right hand side of oops with expected type
         Void
 
@@ -147,5 +338,16 @@ When checking argument value to function Prelude.Basics.the:
                         -0.0
                 and
                         0.0
-Canonicity.idr:9:1-9:Canonicity.f is not total as there are missing cases
-Canonicity.idr:12:1-20:Canonicity.NaN is possibly not total due to: Canonicity.f
+
+Canonicity.idr:9:1-9:
+  |
+9 | f Nil = 0
+  | ~~~~~~~~~
+Canonicity.f is not total as there are missing cases
+
+Canonicity.idr:12:1-20:
+   |
+12 | NaN = f (Cons 0 Nil)
+   | ~~~~~~~~~~~~~~~~~~~~
+Canonicity.NaN is possibly not total due to: Canonicity.f
+

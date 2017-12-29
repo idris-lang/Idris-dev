@@ -9,12 +9,13 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Output (clearHighlights, idemodePutSExp, iPrintError, iPrintFunTypes,
-                     iPrintResult, iPrintTermWithType, iputGoal, iputStr, iputStrLn,
-                     iRender, iRenderError, iRenderOutput, iRenderResult, iWarn,
-                     prettyDocumentedIst, printUndefinedNames, pshow, renderExternal,
-                     sendHighlighting, sendParserHighlighting, warnTotality,
-                     writeHighlights) where
+module Idris.Output (clearHighlights, emitWarning, formatMessage, idemodePutSExp,
+                     iPrintError, iPrintFunTypes, iPrintResult, iPrintTermWithType,
+                     iputGoal, iputStr, iputStrLn, iRender, iRenderError,
+                     iRenderOutput, iRenderResult, iWarn, prettyDocumentedIst,
+                     printUndefinedNames, pshow, renderExternal, sendHighlighting,
+                     sendParserHighlighting, warnTotality, writeHighlights,
+                     OutputDoc(..), Message(..)) where
 
 import Idris.AbsSyntax
 import Idris.Colours (hEndColourise, hStartColourise)
@@ -31,13 +32,15 @@ import Util.System (isATTY)
 
 import Prelude hiding ((<$>))
 
+import Control.Arrow (first)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
 import Data.List (intersperse, nub)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromJust, fromMaybe, isJust, listToMaybe)
 import System.Console.Haskeline.MonadException (MonadException(controlIO),
                                                 RunIO(RunIO))
 import System.FilePath (replaceExtension)
 import System.IO (Handle, hPutStr, hPutStrLn)
+import System.IO.Error (tryIOError)
 
 instance MonadException m => MonadException (ExceptT Err m) where
     controlIO f = ExceptT $ controlIO $ \(RunIO run) -> let
@@ -49,18 +52,141 @@ pshow ist err = displayDecorated (consoleDecorate ist) .
                 renderPretty 1.0 80 .
                 fmap (fancifyAnnots ist True) $ pprintErr ist err
 
-iWarn :: FC -> Doc OutputAnnotation -> Idris ()
-iWarn fc err =
+type OutputDoc = Doc OutputAnnotation
+
+class Message a where
+  messageExtent :: a -> FC
+  messageText :: a -> OutputDoc
+  messageSource :: a -> Maybe String
+
+data Ann = AText String | ATagged OutputAnnotation Ann | ASplit Ann Ann
+
+data SimpleWarning = SimpleWarning FC OutputDoc
+instance Message SimpleWarning where
+  messageExtent (SimpleWarning extent _) = extent
+  messageText (SimpleWarning _ msg) = msg
+  messageSource _ = Nothing
+
+formatMessage :: Message w => w -> Idris OutputDoc
+formatMessage w = do
+    i <- getIState
+    maybeSource <- case messageSource w of
+                     Just src -> pure (Just src)
+                     Nothing  -> readSource fc
+    let maybeFormattedSource = maybeSource >>= layoutSource fc (idris_highlightedRegions i)
+    return $ layoutMessage (layoutFC fc) maybeFormattedSource (messageText w)
+  where
+    fc :: FC
+    fc = messageExtent w
+
+    layoutFC :: FC -> OutputDoc
+    layoutFC fc@(FC fn _ _) | fn /= "" = text (show $ fc) <> colon
+    layoutFC _                         = empty
+
+    readSource :: FC -> Idris (Maybe String)
+    readSource (FC fn _ _) = do
+      result <- runIO $ tryIOError (readFile fn)
+      case result of
+        Left _  -> pure Nothing
+        Right v -> pure (Just v)
+    readSource _           = pure Nothing
+
+    layoutSource :: FC -> [(FC, OutputAnnotation)] -> String -> Maybe OutputDoc
+    layoutSource (FC fn (si, sj) (ei, ej)) highlights src =
+        if haveSource
+        then Just source
+        else Nothing
+      where
+        sourceLine :: Maybe String
+        sourceLine = listToMaybe . drop (si - 1) . (++ ["<end of file>"]) . lines $ src
+
+        haveSource :: Bool
+        haveSource = isJust sourceLine
+
+        line1 :: OutputDoc
+        line1 = text $ replicate (length (show si)) ' ' ++ " |"
+
+        lineFC :: FC
+        lineFC = FC fn (si, 1) (si, length (fromJust sourceLine))
+
+        intersects :: FC -> FC -> Bool
+        intersects (FC fn1 s1 e1) (FC fn2 s2 e2)
+          | fn1 /= fn2 = False
+          | e1 < s2    = False
+          | e2 < s1    = False
+          | otherwise  = True
+        intersects _ _ = False
+
+        intersection :: FC -> FC -> FC
+        intersection fc1@(FC fn1 s1 e1) fc2@(FC _ s2 e2)
+          | intersects fc1 fc2 = FC fn1 (max s1 s2) (min e1 e2)
+          | otherwise          = NoFC
+        intersection _ _       = NoFC
+
+        width :: Ann -> Int
+        width (AText s)     = length s
+        width (ATagged _ n) = width n
+        width (ASplit l r)  = width l + width r
+
+        sourceDoc :: Ann -> OutputDoc
+        sourceDoc (AText s)     = text s
+        sourceDoc (ATagged a n) = annotate a (sourceDoc n)
+        sourceDoc (ASplit l r)  = sourceDoc l <> sourceDoc r
+
+        insertAnnotation :: ((Int, Int), OutputAnnotation) -> Ann -> Ann
+        insertAnnotation ((sj, ej), oa) (ATagged tag n) = ATagged tag (insertAnnotation ((sj, ej), oa) n)
+        insertAnnotation ((sj, ej), oa) (ASplit l r)
+          | w <- width l                   = ASplit (insertAnnotation ((sj, ej), oa) l) (insertAnnotation ((sj - w, ej - w), oa) r)
+        insertAnnotation ((sj, ej), oa) a@(AText t)
+          | sj <= 1, ej >= width a         = ATagged oa a
+          | sj > 1,  sj <= width a         = ASplit (AText $ take (sj - 1) t) (insertAnnotation ((1, ej - sj + 1), oa) (AText $ drop (sj - 1) t))
+          | sj == 1, ej >= 1, ej < width a = ASplit (insertAnnotation ((1, ej), oa) (AText $ take ej t)) (AText $ drop ej t)
+          | otherwise                      = a
+
+        highlightedSource :: OutputDoc
+        highlightedSource = sourceDoc .
+                            foldr insertAnnotation (AText $ fromJust sourceLine) .
+                            map (\(FC _ (_, sj) (_, ej), ann) -> ((sj, ej), ann)) .
+                            map (first (intersection lineFC)) .
+                            filter (intersects lineFC . fst) $
+                            highlights
+
+        line2 :: OutputDoc
+        line2 = text (show si ++ " | ") <> highlightedSource
+
+        indicator :: OutputDoc
+        indicator = text (replicate (end - sj + 1) ch) <> ellipsis
+          where
+            (end, ch, ellipsis) = case (si == ei, sj == ej) of
+              (True , True ) -> (ej, '^', empty)
+              (True , False) -> (ej, '~', empty)
+              (False, _    ) -> (length (fromJust sourceLine), '~', text " ...")
+
+        line3 :: OutputDoc
+        line3 = line1 <> text (replicate sj ' ') <> indicator
+
+        source :: OutputDoc
+        source = line1 <$$> line2 <$$> line3
+    layoutSource _ _ _                                    = Nothing
+
+    layoutMessage :: OutputDoc -> Maybe OutputDoc -> OutputDoc -> OutputDoc
+    layoutMessage loc (Just src) err = loc <$$> src <$$> err <$$> empty
+    layoutMessage loc Nothing    err = loc </> err
+
+iWarn :: FC -> OutputDoc -> Idris ()
+iWarn fc err = emitWarning $ SimpleWarning fc err
+
+emitWarning :: Message w => w -> Idris ()
+emitWarning w =
   do i <- getIState
      case idris_outputmode i of
        RawOutput h ->
-         do err' <- iRender . fmap (fancifyAnnots i True) $
-                      case fc of
-                        FC fn _ _ | fn /= "" -> text (show fc) <> colon <//> err
-                        _ -> err
+         do formattedErr <- formatMessage w
+            err' <- iRender . fmap (fancifyAnnots i True) $ formattedErr
             hWriteDoc h i err'
        IdeMode n h ->
-         do err' <- iRender . fmap (fancifyAnnots i True) $ err
+         do err' <- iRender . fmap (fancifyAnnots i True) $ messageText w
+            let fc = messageExtent w
             let (str, spans) = displaySpans err'
             runIO . hPutStrLn h $
               convSExp "warning" (fc_fname fc, fc_start fc, fc_end fc, str, spans) n
