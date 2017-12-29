@@ -2,7 +2,11 @@ module Data.Buffer
 
 %include C "idris_buffer.h"
 
-||| A buffer is a pointer to a sized, unstructured, mutable chunk of memory
+||| A buffer is a pointer to a sized, unstructured, mutable chunk of memory.
+||| There are primitive operations for gettng and setting bytes, ints (32 bit) 
+||| and strings at a location in the buffer. These operations silently fail 
+||| if the location is out of bounds, so bounds checking should be done in 
+||| advance.
 export
 record Buffer where
   constructor MkBuffer
@@ -47,6 +51,15 @@ setByte b loc val
     = foreign FFI_C "idris_setBufferByte" (ManagedPtr -> Int -> Bits8 -> IO ())
               (rawdata b) loc val
 
+||| Set the int at position 'loc' to 'val'.
+||| Uses 4 bytes (assumes up to 32 bit Int).
+||| Does nothing if the location is outside the bounds of the buffer
+export
+setInt : Buffer -> (loc : Int) -> (val : Int) -> IO ()
+setInt b loc val
+    = foreign FFI_C "idris_setBufferInt" (ManagedPtr -> Int -> Int -> IO ())
+              (rawdata b) loc val
+
 ||| Set the byte at position 'loc' to 'val'.
 ||| Does nothing if the location is out of bounds of the buffer, or the string
 ||| is too long for the location
@@ -66,12 +79,31 @@ copyData src start len dest loc
     = foreign FFI_C "idris_copyBuffer" (ManagedPtr -> Int -> Int -> ManagedPtr -> Int -> IO ())
               (rawdata src) start len (rawdata dest) loc
 
-||| Return the value at the given location in the buffer
+||| Return the value at the given location in the buffer.
+||| Returns 0 if out of bounds.
 export
 getByte : Buffer -> (loc : Int) -> IO Bits8
 getByte b loc
     = foreign FFI_C "idris_getBufferByte" (ManagedPtr -> Int -> IO Bits8)
               (rawdata b) loc 
+
+||| Return the value at the given location in the buffer, assuming 4
+||| bytes to store the Int.
+||| Returns 0 if out of bounds.
+export
+getInt : Buffer -> (loc : Int) -> IO Int
+getInt b loc
+    = foreign FFI_C "idris_getBufferInt" (ManagedPtr -> Int -> IO Int)
+              (rawdata b) loc 
+
+||| Return the string at the given location in the buffer, with the given
+||| length. Returns "" if out of bounds.
+export
+getString : Buffer -> (loc : Int) -> (len : Int) -> IO String
+getString b loc len
+    = do MkRaw str <- foreign FFI_C "idris_getBufferString" (ManagedPtr -> Int -> Int -> IO (Raw String))
+                          (rawdata b) loc len
+         pure str
 
 ||| Read 'maxbytes' into the buffer from a file, returning a new
 ||| buffer with the 'locaton' pointer moved along

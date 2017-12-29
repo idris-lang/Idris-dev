@@ -39,6 +39,16 @@ void idris_setBufferByte(void* buffer, int loc, uint8_t byte) {
     }
 }
 
+void idris_setBufferInt(void* buffer, int loc, int val) {
+    Buffer* b = buffer;
+    if (loc >= 0 && loc+3 < b->size) {
+        b->data[loc] = val & 0xff;
+        b->data[loc+1] = (val >> 8) & 0xff;
+        b->data[loc+2] = (val >> 16) & 0xff;
+        b->data[loc+3] = (val >> 24) & 0xff;
+    }
+}
+
 void idris_setBufferString(void* buffer, int loc, char* str) {
     Buffer* b = buffer;
     int len = strlen(str);
@@ -55,6 +65,38 @@ uint8_t idris_getBufferByte(void* buffer, int loc) {
     } else {
         return 0;
     }
+}
+
+int idris_getBufferInt(void* buffer, int loc) {
+    Buffer* b = buffer;
+    if (loc >= 0 && loc+3 < b->size) {
+        return b->data[loc] + 
+               (b->data[loc+1] << 8) +
+               (b->data[loc+2] << 16) + 
+               (b->data[loc+3] << 24);
+    } else {
+        return 0;
+    }
+}
+
+VAL idris_getBufferString(void* buffer, int loc, int len) {
+    Buffer* b = buffer;
+
+    Closure* cl = allocate(sizeof(Closure) + // Type) + sizeof(char*) +
+                           sizeof(char)*(len+1), 0);
+    SETTY(cl, CT_STRING);
+    cl->info.str.str = (char*)cl + sizeof(Closure);
+
+    if (loc >= 0 && loc+len < b->size) {
+        memcpy(cl->info.str.str, (b->data)+loc, len);
+        cl->info.str.str[len]='\0';
+        cl->info.str.len = len;
+    } else {
+        cl->info.str.str[0] = '\0';
+        cl->info.str.len = 0;
+    }
+
+    return cl;
 }
 
 int idris_readBuffer(FILE* h, void* buffer, int loc, int max) {
