@@ -549,7 +549,7 @@ fnDecl :: SyntaxInfo -> IdrisParser [PDecl]
 fnDecl syn = P.try (do notEndBlock
                        d <- fnDecl' syn
                        i <- get
-                       let d' = fmap (desugar syn i) d
+                       let d' = fmap (debindApp syn . desugar syn i) d
                        return [d']) <?> "function declaration"
 
 {-| Parses a function declaration
