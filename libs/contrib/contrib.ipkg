@@ -13,6 +13,7 @@ modules = CFFI
 
         , Control.Delayed
         , Control.Isomorphism.Primitives
+        , Control.Monad.Syntax
         , Control.Partial
         , Control.Pipeline
 
