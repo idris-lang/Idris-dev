@@ -194,9 +194,6 @@ typedef void(*func)(VM*, VAL*);
 #define TOP(x) (*(vm->valstack_top + (x)))
 #define REG1 (vm->reg1)
 
-// align pointer
-#define ALIGN(__p, __alignment) ((__p + __alignment - 1) & ~(__alignment - 1))
-
 // Retrieving values
 #define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str.str) : GETSTROFF(x))
 #define GETSTRLEN(x) (ISSTR(x) ? (((VAL)(x))->info.str.len) : GETSTROFFLEN(x))
