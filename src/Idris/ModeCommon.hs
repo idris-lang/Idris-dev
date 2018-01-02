@@ -67,8 +67,8 @@ loadInputs inputs toline -- furthest line to read in input source files
                                    importlists
                                    input
                    let ifiles = getModuleFiles modTree
-                   logParser 1 ("MODULE TREE : " ++ show modTree)
-                   logParser 1 ("RELOAD: " ++ show ifiles)
+                   logParser 2 ("MODULE TREE : " ++ show modTree)
+                   logParser 2 ("RELOAD: " ++ show ifiles)
                    when (not (all ibc ifiles) || loadCode) $
                         tryLoad False IBC_Building (filter (not . ibc) ifiles)
                    -- return the files that need rechecking

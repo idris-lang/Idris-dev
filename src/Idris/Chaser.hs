@@ -32,9 +32,17 @@ data ModuleTree = MTree { mod_path :: IFileType,
                           mod_deps :: [ModuleTree] }
   deriving Show
 
-latest :: UTCTime -> [ModuleTree] -> UTCTime
-latest tm [] = tm
-latest tm (m : ms) = latest (max tm (mod_time m)) (ms ++ mod_deps m)
+latest :: UTCTime -> [IFileType] -> [ModuleTree] -> UTCTime
+latest tm done [] = tm
+latest tm done (m : ms)
+    | mod_path m `elem` done = latest tm done ms
+    | otherwise = latest (max tm (mod_time m)) (mod_path m : done)
+                         (ms ++ mod_deps m)
+
+modName :: IFileType -> String
+modName (IDR fp) = fp
+modName (LIDR fp) = fp
+modName (IBC fp src) = modName src
 
 -- | Given a module tree, return the list of files to be loaded. If
 -- any module has a descendent which needs reloading, return its
@@ -46,17 +54,17 @@ getModuleFiles ts = nub $ execState (modList ts) [] where
    modList (m : ms) = do modTree [] m; modList ms
 
    modTree path (MTree p rechk tm deps)
-           = do let file = chkReload rechk p
-                -- Needs rechecking if 'rechk' is true, or if any of the
-                -- modification times in 'deps' are later than tm
-                let depMod = latest tm deps
-                let needsRechk = rechk || depMod > tm
+       = do let file = chkReload rechk p
+            -- Needs rechecking if 'rechk' is true, or if any of the
+            -- modification times in 'deps' are later than tm
+            let depMod = latest tm [] deps
+            let needsRechk = rechk || depMod > tm
 
-                st <- get
-                if needsRechk then put $ nub (getSrc file : updateToSrc path st)
-                              else put $ nub (file : st)
---                 when (not (ibc p) || rechk) $
-                mapM_ (modTree (getSrc p : path)) deps
+            st <- get
+            if needsRechk then put $ nub (getSrc file : updateToSrc path st)
+                          else put $ nub (file : st)
+            st <- get
+            mapM_ (modTree (getSrc p : path)) deps
 
    chkReload False p = p
    chkReload True (IBC fn src) = chkReload True src
