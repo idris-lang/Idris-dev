@@ -27,6 +27,12 @@ data Maybe : (a : Type) -> Type where
 -- Syntactic tests
 --------------------------------------------------------------------------------
 
+Uninhabited (Nothing = Just _) where
+  uninhabited Refl impossible
+
+Uninhabited (Just _ = Nothing) where
+  uninhabited Refl impossible
+
 isNothing : Maybe a -> Bool
 isNothing Nothing  = True
 isNothing (Just j) = False
