@@ -15,6 +15,22 @@ data Elem : a -> List a -> Type where
      ||| Example: `the (Elem "b" ["a", "b"]) (There Here)`
      There : (later : Elem x xs) -> Elem x (y :: xs)
 
+||| `Here` will never equal `There`.
+hereIsNotThere : Not (Here = There _)
+hereIsNotThere Refl impossible
+
+||| If the tails don't match, neither will references to them.
+tailMismatch : Not (this = that) -> Not (There this = There that)
+tailMismatch f Refl = f Refl
+
+implementation DecEq (Elem x xs) where
+  decEq Here Here = Yes Refl
+  decEq Here (There later) = No hereIsNotThere
+  decEq (There later) Here = No (hereIsNotThere . sym)
+  decEq (There this) (There that) with (decEq this that)
+    decEq (There this) (There this) | Yes Refl  = Yes Refl
+    decEq (There this) (There that) | No contra = No (tailMismatch contra)
+
 implementation Uninhabited (Elem {a} x []) where
      uninhabited Here impossible
      uninhabited (There p) impossible
