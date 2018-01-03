@@ -10,6 +10,7 @@ module Idris.Package where
 
 import System.Directory
 import System.Directory (copyFile, createDirectoryIfMissing)
+import System.Environment
 import System.Exit
 import System.FilePath (addExtension, addTrailingPathSeparator, dropExtension,
                         hasExtension, takeDirectory, takeExtension,
@@ -437,17 +438,28 @@ inPkgDir pkgdesc action =
      return res
 
 -- ------------------------------------------------------- [ Makefile Commands ]
+-- | Invoke a Makefile's target with an enriched system environment
+makeTarget :: Maybe String -> Maybe String -> IO ()
+makeTarget _ Nothing = return ()
+makeTarget mtgt (Just s) = do incFlags <- intercalate " " <$> getIncFlags
+                              libFlags <- intercalate " " <$> getLibFlags
+                              newEnv <- (++ [("IDRIS_INCLUDES", incFlags),
+                                             ("IDRIS_LDFLAGS", libFlags)]) <$> getEnvironment
+                              let cmdLine = case mtgt of
+                                              Nothing -> "make -f " ++ s
+                                              Just tgt -> "make -f " ++ s ++ " " ++ tgt
+                              (_, _, _, r) <- createProcess (shell cmdLine) { env = Just newEnv }
+                              waitForProcess r
+                              return ()
+
+
 -- | Invoke a Makefile's default target.
 make :: Maybe String -> IO ()
-make Nothing = return ()
-make (Just s) = do rawSystem "make" ["-f", s]
-                   return ()
+make = makeTarget Nothing
 
 -- | Invoke a Makefile's clean target.
 clean :: Maybe String -> IO ()
-clean Nothing = return ()
-clean (Just s) = do rawSystem "make" ["-f", s, "clean"]
-                    return ()
+clean = makeTarget (Just "clean")
 
 -- | Merge an option list representing the command line options into
 -- those specified for a package description.
