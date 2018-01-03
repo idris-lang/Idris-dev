@@ -89,6 +89,7 @@ includeLibs =
     repl '\\' = '_'
     repl '/' = '_'
     repl '.' = '_'
+    repl '-' = '_'
     repl c   = c
   in
     concatMap (\lib -> "var " ++ (repl <$> lib) ++ " = require(\"" ++ lib ++"\");\n")
