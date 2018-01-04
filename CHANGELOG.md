@@ -34,6 +34,15 @@
 + The deprecated keywords `%assert_total`, `abstract`, and `[static]` have
   been removed as well as the use of "public" instead of "public export" to
   expose a symbol.
++ The syntax for pattern-match alternatives now works for `let` statements in
+  `do` blocks in addition to `let` expressions and `<-` statements, e.g.
+  ```idris
+    do …
+       let Just x = expr | Nothing => empty
+       …
+  ```
+  This means that a `with`-application (using `|`) cannot be used in that
+  position anymore.
 
 ## Library Updates
 

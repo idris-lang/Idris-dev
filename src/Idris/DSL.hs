@@ -105,8 +105,8 @@ expandSugar dsl (PDoBlock ds)
                                              ((p, block b rest) : alts)))]
     block b (DoLet fc rc n nfc ty tm : rest)
         = PLet fc rc n nfc ty tm (block b rest)
-    block b (DoLetP fc p tm : rest)
-        = PCase fc tm [(p, block b rest)]
+    block b (DoLetP fc p tm alts : rest)
+        = PCase fc tm ((p, block b rest) : alts)
     block b (DoRewrite fc h : rest)
         = PRewrite fc Nothing h (block b rest) Nothing
     block b (DoExp fc tm : rest)

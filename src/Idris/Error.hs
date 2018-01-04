@@ -131,7 +131,8 @@ warnDisamb ist (PDoBlock steps) = mapM_ wStep steps
         wStep (DoBindP _ x y cs) = warnDisamb ist x >> warnDisamb ist y >>
                                    mapM_ (\(x,y) -> warnDisamb ist x >> warnDisamb ist y) cs
         wStep (DoLet _ _ _ _ x y) = warnDisamb ist x >> warnDisamb ist y
-        wStep (DoLetP _ x y) = warnDisamb ist x >> warnDisamb ist y
+        wStep (DoLetP _ x y cs) = warnDisamb ist x >> warnDisamb ist y >>
+                                  mapM_ (\(x,y) -> warnDisamb ist x >> warnDisamb ist y) cs
         wStep (DoRewrite _ h) = warnDisamb ist h
 warnDisamb ist (PIdiom _ x) = warnDisamb ist x
 warnDisamb ist (PMetavar _ _) = return ()

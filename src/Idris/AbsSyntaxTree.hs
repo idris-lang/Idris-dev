@@ -1041,7 +1041,8 @@ mapPTermFC f g (PDoBlock dos) = PDoBlock (map mapPDoFC dos)
         mapPDoFC (DoBindP fc t1 t2 alts) =
           DoBindP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (map (\(l,r)-> (mapPTermFC f g l, mapPTermFC f g r)) alts)
         mapPDoFC (DoLet fc rc n nfc t1 t2) = DoLet (f fc) rc n (g nfc) (mapPTermFC f g t1) (mapPTermFC f g t2)
-        mapPDoFC (DoLetP fc t1 t2) = DoLetP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2)
+        mapPDoFC (DoLetP fc t1 t2 alts) =
+          DoLetP (f fc) (mapPTermFC f g t1) (mapPTermFC f g t2) (map (\(l,r) -> (mapPTermFC f g l, mapPTermFC f g r)) alts)
         mapPDoFC (DoRewrite fc h) = DoRewrite (f fc) (mapPTermFC f g h)
 mapPTermFC f g (PIdiom fc t)                  = PIdiom (f fc) (mapPTermFC f g t)
 mapPTermFC f g (PMetavar fc n)                = PMetavar (g fc) n
@@ -1166,7 +1167,7 @@ data PDo' t = DoExp  FC t
             | DoBind FC Name FC t     -- ^ second FC is precise name location
             | DoBindP FC t t [(t,t)]
             | DoLet  FC RigCount Name FC t t   -- ^ second FC is precise name location
-            | DoLetP FC t t
+            | DoLetP FC t t [(t,t)]
             | DoRewrite FC t          -- rewrite in do block
     deriving (Eq, Ord, Functor, Data, Generic, Typeable)
 {-!
@@ -1178,7 +1179,7 @@ instance Sized a => Sized (PDo' a) where
   size (DoBind fc nm nfc t)   = 1 + size fc + size nm + size nfc + size t
   size (DoBindP fc l r alts)  = 1 + size fc + size l  + size r   + size alts
   size (DoLet fc rc nm nfc l r)  = 1 + size fc + size nm + size l   + size r
-  size (DoLetP fc l r)        = 1 + size fc + size l  + size r
+  size (DoLetP fc l r alts)   = 1 + size fc + size l  + size r + size alts
   size (DoRewrite fc h)       = 1 + size fc + size h
 
 type PDo = PDo' PTerm
@@ -1274,7 +1275,7 @@ highestFC (PDoBlock lines) =
     getDoFC (DoBind fc nm nfc t)  = fc
     getDoFC (DoBindP fc l r alts) = fc
     getDoFC (DoLet fc rc nm nfc l r) = fc
-    getDoFC (DoLetP fc l r)       = fc
+    getDoFC (DoLetP fc l r alts)  = fc
     getDoFC (DoRewrite fc h)      = fc
 
 highestFC (PIdiom fc _)           = Just fc
@@ -1955,7 +1956,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
                    else text "=") <+>
                 group (align (hang 2 (prettySe (decD d) startPrec bnd v)))) :
                ppdo ((ln, False):bnd) dos
-             ppdo bnd (DoLetP _ _ _ : dos) = -- ok because never made by delab
+             ppdo bnd (DoLetP _ _ _ _ : dos) = -- ok because never made by delab
                text "no pretty printer for pattern-matching do binding" :
                ppdo bnd dos
              ppdo bnd (DoRewrite _ _ : dos) = -- ok because never made by delab

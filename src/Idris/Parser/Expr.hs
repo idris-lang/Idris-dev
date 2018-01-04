@@ -211,7 +211,9 @@ updateSynMatch = update
             upd ns (DoBindP fc i t ts)
                     = DoBindP fc (update ns i) (update ns t)
                                  (map (\(l,r) -> (update ns l, update ns r)) ts)
-            upd ns (DoLetP fc i t) = DoLetP fc (update ns i) (update ns t)
+            upd ns (DoLetP fc i t ts)
+                    = DoLetP fc (update ns i) (update ns t)
+                                (map (\(l,r) -> (update ns l, update ns r)) ts)
             upd ns (DoRewrite fc h) = DoRewrite fc (update ns h)
     update ns (PIdiom fc t) = PIdiom fc $ update ns t
     update ns (PMetavar fc n) = uncurry (flip PMetavar) $ updateB ns (n, fc)
@@ -1288,16 +1290,24 @@ do_ :: SyntaxInfo -> IdrisParser PDo
 do_ syn
      = P.try (do keyword "let"
                  (i, ifc) <- withExtent name
-                 ty <- P.option Placeholder (do lchar ':'
-                                                expr' syn)
+                 ty' <- P.optional (do lchar ':'
+                                       expr' syn)
                  reservedOp "="
-                 (e, fc) <- withExtent $ expr syn
-                 return (DoLet fc RigW i ifc ty e))
+                 (e, fc) <- withExtent $ expr (syn { withAppAllowed = False })
+                 -- If there is an explicit type, this can’t be a pattern-matching let, so do not parse alternatives
+                 P.option (DoLet fc RigW i ifc (fromMaybe Placeholder ty') e)
+                          (do lchar '|'
+                              when (isJust ty') $ fail "a pattern-matching let may not have an explicit type annotation"
+                              ts <- P.sepBy1 (do_alt (syn { withAppAllowed = False })) (lchar '|')
+                              return (DoLetP fc (PRef ifc [ifc] i) e ts)))
    <|> P.try (do keyword "let"
                  i <- expr' syn
                  reservedOp "="
-                 (sc, fc) <- withExtent $ expr syn
-                 return (DoLetP fc i sc))
+                 (e, fc) <- withExtent $ expr (syn { withAppAllowed = False })
+                 P.option (DoLetP fc i e [])
+                          (do lchar '|'
+                              ts <- P.sepBy1 (do_alt (syn { withAppAllowed = False })) (lchar '|')
+                              return (DoLetP fc i e ts)))
    <|> P.try (do (sc, fc) <- withExtent (keyword "rewrite" *> expr syn)
                  return (DoRewrite fc sc))
    <|> P.try (do (i, ifc) <- withExtent name
