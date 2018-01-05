@@ -97,7 +97,11 @@ char* idris_nextDirEntry(void* h) {
 }
 
 int idris_mkdir(char* dname) {
+#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+    return mkdir(dname);
+#else
     return mkdir(dname, S_IRWXU | S_IRGRP | S_IROTH);
+#endif
 }
 
 int idris_dirError(void *dptr) {
