@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <time.h>
+#include <dirent.h>
 
 #if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
 int win_fpoll(void* h);
@@ -57,6 +58,50 @@ int fileSize(void* h) {
     } else {
         return -1;
     }
+}
+
+typedef struct {
+    DIR* dirptr;
+    int error;
+} DirInfo;
+
+void* idris_dirOpen(char* dname) {
+    DIR *d = opendir(dname);
+    if (d == NULL) {
+        return NULL;
+    } else {
+        DirInfo* di = malloc(sizeof(DirInfo));
+        di->dirptr = d;
+
+        return (void*)di;
+    }
+}
+
+void idris_dirClose(void* h) {
+    DirInfo* di = (DirInfo*)h;
+    
+    closedir(di->dirptr);
+    free(di);
+}
+
+char* idris_nextDirEntry(void* h) {
+    DirInfo* di = (DirInfo*)h;
+    struct dirent* de = readdir(di->dirptr);
+
+    if (de == NULL) {
+        di->error = -1;
+        return NULL;
+    } else {
+        return de->d_name;
+    }
+}
+
+int idris_mkdir(char* dname) {
+    return mkdir(dname, S_IRWXU | S_IRGRP | S_IROTH);
+}
+
+int idris_dirError(void *dptr) {
+    return ((DirInfo*)dptr)->error;
 }
 
 int idris_writeStr(void* h, char* str) {
