@@ -1796,6 +1796,7 @@ loadSource lidr f toline
     toMutual :: PDecl -> PDecl
     toMutual m@(PMutual _ d) = m
     toMutual (PNamespace x fc ds) = PNamespace x fc (map toMutual ds)
+    toMutual (POpenInterfaces f ns ds) = POpenInterfaces f ns (map toMutual ds)
     toMutual x = let r = PMutual (fileFC "single mutual") [x] in
                  case x of
                    PClauses{} -> r
