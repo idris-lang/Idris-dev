@@ -1,4 +1,4 @@
-# New in 1.1.*
+# New in 1.2
 
 ## Language updates
 
@@ -22,7 +22,10 @@
   implementation [uninhabltb] Uninhabited (LTB Z) where
     uninhabited (MkDPair n prf) = absurd prf
   ```
-  It is possible to use `using implementation uninhabltb` to add the implementation to the automated resolution, but if it fails to find the instance due to non-injectivity, one must pass it explicitly to target function, i.e. `absurd @{uninhabltb}`.
+  It is possible to use `using implementation uninhabltb` to add the
+  implementation to the automated resolution, but if it fails to find the
+  instance due to non-injectivity, one must pass it explicitly to target
+  function, i.e. `absurd @{uninhabltb}`.
 + Verbatim strings now support trailing quote characters. All quote characters
   until the final three are considered part of the string. Now a string such as
   `""""hello""""` will parse, and is equivalent to `"\"hello\""`.
