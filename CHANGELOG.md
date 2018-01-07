@@ -118,7 +118,10 @@
 ## Packaging Updates
 
 + Package names now only accept a restrictive charset of letters, numbers and the `-_` characters.
-  Package names are also case insensitive
+  Package names are also case insensitive.
++ When building makefiles for the FFI, the environment variables
+  `IDRIS_INCLUDES` and `IDRIS_LDFLAGS` are now set with the correct C
+  flags.
 
 # New in 1.1.1
 
