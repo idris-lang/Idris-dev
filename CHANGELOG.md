@@ -1,4 +1,4 @@
-# New in 1.2
+# New in 1.2.0
 
 ## Language updates
 
