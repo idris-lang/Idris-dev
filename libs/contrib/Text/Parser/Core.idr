@@ -34,6 +34,10 @@ data GrammarT : (state : Type) -> (tok : Type) -> (consumes : Bool) -> Type -> T
      Get : GrammarT st tok False st
      Put : st -> GrammarT st tok False ()
 
+     Run : GrammarT inner tok c a ->
+           (init : inner) ->
+           GrammarT outer tok c (a, inner)
+
 
 public export
 Grammar : (tok : Type) -> (consumes : Bool) -> Type -> Type
@@ -87,9 +91,21 @@ Functor (GrammarT st tok c) where
       = SeqEat act (\val => map f (next val))
   map f (SeqEmpty act next)
       = SeqEmpty act (\val => map f (next val))
-  -- The remaining constructors (NextIs, EOF, Commit, Get, Put) have a fixed type,
+  -- The remaining constructors (NextIs, EOF, Commit, Get, Put, Run) have a fixed type,
   -- so a sequence must be used.
+  map {c = True} f p = SeqEmpty p (Empty . f)
   map {c = False} f p = SeqEmpty p (Empty . f)
+
+export
+run : GrammarT inner tok c a ->
+      inner ->
+      GrammarT outer tok c (a, inner)
+run = Run
+
+export
+lift : Grammar tok c a ->
+       GrammarT st tok c a
+lift g = map fst $ Run g ()
 
 ||| Sequence a grammar with value type `a -> b` and a grammar
 ||| with value type `a`. If both succeed, apply the function
@@ -132,6 +148,7 @@ mapToken f (SeqEmpty act next) = SeqEmpty (mapToken f act) (\x => mapToken f (ne
 mapToken f (Alt x y) = Alt (mapToken f x) (mapToken f y)
 mapToken f Get = Get
 mapToken f (Put x) = Put x
+mapToken f (Run sub init) = Run (mapToken f sub) init
 
 ||| Always succeed with the given value.
 export
@@ -219,11 +236,20 @@ shorter : (more : List tok) -> .(ys : List tok) ->
 shorter more [] = lteRefl
 shorter more (x :: xs) = LTESucc (lteSuccLeft (shorter more xs))
 
+upgradeRes : {c : Bool} -> {xs : List tok} ->
+             outerST ->
+             ParseResult innerST xs c ty ->
+             ParseResult outerST xs c (ty, innerST)
+upgradeRes state (Failure inner com msg xs) = Failure state com msg xs
+upgradeRes state (EmptyRes inner com val xs) = EmptyRes state com (val, inner) xs
+upgradeRes state (NonEmptyRes inner com val xs) = NonEmptyRes state com (val, inner) xs
+
 doParse : {c : Bool} ->
           (state : st) ->
           (commit : Bool) -> (xs : List tok) -> (act : GrammarT st tok c ty) ->
           ParseResult st xs c ty
 doParse state com xs act with (sizeAccessible xs)
+  doParse state com xs (Run sub init) | sml = upgradeRes state (doParse init com xs sub | sml)
   doParse state com xs Get | sml = EmptyRes state com state xs
   doParse state com xs (Put newState) | sml = EmptyRes newState com () xs
   doParse state com xs (Empty val) | sml = EmptyRes state com val xs
