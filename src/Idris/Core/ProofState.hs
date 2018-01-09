@@ -566,6 +566,8 @@ solve ctxt env (Bind x (Guess ty val) sc)
    = do ps <- get
         dropdots <-
              case lookup x (notunified ps) of
+                Just (P _ h _)
+                     | h == x -> return [] -- Can't solve itself!
                 Just tm -> -- trace ("NEED MATCH: " ++ show (x, tm, val) ++ "\nIN " ++ show (pterm ps)) $
                             do match_unify' ctxt env (tm, Just InferredVal)
                                                      (val, Just GivenVal)

@@ -1,3 +1,10 @@
+reg001.idr:3:1-9:
+  |
+3 | foo a a x = x
+  | ~~~~~~~~~
+When checking left hand side of foo:
+Can't match on foo a a x
+
 reg003a.idr:4:13-38:
   |
 4 |     ECons : Nat -> OddList -> EvenList
