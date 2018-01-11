@@ -209,7 +209,6 @@ gets f = pure (f !get)
 
 data ParseResult : (st : Type) -> List tok -> (consumes : Bool) -> Type -> Type where
      Failure : {xs : List tok} ->
-               (state : st) ->
                (committed : Bool) ->
                (err : String) -> (rest : List tok) -> ParseResult st xs c ty
      EmptyRes : (state : st) ->
@@ -226,7 +225,7 @@ data ParseResult : (st : Type) -> List tok -> (consumes : Bool) -> Type -> Type 
 weakenRes : {whatever, c : Bool} -> {xs : List tok} ->
             (com' : Bool) ->
 						ParseResult st xs c ty -> ParseResult st xs (whatever && c) ty
-weakenRes com' (Failure state com msg ts) = Failure state com' msg ts
+weakenRes com' (Failure com msg ts) = Failure com' msg ts
 weakenRes {whatever=True} com' (EmptyRes state com val xs) = EmptyRes state com' val xs
 weakenRes {whatever=False} com' (EmptyRes state com val xs) = EmptyRes state com' val xs
 weakenRes com' (NonEmptyRes state com val more) = NonEmptyRes state com' val more
@@ -240,7 +239,7 @@ upgradeRes : {c : Bool} -> {xs : List tok} ->
              outerST ->
              ParseResult innerST xs c ty ->
              ParseResult outerST xs c (ty, innerST)
-upgradeRes state (Failure inner com msg xs) = Failure state com msg xs
+upgradeRes state (Failure com msg xs) = Failure com msg xs
 upgradeRes state (EmptyRes inner com val xs) = EmptyRes state com (val, inner) xs
 upgradeRes state (NonEmptyRes inner com val xs) = NonEmptyRes state com (val, inner) xs
 
@@ -253,29 +252,29 @@ doParse state com xs act with (sizeAccessible xs)
   doParse state com xs Get | sml = EmptyRes state com state xs
   doParse state com xs (Put newState) | sml = EmptyRes newState com () xs
   doParse state com xs (Empty val) | sml = EmptyRes state com val xs
-  doParse state com [] (Fail str) | sml = Failure state com str []
-  doParse state com (x :: xs) (Fail str) | sml = Failure state com str (x :: xs)
+  doParse state com [] (Fail str) | sml = Failure com str []
+  doParse state com (x :: xs) (Fail str) | sml = Failure com str (x :: xs)
   doParse state com xs Commit | sml = EmptyRes state True () xs
 
-  doParse state com [] (Terminal f) | sml = Failure state com "End of input" []
+  doParse state com [] (Terminal f) | sml = Failure com "End of input" []
   doParse state com (x :: xs) (Terminal f) | sml
         = maybe
-             (Failure state com "Unrecognised token" (x :: xs))
+             (Failure com "Unrecognised token" (x :: xs))
              (\a => NonEmptyRes state com {xs=[]} a xs)
              (f x)
   doParse state com [] EOF | sml = EmptyRes state com () []
   doParse state com (x :: xs) EOF | sml
-        = Failure state com "Expected end of input" (x :: xs)
-  doParse state com [] (NextIs f) | sml = Failure state com "End of input" []
+        = Failure com "Expected end of input" (x :: xs)
+  doParse state com [] (NextIs f) | sml = Failure com "End of input" []
   doParse state com (x :: xs) (NextIs f) | sml
         = if f x
              then EmptyRes state com x (x :: xs)
-             else Failure state com "Unrecognised token" (x :: xs)
+             else Failure com "Unrecognised token" (x :: xs)
   doParse state com xs (Alt x y) | sml with (doParse state False xs x | sml)
-    doParse state com xs (Alt x y) | sml | Failure state' com' msg ts
+    doParse state com xs (Alt x y) | sml | Failure com' msg ts
           = if com' -- If the alternative had committed, don't try the
                     -- other branch (and reset commit flag)
-               then Failure state' com msg ts
+               then Failure com msg ts
                else weakenRes com (doParse state False xs y | sml)
     -- Successfully parsed the first option, so use the outer commit flag
     doParse state com xs (Alt x y) | sml | (EmptyRes state' _ val xs)
@@ -284,32 +283,32 @@ doParse state com xs act with (sizeAccessible xs)
           = NonEmptyRes state' com val more
   doParse state com xs (SeqEmpty act next) | (Access morerec)
           = case doParse state com xs act | Access morerec of
-                 Failure state' com msg ts => Failure state' com msg ts
+                 Failure com msg ts => Failure com msg ts
                  EmptyRes state' com val xs =>
                        case doParse state' com xs (next val) | (Access morerec) of
-                            Failure state'' com' msg ts => Failure state'' com' msg ts
+                            Failure com' msg ts => Failure com' msg ts
                             EmptyRes state'' com' val xs => EmptyRes state'' com' val xs
                             NonEmptyRes state'' com' val more => NonEmptyRes state'' com' val more
                  NonEmptyRes state' {x} {xs=ys} com val more =>
                        case (doParse state' com more (next val) | morerec _ (shorter more ys)) of
-                            Failure state'' com' msg ts => Failure state'' com' msg ts
+                            Failure com' msg ts => Failure com' msg ts
                             EmptyRes state'' com' val _ => NonEmptyRes state'' com' val more
                             NonEmptyRes state'' {x=x1} {xs=xs1} com' val more' =>
                                  rewrite appendAssociative (x :: ys) (x1 :: xs1) more' in
                                          NonEmptyRes state'' com' val more'
   doParse state com xs (SeqEat act next) | sml with (doParse state com xs act | sml)
-    doParse state com xs (SeqEat act next) | sml | Failure state' com' msg ts
-         = Failure state' com' msg ts
+    doParse state com xs (SeqEat act next) | sml | Failure com' msg ts
+         = Failure com' msg ts
     doParse state com (x :: (ys ++ more)) (SeqEat act next) | (Access morerec) | (NonEmptyRes state' com' val more)
          = case doParse state' com' more (next val) | morerec _ (shorter more ys) of
-                Failure state'' com' msg ts => Failure state'' com' msg ts
+                Failure com' msg ts => Failure com' msg ts
                 EmptyRes state'' com' val _ => NonEmptyRes state'' com' val more
                 NonEmptyRes state'' {x=x1} {xs=xs1} com' val more' =>
                      rewrite appendAssociative (x :: ys) (x1 :: xs1) more' in
                              NonEmptyRes state'' com' val more'
   -- This next line is not strictly necessary, but it stops the coverage
   -- checker taking a really long time and eating lots of memory...
-  doParse state _ _ _ | sml = Failure state True "Help the coverage checker!" []
+  doParse state _ _ _ | sml = Failure True "Help the coverage checker!" []
 
 public export
 data ParseError tok = Error String (List tok)
@@ -325,7 +324,7 @@ parseState : (act : GrammarT st tok c ty) ->
           Either (ParseError tok) ((ty, st), List tok)
 parseState act initial xs
     = case doParse initial False xs act of
-           Failure _ _ msg ts => Left (Error msg ts)
+           Failure _ msg ts => Left (Error msg ts)
            EmptyRes state _ val rest => Right ((val, state), rest)
            NonEmptyRes state _ val rest => Right ((val, state), rest)
 
