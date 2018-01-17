@@ -235,20 +235,16 @@ shorter : (more : List tok) -> .(ys : List tok) ->
 shorter more [] = lteRefl
 shorter more (x :: xs) = LTESucc (lteSuccLeft (shorter more xs))
 
-upgradeRes : {c : Bool} -> {xs : List tok} ->
-             outerST ->
-             ParseResult innerST xs c ty ->
-             ParseResult outerST xs c (ty, innerST)
-upgradeRes state (Failure com msg xs) = Failure com msg xs
-upgradeRes state (EmptyRes inner com val xs) = EmptyRes state com (val, inner) xs
-upgradeRes state (NonEmptyRes inner com val xs) = NonEmptyRes state com (val, inner) xs
-
 doParse : {c : Bool} ->
           (state : st) ->
           (commit : Bool) -> (xs : List tok) -> (act : GrammarT st tok c ty) ->
           ParseResult st xs c ty
 doParse state com xs act with (sizeAccessible xs)
-  doParse state com xs (Run sub init) | sml = upgradeRes state (doParse init com xs sub | sml)
+  doParse state com xs (Run sub init) | sml
+        = case (doParse init com xs sub | sml) of
+               Failure com' msg xs' => Failure com' msg xs'
+               EmptyRes inner com' val xs' => EmptyRes state com' (val, inner) xs'
+               NonEmptyRes inner com' val xs' => NonEmptyRes state com' (val, inner) xs'
   doParse state com xs Get | sml = EmptyRes state com state xs
   doParse state com xs (Put newState) | sml = EmptyRes newState com () xs
   doParse state com xs (Empty val) | sml = EmptyRes state com val xs
