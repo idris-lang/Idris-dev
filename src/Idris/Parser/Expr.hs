@@ -939,7 +939,7 @@ rewriteTerm syn = do keyword "rewrite"
                      return (PRewrite fc using prf sc giving)
                   <?> "term rewrite expression"
 
--- | Parse a constant and its source span
+-- | Parse rig count for linear types
 rigCount :: Parsing m => m RigCount
 rigCount = P.option RigW $ do lchar '1'; return Rig1
                        <|> do lchar '0'; return Rig0
