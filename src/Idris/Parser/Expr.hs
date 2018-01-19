@@ -939,6 +939,11 @@ rewriteTerm syn = do keyword "rewrite"
                      return (PRewrite fc using prf sc giving)
                   <?> "term rewrite expression"
 
+-- | Parse a constant and its source span
+rigCount :: Parsing m => m RigCount
+rigCount = P.option RigW $ do lchar '1'; return Rig1
+                       <|> do lchar '0'; return Rig0
+
 {- |Parses a let binding
 @
 Let ::=
@@ -957,18 +962,19 @@ let_ syn = P.try (do keyword "let"
                      return (buildLets ls sc))
            <?> "let binding"
   where buildLets [] sc = sc
-        buildLets ((fc, PRef nfc _ n, ty, v, []) : ls) sc
-          = PLet fc RigW n nfc ty v (buildLets ls sc)
-        buildLets ((fc, pat, ty, v, alts) : ls) sc
+        buildLets ((fc, rc, PRef nfc _ n, ty, v, []) : ls) sc
+          = PLet fc rc n nfc ty v (buildLets ls sc)
+        buildLets ((fc, _, pat, ty, v, alts) : ls) sc
           = PCase fc v ((pat, buildLets ls sc) : alts)
 
-let_binding syn = do (pat, fc) <- withExtent $ expr' (syn { inPattern = True })
+let_binding syn = do rc <- rigCount
+                     (pat, fc) <- withExtent $ expr' (syn { inPattern = True })
                      ty <- P.option Placeholder (do lchar ':'; expr' syn)
                      lchar '='
                      v <- expr (syn { withAppAllowed = isVar pat })
                      ts <- P.option [] (do lchar '|'
                                            P.sepBy1 (do_alt syn) (lchar '|'))
-                     return (fc,pat,ty,v,ts)
+                     return (fc,rc,pat,ty,v,ts)
    where isVar (PRef _ _ _) = True
          isVar _ = False
 
@@ -1169,7 +1175,7 @@ FunctionSignatureList ::=
 @
 -}
 typeDeclList :: SyntaxInfo -> IdrisParser [(RigCount, Name, FC, PTerm)]
-typeDeclList syn = P.try (P.sepBy1 (do rig <- P.option RigW rigCount
+typeDeclList syn = P.try (P.sepBy1 (do rig <- rigCount
                                        (x, xfc) <- withExtent fnName
                                        lchar ':'
                                        t <- typeExpr (disallowImp syn)
@@ -1180,9 +1186,6 @@ typeDeclList syn = P.try (P.sepBy1 (do rig <- P.option RigW rigCount
                           t <- typeExpr (disallowImp syn)
                           return (map (\(x, xfc) -> (RigW, x, xfc, t)) ns)
                    <?> "type declaration list"
-  where
-    rigCount = do lchar '1'; return Rig1
-           <|> do lchar '0'; return Rig0
 
 {- | Parses a type declaration list with optional parameters
 @
