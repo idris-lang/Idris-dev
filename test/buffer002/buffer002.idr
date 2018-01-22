@@ -6,12 +6,19 @@ main = do Just buf <- newBuffer 40
           setInt buf 5 1234567890
           setInt buf 36 1234567890
           setString buf 20 "Hello world!"
+
+          setDouble buf 10 123.456
+
           printLn !(bufferData buf)
 
           val <- getInt buf 5
           printLn val
           val <- getInt buf 6
           printLn val
+
+          val <- getDouble buf 10
+          printLn val
+
           val <- getInt buf 36
           printLn val
           val <- getInt buf 37 -- out of bounds, expect 0

@@ -49,6 +49,17 @@ void idris_setBufferInt(void* buffer, int loc, int val) {
     }
 }
 
+void idris_setBufferDouble(void* buffer, int loc, double val) {
+    Buffer* b = buffer;
+    // I am not proud of this
+    if (loc >= 0 && loc + sizeof(double) < b->size) {
+        unsigned char* c = (unsigned char*)(& val);
+        for (int i = 0; i < sizeof(double); ++i) {
+            b->data[loc+i] = c[i];
+        }
+    }
+}
+
 void idris_setBufferString(void* buffer, int loc, char* str) {
     Buffer* b = buffer;
     int len = strlen(str);
@@ -75,6 +86,22 @@ int idris_getBufferInt(void* buffer, int loc) {
                (b->data[loc+2] << 16) + 
                (b->data[loc+3] << 24);
     } else {
+        return 0;
+    }
+}
+
+double idris_getBufferDouble(void* buffer, int loc) {
+    Buffer* b = buffer;
+    double d;
+    // I am even less proud of this
+    unsigned char *c = (unsigned char*)(& d);
+    if (loc >= 0 && loc + sizeof(double) < b->size) {
+        for (int i = 0; i < sizeof(double); ++i) {
+            c[i] = b->data[loc+i];
+        }
+        return d;
+    }
+    else {
         return 0;
     }
 }
