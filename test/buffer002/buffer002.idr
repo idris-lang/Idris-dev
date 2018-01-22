@@ -7,9 +7,9 @@ main = do Just buf <- newBuffer 40
           setInt buf 36 1234567890
           setString buf 20 "Hello world!"
 
-          setDouble buf 10 123.456
-
           printLn !(bufferData buf)
+          
+          setDouble buf 10 123.456
 
           val <- getInt buf 5
           printLn val
