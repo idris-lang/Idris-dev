@@ -1,0 +1,18 @@
+totality025.idr:3:17-26:
+  |
+3 | bad1 _ _ _ Refl impossible
+  |                 ~~~~~~~~~~
+bad1 _ _ _ Refl is a valid case
+
+totality025.idr:12:17-26:
+   |
+12 | bad2 _ _ _ Refl impossible
+   |                 ~~~~~~~~~~
+bad2 _ _ _ Refl is a valid case
+
+totality025.idr:16:19-28:
+   |
+16 | bad3 _ _ _ _ Refl impossible
+   |                   ~~~~~~~~~~
+bad3 _ _ _ _ Refl is a valid case
+

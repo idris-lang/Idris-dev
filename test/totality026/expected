@@ -1,0 +1,6 @@
+totality026.idr:5:8-17:
+  |
+5 | p Here impossible
+  |        ~~~~~~~~~~
+p Here is a valid case
+
