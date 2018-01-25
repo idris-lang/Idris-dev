@@ -54,7 +54,8 @@ void idris_setBufferDouble(void* buffer, int loc, double val) {
     // I am not proud of this
     if (loc >= 0 && loc + sizeof(double) <= b->size) {
         unsigned char* c = (unsigned char*)(& val);
-        for (int i = 0; i < sizeof(double); ++i) {
+        int i;
+        for (i = 0; i < sizeof(double); ++i) {
             b->data[loc+i] = c[i];
         }
     }
@@ -96,7 +97,8 @@ double idris_getBufferDouble(void* buffer, int loc) {
     // I am even less proud of this
     unsigned char *c = (unsigned char*)(& d);
     if (loc >= 0 && loc + sizeof(double) <= b->size) {
-        for (int i = 0; i < sizeof(double); ++i) {
+        int i;
+        for (i = 0; i < sizeof(double); ++i) {
             c[i] = b->data[loc+i];
         }
         return d;
