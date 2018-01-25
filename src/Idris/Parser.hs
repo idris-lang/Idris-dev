@@ -87,7 +87,7 @@ moduleName :: Parsing m => m Name
 moduleName = mkName [] . map T.pack <$> moduleNamePieces where
 
   mkName :: [T.Text] -> [T.Text] -> Name
-  mkName ts [x]    = NS (UN x) ts
+  mkName ts [x]    = if null ts then UN x else NS (UN x) ts
   mkName ts (x:xs) = mkName (x : ts) xs
 
 moduleNamePieces :: Parsing m => m [String]

@@ -1,0 +1,6 @@
+package datatypes
+
+sourcedir = src
+
+modules = Data.Type
+
