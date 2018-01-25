@@ -2,6 +2,7 @@
 
 ${IDRIS:-idris} $@ --nobanner --nocolour --quiet --port none <<!
 :load reg001.idr
+:load reg002.idr
 :load reg003.idr
 :load reg003a.idr
 :load reg006.idr

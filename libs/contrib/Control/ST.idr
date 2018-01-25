@@ -399,7 +399,7 @@ runST env (Write lbl prf val) k = k () (updateEnv prf env val)
 runSTLoop : Fuel -> Env invars -> STransLoop m a invars outfn ->
             (k : (x : a) -> Env (outfn x) -> m b) ->
             (onDry : m b) -> m b
-runSTLoop Empty _ _ _ onDry = onDry
+runSTLoop Dry _ _ _ onDry = onDry
 runSTLoop (More x) env (Bind prog next) k onDry
     = runST env prog (\prog', env' => runSTLoop x env' (next prog') k onDry)
 runSTLoop (More x) env (Pure result) k onDry = k result env

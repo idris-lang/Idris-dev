@@ -13,6 +13,6 @@ ${IDRIS:-idris} $@ --check \
 ${IDRIS:-idris} $@ --check --nobuiltins reg047.idr
 
 ${IDRIS:-idris} $@ --check --nocolour \
-     reg062.lidr reg073.lidr
+     reg073.lidr
 
 rm -f *.ibc

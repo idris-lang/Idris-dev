@@ -30,6 +30,7 @@ import Control.Applicative
 import Control.Monad.State
 import Prelude hiding (Applicative, Foldable, Traversable, (<$>))
 
+import Data.Char
 import Data.Either
 import Data.List hiding (insert, union)
 import qualified Data.Map as M
@@ -1982,7 +1983,11 @@ aiFn topname inpat True qq imp_meths ist fc f ffc ds []
   | inpat && implicitable f && unqualified f = Right $ PPatvar ffc f
   | otherwise
      = case lookupDef f (tt_ctxt ist) of
-        [] -> Right $ PPatvar ffc f
+        [] -> case f of
+                   MN _ _ -> Right $ PPatvar ffc f
+                   UN xs | isDigit (T.head xs) -- for partial evaluation vars
+                             -> Right $ PPatvar ffc f
+                   _ -> Left $ Msg $ show f ++ " is not a valid name for a pattern variable"
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
                     -- trace (show f ++ " " ++ show (fc, any (all imp) ialts, ialts, any constructor alts)) $
                     if (not (vname f) || tcname f

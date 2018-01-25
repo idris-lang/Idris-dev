@@ -91,7 +91,7 @@ using (i: Fin n, gam : Vect n Ty, gam' : Vect n Ty, gam'' : Vect n Ty)
                Args gam as -> Args gam (interpTy a :: as)
 
   funTy : List Type -> Ty -> Ty
-  funTy list.Nil t = t
+  funTy List.Nil t = t
   funTy (a :: as) t = a :-> funTy as t
 
   data Res : Vect n Ty -> Vect n Ty -> Ty -> Type where

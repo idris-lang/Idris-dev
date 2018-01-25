@@ -5,4 +5,4 @@ sigmaEq2 : {A : Type} ->
            fst s1 = fst s2 ->
            snd s1 = snd s2 ->
            s1 = s2
-sigmaEq2 {A} {P} {s1 = (x ** prf)} {s2 = (x ** prf)} Refl Refl = Refl
+sigmaEq2 {A=a} {P=p} {s1 = (x ** prf)} {s2 = (x ** prf)} Refl Refl = Refl

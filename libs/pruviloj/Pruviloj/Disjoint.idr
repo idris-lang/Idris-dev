@@ -78,7 +78,7 @@ disjoint =
   do compute
      g <- snd <$> getGoal
      case g of
-       `(((=) {A=~A} {B=~B} ~a ~b) -> Void) =>
+       `(((=) {A=~aTy} {B=~bTy} ~a ~b) -> Void) =>
          do Just lHead <- headName <$> forget a
               | Nothing => fail [TermPart a, TextPart "doesn't have a name at the head"]
             Just rHead <- headName <$> forget b
@@ -101,7 +101,7 @@ discriminate =
       -- for each thing in the context, until we find one that succeeds
       flip choiceMap !getEnv $ \(n, b) =>
         do -- 1) check if it is an equality
-           `(((=) {A=~A} {B=~B} ~a ~b)) <- forget (binderTy b)
+           `(((=) {A=~aTy} {B=~bTy} ~a ~b)) <- forget (binderTy b)
              | _ => fail [TextPart "Not equality type"]
            -- 2) check if both sides of the equality have heads
            case (headName a, headName b) of

@@ -8,7 +8,7 @@ Dec0 : Type -> Type
 Dec0 = Dec
 
 Dec1 : {A : Type} -> (P : A -> Type) -> Type
-Dec1 {A} P = (a : A) -> Dec0 (P a)
+Dec1 {A=aTy} p = (a : aTy) -> Dec0 (p a)
 
 Unique : Type -> Type
 Unique t = (p : t) -> (q : t) -> p = q
@@ -41,7 +41,7 @@ namespace Finite
 
   ||| Notion of finiteness for types
   Finite : Type -> Type
-  Finite A = Exists (\ n => Iso A (Fin n))
+  Finite a = Exists (\ n => Iso a (Fin n))
 
   ||| Cardinality of finite types
   card : {A : Type} -> (fA : Finite A) -> Nat

@@ -82,7 +82,7 @@ partial
 mkRhs : (fn, fam : TTName) -> Nat -> Elab ()
 mkRhs fn fam k =
     case snd !getGoal of
-      `(Dec ((=) {A=~A} {B=~_} ~x ~y)) =>
+      `(Dec ((=) {A=~_} {B=~_} ~x ~y)) =>
         let (c1, args1) = unApply x
             (c2, args2) = unApply y
         in if c1 /= c2
@@ -138,17 +138,17 @@ deriveDecEq : (fn : TTName) -> Elab ()
 deriveDecEq fn =
     do (_, Ref, sig') <- lookupTyExact fn
        sig <- forget sig'
-       (args, `(Dec ((=) {A=~A} {B=~_} ~(Var x) ~(Var y)))) <- stealBindings sig noRenames
+       (args, `(Dec ((=) {A=~aTy} {B=~_} ~(Var x) ~(Var y)))) <- stealBindings sig noRenames
          | other => fail [ TextPart "Return type"
                          , RawPart (snd other)
                          , TextPart "isn't decidable equality"
                          ]
 
-       datatype <- maybe (fail [ RawPart A
+       datatype <- maybe (fail [ RawPart aTy
                                , TextPart "is not an application of a TC"
                                ])
                          lookupDatatypeExact
-                         (headName A)
+                         (headName aTy)
 
        -- the signature must be like this:
        -- 1. a collection of variable bindings (will be implicit)

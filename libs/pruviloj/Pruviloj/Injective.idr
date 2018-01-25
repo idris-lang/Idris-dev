@@ -97,7 +97,7 @@ injective : (tm : Raw) -> (n : TTName) -> Elab ()
 injective tm n =
   do (_, ty) <- check !getEnv tm
      case !(forget ty) of
-       `((=) {A=~A} {B=~B} ~x ~y) =>
+       `((=) {A=~a} {B=~b} ~x ~y) =>
          case (headName x, headName y) of
            (Just xHd, Just yHd) =>
              if xHd /= yHd

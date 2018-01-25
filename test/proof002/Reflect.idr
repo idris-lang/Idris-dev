@@ -6,7 +6,7 @@ import Decidable.Equality
 %default total
 %language FirstClassReflection
 
-using (xs : List a, ys : List a, G : List (List a))
+using (xs : List a, ys : List a, gam : List (List a))
 
   data Elem : a -> List a -> Type where
        Stop : Elem x (x :: xs)
@@ -16,20 +16,20 @@ using (xs : List a, ys : List a, G : List (List a))
 -- and over a set of list variables.
 
   data Expr : List (List a) -> List a -> Type where
-       App  : Expr G xs -> Expr G ys -> Expr G (xs ++ ys)
-       Var  : Elem xs G -> Expr G xs
-       ENil : Expr G []
+       App  : Expr gam xs -> Expr gam ys -> Expr gam (xs ++ ys)
+       Var  : Elem xs gam -> Expr gam xs
+       ENil : Expr gam []
 
 -- Reflection of list equalities, indexed over the concrete equality.
 
   data ListEq : List (List a) -> Type -> Type where
-       EqP : Expr G xs -> Expr G ys -> ListEq G (xs = ys)
+       EqP : Expr gam xs -> Expr gam ys -> ListEq gam (xs = ys)
 
 -- Fully right associative list expressions
 
   data RExpr : List (List a) -> List a -> Type where
-       RApp : RExpr G xs -> Elem ys G -> RExpr G (xs ++ ys)
-       RNil : RExpr G []
+       RApp : RExpr gam xs -> Elem ys gam -> RExpr gam (xs ++ ys)
+       RNil : RExpr gam []
 
 -- Convert an expression to a right associative expression, and return
 -- a proof that the rewriting has an equal interpretation to the original
@@ -38,7 +38,7 @@ using (xs : List a, ys : List a, G : List (List a))
 -- The idea is that we use this proof to build a proof of equality of
 -- list appends
 
-  expr_r : Expr G xs -> (xs' ** (RExpr G xs', xs = xs'))
+  expr_r : Expr gam xs -> (xs' ** (RExpr gam xs', xs = xs'))
   expr_r ENil = (_ ** (RNil, Refl))
   expr_r (Var i) = (_ ** (RApp RNil i, Refl))
   expr_r (App ex ey) = let (xl ** (xr, xprf)) = expr_r ex in
@@ -46,29 +46,29 @@ using (xs : List a, ys : List a, G : List (List a))
                                appRExpr _ _ xr yr xprf yprf
     where
       appRExpr : (xs', ys' : List a) ->
-                 {G : List (List a)} -> {xs, ys : List a} ->
-                 RExpr G xs -> RExpr G ys -> (xs' = xs) -> (ys' = ys) ->
-                 (ws' ** (RExpr G ws', xs' ++ ys' = ws'))
+                 {gam : List (List a)} -> {xs, ys : List a} ->
+                 RExpr gam xs -> RExpr gam ys -> (xs' = xs) -> (ys' = ys) ->
+                 (ws' ** (RExpr gam ws', xs' ++ ys' = ws'))
       appRExpr x' y' rxs (RApp e i) xprf yprf
          = let (xs ** (rec, prf)) = appRExpr _ _ rxs e Refl Refl in
                (_ ** (RApp rec i, ?appRExpr1))
       appRExpr x' y' rxs RNil xprf yprf = (_ ** (rxs, ?appRExpr2))
 
-  r_expr : RExpr G xs -> Expr G xs
+  r_expr : RExpr gam xs -> Expr gam xs
   r_expr RNil = ENil
   r_expr (RApp xs i) = App (r_expr xs) (Var i)
 
 -- Convert an expression to some other equivalent expression (which
 -- just happens to be normalised to right associative form)
 
-  reduce : Expr G xs -> (xs' ** (Expr G xs', xs = xs'))
+  reduce : Expr gam xs -> (xs' ** (Expr gam xs', xs = xs'))
   reduce e = let (x' ** (e', prf)) = expr_r e in
                  (x' ** (r_expr e', prf))
 
 -- Build a proof that two expressions are equal. If they are, we'll know
 -- that the indices are equal.
 
-  eqExpr : (e : Expr G xs) -> (e' : Expr G ys) ->
+  eqExpr : (e : Expr gam xs) -> (e' : Expr gam ys) ->
            Maybe (e = e')
   eqExpr (App x y) (App x' y') with (eqExpr x x', eqExpr y y')
     eqExpr (App x y) (App x y)   | (Just Refl, Just Refl) = Just Refl
@@ -83,20 +83,20 @@ using (xs : List a, ys : List a, G : List (List a))
 -- they are equal
 
   buildProof : {xs : List a} -> {ys : List a} ->
-               Expr G ln -> Expr G rn ->
+               Expr gam ln -> Expr gam rn ->
                (xs = ln) -> (ys = rn) -> Maybe (xs = ys)
   buildProof e e' lp rp with (eqExpr e e')
     buildProof e e lp rp  | Just Refl = ?bp1
     buildProof e e' lp rp | Nothing = Nothing
 
-  testEq : Expr G xs -> Expr G ys -> Maybe (xs = ys)
+  testEq : Expr gam xs -> Expr gam ys -> Maybe (xs = ys)
   testEq l r = let (ln ** (l', lPrf)) = reduce l in
                let (rn ** (r', rPrf)) = reduce r in
                    buildProof l' r' lPrf rPrf
 
 -- Given a reflected equality, try to produce a proof that holds
 
-  prove : ListEq G t -> Maybe t
+  prove : ListEq gam t -> Maybe t
   prove (EqP xs ys) = testEq xs ys
 
   getJust : (x : Maybe a) -> IsJust x -> a
@@ -114,15 +114,15 @@ using (xs : List a, ys : List a, G : List (List a))
     isElem x (x :: ys) | Just Refl = [| Stop |]
     isElem x (y :: ys) | Nothing = [| Pop (isElem x ys) |]
 
-  weakenElem : (G' : List a) -> Elem x xs -> Elem x (G' ++ xs)
+  weakenElem : (gam' : List a) -> Elem x xs -> Elem x (gam' ++ xs)
   weakenElem [] p = p
-  weakenElem (g :: G) p = Pop (weakenElem G p)
+  weakenElem (g :: gam) p = Pop (weakenElem gam p)
 
-  weaken : (G' : List (List a)) ->
-           Expr G xs -> Expr (G' ++ G) xs
-  weaken G' (App l r) = App (weaken G' l) (weaken G' r)
-  weaken G' (Var x) = Var (weakenElem G' x)
-  weaken G' ENil = ENil
+  weaken : (gam' : List (List a)) ->
+           Expr gam xs -> Expr (gam' ++ gam) xs
+  weaken gam' (App l r) = App (weaken gam' l) (weaken gam' r)
+  weaken gam' (Var x) = Var (weakenElem gam' x)
+  weaken gam' ENil = ENil
 
 
 -- Now, some reflection magic.
@@ -133,21 +133,21 @@ using (xs : List a, ys : List a, G : List (List a))
 -- reduction will work the right way.
 
 %reflection
-reflectList : (G : List (List a)) ->
-          (xs : List a) -> (G' ** Expr (G' ++ G) xs)
-reflectList G [] = ([] ** ENil)
+reflectList : (gam : List (List a)) ->
+          (xs : List a) -> (gam' ** Expr (gam' ++ gam) xs)
+reflectList gam [] = ([] ** ENil)
 
-reflectList G (x :: xs) with (reflectList G xs)
-     | (G' ** xs') with (isElem (List.(::) x []) (G' ++ G))
-        | Just p = (G' ** App (Var p) xs')
-        | Nothing = ([x] :: G' ** App (Var Stop) (weaken [[x]] xs'))
+reflectList gam (x :: xs) with (reflectList gam xs)
+     | (gam' ** xs') with (isElem (List.(::) x []) (gam' ++ gam))
+        | Just p = (gam' ** App (Var p) xs')
+        | Nothing = ([x] :: gam' ** App (Var Stop) (weaken [[x]] xs'))
 
-reflectList G (xs ++ ys) with (reflectList G xs)
-     | (G' ** xs') with (reflectList (G' ++ G) ys)
-         | (G'' ** ys') = ((G'' ++ G') **
-                              rewrite (sym (appendAssociative G'' G' G)) in
-                                 App (weaken G'' xs') ys')
-reflectList G t with (isElem t G)
+reflectList gam (xs ++ ys) with (reflectList gam xs)
+     | (gam' ** xs') with (reflectList (gam' ++ gam) ys)
+         | (gam'' ** ys') = ((gam'' ++ gam') **
+                              rewrite (sym (appendAssociative gam'' gam' gam)) in
+                                 App (weaken gam'' xs') ys')
+reflectList gam t with (isElem t gam)
             | Just p = ([] ** Var p)
             | Nothing = ([t] ** Var Stop)
 
@@ -160,12 +160,12 @@ reflectList G t with (isElem t G)
 -- forms of equality proofs anyway.
 
 %reflection
-reflectEq : (a : Type) -> (G : List (List a)) -> (P : Type) -> (G' ** ListEq (G' ++ G) P)
-reflectEq a G (the (List a) xs = the (List a) ys) with (reflectList G xs)
-     | (G' ** xs')  with (reflectList (G' ++ G) ys)
-        | (G'' ** ys') = ((G'' ++ G') **
-                           rewrite (sym (appendAssociative G'' G' G)) in
-                               EqP (weaken G'' xs') ys')
+reflectEq : (a : Type) -> (gam : List (List a)) -> (P : Type) -> (gam' ** ListEq (gam' ++ gam) P)
+reflectEq a gam (the (List a) xs = the (List a) ys) with (reflectList gam xs)
+     | (gam' ** xs')  with (reflectList (gam' ++ gam) ys)
+        | (gam'' ** ys') = ((gam'' ++ gam') **
+                           rewrite (sym (appendAssociative gam'' gam' gam)) in
+                               EqP (weaken gam'' xs') ys')
 
 
 -- Need these before we can test it or the reductions won't normalise fully...

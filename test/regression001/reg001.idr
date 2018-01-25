@@ -53,7 +53,7 @@ vfoldl P cons nil (x :: xs)
 total soElim            :  (C : (b : Bool) -> So b -> Type) ->
                            C True Oh                       ->
                            (b : Bool) -> (s : So b) -> (C b s)
-soElim C coh True Oh  =  coh
+soElim c coh True Oh  =  coh
 
 soFalseElim             :  So False -> a
 soFalseElim x           =  void (soElim C () False x)

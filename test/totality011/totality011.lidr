@@ -20,10 +20,10 @@
 >                     t'' `GTE` t
 
 > weCanOnlyGetOlder {t'' = Z} {t = Z}   _ _ _  =  LTEZero
-> weCanOnlyGetOlder {t'' = Z} {t = S m} _ _ (Zeqt , _)  = 
+> weCanOnlyGetOlder {t'' = Z} {t = S m} _ _ (zeqt , _)  = 
 >   void (uninhabited u) where
 >     u : Z = S m 
->     u = trans Zeqt Refl
+>     u = trans zeqt Refl
 
 > weCanOnlyGetOlder {t'' = S _} {t = S _} _ _ _ = ?foo
 

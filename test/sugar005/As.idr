@@ -8,7 +8,7 @@ isS n@(S _) = Just n
 -- Test @ under a constructor
 hasS : List Nat -> Maybe Nat
 hasS (Z::xs) = hasS xs
-hasS (n@(S_)::xs) = Just n
+hasS (n@(S _)::xs) = Just n
 hasS _ = Nothing
 
 -- Test nested @s

@@ -234,12 +234,12 @@ getTTType r = snd <$> check !getEnv r
 both : Raw -> TTName -> TTName -> Elab ()
 both tm n1 n2 =
     do -- We don't know that the term is canonical, so let-bind projections applied to it
-       (A, B) <- isPairTy !(getTTType tm)
-       remember n1 A; apply `(fst {a=~A} {b=~B} ~tm) []; solve
-       remember n2 B; apply `(snd {a=~A} {b=~B} ~tm) []; solve
+       (a, b) <- isPairTy !(getTTType tm)
+       remember n1 a; apply `(fst {a=~a} {b=~b} ~tm) []; solve
+       remember n2 b; apply `(snd {a=~a} {b=~b} ~tm) []; solve
   where
     isPairTy : TT -> Elab (Raw, Raw)
-    isPairTy `((~A, ~B) : Type) = [| MkPair (forget A) (forget B) |]
+    isPairTy `((~a, ~b) : Type) = [| MkPair (forget a) (forget b) |]
     isPairTy tm = fail [TermPart tm, TextPart "is not a pair"]
 
 ||| Let-bind all results of completely destructuring nested tuples.
@@ -282,8 +282,8 @@ construct = case headName !goalType of
 reflexivity : Elab ()
 reflexivity =
     case !goalType of
-      `((=) {A=~A} {B=~_} ~x ~_) =>
-        do fill `(Refl {A=~A} {x=~x})
+      `((=) {A=~a} {B=~_} ~x ~_) =>
+        do fill `(Refl {A=~a} {x=~x})
            solve
       _ => fail [ TextPart "The goal is not an equality, so"
                 , NamePart `{reflexivity}
@@ -307,9 +307,9 @@ symmetry =
 symmetryAs : (t : Raw) -> (hint : String) -> Elab TTName
 symmetryAs t hint =
     case !(getTTType t) of
-      `((=) {A=~A} {B=~B} ~l ~r) =>
-        do af <- forget A
-           bf <- forget B
+      `((=) {A=~a} {B=~b} ~l ~r) =>
+        do af <- forget a
+           bf <- forget b
            lf <- forget l
            rf <- forget r
            let ts = the Raw $ `(sym {a=~af} {b=~bf} {left=~lf} {right=~rf} ~t)

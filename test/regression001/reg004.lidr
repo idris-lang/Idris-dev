@@ -6,9 +6,9 @@
 >           (Functor F) => (Functor G) =>
 >           (t : {A : Type} -> F A -> G A) -> 
 >           Type            
-> Natural {F} {G} t = {A, B : Type} -> 
+> Natural {F=fF} {G=gG} t = {A, B : Type} -> 
 >                     (f : A -> B) ->
->                     (x : F A) -> 
+>                     (x : fF A) -> 
 >                     t (map f x) = map f  (t x) 
 
 > Monotone : {B, C : Type} -> {F : Type -> Type} -> (Functor F) => 
@@ -16,13 +16,13 @@
 >            (LTE_C : C -> C -> Type) -> 
 >            (measure : F B -> C) -> 
 >            Type
-> Monotone {B} {C} {F} LTE_B LTE_C measure =
+> Monotone {B=bB} {C=cC} {F=fF} lte_B lte_C measure =
 >   {A : Type} ->
->   (f : A -> B) -> 
->   (g : A -> B) -> 
->   (p : (a : A) -> f a `LTE_B` g a) -> 
->   (x : F A) -> 
->   measure (map f x) `LTE_C` measure (map g x)  
+>   (f : A -> bB) -> 
+>   (g : A -> bB) -> 
+>   (p : (a : A) -> f a `lte_B` g a) -> 
+>   (x : fF A) -> 
+>   measure (map f x) `lte_C` measure (map g x)  
 
 > monotoneNaturalLemma: {B, C : Type} -> {F : Type -> Type} -> (Functor F) => 
 >                       (LTE_B : B -> B -> Type) -> 
@@ -32,12 +32,12 @@
 >                       (t : {A : Type} -> F A -> F A) -> 
 >                       Natural t -> 
 >                       Monotone LTE_B LTE_C (measure . t)
-> monotoneNaturalLemma {B} {C} {F} LTE_B LTE_C m mm t nt = mmt where
+> monotoneNaturalLemma {B=bB} {C=cC} {F=fF} lte_B lte_C m mm t nt = mmt where
 >   mmt : {A : Type} -> 
->         (f : A -> B) -> 
->         (g : A -> B) -> 
->         (p : (a : A) -> f a `LTE_B` g a) ->
->         (x : F A) -> 
->         m (t {A = B} (map f x)) `LTE_C` m (t {A = B} (map g x))   
+>         (f : A -> bB) -> 
+>         (g : A -> bB) -> 
+>         (p : (a : A) -> f a `lte_B` g a) ->
+>         (x : fF A) -> 
+>         m (t {A = bB} (map f x)) `lte_C` m (t {A = bB} (map g x))   
 >   mmt = ?kika
 

@@ -89,7 +89,7 @@ replace Refl prf = prf
 ||| in the other direction, which puts it in a form usable by the `rewrite`
 ||| tactic and term.
 rewrite__impl : (P : a -> Type) -> x = y -> P y -> P x
-rewrite__impl P Refl prf = prf
+rewrite__impl p Refl prf = prf
 
 ||| Symmetry of propositional equality
 sym : {left:a} -> {right:b} -> left = right -> right = left
