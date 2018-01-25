@@ -11,6 +11,7 @@ module Idris.Package.Parser where
 import Idris.CmdOptions
 import Idris.Imports
 import Idris.Package.Common
+import Idris.Parser (moduleName)
 import Idris.Parser.Helpers (Parser, Parsing, eol, iName, identifier, isEol,
                              lchar, packageName, parseErrorDoc, reserved,
                              runparser, someSpace, stringLiteral)
@@ -117,7 +118,7 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
              in st { pkgdeps    = ps `union` pkgdeps st
                    , idris_opts = pkgs ++ idris_opts st })
-      <|> clause "modules" (commaSep (iName [])) (\st v -> st { modules = modules st ++ v })
+      <|> clause "modules" (commaSep moduleName) (\st v -> st { modules = modules st ++ v })
       <|> clause "libs" (commaSep identifier) (\st v -> st { libdeps = libdeps st ++ v })
       <|> clause "objs" (commaSep identifier) (\st v -> st { objs = objs st ++ v })
       <|> clause "makefile" (iName []) (\st v -> st { makefile = Just (show v) })
