@@ -15,7 +15,7 @@ data System : Effect where
      Time : sig System Integer
      GetEnv : String -> sig System (Maybe String)
      CSystem : String -> sig System Int
-     Usleep : (i : Int) -> (inbounds : So (i >= 0 && i <= 1000000)) -> sig System ()
+     Usleep : (i : Int) -> (inbounds : So (i >= 0)) -> sig System ()
 
 implementation Handler System IO where
     handle () Args k = do x <- getArgs; k x ()
@@ -48,5 +48,5 @@ getEnv s = call $ GetEnv s
 system : String -> Eff Int [SYSTEM]
 system s = call $ CSystem s
 
-usleep : (i : Int) -> { auto prf : So (i >= 0 && i <= 1000000) } -> Eff () [SYSTEM]
+usleep : (i : Int) -> { auto prf : So (i >= 0) } -> Eff () [SYSTEM]
 usleep i {prf} = call $ Usleep i prf
