@@ -476,4 +476,5 @@ checkRec (P xt x _) (P yt y _)
 -- reduce the function
 checkRec (P Ref _ _) (Constant _) = return True
 checkRec (Constant _) (P Ref _ _) = return True
+checkRec (TType _) (TType _) = return True
 checkRec _ _ = return False
