@@ -1,0 +1,9 @@
+Entering directory `./src'
+Type checking ./Data/Type.idr
+Leaving directory `./src'
+Entering directory `./src'
+Removed: Data/Type.ibc
+Removed: 00datatypes-idx.ibc
+Leaving directory `./src'
+The following packages were specified but cannot be found:
+- datatype.ipkg

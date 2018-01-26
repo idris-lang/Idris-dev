@@ -12,7 +12,7 @@ Maintainer  : The Idris Community.
 -- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
-module Idris.Parser(IdrisParser(..), ImportInfo(..), addReplSyntax, clearParserWarnings,
+module Idris.Parser(IdrisParser(..), ImportInfo(..), moduleName, addReplSyntax, clearParserWarnings,
                     decl, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
                     runparser, ParseError, parseErrorDoc) where
 
@@ -81,23 +81,31 @@ import qualified Text.PrettyPrint.ANSI.Leijen as PP
       ModuleHeader ::= DocComment_t? 'module' Identifier_t ';'?;
 @
 -}
+
+
+moduleName :: Parsing m => m Name
+moduleName = mkName [] . map T.pack <$> moduleNamePieces where
+
+  mkName :: [T.Text] -> [T.Text] -> Name
+  mkName ts [x]    = if null ts then UN x else NS (UN x) ts
+  mkName ts (x:xs) = mkName (x : ts) xs
+
+moduleNamePieces :: Parsing m => m [String]
+moduleNamePieces = Spl.splitOn "." <$> identifier
+
 moduleHeader :: IdrisParser (Maybe (Docstring ()), [String], [(FC, OutputAnnotation)])
 moduleHeader =     P.try (do docs <- optional docComment
                              noArgs docs
                              keyword "module"
-                             (i, ifc) <- withExtent identifier
+                             (modName, ifc) <- withExtent moduleNamePieces
                              P.option ';' (lchar ';')
-                             let modName = moduleName i
                              return (fmap fst docs,
                                      modName,
                                      [(ifc, AnnNamespace (map T.pack modName) Nothing)]))
                <|> P.try (do lchar '%'; reserved "unqualified"
                              return (Nothing, [], []))
-               <|> return (Nothing, moduleName "Main", [])
-  where moduleName x = case span (/='.') x of
-                           (x, "")    -> [x]
-                           (x, '.':y) -> x : moduleName y
-        noArgs (Just (_, args)) | not (null args) = fail "Modules do not take arguments"
+               <|> return (Nothing, ["Main"], [])
+  where noArgs (Just (_, args)) | not (null args) = fail "Modules do not take arguments"
         noArgs _ = return ()
 
 data ImportInfo = ImportInfo { import_reexport :: Bool
@@ -117,16 +125,15 @@ data ImportInfo = ImportInfo { import_reexport :: Bool
 import_ :: IdrisParser ImportInfo
 import_ = do fc <- extent $ keyword "import"
              reexport <- P.option False (True <$ keyword "public")
-             (id, idfc) <- withExtent identifier
+             (ns, idfc) <- withExtent moduleNamePieces
              newName <- optional (do keyword "as"
                                      withExtent identifier)
              P.option ';' (lchar ';')
-             return $ ImportInfo reexport (toPath id)
-                        (fmap (\(n, fc) -> (toPath n, fc)) newName)
-                        (map T.pack $ ns id) fc idfc
+             return $ ImportInfo reexport (toPath ns)
+                        (fmap (\(n, fc) -> (toPath (Spl.splitOn "." n), fc)) newName)
+                        (map T.pack ns) fc idfc
           <?> "import statement"
-  where ns = Spl.splitOn "."
-        toPath = foldl1' (</>) . ns
+  where toPath = foldl1' (</>)
 
 {-| Parses program source
 
