@@ -63,17 +63,17 @@ For those that develop on the Idris compiler, the internal operation
 of Idris is captured using a category based logger. Currently, the
 logging infrastructure has support for the following categories:
 
-+ Parser
-+ Elaborator
-+ Code generation
-+ Erasure
-+ Coverage Checking
-+ IBC generation
++ Parser (``parser``)
++ Elaborator (``elab``)
++ Code generation (``codegen``)
++ Erasure (``erasure``)
++ Coverage Checking (``coverage``)
++ IBC generation (``ibc``)
 
 
 These categories are specified using the command-line option:
 ``--logging-categories CATS``, where ``CATS`` is a quoted colon
-seperated string of the categories you want to see. By default if this
+separated string of the categories you want to see. By default if this
 option is not specified all categories are allowed.  Sub-categories
 have yet to be defined but will be in the future, especially for the
 elaborator.
