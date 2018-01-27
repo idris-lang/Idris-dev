@@ -4,8 +4,11 @@
 #include "idris_stats.h"
 
 void _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
-#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+
+#ifdef _WIN32
+
 #include <Windows.h>
+
 int win32_get_argv_utf8(int *argc_ptr, char ***argv_ptr)
 {
     int argc;
@@ -26,6 +29,7 @@ int win32_get_argv_utf8(int *argc_ptr, char ***argv_ptr)
     *argv_ptr = argv;
     return 0;
 }
+
 #endif
 
 // The default options should give satisfactory results under many circumstances.
@@ -35,7 +39,7 @@ RTSOpts opts = {
     .show_summary   = 0
 };
 
-#if defined(WIN32) || defined(__WIN32) || defined(__WIN32__)
+#ifdef _WIN32
 int main() {
     int argc;
     char **argv;

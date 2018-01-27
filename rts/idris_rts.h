@@ -442,6 +442,8 @@ const char *idris_getArg(int i);
 // disable stdin/stdout buffering
 void idris_disableBuffering(void);
 
+int idris_usleep(int usec);
+
 // Handle stack overflow.
 // Just reports an error and exits.
 
