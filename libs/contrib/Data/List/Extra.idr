@@ -20,3 +20,25 @@ reverseNil = Refl
 ||| Together with reverseNil serves as a specification for reverse.
 reverseCons : (x : a) -> (xs : List a) -> reverse (x::xs) = reverse xs ++ [x]
 reverseCons x xs = reverseOntoSpec [x] xs
+
+||| Reversing an append is appending reversals backwards.
+reverseAppend : (xs, ys : List a) ->
+  reverse (xs ++ ys) = reverse ys ++ reverse xs
+reverseAppend [] ys = sym (appendNilRightNeutral (reverse ys))
+reverseAppend (x :: xs) ys =
+  trans (trans (reverseCons x (xs ++ ys))
+               (cong {f = \l => l ++ [x]} (reverseAppend xs ys)))
+        (sym (trans (cong (reverseCons x xs))
+                    (appendAssociative (reverse ys) (reverse xs) [x])))
+
+||| Reversing a singleton list is a no-op.
+reverseSingletonId : (x : a) -> reverse [x] = [x]
+reverseSingletonId _ = Refl
+
+||| Reversing a reverse gives the original.
+reverseReverseId : (xs : List a) -> reverse (reverse xs) = xs
+reverseReverseId [] = Refl
+reverseReverseId (x :: xs) =
+  trans (cong (reverseCons x xs))
+        (trans (reverseAppend (reverse xs) [x])
+               (cong (reverseReverseId xs)))
