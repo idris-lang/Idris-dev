@@ -501,5 +501,13 @@ bitsToStr x = pack (helper last x)
       helper FZ _ = []
       helper (FS x) b = assert_total $ (if getBit x b then '1' else '0') :: helper (weaken x) b
 
+bitsToHexStr : %static {n : Nat} -> Bits n -> String
+bitsToHexStr {n} (MkBits b) with (nextBytes n)
+  | Z           = b8ToHexString b
+  | S Z         = b16ToHexString b
+  | S (S Z)     = b32ToHexString b
+  | S (S (S Z)) = b64ToHexString b
+  | _ = assert_unreachable
+
 implementation Show (Bits n) where
     show = bitsToStr
