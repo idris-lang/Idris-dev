@@ -103,7 +103,7 @@ that's a moot point for two reasons:
 
 This ought not to be the case since the ``Nat`` are never used at
 runtime and they are only there for typechecking purposes. Hence we
-should get rid of them and get runtime code similar to what a idris
+should get rid of them and get runtime code similar to what an Idris
 programmer would write.
 
 U-views of lists
