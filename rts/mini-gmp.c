@@ -922,7 +922,7 @@ mpn_div_qr_1_preinv (mp_ptr qp, mp_srcptr np, mp_size_t nn,
 
   if (inv->shift > 0)
     {
-      tp = gmp_xalloc_limbs (nn);
+      tp = qp ? qp : gmp_xalloc_limbs (nn);
       r = mpn_lshift (tp, np, nn, inv->shift);
       np = tp;
     }
@@ -939,7 +939,7 @@ mpn_div_qr_1_preinv (mp_ptr qp, mp_srcptr np, mp_size_t nn,
       if (qp)
 	qp[nn] = q;
     }
-  if (inv->shift > 0)
+  if (inv->shift > 0 && !qp)
     gmp_free (tp);
 
   return r >> inv->shift;
