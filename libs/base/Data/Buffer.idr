@@ -3,7 +3,7 @@ module Data.Buffer
 %include C "idris_buffer.h"
 
 ||| A buffer is a pointer to a sized, unstructured, mutable chunk of memory.
-||| There are primitive operations for gettng and setting bytes, ints (32 bit) 
+||| There are primitive operations for getting and setting bytes, ints (32 bit) 
 ||| and strings at a location in the buffer. These operations silently fail 
 ||| if the location is out of bounds, so bounds checking should be done in 
 ||| advance.
@@ -133,7 +133,7 @@ readBufferFromFile (FHandle h) buf max
          pure (record { location $= (+numread) } buf)
 
 ||| Write 'maxbytes' from the buffer from a file, returning a new
-||| buffer with the 'locaton' pointer moved along
+||| buffer with the 'location' pointer moved along
 export
 writeBufferToFile : File -> Buffer -> (maxbytes : Int) -> IO Buffer
 writeBufferToFile (FHandle h) buf max
