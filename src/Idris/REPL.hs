@@ -1264,8 +1264,17 @@ process fn (Execute tm)
                            ir <- compile t tmpn (Just m)
                            runIO $ generate t (fst (head (idris_imported ist))) ir
                            case idris_outputmode ist of
-                             RawOutput h -> do runIO $ rawSystem progName []
-                                               return ()
+                             RawOutput h ->
+                               do res <- runIO $ rawSystem progName []
+                                  case res of
+                                    ExitSuccess -> return ()
+                                    ExitFailure err ->
+                                      ifail $ "Compiled program " ++
+                                              if err < 0
+                                              then "was killed by signal " ++
+                                                   show (0 - err)
+                                              else "terminated with exit code " ++
+                                                   show err
                              IdeMode n h -> runIO . hPutStrLn h $
                                              IdeMode.convSExp "run-program" tmpn n)
                        (\e -> getIState >>= iRenderError . flip pprintErr e)

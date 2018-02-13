@@ -1,3 +1,8 @@
+# New in 1.2.*
+
++ REPL now prints an error message if program compiled by `:exec` terminates
+  abnormally.
+
 # New in 1.2.0
 
 ## Language updates
