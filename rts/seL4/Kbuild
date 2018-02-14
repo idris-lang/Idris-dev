@@ -1,0 +1,2 @@
+libsel4-idris-rts: $(libc) common
+libs-$(CONFIG_LIBSEL4_IDRIS_RTS) += libsel4-idris-rts

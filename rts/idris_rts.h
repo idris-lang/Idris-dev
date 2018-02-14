@@ -9,7 +9,7 @@
 #include <pthread.h>
 #endif
 #include <stdint.h>
-#if (__linux__ || __APPLE__ || __FreeBSD__ || __DragonFly__)
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__)
 #include <signal.h>
 #endif
 
@@ -245,7 +245,7 @@ typedef intptr_t i_int;
 #endif
 
 #define INITFRAME TRACE\
-                  VAL* myoldbase
+                  __attribute__((unused)) VAL* myoldbase
 
 #define REBASE vm->valstack_base = oldbase
 #define RESERVE(x) if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
@@ -442,7 +442,9 @@ const char *idris_getArg(int i);
 // disable stdin/stdout buffering
 void idris_disableBuffering(void);
 
+#ifndef SEL4
 int idris_usleep(int usec);
+#endif // SEL4
 
 // Handle stack overflow.
 // Just reports an error and exits.
