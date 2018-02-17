@@ -23,5 +23,9 @@ infixr 4 <$>
 (<$>) : Functor f => (func : a -> b) -> f a -> f b
 func <$> x = map func x
 
+||| Run something for effects, throwing away the return value
+ignore : Functor f => f a -> f ()
+ignore x = map (const ()) x
+
 Functor (Pair a) where
   map f (x, y) = (x, f y)
