@@ -36,6 +36,7 @@ modules = CFFI
         , Data.Heap
         , Data.IOArray
         , Data.List.Zipper
+        , Data.List.Extra
 
         , Data.Matrix
         , Data.Matrix.Algebraic

@@ -394,13 +394,14 @@ scanl1 f (x::xs) = scanl f x xs
 -- Transformations
 --------------------------------------------------------------------------------
 
+||| Reverse a list onto an existing tail.
+reverseOnto : List a -> List a -> List a
+reverseOnto acc [] = acc
+reverseOnto acc (x::xs) = reverseOnto (x::acc) xs
+
 ||| Return the elements of a list in reverse order.
 reverse : List a -> List a
-reverse = reverse' []
-  where
-    reverse' : List a -> List a -> List a
-    reverse' acc []      = acc
-    reverse' acc (x::xs) = reverse' (x::acc) xs
+reverse = reverseOnto []
 
 ||| Insert some separator between the elements of a list.
 |||
