@@ -434,10 +434,16 @@ runPureInit env prog = eff env prog (\r, env => r)
 runWith : (a -> m a) -> Env m xs -> EffM m a xs xs' -> m a
 runWith inj env prog = eff env prog (\r, env => inj r)
 
+||| Similar to 'runInit', but take the result of `Env`.
 %no_implicit
 runEnv : Applicative m => Env m xs -> EffM m a xs xs' ->
          m (x : a ** Env m (xs' x))
 runEnv env prog = eff env prog (\r, env => pure (r ** env))
+
+||| Similar to 'runEnv', but the context (m) is 'pure'
+%no_implicit
+runPureEnv : (env : Env Basics.id xs) -> (prog : EffM Basics.id a xs xs') -> (x : a ** Env Basics.id (xs' x))
+runPureEnv env prog = eff env prog (\r, env => (r ** env))
 
 -- ----------------------------------------------- [ some higher order things ]
 
