@@ -3,6 +3,11 @@
 + REPL now prints an error message if program compiled by `:exec` terminates
   abnormally.
 
+## Library Updates
+
++ changed rndInt in Effect.Random so that it does not alternate between odd
+  and even.
+
 # New in 1.2.0
 
 ## Language updates

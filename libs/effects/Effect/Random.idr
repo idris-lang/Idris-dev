@@ -43,13 +43,14 @@ rndInt lower upper = do v <- call $ GetRandom
 ||| Note that rndFin k takes values 0, 1, ..., k.
 rndFin : (k : Nat) -> Eff (Fin (S k)) [RND]
 rndFin k = do let v = assert_total $ !(call GetRandom) `prim__sremBigInt` (cast (S k))
-              pure (toFin v)
- where toFin : Integer -> Fin (S k) 
+              pure (toFin (divBigInt v 2))
+ where toFin : Integer -> Fin (S k)
        toFin x = case integerToFin x (S k) of
                       Just v => v
                       Nothing => toFin (assert_smaller x (x - cast (S k)))
-       -- TODO insert divBigInt x 2 to prevent low bit alternating between
+       -- divBigInt v 2 is required to prevent low bit alternating between
        -- 0 and 1 (odd and even)
+
 ||| Select a random element from a vector
 rndSelect' : Vect (S k) a -> Eff a [RND]
 rndSelect' {k} xs = pure (Vect.index !(rndFin k)  xs)
