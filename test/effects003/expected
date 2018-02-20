@@ -5,43 +5,26 @@ hangman.idr:204:8-12:
 This style of tactic proof is deprecated. See %runElab for the replacement.
 
 ------------
+6 guesses left
+Enter guess: Good guess!
+-a-a
 
 6 guesses left
 Enter guess: No, sorry
-------------
+-a-a
 
 5 guesses left
-Enter guess: Good guess!
-----ee------
+Enter guess: No, sorry
+-a-a
 
-5 guesses left
-Enter guess: Good guess!
-----ee---i--
+4 guesses left
+Enter guess: No, sorry
+-a-a
 
-5 guesses left
+3 guesses left
 Enter guess: Good guess!
--o--ee---i--
+ja-a
 
-5 guesses left
+3 guesses left
 Enter guess: Good guess!
--offee---i--
-
-5 guesses left
-Enter guess: Good guess!
-coffee-c-i--
-
-5 guesses left
-Enter guess: Good guess!
-coffeesc-i--
-
-5 guesses left
-Enter guess: Good guess!
-coffeesc-ip-
-
-5 guesses left
-Enter guess: Good guess!
-coffeescrip-
-
-5 guesses left
-Enter guess: Good guess!
-You won! Successfully guessed coffeescript
+You won! Successfully guessed java
