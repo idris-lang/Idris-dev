@@ -2,6 +2,11 @@
 
 + REPL now prints an error message if program compiled by `:exec` terminates
   abnormally.
++ Additions to `contrib`:
+  * `Data.SortedBag`: Bag (or Multiset) implemention based on `Data.SortedMap`.
+  * `Data.PosNat`: A `Nat` paired with a proof that it is positive.
+  * `Data.Chain`: A function with an arbitrary number of arguments, plus
+    comtinators for working with them.
 
 # New in 1.2.0
 
@@ -37,7 +42,7 @@
 + C FFI now supports pasting in any expression by prefixing it with '#', e.g.
   ```idris
   intMax : IO Int
-  intMax = foreign FFI_C "#INT_MAX" (IO Int) 
+  intMax = foreign FFI_C "#INT_MAX" (IO Int)
   ```
 + The deprecated keywords `%assert_total`, `abstract`, and `[static]` have
   been removed as well as the use of "public" instead of "public export" to
@@ -88,7 +93,7 @@
 + Removed several deprecated items from the libraries shipped with Idris.
 + Moved `abs` from the `Neg` interface into its own `Abs` interface.  `Nat`
   implements `Abs` with `abs = id`.
-+ Added `Control.ST.File`, an ST based implementation of the same behaviour 
++ Added `Control.ST.File`, an ST based implementation of the same behaviour
   implemented by `Effect.File` in the effects package.
 
 ## Tool Updates
