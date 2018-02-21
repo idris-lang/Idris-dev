@@ -12,11 +12,12 @@ import Data.SortedMap
 
 data SortedBag k = BagWrapper (SortedMap k PosNat)
 
-||| Remove the BagWrapper from a bag
+||| Remove the `BagWrapper` from a bag (the required proof from `PosNat` makes
+||| this safe)
 unwrapBag : SortedBag k -> SortedMap k PosNat
 unwrapBag (BagWrapper m) = m
 
-||| An Isomorphism between a wrapped and unwrapped bag
+||| An `Isomorphism` between a wrapped and unwrapped bag
 wrappedBagIso : Iso (SortedMap k PosNat) (SortedBag k)
 wrappedBagIso = MkIso BagWrapper unwrapBag (\(BagWrapper _) => Refl) (\_ => Refl)
 
@@ -25,9 +26,11 @@ wrappedBagIso = MkIso BagWrapper unwrapBag (\(BagWrapper _) => Refl) (\_ => Refl
 OnMapsT : Nat -> Type -> Type
 OnMapsT n k = (EndoChain n $ SortedMap k PosNat) -> (EndoChain n $ SortedBag k)
 
+||| Apply an n-ary function over the wrapped `SortedMap`.
 onMaps : OnMapsT n k
 onMaps = withIso wrappedBagIso
 
+||| Special case for n=1 for `onMaps`
 onMap : OnMapsT 1 k
 onMap = onMaps {n=1}
 
@@ -41,9 +44,12 @@ empty = BagWrapper empty
 -- Idris> the Nat $ sum $ Just 10
 -- 10 : Nat
 
+||| The type of `insert` and the common core of most functions that update
+||| the contests of a Bag.
 UpdateBag : Type -> Type
 UpdateBag k = k -> SortedBag k -> SortedBag k
 
+||| Apply a function `(Nat -> Nat)` to a given argument
 alterCounts : (Nat -> Nat) -> UpdateBag k
 alterCounts f k = onMap $ \m => let
     n = sum $ fst <$> lookup k m
@@ -82,7 +88,6 @@ delete1 = deleteN 1
 delete : UpdateBag k
 delete = alterCounts $ const Z
 
-
 ||| A single item (more efficient than `insert x empty`)
 singleton : Ord k => k -> SortedBag k
 singleton k = BagWrapper $ Data.SortedMap.insert k one empty
@@ -94,9 +99,11 @@ singleton k = BagWrapper $ Data.SortedMap.insert k one empty
 null : SortedBag k -> Bool
 null (BagWrapper m) = null m
 
+||| Convert a list to a Sorted Bag
 fromList : Ord k => List k -> SortedBag k
 fromList = foldr insert empty
 
+||| Convert a Sorted Bag to a List, keeping it sorted.
 toList : SortedBag k -> List k
 toList (BagWrapper m) = concat $ (\(x, (n ** _)) => replicate n x) <$> toList m
 
@@ -105,10 +112,9 @@ Foldable SortedBag where
   foldl f zero = foldl f zero . Data.SortedBag.toList
   foldr f zero = foldr f zero . Data.SortedBag.toList
 
+||| Merge two bags
 union : EndoChain 2 (SortedBag k)
 union = onMaps {n=2} merge
-
--- insersection : EndoChain 2 (SortedBag k)
 
 Semigroup (SortedBag a) where
   (<+>) = union
