@@ -2,7 +2,7 @@ module Data.SortedBag
 
 import Control.Isomorphism
 import Control.Pipeline
-import Data.ArrowChain
+import Data.Chain
 import Data.Combinators
 import Data.PosNat
 import Data.SortedMap

@@ -1,4 +1,4 @@
-module Data.ArrowChain
+module Data.Chain
 
 import Data.Vect
 import Control.Isomorphism
@@ -25,6 +25,8 @@ before : (i -> i') -> (Chain n i' o) -> (Chain n i o)
 before {n=Z}   _ x  = x
 before {n=S k} f fs = (f `before`) . (fs . f)
 
+||| Fill in the same argument for all items (available for a single argument as
+||| Data.Combinators.reflex)
 reflexes : (Chain n i o) -> (i -> o)
 reflexes {n=Z} x _ = x
 reflexes {n=S k} fs y = reflexes (fs y) y
