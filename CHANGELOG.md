@@ -6,7 +6,7 @@
   * `Data.SortedBag`: Bag (or Multiset) implemention based on `Data.SortedMap`.
   * `Data.PosNat`: A `Nat` paired with a proof that it is positive.
   * `Data.Chain`: A function with an arbitrary number of arguments, plus
-    comtinators for working with them.
+    combinators for working with them.
 
 # New in 1.2.0
 
