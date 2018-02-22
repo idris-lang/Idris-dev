@@ -5,6 +5,7 @@ License-file:   LICENSE
 Author:         Edwin Brady
 Maintainer:     Edwin Brady <eb@cs.st-andrews.ac.uk>
 Homepage:       http://www.idris-lang.org/
+Bug-reports:    https://github.com/idris-lang/Idris-dev/issues
 
 Stability:      Beta
 Category:       Compilers/Interpreters, Dependent Types
