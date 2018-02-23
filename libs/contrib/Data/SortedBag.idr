@@ -38,16 +38,16 @@ onMap = onMaps {n=1}
 empty : Ord k => SortedBag k
 empty = BagWrapper empty
 
+||| The type of `insert` and the common core of most functions that update
+||| the contests of a Bag.
+UpdateBag : Type -> Type
+UpdateBag k = k -> SortedBag k -> SortedBag k
+
 -- Keep in mind:
 -- Idris> the Nat $ sum Nothing
 -- 0 : Nat
 -- Idris> the Nat $ sum $ Just 10
 -- 10 : Nat
-
-||| The type of `insert` and the common core of most functions that update
-||| the contests of a Bag.
-UpdateBag : Type -> Type
-UpdateBag k = k -> SortedBag k -> SortedBag k
 
 ||| Perform a count on the underlying `SortedMap`
 countMap : k -> SortedMap k PosNat -> Nat
