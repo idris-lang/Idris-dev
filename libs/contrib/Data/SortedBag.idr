@@ -66,7 +66,7 @@ count k (BagWrapper m) = sum $ fst <$> lookup k m
 
 ||| Is a count non-zero?
 contains : k -> SortedBag k -> Bool
-contains = isZero ... count
+contains = isSucc ... count
 
 ||| insert a given number of items
 insertN : Nat -> UpdateBag k
