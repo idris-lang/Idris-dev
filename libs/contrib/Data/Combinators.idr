@@ -5,8 +5,7 @@
 ||| hasn't actually read). See
 ||| http://www.angelfire.com/tx4/cus/combinator/birds.html and
 ||| https://hackage.haskell.org/package/data-aviary-0.4.0/docs/Data-Aviary-Birds.html
-||| an (incomplete?) list of birds introduced. Also includes some operations defined
-||| over Arrows.
+||| an (incomplete?) list of birds introduced.
 
 module Data.Combinators
 

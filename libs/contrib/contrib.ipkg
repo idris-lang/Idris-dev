@@ -25,6 +25,7 @@ modules = CFFI
 
         , Data.Bool.Extra
         , Data.BoundedList
+        , Data.Chain
         , Data.CoList
         , Data.Combinators
         , Data.Combinators.Applicative
@@ -47,8 +48,10 @@ modules = CFFI
         , Data.Nat.DivMod.IteratedSubtraction
 
         , Data.Pairs.Implicit
+        , Data.PosNat
         , Data.Rel
         , Data.Sign
+        , Data.SortedBag
         , Data.SortedMap
         , Data.SortedSet
         , Data.Storable

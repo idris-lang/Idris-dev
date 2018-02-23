@@ -77,6 +77,20 @@ implementation Functor (BoundedList n) where
   map f (x :: xs) = f x :: map f xs
 
 --------------------------------------------------------------------------------
+-- Monoid
+--------------------------------------------------------------------------------
+
+implementation Semigroup a => Semigroup (BoundedList n a) where
+  (x :: xs) <+> (y :: ys) = (x <+> y) :: (xs <+> ys)
+  xs <+> [] = xs
+  [] <+> ys = ys
+
+-- The Semigroup constraint is only needed because that's how we make a
+-- semigroup from BoundedList, not used in this implementation.
+implementation Semigroup a => Monoid (BoundedList n a) where
+  neutral = []
+
+--------------------------------------------------------------------------------
 -- Misc
 --------------------------------------------------------------------------------
 

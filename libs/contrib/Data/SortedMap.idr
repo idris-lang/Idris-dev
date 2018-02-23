@@ -249,6 +249,11 @@ export
 values : SortedMap k v -> List v
 values = map snd . toList
 
+export
+null : SortedMap k v -> Bool
+null Empty = True
+null (M _ _) = False
+
 treeMap : (a -> b) -> Tree n k a o -> Tree n k b o
 treeMap f (Leaf k v) = Leaf k (f v)
 treeMap f (Branch2 t1 k t2) = Branch2 (treeMap f t1) k (treeMap f t2)
