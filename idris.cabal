@@ -41,7 +41,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 .
                 * Hugs style interactive environment
 
-Cabal-Version:  >= 1.18
+Cabal-Version:  >= 1.22
 
 Build-type:     Custom
 
