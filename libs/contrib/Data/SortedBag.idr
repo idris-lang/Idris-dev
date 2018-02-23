@@ -49,10 +49,14 @@ empty = BagWrapper empty
 UpdateBag : Type -> Type
 UpdateBag k = k -> SortedBag k -> SortedBag k
 
+||| Perform a count on the underlying `SortedMap`
+countMap : k -> SortedMap k PosNat -> Nat
+countMap k m = sum $ fst <$> lookup k m
+
 ||| Apply a function `(Nat -> Nat)` to a given argument
 alterCounts : (Nat -> Nat) -> UpdateBag k
 alterCounts f k = onMap $ \m => let
-    n = sum $ fst <$> lookup k m
+    n = countMap k m
     n' = f n
   in m |> if n == n'
     then id -- No change before and after.
@@ -62,7 +66,7 @@ alterCounts f k = onMap $ \m => let
 
 ||| Count the number of occurances
 count : k -> SortedBag k -> Nat
-count k (BagWrapper m) = sum $ fst <$> lookup k m
+count k (BagWrapper m) = countMap k m
 
 ||| Is a count non-zero?
 contains : k -> SortedBag k -> Bool
