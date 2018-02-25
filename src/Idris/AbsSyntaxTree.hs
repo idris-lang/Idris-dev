@@ -1092,8 +1092,6 @@ mapPT f t = f (mpt t) where
 
 data PTactic' t = Intro [Name] | Intros | Focus Name
                 | Refine Name [Bool] | Rewrite t | DoUnify
-                | Induction t
-                | CaseTac t
                 | Equiv t
                 | Claim Name t
                 | Unfocus
@@ -1132,7 +1130,6 @@ instance Sized a => Sized (PTactic' a) where
   size (Focus nm)       = 1 + size nm
   size (Refine nm bs)   = 1 + size nm + length bs
   size (Rewrite t)      = 1 + size t
-  size (Induction t)    = 1 + size t
   size (LetTac nm t)    = 1 + size nm + size t
   size (Exact t)        = 1 + size t
   size Compute          = 1
@@ -1153,7 +1150,6 @@ instance Sized a => Sized (PTactic' a) where
   size (TFail ts)       = 1 + size ts
   size SourceFC         = 1
   size DoUnify          = 1
-  size (CaseTac x)      = 1 + size x
   size (Equiv t)        = 1 + size t
   size (Claim x y)      = 1 + size x + size y
   size Unfocus          = 1

@@ -23,7 +23,6 @@ extract2 n c a b = do (a', ex1) <- extractUnquotes n a
 
 extractTUnquotes :: Int -> PTactic -> Elab' aux (PTactic, [(Name, PTerm)])
 extractTUnquotes n (Rewrite t) = extract1 n Rewrite t
-extractTUnquotes n (Induction t) = extract1 n Induction t
 extractTUnquotes n (LetTac name t) = extract1 n (LetTac name) t
 extractTUnquotes n (LetTacTy name t1 t2) = extract2 n (LetTacTy name) t1 t2
 extractTUnquotes n (Exact tm) = extract1 n Exact tm

@@ -69,7 +69,6 @@ mutual
                    | ParentN TTName String
                    | MethodN TTName
                    | CaseN SourceLocation TTName
-                   | ElimN TTName
                    | ImplementationCtorN TTName
                    | MetaN TTName TTName
   %name SpecialName sn, sn'
@@ -129,9 +128,6 @@ implementation Uninhabited ((WhereN x n n') = (MethodN y)) where
 implementation Uninhabited ((WhereN x n n') = (CaseN loc y)) where
   uninhabited Refl impossible
 
-implementation Uninhabited ((WhereN x n n') = (ElimN y)) where
-  uninhabited Refl impossible
-
 implementation Uninhabited ((WhereN x n n') = (ImplementationCtorN y)) where
   uninhabited Refl impossible
 
@@ -151,9 +147,6 @@ implementation Uninhabited ((WithN x n) = (MethodN n')) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((WithN x n) = (CaseN loc n')) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((WithN x n) = (ElimN n')) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((WithN x n) = (ImplementationCtorN n')) where
@@ -177,9 +170,6 @@ implementation Uninhabited ((ImplementationN n xs) = (MethodN n')) where
 implementation Uninhabited ((ImplementationN n xs) = (CaseN loc n')) where
   uninhabited Refl impossible
 
-implementation Uninhabited ((ImplementationN n xs) = (ElimN n')) where
-  uninhabited Refl impossible
-
 implementation Uninhabited ((ImplementationN n xs) = (ImplementationCtorN n')) where
   uninhabited Refl impossible
 
@@ -199,9 +189,6 @@ implementation Uninhabited ((ParentN n x) = (MethodN n')) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((ParentN n x) = (CaseN loc n')) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ParentN n x) = (ElimN n')) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((ParentN n x) = (ImplementationCtorN n')) where
@@ -225,9 +212,6 @@ implementation Uninhabited ((MethodN n) = (ParentN n' x)) where
 implementation Uninhabited ((MethodN n) = (CaseN loc n')) where
   uninhabited Refl impossible
 
-implementation Uninhabited ((MethodN n) = (ElimN n')) where
-  uninhabited Refl impossible
-
 implementation Uninhabited ((MethodN n) = (ImplementationCtorN n')) where
   uninhabited Refl impossible
 
@@ -249,37 +233,10 @@ implementation Uninhabited ((CaseN loc n) = (ParentN n' x)) where
 implementation Uninhabited ((CaseN loc n) = (MethodN n')) where
   uninhabited Refl impossible
 
-implementation Uninhabited ((CaseN loc n) = (ElimN n')) where
-  uninhabited Refl impossible
-
 implementation Uninhabited ((CaseN loc n) = (ImplementationCtorN n')) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((CaseN loc n) = (MetaN n' x)) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ElimN n) = (WhereN x n' y)) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ElimN n) = (WithN x n')) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ElimN n) = (ImplementationN n' xs)) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ElimN n) = (ParentN n' x)) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ElimN n) = (MethodN n')) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ElimN n) = (CaseN loc n')) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ElimN n) = (ImplementationCtorN n')) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ElimN n) = (MetaN n' x)) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((ImplementationCtorN n) = (WhereN x n' y)) where
@@ -298,9 +255,6 @@ implementation Uninhabited ((ImplementationCtorN n) = (MethodN n')) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((ImplementationCtorN n) = (CaseN loc n')) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((ImplementationCtorN n) = (ElimN n')) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((ImplementationCtorN n) = (MetaN n' x)) where
@@ -322,9 +276,6 @@ implementation Uninhabited ((MetaN n n') = (MethodN x)) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((MetaN n n') = (CaseN loc x)) where
-  uninhabited Refl impossible
-
-implementation Uninhabited ((MetaN n n') = (ElimN x)) where
   uninhabited Refl impossible
 
 implementation Uninhabited ((MetaN n n') = (ImplementationCtorN x)) where
@@ -416,10 +367,6 @@ mutual
   caseNInj Refl = (Refl, Refl)
 
   private
-  elimNInj : (ElimN n = ElimN n') -> n = n'
-  elimNInj Refl = Refl
-
-  private
   implementationCtorNInj : (ImplementationCtorN n = ImplementationCtorN n') -> n = n'
   implementationCtorNInj Refl = Refl
 
@@ -445,7 +392,6 @@ mutual
   decSNEq (WhereN x n n') (ParentN y z) = No absurd
   decSNEq (WhereN x n n') (MethodN y) = No absurd
   decSNEq (WhereN x n n') (CaseN loc y) = No absurd
-  decSNEq (WhereN x n n') (ElimN y) = No absurd
   decSNEq (WhereN x n n') (ImplementationCtorN y) = No absurd
   decSNEq (WhereN x n n') (MetaN y z) = No absurd
   decSNEq (WithN x n) (WhereN y n' z) = No absurd
@@ -461,7 +407,6 @@ mutual
   decSNEq (WithN x n) (ParentN n' y) = No absurd
   decSNEq (WithN x n) (MethodN n') = No absurd
   decSNEq (WithN x n) (CaseN loc n') = No absurd
-  decSNEq (WithN x n) (ElimN n') = No absurd
   decSNEq (WithN x n) (ImplementationCtorN n') = No absurd
   decSNEq (WithN x n) (MetaN n' y) = No absurd
   decSNEq (ImplementationN n xs) (WhereN x n' y) = No absurd
@@ -477,7 +422,6 @@ mutual
   decSNEq (ImplementationN n xs) (ParentN n' x) = No absurd
   decSNEq (ImplementationN n xs) (MethodN n') = No absurd
   decSNEq (ImplementationN n xs) (CaseN loc n') = No absurd
-  decSNEq (ImplementationN n xs) (ElimN n') = No absurd
   decSNEq (ImplementationN n xs) (ImplementationCtorN n') = No absurd
   decSNEq (ImplementationN n xs) (MetaN n' x) = No absurd
   decSNEq (ParentN n x) (WhereN y n' z) = No absurd
@@ -493,7 +437,6 @@ mutual
         No $ contra . fst . parentNInj
   decSNEq (ParentN n x) (MethodN n') = No absurd
   decSNEq (ParentN n x) (CaseN loc n') = No absurd
-  decSNEq (ParentN n x) (ElimN n') = No absurd
   decSNEq (ParentN n x) (ImplementationCtorN n') = No absurd
   decSNEq (ParentN n x) (MetaN n' y) = No absurd
   decSNEq (MethodN n) (WhereN x n' y) = No absurd
@@ -506,7 +449,6 @@ mutual
     decSNEq (MethodN n) (MethodN n') | No contra =
         No $ contra . methodNInj
   decSNEq (MethodN n) (CaseN loc n') = No absurd
-  decSNEq (MethodN n) (ElimN n') = No absurd
   decSNEq (MethodN n) (ImplementationCtorN n') = No absurd
   decSNEq (MethodN n) (MetaN n' x) = No absurd
   decSNEq (CaseN loc n) (WhereN x n' y) = No absurd
@@ -522,29 +464,14 @@ mutual
           No $ contra . snd . caseNInj
     decSNEq (CaseN loc n) (CaseN loc' n') | No contra =
         No $ contra . fst . caseNInj
-  decSNEq (CaseN loc n) (ElimN n') = No absurd
   decSNEq (CaseN loc n) (ImplementationCtorN n') = No absurd
   decSNEq (CaseN loc n) (MetaN n' x) = No absurd
-  decSNEq (ElimN n) (WhereN x n' y) = No absurd
-  decSNEq (ElimN n) (WithN x n') = No absurd
-  decSNEq (ElimN n) (ImplementationN n' xs) = No absurd
-  decSNEq (ElimN n) (ParentN n' x) = No absurd
-  decSNEq (ElimN n) (MethodN n') = No absurd
-  decSNEq (ElimN n) (CaseN loc n') = No absurd
-  decSNEq (ElimN n) (ElimN n') with (assert_total $ decTTNameEq n n')
-    decSNEq (ElimN n) (ElimN n)  | Yes Refl =
-        Yes Refl
-    decSNEq (ElimN n) (ElimN n') | No contra =
-        No $ contra . elimNInj
-  decSNEq (ElimN n) (ImplementationCtorN n') = No absurd
-  decSNEq (ElimN n) (MetaN n' x) = No absurd
   decSNEq (ImplementationCtorN n) (WhereN x n' y) = No absurd
   decSNEq (ImplementationCtorN n) (WithN x n') = No absurd
   decSNEq (ImplementationCtorN n) (ImplementationN n' xs) = No absurd
   decSNEq (ImplementationCtorN n) (ParentN n' x) = No absurd
   decSNEq (ImplementationCtorN n) (MethodN n') = No absurd
   decSNEq (ImplementationCtorN n) (CaseN loc n') = No absurd
-  decSNEq (ImplementationCtorN n) (ElimN n') = No absurd
   decSNEq (ImplementationCtorN n) (ImplementationCtorN n') with (assert_total $ decTTNameEq n n')
     decSNEq (ImplementationCtorN n) (ImplementationCtorN n)  | Yes Refl =
         Yes Refl
@@ -557,7 +484,6 @@ mutual
   decSNEq (MetaN n n') (ParentN x y) = No absurd
   decSNEq (MetaN n n') (MethodN x) = No absurd
   decSNEq (MetaN n n') (CaseN loc x) = No absurd
-  decSNEq (MetaN n n') (ElimN x) = No absurd
   decSNEq (MetaN n n') (ImplementationCtorN x) = No absurd
   decSNEq (MetaN n n') (MetaN x y) with (assert_total $ decTTNameEq n x)
     decSNEq (MetaN n n') (MetaN n y) | Yes Refl with (assert_total $ decTTNameEq n' y)
@@ -1006,7 +932,6 @@ mutual
     quote (ParentN n s) = `(ParentN ~(quote n) ~(quote s))
     quote (MethodN n) = `(MethodN ~(quote n))
     quote (CaseN fc n) = `(CaseN ~(quote fc) ~(quote n))
-    quote (ElimN n) = `(ElimN ~(quote n))
     quote (ImplementationCtorN n) = `(ImplementationCtorN ~(quote n))
     quote (MetaN parent meta) = `(MetaN ~(quote parent) ~(quote meta))
 
@@ -1026,7 +951,6 @@ mutual
     quote (ParentN n s) = `(ParentN ~(quote n) ~(quote s))
     quote (MethodN n) = `(MethodN ~(quote n))
     quote (CaseN fc n) = `(CaseN ~(quote fc) ~(quote n))
-    quote (ElimN n) = `(ElimN ~(quote n))
     quote (ImplementationCtorN n) = `(ImplementationCtorN ~(quote n))
     quote (MetaN parent meta) = `(MetaN ~(quote parent) ~(quote meta))
 

@@ -222,7 +222,6 @@ parseFlags = many $
 
   <|> flag' DumpHighlights (long "highlight" <> help "Emit source code highlighting")
 
-  <|> flag' NoElimDeprecationWarnings      (long "no-elim-deprecation-warnings"   <> help "Disable deprecation warnings for %elim")
   <|> flag' NoOldTacticDeprecationWarnings (long "no-tactic-deprecation-warnings" <> help "Disable deprecation warnings for the old tactic sublanguage")
 
     where

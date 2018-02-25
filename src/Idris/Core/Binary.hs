@@ -133,9 +133,6 @@ instance Binary a => Binary (Err' a) where
                                       put x1
                                       put x2
                                       put x3
-  put (NoEliminator s t) = do putWord8 37
-                              put s
-                              put t
   put (InvalidTCArg n t) = do putWord8 38
                               put n
                               put t
@@ -211,9 +208,6 @@ instance Binary a => Binary (Err' a) where
                       x2 <- get
                       x3 <- get
                       return (ElabScriptDebug x1 x2 x3)
-             37 -> do x1 <- get
-                      x2 <- get
-                      return (NoEliminator x1 x2)
              38 -> do x1 <- get
                       x2 <- get
                       return (InvalidTCArg x1 x2)

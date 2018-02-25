@@ -1,17 +1,22 @@
-# New in 1.2.*
+# New in 1.3.*
 
-+ REPL now prints an error message if program compiled by `:exec` terminates
-  abnormally.
+## Language updates
++ Old 'induction' tactics and eliminator generation functionality ('%elim', '%case', 'elim_for') is no longer supported.
+  Please, rely on the ones provided by Pruviloj and elaborator reflection instead.
+
+## Library updates
+
++ changed rndInt in Effect.Random so that it does not alternate between odd
+  and even.
 + Additions to `contrib`:
   * `Data.SortedBag`: Bag (or Multiset) implemention based on `Data.SortedMap`.
   * `Data.PosNat`: A `Nat` paired with a proof that it is positive.
   * `Data.Chain`: A function with an arbitrary number of arguments, plus
     combinators for working with them.
 
-## Library Updates
-
-+ changed rndInt in Effect.Random so that it does not alternate between odd
-  and even.
+## Tool updates
++ REPL now prints an error message if program compiled by `:exec` terminates
+  abnormally.
 
 # New in 1.2.0
 

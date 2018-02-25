@@ -19,7 +19,7 @@ infix 5 \\
 infixr 7 ::,++
 
 ||| Generic lists
-%elim data List : (elem : Type) -> Type where
+data List : (elem : Type) -> Type where
   ||| Empty list
   Nil : List elem
   ||| A non-empty list, consisting of a head element and the rest of

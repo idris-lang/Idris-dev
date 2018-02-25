@@ -93,7 +93,6 @@ data Opt = Filename String
          | UseConsoleWidth ConsoleWidth
          | DumpHighlights
          | DesugarNats
-         | NoElimDeprecationWarnings      -- ^ Don't show deprecation warnings for %elim
          | NoOldTacticDeprecationWarnings -- ^ Don't show deprecation warnings for old-style tactics
     deriving (Show, Eq, Generic)
 

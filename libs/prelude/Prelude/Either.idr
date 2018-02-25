@@ -11,7 +11,7 @@ import Prelude.List
 %access public export
 
 ||| A sum type
-%elim data Either : (a, b : Type) -> Type where
+data Either : (a, b : Type) -> Type where
   ||| One possibility of the sum, conventionally used to represent errors
   Left : (l : a) -> Either a b
   ||| The other possibility, conventionally used to represent success
