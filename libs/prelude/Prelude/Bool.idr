@@ -7,7 +7,7 @@ import Prelude.Uninhabited
 %access public export
 
 ||| Boolean Data Type
-%case data Bool = False | True
+data Bool = False | True
 
 ||| The underlying implementation of the if ... then ... else ... syntax
 ||| @ b the condition on the if

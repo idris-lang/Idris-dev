@@ -7,7 +7,7 @@
 
 ||| The canonical single-element type, also known as the trivially
 ||| true proposition.
-%elim data Unit =
+data Unit =
   ||| The trivial constructor for `()`.
   MkUnit
 
@@ -15,7 +15,7 @@ namespace Builtins
   ||| The non-dependent pair type, also known as conjunction.
   ||| @A the type of the left elements in the pair
   ||| @B the type of the right elements in the pair
-  %elim data Pair : (A : Type) -> (B : Type) -> Type where
+  data Pair : (A : Type) -> (B : Type) -> Type where
      ||| A pair of elements
      ||| @a the left element of the pair
      ||| @b the right element of the pair
@@ -54,7 +54,7 @@ namespace Builtins
 ||| The empty type, also known as the trivially false proposition.
 |||
 ||| Use `void` or `absurd` to prove anything if you have a variable of type `Void` in scope.
-%elim data Void : Type where
+data Void : Type where
 
 ||| The eliminator for the `Void` type.
 void : Void -> a

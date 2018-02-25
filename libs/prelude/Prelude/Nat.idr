@@ -14,7 +14,7 @@ import Prelude.Uninhabited
 
 ||| Natural numbers: unbounded, unsigned integers which can be pattern
 ||| matched.
-%elim data Nat =
+data Nat =
   ||| Zero
   Z |
   ||| Successor

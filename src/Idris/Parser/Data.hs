@@ -134,29 +134,15 @@ recordI :: IdrisParser DataOpts
 recordI = do keyword "record"; return []
           <|> do keyword "corecord"; return [Codata]
 
-{- | Parses if a data should not have a default eliminator
-DefaultEliminator ::= 'noelim'?
- -}
 dataOpts :: DataOpts -> IdrisParser DataOpts
-dataOpts opts
-    = do let kw = "%elim"
-         fc <- extent $ reserved kw
-         warnElim fc kw
-         dataOpts (DefaultEliminator : DefaultCaseFun : opts)
-  <|> do let kw = "%case"
-         fc <- extent $ reserved kw
-         warnElim fc kw
-         dataOpts (DefaultCaseFun : opts)
-  <|> do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
+dataOpts opts = 
+      do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
   <|> return opts
   <?> "data options"
-  where warnElim fc kw =
-          parserWarning fc (Just NoElimDeprecationWarnings)
-                           (Msg ("The '" ++ kw ++ "' directive is deprecated."))
 
 {- | Parses a data type declaration
-Data ::= DocComment? Accessibility? DataI DefaultEliminator FnName TypeSig ExplicitTypeDataRest?
-       | DocComment? Accessibility? DataI DefaultEliminator FnName Name*   DataRest?
+Data ::= DocComment? Accessibility? DataI FnName TypeSig ExplicitTypeDataRest?
+       | DocComment? Accessibility? DataI FnName Name*   DataRest?
        ;
 Constructor' ::= Constructor KeepTerminator;
 ExplicitTypeDataRest ::= 'where' OpenBlock Constructor'* CloseBlock;
@@ -175,10 +161,10 @@ data_ syn = (checkDeclFixity $
                     (doc, argDocs) <- P.option noDocs docComment
                     pushIndent
                     acc <- accessibility
-                    elim <- dataOpts []
+                    errRev <- dataOpts []
                     co <- dataI
                     ist <- get
-                    let dataOpts = combineDataOpts (elim ++ co)
+                    let dataOpts = errRev ++ co
                         doc' = annotCode (tryFullExpr syn ist) doc
                         argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
                                    | (n, d) <- argDocs ]
@@ -201,7 +187,7 @@ data_ syn = (checkDeclFixity $
                     let tyn = expandNS syn tyn_in
                     d <- P.option (PData doc argDocs syn nfc dataOpts (PLaterdecl tyn nfc ty)) (do
                       P.try (lchar '=') <|> do keyword "where"
-                                               let kw = (if DefaultEliminator `elem` dataOpts then "%elim" else "") ++ (if Codata `elem` dataOpts then "co" else "") ++ "data "
+                                               let kw = (if Codata `elem` dataOpts then "co" else "") ++ "data "
                                                let n  = show tyn_in ++ " "
                                                let s  = kw ++ n
                                                let as = unwords (map show args) ++ " "
@@ -227,10 +213,6 @@ data_ syn = (checkDeclFixity $
     mkPApp fc t xs = PApp fc t (map pexp xs)
     bindArgs :: [PTerm] -> PTerm -> PTerm
     bindArgs xs t = foldr (PPi expl (sMN 0 "_t") NoFC) t xs
-    combineDataOpts :: DataOpts -> DataOpts
-    combineDataOpts opts = if Codata `elem` opts
-                              then delete DefaultEliminator opts
-                              else opts
 
 
 {- | Parses a type constructor declaration

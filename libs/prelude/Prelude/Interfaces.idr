@@ -66,7 +66,7 @@ Eq Bool where
 
 
 -- ---------------------------------------------------------- [ Ordering Interface ]
-%elim data Ordering = LT | EQ | GT
+data Ordering = LT | EQ | GT
 
 Eq Ordering where
     LT == LT = True

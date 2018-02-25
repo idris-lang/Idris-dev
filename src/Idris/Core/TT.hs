@@ -273,7 +273,6 @@ data Err' t
           | CantResolveAlts [Name]
           | NoValidAlts [Name]
           | IncompleteTerm t
-          | NoEliminator String t
           | UniverseError FC UExp (Int, Int) (Int, Int) [ConstraintFC]
             -- ^ Location, bad universe, old domain, new domain, suspects
           | UniqueError Universe Name
@@ -484,8 +483,7 @@ data SpecialName = WhereN !Int !Name !Name
                  | ImplementationN !Name [T.Text]
                  | ParentN !Name !T.Text
                  | MethodN !Name
-                 | CaseN !FC' !Name
-                 | ElimN !Name
+                 | CaseN !FC' !Name 
                  | ImplementationCtorN !Name
                  | MetaN !Name !Name
   deriving (Eq, Ord, Data, Generic, Typeable)
@@ -530,7 +528,6 @@ instance Show SpecialName where
     show (ParentN p c) = show p ++ "#" ++ T.unpack c
     show (CaseN fc n) = "case block in " ++ show n ++
                         if fc == FC' emptyFC then "" else " at " ++ show fc
-    show (ElimN n) = "<<" ++ show n ++ " eliminator>>"
     show (ImplementationCtorN n) = "constructor of " ++ show n
     show (MetaN parent meta) = "<<" ++ show parent ++ " " ++ show meta ++ ">>"
 
@@ -547,7 +544,6 @@ showCG (SN s) = showCG' s
         showCG' (MethodN m) = '!':showCG m
         showCG' (ParentN p c) = showCG p ++ "#" ++ show c
         showCG' (CaseN fc c) = showCG c ++ showFC' fc ++ "_case"
-        showCG' (ElimN sn) = showCG sn ++ "_elim"
         showCG' (ImplementationCtorN n) = showCG n ++ "_ictor"
         showCG' (MetaN parent meta) = showCG parent ++ "_meta_" ++ showCG meta
         showFC' (FC' NoFC) = ""
@@ -1090,8 +1086,6 @@ data Datatype n = Data { d_typename :: n,
 
 -- | Data declaration options
 data DataOpt = Codata -- ^ Set if the the data-type is coinductive
-             | DefaultEliminator -- ^ Set if an eliminator should be generated for data type
-             | DefaultCaseFun -- ^ Set if a case function should be generated for data type
              | DataErrRev
     deriving (Show, Eq, Generic)
 
@@ -1512,7 +1506,6 @@ nextName (SN x) = SN (nextName' x)
     nextName' (ImplementationN n ns) = ImplementationN (nextName n) ns
     nextName' (ParentN n ns) = ParentN (nextName n) ns
     nextName' (CaseN fc n) = CaseN fc (nextName n)
-    nextName' (ElimN n) = ElimN (nextName n)
     nextName' (MethodN n) = MethodN (nextName n)
     nextName' (ImplementationCtorN n) = ImplementationCtorN (nextName n)
     nextName' (MetaN parent meta) = MetaN parent (nextName meta)

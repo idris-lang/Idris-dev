@@ -460,12 +460,6 @@ pprintErr' i (IncompleteTerm t)
    getMissing hs env (App _ f a)
        = getMissing hs env f ++ getMissing hs env a
    getMissing hs env _ = []
-pprintErr' i (NoEliminator s t)
-  = text "No " <> text s <> text " for type " <+>
-       annTm t (pprintTerm i (delabSugared i t)) <$>
-    text "Please note that 'induction' is experimental." <$>
-    text "Only types declared with '%elim' can be used." <$>
-    text "Consider writing a pattern matching definition instead."
 pprintErr' i (UniverseError fc uexp old new suspects) =
   text "Universe inconsistency." <>
   (indented . vsep) [ text "Working on:" <+> text (show uexp)

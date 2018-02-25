@@ -115,8 +115,6 @@ reifyApp ist t [l, r] | t == reflm "Seq" = liftM2 TSeq (reify ist l) (reify ist 
 reifyApp ist t [Constant (Str n), x]
              | t == reflm "GoalType" = liftM (GoalType n) (reify ist x)
 reifyApp _ t [n] | t == reflm "Intro" = liftM (Intro . (:[])) (reifyTTName n)
-reifyApp ist t [t'] | t == reflm "Induction" = liftM (Induction . delab ist) (reifyTT t')
-reifyApp ist t [t'] | t == reflm "Case" = liftM (CaseTac . delab ist) (reifyTT t')
 reifyApp ist t [t']
              | t == reflm "ApplyTactic" = liftM (ApplyTactic . delab ist) (reifyTT t')
 reifyApp ist t [t']
@@ -278,9 +276,6 @@ reifyTTNameApp t [sn]
         reifySN t [fc, n]
                 | t == reflm "CaseN" =
                   CaseN <$> (FC' <$> reifyFC fc) <*> reifyTTName n
-        reifySN t [n]
-                | t == reflm "ElimN" =
-                  ElimN <$> reifyTTName n
         reifySN t [n]
                 | t == reflm "ImplementationCtorN" =
                   ImplementationCtorN <$> reifyTTName n
@@ -720,10 +715,8 @@ reflectSpecialName (ParentN n s) =
   reflCall "ParentN" [reflectName n, RConstant (Str (T.unpack s))]
 reflectSpecialName (MethodN n) =
   reflCall "MethodN" [reflectName n]
-reflectSpecialName (CaseN fc n) =
+reflectSpecialName (CaseN fc n) = 
   reflCall "CaseN" [reflectFC (unwrapFC fc), reflectName n]
-reflectSpecialName (ElimN n) =
-  reflCall "ElimN" [reflectName n]
 reflectSpecialName (ImplementationCtorN n) =
   reflCall "ImplementationCtorN" [reflectName n]
 reflectSpecialName (MetaN parent meta) =
@@ -928,9 +921,6 @@ reflectErr (CantResolveAlts ss) =
   raw_apply (Var $ reflErrName "CantResolveAlts")
             [rawList (Var $ reflm "TTName") (map reflectName ss)]
 reflectErr (IncompleteTerm t) = raw_apply (Var $ reflErrName "IncompleteTerm") [reflect t]
-reflectErr (NoEliminator str t)
-  = raw_apply (Var $ reflErrName "NoEliminator") [RConstant (Str str),
-                                                  reflect t]
 reflectErr (UniverseError fc ue old new tys) =
   -- NB: loses information, but OK because this is not likely to be rewritten
   Var $ reflErrName "UniverseError"

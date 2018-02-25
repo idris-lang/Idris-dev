@@ -1,6 +1,6 @@
 package prelude
 
-opts = "--nobuiltins --total --no-elim-deprecation-warnings --partial-eval"
+opts = "--nobuiltins --total --partial-eval"
 
 modules = Builtins
 

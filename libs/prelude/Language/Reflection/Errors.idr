@@ -35,7 +35,6 @@ data Err = Msg String
          | CantResolveAlts (List TTName)
          | NoValidAlts (List TTName)
          | IncompleteTerm TT
-         | NoEliminator String TT
          | UniverseError
          | ProgramLineComment
          | Inaccessible TTName

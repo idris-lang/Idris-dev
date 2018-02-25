@@ -173,19 +173,6 @@ rewrite
      Vect Z a
     -lemma>
 
-induction
----------
-
--  ``induction`` - (``Note that this is still experimental`` and you may
-   get strange results and error messages. We are aware of these and
-   will finish the implementation eventually!) Prove the goal by
-   induction. Each constructor of the datatype becomes a goal.
-   Constructors with recursive arguments become induction steps, while
-   simple constructors become base cases. Note that this only works for
-   datatypes that have eliminators: a datatype definition must have the
-   ``%elim`` modifier.
-
-
 sourceLocation
 --------------
 

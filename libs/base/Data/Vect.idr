@@ -11,7 +11,6 @@ infixr 7 ::
 ||| Vectors: Generic lists with explicit length in the type
 ||| @ len the length of the list
 ||| @ elem the type of elements
-%elim
 data Vect : (len : Nat) -> (elem : Type) -> Type where
   ||| Empty vector
   Nil  : Vect Z elem

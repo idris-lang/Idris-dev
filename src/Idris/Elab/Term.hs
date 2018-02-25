@@ -1749,24 +1749,6 @@ collectDeferred top casenames ctxt tm = cd [] tm
                                         (cd env a)
     cd env t = return t
 
-case_ :: Bool -> Bool -> IState -> Name -> PTerm -> ElabD ()
-case_ ind autoSolve ist fn tm = do
-  attack
-  tyn <- getNameFrom (sMN 0 "ity")
-  claim tyn RType
-  valn <- getNameFrom (sMN 0 "ival")
-  claim valn (Var tyn)
-  letn <- getNameFrom (sMN 0 "irule")
-  letbind letn RigW (Var tyn) (Var valn)
-  focus valn
-  elab ist toplevel ERHS [] (sMN 0 "tac") tm
-  env <- get_env
-  let (Just binding) = lookupBinder letn env
-  let val = binderVal binding
-  if ind then induction (forget val)
-         else casetac (forget val)
-  when autoSolve solveAll
-
 -- | Compute the appropriate name for a top-level metavariable
 metavarName :: [String] -> Name -> Name
 metavarName _          n@(NS _ _) = n
@@ -2416,10 +2398,6 @@ runTac autoSolve ist perhapsFC fn tac
                    elab ist toplevel ERHS [] (sMN 0 "tac") tm
                    rewrite (Var letn)
                    when autoSolve solveAll
-    runT (Induction tm) -- let bind tm, similar to the others
-              = case_ True autoSolve ist fn tm
-    runT (CaseTac tm)
-              = case_ False autoSolve ist fn tm
     runT (LetTac n tm)
               = do attack
                    tyn <- getNameFrom (sMN 0 "letty")

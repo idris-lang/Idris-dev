@@ -391,7 +391,6 @@ simpleExpr syn =
         <|> do lchar '%'; fc <- extent $ reserved "instance"
                parserWarning fc Nothing $ Msg "The use of %instance is deprecated, use %implementation instead."
                return (PResolveTC fc)
-        <|> do reserved "elim_for"; (t, fc) <- withExtent $ fnName; return (PRef fc [] (SN $ ElimN t))
         <|> proofExpr syn
         <|> tacticsExpr syn
         <|> P.try (do fc <- extent (reserved "Type*"); return $ PUniverse fc AllTypes)
@@ -1491,8 +1490,6 @@ tactics =
        do n <- spaced fnName
           return $ MatchRefine n)
   , expressionTactic ["rewrite"] Rewrite
-  , expressionTactic ["case"] CaseTac
-  , expressionTactic ["induction"] Induction
   , expressionTactic ["equiv"] Equiv
   , (["let"], Nothing, \syn -> -- FIXME syntax for let
        do n <- (indentGt *> name)

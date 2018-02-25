@@ -23,6 +23,6 @@ Usage:  ([--nobanner] | [-q|--quiet] | [--ide-mode] | [--ide-mode-socket] |
         [--O3] | [--O2] | [--O1] | [--O0] | [--partial-eval] |
         [--no-partial-eval] | [-O|--level ARG] | [--target TRIPLE] | [--cpu CPU]
         | [--color|--colour] | [--nocolor|--nocolour] | [--consolewidth WIDTH] |
-        [--highlight] | [--no-elim-deprecation-warnings] |
-        [--no-tactic-deprecation-warnings]) [FILES] [-v|--version]
+        [--highlight] | [--no-tactic-deprecation-warnings]) [FILES]
+        [-v|--version]
 )

@@ -91,8 +91,6 @@ data Tactic = Attack
             | LetBind Name RigCount Raw Raw
             | ExpandLet Name Term
             | Rewrite Raw
-            | Induction Raw
-            | CaseTac Raw
             | Equiv Raw
             | PatVar Name
             | PatBind Name RigCount
@@ -728,62 +726,6 @@ mkP lt l r (Bind n b sc)
                              b { binderTy = ty' }
 mkP lt l r x = x
 
-casetac :: Raw -> Bool -> RunTactic
-casetac tm induction ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' = do
-  (tmv, tmt) <- lift $ check ctxt env tm
-  let tmt' = normalise ctxt env tmt
-  let (tacn, tacstr, _) = if induction
-              then (ElimN, "eliminator", "Induction")
-              else (CaseN (FC' emptyFC), "case analysis", "Case analysis")
-  case unApply tmt' of
-    (P _ tnm _, tyargs) -> do
-        case lookupTy (SN (tacn tnm)) ctxt of
-          [elimTy] -> do
-             param_pos <- case lookupMetaInformation tnm ctxt of
-                               [DataMI param_pos]    -> return param_pos
-                               m | not (null tyargs) -> fail $ "Invalid meta information for " ++ show tnm ++ " where the metainformation is " ++ show m ++ " and definition is" ++ show (lookupDef tnm ctxt)
-                               _ -> return []
-             let (params, indicies) = splitTyArgs param_pos tyargs
-             let args     = getArgTys elimTy
-             let args'    = drop (length params) args
-             let restargs = init $ tail args'
-             let consargs = take (length restargs - length indicies) restargs
-             let indxnames = makeIndexNames indicies
-             currentNames <- query $ allTTNames . getProofTerm . pterm
-             let tmnm = case tm of
-                         Var nm -> uniqueNameCtxt ctxt nm currentNames
-                         _ -> uniqueNameCtxt ctxt (sMN 0 "iv") currentNames
-             let tmvar = P Bound tmnm tmt'
-             prop <- replaceIndicies indxnames indicies $ Bind tmnm (Lam RigW tmt') (mkP tmvar tmv tmvar t)
-             consargs' <- query (\ps -> map (flip (uniqueNameCtxt (context ps)) (holes ps ++ allTTNames (getProofTerm (pterm ps))) *** uniqueBindersCtxt (context ps) (holes ps ++ allTTNames (getProofTerm (pterm ps)))) consargs)
-             let res = flip (foldr substV) params $ (substV prop $ bindConsArgs consargs' (mkApp (P Ref (SN (tacn tnm)) (TType (UVal 0)))
-                                                        (params ++ [prop] ++ map makeConsArg consargs' ++ indicies ++ [tmv])))
-             action (\ps -> ps {holes = holes ps \\ [x],
-                                recents = x : recents ps })
-             mapM_ addConsHole (reverse consargs')
-             let res' = forget res
-             (scv, sct) <- lift $ check ctxt env res'
-             let (scv', _) = specialise ctxt env [] scv
-             return scv'
-          [] -> lift $ tfail $ NoEliminator tacstr tmt'
-          xs -> lift $ tfail $ Msg $ "Multiple definitions found when searching for " ++ tacstr ++ "of " ++ show tnm
-    _ -> lift $ tfail $ NoEliminator (if induction then "induction" else "case analysis")
-                                     tmt'
-    where makeConsArg (nm, ty) = P Bound nm ty
-          bindConsArgs ((nm, ty):args) v = Bind nm (Hole ty) $ bindConsArgs args v
-          bindConsArgs [] v = v
-          addConsHole (nm, ty) =
-            action (\ps -> ps { holes = nm : holes ps })
-          splitTyArgs param_pos tyargs =
-            let (params, indicies) = partition (flip elem param_pos . fst) . zip [0..] $ tyargs
-            in (map snd params, map snd indicies)
-          makeIndexNames = foldr (\_ nms -> (uniqueNameCtxt ctxt (sMN 0 "idx") nms):nms) []
-          replaceIndicies idnms idxs prop = foldM (\t (idnm, idx) -> do (idxv, idxt) <- lift $ check ctxt env (forget idx)
-                                                                        let var = P Bound idnm idxt
-                                                                        return $ Bind idnm (Lam RigW idxt) (mkP var idxv var t)) prop $ zip idnms idxs
-casetac tm induction ctxt env _ = fail $ "Can't do " ++ (if induction then "induction" else "case analysis") ++ " here"
-
-
 equiv :: Raw -> RunTactic
 equiv tm ctxt env (Bind x (Hole t) sc) =
     do (tmv, tmt) <- lift $ check ctxt env tm
@@ -1111,8 +1053,6 @@ process t h = tactic (Just h) (mktac t)
          mktac (LetBind n r t v) = letbind n r t v
          mktac (ExpandLet n b)   = expandLet n b
          mktac (Rewrite t)       = rewrite t
-         mktac (Induction t)     = casetac t True
-         mktac (CaseTac t)       = casetac t False
          mktac (Equiv t)         = equiv t
          mktac (PatVar n)        = patvar n
          mktac (PatBind n rig)   = patbind n rig
