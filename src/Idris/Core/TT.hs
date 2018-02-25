@@ -483,7 +483,7 @@ data SpecialName = WhereN !Int !Name !Name
                  | ImplementationN !Name [T.Text]
                  | ParentN !Name !T.Text
                  | MethodN !Name
-                 | CaseN !FC' !Name 
+                 | CaseN !FC' !Name
                  | ImplementationCtorN !Name
                  | MetaN !Name !Name
   deriving (Eq, Ord, Data, Generic, Typeable)

@@ -715,7 +715,7 @@ reflectSpecialName (ParentN n s) =
   reflCall "ParentN" [reflectName n, RConstant (Str (T.unpack s))]
 reflectSpecialName (MethodN n) =
   reflCall "MethodN" [reflectName n]
-reflectSpecialName (CaseN fc n) = 
+reflectSpecialName (CaseN fc n) =
   reflCall "CaseN" [reflectFC (unwrapFC fc), reflectName n]
 reflectSpecialName (ImplementationCtorN n) =
   reflCall "ImplementationCtorN" [reflectName n]

@@ -135,7 +135,7 @@ recordI = do keyword "record"; return []
           <|> do keyword "corecord"; return [Codata]
 
 dataOpts :: DataOpts -> IdrisParser DataOpts
-dataOpts opts = 
+dataOpts opts =
       do reserved "%error_reverse"; dataOpts (DataErrRev : opts)
   <|> return opts
   <?> "data options"
