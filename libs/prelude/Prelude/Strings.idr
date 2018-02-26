@@ -53,10 +53,10 @@ newStringBuffer len = do ptr <- foreign FFI_C "idris_makeStringBuffer"
 
 ||| Append a string to the end of a string buffer
 export
-addToStringBuffer : StringBuffer -> String -> IO ()
-addToStringBuffer (MkString ptr) str =
-    foreign FFI_C "idris_addToString" (Ptr -> String -> IO ())
-            ptr str
+addToStringBuffer : StringBuffer -> String -> (len : Int) -> IO ()
+addToStringBuffer (MkString ptr) str len =
+    foreign FFI_C "idris_addToString" (Ptr -> String -> Int -> IO ())
+            ptr str len
 
 ||| Get the string from a string buffer. The buffer is invalid after
 ||| this.

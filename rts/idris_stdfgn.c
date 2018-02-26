@@ -203,9 +203,8 @@ void* idris_makeStringBuffer(int len) {
     return sb;
 }
 
-void idris_addToString(void* buffer, char* str) {
+void idris_addToString(void* buffer, char* str, int len) {
     StrBuffer* sb = (StrBuffer*)buffer;
-    int len = strlen(str);
 
     memcpy(sb->string + sb->len, str, len+1);
     sb->len += len;

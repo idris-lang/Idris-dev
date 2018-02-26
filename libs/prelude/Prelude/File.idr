@@ -158,7 +158,7 @@ do_fread : Ptr -> IO' l String
 do_fread h = prim_fread h
 
 private
-do_freadChars : Ptr -> Int -> IO' l String
+do_freadChars : Ptr -> Int -> IO' l (String, Int)
 do_freadChars h len = prim_freadChars len h
 
 export
@@ -202,11 +202,11 @@ fGetLine (FHandle h) = do
 ||| Read up to a number of characters from a file
 ||| @h a file handle which must be open for reading
 export
-fGetChars : (h : File) -> (len : Int) -> IO (Either FileError String)
-fGetChars (FHandle h) len = do str <- do_freadChars h len
+fGetChars : (h : File) -> (len : Int) -> IO (Either FileError (String, Int))
+fGetChars (FHandle h) len = do (str, resultlen) <- do_freadChars h len
                                if !(ferror (FHandle h))
                                   then pure (Left FileReadError)
-                                  else pure (Right str)
+                                  else pure (Right (str, resultlen))
 
 
 private
@@ -265,15 +265,15 @@ readFile fn = do Right h <- openFile fn Read
                  pure c
   where
     readFile' : File -> Int -> StringBuffer -> IO (Either FileError String)
-    readFile' h max contents =
+    readFile' h max sbuf =
        do x <- fEOF h
           if not x && max > 0
-                   then do Right l <- fGetChars h 1024000
+                   then do Right (chars, len) <- fGetChars h 1024000
                                | Left err => pure (Left err)
-                           addToStringBuffer contents l
+                           addToStringBuffer sbuf chars len
                            assert_total $
-                             readFile' h (max - 1024000) contents
-                   else do str <- getStringFromBuffer contents
+                             readFile' h (max - 1024000) sbuf
+                   else do str <- getStringFromBuffer sbuf
                            pure (Right str)
 
 ||| Write a string to a file
