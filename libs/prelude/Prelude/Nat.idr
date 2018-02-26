@@ -72,12 +72,10 @@ mult (S left) right = plus right $ mult left right
 
 ||| Convert an Integer to a Nat, mapping negative numbers to 0
 fromIntegerNat : Integer -> Nat
-fromIntegerNat 0 = Z
-fromIntegerNat n =
-  if (n > 0) then
-    S (fromIntegerNat (assert_smaller n (n - 1)))
-  else
-    Z
+fromIntegerNat i =
+  case (i > 0) of
+    True  => S (fromIntegerNat (assert_smaller i (i - 1)))
+    False => Z
 
 ||| Convert a Nat to an Integer
 toIntegerNat : Nat -> Integer
