@@ -288,19 +288,20 @@ doParse state com xs act with (sizeAccessible xs)
 public export
 data ParseError tok = Error String (List tok)
 
-||| Parse a list of tokens according to the given grammar. If successful,
-||| returns a pair of the parse result and the unparsed tokens (the remaining
-||| input).
+
+||| Parse a list of tokens according to the given grammar and an initial parser
+||| state. If successful, returns a pair of the parse result and final state,
+||| and the unparsed tokens (the remaining input).
 export
 parseState : (act : GrammarT st tok c ty) -> 
           (initial : st) ->
           (xs : List tok) ->
-          Either (ParseError tok) (ty, List tok)
+          Either (ParseError tok) ((ty, st), List tok)
 parseState act initial xs
     = case doParse initial False xs act of
            Failure _ _ msg ts => Left (Error msg ts)
-           EmptyRes _ _ val rest => pure (val, rest)
-           NonEmptyRes _ _ val rest => pure (val, rest)
+           EmptyRes state _ val rest => Right ((val, state), rest)
+           NonEmptyRes state _ val rest => Right ((val, state), rest)
 
 ||| Parse a list of tokens according to the given grammar. If successful,
 ||| returns a pair of the parse result and the unparsed tokens (the remaining
@@ -309,4 +310,6 @@ export
 parse : (act : Grammar tok c ty) ->
         (xs : List tok) ->
         Either (ParseError tok) (ty, List tok)
-parse act = parseState act ()
+parse act xs = case parseState act () xs of
+                    Left err => Left err
+                    Right ((val, ()), xs) => Right (val, xs)
