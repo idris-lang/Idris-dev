@@ -1,5 +1,7 @@
 module Permutations
 
+%access export
+
 -- | All permutations of a list.
 permutations : List a -> List (List a)
 permutations [] = [[]]

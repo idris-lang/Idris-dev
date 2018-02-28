@@ -1,5 +1,8 @@
 module Data.List.Group
 
+%default total
+%access export
+
 ||| The groupBy function returns a list of lists such that the concatenation
 ||| of the list is equal to the argument, and each sublist contains only
 ||| elements that are equal according to the user-supplied predicate.
