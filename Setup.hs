@@ -18,6 +18,7 @@ import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile, 
 import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Text
+import Distribution.Verbosity
 
 import System.Environment
 import System.Exit
@@ -115,6 +116,18 @@ gitHash = do h <- Control.Exception.catch (readProcess "git" ["rev-parse", "--sh
                   (\e -> let e' = (e :: SomeException) in return "PRE")
              return $ takeWhile (/= '\n') h
 
+-- Generate a module that contains extra library directories passed
+-- via command-line to cabal
+generateBuildFlagsModule :: Verbosity -> FilePath -> [String] -> IO ()
+generateBuildFlagsModule verbosity dir libdirs = do
+    let buildFlagsModulePath = dir </> "BuildFlags_idris" Px.<.> "hs"
+    putStrLn $ "Generating " ++ buildFlagsModulePath
+    createDirectoryIfMissingVerbose verbosity True dir
+    rewriteFile buildFlagsModulePath contents
+  where contents = "module BuildFlags_idris where \n\n" ++
+                   "extraLibDirs :: [String]\n" ++
+                   "extraLibDirs = " ++ show libdirs
+
 -- Put the Git hash into a module for use in the program
 -- For release builds, just put the empty string in the module
 generateVersionModule verbosity dir release = do
@@ -167,8 +180,10 @@ generateToolchainModule verbosity srcDir toolDir = do
 
 idrisConfigure _ flags pkgdesc local = do
     configureRTS
-    withLibLBI pkgdesc local $ \_ libcfg -> do
+    withLibLBI pkgdesc local $ \lib libcfg -> do
       let libAutogenDir = autogenComponentModulesDir local libcfg
+      let libDirs = extraLibDirs $ libBuildInfo lib
+      generateBuildFlagsModule verbosity libAutogenDir libDirs
       generateVersionModule verbosity libAutogenDir (isRelease (configFlags local))
       if isFreestanding $ configFlags local
           then do
@@ -199,6 +214,7 @@ idrisPreSDist args flags = do
   let dir = S.fromFlag (S.sDistDirectory flags)
   let verb = S.fromFlag (S.sDistVerbosity flags)
   generateVersionModule verb "src" True
+  generateBuildFlagsModule verb "src" []
   generateTargetModule verb "src" "./libs"
   generateToolchainModule verb "src" Nothing
   preSDist simpleUserHooks args flags
@@ -250,7 +266,7 @@ idrisPreBuild args flags = do
         return (Nothing, [])
 #endif
 
-idrisBuild _ flags _ local 
+idrisBuild _ flags _ local
    = if (execOnly (configFlags local)) then buildRTS
         else do buildStdLib
                 buildRTS
@@ -272,7 +288,7 @@ idrisBuild _ flags _ local
 -- -----------------------------------------------------------------------------
 -- Copy/Install
 
-idrisInstall verbosity copy pkg local 
+idrisInstall verbosity copy pkg local
    = if (execOnly (configFlags local)) then installRTS
         else do installStdLib
                 installRTS
