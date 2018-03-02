@@ -85,8 +85,10 @@ gmpLib = []
 extraLibFlags = map ("-L" ++) extraLibDirs
 
 getLibFlags = do dir <- getIdrisCRTSDir
-                 return $ ["-L" ++ dropTrailingPathSeparator dir, "-lidris_rts"]
-                   ++ extraLib ++ gmpLib ++ extraLibFlags
+                 return $ extraLibFlags
+                   ++ extraLib
+                   ++ ["-L" ++ dropTrailingPathSeparator dir, "-lidris_rts"]
+                   ++ gmpLib
                    ++ ["-lpthread"]
 
 getIdrisLibDir = addTrailingPathSeparator <$> overrideIdrisSubDirWith "libs" "IDRIS_LIBRARY_PATH"
