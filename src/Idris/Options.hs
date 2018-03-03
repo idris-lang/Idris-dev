@@ -94,6 +94,7 @@ data Opt = Filename String
          | DumpHighlights
          | DesugarNats
          | NoOldTacticDeprecationWarnings -- ^ Don't show deprecation warnings for old-style tactics
+         | AllowCapitalizedPatternVariables -- ^ Allow pattern variables to be capitalized
     deriving (Show, Eq, Generic)
 
 
