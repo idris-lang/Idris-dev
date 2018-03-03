@@ -1847,6 +1847,8 @@ addImpl' :: Bool -> [Name] -> [Name] -> [Name] -> IState -> PTerm -> PTerm
 addImpl' inpat env infns imp_meths ist ptm
    = ai inpat False (zip env (repeat Nothing)) [] (mkUniqueNames env [] ptm)
   where
+    allowcap = AllowCapitalizedPatternVariables `elem` opt_cmdline (idris_options ist)
+
     topname = case ptm of
                    PRef _ _ n -> n
                    PApp _ (PRef _ _ n) _ -> n
@@ -1855,9 +1857,9 @@ addImpl' inpat env infns imp_meths ist ptm
     ai :: Bool -> Bool -> [(Name, Maybe PTerm)] -> [[T.Text]] -> PTerm -> PTerm
     ai inpat qq env ds (PRef fc fcs f)
         | f `elem` infns = PInferRef fc fcs f
-        | not (f `elem` map fst env) = handleErr $ aiFn topname inpat inpat qq imp_meths ist fc f fc ds []
+        | not (f `elem` map fst env) = handleErr $ aiFn topname allowcap inpat inpat qq imp_meths ist fc f fc ds []
     ai inpat qq env ds (PHidden (PRef fc hl f))
-        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn topname inpat False qq imp_meths ist fc f fc ds [])
+        | not (f `elem` map fst env) = PHidden (handleErr $ aiFn topname allowcap inpat False qq imp_meths ist fc f fc ds [])
     ai inpat qq env ds (PRewrite fc by l r g)
        = let l' = ai inpat qq env ds l
              r' = ai inpat qq env ds r
@@ -1887,7 +1889,7 @@ addImpl' inpat env infns imp_meths ist ptm
         | f `elem` infns = ai inpat qq env ds (PApp fc (PInferRef ffc hl f) as)
         | not (f `elem` map fst env)
               = let as' = map (fmap (ai inpat qq env ds)) as in
-                    handleErr $ aiFn topname inpat False qq imp_meths ist fc f ffc ds as'
+                    handleErr $ aiFn topname allowcap inpat False qq imp_meths ist fc f ffc ds as'
         | Just (Just ty) <- lookup f env =
              let as' = map (fmap (ai inpat qq env ds)) as
                  arity = getPArity ty in
@@ -1972,28 +1974,31 @@ addImpl' inpat env infns imp_meths ist ptm
 -- if in a pattern, and there are no arguments, and there's no possible
 -- names with zero explicit arguments, don't add implicits.
 
-aiFn :: Name -> Bool -> Bool -> Bool
+aiFn :: Name -> Bool -- ^ Allow capitalization of pattern variables
+     -> Bool -> Bool -> Bool
      -> [Name]
      -> IState -> FC
      -> Name -- ^ function being applied
      -> FC -> [[T.Text]]
      -> [PArg] -- ^ initial arguments (if in a pattern)
      -> Either Err PTerm
-aiFn topname inpat True qq imp_meths ist fc f ffc ds []
+aiFn topname allowcap inpat True qq imp_meths ist fc f ffc ds []
   | inpat && implicitable f && unqualified f = Right $ PPatvar ffc f
   | otherwise
      = case lookupDef f (tt_ctxt ist) of
-        [] -> case f of
-                   MN _ _ -> Right $ PPatvar ffc f
-                   UN xs | isDigit (T.head xs) -- for partial evaluation vars
-                             -> Right $ PPatvar ffc f
-                   _ -> Left $ Msg $ show f ++ " is not a valid name for a pattern variable"
+        [] -> if allowcap
+                then Right $ PPatvar ffc f
+                else case f of
+                       MN _ _ -> Right $ PPatvar ffc f
+                       UN xs | isDigit (T.head xs) -- for partial evaluation vars
+                                 -> Right $ PPatvar ffc f
+                       _ -> Left $ Msg $ show f ++ " is not a valid name for a pattern variable"
         alts -> let ialts = lookupCtxtName f (idris_implicits ist) in
                     -- trace (show f ++ " " ++ show (fc, any (all imp) ialts, ialts, any constructor alts)) $
                     if (not (vname f) || tcname f
                            || any (conCaf (tt_ctxt ist)) ialts)
 --                            any constructor alts || any allImp ialts))
-                        then aiFn topname inpat False qq imp_meths ist fc f ffc ds [] -- use it as a constructor
+                        then aiFn topname allowcap inpat False qq imp_meths ist fc f ffc ds [] -- use it as a constructor
                         else Right $ PPatvar ffc f
     where imp (PExp _ _ _ _) = False
           imp _ = True
@@ -2008,9 +2013,9 @@ aiFn topname inpat True qq imp_meths ist fc f ffc ds []
           vname (UN n) = True -- non qualified
           vname _ = False
 
-aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
+aiFn topname allowcap inpat expat qq imp_meths ist fc f ffc ds as
     | f `elem` primNames = Right $ PApp fc (PRef ffc [ffc] f) as
-aiFn topname inpat expat qq imp_meths ist fc f ffc ds as
+aiFn topname allowcap inpat expat qq imp_meths ist fc f ffc ds as
           -- This is where namespaces get resolved by adding PAlternative
      = do let ns = lookupCtxtName f (idris_implicits ist)
           let nh = filter (\(n, _) -> notHidden n) ns

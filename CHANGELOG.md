@@ -6,7 +6,7 @@
 
 ## Library updates
 
-+ changed rndInt in Effect.Random so that it does not alternate between odd
++ Changed rndInt in Effect.Random so that it does not alternate between odd
   and even.
 + Additions to `contrib`:
   * `Data.SortedBag`: Bag (or Multiset) implemention based on `Data.SortedMap`.
@@ -15,6 +15,7 @@
     combinators for working with them.
 
 ## Tool updates
++ Added a switch `--allow-capitalized-pattern-variables` to optionally allow capitalized pattern variables after they were prohibited in 1.2.0.
 + REPL now prints an error message if program compiled by `:exec` terminates
   abnormally.
 
