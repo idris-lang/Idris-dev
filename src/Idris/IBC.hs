@@ -19,8 +19,8 @@ import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.DeepSeq ()
-import Idris.Docstrings (Docstring)
-import qualified Idris.Docstrings as D
+import Idris.Docs.DocStrings (DocString)
+import qualified Idris.Docs.DocStrings as D
 import Idris.Error
 import Idris.Imports
 import Idris.Options
@@ -74,8 +74,8 @@ data IBCFile = IBCFile {
   , ibc_flags                  :: ![(Name, [FnOpt])]
   , ibc_fninfo                 :: ![(Name, FnInfo)]
   , ibc_cg                     :: ![(Name, CGInfo)]
-  , ibc_docstrings             :: ![(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))]
-  , ibc_moduledocs             :: ![(Name, Docstring D.DocTerm)]
+  , ibc_docstrings             :: ![(Name, (DocString D.DocTerm, [(Name, DocString D.DocTerm)]))]
+  , ibc_moduledocs             :: ![(Name, DocString D.DocTerm)]
   , ibc_transforms             :: ![(Name, (Term, Term))]
   , ibc_errRev                 :: ![(Term, Term)]
   , ibc_errReduce              :: ![Name]
@@ -847,7 +847,7 @@ processLangExts _ _ = return ()
 
 ----- For Cheapskate and docstrings
 
-instance Binary a => Binary (D.Docstring a)
+instance Binary a => Binary (D.DocString a)
 instance Binary CT.Options
 instance Binary D.DocTerm
 instance Binary a => Binary (D.Block a)

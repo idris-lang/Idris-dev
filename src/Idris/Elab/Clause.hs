@@ -20,7 +20,7 @@ import Idris.Coverage
 import Idris.DataOpts
 import Idris.DeepSeq ()
 import Idris.Delaborate
-import Idris.Docstrings hiding (Unchecked)
+import Idris.Docs.DocStrings hiding (Unchecked)
 import Idris.Elab.AsPat
 import Idris.Elab.Term
 import Idris.Elab.Transform
@@ -452,7 +452,7 @@ elabPE info fc caller r =
                 logElab 5 $ show n ++ " transformation rule: " ++
                            showTmImpls rhs ++ " ==> " ++ showTmImpls lhs
 
-                elabType info defaultSyntax emptyDocstring [] fc opts newnm NoFC specTy
+                elabType info defaultSyntax emptyDocString [] fc opts newnm NoFC specTy
                 let def = map (\(lhs, rhs) ->
                                  let lhs' = mapPT hiddenToPH $ stripUnmatchable ist lhs in
                                   PClause fc newnm lhs' [] rhs [])

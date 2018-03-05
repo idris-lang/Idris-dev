@@ -14,7 +14,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Delaborate
-import Idris.Docstrings
+import Idris.Docs.DocStrings
 import Idris.Elab.Rewrite
 import Idris.Elab.Type
 import Idris.Elab.Utils
@@ -40,7 +40,7 @@ warnLC fc n
    = iWarn fc $ annName n <+> text "has a name which may be implicitly bound."
            <> line <> text "This is likely to lead to problems!"
 
-elabData :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm)-> [(Name, Docstring (Either Err PTerm))] -> FC -> DataOpts -> PData -> Idris ()
+elabData :: ElabInfo -> SyntaxInfo -> DocString (Either Err PTerm)-> [(Name, DocString (Either Err PTerm))] -> FC -> DataOpts -> PData -> Idris ()
 elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
     = do logElab 1 (show (fc, doc))
          checkUndefined fc n
@@ -150,7 +150,7 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
 elabCon :: ElabInfo -> SyntaxInfo -> Name -> Bool ->
            Type -> -- for unique kind checking
            Type -> -- data type's kind
-           (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name]) ->
+           (DocString (Either Err PTerm), [(Name, DocString (Either Err PTerm))], Name, FC, PTerm, FC, [Name]) ->
            Idris (Name, Type)
 elabCon info syn tn codata expkind dkind (doc, argDocs, n, nfc, t_in, fc, forcenames)
     = do checkUndefined fc n

@@ -14,7 +14,7 @@ import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docstrings
+import Idris.Docs.DocStrings
 import Idris.Elab.Term
 import Idris.Elab.Type
 import Idris.Elab.Utils
@@ -33,8 +33,8 @@ import qualified Data.Text as T
 
 elabImplementation :: ElabInfo
                    -> SyntaxInfo
-                   -> Docstring (Either Err PTerm)
-                   -> [(Name, Docstring (Either Err PTerm))]
+                   -> DocString (Either Err PTerm)
+                   -> [(Name, DocString (Either Err PTerm))]
                    -> ElabWhat        -- ^ phase
                    -> FC
                    -> [(Name, PTerm)] -- ^ constraints
@@ -309,7 +309,7 @@ elabImplementation info syn doc argDocs what fc cs parents acc opts n nfc ps pex
          = NS (SN (WhereN 0 iname (SN (MethodN nm)))) ns
 
     mkTyDecl (n, op, t, _)
-        = PTy emptyDocstring [] syn fc op n NoFC
+        = PTy emptyDocString [] syn fc op n NoFC
                (mkUniqueNames [] [] t)
 
     conbind :: [(Name, PTerm)] -> PTerm -> PTerm

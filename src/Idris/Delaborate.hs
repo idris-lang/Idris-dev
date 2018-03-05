@@ -16,7 +16,7 @@ module Idris.Delaborate (
 import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Docstrings (overview, renderDocTerm, renderDocstring)
+import Idris.Docs.DocStrings (overview, renderDocTerm, renderDocString)
 import Idris.ErrReverse
 
 import Util.Pretty
@@ -704,7 +704,7 @@ fancifyAnnots ist meta annot@(AnnName n nt _ _) =
                                    -- Issue #1588 on the Issue Tracker
                                    -- https://github.com/idris-lang/Idris-dev/issues/1588
                                    out  = displayS . renderPretty 1.0 50 $
-                                          renderDocstring (renderDocTerm (pprintDelab ist)
+                                          renderDocString (renderDocTerm (pprintDelab ist)
                                                                          norm) o
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!

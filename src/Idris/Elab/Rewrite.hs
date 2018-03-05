@@ -14,7 +14,7 @@ import Idris.Core.Elaborate
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docstrings
+import Idris.Docs.DocStrings
 import Idris.Error
 
 import Control.Monad
@@ -222,7 +222,7 @@ mkLemma info lemma tcon ps ty =
 
        -- Elaborate the type of the lemma
        rec_elabDecl info EAll info
-            (PTy emptyDocstring [] defaultSyntax fc [] lemma fc lemTy)
+            (PTy emptyDocString [] defaultSyntax fc [] lemma fc lemTy)
        -- Elaborate the definition
        rec_elabDecl info EAll info
             (PClauses fc [] lemma [PClause fc lemma lemLHS [] lemRHS []])

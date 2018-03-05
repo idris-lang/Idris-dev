@@ -22,7 +22,7 @@ import Idris.Colours (hEndColourise, hStartColourise)
 import Idris.Core.Evaluate (normaliseAll)
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docstrings
+import Idris.Docs.DocStrings
 import Idris.IdeMode
 import Idris.Options
 
@@ -344,11 +344,11 @@ printUndefinedNames ns = text "Undefined " <> names <> text "."
 
 
 prettyDocumentedIst :: IState
-                    -> (Name, PTerm, Maybe (Docstring DocTerm))
+                    -> (Name, PTerm, Maybe (DocString DocTerm))
                     -> Doc OutputAnnotation
 prettyDocumentedIst ist (name, ty, docs) =
           prettyName True True [] name <+> colon <+> align (prettyIst ist ty) <$>
-          fromMaybe empty (fmap (\d -> renderDocstring (renderDocTerm ppTm norm) d <> line) docs)
+          fromMaybe empty (fmap (\d -> renderDocString (renderDocTerm ppTm norm) d <> line) docs)
   where ppTm = pprintDelab ist
         norm = normaliseAll (tt_ctxt ist) []
 

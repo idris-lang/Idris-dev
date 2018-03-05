@@ -24,7 +24,7 @@ import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.DataOpts
 import Idris.Delaborate
-import Idris.Docs (getDocs, pprintConstDocs, pprintDocs)
+import Idris.Docs.Pretty (getDocs, pprintConstDocs, pprintDocs)
 import Idris.Elab.Term
 import Idris.Elab.Utils
 import Idris.Elab.Value

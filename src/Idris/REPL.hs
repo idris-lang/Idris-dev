@@ -53,8 +53,8 @@ import Idris.Core.Unify
 import Idris.Core.WHNF
 import Idris.DataOpts
 import Idris.Delaborate
-import Idris.Docs
-import Idris.Docstrings (overview, renderDocTerm, renderDocstring)
+import Idris.Docs.Pretty
+import Idris.Docs.DocStrings (overview, renderDocTerm, renderDocString)
 import Idris.Elab.Clause
 import Idris.Elab.Term
 import Idris.Elab.Value
@@ -1396,7 +1396,7 @@ process fn (Apropos pkgs a) =
   where isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
-        ppD ist = renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) []))
+        ppD ist = renderDocString (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) []))
 
 
 process fn (WhoCalls n) =

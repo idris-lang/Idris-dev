@@ -12,7 +12,7 @@ import Idris.AbsSyntax
 import Idris.Core.Evaluate (Def(..), ctxtAlist)
 import Idris.Core.TT (Binder(..), Const(..), Name(..), NameType(..), TT(..),
                       toAlist)
-import Idris.Docstrings (DocTerm, Docstring, containsText)
+import Idris.Docs.DocStrings (DocTerm, DocString, containsText)
 
 import Data.List (intersperse, nub, nubBy)
 import qualified Data.Text as T
@@ -37,7 +37,7 @@ apropos ist what = let defs = ctxtAlist (tt_ctxt ist)
 
 -- | Find modules whose names or docstrings contain all the
 -- space-delimited components of some string.
-aproposModules :: IState -> T.Text -> [(String, Docstring DocTerm)]
+aproposModules :: IState -> T.Text -> [(String, DocString DocTerm)]
 aproposModules ist what = let mods  = toAlist (idris_moduledocs ist)
                               found = nubBy (\x y -> fst x == fst y)
                                             (isAproposAll parts mods)
@@ -92,7 +92,7 @@ instance Apropos (TT Name) where
 instance Apropos Const where
   isApropos str c = textIn str (T.pack (show c))
 
-instance Apropos (Docstring a) where
+instance Apropos (DocString a) where
   isApropos str d = containsText str d
 
 instance (Apropos a, Apropos b) => Apropos (a, b) where

@@ -16,7 +16,7 @@ import Idris.ASTUtils
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Docstrings (Docstring)
+import Idris.Docs.DocStrings (DocString)
 import Idris.Elab.Term
 import Idris.Elab.Utils
 import Idris.Elab.Value
@@ -121,8 +121,8 @@ buildType info syn fc opts n ty' = do
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo
          -> SyntaxInfo
-         -> Docstring (Either Err PTerm)
-         -> [(Name, Docstring (Either Err PTerm))]
+         -> DocString (Either Err PTerm)
+         -> [(Name, DocString (Either Err PTerm))]
          -> FC
          -> FnOpts
          -> Name
@@ -134,8 +134,8 @@ elabType = elabType' False
 elabType' :: Bool  -- normalise it
           -> ElabInfo
           -> SyntaxInfo
-          -> Docstring (Either Err PTerm)
-          -> [(Name, Docstring (Either Err PTerm))]
+          -> DocString (Either Err PTerm)
+          -> [(Name, DocString (Either Err PTerm))]
           -> FC
           -> FnOpts
           -> Name
@@ -232,7 +232,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
         , ns4 == map txt ["Reflection","Language"] = True
     tyIsHandler _                                           = False
 
-elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
+elabPostulate :: ElabInfo -> SyntaxInfo -> DocString (Either Err PTerm) ->
                  FC -> FC -> FnOpts -> Name -> PTerm -> Idris ()
 elabPostulate info syn doc fc nfc opts n ty = do
     elabType info syn doc [] fc opts n NoFC ty
@@ -243,7 +243,7 @@ elabPostulate info syn doc fc nfc opts n ty = do
     -- remove it from the deferred definitions list
     solveDeferred fc n
 
-elabExtern :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
+elabExtern :: ElabInfo -> SyntaxInfo -> DocString (Either Err PTerm) ->
                  FC -> FC -> FnOpts -> Name -> PTerm -> Idris ()
 elabExtern info syn doc fc nfc opts n ty = do
     cty <- elabType info syn doc [] fc opts n NoFC ty

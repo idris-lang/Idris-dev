@@ -14,9 +14,9 @@ import Idris.Core.Evaluate (Accessibility(..), ctxtAlist, isDConName, isFnName,
                             isTConName, lookupDefAcc)
 import Idris.Core.TT (Name(..), OutputAnnotation(..), TextFormatting(..),
                       constIsType, nsroot, sUN, str, toAlist, txt)
-import Idris.Docs
-import Idris.Docstrings (nullDocstring)
-import qualified Idris.Docstrings as Docstrings
+import Idris.Docs.Pretty
+import Idris.Docs.DocStrings (nullDocString)
+import qualified Idris.Docs.DocStrings as DocStrings
 import Idris.Options
 import Idris.Parser.Ops (opChars)
 import IRTS.System (getIdrisDataFileByName)
@@ -82,11 +82,11 @@ type NsName = [T.Text]
 -- | All information to be documented about a single namespace member
 type NsItem = (Name, Maybe Docs, Accessibility)
 
--- | Docstrings containing fully elaborated term annotations
-type FullDocstring = Docstrings.Docstring Docstrings.DocTerm
+-- | DocStrings containing fully elaborated term annotations
+type FullDocString = DocStrings.DocString DocStrings.DocTerm
 
 -- | All information to be documented about a namespace
-data NsInfo = NsInfo { nsDocstring :: Maybe FullDocstring,
+data NsInfo = NsInfo { nsDocString :: Maybe FullDocString,
                        nsContents :: [NsItem]
                      }
 
@@ -438,9 +438,9 @@ createNsDoc ist ns content out =
      (path, h) <- openTempFile dir file
      BS2.hPut h $ renderHtml $ wrapper (Just ns) $ do
        H.h1 $ toHtml (nsName2Str ns)
-       case nsDocstring content of
+       case nsDocString content of
          Nothing -> mempty
-         Just docstring -> Docstrings.renderHtml docstring
+         Just docstring -> DocStrings.renderHtml docstring
        H.dl ! class_ "decls" $ forM_ content' (createOtherDoc ist)
      hClose h
      renameFile path tpath
@@ -505,7 +505,7 @@ genTypeHeader ist (FD n _ args ftype _) = do
         docExtractor (_, _, _, Nothing) = Nothing
         docExtractor (n, _, _, Just d)  = Just (n, doc2Str d)
                          -- TODO: Remove <p> tags more robustly
-        doc2Str d      = let dirty = renderMarkup $ contents $ Docstrings.renderHtml d
+        doc2Str d      = let dirty = renderMarkup $ contents $ DocStrings.renderHtml d
                          in  take (length dirty - 8) $ drop 3 dirty
 
         name (NS n ns) = show (NS (sUN $ name n) ns)
@@ -532,7 +532,7 @@ createFunDoc :: IState -- ^ Needed to determine the types of names
 createFunDoc ist fd@(FD name docstring args ftype fixity) = do
   H.dt ! (A.id $ toValue $ show name) $ genTypeHeader ist fd
   H.dd $ do
-    (if nullDocstring docstring then mempty else Docstrings.renderHtml docstring)
+    (if nullDocString docstring then mempty else DocStrings.renderHtml docstring)
     let args'             = filter (\(_, _, _, d) -> isJust d) args
     if (not $ null args') || (isJust fixity)
        then H.dl $ do
@@ -555,7 +555,7 @@ createFunDoc ist fd@(FD name docstring args ftype fixity) = do
         genArg (_, _, _, Nothing)           = mempty
         genArg (name, _, _, Just docstring) = do
           H.dt $ toHtml $ show name
-          H.dd $ Docstrings.renderHtml docstring
+          H.dd $ DocStrings.renderHtml docstring
 
 
 -- | Generates HTML documentation for any Docs type
@@ -573,7 +573,7 @@ createOtherDoc ist (InterfaceDoc n docstring fds _ _ _ _ _ c) = do
            $ toHtml $ name $ nsroot n
     H.span ! class_ "signature" $ nbsp
   H.dd $ do
-    (if nullDocstring docstring then mempty else Docstrings.renderHtml docstring)
+    (if nullDocString docstring then mempty else DocStrings.renderHtml docstring)
     H.dl ! class_ "decls" $ (forM_ (maybeToList c ++ fds) (createFunDoc ist))
 
   where name (NS n ns) = show (NS (sUN $ name n) ns)
@@ -590,7 +590,7 @@ createOtherDoc ist (RecordDoc n doc ctor projs params) = do
            $ toHtml $ name $ nsroot n
     H.span ! class_ "type" $ do nbsp ; prettyParameters
   H.dd $ do
-    (if nullDocstring doc then mempty else Docstrings.renderHtml doc)
+    (if nullDocString doc then mempty else DocStrings.renderHtml doc)
     if not $ null params
        then H.dl $ forM_ params genParam
        else mempty
@@ -604,7 +604,7 @@ createOtherDoc ist (RecordDoc n doc ctor projs params) = do
 
         genParam (name, pt, docstring) = do
           H.dt $ toHtml $ show (nsroot name)
-          H.dd $ maybe nbsp Docstrings.renderHtml docstring
+          H.dd $ maybe nbsp DocStrings.renderHtml docstring
 
         prettyParameters = toHtml $ unwords [show $ nsroot n | (n,_,_) <- params]
 
@@ -613,7 +613,7 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
     H.span ! class_ "word" $ do "data"; nbsp
     genTypeHeader ist fd
   H.dd $ do
-    (if nullDocstring docstring then mempty else Docstrings.renderHtml docstring)
+    (if nullDocString docstring then mempty else DocStrings.renderHtml docstring)
     let args' = filter (\(_, _, _, d) -> isJust d) args
     if not $ null args'
        then H.dl $ forM_ args' genArg
@@ -623,12 +623,12 @@ createOtherDoc ist (DataDoc fd@(FD n docstring args _ _) fds) = do
   where genArg (_, _, _, Nothing)           = mempty
         genArg (name, _, _, Just docstring) = do
           H.dt $ toHtml $ show name
-          H.dd $ Docstrings.renderHtml docstring
+          H.dd $ DocStrings.renderHtml docstring
 
 createOtherDoc ist (NamedImplementationDoc _ fd) = createFunDoc ist fd
 
 createOtherDoc ist (ModDoc _  docstring) = do
-  Docstrings.renderHtml docstring
+  DocStrings.renderHtml docstring
 
 -- | Generates everything but the actual content of the page
 wrapper :: Maybe NsName -- ^ Namespace name, unless it is the index

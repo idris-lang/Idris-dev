@@ -18,7 +18,7 @@ import Idris.AbsSyntaxTree
 import Idris.Colours
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Docstrings
+import Idris.Docs.DocStrings
 import Idris.IdeMode hiding (Opt(..))
 import Idris.Options
 import IRTS.CodegenCommon
@@ -401,7 +401,7 @@ addCoercion :: Name -> Idris ()
 addCoercion n = do i <- getIState
                    putIState $ i { idris_coercions = nub $ n : idris_coercions i }
 
-addDocStr :: Name -> Docstring DocTerm -> [(Name, Docstring DocTerm)] -> Idris ()
+addDocStr :: Name -> DocString DocTerm -> [(Name, DocString DocTerm)] -> Idris ()
 addDocStr n doc args
    = do i <- getIState
         putIState $ i { idris_docstrings = addDef n (doc, args) (idris_docstrings i) }

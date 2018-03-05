@@ -16,7 +16,7 @@ import Idris.AbsSyntax
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate hiding (Unchecked)
 import Idris.Core.TT
-import Idris.Docstrings
+import Idris.Docs.DocStrings
 import Idris.Elab.Term
 import Idris.Elab.Utils
 import Idris.Error
@@ -74,9 +74,9 @@ elabVal info aspat tm_in
 
 
 
-elabDocTerms :: ElabInfo -> Docstring (Either Err PTerm) -> Idris (Docstring DocTerm)
+elabDocTerms :: ElabInfo -> DocString (Either Err PTerm) -> Idris (DocString DocTerm)
 elabDocTerms info str = do typechecked <- Traversable.mapM decorate str
-                           return $ checkDocstring mkDocTerm typechecked
+                           return $ checkDocString mkDocTerm typechecked
   where decorate (Left err) = return (Left err)
         decorate (Right pt) = fmap (fmap fst) (tryElabVal info ERHS pt)
 

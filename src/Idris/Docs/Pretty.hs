@@ -1,6 +1,6 @@
 {-|
-Module      : Idris.Docs
-Description : Data structures and utilities to work with Idris Documentation.
+Module      : Idris.Docs.Pretty
+Description : Data structures and utilities to pretty print Idris Documentation.
 
 License     : BSD3
 Maintainer  : The Idris Community.
@@ -9,7 +9,7 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE DeriveFunctor, MultiWayIf, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
-module Idris.Docs (
+module Idris.Docs.Pretty (
     pprintDocs
   , getDocs, pprintConstDocs, pprintTypeDoc
   , FunDoc, FunDoc'(..), Docs, Docs'(..)
@@ -23,9 +23,9 @@ import Idris.AbsSyntax (FixDecl(..), Fixity, IState(..), Idris,
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docstrings (DocTerm, Docstring, emptyDocstring, noDocs,
-                         nullDocstring, overview, renderDocTerm,
-                         renderDocstring)
+import Idris.Docs.DocStrings (DocTerm, DocString, emptyDocString, noDocs,
+                         nullDocString, overview, renderDocTerm,
+                         renderDocString)
 import Idris.Options (HowMuchDocs(..))
 
 import Util.Pretty
@@ -46,7 +46,7 @@ data FunDoc' d = FD Name d
                     (Maybe Fixity)
   deriving Functor
 
-type FunDoc = FunDoc' (Docstring DocTerm)
+type FunDoc = FunDoc' (DocString DocTerm)
 
 data Docs' d = FunDoc (FunDoc' d)
              | DataDoc (FunDoc' d) -- type constructor docs
@@ -68,12 +68,12 @@ data Docs' d = FunDoc (FunDoc' d)
                       d
   deriving Functor
 
-type Docs = Docs' (Docstring DocTerm)
+type Docs = Docs' (DocString DocTerm)
 
 showDoc ist d
-  | nullDocstring d = empty
+  | nullDocString d = empty
   | otherwise = text "  -- " <>
-                renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) d
+                renderDocString (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) d
 
 pprintFD :: IState -> Bool -> Bool -> FunDoc -> Doc OutputAnnotation
 pprintFD ist totalityFlag nsFlag (FD n doc args ty f) =
@@ -82,7 +82,7 @@ pprintFD ist totalityFlag nsFlag (FD n doc args ty f) =
       <+> pprintPTerm ppo [] [ n | (n@(UN n'),_,_,_) <- args
                              , not (T.isPrefixOf (T.pack "__") n') ] infixes ty
       -- show doc
-      <$> renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc
+      <$> renderDocString (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc
       -- show fixity
       <$> maybe empty (\f -> text (show f) <> line) f
       -- show arguments doc
@@ -148,9 +148,9 @@ pprintDocs ist (DataDoc t args)
                           vsep (map (pprintFDWithoutTotality ist False) args))
 pprintDocs ist (InterfaceDoc n doc meths params constraints implementations sub_interfaces super_interfaces ctor)
            = nest 4 (text "Interface" <+> prettyName True (ppopt_impl ppo) [] n <>
-                     if nullDocstring doc
+                     if nullDocString doc
                        then empty
-                       else line <> renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc)
+                       else line <> renderDocString (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc)
              <> line <$>
              nest 4 (text "Parameters:" <$> prettyParameters)
 
@@ -196,10 +196,10 @@ pprintDocs ist (InterfaceDoc n doc meths params constraints implementations sub_
 
     pprintImplementation (mname, term, (doc, argDocs)) =
       nest 4 (iname mname <> dumpImplementation term <>
-              (if nullDocstring doc
+              (if nullDocString doc
                   then empty
                   else line <>
-                       renderDocstring
+                       renderDocString
                          (renderDocTerm
                             (pprintDelab ist)
                             (normaliseAll (tt_ctxt ist) []))
@@ -213,7 +213,7 @@ pprintDocs ist (InterfaceDoc n doc meths params constraints implementations sub_
     iname (Just n) = annName n <+> colon <> space
 
     prettyImplementationParam params (name, doc) =
-      if nullDocstring doc
+      if nullDocString doc
          then empty
          else prettyName True False (zip params (repeat False)) name <+>
               showDoc ist doc
@@ -250,10 +250,10 @@ pprintDocs ist (InterfaceDoc n doc meths params constraints implementations sub_
 
 pprintDocs ist (RecordDoc n doc ctor projs params)
   = nest 4 (text "Record" <+> prettyName True (ppopt_impl ppo) [] n <>
-             if nullDocstring doc
+             if nullDocString doc
                 then empty
                 else line <>
-                     renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc)
+                     renderDocString (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) doc)
     -- Parameters
     <$> (if null params
             then empty
@@ -280,7 +280,7 @@ pprintDocs ist (NamedImplementationDoc _cls doc)
 
 pprintDocs ist (ModDoc mod docs)
    = nest 4 $ text "Module" <+> text (concat (intersperse "." mod)) <> colon <$>
-              renderDocstring (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) docs
+              renderDocString (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) [])) docs
 
 -- | Determine a truncation function depending how much docs the user
 -- wants to see
@@ -328,10 +328,10 @@ docInterface :: Name -> InterfaceInfo -> Idris Docs
 docInterface n ci
   = do i <- getIState
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
-           docstr = maybe emptyDocstring fst docStrings
+           docstr = maybe emptyDocString fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd)))
                         (interface_params ci)
-           docsForImplementation impl = fromMaybe (emptyDocstring, []) .
+           docsForImplementation impl = fromMaybe (emptyDocString, []) .
                                   flip lookupCtxtExact (idris_docstrings i) $
                                   impl
            implementations = map (\impl -> (namedImpl impl,
@@ -368,7 +368,7 @@ docRecord :: Name -> RecordInfo -> Idris Docs
 docRecord n ri
   = do i <- getIState
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
-           docstr = maybe emptyDocstring fst docStrings
+           docstr = maybe emptyDocString fst docStrings
            params = map (\(pn,pt) -> (pn, pt, docStrings >>= (lookup (nsroot pn) . snd)))
                         (record_parameters ri)
        pdocs <- mapM docFun (record_projections ri)
@@ -395,7 +395,7 @@ docFun n
              funName (NS n _) = funName n
              funName n        = show n
 
-getPArgNames :: PTerm -> [(Name, Docstring DocTerm)] -> [(Name, PTerm, Plicity, Maybe (Docstring DocTerm))]
+getPArgNames :: PTerm -> [(Name, DocString DocTerm)] -> [(Name, PTerm, Plicity, Maybe (DocString DocTerm))]
 getPArgNames (PPi plicity name _ ty body) ds =
   (name, ty, plicity, lookup name ds) : getPArgNames body ds
 getPArgNames _ _ = []

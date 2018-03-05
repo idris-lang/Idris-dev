@@ -16,8 +16,8 @@ import Idris.AbsSyntaxTree
 import Idris.Colours
 import Idris.Core.DeepSeq
 import Idris.Core.TT
-import Idris.Docstrings
-import qualified Idris.Docstrings as D
+import Idris.Docs.DocStrings
+import qualified Idris.Docs.DocStrings as D
 import Idris.Options
 import IRTS.CodegenCommon (OutputType(..))
 import IRTS.Lang (PrimFn(..))
@@ -42,7 +42,7 @@ instance NFData OutputMode where
   rnf (RawOutput x) = ()
   rnf (IdeMode x y) = rnf x `seq` ()
 
-instance NFData a => NFData (D.Docstring a)
+instance NFData a => NFData (D.DocString a)
 instance NFData ConsoleWidth
 instance NFData PrimFn
 instance NFData SyntaxRules

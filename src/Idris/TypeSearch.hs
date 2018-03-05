@@ -23,7 +23,7 @@ import Idris.Core.Evaluate (Context(definitions), Def(CaseOp, Function, TyDecl),
 import Idris.Core.TT hiding (score)
 import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delabTy)
-import Idris.Docstrings (noDocs, overview)
+import Idris.Docs.DocStrings (noDocs, overview)
 import Idris.Elab.Type (elabType)
 import Idris.IBC
 import Idris.Imports (PkgName)

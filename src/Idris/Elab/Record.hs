@@ -12,7 +12,7 @@ import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docstrings
+import Idris.Docs.DocStrings
 import Idris.Elab.Data
 import Idris.Error
 import Idris.Output (sendHighlighting)
@@ -24,17 +24,17 @@ import Data.Maybe
 -- | Elaborate a record declaration
 elabRecord :: ElabInfo
            -> ElabWhat
-           -> (Docstring (Either Err PTerm))                                             -- ^ The documentation for the whole declaration
+           -> (DocString (Either Err PTerm))                                             -- ^ The documentation for the whole declaration
            -> SyntaxInfo
            -> FC
            -> DataOpts
            -> Name                                                                       -- ^ The name of the type being defined
            -> FC                                                                         -- ^ The precise source location of the tycon name
            -> [(Name, FC, Plicity, PTerm)]                                               -- ^ Parameters
-           -> [(Name, Docstring (Either Err PTerm))]                                     -- ^ Parameter Docs
-           -> [(Maybe (Name, FC), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -- ^ Fields
+           -> [(Name, DocString (Either Err PTerm))]                                     -- ^ Parameter Docs
+           -> [(Maybe (Name, FC), Plicity, PTerm, Maybe (DocString (Either Err PTerm)))] -- ^ Fields
            -> Maybe (Name, FC)                                                           -- ^ Constructor Name
-           -> (Docstring (Either Err PTerm))                                             -- ^ Constructor Doc
+           -> (DocString (Either Err PTerm))                                             -- ^ Constructor Doc
            -> SyntaxInfo                                                                 -- ^ Constructor SyntaxInfo
            -> Idris ()
 elabRecord info what doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc csyn
@@ -98,29 +98,29 @@ elabRecord info what doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc
     target :: PTerm
     target = PApp fc (PRef fc [] tyn) $ map (uncurry asPRefArg) [(p, n) | (n, _, p, _) <- params]
 
-    paramsAndDoc :: [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
+    paramsAndDoc :: [(Name, FC, Plicity, PTerm, DocString (Either Err PTerm))]
     paramsAndDoc = pad params paramDocs
       where
-        pad :: [(Name, FC, Plicity, PTerm)] -> [(Name, Docstring (Either Err PTerm))] -> [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
+        pad :: [(Name, FC, Plicity, PTerm)] -> [(Name, DocString (Either Err PTerm))] -> [(Name, FC, Plicity, PTerm, DocString (Either Err PTerm))]
         pad ((n, fc, p, t) : rest) docs
           = let d = case lookup n docs of
                      Just d' -> d
-                     Nothing -> emptyDocstring
+                     Nothing -> emptyDocString
             in (n, fc, p, t, d) : (pad rest docs)
         pad _ _ = []
 
-    dconsArgDocs :: [(Name, Docstring (Either Err PTerm))]
+    dconsArgDocs :: [(Name, DocString (Either Err PTerm))]
     dconsArgDocs = paramDocs ++ (dcad fieldsWithName)
       where
-        dcad :: [(Name, FC, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, Docstring (Either Err PTerm))]
+        dcad :: [(Name, FC, Plicity, PTerm, Maybe (DocString (Either Err PTerm)))] -> [(Name, DocString (Either Err PTerm))]
         dcad ((n, _, _, _, (Just d)) : rest) = ((nsroot n), d) : (dcad rest)
         dcad (_ : rest) = dcad rest
         dcad [] = []
 
-    fieldsWithName :: [(Name, FC, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))]
+    fieldsWithName :: [(Name, FC, Plicity, PTerm, Maybe (DocString (Either Err PTerm)))]
     fieldsWithName = fwn [] fields
       where
-        fwn :: [Name] -> [(Maybe (Name, FC), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, FC, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))]
+        fwn :: [Name] -> [(Maybe (Name, FC), Plicity, PTerm, Maybe (DocString (Either Err PTerm)))] -> [(Name, FC, Plicity, PTerm, Maybe (DocString (Either Err PTerm)))]
         fwn ns ((n, p, t, d) : rest)
           = let nn = case n of
                       Just n' -> n'
@@ -136,12 +136,12 @@ elabRecord info what doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc
           | n `elem` ns = newName ns (nextName n, nfc)
           | otherwise = (n, nfc)
 
-    fieldsWithNameAndDoc :: [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
+    fieldsWithNameAndDoc :: [(Name, FC, Plicity, PTerm, DocString (Either Err PTerm))]
     fieldsWithNameAndDoc = fwnad fieldsWithName
       where
-        fwnad :: [(Name, FC, Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))] -> [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))]
+        fwnad :: [(Name, FC, Plicity, PTerm, Maybe (DocString (Either Err PTerm)))] -> [(Name, FC, Plicity, PTerm, DocString (Either Err PTerm))]
         fwnad ((n, nfc, p, t, d) : rest)
-          = let doc = fromMaybe emptyDocstring d
+          = let doc = fromMaybe emptyDocString d
             in (n, nfc, p, t, doc) : (fwnad rest)
         fwnad [] = []
 
@@ -149,8 +149,8 @@ elabRecordFunctions :: ElabInfo
                     -> SyntaxInfo
                     -> FC
                     -> Name                                                       -- ^ Record type name
-                    -> [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))] -- ^ Parameters
-                    -> [(Name, FC, Plicity, PTerm, Docstring (Either Err PTerm))] -- ^ Fields
+                    -> [(Name, FC, Plicity, PTerm, DocString (Either Err PTerm))] -- ^ Parameters
+                    -> [(Name, FC, Plicity, PTerm, DocString (Either Err PTerm))] -- ^ Fields
                     -> Name                                                       -- ^ Constructor Name
                     -> PTerm                                                      -- ^ Target type
                     -> Idris ()
@@ -215,12 +215,12 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     -- This is not good.
     -- However, for machine generated implicits, there seems to be no PTerm available.
     -- Is there a better way to do this without building the setters and getters as TT?
-    freeField :: IState -> (Name, TT Name) -> (Name, Name, Plicity, PTerm, Docstring (Either Err PTerm))
+    freeField :: IState -> (Name, TT Name) -> (Name, Name, Plicity, PTerm, DocString (Either Err PTerm))
     freeField i arg = let nameInCons = fst arg -- The name as it appears in the constructor
                           nameFree = expandNS rsyn (freeName $ fst arg) -- The name prefixed with "free_"
                           plicity = impl -- All free fields are implicit as they are machine generated
                           fieldType = delab i (snd arg) -- The type of the field
-                          doc = emptyDocstring -- No docmentation for machine generated fields
+                          doc = emptyDocString -- No docmentation for machine generated fields
                       in (nameInCons, nameFree, plicity, fieldType, doc)
 
     freeName :: Name -> Name
@@ -236,7 +236,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
     paramName n = n
 
     -- | Elaborate the projection functions.
-    elabProj :: Name -> [Name] -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
+    elabProj :: Name -> [Name] -> [(Name, Name, Plicity, PTerm, DocString (Either Err PTerm), Int)] -> Idris ()
     elabProj cn paramnames fs
                    = let phArgs = map (uncurry placeholderArg) [(p, n) | (n, _, p, _, _, _) <- fs]
                          elab = \(n, n', p, t, doc, i) ->
@@ -248,7 +248,7 @@ elabRecordFunctions info rsyn fc tyn params fields dconName target
                      in mapM_ elab fs
 
     -- | Elaborate the update functions.
-    elabUp :: Name -> [Name] -> [(Name, Name, Plicity, PTerm, Docstring (Either Err PTerm), Int)] -> Idris ()
+    elabUp :: Name -> [Name] -> [(Name, Name, Plicity, PTerm, DocString (Either Err PTerm), Int)] -> Idris ()
     elabUp cn paramnames fs
                  = let args = map (uncurry asPRefArg) [(p, n) | (n, _, p, _, _, _) <- fs]
                        elab = \(n, n', p, t, doc, i) -> elabUpdate info n paramnames n' p t doc rsyn fc target cn args fieldNames i (optionalSetter n)
@@ -276,7 +276,7 @@ elabProjection :: ElabInfo
                -> Name                           -- ^ Projection Name
                -> Plicity                        -- ^ Projection Plicity
                -> PTerm                          -- ^ Projection Type
-               -> (Docstring (Either Err PTerm)) -- ^ Projection Documentation
+               -> (DocString (Either Err PTerm)) -- ^ Projection Documentation
                -> SyntaxInfo                     -- ^ Projection SyntaxInfo
                -> FC -> PTerm                    -- ^ Projection target type
                -> Name                           -- ^ Data constructor tame
@@ -338,7 +338,7 @@ elabUpdate :: ElabInfo
            -> Name                           -- ^ Field Name
            -> Plicity                        -- ^ Field Plicity
            -> PTerm                          -- ^ Field Type
-           -> (Docstring (Either Err PTerm)) -- ^ Field Documentation
+           -> (DocString (Either Err PTerm)) -- ^ Field Documentation
            -> SyntaxInfo                     -- ^ Field SyntaxInfo
            -> FC -> PTerm                    -- ^ Projection Source Type
            -> Name                           -- ^ Data Constructor Name
