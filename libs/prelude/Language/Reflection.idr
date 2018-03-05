@@ -3,9 +3,12 @@ module Language.Reflection
 import Builtins
 import Prelude.Applicative
 import Prelude.Basics
+import Prelude.Bool
+import Prelude.Either
 import Prelude.Foldable
 import Prelude.Functor
 import Prelude.List
+import Prelude.Maybe
 import Prelude.Nat
 import Prelude.Traversable
 import Prelude.Uninhabited
