@@ -3,9 +3,12 @@ module Language.Reflection
 import Builtins
 import Prelude.Applicative
 import Prelude.Basics
+import Prelude.Bool
+import Prelude.Either
 import Prelude.Foldable
 import Prelude.Functor
 import Prelude.List
+import Prelude.Maybe
 import Prelude.Nat
 import Prelude.Traversable
 import Prelude.Uninhabited
@@ -803,6 +806,16 @@ implementation Quotable Nat Raw where
   quote Z     = `(Z)
   quote (S k) = `(S ~(quote k))
 
+implementation Quotable Bool TT where
+  quotedTy = `(Bool)
+  quote True = `(True)
+  quote False = `(False)
+
+implementation Quotable Bool Raw where
+  quotedTy = `(Bool)
+  quote True = `(True)
+  quote False = `(False)
+
 implementation Quotable Int TT where
   quotedTy = `(Int)
   quote x = TConst (I x)
@@ -884,6 +897,26 @@ implementation Quotable a Raw => Quotable (List a) Raw where
   quotedTy = `(List ~(quotedTy {a}))
   quote [] = `(List.Nil {elem=~(quotedTy {a})})
   quote (x :: xs) = `(List.(::) {elem=~(quotedTy {a})} ~(quote x) ~(quote xs))
+
+implementation Quotable a TT => Quotable (Maybe a) TT where
+  quotedTy = `(Maybe ~(quotedTy {a}))
+  quote (Just x) = `(Just {a=~(quotedTy {a})} ~(quote x))
+  quote Nothing = `(Nothing {a=~(quotedTy {a})})
+
+implementation Quotable a Raw => Quotable (Maybe a) Raw where
+  quotedTy = `(Maybe ~(quotedTy {a}))
+  quote (Just x) = `(Just {a=~(quotedTy {a})} ~(quote x))
+  quote Nothing = `(Nothing {a=~(quotedTy {a})})
+
+implementation (Quotable a TT, Quotable b TT) => Quotable (Either a b) TT where
+  quotedTy = `(Either ~(quotedTy {a}) ~(quotedTy {a=b}))
+  quote (Left x) = `(Left {a=~(quotedTy {a})} {b=~(quotedTy {a=b})} ~(quote x))
+  quote (Right x) = `(Right {a=~(quotedTy {a})} {b=~(quotedTy {a=b})} ~(quote x))
+
+implementation (Quotable a Raw, Quotable b Raw) => Quotable (Either a b) Raw where
+  quotedTy = `(Either ~(quotedTy {a}) ~(quotedTy {a=b}))
+  quote (Left x) = `(Left {a=~(quotedTy {a})} {b=~(quotedTy {a=b})} ~(quote x))
+  quote (Right x) = `(Right {a=~(quotedTy {a})} {b=~(quotedTy {a=b})} ~(quote x))
 
 implementation Quotable () TT where
   quotedTy = `(Unit)
