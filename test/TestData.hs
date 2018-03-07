@@ -152,7 +152,9 @@ testFamiliesData = [
       (  6, ANY  ),
       (  7, ANY  ),
       (  8, ANY  ),
-      (  9, ANY  )]),
+      (  9, ANY  ),
+      ( 10, ANY  )
+    ]),
   ("interactive",     "Interactive editing",
     [ (  1, ANY  ),
       (  2, ANY  ),

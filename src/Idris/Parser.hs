@@ -12,15 +12,18 @@ Maintainer  : The Idris Community.
 -- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
-module Idris.Parser(IdrisParser(..), ImportInfo(..), moduleName, addReplSyntax, clearParserWarnings,
-                    decl, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
-                    runparser, ParseError, parseErrorDoc) where
+module Idris.Parser
+  (IdrisParser(..), ImportInfo(..)
+  , moduleName, addReplSyntax, clearParserWarnings
+  , decl, fixColour, loadFromIFile, loadModule, name, opChars
+  , parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic
+  , runparser, ParseError, parseErrorDoc
+  ) where
 
 import Idris.AbsSyntax hiding (namespace, params)
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docs.DocStrings hiding (Unchecked)
 import Idris.Documentation
 import Idris.DSL
 import Idris.Elab.Value
@@ -31,6 +34,7 @@ import Idris.Imports
 import Idris.Options
 import Idris.Output
 import Idris.Parser.Data
+import Idris.Parser.Documentation
 import Idris.Parser.Expr
 import Idris.Parser.Helpers
 import Idris.Parser.Ops
@@ -98,19 +102,17 @@ moduleHeader :: IdrisParser ( Maybe (IDoc ())
                             , [String]
                             , [(FC, OutputAnnotation)]
                             )
-moduleHeader =     P.try (do docs <- optional docComment
-                             noArgs docs
+moduleHeader =     P.try (do docs <- optional docModule
                              keyword "module"
                              (modName, ifc) <- withExtent moduleNamePieces
                              P.option ';' (lchar ';')
-                             return (fmap (moduleDoc . fst) docs,
+                             return (docs,
                                      modName,
                                      [(ifc, AnnNamespace (map T.pack modName) Nothing)]))
                <|> P.try (do lchar '%'; reserved "unqualified"
                              return (Nothing, [], []))
                <|> return (Nothing, ["Main"], [])
-  where noArgs (Just (_, args)) | not (null args) = fail "Modules do not take arguments"
-        noArgs _ = return ()
+
 
 data ImportInfo = ImportInfo { import_reexport :: Bool
                              , import_path :: FilePath
@@ -583,7 +585,7 @@ fnDecl' syn = (checkDeclFixity $
                         (n_in, nfc) <- withExtent fnName
                         let n = expandNS syn n_in
                         fc <- extent $ lchar ':'
-                        return (constructorDoc doc, argDocs, fc, opts, n, nfc, acc))
+                        return (doc, argDocs, fc, opts, n, nfc, acc))
                  ty <- typeExpr (allowImp syn)
                  terminator
                  -- If it's a top level function, note the accessibility
@@ -699,7 +701,7 @@ postulate syn = do (doc, ext)
                    ty <- typeExpr (allowImp syn)
                    fc <- extent $ terminator
                    addAcc n acc
-                   return (PPostulate ext (constructorDoc doc) syn fc nfc opts n ty)
+                   return (PPostulate ext doc syn fc nfc opts n ty)
                  <?> "postulate"
    where ppostDecl = do fc <- keyword "postulate"; return False
                  <|> do lchar '%'; reserved "extern"; return True
@@ -833,8 +835,8 @@ interfaceBlock :: SyntaxInfo
                               )
 interfaceBlock syn = do keyword "where"
                         openBlock
-                        (cn, cd) <- P.option (Nothing, emptyDocString) $
-                                    P.try (do (doc, _) <- P.option noIDocs docComment
+                        (cn, cd) <- P.option (Nothing, emptyIDoc) $
+                                    P.try (do doc <- P.option emptyIDoc docConstructorNoArgs
                                               n <- constructor
                                               return (Just n, doc))
                         ist <- get
@@ -845,7 +847,7 @@ interfaceBlock syn = do keyword "where"
                                                           return [x]
                                                    <|> fnDecl syn)
                         closeBlock
-                        return (cn, constructorDoc cd', concat ds)
+                        return (cn, cd', concat ds)
                      <?> "interface block"
   where
     constructor :: IdrisParser (Name, FC)
@@ -853,9 +855,9 @@ interfaceBlock syn = do keyword "where"
 
     annotate :: SyntaxInfo
              -> IState
-             -> DocString ()
-             -> DocString (Either Err PTerm)
-    annotate syn ist = annotCode $ tryFullExpr syn ist
+             -> IDoc ()
+             -> IDoc (Either Err PTerm)
+    annotate syn ist = annotateIDoc $ tryFullExpr syn ist
 
 {-| Parses an interface declaration
 
@@ -889,7 +891,7 @@ interface_ syn = do (doc, argDocs, acc)
 
                     (cn, cd, ds) <- P.option (Nothing, emptyIDoc, []) (interfaceBlock syn)
                     accData acc n (concatMap declared ds)
-                    return [PInterface (constructorDoc doc) syn fc cons' n nfc cs argDocs fds ds cn cd]
+                    return [PInterface doc syn fc cons' n nfc cs argDocs fds ds cn cd]
                  <?> "interface declaration"
   where
     fundeps :: IdrisParser [(Name, FC)]
@@ -941,7 +943,7 @@ implementation syn = do (doc, argDocs) <- docstring syn
                         let t = bindList (\r -> PPi constraint { pcount = r }) cs sc
 
                         ds <- implementationBlock syn
-                        return [PImplementation (constructorDoc doc) argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
+                        return [PImplementation doc argDocs syn fc cs' pnames acc opts cn cnfc args [] t en ds]
                       <?> "implementation declaration"
   where implementationName :: IdrisParser Name
         implementationName = do lchar '['; n_in <- fnName; lchar ']'
@@ -967,11 +969,11 @@ implementation syn = do (doc, argDocs) <- docstring syn
 
 -- | Parse a docstring
 docstring :: SyntaxInfo
-          -> IdrisParser ( DocString (Either Err PTerm)
+          -> IdrisParser ( IDoc (Either Err PTerm)
                          , [(Name, IDoc (Either Err PTerm))])
-docstring syn = do (doc, argDocs) <- P.option noIDocs docComment
+docstring syn = do (doc, argDocs) <- P.option noIDocs docConstructor
                    ist <- get
-                   let doc' = annotCode (tryFullExpr syn ist) doc
+                   let doc' = annotateIDoc (tryFullExpr syn ist) doc
                        argDocs' = [ (n, annotateIDoc (tryFullExpr syn ist) d)
                                   | (n, d) <- argDocs ]
                    return (doc', argDocs')
@@ -1410,7 +1412,7 @@ ProviderWhat ::= 'proof' | 'term' | 'type' | 'postulate'
 provider :: SyntaxInfo -> IdrisParser [PDecl]
 provider syn = do doc <- P.try (do (doc, _) <- docstring syn
                                    highlight AnnKeyword $ lchar '%' *> reserved "provide"
-                                   return $ constructorDoc doc)
+                                   return doc)
                   provideTerm doc <|> providePostulate doc
                <?> "type provider"
   where provideTerm doc =

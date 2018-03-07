@@ -21,7 +21,7 @@ module Idris.Documentation
   , annotateIDoc
   ) where
 
-import Idris.Core.TT (OutputAnnotation(..), Name(..))
+import Idris.Core.TT (Name(..), OutputAnnotation(..))
 
 import Idris.Docs.DocStrings
 
@@ -53,8 +53,8 @@ data IDoc a =
     }
   | ConstructorDoc
     { con_desc :: DocString a             -- ^ description
-    , con_tooltip :: DocString a         -- ^ tooltip
     , con_brief   :: DocString a         -- ^ brief
+    , con_tooltip :: DocString a         -- ^ tooltip
     , con_since   :: DocString a         -- ^ since
     , con_notes   :: S.Seq (DocString a) -- ^ notes
     , con_rmarks  :: S.Seq (DocString a) -- ^ remarks
@@ -89,8 +89,8 @@ overviewIDoc doc@PlainDoc{}       = plain_brief doc
 overviewIDoc doc@ConstructorDoc{} = con_brief   doc
 overviewIDoc EmptyDoc = emptyDocString
 
-noIDocs :: (DocString a, [(Name, IDoc a)])
-noIDocs = (emptyDocString, [])
+noIDocs :: (IDoc a, [(Name, IDoc a)])
+noIDocs = (emptyIDoc, [])
 
 
 emptyIDoc :: IDoc a

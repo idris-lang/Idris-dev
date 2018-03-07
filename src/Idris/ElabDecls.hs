@@ -16,7 +16,7 @@ import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Directives
-import Idris.Docs.DocStrings hiding (Unchecked)
+import Idris.Docs.DocStrings ()
 import Idris.Documentation
 import Idris.Elab.Clause
 import Idris.Elab.Data

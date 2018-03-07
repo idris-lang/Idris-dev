@@ -14,9 +14,9 @@ import Idris.Core.Evaluate (Accessibility(..), ctxtAlist, isDConName, isFnName,
                             isTConName, lookupDefAcc)
 import Idris.Core.TT (Name(..), OutputAnnotation(..), TextFormatting(..),
                       constIsType, nsroot, sUN, str, toAlist, txt)
-import Idris.Docs.Pretty
 import Idris.Docs.DocStrings (nullDocString)
 import qualified Idris.Docs.DocStrings as DocStrings
+import Idris.Docs.Pretty
 import Idris.Documentation
 import Idris.Options
 import Idris.Parser.Ops (opChars)

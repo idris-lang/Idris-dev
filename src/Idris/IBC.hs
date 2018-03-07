@@ -19,7 +19,7 @@ import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.DeepSeq ()
-import Idris.Docs.DocStrings (DocString)
+import Idris.Docs.DocStrings ()
 import qualified Idris.Docs.DocStrings as D
 import qualified Idris.Documentation as C
 import Idris.Error

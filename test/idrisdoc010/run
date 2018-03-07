@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+${IDRIS:-idris} $@ --nocolour --quiet Test.idr
+rm -f *.ibc

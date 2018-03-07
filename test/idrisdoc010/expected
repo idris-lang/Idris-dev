@@ -1,0 +1,5 @@
+
+Old style parameter documentation declarations are to be deprecated in future releases of Idris.
+Please use the new style:
+||| @param ty The old style works still...for now...
+

@@ -14,7 +14,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Delaborate
-import Idris.Docs.DocStrings
+import Idris.Docs.DocStrings ()
 import Idris.Documentation
 import Idris.Elab.Rewrite
 import Idris.Elab.Type

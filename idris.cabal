@@ -214,6 +214,7 @@ Library
 
                 , Idris.Parser
                 , Idris.Parser.Data
+                , Idris.Parser.Documentation
                 , Idris.Parser.Expr
                 , Idris.Parser.Helpers
                 , Idris.Parser.Ops

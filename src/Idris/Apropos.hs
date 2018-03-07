@@ -8,14 +8,14 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE FlexibleInstances #-}
 module Idris.Apropos (apropos, aproposModules) where
 
+import Data.List (intersperse, nub, nubBy)
+import qualified Data.Text as T
 import Idris.AbsSyntax
 import Idris.Core.Evaluate (Def(..), ctxtAlist)
 import Idris.Core.TT (Binder(..), Const(..), Name(..), NameType(..), TT(..),
                       toAlist)
-import Idris.Docs.DocStrings (DocTerm, DocString, containsText)
+import Idris.Docs.DocStrings (DocString, DocTerm, containsText)
 import Idris.Documentation
-import Data.List (intersperse, nub, nubBy)
-import qualified Data.Text as T
 
 -- | Find definitions that are relevant to all space-delimited components of
 -- some string. Relevance is one or more of the following:

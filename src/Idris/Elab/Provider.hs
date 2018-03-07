@@ -14,7 +14,7 @@ import Idris.Core.Execute
 import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Delaborate
-import Idris.Docs.DocStrings
+import Idris.Docs.DocStrings ()
 import Idris.Documentation
 import Idris.Elab.Clause
 import Idris.Elab.Term

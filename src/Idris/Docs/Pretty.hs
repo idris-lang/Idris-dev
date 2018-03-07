@@ -23,9 +23,8 @@ import Idris.AbsSyntax (FixDecl(..), Fixity, IState(..), Idris,
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docs.DocStrings (DocTerm, DocString,
-                         nullDocString, overview, renderDocTerm,
-                         renderDocString)
+import Idris.Docs.DocStrings (DocString, DocTerm, nullDocString, overview,
+                              renderDocString, renderDocTerm)
 import Idris.Documentation
 import Idris.Options (HowMuchDocs(..))
 

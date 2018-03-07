@@ -20,7 +20,7 @@ import Idris.Coverage
 import Idris.DataOpts
 import Idris.DeepSeq ()
 import Idris.Delaborate
-import Idris.Docs.DocStrings hiding (Unchecked)
+import Idris.Docs.DocStrings ()
 import Idris.Documentation
 import Idris.Elab.AsPat
 import Idris.Elab.Term

@@ -16,7 +16,7 @@ module Idris.Delaborate (
 import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Docs.DocStrings (renderDocTerm, renderDocString)
+import Idris.Docs.DocStrings (renderDocString, renderDocTerm)
 import Idris.Documentation
 import Idris.ErrReverse
 

@@ -24,7 +24,6 @@ module Idris.Parser.Helpers
     -- * Terminals
   , lchar
   , reserved
-  , docComment
   , token
   , natural
   , charLiteral
@@ -73,8 +72,6 @@ import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate (pprintErr)
-import Idris.Docs.DocStrings
-import Idris.Documentation
 import Idris.Options
 import Idris.Output (iWarn)
 import Idris.Parser.Stack
@@ -195,44 +192,6 @@ multiLineComment = P.hidden $ P.try (string "{-" *> string "-}" *> pure ())
                          <?> "end of comment"
         startEnd :: String
         startEnd = "{}-"
-
-{-| Parses a documentation comment
-
-@
-  DocComment_t ::=   '|||' ~EOL_t* EOL_t
-                 ;
-@
- -}
-docComment :: IdrisParser (DocString (), [(Name, IDoc ())])
-docComment = do dc <- pushIndent *> docCommentLine
-                rest <- many (indented docCommentLine)
-                args <- many $ do (name, first) <- indented argDocCommentLine
-                                  rest <- many (indented docCommentLine)
-                                  return (name, concat (intersperse "\n" (first:rest)))
-                popIndent
-                return (parseDocString $ T.pack (concat (intersperse "\n" (dc:rest))),
-                        map (\(n, d) -> (n, paramDoc $ parseDocString (T.pack d))) args)
-
-  where docCommentLine :: Parsing m => m String
-        docCommentLine = P.hidden $ P.try $ do
-                           string "|||"
-                           many (P.satisfy (==' '))
-                           contents <- P.option "" (do first <- P.satisfy (\c -> not (isEol c || c == '@'))
-                                                       res <- many (P.satisfy (not . isEol))
-                                                       return $ first:res)
-                           eol ; someSpace
-                           return contents
-
-        argDocCommentLine :: IdrisParser (Name, String)
-        argDocCommentLine = do P.string "|||"
-                               P.many (P.satisfy isSpace)
-                               P.char '@'
-                               P.many (P.satisfy isSpace)
-                               n <- name
-                               P.many (P.satisfy isSpace)
-                               docs <- P.many (P.satisfy (not . isEol))
-                               P.eol ; someSpace
-                               return (n, docs)
 
 -- | Parses some white space
 whiteSpace :: Parsing m => m ()

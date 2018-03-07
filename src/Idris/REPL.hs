@@ -53,8 +53,8 @@ import Idris.Core.Unify
 import Idris.Core.WHNF
 import Idris.DataOpts
 import Idris.Delaborate
+import Idris.Docs.DocStrings (renderDocTerm)
 import Idris.Docs.Pretty
-import Idris.Docs.DocStrings (overview, renderDocTerm, renderDocString)
 import Idris.Documentation
 import Idris.Elab.Clause
 import Idris.Elab.Term
