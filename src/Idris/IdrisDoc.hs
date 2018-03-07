@@ -17,6 +17,7 @@ import Idris.Core.TT (Name(..), OutputAnnotation(..), TextFormatting(..),
 import Idris.Docs.Pretty
 import Idris.Docs.DocStrings (nullDocString)
 import qualified Idris.Docs.DocStrings as DocStrings
+import Idris.Documentation
 import Idris.Options
 import Idris.Parser.Ops (opChars)
 import IRTS.System (getIdrisDataFileByName)
@@ -231,7 +232,9 @@ nsDict ist = flip (foldl addModDoc) modDocs $ foldl adder (return M.empty) nameD
                                 nInfo  = NsInfo Nothing [(n, doc, access)]
                             return $ M.insertWith addNameInfo (getNs n) nInfo map
         addNameInfo (NsInfo m ns) (NsInfo m' ns') = NsInfo (m <|> m') (ns ++ ns')
-        modDocs = map (\(mn, d) -> (mn, NsInfo (Just d) [])) $ toAlist (idris_moduledocs ist)
+        modDocs = map (\(mn, d) -> (mn, NsInfo (Just $ getIDocDesc d) []))
+                     $ toAlist (idris_moduledocs ist)
+
         addModDoc :: IO NsDict -> (Name, NsInfo) -> IO NsDict
         addModDoc dict (mn, d) = fmap (M.insertWith addNameInfo (getNs mn) d) dict
 

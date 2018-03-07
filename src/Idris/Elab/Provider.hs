@@ -15,6 +15,7 @@ import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Delaborate
 import Idris.Docs.DocStrings
+import Idris.Documentation
 import Idris.Elab.Clause
 import Idris.Elab.Term
 import Idris.Elab.Type
@@ -29,7 +30,14 @@ import Control.Category
 import Control.Monad
 
 -- | Elaborate a type provider
-elabProvider :: DocString (Either Err PTerm) -> ElabInfo -> SyntaxInfo -> FC -> FC -> ProvideWhat -> Name -> Idris ()
+elabProvider :: IDoc (Either Err PTerm)
+             -> ElabInfo
+             -> SyntaxInfo
+             -> FC
+             -> FC
+             -> ProvideWhat
+             -> Name
+             -> Idris ()
 elabProvider doc info syn fc nfc what n
     = do i <- getIState
          -- Ensure that the experimental extension is enabled

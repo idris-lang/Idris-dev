@@ -74,6 +74,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate (pprintErr)
 import Idris.Docs.DocStrings
+import Idris.Documentation
 import Idris.Options
 import Idris.Output (iWarn)
 import Idris.Parser.Stack
@@ -202,7 +203,7 @@ multiLineComment = P.hidden $ P.try (string "{-" *> string "-}" *> pure ())
                  ;
 @
  -}
-docComment :: IdrisParser (DocString (), [(Name, DocString ())])
+docComment :: IdrisParser (DocString (), [(Name, IDoc ())])
 docComment = do dc <- pushIndent *> docCommentLine
                 rest <- many (indented docCommentLine)
                 args <- many $ do (name, first) <- indented argDocCommentLine
@@ -210,7 +211,7 @@ docComment = do dc <- pushIndent *> docCommentLine
                                   return (name, concat (intersperse "\n" (first:rest)))
                 popIndent
                 return (parseDocString $ T.pack (concat (intersperse "\n" (dc:rest))),
-                        map (\(n, d) -> (n, parseDocString (T.pack d))) args)
+                        map (\(n, d) -> (n, paramDoc $ parseDocString (T.pack d))) args)
 
   where docCommentLine :: Parsing m => m String
         docCommentLine = P.hidden $ P.try $ do

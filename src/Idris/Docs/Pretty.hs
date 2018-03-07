@@ -23,9 +23,10 @@ import Idris.AbsSyntax (FixDecl(..), Fixity, IState(..), Idris,
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docs.DocStrings (DocTerm, DocString, emptyDocString, noDocs,
+import Idris.Docs.DocStrings (DocTerm, DocString,
                          nullDocString, overview, renderDocTerm,
                          renderDocString)
+import Idris.Documentation
 import Idris.Options (HowMuchDocs(..))
 
 import Util.Pretty
@@ -36,11 +37,14 @@ import Data.List
 import Data.Maybe
 import qualified Data.Text as T
 
+-- TODO Update to include documentation metadata
+
 -- TODO: Only include names with public/export accessibility
 --
 -- Issue #1573 on the Issue tracker.
 --    https://github.com/idris-lang/Idris-dev/issues/1573
-data FunDoc' d = FD Name d
+data FunDoc' d = FD Name
+                    d
                     [(Name, PTerm, Plicity, Maybe d)] -- args: name, ty, implicit, docs
                     PTerm -- function type
                     (Maybe Fixity)
@@ -293,7 +297,7 @@ getDocs :: Name -> HowMuchDocs -> Idris Docs
 getDocs n@(NS n' ns) w | n' == modDocName
    = do i <- getIState
         case lookupCtxtExact n (idris_moduledocs i) of
-          Just doc -> return . ModDoc (reverse (map T.unpack ns)) $ howMuch w doc
+          Just doc -> return . ModDoc (reverse (map T.unpack ns)) $ howMuch w (getIDocDesc doc)
           Nothing  -> fail $ "Module docs for " ++ show (reverse (map T.unpack ns)) ++
                              " do not exist! This shouldn't have happened and is a bug."
 getDocs n w
@@ -328,10 +332,11 @@ docInterface :: Name -> InterfaceInfo -> Idris Docs
 docInterface n ci
   = do i <- getIState
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
-           docstr = maybe emptyDocString fst docStrings
+           docstr = maybe emptyIDoc fst docStrings
            params = map (\pn -> (pn, docStrings >>= (lookup pn . snd)))
                         (interface_params ci)
-           docsForImplementation impl = fromMaybe (emptyDocString, []) .
+           params' = map (\(pn, ds) -> (pn, fmap getIDocDesc ds)) params
+           docsForImplementation impl = fromMaybe (emptyConstructorDoc, []) .
                                   flip lookupCtxtExact (idris_docstrings i) $
                                   impl
            implementations = map (\impl -> (namedImpl impl,
@@ -346,8 +351,14 @@ docInterface n ci
                      SN _ -> return Nothing
                      _    -> fmap Just $ docFun ctorN
        return $ InterfaceDoc
-                  n docstr mdocs params (interface_constraints ci)
-                  implementations' (map (\(_,tm,_) -> tm) sub_interfaces) super_interfaces
+                  n
+                  (getIDocDesc docstr)
+                  mdocs
+                  params'
+                  (interface_constraints ci)
+                  (map (\(m,p,(cdoc,ps)) -> (m, p, (getIDocDesc cdoc, map (\(n,d) -> (n, getIDocDesc d)) ps))) implementations')
+                  (map (\(_,tm,_) -> tm) sub_interfaces)
+                  super_interfaces
                   ctorDocs
   where
     namedImpl (NS n ns) = fmap (flip NS ns) (namedImpl n)
@@ -368,19 +379,20 @@ docRecord :: Name -> RecordInfo -> Idris Docs
 docRecord n ri
   = do i <- getIState
        let docStrings = listToMaybe $ lookupCtxt n $ idris_docstrings i
-           docstr = maybe emptyDocString fst docStrings
+           docstr = maybe emptyIDoc fst docStrings
            params = map (\(pn,pt) -> (pn, pt, docStrings >>= (lookup (nsroot pn) . snd)))
                         (record_parameters ri)
+           params' = map (\(pn, pt, ds) -> (pn, pt, fmap getIDocDesc ds)) params
        pdocs <- mapM docFun (record_projections ri)
        ctorDocs <- docFun $ record_constructor ri
-       return $ RecordDoc n docstr ctorDocs pdocs params
+       return $ RecordDoc n (getIDocDesc docstr) ctorDocs pdocs params'
 
 docFun :: Name -> Idris FunDoc
 docFun n
   = do i <- getIState
        let (docstr, argDocs) = case lookupCtxt n (idris_docstrings i) of
                                   [d] -> d
-                                  _ -> noDocs
+                                  _ -> (emptyIDoc, [])
        let ty = delabTy i n
        let args = getPArgNames ty argDocs
        let infixes = idris_infixes i
@@ -389,15 +401,17 @@ docFun n
                     []          -> Nothing
                     (Fix x _:_) -> Just x
 
-       return (FD n docstr args ty f)
+       return (FD n (getIDocDesc docstr) args ty f)
        where funName :: Name -> String
              funName (UN n)   = str n
              funName (NS n _) = funName n
              funName n        = show n
 
-getPArgNames :: PTerm -> [(Name, DocString DocTerm)] -> [(Name, PTerm, Plicity, Maybe (DocString DocTerm))]
+getPArgNames :: PTerm
+             -> [(Name, IDoc DocTerm)]
+             -> [(Name, PTerm, Plicity, Maybe (DocString DocTerm))]
 getPArgNames (PPi plicity name _ ty body) ds =
-  (name, ty, plicity, lookup name ds) : getPArgNames body ds
+  (name, ty, plicity, fmap getIDocDesc $ lookup name ds) : getPArgNames body ds
 getPArgNames _ _ = []
 
 pprintConstDocs :: IState -> Const -> String -> Doc OutputAnnotation

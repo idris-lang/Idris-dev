@@ -18,6 +18,7 @@ import Idris.Core.DeepSeq
 import Idris.Core.TT
 import Idris.Docs.DocStrings
 import qualified Idris.Docs.DocStrings as D
+import qualified Idris.Documentation as C
 import Idris.Options
 import IRTS.CodegenCommon (OutputType(..))
 import IRTS.Lang (PrimFn(..))
@@ -43,6 +44,7 @@ instance NFData OutputMode where
   rnf (IdeMode x y) = rnf x `seq` ()
 
 instance NFData a => NFData (D.DocString a)
+instance NFData a => NFData (C.IDoc a)
 instance NFData ConsoleWidth
 instance NFData PrimFn
 instance NFData SyntaxRules

@@ -140,7 +140,6 @@ parseDocString = toDocString . C.markdown options
         toInline (CT.Entity txt)         = Entity txt
         toInline (CT.RawHtml src)        = RawHtml src
 
-
 options = CT.Options { CT.sanitize = True
                      , CT.allowRawHtml = False
                      , CT.preserveHardBreaks = True
@@ -148,7 +147,9 @@ options = CT.Options { CT.sanitize = True
                      }
 
 -- | Convert a docstring to be shown by the pretty-printer
-renderDocString :: (a -> String -> Doc OutputAnnotation) -> DocString a -> Doc OutputAnnotation
+renderDocString :: (a -> String -> Doc OutputAnnotation)
+                -> DocString a
+                -> Doc OutputAnnotation
 renderDocString pp (DocString _ blocks) = renderBlocks pp blocks
 
 -- | Construct a docstring consisting of the first block-level element of the

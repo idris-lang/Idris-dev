@@ -55,6 +55,7 @@ import Idris.DataOpts
 import Idris.Delaborate
 import Idris.Docs.Pretty
 import Idris.Docs.DocStrings (overview, renderDocTerm, renderDocString)
+import Idris.Documentation
 import Idris.Elab.Clause
 import Idris.Elab.Term
 import Idris.Elab.Value
@@ -1386,7 +1387,7 @@ process fn (Apropos pkgs a) =
      let names = apropos ist (T.pack a)
      let aproposInfo = [ (n,
                           delabTy ist n,
-                          fmap (overview . fst) (lookupCtxtExact n (idris_docstrings ist)))
+                          fmap (paramDoc . overviewIDoc . fst) (lookupCtxtExact n (idris_docstrings ist)))
                        | n <- sort names, isUN n ]
      if (not (null mods)) || (not (null aproposInfo))
         then iRenderResult $ vsep (map (\(m, d) -> text "Module" <+> text m <$>
@@ -1396,7 +1397,7 @@ process fn (Apropos pkgs a) =
   where isUN (UN _) = True
         isUN (NS n _) = isUN n
         isUN _ = False
-        ppD ist = renderDocString (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) []))
+        ppD ist = renderIDocDesc (renderDocTerm (pprintDelab ist) (normaliseAll (tt_ctxt ist) []))
 
 
 process fn (WhoCalls n) =

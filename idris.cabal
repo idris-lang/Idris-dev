@@ -190,6 +190,7 @@ Library
 
                 , Idris.Docs.DocStrings
                 , Idris.Docs.Pretty
+                , Idris.Documentation
 
                 , Idris.ElabDecls
                 , Idris.Erasure
