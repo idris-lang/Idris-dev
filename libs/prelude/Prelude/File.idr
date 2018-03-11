@@ -326,5 +326,5 @@ createDir d
 export
 changeDir : String -> IO Bool
 changeDir dir 
-    = do ok <- foreign FFI_C "chdir" (String -> IO Int) dir
+    = do ok <- foreign FFI_C "idris_chdir" (String -> IO Int) dir
          pure (ok == 0)

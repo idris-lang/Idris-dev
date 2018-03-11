@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <dirent.h>
+#include <unistd.h>
 
 #ifdef _WIN32
 int win_fpoll(void* h);
@@ -102,6 +103,10 @@ int idris_mkdir(char* dname) {
 #else
     return mkdir(dname, S_IRWXU | S_IRGRP | S_IROTH);
 #endif
+}
+
+int idris_chdir(char* dname) {
+    return chdir(dname);
 }
 
 int idris_dirError(void *dptr) {

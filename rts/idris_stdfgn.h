@@ -21,6 +21,7 @@ char* idris_nextDirEntry(void* h);
 
 // Create a directory; return 0 on success or -1 on failure
 int idris_mkdir(char* dname);
+int idris_chdir(char* dname);
 
 // Return 0 if ok, or -1 if there was an error with the given directory
 // (like ferror)
