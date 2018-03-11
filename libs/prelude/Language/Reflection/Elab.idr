@@ -16,6 +16,7 @@ import Prelude.Maybe
 import Prelude.Monad
 import Prelude.Nat
 import Language.Reflection
+import Language.Reflection.Errors
 
 %access public export
 
@@ -138,6 +139,7 @@ data Elab : Type -> Type where
   Prim__BindElab : {a, b : Type} -> Elab a -> (a -> Elab b) -> Elab b
 
   Prim__Try : {a : Type} -> Elab a -> Elab a -> Elab a
+  Prim__TryCatch : {a : Type} -> Elab a -> (Err -> Elab a) -> Elab a
   Prim__Fail : {a : Type} -> List ErrorReportPart -> Elab a
 
   Prim__Env : Elab (List (TTName, Binder TT))
@@ -217,6 +219,13 @@ namespace Tactics
 
   implementation Monad Elab where
     x >>= f = Prim__BindElab x f
+
+  ||| `tryCatch t (\err => t')` will run `t`, and if it
+  ||| fails, roll back the elaboration state and run `t'`,
+  ||| but with access to the knowledge of why `t` failed.
+  export
+  tryCatch : Elab a -> (Err -> Elab a) -> Elab a
+  tryCatch x f = Prim__TryCatch x f
 
   ||| Halt elaboration with an error
   export

@@ -2026,6 +2026,14 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
            first' <- eval first
            alt' <- eval alt
            try' (runTacTm first') (runTacTm alt') True
+      | n == tacN "Prim__TryCatch"
+      = do ~[_a, first, f] <- tacTmArgs 3 tac args
+           first' <- eval first
+           f' <- eval f
+           tryCatch (runTacTm first') $ \err ->
+             do (err', _) <- checkClosed (reflectErr err)
+                f' <- eval (App Complete f err')
+                runTacTm f'
       | n == tacN "Prim__Fill"
       = do ~[raw] <- tacTmArgs 1 tac args
            raw' <- reifyRaw =<< eval raw
