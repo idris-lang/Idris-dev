@@ -1,6 +1,7 @@
 module Data.BoundedList
 
 import Data.Fin
+import Data.Vect
 
 %access public export
 %default total
@@ -49,6 +50,20 @@ toList (x :: xs) = x :: Data.BoundedList.toList xs
 fromList : (xs : List a) -> BoundedList (length xs) a
 fromList [] = []
 fromList (x :: xs) = x :: fromList xs
+
+--------------------------------------------------------------------------------
+-- Conversions to and from vector
+--------------------------------------------------------------------------------
+
+||| Convert bounded list to vector.
+toVect : (xs : BoundedList n a) -> Vect (finToNat (length xs)) a
+toVect [] = []
+toVect (x :: xs) = x :: toVect xs
+
+||| Convert vector to bounded list.
+fromVect : (xs : Vect n a) -> BoundedList n a
+fromVect [] = []
+fromVect (x :: xs) = x :: fromVect xs
 
 --------------------------------------------------------------------------------
 -- Building (bigger) bounded lists
