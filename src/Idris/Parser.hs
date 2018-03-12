@@ -12,15 +12,19 @@ Maintainer  : The Idris Community.
 -- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
-module Idris.Parser(IdrisParser(..), ImportInfo(..), moduleName, addReplSyntax, clearParserWarnings,
-                    decl, fixColour, loadFromIFile, loadModule, name, opChars, parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic,
-                    runparser, ParseError, parseErrorDoc) where
+module Idris.Parser
+  (IdrisParser(..), ImportInfo(..)
+  , moduleName, addReplSyntax, clearParserWarnings
+  , decl, fixColour, loadFromIFile, loadModule, name, opChars
+  , parseElabShellStep, parseConst, parseExpr, parseImports, parseTactic
+  , runparser, ParseError, parseErrorDoc
+  ) where
 
 import Idris.AbsSyntax hiding (namespace, params)
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docstrings hiding (Unchecked)
+import Idris.Documentation
 import Idris.DSL
 import Idris.Elab.Value
 import Idris.ElabDecls
@@ -30,6 +34,7 @@ import Idris.Imports
 import Idris.Options
 import Idris.Output
 import Idris.Parser.Data
+import Idris.Parser.Documentation
 import Idris.Parser.Expr
 import Idris.Parser.Helpers
 import Idris.Parser.Ops
@@ -93,20 +98,21 @@ moduleName = mkName [] . map T.pack <$> moduleNamePieces where
 moduleNamePieces :: Parsing m => m [String]
 moduleNamePieces = Spl.splitOn "." <$> identifier
 
-moduleHeader :: IdrisParser (Maybe (Docstring ()), [String], [(FC, OutputAnnotation)])
-moduleHeader =     P.try (do docs <- optional docComment
-                             noArgs docs
+moduleHeader :: IdrisParser ( Maybe (IDoc ())
+                            , [String]
+                            , [(FC, OutputAnnotation)]
+                            )
+moduleHeader =     P.try (do docs <- optional docModule
                              keyword "module"
                              (modName, ifc) <- withExtent moduleNamePieces
                              P.option ';' (lchar ';')
-                             return (fmap fst docs,
+                             return (docs,
                                      modName,
                                      [(ifc, AnnNamespace (map T.pack modName) Nothing)]))
                <|> P.try (do lchar '%'; reserved "unqualified"
                              return (Nothing, [], []))
                <|> return (Nothing, ["Main"], [])
-  where noArgs (Just (_, args)) | not (null args) = fail "Modules do not take arguments"
-        noArgs _ = return ()
+
 
 data ImportInfo = ImportInfo { import_reexport :: Bool
                              , import_path :: FilePath
@@ -566,7 +572,7 @@ fnDecl syn = P.try (do notEndBlock
   DocComment_t? FnOpts* Accessibility? FnOpts* FnName TypeSig Terminator
   | Postulate
   | Pattern
-  | CAF
+   | CAF
   ;
 @
 -}
@@ -822,11 +828,15 @@ InterfaceBlock ::=
   ;
 @
 -}
-interfaceBlock :: SyntaxInfo -> IdrisParser (Maybe (Name, FC), Docstring (Either Err PTerm), [PDecl])
+interfaceBlock :: SyntaxInfo
+               -> IdrisParser  (Maybe (Name, FC)
+                              , IDoc (Either Err PTerm)
+                              , [PDecl]
+                              )
 interfaceBlock syn = do keyword "where"
                         openBlock
-                        (cn, cd) <- P.option (Nothing, emptyDocstring) $
-                                    P.try (do (doc, _) <- P.option noDocs docComment
+                        (cn, cd) <- P.option (Nothing, emptyIDoc) $
+                                    P.try (do doc <- P.option emptyIDoc docConstructorNoArgs
                                               n <- constructor
                                               return (Just n, doc))
                         ist <- get
@@ -843,8 +853,11 @@ interfaceBlock syn = do keyword "where"
     constructor :: IdrisParser (Name, FC)
     constructor = keyword "constructor" *> withExtent fnName
 
-    annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
-    annotate syn ist = annotCode $ tryFullExpr syn ist
+    annotate :: SyntaxInfo
+             -> IState
+             -> IDoc ()
+             -> IDoc (Either Err PTerm)
+    annotate syn ist = annotateIDoc $ tryFullExpr syn ist
 
 {-| Parses an interface declaration
 
@@ -876,7 +889,7 @@ interface_ syn = do (doc, argDocs, acc)
                         fds <- P.option [(cn, NoFC) | (cn, _, _) <- cs] fundeps
                         return (cons', n, nfc, cs, fds)
 
-                    (cn, cd, ds) <- P.option (Nothing, fst noDocs, []) (interfaceBlock syn)
+                    (cn, cd, ds) <- P.option (Nothing, emptyIDoc, []) (interfaceBlock syn)
                     accData acc n (concatMap declared ds)
                     return [PInterface doc syn fc cons' n nfc cs argDocs fds ds cn cd]
                  <?> "interface declaration"
@@ -956,12 +969,12 @@ implementation syn = do (doc, argDocs) <- docstring syn
 
 -- | Parse a docstring
 docstring :: SyntaxInfo
-          -> IdrisParser (Docstring (Either Err PTerm),
-                          [(Name,Docstring (Either Err PTerm))])
-docstring syn = do (doc, argDocs) <- P.option noDocs docComment
+          -> IdrisParser ( IDoc (Either Err PTerm)
+                         , [(Name, IDoc (Either Err PTerm))])
+docstring syn = do (doc, argDocs) <- P.option noIDocs docConstructor
                    ist <- get
-                   let doc' = annotCode (tryFullExpr syn ist) doc
-                       argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                   let doc' = annotateIDoc (tryFullExpr syn ist) doc
+                       argDocs' = [ (n, annotateIDoc (tryFullExpr syn ist) d)
                                   | (n, d) <- argDocs ]
                    return (doc', argDocs')
 
@@ -1483,7 +1496,13 @@ parseElabShellStep ist = runparser (Right <$> do_ defaultSyntax <|> Left <$> ela
         spaced parser = indentGt *> parser
 
 -- | Parse module header and imports
-parseImports :: FilePath -> String -> Idris (Maybe (Docstring ()), [String], [ImportInfo], Maybe Mark)
+parseImports :: FilePath
+             -> String
+             -> Idris ( Maybe (IDoc ())
+                      , [String]
+                      , [ImportInfo]
+                      , Maybe Mark
+                      )
 parseImports fname input
     = do i <- getIState
          case runparser imports i fname input of
@@ -1493,10 +1512,12 @@ parseImports fname input
                    fname' <- runIO $ Dir.makeAbsolute fname
                    sendHighlighting $ addPath annots fname'
                    return x
-  where imports :: IdrisParser ((Maybe (Docstring ()), [String],
-                                 [ImportInfo],
-                                 Maybe Mark),
-                                [(FC, OutputAnnotation)], IState)
+  where imports :: IdrisParser (( Maybe (IDoc ())
+                                , [String]
+                                , [ImportInfo]
+                                , Maybe Mark)
+                               , [(FC, OutputAnnotation)]
+                               , IState)
         imports = do optional shebang
                      whiteSpace
                      (mdoc, mname, annots) <- moduleHeader
@@ -1512,7 +1533,9 @@ parseImports fname input
                      let ps = ps_exp -- imp "Builtins" : imp "Prelude" : ps_exp
                      return ((mdoc, mname, ps, mrk'), annots, i)
 
-        addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC, OutputAnnotation)]
+        addPath :: [(FC, OutputAnnotation)]
+                -> FilePath
+                -> [(FC, OutputAnnotation)]
         addPath [] _ = []
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =
            (fc, AnnNamespace ns (Just path)) : addPath annots path
@@ -1528,7 +1551,11 @@ fixColour True doc  = doc
 
 -- | A program is a list of declarations, possibly with associated
 -- documentation strings.
-parseProg :: SyntaxInfo -> FilePath -> String -> Maybe Mark -> Idris [PDecl]
+parseProg :: SyntaxInfo
+          -> FilePath
+          -> String
+          -> Maybe Mark
+          -> Idris [PDecl]
 parseProg syn fname input mrk
     = do i <- getIState
          case runparser mainProg i fname input of
@@ -1812,16 +1839,16 @@ loadSource lidr f toline
                    PImplementation{} -> r
                    _ -> x
 
-    addModDoc :: SyntaxInfo -> [String] -> Docstring () -> Idris ()
+    addModDoc :: SyntaxInfo -> [String] -> IDoc () -> Idris ()
     addModDoc syn mname docs =
       do ist <- getIState
-         docs' <- elabDocTerms (toplevelWith f) (parsedDocs ist)
+         docs' <- elabIDocTerms (toplevelWith f) (parsedDocs ist)
          let modDocs' = addDef docName docs' (idris_moduledocs ist)
          putIState ist { idris_moduledocs = modDocs' }
          addIBC (IBCModDocs docName)
       where
         docName = NS modDocName (map T.pack (reverse mname))
-        parsedDocs ist = annotCode (tryFullExpr syn ist) docs
+        parsedDocs ist = annotateIDoc (tryFullExpr syn ist) docs
 
 {-| Adds names to hide list -}
 addHides :: Ctxt Accessibility -> Idris ()

@@ -15,7 +15,8 @@ import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.WHNF
 import Idris.Delaborate
-import Idris.Docstrings
+import Idris.Docs.DocStrings ()
+import Idris.Documentation
 import Idris.Error
 import Idris.Output
 
@@ -158,7 +159,7 @@ inferredDiff fc inf user =
 -- | Check a PTerm against documentation and ensure that every documented
 -- argument actually exists.  This must be run _after_ implicits have been
 -- found, or it will give spurious errors.
-checkDocs :: FC -> [(Name, Docstring a)] -> PTerm -> Idris ()
+checkDocs :: FC -> [(Name, IDoc a)] -> PTerm -> Idris ()
 checkDocs fc args tm = cd (Map.fromList args) tm
   where cd as (PPi _ n _ _ sc) = cd (Map.delete n as) sc
         cd as _ | Map.null as = return ()

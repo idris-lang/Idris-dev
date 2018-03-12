@@ -16,7 +16,8 @@ import Idris.ASTUtils
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Docstrings (Docstring)
+import Idris.Docs.DocStrings ()
+import Idris.Documentation
 import Idris.Elab.Term
 import Idris.Elab.Utils
 import Idris.Elab.Value
@@ -121,8 +122,8 @@ buildType info syn fc opts n ty' = do
 -- | Elaborate a top-level type declaration - for example, "foo : Int -> Int".
 elabType :: ElabInfo
          -> SyntaxInfo
-         -> Docstring (Either Err PTerm)
-         -> [(Name, Docstring (Either Err PTerm))]
+         -> IDoc (Either Err PTerm)
+         -> [(Name, IDoc (Either Err PTerm))]
          -> FC
          -> FnOpts
          -> Name
@@ -134,8 +135,8 @@ elabType = elabType' False
 elabType' :: Bool  -- normalise it
           -> ElabInfo
           -> SyntaxInfo
-          -> Docstring (Either Err PTerm)
-          -> [(Name, Docstring (Either Err PTerm))]
+          -> IDoc (Either Err PTerm)
+          -> [(Name, IDoc (Either Err PTerm))]
           -> FC
           -> FnOpts
           -> Name
@@ -174,8 +175,8 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
          addDeferred ds'
          setFlags n opts'
          checkDocs fc argDocs ty
-         doc' <- elabDocTerms info doc
-         argDocs' <- mapM (\(n, d) -> do d' <- elabDocTerms info d
+         doc' <- elabIDocTerms info doc
+         argDocs' <- mapM (\(n, d) -> do d' <- elabIDocTerms info d
                                          return (n, d')) argDocs
          addDocStr n doc' argDocs'
          addIBC (IBCDoc n)
@@ -232,8 +233,15 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
         , ns4 == map txt ["Reflection","Language"] = True
     tyIsHandler _                                           = False
 
-elabPostulate :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
-                 FC -> FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabPostulate :: ElabInfo
+              -> SyntaxInfo
+              -> IDoc (Either Err PTerm)
+              -> FC
+              -> FC
+              -> FnOpts
+              -> Name
+              -> PTerm
+              -> Idris ()
 elabPostulate info syn doc fc nfc opts n ty = do
     elabType info syn doc [] fc opts n NoFC ty
     putIState . (\ist -> ist{ idris_postulates = S.insert n (idris_postulates ist) }) =<< getIState
@@ -243,8 +251,15 @@ elabPostulate info syn doc fc nfc opts n ty = do
     -- remove it from the deferred definitions list
     solveDeferred fc n
 
-elabExtern :: ElabInfo -> SyntaxInfo -> Docstring (Either Err PTerm) ->
-                 FC -> FC -> FnOpts -> Name -> PTerm -> Idris ()
+elabExtern :: ElabInfo
+           -> SyntaxInfo
+           -> IDoc (Either Err PTerm)
+           -> FC
+           -> FC
+           -> FnOpts
+           -> Name
+           -> PTerm
+           -> Idris ()
 elabExtern info syn doc fc nfc opts n ty = do
     cty <- elabType info syn doc [] fc opts n NoFC ty
     ist <- getIState

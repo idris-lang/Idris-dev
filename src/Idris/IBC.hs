@@ -19,8 +19,9 @@ import Idris.Core.CaseTree
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.DeepSeq ()
-import Idris.Docstrings (Docstring)
-import qualified Idris.Docstrings as D
+import Idris.Docs.DocStrings ()
+import qualified Idris.Docs.DocStrings as D
+import qualified Idris.Documentation as C
 import Idris.Error
 import Idris.Imports
 import Idris.Options
@@ -40,7 +41,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 165
+ibcVersion = 166
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -74,8 +75,8 @@ data IBCFile = IBCFile {
   , ibc_flags                  :: ![(Name, [FnOpt])]
   , ibc_fninfo                 :: ![(Name, FnInfo)]
   , ibc_cg                     :: ![(Name, CGInfo)]
-  , ibc_docstrings             :: ![(Name, (Docstring D.DocTerm, [(Name, Docstring D.DocTerm)]))]
-  , ibc_moduledocs             :: ![(Name, Docstring D.DocTerm)]
+  , ibc_docstrings             :: ![(Name, (C.IDoc D.DocTerm, [(Name, C.IDoc D.DocTerm)]))]
+  , ibc_moduledocs             :: ![(Name, C.IDoc D.DocTerm)]
   , ibc_transforms             :: ![(Name, (Term, Term))]
   , ibc_errRev                 :: ![(Term, Term)]
   , ibc_errReduce              :: ![Name]
@@ -847,7 +848,8 @@ processLangExts _ _ = return ()
 
 ----- For Cheapskate and docstrings
 
-instance Binary a => Binary (D.Docstring a)
+instance Binary a => Binary (C.IDoc a)
+instance Binary a => Binary (D.DocString a)
 instance Binary CT.Options
 instance Binary D.DocTerm
 instance Binary a => Binary (D.Block a)

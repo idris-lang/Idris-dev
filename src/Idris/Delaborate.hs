@@ -16,7 +16,8 @@ module Idris.Delaborate (
 import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Docstrings (overview, renderDocTerm, renderDocstring)
+import Idris.Docs.DocStrings (renderDocString, renderDocTerm)
+import Idris.Documentation
 import Idris.ErrReverse
 
 import Util.Pretty
@@ -698,13 +699,13 @@ fancifyAnnots ist meta annot@(AnnName n nt _ _) =
        _ | otherwise              -> annot
   where docOverview :: IState -> Name -> Maybe String -- pretty-print first paragraph of docs
         docOverview ist n = do docs <- lookupCtxtExact n (idris_docstrings ist)
-                               let o    = overview (fst docs)
+                               let o    = overviewIDoc (fst docs)
                                    norm = normaliseAll (tt_ctxt ist) []
                                    -- TODO make width configurable
                                    -- Issue #1588 on the Issue Tracker
                                    -- https://github.com/idris-lang/Idris-dev/issues/1588
                                    out  = displayS . renderPretty 1.0 50 $
-                                          renderDocstring (renderDocTerm (pprintDelab ist)
+                                          renderDocString (renderDocTerm (pprintDelab ist)
                                                                          norm) o
                                return (out "")
         getTy :: IState -> Name -> String -- fails if name not already extant!

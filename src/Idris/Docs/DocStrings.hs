@@ -1,6 +1,6 @@
 {-|
-Module      :  Idris.Docstrings
-Description : Wrapper around Markdown library.
+Module      : Idris.Doc.DocStrings
+Description : A wrapper around the Cheapskate library to allow for Idris documentation to be formatted.
 
 License     : BSD3
 Maintainer  : The Idris Community.
@@ -9,10 +9,10 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable,
              ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
-module Idris.Docstrings (
-    Docstring(..), Block(..), Inline(..), parseDocstring, renderDocstring
-  , emptyDocstring, nullDocstring, noDocs, overview, containsText
-  , renderHtml, annotCode, DocTerm(..), renderDocTerm, checkDocstring
+module Idris.Docs.DocStrings (
+    DocString(..), Block(..), Inline(..), parseDocString, renderDocString
+  , emptyDocString, nullDocString, noDocs, overview, containsText
+  , renderHtml, annotCode, DocTerm(..), renderDocTerm, checkDocString
   ) where
 
 import Idris.Core.TT (Err, Name, OutputAnnotation(..), Term, TextFormatting(..))
@@ -50,7 +50,7 @@ renderDocTerm pp norm (Failing err) src = annotate (AnnErr err) $ text src
 
 -- | Representation of Idris's inline documentation. The type paramter
 -- represents the type of terms that are associated with code blocks.
-data Docstring a = DocString CT.Options (Blocks a)
+data DocString a = DocString CT.Options (Blocks a)
   deriving (Show, Functor, Foldable, Traversable, Generic)
 
 type Blocks a = S.Seq (Block a)
@@ -81,11 +81,11 @@ data Inline a = Str T.Text
 type Inlines a = S.Seq (Inline a)
 
 
--- | Run some kind of processing step over code in a Docstring. The code
+-- | Run some kind of processing step over code in a DocString. The code
 -- processor gets the language and annotations as parameters, along with the
 -- source and the original annotation.
-checkDocstring :: forall a b. (String -> [String] -> String -> a -> b) -> Docstring a -> Docstring b
-checkDocstring f (DocString opts blocks) = DocString opts (fmap (checkBlock f) blocks)
+checkDocString :: forall a b. (String -> [String] -> String -> a -> b) -> DocString a -> DocString b
+checkDocString f (DocString opts blocks) = DocString opts (fmap (checkBlock f) blocks)
   where checkBlock :: (String -> [String] -> String -> a -> b) -> Block a -> Block b
         checkBlock f (Para inlines)           = Para (fmap (checkInline f) inlines)
         checkBlock f (Header i inlines)       = Header i (fmap (checkInline f) inlines)
@@ -113,10 +113,10 @@ checkDocstring f (DocString opts blocks) = DocString opts (fmap (checkBlock f) b
         checkInline f (RawHtml src)        = RawHtml src
 
 -- | Construct a docstring from a Text that contains Markdown-formatted docs
-parseDocstring :: T.Text -> Docstring ()
-parseDocstring = toDocstring . C.markdown options
-  where toDocstring :: CT.Doc -> Docstring ()
-        toDocstring (CT.Doc opts blocks) = DocString opts (fmap toBlock blocks)
+parseDocString :: T.Text -> DocString ()
+parseDocString = toDocString . C.markdown options
+  where toDocString :: CT.Doc -> DocString ()
+        toDocString (CT.Doc opts blocks) = DocString opts (fmap toBlock blocks)
 
         toBlock :: CT.Block -> Block ()
         toBlock (CT.Para inlines)         = Para (fmap toInline inlines)
@@ -140,7 +140,6 @@ parseDocstring = toDocstring . C.markdown options
         toInline (CT.Entity txt)         = Entity txt
         toInline (CT.RawHtml src)        = RawHtml src
 
-
 options = CT.Options { CT.sanitize = True
                      , CT.allowRawHtml = False
                      , CT.preserveHardBreaks = True
@@ -148,12 +147,14 @@ options = CT.Options { CT.sanitize = True
                      }
 
 -- | Convert a docstring to be shown by the pretty-printer
-renderDocstring :: (a -> String -> Doc OutputAnnotation) -> Docstring a -> Doc OutputAnnotation
-renderDocstring pp (DocString _ blocks) = renderBlocks pp blocks
+renderDocString :: (a -> String -> Doc OutputAnnotation)
+                -> DocString a
+                -> Doc OutputAnnotation
+renderDocString pp (DocString _ blocks) = renderBlocks pp blocks
 
 -- | Construct a docstring consisting of the first block-level element of the
 -- argument docstring, for use in summaries.
-overview :: Docstring a -> Docstring a
+overview :: DocString a -> DocString a
 overview (DocString opts blocks) = DocString opts (S.take 1 blocks)
 
 renderBlocks :: (a -> String -> Doc OutputAnnotation)
@@ -201,19 +202,19 @@ renderInline pp (Entity a) = text $ "<entity " ++ T.unpack a ++ ">" -- TODO
 renderInline pp (RawHtml txt) = text "<html content>" --TODO
 
 -- | The empty docstring
-emptyDocstring :: Docstring a
-emptyDocstring = DocString options S.empty
+emptyDocString :: DocString a
+emptyDocString = DocString options S.empty
 
 -- | Check whether a docstring is emtpy
-nullDocstring :: Docstring a -> Bool
-nullDocstring (DocString _ blocks) = S.null blocks
+nullDocString :: DocString a -> Bool
+nullDocString (DocString _ blocks) = S.null blocks
 
 -- | Empty documentation for a definition
-noDocs :: (Docstring a, [(Name, Docstring a)])
-noDocs = (emptyDocstring, [])
+noDocs :: (DocString a, [(Name, DocString a)])
+noDocs = (emptyDocString, [])
 
 -- | Does a string occur in the docstring?
-containsText ::  T.Text -> Docstring a -> Bool
+containsText ::  T.Text -> DocString a -> Bool
 containsText str (DocString _ blocks) = F.any (blockContains (T.toLower str)) blocks
   -- blockContains and inlineContains should always be called with a lower-case search string
   where blockContains :: T.Text -> Block a -> Bool
@@ -239,11 +240,11 @@ containsText str (DocString _ blocks) = F.any (blockContains (T.toLower str)) bl
         inlineContains str (RawHtml txt) = T.isInfixOf str (T.toLower txt)
 
 
-renderHtml :: Docstring DocTerm -> Html
-renderHtml = renderDoc . fromDocstring
+renderHtml :: DocString DocTerm -> Html
+renderHtml = renderDoc . fromDocString
   where
-    fromDocstring :: Docstring DocTerm -> CT.Doc
-    fromDocstring (DocString opts blocks) = CT.Doc opts (fmap fromBlock blocks)
+    fromDocString :: DocString DocTerm -> CT.Doc
+    fromDocString (DocString opts blocks) = CT.Doc opts (fmap fromBlock blocks)
 
     fromBlock :: Block DocTerm -> CT.Block
     fromBlock (Para inlines)           = CT.Para (fmap fromInline inlines)
@@ -270,8 +271,8 @@ renderHtml = renderDoc . fromDocstring
 
 -- | Annotate the code samples in a docstring
 annotCode :: forall a b. (String -> b) -- ^ How to annotate code samples
-          -> Docstring a
-          -> Docstring b
+          -> DocString a
+          -> DocString b
 annotCode annot (DocString opts blocks)
     = DocString opts $ fmap annotCodeBlock blocks
   where

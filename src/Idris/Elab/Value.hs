@@ -8,7 +8,7 @@ Maintainer  : The Idris Community.
 {-# LANGUAGE PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Elab.Value(
-    elabVal, elabValBind, elabDocTerms
+    elabVal, elabValBind, elabIDocTerms, elabDocTerms
   , elabExec, elabREPL
   ) where
 
@@ -16,7 +16,8 @@ import Idris.AbsSyntax
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate hiding (Unchecked)
 import Idris.Core.TT
-import Idris.Docstrings
+import Idris.Docs.DocStrings
+import Idris.Documentation
 import Idris.Elab.Term
 import Idris.Elab.Utils
 import Idris.Error
@@ -73,10 +74,39 @@ elabVal info aspat tm_in
         return (tm, ty)
 
 
+elabIDocTerms :: ElabInfo
+              -> IDoc (Either Err PTerm)
+              -> Idris (IDoc DocTerm)
+elabIDocTerms info EmptyDoc = return EmptyDoc
+elabIDocTerms info (PlainDoc d b) = do
+  d' <- elabDocTerms info d
+  b' <- elabDocTerms info b
+  return (PlainDoc d' b')
+elabIDocTerms info (ModuleDoc d b t v r c l s p ms as) = do
+  d'  <- elabDocTerms info d
+  b'  <- elabDocTerms info b
+  t'  <- elabDocTerms info t
+  v'  <- elabDocTerms info v
+  r'  <- elabDocTerms info r
+  c'  <- elabDocTerms info c
+  l'  <- elabDocTerms info l
+  s'  <- elabDocTerms info s
+  p'  <- elabDocTerms info p
+  ms' <- Traversable.mapM (elabDocTerms info) ms
+  as' <- Traversable.mapM (elabDocTerms info) as
+  return (ModuleDoc d' b' t' v' r' c' l' s' p' ms' as')
+elabIDocTerms info (ConstructorDoc d t b s ns rs) = do
+  d'  <- elabDocTerms info d
+  t'  <- elabDocTerms info t
+  b'  <- elabDocTerms info b
+  s'  <- elabDocTerms info s
+  ns' <- Traversable.mapM (elabDocTerms info) ns
+  rs' <- Traversable.mapM (elabDocTerms info) rs
+  return (ConstructorDoc d' t' b' s' ns' rs')
 
-elabDocTerms :: ElabInfo -> Docstring (Either Err PTerm) -> Idris (Docstring DocTerm)
+elabDocTerms :: ElabInfo -> DocString (Either Err PTerm) -> Idris (DocString DocTerm)
 elabDocTerms info str = do typechecked <- Traversable.mapM decorate str
-                           return $ checkDocstring mkDocTerm typechecked
+                           return $ checkDocString mkDocTerm typechecked
   where decorate (Left err) = return (Left err)
         decorate (Right pt) = fmap (fmap fst) (tryElabVal info ERHS pt)
 

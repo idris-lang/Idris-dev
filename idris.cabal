@@ -187,8 +187,11 @@ Library
                 , Idris.DeepSeq
                 , Idris.Delaborate
                 , Idris.Directives
-                , Idris.Docs
-                , Idris.Docstrings
+
+                , Idris.Docs.DocStrings
+                , Idris.Docs.Pretty
+                , Idris.Documentation
+
                 , Idris.ElabDecls
                 , Idris.Erasure
                 , Idris.Error
@@ -198,29 +201,36 @@ Library
                 , Idris.IdeMode
                 , Idris.IdrisDoc
                 , Idris.Imports
+
                 , Idris.Info
                 , Idris.Info.Show
+
                 , Idris.Inliner
                 , Idris.Interactive
                 , Idris.Output
                 , Idris.Main
                 , Idris.ModeCommon
                 , Idris.Options
+
                 , Idris.Parser
                 , Idris.Parser.Data
+                , Idris.Parser.Documentation
                 , Idris.Parser.Expr
                 , Idris.Parser.Helpers
                 , Idris.Parser.Ops
                 , Idris.Parser.Stack
+
                 , Idris.PartialEval
                 , Idris.Primitives
                 , Idris.ProofSearch
                 , Idris.Prover
                 , Idris.Providers
                 , Idris.Reflection
+
                 , Idris.REPL
                 , Idris.REPL.Parser
                 , Idris.REPL.Commands
+
                 , Idris.Termination
                 , Idris.Transforms
                 , Idris.TypeSearch
@@ -233,12 +243,14 @@ Library
                 , IRTS.CodegenCommon
                 , IRTS.CodegenJavaScript
                 , IRTS.Exports
+
                 , IRTS.JavaScript.AST
                 , IRTS.JavaScript.Name
                 , IRTS.JavaScript.Codegen
                 , IRTS.JavaScript.LangTransforms
                 , IRTS.JavaScript.Specialize
                 , IRTS.JavaScript.PrimOp
+
                 , IRTS.Compiler
                 , IRTS.Defunctionalise
                 , IRTS.DumpBC

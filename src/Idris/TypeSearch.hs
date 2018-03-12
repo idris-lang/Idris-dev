@@ -23,7 +23,7 @@ import Idris.Core.Evaluate (Context(definitions), Def(CaseOp, Function, TyDecl),
 import Idris.Core.TT hiding (score)
 import Idris.Core.Unify (match_unify)
 import Idris.Delaborate (delabTy)
-import Idris.Docstrings (noDocs, overview)
+import Idris.Documentation
 import Idris.Elab.Type (elabType)
 import Idris.IBC
 import Idris.Imports (PkgName)
@@ -58,12 +58,12 @@ searchByType pkgs pterm = do
   mapM_ loadPkgIndex pkgs
   pterm' <- addUsingConstraints syn emptyFC pterm
   pterm'' <- implicit toplevel syn name pterm'
-  ty <- elabType toplevel syn (fst noDocs) (snd noDocs) emptyFC [] name NoFC pterm'
+  ty <- elabType toplevel syn emptyConstructorDoc [] emptyFC [] name NoFC pterm'
   let names = searchUsing searchPred i ty
   let names' = take numLimit names
   let docs =
-       [ let docInfo = (n, delabTy i n, fmap (overview . fst) (lookupCtxtExact n (idris_docstrings i))) in
-         displayScore theScore <> char ' ' <> prettyDocumentedIst i docInfo
+       [ let docInfo = (n, delabTy i n, fmap (paramDoc . overviewIDoc . fst) (lookupCtxtExact n (idris_docstrings i))) in
+         displayScore theScore <> char ' ' <> prettyDocumentedIst i (docInfo)
                 | (n, theScore) <- names']
   if (not (null docs))
      then case idris_outputmode i of

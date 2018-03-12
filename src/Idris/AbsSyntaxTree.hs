@@ -15,7 +15,8 @@ module Idris.AbsSyntaxTree where
 import Idris.Core.Elaborate hiding (Tactic(..))
 import Idris.Core.Evaluate
 import Idris.Core.TT
-import Idris.Docstrings
+import Idris.Docs.DocStrings
+import Idris.Documentation
 import Idris.Options
 import IRTS.CodegenCommon
 import IRTS.Lang
@@ -41,6 +42,7 @@ import Data.Generics.Uniplate.Data (children, universe)
 import Data.List hiding (group)
 import qualified Data.Map.Strict as M
 import Data.Maybe (mapMaybe, maybeToList)
+import qualified Data.Sequence as SeQ
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Traversable (Traversable)
@@ -227,11 +229,11 @@ data IState = IState {
   , idris_patdefs       :: Ctxt ([([(Name, Term)], Term, Term)], [PTerm])
   , idris_flags         :: Ctxt [FnOpt]
   , idris_callgraph     :: Ctxt CGInfo  -- ^ name, args used in each pos
-  , idris_docstrings    :: Ctxt (Docstring DocTerm, [(Name, Docstring DocTerm)])
+  , idris_docstrings    :: Ctxt (IDoc DocTerm, [(Name, IDoc DocTerm)])
 
   -- | module documentation is saved in a special MN so the context
   -- mechanism can be used for disambiguation.
-  , idris_moduledocs    :: Ctxt (Docstring DocTerm)
+  , idris_moduledocs    :: Ctxt (IDoc DocTerm)
   , idris_tyinfodata    :: Ctxt TIData
   , idris_fninfo        :: Ctxt FnInfo
   , idris_transforms    :: Ctxt [(Term, Term)]
@@ -589,16 +591,34 @@ data PDecl' t
    -- | Fixity declaration
    = PFix FC Fixity [String]
    -- | Type declaration (last FC is precise name location)
-   | PTy (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC FnOpts Name FC t
+   | PTy (IDoc (Either Err t))    -- Documentation
+         [(Name, IDoc (Either Err t))] -- Arguments and Documentation
+         SyntaxInfo
+         FC
+         FnOpts
+         Name
+         FC
+         t
    -- | Postulate, second FC is precise name location
    | PPostulate Bool -- external def if true
-          (Docstring (Either Err t)) SyntaxInfo FC FC FnOpts Name t
+                (IDoc (Either Err t))
+                SyntaxInfo
+                FC
+                FC
+                FnOpts
+                Name
+                t
    -- | Pattern clause
    | PClauses FC FnOpts Name [PClause' t]
    -- | Top level constant
    | PCAF FC Name t
    -- | Data declaration.
-   | PData (Docstring (Either Err t)) [(Name, Docstring (Either Err t))] SyntaxInfo FC DataOpts (PData' t)
+   | PData (IDoc (Either Err t))     -- Documentation
+           [(Name, IDoc (Either Err t))]  -- Arguments and docs
+           SyntaxInfo
+           FC
+           DataOpts
+           (PData' t)
    -- | Params block
    | PParams FC [(Name, t)] [PDecl' t]
    -- | Open block/declaration
@@ -607,35 +627,44 @@ data PDecl' t
    -- in the file
    | PNamespace String FC [PDecl' t]
    -- | Record name.
-   | PRecord (Docstring (Either Err t)) SyntaxInfo FC DataOpts
+   | PRecord (IDoc (Either Err t)) -- Documentation
+             SyntaxInfo
+             FC
+             DataOpts
              Name                 -- Record name
              FC                   -- Record name precise location
              [(Name, FC, Plicity, t)] -- Parameters, where FC is precise name span
-             [(Name, Docstring (Either Err t))] -- Param Docs
-             [(Maybe (Name, FC), Plicity, t, Maybe (Docstring (Either Err t)))] -- Fields
+             [(Name, IDoc (Either Err t))] -- Param Docs
+             [(Maybe (Name, FC)
+              , Plicity
+              , t
+              , Maybe (IDoc (Either Err t)))
+             ] -- Fields
              (Maybe (Name, FC)) -- Optional constructor name and location
-             (Docstring (Either Err t)) -- Constructor doc
+             (IDoc (Either Err t)) -- Constructor doc
              SyntaxInfo -- Constructor SyntaxInfo
 
    -- | Interface: arguments are documentation, syntax info, source
    -- location, constraints, interface name, interface name location,
    -- parameters, method declarations, optional constructor name
-   | PInterface (Docstring (Either Err t)) SyntaxInfo FC
-            [(Name, t)]                        -- constraints
-            Name                               -- interface name
-            FC                                 -- accurate location of interface name
-            [(Name, FC, t)]                    -- parameters and precise locations
-            [(Name, Docstring (Either Err t))] -- parameter docstrings
-            [(Name, FC)]                       -- determining parameters and precise locations
-            [PDecl' t]                         -- declarations
-            (Maybe (Name, FC))                 -- implementation constructor name and location
-            (Docstring (Either Err t))         -- implementation constructor docs
+   | PInterface (IDoc (Either Err t))
+                SyntaxInfo
+                FC
+                [(Name, t)]                        -- constraints
+                Name                               -- interface name
+                FC                                 -- accurate location of interface name
+                [(Name, FC, t)]                    -- parameters and precise locations
+                [(Name, IDoc (Either Err t))] -- parameter docstrings
+                [(Name, FC)]                       -- determining parameters and precise locations
+                [PDecl' t]                         -- declarations
+                (Maybe (Name, FC))                 -- implementation constructor name and location
+                (IDoc (Either Err t))         -- implementation constructor docs
 
    -- | Implementation declaration: arguments are documentation, syntax
    -- info, source location, constraints, interface name, parameters, full
    -- Implementation type, optional explicit name, and definitions
-   | PImplementation (Docstring (Either Err t))         -- Implementation docs
-                     [(Name, Docstring (Either Err t))] -- Parameter docs
+   | PImplementation (IDoc (Either Err t))    -- Implementation docs
+                     [(Name, IDoc (Either Err t))] -- Parameter docs
                      SyntaxInfo
                      FC [(Name, t)]                     -- constraints
                      [Name]                             -- parent dictionaries to search for constraints
@@ -655,7 +684,7 @@ data PDecl' t
 
    -- | Type provider. The first t is the type, the second is the
    -- term. The second FC is precise highlighting location.
-   | PProvider (Docstring (Either Err t)) SyntaxInfo FC FC (ProvideWhat' t) Name
+   | PProvider (IDoc (Either Err t)) SyntaxInfo FC FC (ProvideWhat' t) Name
 
    -- | Source-to-source transformation rule. If bool is True, lhs and
    -- rhs must be convertible.
@@ -746,7 +775,13 @@ data PData' t  =
     PDatadecl { d_name    :: Name -- ^ The name of the datatype
               , d_name_fc :: FC   -- ^ The precise location of the type constructor name
               , d_tcon    :: t    -- ^ Type constructor
-              , d_cons    :: [(Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, t, FC, [Name])] -- ^ Constructors
+              , d_cons    :: [ (IDoc (Either Err PTerm)     -- documentation
+                             , [(Name, IDoc (Either Err PTerm))] -- Argument and documentation
+                             , Name
+                             , FC
+                             , t
+                             , FC
+                             , [Name])] -- ^ Constructors
               }
   -- | "Placeholder" for data whose constructors are defined later
   | PLaterdecl { d_name    :: Name
@@ -1494,7 +1529,7 @@ inferTy   = sMN 0 "__Infer"
 inferCon  = sMN 0 "__infer"
 inferDecl = PDatadecl inferTy primfc
                       (PType bi)
-                      [(emptyDocstring, [], inferCon, primfc, PPi impl (sMN 0 "iType") primfc (PType bi) (
+                      [(emptyIDoc, [], inferCon, primfc, PPi impl (sMN 0 "iType") primfc (PType bi) (
                                                    PPi expl_linear (sMN 0 "ival") primfc (PRef bi [] (sMN 0 "iType"))
                                                    (PRef bi [] inferTy)), bi, [])]
 inferOpts = []
@@ -1514,6 +1549,12 @@ getInferType (Bind n b sc)  = Bind n (toTy b) $ getInferType sc
 getInferType (App _ (App _ _ ty) _) = ty
 
 
+parseDocStringStr :: [String]
+                  -> DocString (Either Err PTerm)
+parseDocStringStr str = fmap (const (Left $ Msg "")) . parseDocString . T.pack $ (unwords str)
+
+paramDocStr :: [String] -> IDoc (Either Err PTerm)
+paramDocStr = paramDoc . parseDocStringStr
 
 -- Handy primitives: Unit, False, Pair, MkPair, =, mkForeign
 
@@ -1522,11 +1563,14 @@ primNames = [inferTy, inferCon]
 unitTy   = sUN "Unit"
 unitCon  = sUN "MkUnit"
 
-falseDoc = fmap (const $ Msg "") . parseDocstring . T.pack $
-             "The empty type, also known as the trivially false proposition." ++
-             "\n\n" ++
-             "Use `void` or `absurd` to prove anything if you have a variable " ++
-             "of type `Void` in scope."
+falseDoc = setIDocDesc body emptyConstructorDoc
+  where
+    body = parseDocStringStr
+             [ "The empty type, also known as the trivially false proposition."
+             , "\n\n"
+             , "Use `void` or `absurd` to prove anything if you have a variable of type `Void` in scope."
+             ]
+
 falseTy   = sUN "Void"
 
 pairTy    = sNS (sUN "Pair") ["Builtins"]
@@ -1537,17 +1581,23 @@ upairCon   = sNS (sUN "MkUPair") ["Builtins"]
 
 eqTy  = sUN "="
 eqCon = sUN "Refl"
-eqDoc = fmap (const (Left $ Msg "")) . parseDocstring . T.pack $
-          "The propositional equality type. A proof that `x` = `y`." ++
-          "\n\n" ++
-          "To use such a proof, pattern-match on it, and the two equal things will " ++
-          "then need to be the _same_ pattern." ++
-          "\n\n" ++
-          "**Note**: Idris's equality type is potentially _heterogeneous_, which means that it " ++
-          "is possible to state equalities between values of potentially different " ++
-          "types. However, Idris will attempt the homogeneous case unless it fails to typecheck." ++
-          "\n\n" ++
-          "You may need to use `(~=~)` to explicitly request heterogeneous equality."
+
+eqDoc = ConstructorDoc desc tooltip brief emptyDocString notes SeQ.empty
+  where
+    tooltip = parseDocStringStr ["The propositional equality type."]
+    brief   = parseDocStringStr ["The propositional equality type. A proof that `x` = `y`."]
+    desc = parseDocStringStr
+      [ "The propositional equality type. A proof that `x` = `y`."
+      , "\n\n"
+      , "To use such a proof, pattern-match on it, and the two equal things will "
+      , "then need to be the _same_ pattern."
+      ]
+    notes = SeQ.fromList
+      [parseDocStringStr ["Idris's equality type is potentially _heterogeneous_, which means that it "
+      , "is possible to state equalities between values of potentially different "
+      , "types. However, Idris will attempt the homogeneous case unless it fails to typecheck."
+      , "\n\n"
+      , "You may need to use `(~=~)` to explicitly request heterogeneous equality."]]
 
 eqDecl = PDatadecl eqTy primfc (piBindp impl [(n "A", PType bi), (n "B", PType bi)]
                                       (piBind [(n "x", PRef bi [] (n "A")), (n "y", PRef bi [] (n "B"))]
@@ -1560,15 +1610,30 @@ eqDecl = PDatadecl eqTy primfc (piBindp impl [(n "A", PType bi), (n "B", PType b
                                                                      pexp (PRef bi [] (n "x")),
                                                                      pexp (PRef bi [] (n "x"))])), bi, [])]
     where n a = sUN a
-          reflDoc = annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $
-                      "A proof that `x` in fact equals `x`. To construct this, you must have already " ++
-                      "shown that both sides are in fact equal."
-          reflParamDoc = [(n "A",  annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $ "the type at which the equality is proven"),
-                          (n "x",  annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $ "the element shown to be equal to itself.")]
 
-eqParamDoc = [(n "A", annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $ "the type of the left side of the equality"),
-              (n "B", annotCode (const (Left $ Msg "")) . parseDocstring . T.pack $ "the type of the right side of the equality")
-              ]
+          reflTooltip = parseDocStringStr ["A proof that `x` in fact equals `x`."]
+          reflDesc = parseDocStringStr
+            [ "A proof that `x` in fact equals `x`."
+            , "\n\n"
+            , "To construct this, you must have already shown that both sides are in fact equal."
+            ]
+
+          reflDoc = ConstructorDoc reflDesc
+                                   reflTooltip
+                                   reflTooltip
+                                   emptyDocString
+                                   SeQ.empty
+                                   SeQ.empty
+
+          reflParamDoc =
+            [ (n "A", paramDocStr ["the type at which the equality is proven"])
+            , (n "x", paramDocStr ["the element shown to be equal to itself."])
+            ]
+
+eqParamDoc =
+  [ (n "A", paramDocStr ["the type of the left side of the equality"])
+  , (n "B", paramDocStr ["the type of the right side of the equality"])
+  ]
     where n a = sUN a
 
 eqOpts = []

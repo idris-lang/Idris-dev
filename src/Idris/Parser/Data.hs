@@ -11,8 +11,10 @@ module Idris.Parser.Data where
 
 import Idris.AbsSyntax
 import Idris.Core.TT
-import Idris.Docstrings
+import Idris.Docs.DocStrings
+import Idris.Documentation
 import Idris.Options
+import Idris.Parser.Documentation
 import Idris.Parser.Expr
 import Idris.Parser.Helpers
 import Idris.Parser.Ops
@@ -32,16 +34,16 @@ Record ::=
 -}
 record :: SyntaxInfo -> IdrisParser PDecl
 record syn = (appExtent $ do
-                (doc, paramDocs, acc, opts) <- P.try (do
-                      (doc, paramDocs) <- P.option noDocs docComment
+                (rdoc, paramDocs, acc, opts) <- P.try (do
+                      (doc_s, paramDocs) <- P.option noIDocs docConstructor
                       ist <- get
-                      let doc' = annotCode (tryFullExpr syn ist) doc
-                          paramDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                      let doc_a = annotateIDoc (tryFullExpr syn ist) doc_s
+                          paramDocs' = [ (n, annotateIDoc (tryFullExpr syn ist) d)
                                      | (n, d) <- paramDocs ]
                       acc <- accessibility
                       opts <- dataOpts []
                       co <- recordI
-                      return (doc', paramDocs', acc, opts ++ co))
+                      return (doc_a, paramDocs', acc, opts ++ co))
                 (tyn_in, nfc) <- withExtent fnName
                 let tyn = expandNS syn tyn_in
                 let rsyn = syn { syn_namespace = show (nsroot tyn) :
@@ -52,30 +54,41 @@ record syn = (appExtent $ do
                 case cname of
                      Just cn' -> accData acc tyn (fst cn' : fnames)
                      Nothing -> return ()
-                return $ \fc -> PRecord doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn)
+                return $ \fc -> PRecord rdoc rsyn fc opts tyn nfc params paramDocs fields cname cdoc syn)
               <?> "record type declaration"
   where
     getName (Just (n, _), _, _, _) = Just n
     getName _ = Nothing
 
-    recordBody :: SyntaxInfo -> Name -> IdrisParser ([((Maybe (Name, FC)), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))], Maybe (Name, FC), Docstring (Either Err PTerm))
+    recordBody :: SyntaxInfo
+               -> Name
+               -> IdrisParser ([((Maybe (Name, FC))
+                                , Plicity
+                                , PTerm
+                                , Maybe (IDoc (Either Err PTerm)))]
+                              , Maybe (Name, FC)
+                              , IDoc (Either Err PTerm))
     recordBody syn tyn = do
         ist <- get
 
-        (constructorName, constructorDoc) <- P.option (Nothing, emptyDocstring)
-                                             (do (doc, _) <- P.option noDocs docComment
-                                                 n <- withExtent constructor
-                                                 return (Just n, doc))
+        (cName, cDoc) <- P.option (Nothing, emptyIDoc)
+                           (do doc <- P.option emptyIDoc docConstructorNoArgs
+                               n <- withExtent constructor
+                               return (Just n, doc))
 
-        let constructorDoc' = annotate syn ist constructorDoc
+        let cDoc' = annotate syn ist cDoc
 
         fields <- many . indented $ fieldLine syn
 
-        return (concat fields, constructorName, constructorDoc')
+        return (concat fields, cName, cDoc')
       where
-        fieldLine :: SyntaxInfo -> IdrisParser [(Maybe (Name, FC), Plicity, PTerm, Maybe (Docstring (Either Err PTerm)))]
+        fieldLine :: SyntaxInfo
+                  -> IdrisParser [ (Maybe (Name, FC)
+                                 , Plicity
+                                 , PTerm
+                                 , Maybe (IDoc (Either Err PTerm)))]
         fieldLine syn = do
-            doc <- optional docComment
+            doc <- optional docPlain
             c <- optional $ lchar '{'
             let oneName = (do (n, nfc) <- withExtent fnName
                               return $ Just (expandNS syn n, nfc))
@@ -86,10 +99,13 @@ record syn = (appExtent $ do
             t <- typeExpr (scopedImp syn)
             p <- endPlicity c
             ist <- get
-            let doc' = case doc of -- Temp: Throws away any possible arg docs
-                        Just (d,_) -> Just $ annotate syn ist d
-                        Nothing    -> Nothing
-            return $ map (\n -> (n, p, t, doc')) ns
+            let docM = case doc of
+                        Just docM' ->
+                          if isIDocEmpty docM'
+                            then Just $ annotate syn ist docM'
+                            else Nothing
+                        Nothing  -> Nothing
+            return $ map (\n -> (n, p, t, docM)) ns
 
         constructor :: (Parsing m, MonadState IState m) => m Name
         constructor = keyword "constructor" *> fnName
@@ -99,8 +115,11 @@ record syn = (appExtent $ do
                                  return impl
         endPlicity Nothing = return expl
 
-        annotate :: SyntaxInfo -> IState -> Docstring () -> Docstring (Either Err PTerm)
-        annotate syn ist = annotCode $ tryFullExpr syn ist
+        annotate :: SyntaxInfo
+                 -> IState
+                 -> IDoc ()
+                 -> IDoc (Either Err PTerm)
+        annotate syn ist = annotateIDoc $ tryFullExpr syn ist
 
 recordParameter :: SyntaxInfo -> IdrisParser (Name, FC, Plicity, PTerm)
 recordParameter syn =
@@ -158,15 +177,15 @@ SimpleConstructorList ::=
 data_ :: SyntaxInfo -> IdrisParser PDecl
 data_ syn = (checkDeclFixity $
             do (doc, argDocs, acc, dataOpts) <- P.try (do
-                    (doc, argDocs) <- P.option noDocs docComment
+                    (doc, argDocs) <- P.option noIDocs docConstructor
                     pushIndent
                     acc <- accessibility
                     errRev <- dataOpts []
                     co <- dataI
                     ist <- get
                     let dataOpts = errRev ++ co
-                        doc' = annotCode (tryFullExpr syn ist) doc
-                        argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+                        doc' = annotateIDoc (tryFullExpr syn ist) doc
+                        argDocs' = [ (n, annotateIDoc (tryFullExpr syn ist) d)
                                    | (n, d) <- argDocs ]
                     return (doc', argDocs', acc, dataOpts))
                (tyn_in, nfc) <- withExtent fnName
@@ -218,9 +237,17 @@ data_ syn = (checkDeclFixity $
 {- | Parses a type constructor declaration
   Constructor ::= DocComment? FnName TypeSig;
 -}
-constructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, PTerm, FC, [Name])
+constructor :: SyntaxInfo
+            -> IdrisParser ( IDoc (Either Err PTerm)
+                           , [(Name, IDoc (Either Err PTerm))]
+                           , Name
+                           , FC
+                           , PTerm
+                           , FC
+                           , [Name]
+                           )
 constructor syn
-    = do (doc, argDocs) <- P.option noDocs docComment
+    = do (doc, argDocs) <- P.option noIDocs docConstructor
          (cn_in, nfc) <- withExtent fnName
          let cn = expandNS syn cn_in
          lchar ':'
@@ -228,8 +255,8 @@ constructor syn
                                P.sepBy1 name (lchar ','))
          (ty, fc) <- withExtent $ typeExpr (allowImp syn)
          ist <- get
-         let doc' = annotCode (tryFullExpr syn ist) doc
-             argDocs' = [ (n, annotCode (tryFullExpr syn ist) d)
+         let doc' = annotateIDoc (tryFullExpr syn ist) doc
+             argDocs' = [ (n, annotateIDoc (tryFullExpr syn ist) d)
                         | (n, d) <- argDocs ]
          checkNameFixity cn
          return (doc', argDocs', cn, nfc, ty, fc, fs)
@@ -238,12 +265,20 @@ constructor syn
 {- | Parses a constructor for simple discriminated union data types
   SimpleConstructor ::= FnName SimpleExpr* DocComment?
 -}
-simpleConstructor :: SyntaxInfo -> IdrisParser (Docstring (Either Err PTerm), [(Name, Docstring (Either Err PTerm))], Name, FC, [PTerm], FC, [Name])
+simpleConstructor :: SyntaxInfo
+                  -> IdrisParser (IDoc (Either Err PTerm)
+                                 , [(Name, IDoc (Either Err PTerm))]
+                                 , Name
+                                 , FC
+                                 , [PTerm]
+                                 , FC
+                                 , [Name]
+                                 )
 simpleConstructor syn
      = (appExtent $ do
-          (doc, _) <- P.option noDocs (P.try docComment)
+          doc <- P.option emptyIDoc (P.try docConstructorNoArgs)
           ist <- get
-          let doc' = annotCode (tryFullExpr syn ist) doc
+          let doc' = annotateIDoc (tryFullExpr syn ist) doc
           (cn_in, nfc) <- withExtent fnName
           let cn = expandNS syn cn_in
           args <- many (do notEndApp
@@ -251,6 +286,7 @@ simpleConstructor syn
           checkNameFixity cn
           return $ \fc -> (doc', [], cn, nfc, args, fc, []))
         <?> "constructor"
+
 {- | Parses a dsl block declaration
 DSL ::= 'dsl' FnName OpenBlock Overload'+ CloseBlock;
  -}

@@ -13,7 +13,8 @@ import Idris.AbsSyntax
 import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
-import Idris.Docstrings
+import Idris.Docs.DocStrings ()
+import Idris.Documentation
 import Idris.Elab.Data
 import Idris.Elab.Utils
 import Idris.Error
@@ -31,18 +32,18 @@ data MArgTy = IA Name | EA Name | CA deriving Show
 
 elabInterface :: ElabInfo
               -> SyntaxInfo
-              -> Docstring (Either Err PTerm)
+              -> IDoc (Either Err PTerm)
               -> ElabWhat
               -> FC
               -> [(Name, PTerm)] -- ^ Superclass constraints
               -> Name
               -> FC
               -> [(Name, FC, PTerm)] -- ^ Parameters
-              -> [(Name, Docstring (Either Err PTerm))]
+              -> [(Name, IDoc (Either Err PTerm))]
               -> [(Name, FC)]                 -- ^ determining params
               -> [PDecl]                      -- ^ interface body
               -> Maybe (Name, FC)             -- ^ implementation ctor name and location
-              -> Docstring (Either Err PTerm) -- ^ implementation ctor docs
+              -> IDoc (Either Err PTerm) -- ^ implementation ctor docs
               -> Idris ()
 elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn cd
     = do let cn = fromMaybe (SN (ImplementationCtorN tn)) (fst <$> mcn)
@@ -138,7 +139,8 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
                              constraint
              logElab 3 $ "Constraint constructor type: " ++ showTmImpls cty
 
-             let cons = [(cd, pDocs ++ mapMaybe memberDocs ds, cn, NoFC, cty, fc, [])]
+             let cons = [(cd, pDocs
+                           ++ map (\(n,d) -> (n, d))  (mapMaybe memberDocs ds), cn, NoFC, cty, fc, [])]
              let ddecl = PDatadecl tn NoFC tty cons
 
              logElab 10 $ "Interface " ++ show (showDImp verbosePPOption ddecl)
@@ -302,7 +304,7 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
             Just (nfc, syn, o, ty) ->
               do let ty' = insertConstraint c (map fst mtys) ty
                  let ds = map (decorateid defaultdec)
-                              [PTy emptyDocstring [] syn fc [] n nfc ty',
+                              [PTy emptyConstructorDoc [] syn fc [] n nfc ty',
                                PClauses fc (o ++ opts) n cs]
                  logElab 1 (show ds)
                  return (n, ((defaultdec n, ds!!1), ds))
@@ -341,7 +343,7 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
              addImplementation False True conn' cfn
              addIBC (IBCImplementation False True conn' cfn)
 --              iputStrLn ("Added " ++ show (conn, cfn, ty))
-             return (PTy emptyDocstring [] syn fc [] cfn NoFC ty,
+             return (PTy emptyConstructorDoc [] syn fc [] cfn NoFC ty,
                      PClauses fc [Inlinable, Dictionary] cfn [PClause fc cfn lhs [] rhs []])
 
     -- | Generate a top level function which looks up a method in a given
@@ -349,7 +351,7 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
     tfun :: Name -- ^ The name of the interface
          -> PTerm -- ^ A constraint for the interface, to be inserted under the implicit bindings
          -> SyntaxInfo -> [Name] -- ^ All the method names
-         -> (Name, (Bool, FC, Docstring (Either Err PTerm), FnOpts, PTerm))
+         -> (Name, (Bool, FC, IDoc (Either Err PTerm), FnOpts, PTerm))
             -- ^ The present declaration
          -> Idris (PDecl, PDecl)
     tfun cn c syn all (m, (isdata, mfc, doc, o, ty))
@@ -416,7 +418,7 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
     toExp ns e sc = sc
 
 -- | Get the docstring corresponding to a member, if one exists
-memberDocs :: PDecl -> Maybe (Name, Docstring (Either Err PTerm))
+memberDocs :: PDecl -> Maybe (Name, IDoc (Either Err PTerm))
 memberDocs (PTy d _ _ _ _ n _ _) = Just (basename n, d)
 memberDocs (PPostulate _ d _ _ _ _ n _) = Just (basename n, d)
 memberDocs (PData d _ _ _ _ pdata) = Just (basename $ d_name pdata, d)
