@@ -1,5 +1,6 @@
 module Data.IORef
 
+||| A mutable variable in the IO monad.
 export
 data IORef a = MkIORef a
 
@@ -37,18 +38,22 @@ implementation HasReference FFI_JS where
   writeIORef' (MkIORef ref) val =
     foreign FFI_JS "%0.val = %1" (Ptr -> Ptr -> JS_IO ()) (believe_me ref) (believe_me val)
 
+||| Build a new IORef
 export
 newIORef : a -> IO (IORef a)
 newIORef = newIORef'
 
+||| read the value of an IORef
 export
 readIORef : IORef a -> IO a
 readIORef = readIORef'
 
+||| write the value of an IORef
 export
 writeIORef : IORef a -> a -> IO ()
 writeIORef = writeIORef'
 
+||| mutate the contents of an IORef
 export
 modifyIORef : IORef a -> (a -> a) -> IO ()
 modifyIORef = modifyIORef'
