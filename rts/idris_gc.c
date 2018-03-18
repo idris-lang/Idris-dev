@@ -17,31 +17,31 @@ VAL copy(VM* vm, VAL x) {
             return x;
         } else {
             allocCon(cl, vm, CTAG(x), ar, 1);
-            memcpy(&(cl->info.c.args), &(x->info.c.args), sizeof(VAL)*ar);
+            memcpy(cl->info.cargs, x->info.cargs, sizeof(VAL)*ar);
         }
         break;
     case CT_ARRAY:
-        len = x->info.arr.length;
+        len = x->sz;
 	allocArray(cl, vm, len, 1);
-        memcpy(&(cl->info.arr.content), &(x->info.arr.content), sizeof(VAL)*len);
+        memcpy(cl->info.array, x->info.array, sizeof(VAL)*len);
         break;
     case CT_FLOAT:
-        cl = MKFLOATc(vm, x->info.f);
+        cl = MKFLOATc(vm, GETFLOAT(x));
         break;
     case CT_STRING:
-        cl = MKSTRclen(vm, x->info.str.str, x->info.str.len);
+        cl = MKSTRclen(vm, x->info.str, x->sz);
         break;
     case CT_STROFFSET:
         cl = MKSTROFFc(vm, x->info.str_offset);
         break;
     case CT_BIGINT:
-        cl = MKBIGMc(vm, x->info.ptr);
+        cl = MKBIGMc(vm, GETPTR(x));
         break;
     case CT_PTR:
-        cl = MKPTRc(vm, x->info.ptr);
+        cl = MKPTRc(vm, GETPTR(x));
         break;
     case CT_MANAGEDPTR:
-        cl = MKMPTRc(vm, x->info.mptr->data, x->info.mptr->size);
+        cl = MKMPTRc(vm, x->info.managed_ptr, x->sz);
         break;
     case CT_BITS8:
         cl = idris_b8CopyForGC(vm, x);
@@ -56,20 +56,20 @@ VAL copy(VM* vm, VAL x) {
         cl = idris_b64CopyForGC(vm, x);
         break;
     case CT_REF:
-        cl = idris_newRefLock((VAL)(x->info.ptr), 1);
+        cl = idris_newRefLock((VAL)(GETPTR(x)), 1);
         break;
     case CT_FWD:
-        return x->info.ptr;
+        return GETPTR(x);
     case CT_RAWDATA:
         {
-            size_t size = x->info.size + sizeof(Closure);
+            size_t size = x->sz + sizeof(Closure);
             cl = allocate(size, 1);
             memcpy(cl, x, size);
         }
         break;
     case CT_CDATA:
-        cl = MKCDATAc(vm, x->info.c_heap_item);
-        c_heap_mark_item(x->info.c_heap_item);
+        cl = MKCDATAc(vm, GETCDATA(x));
+        c_heap_mark_item(GETCDATA(x));
         break;
     default:
         break;
@@ -92,23 +92,23 @@ void cheney(VM *vm) {
        case CT_CON:
            ar = ARITY(heap_item);
            for(i = 0; i < ar; ++i) {
-               VAL newptr = copy(vm, heap_item->info.c.args[i]);
-               heap_item->info.c.args[i] = newptr;
+               VAL newptr = copy(vm, heap_item->info.cargs[i]);
+               heap_item->info.cargs[i] = newptr;
            }
            break;
        case CT_ARRAY:
-           len = heap_item->info.arr.length;
+           len = heap_item->sz;
            for(i = 0; i < len; ++i) {
-               VAL newptr = copy(vm, heap_item->info.arr.content[i]);
-               heap_item->info.arr.content[i] = newptr;
+               VAL newptr = copy(vm, heap_item->info.array[i]);
+               heap_item->info.array[i] = newptr;
            }
            break;
        case CT_REF:
-           heap_item->info.ptr = copy(vm, (VAL)(heap_item->info.ptr));
+           heap_item->info.ptr = copy(vm, (VAL)(GETPTR(heap_item)));
            break;
        case CT_STROFFSET:
-           heap_item->info.str_offset->str
-               = copy(vm, heap_item->info.str_offset->str);
+           heap_item->info.str_offset
+               = copy(vm, heap_item->info.str_offset);
            break;
        default: // Nothing to copy
            break;

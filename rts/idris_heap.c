@@ -55,7 +55,7 @@ void c_heap_insert_if_needed(VM * vm, CHeap * heap, CHeapItem * item)
     heap->first = item;
 
     // at this point, links are done; let's calculate sizes
-    
+
     heap->size += item->size;
     if (heap->size >= heap->gc_trigger_size)
     {
@@ -195,7 +195,7 @@ void heap_check_pointers(Heap * heap) {
              int ar = ARITY(heap_item);
              int i = 0;
              for(i = 0; i < ar; ++i) {
-                 VAL ptr = heap_item->info.c.args[i];
+                 VAL ptr = heap_item->info.cargs[i];
 
                  if (is_valid_ref(ptr)) {
                      // Check for closure.

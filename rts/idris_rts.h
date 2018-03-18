@@ -32,60 +32,30 @@ typedef enum {
 
 typedef struct Closure *VAL;
 
-// A constructor, consisting of a tag, an arity (16 bits each of the
-// tag_arity field) and arguments
-typedef struct {
-    uint32_t tag_arity;
-    VAL args[];
-} con;
-
+typedef struct Closure {
+    ClosureType ty:8;
+    size_t sz:56;
+    union {
+// A constructor, consisting of a tag (encoded in the sz field),
+// an arity (encoded in 8 bits in the sz field), and arguments
+        VAL cargs[0];
 // An array; similar to a constructor but with a length, and contents
 // initialised to NULL (high level Idris programs are responsible for
 // initialising them properly)
-typedef struct {
-    uint32_t length;
-    VAL content[];
-} array;
-
-typedef struct {
-    VAL str;
-    size_t offset;
-} StrOffset;
-
-typedef struct {
-    char* str;
-    size_t len; // Cached strlen (we do 'strlen' a lot)
-} String;
-
-// A foreign pointer, managed by the idris GC
-typedef struct {
-    size_t size;
-    void* data;
-} ManagedPtr;
-
-typedef struct Closure {
-// Use top 16 bits of ty for saying which heap value is in
-// Bottom 16 bits for closure type
-//
-// NOTE: ty can not have type ClosureType because ty must be a
-// uint32_t but enum is platform dependent
-    uint32_t ty;
-    union {
-        con c;
-        array arr;
+        VAL array[0];
         int i;
         double f;
-        String str;
-        StrOffset* str_offset;
-        void* ptr;
+        VAL str_offset;
+        void * ptr;
+        char * str;
         uint8_t bits8;
         uint16_t bits16;
         uint32_t bits32;
         uint64_t bits64;
-        ManagedPtr* mptr;
+        char managed_ptr[0]; // A foreign pointer, managed by the idris GC
         CHeapItem* c_heap_item;
-        size_t size;
     } info;
+    char data[0];
 } Closure;
 
 struct VM;
@@ -195,10 +165,10 @@ typedef void(*func)(VM*, VAL*);
 #define REG1 (vm->reg1)
 
 // Retrieving values
-#define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str.str) : GETSTROFF(x))
-#define GETSTRLEN(x) (ISSTR(x) ? (((VAL)(x))->info.str.len) : GETSTROFFLEN(x))
+#define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str) : GETSTROFF(x))
+#define GETSTRLEN(x) (ISSTR(x) ? (((VAL)(x))->sz) : GETSTROFFLEN(x))
 #define GETPTR(x) (((VAL)(x))->info.ptr)
-#define GETMPTR(x) (((VAL)(x))->info.mptr->data)
+#define GETMPTR(x) (((VAL)(x))->info.managed_ptr)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 #define GETCDATA(x) (((VAL)(x))->info.c_heap_item)
 
@@ -207,12 +177,12 @@ typedef void(*func)(VM*, VAL*);
 #define GETBITS32(x) (((VAL)(x))->info.bits32)
 #define GETBITS64(x) (((VAL)(x))->info.bits64)
 
-#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
-#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
-
 // Already checked it's a CT_CON
-#define CTAG(x) (((x)->info.c.tag_arity) >> 8)
-#define CARITY(x) ((x)->info.c.tag_arity & 0x000000ff)
+#define CTAG(x) (((x)->sz) >> 8)
+#define CARITY(x) (((x)->sz) & 0xff)
+
+#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CTAG(x) : (-1)) )
+#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CARITY(x) : (-1)) )
 
 
 #define GETTY(x) ((x)->ty)
@@ -241,15 +211,17 @@ typedef intptr_t i_int;
 #ifdef IDRIS_TRACE
 #define TRACE idris_trace(vm, __FUNCTION__, __LINE__);
 #else
-#define TRACE 
+#define TRACE
 #endif
 
 #define INITFRAME TRACE\
                   __attribute__((unused)) VAL* myoldbase
 
 #define REBASE vm->valstack_base = oldbase
-#define RESERVE(x) if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
-                   else { memset(vm->valstack_top, 0, (x)*sizeof(VAL)); }
+#define RESERVE(x) do { \
+    if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
+    else { memset(vm->valstack_top, 0, (x)*sizeof(VAL)); } \
+  } while(0)
 #define ADDTOP(x) vm->valstack_top += (x)
 #define TOPBASE(x) vm->valstack_top = vm->valstack_base + (x)
 #define BASETOP(x) vm->valstack_base = vm->valstack_top + (x)
@@ -260,6 +232,7 @@ typedef intptr_t i_int;
 // Creating new values (each value placed at the top of the stack)
 VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, const char* str);
+VAL MKSTRlen(VM* vm, const char* str, size_t size);
 VAL MKPTR(VM* vm, void* ptr);
 VAL MKMPTR(VM* vm, void* ptr, size_t size);
 VAL MKB8(VM* vm, uint8_t b);
@@ -270,7 +243,7 @@ VAL MKCDATA(VM* vm, CHeapItem * item);
 
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
-VAL MKSTROFFc(VM* vm, StrOffset* off);
+VAL MKSTROFFc(VM* vm, VAL off);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKSTRclen(VM* vm, char* str, int len);
 VAL MKPTRc(VM* vm, void* ptr);
@@ -280,12 +253,11 @@ VAL MKCDATAc(VM* vm, CHeapItem * item);
 char* GETSTROFF(VAL stroff);
 size_t GETSTROFFLEN(VAL stroff);
 
-// #define SETTAG(x, a) (x)->info.c.tag = (a)
-#define SETARG(x, i, a) ((x)->info.c.args)[i] = ((VAL)(a))
-#define GETARG(x, i) ((x)->info.c.args)[i]
+#define SETARG(x, i, a) ((x)->info.cargs)[i] = ((VAL)(a))
+#define GETARG(x, i) ((x)->info.cargs[i])
 
 #define PROJECT(vm,r,loc,num) \
-    memcpy(&(LOC(loc)), &((r)->info.c.args), sizeof(VAL)*num)
+    memcpy(&(LOC(loc)), (r)->info.cargs, sizeof(VAL)*num)
 #define SLIDE(vm, args) \
     memcpy(&(LOC(0)), &(TOP(0)), sizeof(VAL)*args)
 
@@ -308,22 +280,26 @@ void* idris_alloc(size_t size);
 void* idris_realloc(void* old, size_t old_size, size_t size);
 void idris_free(void* ptr, size_t size);
 
-#define allocCon(cl, vm, t, a, o) \
-  cl = allocate(sizeof(Closure) + sizeof(VAL)*a, o); \
-  SETTY(cl, CT_CON); \
-  cl->info.c.tag_arity = ((t) << 8) | (a);
+#define allocCon(cl, vm, t, a, o) do { \
+    cl = allocate(sizeof(Closure) + sizeof(VAL)*a, o); \
+    SETTY(cl, CT_CON); \
+    cl->sz = ((t) << 8) | (a); \
+  } while (0)
 
-#define updateCon(cl, old, t, a) \
-  cl = old; \
-  SETTY(cl, CT_CON); \
-  cl->info.c.tag_arity = ((t) << 8) | (a);
+#define updateCon(cl, old, t, a) do { \
+    cl = old; \
+    SETTY(cl, CT_CON); \
+    cl->sz = ((t) << 8) | (a); \
+  } while (0)
+
 
 #define NULL_CON(x) nullary_cons[x]
 
-#define allocArray(cl, vm, len, o) \
+#define allocArray(cl, vm, len, o) do { \
   cl = allocate(sizeof(Closure) + sizeof(VAL)*len, o); \
   SETTY(cl, CT_ARRAY); \
-  cl->info.arr.length = len;
+  cl->sz = len; \
+  } while (0)
 
 int idris_errno(void);
 char* idris_showerror(int err);
