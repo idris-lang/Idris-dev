@@ -321,6 +321,7 @@ foldr1 f (x::xs) = foldr f x xs
 ||| Foldl without seeding the accumulator
 foldl1 : (t -> t -> t) -> Vect (S n) t -> t
 foldl1 f (x::xs) = foldl f x xs
+
 --------------------------------------------------------------------------------
 -- Scans
 --------------------------------------------------------------------------------
@@ -455,13 +456,26 @@ delete = deleteBy (==)
 -- Splitting and breaking lists
 --------------------------------------------------------------------------------
 
-||| A tuple where the first element is a Vect of the n first elements and
-||| the second element is a Vect of the remaining elements of the original Vect
-||| It is equivalent to (take n xs, drop n xs)
+||| A tuple where the first element is a `Vect` of the `n` first elements and
+||| the second element is a `Vect` of the remaining elements of the original.
+||| It is equivalent to `(take n xs, drop n xs)`, but is more efficient.
 ||| @ n   the index to split at
 ||| @ xs  the Vect to split in two
 splitAt : (n : Nat) -> (xs : Vect (n + m) elem) -> (Vect n elem, Vect m elem)
-splitAt n xs = (take n xs, drop n xs)
+splitAt Z xs = ([], xs)
+splitAt (S k) (x::xs) =
+  let (tk, dr) = splitAt k xs
+  in (x::tk, dr)
+
+splitAtTakeDrop : (n : Nat) -> (xs : Vect (n + m) a) -> splitAt n xs = (take n xs, drop n xs)
+splitAtTakeDrop Z xs = Refl
+splitAtTakeDrop (S k) (x::xs) with (splitAt k xs) proof p
+  | (tk, dr) =
+    let rec = sym $ trans p $ splitAtTakeDrop k xs
+        tkp = cong {f=fst} rec
+        drp = cong {f=snd} rec
+    in replace {P = \tk' => (x::tk', dr) = (x::take k xs, drop k xs)} tkp $
+       replace {P = \dr' => (x::take k xs, dr') = (x::take k xs, drop k xs) } drp Refl
 
 partition : (elem -> Bool) -> Vect len elem -> ((p ** Vect p elem), (q ** Vect q elem))
 partition p []      = ((_ ** []), (_ ** []))

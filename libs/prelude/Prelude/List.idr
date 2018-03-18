@@ -675,13 +675,28 @@ split p xs =
     (chunk, [])          => [chunk]
     (chunk, (c :: rest)) => chunk :: split p (assert_smaller xs rest)
 
-||| A tuple where the first element is a List of the n first elements and
-||| the second element is a List of the remaining elements of the list
-||| It is equivalent to (take n xs, drop n xs)
+||| A tuple where the first element is a `List` of the `n` first elements and
+||| the second element is a `List` of the remaining elements of the original.
+||| It is equivalent to `(take n xs, drop n xs)`, but is more efficient.
 ||| @ n   the index to split at
-||| @ xs  the list to split in two
+||| @ xs  the `List` to split in two
 splitAt : (n : Nat) -> (xs : List a) -> (List a, List a)
-splitAt n xs = (take n xs, drop n xs)
+splitAt Z xs = ([], xs)
+splitAt (S k) [] = ([], [])
+splitAt (S k) (x::xs) =
+  let (tk, dr) = splitAt k xs
+  in (x::tk, dr)
+
+splitAtTakeDrop : (n : Nat) -> (xs : List a) -> splitAt n xs = (take n xs, drop n xs)
+splitAtTakeDrop Z xs = Refl
+splitAtTakeDrop (S k) [] = Refl
+splitAtTakeDrop (S k) (x::xs) with (splitAt k xs) proof p
+  | (tk, dr) =
+    let rec = sym $ trans p $ splitAtTakeDrop k xs
+        tkp = cong {f=fst} rec
+        drp = cong {f=snd} rec
+    in replace {P = \tk' => (x::tk', dr) = (x::take k xs, drop k xs)} tkp $
+       replace {P = \dr' => (x::take k xs, dr') = (x::take k xs, drop k xs) } drp Refl
 
 ||| The partition function takes a predicate a list and returns the pair of
 ||| lists of elements which do and do not satisfy the predicate, respectively;
