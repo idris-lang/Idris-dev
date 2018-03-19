@@ -2,38 +2,6 @@
 
 #include "idris_rts.h"
 
-VAL idris_b8CopyForGC(VM *vm, VAL a) {
-    uint8_t A = GETBITS8(a);
-    VAL cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, CT_BITS8);
-    cl->info.bits8 = A;
-    return cl;
-}
-
-VAL idris_b16CopyForGC(VM *vm, VAL a) {
-    uint16_t A = GETBITS16(a);
-    VAL cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, CT_BITS16);
-    cl->info.bits16 = A;
-    return cl;
-}
-
-VAL idris_b32CopyForGC(VM *vm, VAL a) {
-    uint32_t A = GETBITS32(a);
-    VAL cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, CT_BITS32);
-    cl->info.bits32 = A;
-    return cl;
-}
-
-VAL idris_b64CopyForGC(VM *vm, VAL a) {
-    uint64_t A = GETBITS64(a);
-    VAL cl = allocate(sizeof(Closure), 1);
-    SETTY(cl, CT_BITS64);
-    cl->info.bits64 = A;
-    return cl;
-}
-
 VAL idris_b8(VM *vm, VAL a) {
     uint8_t A = GETINT(a);
     VAL cl = allocate(sizeof(Closure), 0);

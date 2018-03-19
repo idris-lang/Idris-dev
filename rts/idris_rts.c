@@ -853,6 +853,12 @@ static VAL doCopyTo(VM* vm, VAL x) {
         return x;
     }
     switch(GETTY(x)) {
+    case CT_CDATA:
+        cl = MKCDATAc(vm, GETCDATA(x));
+	break;
+    case CT_BIGINT:
+        cl = MKBIGMc(vm, GETPTR(x));
+	break;
     case CT_CON:
         ar = CARITY(x);
         if (ar == 0 && CTAG(x) < 256) { // globally allocated
@@ -867,36 +873,14 @@ static VAL doCopyTo(VM* vm, VAL x) {
 	allocArray(cl, vm, len, 1);
 	copyArray(vm, cl->extra.array, x->extra.array, len);
         break;
-    case CT_FLOAT:
-        cl = MKFLOATc(vm, GETFLOAT(x));
-        break;
     case CT_STRING:
-        cl = MKSTRclen(vm, x->extra.str, getstrlen(x));
-        break;
-    case CT_BIGINT:
-        cl = MKBIGMc(vm, GETPTR(x));
-        break;
+    case CT_FLOAT:
     case CT_PTR:
-        cl = MKPTRc(vm, GETPTR(x));
-        break;
     case CT_MANAGEDPTR:
-        cl = MKMPTRc(vm, x->extra.mptr, x->extrasz);
-        break;
-    case CT_CDATA:
-        cl = MKCDATAc(vm, GETCDATA(x));
-        break;
     case CT_BITS8:
-        cl = idris_b8CopyForGC(vm, x);
-        break;
     case CT_BITS16:
-        cl = idris_b16CopyForGC(vm, x);
-        break;
     case CT_BITS32:
-        cl = idris_b32CopyForGC(vm, x);
-        break;
     case CT_BITS64:
-        cl = idris_b64CopyForGC(vm, x);
-        break;
     case CT_RAWDATA:
         {
             size_t size = sizeof(Closure) + x->extrasz;

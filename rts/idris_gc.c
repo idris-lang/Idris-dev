@@ -11,65 +11,38 @@ VAL copy(VM* vm, VAL x) {
         return x;
     }
     switch(GETTY(x)) {
+    case CT_FWD:
+        return GETPTR(x);
+    case CT_CDATA:
+        cl = MKCDATAc(vm, GETCDATA(x));
+        c_heap_mark_item(GETCDATA(x));
+        break;
+    case CT_BIGINT:
+        cl = MKBIGMc(vm, GETPTR(x));
+	break;
     case CT_CON:
         ar = CARITY(x);
         if (ar == 0 && CTAG(x) < 256) {
             return x;
-        } else {
-            allocCon(cl, vm, CTAG(x), ar, 1);
-            memcpy(cl->extra.cargs, x->extra.cargs, sizeof(VAL)*ar);
         }
-        break;
+	// FALLTHROUGH
     case CT_ARRAY:
-        len = CELEM(x);
-	allocArray(cl, vm, len, 1);
-        memcpy(cl->extra.array, x->extra.array, len * sizeof(VAL));
-        break;
-    case CT_FLOAT:
-        cl = MKFLOATc(vm, GETFLOAT(x));
-        break;
     case CT_STRING:
-        cl = MKSTRclen(vm, getstr(x), getstrlen(x));
-        break;
-    case CT_STROFFSET:
-        cl = MKSTROFFc(vm, x->extra.basestr[0]);
-        break;
-    case CT_BIGINT:
-        cl = MKBIGMc(vm, GETPTR(x));
-        break;
-    case CT_PTR:
-        cl = MKPTRc(vm, GETPTR(x));
-        break;
-    case CT_MANAGEDPTR:
-        cl = MKMPTRc(vm, x->extra.mptr, x->extrasz);
-        break;
-    case CT_BITS8:
-        cl = idris_b8CopyForGC(vm, x);
-        break;
-    case CT_BITS16:
-        cl = idris_b16CopyForGC(vm, x);
-        break;
-    case CT_BITS32:
-        cl = idris_b32CopyForGC(vm, x);
-        break;
-    case CT_BITS64:
-        cl = idris_b64CopyForGC(vm, x);
-        break;
     case CT_REF:
-        cl = idris_newRefLock((VAL)(GETPTR(x)), 1);
-        break;
-    case CT_FWD:
-        return GETPTR(x);
+    case CT_FLOAT:
+    case CT_STROFFSET:
+    case CT_PTR:
+    case CT_MANAGEDPTR:
+    case CT_BITS8:
+    case CT_BITS16:
+    case CT_BITS32:
+    case CT_BITS64:
     case CT_RAWDATA:
         {
 	    size_t size = sizeof(Closure) + x->extrasz;
             cl = allocate(size, 1);
             memcpy(cl, x, size);
         }
-        break;
-    case CT_CDATA:
-        cl = MKCDATAc(vm, GETCDATA(x));
-        c_heap_mark_item(GETCDATA(x));
         break;
     default:
         break;
