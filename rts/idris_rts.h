@@ -3,18 +3,16 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdatomic.h>
+#ifdef HAS_PTHREAD
 #include <string.h>
 #include <stdarg.h>
-#ifdef HAS_PTHREAD
 #include <pthread.h>
-#endif
-#include <stdint.h>
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__)
-#include <signal.h>
 #endif
 
 #include "idris_heap.h"
 #include "idris_stats.h"
+
 
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS 0
@@ -26,36 +24,111 @@
 // Closures
 typedef enum {
     CT_CON, CT_ARRAY, CT_INT, CT_BIGINT, CT_FLOAT, CT_STRING, CT_STROFFSET,
-    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_UNIT, CT_PTR, CT_REF,
+    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_PTR, CT_REF,
     CT_FWD, CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
 } ClosureType;
 
-typedef struct Closure *VAL;
 
-typedef struct Closure {
+typedef struct Hdr {
     uint64_t ty:8;
-    uint64_t extrasz:56;
-    union {
-        uint32_t tag;
-        size_t slen;
-        size_t soffset;
-        int i;
-        double f;
-        void * ptr;
-        uint8_t bits8;
-        uint16_t bits16;
-        uint32_t bits32;
-        uint64_t bits64;
-        CHeapItem* c_heap_item;
-    } info;
-    union {
-      VAL array[0];
-      VAL cargs[0];
-      VAL basestr[0];
-      char str[0];
-      char mptr[0]; // A foreign pointer, managed by the idris GC
-    } extra;
-} Closure;
+    uint64_t sz:56;
+} Hdr;
+
+
+typedef struct Val {
+    Hdr hdr;
+} Val;
+
+typedef struct Val * VAL;
+
+typedef struct Con {
+  Hdr hdr;
+  uint32_t tag;
+  uint32_t arity;
+  VAL args[0];
+} Con;
+
+typedef struct Array {
+  Hdr hdr;
+  VAL array[0];
+} Array;
+
+typedef struct Int {
+  Hdr hdr;
+  int i;
+} Int;
+
+typedef struct BigInt {
+  Hdr hdr;
+  char big[0];
+} BigInt;
+
+typedef struct Float {
+  Hdr hdr;
+  double f;
+} Float;
+
+typedef struct String {
+  Hdr hdr;
+  size_t slen;
+  char str[0];
+} String;
+
+typedef struct StrOffset {
+  Hdr hdr;
+  String * base;
+  size_t offset;
+} StrOffset;
+
+typedef struct Bits8 {
+  Hdr hdr;
+  uint8_t bits8;
+} Bits8;
+
+typedef struct Bits16 {
+  Hdr hdr;
+  uint16_t bits16;
+} Bits16;
+
+typedef struct Bits32 {
+  Hdr hdr;
+  uint32_t bits32;
+} Bits32;
+
+typedef struct Bits64 {
+  Hdr hdr;
+  uint64_t bits64;
+} Bits64;
+
+typedef struct Ptr {
+  Hdr hdr;
+  void * ptr;
+} Ptr;
+
+typedef struct Ref {
+  Hdr hdr;
+  VAL ref;
+} Ref;
+
+typedef struct Fwd {
+  Hdr hdr;
+  VAL fwd;
+} Fwd;
+
+typedef struct ManagedPtr {
+  Hdr hdr;
+  char mptr[0];
+} ManagedPtr;
+
+typedef struct RawData {
+  Hdr hdr;
+  char raw[0];
+} RawData;
+
+typedef struct CDataC {
+  Hdr hdr;
+  CHeapItem * item;
+} CDataC;
 
 struct VM;
 
@@ -164,37 +237,37 @@ typedef void(*func)(VM*, VAL*);
 #define REG1 (vm->reg1)
 
 // Retrieving values
-static inline char * getstr(VAL x) {
-  return x->info.slen == ~0? NULL : x->extra.str;
+static inline char * getstr(String * x) {
+  return x->slen == ~0? NULL : x->str;
 }
 
-static inline size_t getstrlen(VAL x) {
-  return x->info.slen == ~0? 0 : x->info.slen;
+static inline size_t getstrlen(String * x) {
+  return x->slen == ~0? 0 : x->slen;
 }
 
-#define GETSTR(x) (ISSTR(x) ? getstr((VAL)(x)) : GETSTROFF(x))
-#define GETSTRLEN(x) (ISSTR(x) ? getstrlen((VAL)(x)) : GETSTROFFLEN(x))
-#define GETPTR(x) (((VAL)(x))->info.ptr)
-#define GETMPTR(x) (((VAL)(x))->extra.mptr)
-#define GETFLOAT(x) (((VAL)(x))->info.f)
-#define GETCDATA(x) (((VAL)(x))->info.c_heap_item)
+#define GETSTR(x) (ISSTR(x) ? getstr((String*)(x)) : GETSTROFF(x))
+#define GETSTRLEN(x) (ISSTR(x) ? getstrlen((String*)(x)) : GETSTROFFLEN(x))
+#define GETPTR(x) (((Ptr*)(x))->ptr)
+#define GETMPTR(x) (((ManagedPtr*)(x))->mptr)
+#define GETFLOAT(x) (((Float*)(x))->f)
+#define GETCDATA(x) (((CDataC*)(x))->item)
 
-#define GETBITS8(x) (((VAL)(x))->info.bits8)
-#define GETBITS16(x) (((VAL)(x))->info.bits16)
-#define GETBITS32(x) (((VAL)(x))->info.bits32)
-#define GETBITS64(x) (((VAL)(x))->info.bits64)
+#define GETBITS8(x) (((Bits8*)(x))->bits8)
+#define GETBITS16(x) (((Bits16*)(x))->bits16)
+#define GETBITS32(x) (((Bits32*)(x))->bits32)
+#define GETBITS64(x) (((Bits64*)(x))->bits64)
 
 // Already checked it's a CT_CON
-#define CTAG(x) ((x)->info.tag)
-#define CARITY(x) (((x)->extrasz) / sizeof(VAL))
+#define CTAG(x) (((Con*)(x))->tag)
+#define CARITY(x) (((Con*)(x))->arity)
 
-#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CTAG(x) : (-1)) )
-#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CARITY(x) : (-1)) )
+#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CTAG((Con*)x) : (-1)) )
+#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CARITY((Con*)x) : (-1)) )
 
-#define CELEM(x) (((x)->extrasz) / sizeof(VAL))
+#define CELEM(x) (((x)->hdr.sz - sizeof(Array)) / sizeof(VAL))
 
-#define GETTY(x) ((x)->ty)
-#define SETTY(x,t) ((x)->ty = t)
+#define GETTY(x) ((ClosureType)((x)->hdr.ty))
+#define SETTY(x,t) ((x)->hdr.ty = t)
 
 // Integers, floats and operators
 
@@ -261,13 +334,15 @@ VAL MKCDATAc(VM* vm, CHeapItem * item);
 char* GETSTROFF(VAL stroff);
 size_t GETSTROFFLEN(VAL stroff);
 
-#define SETARG(x, i, a) ((x)->extra.cargs)[i] = ((VAL)(a))
-#define GETARG(x, i) ((x)->extra.cargs[i])
+#define SETARG(x, i, a) (((Con*)(x))->args)[i] = ((VAL)(a))
+#define GETARG(x, i) (((Con*)(x))->args[i])
 
 #define PROJECT(vm,r,loc,num) \
-    memcpy(&(LOC(loc)), (r)->extra.cargs, sizeof(VAL)*num)
+    memcpy(&(LOC(loc)), ((Con*)(r))->args, sizeof(VAL)*num)
 #define SLIDE(vm, args) \
     memcpy(&(LOC(0)), &(TOP(0)), sizeof(VAL)*args)
+
+void* iallocate(VM *, size_t, int);
 
 void* allocate(size_t size, int outerlock);
 // void* allocCon(VM* vm, int arity, int outerlock);
@@ -278,8 +353,8 @@ void* allocate(size_t size, int outerlock);
 // idris_doneAlloc *must* be called when allocation from C is done (as it
 // may take a lock if other threads are running).
 
-void idris_requireAlloc(size_t size);
-void idris_doneAlloc(void);
+void idris_requireAlloc(VM *, size_t size);
+void idris_doneAlloc(VM *);
 
 // public interface to allocation (note that this may move other pointers
 // if allocating beyond the limits given by idris_requireAlloc!)
@@ -288,30 +363,35 @@ void* idris_alloc(size_t size);
 void* idris_realloc(void* old, size_t old_size, size_t size);
 void idris_free(void* ptr, size_t size);
 
-#define allocCon(cl, vm, t, a, o) do {	    \
-    size_t sz = sizeof(VAL)*a;		    \
-    cl = allocate(sizeof(Closure) + sz, o); \
-    SETTY(cl, CT_CON);			    \
-    cl->info.tag = t;			    \
-    cl->extrasz = sz;			    \
-  } while (0)
+static inline void updateConF(Con * cl, unsigned tag, unsigned arity) {
+    SETTY(cl, CT_CON);
+    cl->tag = tag;
+    cl->arity = arity;
+    cl->hdr.sz = sizeof(*cl) + sizeof(VAL) * arity;
+}
 
-#define updateCon(cl, old, t, a) do {		\
-    cl = old;					\
-    SETTY(cl, CT_CON);				\
-    cl->info.tag = t;				\
-    cl->extrasz = sizeof(VAL)*a;		\
-  } while (0)
+static inline Con * allocConF(VM * vm, unsigned tag, unsigned arity, int outer) {
+    size_t sz = sizeof(VAL) * arity;
+    Con * cl = iallocate(vm, sizeof(*cl) + sz, outer);
+    updateConF(cl, tag, arity);
+    return cl;
+}
 
+static inline Array * allocArrayF(VM * vm, size_t len, int outer) {
+  size_t sz = sizeof(VAL) * len;
+  Array * cl = iallocate(vm, sizeof(*cl) + sz, outer);
+  SETTY(cl, CT_ARRAY);
+  return cl;
+}
+
+
+#define allocCon(cl, vm, t, a, o) (cl) = (VAL)allocConF(vm, t, a, o)
+
+#define updateCon(cl, old, tag, arity) (cl) = (old); updateConF(cl, tag, arity)
 
 #define NULL_CON(x) nullary_cons[x]
 
-#define allocArray(cl, vm, len, o) do {				\
-    size_t sz = sizeof(VAL)*len;				\
-    cl = allocate(sizeof(Closure) + sz, o);			\
-    SETTY(cl, CT_ARRAY);					\
-    cl->extrasz = sz;						\
-  } while (0)
+#define allocArray(cl, vm, len, o) (cl) = (VAL)allocArrayF(vm, len, o)
 
 int idris_errno(void);
 char* idris_showerror(int err);
@@ -449,11 +529,13 @@ void stackOverflow(void);
 #include "idris_gmp.h"
 
 static inline size_t valSize(VAL v) {
-  return sizeof(Closure) + v->extrasz;
+  return v->hdr.sz;
 }
 
 static inline size_t aligned(size_t sz) {
   return (sz + 7) & ~7;
 }
+
+VM* get_vm(void);
 
 #endif

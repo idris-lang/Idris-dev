@@ -192,10 +192,11 @@ void heap_check_pointers(Heap * heap) {
        switch(GETTY(heap_item)) {
        case CT_CON:
            {
-             int ar = CARITY(heap_item);
-             int i = 0;
+	     Con * c = (Con*)heap_item;
+             size_t ar = CARITY(c);
+             size_t i;
              for(i = 0; i < ar; ++i) {
-                 VAL ptr = heap_item->extra.cargs[i];
+                 VAL ptr = c->args[i];
 
                  if (is_valid_ref(ptr)) {
                      // Check for closure.

@@ -5,8 +5,8 @@
 #include <assert.h>
 
 VAL copy(VM* vm, VAL x) {
-    int ar, len;
-    Closure* cl = NULL;
+    int ar;
+    VAL cl;
     if (x==NULL || ISINT(x)) {
         return x;
     }
@@ -18,7 +18,7 @@ VAL copy(VM* vm, VAL x) {
         c_heap_mark_item(GETCDATA(x));
         break;
     case CT_BIGINT:
-        cl = MKBIGMc(vm, GETPTR(x));
+        cl = MKBIGMc(vm, GETMPZ(x));
 	break;
     case CT_CON:
         ar = CARITY(x);
@@ -39,47 +39,47 @@ VAL copy(VM* vm, VAL x) {
     case CT_BITS64:
     case CT_RAWDATA:
         {
-	    size_t size = sizeof(Closure) + x->extrasz;
-            cl = allocate(size, 1);
-            memcpy(cl, x, size);
+	    Hdr * s = (Hdr*)x;
+            cl = iallocate(vm, s->sz, 1);
+            memcpy(cl, x, s->sz);
         }
         break;
     default:
+        cl = NULL;
         break;
     }
     SETTY(x, CT_FWD);
-    x->info.ptr = cl;
+    ((Fwd*)x)->fwd = cl;
     return cl;
 }
 
 void cheney(VM *vm) {
-    size_t i, len;
     char* scan = aligned_heap_pointer(vm->heap.heap);
 
     while(scan < vm->heap.next) {
        VAL heap_item = (VAL)scan;
        // If it's a CT_CON, CT_REF or CT_STROFFSET, copy its arguments
        switch(GETTY(heap_item)) {
-       case CT_CON:
-           len = CARITY(heap_item);
-           for(i = 0; i < len; ++i) {
-               VAL newptr = copy(vm, heap_item->extra.cargs[i]);
-               heap_item->extra.cargs[i] = newptr;
-           }
-           break;
-       case CT_ARRAY:
-	   len = CELEM(heap_item);
-           for(i = 0; i < len; ++i) {
-               VAL newptr = copy(vm, heap_item->extra.array[i]);
-               heap_item->extra.array[i] = newptr;
-           }
-           break;
-       case CT_REF:
-           heap_item->info.ptr = copy(vm, (VAL)(GETPTR(heap_item)));
-           break;
-       case CT_STROFFSET:
-           heap_item->extra.basestr[0] = copy(vm, heap_item->extra.basestr[0]);
-           break;
+       case CT_CON: {
+	   Con * c = (Con*)heap_item;
+           size_t len = CARITY(c);
+           for(size_t i = 0; i < len; ++i)
+               c->args[i] = copy(vm, c->args[i]);
+       } break;
+       case CT_ARRAY: {
+	   Array * a = (Array*)heap_item;
+	   size_t len = CELEM(a);
+           for(size_t i = 0; i < len; ++i)
+               a->array[i] = copy(vm, a->array[i]);
+       } break;
+       case CT_REF: {
+	    Ref * r = (Ref*)heap_item;
+            r->ref = copy(vm, r->ref);
+       } break;
+       case CT_STROFFSET: {
+	   StrOffset * s = (StrOffset*)heap_item;
+           s->base = (String*)copy(vm, (VAL)s->base);
+       } break;
        default: // Nothing to copy
            break;
        }

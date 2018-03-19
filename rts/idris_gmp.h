@@ -48,6 +48,6 @@ VAL idris_bigLShiftRight(VM* vm, VAL x, VAL y);
 
 uint64_t idris_truncBigB64(const mpz_t bi);
 
-#define GETMPZ(x) *((mpz_t*)((x)->info.ptr))
+#define GETMPZ(x) *((mpz_t*)(((BigInt*)(x))->big))
 
 #endif

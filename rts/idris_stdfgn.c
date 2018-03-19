@@ -6,7 +6,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/stat.h>
-#include <stdio.h>
 #include <time.h>
 #include <dirent.h>
 
@@ -79,7 +78,7 @@ void* idris_dirOpen(char* dname) {
 
 void idris_dirClose(void* h) {
     DirInfo* di = (DirInfo*)h;
-    
+
     closedir(di->dirptr);
     free(di);
 }
@@ -219,4 +218,3 @@ VAL idris_getString(VM* vm, void* buffer) {
     free(sb);
     return str;
 }
-

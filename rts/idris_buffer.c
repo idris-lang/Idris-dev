@@ -110,10 +110,9 @@ double idris_getBufferDouble(void* buffer, int loc) {
 
 VAL idris_getBufferString(void* buffer, int loc, int len) {
     Buffer* b = buffer;
-
     char * s = (char*)(b->data + loc);
     size_t sz = loc >= 0 && loc+len <= b->size? len : 0;
-    return MKSTRlen(NULL, s, sz);
+    return MKSTRlen(get_vm(), s, sz);
 }
 
 int idris_readBuffer(FILE* h, void* buffer, int loc, int max) {
