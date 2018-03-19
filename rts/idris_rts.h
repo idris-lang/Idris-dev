@@ -34,29 +34,27 @@ typedef struct Closure *VAL;
 
 typedef struct Closure {
     uint64_t ty:8;
-// True for null strings. Might be useful at some point for other types.
-    uint64_t flag:1;
-    uint64_t sz:55;
+    uint64_t extrasz:56;
     union {
-// A constructor, consisting of a tag (encoded in the sz field),
-// an arity (encoded in 8 bits in the sz field), and arguments
-        VAL cargs[0];
-// An array; similar to a constructor but with a length, and contents
-// initialised to NULL (high level Idris programs are responsible for
-// initialising them properly)
-        VAL array[0];
+        uint32_t tag;
+        size_t slen;
+        size_t soffset;
         int i;
         double f;
-        VAL str_offset;
         void * ptr;
-        char str[0];
         uint8_t bits8;
         uint16_t bits16;
         uint32_t bits32;
         uint64_t bits64;
-        char mptr[0]; // A foreign pointer, managed by the idris GC
         CHeapItem* c_heap_item;
     } info;
+    union {
+      VAL array[0];
+      VAL cargs[0];
+      VAL basestr[0];
+      char str[0];
+      char mptr[0]; // A foreign pointer, managed by the idris GC
+    } extra;
 } Closure;
 
 struct VM;
@@ -167,13 +165,17 @@ typedef void(*func)(VM*, VAL*);
 
 // Retrieving values
 static inline char * getstr(VAL x) {
-  return x->flag? NULL : x->info.str;
+  return x->info.slen == ~0? NULL : x->extra.str;
+}
+
+static inline size_t getstrlen(VAL x) {
+  return x->info.slen == ~0? 0 : x->info.slen;
 }
 
 #define GETSTR(x) (ISSTR(x) ? getstr((VAL)(x)) : GETSTROFF(x))
-#define GETSTRLEN(x) (ISSTR(x) ? ((VAL)(x))->sz : GETSTROFFLEN(x))
+#define GETSTRLEN(x) (ISSTR(x) ? getstrlen((VAL)(x)) : GETSTROFFLEN(x))
 #define GETPTR(x) (((VAL)(x))->info.ptr)
-#define GETMPTR(x) (((VAL)(x))->info.mptr)
+#define GETMPTR(x) (((VAL)(x))->extra.mptr)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 #define GETCDATA(x) (((VAL)(x))->info.c_heap_item)
 
@@ -183,12 +185,13 @@ static inline char * getstr(VAL x) {
 #define GETBITS64(x) (((VAL)(x))->info.bits64)
 
 // Already checked it's a CT_CON
-#define CTAG(x) (((x)->sz) >> 8)
-#define CARITY(x) (((x)->sz) & 0xff)
+#define CTAG(x) ((x)->info.tag)
+#define CARITY(x) (((x)->extrasz) / sizeof(VAL))
 
 #define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CTAG(x) : (-1)) )
 #define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CARITY(x) : (-1)) )
 
+#define CELEM(x) (((x)->extrasz) / sizeof(VAL))
 
 #define GETTY(x) ((x)->ty)
 #define SETTY(x,t) ((x)->ty = t)
@@ -248,7 +251,7 @@ VAL MKCDATA(VM* vm, CHeapItem * item);
 
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
-VAL MKSTROFFc(VM* vm, VAL off);
+VAL MKSTROFFc(VM* vm, VAL basestr);
 VAL MKSTRc(VM* vm, char* str);
 VAL MKSTRclen(VM* vm, char* str, size_t len);
 VAL MKPTRc(VM* vm, void* ptr);
@@ -258,11 +261,11 @@ VAL MKCDATAc(VM* vm, CHeapItem * item);
 char* GETSTROFF(VAL stroff);
 size_t GETSTROFFLEN(VAL stroff);
 
-#define SETARG(x, i, a) ((x)->info.cargs)[i] = ((VAL)(a))
-#define GETARG(x, i) ((x)->info.cargs[i])
+#define SETARG(x, i, a) ((x)->extra.cargs)[i] = ((VAL)(a))
+#define GETARG(x, i) ((x)->extra.cargs[i])
 
 #define PROJECT(vm,r,loc,num) \
-    memcpy(&(LOC(loc)), (r)->info.cargs, sizeof(VAL)*num)
+    memcpy(&(LOC(loc)), (r)->extra.cargs, sizeof(VAL)*num)
 #define SLIDE(vm, args) \
     memcpy(&(LOC(0)), &(TOP(0)), sizeof(VAL)*args)
 
@@ -285,25 +288,29 @@ void* idris_alloc(size_t size);
 void* idris_realloc(void* old, size_t old_size, size_t size);
 void idris_free(void* ptr, size_t size);
 
-#define allocCon(cl, vm, t, a, o) do { \
-    cl = allocate(sizeof(Closure) + sizeof(VAL)*a, o); \
-    SETTY(cl, CT_CON); \
-    cl->sz = ((t) << 8) | (a); \
+#define allocCon(cl, vm, t, a, o) do {	    \
+    size_t sz = sizeof(VAL)*a;		    \
+    cl = allocate(sizeof(Closure) + sz, o); \
+    SETTY(cl, CT_CON);			    \
+    cl->info.tag = t;			    \
+    cl->extrasz = sz;			    \
   } while (0)
 
-#define updateCon(cl, old, t, a) do { \
-    cl = old; \
-    SETTY(cl, CT_CON); \
-    cl->sz = ((t) << 8) | (a); \
+#define updateCon(cl, old, t, a) do {		\
+    cl = old;					\
+    SETTY(cl, CT_CON);				\
+    cl->info.tag = t;				\
+    cl->extrasz = sizeof(VAL)*a;		\
   } while (0)
 
 
 #define NULL_CON(x) nullary_cons[x]
 
-#define allocArray(cl, vm, len, o) do { \
-  cl = allocate(sizeof(Closure) + sizeof(VAL)*len, o); \
-  SETTY(cl, CT_ARRAY); \
-  cl->sz = len; \
+#define allocArray(cl, vm, len, o) do {				\
+    size_t sz = sizeof(VAL)*len;				\
+    cl = allocate(sizeof(Closure) + sz, o);			\
+    SETTY(cl, CT_ARRAY);					\
+    cl->extrasz = sz;						\
   } while (0)
 
 int idris_errno(void);
@@ -440,5 +447,13 @@ void stackOverflow(void);
 #define idris_mkInt(x) MKINT((intptr_t)(x))
 
 #include "idris_gmp.h"
+
+static inline size_t valSize(VAL v) {
+  return sizeof(Closure) + v->extrasz;
+}
+
+static inline size_t aligned(size_t sz) {
+  return (sz + 7) & ~7;
+}
 
 #endif

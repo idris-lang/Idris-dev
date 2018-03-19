@@ -17,22 +17,22 @@ VAL copy(VM* vm, VAL x) {
             return x;
         } else {
             allocCon(cl, vm, CTAG(x), ar, 1);
-            memcpy(cl->info.cargs, x->info.cargs, sizeof(VAL)*ar);
+            memcpy(cl->extra.cargs, x->extra.cargs, sizeof(VAL)*ar);
         }
         break;
     case CT_ARRAY:
-        len = x->sz;
+        len = CELEM(x);
 	allocArray(cl, vm, len, 1);
-        memcpy(cl->info.array, x->info.array, sizeof(VAL)*len);
+        memcpy(cl->extra.array, x->extra.array, len * sizeof(VAL));
         break;
     case CT_FLOAT:
         cl = MKFLOATc(vm, GETFLOAT(x));
         break;
     case CT_STRING:
-        cl = MKSTRclen(vm, x->info.str, x->sz);
+        cl = MKSTRclen(vm, getstr(x), getstrlen(x));
         break;
     case CT_STROFFSET:
-        cl = MKSTROFFc(vm, x->info.str_offset);
+        cl = MKSTROFFc(vm, x->extra.basestr[0]);
         break;
     case CT_BIGINT:
         cl = MKBIGMc(vm, GETPTR(x));
@@ -41,7 +41,7 @@ VAL copy(VM* vm, VAL x) {
         cl = MKPTRc(vm, GETPTR(x));
         break;
     case CT_MANAGEDPTR:
-        cl = MKMPTRc(vm, x->info.mptr, x->sz);
+        cl = MKMPTRc(vm, x->extra.mptr, x->extrasz);
         break;
     case CT_BITS8:
         cl = idris_b8CopyForGC(vm, x);
@@ -62,7 +62,7 @@ VAL copy(VM* vm, VAL x) {
         return GETPTR(x);
     case CT_RAWDATA:
         {
-            size_t size = x->sz + sizeof(Closure);
+	    size_t size = sizeof(Closure) + x->extrasz;
             cl = allocate(size, 1);
             memcpy(cl, x, size);
         }
@@ -80,39 +80,37 @@ VAL copy(VM* vm, VAL x) {
 }
 
 void cheney(VM *vm) {
-    int i;
-    int ar, len;
+    size_t i, len;
     char* scan = aligned_heap_pointer(vm->heap.heap);
 
     while(scan < vm->heap.next) {
-       size_t inc = *((size_t*)scan);
-       VAL heap_item = (VAL)(scan+sizeof(size_t));
+       VAL heap_item = (VAL)scan;
        // If it's a CT_CON, CT_REF or CT_STROFFSET, copy its arguments
        switch(GETTY(heap_item)) {
        case CT_CON:
-           ar = ARITY(heap_item);
-           for(i = 0; i < ar; ++i) {
-               VAL newptr = copy(vm, heap_item->info.cargs[i]);
-               heap_item->info.cargs[i] = newptr;
+           len = CARITY(heap_item);
+           for(i = 0; i < len; ++i) {
+               VAL newptr = copy(vm, heap_item->extra.cargs[i]);
+               heap_item->extra.cargs[i] = newptr;
            }
            break;
        case CT_ARRAY:
-           len = heap_item->sz;
+	   len = CELEM(heap_item);
            for(i = 0; i < len; ++i) {
-               VAL newptr = copy(vm, heap_item->info.array[i]);
-               heap_item->info.array[i] = newptr;
+               VAL newptr = copy(vm, heap_item->extra.array[i]);
+               heap_item->extra.array[i] = newptr;
            }
            break;
        case CT_REF:
            heap_item->info.ptr = copy(vm, (VAL)(GETPTR(heap_item)));
            break;
        case CT_STROFFSET:
-           heap_item->info.str_offset = copy(vm, heap_item->info.str_offset);
+           heap_item->extra.basestr[0] = copy(vm, heap_item->extra.basestr[0]);
            break;
        default: // Nothing to copy
            break;
        }
-       scan += inc;
+       scan += aligned(valSize(heap_item));
     }
     assert(scan == vm->heap.next);
 }

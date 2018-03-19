@@ -186,16 +186,16 @@ void heap_check_pointers(Heap * heap) {
 
     size_t item_size = 0;
     for(scan = heap->heap; scan < heap->next; scan += item_size) {
-       item_size = *((size_t*)scan);
-       VAL heap_item = (VAL)(scan + sizeof(size_t));
+       VAL heap_item = (VAL)scan;
+       item_size = aligned(valSize(heap_item));
 
        switch(GETTY(heap_item)) {
        case CT_CON:
            {
-             int ar = ARITY(heap_item);
+             int ar = CARITY(heap_item);
              int i = 0;
              for(i = 0; i < ar; ++i) {
-                 VAL ptr = heap_item->info.cargs[i];
+                 VAL ptr = heap_item->extra.cargs[i];
 
                  if (is_valid_ref(ptr)) {
                      // Check for closure.
