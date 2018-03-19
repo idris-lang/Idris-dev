@@ -100,6 +100,12 @@ maybe_bind (Just x) k = k x
   (Just _) == Nothing  = False
   (Just a) == (Just b) = a == b
 
+(Ord a) => Ord (Maybe a) where
+  compare Nothing  Nothing  = EQ
+  compare Nothing  (Just _) = LT
+  compare (Just _) Nothing  = GT
+  compare (Just a) (Just b) = compare a b
+
 ||| Prioritised choice. Just like the `Alternative` implementation, the
 ||| `Semigroup` for `Maybe a` keeps the first succeeding computation.
 |||
