@@ -41,7 +41,7 @@ VAL copy(VM* vm, VAL x) {
         cl = MKPTRc(vm, GETPTR(x));
         break;
     case CT_MANAGEDPTR:
-        cl = MKMPTRc(vm, x->info.managed_ptr, x->sz);
+        cl = MKMPTRc(vm, x->info.mptr, x->sz);
         break;
     case CT_BITS8:
         cl = idris_b8CopyForGC(vm, x);
@@ -107,8 +107,7 @@ void cheney(VM *vm) {
            heap_item->info.ptr = copy(vm, (VAL)(GETPTR(heap_item)));
            break;
        case CT_STROFFSET:
-           heap_item->info.str_offset
-               = copy(vm, heap_item->info.str_offset);
+           heap_item->info.str_offset = copy(vm, heap_item->info.str_offset);
            break;
        default: // Nothing to copy
            break;

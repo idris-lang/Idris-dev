@@ -222,9 +222,8 @@ void* allocate(size_t size, int outerlock) {
     VM* vm = global_vm;
 #endif
 
-    if ((size & 7)!=0) {
-	size = 8 + ((size >> 3) << 3);
-    }
+    size += 7;
+    size &= ~7;
 
     size_t chunk_size = size + sizeof(size_t);
 
@@ -260,10 +259,14 @@ void* allocate(size_t size, int outerlock) {
 
 }
 
+static size_t szMax(ssize_t a, ssize_t b) {
+  return a > b? a : b;
+}
+
 static Closure * allocStr(size_t len, int outer) {
-  Closure * cl = allocate(sizeof(*cl) + len + 1, outer);
+  size_t sz = szMax(len + 1 - 8, 0);
+  Closure * cl = allocate(sizeof(*cl) + sz, outer);
   SETTY(cl, CT_STRING);
-  cl->info.str = cl->data;
   cl->sz = len;
   return cl;
 }
@@ -290,16 +293,13 @@ VAL MKFLOAT(VM* vm, double val) {
 
 VAL MKSTRlen(VM* vm, const char * str, size_t len) {
     Closure* cl = allocStr(len, 0);
-    if (str) {
-        memcpy(cl->info.str, str, len);
-    } else {
-      	cl->info.str = NULL;
-    }
+    memcpy(cl->info.str, str, len);
+    cl->flag = str == NULL;
     return cl;
 }
 
 VAL MKSTR(VM* vm, const char* str) {
-    return MKSTRlen(vm, str, str? strlen(str) : ~0);
+    return MKSTRlen(vm, str, str? strlen(str) : 0);
 }
 
 char* GETSTROFF(VAL stroff) {
@@ -339,7 +339,7 @@ VAL MKPTR(VM* vm, void* ptr) {
 VAL MKMPTR(VM* vm, void* ptr, size_t size) {
     Closure* cl = allocate(sizeof(Closure) + size, 0);
     SETTY(cl, CT_MANAGEDPTR);
-    memcpy(cl->info.managed_ptr, ptr, size);
+    memcpy(cl->info.mptr, ptr, size);
     cl->sz = size;
     return cl;
 }
@@ -351,7 +351,7 @@ VAL MKFLOATc(VM* vm, double val) {
     return cl;
 }
 
-VAL MKSTRclen(VM* vm, char* str, int len) {
+VAL MKSTRclen(VM* vm, char* str, size_t len) {
     Closure* cl = allocStr(len, 1);
     memcpy(cl->info.str, str, len);
     return cl;
@@ -371,7 +371,7 @@ VAL MKPTRc(VM* vm, void* ptr) {
 VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
     Closure* cl = allocate(sizeof(Closure) + size, 1);
     SETTY(cl, CT_MANAGEDPTR);
-    memcpy(cl->info.managed_ptr, ptr, size);
+    memcpy(cl->info.mptr, ptr, size);
     cl->sz = size;
     return cl;
 }
@@ -567,8 +567,8 @@ VAL idris_castStrFloat(VM* vm, VAL i) {
 VAL idris_concat(VM* vm, VAL l, VAL r) {
     char *rs = GETSTR(r);
     char *ls = GETSTR(l);
-    int llen = GETSTRLEN(l);
-    int rlen = GETSTRLEN(r);
+    size_t llen = GETSTRLEN(l);
+    size_t rlen = GETSTRLEN(r);
 
     Closure* cl = allocStr(llen + rlen, 0);
     memcpy(cl->info.str, ls, llen);
@@ -677,7 +677,7 @@ VAL idris_strTail(VM* vm, VAL str) {
 VAL idris_strCons(VM* vm, VAL x, VAL xs) {
     char *xstr = GETSTR(xs);
     int xval = GETINT(x);
-    int xlen = GETSTRLEN(xs);
+    size_t xlen = GETSTRLEN(xs);
 
     if (xval < 0x80) { // ASCII char
         Closure* cl = allocStr(xlen + 1, 0);
@@ -702,8 +702,8 @@ VAL idris_strIndex(VM* vm, VAL str, VAL i) {
 }
 
 VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
-    int offset_val = GETINT(offset);
-    int length_val = GETINT(length);
+    size_t offset_val = GETINT(offset);
+    size_t length_val = GETINT(length);
     char* str_val = GETSTR(str);
 
     // If the substring is a suffix, use idris_strShift to avoid reallocating
@@ -723,7 +723,7 @@ VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
 
 VAL idris_strRev(VM* vm, VAL str) {
     char *xstr = GETSTR(str);
-    int xlen = GETSTRLEN(str);
+    size_t xlen = GETSTRLEN(str);
 
     Closure* cl = allocStr(xlen, 0);
     idris_utf8_rev(xstr, cl->info.str);
@@ -893,7 +893,7 @@ VAL doCopyTo(VM* vm, VAL x) {
         cl = MKPTRc(vm, x->info.ptr);
         break;
     case CT_MANAGEDPTR:
-        cl = MKMPTRc(vm, x->info.managed_ptr, x->sz);
+        cl = MKMPTRc(vm, x->info.mptr, x->sz);
         break;
     case CT_CDATA:
         cl = MKCDATAc(vm, x->info.c_heap_item);

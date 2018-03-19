@@ -34,7 +34,9 @@ typedef struct Closure *VAL;
 
 typedef struct Closure {
     uint64_t ty:8;
-    uint64_t sz:56;
+// True for null strings. Might be useful at some point for other types.
+    uint64_t flag:1;
+    uint64_t sz:55;
     union {
 // A constructor, consisting of a tag (encoded in the sz field),
 // an arity (encoded in 8 bits in the sz field), and arguments
@@ -47,15 +49,14 @@ typedef struct Closure {
         double f;
         VAL str_offset;
         void * ptr;
-        char * str;
+        char str[0];
         uint8_t bits8;
         uint16_t bits16;
         uint32_t bits32;
         uint64_t bits64;
-        char managed_ptr[0]; // A foreign pointer, managed by the idris GC
+        char mptr[0]; // A foreign pointer, managed by the idris GC
         CHeapItem* c_heap_item;
     } info;
-    char data[0];
 } Closure;
 
 struct VM;
@@ -165,10 +166,14 @@ typedef void(*func)(VM*, VAL*);
 #define REG1 (vm->reg1)
 
 // Retrieving values
-#define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str) : GETSTROFF(x))
-#define GETSTRLEN(x) (ISSTR(x) ? (((VAL)(x))->sz) : GETSTROFFLEN(x))
+static inline char * getstr(VAL x) {
+  return x->flag? NULL : x->info.str;
+}
+
+#define GETSTR(x) (ISSTR(x) ? getstr((VAL)(x)) : GETSTROFF(x))
+#define GETSTRLEN(x) (ISSTR(x) ? ((VAL)(x))->sz : GETSTROFFLEN(x))
 #define GETPTR(x) (((VAL)(x))->info.ptr)
-#define GETMPTR(x) (((VAL)(x))->info.managed_ptr)
+#define GETMPTR(x) (((VAL)(x))->info.mptr)
 #define GETFLOAT(x) (((VAL)(x))->info.f)
 #define GETCDATA(x) (((VAL)(x))->info.c_heap_item)
 
@@ -245,7 +250,7 @@ VAL MKCDATA(VM* vm, CHeapItem * item);
 VAL MKFLOATc(VM* vm, double val);
 VAL MKSTROFFc(VM* vm, VAL off);
 VAL MKSTRc(VM* vm, char* str);
-VAL MKSTRclen(VM* vm, char* str, int len);
+VAL MKSTRclen(VM* vm, char* str, size_t len);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKMPTRc(VM* vm, void* ptr, size_t size);
 VAL MKCDATAc(VM* vm, CHeapItem * item);
