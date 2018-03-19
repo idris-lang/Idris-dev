@@ -436,7 +436,7 @@ void dumpVal(VAL v) {
     }
     switch(GETTY(v)) {
     case CT_CON:
-        printf("%lu[", TAG(v));
+        printf("%d[", (int)TAG(v));
         for(i = 0; i < ARITY(v); ++i) {
             dumpVal(v->info.cargs[i]);
         }

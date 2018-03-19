@@ -33,8 +33,8 @@ typedef enum {
 typedef struct Closure *VAL;
 
 typedef struct Closure {
-    ClosureType ty:8;
-    size_t sz:56;
+    uint64_t ty:8;
+    uint64_t sz:56;
     union {
 // A constructor, consisting of a tag (encoded in the sz field),
 // an arity (encoded in 8 bits in the sz field), and arguments
