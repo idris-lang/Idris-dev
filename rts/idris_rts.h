@@ -30,8 +30,8 @@ typedef enum {
 
 
 typedef struct Hdr {
-    uint64_t ty:8;
-    uint64_t sz:56;
+    ClosureType ty;
+    uint32_t sz;
 } Hdr;
 
 
@@ -266,7 +266,7 @@ static inline size_t getstrlen(String * x) {
 
 #define CELEM(x) (((x)->hdr.sz - sizeof(Array)) / sizeof(VAL))
 
-#define GETTY(x) ((ClosureType)((x)->hdr.ty))
+#define GETTY(x) (((x)->hdr.ty))
 #define SETTY(x,t) ((x)->hdr.ty = t)
 
 // Integers, floats and operators
