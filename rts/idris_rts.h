@@ -3,7 +3,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdatomic.h>
 #ifdef HAS_PTHREAD
 #include <string.h>
 #include <stdarg.h>
