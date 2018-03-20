@@ -7,6 +7,10 @@
 #include "idris_bitstring.h"
 #include "getline.h"
 
+#define STATIC_ASSERT(COND,MSG) typedef char static_assertion_##MSG[(COND)?1:-1]
+
+STATIC_ASSERT(sizeof(Hdr) == 8, condSizeOfHdr);
+
 #if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__)
 #include <signal.h>
 #endif
@@ -264,8 +268,7 @@ VAL MKFLOAT(VM* vm, double val) {
 VAL MKSTRlen(VM* vm, const char * str, size_t len) {
     String * cl = allocStr(vm, len, 0);
     memcpy(cl->str, str, len);
-    if (str == NULL)
-      cl->slen = ~0;
+    cl->__null = str == NULL;
     return (VAL)cl;
 }
 

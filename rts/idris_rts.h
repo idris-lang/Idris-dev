@@ -29,7 +29,9 @@ typedef enum {
 
 
 typedef struct Hdr {
-    ClosureType ty;
+    uint8_t ty;
+    uint8_t u8;
+    uint16_t u16;
     uint32_t sz;
 } Hdr;
 
@@ -70,6 +72,7 @@ typedef struct Float {
 typedef struct String {
   Hdr hdr;
   size_t slen;
+#define __null hdr.u8
   char str[0];
 } String;
 
@@ -231,17 +234,17 @@ typedef void(*func)(VM*, VAL*);
 // Register access
 
 #define RVAL (vm->ret)
-#define LOC(x) (*(vm->valstack_base + (x)))
-#define TOP(x) (*(vm->valstack_top + (x)))
+#define LOC(x) (vm->valstack_base[x])
+#define TOP(x) (vm->valstack_top[x])
 #define REG1 (vm->reg1)
 
 // Retrieving values
 static inline char * getstr(String * x) {
-  return x->slen == ~0? NULL : x->str;
+  return x->__null? NULL : x->str;
 }
 
 static inline size_t getstrlen(String * x) {
-  return x->slen == ~0? 0 : x->slen;
+  return x->slen;
 }
 
 #define GETSTR(x) (ISSTR(x) ? getstr((String*)(x)) : GETSTROFF(x))
@@ -265,7 +268,7 @@ static inline size_t getstrlen(String * x) {
 
 #define CELEM(x) (((x)->hdr.sz - sizeof(Array)) / sizeof(VAL))
 
-#define GETTY(x) (((x)->hdr.ty))
+#define GETTY(x) ((ClosureType)((x)->hdr.ty))
 #define SETTY(x,t) ((x)->hdr.ty = t)
 
 // Integers, floats and operators
@@ -372,7 +375,9 @@ static inline void updateConF(Con * cl, unsigned tag, unsigned arity) {
 static inline Con * allocConF(VM * vm, unsigned tag, unsigned arity, int outer) {
     size_t sz = sizeof(VAL) * arity;
     Con * cl = iallocate(vm, sizeof(*cl) + sz, outer);
-    updateConF(cl, tag, arity);
+    SETTY(cl, CT_CON);
+    cl->tag = tag;
+    cl->arity = arity;
     return cl;
 }
 
