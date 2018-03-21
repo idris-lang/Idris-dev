@@ -1497,7 +1497,7 @@ parseImports fname input
                                  [ImportInfo],
                                  Maybe Mark),
                                 [(FC, OutputAnnotation)], IState)
-        imports = do optional shebang
+        imports = do many shebang
                      whiteSpace
                      (mdoc, mname, annots) <- moduleHeader
                      ps_exp        <- many import_

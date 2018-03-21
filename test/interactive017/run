@@ -7,3 +7,5 @@ PATH="../../scripts:$PATH"
 ./shebang-args.idr aaa
 ./shebang-args.idr bbb aaa
 ./shebang-import.idr
+./shebang-multiple.idr
+./shebang-node-multiple.idr
