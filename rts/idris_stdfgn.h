@@ -15,6 +15,11 @@ int fileError(void* h);
 // Returns a negative number if not a file (e.g. directory or device)
 int fileSize(void* h);
 
+// Return a negative number if not a file (e.g. directory or device)
+VAL fileAccessTime(void* h);
+VAL fileModifiedTime(void* h);
+VAL fileStatusTime(void* h);
+
 void* idris_dirOpen(char* dname);
 void idris_dirClose(void* h);
 char* idris_nextDirEntry(void* h);

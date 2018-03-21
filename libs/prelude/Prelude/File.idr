@@ -141,17 +141,64 @@ private
 do_getFileSize : Ptr -> IO Int
 do_getFileSize h = foreign FFI_C "fileSize" (Ptr -> IO Int) h
 
+private
+do_getFileAccessTime : Ptr -> IO Integer
+do_getFileAccessTime h =
+   do MkRaw i <- foreign FFI_C "fileAccessTime" (Ptr -> IO (Raw Integer)) h
+      pure i
+
+private
+do_getFileModifiedTime : Ptr -> IO Integer
+do_getFileModifiedTime h = 
+   do MkRaw i <- foreign FFI_C "fileModifiedTime" (Ptr -> IO (Raw Integer)) h
+      pure i
+
+private
+do_getFileStatusTime : Ptr -> IO Integer
+do_getFileStatusTime h = 
+   do MkRaw i <- foreign FFI_C "fileStatusTime" (Ptr -> IO (Raw Integer)) h
+      pure i
+
 ||| Return the size of a File
 ||| Returns an error if the File is not an ordinary file (e.g. a directory)
 ||| Also note that this currently returns an Int, which may overflow if the
 ||| file is very big
 export
 fileSize : File -> IO (Either FileError Int)
-fileSize (FHandle h) = do s <- do_getFileSize h
-                          if (s < 0)
-                             then do err <- getFileError
-                                     pure (Left err)
-                             else pure (Right s)
+fileSize (FHandle h) 
+    = do s <- do_getFileSize h
+         if (s < 0)
+            then do err <- getFileError
+                    pure (Left err)
+            else pure (Right s)
+
+export
+fileModifiedTime : File -> IO (Either FileError Integer)
+fileModifiedTime (FHandle h)
+    = do s <- do_getFileModifiedTime h
+         if (s < 0)
+            then do err <- getFileError
+                    pure (Left err)
+            else pure (Right s)
+
+export
+fileAccessTime : File -> IO (Either FileError Integer)
+fileAccessTime (FHandle h)
+    = do s <- do_getFileAccessTime h
+         if (s < 0)
+            then do err <- getFileError
+                    pure (Left err)
+            else pure (Right s)
+
+export
+fileStatusTime : File -> IO (Either FileError Integer)
+fileStatusTime (FHandle h)
+    = do s <- do_getFileStatusTime h
+         if (s < 0)
+            then do err <- getFileError
+                    pure (Left err)
+            else pure (Right s)
+
 
 private
 do_fread : Ptr -> IO' l String
