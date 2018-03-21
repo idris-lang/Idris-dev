@@ -7,6 +7,8 @@ let
     zlib
     ncurses
     gmp
+    nodejs
+    perl
   ];
   native_libs = lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
     Cocoa
