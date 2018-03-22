@@ -377,7 +377,7 @@ uint64_t idris_truncBigB64(const mpz_t bi) {
     }
     int64_t out = mpz_get_ui(bi);
     if (mpz_size(bi) > 1) {
-        out |= mpz_getlimbn(bi, 1) << 32;
+        out |= ((int64_t)mpz_getlimbn(bi, 1)) << 32;
     }
     return out;
 }
