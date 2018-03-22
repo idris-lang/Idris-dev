@@ -49,7 +49,7 @@ modName (IBC fp src) = modName src
 -- any module has a descendent which needs reloading, return its
 -- source, otherwise return the IBC
 getModuleFiles :: [ModuleTree] -> [IFileType]
-getModuleFiles ts 
+getModuleFiles ts
     = let (files, rebuild) = execState (modList ts) ([], S.empty) in
           updateToSrc rebuild (nub files)
  where
@@ -82,7 +82,7 @@ getModuleFiles ts
    getSrc f = f
 
    updateToSrc rebuilds [] = []
-   updateToSrc rebuilds (x : xs) 
+   updateToSrc rebuilds (x : xs)
        = if getSrc x `S.member` rebuilds
             then getSrc x : updateToSrc rebuilds xs
             else x : updateToSrc rebuilds xs
