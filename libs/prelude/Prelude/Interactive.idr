@@ -81,7 +81,7 @@ getLine = getLine'
 putChar : Char -> IO ()
 putChar c = foreign FFI_C "putchar" (Int -> IO ()) (cast c)
 
-||| Write a singel character to stdout, with a trailing newline
+||| Write a single character to stdout, with a trailing newline
 putCharLn : Char -> IO ()
 putCharLn c = putStrLn (singleton c)
 
