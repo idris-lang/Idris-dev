@@ -1,6 +1,7 @@
 #ifndef _IDRISRTS_H
 #define _IDRISRTS_H
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #ifdef HAS_PTHREAD
@@ -22,11 +23,12 @@
 
 // Closures
 typedef enum {
-    CT_CON, CT_ARRAY, CT_INT, CT_BIGINT, CT_FLOAT, CT_STRING, CT_STROFFSET,
-    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_PTR, CT_REF,
-    CT_FWD, CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
+    CT_CON, CT_ARRAY, CT_INT, CT_BIGINT,
+    CT_FLOAT, CT_STRING, CT_STROFFSET, CT_BITS8,
+    CT_BITS16, CT_BITS32, CT_BITS64, CT_PTR,
+    CT_REF, CT_FWD, CT_MANAGEDPTR, CT_RAWDATA,
+    CT_CDATA
 } ClosureType;
-
 
 typedef struct Hdr {
     uint8_t ty;
@@ -34,7 +36,6 @@ typedef struct Hdr {
     uint16_t u16;
     uint32_t sz;
 } Hdr;
-
 
 typedef struct Val {
     Hdr hdr;
@@ -72,7 +73,7 @@ typedef struct Float {
 typedef struct String {
   Hdr hdr;
   size_t slen;
-#define __null hdr.u8
+#define _null hdr.u8
   char str[0];
 } String;
 
@@ -240,7 +241,7 @@ typedef void(*func)(VM*, VAL*);
 
 // Retrieving values
 static inline char * getstr(String * x) {
-  return x->__null? NULL : x->str;
+  return x->_null? NULL : x->str;
 }
 
 static inline size_t getstrlen(String * x) {
@@ -369,12 +370,12 @@ static inline void updateConF(Con * cl, unsigned tag, unsigned arity) {
     SETTY(cl, CT_CON);
     cl->tag = tag;
     cl->arity = arity;
-    cl->hdr.sz = sizeof(*cl) + sizeof(VAL) * arity;
+    assert(cl->hdr.sz == sizeof(*cl) + sizeof(VAL) * arity);
+    // cl->hdr.sz = sizeof(*cl) + sizeof(VAL) * arity;
 }
 
 static inline Con * allocConF(VM * vm, unsigned tag, unsigned arity, int outer) {
-    size_t sz = sizeof(VAL) * arity;
-    Con * cl = iallocate(vm, sizeof(*cl) + sz, outer);
+    Con * cl = iallocate(vm, sizeof(*cl) + sizeof(VAL) * arity, outer);
     SETTY(cl, CT_CON);
     cl->tag = tag;
     cl->arity = arity;
@@ -382,8 +383,7 @@ static inline Con * allocConF(VM * vm, unsigned tag, unsigned arity, int outer) 
 }
 
 static inline Array * allocArrayF(VM * vm, size_t len, int outer) {
-  size_t sz = sizeof(VAL) * len;
-  Array * cl = iallocate(vm, sizeof(*cl) + sz, outer);
+  Array * cl = iallocate(vm, sizeof(*cl) + sizeof(VAL) * len, outer);
   SETTY(cl, CT_ARRAY);
   return cl;
 }
@@ -393,16 +393,15 @@ static inline Array * allocArrayF(VM * vm, size_t len, int outer) {
 
 #define updateCon(cl, old, tag, arity) (cl) = (old); updateConF(cl, tag, arity)
 
-#define NULL_CON(x) nullary_cons[x]
+#define NULL_CON(x) ((VAL)(nullary_cons + x))
 
 #define allocArray(cl, vm, len, o) (cl) = (VAL)allocArrayF(vm, len, o)
 
 int idris_errno(void);
 char* idris_showerror(int err);
 
-extern VAL* nullary_cons;
+extern Con nullary_cons[];
 void init_nullaries(void);
-void free_nullaries(void);
 
 void init_signals(void);
 

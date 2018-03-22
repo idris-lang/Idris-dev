@@ -223,16 +223,15 @@ void* iallocate(VM * vm, size_t isize, int outerlock) {
         STATS_ALLOC(vm->stats, size)
         char* ptr = vm->heap.next;
         vm->heap.next += size;
-
         assert(vm->heap.next <= vm->heap.end);
-
         memset(ptr, 0, size);
+	((Hdr*)ptr)->sz = isize;
+
 #ifdef HAS_PTHREAD
         if (lock) { // not message passing
            pthread_mutex_unlock(&vm->alloc_lock);
         }
 #endif
-	((Hdr*)ptr)->sz = size;
         return (void*)ptr;
     } else {
         // If we're trying to allocate something bigger than the heap,
@@ -258,22 +257,42 @@ static String * allocStr(VM * vm, size_t len, int outer) {
     return cl;
 }
 
-VAL MKFLOAT(VM* vm, double val) {
-    Float * cl = iallocate(vm, sizeof(*cl), 0);
+static VAL mkfloat(VM* vm, double val, int outer) {
+    Float * cl = iallocate(vm, sizeof(*cl), outer);
     SETTY(cl, CT_FLOAT);
     cl->f = val;
     return (VAL)cl;
 }
 
-VAL MKSTRlen(VM* vm, const char * str, size_t len) {
-    String * cl = allocStr(vm, len, 0);
+VAL MKFLOAT(VM* vm, double val) {
+    return mkfloat(vm, val, 0);
+}
+
+VAL MKFLOATc(VM* vm, double val) {
+    return mkfloat(vm, val, 1);
+}
+
+static VAL mkstrlen(VM* vm, const char * str, size_t len, int outer) {
+    String * cl = allocStr(vm, len, outer);
     memcpy(cl->str, str, len);
-    cl->__null = str == NULL;
+    cl->_null = str == NULL;
     return (VAL)cl;
 }
 
+VAL MKSTRlen(VM* vm, const char * str, size_t len) {
+    return mkstrlen(vm, str, len, 0);
+}
+
+VAL MKSTRclen(VM* vm, char* str, size_t len) {
+    return mkstrlen(vm, str, len, 1);
+}
+
 VAL MKSTR(VM* vm, const char* str) {
-    return MKSTRlen(vm, str, str? strlen(str) : 0);
+    return mkstrlen(vm, str, str? strlen(str) : 0, 0);
+}
+
+VAL MKSTRc(VM* vm, char* str) {
+    return mkstrlen(vm, str, strlen(str), 1);
 }
 
 static char * getstroff(StrOffset * stroff) {
@@ -295,65 +314,50 @@ size_t GETSTROFFLEN(VAL stroff) {
     return getstrofflen((StrOffset*)stroff);
 }
 
-VAL MKCDATA(VM* vm, CHeapItem * item) {
+static VAL mkcdata(VM * vm, CHeapItem * item, int outer) {
     c_heap_insert_if_needed(vm, &vm->c_heap, item);
-    CDataC * cl = iallocate(vm, sizeof(*cl), 0);
+    CDataC * cl = iallocate(vm, sizeof(*cl), outer);
     SETTY(cl, CT_CDATA);
     cl->item = item;
     return (VAL)cl;
 }
 
+VAL MKCDATA(VM* vm, CHeapItem * item) {
+    return mkcdata(vm, item, 0);
+}
+
 VAL MKCDATAc(VM* vm, CHeapItem * item) {
-    c_heap_insert_if_needed(vm, &vm->c_heap, item);
-    CDataC * cl = iallocate(vm, sizeof(*cl), 1);
-    SETTY(cl, CT_CDATA);
-    cl->item = item;
+    return mkcdata(vm, item, 1);
+}
+
+static VAL mkptr(VM* vm, void* ptr, int outer) {
+    Ptr * cl = iallocate(vm, sizeof(*cl), outer);
+    SETTY(cl, CT_PTR);
+    cl->ptr = ptr;
     return (VAL)cl;
 }
 
 VAL MKPTR(VM* vm, void* ptr) {
-    Ptr * cl = iallocate(vm, sizeof(*cl), 0);
-    SETTY(cl, CT_PTR);
-    cl->ptr = ptr;
+    return mkptr(vm, ptr, 0);
+}
+
+VAL MKPTRc(VM* vm, void* ptr) {
+    return mkptr(vm, ptr, 1);
+}
+
+VAL mkmptr(VM* vm, void* ptr, size_t size, int outer) {
+    ManagedPtr * cl = iallocate(vm, sizeof(*cl) + size, outer);
+    SETTY(cl, CT_MANAGEDPTR);
+    memcpy(cl->mptr, ptr, size);
     return (VAL)cl;
 }
 
 VAL MKMPTR(VM* vm, void* ptr, size_t size) {
-    ManagedPtr * cl = iallocate(vm, sizeof(*cl) + size, 0);
-    SETTY(cl, CT_MANAGEDPTR);
-    memcpy(cl->mptr, ptr, size);
-    return (VAL)cl;
-}
-
-VAL MKFLOATc(VM* vm, double val) {
-    Float * cl = iallocate(vm, sizeof(*cl), 1);
-    SETTY(cl, CT_FLOAT);
-    cl->f = val;
-    return (VAL)cl;
-}
-
-VAL MKSTRclen(VM* vm, char* str, size_t len) {
-    String * cl = allocStr(vm, len, 1);
-    memcpy(cl->str, str, len);
-    return (VAL)cl;
-}
-
-VAL MKSTRc(VM* vm, char* str) {
-    return MKSTRclen(vm, str, strlen(str));
-}
-
-VAL MKPTRc(VM* vm, void* ptr) {
-    Ptr * cl = iallocate(vm, sizeof(*cl), 1);
-    SETTY(cl, CT_PTR);
-    cl->ptr = ptr;
-    return (VAL)cl;
+    return mkmptr(vm, ptr, size, 0);
 }
 
 VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
-    ManagedPtr * cl = iallocate(vm, sizeof(*cl) + size, 1);
-    SETTY(cl, CT_MANAGEDPTR);
-    memcpy(cl->mptr, ptr, size);
-    return (VAL)cl;
+    return mkmptr(vm, ptr, size, 1);
 }
 
 VAL MKB8(VM* vm, uint8_t bits8) {
@@ -1105,25 +1109,16 @@ char* idris_showerror(int err) {
     return strerror(err);
 }
 
-VAL* nullary_cons;
+Con nullary_cons[256];
 
 void init_nullaries(void) {
     int i;
-    nullary_cons = malloc(256 * sizeof(VAL));
     for(i = 0; i < 256; ++i) {
-        Con * cl = calloc(1, sizeof(*cl));
+        Con * cl = nullary_cons + i;
+	cl->hdr.sz = sizeof(*cl);
         SETTY(cl, CT_CON);
         cl->tag = i;
-        nullary_cons[i] = (VAL)cl;
     }
-}
-
-void free_nullaries(void) {
-    int i;
-    for(i = 0; i < 256; ++i) {
-        free(nullary_cons[i]);
-    }
-    free(nullary_cons);
 }
 
 int __idris_argc;
