@@ -22,18 +22,12 @@ VAL MKBIGI(int val) {
     return MKINT((i_int)val);
 }
 
-static mpz_t * big(BigInt * v) {
-    return (mpz_t*)(v->big);
-}
-
-#define BIG(x) big((BigInt*)(x))
-
 static BigInt * allocBig(VM * vm) {
     idris_requireAlloc(vm, IDRIS_MAXGMP);
     BigInt * cl = iallocate(vm, sizeof(*cl) + sizeof(mpz_t), 0);
     idris_doneAlloc(vm);
     SETTY(cl, CT_BIGINT);
-    mpz_init(*big(cl));
+    mpz_init(*getmpz(cl));
     return cl;
 }
 
@@ -43,39 +37,39 @@ VAL MKBIGC(VM* vm, char* val) {
     }
     else {
         BigInt * cl = allocBig(vm);
-        mpz_set_str(*big(cl), val, 10);
+        mpz_set_str(*getmpz(cl), val, 10);
         return (VAL)cl;
     }
 }
 
 VAL MKBIGM(VM* vm, void* ibig) {
     BigInt * cl = allocBig(vm);
-    mpz_set(*big(cl), *((mpz_t*)ibig));
+    mpz_set(*getmpz(cl), *((mpz_t*)ibig));
     return (VAL)cl;
 }
 
 VAL MKBIGMc(VM* vm, void* ibig) {
     BigInt * cl = allocBig(vm);
-    mpz_init_set(*big(cl), *((mpz_t*)ibig));
+    mpz_init_set(*getmpz(cl), *((mpz_t*)ibig));
     return (VAL)cl;
 }
 
 VAL MKBIGUI(VM* vm, unsigned long val) {
     BigInt * cl = allocBig(vm);
-    mpz_init_set_ui(*big(cl), val);
+    mpz_init_set_ui(*getmpz(cl), val);
     return (VAL)cl;
 }
 
 VAL MKBIGSI(VM* vm, signed long val) {
     BigInt * cl = allocBig(vm);
-    mpz_init_set_si(*big(cl), val);
+    mpz_init_set_si(*getmpz(cl), val);
     return (VAL)cl;
 }
 
 static BigInt * getbig(VM * vm, VAL x) {
     if (ISINT(x)) {
         BigInt * cl = allocBig(vm);
-        mpz_set_si(*big(cl), GETINT(x));
+        mpz_set_si(*getmpz(cl), GETINT(x));
         return cl;
     } else {
         switch(GETTY(x)) {
@@ -91,62 +85,62 @@ static BigInt * getbig(VM * vm, VAL x) {
 
 VAL bigAdd(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_add(*big(cl), *big(getbig(vm,x)), *big(getbig(vm,y)));
+    mpz_add(*getmpz(cl), *getmpz(getbig(vm,x)), *getmpz(getbig(vm,y)));
     return (VAL)cl;
 }
 
 VAL bigSub(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_sub(*big(cl), *big(getbig(vm,x)), *big(getbig(vm,y)));
+    mpz_sub(*getmpz(cl), *getmpz(getbig(vm,x)), *getmpz(getbig(vm,y)));
     return (VAL)cl;
 }
 
 VAL bigMul(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_mul(*big(cl), *big(getbig(vm,x)), *big(getbig(vm,y)));
+    mpz_mul(*getmpz(cl), *getmpz(getbig(vm,x)), *getmpz(getbig(vm,y)));
     return (VAL)cl;
 }
 
 VAL bigDiv(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_tdiv_q(*big(cl), *big(getbig(vm,x)), *big(getbig(vm,y)));
+    mpz_tdiv_q(*getmpz(cl), *getmpz(getbig(vm,x)), *getmpz(getbig(vm,y)));
     return (VAL)cl;
 }
 
 VAL bigMod(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_tdiv_r(*big(cl), *big(getbig(vm,x)), *big(getbig(vm,y)));
+    mpz_tdiv_r(*getmpz(cl), *getmpz(getbig(vm,x)), *getmpz(getbig(vm,y)));
     return (VAL)cl;
 }
 
 VAL bigAnd(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_and(*big(cl), *big(getbig(vm,x)), *big(getbig(vm,y)));
+    mpz_and(*getmpz(cl), *getmpz(getbig(vm,x)), *getmpz(getbig(vm,y)));
     return (VAL)cl;
 }
 
 VAL bigOr(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_ior(*big(cl), *big(getbig(vm,x)), *big(getbig(vm,y)));
+    mpz_ior(*getmpz(cl), *getmpz(getbig(vm,x)), *getmpz(getbig(vm,y)));
     return (VAL)cl;
 }
 
 VAL bigShiftLeft(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_mul_2exp(*big(cl), *big(getbig(vm,x)), GETINT(y));
+    mpz_mul_2exp(*getmpz(cl), *getmpz(getbig(vm,x)), GETINT(y));
     return (VAL)cl;
 }
 
 
 VAL bigLShiftRight(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_fdiv_q_2exp(*big(cl), *big(getbig(vm,x)), GETINT(y));
+    mpz_fdiv_q_2exp(*getmpz(cl), *getmpz(getbig(vm,x)), GETINT(y));
     return (VAL)cl;
 }
 
 VAL bigAShiftRight(VM* vm, VAL x, VAL y) {
     BigInt * cl = allocBig(vm);
-    mpz_fdiv_q_2exp(*big(cl), *big(getbig(vm,x)), GETINT(y));
+    mpz_fdiv_q_2exp(*getmpz(cl), *getmpz(getbig(vm,x)), GETINT(y));
     return (VAL)cl;
 }
 
@@ -266,29 +260,29 @@ VAL idris_bigMod(VM* vm, VAL x, VAL y) {
 int bigEqConst(VAL x, int c) {
     if (ISINT(x)) { return (GETINT(x) == c); }
     else {
-        int rv = mpz_cmp_si(*BIG(x), c);
+        int rv = mpz_cmp_si(GETMPZ(x), c);
         return (rv == 0);
     }
 }
 
 VAL bigEq(VM* vm, VAL x, VAL y) {
-    return MKINT((i_int)(mpz_cmp(*BIG(x), *BIG(y)) == 0));
+    return MKINT((i_int)(mpz_cmp(GETMPZ(x), GETMPZ(y)) == 0));
 }
 
 VAL bigLt(VM* vm, VAL x, VAL y) {
-    return MKINT((i_int)(mpz_cmp(*BIG(x), *BIG(y)) < 0));
+    return MKINT((i_int)(mpz_cmp(GETMPZ(x), GETMPZ(y)) < 0));
 }
 
 VAL bigGt(VM* vm, VAL x, VAL y) {
-    return MKINT((i_int)(mpz_cmp(*BIG(x), *BIG(y)) > 0));
+    return MKINT((i_int)(mpz_cmp(GETMPZ(x), GETMPZ(y)) > 0));
 }
 
 VAL bigLe(VM* vm, VAL x, VAL y) {
-    return MKINT((i_int)(mpz_cmp(*BIG(x), *BIG(y)) <= 0));
+    return MKINT((i_int)(mpz_cmp(GETMPZ(x), GETMPZ(y)) <= 0));
 }
 
 VAL bigGe(VM* vm, VAL x, VAL y) {
-    return MKINT((i_int)(mpz_cmp(*BIG(x), *BIG(y)) >= 0));
+    return MKINT((i_int)(mpz_cmp(GETMPZ(x), GETMPZ(y)) >= 0));
 }
 
 VAL idris_bigEq(VM* vm, VAL x, VAL y) {
@@ -340,7 +334,7 @@ VAL idris_castBigInt(VM* vm, VAL i) {
     if (ISINT(i)) {
         return i;
     } else {
-        return MKINT((i_int)(mpz_get_ui(*BIG(i))));
+        return MKINT((i_int)(mpz_get_ui(GETMPZ(i))));
     }
 }
 
@@ -348,14 +342,14 @@ VAL idris_castBigFloat(VM* vm, VAL i) {
     if (ISINT(i)) {
         return MKFLOAT(vm, GETINT(i));
     } else {
-        return MKFLOAT(vm, mpz_get_d(*BIG(i)));
+        return MKFLOAT(vm, mpz_get_d(GETMPZ(i)));
     }
 }
 
 VAL idris_castFloatBig(VM* vm, VAL f) {
     double val = GETFLOAT(f);
     BigInt * cl = allocBig(vm);
-    mpz_init_set_d(*big(cl), val);
+    mpz_init_set_d(*getmpz(cl), val);
     return (VAL)cl;
 }
 
@@ -364,7 +358,7 @@ VAL idris_castStrBig(VM* vm, VAL i) {
 }
 
 VAL idris_castBigStr(VM* vm, VAL i) {
-    char* str = mpz_get_str(NULL, 10, *big(getbig(vm, i)));
+    char* str = mpz_get_str(NULL, 10, *getmpz(getbig(vm, i)));
     return MKSTR(vm, str);
 }
 
