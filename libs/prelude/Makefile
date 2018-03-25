@@ -2,7 +2,6 @@ IDRIS ?= idris
 PKG   := prelude
 
 build:
-	echo "LOC $(IDRIS)"
 	$(IDRIS) --build ${PKG}.ipkg
 
 install:
