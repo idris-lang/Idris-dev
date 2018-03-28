@@ -6,8 +6,8 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable,
-             ScopedTypeVariables #-}
+{-# LANGUAGE CPP, DeriveFoldable, DeriveFunctor, DeriveGeneric,
+             DeriveTraversable, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Docstrings (
     Docstring(..), Block(..), Inline(..), parseDocstring, renderDocstring
@@ -19,8 +19,11 @@ import Idris.Core.TT (Err, Name, OutputAnnotation(..), Term, TextFormatting(..))
 
 import Util.Pretty
 
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding ((<$>), (<>))
+#else
 import Prelude hiding ((<$>))
-
+#endif
 import qualified Cheapskate as C
 import Cheapskate.Html (renderDoc)
 import qualified Cheapskate.Types as CT

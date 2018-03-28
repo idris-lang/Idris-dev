@@ -5,7 +5,7 @@ Description : The JavaScript common code generator.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP, OverloadedStrings #-}
 
 module IRTS.JavaScript.Codegen( codegenJs
                               , CGConf(..)
@@ -47,6 +47,11 @@ data CGStats = CGStats { usedBigInt :: Bool
                        , partialApplications :: Set Partial
                        , hiddenClasses :: Set HiddenClass
                        }
+
+#if (MIN_VERSION_base(4,11,0))
+instance Semigroup CGStats where
+    (<>) = mappend
+#endif
 
 -- If we generate code for two declarations we want to merge their code
 -- generation stats.

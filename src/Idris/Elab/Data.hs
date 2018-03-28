@@ -5,7 +5,7 @@ Description : Code to elaborate data structures.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE CPP, PatternGuards #-}
 module Idris.Elab.Data(elabData) where
 
 import Idris.AbsSyntax
@@ -24,7 +24,11 @@ import Idris.Output (iWarn, sendHighlighting)
 
 import Util.Pretty
 
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding (id, (.), (<>))
+#else
 import Prelude hiding (id, (.))
+#endif
 
 import Control.Category
 import Control.Monad

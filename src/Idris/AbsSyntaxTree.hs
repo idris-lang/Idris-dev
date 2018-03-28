@@ -6,9 +6,10 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric,
-             DeriveTraversable, FlexibleContexts, FlexibleInstances,
-             MultiParamTypeClasses, PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFoldable, DeriveFunctor,
+             DeriveGeneric, DeriveTraversable, FlexibleContexts,
+             FlexibleInstances, MultiParamTypeClasses, PatternGuards,
+             TypeSynonymInstances #-}
 
 module Idris.AbsSyntaxTree where
 
@@ -25,8 +26,11 @@ import Util.Pretty
 import Idris.Colours
 
 import System.IO
-
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding (Foldable, Traversable, (<$>), (<>))
+#else
 import Prelude hiding (Foldable, Traversable, (<$>))
+#endif
 
 import Control.Applicative ((<|>))
 import qualified Control.Monad.Trans.Class as Trans (lift)

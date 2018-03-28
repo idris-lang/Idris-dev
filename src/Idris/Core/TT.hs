@@ -22,10 +22,10 @@ TT is the core language of Idris. The language has:
    * We have a simple collection of tactics which we use to elaborate source
      programs with implicit syntax into fully explicit terms.
 -}
-{-# LANGUAGE DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric,
-             DeriveTraversable, FlexibleContexts, FlexibleInstances,
-             FunctionalDependencies, MultiParamTypeClasses, PatternGuards,
-             TypeSynonymInstances #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFoldable, DeriveFunctor,
+             DeriveGeneric, DeriveTraversable, FlexibleContexts,
+             FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses,
+             PatternGuards, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.TT(
     AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
@@ -62,6 +62,10 @@ import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Functor(..), Int,
                 Integer, Maybe(..), Monad(..), Monoid(..), Num(..), Ord(..),
                 Ordering(..), Show(..), String, div, error, fst, max, min, mod,
                 not, otherwise, read, snd, ($), (&&), (.), (||))
+
+#if (MIN_VERSION_base(4,11,0))
+import qualified Prelude as S (Semigroup(..))
+#endif
 
 import Control.Applicative (Alternative, Applicative(..))
 import qualified Control.Applicative as A (Alternative(..))
@@ -116,6 +120,11 @@ fc_end :: FC -> (Int, Int)
 fc_end (FC _ _ end) = end
 fc_end NoFC = (0, 0)
 fc_end (FileFC f) = (0, 0)
+
+#if (MIN_VERSION_base(4,11,0))
+instance S.Semigroup FC where
+    (<>) = mappend
+#endif
 
 instance Monoid FC where
   mempty = NoFC

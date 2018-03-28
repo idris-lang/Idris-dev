@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE DeriveFunctor, MultiWayIf, PatternGuards #-}
+{-# LANGUAGE CPP, DeriveFunctor, MultiWayIf, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Docs (
@@ -30,7 +30,11 @@ import Idris.Options (HowMuchDocs(..))
 
 import Util.Pretty
 
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding ((<$>), (<>))
+#else
 import Prelude hiding ((<$>))
+#endif
 
 import Data.List
 import Data.Maybe
