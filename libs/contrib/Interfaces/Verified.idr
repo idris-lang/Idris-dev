@@ -100,7 +100,7 @@ VerifiedMonad Maybe where
     monadAssociativity (Just x) f g = Refl
 
 interface Semigroup a => VerifiedSemigroup a where
-  total semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
+  semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
 
 implementation VerifiedSemigroup (List a) where
   semigroupOpIsAssociative = appendAssociative
@@ -118,8 +118,8 @@ implementation VerifiedSemigroup (List a) where
   semigroupOpIsAssociative = multAssociativeZ
 
 interface (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
-  total monoidNeutralIsNeutralL : (l : a) -> l <+> Algebra.neutral = l
-  total monoidNeutralIsNeutralR : (r : a) -> Algebra.neutral <+> r = r
+  monoidNeutralIsNeutralL : (l : a) -> l <+> Algebra.neutral = l
+  monoidNeutralIsNeutralR : (r : a) -> Algebra.neutral <+> r = r
 
 [PlusNatMonoidV] VerifiedMonoid Nat using PlusNatSemiV, PlusNatMonoid where
    monoidNeutralIsNeutralL = plusZeroRightNeutral
@@ -142,8 +142,8 @@ implementation VerifiedMonoid (List a) where
   monoidNeutralIsNeutralR xs = Refl
 
 interface (VerifiedMonoid a, Group a) => VerifiedGroup a where
-  total groupInverseIsInverseL : (l : a) -> l <+> inverse l = Algebra.neutral
-  total groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
+  groupInverseIsInverseL : (l : a) -> l <+> inverse l = Algebra.neutral
+  groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
 
 VerifiedGroup ZZ using PlusZZMonoidV where
   groupInverseIsInverseL k = rewrite sym $ multCommutativeZ (NegS 0) k in
@@ -156,15 +156,15 @@ VerifiedGroup ZZ using PlusZZMonoidV where
                              plusNegateInverseRZ k
 
 interface (VerifiedGroup a, AbelianGroup a) => VerifiedAbelianGroup a where
-  total abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
+  abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
 
 VerifiedAbelianGroup ZZ where
   abelianGroupOpIsCommutative = plusCommutativeZ
 
 interface (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
-  total ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
-  total ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
-  total ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)
+  ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
+  ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
+  ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)
 
 VerifiedRing ZZ where
   ringOpIsAssociative = multAssociativeZ
@@ -172,19 +172,19 @@ VerifiedRing ZZ where
   ringOpIsDistributiveR = multDistributesOverPlusLeftZ
 
 interface (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
-  total ringWithUnityIsUnityL : (l : a) -> l <.> Algebra.unity = l
-  total ringWithUnityIsUnityR : (r : a) -> Algebra.unity <.> r = r
+  ringWithUnityIsUnityL : (l : a) -> l <.> Algebra.unity = l
+  ringWithUnityIsUnityR : (r : a) -> Algebra.unity <.> r = r
 
 VerifiedRingWithUnity ZZ where
   ringWithUnityIsUnityL = multOneRightNeutralZ
   ringWithUnityIsUnityR = multOneLeftNeutralZ
 
 interface JoinSemilattice a => VerifiedJoinSemilattice a where
-  total joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
-  total joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
-  total joinSemilatticeJoinIsIdempotent  : (e : a)       -> join e e = e
+  joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
+  joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
+  joinSemilatticeJoinIsIdempotent  : (e : a)       -> join e e = e
 
 interface MeetSemilattice a => VerifiedMeetSemilattice a where
-  total meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
-  total meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
-  total meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
+  meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
+  meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
+  meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e

@@ -571,12 +571,14 @@ range : {len : Nat} -> Vect len (Fin len)
 range {len=Z}   = []
 range {len=S _} = FZ :: map FS range
 
-||| Transpose a Vect of Vects, turning rows into columns and vice versa.
+||| Transpose a `Vect` of `Vect`s, turning rows into columns and vice versa.
+|||
+||| This is like zipping all the inner `Vect`s together and is equivalent to `traverse id`.
 |||
 ||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
-transpose : {n : Nat} -> Vect m (Vect n elem) -> Vect n (Vect m elem)
-transpose []        = replicate _ []
-transpose (x :: xs) = zipWith (::) x (transpose xs)
+transpose : Vect m (Vect n elem) -> Vect n (Vect m elem)
+transpose []        = replicate _ []                -- = [| [] |]
+transpose (x :: xs) = zipWith (::) x (transpose xs) -- = [| x :: xs |]
 
 --------------------------------------------------------------------------------
 -- Applicative/Monad/Traversable
@@ -584,7 +586,6 @@ transpose (x :: xs) = zipWith (::) x (transpose xs)
 
 implementation Applicative (Vect k) where
     pure = replicate _
-
     fs <*> vs = zipWith apply fs vs
 
 ||| This monad is different from the List monad, (>>=)
@@ -593,8 +594,8 @@ implementation Monad (Vect len) where
     m >>= f = diag (map f m)
 
 implementation Traversable (Vect n) where
-    traverse f [] = pure Vect.Nil
-    traverse f (x::xs) = [| Vect.(::) (f x) (traverse f xs) |]
+    traverse f [] = pure []
+    traverse f (x::xs) = [| f x :: traverse f xs |]
 
 --------------------------------------------------------------------------------
 -- Show
