@@ -123,7 +123,7 @@ Package files support comments using the standard Idris singleline ``--`` and mu
 Using Package files
 ===================
 
-Given an Idris package file ``text.ipkg`` it can be used with the Idris compiler as follows:
+Given an Idris package file ``test.ipkg`` it can be used with the Idris compiler as follows:
 
 + ``idris --build test.ipkg`` will build all modules in the package
 
