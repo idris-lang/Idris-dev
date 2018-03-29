@@ -19,11 +19,6 @@ Unique0 = Unique
 Unique1 : (t0 -> Type) -> Type
 Unique1 {t0} t1 = (v : t0) -> Unique0 (t1 v)
 
-namespace Iso
-
-  from : {A, B : Type} -> Iso A B -> (B -> A)
-  from (MkIso to from toFrom fromTo) = from
-
 namespace Fin
 
   ||| 'Tail' of a finite function

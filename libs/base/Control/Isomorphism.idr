@@ -8,12 +8,12 @@ import Control.Category
 %access public export
 
 ||| An isomorphism between two types
-data Iso : Type -> Type -> Type where
-  MkIso : (to : a -> b) ->
-          (from : b -> a) ->
-          (toFrom : (y : b) -> to (from y) = y) ->
-          (fromTo : (x : a) -> from (to x) = x) ->
-          Iso a b
+record Iso a b where
+  constructor MkIso
+  to : a -> b
+  from : b -> a
+  toFrom : (y : b) -> to (from y) = y
+  fromTo : (x : a) -> from (to x) = x
 
 -- Isomorphism properties
 
