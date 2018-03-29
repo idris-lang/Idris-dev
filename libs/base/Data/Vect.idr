@@ -104,11 +104,35 @@ take : (n : Nat) -> Vect (n + m) elem -> Vect n elem
 take Z     xs        = []
 take (S k) (x :: xs) = x :: take k xs
 
+takeTake : (n : Nat) -> (m : Nat) -> (xs : Vect (n + m + l) a) -> take n (take (n + m) xs) = take n {m = m + l} (rewrite plusAssociative n m l in xs)
+takeTake Z m xs = Refl
+takeTake {l} (S k) m (x :: xs) = rewrite aux (plusAssociative k m l) x xs in cong { f = (x ::) } $ takeTake k m xs
+  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
+              (x : a) -> (xs : Vect m a) ->
+              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
+        aux Refl x xs = Refl
+
 ||| Remove the first n elements of a Vect
 ||| @ n the number of elements to remove
 drop : (n : Nat) -> Vect (n + m) elem -> Vect m elem
 drop Z     xs        = xs
 drop (S k) (x :: xs) = drop k xs
+
+dropDrop : (n : Nat) -> (m : Nat) -> (xs : Vect (m + n + l) a) -> drop n (drop m {m = n + l} (rewrite plusAssociative m n l in xs)) = drop (m + n) xs
+dropDrop n Z xs = Refl
+dropDrop {l} n (S k) (x :: xs) = rewrite aux (plusAssociative k n l) x xs in dropDrop n k xs
+  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
+              (x : a) -> (xs : Vect m a) ->
+              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
+        aux Refl x xs = Refl
+
+takeDropDropTake : (n : Nat) -> (m : Nat) -> (xs : Vect (m + n + l) a) -> take n (drop m {m = n + l} (rewrite plusAssociative m n l in xs)) = drop m (take (m + n) xs)
+takeDropDropTake n Z xs = Refl
+takeDropDropTake {l} n (S k) (x :: xs) = rewrite aux (plusAssociative k n l) x xs in takeDropDropTake n k xs
+  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
+              (x : a) -> (xs : Vect m a) ->
+              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
+        aux Refl x xs = Refl
 
 ||| Take the longest prefix of a Vect such that all elements satisfy some
 ||| Boolean predicate.
@@ -187,6 +211,18 @@ fromList l =
 (++) : (xs : Vect m elem) -> (ys : Vect n elem) -> Vect (m + n) elem
 (++) []      ys = ys
 (++) (x::xs) ys = x :: xs ++ ys
+
+takePrefix : (ns : Vect n a) -> (ms : Vect m a) -> take n (ns ++ ms) = ns
+takePrefix [] _ = Refl
+takePrefix (n :: ns) ms = cong $ takePrefix ns ms
+
+dropPrefix : (ns : Vect n a) -> (ms : Vect m a) -> drop n (ns ++ ms) = ms
+dropPrefix [] ms = Refl
+dropPrefix (_ :: ns) ms = dropPrefix ns ms
+
+takeDropConcat : (n : Nat) -> (xs : Vect (n + m) a) -> take n xs ++ drop n xs = xs
+takeDropConcat Z xs = Refl
+takeDropConcat (S k) (x :: xs) = cong $ takeDropConcat k xs
 
 ||| Repeate some value some number of times.
 |||
@@ -568,11 +604,21 @@ implementation Show elem => Show (Vect len elem) where
     show = show . toList
 
 --------------------------------------------------------------------------------
+-- Uninhabited
+--------------------------------------------------------------------------------
+
+Uninhabited a => Uninhabited (Vect (S n) a) where
+    uninhabited (x :: _) = uninhabited x
+
+--------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
 
 vectConsCong : (x : elem) -> (xs : Vect len elem) -> (ys : Vect m elem) -> (xs = ys) -> (x :: xs = x :: ys)
 vectConsCong x xs xs Refl = Refl
+
+vectMustBeNil : (xs : Vect Z a) -> xs = []
+vectMustBeNil [] = Refl
 
 vectNilRightNeutral : (xs : Vect n a) -> xs ++ [] = xs
 vectNilRightNeutral [] = Refl

@@ -4,8 +4,10 @@ import Control.Algebra
 import Control.Algebra.Lattice
 import Control.Algebra.NumericImplementations
 import Control.Algebra.VectorSpace
+import Data.Vect
 import Data.ZZ
 
+%default total
 %access public export
 
 -- Due to these being basically unused and difficult to implement,
@@ -27,6 +29,12 @@ VerifiedFunctor Maybe where
   functorComposition Nothing g1 g2 = Refl
   functorComposition (Just x) g1 g2 = Refl
 
+VerifiedFunctor (Vect n) where
+  functorIdentity [] = Refl
+  functorIdentity (x :: xs) = rewrite functorIdentity xs in Refl
+  functorComposition [] _ _ = Refl
+  functorComposition (x :: xs) f g = rewrite functorComposition xs f g in Refl
+
 interface (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type -> Type) where
   applicativeMap : (x : f a) -> (g : a -> b) ->
                    map g x = pure g <*> x
@@ -37,6 +45,21 @@ interface (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type ->
                             (<*>) {f} (pure g) (pure x) = pure {f} (g x)
   applicativeInterchange : (x : a) -> (g : f (a -> b)) ->
                            g <*> pure x = pure (\g' : (a -> b) => g' x) <*> g
+
+VerifiedApplicative (Vect n) where
+  applicativeMap [] f = Refl
+  applicativeMap (x :: xs) f = rewrite applicativeMap xs f in Refl
+  applicativeIdentity xs = rewrite sym $ applicativeMap xs id in functorIdentity xs
+  applicativeComposition [] [] [] = Refl
+  applicativeComposition (x :: xs) (f :: fs) (g :: gs) = rewrite applicativeComposition xs fs gs in Refl
+  applicativeHomomorphism = prf
+    where prf : with Vect ((x : a) -> (f : a -> b) -> zipWith Basics.apply (replicate m f) (replicate m x) = replicate m (f x))
+          prf {m = Z} x f = Refl
+          prf {m = S k} x f = rewrite prf {m = k} x f in Refl
+  applicativeInterchange = prf
+    where prf : with Vect ((x : a) -> (f : Vect m (a -> b)) -> zipWith Basics.apply f (replicate m x) = zipWith Basics.apply (replicate m (\f' => f' x)) f)
+          prf {m = Z} x [] = Refl
+          prf {m = S k} x (f :: fs) = rewrite prf x fs in Refl
 
 VerifiedApplicative Maybe where
   applicativeMap Nothing g = Refl
