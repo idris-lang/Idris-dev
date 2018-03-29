@@ -5,7 +5,7 @@ Description : Elaborator utilities.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE FlexibleContexts, PatternGuards #-}
+{-# LANGUAGE CPP, FlexibleContexts, PatternGuards #-}
 module Idris.Elab.Utils where
 
 import Idris.AbsSyntax
@@ -20,6 +20,10 @@ import Idris.Error
 import Idris.Output
 
 import Util.Pretty
+
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding ((<>))
+#endif
 
 import Control.Monad
 import Control.Monad.State

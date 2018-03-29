@@ -6,7 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE CPP, FlexibleInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 
 module Idris.Output (clearHighlights, emitWarning, formatMessage, idemodePutSExp,
@@ -30,7 +30,11 @@ import Util.Pretty
 import Util.ScreenSize (getScreenWidth)
 import Util.System (isATTY)
 
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding ((<$>), (<>))
+#else
 import Prelude hiding ((<$>))
+#endif
 
 import Control.Arrow (first)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
