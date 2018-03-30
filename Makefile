@@ -1,4 +1,4 @@
-.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib fast test_js test_c stylize test test_clean lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs
+.PHONY: build configure doc install linecount nodefault pinstall lib_clean relib fast test_js test_c stylize test test_clean lib_doc lib_doc_clean user_doc_html user_doc_pdf user_docs rts rts_clean
 
 ARGS=
 TEST-JOBS=
@@ -6,6 +6,10 @@ TEST-ARGS=
 
 include config.mk
 -include custom.mk
+
+IDRIS ?= $(CURDIR)/dist/build/idris/idris
+CB=env IDRIS=$(IDRIS) $(CABAL)
+MK=+env IDRIS=$(IDRIS) $(MAKE)
 
 ifdef CI
 CABALFLAGS += -f CI
@@ -15,14 +19,17 @@ endif
 endif
 
 install:
-	$(CABAL) install $(CABALFLAGS)
+	$(CB) install $(CABALFLAGS)
 
 pinstall: CABALFLAGS += --enable-executable-profiling
 pinstall: dist/setup-config
-	$(CABAL) install $(CABALFLAGS)
+	$(CB) install $(CABALFLAGS)
 
 build: dist/setup-config
-	$(CABAL) build $(CABALFLAGS)
+	$(CB) build
+
+$(IDRIS): dist/setup-config
+	$(CB) build "exe:idris"
 
 test: doc test_c stylize
 
@@ -30,53 +37,68 @@ stylize:
 	./stylize.sh
 
 test_c:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CB) test $(ARGS) --test-options \
 		"$(TEST-ARGS) --rerun-update +RTS -N$(TEST-JOBS) -RTS"
 
 test_js:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CB) test $(ARGS) --test-options \
 		"$(TEST-ARGS) --node --rerun-update +RTS -N$(TEST-JOBS) -RTS"
 
 test_update:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CB) test $(ARGS) --test-options \
 		"$(TEST-ARGS) --accept +RTS -N$(TEST-JOBS) -RTS"
 
 test_clean:
 	rm -f test/*~
 	rm -f test/*/output
 
+rts:
+	$(MK) -C rts
+
+rts_install:
+	$(MK) -C rts install
+
+rts_clean:
+	$(MK) -C rts clean
+
+lib:
+	$(MK) -C libs
+
+lib_install:
+	$(MK) -C libs install
+
 lib_clean:
-	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris RTS=../../dist/build/rts/libidris_rts clean
+	$(MK) -C libs clean
+
+lib_doc:
+	+$(MK) -C libs doc
+
+lib_doc_clean:
+	+$(MK) -C libs doc_clean
 
 relib: lib_clean
-	$(CABAL) install $(CABALFLAGS)
+	$(CB) install $(CABALFLAGS)
 
 linecount:
 	wc -l src/Idris/*.hs src/Idris/Elab/*.hs src/Idris/Core/*.hs src/IRTS/*.hs src/Pkg/*.hs src/Util/*.hs
 
 #Note: this doesn't yet link to Hackage properly
 doc: dist/setup-config
-	$(CABAL) haddock --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
-
-lib_doc:
-	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc
-
-lib_doc_clean:
-	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc_clean
+	$(CB) haddock --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
 
 user_docs: user_doc_html user_doc_pdf
 
 user_doc_clean:
-	$(MAKE) -C docs clean
+	$(MK) -C docs clean
 
 user_doc_html:
-	$(MAKE) -C docs html
+	$(MK) -C docs html
 
 user_doc_pdf:
-	$(MAKE) -C docs latexpdf
+	$(MK) -C docs latexpdf
 
 fast:
-	$(CABAL) install $(CABALFLAGS) --ghc-option=-O0
+	$(CB) install $(CABALFLAGS) --ghc-option=-O0
 
 dist/setup-config:
-	$(CABAL) configure $(CABALFLAGS)
+	$(CB) configure $(CABALFLAGS)

@@ -6,6 +6,8 @@
 
 import Control.Monad
 import Data.IORef
+import Data.Maybe (fromMaybe)
+import Data.List (nub, isInfixOf)
 import Control.Exception (SomeException, catch)
 
 import Distribution.Simple
@@ -36,14 +38,11 @@ import Distribution.Types.UnqualComponentName
 
 -- -----------------------------------------------------------------------------
 -- Idris Command Path
+idrisCmd local = Px.joinPath $ splitDirectories $ ".." </> ".." </> buildDir local </> "idris" </> "idris"
 
--- make on mingw32 exepects unix style separators
-#ifdef mingw32_HOST_OS
-(<//>) = (Px.</>)
-idrisCmd local = Px.joinPath $ splitDirectories $ ".." <//> ".." <//> buildDir local <//> "idris" <//> "idris"
-#else
-idrisCmd local = ".." </> ".." </>  buildDir local </>  "idris" </>  "idris"
-#endif
+
+shinvoke verbosity cmd = P.runProgramInvocation verbosity . P.simpleProgramInvocation cmd
+
 
 -- -----------------------------------------------------------------------------
 -- Make Commands
@@ -55,8 +54,7 @@ mymake = "gmake"
 #else
 mymake = "make"
 #endif
-make verbosity =
-   P.runProgramInvocation verbosity . P.simpleProgramInvocation mymake
+make verbosity = shinvoke verbosity mymake
 
 #ifdef mingw32_HOST_OS
 windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation "windres"
@@ -64,33 +62,23 @@ windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation
 -- -----------------------------------------------------------------------------
 -- Flags
 
-usesGMP :: S.ConfigFlags -> Bool
-usesGMP flags =
-  case lookup (mkFlagName "gmp") (S.configConfigurationsFlags flags) of
+flg nm flags = case lookup (mkFlagName nm) (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
+
+
+usesGMP :: S.ConfigFlags -> Bool
+usesGMP = flg "gmp"
 
 execOnly :: S.ConfigFlags -> Bool
-execOnly flags =
-  case lookup (mkFlagName "execonly") (S.configConfigurationsFlags flags) of
-    Just True -> True
-    Just False -> False
-    Nothing -> False
+execOnly = flg "execonly"
 
 isRelease :: S.ConfigFlags -> Bool
-isRelease flags =
-    case lookup (mkFlagName "release") (S.configConfigurationsFlags flags) of
-      Just True -> True
-      Just False -> False
-      Nothing -> False
+isRelease = flg "release"
 
 isFreestanding :: S.ConfigFlags -> Bool
-isFreestanding flags =
-  case lookup (mkFlagName "freestanding") (S.configConfigurationsFlags flags) of
-    Just True -> True
-    Just False -> False
-    Nothing -> False
+isFreestanding = flg "freestanding"
 
 #if !(MIN_VERSION_Cabal(2,0,0))
 mkFlagName :: String -> FlagName
@@ -100,13 +88,12 @@ mkFlagName = FlagName
 -- -----------------------------------------------------------------------------
 -- Clean
 
-idrisClean _ flags _ _ = cleanStdLib
+idrisClean _ flags _ _ = cleanStdLib >> cleanRts
    where
       verbosity = S.fromFlag $ S.cleanVerbosity flags
 
-      cleanStdLib = makeClean "libs"
-
-      makeClean dir = make verbosity [ "-C", dir, "clean", "IDRIS=idris" ]
+      cleanStdLib = make verbosity ["lib_clean"]
+      cleanRts = make verbosity ["rts_clean"]
 
 -- -----------------------------------------------------------------------------
 -- Configure
@@ -178,12 +165,16 @@ generateToolchainModule verbosity srcDir toolDir = do
     createDirectoryIfMissingVerbose verbosity True srcDir
     rewriteFile toolPath (commonContent ++ toolContent)
 
-idrisConfigure _ flags pkgdesc local = do
+idrisPostConf _ flags pkgdesc local = do
+    nixLDFLAGS <- lookupEnv "NIX_LDFLAGS"
     configureRTS
     withLibLBI pkgdesc local $ \lib libcfg -> do
       let libAutogenDir = autogenComponentModulesDir local libcfg
       let libDirs = extraLibDirs $ libBuildInfo lib
-      generateBuildFlagsModule verbosity libAutogenDir libDirs
+      let nixLibDirs = map (drop 2)
+            $ filter ("-gmp-" `isInfixOf`)
+            $ words $ fromMaybe "" nixLDFLAGS
+      generateBuildFlagsModule verbosity libAutogenDir (nub $ libDirs ++ nixLibDirs)
       generateVersionModule verbosity libAutogenDir (isRelease (configFlags local))
       if isFreestanding $ configFlags local
           then do
@@ -204,7 +195,7 @@ idrisConfigure _ flags pkgdesc local = do
       -- installing but shouldn't be in the distribution. And it won't make the
       -- distribution if it's not there, so instead I just delete
       -- the file after configure.
-      configureRTS = make verbosity ["-C", "rts", "clean"]
+      configureRTS = make verbosity ["rts_clean"]
 
 #if !(MIN_VERSION_Cabal(2,0,0))
       autogenComponentModulesDir lbi _ = autogenModulesDir lbi
@@ -263,27 +254,33 @@ idrisPreBuild args flags = do
         verbosity = S.fromFlag $ S.buildVerbosity flags
         dir = S.fromFlagOrDefault "dist" $ S.buildDistPref flags
 #else
-        return (Nothing, [])
+        preBuild simpleUserHooks args flags
 #endif
 
-idrisBuild _ flags _ local
+idrisBuildHook pd lbi hooks flags = do
+   let exes = map (unUnqualComponentName . exeName) (executables pd)
+   let nflags = case S.buildArgs flags of
+         ["regression-and-feature-tests"] ->
+           flags { S.buildArgs = "regression-and-feature-tests" : exes }
+         _ -> flags
+   buildHook simpleUserHooks pd lbi hooks flags
+
+
+idrisPostBuild _ flags _ local
    = if (execOnly (configFlags local)) then buildRTS
         else do buildStdLib
                 buildRTS
    where
       verbosity = S.fromFlag $ S.buildVerbosity flags
-
       buildStdLib = do
-            putStrLn "Building libraries..."
-            makeBuild "libs"
-         where
-            makeBuild dir = make verbosity [ "-C", dir, "build" , "IDRIS=" ++ idrisCmd local]
-
-      buildRTS = make verbosity (["-C", "rts", "build"] ++
-                                   gmpflag (usesGMP (configFlags local)))
-
+        putStrLn "Building libraries..."
+        make verbosity [ "-j8", "lib", "IDRIS=" ++ idrisCmd local]
+      buildRTS = do
+        putStrLn "Building runtime..."
+        make verbosity $ ["rts"] ++ gmp
       gmpflag False = []
       gmpflag True = ["GMP=-DIDRIS_GMP"]
+      gmp = gmpflag (usesGMP (configFlags local))
 
 -- -----------------------------------------------------------------------------
 -- Copy/Install
@@ -297,22 +294,22 @@ idrisInstall verbosity copy pkg local
       target = datadir $ L.absoluteInstallDirs pkg local copy
 
       installStdLib = do
-        let target' = target -- </> "libs"
-        putStrLn $ "Installing libraries in " ++ target'
-        makeInstall "libs" target'
+         let target' = target -- </> "libs"
+         putStrLn $ "Installing libraries in " ++ target'
+         make' "lib_install" target'
 
       installRTS = do
          let target' = target </> "rts"
          putStrLn $ "Installing run time system in " ++ target'
-         makeInstall "rts" target'
+         make' "rts_install" target'
 
       installManPage = do
          let mandest = mandir (L.absoluteInstallDirs pkg local copy) ++ "/man1"
          notice verbosity $ unwords ["Copying man page to", mandest]
          installOrdinaryFiles verbosity mandest [("man", "idris.1")]
 
-      makeInstall src target =
-         make verbosity [ "-C", src, "install" , "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
+      make' x target =
+         make verbosity [ x, "TARGET=" ++ target, "IDRIS=" ++ idrisCmd local]
 
 -- -----------------------------------------------------------------------------
 -- Test
@@ -325,7 +322,10 @@ fixPkg pkg target = pkg { dataDir = target }
 
 idrisTestHook args pkg local hooks flags = do
   let target = datadir $ L.absoluteInstallDirs pkg local NoCopyDest
-  testHook simpleUserHooks args (fixPkg pkg target) local hooks flags
+  idris <- canonicalizePath (buildDir local </> "idris" </> "idris")
+  setEnv "IDRIS" idris
+--  testHook simpleUserHooks args (fixPkg pkg target) local hooks flags
+  testHook simpleUserHooks args pkg local hooks flags
 
 -- -----------------------------------------------------------------------------
 -- Main
@@ -334,9 +334,10 @@ idrisTestHook args pkg local hooks flags = do
 -- See https://github.com/haskell/cabal/issues/709
 main = defaultMainWithHooks $ simpleUserHooks
    { postClean = idrisClean
-   , postConf  = idrisConfigure
+   , postConf  = idrisPostConf
    , preBuild = idrisPreBuild
-   , postBuild = idrisBuild
+   , buildHook = idrisBuildHook
+   , postBuild = idrisPostBuild
    , postCopy = \_ flags pkg local ->
                   idrisInstall (S.fromFlag $ S.copyVerbosity flags)
                                (S.fromFlag $ S.copyDest flags) pkg local

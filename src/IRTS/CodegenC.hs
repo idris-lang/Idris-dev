@@ -6,6 +6,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE CPP #-}
 
 module IRTS.CodegenC (codegenC) where
 
@@ -96,6 +97,12 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
              exit <- rawSystem comp args
              when (exit /= ExitSuccess) $
                 putStrLn ("FAILURE: " ++ show comp ++ " " ++ show args)
+#ifdef darwin_HOST_OS
+             cexit <- rawSystem "chmod" ["755", out]
+             when (cexit /= ExitSuccess) $
+                putStrLn $ "Unable to change permissions for " ++ out
+#endif
+
   where
     getExp (Export _ _ exp) = exp
 
