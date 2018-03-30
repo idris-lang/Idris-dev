@@ -24,7 +24,7 @@ import System.Directory
 import System.FilePath
 
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
-    deriving (Show, Eq)
+    deriving (Show, Ord, Eq)
 
 newtype PkgName = PkgName String
 

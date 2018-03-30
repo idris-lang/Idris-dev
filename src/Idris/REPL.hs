@@ -5,7 +5,7 @@ License     : BSD3
 Maintainer  : The Idris Community.
 -}
 
-{-# LANGUAGE FlexibleContexts, PatternGuards #-}
+{-# LANGUAGE CPP, FlexibleContexts, PatternGuards #-}
 -- FIXME: {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 {-# OPTIONS_GHC -fwarn-unused-imports #-}
 
@@ -82,7 +82,11 @@ import Idris.WhoCalls
 import IRTS.CodegenCommon
 import IRTS.Compiler
 import Network
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding (id, (.), (<$>), (<>))
+#else
 import Prelude hiding (id, (.), (<$>))
+#endif
 import System.Console.Haskeline as H
 import System.Directory
 import System.Environment

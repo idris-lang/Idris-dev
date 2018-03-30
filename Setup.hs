@@ -16,7 +16,7 @@ import Distribution.Simple.InstallDirs as I
 import Distribution.Simple.LocalBuildInfo as L
 import qualified Distribution.Simple.Setup as S
 import qualified Distribution.Simple.Program as P
-import Distribution.Simple.Utils (createDirectoryIfMissingVerbose, rewriteFile, notice, installOrdinaryFiles)
+import Distribution.Simple.Utils
 import Distribution.Compiler
 import Distribution.PackageDescription
 import Distribution.Text
@@ -62,7 +62,8 @@ windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation
 -- -----------------------------------------------------------------------------
 -- Flags
 
-flg nm flags = case lookup (mkFlagName nm) (S.configConfigurationsFlags flags) of
+
+flg nm flags = case lookupFlagAssignment (mkFlagName nm) (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
@@ -83,6 +84,11 @@ isFreestanding = flg "freestanding"
 #if !(MIN_VERSION_Cabal(2,0,0))
 mkFlagName :: String -> FlagName
 mkFlagName = FlagName
+#endif
+
+#if !(MIN_VERSION_Cabal(2,2,0))
+lookupFlagAssignment :: FlagName -> FlagAssignment -> Maybe Bool
+lookupFlagAssignment = lookup
 #endif
 
 -- -----------------------------------------------------------------------------
@@ -110,7 +116,7 @@ generateBuildFlagsModule verbosity dir libdirs = do
     let buildFlagsModulePath = dir </> "BuildFlags_idris" Px.<.> "hs"
     putStrLn $ "Generating " ++ buildFlagsModulePath
     createDirectoryIfMissingVerbose verbosity True dir
-    rewriteFile buildFlagsModulePath contents
+    rewriteFileEx verbosity buildFlagsModulePath contents
   where contents = "module BuildFlags_idris where \n\n" ++
                    "extraLibDirs :: [String]\n" ++
                    "extraLibDirs = " ++ show libdirs
@@ -123,7 +129,7 @@ generateVersionModule verbosity dir release = do
     putStrLn $ "Generating " ++ versionModulePath ++
              if release then " for release" else " for prerelease " ++ hash
     createDirectoryIfMissingVerbose verbosity True dir
-    rewriteFile versionModulePath (versionModuleContents hash)
+    rewriteFileEx verbosity versionModulePath (versionModuleContents hash)
 
   where versionModuleContents h = "module Version_idris where\n\n" ++
                                   "gitHash :: String\n" ++
@@ -137,7 +143,7 @@ generateTargetModule verbosity dir targetDir = do
     let targetModulePath = dir </> "Target_idris" Px.<.> "hs"
     putStrLn $ "Generating " ++ targetModulePath
     createDirectoryIfMissingVerbose verbosity True dir
-    rewriteFile targetModulePath (versionModuleContents absPath targetDir)
+    rewriteFileEx verbosity targetModulePath (versionModuleContents absPath targetDir)
             where versionModuleContents absolute td = "module Target_idris where\n\n" ++
                                     "import System.FilePath\n" ++
                                     "import System.Environment\n" ++
@@ -163,7 +169,7 @@ generateToolchainModule verbosity srcDir toolDir = do
                                    "getToolchainDir = \"\""
     let toolPath = srcDir </> "Tools_idris" Px.<.> "hs"
     createDirectoryIfMissingVerbose verbosity True srcDir
-    rewriteFile toolPath (commonContent ++ toolContent)
+    rewriteFileEx verbosity toolPath (commonContent ++ toolContent)
 
 idrisPostConf _ flags pkgdesc local = do
     nixLDFLAGS <- lookupEnv "NIX_LDFLAGS"
@@ -230,6 +236,11 @@ idrisPostSDist args flags desc lbi = do
                               removeFile targetFile)
              (\e -> let e' = (e :: SomeException) in return ())
   postSDist simpleUserHooks args flags desc lbi
+
+#if !(MIN_VERSION_Cabal(2,0,0))
+rewriteFileEx :: Verbosity -> FilePath -> String -> IO ()
+rewriteFileEx _ = rewriteFile
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Build

@@ -456,7 +456,7 @@ implicit ``prf`` argument, which has the following type:
 
 .. code-block:: idris
 
-    prf : InState lbl (State ty) res}
+    prf : InState lbl (State ty) res
 
 This relies on a predicate ``InState``. A value of type ``InState x ty res``
 means that the reference ``x`` must have type ``ty`` in the list of

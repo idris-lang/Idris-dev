@@ -22,6 +22,7 @@ import Idris.Unlit
 
 import Control.Monad.State
 import Data.List
+import qualified Data.Set as S
 import Data.Time.Clock
 import System.Directory
 import Util.System (readSource)
@@ -48,10 +49,17 @@ modName (IBC fp src) = modName src
 -- any module has a descendent which needs reloading, return its
 -- source, otherwise return the IBC
 getModuleFiles :: [ModuleTree] -> [IFileType]
-getModuleFiles ts = nub $ execState (modList ts) [] where
-   modList :: [ModuleTree] -> State [IFileType] ()
+getModuleFiles ts
+    = let (files, rebuild) = execState (modList ts) ([], S.empty) in
+          updateToSrc rebuild (nub files)
+ where
+   -- Get the order of building modules. As we go we'll find things that
+   -- need rebuilding, which we keep track of in the Set.
+   -- The order of the list matters - things which get build first appear
+   -- in the list first. We'll remove any repetition later.
+   modList :: [ModuleTree] -> State ([IFileType], S.Set IFileType) ()
    modList [] = return ()
-   modList (m : ms) = do modTree [] m; modList ms
+   modList (m : ms) = do modTree S.empty m; modList ms
 
    modTree path (MTree p rechk tm deps)
        = do let file = chkReload rechk p
@@ -60,11 +68,11 @@ getModuleFiles ts = nub $ execState (modList ts) [] where
             let depMod = latest tm [] deps
             let needsRechk = rechk || depMod > tm
 
-            st <- get
-            if needsRechk then put $ nub (getSrc file : updateToSrc path st)
-                          else put $ nub (file : st)
-            st <- get
-            mapM_ (modTree (getSrc p : path)) deps
+            (st, rebuild) <- get
+            if needsRechk then put $ (getSrc file : st, S.union path rebuild)
+                          else put $ (file : st, rebuild)
+            (st, rebuild) <- get
+            mapM_ (modTree (S.insert (getSrc p) path)) deps
 
    chkReload False p = p
    chkReload True (IBC fn src) = chkReload True src
@@ -73,10 +81,11 @@ getModuleFiles ts = nub $ execState (modList ts) [] where
    getSrc (IBC fn src) = getSrc src
    getSrc f = f
 
-   updateToSrc path [] = []
-   updateToSrc path (x : xs) = if getSrc x `elem` path
-                                  then getSrc x : updateToSrc path xs
-                                  else x : updateToSrc path xs
+   updateToSrc rebuilds [] = []
+   updateToSrc rebuilds (x : xs)
+       = if getSrc x `S.member` rebuilds
+            then getSrc x : updateToSrc rebuilds xs
+            else x : updateToSrc rebuilds xs
 
 -- | Strip quotes and the backslash escapes that Haskeline adds
 extractFileName :: String -> String

@@ -5,7 +5,7 @@ Description : A Hoogle for Idris.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP, ScopedTypeVariables #-}
 
 module Idris.TypeSearch (
     searchByType
@@ -32,8 +32,12 @@ import Idris.Output (iPrintResult, iRenderError, iRenderOutput, iRenderResult,
 
 import Util.Pretty (Doc, annotate, char, text, vsep, (<>))
 
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding (Semigroup(..), pred)
+import qualified Prelude as S (Semigroup(..))
+#else
 import Prelude hiding (pred)
-
+#endif
 import Control.Applicative (Applicative(..), (<$>), (<*>), (<|>))
 import Control.Arrow (first, second, (&&&), (***))
 import Control.Monad (guard, when)
@@ -237,6 +241,17 @@ defaultScoreFunction (Score trans eqFlip amods) =
 instance Ord Score where
   compare = comparing defaultScoreFunction
 
+
+#if (MIN_VERSION_base(4,11,0))
+instance S.Semigroup a => S.Semigroup (Sided a) where
+    (Sided l1 r1) <> (Sided l2 r2) = Sided (l1 S.<> l2) (r1 S.<> r2)
+
+instance S.Semigroup AsymMods where
+    (<>) = mappend
+
+instance S.Semigroup Score where
+    (<>) = mappend
+#endif
 
 instance Monoid a => Monoid (Sided a) where
   mempty = Sided mempty mempty
