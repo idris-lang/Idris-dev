@@ -134,7 +134,7 @@ The resulting build should be on the `result` directory.
 
 If you wish to install it to your environment:
 
-   nix-env -f default.nix -i idris
+    nix-env -f default.nix -i idris
 
 For local development with Cabal:
 
