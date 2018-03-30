@@ -126,6 +126,20 @@ pow' : RingWithUnity a => a -> Nat -> a
 pow' _ Z     = unity
 pow' x (S n) = x <.> pow' x n
 
+-- TODO: This can be more efficient:
+-- stimes 5 x = x <+> (x <+> (x <+> (x <+> x)))
+--            = x <+> ((x <+> x) <+> (x <+> x))
+--            = let y = x <+> x in x <+> (y <+> y)
+-- 4 <+>s into 3 <+>
+||| Combine `n` copies of a value with `<+>`
+stimes : Semigroup a => (n : Nat) -> {auto prf : IsSucc n} -> a -> a
+stimes (S Z) x = x
+stimes (S (S k)) x = x <+> stimes (S k) x
+
+||| Like `stimes`, but accepting `Z` as argument.
+mtimes : Monoid a => (n : Nat) -> a -> a
+mtimes Z x = neutral
+mtimes (S k) x = stimes (S k) x
 
 -- XXX todo:
 --   Structures where "abs" make sense.

@@ -37,6 +37,12 @@ Category Iso where
   id = isoRefl
   (.) = flip isoTrans
 
+Semigroup (Iso a a) where
+  (<+>) = isoTrans
+
+Monoid (Iso a a) where
+  neutral = isoRefl
+
 ||| Isomorphism is symmetric
 isoSym : Iso a b -> Iso b a
 isoSym (MkIso to from toFrom fromTo) = MkIso from to fromTo toFrom
