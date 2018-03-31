@@ -17,7 +17,6 @@ mkDerivation {
   src = if lib.inNixShell then null else ./.;
   configureFlags = [ "-f-execonly" "-fFFI" "-fGMP" ];
   isLibrary = true;
-  doCheck = false;
   isExecutable = true;
   enableSeparateDataOutput = true;
   setupHaskellDepends = [ base Cabal directory filepath process cabal-install ];
