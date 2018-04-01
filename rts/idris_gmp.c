@@ -148,7 +148,7 @@ VAL idris_bigAnd(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return INTOP(&, x, y);
     } else {
-        return bigAnd(vm, (VAL)GETBIG(vm, x), (VAL)GETBIG(vm, y));
+        return bigAnd(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -156,7 +156,7 @@ VAL idris_bigOr(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return INTOP(|, x, y);
     } else {
-        return bigOr(vm, (VAL)GETBIG(vm, x), (VAL)GETBIG(vm, y));
+        return bigOr(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -169,12 +169,12 @@ VAL idris_bigPlus(VM* vm, VAL x, VAL y) {
         }
         i_int res = vx + vy;
         if (res >= 1<<30 || res <= -(1 << 30)) {
-            return bigAdd(vm, (VAL)GETBIG(vm, x), (VAL)GETBIG(vm, y));
+            return bigAdd(vm, GETBIG(vm, x), GETBIG(vm, y));
         } else {
             return MKINT(res);
         }
     } else {
-        return bigAdd(vm, (VAL)GETBIG(vm, x), (VAL)GETBIG(vm, y));
+        return bigAdd(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
