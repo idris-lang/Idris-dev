@@ -274,7 +274,8 @@ VAL MKFLOATc(VM* vm, double val) {
 
 static VAL mkstrlen(VM* vm, const char * str, size_t len, int outer) {
     String * cl = allocStr(vm, len, outer);
-    cl->_null = str == NULL;
+    // hdr.u8 used to mark a null string
+    cl->hdr.u8 = str == NULL;
     memcpy(cl->str, str, len);
     return (VAL)cl;
 }

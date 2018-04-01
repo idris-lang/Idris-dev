@@ -73,7 +73,6 @@ typedef struct Float {
 typedef struct String {
     Hdr hdr;
     size_t slen;
-#define _null hdr.u8
     char str[0];
 } String;
 
@@ -241,7 +240,8 @@ typedef void(*func)(VM*, VAL*);
 
 // Retrieving values
 static inline char * getstr(String * x) {
-    return x->_null? NULL : x->str;
+    // hdr.u8 used to mark a null string
+    return x->hdr.u8? NULL : x->str;
 }
 
 static inline size_t getstrlen(String * x) {
