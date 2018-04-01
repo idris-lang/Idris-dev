@@ -536,7 +536,7 @@ static inline size_t valSize(VAL v) {
 }
 
 static inline size_t aligned(size_t sz) {
-    return (sz + 7) & ~7;
+    return (sz + sizeof(void*) - 1) & ~(sizeof(void*)-1);
 }
 
 VM* get_vm(void);
