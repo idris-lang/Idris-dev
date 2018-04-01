@@ -262,7 +262,7 @@ static inline size_t getstrlen(String * x) {
 
 // Already checked it's a CT_CON
 #define CTAG(x) (((Con*)(x))->tag)
-#define CARITY(x) (((Con*)(x))->arity)
+#define CARITY(x) (((Con*)(x))->hdr.u16) // hdr.u16 used to store arity
 
 #define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CTAG((Con*)x) : (-1)) )
 #define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CARITY((Con*)x) : (-1)) )
@@ -369,7 +369,8 @@ void idris_free(void* ptr, size_t size);
 static inline void updateConF(Con * cl, unsigned tag, unsigned arity) {
     SETTY(cl, CT_CON);
     cl->tag = tag;
-    cl->arity = arity;
+    // hdr.u16 used to store arity
+    cl->hdr.u16 = arity;
     assert(cl->hdr.sz == sizeof(*cl) + sizeof(VAL) * arity);
     // cl->hdr.sz = sizeof(*cl) + sizeof(VAL) * arity;
 }
@@ -378,7 +379,8 @@ static inline Con * allocConF(VM * vm, unsigned tag, unsigned arity, int outer) 
     Con * cl = iallocate(vm, sizeof(*cl) + sizeof(VAL) * arity, outer);
     SETTY(cl, CT_CON);
     cl->tag = tag;
-    cl->arity = arity;
+    // hdr.u16 used to store arity
+    cl->hdr.u16 = arity;
     return cl;
 }
 
