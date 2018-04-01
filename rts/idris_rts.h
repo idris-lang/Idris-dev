@@ -46,7 +46,6 @@ typedef struct Val * VAL;
 typedef struct Con {
     Hdr hdr;
     uint32_t tag;
-    uint32_t arity;
     VAL args[0];
 } Con;
 
