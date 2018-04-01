@@ -44,93 +44,93 @@ typedef struct Val {
 typedef struct Val * VAL;
 
 typedef struct Con {
-  Hdr hdr;
-  uint32_t tag;
-  uint32_t arity;
-  VAL args[0];
+    Hdr hdr;
+    uint32_t tag;
+    uint32_t arity;
+    VAL args[0];
 } Con;
 
 typedef struct Array {
-  Hdr hdr;
-  VAL array[0];
+    Hdr hdr;
+    VAL array[0];
 } Array;
 
 typedef struct Int {
-  Hdr hdr;
-  int i;
+    Hdr hdr;
+    int i;
 } Int;
 
 typedef struct BigInt {
-  Hdr hdr;
-  char big[0];
+    Hdr hdr;
+    char big[0];
 } BigInt;
 
 typedef struct Float {
-  Hdr hdr;
-  double f;
+    Hdr hdr;
+    double f;
 } Float;
 
 typedef struct String {
-  Hdr hdr;
-  size_t slen;
+    Hdr hdr;
+    size_t slen;
 #define _null hdr.u8
-  char str[0];
+    char str[0];
 } String;
 
 typedef struct StrOffset {
-  Hdr hdr;
-  String * base;
-  size_t offset;
+    Hdr hdr;
+    String * base;
+    size_t offset;
 } StrOffset;
 
 typedef struct Bits8 {
-  Hdr hdr;
-  uint8_t bits8;
+    Hdr hdr;
+    uint8_t bits8;
 } Bits8;
 
 typedef struct Bits16 {
-  Hdr hdr;
-  uint16_t bits16;
+    Hdr hdr;
+    uint16_t bits16;
 } Bits16;
 
 typedef struct Bits32 {
-  Hdr hdr;
-  uint32_t bits32;
+    Hdr hdr;
+    uint32_t bits32;
 } Bits32;
 
 typedef struct Bits64 {
-  Hdr hdr;
-  uint64_t bits64;
+    Hdr hdr;
+    uint64_t bits64;
 } Bits64;
 
 typedef struct Ptr {
-  Hdr hdr;
-  void * ptr;
+    Hdr hdr;
+    void * ptr;
 } Ptr;
 
 typedef struct Ref {
-  Hdr hdr;
-  VAL ref;
+    Hdr hdr;
+    VAL ref;
 } Ref;
 
 typedef struct Fwd {
-  Hdr hdr;
-  VAL fwd;
+    Hdr hdr;
+    VAL fwd;
 } Fwd;
 
 typedef struct ManagedPtr {
-  Hdr hdr;
-  char mptr[0];
+    Hdr hdr;
+    char mptr[0];
 } ManagedPtr;
 
 typedef struct RawData {
-  Hdr hdr;
-  char raw[0];
+    Hdr hdr;
+    char raw[0];
 } RawData;
 
 typedef struct CDataC {
-  Hdr hdr;
-  CHeapItem * item;
+    Hdr hdr;
+    CHeapItem * item;
 } CDataC;
 
 struct VM;
@@ -241,11 +241,11 @@ typedef void(*func)(VM*, VAL*);
 
 // Retrieving values
 static inline char * getstr(String * x) {
-  return x->_null? NULL : x->str;
+    return x->_null? NULL : x->str;
 }
 
 static inline size_t getstrlen(String * x) {
-  return x->slen;
+    return x->slen;
 }
 
 #define GETSTR(x) (ISSTR(x) ? getstr((String*)(x)) : GETSTROFF(x))
@@ -383,9 +383,9 @@ static inline Con * allocConF(VM * vm, unsigned tag, unsigned arity, int outer) 
 }
 
 static inline Array * allocArrayF(VM * vm, size_t len, int outer) {
-  Array * cl = iallocate(vm, sizeof(*cl) + sizeof(VAL) * len, outer);
-  SETTY(cl, CT_ARRAY);
-  return cl;
+    Array * cl = iallocate(vm, sizeof(*cl) + sizeof(VAL) * len, outer);
+    SETTY(cl, CT_ARRAY);
+    return cl;
 }
 
 
@@ -532,13 +532,21 @@ void stackOverflow(void);
 #include "idris_gmp.h"
 
 static inline size_t valSize(VAL v) {
-  return v->hdr.sz;
+    return v->hdr.sz;
 }
 
 static inline size_t aligned(size_t sz) {
-  return (sz + 7) & ~7;
+    return (sz + 7) & ~7;
 }
 
 VM* get_vm(void);
 
 #endif
+
+/*
+  Local variables: **
+  c-file-style: "bsd" **
+  c-basic-offset: 4 **
+  indent-tabs-mode: nil **
+  End: **
+*/
