@@ -3,8 +3,8 @@ import Data.Buffer
 main : IO ()
 main = do Just buf <- newBuffer 40
           printLn (size buf)
-          setInt buf 5 1234567890
-          setInt buf 36 1234567890
+          setInt buf 5 (-1024567890)
+          setInt buf 36 1034567890
           setString buf 20 "Hello world!"
 
           printLn !(bufferData buf)
