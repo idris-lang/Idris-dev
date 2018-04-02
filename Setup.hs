@@ -84,12 +84,15 @@ isFreestanding = flag "freestanding"
 #if !(MIN_VERSION_Cabal(2,0,0))
 mkFlagName :: String -> FlagName
 mkFlagName = FlagName
+
+unUnqualComponentName = id
 #endif
 
 #if !(MIN_VERSION_Cabal(2,2,0))
 lookupFlagAssignment :: FlagName -> FlagAssignment -> Maybe Bool
 lookupFlagAssignment = lookup
 #endif
+
 
 -- -----------------------------------------------------------------------------
 -- Clean
@@ -178,7 +181,7 @@ idrisPostConf _ flags pkgdesc local = do
       let libAutogenDir = autogenComponentModulesDir local libcfg
       let libDirs = extraLibDirs $ libBuildInfo lib
       let nixLibDirs = map (drop 2)
-            $ filter ("-gmp-" `isInfixOf`)
+            $ filter ("-gmp-" `Data.List.isInfixOf`)
             $ words $ fromMaybe "" nixLDFLAGS
       generateBuildFlagsModule verbosity libAutogenDir (nub $ libDirs ++ nixLibDirs)
       generateVersionModule verbosity libAutogenDir (isRelease (configFlags local))
