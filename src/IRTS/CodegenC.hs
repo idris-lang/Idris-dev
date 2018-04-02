@@ -396,7 +396,7 @@ c_irts FFunctionIO l x = error "Return of function from foreign call is not supp
 irts_c (FArith (ATInt ITNative)) x = "GETINT(" ++ x ++ ")"
 irts_c (FArith (ATInt ITChar)) x = irts_c (FArith (ATInt ITNative)) x
 irts_c (FArith (ATInt (ITFixed ity))) x
-    = "(" ++ x ++ "->info.bits" ++ show (nativeTyWidth ity) ++ ")"
+    = "GETBITS" ++ show (nativeTyWidth ity) ++ "(" ++ x ++ ")"
 irts_c FString x = "GETSTR(" ++ x ++ ")"
 irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
@@ -536,13 +536,13 @@ doOp v (LURem (ITFixed ty)) [x, y] = bitOp v "URem" ty [x, y]
 doOp v (LSRem (ATInt (ITFixed ty))) [x, y] = bitOp v "SRem" ty [x, y]
 
 doOp v (LSExt (ITFixed from) ITBig) [x]
-    = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+    = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ") GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ "))"
 doOp v (LSExt ITNative (ITFixed to)) [x]
     = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
 doOp v (LSExt ITChar (ITFixed to)) [x]
     = doOp v (LSExt ITNative (ITFixed to)) [x]
 doOp v (LSExt (ITFixed from) ITNative) [x]
-    = v ++ "MKINT((i_int)((" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ "))"
+    = v ++ "MKINT((i_int)((" ++ signedTy from ++ ") GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ ")))"
 doOp v (LSExt (ITFixed from) ITChar) [x]
     = doOp v (LSExt (ITFixed from) ITNative) [x]
 doOp v (LSExt (ITFixed from) (ITFixed to)) [x]
@@ -552,11 +552,11 @@ doOp v (LZExt ITNative (ITFixed to)) [x]
 doOp v (LZExt ITChar (ITFixed to)) [x]
     = doOp v (LZExt ITNative (ITFixed to)) [x]
 doOp v (LZExt (ITFixed from) ITNative) [x]
-    = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+    = v ++ "MKINT((i_int)GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ "))"
 doOp v (LZExt (ITFixed from) ITChar) [x]
     = doOp v (LZExt (ITFixed from) ITNative) [x]
 doOp v (LZExt (ITFixed from) ITBig) [x]
-    = v ++ "MKBIGUI(vm, " ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+    = v ++ "MKBIGUI(vm, GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ "))"
 doOp v (LZExt ITNative ITBig) [x]
     = v ++ "MKBIGUI(vm, (uintptr_t)GETINT(" ++ creg x ++ "))"
 doOp v (LZExt (ITFixed from) (ITFixed to)) [x]
@@ -566,7 +566,7 @@ doOp v (LTrunc ITNative (ITFixed to)) [x]
 doOp v (LTrunc ITChar (ITFixed to)) [x]
     = doOp v (LTrunc ITNative (ITFixed to)) [x]
 doOp v (LTrunc (ITFixed from) ITNative) [x]
-    = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+    = v ++ "MKINT((i_int)GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ "))"
 doOp v (LTrunc (ITFixed from) ITChar) [x]
     = doOp v (LTrunc (ITFixed from) ITNative) [x]
 doOp v (LTrunc ITBig (ITFixed IT64)) [x]

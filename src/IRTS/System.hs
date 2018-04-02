@@ -61,7 +61,13 @@ overrideIdrisSubDirWith fp envVar = do
     Just ddir -> return ddir
 
 getCC :: IO String
-getCC = fromMaybe "gcc" <$> lookupEnv "IDRIS_CC"
+getCC = fromMaybe cc <$> lookupEnv "IDRIS_CC"
+  where
+#ifdef mingw32_HOST_OS
+    cc = "gcc"
+#else
+    cc = "cc"
+#endif
 
 getEnvFlags :: IO [String]
 getEnvFlags = maybe [] (splitOn " ") <$> lookupEnv "IDRIS_CFLAGS"
