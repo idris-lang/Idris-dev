@@ -63,23 +63,23 @@ windres verbosity = P.runProgramInvocation verbosity . P.simpleProgramInvocation
 -- Flags
 
 
-flg nm flags = case lookupFlagAssignment (mkFlagName nm) (S.configConfigurationsFlags flags) of
+flag nm flags = case lookupFlagAssignment (mkFlagName nm) (S.configConfigurationsFlags flags) of
     Just True -> True
     Just False -> False
     Nothing -> False
 
 
 usesGMP :: S.ConfigFlags -> Bool
-usesGMP = flg "gmp"
+usesGMP = flag "gmp"
 
 execOnly :: S.ConfigFlags -> Bool
-execOnly = flg "execonly"
+execOnly = flag "execonly"
 
 isRelease :: S.ConfigFlags -> Bool
-isRelease = flg "release"
+isRelease = flag "release"
 
 isFreestanding :: S.ConfigFlags -> Bool
-isFreestanding = flg "freestanding"
+isFreestanding = flag "freestanding"
 
 #if !(MIN_VERSION_Cabal(2,0,0))
 mkFlagName :: String -> FlagName
@@ -269,12 +269,13 @@ idrisPreBuild args flags = do
 #endif
 
 idrisBuildHook pd lbi hooks flags = do
-   let exes = map (unUnqualComponentName . exeName) (executables pd)
-   let nflags = case S.buildArgs flags of
-         ["regression-and-feature-tests"] ->
-           flags { S.buildArgs = "regression-and-feature-tests" : exes }
+   let exe = ("exe:" ++) . unUnqualComponentName . exeName
+       exes = map exe (executables pd)
+       nflags = case S.buildArgs flags of
+         orig@["regression-and-feature-tests"] ->
+           flags { S.buildArgs = exes ++ orig }
          _ -> flags
-   buildHook simpleUserHooks pd lbi hooks flags
+   buildHook simpleUserHooks pd lbi hooks nflags
 
 
 idrisPostBuild _ flags _ local
