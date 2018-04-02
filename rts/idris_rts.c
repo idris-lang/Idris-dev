@@ -225,7 +225,7 @@ void* iallocate(VM * vm, size_t isize, int outerlock) {
         vm->heap.next += size;
         assert(vm->heap.next <= vm->heap.end);
         memset(ptr, 0, size);
-	((Hdr*)ptr)->sz = isize;
+        ((Hdr*)ptr)->sz = isize;
 
 #ifdef HAS_PTHREAD
         if (lock) { // not message passing
@@ -274,7 +274,8 @@ VAL MKFLOATc(VM* vm, double val) {
 
 static VAL mkstrlen(VM* vm, const char * str, size_t len, int outer) {
     String * cl = allocStr(vm, len, outer);
-    cl->_null = str == NULL;
+    // hdr.u8 used to mark a null string
+    cl->hdr.u8 = str == NULL;
     memcpy(cl->str, str, len);
     return (VAL)cl;
 }
@@ -419,29 +420,37 @@ void dumpVal(VAL v) {
         return;
     }
     switch(GETTY(v)) {
-    case CT_CON: {
-  	  Con * cl = (Con*)v;
-	  printf("%d[", (int)TAG(cl));
-	  for(i = 0; i < CARITY(cl); ++i) {
-              dumpVal(cl->args[i]);
-	  }
-	  printf("] ");
-    } break;
-    case CT_STRING: {
-        String * cl = (String*)v;
-        printf("STR[%s]", cl->str);
-    } break;
-    case CT_STROFFSET: {
-        StrOffset * cl = (StrOffset*)v;
-        printf("OFFSET[");
-        dumpVal((VAL)cl->base);
-        printf("]");
-    } break;
-    case CT_FWD: {
-        Fwd * cl = (Fwd*)v;
-        printf("CT_FWD ");
-        dumpVal((VAL)cl->fwd);
-    } break;
+    case CT_CON:
+        {
+            Con * cl = (Con*)v;
+            printf("%d[", (int)TAG(cl));
+            for(i = 0; i < CARITY(cl); ++i) {
+                dumpVal(cl->args[i]);
+            }
+            printf("] ");
+        }
+        break;
+    case CT_STRING:
+        {
+            String * cl = (String*)v;
+            printf("STR[%s]", cl->str);
+        }
+        break;
+    case CT_STROFFSET:
+        {
+            StrOffset * cl = (StrOffset*)v;
+            printf("OFFSET[");
+            dumpVal((VAL)cl->base);
+            printf("]");
+        }
+        break;
+    case CT_FWD:
+        {
+            Fwd * cl = (Fwd*)v;
+            printf("CT_FWD ");
+            dumpVal((VAL)cl->fwd);
+        }
+        break;
     default:
         printf("val");
     }
@@ -641,7 +650,7 @@ VAL idris_strShift(VM* vm, VAL str, int num) {
 
         while(root!=NULL && !ISSTR(root)) { // find the root, carry on.
                               // In theory, at most one step here!
-	    offset += root->offset;
+            offset += root->offset;
             root = (StrOffset*)root->base;
         }
 
@@ -670,7 +679,7 @@ VAL idris_strCons(VM* vm, VAL x, VAL xs) {
         memcpy(cl->str+1, xstr, xlen);
     } else {
         char *init = idris_utf8_fromChar(xval);
-	size_t ilen = strlen(init);
+        size_t ilen = strlen(init);
         int newlen = ilen + xlen;
         cl = allocStr(vm, newlen, 0);
         memcpy(cl->str, init, ilen);
@@ -741,7 +750,7 @@ VAL idris_newArray(VM* vm, int size, VAL def) {
     int i;
     cl = allocArrayF(vm, size, 0);
     for(i=0; i<size; ++i) {
-	cl->array[i] = def;
+        cl->array[i] = def;
     }
     return (VAL)cl;
 }
@@ -854,25 +863,25 @@ static VAL doCopyTo(VM* vm, VAL x) {
     switch(GETTY(x)) {
     case CT_CDATA:
         cl = MKCDATAc(vm, GETCDATA(x));
-	break;
+        break;
     case CT_BIGINT:
         cl = MKBIGMc(vm, GETMPZ(x));
-	break;
+        break;
     case CT_CON:
         ar = CARITY(x);
         if (ar == 0 && CTAG(x) < 256) { // globally allocated
             cl = x;
         } else {
-	    Con * c = allocConF(vm, CTAG(x), ar, 1);
-	    copyArray(vm, c->args, ((Con*)x)->args, ar);
-	    cl = (VAL)c;
+            Con * c = allocConF(vm, CTAG(x), ar, 1);
+            copyArray(vm, c->args, ((Con*)x)->args, ar);
+            cl = (VAL)c;
         }
         break;
     case CT_ARRAY: {
         size_t len = CELEM(x);
         Array * a = allocArrayF(vm, len, 1);
-	copyArray(vm, a->array, ((Array*)x)->array, len);
-	cl = (VAL)a;
+        copyArray(vm, a->array, ((Array*)x)->array, len);
+        cl = (VAL)a;
     } break;
     case CT_STRING:
     case CT_FLOAT:
@@ -1115,7 +1124,7 @@ void init_nullaries(void) {
     int i;
     for(i = 0; i < 256; ++i) {
         Con * cl = nullary_cons + i;
-	cl->hdr.sz = sizeof(*cl);
+        cl->hdr.sz = sizeof(*cl);
         SETTY(cl, CT_CON);
         cl->tag = i;
     }

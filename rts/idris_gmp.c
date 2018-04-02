@@ -74,9 +74,9 @@ static BigInt * getbig(VM * vm, VAL x) {
     } else {
         switch(GETTY(x)) {
         case CT_FWD:
-	    return getbig(vm, ((Fwd*)x)->fwd);
+            return getbig(vm, ((Fwd*)x)->fwd);
         default:
-	    return (BigInt*)x;
+            return (BigInt*)x;
         }
     }
 }
@@ -148,7 +148,7 @@ VAL idris_bigAnd(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return INTOP(&, x, y);
     } else {
-        return bigAnd(vm, (VAL)GETBIG(vm, x), (VAL)GETBIG(vm, y));
+        return bigAnd(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -156,7 +156,7 @@ VAL idris_bigOr(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         return INTOP(|, x, y);
     } else {
-        return bigOr(vm, (VAL)GETBIG(vm, x), (VAL)GETBIG(vm, y));
+        return bigOr(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -169,12 +169,12 @@ VAL idris_bigPlus(VM* vm, VAL x, VAL y) {
         }
         i_int res = vx + vy;
         if (res >= 1<<30 || res <= -(1 << 30)) {
-	    return bigAdd(vm, (VAL)GETBIG(vm, x), (VAL)GETBIG(vm, y));
+            return bigAdd(vm, GETBIG(vm, x), GETBIG(vm, y));
         } else {
             return MKINT(res);
         }
     } else {
-        return bigAdd(vm, (VAL)GETBIG(vm, x), (VAL)GETBIG(vm, y));
+        return bigAdd(vm, GETBIG(vm, x), GETBIG(vm, y));
     }
 }
 
@@ -200,15 +200,15 @@ VAL idris_bigTimes(VM* vm, VAL x, VAL y) {
     if (ISINT(x) && ISINT(y)) {
         i_int vx = GETINT(x);
         i_int vy = GETINT(y);
-	// we could work out likelihood of overflow by checking the number
-	// of necessary bits. Here's a quick conservative hack instead.
-	if ((vx < (1<<15) && vy < (1<16)) ||
-	    (vx < (1<<16) && vy < (1<15)) ||
-	    (vx < (1<<20) && vy < (1<11)) ||
-	    (vx < (1<<11) && vy < (1<20)) ||
-	    (vx < (1<<23) && vy < (1<<8)) ||
-	    (vx < (1<<8) && vy < (1<<23))) { // ultra-conservative!
-	    return INTOP(*,x,y);
+        // we could work out likelihood of overflow by checking the number
+        // of necessary bits. Here's a quick conservative hack instead.
+        if ((vx < (1<<15) && vy < (1<16)) ||
+            (vx < (1<<16) && vy < (1<15)) ||
+            (vx < (1<<20) && vy < (1<11)) ||
+            (vx < (1<<11) && vy < (1<20)) ||
+            (vx < (1<<23) && vy < (1<<8)) ||
+            (vx < (1<<8) && vy < (1<<23))) { // ultra-conservative!
+            return INTOP(*,x,y);
         } else {
             return bigMul(vm, GETBIG(vm, x), GETBIG(vm, y));
         }
