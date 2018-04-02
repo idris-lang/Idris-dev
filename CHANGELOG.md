@@ -18,7 +18,8 @@
 + Added a switch `--allow-capitalized-pattern-variables` to optionally allow capitalized pattern variables after they were prohibited in 1.2.0.
 + REPL now prints an error message if program compiled by `:exec` terminates
   abnormally.
-* Idris now builds with GHC 8.4.
++ Idris now builds with GHC 8.4.
++ In the C backend, the representation of Idris values at runtime has been reworked.
 
 # New in 1.2.0
 
