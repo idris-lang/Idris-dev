@@ -11,8 +11,8 @@ data types. For example, we would like arithmetic operators to work on
 to display different types in a uniform way.
 
 To achieve this, we use *interfaces*, which are similar to type classes in
-Haskell or traits in Rust.  To define an interface, we provide a collection of
-overloadable functions.  A simple example is the ``Show``
+Haskell or traits in Rust. To define an interface, we provide a collection of
+overloadable functions. A simple example is the ``Show``
 interface, which is defined in the prelude and provides an interface for
 converting values to ``String``:
 
@@ -31,8 +31,7 @@ This generates a function of the following type (which we call a
 We can read this as: “under the constraint that ``a`` has an implementation
 of ``Show``, take an input ``a`` and return a ``String``.” An implementation
 of an interface is defined by giving definitions of the methods of the interface.
-For example, the
-``Show`` implementation for ``Nat`` could be defined as:
+For example, the ``Show`` implementation for ``Nat`` could be defined as:
 
 .. code-block:: idris
 
@@ -49,7 +48,7 @@ Only one implementation of an interface can be given for a type — implementati
 not overlap. Implementation declarations can themselves have constraints.
 To help with resolution, the arguments of an implementation must be
 constructors (either data or type constructors) or variables
-(i.e. you cannot give an implementation for a function).  For
+(i.e. you cannot give an implementation for a function). For
 example, to define a ``Show`` implementation for vectors, we need to know
 that there is a ``Show`` implementation for the element type, because we are
 going to use it to convert each element to a ``String``:
@@ -534,7 +533,7 @@ Named Implementations
 
 It can be desirable to have multiple implementations of an interface for the
 same type, for example to provide alternative methods for sorting or printing
-values.  To achieve this, implementations can be *named* as follows:
+values. To achieve this, implementations can be *named* as follows:
 
 .. code-block:: idris
 
@@ -574,7 +573,7 @@ the prelude defines the following ``Semigroup`` interface:
     interface Semigroup ty where
       (<+>) : ty -> ty -> ty
 
-Then it defines ``Monoid``, which extends ``Semigroup`` with a "neutral"
+Then it defines ``Monoid``, which extends ``Semigroup`` with a “neutral”
 value:
 
 .. code-block:: idris
