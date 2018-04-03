@@ -1,11 +1,6 @@
 #ifndef _IDRISBITSTRING_H
 #define _IDRISBITSTRING_H
 
-VAL idris_b8CopyForGC(VM *vm, VAL a);
-VAL idris_b16CopyForGC(VM *vm, VAL a);
-VAL idris_b32CopyForGC(VM *vm, VAL a);
-VAL idris_b64CopyForGC(VM *vm, VAL a);
-
 VAL idris_b8(VM *vm, VAL a);
 VAL idris_b16(VM *vm, VAL a);
 VAL idris_b32(VM *vm, VAL a);

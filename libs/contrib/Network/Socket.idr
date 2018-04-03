@@ -133,7 +133,7 @@ send sock dat = do
 ||| + `ResultCode` :: The result of the underlying function.
 |||
 ||| @sock The socket on which to receive the message.
-||| @len  How much of the data to send.
+||| @len  How much of the data to receive.
 recv : (sock : Socket)
     -> (len : ByteLength)
     -> IO (Either SocketError (String, ResultCode))
@@ -163,6 +163,25 @@ recv sock len = do
                              recv_struct_ptr
            freeRecvStruct (RSPtr recv_struct_ptr)
            pure $ Right (payload, recv_res)
+
+||| Receive all the remaining data on the specified socket.
+|||
+||| Returns on failure a `SocketError`
+||| Returns on success the payload `String`
+|||
+||| @sock The socket on which to receive the message.
+partial
+recvAll : (sock : Socket) -> IO (Either SocketError String)
+recvAll sock = recvRec sock [] 64
+  where
+    partial
+    recvRec : Socket -> List String -> ByteLength -> IO (Either SocketError String)
+    recvRec sock acc n = do res <- recv sock n
+                            case res of
+                              Left 0 => pure (Right $ concat $ reverse acc)
+                              Left c => pure (Left c)
+                              Right (str, _) => let n' = min (n * 2) 65536 in
+                                                recvRec sock (str :: acc) n'
 
 ||| Send a message.
 |||

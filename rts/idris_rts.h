@@ -1,20 +1,18 @@
 #ifndef _IDRISRTS_H
 #define _IDRISRTS_H
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#ifdef HAS_PTHREAD
 #include <string.h>
 #include <stdarg.h>
-#ifdef HAS_PTHREAD
 #include <pthread.h>
-#endif
-#include <stdint.h>
-#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__)
-#include <signal.h>
 #endif
 
 #include "idris_heap.h"
 #include "idris_stats.h"
+
 
 #ifndef EXIT_SUCCESS
 #define EXIT_SUCCESS 0
@@ -25,68 +23,113 @@
 
 // Closures
 typedef enum {
-    CT_CON, CT_ARRAY, CT_INT, CT_BIGINT, CT_FLOAT, CT_STRING, CT_STROFFSET,
-    CT_BITS8, CT_BITS16, CT_BITS32, CT_BITS64, CT_UNIT, CT_PTR, CT_REF,
-    CT_FWD, CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
+    CT_CON, CT_ARRAY, CT_INT, CT_BIGINT,
+    CT_FLOAT, CT_STRING, CT_STROFFSET, CT_BITS8,
+    CT_BITS16, CT_BITS32, CT_BITS64, CT_PTR,
+    CT_REF, CT_FWD, CT_MANAGEDPTR, CT_RAWDATA,
+    CT_CDATA
 } ClosureType;
 
-typedef struct Closure *VAL;
+typedef struct Hdr {
+    uint8_t ty;
+    uint8_t u8;
+    uint16_t u16;
+    uint32_t sz;
+} Hdr;
 
-// A constructor, consisting of a tag, an arity (16 bits each of the
-// tag_arity field) and arguments
-typedef struct {
-    uint32_t tag_arity;
-    VAL args[];
-} con;
+typedef struct Val {
+    Hdr hdr;
+} Val;
 
-// An array; similar to a constructor but with a length, and contents
-// initialised to NULL (high level Idris programs are responsible for
-// initialising them properly)
-typedef struct {
-    uint32_t length;
-    VAL content[];
-} array;
+typedef struct Val * VAL;
 
-typedef struct {
-    VAL str;
+typedef struct Con {
+    Hdr hdr;
+    uint32_t tag;
+    VAL args[0];
+} Con;
+
+typedef struct Array {
+    Hdr hdr;
+    VAL array[0];
+} Array;
+
+typedef struct Int {
+    Hdr hdr;
+    int i;
+} Int;
+
+typedef struct BigInt {
+    Hdr hdr;
+    char big[0];
+} BigInt;
+
+typedef struct Float {
+    Hdr hdr;
+    double f;
+} Float;
+
+typedef struct String {
+    Hdr hdr;
+    size_t slen;
+    char str[0];
+} String;
+
+typedef struct StrOffset {
+    Hdr hdr;
+    String * base;
     size_t offset;
 } StrOffset;
 
-typedef struct {
-    char* str;
-    size_t len; // Cached strlen (we do 'strlen' a lot)
-} String;
+typedef struct Bits8 {
+    Hdr hdr;
+    uint8_t bits8;
+} Bits8;
 
-// A foreign pointer, managed by the idris GC
-typedef struct {
-    size_t size;
-    void* data;
+typedef struct Bits16 {
+    Hdr hdr;
+    uint16_t bits16;
+} Bits16;
+
+typedef struct Bits32 {
+    Hdr hdr;
+    uint32_t bits32;
+} Bits32;
+
+typedef struct Bits64 {
+    Hdr hdr;
+    uint64_t bits64;
+} Bits64;
+
+typedef struct Ptr {
+    Hdr hdr;
+    void * ptr;
+} Ptr;
+
+typedef struct Ref {
+    Hdr hdr;
+    VAL ref;
+} Ref;
+
+typedef struct Fwd {
+    Hdr hdr;
+    VAL fwd;
+} Fwd;
+
+typedef struct ManagedPtr {
+    Hdr hdr;
+    char mptr[0];
 } ManagedPtr;
 
-typedef struct Closure {
-// Use top 16 bits of ty for saying which heap value is in
-// Bottom 16 bits for closure type
-//
-// NOTE: ty can not have type ClosureType because ty must be a
-// uint32_t but enum is platform dependent
-    uint32_t ty;
-    union {
-        con c;
-        array arr;
-        int i;
-        double f;
-        String str;
-        StrOffset* str_offset;
-        void* ptr;
-        uint8_t bits8;
-        uint16_t bits16;
-        uint32_t bits32;
-        uint64_t bits64;
-        ManagedPtr* mptr;
-        CHeapItem* c_heap_item;
-        size_t size;
-    } info;
-} Closure;
+typedef struct RawData {
+    Hdr hdr;
+    char raw[0];
+} RawData;
+
+typedef struct CDataC {
+    Hdr hdr;
+    CHeapItem * item;
+} CDataC;
 
 struct VM;
 
@@ -190,33 +233,43 @@ typedef void(*func)(VM*, VAL*);
 // Register access
 
 #define RVAL (vm->ret)
-#define LOC(x) (*(vm->valstack_base + (x)))
-#define TOP(x) (*(vm->valstack_top + (x)))
+#define LOC(x) (vm->valstack_base[x])
+#define TOP(x) (vm->valstack_top[x])
 #define REG1 (vm->reg1)
 
 // Retrieving values
-#define GETSTR(x) (ISSTR(x) ? (((VAL)(x))->info.str.str) : GETSTROFF(x))
-#define GETSTRLEN(x) (ISSTR(x) ? (((VAL)(x))->info.str.len) : GETSTROFFLEN(x))
-#define GETPTR(x) (((VAL)(x))->info.ptr)
-#define GETMPTR(x) (((VAL)(x))->info.mptr->data)
-#define GETFLOAT(x) (((VAL)(x))->info.f)
-#define GETCDATA(x) (((VAL)(x))->info.c_heap_item)
+static inline char * getstr(String * x) {
+    // hdr.u8 used to mark a null string
+    return x->hdr.u8? NULL : x->str;
+}
 
-#define GETBITS8(x) (((VAL)(x))->info.bits8)
-#define GETBITS16(x) (((VAL)(x))->info.bits16)
-#define GETBITS32(x) (((VAL)(x))->info.bits32)
-#define GETBITS64(x) (((VAL)(x))->info.bits64)
+static inline size_t getstrlen(String * x) {
+    return x->slen;
+}
 
-#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? (x)->info.c.tag_arity >> 8 : (-1)) )
-#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? (x)->info.c.tag_arity & 0x000000ff : (-1)) )
+#define GETSTR(x) (ISSTR(x) ? getstr((String*)(x)) : GETSTROFF(x))
+#define GETSTRLEN(x) (ISSTR(x) ? getstrlen((String*)(x)) : GETSTROFFLEN(x))
+#define GETPTR(x) (((Ptr*)(x))->ptr)
+#define GETMPTR(x) (((ManagedPtr*)(x))->mptr)
+#define GETFLOAT(x) (((Float*)(x))->f)
+#define GETCDATA(x) (((CDataC*)(x))->item)
+
+#define GETBITS8(x) (((Bits8*)(x))->bits8)
+#define GETBITS16(x) (((Bits16*)(x))->bits16)
+#define GETBITS32(x) (((Bits32*)(x))->bits32)
+#define GETBITS64(x) (((Bits64*)(x))->bits64)
 
 // Already checked it's a CT_CON
-#define CTAG(x) (((x)->info.c.tag_arity) >> 8)
-#define CARITY(x) ((x)->info.c.tag_arity & 0x000000ff)
+#define CTAG(x) (((Con*)(x))->tag)
+#define CARITY(x) (((Con*)(x))->hdr.u16) // hdr.u16 used to store arity
 
+#define TAG(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CTAG((Con*)x) : (-1)) )
+#define ARITY(x) (ISINT(x) || x == NULL ? (-1) : ( GETTY(x) == CT_CON ? CARITY((Con*)x) : (-1)) )
 
-#define GETTY(x) ((x)->ty)
-#define SETTY(x,t) ((x)->ty = t)
+#define CELEM(x) (((x)->hdr.sz - sizeof(Array)) / sizeof(VAL))
+
+#define GETTY(x) ((ClosureType)((x)->hdr.ty))
+#define SETTY(x,t) ((x)->hdr.ty = t)
 
 // Integers, floats and operators
 
@@ -241,15 +294,17 @@ typedef intptr_t i_int;
 #ifdef IDRIS_TRACE
 #define TRACE idris_trace(vm, __FUNCTION__, __LINE__);
 #else
-#define TRACE 
+#define TRACE
 #endif
 
 #define INITFRAME TRACE\
                   __attribute__((unused)) VAL* myoldbase
 
 #define REBASE vm->valstack_base = oldbase
-#define RESERVE(x) if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
-                   else { memset(vm->valstack_top, 0, (x)*sizeof(VAL)); }
+#define RESERVE(x) do { \
+    if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
+    else { memset(vm->valstack_top, 0, (x)*sizeof(VAL)); } \
+  } while(0)
 #define ADDTOP(x) vm->valstack_top += (x)
 #define TOPBASE(x) vm->valstack_top = vm->valstack_base + (x)
 #define BASETOP(x) vm->valstack_base = vm->valstack_top + (x)
@@ -260,6 +315,7 @@ typedef intptr_t i_int;
 // Creating new values (each value placed at the top of the stack)
 VAL MKFLOAT(VM* vm, double val);
 VAL MKSTR(VM* vm, const char* str);
+VAL MKSTRlen(VM* vm, const char* str, size_t size);
 VAL MKPTR(VM* vm, void* ptr);
 VAL MKMPTR(VM* vm, void* ptr, size_t size);
 VAL MKB8(VM* vm, uint8_t b);
@@ -270,9 +326,9 @@ VAL MKCDATA(VM* vm, CHeapItem * item);
 
 // following versions don't take a lock when allocating
 VAL MKFLOATc(VM* vm, double val);
-VAL MKSTROFFc(VM* vm, StrOffset* off);
+VAL MKSTROFFc(VM* vm, VAL basestr);
 VAL MKSTRc(VM* vm, char* str);
-VAL MKSTRclen(VM* vm, char* str, int len);
+VAL MKSTRclen(VM* vm, char* str, size_t len);
 VAL MKPTRc(VM* vm, void* ptr);
 VAL MKMPTRc(VM* vm, void* ptr, size_t size);
 VAL MKCDATAc(VM* vm, CHeapItem * item);
@@ -280,14 +336,15 @@ VAL MKCDATAc(VM* vm, CHeapItem * item);
 char* GETSTROFF(VAL stroff);
 size_t GETSTROFFLEN(VAL stroff);
 
-// #define SETTAG(x, a) (x)->info.c.tag = (a)
-#define SETARG(x, i, a) ((x)->info.c.args)[i] = ((VAL)(a))
-#define GETARG(x, i) ((x)->info.c.args)[i]
+#define SETARG(x, i, a) (((Con*)(x))->args)[i] = ((VAL)(a))
+#define GETARG(x, i) (((Con*)(x))->args[i])
 
 #define PROJECT(vm,r,loc,num) \
-    memcpy(&(LOC(loc)), &((r)->info.c.args), sizeof(VAL)*num)
+    memcpy(&(LOC(loc)), ((Con*)(r))->args, sizeof(VAL)*num)
 #define SLIDE(vm, args) \
     memcpy(&(LOC(0)), &(TOP(0)), sizeof(VAL)*args)
+
+void* iallocate(VM *, size_t, int);
 
 void* allocate(size_t size, int outerlock);
 // void* allocCon(VM* vm, int arity, int outerlock);
@@ -298,8 +355,8 @@ void* allocate(size_t size, int outerlock);
 // idris_doneAlloc *must* be called when allocation from C is done (as it
 // may take a lock if other threads are running).
 
-void idris_requireAlloc(size_t size);
-void idris_doneAlloc(void);
+void idris_requireAlloc(VM *, size_t size);
+void idris_doneAlloc(VM *);
 
 // public interface to allocation (note that this may move other pointers
 // if allocating beyond the limits given by idris_requireAlloc!)
@@ -308,29 +365,44 @@ void* idris_alloc(size_t size);
 void* idris_realloc(void* old, size_t old_size, size_t size);
 void idris_free(void* ptr, size_t size);
 
-#define allocCon(cl, vm, t, a, o) \
-  cl = allocate(sizeof(Closure) + sizeof(VAL)*a, o); \
-  SETTY(cl, CT_CON); \
-  cl->info.c.tag_arity = ((t) << 8) | (a);
+static inline void updateConF(Con * cl, unsigned tag, unsigned arity) {
+    SETTY(cl, CT_CON);
+    cl->tag = tag;
+    // hdr.u16 used to store arity
+    cl->hdr.u16 = arity;
+    assert(cl->hdr.sz == sizeof(*cl) + sizeof(VAL) * arity);
+    // cl->hdr.sz = sizeof(*cl) + sizeof(VAL) * arity;
+}
 
-#define updateCon(cl, old, t, a) \
-  cl = old; \
-  SETTY(cl, CT_CON); \
-  cl->info.c.tag_arity = ((t) << 8) | (a);
+static inline Con * allocConF(VM * vm, unsigned tag, unsigned arity, int outer) {
+    Con * cl = iallocate(vm, sizeof(*cl) + sizeof(VAL) * arity, outer);
+    SETTY(cl, CT_CON);
+    cl->tag = tag;
+    // hdr.u16 used to store arity
+    cl->hdr.u16 = arity;
+    return cl;
+}
 
-#define NULL_CON(x) nullary_cons[x]
+static inline Array * allocArrayF(VM * vm, size_t len, int outer) {
+    Array * cl = iallocate(vm, sizeof(*cl) + sizeof(VAL) * len, outer);
+    SETTY(cl, CT_ARRAY);
+    return cl;
+}
 
-#define allocArray(cl, vm, len, o) \
-  cl = allocate(sizeof(Closure) + sizeof(VAL)*len, o); \
-  SETTY(cl, CT_ARRAY); \
-  cl->info.arr.length = len;
+
+#define allocCon(cl, vm, t, a, o) (cl) = (VAL)allocConF(vm, t, a, o)
+
+#define updateCon(cl, old, tag, arity) (cl) = (old); updateConF(cl, tag, arity)
+
+#define NULL_CON(x) ((VAL)(nullary_cons + x))
+
+#define allocArray(cl, vm, len, o) (cl) = (VAL)allocArrayF(vm, len, o)
 
 int idris_errno(void);
 char* idris_showerror(int err);
 
-extern VAL* nullary_cons;
+extern Con nullary_cons[];
 void init_nullaries(void);
-void free_nullaries(void);
 
 void init_signals(void);
 
@@ -460,4 +532,22 @@ void stackOverflow(void);
 
 #include "idris_gmp.h"
 
+static inline size_t valSize(VAL v) {
+    return v->hdr.sz;
+}
+
+static inline size_t aligned(size_t sz) {
+    return (sz + sizeof(void*) - 1) & ~(sizeof(void*)-1);
+}
+
+VM* get_vm(void);
+
 #endif
+
+/*
+  Local variables: **
+  c-file-style: "bsd" **
+  c-basic-offset: 4 **
+  indent-tabs-mode: nil **
+  End: **
+*/

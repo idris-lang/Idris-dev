@@ -40,6 +40,6 @@ install :
 clean :
 	rm -f $(OBJS) $(LIBTARGET) $(DYLIBTARGET)
 
-idris_rts.o: idris_rts.h
+$(OBJS): $(HDRS)
 
 .PHONY: build install clean

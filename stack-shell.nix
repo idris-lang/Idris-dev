@@ -18,5 +18,5 @@ in haskell.lib.buildStackProject {
   nativeBuildInputs = native_libs;
   buildInputs = libs;
   name = "idrisBuildEnv";
-  src = ./.;
+  src = if lib.inNixShell then null else ./.;
 }
