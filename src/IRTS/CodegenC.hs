@@ -5,8 +5,7 @@ Description : The default code generator for Idris, generating C code.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, FlexibleContexts #-}
 
 module IRTS.CodegenC (codegenC) where
 
