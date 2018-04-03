@@ -28,7 +28,7 @@ Editing at the REPL
 
 The REPL provides a number of commands, which we will describe
 shortly, which generate new program fragments based on the currently
-loaded module. These take the general form
+loaded module. These take the general form:
 
 ::
 

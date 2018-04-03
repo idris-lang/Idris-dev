@@ -170,9 +170,11 @@ a simple recipe for this trivial case:
 
 - Add a file myProject.ipkg containing just a couple of lines:
 
-``package myProject``
+.. code-block:: idris
 
-``pkgs = pruviloj, lightyear``
+    package myProject
+
+    pkgs = pruviloj, lightyear
 
 - In Atom, use the File menu to Open Folder myProject.
 
