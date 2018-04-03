@@ -34,7 +34,7 @@ rule, and the right hand side describes its expansion. The syntax rule
 itself consists of:
 
 -  **Keywords** — here, ``if``, ``then`` and ``else``, which must be
-   valid identifiers
+   valid identifiers.
 
 -  **Non-terminals** — included in square brackets, ``[test]``, ``[t]``
    and ``[e]`` here, which stand for arbitrary expressions. To avoid
@@ -44,9 +44,9 @@ itself consists of:
 -  **Names** — included in braces, which stand for names which may be
    bound on the right hand side.
 
--  **Symbols** — included in quotations marks, e.g. ``:=``. This can
+-  **Symbols** — included in quotations marks, e.g. ``":="``. This can
    also be used to include reserved words in syntax rules, such as
-   ``let`` or ``in``.
+   ``"let"`` or ``"in"``.
 
 The limitations on the form of a syntax rule are that it must include
 at least one symbol or keyword, and there must be no repeated
@@ -63,7 +63,7 @@ recursive. The following syntax extensions would therefore be valid:
     syntax select [x] from [t] "where" [w] = SelectWhere x t w;
     syntax select [x] from [t]             = Select x t;
 
-Syntax macros can be further restricted to apply only in patterns (i.e.,
+Syntax macros can be further restricted to apply only in patterns (i.e.
 only on the left hand side of a pattern match clause) or only in terms
 (i.e. everywhere but the left hand side of a pattern match clause) by
 being marked as ``pattern`` or ``term`` syntax rules. For example, we

@@ -13,8 +13,7 @@ manipulation, and ``Ptr`` which represents foreign pointers. There are
 also several data types declared in the library, including ``Bool``,
 with values ``True`` and ``False``. We can declare some constants with
 these types. Enter the following into a file ``Prims.idr`` and load it
-into the Idris interactive environment by typing ``idris
-Prims.idr``:
+into the Idris interactive environment by typing ``idris Prims.idr``:
 
 .. code-block:: idris
 
@@ -38,7 +37,7 @@ collection of declarations and definitions. In this example no imports
 have been specified. However Idris programs can consist of several
 modules and the definitions in each module each have their own
 namespace. This is discussed further in Section
-:ref:`sect-namespaces`). When writing Idris programs both the order in which
+:ref:`sect-namespaces`. When writing Idris programs both the order in which
 definitions are given and indentation are significant. Functions and
 data types must be defined before use, incidentally each definition must
 have a type declaration, for example see ``x : Int``, ``foo :
@@ -343,7 +342,7 @@ Vectors
 
 A standard example of a dependent data type is the type of “lists with
 length”, conventionally called vectors in the dependent type
-literature.  They are available as part of the Idris library, by
+literature. They are available as part of the Idris library, by
 importing ``Data.Vect``, or we can declare them as follows:
 
 .. code-block:: idris
@@ -521,8 +520,8 @@ help document a function by making the purpose of an argument more
 clear.
 
 Furthermore, ``{}`` can be used to pattern match on the left hand side, i.e.
-``{var = pat}`` gets an implicit variable and attempts to pattern match on "pat";
-For example :
+``{var = pat}`` gets an implicit variable and attempts to pattern match on “pat”;
+For example:
 
 .. code-block:: idris
 
@@ -559,7 +558,6 @@ vector. For example:
     inVect : IsElem 5 Main.testVec
     inVect = There (There Here)
 
-
 .. important:: Implicit Arguments and Scope
 
     Within the type signature the typechecker will treat all variables
@@ -568,7 +566,6 @@ vector. For example:
     example to compile you will need to provide a qualified name for
     ``testVec``. In the example above, we have assumed that the code
     lives within the ``Main`` module.
-
 
 If the same implicit arguments are being used a lot, it can make a
 definition difficult to read. To avoid this problem, a ``using`` block
@@ -582,15 +579,13 @@ appear within the block:
          Here  : IsElem x (x :: xs)
          There : IsElem x xs -> IsElem x (y :: xs)
 
-
-
 Note: Declaration Order and ``mutual`` blocks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In general, functions and data types must be defined before use, since
 dependent types allow functions to appear as part of types, and type
 checking can rely on how particular functions are defined (though this
-is only true of total functions; see Section :ref:`sect-totality`)).
+is only true of total functions; see Section :ref:`sect-totality`).
 However, this restriction can be relaxed by using a ``mutual`` block,
 which allows data types and functions to be defined simultaneously:
 
@@ -673,7 +668,7 @@ Note that several of these return ``Either``, since they may fail.
 I/O programs will typically need to sequence actions, feeding the
 output of one computation into the input of the next. ``IO`` is an
 abstract type, however, so we can’t access the result of a computation
-directly.  Instead, we sequence operations with ``do`` notation:
+directly. Instead, we sequence operations with ``do`` notation:
 
 .. code-block:: idris
 
@@ -713,7 +708,7 @@ not always the best approach. Consider the following function:
 
 This function uses one of the ``t`` or ``e`` arguments, but not both
 (in fact, this is used to implement the ``if...then...else`` construct
-as we will see later. We would prefer if *only* the argument which was
+as we will see later). We would prefer if *only* the argument which was
 used was evaluated. To achieve this, Idris provides a ``Lazy``
 data type, which allows evaluation to be suspended:
 
@@ -797,7 +792,7 @@ infinite loop and cause a stack overflow.
 To fix this we must add explicit ``Inf`` declarations to the constructor
 parameter types, since codata will not add it to constructor parameters of a
 **different** type from the one being defined. For example, the following
-outputs "1".
+outputs ``1``.
 
 .. code-block:: idris
 
@@ -902,7 +897,7 @@ For more details of the functions available on ``List`` and
 
 -  ``libs/base/Data/VectType.idr``
 
-Functions include filtering, appending, reversing, and so on. 
+Functions include filtering, appending, reversing, and so on.
 
 Aside: Anonymous functions and operator sections
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -999,7 +994,7 @@ Dependent Pairs
 ---------------
 
 Dependent pairs allow the type of the second element of a pair to depend
-on the value of the first element. 
+on the value of the first element:
 
 .. code-block:: idris
 
@@ -1009,7 +1004,7 @@ on the value of the first element.
 Again, there is syntactic sugar for this. ``(a : A ** P)`` is the type
 of a pair of A and P, where the name ``a`` can occur inside ``P``.
 ``( a ** p )`` constructs a value of this type. For example, we can
-pair a number with a ``Vect`` of a particular length.
+pair a number with a ``Vect`` of a particular length:
 
 .. code-block:: idris
 
@@ -1017,7 +1012,7 @@ pair a number with a ``Vect`` of a particular length.
     vec = (2 ** [3, 4])
 
 If you like, you can write it out the long way, the two are precisely
-equivalent.
+equivalent:
 
 .. code-block:: idris
 
@@ -1070,7 +1065,7 @@ intermediate values:
 
 We will see more on ``with`` notation later.
 
-Dependent pairs are sometimes referred to as “sigma types”.
+Dependent pairs are sometimes referred to as “Sigma types”.
 
 Records
 -------
@@ -1080,7 +1075,7 @@ Records
 automatically generating field access and update functions. Unlike
 the syntax used for data structures, records in Idris follow a
 different syntax to that seen with Haskell. For example, we can
-represent a person's name and age in a record:
+represent a person’s name and age in a record:
 
 .. code-block:: idris
 
@@ -1092,12 +1087,11 @@ represent a person's name and age in a record:
     fred : Person
     fred = MkPerson "Fred" "Joe" "Bloggs" 30
 
-
 The constructor name is provided using the ``constructor`` keyword,
 and the *fields* are then given which are in an indented block
 following the `where` keyword (here, ``firstName``, ``middleName``,
 ``lastName``, and ``age``). You can declare multiple fields on a
-single line, provided that they have the same type.  The field names
+single line, provided that they have the same type. The field names
 can be used to access the field values:
 
 ::
@@ -1171,7 +1165,7 @@ syntax:
     record { a->b->c = val } x
 
 This returns a new record, with the field accessed by the path
-``a->b->c`` set to ``val``. The syntax is first class, i.e.  ``record {
+``a->b->c`` set to ``val``. The syntax is first class, i.e. ``record {
 a->b->c = val }`` itself has a function type. Symmetrically, the field
 can also be accessed with the following syntax:
 
@@ -1196,11 +1190,9 @@ name. For example, a pair type could be defined as follows:
         fst : a
         snd : b
 
-
 Using the ``class`` record from earlier, the size of the class can be
 restricted using a ``Vect`` and the size included in the type by parameterising
 the record with the size.  For example:
-
 
 .. code-block:: idris
 
@@ -1214,7 +1206,7 @@ function from earlier, since that would change the size of the class. A
 function to add a student must now specify in the type that the
 size of the class has been increased by one. As the size is specified
 using natural numbers, the new value can be incremented using the
-``S`` constructor.
+``S`` constructor:
 
 .. code-block:: idris
 
@@ -1327,7 +1319,7 @@ matching ``let`` and lambda bindings. It will *only* work if:
 - Each branch *matches* a value of the same type, and *returns* a
   value of the same type.
 
-- The type of the result is "known". i.e. the type of the expression
+- The type of the result is “known”. i.e. the type of the expression
   can be determined *without* type checking the ``case``-expression
   itself.
 
@@ -1337,7 +1329,7 @@ Totality
 Idris distinguishes between *total* and *partial* functions.
 A total function is a function that either:
 
-+ Terminates for all possible inputs, or 
++ Terminates for all possible inputs, or
 + Produces a non-empty, finite, prefix of a possibly infinite result
 
 If a function is total, we can consider its type a precise description of what
@@ -1345,12 +1337,12 @@ that function will do. For example, if we have a function with a return
 type of ``String`` we know something different, depending on whether or not
 it's total:
 
-+ If it's total, it will return a value of type ``String`` in finite time
++ If it's total, it will return a value of type ``String`` in finite time;
 + If it's partial, then as long as it doesn't crash or enter an infinite loop,
   it will return a ``String``.
 
 Idris makes this distinction so that it knows which functions are safe to
-evaluate while type checking (as we've seen with :ref:`sect-fctypes`).  After all,
+evaluate while type checking (as we've seen with :ref:`sect-fctypes`). After all,
 if it tries to evaluate a function during type checking which doesn't
 terminate, then type checking won't terminate!
 Therefore, only total functions will be evaluated during type checking.
