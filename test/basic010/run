@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+set -eu
+
+ulimit -t 20
 "${IDRIS:-idris}" "$@" Main.idr --nocolour --check --warnreach -o basic010
 ./basic010
 rm -f -- *.ibc basic010
