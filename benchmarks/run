@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -eu
+
+TIMEFORMAT=%U
+run() {
+    total=0
+    while read dir nm arg; do
+	idr=${IDRIS:-idris}
+	pkg=$nm.ipkg
+	cd $dir
+	user=$(time (./$nm $arg 2>&1 >/dev/null) 2>&1)
+	echo "$dir / $nm $user"
+	total=$(echo $total + $user | bc)
+	cd ..
+    done
+    echo "TOTAL $total"
+}
+
+sed 's-/- -g' ALL | run

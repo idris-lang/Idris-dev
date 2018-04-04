@@ -9,7 +9,7 @@
 , unordered-containers, utf8-string, vector
 , vector-binary-instances, zip-archive
 
-, lib, darwin, perl, nodejs, cabal-install
+, lib, darwin, nodejs, cabal-install
 }:
 mkDerivation {
   pname = "idris";
@@ -43,10 +43,10 @@ mkDerivation {
     base bytestring containers directory filepath haskeline
     optparse-applicative process tagged tasty tasty-golden tasty-rerun
     time transformers
-    perl nodejs
+    nodejs
   ];
   benchmarkDepends = [
-    perl nodejs
+    nodejs
   ];
   homepage = "http://www.idris-lang.org/";
   description = "Functional Programming Language with Dependent Types";

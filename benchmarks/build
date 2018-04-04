@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eu
+
+build() {
+    while read dir nm arg; do
+	idr=${IDRIS:-idris}
+	pkg=$nm.ipkg
+	cd $dir
+	$idr --clean $pkg
+	$idr --build $pkg
+	cd ..
+    done
+}
+
+sed 's-/- -g' ALL | build

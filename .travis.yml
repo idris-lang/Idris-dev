@@ -142,7 +142,7 @@ script:
 ###
   - echo 'Benchmarks...' && echo -en 'travis_fold:start:script.benchmarks\\r'
   - if [[ "$TESTS" == "test_c" ]]; then
-      cd benchmarks && ./build.pl && ./run.pl && cd ..;
+      cd benchmarks && ./build && ./run && cd ..;
     fi
   - echo -en 'travis_fold:end:script.benchmarks\\r'
 ###
