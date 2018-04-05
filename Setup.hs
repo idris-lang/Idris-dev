@@ -337,8 +337,12 @@ fixPkg pkg target = pkg { dataDir = target }
 
 idrisTestHook args pkg local hooks flags = do
   let target = datadir $ L.absoluteInstallDirs pkg local NoCopyDest
-  idris <- canonicalizePath (buildDir local </> "idris" </> "idris")
-  setEnv "IDRIS" idris
+  idris <- lookupEnv "IDRIS"
+  case idris of
+    Just _ -> pure () -- Test using provided idris
+    Nothing -> -- Test built idris
+      canonicalizePath (buildDir local </> "idris" </> "idris")
+      >>= setEnv "IDRIS"
 --  testHook simpleUserHooks args (fixPkg pkg target) local hooks flags
   testHook simpleUserHooks args pkg local hooks flags
 

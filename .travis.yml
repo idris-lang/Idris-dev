@@ -29,6 +29,17 @@ matrix:
     - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
       compiler: ": #GHC 8.0.1"
       addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: TESTS="test_c"
+      language: nix
+      before_script:
+	- env
+      script:
+        - env
+      before_install:
+        - env
+      install:
+        - env
+
   fast-finish: true
 
 cache:

@@ -1,3 +1,7 @@
+# Parent makefile exports now all variables, avoid including config.mk twice
+ifndef CONFIGMK_INCLUDED
+CONFIGMK_INCLUDED := 1
+
 UNAME_INFO      := $(shell uname -a)
 
 ifeq ($(filter , $(findstring MSYS, $(UNAME_INFO)) $(findstring MINGW, $(UNAME_INFO))),)
@@ -48,3 +52,5 @@ else ifeq ($(OS),windows)
 else
 	SHLIB_SUFFIX    :=.so
 endif
+
+endif # CONFIGMK_INCLUDED
