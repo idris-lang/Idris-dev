@@ -23,13 +23,12 @@ editor, and specifically how to do so in `Vim
 for `Emacs <https://github.com/idris-hackers/idris-mode>`_ is also
 available.
 
-
 Editing at the REPL
 ===================
 
 The REPL provides a number of commands, which we will describe
 shortly, which generate new program fragments based on the currently
-loaded module. These take the general form
+loaded module. These take the general form:
 
 ::
 
@@ -64,9 +63,9 @@ Editing Commands
 :addclause
 ----------
 
-The ``:addclause n f`` command (abbreviated ``:ac n f``) creates a
+The ``:addclause n f`` command, abbreviated ``:ac n f``, creates a
 template definition for the function named ``f`` declared on line
-``n``.  For example, if the code beginning on line 94 contains:
+``n``. For example, if the code beginning on line 94 contains:
 
 .. code-block:: idris
 
@@ -129,7 +128,7 @@ ys`` would lead to a unification error.
 
 The ``:addmissing n f`` command, abbreviated ``:am n f``, adds the
 clauses which are required to make the function ``f`` on line ``n``
-cover all inputs. For example, if the code beginning on line 94 is
+cover all inputs. For example, if the code beginning on line 94 is:
 
 .. code-block:: idris
 
@@ -143,7 +142,7 @@ then ``:am 96 vzipWith`` gives:
 
     vzipWith f (x :: xs) (y :: ys) = ?vzipWith_rhs_2
 
-That is, it notices that there are no cases for non-empty vectors,
+That is, it notices that there are no cases for empty vectors,
 generates the required clauses, and eliminates the clauses which would
 lead to unification errors.
 

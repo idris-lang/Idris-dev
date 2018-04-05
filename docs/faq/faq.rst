@@ -173,8 +173,10 @@ function back to itself. On such a path, there must be at least one
 argument which converges to a base case.
 
 - Mutually recursive functions are supported
+
 - However, all functions on the path must be fully applied. In particular,
   higher order applications are not supported
+
 - Idris identifies arguments which converge to a base case by looking for
   recursive calls to syntactically smaller arguments of inputs. e.g.
   ``k`` is syntactically smaller than ``S (S k)`` because ``k`` is a
@@ -233,14 +235,17 @@ where the install directory is unknown at build time. When passing this
 flag, the IDRIS_LIB_DIR environment variable needs to be set to the path
 where the Idris libs reside relative to the idris executable. The
 IDRIS_TOOLCHAIN_DIR environment variable is optional, if that is set,
-Idris will use that path to find the C compiler.
+Idris will use that path to find the C compiler. For example:
 
-Example::
+::
 
-   IDRIS_LIB_DIR="./libs" IDRIS_TOOLCHAIN_DIR="./mingw/bin" CABALFLAGS="-fffi -ffreestanding -frelease" make
+   IDRIS_LIB_DIR="./libs" \
+   IDRIS_TOOLCHAIN_DIR="./mingw/bin" \
+   CABALFLAGS="-fffi -ffreestanding -frelease" \
+   make
 
 
-What does the name ‘Idris’ mean?
+What does the name “Idris” mean?
 ================================
 
 British people of a certain age may be familiar with this
@@ -256,16 +261,20 @@ There are several reasons why we should not support Unicode operators:
 - It's hard to type (this is important if you're using someone else's code, for
   example). Various editors have their own input methods, but you have to know
   what they are.
+
 - Not every piece of software easily supports it. Rendering issues have been
   noted on some mobile email clients, terminal-based IRC clients, web browsers,
   etc. There are ways to resolve these rendering issues but they provide a
   barrier to entry to using Idris.
+
 - Even if we leave it out of the standard library (which we will in any case!)
   as soon as people start using it in their library code, others have to deal
   with it.
+
 - Too many characters look too similar. We had enough trouble with confusion
   between 0 and O without worrying about all the different kinds of colons and
   brackets.
+
 - There seems to be a tendency to go over the top with use of Unicode. For
   example, using sharp and flat for delay and force (or is it the other way
   around?) in Agda seems gratuitous. We don't want to encourage this sort of
@@ -280,7 +289,7 @@ This seems like an instance of `Wadler's
 Law <http://www.haskell.org/haskellwiki/Wadler%27s_Law>`__ in action.
 
 This answer is based on Edwin Brady's response in the following
-`pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`__.
+`pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`_.
 
 Where can I find the community standards for the Idris community?
 ==================================================================

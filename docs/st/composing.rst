@@ -1,7 +1,7 @@
 .. _composing:
 
 ************************
-Composing State Machines 
+Composing State Machines
 ************************
 
 In the previous section, we defined a ``DataStore`` interface and used it
@@ -28,7 +28,7 @@ there was a login failure in a state.
 
 Furthermore, we may have *hierarchies* of state machines, in that one
 state machine could be implemented by composing several others. For
-example, we can have a state machine representing the state of a 
+example, we can have a state machine representing the state of a
 graphics system, and use this to implement a *higher level* graphics API
 such as turtle graphics, which uses the graphics system plus some additional
 state for the turtle.
@@ -50,7 +50,7 @@ count to zero, a session might run as follows:
     *LoginCount> :exec main
     Enter password: Mornington Crescent
     Secret is: "Secret Data"
-    Enter password: Dollis Hill 
+    Enter password: Dollis Hill
     Failure
     Number of failures: 1
     Enter password: Mornington Crescent
@@ -63,7 +63,7 @@ count to zero, a session might run as follows:
 We'll start by adding a state resource to ``getData`` to keep track of the
 number of failures:
 
-.. code-block:: idrs
+.. code-block:: idris
 
   getData : (ConsoleIO m, DataStore m) =>
             (failcount : Var) -> ST m () [failcount ::: State Integer]
@@ -116,7 +116,7 @@ match:
                 Required result states here are: st2_fn
 
 In other words, ``connect`` requires that there are *no* resources on
-entry, but we have *one*, the failure count!  
+entry, but we have *one*, the failure count!
 This shouldn't be a problem, though: the required resources are a *subset* of
 the resources we have, after all, and the additional resources (here, the
 failure count) are not relevant to ``connect``. What we need, therefore,
@@ -214,7 +214,7 @@ ordering of resources is allowed to change, although resources which
 appear in ``old`` can't appear in the ``sub`` list more than once (you will
 get a type error if you try this).
 
-The function ``updateWith`` takes the *output* resources of the 
+The function ``updateWith`` takes the *output* resources of the
 called function, and updates them in the current resource list. It makes
 an effort to preserve ordering as far as possible, although this isn't
 always possible if the called function does some complicated resource
@@ -338,7 +338,7 @@ representing a surface on which we'll draw lines and rectangles:
 
 .. code-block:: idris
 
-    interface Draw (m : Type -> Type) where 
+    interface Draw (m : Type -> Type) where
         Surface : Type
 
 We'll need to be able to create a new ``Surface`` by opening a window:
@@ -369,7 +369,7 @@ succeeds (that is, returns a result of the form ``Just val``.
   an operation returns ``Just ty``, there's also ``addIfRight``:
 
   .. code-block:: idris
-     
+
      addIfJust : Type -> Action (Maybe Var)
      addIfRight : Type -> Action (Either a Var)
 
@@ -378,10 +378,10 @@ succeeds (that is, returns a result of the form ``Just val``.
   of an operation:
 
   .. code-block:: idris
-  
+
      Add : (ty -> Resources) -> Action ty
-  
-  Using this, you can create your own actions to add resources 
+
+  Using this, you can create your own actions to add resources
   based on the result of an operation, if required. For example,
   ``addIfJust`` is implemented as follows:
 
@@ -479,7 +479,7 @@ For example, assuming we have a surface ``win`` to draw onto, we can write a
 
 The ``flip win`` at the end is necessary because the drawing primitives
 are double buffered, to prevent flicker. We draw onto one buffer, off-screen,
-and display the other.  When we call ``flip``, it displays the off-screen 
+and display the other.  When we call ``flip``, it displays the off-screen
 buffer, and creates a new off-screen buffer for drawing the next frame.
 
 To include this in a program, we'll write a main loop which renders our
@@ -496,7 +496,7 @@ application:
 
 Finally, we can create a main program which initialises a window, if
 possible, then runs the main loop:
-                
+
 .. code-block:: idris
 
   drawMain : (ConsoleIO m, Draw m) => ST m () []
@@ -593,7 +593,7 @@ is implemented using the following type, defined by ``Control.ST``:
 
 .. code-block:: idris
 
-  data Composite : List Type -> Type 
+  data Composite : List Type -> Type
 
 If we have a composite resource, we can split it into its constituent
 resources, and create new variables for each of those resources, using
@@ -604,7 +604,7 @@ the *split* function. For example:
   splitComp : (comp : Var) -> ST m () [comp ::: Composite [State Int, State String]]
   splitComp comp = do [int, str] <- split comp
                       ?whatNow
- 
+
 The call ``split comp`` extracts the ``State Int`` and ``State String`` from
 the composite resource ``comp``, and stores them in the variables ``int``
 and ``str`` respectively. If we check the type of ``whatNow``, we'll see
@@ -713,7 +713,7 @@ A ``Line`` is defined as a start location, and end location, and a colour:
   Line : Type
   Line = ((Int, Int), (Int, Int), Col)
 
-To implement ``start``, which creates a new ``Turtle`` (or returns ``Nothing`` 
+To implement ``start``, which creates a new ``Turtle`` (or returns ``Nothing``
 if this is impossible), we begin by initialising the drawing surface then
 all of the components of the state. Finally, we combine all of these
 into a composite resource for the turtle:

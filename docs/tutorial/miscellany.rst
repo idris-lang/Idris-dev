@@ -8,7 +8,7 @@ In this section we discuss a variety of additional features:
 
 + auto, implicit, and default arguments;
 + literate programming;
-+ interfacing with external libraries through the foreign function
++ interfacing with external libraries through the foreign function;
 + interface;
 + type providers;
 + code generation; and
@@ -23,7 +23,7 @@ omitted when they can be inferred by the type checker, e.g.
 .. code-block:: idris
 
     index : {a:Type} -> {n:Nat} -> Fin n -> Vect n a -> a
-    
+
 Auto implicit arguments
 ------------------------
 
@@ -69,17 +69,17 @@ In the case that a proof is not found, it can be provided explicitly as normal:
 .. code-block:: idris
 
     head xs {p = ?headProof}
-    
+
 Default implicit arguments
 ---------------------------
 
-Besides having Idris automatically find a value of a given type, sometimes we 
+Besides having Idris automatically find a value of a given type, sometimes we
 want to have an implicit argument with a specific default value. In Idris, we can
 do this using the ``default`` annotation. While this is primarily intended to assist
-in automatically constructing a proof where auto fails, or finds an unhelpful value, 
-it might be easier to first consider a simpler case, not involving proofs. 
+in automatically constructing a proof where auto fails, or finds an unhelpful value,
+it might be easier to first consider a simpler case, not involving proofs.
 
-If we want to compute the n'th fibonacci number (and defining the 0th fibonacci 
+If we want to compute the n'th fibonacci number (and defining the 0th fibonacci
 number as 0), we could write:
 
 .. code-block:: idris
@@ -89,8 +89,8 @@ number as 0), we could write:
 	fibonacci {lag} {lead} (S n) = fibonacci {lag=lead} {lead=lag+lead} n
 
 After this definition, ``fibonacci 5`` is equivalent to ``fibonacci {lag=0} {lead=1} 5``,
-and will return the 5th fibonacci number. Note that while this works, this is not the 
-intended use of the ``default`` annotation. It is included here for illustrative purposes 
+and will return the 5th fibonacci number. Note that while this works, this is not the
+intended use of the ``default`` annotation. It is included here for illustrative purposes
 only. Usually, ``default`` is used to provide things like a custom proof search script.
 
 
@@ -329,13 +329,13 @@ are available in an external collection [1]_.
 C Target
 ========
 
-The default target of Idris is C. Compiling via :
+The default target of Idris is C. Compiling via:
 
 ::
 
     $ idris hello.idr -o hello
 
-is equivalent to :
+is equivalent to:
 
 ::
 
@@ -344,14 +344,14 @@ is equivalent to :
 When the command above is used, a temporary C source is generated, which
 is then compiled into an executable named ``hello``.
 
-In order to view the generated C code, compile via :
+In order to view the generated C code, compile via:
 
 ::
 
     $ idris hello.idr -S -o hello.c
 
 To turn optimisations on, use the ``%flag C`` pragma within the code, as
-is shown below :
+is shown below:
 
 .. code-block:: idris
 
@@ -368,7 +368,7 @@ is shown below :
 
 To compile the generated C with debugging information e.g. to use
 ``gdb`` to debug segmentation faults in Idris programs, use the
-``%flag C`` pragma to include debugging symbols, as is shown below :
+``%flag C`` pragma to include debugging symbols, as is shown below:
 
 .. code-block:: idris
 
@@ -503,13 +503,13 @@ And for use in the browser:
 
 The given files will be added to the top of the generated code.
 For library packages you can also use the ipkg objs option to include the
-js file in the installation, and use
+js file in the installation, and use:
 
 .. code-block:: idris
 
       %include Node "package/external.js"
 
-This javascript and node backends idris will also lookup for the file on
+The *JavaScript* and *NodeJS* backends of Idris will also lookup for the file
 on that location.
 
 Including *NodeJS* modules
@@ -552,7 +552,7 @@ types themselves have types. For example:
     *universe> :t Vect
     Vect : Nat -> Type -> Type
 
-But what about the type of ``Type``? If we ask Idris it reports
+But what about the type of ``Type``? If we ask Idris it reports:
 
 ::
 
@@ -560,8 +560,8 @@ But what about the type of ``Type``? If we ask Idris it reports
     Type : Type 1
 
 If ``Type`` were its own type, it would lead to an inconsistency due to
-`Girard’s paradox <http://www.cs.cmu.edu/afs/cs.cmu.edu/user/kw/www/scans/girard72thesis.pdf>`_ , so internally there is a
-*hierarchy* of types (or *universes*):
+`Girard’s paradox <http://www.cs.cmu.edu/afs/cs.cmu.edu/user/kw/www/scans/girard72thesis.pdf>`_,
+so internally there is a *hierarchy* of types (or *universes*):
 
 .. code-block:: idris
 

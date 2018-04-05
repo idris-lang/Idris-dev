@@ -115,8 +115,8 @@ We can do the same for the reduction behaviour of plus on successors:
 
 Even for trivial theorems like these, the proofs are a little tricky to
 construct in one go. When things get even slightly more complicated, it
-becomes too much to think about to construct proofs in this ‘batch
-mode’.
+becomes too much to think about to construct proofs in this “batch
+mode”.
 
 Idris provides interactive editing capabilities, which can help with
 building proofs. For more details on building proofs interactively in
@@ -383,7 +383,7 @@ will always be smaller than ``(x :: xs)``:
        = qsort (filter (< x) xs) ++
           (x :: qsort (filter (>= x) xs))
 
-The function ``assert_smaller``, defined in the Prelude, is intended to
+The function ``assert_smaller``, defined in the prelude, is intended to
 address this problem:
 
 .. code-block:: idris
