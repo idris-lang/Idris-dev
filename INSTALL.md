@@ -126,6 +126,10 @@ PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig stack build
 
 ## Experimental Support for Building on NixOS or systems with Nixpkgs
 
+Generate the nix expression:
+
+    make nix-setup
+
 To run the full build process:
 
     nix-build
@@ -139,4 +143,5 @@ If you wish to install it to your environment:
 For local development with Cabal:
 
     nix-shell
-    cabal install # or build/test/whatever
+    cabal configure --enable-tests -fFFI -fGMP
+    cabal test
