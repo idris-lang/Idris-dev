@@ -1,4 +1,7 @@
-include ../config.mk
+# Parent makefile exports now all variables, avoid including config.mk twice
+ifndef UNAME_INFO
+  include ../config.mk
+endif
 
 OBJS = idris_rts.o idris_heap.o idris_gc.o idris_gmp.o idris_bitstring.o \
        idris_opts.o idris_stats.o idris_utf8.o idris_stdfgn.o mini-gmp.o \
