@@ -126,10 +126,6 @@ PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig stack build
 
 ## Experimental Support for Building on NixOS or systems with Nixpkgs
 
-Generate the nix expression:
-
-    make nix-setup
-
 To run the full build process:
 
     nix-build

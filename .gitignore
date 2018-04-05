@@ -53,5 +53,8 @@ TAGS
 .vscode
 .idea
 
-# NIX expression generated via cabal2nix
+# Nix expression generated via cabal2nix
 idris-generated.nix
+
+# Nix output
+result

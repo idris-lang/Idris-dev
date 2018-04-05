@@ -101,8 +101,4 @@ fast:
 dist/setup-config:
 	$(CABAL) configure $(CABALFLAGS)
 
-
-nix-setup:
-	cabal2nix . > idris-generated.nix
-
 .EXPORT_ALL_VARIABLES:

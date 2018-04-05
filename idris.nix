@@ -1,8 +1,8 @@
 { nixpkgs ? import <nixpkgs> {}}:
 with nixpkgs;
 with pkgs;
-haskell.lib.overrideCabal (haskellPackages.callPackage ./idris-generated.nix {}) (orig: {
-    configureFlags = [ "-f-execonly" "-fFFI" "-fGMP" ];
+haskell.lib.overrideCabal (haskellPackages.callCabal2nix "idris" ./. {}) (orig:{
+    configureFlags = [ "-fFFI" "-fGMP" ];
     librarySystemDepends = orig.librarySystemDepends
       ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
         Cocoa
