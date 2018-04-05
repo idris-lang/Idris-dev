@@ -15,6 +15,7 @@ haskell.lib.overrideCabal (haskellPackages.callCabal2nix "idris" ./. {}) (orig:{
     preCheck = ''
       export DYLD_LIBRARY_PATH=`pwd`/dist/build
       export TARGET=`pwd`
+      patchShebangs test/scripts/timeout
     '';
     src = if lib.inNixShell then null else orig.src;
     setupHaskellDepends = orig.setupHaskellDepends
