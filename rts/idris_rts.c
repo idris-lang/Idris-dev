@@ -899,6 +899,7 @@ static VAL doCopyTo(VM* vm, VAL x) {
         break;
     default:
         assert(0); // We're in trouble if this happens...
+	cl = NULL;
     }
     return cl;
 }
