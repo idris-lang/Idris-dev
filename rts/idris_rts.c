@@ -1040,7 +1040,7 @@ Msg* idris_recvMessage(VM* vm) {
 
 Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     Msg* msg;
-    Msg* ret = malloc(sizeof(Msg));
+    Msg* ret;
 
     struct timespec timeout;
     int status;
@@ -1063,33 +1063,34 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     }
     pthread_mutex_unlock(&vm->inbox_block);
 
-    if (msg != NULL) {
-        ret->msg = msg->msg;
-        ret->sender = msg->sender;
-
-        pthread_mutex_lock(&(vm->inbox_lock));
-
-        // Slide everything down after the message in the inbox,
-        // Move the inbox_write pointer down, and clear the value at the
-        // end - O(n) but it's easier since the message from a specific
-        // sender could be anywhere in the inbox
-
-        for(;msg < vm->inbox_write; ++msg) {
-            if (msg+1 != vm->inbox_end) {
-                msg->sender = (msg + 1)->sender;
-                msg->msg = (msg + 1)->msg;
-            }
-        }
-
-        vm->inbox_write->msg = NULL;
-        vm->inbox_write->sender = NULL;
-        vm->inbox_write--;
-
-        pthread_mutex_unlock(&(vm->inbox_lock));
-    } else {
+    if (msg == NULL) {
         fprintf(stderr, "No messages waiting");
         exit(-1);
     }
+
+    ret = malloc(sizeof(Msg));
+    ret->msg = msg->msg;
+    ret->sender = msg->sender;
+
+    pthread_mutex_lock(&(vm->inbox_lock));
+
+    // Slide everything down after the message in the inbox,
+    // Move the inbox_write pointer down, and clear the value at the
+    // end - O(n) but it's easier since the message from a specific
+    // sender could be anywhere in the inbox
+
+    for(;msg < vm->inbox_write; ++msg) {
+      if (msg+1 != vm->inbox_end) {
+	msg->sender = (msg + 1)->sender;
+	msg->msg = (msg + 1)->msg;
+      }
+    }
+
+    vm->inbox_write->msg = NULL;
+    vm->inbox_write->sender = NULL;
+    vm->inbox_write--;
+
+    pthread_mutex_unlock(&(vm->inbox_lock));
 
     return ret;
 }
