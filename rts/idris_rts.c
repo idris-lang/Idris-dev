@@ -976,7 +976,7 @@ Msg* idris_checkInitMessages(VM* vm) {
     Msg* msg;
 
     for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
-        if (msg->channel_id && 1 == 1) { // init bit set
+	if ((msg->channel_id & 1) == 1) { // init bit set
             return msg;
         }
     }
