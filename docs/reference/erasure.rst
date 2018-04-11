@@ -127,7 +127,7 @@ For better intuition, the shape of the U-view of
 
       x0   y0    (two)
       x1   y1    (two)
-      x2   y1    (two)
+      x2   y2    (two)
          z       (one)
 
 When recursing over this structure, the values of ``xs`` range over
