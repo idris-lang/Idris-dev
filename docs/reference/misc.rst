@@ -220,7 +220,7 @@ following command::
    source <(idris --bash-completion-script `which idris`)
 
 
-To enable completion permenatly you must either:
+To enable completion permanently you must either:
 
 * Modify your bash init script with the above command.
 
