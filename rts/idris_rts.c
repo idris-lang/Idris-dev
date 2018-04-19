@@ -49,8 +49,9 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->ret = NULL;
     vm->reg1 = NULL;
 #ifdef HAS_PTHREAD
-    vm->inbox = malloc(1024*sizeof(VAL));
-    memset(vm->inbox, 0, 1024*sizeof(VAL));
+    vm->inbox = malloc(1024*sizeof(vm->inbox[0]));
+    assert(vm->inbox);
+    memset(vm->inbox, 0, 1024*sizeof(vm->inbox[0]));
     vm->inbox_end = vm->inbox + 1024;
     vm->inbox_write = vm->inbox;
     vm->inbox_nextid = 1;
@@ -276,7 +277,8 @@ static VAL mkstrlen(VM* vm, const char * str, size_t len, int outer) {
     String * cl = allocStr(vm, len, outer);
     // hdr.u8 used to mark a null string
     cl->hdr.u8 = str == NULL;
-    memcpy(cl->str, str, len);
+    if (!cl->hdr.u8)
+      memcpy(cl->str, str, len);
     return (VAL)cl;
 }
 
@@ -977,7 +979,7 @@ Msg* idris_checkInitMessages(VM* vm) {
     Msg* msg;
 
     for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
-        if (msg->channel_id && 1 == 1) { // init bit set
+	if ((msg->channel_id & 1) == 1) { // init bit set
             return msg;
         }
     }
