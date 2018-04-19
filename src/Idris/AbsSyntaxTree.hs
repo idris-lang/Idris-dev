@@ -1992,7 +1992,7 @@ pprintPTerm ppo bnd docArgs infixes = prettySe (ppopt_depth ppo) startPrec bnd
     prettyArgS d bnd (PConstraint _ _ _ tm)     = prettyArgSc d bnd tm
     prettyArgS d bnd (PTacImplicit _ _ n _ tm)  = prettyArgSti d bnd (n, tm)
 
-    prettyArgSe d bnd arg       = prettySe d (funcAppPrec + 1) bnd arg
+    prettyArgSe d bnd arg       = prettySe (decD d) (funcAppPrec + 1) bnd arg
     prettyArgSi d bnd (n, val)  = lbrace <> pretty n <+> text "=" <+> prettySe (decD d) startPrec bnd val <> rbrace
     prettyArgSc d bnd val       = lbrace <> lbrace <> prettySe (decD d) startPrec bnd val <> rbrace <> rbrace
     prettyArgSti d bnd (n, val) = lbrace <> kwd "auto" <+> pretty n <+> text "=" <+> prettySe (decD d) startPrec bnd val <> rbrace
