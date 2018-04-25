@@ -846,3 +846,9 @@ sucMinL (S l) = cong (sucMinL l)
 total sucMinR : (l : Nat) -> minimum l (S l) = l
 sucMinR Z = Refl
 sucMinR (S l) = cong (sucMinR l)
+
+||| If one number is biggre than another, you know what the maximum is.
+total lteImpliesMax : i `LTE` j -> maximum i j = j
+lteImpliesMax {i = Z}             _           = Refl
+lteImpliesMax {i = S k} {j = Z}   _           impossible
+lteImpliesMax {i = S k} {j = S j} (LTESucc x) = cong {f = S} $ lteImpliesMax x
