@@ -149,9 +149,9 @@ fromLteSucc (LTESucc x) = x
 isLTE : (m, n : Nat) -> Dec (m `LTE` n)
 isLTE Z n = Yes LTEZero
 isLTE (S k) Z = No succNotLTEzero
-isLTE (S k) (S j) with (isLTE k j)
-  isLTE (S k) (S j) | (Yes prf) = Yes (LTESucc prf)
-  isLTE (S k) (S j) | (No contra) = No (contra . fromLteSucc)
+isLTE (S k) (S j) = case isLTE k j of
+  Yes prf => Yes (LTESucc prf)
+  No contra => No (contra . fromLteSucc)
 
 ||| `LTE` is reflexive.
 lteRefl : LTE n n
@@ -181,6 +181,12 @@ notLTImpliesGTE : Not (LT a b) -> GTE a b
 notLTImpliesGTE {b = Z} _ = LTEZero
 notLTImpliesGTE {a = Z} {b = S k} notLt = absurd (notLt (LTESucc LTEZero))
 notLTImpliesGTE {a = S k} {b = S j} notLt = LTESucc (notLTImpliesGTE (notLt . LTESucc))
+
+||| If a number is not less than or equal to another, it is greater than it
+notLTEImpliesGT : Not (i `LTE` j) -> i `GT` j
+notLTEImpliesGT {i = Z}             notLt = absurd $ notLt LTEZero
+notLTEImpliesGT {i = S k} {j = Z}   _     = LTESucc LTEZero
+notLTEImpliesGT {i = S j} {j = S k} notLt = LTESucc (notLTEImpliesGT (notLt . LTESucc))
 
 ||| Boolean test than one Nat is less than or equal to another
 total lte : Nat -> Nat -> Bool
