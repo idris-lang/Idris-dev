@@ -22,8 +22,8 @@ import Idris.Unlit
 
 import Control.Monad.State
 import Data.List
-import qualified Data.Set as S
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Data.Time.Clock
 import System.Directory
 import Util.System (readSource)
@@ -57,8 +57,8 @@ getModuleFiles ts
    -- need rebuilding, which we keep track of in the Set.
    -- The order of the list matters - things which get built first appear
    -- in the list first. We'll remove any repetition later.
-   modList :: [ModuleTree] -> 
-              State (S.Set IFileType, 
+   modList :: [ModuleTree] ->
+              State (S.Set IFileType,
                      M.Map IFileType (Bool, [IFileType])) [IFileType]
    modList [] = return []
    modList (m : ms) = do (_, fs) <- modTree S.empty m
@@ -76,7 +76,7 @@ getModuleFiles ts
                     let rechkDep = or rechkDep_in
 
                     (rebuild, res) <- get
-                    
+
                     -- Needs rechecking if 'rechk' is true, or if any of the
                     -- modification times in 'deps' are later than tm, or
                     -- if any dependency needed rechecking
@@ -86,12 +86,12 @@ getModuleFiles ts
                     -- Remove duplicates, but keep the last...
                     let rnub = reverse . nub . reverse
 
-                    let ret = if needsRechk 
+                    let ret = if needsRechk
                                  then (needsRechk, rnub (getSrc file : concat toBuilds))
                                  else (needsRechk, rnub (file : concat toBuilds))
 
                     -- Cache the result
-                    put (if needsRechk 
+                    put (if needsRechk
                             then S.union path rebuild
                             else rebuild, M.insert file ret res)
                     pure ret
