@@ -24,10 +24,9 @@
 // Closures
 typedef enum {
     CT_CON, CT_ARRAY, CT_INT, CT_BIGINT,
-    CT_FLOAT, CT_STRING, CT_STROFFSET, CT_BITS8,
-    CT_BITS16, CT_BITS32, CT_BITS64, CT_PTR,
-    CT_REF, CT_FWD, CT_MANAGEDPTR, CT_RAWDATA,
-    CT_CDATA
+    CT_FLOAT, CT_STRING, CT_STROFFSET, CT_BITS32,
+    CT_BITS64, CT_PTR, CT_REF, CT_FWD,
+    CT_MANAGEDPTR, CT_RAWDATA, CT_CDATA
 } ClosureType;
 
 typedef struct Hdr {
@@ -54,11 +53,6 @@ typedef struct Array {
     VAL array[0];
 } Array;
 
-typedef struct Int {
-    Hdr hdr;
-    int i;
-} Int;
-
 typedef struct BigInt {
     Hdr hdr;
     char big[0];
@@ -80,16 +74,6 @@ typedef struct StrOffset {
     String * base;
     size_t offset;
 } StrOffset;
-
-typedef struct Bits8 {
-    Hdr hdr;
-    uint8_t bits8;
-} Bits8;
-
-typedef struct Bits16 {
-    Hdr hdr;
-    uint16_t bits16;
-} Bits16;
 
 typedef struct Bits32 {
     Hdr hdr;
@@ -254,8 +238,8 @@ static inline size_t getstrlen(String * x) {
 #define GETFLOAT(x) (((Float*)(x))->f)
 #define GETCDATA(x) (((CDataC*)(x))->item)
 
-#define GETBITS8(x) (((Bits8*)(x))->bits8)
-#define GETBITS16(x) (((Bits16*)(x))->bits16)
+#define GETBITS8(x) (GETINT(x))
+#define GETBITS16(x) (GETINT(x))
 #define GETBITS32(x) (((Bits32*)(x))->bits32)
 #define GETBITS64(x) (((Bits64*)(x))->bits64)
 
@@ -268,7 +252,7 @@ static inline size_t getstrlen(String * x) {
 
 #define CELEM(x) (((x)->hdr.sz - sizeof(Array)) / sizeof(VAL))
 
-#define GETTY(x) ((ClosureType)((x)->hdr.ty))
+#define GETTY(x) (ISINT(x)? CT_INT : (ClosureType)((x)->hdr.ty))
 #define SETTY(x,t) ((x)->hdr.ty = t)
 
 // Integers, floats and operators

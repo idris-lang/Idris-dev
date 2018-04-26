@@ -49,9 +49,8 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->ret = NULL;
     vm->reg1 = NULL;
 #ifdef HAS_PTHREAD
-    vm->inbox = malloc(1024*sizeof(vm->inbox[0]));
-    assert(vm->inbox);
-    memset(vm->inbox, 0, 1024*sizeof(vm->inbox[0]));
+    vm->inbox = malloc(1024*sizeof(VAL));
+    memset(vm->inbox, 0, 1024*sizeof(VAL));
     vm->inbox_end = vm->inbox + 1024;
     vm->inbox_write = vm->inbox;
     vm->inbox_nextid = 1;
@@ -209,7 +208,7 @@ void * allocate(size_t sz, int lock) {
 }
 
 void* iallocate(VM * vm, size_t isize, int outerlock) {
-//    return malloc(size);
+//    return malloc(isize);
     size_t size = aligned(isize);
 
 #ifdef HAS_PTHREAD
@@ -277,8 +276,7 @@ static VAL mkstrlen(VM* vm, const char * str, size_t len, int outer) {
     String * cl = allocStr(vm, len, outer);
     // hdr.u8 used to mark a null string
     cl->hdr.u8 = str == NULL;
-    if (!cl->hdr.u8)
-      memcpy(cl->str, str, len);
+    memcpy(cl->str, str, len);
     return (VAL)cl;
 }
 
@@ -364,17 +362,11 @@ VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
 }
 
 VAL MKB8(VM* vm, uint8_t bits8) {
-    Bits8 * cl = iallocate(vm, sizeof(*cl), 1);
-    SETTY(cl, CT_BITS8);
-    cl->bits8 = bits8;
-    return (VAL)cl;
+    return MKINT(bits8);
 }
 
 VAL MKB16(VM* vm, uint16_t bits16) {
-    Bits16 * cl = iallocate(vm, sizeof(*cl), 1);
-    SETTY(cl, CT_BITS16);
-    cl->bits16 = bits16;
-    return (VAL)cl;
+    return MKINT(bits16);
 }
 
 VAL MKB32(VM* vm, uint32_t bits32) {
@@ -417,11 +409,10 @@ void dumpStack(VM* vm) {
 void dumpVal(VAL v) {
     if (v==NULL) return;
     int i;
-    if (ISINT(v)) {
-        printf("%d ", (int)(GETINT(v)));
-        return;
-    }
     switch(GETTY(v)) {
+    case CT_INT:
+        printf("%d ", (int)(GETINT(v)));
+        break;
     case CT_CON:
         {
             Con * cl = (Con*)v;
@@ -517,15 +508,10 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
     ClosureType ty = GETTY(i);
 
     switch (ty) {
-    case CT_BITS8:
-        // max length 8 bit unsigned int str 3 chars (256)
-        cl = allocStr(vm, 4, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu8, GETBITS8(i));
-        break;
-    case CT_BITS16:
+    case CT_INT: // 8/16 bits
         // max length 16 bit unsigned int str 5 chars (65,535)
         cl = allocStr(vm, 6, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu16, GETBITS16(i));
+        cl->slen = sprintf(cl->str, "%ld", GETBITS16(i));
         break;
     case CT_BITS32:
         // max length 32 bit unsigned int str 10 chars (4,294,967,295)
@@ -859,10 +845,12 @@ static void copyArray(VM* vm, VAL * dst, VAL * src, size_t len) {
 static VAL doCopyTo(VM* vm, VAL x) {
     int ar;
     VAL cl;
-    if (x==NULL || ISINT(x)) {
+    if (x==NULL) {
         return x;
     }
     switch(GETTY(x)) {
+    case CT_INT:
+        return x;
     case CT_CDATA:
         cl = MKCDATAc(vm, GETCDATA(x));
         break;
@@ -889,8 +877,6 @@ static VAL doCopyTo(VM* vm, VAL x) {
     case CT_FLOAT:
     case CT_PTR:
     case CT_MANAGEDPTR:
-    case CT_BITS8:
-    case CT_BITS16:
     case CT_BITS32:
     case CT_BITS64:
     case CT_RAWDATA:
@@ -901,6 +887,7 @@ static VAL doCopyTo(VM* vm, VAL x) {
         break;
     default:
         assert(0); // We're in trouble if this happens...
+	cl = NULL;
     }
     return cl;
 }
@@ -978,7 +965,7 @@ Msg* idris_checkInitMessages(VM* vm) {
     Msg* msg;
 
     for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
-	if ((msg->channel_id & 1) == 1) { // init bit set
+        if (msg->channel_id && 1 == 1) { // init bit set
             return msg;
         }
     }
@@ -1041,7 +1028,7 @@ Msg* idris_recvMessage(VM* vm) {
 
 Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     Msg* msg;
-    Msg* ret = malloc(sizeof(Msg));
+    Msg* ret;
 
     struct timespec timeout;
     int status;
@@ -1064,33 +1051,34 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     }
     pthread_mutex_unlock(&vm->inbox_block);
 
-    if (msg != NULL) {
-        ret->msg = msg->msg;
-        ret->sender = msg->sender;
-
-        pthread_mutex_lock(&(vm->inbox_lock));
-
-        // Slide everything down after the message in the inbox,
-        // Move the inbox_write pointer down, and clear the value at the
-        // end - O(n) but it's easier since the message from a specific
-        // sender could be anywhere in the inbox
-
-        for(;msg < vm->inbox_write; ++msg) {
-            if (msg+1 != vm->inbox_end) {
-                msg->sender = (msg + 1)->sender;
-                msg->msg = (msg + 1)->msg;
-            }
-        }
-
-        vm->inbox_write->msg = NULL;
-        vm->inbox_write->sender = NULL;
-        vm->inbox_write--;
-
-        pthread_mutex_unlock(&(vm->inbox_lock));
-    } else {
+    if (msg == NULL) {
         fprintf(stderr, "No messages waiting");
         exit(-1);
     }
+
+    ret = malloc(sizeof(Msg));
+    ret->msg = msg->msg;
+    ret->sender = msg->sender;
+
+    pthread_mutex_lock(&(vm->inbox_lock));
+
+    // Slide everything down after the message in the inbox,
+    // Move the inbox_write pointer down, and clear the value at the
+    // end - O(n) but it's easier since the message from a specific
+    // sender could be anywhere in the inbox
+
+    for(;msg < vm->inbox_write; ++msg) {
+      if (msg+1 != vm->inbox_end) {
+	msg->sender = (msg + 1)->sender;
+	msg->msg = (msg + 1)->msg;
+      }
+    }
+
+    vm->inbox_write->msg = NULL;
+    vm->inbox_write->sender = NULL;
+    vm->inbox_write--;
+
+    pthread_mutex_unlock(&(vm->inbox_lock));
 
     return ret;
 }

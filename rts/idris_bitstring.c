@@ -3,17 +3,11 @@
 #include "idris_rts.h"
 
 VAL idris_b8const(VM *vm, uint8_t a) {
-    Bits8 * cl = iallocate(vm, sizeof(*cl), 0);
-    SETTY(cl, CT_BITS8);
-    cl->bits8 = a;
-    return (VAL)cl;
+    return MKINT(a);
 }
 
 VAL idris_b16const(VM *vm, uint16_t a) {
-    Bits16 * cl = iallocate(vm, sizeof(*cl), 0);
-    SETTY(cl, CT_BITS16);
-    cl->bits16 = a;
-    return (VAL)cl;
+    return MKINT(a);
 }
 
 VAL idris_b32const(VM *vm, uint32_t a) {
