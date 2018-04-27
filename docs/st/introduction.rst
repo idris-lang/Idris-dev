@@ -70,7 +70,7 @@ Outline
 =======
 
 This tutorial starts (:ref:`introst`) by describing how to manipulate
-individual states, introduce a data type ``STrans`` for describing stateful
+individual states, introduces a data type ``STrans`` for describing stateful
 functions, and ``ST`` which describes top level state transitions.
 Next (:ref:`smstypes`) it describes how to represent state machines in
 types, and how to define *interfaces* for describing stateful systems.
