@@ -4,7 +4,7 @@
 #include "idris_bitstring.h"
 #include <assert.h>
 
-static inline VAL plain(VM* vm, VAL x, size_t sz) {
+static inline VAL copy_plain(VM* vm, VAL x, size_t sz) {
     VAL cl = iallocate(vm, sz, 1);
     memcpy(cl, x, sz);
     return cl;
@@ -18,13 +18,13 @@ VAL copy(VM* vm, VAL x) {
     }
     switch(GETTY(x)) {
     case CT_INT: return x;
-    case CT_BITS32: return plain(vm, x, sizeof(Bits32));
-    case CT_BITS64: return plain(vm, x, sizeof(Bits64));
-    case CT_FLOAT: return plain(vm, x, sizeof(Float));
+    case CT_BITS32: return copy_plain(vm, x, sizeof(Bits32));
+    case CT_BITS64: return copy_plain(vm, x, sizeof(Bits64));
+    case CT_FLOAT: return copy_plain(vm, x, sizeof(Float));
     case CT_FWD:
         return GETPTR(x);
     case CT_CDATA:
-        cl = plain(vm, x, sizeof(CDataC));
+        cl = copy_plain(vm, x, sizeof(CDataC));
         c_heap_mark_item(GETCDATA(x));
         break;
     case CT_BIGINT:
@@ -43,7 +43,7 @@ VAL copy(VM* vm, VAL x) {
     case CT_PTR:
     case CT_MANAGEDPTR:
     case CT_RAWDATA:
-        cl = plain(vm, x, x->hdr.sz);
+        cl = copy_plain(vm, x, x->hdr.sz);
         break;
     default:
         cl = NULL;

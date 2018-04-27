@@ -49,8 +49,9 @@ VM* init_vm(int stack_size, size_t heap_size,
     vm->ret = NULL;
     vm->reg1 = NULL;
 #ifdef HAS_PTHREAD
-    vm->inbox = malloc(1024*sizeof(VAL));
-    memset(vm->inbox, 0, 1024*sizeof(VAL));
+    vm->inbox = malloc(1024*sizeof(vm->inbox[0]));
+    assert(vm->inbox);
+    memset(vm->inbox, 0, 1024*sizeof(vm->inbox[0]));
     vm->inbox_end = vm->inbox + 1024;
     vm->inbox_write = vm->inbox;
     vm->inbox_nextid = 1;
@@ -276,7 +277,8 @@ static VAL mkstrlen(VM* vm, const char * str, size_t len, int outer) {
     String * cl = allocStr(vm, len, outer);
     // hdr.u8 used to mark a null string
     cl->hdr.u8 = str == NULL;
-    memcpy(cl->str, str, len);
+    if (!cl->hdr.u8)
+      memcpy(cl->str, str, len);
     return (VAL)cl;
 }
 
@@ -411,7 +413,7 @@ void dumpVal(VAL v) {
     int i;
     switch(GETTY(v)) {
     case CT_INT:
-        printf("%d ", (int)(GETINT(v)));
+        printf("%" PRIdPTR " ", GETINT(v));
         break;
     case CT_CON:
         {
@@ -511,7 +513,7 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
     case CT_INT: // 8/16 bits
         // max length 16 bit unsigned int str 5 chars (65,535)
         cl = allocStr(vm, 6, 0);
-        cl->slen = sprintf(cl->str, "%ld", GETBITS16(i));
+        cl->slen = sprintf(cl->str, "%" PRIu16, (uint16_t)GETBITS16(i));
         break;
     case CT_BITS32:
         // max length 32 bit unsigned int str 10 chars (4,294,967,295)
@@ -965,7 +967,7 @@ Msg* idris_checkInitMessages(VM* vm) {
     Msg* msg;
 
     for (msg = vm->inbox; msg < vm->inbox_end && msg->msg != NULL; ++msg) {
-        if (msg->channel_id && 1 == 1) { // init bit set
+	if ((msg->channel_id & 1) == 1) { // init bit set
             return msg;
         }
     }
@@ -1028,7 +1030,7 @@ Msg* idris_recvMessage(VM* vm) {
 
 Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     Msg* msg;
-    Msg* ret;
+    Msg* ret = malloc(sizeof(Msg));
 
     struct timespec timeout;
     int status;
@@ -1051,35 +1053,33 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     }
     pthread_mutex_unlock(&vm->inbox_block);
 
-    if (msg == NULL) {
+    if (msg != NULL) {
+        ret->msg = msg->msg;
+        ret->sender = msg->sender;
+
+        pthread_mutex_lock(&(vm->inbox_lock));
+
+        // Slide everything down after the message in the inbox,
+        // Move the inbox_write pointer down, and clear the value at the
+        // end - O(n) but it's easier since the message from a specific
+        // sender could be anywhere in the inbox
+
+        for(;msg < vm->inbox_write; ++msg) {
+            if (msg+1 != vm->inbox_end) {
+                msg->sender = (msg + 1)->sender;
+                msg->msg = (msg + 1)->msg;
+            }
+        }
+
+        vm->inbox_write->msg = NULL;
+        vm->inbox_write->sender = NULL;
+        vm->inbox_write--;
+
+        pthread_mutex_unlock(&(vm->inbox_lock));
+    } else {
         fprintf(stderr, "No messages waiting");
         exit(-1);
     }
-
-    ret = malloc(sizeof(Msg));
-    ret->msg = msg->msg;
-    ret->sender = msg->sender;
-
-    pthread_mutex_lock(&(vm->inbox_lock));
-
-    // Slide everything down after the message in the inbox,
-    // Move the inbox_write pointer down, and clear the value at the
-    // end - O(n) but it's easier since the message from a specific
-    // sender could be anywhere in the inbox
-
-    for(;msg < vm->inbox_write; ++msg) {
-      if (msg+1 != vm->inbox_end) {
-	msg->sender = (msg + 1)->sender;
-	msg->msg = (msg + 1)->msg;
-      }
-    }
-
-    vm->inbox_write->msg = NULL;
-    vm->inbox_write->sender = NULL;
-    vm->inbox_write--;
-
-    pthread_mutex_unlock(&(vm->inbox_lock));
-
     return ret;
 }
 #endif
