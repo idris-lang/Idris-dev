@@ -1030,7 +1030,7 @@ Msg* idris_recvMessage(VM* vm) {
 
 Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     Msg* msg;
-    Msg* ret = malloc(sizeof(Msg));
+    Msg* ret;
 
     struct timespec timeout;
     int status;
@@ -1054,6 +1054,7 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     pthread_mutex_unlock(&vm->inbox_block);
 
     if (msg != NULL) {
+        ret = malloc(sizeof(*ret));
         ret->msg = msg->msg;
         ret->sender = msg->sender;
 
