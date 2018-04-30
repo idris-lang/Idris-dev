@@ -28,6 +28,12 @@ Applicative (Morphism r) where
 Monad (Morphism r) where
   (Mor h) >>= f = Mor $ \r => applyMor (f $ h r) r
 
+Semigroup a => Semigroup (Morphism r a) where
+  f <+> g = [| f <+> g |]
+
+Monoid a => Monoid (Morphism r a) where
+  neutral = Mor $ const neutral
+
 Semigroup (Endomorphism a) where
   (Endo f) <+> (Endo g) = Endo $ g . f
 
@@ -43,6 +49,13 @@ Applicative f => Applicative (Kleislimorphism f a) where
 
 Monad f => Monad (Kleislimorphism f a) where
   (Kleisli f) >>= g = Kleisli $ \r => applyKleisli (g !(f r)) r
+
+-- Applicative is a bit too strong, but there is no suitable superclass
+(Semigroup a, Applicative f) => Semigroup (Kleislimorphism f r a) where
+  f <+> g = [| f <+> g |]
+
+(Monoid a, Applicative f) => Monoid (Kleislimorphism f r a) where
+  neutral = Kleisli $ const $ pure neutral
 
 Cast (Endomorphism a) (Morphism a a) where
   cast (Endo f) = Mor f
