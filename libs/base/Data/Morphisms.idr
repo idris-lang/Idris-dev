@@ -34,6 +34,16 @@ Semigroup (Endomorphism a) where
 Monoid (Endomorphism a) where
   neutral = Endo id
 
+Functor f => Functor (Kleislimorphism f a) where
+  map f (Kleisli g) = Kleisli (map f . g)
+
+Applicative f => Applicative (Kleislimorphism f a) where
+  pure a = Kleisli $ const $ pure a
+  (Kleisli f) <*> (Kleisli a) = Kleisli $ \r => f r <*> a r
+
+Monad f => Monad (Kleislimorphism f a) where
+  (Kleisli f) >>= g = Kleisli $ \r => applyKleisli (g !(f r)) r
+
 Cast (Endomorphism a) (Morphism a a) where
   cast (Endo f) = Mor f
 
