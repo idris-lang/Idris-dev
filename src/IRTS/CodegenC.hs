@@ -79,18 +79,22 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
              libFlags <- getLibFlags
              incFlags <- getIncFlags
              envFlags <- getEnvFlags
-             let stackFlag = if isWindows then ["-Wl,--stack,16777216"] else []
+             let stripFlag = if isDarwin then "-dead_strip" else "-Wl,-gc-sections"
+             let stackFlags = if isWindows then ["-Wl,--stack,16777216"] else []
+             let linkFlags = stripFlag : stackFlags
              let args = gccDbg dbg ++
                         gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
-                        ["-std=c99", "-D_POSIX_C_SOURCE=200809L", "-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS",
-                         "-I."] ++ objs ++ envFlags ++
-                        (if (exec == Executable) then [] else ["-c"]) ++
+                        [ "-std=c99", "-pipe"
+                        , "-fdata-sections", "-ffunction-sections"
+                        , "-D_POSIX_C_SOURCE=200809L", "-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS"
+                        , "-I."] ++ objs ++ envFlags ++
+                        (if (exec == Executable) then linkFlags else ["-c"]) ++
                         [tmpn] ++
                         (if not iface then libFlags else []) ++
                         incFlags ++
                         (if not iface then libs else []) ++
-                        flags ++ stackFlag ++
+                        flags ++
                         ["-o", out]
 --              putStrLn (show args)
              exit <- rawSystem comp args
