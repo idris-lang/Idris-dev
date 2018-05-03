@@ -209,7 +209,7 @@ void * allocate(size_t sz, int lock) {
 }
 
 void* iallocate(VM * vm, size_t isize, int outerlock) {
-//    return malloc(size);
+//    return malloc(isize);
     size_t size = aligned(isize);
 
 #ifdef HAS_PTHREAD
@@ -364,17 +364,11 @@ VAL MKMPTRc(VM* vm, void* ptr, size_t size) {
 }
 
 VAL MKB8(VM* vm, uint8_t bits8) {
-    Bits8 * cl = iallocate(vm, sizeof(*cl), 1);
-    SETTY(cl, CT_BITS8);
-    cl->bits8 = bits8;
-    return (VAL)cl;
+    return MKINT(bits8);
 }
 
 VAL MKB16(VM* vm, uint16_t bits16) {
-    Bits16 * cl = iallocate(vm, sizeof(*cl), 1);
-    SETTY(cl, CT_BITS16);
-    cl->bits16 = bits16;
-    return (VAL)cl;
+    return MKINT(bits16);
 }
 
 VAL MKB32(VM* vm, uint32_t bits32) {
@@ -417,11 +411,10 @@ void dumpStack(VM* vm) {
 void dumpVal(VAL v) {
     if (v==NULL) return;
     int i;
-    if (ISINT(v)) {
-        printf("%d ", (int)(GETINT(v)));
-        return;
-    }
     switch(GETTY(v)) {
+    case CT_INT:
+        printf("%" PRIdPTR " ", GETINT(v));
+        break;
     case CT_CON:
         {
             Con * cl = (Con*)v;
@@ -517,15 +510,10 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
     ClosureType ty = GETTY(i);
 
     switch (ty) {
-    case CT_BITS8:
-        // max length 8 bit unsigned int str 3 chars (256)
-        cl = allocStr(vm, 4, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu8, GETBITS8(i));
-        break;
-    case CT_BITS16:
+    case CT_INT: // 8/16 bits
         // max length 16 bit unsigned int str 5 chars (65,535)
         cl = allocStr(vm, 6, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu16, GETBITS16(i));
+        cl->slen = sprintf(cl->str, "%" PRIu16, (uint16_t)GETBITS16(i));
         break;
     case CT_BITS32:
         // max length 32 bit unsigned int str 10 chars (4,294,967,295)
@@ -859,10 +847,12 @@ static void copyArray(VM* vm, VAL * dst, VAL * src, size_t len) {
 static VAL doCopyTo(VM* vm, VAL x) {
     int ar;
     VAL cl;
-    if (x==NULL || ISINT(x)) {
+    if (x==NULL) {
         return x;
     }
     switch(GETTY(x)) {
+    case CT_INT:
+        return x;
     case CT_CDATA:
         cl = MKCDATAc(vm, GETCDATA(x));
         break;
@@ -889,8 +879,6 @@ static VAL doCopyTo(VM* vm, VAL x) {
     case CT_FLOAT:
     case CT_PTR:
     case CT_MANAGEDPTR:
-    case CT_BITS8:
-    case CT_BITS16:
     case CT_BITS32:
     case CT_BITS64:
     case CT_RAWDATA:
@@ -1065,10 +1053,12 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     }
     pthread_mutex_unlock(&vm->inbox_block);
 
-    if (msg == NULL) {
-        fprintf(stderr, "No messages waiting");
-        exit(-1);
-    }
+    if (msg != NULL) {
+        ret = malloc(sizeof(*ret));
+        ret->msg = msg->msg;
+        ret->sender = msg->sender;
+
+        pthread_mutex_lock(&(vm->inbox_lock));
 
     ret = malloc(sizeof(Msg));
     ret->msg = msg->msg;
@@ -1087,13 +1077,6 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
 	msg->msg = (msg + 1)->msg;
       }
     }
-
-    vm->inbox_write->msg = NULL;
-    vm->inbox_write->sender = NULL;
-    vm->inbox_write--;
-
-    pthread_mutex_unlock(&(vm->inbox_lock));
-
     return ret;
 }
 #endif

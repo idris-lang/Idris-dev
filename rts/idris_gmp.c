@@ -67,17 +67,17 @@ VAL MKBIGSI(VM* vm, signed long val) {
 }
 
 static BigInt * getbig(VM * vm, VAL x) {
-    if (ISINT(x)) {
-        BigInt * cl = allocBig(vm);
-        mpz_set_si(*getmpz(cl), GETINT(x));
-        return cl;
-    } else {
-        switch(GETTY(x)) {
-        case CT_FWD:
-            return getbig(vm, ((Fwd*)x)->fwd);
-        default:
-            return (BigInt*)x;
+    switch(GETTY(x)) {
+    case CT_INT:
+        {
+            BigInt * cl = allocBig(vm);
+            mpz_set_si(*getmpz(cl), GETINT(x));
+            return cl;
         }
+    case CT_FWD:
+        return getbig(vm, ((Fwd*)x)->fwd);
+    default:
+        return (BigInt*)x;
     }
 }
 
