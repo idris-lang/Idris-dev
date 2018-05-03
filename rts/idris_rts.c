@@ -1060,22 +1060,26 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
 
         pthread_mutex_lock(&(vm->inbox_lock));
 
-    ret = malloc(sizeof(Msg));
-    ret->msg = msg->msg;
-    ret->sender = msg->sender;
+        // Slide everything down after the message in the inbox,
+        // Move the inbox_write pointer down, and clear the value at the
+        // end - O(n) but it's easier since the message from a specific
+        // sender could be anywhere in the inbox
 
-    pthread_mutex_lock(&(vm->inbox_lock));
+        for(;msg < vm->inbox_write; ++msg) {
+            if (msg+1 != vm->inbox_end) {
+                msg->sender = (msg + 1)->sender;
+                msg->msg = (msg + 1)->msg;
+            }
+        }
 
-    // Slide everything down after the message in the inbox,
-    // Move the inbox_write pointer down, and clear the value at the
-    // end - O(n) but it's easier since the message from a specific
-    // sender could be anywhere in the inbox
+        vm->inbox_write->msg = NULL;
+        vm->inbox_write->sender = NULL;
+        vm->inbox_write--;
 
-    for(;msg < vm->inbox_write; ++msg) {
-      if (msg+1 != vm->inbox_end) {
-	msg->sender = (msg + 1)->sender;
-	msg->msg = (msg + 1)->msg;
-      }
+        pthread_mutex_unlock(&(vm->inbox_lock));
+    } else {
+        fprintf(stderr, "No messages waiting");
+        exit(-1);
     }
     return ret;
 }
