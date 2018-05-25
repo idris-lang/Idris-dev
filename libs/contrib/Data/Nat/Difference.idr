@@ -1,3 +1,5 @@
+module Data.Nat
+
 %default total
 
 diff : Nat -> Nat -> Nat
