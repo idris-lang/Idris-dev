@@ -1,4 +1,4 @@
-# New in 1.3.*
+# New in 1.3.0
 
 ## Language updates
 + Old 'induction' tactics and eliminator generation functionality ('%elim', '%case', 'elim_for') is no longer supported.
