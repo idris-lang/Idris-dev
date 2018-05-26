@@ -157,7 +157,8 @@ implementation DecEq a => DecEq (List a) where
 
 
 -- For the primitives, we have to cheat because we don't have access to their
--- internal implementations.
+-- internal implementations. We postulate the inequality proofs because we're
+-- never going to have to compute anything from them.
 
 --------------------------------------------------------------------------------
 -- Int
@@ -169,8 +170,7 @@ implementation DecEq Int where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             primitiveNotEq : x = y -> Void
-             primitiveNotEq = really_believe_me (id {a = x = y})
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- Char
@@ -182,8 +182,7 @@ implementation DecEq Char where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             primitiveNotEq : x = y -> Void
-             primitiveNotEq = really_believe_me (id {a = x = y})
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- Integer
@@ -195,8 +194,7 @@ implementation DecEq Integer where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             primitiveNotEq : x = y -> Void
-             primitiveNotEq = really_believe_me (id {a = x = y})
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- String
@@ -208,8 +206,7 @@ implementation DecEq String where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             primitiveNotEq : x = y -> Void
-             primitiveNotEq = really_believe_me (id {a = x = y})
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- Ptr
@@ -221,8 +218,7 @@ implementation DecEq Ptr where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             primitiveNotEq : x = y -> Void
-             primitiveNotEq = really_believe_me (id {a = x = y})
+             postulate primitiveNotEq : x = y -> Void
 
 --------------------------------------------------------------------------------
 -- ManagedPtr
@@ -234,5 +230,4 @@ implementation DecEq ManagedPtr where
                      False => No primitiveNotEq
        where primitiveEq : x = y
              primitiveEq = really_believe_me (Refl {x})
-             primitiveNotEq : x = y -> Void
-             primitiveNotEq = really_believe_me (id {a = x = y})
+             postulate primitiveNotEq : x = y -> Void
