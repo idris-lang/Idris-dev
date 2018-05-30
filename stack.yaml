@@ -1,5 +1,5 @@
 #recheck extra-deps next on resolver or cabal file change
-resolver: lts-11.3
+resolver: lts-11.11
 
 packages:
   - location: .
