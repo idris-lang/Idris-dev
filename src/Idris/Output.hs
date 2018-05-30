@@ -38,7 +38,7 @@ import Prelude hiding ((<$>))
 
 import Control.Arrow (first)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
-import Data.List (intersperse, nub)
+import Data.List (intersperse, nub, nubBy)
 import Data.Maybe (fromJust, fromMaybe, isJust, listToMaybe)
 import System.Console.Haskeline.MonadException (MonadException(controlIO),
                                                 RunIO(RunIO))
@@ -372,12 +372,12 @@ sendHighlighting highlights =
      case idris_outputmode ist of
        RawOutput _ -> updateIState $
                       \ist -> ist { idris_highlightedRegions =
-                                      highlights ++ idris_highlightedRegions ist }
+                                      nubBy canNub $ highlights ++ idris_highlightedRegions ist }
        IdeMode n h ->
          let fancier = [ toSExp (fc, fancifyAnnots ist False annot)
-                       | (fc, annot) <- highlights, fullFC fc
-                       ]
-         in case fancier of
+                       | (fc, annot) <- nubBy canNub highlights, fullFC fc
+                       ] in
+            case fancier of
               [] -> return ()
               _  -> runIO . hPutStrLn h $
                       convSExp "output"
@@ -386,6 +386,7 @@ sendHighlighting highlights =
 
   where fullFC (FC _ _ _) = True
         fullFC _          = False
+        canNub (fA,x) (fB,y) = show fA == show fB && x == y
 
 -- | Write the highlighting information to a file, for use in external tools
 -- or in editors that don't support the IDE protocol
