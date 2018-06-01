@@ -81,7 +81,10 @@ To install Idris:
 * `stack install`
 
 Stack will install Idris (and related executables) into `$HOME/.local/bin/`
-on Unix based systems and an appropriate place on Windows.
+on Unix based systems and an appropriate place on Windows. The libraries that 
+are included with Idris (e.g. Builtins, Prelude) will 'install' into `<source 
+dir>/.stack_work/install/...` so you'll need to keep your source directory 
+around after you've installed Idris using Stack.
 
 Of note: If you haven't used stack before commands will also setup the
 related infrastructure. For more information about Stack please visit
