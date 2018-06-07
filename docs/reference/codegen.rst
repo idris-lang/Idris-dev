@@ -131,3 +131,8 @@ WS
 ---
 
 `Available online <https://github.com/edwinb/WS-idr>`__
+
+WebAssembly
+-----------
+
+`Available online <https://github.com/SPY/idris-codegen-wasm>`__
