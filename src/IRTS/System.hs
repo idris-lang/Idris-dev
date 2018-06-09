@@ -83,7 +83,7 @@ extraInclude = []
 #endif
 
 #ifdef IDRIS_GMP
-gmpLib = ["-lgmp"]
+gmpLib = ["-lgmp", "-DIDRIS_GMP"]
 #else
 gmpLib = []
 #endif
