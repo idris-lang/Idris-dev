@@ -154,3 +154,6 @@ script:
   - echo -en 'travis_fold:end:script.benchmarks\\r'
 ###
 # EOF
+
+after_failure:
+  - rm -rf $HOME/.cabal $HOME/.cabsnap $HOME/.stack
