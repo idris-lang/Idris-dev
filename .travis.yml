@@ -47,6 +47,7 @@ cache:
 before_cache:
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/00-index.tar
+  - rm -rf $HOME/.cabsnap $HOME/.cabal $HOME/.stack
 
 before_install:
   - nvm install 6
