@@ -14,7 +14,7 @@ data HalfRec : Nat -> Type where
      HalfRecOdd : {n : Nat} -> (rec : Lazy (HalfRec n)) -> HalfRec (S (n + n))
 
 ||| Covering function for the `Half` view
-export
+public export
 half : (n : Nat) -> Half n
 half Z = HalfEven {n=0}
 half (S k) with (half k)
