@@ -33,16 +33,23 @@ nextN = do i <- get
 -- uniqueness of variable names in the resulting definition, so invent
 -- a new name for every variable we encounter
 doInline :: LDefs -> LDecl -> LDecl
-doInline defs d@(LConstructor _ _ _) = d
-doInline defs (LFun opts topn args exp)
+doInline = doInline' 1
+
+doInline' :: Int -> LDefs -> LDecl -> LDecl
+doInline' 0 defs d = d
+doInline' i defs d@(LConstructor _ _ _) = d
+doInline' i defs (LFun opts topn args exp)
       = let inl = evalState (eval [] initEnv [topn] defs exp)
                              (length args)
             -- do some case floating, which might arise as a result
             -- then, eta contract
             res = eta $ caseFloats 10 inl in
             case res of
-                 LLam args' body -> LFun opts topn (map snd initNames ++ args') body
-                 _ -> LFun opts topn (map snd initNames) res
+                 LLam args' body ->
+                   doInline' (i - 1) defs $
+                     LFun opts topn (map snd initNames ++ args') body
+                 _ -> doInline' (i - 1) defs $
+                        LFun opts topn (map snd initNames) res
   where
     caseFloats 0 tm = tm
     caseFloats n tm
@@ -72,8 +79,8 @@ eval stk env rec defs (LLazyApp n es)
 eval stk env rec defs (LForce e)
     = do e' <- eval [] env rec defs e
          case e' of
-              LLazyExp forced -> return $ unload stk forced
-              LLazyApp n es -> return $ unload stk (LApp False (LV n) es)
+              LLazyExp forced -> eval stk env rec defs forced
+              LLazyApp n es -> eval stk env rec defs (LApp False (LV n) es)
               _ -> return (unload stk (LForce e'))
 eval stk env rec defs (LLazyExp e)
     = unload stk <$> LLazyExp <$> eval [] env rec defs e
@@ -92,6 +99,7 @@ eval (world : stk) env rec defs (LApp t (LV n) [_, _, _, act, (LLam [arg] k)])
     = do act' <- eval [] env rec defs (LApp False act [world])
          argn <- nextN
          k' <- eval stk ((arg, LV argn) : env) rec defs (LApp False k [world])
+         -- Needs to be a LLet to make sure the action gets evaluated
          return $ LLet argn act' k'
 
 eval stk env rec defs (LApp t f es)
@@ -106,15 +114,27 @@ eval stk env rec defs (LProj exp i)
 eval stk env rec defs (LCon loc i n es)
     = unload stk <$> (LCon loc i n <$> mapM (eval [] env rec defs) es)
 eval stk env rec defs (LCase ty e alts)
-    = do alts' <- mapM (evalAlt stk env rec defs) alts
-         e' <- eval [] env rec defs e
-         -- If they're all lambdas, bind the lambda at the top
-         let prefix = getLams (map getRHS alts')
-         case prefix of
-              [] -> return $ conOpt $ LCase ty e' (replaceInAlts e' alts')
-              args -> do alts_red <- mapM (dropArgs args) alts'
-                         return $ LLam args
-                            (conOpt (LCase ty e' (replaceInAlts e' alts_red)))
+    = do e' <- eval [] env rec defs e
+         case evalAlts e' alts of
+              Just (env', tm) -> eval stk env' rec defs tm
+              Nothing ->
+                do alts' <- mapM (evalAlt stk env rec defs) alts
+                   -- If they're all lambdas, bind the lambda at the top
+                   let prefix = getLams (map getRHS alts')
+                   case prefix of
+                        [] -> return $ LCase ty e' (replaceInAlts e' alts')
+                        args -> do alts_red <- mapM (dropArgs args) alts'
+                                   return $ LLam args
+                                      (LCase ty e' (replaceInAlts e' alts_red))
+  where
+    evalAlts e' [] = Nothing
+    evalAlts (LCon _ t n args) (LConCase i n' es rhs : as)
+        | n == n' = Just (zip es args ++ env, rhs)
+    evalAlts (LConst c) (LConstCase c' rhs : as)
+        | c == c' = Just (env, rhs)
+    evalAlts (LCon _ _ _ _) (LDefaultCase rhs : as) = Just (env, rhs)
+    evalAlts (LConst _) (LDefaultCase rhs : as) = Just (env, rhs)
+    evalAlts tm (_ : as) = evalAlts tm as
 eval stk env rec defs (LOp f es)
     = unload stk <$> LOp f <$> mapM (eval [] env rec defs) es
 eval stk env rec defs (LForeign t s args)
@@ -129,9 +149,9 @@ eval stk env rec defs (LLam args sc)
                [] -> eval stk' env' rec defs sc
                as -> do ns' <- mapM (\n -> do n' <- nextN
                                               return (n, n')) args'
-                        unload stk' <$> LLam (map snd ns') <$>
-                            eval [] (map (\ (n, n') -> (n, LV n')) ns' ++ env')
-                                    rec defs sc
+                        LLam (map snd ns') <$>
+                            eval stk' (map (\ (n, n') -> (n, LV n')) ns' ++ env')
+                                 rec defs sc
 eval stk env rec defs var@(LV n)
     = case lookup n env of
            Just t
