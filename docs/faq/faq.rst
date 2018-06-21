@@ -191,10 +191,10 @@ function.
 When will Idris be self-hosting?
 ================================
 
-It’s not a priority, though not a bad idea in the long run. It would be a
-worthwhile effort in the short term to implement libraries to support
-self-hosting, such as a good parsing library.
-
+It’s not a priority, though not a bad idea in the long run. It would
+be a worthwhile effort in the short term to implement libraries in
+Idris to support self-hosting, such as argument parsing and a
+POSIX-compliant library for system interaction.
 
 Does Idris have universe polymorphism? What is the type of ``Type``?
 ====================================================================
