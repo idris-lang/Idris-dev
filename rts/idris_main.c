@@ -3,7 +3,7 @@
 #include "idris_rts.h"
 #include "idris_stats.h"
 
-void _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
+void* _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
 
 #ifdef _WIN32
 

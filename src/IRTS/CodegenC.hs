@@ -117,11 +117,7 @@ gccFlags i = if i then ["-fwrapv"]
                   else ["-fwrapv", "-fno-strict-overflow"]
 
 gccDbg DEBUG = ["-g"]
--- clang optimises sibling calls in O1, but gcc doesn't
--- on the other hand, O1 compiles significantly faster in clang without
--- any noticeable performance hit.
-gccDbg TRACE = ["-O1", "-foptimize-sibling-calls"]
-gccDbg _ = ["-O1", "-foptimize-sibling-calls"]
+gccDbg _ = []
 
 cname :: Name -> String
 cname n = "_idris_" ++ concatMap cchar (showCG n)
@@ -137,14 +133,14 @@ creg (T i) = "TOP(" ++ show i ++ ")"
 creg Tmp = "REG1"
 
 toDecl :: Name -> String
-toDecl f = "void " ++ cname f ++ "(VM*, VAL*);\n"
+toDecl f = "void* " ++ cname f ++ "(VM*, VAL*);\n"
 
 toC :: Name -> [BC] -> String
 toC f code
     = -- "/* " ++ show code ++ "*/\n\n" ++
-      "void " ++ cname f ++ "(VM* vm, VAL* oldbase) {\n" ++
-                 indent 1 ++ "INITFRAME;\n" ++
-                 concatMap (bcc 1) code ++ "}\n\n"
+      "void* " ++ cname f ++ "(VM* vm, VAL* oldbase) {\n" ++
+                  indent 1 ++ "INITFRAME;\nloop:\n" ++
+                  concatMap (bcc f 1) code ++ "}\n\n"
 
 showCStr :: String -> String
 showCStr s = '"' : foldr ((++) . showChar) "\"" s
@@ -180,9 +176,9 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
                  2 -> s
                  _ -> error $ "Can't happen: String of invalid length " ++ show s
 
-bcc :: Int -> BC -> String
-bcc i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
-bcc i (ASSIGNCONST l c)
+bcc :: Name -> Int -> BC -> String
+bcc f i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
+bcc f i (ASSIGNCONST l c)
     = indent i ++ creg l ++ " = " ++ mkConst c ++ ";\n"
   where
     mkConst (I i) = "MKINT(" ++ show i ++ ")"
@@ -203,10 +199,10 @@ bcc i (ASSIGNCONST l c)
     mkConst c | isTypeConst c = "MKINT(42424242)"
     mkConst c = error $ "mkConst of (" ++ show c ++ ") not implemented"
 
-bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
-bcc i (MKCON l loc tag []) | tag < 256
+bcc f i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
+bcc f i (MKCON l loc tag []) | tag < 256
     = indent i ++ creg l ++ " = NULL_CON(" ++ show tag ++ ");\n"
-bcc i (MKCON l loc tag args)
+bcc f i (MKCON l loc tag args)
     = indent i ++ alloc loc tag ++
       indent i ++ setArgs 0 args ++ "\n" ++
       indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
@@ -220,21 +216,21 @@ bcc i (MKCON l loc tag args)
             = "updateCon(" ++ creg Tmp ++ ", " ++ creg old ++ ", " ++ show tag ++ ", " ++
                     show (length args) ++ ");\n"
 
-bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++
+bcc f i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++
                                       ", " ++ show a ++ ");\n"
-bcc i (PROJECTINTO r t idx)
+bcc f i (PROJECTINTO r t idx)
     = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n"
-bcc i (CASE True r [(_, alt)] Nothing)
+bcc f i (CASE True r [(_, alt)] Nothing)
     = indent i ++ showCode i alt
   where
     showCode :: Int -> [BC] -> String
-    showCode i bc = "{\n" ++ concatMap (bcc (i + 1)) bc ++
+    showCode i bc = "{\n" ++ concatMap (bcc f (i + 1)) bc ++
                     indent i ++ "}\n"
-bcc i (CASE True r code def)
+bcc f i (CASE True r code def)
     | length code < 6 && length code > 1 = showCase i def code
   where
     showCode :: Int -> [BC] -> String
-    showCode i bc = "{\n" ++ concatMap (bcc (i + 1)) bc ++
+    showCode i bc = "{\n" ++ concatMap (bcc f (i + 1)) bc ++
                     indent i ++ "}\n"
 
     showCase :: Int -> Maybe [BC] -> [(Int, [BC])] -> String
@@ -244,7 +240,7 @@ bcc i (CASE True r code def)
         = indent i ++ "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
            ++ indent i ++ "else\n" ++ showCase i def cs
 
-bcc i (CASE safe r code def)
+bcc f i (CASE safe r code def)
     = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++
       concatMap (showCase i) code ++
       showDef i def ++
@@ -254,11 +250,12 @@ bcc i (CASE safe r code def)
     ctag False = "TAG"
 
     showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
-                         ++ concatMap (bcc (i+1)) bc ++ indent (i + 1) ++ "break;\n"
-    showDef i Nothing = ""
+                         ++ concatMap (bcc f (i+1)) bc ++ indent (i + 1) ++ "break;\n"
+    showDef i Nothing = indent i ++ "default:\n" ++
+                        indent (i + 1) ++ "return NULL;\n"
     showDef i (Just c) = indent i ++ "default:\n"
-                         ++ concatMap (bcc (i+1)) c ++ indent (i + 1) ++ "break;\n"
-bcc i (CONSTCASE r code def)
+                         ++ concatMap (bcc f (i+1)) c ++ indent (i + 1) ++ "break;\n"
+bcc f i (CONSTCASE r code def)
    | intConsts code
 --      = indent i ++ "switch(GETINT(" ++ creg r ++ ")) {\n" ++
 --        concatMap (showCase i) code ++
@@ -290,65 +287,67 @@ bcc i (CONSTCASE r code def)
 
     strCase sv (s, bc) =
         indent i ++ "if (strcmp(" ++ sv ++ ", " ++ show s ++ ") == 0) {\n" ++
-           concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     biCase bv (BI b, bc) =
         indent i ++ "if (bigEqConst(" ++ bv ++ ", " ++ show b ++ ")) {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (I b, bc) =
         indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show b ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (Ch b, bc) =
         indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show (fromEnum b) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (B8 w, bc) =
         indent i ++ "if (GETBITS8(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (B16 w, bc) =
         indent i ++ "if (GETBITS16(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (B32 w, bc) =
         indent i ++ "if (GETBITS32(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (B64 w, bc) =
         indent i ++ "if (GETBITS64(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     showDefS i Nothing = ""
-    showDefS i (Just c) = concatMap (bcc (i+1)) c
+    showDefS i (Just c) = concatMap (bcc f (i+1)) c
 
-bcc i (CALL n) = indent i ++ "CALL(" ++ cname n ++ ");\n"
-bcc i (TAILCALL n) = indent i ++ "TAILCALL(" ++ cname n ++ ");\n"
-bcc i (SLIDE n) = indent i ++ "SLIDE(vm, " ++ show n ++ ");\n"
-bcc i REBASE = indent i ++ "REBASE;\n"
-bcc i (RESERVE 0) = ""
-bcc i (RESERVE n) = indent i ++ "RESERVE(" ++ show n ++ ");\n"
-bcc i (ADDTOP 0) = ""
-bcc i (ADDTOP n) = indent i ++ "ADDTOP(" ++ show n ++ ");\n"
-bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
-bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
-bcc i STOREOLD = indent i ++ "STOREOLD;\n"
-bcc i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr ('#':name)) [])
+bcc f i (CALL n) = indent i ++ "CALL(" ++ cname n ++ ");\n"
+bcc f i (TAILCALL n)
+    | f == n = indent i ++ "goto loop;\n"
+    | otherwise = indent i ++ "TAILCALL(" ++ cname n ++ ");\n"
+bcc f i (SLIDE n) = indent i ++ "SLIDE(vm, " ++ show n ++ ");\n"
+bcc f i REBASE = indent i ++ "REBASE;\n"
+bcc f i (RESERVE 0) = ""
+bcc f i (RESERVE n) = indent i ++ "RESERVE(" ++ show n ++ ");\n"
+bcc f i (ADDTOP 0) = ""
+bcc f i (ADDTOP n) = indent i ++ "ADDTOP(" ++ show n ++ ");\n"
+bcc f i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
+bcc f i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
+bcc f i STOREOLD = indent i ++ "STOREOLD;\n"
+bcc f i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
+bcc f i (FOREIGNCALL l rty (FStr ('#':name)) [])
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ") name ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn@('&':name)) [])
+bcc f i (FOREIGNCALL l rty (FStr fn@('&':name)) [])
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ") fn ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%wrapper"
+bcc f i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%wrapper"
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ")
             ("_idris_get_wrapper(" ++ creg (snd x) ++ ")") ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%dynamic"
+bcc f i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%dynamic"
       = indent i ++ c_irts (toFType rty) (creg l ++ " = ")
             ("(*(" ++ cFnSig "" rty xs ++ ") GETPTR(" ++ creg (snd x) ++ "))" ++
              "(" ++ showSep "," (map fcall xs) ++ ")") ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn) args)
+bcc f i (FOREIGNCALL l rty (FStr fn) args)
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ")
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
-bcc i (FOREIGNCALL l rty _ args) = error "Foreign Function calls cannot be partially applied, without being inlined."
-bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
-bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
--- bcc i c = error (show c) -- indent i ++ "// not done yet\n"
+bcc f i (FOREIGNCALL l rty _ args) = error "Foreign Function calls cannot be partially applied, without being inlined."
+bcc f i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
+bcc f i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
+-- bcc f i c = error (show c) -- indent i ++ "// not done yet\n"
 
 fcall (t, arg) = irts_c (toFType t) (creg arg)
 -- Deconstruct the Foreign type in the defunctionalised expression and build

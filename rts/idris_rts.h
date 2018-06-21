@@ -212,7 +212,7 @@ void init_threadkeys(void);
 
 // Functions all take a pointer to their VM, and previous stack base,
 // and return nothing.
-typedef void(*func)(VM*, VAL*);
+typedef void*(*func)(VM*, VAL*);
 
 // Register access
 
@@ -282,9 +282,10 @@ typedef intptr_t i_int;
 #endif
 
 #define INITFRAME TRACE\
-                  __attribute__((unused)) VAL* myoldbase
+                  __attribute__((unused)) VAL* myoldbase;\
+                  void* callres
 
-#define REBASE vm->valstack_base = oldbase
+#define REBASE vm->valstack_base = oldbase; return NULL
 #define RESERVE(x) do { \
     if (vm->valstack_top+(x) > vm->stack_max) { stackOverflow(); } \
     else { memset(vm->valstack_top, 0, (x)*sizeof(VAL)); } \
@@ -293,8 +294,12 @@ typedef intptr_t i_int;
 #define TOPBASE(x) vm->valstack_top = vm->valstack_base + (x)
 #define BASETOP(x) vm->valstack_base = vm->valstack_top + (x)
 #define STOREOLD myoldbase = vm->valstack_base
-#define CALL(f) f(vm, myoldbase);
-#define TAILCALL(f) f(vm, oldbase);
+
+#define CALL(f) callres = f(vm, myoldbase); \
+  while(callres!=NULL) { \
+      callres = ((func)(callres))(vm, myoldbase); \
+  }
+#define TAILCALL(f) return (void*)(f);
 
 // Creating new values (each value placed at the top of the stack)
 VAL MKFLOAT(VM* vm, double val);

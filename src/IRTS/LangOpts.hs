@@ -113,6 +113,8 @@ eval stk env rec defs (LProj exp i)
     = unload stk <$> (LProj <$> eval [] env rec defs exp <*> return i)
 eval stk env rec defs (LCon loc i n es)
     = unload stk <$> (LCon loc i n <$> mapM (eval [] env rec defs) es)
+eval stk env rec defs (LCase ty e [])
+    = pure LNothing
 eval stk env rec defs (LCase ty e alts)
     = do e' <- eval [] env rec defs e
          case evalAlts e' alts of
@@ -184,18 +186,23 @@ apply stk env rec defs var args body
     = eval stk env rec defs (LLam args body)
 
 dropArgs :: [Name] -> LAlt -> State Int LAlt
-dropArgs as (LConCase i n es (LLam args rhs))
-    = do let old = take (length as) args
-         rhs' <- eval [] (zipWith (\ o n -> (o, LV n)) old as) [] emptyContext rhs
+dropArgs as (LConCase i n es t)
+    = do rhs' <- dropArgsTm as t
          return (LConCase i n es rhs')
-dropArgs as (LConstCase c (LLam args rhs))
-    = do let old = take (length as) args
-         rhs' <- eval [] (zipWith (\ o n -> (o, LV n)) old as) [] emptyContext rhs
+dropArgs as (LConstCase c t)
+    = do rhs' <- dropArgsTm as t
          return (LConstCase c rhs')
-dropArgs as (LDefaultCase (LLam args rhs))
-    = do let old = take (length as) args
-         rhs' <- eval [] (zipWith (\ o n -> (o, LV n)) old as) [] emptyContext rhs
+dropArgs as (LDefaultCase t)
+    = do rhs' <- dropArgsTm as t
          return (LDefaultCase rhs')
+
+dropArgsTm as (LLam args rhs)
+    = do let old = take (length as) args
+         eval [] (zipWith (\ o n -> (o, LV n)) old as) [] emptyContext rhs
+dropArgsTm as (LLet n val rhs)
+    = do rhs' <- dropArgsTm as rhs
+         pure (LLet n val rhs')
+dropArgsTm as tm = return tm
 
 caseFloat :: LExp -> LExp
 caseFloat (LApp tc e es) = LApp tc (caseFloat e) (map caseFloat es)
@@ -292,12 +299,14 @@ getRHS (LDefaultCase rhs) = rhs
 
 getLams [] = []
 getLams (LLam args tm : cs) = getLamPrefix args cs
+getLams (LLet n val exp : cs) = getLams (exp : cs)
 getLams _ = []
 
 getLamPrefix as [] = as
 getLamPrefix as (LLam args tm : cs)
     | length args < length as = getLamPrefix args cs
     | otherwise = getLamPrefix as cs
+getLamPrefix as (LLet n val exp : cs) = getLamPrefix as (exp : cs)
 getLamPrefix as (_ : cs) = []
 
 -- eta contract ('\x -> f x' can just be compiled as 'f' when f is local)
