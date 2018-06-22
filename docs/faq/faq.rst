@@ -33,6 +33,30 @@ for use in production would be very welcome - this includes (but is not
 limited to) extra library support, polishing the run-time system (and ensuring
 it is robust), providing and maintaining a JVM back end, etc.
 
+Is there some documentation for the standard lib? List of functions?
+=====================================================================
+
+API documentation for the shipped packages is listed on `the
+documentation page <http://www.idris-lang.org/documentation/>`_.
+
+Unfortunately, the default prelude and shipped packages for `Idris`
+are not necessarily complete with regards to documentation.  Other
+ways to find functions include:
+
++ REPL commands:
+
+  + Use `:apropos` to search for text in documentation and function names.
+  + Use `:search` to search for functions of a given type.
+  + Use `:browse` to list the contents of a given namespace.
+
++ Use the REPL's auto-complete functionality.
++ Grep through the source code in `libs/`
+
+If you find that the shipped packages are lacking in documentation,
+please feel free to write some. Or bug someone to do so.  `Idris` has
+syntax for providing rich documentation, which is then viewable using
+the `:doc` command and listed in generated HTML API documentation.
+
 
 Why does Idris use eager evaluation rather than lazy?
 =====================================================
@@ -191,10 +215,10 @@ function.
 When will Idris be self-hosting?
 ================================
 
-It’s not a priority, though not a bad idea in the long run. It would be a
-worthwhile effort in the short term to implement libraries to support
-self-hosting, such as a good parsing library.
-
+It’s not a priority, though not a bad idea in the long run. It would
+be a worthwhile effort in the short term to implement libraries in
+Idris to support self-hosting, such as argument parsing and a
+POSIX-compliant library for system interaction.
 
 Does Idris have universe polymorphism? What is the type of ``Type``?
 ====================================================================
