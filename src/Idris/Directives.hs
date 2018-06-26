@@ -13,6 +13,8 @@ import Idris.Core.TT
 import Idris.Imports
 import Idris.Output (sendHighlighting)
 
+import qualified Data.Set as S
+
 import Util.DynamicLinker
 
 -- | Run the action corresponding to a directive
@@ -81,7 +83,7 @@ directiveAction (DNameHint ty tyFC ns) = do
   ty' <- disambiguate ty
   mapM_ (addNameHint ty' . fst) ns
   mapM_ (\n -> addIBC (IBCNameHint (ty', fst n))) ns
-  sendHighlighting $ [(tyFC, AnnName ty' Nothing Nothing Nothing)] ++ map (\(n, fc) -> (fc, AnnBoundName n False)) ns
+  sendHighlighting $ S.fromList $ [(FC' tyFC, AnnName ty' Nothing Nothing Nothing)] ++ map (\(n, fc) -> (FC' fc, AnnBoundName n False)) ns
 
 directiveAction (DErrorHandlers fn nfc arg afc ns) = do
   fn' <- disambiguate fn
@@ -90,10 +92,10 @@ directiveAction (DErrorHandlers fn nfc arg afc ns) = do
                   return (n', fc)) ns
   addFunctionErrorHandlers fn' arg (map fst ns')
   mapM_ (addIBC . IBCFunctionErrorHandler fn' arg . fst) ns'
-  sendHighlighting $
-       [ (nfc, AnnName fn' Nothing Nothing Nothing)
-       , (afc, AnnBoundName arg False)
-       ] ++ map (\(n, fc) -> (fc, AnnName n Nothing Nothing Nothing)) ns'
+  sendHighlighting $ S.fromList $
+       [ (FC' nfc, AnnName fn' Nothing Nothing Nothing)
+       , (FC' afc, AnnBoundName arg False)
+       ] ++ map (\(n, fc) -> (FC' fc, AnnName n Nothing Nothing Nothing)) ns'
 
 directiveAction (DLanguage ext) = addLangExt ext
 

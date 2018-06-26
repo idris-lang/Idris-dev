@@ -302,8 +302,8 @@ data IState = IState {
 
   , idris_symbols                :: M.Map Name Name           -- ^ Symbol table (preserves sharing of names)
   , idris_exports                :: [Name]                    -- ^ Functions with ExportList
-  , idris_highlightedRegions     :: [(FC, OutputAnnotation)]  -- ^ Highlighting information to output
-  , idris_parserHighlights       :: [(FC, OutputAnnotation)]  -- ^ Highlighting information from the parser
+  , idris_highlightedRegions     :: S.Set (FC', OutputAnnotation)  -- ^ Highlighting information to output
+  , idris_parserHighlights       :: S.Set (FC', OutputAnnotation)  -- ^ Highlighting information from the parser
   , idris_deprecated             :: Ctxt String               -- ^ Deprecated names and explanation
   , idris_inmodule               :: S.Set Name                -- ^ Names defined in current module
   , idris_ttstats                :: M.Map Term (Int, Term)
@@ -411,7 +411,7 @@ idrisInit = IState initContext S.empty []
                    [] [] [] defaultOpts 6 [] [] [] [] [] emptySyntaxRules [] [] [] [] [] [] []
                    [] [] Nothing [] Nothing [] [] Nothing emptyContext Private DefaultCheckingPartial [] Nothing [] []
                    (RawOutput stdout) True defaultTheme [] (0, emptyContext) emptyContext M.empty
-                   AutomaticWidth S.empty S.empty [] [] [] M.empty [] [] []
+                   AutomaticWidth S.empty S.empty [] [] [] M.empty [] S.empty S.empty
                    emptyContext S.empty M.empty emptyContext initialInteractiveOpts
 
 
@@ -710,19 +710,19 @@ data EState = EState {
     case_decls        :: [(Name, PDecl)]
   , delayed_elab      :: [(Int, Elab' EState ())]
   , new_tyDecls       :: [RDeclInstructions]
-  , highlighting      :: [(FC, OutputAnnotation)]
+  , highlighting      :: S.Set (FC', OutputAnnotation)
   , auto_binds        :: [Name]        -- ^  names bound as auto implicits
   , implicit_warnings :: [(FC, Name)] -- ^ Implicit warnings to report (location and global name)
   }
 
 initEState :: EState
-initEState = EState [] [] [] [] [] []
+initEState = EState [] [] [] S.empty [] []
 
 type ElabD a = Elab' EState a
 
 highlightSource :: FC -> OutputAnnotation -> ElabD ()
 highlightSource fc annot =
-  updateAux (\aux -> aux { highlighting = (fc, annot) : highlighting aux })
+  updateAux (\aux -> aux { highlighting = S.insert (FC' fc, annot) (highlighting aux) })
 
 -- | One clause of a top-level definition. Term arguments to constructors are:
 --
