@@ -197,10 +197,10 @@ instance Show FC where
     show (FileFC f) = f
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving (Show, Eq, Generic)
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving (Show, Eq, Ord, Generic)
 
 -- | Text formatting output
-data TextFormatting = BoldText | ItalicText | UnderlineText deriving (Show, Eq, Generic)
+data TextFormatting = BoldText | ItalicText | UnderlineText deriving (Show, Eq, Ord, Generic)
 
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe String)
@@ -227,7 +227,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                       | AnnQuasiquote
                       | AnnAntiquote
                       | AnnSyntax String -- ^ type of syntax element: backslash or braces etc.
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Generic, Ord)
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String

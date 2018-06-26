@@ -38,8 +38,9 @@ import Prelude hiding ((<$>))
 
 import Control.Arrow (first)
 import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
-import Data.List (intersperse, nub, nubBy)
+import Data.List (intersperse, nub)
 import Data.Maybe (fromJust, fromMaybe, isJust, listToMaybe)
+import qualified Data.Set as S
 import System.Console.Haskeline.MonadException (MonadException(controlIO),
                                                 RunIO(RunIO))
 import System.FilePath (replaceExtension)
@@ -77,9 +78,12 @@ formatMessage w = do
     maybeSource <- case messageSource w of
                      Just src -> pure (Just src)
                      Nothing  -> readSource fc
-    let maybeFormattedSource = maybeSource >>= layoutSource fc (idris_highlightedRegions i)
+    let maybeFormattedSource = maybeSource >>= layoutSource fc (regions (idris_highlightedRegions i))
     return $ layoutMessage (layoutFC fc) maybeFormattedSource (messageText w)
   where
+    regions :: S.Set (FC', OutputAnnotation) -> [(FC, OutputAnnotation)]
+    regions rs = map (\(FC' a,b) -> (a, b)) $ S.toList rs
+
     fc :: FC
     fc = messageExtent w
 
@@ -359,23 +363,21 @@ prettyDocumentedIst ist (name, ty, docs) =
 sendParserHighlighting :: Idris ()
 sendParserHighlighting =
   do ist <- getIState
-     let hs = map unwrap . nub . map wrap $ idris_parserHighlights ist
+     let hs = idris_parserHighlights ist
      sendHighlighting hs
      ist <- getIState
-     putIState ist {idris_parserHighlights = []}
-  where wrap (fc, a) = (FC' fc, a)
-        unwrap (fc', a) = (unwrapFC fc', a)
+     putIState ist {idris_parserHighlights = S.empty}
 
-sendHighlighting :: [(FC, OutputAnnotation)] -> Idris ()
+sendHighlighting :: S.Set (FC', OutputAnnotation) -> Idris ()
 sendHighlighting highlights =
   do ist <- getIState
      case idris_outputmode ist of
        RawOutput _ -> updateIState $
                       \ist -> ist { idris_highlightedRegions =
-                                      nubBy canNub $ highlights ++ idris_highlightedRegions ist }
+                                      S.union highlights (idris_highlightedRegions ist) }
        IdeMode n h ->
          let fancier = [ toSExp (fc, fancifyAnnots ist False annot)
-                       | (fc, annot) <- nubBy canNub highlights, fullFC fc
+                       | (FC' fc, annot) <- S.toList highlights, fullFC fc
                        ] in
             case fancier of
               [] -> return ()
@@ -386,14 +388,13 @@ sendHighlighting highlights =
 
   where fullFC (FC _ _ _) = True
         fullFC _          = False
-        canNub (fA,x) (fB,y) = show fA == show fB && x == y
 
 -- | Write the highlighting information to a file, for use in external tools
 -- or in editors that don't support the IDE protocol
 writeHighlights :: FilePath -> Idris ()
 writeHighlights f =
   do ist <- getIState
-     let hs = reverse $ idris_highlightedRegions ist
+     let hs = reverse $ map (\(FC' a, b) -> (a,b)) $ S.toList (idris_highlightedRegions ist)
      let hfile = replaceExtension f "idh"
      let annots = toSExp [ (fc, fancifyAnnots ist False annot)
                          | (fc@(FC _ _ _), annot) <- hs
@@ -401,7 +402,7 @@ writeHighlights f =
      runIO $ writeFile hfile $ sExpToString annots
 
 clearHighlights :: Idris ()
-clearHighlights = updateIState $ \ist -> ist { idris_highlightedRegions = [] }
+clearHighlights = updateIState $ \ist -> ist { idris_highlightedRegions = S.empty }
 
 renderExternal :: OutputFmt -> Int -> Doc OutputAnnotation -> Idris String
 renderExternal fmt width doc

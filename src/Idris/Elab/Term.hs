@@ -56,7 +56,7 @@ data ElabResult = ElabResult {
     -- | Meta-info about the new type declarations
   , resultTyDecls :: [RDeclInstructions]
     -- | Saved highlights from elaboration
-  , resultHighlighting :: [(FC, OutputAnnotation)]
+  , resultHighlighting :: S.Set (FC', OutputAnnotation)
     -- | The new global name counter
   , resultName :: Int
   }

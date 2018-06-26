@@ -26,6 +26,7 @@ import Prelude hiding (id, (.))
 
 import Control.Category
 import Data.Char (toLower)
+import qualified Data.Set as S ()
 import qualified Data.Traversable as Traversable
 
 -- | Elaborate a value, returning any new bindings created (this will only
