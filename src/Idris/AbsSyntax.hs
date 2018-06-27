@@ -1065,7 +1065,7 @@ iReport level msg = do
   i <- getIState
   when (level <= verbosity) $
     case idris_outputmode i of
-      RawOutput h -> runIO $ hPutStrLn h msg
+      RawOutput h -> runIO $ hPutStrLn h msg >> hFlush h
       IdeMode n h -> runIO . hPutStrLn h $ convSExp "write-string" msg n
   return ()
 
