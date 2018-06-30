@@ -889,8 +889,8 @@ getCallback bc = getCallback' (reverse bc)
         getCallback' [] = []
         findCons (c:cs) xs = findCon c xs ++ findCons cs xs
         findCons [] _ = []
-        findCon c ((MKCON l loc tag args):xs) | snd c == l = 
-            if null args 
+        findCon c ((MKCON l loc tag args):xs) | snd c == l =
+            if null args
                 then [(fst c, tag)]
                 else error "Can't wrap a closure as callback."
         findCon c (_:xs) = findCon c xs
