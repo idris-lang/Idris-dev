@@ -270,7 +270,7 @@ Library
                 , BuildFlags_idris
 
   Build-depends:  base >=4 && <5
-                , aeson >= 0.6 && < 1.3
+                , aeson >= 0.6 && < 1.4
                 , annotated-wl-pprint >= 0.7 && < 0.8
                 , ansi-terminal < 0.9
                 , ansi-wl-pprint < 0.7
