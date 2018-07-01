@@ -118,7 +118,7 @@ mutual
 ||| list of values from `p`, along with a proof that the resulting list is
 ||| non-empty.
 someTill' : {c : Bool} ->
-            (end : Grammar tok c a) ->
+            (end : Grammar tok c e) ->
             (p : Grammar tok True a) ->
             Grammar tok True (xs : List a ** NonEmpty xs)
 someTill' end p
