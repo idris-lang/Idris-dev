@@ -1,5 +1,5 @@
 Name:           idris
-Version:        1.2.0
+Version:        1.3.0
 License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
@@ -100,7 +100,7 @@ source-repository head
 
 custom-setup
   setup-depends:
-    Cabal >= 1.10 && <2.1,
+    Cabal >= 1.10 && <2.3,
     base  >= 4 && <5,
     directory,
     filepath,
@@ -270,7 +270,7 @@ Library
                 , BuildFlags_idris
 
   Build-depends:  base >=4 && <5
-                , aeson >= 0.6 && < 1.3
+                , aeson >= 0.6 && < 1.4
                 , annotated-wl-pprint >= 0.7 && < 0.8
                 , ansi-terminal < 0.9
                 , ansi-wl-pprint < 0.7
@@ -286,7 +286,7 @@ Library
                 , deepseq < 1.5
                 , directory >= 1.2.2.0 && < 1.2.3.0 || > 1.2.3.0
                 , filepath < 1.5
-                , fingertree >= 0.1 && < 0.2
+                , fingertree >= 0.1.4.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
                 , ieee754 >= 0.7 && < 0.9
                 , megaparsec >= 6.2
@@ -309,7 +309,7 @@ Library
                 , vector-binary-instances < 0.3
                 , zip-archive > 0.2.3.5 && < 0.4
                 , fsnotify >= 0.2 && < 2.2
-                , async < 2.2
+                , async < 2.3
 
   if !impl(ghc >= 8.0)
     Build-Depends: semigroups == 0.18.*

@@ -10,7 +10,7 @@ proofs, and some high level commands for introducing new theorems,
 evaluation/checking inside the proof system, etc.
 -}
 
-{-# LANGUAGE FlexibleContexts, FlexibleInstances, MultiParamTypeClasses,
+{-# LANGUAGE CPP, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses,
              PatternGuards #-}
 module Idris.Core.ProofState(
     ProofState(..), newProof, envAtFocus, goalAtFocus
@@ -31,6 +31,10 @@ import Util.Pretty hiding (fill)
 import Control.Arrow ((***))
 import Control.Monad.State.Strict
 import Data.List
+
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding ((<>))
+#endif
 
 data ProofState = PS { thname            :: Name,
                        holes             :: [Name], -- ^ holes still to be solved

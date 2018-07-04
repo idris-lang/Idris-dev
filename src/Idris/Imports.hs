@@ -24,7 +24,13 @@ import System.Directory
 import System.FilePath
 
 data IFileType = IDR FilePath | LIDR FilePath | IBC FilePath IFileType
-    deriving (Show, Eq)
+    deriving (Show, Ord)
+
+instance Eq IFileType where
+    IDR x == IDR y = x == y
+    LIDR x == LIDR y = x == y
+    IBC x _ == IBC y _ = x == y
+    _ == _ = False
 
 newtype PkgName = PkgName String
 

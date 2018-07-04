@@ -416,9 +416,13 @@ getInt (BI x : xs) = x : getInt xs
 getInt _ = []
 
 strToInt :: IntTy -> [Const] -> Maybe Const
-strToInt ity [Str x] = case reads x of
+strToInt ity [Str x] = case reads $ dropFirstPlus x of
                          [(n,s)] -> Just $ if all isSpace s then toInt ity (n :: Integer) else I 0
                          _       -> Just $ I 0
+  where
+    dropFirstPlus :: String -> String
+    dropFirstPlus ('+' : str) = str
+    dropFirstPlus str = str
 strToInt _ _ = Nothing
 
 intToFloat :: [Const] -> Maybe Const

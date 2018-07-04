@@ -6,7 +6,8 @@ Elaborator Reflection
 
 The Idris elaborator is responsible for converting high-level Idris code into the core language.
 It is implemented as a kind of embedded tactic language in Haskell, where tactic scripts are written in an *elaboration monad* that provides error handling and a proof state.
-For details, see Edwin Brady's 2013 paper in the Journal of Functional Programming.
+For details, see `Edwin Brady's 2013 paper in the Journal of Functional
+Programming <https://eb.host.cs.st-andrews.ac.uk/drafts/impldtp.pdf>`_.
 
 Elaborator reflection makes the elaboration type as well as a selection of its tactics available to Idris code.
 This means that metaprograms written in Idris can have complete control over the elaboration process, generating arbitrary code, and they have access to all of the facilities available in the elaborator, such as higher-order unification, type checking, and emitting auxiliary definitions.

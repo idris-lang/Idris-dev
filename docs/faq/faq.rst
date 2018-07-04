@@ -33,6 +33,30 @@ for use in production would be very welcome - this includes (but is not
 limited to) extra library support, polishing the run-time system (and ensuring
 it is robust), providing and maintaining a JVM back end, etc.
 
+Is there some documentation for the standard lib? List of functions?
+=====================================================================
+
+API documentation for the shipped packages is listed on `the
+documentation page <http://www.idris-lang.org/documentation/>`_.
+
+Unfortunately, the default prelude and shipped packages for `Idris`
+are not necessarily complete with regards to documentation.  Other
+ways to find functions include:
+
++ REPL commands:
+
+  + Use `:apropos` to search for text in documentation and function names.
+  + Use `:search` to search for functions of a given type.
+  + Use `:browse` to list the contents of a given namespace.
+
++ Use the REPL's auto-complete functionality.
++ Grep through the source code in `libs/`
+
+If you find that the shipped packages are lacking in documentation,
+please feel free to write some. Or bug someone to do so.  `Idris` has
+syntax for providing rich documentation, which is then viewable using
+the `:doc` command and listed in generated HTML API documentation.
+
 
 Why does Idris use eager evaluation rather than lazy?
 =====================================================
@@ -173,8 +197,10 @@ function back to itself. On such a path, there must be at least one
 argument which converges to a base case.
 
 - Mutually recursive functions are supported
+
 - However, all functions on the path must be fully applied. In particular,
   higher order applications are not supported
+
 - Idris identifies arguments which converge to a base case by looking for
   recursive calls to syntactically smaller arguments of inputs. e.g.
   ``k`` is syntactically smaller than ``S (S k)`` because ``k`` is a
@@ -189,10 +215,10 @@ function.
 When will Idris be self-hosting?
 ================================
 
-It’s not a priority, though not a bad idea in the long run. It would be a
-worthwhile effort in the short term to implement libraries to support
-self-hosting, such as a good parsing library.
-
+It’s not a priority, though not a bad idea in the long run. It would
+be a worthwhile effort in the short term to implement libraries in
+Idris to support self-hosting, such as argument parsing and a
+POSIX-compliant library for system interaction.
 
 Does Idris have universe polymorphism? What is the type of ``Type``?
 ====================================================================
@@ -233,14 +259,17 @@ where the install directory is unknown at build time. When passing this
 flag, the IDRIS_LIB_DIR environment variable needs to be set to the path
 where the Idris libs reside relative to the idris executable. The
 IDRIS_TOOLCHAIN_DIR environment variable is optional, if that is set,
-Idris will use that path to find the C compiler.
+Idris will use that path to find the C compiler. For example:
 
-Example::
+::
 
-   IDRIS_LIB_DIR="./libs" IDRIS_TOOLCHAIN_DIR="./mingw/bin" CABALFLAGS="-fffi -ffreestanding -frelease" make
+   IDRIS_LIB_DIR="./libs" \
+   IDRIS_TOOLCHAIN_DIR="./mingw/bin" \
+   CABALFLAGS="-fffi -ffreestanding -frelease" \
+   make
 
 
-What does the name ‘Idris’ mean?
+What does the name “Idris” mean?
 ================================
 
 British people of a certain age may be familiar with this
@@ -256,16 +285,20 @@ There are several reasons why we should not support Unicode operators:
 - It's hard to type (this is important if you're using someone else's code, for
   example). Various editors have their own input methods, but you have to know
   what they are.
+
 - Not every piece of software easily supports it. Rendering issues have been
   noted on some mobile email clients, terminal-based IRC clients, web browsers,
   etc. There are ways to resolve these rendering issues but they provide a
   barrier to entry to using Idris.
+
 - Even if we leave it out of the standard library (which we will in any case!)
   as soon as people start using it in their library code, others have to deal
   with it.
+
 - Too many characters look too similar. We had enough trouble with confusion
   between 0 and O without worrying about all the different kinds of colons and
   brackets.
+
 - There seems to be a tendency to go over the top with use of Unicode. For
   example, using sharp and flat for delay and force (or is it the other way
   around?) in Agda seems gratuitous. We don't want to encourage this sort of
@@ -280,7 +313,7 @@ This seems like an instance of `Wadler's
 Law <http://www.haskell.org/haskellwiki/Wadler%27s_Law>`__ in action.
 
 This answer is based on Edwin Brady's response in the following
-`pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`__.
+`pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`_.
 
 Where can I find the community standards for the Idris community?
 ==================================================================

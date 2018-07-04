@@ -70,9 +70,9 @@ mutual
     alignOfCT I8 = 1
     alignOfCT I16 = 2
     alignOfCT I32 = 4
-    alignOfCT I64 = 8
+    alignOfCT I64 = min prim__sizeofPtr 8
     alignOfCT FLOAT = 4
-    alignOfCT DOUBLE = 8
+    alignOfCT DOUBLE = min prim__sizeofPtr 8
     alignOfCT PTR = prim__sizeofPtr
 
     ||| Alignment requirement of the type

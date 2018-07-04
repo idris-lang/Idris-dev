@@ -5,7 +5,7 @@ Description : Convert core TT back into high level syntax, primarily for display
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE CPP, PatternGuards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Delaborate (
     annName, bugaddr, delab, delabWithEnv, delabDirect, delab', delabMV, delabSugared
@@ -21,7 +21,11 @@ import Idris.ErrReverse
 
 import Util.Pretty
 
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding ((<$>), (<>))
+#else
 import Prelude hiding ((<$>))
+#endif
 
 import Control.Applicative (Alternative((<|>)))
 import Control.Monad.State

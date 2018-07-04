@@ -26,6 +26,7 @@ import Control.Monad
 import Data.Generics.Uniplate.Data (transform)
 import Data.List
 import Data.Maybe
+import qualified Data.Set as S
 
 data MArgTy = IA Name | EA Name | CA deriving Show
 
@@ -167,11 +168,11 @@ elabInterface info_in syn_in doc what fc constraints tn tnfc ps pDocs fds ds mcn
              mapM_ (rec_elabDecl info EAll info) (concatMap (snd.snd) defs)
              addIBC (IBCInterface tn)
 
-             sendHighlighting $
-               [(tnfc, AnnName tn Nothing Nothing Nothing)] ++
-               [(pnfc, AnnBoundName pn False) | (pn, pnfc, _) <- ps] ++
-               [(fdfc, AnnBoundName fc False) | (fc, fdfc) <- fds] ++
-               maybe [] (\(conN, conNFC) -> [(conNFC, AnnName conN Nothing Nothing Nothing)]) mcn
+             sendHighlighting $ S.fromList $
+               [(FC' tnfc, AnnName tn Nothing Nothing Nothing)] ++
+               [(FC' pnfc, AnnBoundName pn False) | (pn, pnfc, _) <- ps] ++
+               [(FC' fdfc, AnnBoundName fc False) | (fc, fdfc) <- fds] ++
+               maybe [] (\(conN, conNFC) -> [(FC' conNFC, AnnName conN Nothing Nothing Nothing)]) mcn
 
   where
     info = info_in { noCaseLift = tn : noCaseLift info_in }

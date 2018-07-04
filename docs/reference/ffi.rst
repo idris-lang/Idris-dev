@@ -178,6 +178,12 @@ compilation error:
     example : (Int -> ()) -> IO ()
     example f = foreign FFI_C "callbacker" (CFnPtr (Int -> ()) -> IO ()) f
 
+Note that the function that is used as a callback can't be a closure, that is
+it can't be a partially applied function. This is because the mechanism used is
+unable to pass the closed-over values through C. If we want to pass Idris values
+to the callback we have to pass them through C explicitly. Non-primitive Idris
+values can be passed to C via the ``Raw`` type.
+
 The other big limitation is that it doesn't support IO functions. Use
 ``unsafePerformIO`` to wrap them (i.e. to make an IO function usable as a callback, change the return type
 from IOr to r, and change the = do to = unsafePerformIO $ do).

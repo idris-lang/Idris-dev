@@ -53,6 +53,7 @@ import qualified Data.List.Split as Spl
 import qualified Data.Map as M
 import Data.Maybe
 import Data.Ord
+import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified System.Directory as Dir (makeAbsolute)
 import System.FilePath
@@ -1491,7 +1492,7 @@ parseImports fname input
               Right (x, annots, i) ->
                 do putIState i
                    fname' <- runIO $ Dir.makeAbsolute fname
-                   sendHighlighting $ addPath annots fname'
+                   sendHighlighting $ S.fromList $ addPath annots fname'
                    return x
   where imports :: IdrisParser ((Maybe (Docstring ()), [String],
                                  [ImportInfo],
@@ -1512,11 +1513,11 @@ parseImports fname input
                      let ps = ps_exp -- imp "Builtins" : imp "Prelude" : ps_exp
                      return ((mdoc, mname, ps, mrk'), annots, i)
 
-        addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC, OutputAnnotation)]
+        addPath :: [(FC, OutputAnnotation)] -> FilePath -> [(FC', OutputAnnotation)]
         addPath [] _ = []
         addPath ((fc, AnnNamespace ns Nothing) : annots) path =
-           (fc, AnnNamespace ns (Just path)) : addPath annots path
-        addPath (annot:annots) path = annot : addPath annots path
+           (FC' fc, AnnNamespace ns (Just path)) : addPath annots path
+        addPath ((fc,annot):annots) path = (FC' fc, annot) : addPath annots path
 
         shebang :: IdrisParser ()
         shebang = string "#!" *> many (P.satisfy $ not . isEol) *> eol *> pure ()
@@ -1664,7 +1665,7 @@ loadSource lidr f toline
                                            srcFnAbs <- case srcFn of
                                                          Just fn -> fmap Just (runIO $ Dir.makeAbsolute fn)
                                                          Nothing -> return Nothing
-                                           sendHighlighting [(nfc, AnnNamespace ns srcFnAbs)])
+                                           sendHighlighting $ S.fromList [(FC' nfc, AnnNamespace ns srcFnAbs)])
                         [(re, fn, ns, nfc) | ImportInfo re fn _ ns _ nfc <- imports]
                   reportParserWarnings
                   sendParserHighlighting

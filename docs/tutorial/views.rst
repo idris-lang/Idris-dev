@@ -103,14 +103,14 @@ patterns left of the ``|``. That is:
   ``Parity (n + n)`` from the ``Even`` constructor definition. So
   ``(j + j)`` replaces ``k`` on the left side of ``|``, and the
   ``Even`` constructor appears on the right side. The natural number
-  ``j`` in the refined pattern can be used on the ride side of the
+  ``j`` in the refined pattern can be used on the right side of the
   ``=`` sign.
 
 - Otherwise, when ``parity k`` evaluates to ``Odd``, the original
   argument ``k`` is refined to ``S (j + j)`` according to ``Parity (S
   (n + n))`` from the ``Odd`` constructor definition, and ``Odd`` now
-  appears on the ride side of ``|``, again with the natural number
-  ``j`` used on the ride side of the ``=`` sign.
+  appears on the right side of ``|``, again with the natural number
+  ``j`` used on the right side of the ``=`` sign.
 
 Note that there is a function in the patterns (``+``) and repeated
 occurrences of ``j`` - this is allowed because another argument has

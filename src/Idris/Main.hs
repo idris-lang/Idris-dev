@@ -112,6 +112,7 @@ idrisMain opts =
                                             putIState (i { default_total = DefaultCheckingTotal })
        tty <- runIO isATTY
        setColourise $ not quiet && last (tty : opt getColour opts)
+       runIO $ hSetBuffering stdout LineBuffering
 
 
 
@@ -180,8 +181,6 @@ idrisMain opts =
        let efile = case inputs of
                         [] -> ""
                         (f:_) -> f
-
-       runIO $ hSetBuffering stdout LineBuffering
 
        ok <- noErrors
        when ok $ case output of

@@ -1,4 +1,4 @@
-IDRIS := idris
+IDRIS ?= idris
 PKG := contrib
 
 build:

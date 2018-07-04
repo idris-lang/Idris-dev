@@ -22,10 +22,10 @@ TT is the core language of Idris. The language has:
    * We have a simple collection of tactics which we use to elaborate source
      programs with implicit syntax into fully explicit terms.
 -}
-{-# LANGUAGE DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric,
-             DeriveTraversable, FlexibleContexts, FlexibleInstances,
-             FunctionalDependencies, MultiParamTypeClasses, PatternGuards,
-             TypeSynonymInstances #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, DeriveFoldable, DeriveFunctor,
+             DeriveGeneric, DeriveTraversable, FlexibleContexts,
+             FlexibleInstances, FunctionalDependencies, MultiParamTypeClasses,
+             PatternGuards, TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module Idris.Core.TT(
     AppStatus(..), ArithTy(..), Binder(..), Const(..), Ctxt(..)
@@ -62,6 +62,10 @@ import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Functor(..), Int,
                 Integer, Maybe(..), Monad(..), Monoid(..), Num(..), Ord(..),
                 Ordering(..), Show(..), String, div, error, fst, max, min, mod,
                 not, otherwise, read, snd, ($), (&&), (.), (||))
+
+#if (MIN_VERSION_base(4,11,0))
+import qualified Prelude as S (Semigroup(..))
+#endif
 
 import Control.Applicative (Alternative, Applicative(..))
 import qualified Control.Applicative as A (Alternative(..))
@@ -116,6 +120,11 @@ fc_end :: FC -> (Int, Int)
 fc_end (FC _ _ end) = end
 fc_end NoFC = (0, 0)
 fc_end (FileFC f) = (0, 0)
+
+#if (MIN_VERSION_base(4,11,0))
+instance S.Semigroup FC where
+    (<>) = mappend
+#endif
 
 instance Monoid FC where
   mempty = NoFC
@@ -188,10 +197,10 @@ instance Show FC where
     show (FileFC f) = f
 
 -- | Output annotation for pretty-printed name - decides colour
-data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving (Show, Eq, Generic)
+data NameOutput = TypeOutput | FunOutput | DataOutput | MetavarOutput | PostulateOutput deriving (Show, Eq, Ord, Generic)
 
 -- | Text formatting output
-data TextFormatting = BoldText | ItalicText | UnderlineText deriving (Show, Eq, Generic)
+data TextFormatting = BoldText | ItalicText | UnderlineText deriving (Show, Eq, Ord, Generic)
 
 -- | Output annotations for pretty-printing
 data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe String)
@@ -218,7 +227,7 @@ data OutputAnnotation = AnnName Name (Maybe NameOutput) (Maybe String) (Maybe St
                       | AnnQuasiquote
                       | AnnAntiquote
                       | AnnSyntax String -- ^ type of syntax element: backslash or braces etc.
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, Generic, Ord)
 
 -- | Used for error reflection
 data ErrorReportPart = TextPart String

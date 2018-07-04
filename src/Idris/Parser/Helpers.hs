@@ -89,6 +89,7 @@ import Data.List
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map as M
 import Data.Maybe
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
@@ -112,7 +113,7 @@ token p = trackExtent p <* whiteSpace
 highlight :: (MonadState IState m, Parsing m) => OutputAnnotation -> m a -> m a
 highlight annot p = do
   (result, fc) <- withExtent p
-  modify $ \ist -> ist { idris_parserHighlights = (fc, annot) : idris_parserHighlights ist }
+  modify $ \ist -> ist { idris_parserHighlights = S.insert (FC' fc, annot) (idris_parserHighlights ist) }
   return result
 
 -- | Parse a reserved identfier, highlighting it as a keyword

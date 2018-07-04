@@ -205,7 +205,7 @@ elabType' norm info syn doc argDocs fc opts n nfc ty' = {- let ty' = piBind (par
                  else ifail $ "The type " ++ show nty' ++ " is invalid for an error handler"
              else ifail "Error handlers can only be defined when the ErrorReflection language extension is enabled."
          -- Send highlighting information about the name being declared
-         sendHighlighting [(nfc, AnnName n Nothing Nothing Nothing)]
+         sendHighlighting $ S.fromList [(FC' nfc, AnnName n Nothing Nothing Nothing)]
          -- if it's an export list type, make a note of it
          case (unApply usety) of
               (P _ ut _, _)
@@ -238,7 +238,7 @@ elabPostulate info syn doc fc nfc opts n ty = do
     elabType info syn doc [] fc opts n NoFC ty
     putIState . (\ist -> ist{ idris_postulates = S.insert n (idris_postulates ist) }) =<< getIState
     addIBC (IBCPostulate n)
-    sendHighlighting [(nfc, AnnName n (Just PostulateOutput) Nothing Nothing)]
+    sendHighlighting $ S.fromList [(FC' nfc, AnnName n (Just PostulateOutput) Nothing Nothing)]
 
     -- remove it from the deferred definitions list
     solveDeferred fc n

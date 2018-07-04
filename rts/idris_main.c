@@ -3,7 +3,7 @@
 #include "idris_rts.h"
 #include "idris_stats.h"
 
-void _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
+void* _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
 
 #ifdef _WIN32
 
@@ -33,7 +33,7 @@ int win32_get_argv_utf8(int *argc_ptr, char ***argv_ptr)
 #endif
 
 // The default options should give satisfactory results under many circumstances.
-RTSOpts opts = { 
+RTSOpts opts = {
     .init_heap_size = 16384000,
     .max_stack_size = 4096000,
     .show_summary   = 0
@@ -74,6 +74,5 @@ int main(int argc, char **argv) {
         print_stats(&stats);
     }
 
-    free_nullaries();
     return EXIT_SUCCESS;
 }

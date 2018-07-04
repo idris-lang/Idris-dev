@@ -5,7 +5,7 @@ Description : Code to elaborate data structures.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE CPP, PatternGuards #-}
 module Idris.Elab.Data(elabData) where
 
 import Idris.AbsSyntax
@@ -24,7 +24,11 @@ import Idris.Output (iWarn, sendHighlighting)
 
 import Util.Pretty
 
+#if (MIN_VERSION_base(4,11,0))
+import Prelude hiding (id, (.), (<>))
+#else
 import Prelude hiding (id, (.))
+#endif
 
 import Control.Category
 import Control.Monad
@@ -33,6 +37,7 @@ import Data.Char (isLetter, toLower)
 import Data.List
 import qualified Data.Map as Map
 import Data.Maybe
+import qualified Data.Set as S
 import qualified Data.Text as T
 
 warnLC :: FC -> Name -> Idris ()
@@ -49,7 +54,7 @@ elabData info syn doc argDocs fc opts (PLaterdecl n nfc t_in)
 
          addIBC (IBCDef n)
          updateContext (addTyDecl n (TCon 0 0) cty) -- temporary, to check cons
-         sendHighlighting [(nfc, AnnName n Nothing Nothing Nothing)]
+         sendHighlighting $ S.fromList [(FC' nfc, AnnName n Nothing Nothing Nothing)]
 
 elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
     = do let codata = Codata `elem` opts
@@ -114,9 +119,9 @@ elabData info syn doc argDocs fc opts (PDatadecl n nfc t_in dcons)
          when (n /= sUN "=") $
             elabRewriteLemma info n cty
          -- Emit highlighting info
-         sendHighlighting $ [(nfc, AnnName n Nothing Nothing Nothing)] ++
+         sendHighlighting $ S.fromList $ [(FC' nfc, AnnName n Nothing Nothing Nothing)] ++
            map (\(_, _, n, nfc, _, _, _) ->
-                 (nfc, AnnName n Nothing Nothing Nothing))
+                 (FC' nfc, AnnName n Nothing Nothing Nothing))
                dcons
   where
         checkDefinedAs fc n t i

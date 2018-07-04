@@ -455,3 +455,28 @@ instance Show LExp where
 
      showAlt env ind (LConstCase c e) = show c ++ " => " ++ show' env ind e
      showAlt env ind (LDefaultCase e) = "_ => " ++ show' env ind e
+
+occName :: Name -> LExp -> Int
+occName n (LV x) = if n == x then 1 else 0
+occName n (LApp t e es) = occName n e + sum (map (occName n) es)
+occName n (LLazyApp x es)
+    = if n == x then 1 + sum (map (occName n) es)
+                else sum (map (occName n) es)
+occName n (LForce e) = occName n e
+occName n (LLet x v sc)
+    = if n == x then occName n v
+                else occName n v + occName n sc
+occName n (LLam ns sc)
+    = if n `elem` ns then 0 else occName n sc
+occName n (LProj e i) = occName n e
+occName n (LCon _ _ _ es) = sum (map (occName n) es)
+occName n (LCase t e alts) = occName n e + maximum (map occAlt alts)
+  where
+    occAlt (LConCase _ _ ns e)
+        = if n `elem` ns then 0 else occName n e
+    occAlt (LConstCase _ e) = occName n e
+    occAlt (LDefaultCase e) = occName n e
+occName n (LForeign _ _ es) = sum (map (occName n . snd) es)
+occName n (LOp _ es) = sum (map (occName n) es)
+occName n _ = 0
+

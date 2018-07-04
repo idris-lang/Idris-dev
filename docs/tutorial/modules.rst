@@ -53,8 +53,7 @@ Then, this gives a main program (in a file
               print (Btree.toList t)
 
 The same names can be defined in multiple modules: names are *qualified* with
-the name of the module.  The names defined in the ``Btree`` module are, in
-full:
+the name of the module. The names defined in the ``Btree`` module are, in full:
 
 + ``Btree.BTree``
 + ``Btree.Leaf``
@@ -74,7 +73,7 @@ directories. For example, ``import foo.bar`` would import the file
 ``foo/bar.idr``, which would conventionally have the module declaration
 ``module foo.bar``. The only requirement for module names is that the
 main module, with the ``main`` function, must be called
-``Main``—although its filename need not be ``Main.idr``.
+``Main`` — although its filename need not be ``Main.idr``.
 
 Export Modifiers
 ================
@@ -82,17 +81,15 @@ Export Modifiers
 Idris allows for fine-grained control over the visibility of a
 module's contents. By default, all names defined in a module are kept
 private.  This aides in specification of a minimal interface and for
-internal details to be left hidden.  Idris allows for functions,
+internal details to be left hidden. Idris allows for functions,
 types, and interfaces to be marked as: ``private``, ``export``, or
-``public export``.  Their general meaning is as follows:
+``public export``. Their general meaning is as follows:
 
-- ``private`` meaning that it's not exported at all. This is the
-  default.
+- ``private`` meaning that it's not exported at all. This is the default.
 
 - ``export`` meaning that its top level type is exported.
 
 - ``public export`` meaning that the entire definition is exported.
-
 
 A further restriction in modifying the visibility is that definitions
 must not refer to anything within a lower level of visibility. For
@@ -129,10 +126,9 @@ Meaning for Data Types
 
 For data types, the meanings are:
 
-- ``export``  the type constructor is exported
+- ``export`` the type constructor is exported
 
-- ``public export`` the type constructor and data constructors are
-  exported
+- ``public export`` the type constructor and data constructors are exported
 
 
 Meaning for Interfaces
@@ -141,6 +137,7 @@ Meaning for Interfaces
 For interfaces, the meanings are:
 
 - ``export`` the interface name is exported
+
 - ``public export`` the interface name, method names and default
   definitions are exported
 

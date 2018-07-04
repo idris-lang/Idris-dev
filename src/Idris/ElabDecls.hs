@@ -41,7 +41,9 @@ import Control.Category
 import Control.Monad
 import Control.Monad.State.Strict as State
 import Data.Maybe
+import qualified Data.Set as S
 import qualified Data.Text as T
+
 
 -- | Top level elaborator info, supporting recursive elaboration
 recinfo :: FC -> ElabInfo
@@ -260,7 +262,7 @@ elabDecl' what info (POpenInterfaces f ns ds)
 elabDecl' what info (PNamespace n nfc ps) =
   do mapM_ (elabDecl' what ninfo) ps
      let ns = reverse (map T.pack newNS)
-     sendHighlighting [(nfc, AnnNamespace ns Nothing)]
+     sendHighlighting $ S.fromList [(FC' nfc, AnnNamespace ns Nothing)]
   where
     newNS = n : namespace info
     ninfo = info { namespace = newNS }

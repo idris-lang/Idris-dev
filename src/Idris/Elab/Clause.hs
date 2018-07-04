@@ -44,6 +44,7 @@ import qualified Control.Monad.State.Lazy as LState
 import Control.Monad.State.Strict as State
 import Data.List
 import Data.Maybe
+import qualified Data.Set as S
 import Data.Word
 import Debug.Trace
 import Numeric
@@ -1028,7 +1029,7 @@ elabClause info opts (_, PWith fc fname lhs_in withs wval_in pn_in withblock)
                        Just (n, nfc) -> Just (uniqueName n (map fst bargs))
 
         -- Highlight explicit proofs
-        sendHighlighting [(fc, AnnBoundName n False) | (n, fc) <- maybeToList pn_in]
+        sendHighlighting $ S.fromList [(FC' fc, AnnBoundName n False) | (n, fc) <- maybeToList pn_in]
 
         logElab 10 ("With type " ++ show (getRetTy cwvaltyN) ++
                   " depends on " ++ show pdeps ++ " from " ++ show pvars)

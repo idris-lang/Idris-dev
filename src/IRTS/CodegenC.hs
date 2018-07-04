@@ -79,18 +79,22 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
              libFlags <- getLibFlags
              incFlags <- getIncFlags
              envFlags <- getEnvFlags
-             let stackFlag = if isWindows then ["-Wl,--stack,16777216"] else []
+             let stripFlag = if isDarwin then "-dead_strip" else "-Wl,-gc-sections"
+             let stackFlags = if isWindows then ["-Wl,--stack,16777216"] else []
+             let linkFlags = stripFlag : stackFlags
              let args = gccDbg dbg ++
                         gccFlags iface ++
                         -- # Any flags defined here which alter the RTS API must also be added to config.mk
-                        ["-std=c99", "-D_POSIX_C_SOURCE=200809L", "-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS",
-                         "-I."] ++ objs ++ envFlags ++
-                        (if (exec == Executable) then [] else ["-c"]) ++
+                        [ "-std=c99", "-pipe"
+                        , "-fdata-sections", "-ffunction-sections"
+                        , "-D_POSIX_C_SOURCE=200809L", "-DHAS_PTHREAD", "-DIDRIS_ENABLE_STATS"
+                        , "-I."] ++ objs ++ envFlags ++
+                        (if (exec == Executable) then linkFlags else ["-c"]) ++
                         [tmpn] ++
                         (if not iface then libFlags else []) ++
                         incFlags ++
                         (if not iface then libs else []) ++
-                        flags ++ stackFlag ++
+                        flags ++
                         ["-o", out]
 --              putStrLn (show args)
              exit <- rawSystem comp args
@@ -113,11 +117,7 @@ gccFlags i = if i then ["-fwrapv"]
                   else ["-fwrapv", "-fno-strict-overflow"]
 
 gccDbg DEBUG = ["-g"]
--- clang optimises sibling calls in O1, but gcc doesn't
--- on the other hand, O1 compiles significantly faster in clang without
--- any noticeable performance hit.
-gccDbg TRACE = ["-O1", "-foptimize-sibling-calls"]
-gccDbg _ = ["-O1", "-foptimize-sibling-calls"]
+gccDbg _ = []
 
 cname :: Name -> String
 cname n = "_idris_" ++ concatMap cchar (showCG n)
@@ -133,14 +133,14 @@ creg (T i) = "TOP(" ++ show i ++ ")"
 creg Tmp = "REG1"
 
 toDecl :: Name -> String
-toDecl f = "void " ++ cname f ++ "(VM*, VAL*);\n"
+toDecl f = "void* " ++ cname f ++ "(VM*, VAL*);\n"
 
 toC :: Name -> [BC] -> String
 toC f code
     = -- "/* " ++ show code ++ "*/\n\n" ++
-      "void " ++ cname f ++ "(VM* vm, VAL* oldbase) {\n" ++
-                 indent 1 ++ "INITFRAME;\n" ++
-                 concatMap (bcc 1) code ++ "}\n\n"
+      "void* " ++ cname f ++ "(VM* vm, VAL* oldbase) {\n" ++
+                  indent 1 ++ "INITFRAME;\nloop:\n" ++
+                  concatMap (bcc f 1) code ++ "}\n\n"
 
 showCStr :: String -> String
 showCStr s = '"' : foldr ((++) . showChar) "\"" s
@@ -176,9 +176,9 @@ showCStr s = '"' : foldr ((++) . showChar) "\"" s
                  2 -> s
                  _ -> error $ "Can't happen: String of invalid length " ++ show s
 
-bcc :: Int -> BC -> String
-bcc i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
-bcc i (ASSIGNCONST l c)
+bcc :: Name -> Int -> BC -> String
+bcc f i (ASSIGN l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
+bcc f i (ASSIGNCONST l c)
     = indent i ++ creg l ++ " = " ++ mkConst c ++ ";\n"
   where
     mkConst (I i) = "MKINT(" ++ show i ++ ")"
@@ -199,10 +199,10 @@ bcc i (ASSIGNCONST l c)
     mkConst c | isTypeConst c = "MKINT(42424242)"
     mkConst c = error $ "mkConst of (" ++ show c ++ ") not implemented"
 
-bcc i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
-bcc i (MKCON l loc tag []) | tag < 256
+bcc f i (UPDATE l r) = indent i ++ creg l ++ " = " ++ creg r ++ ";\n"
+bcc f i (MKCON l loc tag []) | tag < 256
     = indent i ++ creg l ++ " = NULL_CON(" ++ show tag ++ ");\n"
-bcc i (MKCON l loc tag args)
+bcc f i (MKCON l loc tag args)
     = indent i ++ alloc loc tag ++
       indent i ++ setArgs 0 args ++ "\n" ++
       indent i ++ creg l ++ " = " ++ creg Tmp ++ ";\n"
@@ -216,21 +216,21 @@ bcc i (MKCON l loc tag args)
             = "updateCon(" ++ creg Tmp ++ ", " ++ creg old ++ ", " ++ show tag ++ ", " ++
                     show (length args) ++ ");\n"
 
-bcc i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++
+bcc f i (PROJECT l loc a) = indent i ++ "PROJECT(vm, " ++ creg l ++ ", " ++ show loc ++
                                       ", " ++ show a ++ ");\n"
-bcc i (PROJECTINTO r t idx)
+bcc f i (PROJECTINTO r t idx)
     = indent i ++ creg r ++ " = GETARG(" ++ creg t ++ ", " ++ show idx ++ ");\n"
-bcc i (CASE True r [(_, alt)] Nothing)
+bcc f i (CASE True r [(_, alt)] Nothing)
     = indent i ++ showCode i alt
   where
     showCode :: Int -> [BC] -> String
-    showCode i bc = "{\n" ++ concatMap (bcc (i + 1)) bc ++
+    showCode i bc = "{\n" ++ concatMap (bcc f (i + 1)) bc ++
                     indent i ++ "}\n"
-bcc i (CASE True r code def)
+bcc f i (CASE True r code def)
     | length code < 6 && length code > 1 = showCase i def code
   where
     showCode :: Int -> [BC] -> String
-    showCode i bc = "{\n" ++ concatMap (bcc (i + 1)) bc ++
+    showCode i bc = "{\n" ++ concatMap (bcc f (i + 1)) bc ++
                     indent i ++ "}\n"
 
     showCase :: Int -> Maybe [BC] -> [(Int, [BC])] -> String
@@ -240,7 +240,7 @@ bcc i (CASE True r code def)
         = indent i ++ "if (CTAG(" ++ creg r ++ ") == " ++ show t ++ ") " ++ showCode i c
            ++ indent i ++ "else\n" ++ showCase i def cs
 
-bcc i (CASE safe r code def)
+bcc f i (CASE safe r code def)
     = indent i ++ "switch(" ++ ctag safe ++ "(" ++ creg r ++ ")) {\n" ++
       concatMap (showCase i) code ++
       showDef i def ++
@@ -250,11 +250,12 @@ bcc i (CASE safe r code def)
     ctag False = "TAG"
 
     showCase i (t, bc) = indent i ++ "case " ++ show t ++ ":\n"
-                         ++ concatMap (bcc (i+1)) bc ++ indent (i + 1) ++ "break;\n"
-    showDef i Nothing = ""
+                         ++ concatMap (bcc f (i+1)) bc ++ indent (i + 1) ++ "break;\n"
+    showDef i Nothing = indent i ++ "default:\n" ++
+                        indent (i + 1) ++ "return NULL;\n"
     showDef i (Just c) = indent i ++ "default:\n"
-                         ++ concatMap (bcc (i+1)) c ++ indent (i + 1) ++ "break;\n"
-bcc i (CONSTCASE r code def)
+                         ++ concatMap (bcc f (i+1)) c ++ indent (i + 1) ++ "break;\n"
+bcc f i (CONSTCASE r code def)
    | intConsts code
 --      = indent i ++ "switch(GETINT(" ++ creg r ++ ")) {\n" ++
 --        concatMap (showCase i) code ++
@@ -286,65 +287,67 @@ bcc i (CONSTCASE r code def)
 
     strCase sv (s, bc) =
         indent i ++ "if (strcmp(" ++ sv ++ ", " ++ show s ++ ") == 0) {\n" ++
-           concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     biCase bv (BI b, bc) =
         indent i ++ "if (bigEqConst(" ++ bv ++ ", " ++ show b ++ ")) {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (I b, bc) =
         indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show b ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (Ch b, bc) =
         indent i ++ "if (GETINT(" ++ v ++ ") == " ++ show (fromEnum b) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (B8 w, bc) =
         indent i ++ "if (GETBITS8(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (B16 w, bc) =
         indent i ++ "if (GETBITS16(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (B32 w, bc) =
         indent i ++ "if (GETBITS32(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     iCase v (B64 w, bc) =
         indent i ++ "if (GETBITS64(" ++ v ++ ") == " ++ show (fromEnum w) ++ ") {\n"
-           ++ concatMap (bcc (i+1)) bc ++ indent i ++ "} else\n"
+           ++ concatMap (bcc f (i+1)) bc ++ indent i ++ "} else\n"
     showDefS i Nothing = ""
-    showDefS i (Just c) = concatMap (bcc (i+1)) c
+    showDefS i (Just c) = concatMap (bcc f (i+1)) c
 
-bcc i (CALL n) = indent i ++ "CALL(" ++ cname n ++ ");\n"
-bcc i (TAILCALL n) = indent i ++ "TAILCALL(" ++ cname n ++ ");\n"
-bcc i (SLIDE n) = indent i ++ "SLIDE(vm, " ++ show n ++ ");\n"
-bcc i REBASE = indent i ++ "REBASE;\n"
-bcc i (RESERVE 0) = ""
-bcc i (RESERVE n) = indent i ++ "RESERVE(" ++ show n ++ ");\n"
-bcc i (ADDTOP 0) = ""
-bcc i (ADDTOP n) = indent i ++ "ADDTOP(" ++ show n ++ ");\n"
-bcc i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
-bcc i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
-bcc i STOREOLD = indent i ++ "STOREOLD;\n"
-bcc i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr ('#':name)) [])
+bcc f i (CALL n) = indent i ++ "CALL(" ++ cname n ++ ");\n"
+bcc f i (TAILCALL n)
+    | f == n = indent i ++ "goto loop;\n"
+    | otherwise = indent i ++ "TAILCALL(" ++ cname n ++ ");\n"
+bcc f i (SLIDE n) = indent i ++ "SLIDE(vm, " ++ show n ++ ");\n"
+bcc f i REBASE = indent i ++ "REBASE;\n"
+bcc f i (RESERVE 0) = ""
+bcc f i (RESERVE n) = indent i ++ "RESERVE(" ++ show n ++ ");\n"
+bcc f i (ADDTOP 0) = ""
+bcc f i (ADDTOP n) = indent i ++ "ADDTOP(" ++ show n ++ ");\n"
+bcc f i (TOPBASE n) = indent i ++ "TOPBASE(" ++ show n ++ ");\n"
+bcc f i (BASETOP n) = indent i ++ "BASETOP(" ++ show n ++ ");\n"
+bcc f i STOREOLD = indent i ++ "STOREOLD;\n"
+bcc f i (OP l fn args) = indent i ++ doOp (creg l ++ " = ") fn args ++ ";\n"
+bcc f i (FOREIGNCALL l rty (FStr ('#':name)) [])
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ") name ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn@('&':name)) [])
+bcc f i (FOREIGNCALL l rty (FStr fn@('&':name)) [])
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ") fn ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%wrapper"
+bcc f i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%wrapper"
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ")
             ("_idris_get_wrapper(" ++ creg (snd x) ++ ")") ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%dynamic"
+bcc f i (FOREIGNCALL l rty (FStr fn) (x:xs)) | fn == "%dynamic"
       = indent i ++ c_irts (toFType rty) (creg l ++ " = ")
             ("(*(" ++ cFnSig "" rty xs ++ ") GETPTR(" ++ creg (snd x) ++ "))" ++
              "(" ++ showSep "," (map fcall xs) ++ ")") ++ ";\n"
-bcc i (FOREIGNCALL l rty (FStr fn) args)
+bcc f i (FOREIGNCALL l rty (FStr fn) args)
       = indent i ++
         c_irts (toFType rty) (creg l ++ " = ")
                    (fn ++ "(" ++ showSep "," (map fcall args) ++ ")") ++ ";\n"
-bcc i (FOREIGNCALL l rty _ args) = error "Foreign Function calls cannot be partially applied, without being inlined."
-bcc i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
-bcc i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
--- bcc i c = error (show c) -- indent i ++ "// not done yet\n"
+bcc f i (FOREIGNCALL l rty _ args) = error "Foreign Function calls cannot be partially applied, without being inlined."
+bcc f i (NULL r) = indent i ++ creg r ++ " = NULL;\n" -- clear, so it'll be GCed
+bcc f i (ERROR str) = indent i ++ "fprintf(stderr, " ++ show str ++ "); fprintf(stderr, \"\\n\"); exit(-1);\n"
+-- bcc f i c = error (show c) -- indent i ++ "// not done yet\n"
 
 fcall (t, arg) = irts_c (toFType t) (creg arg)
 -- Deconstruct the Foreign type in the defunctionalised expression and build
@@ -396,7 +399,7 @@ c_irts FFunctionIO l x = error "Return of function from foreign call is not supp
 irts_c (FArith (ATInt ITNative)) x = "GETINT(" ++ x ++ ")"
 irts_c (FArith (ATInt ITChar)) x = irts_c (FArith (ATInt ITNative)) x
 irts_c (FArith (ATInt (ITFixed ity))) x
-    = "(" ++ x ++ "->info.bits" ++ show (nativeTyWidth ity) ++ ")"
+    = "GETBITS" ++ show (nativeTyWidth ity) ++ "(" ++ x ++ ")"
 irts_c FString x = "GETSTR(" ++ x ++ ")"
 irts_c FUnit x = x
 irts_c FPtr x = "GETPTR(" ++ x ++ ")"
@@ -536,13 +539,13 @@ doOp v (LURem (ITFixed ty)) [x, y] = bitOp v "URem" ty [x, y]
 doOp v (LSRem (ATInt (ITFixed ty))) [x, y] = bitOp v "SRem" ty [x, y]
 
 doOp v (LSExt (ITFixed from) ITBig) [x]
-    = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+    = v ++ "MKBIGSI(vm, (" ++ signedTy from ++ ") GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ "))"
 doOp v (LSExt ITNative (ITFixed to)) [x]
     = v ++ "idris_b" ++ show (nativeTyWidth to) ++ "const(vm, GETINT(" ++ creg x ++ "))"
 doOp v (LSExt ITChar (ITFixed to)) [x]
     = doOp v (LSExt ITNative (ITFixed to)) [x]
 doOp v (LSExt (ITFixed from) ITNative) [x]
-    = v ++ "MKINT((i_int)((" ++ signedTy from ++ ")" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ "))"
+    = v ++ "MKINT((i_int)((" ++ signedTy from ++ ") GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ ")))"
 doOp v (LSExt (ITFixed from) ITChar) [x]
     = doOp v (LSExt (ITFixed from) ITNative) [x]
 doOp v (LSExt (ITFixed from) (ITFixed to)) [x]
@@ -552,11 +555,11 @@ doOp v (LZExt ITNative (ITFixed to)) [x]
 doOp v (LZExt ITChar (ITFixed to)) [x]
     = doOp v (LZExt ITNative (ITFixed to)) [x]
 doOp v (LZExt (ITFixed from) ITNative) [x]
-    = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+    = v ++ "MKINT((i_int)GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ "))"
 doOp v (LZExt (ITFixed from) ITChar) [x]
     = doOp v (LZExt (ITFixed from) ITNative) [x]
 doOp v (LZExt (ITFixed from) ITBig) [x]
-    = v ++ "MKBIGUI(vm, " ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+    = v ++ "MKBIGUI(vm, GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ "))"
 doOp v (LZExt ITNative ITBig) [x]
     = v ++ "MKBIGUI(vm, (uintptr_t)GETINT(" ++ creg x ++ "))"
 doOp v (LZExt (ITFixed from) (ITFixed to)) [x]
@@ -566,7 +569,7 @@ doOp v (LTrunc ITNative (ITFixed to)) [x]
 doOp v (LTrunc ITChar (ITFixed to)) [x]
     = doOp v (LTrunc ITNative (ITFixed to)) [x]
 doOp v (LTrunc (ITFixed from) ITNative) [x]
-    = v ++ "MKINT((i_int)" ++ creg x ++ "->info.bits" ++ show (nativeTyWidth from) ++ ")"
+    = v ++ "MKINT((i_int)GETBITS" ++ show (nativeTyWidth from) ++ "(" ++ creg x ++ "))"
 doOp v (LTrunc (ITFixed from) ITChar) [x]
     = doOp v (LTrunc (ITFixed from) ITNative) [x]
 doOp v (LTrunc ITBig (ITFixed IT64)) [x]
@@ -886,7 +889,10 @@ getCallback bc = getCallback' (reverse bc)
         getCallback' [] = []
         findCons (c:cs) xs = findCon c xs ++ findCons cs xs
         findCons [] _ = []
-        findCon c ((MKCON l loc tag args):xs) | snd c == l = [(fst c, tag)]
+        findCon c ((MKCON l loc tag args):xs) | snd c == l =
+            if null args
+                then [(fst c, tag)]
+                else error "Can't wrap a closure as callback."
         findCon c (_:xs) = findCon c xs
         findCon c [] = []
 

@@ -22,6 +22,8 @@ import Idris.Unlit
 
 import Control.Monad.State
 import Data.List
+import qualified Data.Map as M
+import qualified Data.Set as S
 import Data.Time.Clock
 import System.Directory
 import Util.System (readSource)
@@ -36,8 +38,7 @@ latest :: UTCTime -> [IFileType] -> [ModuleTree] -> UTCTime
 latest tm done [] = tm
 latest tm done (m : ms)
     | mod_path m `elem` done = latest tm done ms
-    | otherwise = latest (max tm (mod_time m)) (mod_path m : done)
-                         (ms ++ mod_deps m)
+    | otherwise = latest (max tm (mod_time m)) (mod_path m : done) ms
 
 modName :: IFileType -> String
 modName (IDR fp) = fp
@@ -48,23 +49,52 @@ modName (IBC fp src) = modName src
 -- any module has a descendent which needs reloading, return its
 -- source, otherwise return the IBC
 getModuleFiles :: [ModuleTree] -> [IFileType]
-getModuleFiles ts = nub $ execState (modList ts) [] where
-   modList :: [ModuleTree] -> State [IFileType] ()
-   modList [] = return ()
-   modList (m : ms) = do modTree [] m; modList ms
+getModuleFiles ts
+    = let (files, (rebuild, _)) = runState (modList ts) (S.empty, M.empty) in
+          updateToSrc rebuild (reverse files)
+ where
+   -- Get the order of building modules. As we go we'll find things that
+   -- need rebuilding, which we keep track of in the Set.
+   -- The order of the list matters - things which get built first appear
+   -- in the list first. We'll remove any repetition later.
+   modList :: [ModuleTree] ->
+              State (S.Set IFileType,
+                     M.Map IFileType (Bool, [IFileType])) [IFileType]
+   modList [] = return []
+   modList (m : ms) = do (_, fs) <- modTree S.empty m
+                         fs' <- modList ms
+                         pure (fs ++ fs')
 
-   modTree path (MTree p rechk tm deps)
+   modTree path m@(MTree p rechk tm deps)
        = do let file = chkReload rechk p
-            -- Needs rechecking if 'rechk' is true, or if any of the
-            -- modification times in 'deps' are later than tm
-            let depMod = latest tm [] deps
-            let needsRechk = rechk || depMod > tm
+            (rebuild, res) <- get
+            case M.lookup file res of
+                 Just ms -> pure ms
+                 Nothing -> do
+                    toBuildsAll <- mapM (modTree (S.insert (getSrc p) path)) deps
+                    let (rechkDep_in, toBuilds) = unzip toBuildsAll
+                    let rechkDep = or rechkDep_in
 
-            st <- get
-            if needsRechk then put $ nub (getSrc file : updateToSrc path st)
-                          else put $ nub (file : st)
-            st <- get
-            mapM_ (modTree (getSrc p : path)) deps
+                    (rebuild, res) <- get
+
+                    -- Needs rechecking if 'rechk' is true, or if any of the
+                    -- modification times in 'deps' are later than tm, or
+                    -- if any dependency needed rechecking
+                    let depMod = latest tm [] deps
+                    let needsRechk = rechkDep || rechk || depMod > tm
+
+                    -- Remove duplicates, but keep the last...
+                    let rnub = reverse . nub . reverse
+
+                    let ret = if needsRechk
+                                 then (needsRechk, rnub (getSrc file : concat toBuilds))
+                                 else (needsRechk, rnub (file : concat toBuilds))
+
+                    -- Cache the result
+                    put (if needsRechk
+                            then S.union path rebuild
+                            else rebuild, M.insert file ret res)
+                    pure ret
 
    chkReload False p = p
    chkReload True (IBC fn src) = chkReload True src
@@ -73,10 +103,11 @@ getModuleFiles ts = nub $ execState (modList ts) [] where
    getSrc (IBC fn src) = getSrc src
    getSrc f = f
 
-   updateToSrc path [] = []
-   updateToSrc path (x : xs) = if getSrc x `elem` path
-                                  then getSrc x : updateToSrc path xs
-                                  else x : updateToSrc path xs
+   updateToSrc rebuilds [] = []
+   updateToSrc rebuilds (x : xs)
+       = if getSrc x `S.member` rebuilds
+            then getSrc x : updateToSrc rebuilds xs
+            else x : updateToSrc rebuilds xs
 
 -- | Strip quotes and the backslash escapes that Haskeline adds
 extractFileName :: String -> String
@@ -173,8 +204,12 @@ buildTree built importlists fp = evalStateT (btree [] fp) []
                                do [MTree _ _ _ ms'] <- mkChildren file src
                                   return ms'
                              else return []
-                   mt <- lift $ idrisCatch (runIO $ getModificationTime fn)
-                                    (\c -> runIO $ getIModTime src)
+                   -- Modification time is the later of the source/ibc modification time
+                   smt <- lift $ idrisCatch (runIO $ getIModTime src)
+                                    (\c -> runIO $ getModificationTime fn)
+                   mt <- lift $ idrisCatch (do t <- runIO $ getModificationTime fn
+                                               return (max smt t))
+                                    (\c -> return smt)
                    -- FIXME: It's also not up to date if anything it imports has
                    -- been modified since its own ibc has.
                    --

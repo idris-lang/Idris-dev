@@ -20,6 +20,7 @@ import Idris.Output (sendHighlighting)
 import Control.Monad
 import Data.List
 import Data.Maybe
+import qualified Data.Set as S
 
 -- | Elaborate a record declaration
 elabRecord :: ElabInfo
@@ -66,10 +67,10 @@ elabRecord info what doc rsyn fc opts tyn nfc params paramDocs fields cname cdoc
            logElab 1 $ "fieldsWIthNameAndDoc " ++ show fieldsWithNameAndDoc
            elabRecordFunctions info rsyn fc tyn paramsAndDoc fieldsWithNameAndDoc dconName target
 
-           sendHighlighting $
-             [(nfc, AnnName tyn Nothing Nothing Nothing)] ++
-             maybe [] (\(_, cnfc) -> [(cnfc, AnnName dconName Nothing Nothing Nothing)]) cname ++
-             [(ffc, AnnBoundName fn False) | (fn, ffc, _, _, _) <- fieldsWithName]
+           sendHighlighting $ S.fromList $
+             [(FC' nfc, AnnName tyn Nothing Nothing Nothing)] ++
+             maybe [] (\(_, cnfc) -> [(FC' cnfc, AnnName dconName Nothing Nothing Nothing)]) cname ++
+             [(FC' ffc, AnnBoundName fn False) | (fn, ffc, _, _, _) <- fieldsWithName]
 
   where
     -- | Generates a type constructor.
