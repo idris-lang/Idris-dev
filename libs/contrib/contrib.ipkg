@@ -12,7 +12,12 @@ modules = CFFI
         , Control.Algebra.VectorSpace
 
         , Control.Delayed
+
+        , Control.Isomorphism.Extra
+        , Control.Isomorphism.Fin
         , Control.Isomorphism.Primitives
+        , Control.Isomorphism.Vect
+
         , Control.Monad.Syntax
         , Control.Partial
         , Control.Pipeline
