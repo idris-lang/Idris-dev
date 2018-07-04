@@ -104,35 +104,11 @@ take : (n : Nat) -> Vect (n + m) elem -> Vect n elem
 take Z     xs        = []
 take (S k) (x :: xs) = x :: take k xs
 
-takeTake : (n : Nat) -> (m : Nat) -> (xs : Vect (n + m + l) a) -> take n (take (n + m) xs) = take n {m = m + l} (rewrite plusAssociative n m l in xs)
-takeTake Z m xs = Refl
-takeTake {l} (S k) m (x :: xs) = rewrite aux (plusAssociative k m l) x xs in cong { f = (x ::) } $ takeTake k m xs
-  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
-              (x : a) -> (xs : Vect m a) ->
-              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
-        aux Refl x xs = Refl
-
 ||| Remove the first n elements of a Vect
 ||| @ n the number of elements to remove
 drop : (n : Nat) -> Vect (n + m) elem -> Vect m elem
 drop Z     xs        = xs
 drop (S k) (x :: xs) = drop k xs
-
-dropDrop : (n : Nat) -> (m : Nat) -> (xs : Vect (m + n + l) a) -> drop n (drop m {m = n + l} (rewrite plusAssociative m n l in xs)) = drop (m + n) xs
-dropDrop n Z xs = Refl
-dropDrop {l} n (S k) (x :: xs) = rewrite aux (plusAssociative k n l) x xs in dropDrop n k xs
-  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
-              (x : a) -> (xs : Vect m a) ->
-              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
-        aux Refl x xs = Refl
-
-takeDropDropTake : (n : Nat) -> (m : Nat) -> (xs : Vect (m + n + l) a) -> take n (drop m {m = n + l} (rewrite plusAssociative m n l in xs)) = drop m (take (m + n) xs)
-takeDropDropTake n Z xs = Refl
-takeDropDropTake {l} n (S k) (x :: xs) = rewrite aux (plusAssociative k n l) x xs in takeDropDropTake n k xs
-  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
-              (x : a) -> (xs : Vect m a) ->
-              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
-        aux Refl x xs = Refl
 
 ||| Take the longest prefix of a Vect such that all elements satisfy some
 ||| Boolean predicate.
@@ -211,18 +187,6 @@ fromList l =
 (++) : (xs : Vect m elem) -> (ys : Vect n elem) -> Vect (m + n) elem
 (++) []      ys = ys
 (++) (x::xs) ys = x :: xs ++ ys
-
-takePrefix : (ns : Vect n a) -> (ms : Vect m a) -> take n (ns ++ ms) = ns
-takePrefix [] _ = Refl
-takePrefix (n :: ns) ms = cong $ takePrefix ns ms
-
-dropPrefix : (ns : Vect n a) -> (ms : Vect m a) -> drop n (ns ++ ms) = ms
-dropPrefix [] ms = Refl
-dropPrefix (_ :: ns) ms = dropPrefix ns ms
-
-takeDropConcat : (n : Nat) -> (xs : Vect (n + m) a) -> take n xs ++ drop n xs = xs
-takeDropConcat Z xs = Refl
-takeDropConcat (S k) (x :: xs) = cong $ takeDropConcat k xs
 
 ||| Repeate some value some number of times.
 |||
@@ -328,7 +292,6 @@ mapMaybe f (x::xs) =
   in case f x of
        Just y  => (S len ** y :: ys)
        Nothing => (  len **      ys)
-
 
 --------------------------------------------------------------------------------
 -- Folds
@@ -503,16 +466,6 @@ splitAt (S k) (x::xs) =
   let (tk, dr) = splitAt k xs
   in (x::tk, dr)
 
-splitAtTakeDrop : (n : Nat) -> (xs : Vect (n + m) a) -> splitAt n xs = (take n xs, drop n xs)
-splitAtTakeDrop Z xs = Refl
-splitAtTakeDrop (S k) (x::xs) with (splitAt k xs) proof p
-  | (tk, dr) =
-    let rec = sym $ trans p $ splitAtTakeDrop k xs
-        tkp = cong {f=fst} rec
-        drp = cong {f=snd} rec
-    in replace {P = \tk' => (x::tk', dr) = (x::take k xs, drop k xs)} tkp $
-       replace {P = \dr' => (x::take k xs, dr') = (x::take k xs, drop k xs) } drp Refl
-
 partition : (elem -> Bool) -> Vect len elem -> ((p ** Vect p elem), (q ** Vect q elem))
 partition p []      = ((_ ** []), (_ ** []))
 partition p (x::xs) =
@@ -573,7 +526,7 @@ range {len=S _} = FZ :: map FS range
 
 ||| Transpose a `Vect` of `Vect`s, turning rows into columns and vice versa.
 |||
-||| This is like zipping all the inner `Vect`s together and is equivalent to `traverse id`.
+||| This is like zipping all the inner `Vect`s together and is equivalent to `traverse id` (`transposeTraverse`).
 |||
 ||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
 transpose : Vect m (Vect n elem) -> Vect n (Vect m elem)
@@ -633,6 +586,84 @@ vectAppendAssociative : (xs : Vect xLen elem) ->
 vectAppendAssociative [] y z = Refl
 vectAppendAssociative (x :: xs) ys zs =
   vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
+
+splitAtTakeDrop : (n : Nat) -> (xs : Vect (n + m) a) -> splitAt n xs = (take n xs, drop n xs)
+splitAtTakeDrop Z xs = Refl
+splitAtTakeDrop (S k) (x :: xs) with (splitAt k xs) proof p
+  | (tk, dr) =
+    let rec = sym $ trans p $ splitAtTakeDrop k xs
+        tkp = cong {f=fst} rec
+        drp = cong {f=snd} rec
+    in replace {P = \tk' => (x :: tk', dr) = (x :: take k xs, drop k xs)} tkp $
+       replace {P = \dr' => (x :: take k xs, dr') = (x :: take k xs, drop k xs) } drp Refl
+
+takePrefix : (ns : Vect n a) -> (ms : Vect m a) -> take n (ns ++ ms) = ns
+takePrefix [] _ = Refl
+takePrefix (n :: ns) ms = cong $ takePrefix ns ms
+
+takeTake : (n : Nat) -> (m : Nat) -> (xs : Vect (n + m + l) a) -> take n (take (n + m) xs) = take n {m = m + l} (rewrite plusAssociative n m l in xs)
+takeTake Z m xs = Refl
+takeTake {l} (S k) m (x :: xs) = rewrite aux (plusAssociative k m l) x xs in cong { f = (x ::) } $ takeTake k m xs
+  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
+              (x : a) -> (xs : Vect m a) ->
+              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
+        aux Refl x xs = Refl
+
+dropPrefix : (ns : Vect n a) -> (ms : Vect m a) -> drop n (ns ++ ms) = ms
+dropPrefix [] ms = Refl
+dropPrefix (_ :: ns) ms = dropPrefix ns ms
+
+dropDrop : (n : Nat) -> (m : Nat) -> (xs : Vect (m + n + l) a) -> drop n (drop m {m = n + l} (rewrite plusAssociative m n l in xs)) = drop (m + n) xs
+dropDrop n Z xs = Refl
+dropDrop {l} n (S k) (x :: xs) = rewrite aux (plusAssociative k n l) x xs in dropDrop n k xs
+  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
+              (x : a) -> (xs : Vect m a) ->
+              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
+        aux Refl x xs = Refl
+
+takeDropConcat : (n : Nat) -> (xs : Vect (n + m) a) -> take n xs ++ drop n xs = xs
+takeDropConcat Z xs = Refl
+takeDropConcat (S k) (x :: xs) = cong $ takeDropConcat k xs
+
+takeDropDropTake : (n : Nat) -> (m : Nat) -> (xs : Vect (m + n + l) a) -> take n (drop m {m = n + l} (rewrite plusAssociative m n l in xs)) = drop m (take (m + n) xs)
+takeDropDropTake n Z xs = Refl
+takeDropDropTake {l} n (S k) (x :: xs) = rewrite aux (plusAssociative k n l) x xs in takeDropDropTake n k xs
+  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
+              (x : a) -> (xs : Vect m a) ->
+              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
+        aux Refl x xs = Refl
+
+zipWithIsLiftA2 : (f : a -> b -> c) -> (as : Vect n a) -> (bs : Vect n b) -> zipWith f as bs = [| f as bs |]
+zipWithIsLiftA2 _ [] [] = Refl
+zipWithIsLiftA2 f (a :: as) (b :: bs) = rewrite zipWithIsLiftA2 f as bs in Refl
+zipWithIsLiftA3 : (f : a -> b -> c -> d) -> (as : Vect n a) -> (bs : Vect n b) -> (cs : Vect n c) -> zipWith3 f as bs cs = [| f as bs cs |]
+zipWithIsLiftA3 _ [] [] [] = Refl
+zipWithIsLiftA3 f (a :: as) (b :: bs) (c :: cs) = rewrite zipWithIsLiftA3 f as bs cs in Refl
+
+-- Note relationship to Applicative (Morphism (Fin n))
+indexReplicate : (x : a) -> (n : Nat) -> (i : Fin n) -> index i (replicate n x) = x
+indexReplicate x (S n) FZ = Refl
+indexReplicate x (S n) (FS i) = indexReplicate x n i
+indexZipWith : (f : a -> b -> c) -> (as : Vect n a) -> (bs : Vect n b) -> (i : Fin n) -> index i (zipWith f as bs) = f (index i as) (index i bs)
+indexZipWith f (a :: _) (b :: _) FZ = Refl
+indexZipWith f (_ :: as) (_ :: bs) (FS i) = indexZipWith f as bs i
+indexTranspose : (x : Fin o) -> (y : Fin i) -> (xss : Vect o (Vect i a)) -> index y (index x xss) = index x (index y (transpose xss))
+indexTranspose x y (xs :: xss) = rewrite prf in
+                                 rewrite sym $ indexZipWith Vect.(::) xs (transpose xss) y in Refl
+  where prf : index y (index x (xs :: xss)) = index x (index y xs :: index y (transpose xss))
+        prf = case x of
+                   FZ => Refl
+                   FS k => indexTranspose k y xss
+
+transposeTraverse : (xss : Vect o (Vect i a)) -> transpose xss = traverse Basics.id xss
+transposeTraverse [] = Refl
+transposeTraverse (xs :: xss) = rewrite zipWithIsLiftA2 Vect.(::) xs (transpose xss) in cong (transposeTraverse xss)
+
+traverseIdCons : (xs : Vect o a) -> (xss : Vect o (Vect i a)) -> traverse Basics.id [| xs :: xss |] = xs :: traverse Basics.id xss
+traverseIdCons [] [] = Refl
+traverseIdCons (x :: xs) (ys :: xss) = rewrite traverseIdCons xs xss in Refl
+transposeCons : (xs : Vect o a) -> (xss : Vect o (Vect i a)) -> transpose (zipWith (::) xs xss) = xs :: transpose xss
+transposeCons xs xss = rewrite zipWithIsLiftA2 Vect.(::) xs xss in rewrite transposeTraverse (pure (::) <*> xs <*> xss) in rewrite transposeTraverse xss in traverseIdCons xs xss
 
 --------------------------------------------------------------------------------
 -- DecEq
