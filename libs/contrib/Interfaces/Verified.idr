@@ -18,20 +18,23 @@ import Data.ZZ
 -- and Monoid).
 
 interface Functor f => VerifiedFunctor (f : Type -> Type) where
-  functorIdentity : {a : Type} -> (x : f a) -> map Basics.id x = Basics.id x
+  functorIdentity : {a : Type} -> (g : a -> a) -> ((v : a) -> g v = v) -> (x : f a) -> map g x = x
   functorComposition : {a : Type} -> {b : Type} -> (x : f a) ->
                        (g1 : a -> b) -> (g2 : b -> c) ->
                        map (g2 . g1) x = (map g2 . map g1) x
 
+functorIdentity' : VerifiedFunctor f => (x : f a) -> map Basics.id x = x
+functorIdentity' {f} = functorIdentity {f} id (\x => Refl)
+
 VerifiedFunctor Maybe where
-  functorIdentity Nothing = Refl
-  functorIdentity (Just x) = Refl
+  functorIdentity _ _ Nothing = Refl
+  functorIdentity g p (Just x) = rewrite p x in Refl
   functorComposition Nothing g1 g2 = Refl
   functorComposition (Just x) g1 g2 = Refl
 
 VerifiedFunctor (Vect n) where
-  functorIdentity [] = Refl
-  functorIdentity (x :: xs) = rewrite functorIdentity xs in Refl
+  functorIdentity _ _ [] = Refl
+  functorIdentity g p (x :: xs) = rewrite p x in cong (functorIdentity g p xs)
   functorComposition [] _ _ = Refl
   functorComposition (x :: xs) f g = rewrite functorComposition xs f g in Refl
 
@@ -49,7 +52,7 @@ interface (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type ->
 VerifiedApplicative (Vect n) where
   applicativeMap [] f = Refl
   applicativeMap (x :: xs) f = rewrite applicativeMap xs f in Refl
-  applicativeIdentity xs = rewrite sym $ applicativeMap xs id in functorIdentity xs
+  applicativeIdentity xs = rewrite sym $ applicativeMap xs id in functorIdentity' xs
   applicativeComposition [] [] [] = Refl
   applicativeComposition (x :: xs) (f :: fs) (g :: gs) = rewrite applicativeComposition xs fs gs in Refl
   applicativeHomomorphism = prf
