@@ -1,6 +1,7 @@
 module Control.Isomorphism.Extra
 
 import Control.Isomorphism
+import Interfaces.Verified
 
 %default total
 %access public export
@@ -34,3 +35,8 @@ swapped {a} l r = MkIso swap swap prf prf
               | (No lnx') with (decEq r x)
                 | (Yes rex) = absurd $ rnx rex
                 | (No rnx') = Refl
+
+mapIso : VerifiedFunctor f => Iso a b -> Iso (f a) (f b)
+mapIso {f} (MkIso to from toFrom fromTo) = MkIso (map to) (map from) (prf to from toFrom) (prf from to fromTo)
+  where prf : {a : Type} -> {b : Type} -> (to : a -> b) -> (from : b -> a) -> (toFrom : (x : b) -> to (from x) = x) -> (x : f b) -> map to (map from x) = x
+        prf to' from' toFrom' x = rewrite sym $ functorComposition x from' to' in functorIdentity (to' . from') toFrom' x

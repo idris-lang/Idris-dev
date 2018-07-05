@@ -1,8 +1,8 @@
 module Control.Isomorphism.Vect
 
-import Interfaces.Verified
 import Control.Isomorphism
 import Data.Vect
+import Interfaces.Verified
 
 %default total
 %access public export
@@ -30,15 +30,6 @@ splitPair {n} {m} = MkIso (splitAt n) (uncurry (++)) toFrom fromTo
         pairify Refl Refl = Refl
         toFrom (ns, ms) = trans (splitAtTakeDrop n (ns ++ ms)) $ pairify (takePrefix ns ms) (dropPrefix ns ms)
         fromTo xs = rewrite splitAtTakeDrop {m=m} n xs in takeDropConcat n xs
-
-vectLiftIso : Iso l r -> Iso (Vect n l) (Vect n r)
-vectLiftIso (MkIso to from toFrom fromTo) = MkIso (map to) (map from) toFrom' fromTo'
-  where toFrom' : {n : Nat} -> (rs : Vect n r) -> map to (map from rs) = rs
-        toFrom' [] = Refl
-        toFrom' (x :: xs) = rewrite toFrom x in rewrite toFrom' xs in Refl
-        fromTo' : {n : Nat} -> (ls : Vect n l) -> map from (map to ls) = ls
-        fromTo' [] = Refl
-        fromTo' (x :: xs) = rewrite fromTo x in rewrite fromTo' xs in Refl
 
 zipped : Iso (Vect n a, Vect n b) (Vect n (a, b))
 zipped = MkIso (uncurry zip) unzip toFrom (\(as, bs) => fromTo as bs)
