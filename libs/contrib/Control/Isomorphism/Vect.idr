@@ -31,6 +31,7 @@ splitPair {n} {m} = MkIso (splitAt n) (uncurry (++)) toFrom fromTo
         toFrom (ns, ms) = trans (splitAtTakeDrop n (ns ++ ms)) $ pairify (takePrefix ns ms) (dropPrefix ns ms)
         fromTo xs = rewrite splitAtTakeDrop {m=m} n xs in takeDropConcat n xs
 
+||| An `Iso` based on `zip` and `unzip`.
 zipped : Iso (Vect n a, Vect n b) (Vect n (a, b))
 zipped = MkIso (uncurry zip) unzip toFrom (\(as, bs) => fromTo as bs)
   where toFrom : {n : Nat} -> (xs : Vect n (a, b)) -> uncurry Vect.zip (unzip xs) = xs
@@ -41,6 +42,7 @@ zipped = MkIso (uncurry zip) unzip toFrom (\(as, bs) => fromTo as bs)
         fromTo [] [] = Refl
         fromTo (a :: as) (b :: bs) = rewrite fromTo as bs in Refl
 
+||| An `Iso` based on `zip3` and `unzip3`.
 zipped3 : Iso (Vect n a, Vect n b, Vect n c) (Vect n (a, b, c))
 zipped3 = MkIso (uncurrry zip3) unzip3 toFrom (\(as, bs, cs) => fromTo as bs cs)
   where uncurrry : (w -> x -> y -> z) -> ((w, x, y) -> z)
@@ -59,6 +61,7 @@ transposition {a} = MkIso transpose transpose prf prf
   where prf : {i : Nat} -> {o : Nat} -> (xss : Vect o (Vect i a)) -> transpose (transpose xss) = xss
         prf [] = vectMustBeNil $ transpose [| [] |]
         prf (xs :: xss) = rewrite transposeCons xs (transpose xss) in cong (prf xss)
+
 ||| Split the `Vect` every `m` elements, making `n` `Vect m a`s.
 ||| The result is rectangular and has the same order as the original.
 |||
@@ -97,6 +100,7 @@ rectangular = MkIso unconcat concat toFrom fromTo
 unindex : (Fin n -> a) -> Vect n a
 unindex {n = Z} _ = []
 unindex {n = S k} f = f FZ :: unindex (f . FS)
+
 ||| Indexing into the table of outputs of `f` is like calling `f` itself.
 indexUnindex : (i : Fin n) -> (f : Fin n -> a) -> index i (unindex f) = f i
 indexUnindex FZ _ = Refl
@@ -117,6 +121,8 @@ unindexIndex : (xs : Vect n a) -> unindex (\i => index i xs) = xs
 unindexIndex xs = unindexIndex' xs (\i => index i xs) (\i => Refl)
 
 ||| Given a function that computes an index in the input from the index in the output, produce a `Vect o` of elements from the input.
+|||
+||| This is the map function of the functor `\i => Vect i a` from `\i, o => Fin o -> Fin i` to `\i, o => Vect i a -> Vect o a`.
 fromIndices : (Fin o -> Fin i) -> Vect i a -> Vect o a
 fromIndices f xs = unindex (flip index xs . f)
 indexFromIndices : (f : Fin o -> Fin i) -> (xs : Vect i a) -> (n : Fin o) -> index n (fromIndices f xs) = index (f n) xs
@@ -126,22 +132,25 @@ fromIndicesFromIndices to from fromTo xs = unindexIndex' xs (\x => index (to x) 
                         rewrite indexUnindex (to i) (\x' => index (from x') xs) in rewrite fromTo i in Refl
 
 ||| Given a permutation of the indices, provide an `Iso` that can permute a `Vect n` the "same" way. More precisely,
-||| if the index `i` is sent to `j`, then the element at index `i` ends up at index `j` (`indexPermuted`).
+||| if the index `i` is sent to `j`, then the element at index `i` ends up at index `j` (`indexPermuted`). An
+||| `Iso (Fin n) (Fin n)` represents a permutation of the integers `[0, n)` because it ensures that no elements
+||| are "lost" or "duplicated".
 |||
 ||| Note this has the *opposite* behavior to `fromIndices`. This function is more "visceral"; it can be imagined
-||| as shuffling a `Vect` in the same way `map (to permutation)` shuffles `unindex id`.
-|||
-||| An `Iso (Fin n) (Fin n)` represents a permutation of the integers `[0, n)`, because an `Iso` ensures that no elements are "lost" or "duplicated".
+||| as shuffling a `Vect` in the same way `map (to permutation)` shuffles `range`. Or, in more categorical terms,
+||| `fromIndices` represents a contravariant functor from the category `\i, o => Fin i -> Fin o` to `\i, o => Vect i a -> Vect o a`,
+||| and `permuted` represents that functor restricted to isomorphisms and made covariant with `isoSym`.
 |||
 ||| ```idris example
 ||| to (permuted (stimes 2 rotatedDown)) [1, 2, 3, 4, 5] == [3, 4, 5, 1, 2]
+||| to (permuted (swapped 3 0))          [1, 2, 3, 4, 5] == [4, 2, 3, 1, 5]
 ||| ```
 |||
 ||| @ permutation an `Iso` representing the transformation on the indices
 permuted : (permutation : Iso (Fin n) (Fin n)) -> Iso (Vect n a) (Vect n a)
-permuted (MkIso toI fromI toFromI fromToI) = MkIso (fromIndices fromI) (fromIndices toI) (fromIndicesFromIndices fromI toI toFromI) (fromIndicesFromIndices toI fromI fromToI)
 -- [to, from => f from, f to] is not a typo
 -- fromIndices needs a function outputIdx => inputIdx, so to "align" the "motion" of the Fins with the elements, to uses from and from uses to.
+permuted (MkIso toI fromI toFromI fromToI) = MkIso (fromIndices fromI) (fromIndices toI) (fromIndicesFromIndices fromI toI toFromI) (fromIndicesFromIndices toI fromI fromToI)
 permutedSym : (permutation : Iso (Fin n) (Fin n)) -> permuted (isoSym permutation) = isoSym (permuted permutation)
 permutedSym (MkIso to from toFrom fromTo) = Refl
 indexPermuted : (permutation : Iso (Fin n) (Fin n)) -> (i : Fin n) -> (xs : Vect n a) -> index i xs = index (to permutation i) (to (permuted permutation) xs)

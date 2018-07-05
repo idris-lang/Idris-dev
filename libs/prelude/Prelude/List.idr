@@ -677,15 +677,17 @@ split p xs =
 
 ||| A tuple where the first element is a `List` of the `n` first elements and
 ||| the second element is a `List` of the remaining elements of the original.
-||| It is equivalent to `(take n xs, drop n xs)`, but is more efficient.
+||| It is equivalent to `(take n xs, drop n xs)` (`splitAtTakeDrop`),
+||| but is more efficient.
+|||
 ||| @ n   the index to split at
 ||| @ xs  the `List` to split in two
 splitAt : (n : Nat) -> (xs : List a) -> (List a, List a)
 splitAt Z xs = ([], xs)
 splitAt (S k) [] = ([], [])
-splitAt (S k) (x::xs) =
+splitAt (S k) (x :: xs) =
   let (tk, dr) = splitAt k xs
-  in (x::tk, dr)
+  in (x :: tk, dr)
 
 splitAtTakeDrop : (n : Nat) -> (xs : List a) -> splitAt n xs = (take n xs, drop n xs)
 splitAtTakeDrop Z xs = Refl

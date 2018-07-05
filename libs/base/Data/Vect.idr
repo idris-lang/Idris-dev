@@ -457,14 +457,16 @@ delete = deleteBy (==)
 
 ||| A tuple where the first element is a `Vect` of the `n` first elements and
 ||| the second element is a `Vect` of the remaining elements of the original.
-||| It is equivalent to `(take n xs, drop n xs)`, but is more efficient.
+||| It is equivalent to `(take n xs, drop n xs)` (`splitAtTakeDrop`),
+||| but is more efficient.
+|||
 ||| @ n   the index to split at
-||| @ xs  the Vect to split in two
+||| @ xs  the `Vect` to split in two
 splitAt : (n : Nat) -> (xs : Vect (n + m) elem) -> (Vect n elem, Vect m elem)
 splitAt Z xs = ([], xs)
-splitAt (S k) (x::xs) =
+splitAt (S k) (x :: xs) =
   let (tk, dr) = splitAt k xs
-  in (x::tk, dr)
+  in (x :: tk, dr)
 
 partition : (elem -> Bool) -> Vect len elem -> ((p ** Vect p elem), (q ** Vect q elem))
 partition p []      = ((_ ** []), (_ ** []))
@@ -547,8 +549,8 @@ implementation Monad (Vect len) where
     m >>= f = diag (map f m)
 
 implementation Traversable (Vect n) where
-    traverse f [] = pure []
-    traverse f (x::xs) = [| f x :: traverse f xs |]
+    traverse f []        = [| [] |]
+    traverse f (x :: xs) = [| f x :: traverse f xs |]
 
 --------------------------------------------------------------------------------
 -- Show
