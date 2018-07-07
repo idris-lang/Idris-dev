@@ -570,11 +570,17 @@ Uninhabited a => Uninhabited (Vect (S n) a) where
 -- Properties
 --------------------------------------------------------------------------------
 
+vectMustBeNil : (xs : Vect Z a) -> xs = []
+vectMustBeNil [] = Refl
+
 vectConsCong : (x : elem) -> (xs : Vect len elem) -> (ys : Vect m elem) -> (xs = ys) -> (x :: xs = x :: ys)
 vectConsCong x xs xs Refl = Refl
 
-vectMustBeNil : (xs : Vect Z a) -> xs = []
-vectMustBeNil [] = Refl
+vectInjective1 : {xs : Vect n a} -> {ys : Vect m b} -> x :: xs ~=~ y :: ys -> x ~=~ y
+vectInjective1 Refl = Refl
+
+vectInjective2 : {xs : Vect n a} -> {ys : Vect m b} -> x :: xs ~=~ y :: ys -> xs ~=~ ys
+vectInjective2 Refl = Refl
 
 vectNilRightNeutral : (xs : Vect n a) -> xs ++ [] = xs
 vectNilRightNeutral [] = Refl
@@ -670,12 +676,6 @@ transposeCons xs xss = rewrite zipWithIsLiftA2 Vect.(::) xs xss in rewrite trans
 --------------------------------------------------------------------------------
 -- DecEq
 --------------------------------------------------------------------------------
-
-vectInjective1 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> x = y
-vectInjective1 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
-
-vectInjective2 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> xs = ys
-vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
 
 implementation DecEq a => DecEq (Vect n a) where
   decEq [] [] = Yes Refl
