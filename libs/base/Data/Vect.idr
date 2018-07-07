@@ -595,6 +595,49 @@ vectAppendAssociative [] y z = Refl
 vectAppendAssociative (x :: xs) ys zs =
   vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
 
+||| Adding a prefix and then taking the prefix gets the prefix. Or,
+||| adding a suffix and then dropping the suffix does nothing.
+takePrefix : (ns : Vect n a) -> (ms : Vect m a) -> take n (ns ++ ms) = ns
+takePrefix [] _ = Refl
+takePrefix (n :: ns) ms = cong $ takePrefix ns ms
+
+||| Adding a prefix and then dropping the prefix does nothing. Or,
+||| adding a suffix and then taking the suffix gets the suffix.
+dropPrefix : (ns : Vect n a) -> (ms : Vect m a) -> drop n (ns ++ ms) = ms
+dropPrefix [] ms = Refl
+dropPrefix (_ :: ns) ms = dropPrefix ns ms
+
+||| `take n . take (n + m) = take n`
+takeTake : (n : Nat) -> (m : Nat) ->
+           (xs : Vect ((n + m) + l) a) -> (ys : Vect (n + (m + l)) a) ->
+           xs ~=~ ys ->
+           take n (take (n + m) xs) = take n ys
+takeTake Z m _ _ _ = Refl
+takeTake (S n) m (x :: xs) (y :: ys) prf = rewrite vectInjective1 prf in cong (takeTake n m xs ys (vectInjective2 prf))
+
+||| `drop (n + m) = drop m . drop n`
+dropDrop : (n : Nat) -> (m : Nat) ->
+           (xs : Vect ((n + m) + l) a) -> (ys : Vect (n + (m + l)) a) ->
+           xs ~=~ ys ->
+           drop (n + m) xs = drop m (drop n ys)
+dropDrop Z m xs xs Refl = Refl
+dropDrop (S n) m (_ :: xs) (_ :: ys) prf = dropDrop n m xs ys (vectInjective2 prf)
+
+||| A `Vect` may be restored from its components.
+takeDropConcat : (n : Nat) -> (xs : Vect (n + m) a) -> take n xs ++ drop n xs = xs
+takeDropConcat Z xs = Refl
+takeDropConcat (S n) (x :: xs) = cong $ takeDropConcat n xs
+
+||| `drop n . take (n + m) = take m . drop n`.
+|||
+||| Or: there are two ways to extract a subsequence.
+dropTakeTakeDrop : (n : Nat) -> (m : Nat) ->
+                   (xs : Vect ((n + m) + l) a) -> (ys : Vect (n + (m + l)) a) ->
+                   xs ~=~ ys ->
+                   drop n (take (n + m) xs) = take m (drop n ys)
+dropTakeTakeDrop Z m xs xs Refl = Refl
+dropTakeTakeDrop (S n) m (_ :: xs) (_ :: ys) prf = dropTakeTakeDrop n m xs ys (vectInjective2 prf)
+
 splitAtTakeDrop : (n : Nat) -> (xs : Vect (n + m) a) -> splitAt n xs = (take n xs, drop n xs)
 splitAtTakeDrop Z xs = Refl
 splitAtTakeDrop (S k) (x :: xs) with (splitAt k xs) proof p
@@ -604,42 +647,6 @@ splitAtTakeDrop (S k) (x :: xs) with (splitAt k xs) proof p
         drp = cong {f=snd} rec
     in replace {P = \tk' => (x :: tk', dr) = (x :: take k xs, drop k xs)} tkp $
        replace {P = \dr' => (x :: take k xs, dr') = (x :: take k xs, drop k xs) } drp Refl
-
-takePrefix : (ns : Vect n a) -> (ms : Vect m a) -> take n (ns ++ ms) = ns
-takePrefix [] _ = Refl
-takePrefix (n :: ns) ms = cong $ takePrefix ns ms
-
-takeTake : (n : Nat) -> (m : Nat) -> (xs : Vect (n + m + l) a) -> take n (take (n + m) xs) = take n {m = m + l} (rewrite plusAssociative n m l in xs)
-takeTake Z m xs = Refl
-takeTake {l} (S k) m (x :: xs) = rewrite aux (plusAssociative k m l) x xs in cong { f = (x ::) } $ takeTake k m xs
-  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
-              (x : a) -> (xs : Vect m a) ->
-              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
-        aux Refl x xs = Refl
-
-dropPrefix : (ns : Vect n a) -> (ms : Vect m a) -> drop n (ns ++ ms) = ms
-dropPrefix [] ms = Refl
-dropPrefix (_ :: ns) ms = dropPrefix ns ms
-
-dropDrop : (n : Nat) -> (m : Nat) -> (xs : Vect (m + n + l) a) -> drop n (drop m {m = n + l} (rewrite plusAssociative m n l in xs)) = drop (m + n) xs
-dropDrop n Z xs = Refl
-dropDrop {l} n (S k) (x :: xs) = rewrite aux (plusAssociative k n l) x xs in dropDrop n k xs
-  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
-              (x : a) -> (xs : Vect m a) ->
-              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
-        aux Refl x xs = Refl
-
-takeDropConcat : (n : Nat) -> (xs : Vect (n + m) a) -> take n xs ++ drop n xs = xs
-takeDropConcat Z xs = Refl
-takeDropConcat (S k) (x :: xs) = cong $ takeDropConcat k xs
-
-takeDropDropTake : (n : Nat) -> (m : Nat) -> (xs : Vect (m + n + l) a) -> take n (drop m {m = n + l} (rewrite plusAssociative m n l in xs)) = drop m (take (m + n) xs)
-takeDropDropTake n Z xs = Refl
-takeDropDropTake {l} n (S k) (x :: xs) = rewrite aux (plusAssociative k n l) x xs in takeDropDropTake n k xs
-  where aux : {n : Nat} -> {m : Nat} -> (prf : n = m) ->
-              (x : a) -> (xs : Vect m a) ->
-              rewrite__impl (\rep => Vect rep a) (rewrite__impl (\rep => S rep = S m) prf Refl) (x :: xs) = x :: rewrite__impl (\rep => Vect rep a) prf xs
-        aux Refl x xs = Refl
 
 zipWithIsLiftA2 : (f : a -> b -> c) -> (as : Vect n a) -> (bs : Vect n b) -> zipWith f as bs = [| f as bs |]
 zipWithIsLiftA2 _ [] [] = Refl
