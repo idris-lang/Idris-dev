@@ -29,7 +29,7 @@ splitPair {n} {m} = MkIso (splitAt n) (uncurry (++)) toFrom fromTo
   where pairify : q = w -> e = r -> (q, e) = (w, r)
         pairify Refl Refl = Refl
         toFrom (ns, ms) = trans (splitAtTakeDrop n (ns ++ ms)) $ pairify (takePrefix ns ms) (dropPrefix ns ms)
-        fromTo xs = rewrite splitAtTakeDrop {m=m} n xs in takeDropConcat n xs
+        fromTo xs = rewrite splitAtTakeDrop {m} n xs in takeDropConcat n xs
 
 ||| An `Iso` based on `zip` and `unzip`.
 zipped : Iso (Vect n a, Vect n b) (Vect n (a, b))
@@ -68,7 +68,8 @@ transposition {a} = MkIso transpose transpose prf prf
 ||| This is the inverse of `concat`.
 unconcat : Vect (n * m) a -> Vect n (Vect m a)
 unconcat {n = Z} [] = []
-unconcat {n = S k} {m} xs = let (xs', xss) = splitAt m xs in xs' :: unconcat xss
+unconcat {n = S k} {m} xs with (splitAt m xs)
+  | (xs', xss) = xs' :: unconcat xss
 ||| An `Iso` based on `unconcat` and `concat`.
 |||
 ||| ```idris example
@@ -76,21 +77,17 @@ unconcat {n = S k} {m} xs = let (xs', xss) = splitAt m xs in xs' :: unconcat xss
 ||| ```
 rectangular : Iso (Vect (n * m) a) (Vect n (Vect m a))
 rectangular = MkIso unconcat concat toFrom fromTo
--- TODO: Clean up after #4001 is fixed
   where toFrom : (xss : Vect i (Vect o a)) -> unconcat (concat xss) = xss
         toFrom {i = Z} [] = Refl
-        toFrom {i = S k} {o} (xs :: xss) with (splitAt o (xs ++ concat xss)) proof p
-          | (tk, dr) = let sATK = sym $ trans p $ splitAtTakeDrop o (xs ++ concat xss)
-                           tkp = trans (sym $ takePrefix xs $ concat xss) $ cong {f=fst} sATK
-                           drp = trans (sym $ toFrom xss) $ cong {f=unconcat} $ trans (sym $ dropPrefix xs $ concat xss) $ cong {f=snd} sATK
-                       in replace {P = \dr' => tk :: dr' = xs :: xss} drp $ replace {P = \tk' => tk' :: xss = xs :: xss} tkp Refl
+        toFrom {i = S i} {o} (xs :: xss) = rewrite splitAtTakeDrop o {m = i * o} (xs ++ concat xss) in
+                                           rewrite takePrefix xs (concat xss) in
+                                           rewrite dropPrefix xs (concat xss) in
+                                           cong (toFrom xss)
         fromTo : (xs : Vect (i * o) a) -> concat (unconcat xs) = xs
         fromTo {i = Z} [] = Refl
-        fromTo {i = S k} {o} xs with (splitAt o xs) proof p
-          | (tk, dr) = let sATK = sym $ trans p $ splitAtTakeDrop o xs
-                           tkp = cong {f=fst} sATK
-                           drp = trans (cong {f=snd} sATK) $ sym $ fromTo dr
-                       in replace {P = \dr' => tk ++ dr' = xs} drp $ replace {P = \tk' => tk' ++ drop o xs = xs } tkp $ takeDropConcat o xs
+        fromTo {i = S i} {o} xs = rewrite splitAtTakeDrop o {m = i * o} xs in
+                                  rewrite fromTo {i} {o} (drop o xs) in
+                                  takeDropConcat o xs
 
 -- Not an Iso because (=) is not extensional, but it works in spirit
 ||| Go through all possible inputs and tabulate the outputs in a `Vect`.

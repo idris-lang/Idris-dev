@@ -685,20 +685,8 @@ split p xs =
 splitAt : (n : Nat) -> (xs : List a) -> (List a, List a)
 splitAt Z xs = ([], xs)
 splitAt (S k) [] = ([], [])
-splitAt (S k) (x :: xs) =
-  let (tk, dr) = splitAt k xs
-  in (x :: tk, dr)
-
-splitAtTakeDrop : (n : Nat) -> (xs : List a) -> splitAt n xs = (take n xs, drop n xs)
-splitAtTakeDrop Z xs = Refl
-splitAtTakeDrop (S k) [] = Refl
-splitAtTakeDrop (S k) (x::xs) with (splitAt k xs) proof p
-  | (tk, dr) =
-    let rec = sym $ trans p $ splitAtTakeDrop k xs
-        tkp = cong {f=fst} rec
-        drp = cong {f=snd} rec
-    in replace {P = \tk' => (x::tk', dr) = (x::take k xs, drop k xs)} tkp $
-       replace {P = \dr' => (x::take k xs, dr') = (x::take k xs, drop k xs) } drp Refl
+splitAt (S k) (x :: xs) with (splitAt k xs)
+  | (tk, dr) = (x :: tk, dr)
 
 ||| The partition function takes a predicate a list and returns the pair of
 ||| lists of elements which do and do not satisfy the predicate, respectively;
@@ -948,3 +936,12 @@ foldlAsFoldr f z t = foldr (flip (.) . flip f) id t z
 foldlMatchesFoldr : (f : b -> a -> b) -> (q : b) -> (xs : List a) -> foldl f q xs = foldlAsFoldr f q xs
 foldlMatchesFoldr f q [] = Refl
 foldlMatchesFoldr f q (x :: xs) = foldlMatchesFoldr f (f q x) xs
+
+splitAtTakeDrop : (n : Nat) -> (xs : List a) -> splitAt n xs = (take n xs, drop n xs)
+splitAtTakeDrop Z xs = Refl
+splitAtTakeDrop (S k) [] = Refl
+splitAtTakeDrop (S k) (x :: xs) with (splitAt k xs) proof p
+  | (tk, dr) = let prf = trans p (splitAtTakeDrop k xs)
+                in aux (cong {f=(x ::) . fst} prf) (cong {f=snd} prf)
+  where aux : {a, b : Type} -> {w, x : a} -> {y, z : b} -> w = x -> y = z -> (w, y) = (x, z)
+        aux Refl Refl = Refl

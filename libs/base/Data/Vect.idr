@@ -464,9 +464,8 @@ delete = deleteBy (==)
 ||| @ xs  the `Vect` to split in two
 splitAt : (n : Nat) -> (xs : Vect (n + m) elem) -> (Vect n elem, Vect m elem)
 splitAt Z xs = ([], xs)
-splitAt (S k) (x :: xs) =
-  let (tk, dr) = splitAt k xs
-  in (x :: tk, dr)
+splitAt (S k) (x :: xs) with (splitAt k xs)
+  | (tk, dr) = (x :: tk, dr)
 
 partition : (elem -> Bool) -> Vect len elem -> ((p ** Vect p elem), (q ** Vect q elem))
 partition p []      = ((_ ** []), (_ ** []))
@@ -641,12 +640,10 @@ dropTakeTakeDrop (S n) m (_ :: xs) (_ :: ys) prf = dropTakeTakeDrop n m xs ys (v
 splitAtTakeDrop : (n : Nat) -> (xs : Vect (n + m) a) -> splitAt n xs = (take n xs, drop n xs)
 splitAtTakeDrop Z xs = Refl
 splitAtTakeDrop (S k) (x :: xs) with (splitAt k xs) proof p
-  | (tk, dr) =
-    let rec = sym $ trans p $ splitAtTakeDrop k xs
-        tkp = cong {f=fst} rec
-        drp = cong {f=snd} rec
-    in replace {P = \tk' => (x :: tk', dr) = (x :: take k xs, drop k xs)} tkp $
-       replace {P = \dr' => (x :: take k xs, dr') = (x :: take k xs, drop k xs) } drp Refl
+  | (tk, dr) = let prf = trans p (splitAtTakeDrop k xs)
+                in aux (cong {f=(x ::) . fst} prf) (cong {f=snd} prf)
+  where aux : {a, b : Type} -> {w, x : a} -> {y, z : b} -> w = x -> y = z -> (w, y) = (x, z)
+        aux Refl Refl = Refl
 
 zipWithIsLiftA2 : (f : a -> b -> c) -> (as : Vect n a) -> (bs : Vect n b) -> zipWith f as bs = [| f as bs |]
 zipWithIsLiftA2 _ [] [] = Refl
