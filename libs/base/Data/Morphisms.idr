@@ -32,7 +32,7 @@ Semigroup a => Semigroup (Morphism r a) where
   f <+> g = [| f <+> g |]
 
 Monoid a => Monoid (Morphism r a) where
-  neutral = Mor $ const neutral
+  neutral = [| neutral |]
 
 Semigroup (Endomorphism a) where
   (Endo f) <+> (Endo g) = Endo $ g . f
@@ -55,7 +55,7 @@ Monad f => Monad (Kleislimorphism f a) where
   f <+> g = [| f <+> g |]
 
 (Monoid a, Applicative f) => Monoid (Kleislimorphism f r a) where
-  neutral = Kleisli $ const $ pure neutral
+  neutral = [| neutral |]
 
 Cast (Endomorphism a) (Morphism a a) where
   cast (Endo f) = Mor f
