@@ -145,9 +145,9 @@ fits w (Line _ _)          = if w < 0 then False else True
 
 ||| Use the Wadler-Leijen algorithm to pretty print the `doc`.
 ||| The algorithm uses a page width of `width` and a ribbon
-||| width of `(ribbonfrac * width)` characters. The ribbon width is
+||| width of `(rfrac * width)` characters. The ribbon width is
 ||| the maximal amount of non-indentation characters on a line. The
-||| parameter `ribbonfrac` should be between `0.0` and `1.0`. If it is
+||| parameter `rfrac` should be between `0.0` and `1.0`. If it is
 ||| lower or higher, the ribbon width will be 0 or `width`
 ||| respectively.
 render : (rfrac : Double)
