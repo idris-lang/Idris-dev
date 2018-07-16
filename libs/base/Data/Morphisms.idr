@@ -1,45 +1,61 @@
 module Data.Morphisms
 
+%default total
 %access public export
 
-data Morphism : Type -> Type -> Type where
-  Mor : (a -> b) -> Morphism a b
+record Morphism a b where
+  constructor Mor
+  applyMor : a -> b
+infixr 1 ~>
+(~>) : Type -> Type -> Type
+(~>) = Morphism
 
-data Endomorphism : Type -> Type where
-  Endo : (a -> a) -> Endomorphism a
+record Endomorphism a where
+  constructor Endo
+  applyEndo : a -> a
 
-data Kleislimorphism : (Type -> Type) -> Type -> Type -> Type where
-  Kleisli : Monad m => (a -> m b) -> Kleislimorphism m a b
+record Kleislimorphism (f : Type -> Type) a b where
+  constructor Kleisli
+  applyKleisli : a -> f b
 
-applyKleisli : Monad m => (Kleislimorphism m a b) -> a -> m b
-applyKleisli (Kleisli f) a = f a
+Functor (Morphism r) where
+  map f (Mor a) = Mor $ f . a
 
-applyMor : Morphism a b -> a -> b
-applyMor (Mor f) a = f a
-
-applyEndo : Endomorphism a -> a -> a
-applyEndo (Endo f) a = f a
-
-implementation Functor (Morphism r) where
-  map f (Mor a) = Mor (f . a)
-
-implementation Applicative (Morphism r) where
-  pure a                = Mor $ const a
+Applicative (Morphism r) where
+  pure a = Mor $ const a
   (Mor f) <*> (Mor a) = Mor $ \r => f r $ a r
 
-implementation Monad (Morphism r) where
+Monad (Morphism r) where
   (Mor h) >>= f = Mor $ \r => applyMor (f $ h r) r
 
-implementation Semigroup (Endomorphism a) where
+Semigroup a => Semigroup (Morphism r a) where
+  f <+> g = [| f <+> g |]
+
+Monoid a => Monoid (Morphism r a) where
+  neutral = [| neutral |]
+
+Semigroup (Endomorphism a) where
   (Endo f) <+> (Endo g) = Endo $ g . f
 
-implementation Monoid (Endomorphism a) where
+Monoid (Endomorphism a) where
   neutral = Endo id
 
-infixr 1 ~>
+Functor f => Functor (Kleislimorphism f a) where
+  map f (Kleisli g) = Kleisli (map f . g)
 
-(~>) : Type -> Type -> Type
-a ~> b = Morphism a b
+Applicative f => Applicative (Kleislimorphism f a) where
+  pure a = Kleisli $ const $ pure a
+  (Kleisli f) <*> (Kleisli a) = Kleisli $ \r => f r <*> a r
+
+Monad f => Monad (Kleislimorphism f a) where
+  (Kleisli f) >>= g = Kleisli $ \r => applyKleisli (g !(f r)) r
+
+-- Applicative is a bit too strong, but there is no suitable superclass
+(Semigroup a, Applicative f) => Semigroup (Kleislimorphism f r a) where
+  f <+> g = [| f <+> g |]
+
+(Monoid a, Applicative f) => Monoid (Kleislimorphism f r a) where
+  neutral = [| neutral |]
 
 Cast (Endomorphism a) (Morphism a a) where
   cast (Endo f) = Mor f
@@ -47,8 +63,8 @@ Cast (Endomorphism a) (Morphism a a) where
 Cast (Morphism a a) (Endomorphism a) where
   cast (Mor f) = Endo f
 
-Monad m => Cast (Morphism a (m b)) (Kleislimorphism m a b) where
+Cast (Morphism a (f b)) (Kleislimorphism f a b) where
   cast (Mor f) = Kleisli f
 
-Cast (Kleislimorphism m a b) (Morphism a (m b)) where
+Cast (Kleislimorphism f a b) (Morphism a (f b)) where
   cast (Kleisli f) = Mor f
