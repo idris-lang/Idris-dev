@@ -27,18 +27,6 @@ implementation Show a => Show (Complex a) where
             plus_i = User 6
 
 
--- when we have an interface 'Fractional' (which contains Double),
--- we can do:
-{-
-implementation Fractional a => Fractional (Complex a) where
-    (/) (a:+b) (c:+d) = let
-                          real = (a*c+b*d)/(c*c+d*d)
-                          imag = (b*c-a*d)/(c*c+d*d)
-                        in
-                          (real:+imag)
--}
-
-
 
 ------------------------------ Polarform
 
@@ -78,3 +66,10 @@ implementation Neg a => Neg (Complex a) where
 -- operates on Double.
 implementation Abs (Complex Double) where
     abs (a:+b) = (magnitude (a:+b):+0)
+
+implementation (Neg a, Fractional a) => Fractional (Complex a) where
+    (/) (a:+b) (c:+d) = let
+                          real = (a*c+b*d)/(c*c+d*d)
+                          imag = (b*c-a*d)/(c*c+d*d)
+                        in
+                          (real:+imag)
