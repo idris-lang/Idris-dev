@@ -18,7 +18,6 @@ infixl 6 <+>
 interface Semigroup ty where
   (<+>) : ty -> ty -> ty
 
-
 ||| Sets equipped with a single binary operation that is associative, along with
 ||| a neutral element for that binary operation.  Must satisfy the following
 ||| laws:
@@ -30,4 +29,3 @@ interface Semigroup ty where
 |||     forall a,     neutral <+> a   == a
 interface Semigroup ty => Monoid ty where
   neutral : ty
-

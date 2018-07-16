@@ -675,13 +675,18 @@ split p xs =
     (chunk, [])          => [chunk]
     (chunk, (c :: rest)) => chunk :: split p (assert_smaller xs rest)
 
-||| A tuple where the first element is a List of the n first elements and
-||| the second element is a List of the remaining elements of the list
-||| It is equivalent to (take n xs, drop n xs)
+||| A tuple where the first element is a `List` of the `n` first elements and
+||| the second element is a `List` of the remaining elements of the original.
+||| It is equivalent to `(take n xs, drop n xs)` (`splitAtTakeDrop`),
+||| but is more efficient.
+|||
 ||| @ n   the index to split at
-||| @ xs  the list to split in two
+||| @ xs  the `List` to split in two
 splitAt : (n : Nat) -> (xs : List a) -> (List a, List a)
-splitAt n xs = (take n xs, drop n xs)
+splitAt Z xs = ([], xs)
+splitAt (S k) [] = ([], [])
+splitAt (S k) (x :: xs) with (splitAt k xs)
+  | (tk, dr) = (x :: tk, dr)
 
 ||| The partition function takes a predicate a list and returns the pair of
 ||| lists of elements which do and do not satisfy the predicate, respectively;
@@ -931,3 +936,12 @@ foldlAsFoldr f z t = foldr (flip (.) . flip f) id t z
 foldlMatchesFoldr : (f : b -> a -> b) -> (q : b) -> (xs : List a) -> foldl f q xs = foldlAsFoldr f q xs
 foldlMatchesFoldr f q [] = Refl
 foldlMatchesFoldr f q (x :: xs) = foldlMatchesFoldr f (f q x) xs
+
+splitAtTakeDrop : (n : Nat) -> (xs : List a) -> splitAt n xs = (take n xs, drop n xs)
+splitAtTakeDrop Z xs = Refl
+splitAtTakeDrop (S k) [] = Refl
+splitAtTakeDrop (S k) (x :: xs) with (splitAt k xs) proof p
+  | (tk, dr) = let prf = trans p (splitAtTakeDrop k xs)
+                in aux (cong {f=(x ::) . fst} prf) (cong {f=snd} prf)
+  where aux : {a, b : Type} -> {w, x : a} -> {y, z : b} -> w = x -> y = z -> (w, y) = (x, z)
+        aux Refl Refl = Refl

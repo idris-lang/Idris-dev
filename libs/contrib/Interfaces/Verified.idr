@@ -4,8 +4,10 @@ import Control.Algebra
 import Control.Algebra.Lattice
 import Control.Algebra.NumericImplementations
 import Control.Algebra.VectorSpace
+import Data.Vect
 import Data.ZZ
 
+%default total
 %access public export
 
 -- Due to these being basically unused and difficult to implement,
@@ -16,16 +18,25 @@ import Data.ZZ
 -- and Monoid).
 
 interface Functor f => VerifiedFunctor (f : Type -> Type) where
-  functorIdentity : {a : Type} -> (x : f a) -> map Basics.id x = Basics.id x
+  functorIdentity : {a : Type} -> (g : a -> a) -> ((v : a) -> g v = v) -> (x : f a) -> map g x = x
   functorComposition : {a : Type} -> {b : Type} -> (x : f a) ->
                        (g1 : a -> b) -> (g2 : b -> c) ->
                        map (g2 . g1) x = (map g2 . map g1) x
 
+functorIdentity' : VerifiedFunctor f => (x : f a) -> map Basics.id x = x
+functorIdentity' {f} = functorIdentity {f} id (\x => Refl)
+
 VerifiedFunctor Maybe where
-  functorIdentity Nothing = Refl
-  functorIdentity (Just x) = Refl
+  functorIdentity _ _ Nothing = Refl
+  functorIdentity g p (Just x) = rewrite p x in Refl
   functorComposition Nothing g1 g2 = Refl
   functorComposition (Just x) g1 g2 = Refl
+
+VerifiedFunctor (Vect n) where
+  functorIdentity _ _ [] = Refl
+  functorIdentity g p (x :: xs) = rewrite p x in cong (functorIdentity g p xs)
+  functorComposition [] _ _ = Refl
+  functorComposition (x :: xs) f g = rewrite functorComposition xs f g in Refl
 
 interface (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type -> Type) where
   applicativeMap : (x : f a) -> (g : a -> b) ->
@@ -37,6 +48,21 @@ interface (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type ->
                             (<*>) {f} (pure g) (pure x) = pure {f} (g x)
   applicativeInterchange : (x : a) -> (g : f (a -> b)) ->
                            g <*> pure x = pure (\g' : (a -> b) => g' x) <*> g
+
+VerifiedApplicative (Vect n) where
+  applicativeMap [] f = Refl
+  applicativeMap (x :: xs) f = rewrite applicativeMap xs f in Refl
+  applicativeIdentity xs = rewrite sym $ applicativeMap xs id in functorIdentity' xs
+  applicativeComposition [] [] [] = Refl
+  applicativeComposition (x :: xs) (f :: fs) (g :: gs) = rewrite applicativeComposition xs fs gs in Refl
+  applicativeHomomorphism = prf
+    where prf : with Vect ((x : a) -> (f : a -> b) -> zipWith Basics.apply (replicate m f) (replicate m x) = replicate m (f x))
+          prf {m = Z} x f = Refl
+          prf {m = S k} x f = rewrite prf {m = k} x f in Refl
+  applicativeInterchange = prf
+    where prf : with Vect ((x : a) -> (f : Vect m (a -> b)) -> zipWith Basics.apply f (replicate m x) = zipWith Basics.apply (replicate m (\f' => f' x)) f)
+          prf {m = Z} x [] = Refl
+          prf {m = S k} x (f :: fs) = rewrite prf x fs in Refl
 
 VerifiedApplicative Maybe where
   applicativeMap Nothing g = Refl
@@ -77,7 +103,7 @@ VerifiedMonad Maybe where
     monadAssociativity (Just x) f g = Refl
 
 interface Semigroup a => VerifiedSemigroup a where
-  total semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
+  semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
 
 implementation VerifiedSemigroup (List a) where
   semigroupOpIsAssociative = appendAssociative
@@ -95,8 +121,8 @@ implementation VerifiedSemigroup (List a) where
   semigroupOpIsAssociative = multAssociativeZ
 
 interface (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
-  total monoidNeutralIsNeutralL : (l : a) -> l <+> Algebra.neutral = l
-  total monoidNeutralIsNeutralR : (r : a) -> Algebra.neutral <+> r = r
+  monoidNeutralIsNeutralL : (l : a) -> l <+> Algebra.neutral = l
+  monoidNeutralIsNeutralR : (r : a) -> Algebra.neutral <+> r = r
 
 [PlusNatMonoidV] VerifiedMonoid Nat using PlusNatSemiV, PlusNatMonoid where
    monoidNeutralIsNeutralL = plusZeroRightNeutral
@@ -119,8 +145,8 @@ implementation VerifiedMonoid (List a) where
   monoidNeutralIsNeutralR xs = Refl
 
 interface (VerifiedMonoid a, Group a) => VerifiedGroup a where
-  total groupInverseIsInverseL : (l : a) -> l <+> inverse l = Algebra.neutral
-  total groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
+  groupInverseIsInverseL : (l : a) -> l <+> inverse l = Algebra.neutral
+  groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
 
 VerifiedGroup ZZ using PlusZZMonoidV where
   groupInverseIsInverseL k = rewrite sym $ multCommutativeZ (NegS 0) k in
@@ -133,15 +159,15 @@ VerifiedGroup ZZ using PlusZZMonoidV where
                              plusNegateInverseRZ k
 
 interface (VerifiedGroup a, AbelianGroup a) => VerifiedAbelianGroup a where
-  total abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
+  abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
 
 VerifiedAbelianGroup ZZ where
   abelianGroupOpIsCommutative = plusCommutativeZ
 
 interface (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
-  total ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
-  total ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
-  total ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)
+  ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
+  ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
+  ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)
 
 VerifiedRing ZZ where
   ringOpIsAssociative = multAssociativeZ
@@ -149,19 +175,19 @@ VerifiedRing ZZ where
   ringOpIsDistributiveR = multDistributesOverPlusLeftZ
 
 interface (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
-  total ringWithUnityIsUnityL : (l : a) -> l <.> Algebra.unity = l
-  total ringWithUnityIsUnityR : (r : a) -> Algebra.unity <.> r = r
+  ringWithUnityIsUnityL : (l : a) -> l <.> Algebra.unity = l
+  ringWithUnityIsUnityR : (r : a) -> Algebra.unity <.> r = r
 
 VerifiedRingWithUnity ZZ where
   ringWithUnityIsUnityL = multOneRightNeutralZ
   ringWithUnityIsUnityR = multOneLeftNeutralZ
 
 interface JoinSemilattice a => VerifiedJoinSemilattice a where
-  total joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
-  total joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
-  total joinSemilatticeJoinIsIdempotent  : (e : a)       -> join e e = e
+  joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
+  joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
+  joinSemilatticeJoinIsIdempotent  : (e : a)       -> join e e = e
 
 interface MeetSemilattice a => VerifiedMeetSemilattice a where
-  total meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
-  total meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
-  total meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
+  meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
+  meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
+  meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e

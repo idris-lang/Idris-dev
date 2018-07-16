@@ -8,12 +8,12 @@ import Control.Category
 %access public export
 
 ||| An isomorphism between two types
-data Iso : Type -> Type -> Type where
-  MkIso : (to : a -> b) ->
-          (from : b -> a) ->
-          (toFrom : (y : b) -> to (from y) = y) ->
-          (fromTo : (x : a) -> from (to x) = x) ->
-          Iso a b
+record Iso a b where
+  constructor MkIso
+  to : a -> b
+  from : b -> a
+  toFrom : (y : b) -> to (from y) = y
+  fromTo : (x : a) -> from (to x) = x
 
 -- Isomorphism properties
 
@@ -36,6 +36,12 @@ isoTrans (MkIso to from toFrom fromTo) (MkIso to' from' toFrom' fromTo') =
 Category Iso where
   id = isoRefl
   (.) = flip isoTrans
+
+Semigroup (Iso a a) where
+  (<+>) = isoTrans
+
+Monoid (Iso a a) where
+  neutral = isoRefl
 
 ||| Isomorphism is symmetric
 isoSym : Iso a b -> Iso b a

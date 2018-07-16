@@ -293,7 +293,6 @@ mapMaybe f (x::xs) =
        Just y  => (S len ** y :: ys)
        Nothing => (  len **      ys)
 
-
 --------------------------------------------------------------------------------
 -- Folds
 --------------------------------------------------------------------------------
@@ -321,6 +320,7 @@ foldr1 f (x::xs) = foldr f x xs
 ||| Foldl without seeding the accumulator
 foldl1 : (t -> t -> t) -> Vect (S n) t -> t
 foldl1 f (x::xs) = foldl f x xs
+
 --------------------------------------------------------------------------------
 -- Scans
 --------------------------------------------------------------------------------
@@ -455,13 +455,17 @@ delete = deleteBy (==)
 -- Splitting and breaking lists
 --------------------------------------------------------------------------------
 
-||| A tuple where the first element is a Vect of the n first elements and
-||| the second element is a Vect of the remaining elements of the original Vect
-||| It is equivalent to (take n xs, drop n xs)
+||| A tuple where the first element is a `Vect` of the `n` first elements and
+||| the second element is a `Vect` of the remaining elements of the original.
+||| It is equivalent to `(take n xs, drop n xs)` (`splitAtTakeDrop`),
+||| but is more efficient.
+|||
 ||| @ n   the index to split at
-||| @ xs  the Vect to split in two
+||| @ xs  the `Vect` to split in two
 splitAt : (n : Nat) -> (xs : Vect (n + m) elem) -> (Vect n elem, Vect m elem)
-splitAt n xs = (take n xs, drop n xs)
+splitAt Z xs = ([], xs)
+splitAt (S k) (x :: xs) with (splitAt k xs)
+  | (tk, dr) = (x :: tk, dr)
 
 partition : (elem -> Bool) -> Vect len elem -> ((p ** Vect p elem), (q ** Vect q elem))
 partition p []      = ((_ ** []), (_ ** []))
@@ -521,12 +525,14 @@ range : {len : Nat} -> Vect len (Fin len)
 range {len=Z}   = []
 range {len=S _} = FZ :: map FS range
 
-||| Transpose a Vect of Vects, turning rows into columns and vice versa.
+||| Transpose a `Vect` of `Vect`s, turning rows into columns and vice versa.
+|||
+||| This is like zipping all the inner `Vect`s together and is equivalent to `traverse id` (`transposeTraverse`).
 |||
 ||| As the types ensure rectangularity, this is an involution, unlike `Prelude.List.transpose`.
-transpose : {n : Nat} -> Vect m (Vect n elem) -> Vect n (Vect m elem)
-transpose []        = replicate _ []
-transpose (x :: xs) = zipWith (::) x (transpose xs)
+transpose : Vect m (Vect n elem) -> Vect n (Vect m elem)
+transpose []        = replicate _ []                -- = [| [] |]
+transpose (x :: xs) = zipWith (::) x (transpose xs) -- = [| x :: xs |]
 
 --------------------------------------------------------------------------------
 -- Applicative/Monad/Traversable
@@ -534,7 +540,6 @@ transpose (x :: xs) = zipWith (::) x (transpose xs)
 
 implementation Applicative (Vect k) where
     pure = replicate _
-
     fs <*> vs = zipWith apply fs vs
 
 ||| This monad is different from the List monad, (>>=)
@@ -543,8 +548,8 @@ implementation Monad (Vect len) where
     m >>= f = diag (map f m)
 
 implementation Traversable (Vect n) where
-    traverse f [] = pure Vect.Nil
-    traverse f (x::xs) = [| Vect.(::) (f x) (traverse f xs) |]
+    traverse f []        = [| [] |]
+    traverse f (x :: xs) = [| f x :: traverse f xs |]
 
 --------------------------------------------------------------------------------
 -- Show
@@ -554,11 +559,27 @@ implementation Show elem => Show (Vect len elem) where
     show = show . toList
 
 --------------------------------------------------------------------------------
+-- Uninhabited
+--------------------------------------------------------------------------------
+
+Uninhabited a => Uninhabited (Vect (S n) a) where
+    uninhabited (x :: _) = uninhabited x
+
+--------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
 
+vectMustBeNil : (xs : Vect Z a) -> xs = []
+vectMustBeNil [] = Refl
+
 vectConsCong : (x : elem) -> (xs : Vect len elem) -> (ys : Vect m elem) -> (xs = ys) -> (x :: xs = x :: ys)
 vectConsCong x xs xs Refl = Refl
+
+vectInjective1 : {xs : Vect n a} -> {ys : Vect m b} -> x :: xs ~=~ y :: ys -> x ~=~ y
+vectInjective1 Refl = Refl
+
+vectInjective2 : {xs : Vect n a} -> {ys : Vect m b} -> x :: xs ~=~ y :: ys -> xs ~=~ ys
+vectInjective2 Refl = Refl
 
 vectNilRightNeutral : (xs : Vect n a) -> xs ++ [] = xs
 vectNilRightNeutral [] = Refl
@@ -573,15 +594,92 @@ vectAppendAssociative [] y z = Refl
 vectAppendAssociative (x :: xs) ys zs =
   vectConsCong _ _ _ (vectAppendAssociative xs ys zs)
 
+||| Adding a prefix and then taking the prefix gets the prefix. Or,
+||| adding a suffix and then dropping the suffix does nothing.
+takePrefix : (ns : Vect n a) -> (ms : Vect m a) -> take n (ns ++ ms) = ns
+takePrefix [] _ = Refl
+takePrefix (n :: ns) ms = cong $ takePrefix ns ms
+
+||| Adding a prefix and then dropping the prefix does nothing. Or,
+||| adding a suffix and then taking the suffix gets the suffix.
+dropPrefix : (ns : Vect n a) -> (ms : Vect m a) -> drop n (ns ++ ms) = ms
+dropPrefix [] ms = Refl
+dropPrefix (_ :: ns) ms = dropPrefix ns ms
+
+||| `take n . take (n + m) = take n`
+takeTake : (n : Nat) -> (m : Nat) ->
+           (xs : Vect ((n + m) + l) a) -> (ys : Vect (n + (m + l)) a) ->
+           xs ~=~ ys ->
+           take n (take (n + m) xs) = take n ys
+takeTake Z m _ _ _ = Refl
+takeTake (S n) m (x :: xs) (y :: ys) prf = rewrite vectInjective1 prf in cong (takeTake n m xs ys (vectInjective2 prf))
+
+||| `drop (n + m) = drop m . drop n`
+dropDrop : (n : Nat) -> (m : Nat) ->
+           (xs : Vect ((n + m) + l) a) -> (ys : Vect (n + (m + l)) a) ->
+           xs ~=~ ys ->
+           drop (n + m) xs = drop m (drop n ys)
+dropDrop Z m xs xs Refl = Refl
+dropDrop (S n) m (_ :: xs) (_ :: ys) prf = dropDrop n m xs ys (vectInjective2 prf)
+
+||| A `Vect` may be restored from its components.
+takeDropConcat : (n : Nat) -> (xs : Vect (n + m) a) -> take n xs ++ drop n xs = xs
+takeDropConcat Z xs = Refl
+takeDropConcat (S n) (x :: xs) = cong $ takeDropConcat n xs
+
+||| `drop n . take (n + m) = take m . drop n`.
+|||
+||| Or: there are two ways to extract a subsequence.
+dropTakeTakeDrop : (n : Nat) -> (m : Nat) ->
+                   (xs : Vect ((n + m) + l) a) -> (ys : Vect (n + (m + l)) a) ->
+                   xs ~=~ ys ->
+                   drop n (take (n + m) xs) = take m (drop n ys)
+dropTakeTakeDrop Z m xs xs Refl = Refl
+dropTakeTakeDrop (S n) m (_ :: xs) (_ :: ys) prf = dropTakeTakeDrop n m xs ys (vectInjective2 prf)
+
+splitAtTakeDrop : (n : Nat) -> (xs : Vect (n + m) a) -> splitAt n xs = (take n xs, drop n xs)
+splitAtTakeDrop Z xs = Refl
+splitAtTakeDrop (S k) (x :: xs) with (splitAt k xs) proof p
+  | (tk, dr) = let prf = trans p (splitAtTakeDrop k xs)
+                in aux (cong {f=(x ::) . fst} prf) (cong {f=snd} prf)
+  where aux : {a, b : Type} -> {w, x : a} -> {y, z : b} -> w = x -> y = z -> (w, y) = (x, z)
+        aux Refl Refl = Refl
+
+zipWithIsLiftA2 : (f : a -> b -> c) -> (as : Vect n a) -> (bs : Vect n b) -> zipWith f as bs = [| f as bs |]
+zipWithIsLiftA2 _ [] [] = Refl
+zipWithIsLiftA2 f (a :: as) (b :: bs) = rewrite zipWithIsLiftA2 f as bs in Refl
+zipWithIsLiftA3 : (f : a -> b -> c -> d) -> (as : Vect n a) -> (bs : Vect n b) -> (cs : Vect n c) -> zipWith3 f as bs cs = [| f as bs cs |]
+zipWithIsLiftA3 _ [] [] [] = Refl
+zipWithIsLiftA3 f (a :: as) (b :: bs) (c :: cs) = rewrite zipWithIsLiftA3 f as bs cs in Refl
+
+-- Note relationship to Applicative (Morphism (Fin n))
+indexReplicate : (x : a) -> (n : Nat) -> (i : Fin n) -> index i (replicate n x) = x
+indexReplicate x (S n) FZ = Refl
+indexReplicate x (S n) (FS i) = indexReplicate x n i
+indexZipWith : (f : a -> b -> c) -> (as : Vect n a) -> (bs : Vect n b) -> (i : Fin n) -> index i (zipWith f as bs) = f (index i as) (index i bs)
+indexZipWith f (a :: _) (b :: _) FZ = Refl
+indexZipWith f (_ :: as) (_ :: bs) (FS i) = indexZipWith f as bs i
+indexTranspose : (x : Fin o) -> (y : Fin i) -> (xss : Vect o (Vect i a)) -> index y (index x xss) = index x (index y (transpose xss))
+indexTranspose x y (xs :: xss) = rewrite prf in
+                                 rewrite sym $ indexZipWith Vect.(::) xs (transpose xss) y in Refl
+  where prf : index y (index x (xs :: xss)) = index x (index y xs :: index y (transpose xss))
+        prf = case x of
+                   FZ => Refl
+                   FS k => indexTranspose k y xss
+
+transposeTraverse : (xss : Vect o (Vect i a)) -> transpose xss = traverse Basics.id xss
+transposeTraverse [] = Refl
+transposeTraverse (xs :: xss) = rewrite zipWithIsLiftA2 Vect.(::) xs (transpose xss) in cong (transposeTraverse xss)
+
+traverseIdCons : (xs : Vect o a) -> (xss : Vect o (Vect i a)) -> traverse Basics.id [| xs :: xss |] = xs :: traverse Basics.id xss
+traverseIdCons [] [] = Refl
+traverseIdCons (x :: xs) (ys :: xss) = rewrite traverseIdCons xs xss in Refl
+transposeCons : (xs : Vect o a) -> (xss : Vect o (Vect i a)) -> transpose (zipWith (::) xs xss) = xs :: transpose xss
+transposeCons xs xss = rewrite zipWithIsLiftA2 Vect.(::) xs xss in rewrite transposeTraverse (pure (::) <*> xs <*> xss) in rewrite transposeTraverse xss in traverseIdCons xs xss
+
 --------------------------------------------------------------------------------
 -- DecEq
 --------------------------------------------------------------------------------
-
-vectInjective1 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> x = y
-vectInjective1 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
-
-vectInjective2 : {xs, ys : Vect n a} -> {x, y : a} -> x :: xs = y :: ys -> xs = ys
-vectInjective2 {x=x} {y=x} {xs=xs} {ys=xs} Refl = Refl
 
 implementation DecEq a => DecEq (Vect n a) where
   decEq [] [] = Yes Refl
