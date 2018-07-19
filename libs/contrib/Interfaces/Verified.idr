@@ -26,6 +26,10 @@ interface Functor f => VerifiedFunctor (f : Type -> Type) where
 functorIdentity' : VerifiedFunctor f => (x : f a) -> map Basics.id x = x
 functorIdentity' {f} = functorIdentity {f} id (\x => Refl)
 
+VerifiedFunctor (Pair a) where
+  functorIdentity g p (a,b) = rewrite p b in Refl
+  functorComposition (a,b) g1 g2 = Refl
+
 VerifiedFunctor Maybe where
   functorIdentity _ _ Nothing = Refl
   functorIdentity g p (Just x) = rewrite p x in Refl
