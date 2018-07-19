@@ -572,6 +572,9 @@ buildDepMap ci used externs ctx startNames
     getDepsTerm vs bs cd (Proj t (-1)) = getDepsTerm vs bs cd t  -- naturals, (S n) -> n
     getDepsTerm vs bs cd (Proj t i) = error $ "cannot[1] analyse projection !" ++ show i ++ " of " ++ show t
 
+    -- inferred term
+    getDepsTerm vs bs cd (Inferred t) = getDepsTerm vs bs cd t
+
     -- the easy cases
     getDepsTerm vs bs cd (Constant _) = M.empty
     getDepsTerm vs bs cd (TType    _) = M.empty
