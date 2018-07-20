@@ -87,6 +87,10 @@ maybeToEither : (def : Lazy e) -> Maybe a -> Either e a
 maybeToEither def (Just j) = Right j
 maybeToEither def Nothing  = Left  def
 
+||| Convert an Either to a Maybe from Right injection
+eitherToMaybe : Either e a -> Maybe a
+eitherToMaybe (Left _) = Nothing
+eitherToMaybe (Right x) = Just x
 
 --------------------------------------------------------------------------------
 -- Implementations
