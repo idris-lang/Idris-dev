@@ -377,5 +377,7 @@ changeDir dir
          pure (ok == 0)
 
 export
-currentDir : IO String 
-currentDir = foreign FFI_C "idris_currentDir" (IO String)
+currentDir : IO String
+currentDir = do
+  MkRaw s <- foreign FFI_C "idris_currentDir" (IO (Raw String))
+  pure s
