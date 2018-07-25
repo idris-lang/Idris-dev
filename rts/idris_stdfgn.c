@@ -263,7 +263,7 @@ VAL idris_getString(VM* vm, void* buffer) {
 char* idris_currentDir() {
    char cwd[1024];
    if (getcwd(cwd, sizeof(cwd)) != NULL)
-       return cwd
+     return cwd;
    else
-       return "getcwd() error"
+     return "getcwd() error";
 }
