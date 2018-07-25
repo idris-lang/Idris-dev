@@ -263,7 +263,7 @@ VAL idris_getString(VM* vm, void* buffer) {
 VAL idris_currentDir() {
    char cwd[1024];
    if (getcwd(cwd, sizeof(cwd)) != NULL)
-     return MKSTRlen(get_vm(),cwd,1024);
+     return MKSTR(get_vm(),cwd);
    else
-     return MKSTR(get_vm(),"getcwd() error");
+     return MKSTR(get_vm(),"");
 }
