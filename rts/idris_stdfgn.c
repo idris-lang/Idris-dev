@@ -259,3 +259,11 @@ VAL idris_getString(VM* vm, void* buffer) {
     free(sb);
     return str;
 }
+
+char* idris_currentDir() {
+   char cwd[1024];
+   if (getcwd(cwd, sizeof(cwd)) != NULL)
+       return cwd
+   else
+       return "getcwd() error"
+}

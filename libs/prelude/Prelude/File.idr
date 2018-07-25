@@ -375,3 +375,7 @@ changeDir : String -> IO Bool
 changeDir dir 
     = do ok <- foreign FFI_C "idris_chdir" (String -> IO Int) dir
          pure (ok == 0)
+
+export
+currentDir : IO String 
+currentDir = foreign FFI_C "idris_currentDir" (IO String)

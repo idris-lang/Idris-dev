@@ -55,4 +55,6 @@ VAL idris_time();
 
 void idris_forceGC();
 
+char* idris_currentDir();
+
 #endif
