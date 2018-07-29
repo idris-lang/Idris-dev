@@ -82,7 +82,7 @@ getString (MkStrLen str n) = str
 
 strIndex : StrLen -> Nat -> Maybe Char
 strIndex (MkStrLen str len) i
-    = if i >= len then Nothing
+    = if cast {to = Integer} i >= cast len then Nothing
                   else Just (assert_total (prim__strIndex str (cast i)))
 
 mkStr : String -> StrLen
