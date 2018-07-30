@@ -21,11 +21,12 @@ record Buffer where
 ||| fails
 export
 newBuffer : (size : Int) -> IO (Maybe Buffer)
-newBuffer size = do bptr <- foreign FFI_C "idris_newBuffer" (Int -> IO Ptr) 
-                                    size
-                    bad <- nullPtr bptr
+newBuffer size = do vm <- getMyVM
+                    bptr <- foreign FFI_C "idris_newBuffer" (Ptr -> Int -> IO ManagedPtr) 
+                                    vm size
+                    bad <- nullManagedPtr bptr
                     if bad then pure Nothing
-                           else pure (Just (MkBuffer (prim__registerPtr bptr (size + 8)) size 0))
+                           else pure (Just (MkBuffer bptr size 0))
 
 ||| Reset the 'next location' pointer of the buffer to 0.
 ||| The 'next location' pointer gives the location for the next file read/write

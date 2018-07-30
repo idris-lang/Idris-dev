@@ -146,6 +146,9 @@ reverse = prim__strRev
 null : Ptr
 null = prim__null
 
+managedNull : ManagedPtr
+managedNull = prim__managedNull
+
 -- Some more complex string operations
 
 data StrM : String -> Type where
@@ -397,6 +400,11 @@ partial
 nullPtr : Ptr -> IO Bool
 nullPtr p = do ok <- foreign FFI_C "isNull" (Ptr -> IO Int) p
                pure (ok /= 0)
+
+partial
+nullManagedPtr : ManagedPtr -> IO Bool
+nullManagedPtr p = do ok <- foreign FFI_C "isNull" (ManagedPtr -> IO Int) p
+                      pure (ok /= 0)
 
 ||| Check if a supposed string was actually a null pointer
 partial

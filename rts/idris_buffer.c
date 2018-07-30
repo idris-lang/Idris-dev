@@ -6,8 +6,10 @@ typedef struct {
     uint8_t data[0];
 } Buffer;
 
-void* idris_newBuffer(int bytes) {
-    Buffer* buf = malloc(sizeof(Buffer) + bytes*sizeof(uint8_t));
+VAL idris_newBuffer(VM* vm, int bytes) {
+    size_t size = sizeof(Buffer) + bytes*sizeof(uint8_t);
+
+    Buffer* buf = malloc(size);
     if (buf == NULL) {
         return NULL;
     }
@@ -15,7 +17,9 @@ void* idris_newBuffer(int bytes) {
     buf->size = bytes;
     memset(buf->data, 0, bytes);
 
-    return buf;
+    void* retbuf = MKMPTR(vm, buf, size);
+    free(buf);
+    return retbuf;
 }
 
 void idris_copyBuffer(void* from, int start, int len,

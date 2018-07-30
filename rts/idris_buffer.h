@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include "idris_rts.h"
 
-void* idris_newBuffer(int bytes);
+VAL idris_newBuffer(VM* vm, int bytes);
 
 int idris_getBufferSize(void* buffer);
 

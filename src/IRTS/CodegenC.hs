@@ -389,7 +389,7 @@ c_irts (FArith (ATInt (ITFixed ity))) l x
 c_irts FString l x = l ++ "MKSTR(vm, " ++ x ++ ")"
 c_irts FUnit l x = x
 c_irts FPtr l x = l ++ "MKPTR(vm, " ++ x ++ ")"
-c_irts FManagedPtr l x = l ++ "MKMPTR(vm, " ++ x ++ ")"
+c_irts FManagedPtr l x = l ++ x
 c_irts (FArith ATFloat) l x = l ++ "MKFLOAT(vm, " ++ x ++ ")"
 c_irts FCData l x = l ++ "MKCDATA(vm, " ++ x ++ ")"
 c_irts FAny l x = l ++ x
@@ -644,6 +644,7 @@ doOp v (LExternal se) [] | se == sUN "prim__stderr" = v ++ "MKPTR(vm, stderr)"
 
 doOp v (LExternal vm) [_] | vm == sUN "prim__vm" = v ++ "MKPTR(vm, vm)"
 doOp v (LExternal nul) [] | nul == sUN "prim__null" = v ++ "MKPTR(vm, NULL)"
+doOp v (LExternal nul) [] | nul == sUN "prim__managedNull" = v ++ "MKPTR(vm, NULL)"
 doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqPtr"
     = v ++ "MKINT((i_int)(GETPTR(" ++ creg x ++ ") == GETPTR(" ++ creg y ++ ")))"
 doOp v (LExternal eqp) [x, y] | eqp == sUN "prim__eqManagedPtr"
