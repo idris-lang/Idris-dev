@@ -3,10 +3,12 @@ with (import <nixpkgs> {});
 
 let
   libs = [
-    libffi
-    zlib
-    ncurses
     gmp
+    libffi
+    ncurses
+    nodejs
+    perl
+    zlib
   ];
   native_libs = lib.optionals stdenv.isDarwin (with darwin.apple_sdk.frameworks; [
     Cocoa
