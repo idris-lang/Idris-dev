@@ -160,6 +160,16 @@ hexDigit = pred isHexDigit
 hexDigits : Lexer
 hexDigits = some hexDigit
 
+||| Recognise a single octal digit
+||| /[0-8]/
+octDigit : Lexer
+octDigit = pred isHexDigit
+
+||| Recognise one or more octal digits
+||| /[0-8]+/
+octDigits : Lexer
+octDigits = some hexDigit
+
 ||| Recognise a single alpha character
 ||| /[A-Za-z]/
 alpha : Lexer
@@ -269,7 +279,20 @@ stringLit = quote (is '"') (escape '\\' any <|> any)
 ||| /'(\\\\.|[\^'])'/
 charLit : Lexer
 charLit = let q = '\'' in
-              is q <+> (escape '\\' any <|> isNot q) <+> is q
+              is q <+> (escape '\\' (control <|> any) <|> isNot q) <+> is q
+  where
+    lexStr : List String -> Lexer
+    lexStr [] = fail
+    lexStr (t :: ts) = exact t <|> lexStr ts
+
+    control : Lexer
+    control = lexStr ["NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL",
+                      "BS",  "HT",  "LF",  "VT",  "FF",  "CR",  "SO",  "SI",
+                      "DLE", "DC1", "DC2", "DC3", "DC4", "NAK", "SYN", "ETB",
+                      "CAN", "EM",  "SUB", "ESC", "FS",  "GS",  "RS",  "US"]
+                <|> (is 'x' <+> hexDigits)
+                <|> (is 'o' <+> octDigits)
+                <|> digits
 
 ||| Recognise an integer literal (possibly with a '-' prefix)
 ||| /-?[0-9]+/
