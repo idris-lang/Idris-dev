@@ -5,6 +5,8 @@
 ||| other metric of size.
 module Prelude.WellFounded
 
+import Builtins
+
 import Prelude.Nat
 import Prelude.List
 import Prelude.Uninhabited
@@ -128,3 +130,6 @@ implementation Sized Nat where
 
 implementation Sized (List a) where
   size = length
+
+implementation (Sized a, Sized b) => Sized (Pair a b) where
+  size (x,y) = Nat.plus (size x) (size y)
