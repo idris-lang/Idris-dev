@@ -58,6 +58,17 @@ extraneous and may be omitted:
     filter p (x :: xs) with (filter p xs)
       | ( _ ** xs' ) = if (p x) then ( _ ** x :: xs' ) else ( _ ** xs' )
 
+``with`` clauses can also be nested:
+
+.. code-block:: idris
+
+    foo : Int -> Int -> Bool
+    foo n m with (succ n)
+      foo _ m | 2 with (succ m)
+        foo _ _ | 2 | 3 = True
+        foo _ _ | 2 | _ = False
+      foo _ _ | _ = False
+
 If the intermediate computation itself has a dependent type, then the
 result can affect the forms of other arguments — we can learn the form
 of one value by testing another. In these cases, view refined argument
