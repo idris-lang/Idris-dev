@@ -346,7 +346,7 @@ When checking argument value to function Prelude.Basics.the:
         Type mismatch between
                 x = x (Type of Refl)
         and
-                (-0.0) = 0.0 (Expected type)
+                -0.0 = 0.0 (Expected type)
         
         Specifically:
                 Type mismatch between
