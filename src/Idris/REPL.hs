@@ -167,7 +167,7 @@ startServer port orig fn_in = do tid <- runIO $ forkIO (serverLoop port)
 
         loop fn ist sock
             = do (s, _) <- accept sock
-                 h <- socketToHandle s ReadWriteMode   
+                 h <- socketToHandle s ReadWriteMode
                  hSetEncoding h utf8
                  cmd <- hGetLine h
                  let isth = case idris_outputmode ist of
@@ -1233,8 +1233,8 @@ process fn (Prove mode n')
           let metavars = mapMaybe (\n -> do c <- lookup n (idris_metavars ist); return (n, c)) ns
           n <- case metavars of
               [] -> ierror (Msg $ "Cannot find metavariable " ++ show n')
-              [(n, (_,_,_,False,_))] -> return n
-              [(_, (_,_,_,_,False))]  -> ierror (Msg "Can't prove this hole as it depends on other holes")
+              [(n, (_,_,_,False,_))] -> return n
+              [(_, (_,_,_,_,False))] -> ierror (Msg "Can't prove this hole as it depends on other holes")
               [(_, (_,_,_,True,_))]  -> ierror (Msg "Declarations not solvable using prover")
               ns -> ierror (CantResolveAlts (map fst ns))
           prover (toplevelWith fn) mode (lit fn) n

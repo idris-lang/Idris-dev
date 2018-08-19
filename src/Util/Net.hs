@@ -12,7 +12,7 @@ import Network.Socket
 -- Copied from upstream impl of listenOn
 -- bound to localhost interface instead of iNADDR_ANY
 listenOnLocalhost :: PortNumber -> IO Socket
-listenOnLocalhost port = do    
+listenOnLocalhost port = do
     let hints = defaultHints { addrSocketType = Stream }
     localhost:_ <- getAddrInfo (Just hints) (Just "127.0.0.1") (Just $ show port)
     bracketOnError
