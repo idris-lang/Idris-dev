@@ -103,10 +103,10 @@ primDB =
   , item (LSHL (ITFixed IT64)) True PTAny $
     \[l, r] -> JsForeign "%0.shiftLeft(%1).and(new $JSRTS.jsbn.BigInteger(%2))" [l,r, JsStr $ show 0xFFFFFFFFFFFFFFFF]
   , item (LSHL ITBig) True PTAny $ method "shiftLeft"
-  , item (LLSHR ITNative) False PTAny $ JsForeign "%0 >> %1 |0"
-  , item (LLSHR (ITFixed IT8)) False PTAny $ JsForeign "%0 >> %1"
-  , item (LLSHR (ITFixed IT16)) False PTAny $ JsForeign "%0 >> %1"
-  , item (LLSHR (ITFixed IT32)) False PTAny $ JsForeign "%0 >> %1|0"
+  , item (LLSHR ITNative) False PTAny $ JsForeign "%0 >>> %1 |0"
+  , item (LLSHR (ITFixed IT8)) False PTAny $ JsForeign "%0 >>> %1"
+  , item (LLSHR (ITFixed IT16)) False PTAny $ JsForeign "%0 >>> %1"
+  , item (LLSHR (ITFixed IT32)) False PTAny $ JsForeign "%0 >>> %1|0"
   , item (LLSHR (ITFixed IT64)) True PTAny $ JsForeign "%0.shiftRight(%1)"
   , item (LASHR ITNative) False PTAny $ JsForeign "%0 >> %1 |0"
   , item (LASHR (ITFixed IT8)) False PTAny $ JsForeign "%0 >> %1"
