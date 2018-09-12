@@ -427,13 +427,12 @@ createNsDoc :: IState   -- ^ Needed to determine the types of names
                         --   documentation will be written.
             -> IO ()
 createNsDoc ist ns content out =
-  do let tpath                   = out </> "docs" </> (genRelNsPath ns "html")
-         dir                     = takeDirectory tpath
-         file                    = takeFileName tpath
-         haveDocs (_, Just d, _) = [d]
-         haveDocs _              = []
+  do let tpath               = out </> "docs" </> (genRelNsPath ns "html")
+         dir                 = takeDirectory tpath
+         file                = takeFileName tpath
+         haveDocs (_, md, _) = md
                                  -- We cannot do anything without a Doc
-         content'                = concatMap haveDocs (nsContents content)
+         content'            = reverse $ mapMaybe haveDocs $ nsContents content
      createDirectoryIfMissing True dir
      (path, h) <- openTempFileWithDefaultPermissions dir file
      BS2.hPut h $ renderHtml $ wrapper (Just ns) $ do
