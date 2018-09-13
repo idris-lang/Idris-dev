@@ -862,8 +862,32 @@ catMaybes (x::xs) =
 --------------------------------------------------------------------------------
 
 ||| (::) is injective
-consInjective : (x :: xs) = (y :: ys) -> (x = y, xs = ys)
+consInjective : {x : a} -> {xs : List a} -> {y : b} -> {ys : List b} ->
+                (x :: xs) = (y :: ys) -> (x = y, xs = ys)
 consInjective Refl = (Refl, Refl)
+
+||| Two lists are equal, if their heads are equal and their tails are equal.
+consCong2 : {x : a} -> {xs : List a} -> {y : b} -> {ys : List b} ->
+            x = y -> xs = ys -> x :: xs = y :: ys
+consCong2 Refl Refl = Refl
+
+||| Appending pairwise equal lists gives equal lists
+appendCong2 : {x1 : List a} -> {x2 : List a} ->
+              {y1 : List b} -> {y2 : List b} ->
+              x1 = y1 -> x2 = y2 -> x1 ++ x2 = y1 ++ y2
+appendCong2 {x1=[]} {y1=(_ :: _)} Refl _ impossible
+appendCong2 {x1=(_ :: _)} {y1=[]} Refl _ impossible
+appendCong2 {x1=[]} {y1=[]} _ eq2 = eq2
+appendCong2 {x1=(_ :: _)} {y1=(_ :: _)} eq1 eq2 =
+  consCong2
+    (fst $ consInjective eq1)
+    (appendCong2 (snd $ consInjective eq1) eq2)
+
+||| List.map is distributive over appending.
+mapAppendDistributive : (f : a -> b) -> (x : List a) -> (y : List a) ->
+                        map f (x ++ y) = map f x ++ map f y
+mapAppendDistributive _ [] _ = Refl
+mapAppendDistributive f (_ :: xs) y = cong $ mapAppendDistributive f xs y
 
 ||| The empty list is a right identity for append.
 appendNilRightNeutral : (l : List a) ->
