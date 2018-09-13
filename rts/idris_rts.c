@@ -697,10 +697,25 @@ VAL idris_substr(VM* vm, VAL offset, VAL length, VAL str) {
         char *start = idris_utf8_advance(str_val, offset_val);
         char *end = idris_utf8_advance(start, length_val);
         size_t sz = end - start;
-        String * newstr = allocStr(vm, sz, 0);
-        memcpy(newstr->str, start, sz);
-        newstr->str[sz] = '\0';
-        return (VAL)newstr;
+
+        if (space(vm, sz)) {
+            String * newstr = allocStr(vm, sz, 0);
+            memcpy(newstr->str, start, sz);
+            newstr->str[sz] = '\0';
+            return (VAL)newstr;
+        } else {
+            // Need to copy into an intermediate string before allocating,
+            // because if there's no enough space then allocating will move the
+            // original string!
+            char* cpystr = malloc(sz);
+            memcpy(cpystr, start, sz);
+
+            String * newstr = allocStr(vm, sz, 0);
+            memcpy(newstr->str, cpystr, sz);
+            newstr->str[sz] = '\0';
+            free(cpystr);
+            return (VAL)newstr;
+        }
     }
 }
 
