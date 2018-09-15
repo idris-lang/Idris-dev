@@ -448,7 +448,7 @@ elab ist info emode opts fn tm
              -- the full set.
              uns <- get_usedns
              let as' = map (mkUniqueNames (uns ++ map snd ms) ms) as_pruned
-             (h : hs) <- get_holes
+             ~(h : hs) <- get_holes
              ty <- goal
              case as' of
                   [] -> do hds <- mapM showHd as
@@ -984,7 +984,7 @@ elab ist info emode opts fn tm
                                             (elab' ina fc Placeholder)
                                             (show f)
     elab' ina fc Placeholder
-        = do (h : hs) <- get_holes
+        = do ~(h : hs) <- get_holes
              movelast h
     elab' ina fc (PMetavar nfc n) =
           do ptm <- get_term
@@ -1251,7 +1251,7 @@ elab ist info emode opts fn tm
     elab' ina fc (PHidden t)
       | reflection = elab' ina fc t
       | otherwise
-        = do (h : hs) <- get_holes
+        = do ~(h : hs) <- get_holes
              -- Dotting a hole means that either the hole or any outer
              -- hole (a hole outside any occurrence of it)
              -- must be solvable by unification as well as being filled
@@ -1259,7 +1259,7 @@ elab ist info emode opts fn tm
              -- Delay dotted things to the end, then when we elaborate them
              -- we can check the result against what was inferred
              movelast h
-             (h' : hs) <- get_holes
+             ~(h' : hs) <- get_holes
              -- If we're at the end anyway, do it now
              if h == h' then elabHidden h
                         else delayElab 10 $ elabHidden h

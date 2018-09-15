@@ -549,19 +549,19 @@ caseGroups (v:vs) gs err = do g <- altGroups gs
 
     altGroup n i args
          = do inacc <- inaccessibleArgs n
-              (newVars, accVars, inaccVars, nextCs) <- argsToAlt inacc args
+              ~(newVars, accVars, inaccVars, nextCs) <- argsToAlt inacc args
               matchCs <- match (accVars ++ vs ++ inaccVars) nextCs err
               return $ ConCase n i newVars matchCs
 
-    altFnGroup n args = do (newVars, _, [], nextCs) <- argsToAlt [] args
+    altFnGroup n args = do ~(newVars, _, [], nextCs) <- argsToAlt [] args
                            matchCs <- match (newVars ++ vs) nextCs err
                            return $ FnCase n newVars matchCs
 
-    altSucGroup args = do ([newVar], _, [], nextCs) <- argsToAlt [] args
+    altSucGroup args = do ~([newVar], _, [], nextCs) <- argsToAlt [] args
                           matchCs <- match (newVar:vs) nextCs err
                           return $ SucCase newVar matchCs
 
-    altConstGroup n args = do (_, _, [], nextCs) <- argsToAlt [] args
+    altConstGroup n args = do ~(_, _, [], nextCs) <- argsToAlt [] args
                               matchCs <- match vs nextCs err
                               return $ ConstCase n matchCs
 
