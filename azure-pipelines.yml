@@ -1,0 +1,143 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+jobs:
+  # Test a configuration with the oldest supported GHC
+  - job: Linux_GHC_710
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    steps:
+    - script: |
+        sudo add-apt-repository ppa:hvr/ghc
+        sudo apt-get update
+        sudo apt-get install ghc-7.10.3 cabal-install-2.2
+        sudo update-alternatives --config opt-ghc
+        sudo update-alternatives --config opt-cabal
+      displayName: 'Prepare system'
+    - script: |
+        export PATH=/opt/ghc/bin:$HOME/.cabal/bin:$PATH
+        cabal update
+        CABALFLAGS="-fffi -fci" make
+      displayName: 'Build Idris'
+    - script: |
+        export PATH=/opt/ghc/bin:$HOME/.cabal/bin:$PATH
+        make test_c
+      displayName: 'Run tests'
+  # Test on Linux
+  - job: Linux
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    steps:
+    - script: |
+        sudo add-apt-repository ppa:hvr/ghc
+        sudo apt-get update
+        sudo apt-get install ghc-8.2.2 cabal-install-2.2
+        sudo update-alternatives --config opt-ghc
+        sudo update-alternatives --config opt-cabal
+      displayName: 'Prepare system'
+    - script: |
+        export PATH=/opt/ghc/bin:$HOME/.cabal/bin:$PATH
+        cabal update
+        CABALFLAGS="-fffi -fci" make
+      displayName: 'Build Idris'
+    - script: |
+        export PATH=/opt/ghc/bin:$HOME/.cabal/bin:$PATH
+        make test_c
+      displayName: 'Run tests'
+  # Test on MacOS 
+  - job: macOS
+    pool:
+      vmImage: 'xcode9-macos10.13'
+    steps:
+    - script: |
+        brew install ghc cabal-install libffi pkgconfig
+        export PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig:$PKG_CONFIG_PATH
+        export PATH=$HOME/.cabal/bin:$PATH
+        cabal update
+        CABALFLAGS="-fffi -fci" make
+        make test_c
+      displayName: 'Build idris and run tests'
+  # Test on Windows
+  - job: Windows
+    pool:
+      vmImage: 'vs2017-win2016'
+    steps:
+    - powershell: |
+        choco install cabal -y --no-progress
+        choco install 7zip.portable -y --no-progress
+        choco install msys2 -y --no-progress --params "/InstallDir=C:/msys64/"
+        mkdir C:\ghc
+        Invoke-WebRequest "http://downloads.haskell.org/~ghc/8.4.3/ghc-8.4.3-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
+        7z x C:\ghc\ghc.tar.xz -oC:\ghc
+        7z x C:\ghc\ghc.tar -oC:\ghc
+      displayName: "Setting up environment"
+    - powershell: |
+        cabal update
+        $env:PATH="$env:PATH;$HOME\AppData\Roaming\cabal\bin;c:\ghc\ghc-8.4.3\bin"
+        $env:current_posix=c:\msys64\usr\bin\cygpath -u $(pwd)
+        c:\msys64\usr\bin\bash -l -c "echo `$MSYSTEM && echo `$PATH"
+        c:\msys64\usr\bin\bash -l -c "pacman -S make mingw-w64-x86_64-gcc mingw-w64-x86_64-pkg-config mingw-w64-x86_64-libffi --noconfirm 2>&1"
+        c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal install -fffi --enable-test 2>&1"
+        c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && make test_c 2>&1"
+      env:
+        MSYSTEM: MINGW64
+        MSYS2_PATH_TYPE: inherit
+      displayName: "Build and test Idris"
+  # Check styling
+  - job: Stylize
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    steps:
+    - script: |
+        sudo add-apt-repository ppa:hvr/ghc
+        sudo apt-get update
+        sudo apt-get install ghc-8.2.2 cabal-install-2.2
+        sudo update-alternatives --config opt-ghc
+        sudo update-alternatives --config opt-cabal
+      displayName: 'Prepare system'
+    - script: |
+        export PATH=/opt/ghc/bin:$HOME/.cabal/bin:$PATH
+        cabal update
+        cabal install stylish-haskell
+        ./stylize.sh
+      displayName: 'Run stylish'
+  # Run tests on the node backend
+  - job: JS
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    steps:
+    - script: |
+        sudo add-apt-repository ppa:hvr/ghc
+        sudo apt-get update
+        sudo apt-get install ghc-8.2.2 cabal-install-2.2
+        sudo update-alternatives --config opt-ghc
+        sudo update-alternatives --config opt-cabal
+      displayName: 'Prepare system'
+    - script: |
+        export PATH=/opt/ghc/bin:$HOME/.cabal/bin:$PATH
+        cabal update
+        CABALFLAGS="-fffi -fci" make
+      displayName: 'Build Idris'
+    - script: |
+        export PATH=/opt/ghc/bin:$HOME/.cabal/bin:$PATH
+        make test_js
+      displayName: 'Run tests'
+  # Build docs
+  - job: Docs
+    pool:
+      vmImage: 'Ubuntu 16.04'
+    steps:
+    - script: |
+        sudo add-apt-repository ppa:hvr/ghc
+        sudo apt-get update
+        sudo apt-get install ghc-8.2.2 cabal-install-2.2
+        sudo update-alternatives --config opt-ghc
+        sudo update-alternatives --config opt-cabal
+      displayName: 'Prepare system'
+    - script: |
+        export PATH=/opt/ghc/bin:$HOME/.cabal/bin:$PATH
+        cabal update
+        CABALFLAGS="-fffi -fci" make
+        make lib_doc doc
+      displayName: 'Build Docs'
