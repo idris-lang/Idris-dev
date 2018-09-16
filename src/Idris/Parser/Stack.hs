@@ -117,9 +117,9 @@ addExtent = tell
 -- extent is taking trailing whitespace, it's likely there's a double-wrapped
 -- parser (usually via @Idris.Parser.Helpers.token@).
 trackExtent :: Parsing m => m a -> m a
-trackExtent p = do (FC f (sr, sc) _) <- getFC
+trackExtent p = do ~(FC f (sr, sc) _) <- getFC
                    result <- p
-                   (FC f _ (er, ec)) <- getFC
+                   ~(FC f _ (er, ec)) <- getFC
                    addExtent (FC f (sr, sc) (er, max 1 (ec - 1)))
                    return result
 
