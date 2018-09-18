@@ -214,6 +214,24 @@ VerifiedMonad List where
       (foldrConcatEq' (g1 x) (foldr (\x1, meth => g1 x1 ++ meth) [] xs) g2)
       (cong $ monadAssociativity xs g1 g2)
 
+interface (Alternative f, VerifiedApplicative f) => VerifiedAlternative (f : Type -> Type) where
+  alternativeLeftIdentity : (x : f a) -> Applicative.empty <|> x = x
+  alternativeRightIdentity : (x : f a) -> x <|> Applicative.empty = x
+  alternativeAssociativity : (x : f a) -> (y : f a) -> (z : f a) ->
+                             x <|> (y <|> z) = (x <|> y) <|> z
+
+VerifiedAlternative Maybe where
+  alternativeLeftIdentity _ = Refl
+  alternativeRightIdentity Nothing = Refl
+  alternativeRightIdentity (Just _) = Refl
+  alternativeAssociativity Nothing _ _ = Refl
+  alternativeAssociativity (Just _) _ _ = Refl
+
+VerifiedAlternative List where
+  alternativeLeftIdentity _ = Refl
+  alternativeRightIdentity = appendNilRightNeutral
+  alternativeAssociativity = appendAssociative
+
 interface Semigroup a => VerifiedSemigroup a where
   semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
 
