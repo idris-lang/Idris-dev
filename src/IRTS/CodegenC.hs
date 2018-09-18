@@ -424,6 +424,13 @@ bitCoerce v op input output arg
 signedTy :: NativeTy -> String
 signedTy t = "int" ++ show (nativeTyWidth t) ++ "_t"
 
+-- Need to ensure we have enough spare *before* GMP operations because they
+-- use the idris allocator but outside our control, and if it GCs in the middle
+-- then things get moved which leads to trouble...
+-- I'm just guessing how much it'll need. This is a TMP HACK. Sorry.
+wrapGMP op
+   = "idris_requireAlloc(vm, 65536); " ++ op ++ "; idris_doneAlloc(vm)"
+
 doOp v (LPlus (ATInt ITNative)) [l, r] = v ++ "ADD(" ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LMinus (ATInt ITNative)) [l, r] = v ++ "INTOP(-," ++ creg l ++ ", " ++ creg r ++ ")"
 doOp v (LTimes (ATInt ITNative)) [l, r] = v ++ "MULT(" ++ creg l ++ ", " ++ creg r ++ ")"
@@ -484,21 +491,21 @@ doOp v (LSGe ATFloat) [l, r] = v ++ "FLOATBOP(>=," ++ creg l ++ ", " ++ creg r +
 
 doOp v (LIntFloat ITBig) [x] = v ++ "idris_castBigFloat(vm, " ++ creg x ++ ")"
 doOp v (LFloatInt ITBig) [x] = v ++ "idris_castFloatBig(vm, " ++ creg x ++ ")"
-doOp v (LPlus (ATInt ITBig)) [l, r] = v ++ "idris_bigPlus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LMinus (ATInt ITBig)) [l, r] = v ++ "idris_bigMinus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LTimes (ATInt ITBig)) [l, r] = v ++ "idris_bigTimes(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSDiv (ATInt ITBig)) [l, r] = v ++ "idris_bigDivide(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSRem (ATInt ITBig)) [l, r] = v ++ "idris_bigMod(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LAnd ITBig) [l, r] = v ++ "idris_bigAnd(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LOr ITBig) [l, r] = v ++ "idris_bigOr(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSHL ITBig) [l, r] = v ++ "idris_bigShiftLeft(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LLSHR ITBig) [l, r] = v ++ "idris_bigLShiftRight(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LASHR ITBig) [l, r] = v ++ "idris_bigAShiftRight(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LEq (ATInt ITBig)) [l, r] = v ++ "idris_bigEq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSLt (ATInt ITBig)) [l, r] = v ++ "idris_bigLt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSLe (ATInt ITBig)) [l, r] = v ++ "idris_bigLe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSGt (ATInt ITBig)) [l, r] = v ++ "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
-doOp v (LSGe (ATInt ITBig)) [l, r] = v ++ "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LPlus (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigPlus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LMinus (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigMinus(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LTimes (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigTimes(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSDiv (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigDivide(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSRem (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigMod(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LAnd ITBig) [l, r] = wrapGMP $ v ++ "idris_bigAnd(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LOr ITBig) [l, r] = wrapGMP $ v ++ "idris_bigOr(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSHL ITBig) [l, r] = wrapGMP $ v ++ "idris_bigShiftLeft(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LLSHR ITBig) [l, r] = wrapGMP $ v ++ "idris_bigLShiftRight(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LASHR ITBig) [l, r] = wrapGMP $ v ++ "idris_bigAShiftRight(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LEq (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigEq(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSLt (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigLt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSLe (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigLe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSGt (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigGt(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
+doOp v (LSGe (ATInt ITBig)) [l, r] = wrapGMP $ v ++ "idris_bigGe(vm, " ++ creg l ++ ", " ++ creg r ++ ")"
 
 doOp v (LIntFloat ITNative) [x] = v ++ "idris_castIntFloat(" ++ creg x ++ ")"
 doOp v (LFloatInt ITNative) [x] = v ++ "idris_castFloatInt(" ++ creg x ++ ")"
