@@ -81,58 +81,42 @@ VerifiedApplicative (Either a) where
   applicativeHomomorphism x g = Refl
   applicativeInterchange x (Left y) = Refl
   applicativeInterchange x (Right y) = Refl
-
-listConcatAssoc : (x : List a) -> (y : List a) -> (z : List a) -> (x ++ y) ++ z = x ++ (y ++ z)
-listConcatAssoc [] _ _ = Refl
-listConcatAssoc (_ :: x) y z = cong $ listConcatAssoc x y z
-
-listAppendEq : {x : a} -> {xs : List a} -> {y : b} -> {ys : List b} -> x = y -> xs = ys -> x :: xs = y :: ys
-listAppendEq Refl Refl = Refl
-
-listHeadEq : {x : a} -> {xs : List a} -> {y : b} -> {ys : List b} -> x :: xs = y :: ys -> x = y
-listHeadEq Refl = Refl
-
-listTailEq : {x : a} -> {xs : List a} -> {y : b} -> {ys : List b} -> x :: xs = y :: ys -> xs = ys
-listTailEq Refl = Refl
-
-listConcatEmptyEq : (xs : List a) -> xs ++ [] = xs
-listConcatEmptyEq [] = Refl
-listConcatEmptyEq (_ :: x) = cong (listConcatEmptyEq x)
-
-listConcatEq : {x1 : List a} -> {x2 : List a} -> {y1 : List b} -> {y2 : List b} -> x1 = y1 -> x2 = y2 -> x1 ++ x2 = y1 ++ y2
-listConcatEq {x1=[]} {y1=(_ :: _)} Refl _ impossible
-listConcatEq {x1=(_ :: _)} {y1=[]} Refl _ impossible
-listConcatEq {x1=[]} {y1=[]} _ eq2 = eq2
-listConcatEq {x1=(_ :: xs1)} {y1=(_ :: ys1)} eq1 eq2 = listAppendEq (listHeadEq eq1) (listConcatEq (listTailEq eq1) eq2)
-
-listMapConcatEq : (f : a -> b) -> (x : List a) -> (y : List a) -> map f (x ++ y) = map f x ++ map f y
-listMapConcatEq _ [] _ = Refl
-listMapConcatEq f (_ :: xs) y = cong $ listMapConcatEq f xs y
-
+  
 private
 foldrConcatEq : (g1 : List (a -> b)) -> (g2 : List (a -> b)) ->
                 (xs : List a) ->
                 foldr (\f, meth => map f xs ++ meth) [] (g1 ++ g2) = foldr (\f, meth => map f xs ++ meth) [] g1 ++ foldr (\f, meth => map f xs ++ meth) [] g2
 foldrConcatEq [] _ _ = Refl
-foldrConcatEq (g1 :: gs1) gs2 xs = trans (cong $ foldrConcatEq gs1 gs2 xs)
-                                   (sym $ listConcatAssoc (map g1 xs) (foldr (\f, meth => map f xs ++ meth) [] gs1) (foldr (\f, meth => map f xs ++ meth) [] gs2))
+foldrConcatEq (g1 :: gs1) gs2 xs =
+  trans
+    (cong $ foldrConcatEq gs1 gs2 xs)
+    (appendAssociative
+      (map g1 xs)
+      (foldr (\f, meth => map f xs ++ meth) [] gs1)
+      (foldr (\f, meth => map f xs ++ meth) [] gs2))
 
 private
 foldrConcatEq' : (x1 : List a) -> (x2 : List a) ->
                  (g : a -> List b) ->
                  foldr (\x, meth => g x ++ meth) [] (x1 ++ x2) = foldr (\x, meth => g x ++ meth) [] x1 ++ foldr (\x, meth => g x ++ meth) [] x2
 foldrConcatEq' [] _ _ = Refl
-foldrConcatEq' (x1 :: xs1) xs2 g = trans (cong {f=((++) $ g x1)} $ foldrConcatEq' xs1 xs2 g)
-                                   (sym $ listConcatAssoc (g x1) (foldr (\x, meth => g x ++ meth) [] xs1) (foldr (\x, meth => g x ++ meth) [] xs2))
+foldrConcatEq' (x1 :: xs1) xs2 g =
+  trans
+    (cong {f=((++) $ g x1)} $ foldrConcatEq' xs1 xs2 g)
+    (appendAssociative
+      (g x1)
+      (foldr (\x, meth => g x ++ meth) [] xs1)
+      (foldr (\x, meth => g x ++ meth) [] xs2))
 
 private
 foldrMapCombine : (xs : List a) -> (gs1 : List (a -> b)) -> (g2 : b -> c) ->
                   map g2 (foldr (\g, meth => map g xs ++ meth) [] gs1) =
                   foldr (\g, meth => map g xs ++ meth) [] (map ((.) g2) gs1)
 foldrMapCombine xs [] g2 = Refl
-foldrMapCombine xs (g1 :: gs1) g2 = trans
-  (listMapConcatEq g2 (map g1 xs) (foldr (\g, meth => map g xs ++ meth) [] gs1))
-  (listConcatEq (sym $ functorComposition xs g1 g2) (foldrMapCombine xs gs1 g2))
+foldrMapCombine xs (g1 :: gs1) g2 =
+  trans
+    (mapAppendDistributive g2 (map g1 xs) (foldr (\g, meth => map g xs ++ meth) [] gs1))
+    (appendCong2 (sym $ functorComposition xs g1 g2) (foldrMapCombine xs gs1 g2))
 
 VerifiedApplicative List where
   applicativeMap [] f = Refl
@@ -140,9 +124,12 @@ VerifiedApplicative List where
   applicativeIdentity xs = rewrite sym $ applicativeMap xs id in functorIdentity' xs
   applicativeComposition _ _ [] = Refl
   applicativeComposition xs gs1 (g2 :: gs2) = trans
-    (trans (foldrConcatEq (map ((.) g2) gs1) (foldr (\g, meth => map g gs1 ++ meth) [] (map (.) gs2 ++ [])) xs)
+    (trans
+      (foldrConcatEq (map ((.) g2) gs1) (foldr (\g, meth => map g gs1 ++ meth) [] (map (.) gs2 ++ [])) xs)
       (cong $ applicativeComposition xs gs1 gs2))
-    (sym $ cong {f=(++ foldr (\g, meth => map g (foldr (\g', meth' => map g' xs ++ meth') [] gs1) ++ meth) [] gs2)} $ foldrMapCombine xs gs1 g2)
+    (sym $
+      cong {f=(++ foldr (\g, meth => map g (foldr (\g', meth' => map g' xs ++ meth') [] gs1) ++ meth) [] gs2)} $
+        foldrMapCombine xs gs1 g2)
   applicativeHomomorphism x g = Refl
   applicativeInterchange x [] = Refl
   applicativeInterchange x (g :: gs) = cong $ applicativeInterchange x gs
@@ -214,16 +201,18 @@ VerifiedMonad Maybe where
 VerifiedMonad List where
   monadApplicative [] _ = Refl
   monadApplicative (x :: xs) [] = Refl
-  monadApplicative (g :: gs) xs = listConcatEq (mapFoldrEq g xs) (monadApplicative gs xs) where
+  monadApplicative (g :: gs) xs = appendCong2 (mapFoldrEq g xs) (monadApplicative gs xs) where
     mapFoldrEq : (f : a -> b) -> (x : List a) -> map f x = foldr (\x1, meth => f x1 :: meth) [] x
     mapFoldrEq _ [] = Refl
     mapFoldrEq f (_ :: x) = cong $ mapFoldrEq f x
-  monadLeftIdentity x f = listConcatEmptyEq (f x)
+  monadLeftIdentity x f = appendNilRightNeutral (f x)
   monadRightIdentity [] = Refl
   monadRightIdentity (x :: xs) = cong $ monadRightIdentity xs
   monadAssociativity [] _ _ = Refl
-  monadAssociativity (x :: xs) g1 g2 = trans (foldrConcatEq' (g1 x) (foldr (\x1, meth => g1 x1 ++ meth) [] xs) g2)
-                                       (cong $ monadAssociativity xs g1 g2)
+  monadAssociativity (x :: xs) g1 g2 =
+    trans
+      (foldrConcatEq' (g1 x) (foldr (\x1, meth => g1 x1 ++ meth) [] xs) g2)
+      (cong $ monadAssociativity xs g1 g2)
 
 interface Semigroup a => VerifiedSemigroup a where
   semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
