@@ -1,3 +1,10 @@
+# New in next release
+
+## Tool updates
++ Fixes for building with GHC 8.6
++ Fix for megaparsec update
+
+
 # New in 1.3.0
 
 ## Language updates
