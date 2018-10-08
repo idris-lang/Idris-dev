@@ -83,7 +83,7 @@ For those new to the project:
 2. Clone your fork to your local machine:
 
 ```
-$ git clone git@github.com/<your github user name>/Idris-dev.git
+$ git clone git@github.com:<your github user name>/Idris-dev.git
 ```
 
 3. Add `idris-lang/Idris-dev` as a remote upstream
