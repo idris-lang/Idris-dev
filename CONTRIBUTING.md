@@ -33,7 +33,7 @@ Try as closely as possible to describe the issue, ensuring that it has sections 
 In addition, please attach complete source files that exhibit the issue to quoting from them in the issue.
 
 ### Feature Requests
-We would be delighted to receive feature requests only if they are feasible to implement and the author is willing to implement the suggested features themself. The current Idris developer team consists mostly of volunteers, and so it is unfortunately hard to accommodate implementing nice-to-have ideas that are not essential for core language development.
+We don't use the issue tracker for feature requests. There are far more ideas than there are people working on Idris. Please use the mailing list or IRC. We will try our best to get back to you, but realistically the best way to make something happen is to do it.
 
 ## The Campsite Rule
 
