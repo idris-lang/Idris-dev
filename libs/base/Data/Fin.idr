@@ -16,6 +16,9 @@ implementation Uninhabited (Fin Z) where
   uninhabited FZ impossible
   uninhabited (FS f) impossible
 
+implementation Singleton (Fin (S Z)) where
+  single FZ FZ = Refl
+  
 FSInjective : (m : Fin k) -> (n : Fin k) -> FS m = FS n -> m = n
 FSInjective left _ Refl = Refl
 
