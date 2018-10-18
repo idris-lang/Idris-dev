@@ -59,6 +59,9 @@ data NonEmpty : (xs : List a) -> Type where
 Uninhabited (NonEmpty []) where
   uninhabited IsNonEmpty impossible
 
+Singleton (NonEmpty xs) where
+  single IsNonEmpty IsNonEmpty = Refl
+
 ||| Decide whether a list is non-empty
 nonEmpty : (xs : List a) -> Dec (NonEmpty xs)
 nonEmpty [] = No absurd

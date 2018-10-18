@@ -39,4 +39,5 @@ modules = Builtins
         , Prelude.Strings
         , Prelude.Traversable
         , Prelude.Uninhabited
+        , Prelude.Singleton
         , Prelude.WellFounded

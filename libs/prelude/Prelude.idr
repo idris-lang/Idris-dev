@@ -21,6 +21,7 @@ import public Prelude.Chars
 import public Prelude.Traversable
 import public Prelude.Bits
 import public Prelude.Uninhabited
+import public Prelude.Singleton
 import public Prelude.Pairs
 import public Prelude.Stream
 import public Prelude.Providers

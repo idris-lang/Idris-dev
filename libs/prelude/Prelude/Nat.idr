@@ -7,6 +7,7 @@ import Prelude.Basics
 import Prelude.Bool
 import Prelude.Cast
 import Prelude.Interfaces
+import Prelude.Singleton
 import Prelude.Uninhabited
 
 %access public export
@@ -121,6 +122,10 @@ data LTE  : (n, m : Nat) -> Type where
   LTEZero : LTE Z    right
   ||| If n <= m, then n + 1 <= m + 1
   LTESucc : LTE left right -> LTE (S left) (S right)
+
+Singleton (LTE m n) where
+  single {m=Z} LTEZero LTEZero = Refl
+  single {m=S _} (LTESucc x) (LTESucc y) = cong $ single x y
 
 Uninhabited (LTE (S n) Z) where
   uninhabited LTEZero impossible
