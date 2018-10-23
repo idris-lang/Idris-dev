@@ -12,7 +12,8 @@ Maintainer  : The Idris Community.
 
 module Idris.IBC (loadIBC, loadPkgIndex,
                   writeIBC, writePkgIndex,
-                  hasValidIBCVersion, IBCPhase(..)) where
+                  hasValidIBCVersion, IBCPhase(..), 
+                  getIBCHash, getImportHashes) where
 
 import Idris.AbsSyntax
 import Idris.Core.CaseTree
@@ -40,7 +41,7 @@ import System.Directory
 import System.FilePath
 
 ibcVersion :: Word16
-ibcVersion = 165
+ibcVersion = 166
 
 -- | When IBC is being loaded - we'll load different things (and omit
 -- different structures/definitions) depending on which phase we're in.
@@ -50,6 +51,7 @@ data IBCPhase = IBC_Building  -- ^ when building the module tree
 
 data IBCFile = IBCFile {
     ver                        :: Word16
+  , iface_hash                 :: Int
   , sourcefile                 :: FilePath
   , ibc_imports                :: ![(Bool, FilePath)]
   , ibc_importdirs             :: ![FilePath]
@@ -101,6 +103,7 @@ data IBCFile = IBCFile {
   , ibc_fragile                :: ![(Name, String)]
   , ibc_constraints            :: ![(FC, UConstraint)]
   , ibc_langexts               :: ![LanguageExt]
+  , ibc_importhashes           :: ![(FilePath, Int)]
   }
   deriving Show
 {-!
@@ -108,7 +111,7 @@ deriving instance Binary IBCFile
 !-}
 
 initIBC :: IBCFile
-initIBC = IBCFile ibcVersion "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] [] []
+initIBC = IBCFile ibcVersion 0 "" [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] [] Nothing [] [] [] [] [] [] [] [] [] [] [] []
 
 hasValidIBCVersion :: FilePath -> Idris Bool
 hasValidIBCVersion fp = do
@@ -143,6 +146,21 @@ loadIBC reexport phase fp
                                 else unhide phase fp archive
                             addImported reexport fp
 
+getIBCHash :: FilePath -> Idris Int
+getIBCHash fp
+    = do archiveFile <- runIO $ B.readFile fp
+         case toArchiveOrFail archiveFile of
+              Left _ -> return 0
+              Right archive -> getEntry 0 "iface_hash" archive
+                    
+
+getImportHashes :: FilePath -> Idris [(FilePath, Int)]
+getImportHashes fp
+    = do archiveFile <- runIO $ B.readFile fp
+         case toArchiveOrFail archiveFile of
+              Left _ -> return []
+              Right archive -> getEntry [] "ibc_importhashes" archive
+
 -- | Load an entire package from its index file
 loadPkgIndex :: PkgName -> Idris ()
 loadPkgIndex pkg = do ddir <- runIO getIdrisLibDir
@@ -159,6 +177,7 @@ makeEntry name val = if L.null val
 
 entries :: IBCFile -> [Entry]
 entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
+                       Just $ toEntry "iface_hash" 0 (encode $ iface_hash i),
                        makeEntry "sourcefile"  (sourcefile i),
                        makeEntry "ibc_imports"  (ibc_imports i),
                        makeEntry "ibc_importdirs"  (ibc_importdirs i),
@@ -208,7 +227,8 @@ entries i = catMaybes [Just $ toEntry "ver" 0 (encode $ ver i),
                        makeEntry "ibc_injective"  (ibc_injective i),
                        makeEntry "ibc_access"  (ibc_access i),
                        makeEntry "ibc_fragile" (ibc_fragile i),
-                       makeEntry "ibc_langexts" (ibc_langexts i)]
+                       makeEntry "ibc_langexts" (ibc_langexts i),
+                       makeEntry "ibc_importhashes" (ibc_importhashes i)]
 -- TODO: Put this back in shortly after minimising/pruning constraints
 --                        makeEntry "ibc_constraints" (ibc_constraints i)]
 
@@ -223,13 +243,60 @@ writeIBC src f
          iReport 2 $ "Writing IBC for: " ++ show f
          i <- getIState
          resetNameIdx
-         ibcf <- mkIBC (ibc_write i) (initIBC { sourcefile = src,
-                                                ibc_langexts = idris_language_extensions i })
+         ibc_data <- mkIBC (ibc_write i) (initIBC { sourcefile = src,
+                                                    ibc_langexts = idris_language_extensions i })
+         let ibcf = ibc_data { iface_hash = calculateHash i ibc_data }
+         logIBC 5 $ "Hash for " ++ show f ++ " = " ++ show (iface_hash ibcf)
          idrisCatch (do runIO $ createDirectoryIfMissing True (dropFileName f)
                         writeArchive f ibcf
                         logIBC 2 "Written")
             (\c -> do logIBC 2 $ "Failed " ++ pshow i c)
          return ()
+
+qhash :: Int -> String -> Int
+qhash hash [] = abs hash `mod` 0xffffffff
+qhash hash (x:xs) = qhash (hash * 33 + fromIntegral (fromEnum x)) xs
+
+hashTerm :: Term -> Int
+hashTerm t = qhash 5381 (show t)
+            
+hashName :: Name -> Int
+hashName n = qhash 5381 (show n)
+
+calculateHash :: IState -> IBCFile -> Int
+calculateHash ist f 
+    = let acc = L.filter exported (ibc_access f) in
+          mkHashFrom (map fst acc) (getDefs acc)
+  where
+    mkHashFrom :: [Name] -> [Term] -> Int
+    mkHashFrom ns tms = sum (map hashName ns) + sum (map hashTerm tms)
+
+    exported (_, Public) = True
+    exported (_, Frozen) = True
+    exported _ = False
+
+    findTms :: [(a, Term, Term)] -> [Term]
+    findTms = L.concatMap (\ (_, x, y) -> [x, y]) 
+
+    patDef :: Name -> [Term]
+    patDef n
+        = case lookupCtxtExact n (idris_patdefs ist) of
+               Nothing -> []
+               Just (tms, _) -> findTms tms
+
+    getDefs :: [(Name, Accessibility)] -> [Term]
+    getDefs [] = []
+    getDefs ((n, Public) : ns)
+        = let ts = getDefs ns in
+              case lookupTyExact n (tt_ctxt ist) of
+                   Nothing -> ts
+                   Just ty -> ty : patDef n ++ ts
+    getDefs ((n, Frozen) : ns)
+        = let ts = getDefs ns in
+              case lookupTyExact n (tt_ctxt ist) of
+                   Nothing -> ts
+                   Just ty -> ty : ts
+    getDefs (_ : ns) = getDefs ns
 
 -- | Write a package index containing all the imports in the current
 -- IState Used for ':search' of an entire package, to ensure
@@ -347,6 +414,7 @@ ibc i (IBCAutoHint n h) f = return f { ibc_autohints = (n, h) : ibc_autohints f 
 ibc i (IBCDeprecate n r) f = return f { ibc_deprecated = (n, r) : ibc_deprecated f }
 ibc i (IBCFragile n r)   f = return f { ibc_fragile    = (n,r)  : ibc_fragile f }
 ibc i (IBCConstraint fc u)  f = return f { ibc_constraints = (fc, u) : ibc_constraints f }
+ibc i (IBCImportHash fn h) f = return f { ibc_importhashes = (fn, h) : ibc_importhashes f }
 
 getEntry :: (Binary b, NFData b) => b -> FilePath -> Archive -> Idris b
 getEntry alt f a = case findEntryByPath f a of

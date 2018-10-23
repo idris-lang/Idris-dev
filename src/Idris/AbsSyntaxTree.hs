@@ -392,6 +392,7 @@ data IBCWrite = IBCFix FixDecl
               | IBCDeprecate Name String
               | IBCFragile Name String
               | IBCConstraint FC UConstraint
+              | IBCImportHash FilePath Int
   deriving (Show, Generic)
 
 initialInteractiveOpts :: InteractiveOpts

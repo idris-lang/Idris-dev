@@ -55,7 +55,7 @@ import Data.Maybe
 import Data.Ord
 import qualified Data.Set as S
 import qualified Data.Text as T
-import qualified System.Directory as Dir (makeAbsolute)
+import qualified System.Directory as Dir (makeAbsolute, getModificationTime, doesFileExist)
 import System.FilePath
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
@@ -1640,162 +1640,196 @@ loadSource' lidr r maxline
 {-| Load Idris source code-}
 loadSource :: Bool -> FilePath -> Maybe Int -> Idris ()
 loadSource lidr f toline
-             = do logParser 1 ("Reading " ++ f)
-                  iReport   2 ("Reading " ++ f)
-                  i <- getIState
-                  let def_total = default_total i
-                  file_in <- runIO $ readSource f
-                  file <- if lidr then tclift $ unlit f file_in else return file_in
-                  (mdocs, mname, imports_in, pos) <- parseImports f file
-                  ai <- getAutoImports
-                  let imports = map (\n -> ImportInfo True n Nothing [] NoFC NoFC) ai ++ imports_in
-                  ids <- rankedImportDirs f
-                  ibcsd <- valIBCSubDir i
-                  mapM_ (\(re, f, ns, nfc) ->
-                               do fp <- findImport ids ibcsd f
-                                  case fp of
-                                      LIDR fn -> ifail $ "No ibc for " ++ f
-                                      IDR fn -> ifail $ "No ibc for " ++ f
-                                      IBC fn src ->
-                                        do loadIBC True IBC_Building fn
-                                           let srcFn = case src of
-                                                         IDR fn -> Just fn
-                                                         LIDR fn -> Just fn
-                                                         _ -> Nothing
-                                           srcFnAbs <- case srcFn of
-                                                         Just fn -> fmap Just (runIO $ Dir.makeAbsolute fn)
-                                                         Nothing -> return Nothing
-                                           sendHighlighting $ S.fromList [(FC' nfc, AnnNamespace ns srcFnAbs)])
-                        [(re, fn, ns, nfc) | ImportInfo re fn _ ns _ nfc <- imports]
-                  reportParserWarnings
-                  sendParserHighlighting
+     = do logParser 1 ("Reading " ++ f)
+          iReport   2 ("Reading " ++ f)
+          i <- getIState
+          let def_total = default_total i
+          file_in <- runIO $ readSource f
+          file <- if lidr then tclift $ unlit f file_in else return file_in
+          (mdocs, mname, imports_in, pos) <- parseImports f file
+          ai <- getAutoImports
+          let imports = map (\n -> ImportInfo True n Nothing [] NoFC NoFC) ai ++ imports_in
+          ids <- rankedImportDirs f
+          ibcsd <- valIBCSubDir i
+          let ibc = ibcPathNoFallback ibcsd f
+          impHashes <- idrisCatch (getImportHashes ibc)
+                                  (\err -> return [])
+          newHashes <- mapM (\ (_, f, _, _) ->
+                         do fp <- findImport ids ibcsd f
+                            case fp of
+                                 IBC fn src ->
+                                   idrisCatch (do hash <- getIBCHash fn
+                                                  return (Just (fn, hash)))
+                                              (\err -> return Nothing)
+                                 _ -> return Nothing)
+                [(re, fn, ns, nfc) | ImportInfo re fn _ ns _ nfc <- imports]
 
-                  -- process and check module aliases
-                  let modAliases = M.fromList
-                        [ (prep alias, prep realName)
-                        | ImportInfo { import_reexport = reexport
-                                     , import_path = realName
-                                     , import_rename = Just (alias, _)
-                                     , import_location = fc } <- imports
-                        ]
-                      prep = map T.pack . reverse . Spl.splitOn [pathSeparator]
-                      aliasNames = [ (alias, fc)
-                                   | ImportInfo { import_rename = Just (alias, fc)
-                                                } <- imports
-                                   ]
-                      histogram = groupBy ((==) `on` fst) . sortBy (comparing fst) $ aliasNames
-                  case map head . filter ((/= 1) . length) $ histogram of
-                    []       -> logParser 3 $ "Module aliases: " ++ show (M.toList modAliases)
-                    (n,fc):_ -> throwError . At fc . Msg $ "import alias not unique: " ++ show n
+          fmod <- liftIO $ Dir.getModificationTime f
+          ibcexists <- liftIO $ Dir.doesFileExist ibc
+          ibcmod <- if ibcexists
+                       then liftIO $ Dir.getModificationTime ibc
+                       else return fmod
 
-                  i <- getIState
-                  putIState (i { default_access = Private, module_aliases = modAliases })
-                  clearIBC -- start a new .ibc file
-                  -- record package info in .ibc
-                  imps <- allImportDirs
-                  mapM_ addIBC (map IBCImportDir imps)
-                  mapM_ (addIBC . IBCImport)
-                    [ (reexport, realName)
+          logParser 10 $ ibc ++ " " ++ show ibcmod
+          logParser 10 $ f ++ " " ++ show fmod
+          logParser 10 $ show impHashes ++ "\n" ++ show newHashes
+
+          -- If the ibc is newer than the source, and the old import
+          -- hashes are the same as the ones we've just read,
+          -- quit and just load the IBC
+
+          let needLoad = (ibcmod <= fmod) || 
+                         (sort impHashes /= sort (mapMaybe id newHashes))
+
+          if not needLoad
+             then iReport 1 $ "Loading " ++ f
+             else do
+              mapM_ (\ (re, f, ns, nfc) ->
+                           do fp <- findImport ids ibcsd f
+                              case fp of
+                                  LIDR fn -> ifail $ "No ibc for " ++ f
+                                  IDR fn -> ifail $ "No ibc for " ++ f
+                                  IBC fn src ->
+                                    do loadIBC True IBC_Building fn
+                                       let srcFn = case src of
+                                                     IDR fn -> Just fn
+                                                     LIDR fn -> Just fn
+                                                     _ -> Nothing
+                                       srcFnAbs <- case srcFn of
+                                                     Just fn -> fmap Just (runIO $ Dir.makeAbsolute fn)
+                                                     Nothing -> return Nothing
+                                       sendHighlighting $ S.fromList [(FC' nfc, AnnNamespace ns srcFnAbs)])
+                    [(re, fn, ns, nfc) | ImportInfo re fn _ ns _ nfc <- imports]
+              reportParserWarnings
+              sendParserHighlighting
+
+              -- process and check module aliases
+              let modAliases = M.fromList
+                    [ (prep alias, prep realName)
                     | ImportInfo { import_reexport = reexport
                                  , import_path = realName
-                                 } <- imports
+                                 , import_rename = Just (alias, _)
+                                 , import_location = fc } <- imports
                     ]
-                  let syntax = defaultSyntax{ syn_namespace = reverse mname,
-                                              maxline = toline }
-                  ist <- getIState
-                  -- Save the span from parsing the module header, because
-                  -- an empty program parse might obliterate it.
-                  let oldSpan = idris_parsedSpan ist
-                  ds' <- parseProg syntax f file pos
+                  prep = map T.pack . reverse . Spl.splitOn [pathSeparator]
+                  aliasNames = [ (alias, fc)
+                               | ImportInfo { import_rename = Just (alias, fc)
+                                            } <- imports
+                               ]
+                  histogram = groupBy ((==) `on` fst) . sortBy (comparing fst) $ aliasNames
+              case map head . filter ((/= 1) . length) $ histogram of
+                []       -> logParser 3 $ "Module aliases: " ++ show (M.toList modAliases)
+                (n,fc):_ -> throwError . At fc . Msg $ "import alias not unique: " ++ show n
 
-                  case (ds', oldSpan) of
-                    ([], Just fc) ->
-                      -- If no program elements were parsed, we dind't
-                      -- get a loaded region in the IBC file. That
-                      -- means we need to add it back.
-                      do ist <- getIState
-                         putIState ist { idris_parsedSpan = oldSpan
-                                       , ibc_write = IBCParsedRegion fc :
-                                                     ibc_write ist
-                                       }
-                    _ -> return ()
-                  sendParserHighlighting
+              i <- getIState
+              putIState (i { default_access = Private, module_aliases = modAliases })
+              clearIBC -- start a new .ibc file
+              mapM_ addIBC (map (\ (f, h) -> IBCImportHash f h) 
+                                (mapMaybe id newHashes))
+              -- record package info in .ibc
+              imps <- allImportDirs
+              mapM_ addIBC (map IBCImportDir imps)
+              mapM_ (addIBC . IBCImport)
+                [ (reexport, realName)
+                | ImportInfo { import_reexport = reexport
+                             , import_path = realName
+                             } <- imports
+                ]
+              let syntax = defaultSyntax{ syn_namespace = reverse mname,
+                                          maxline = toline }
+              ist <- getIState
+              -- Save the span from parsing the module header, because
+              -- an empty program parse might obliterate it.
+              let oldSpan = idris_parsedSpan ist
+              ds' <- parseProg syntax f file pos
 
-                  -- Parsing done, now process declarations
+              case (ds', oldSpan) of
+                ([], Just fc) ->
+                  -- If no program elements were parsed, we dind't
+                  -- get a loaded region in the IBC file. That
+                  -- means we need to add it back.
+                  do ist <- getIState
+                     putIState ist { idris_parsedSpan = oldSpan
+                                   , ibc_write = IBCParsedRegion fc :
+                                                 ibc_write ist
+                                   }
+                _ -> return ()
+              sendParserHighlighting
 
-                  let ds = namespaces mname ds'
-                  logParser 3 (show $ showDecls verbosePPOption ds)
-                  i <- getIState
-                  logLvl 10 (show (toAlist (idris_implicits i)))
-                  logLvl 3 (show (idris_infixes i))
-                  -- Now add all the declarations to the context
-                  iReport 1 $ "Type checking " ++ f
-                  -- we totality check after every Mutual block, so if
-                  -- anything is a single definition, wrap it in a
-                  -- mutual block on its own
-                  elabDecls (toplevelWith f) (map toMutual ds)
-                  i <- getIState
-                  -- simplify every definition do give the totality checker
-                  -- a better chance
-                  mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
-                                  ctxt' <-
-                                    do ctxt <- getContext
-                                       tclift $ simplifyCasedef n [] [] (getErasureInfo i) ctxt
-                                  setContext ctxt')
-                           (map snd (idris_totcheck i))
-                  -- build size change graph from simplified definitions
-                  iReport 3 $ "Totality checking " ++ f
-                  logLvl 1 $ "Totality checking " ++ f
-                  i <- getIState
-                  mapM_ buildSCG (idris_totcheck i)
-                  mapM_ checkDeclTotality (idris_totcheck i)
-                  mapM_ verifyTotality (idris_totcheck i)
+              -- Parsing done, now process declarations
 
-                  -- Redo totality check for deferred names
-                  let deftots = idris_defertotcheck i
-                  logLvl 2 $ "Totality checking " ++ show deftots
-                  mapM_ (\x -> do tot <- getTotality x
-                                  case tot of
-                                       Total _ ->
-                                         do let opts = case lookupCtxtExact x (idris_flags i) of
-                                                          Just os -> os
-                                                          Nothing -> []
-                                            when (AssertTotal `notElem` opts) $
-                                                setTotality x Unchecked
-                                       _ -> return ()) (map snd deftots)
-                  mapM_ buildSCG deftots
-                  mapM_ checkDeclTotality deftots
+              let ds = namespaces mname ds'
+              logParser 3 (show $ showDecls verbosePPOption ds)
+              i <- getIState
+              logLvl 10 (show (toAlist (idris_implicits i)))
+              logLvl 3 (show (idris_infixes i))
+              -- Now add all the declarations to the context
+              iReport 1 $ "Type checking " ++ f
+              -- we totality check after every Mutual block, so if
+              -- anything is a single definition, wrap it in a
+              -- mutual block on its own
+              elabDecls (toplevelWith f) (map toMutual ds)
+              i <- getIState
+              -- simplify every definition do give the totality checker
+              -- a better chance
+              mapM_ (\n -> do logLvl 5 $ "Simplifying " ++ show n
+                              ctxt' <-
+                                do ctxt <- getContext
+                                   tclift $ simplifyCasedef n [] [] (getErasureInfo i) ctxt
+                              setContext ctxt')
+                       (map snd (idris_totcheck i))
+              -- build size change graph from simplified definitions
+              iReport 3 $ "Totality checking " ++ f
+              logLvl 1 $ "Totality checking " ++ f
+              i <- getIState
+              mapM_ buildSCG (idris_totcheck i)
+              mapM_ checkDeclTotality (idris_totcheck i)
+              mapM_ verifyTotality (idris_totcheck i)
 
-                  logLvl 1 ("Finished " ++ f)
-                  ibcsd <- valIBCSubDir i
-                  logLvl  1 $ "Universe checking " ++ f
-                  iReport 3 $ "Universe checking " ++ f
-                  iucheck
-                  let ibc = ibcPathNoFallback ibcsd f
-                  i <- getIState
-                  addHides (hide_list i)
+              -- Redo totality check for deferred names
+              let deftots = idris_defertotcheck i
+              logLvl 2 $ "Totality checking " ++ show deftots
+              mapM_ (\x -> do tot <- getTotality x
+                              case tot of
+                                   Total _ ->
+                                     do let opts = case lookupCtxtExact x (idris_flags i) of
+                                                      Just os -> os
+                                                      Nothing -> []
+                                        when (AssertTotal `notElem` opts) $
+                                            setTotality x Unchecked
+                                   _ -> return ()) (map snd deftots)
+              mapM_ buildSCG deftots
+              mapM_ checkDeclTotality deftots
 
-                  -- Save module documentation if applicable
-                  i <- getIState
-                  case mdocs of
-                    Nothing   -> return ()
-                    Just docs -> addModDoc syntax mname docs
+              logLvl 1 ("Finished " ++ f)
+              ibcsd <- valIBCSubDir i
+              logLvl  1 $ "Universe checking " ++ f
+              iReport 3 $ "Universe checking " ++ f
+              iucheck
+              i <- getIState
+              addHides (hide_list i)
+
+              -- Save module documentation if applicable
+              i <- getIState
+              case mdocs of
+                Nothing   -> return ()
+                Just docs -> addModDoc syntax mname docs
 
 
-                  -- Finally, write an ibc and highlights if checking was successful
-                  ok <- noErrors
-                  when ok $
-                    do idrisCatch (do writeIBC f ibc; clearIBC)
-                                  (\c -> return ()) -- failure is harmless
-                       hl <- getDumpHighlighting
-                       when hl $
-                         idrisCatch (writeHighlights f)
-                                    (const $ return ()) -- failure is harmless
-                  clearHighlights
-                  i <- getIState
-                  putIState (i { default_total = def_total,
-                                 hide_list = emptyContext })
-                  return ()
+              -- Finally, write an ibc and highlights if checking was successful
+              ok <- noErrors
+              when ok $
+                do idrisCatch (do writeIBC f ibc; clearIBC)
+                              (\c -> return ()) -- failure is harmless
+                   hl <- getDumpHighlighting
+                   when hl $
+                     idrisCatch (writeHighlights f)
+                                (const $ return ()) -- failure is harmless
+              clearHighlights
+              i <- getIState
+              putIState (i { default_total = def_total,
+                             hide_list = emptyContext })
+              return ()
   where
     namespaces :: [String] -> [PDecl] -> [PDecl]
     namespaces []     ds = ds
