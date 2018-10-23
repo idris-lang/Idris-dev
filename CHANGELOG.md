@@ -1,9 +1,9 @@
-# New in next release
+# New in 1.3.1
 
 ## Tool updates
 + Fixes for building with GHC 8.6
 + Fix for megaparsec update
-
++ Some fixes for memory allocation issues in the C back end
 
 # New in 1.3.0
 
