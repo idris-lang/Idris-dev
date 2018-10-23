@@ -55,7 +55,8 @@ import Data.Maybe
 import Data.Ord
 import qualified Data.Set as S
 import qualified Data.Text as T
-import qualified System.Directory as Dir (makeAbsolute, getModificationTime, doesFileExist)
+import qualified System.Directory as Dir (doesFileExist, getModificationTime,
+                                          makeAbsolute)
 import System.FilePath
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
@@ -1678,7 +1679,7 @@ loadSource lidr f toline
           -- hashes are the same as the ones we've just read,
           -- quit and just load the IBC
 
-          let needLoad = (ibcmod <= fmod) || 
+          let needLoad = (ibcmod <= fmod) ||
                          (sort impHashes /= sort (mapMaybe id newHashes))
 
           if not needLoad
@@ -1724,7 +1725,7 @@ loadSource lidr f toline
               i <- getIState
               putIState (i { default_access = Private, module_aliases = modAliases })
               clearIBC -- start a new .ibc file
-              mapM_ addIBC (map (\ (f, h) -> IBCImportHash f h) 
+              mapM_ addIBC (map (\ (f, h) -> IBCImportHash f h)
                                 (mapMaybe id newHashes))
               -- record package info in .ibc
               imps <- allImportDirs

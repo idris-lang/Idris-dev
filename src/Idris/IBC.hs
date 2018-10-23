@@ -12,7 +12,7 @@ Maintainer  : The Idris Community.
 
 module Idris.IBC (loadIBC, loadPkgIndex,
                   writeIBC, writePkgIndex,
-                  hasValidIBCVersion, IBCPhase(..), 
+                  hasValidIBCVersion, IBCPhase(..),
                   getIBCHash, getImportHashes) where
 
 import Idris.AbsSyntax
@@ -152,7 +152,7 @@ getIBCHash fp
          case toArchiveOrFail archiveFile of
               Left _ -> return 0
               Right archive -> getEntry 0 "iface_hash" archive
-                    
+
 
 getImportHashes :: FilePath -> Idris [(FilePath, Int)]
 getImportHashes fp
@@ -259,12 +259,12 @@ qhash hash (x:xs) = qhash (hash * 33 + fromIntegral (fromEnum x)) xs
 
 hashTerm :: Term -> Int
 hashTerm t = qhash 5381 (show t)
-            
+
 hashName :: Name -> Int
 hashName n = qhash 5381 (show n)
 
 calculateHash :: IState -> IBCFile -> Int
-calculateHash ist f 
+calculateHash ist f
     = let acc = L.filter exported (ibc_access f) in
           mkHashFrom (map fst acc) (getDefs acc)
   where
@@ -276,7 +276,7 @@ calculateHash ist f
     exported _ = False
 
     findTms :: [(a, Term, Term)] -> [Term]
-    findTms = L.concatMap (\ (_, x, y) -> [x, y]) 
+    findTms = L.concatMap (\ (_, x, y) -> [x, y])
 
     patDef :: Name -> [Term]
     patDef n
