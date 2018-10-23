@@ -1683,8 +1683,9 @@ loadSource lidr f toline
                          (sort impHashes /= sort (mapMaybe id newHashes))
 
           if not needLoad
-             then iReport 1 $ "Loading " ++ f
+             then pure ()
              else do
+              iReport 1 $ "Type checking " ++ f
               mapM_ (\ (re, f, ns, nfc) ->
                            do fp <- findImport ids ibcsd f
                               case fp of
@@ -1765,7 +1766,6 @@ loadSource lidr f toline
               logLvl 10 (show (toAlist (idris_implicits i)))
               logLvl 3 (show (idris_infixes i))
               -- Now add all the declarations to the context
-              iReport 1 $ "Type checking " ++ f
               -- we totality check after every Mutual block, so if
               -- anything is a single definition, wrap it in a
               -- mutual block on its own

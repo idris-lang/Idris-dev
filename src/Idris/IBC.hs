@@ -257,11 +257,11 @@ qhash :: Int -> String -> Int
 qhash hash [] = abs hash `mod` 0xffffffff
 qhash hash (x:xs) = qhash (hash * 33 + fromIntegral (fromEnum x)) xs
 
-hashTerm :: Term -> Int
-hashTerm t = qhash 5381 (show t)
+hashTerm :: Int -> Term -> Int
+hashTerm i t = qhash (i * 5381) (show t)
 
-hashName :: Name -> Int
-hashName n = qhash 5381 (show n)
+hashName :: Int -> Name -> Int
+hashName i n = qhash (i * 5381) (show n)
 
 calculateHash :: IState -> IBCFile -> Int
 calculateHash ist f
@@ -269,7 +269,8 @@ calculateHash ist f
           mkHashFrom (map fst acc) (getDefs acc)
   where
     mkHashFrom :: [Name] -> [Term] -> Int
-    mkHashFrom ns tms = sum (map hashName ns) + sum (map hashTerm tms)
+    mkHashFrom ns tms = sum (L.zipWith hashName [1..] ns) + 
+                        sum (L.zipWith hashTerm [1..] tms)
 
     exported (_, Public) = True
     exported (_, Frozen) = True
