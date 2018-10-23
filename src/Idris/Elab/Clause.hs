@@ -720,12 +720,9 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
                                                        [] (constraintNS info) fc id [] lhs_tm
                                else return (lhs_tm, lhs_ty)
         let clhs = normalise ctxt [] clhs_c
-        let borrowed = borrowedNames [] clhs
-
         -- These are the names we're not allowed to use on the RHS, because
         -- they're UniqueTypes and borrowed from another function.
-        when (not (null borrowed)) $
-          logElab 5 ("Borrowed names on LHS: " ++ show borrowed)
+        let borrowed = borrowedNames [] clhs
 
         logElab 3 ("Normalised LHS: " ++ showTmImpls (delabMV i clhs))
 
