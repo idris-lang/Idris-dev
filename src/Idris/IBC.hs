@@ -269,7 +269,7 @@ calculateHash ist f
           mkHashFrom (map fst acc) (getDefs acc)
   where
     mkHashFrom :: [Name] -> [Term] -> Int
-    mkHashFrom ns tms = sum (L.zipWith hashName [1..] ns) + 
+    mkHashFrom ns tms = sum (L.zipWith hashName [1..] ns) +
                         sum (L.zipWith hashTerm [1..] tms)
 
     exported (_, Public) = True
