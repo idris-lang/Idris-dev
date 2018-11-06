@@ -30,10 +30,12 @@ data CGI : Type -> Type where
 getAction : CGI a -> CGIInfo -> IO (a, CGIInfo)
 getAction (MkCGI act) = act
 
+export
 implementation Functor CGI where
     map f (MkCGI c) = MkCGI (\s => do (a, i) <- c s
                                       pure (f a, i))
 
+export
 implementation Applicative CGI where
     pure v = MkCGI (\s => pure (v, s))
 
@@ -41,6 +43,7 @@ implementation Applicative CGI where
                                               (c, j) <- b i
                                               pure (f c, j))
 
+export
 implementation Monad CGI where
     (>>=) (MkCGI f) k = MkCGI (\s => do v <- f s
                                         getAction (k (fst v)) (snd v))
