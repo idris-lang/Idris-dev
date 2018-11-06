@@ -70,6 +70,7 @@ modules = CFFI
 
         , Interfaces.Correlative
         , Interfaces.Verified
+        , Interfaces.Proposition
 
         , Language.JSON
         , Language.JSON.Data
