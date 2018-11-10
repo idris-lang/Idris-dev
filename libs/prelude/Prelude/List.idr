@@ -861,6 +861,12 @@ catMaybes (x::xs) =
 -- Properties
 --------------------------------------------------------------------------------
 
+Uninhabited ([] = _ :: _) where
+  uninhabited Refl impossible
+
+Uninhabited (_ :: _ = []) where
+  uninhabited Refl impossible
+
 ||| (::) is injective
 consInjective : {x : a} -> {xs : List a} -> {y : b} -> {ys : List b} ->
                 (x :: xs) = (y :: ys) -> (x = y, xs = ys)
