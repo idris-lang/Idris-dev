@@ -161,14 +161,14 @@ hexDigits : Lexer
 hexDigits = some hexDigit
 
 ||| Recognise a single octal digit
-||| /[0-8]/
+||| /[0-7]/
 octDigit : Lexer
-octDigit = pred isHexDigit
+octDigit = pred isOctDigit
 
 ||| Recognise one or more octal digits
-||| /[0-8]+/
+||| /[0-7]+/
 octDigits : Lexer
-octDigits = some hexDigit
+octDigits = some octDigit
 
 ||| Recognise a single alpha character
 ||| /[A-Za-z]/
