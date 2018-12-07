@@ -5,3 +5,17 @@ WithPatsNoWith.idr:4:1-13:
 When checking left hand side of foo:
 unexpected patterns outside of "with" block
 
+WithPatsNoWith.idr:9:3-16:
+  |
+9 |   foo2 n | 1 | 2 = True
+  |   ~~~~~~~~~~~~~~
+When checking left hand side of with block in WithPatsNoWith.foo2:
+unexpected extra "with" patterns
+
+WithPatsNoWith.idr:15:5-24:
+   |
+15 |     foo3 _ _ | 2 | 3 | 4 = True
+   |     ~~~~~~~~~~~~~~~~~~~~
+When checking left hand side of with block in with block in WithPatsNoWith.foo3:
+unexpected extra "with" patterns
+
