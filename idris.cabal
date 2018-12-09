@@ -270,7 +270,7 @@ Library
                 , BuildFlags_idris
 
   Build-depends:  base >=4 && <5
-                , aeson >= 0.6 && < 1.4
+                , aeson >= 0.6 && < 1.5
                 , annotated-wl-pprint >= 0.7 && < 0.8
                 , ansi-terminal < 0.9
                 , ansi-wl-pprint < 0.7
@@ -282,7 +282,7 @@ Library
                 , bytestring < 0.11
                 , cheapskate >= 0.1.1 && < 0.2
                 , code-page >= 0.1 && < 0.3
-                , containers >= 0.5 && < 0.6
+                , containers >= 0.5 && < 0.7
                 , deepseq < 1.5
                 , directory >= 1.2.2.0 && < 1.2.3.0 || > 1.2.3.0
                 , filepath < 1.5
