@@ -287,6 +287,10 @@ export
 mergeLeft : SortedMap k v -> SortedMap k v -> SortedMap k v
 mergeLeft = mergeWith const
 
+export
+(Show k, Show v) => Show (SortedMap k v) where
+   show m = "fromList " ++ (show $ toList m)
+
 -- TODO: is this the right variant of merge to use for this? I think it is, but
 -- I could also see the advantages of using `mergeLeft`. The current approach is
 -- strictly more powerful I believe, because `mergeLeft` can be emulated with
