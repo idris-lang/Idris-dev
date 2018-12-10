@@ -4,7 +4,10 @@ resolver: lts-11.14
 packages:
   - location: .
 
-extra-deps: []
+extra-deps:
+  - megaparsec-7.0.4
+  - parser-combinators-1.0.0
+
 
 flags:
   idris:

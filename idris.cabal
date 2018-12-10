@@ -289,10 +289,11 @@ Library
                 , fingertree >= 0.1.4.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
                 , ieee754 >= 0.7 && < 0.9
-                , megaparsec >= 6.2 && < 7
+                , megaparsec >= 7.0.4 && < 8
                 , mtl >= 2.1 && < 2.3
                 , network < 2.8
                 , optparse-applicative >= 0.13 && < 0.15
+                , parser-combinators >= 1.0.0
                 , pretty < 1.2
                 , process < 1.7
                 , regex-tdfa >= 1.2
