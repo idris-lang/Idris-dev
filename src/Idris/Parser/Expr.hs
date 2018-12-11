@@ -27,7 +27,7 @@ import Data.Maybe
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
 import qualified Text.Megaparsec.Char as P
-import qualified Text.Megaparsec.Expr as P
+import qualified Control.Monad.Combinators.Expr as P
 
 -- | Allow implicit type declarations
 allowImp :: SyntaxInfo -> SyntaxInfo
@@ -1406,7 +1406,7 @@ VerbatimString_t ::=
  -}
 verbatimStringLiteral :: Parsing m => m String
 verbatimStringLiteral = token $ do P.try $ string "\"\"\""
-                                   str <- P.manyTill P.anyChar $ P.try (string "\"\"\"")
+                                   str <- P.manyTill P.anySingle $ P.try (string "\"\"\"")
                                    moreQuotes <- P.many $ P.char '"'
                                    return $ str ++ moreQuotes
 
