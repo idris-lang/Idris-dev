@@ -23,8 +23,7 @@ import Data.List
 import Data.List.NonEmpty (fromList)
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
-import qualified Text.Megaparsec.Char as P
-import qualified Text.Megaparsec.Expr as P
+import qualified Control.Monad.Combinators.Expr as P
 
 -- | Creates table for fixity declarations to build expression parser
 -- using pre-build and user-defined operator/fixity declarations
