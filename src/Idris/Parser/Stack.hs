@@ -104,7 +104,7 @@ sourcePositionFC (P.SourcePos name line column) =
 -- This is useful when the position is needed in a way unrelated to the
 -- heirarchy of parsers.  Prefer using @withExtent@ and friends.
 getFC :: Parsing m => m FC
-getFC = sourcePositionFC <$> P.getPosition
+getFC = sourcePositionFC <$> P.getSourcePos
 
 -- | Add an extent (widen) our current parsing context.
 addExtent :: MonadWriter FC m => FC -> m ()
