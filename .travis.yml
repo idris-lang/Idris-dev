@@ -9,8 +9,8 @@ env:
 
 matrix:
   include:
-    - env: CABALVER="2.2" GHCVER="8.4.1" STACKVER="7.14" STYLISH=YES
-      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.1,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.2" GHCVER="8.4.4" STACKVER="7.14" STYLISH=YES
+      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.4,hscolour], sources: [hvr-ghc]}}
     - env: CABALVER="2.2" GHCVER="7.10.3" TESTS="test_c"
       compiler: ": #GHC 7.10.3"
       addons: {apt: {packages: [cabal-install-2.2,ghc-7.10.3,cppcheck,hscolour], sources: [hvr-ghc]}}
@@ -27,17 +27,15 @@ matrix:
     - env: CABALVER="2.0" GHCVER="8.2.2" TESTS="test_c"
       compiler: ": #GHC 8.2.2"
       addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
-#TODO: The idris built with those fails due to libffi dynamic linking version mismatch.
-#      Caused by the GHC backport to Trusty?
-#    - env: CABALVER="2.2" GHCVER="8.4.1" TESTS="lib_doc doc"
-#      compiler: ": #GHC 8.4.1"
-#      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.1,cppcheck,hscolour], sources: [hvr-ghc]}}
-#    - env: CABALVER="2.2" GHCVER="8.4.1" TESTS="test_js"
-#      compiler: ": #GHC 8.4.1"
-#      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.1,cppcheck,hscolour], sources: [hvr-ghc]}}
-#    - env: CABALVER="2.2" GHCVER="8.4.1" TESTS="test_c"
-#      compiler: ": #GHC 8.4.1"
-#      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.2" GHCVER="8.4.4" TESTS="lib_doc doc"
+      compiler: ": #GHC 8.4.4"
+      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.4,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.2" GHCVER="8.4.4" TESTS="test_js"
+      compiler: ": #GHC 8.4.4"
+      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.4,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.2" GHCVER="8.4.4" TESTS="test_c"
+      compiler: ": #GHC 8.4.4"
+      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.4,cppcheck,hscolour], sources: [hvr-ghc]}}
   fast-finish: true
 
 cache:
