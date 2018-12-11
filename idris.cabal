@@ -291,7 +291,7 @@ Library
                 , ieee754 >= 0.7 && < 0.9
                 , megaparsec >= 6.2 && < 7
                 , mtl >= 2.1 && < 2.3
-                , network < 2.8
+                , network >= 2.7 && < 2.9
                 , optparse-applicative >= 0.13 && < 0.15
                 , pretty < 1.2
                 , process < 1.7
