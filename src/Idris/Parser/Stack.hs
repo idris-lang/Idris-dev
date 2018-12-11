@@ -57,23 +57,24 @@ type Parsing m = (P.MonadParsec Void String m, MonadWriter FC m)
 runparser :: Parser st res -> st -> String -> String -> Either ParseError res
 runparser p i inputname s =
   case P.parse (runWriterT (evalStateT p i)) inputname s of
-    Left err -> Left $ ParseError s err
+    Left err -> Left $ ParseError err
     Right v  -> Right $ fst v
 
 {- * Parse errors -}
 
-data ParseError = ParseError String (P.ParseError (P.Token String) Void)
+newtype ParseError = ParseError (P.ParseErrorBundle String Void)
 
 instance Message ParseError where
-  messageExtent (ParseError _ err) = sourcePositionFC pos
+  messageExtent (ParseError err) = sourcePositionFC pos
     where
-      (pos NonEmpty.:| _) = P.errorPos err
-  messageText (ParseError _ err) = PP.text . init . P.parseErrorTextPretty $ err
-  messageSource (ParseError src _) = Just src
+      (pos, _) = P.reachOffsetNoLine (P.errorOffset err') (P.bundlePosState err)
+      err' = NonEmpty.head . P.bundleErrors $ err
+  messageText (ParseError err) = PP.text . init . P.errorBundlePretty $ err
+  messageSource (ParseError err) = Just . P.sourceName . P.pstateSourcePos . P.bundlePosState $ err
 
 -- | A fully formatted parse error, with caret and bar, etc.
 prettyError                    :: ParseError -> String
-prettyError (ParseError s err) = P.parseErrorPretty' s err
+prettyError (ParseError err) = P.errorBundlePretty err
 
 {- * Mark and restore -}
 
