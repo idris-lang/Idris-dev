@@ -202,7 +202,11 @@ jsStmt2Text (JsSwitchCase exp l d) =
     default2Text Nothing = ""
     default2Text (Just z) =
       T.concat ["default:\n", indent $ T.concat [jsStmt2Text z, ";\nbreak;\n"]]
-jsStmt2Text (JsError t) = T.concat ["throw new Error(  ", jsAst2Text t, ");"]
+jsStmt2Text (JsError t) =
+  T.concat
+    [ "console.error(", jsAst2Text t, ");\n"
+    , "process.exit(-1);"
+    ]
 jsStmt2Text (JsForever x) =
   T.concat ["for(;;) {\n", indent $ jsStmt2Text x, "}\n"]
 jsStmt2Text JsContinue = "continue;"
