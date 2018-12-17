@@ -7,5 +7,7 @@ $JSRTS.prim_systemInfo = function (index) {
     }
     return "";
 };
-$JSRTS.prim_writeStr = function (x) { return console.log(x) }
+$JSRTS.prim_writeStr = function (x) { return console.log(x) };
 $JSRTS.prim_readStr = function () { return prompt('Prelude.getLine') };
+
+$JSRTS.die = function (message) { throw new Error(message) };

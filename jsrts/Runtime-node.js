@@ -9,7 +9,7 @@ $JSRTS.prim_systemInfo = function (index) {
     }
     return "";
 };
-$JSRTS.prim_writeStr = function (x) { return process.stdout.write(x) }
+$JSRTS.prim_writeStr = function (x) { return process.stdout.write(x) };
 $JSRTS.prim_readStr = function () {
     var ret = '';
     var b = new Buffer(1024);
@@ -28,4 +28,9 @@ $JSRTS.prim_readStr = function () {
         }
     }
     return ret;
+};
+
+$JSRTS.die = function (message) {
+    console.error(message);
+    process.exit(-1);
 };
