@@ -272,7 +272,7 @@ reservedIdentifiers = HS.fromList
 identifierOrReserved :: Parsing m => m String
 identifierOrReserved = token $ P.try $ do
   c <- P.satisfy isAlpha <|> P.oneOf "_"
-  cs <- P.many (P.satisfy isAlphaNum <|> P.oneOf "_'.")
+  cs <- P.many (P.satisfy isAlphaNum <|> P.oneOf "_'-.")
   return $ c : cs
 
 char :: Parsing m => Char -> m Char
