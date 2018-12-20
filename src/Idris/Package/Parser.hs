@@ -122,7 +122,7 @@ pOptions = do
 pClause :: PParser ()
 pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "main" (iName []) (\st v -> st { idris_main = Just v })
-      <|> clause "sourcedir" identifier (\st v -> st { sourcedir = v })
+      <|> clause "sourcedir" (identifier <|> stringLiteral) (\st v -> st { sourcedir = v })
       <|> clause "opts" pOptions (\st v -> st { idris_opts = v ++ idris_opts st })
       <|> clause "pkgs" (commaSep (pPkgName <* someSpace)) (\st ps ->
              let pkgs = pureArgParser $ concatMap (\x -> ["-p", show x]) ps
