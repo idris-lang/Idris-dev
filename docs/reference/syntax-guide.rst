@@ -391,10 +391,10 @@ Totality
     covering
 
 Sets explicitly to which extent pattern matching is terminating and/or
-exhaustive. A partial pattern matching makes no assumption. A covering patterns
-matching ensures that pattern matching is exhaustive on its clauses.
-Furthermore, a total pattern matching enforces both exhaustivity and termination
-of the evaluation of its clauses.
+exhaustive. A ``partial`` pattern matching makes no assumption. A ``covering``
+pattern matching ensures that pattern matching is exhaustive on its clauses.
+Furthermore, a ``total`` pattern matching enforces both exhaustivity and
+termination of the evaluation of its clauses.
 
 Implicit Coercion
 ^^^^^^^^^^^^^^^^^
