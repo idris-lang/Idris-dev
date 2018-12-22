@@ -347,6 +347,27 @@ Usage from C code
         return result;
     }
 
+The ``Raw`` type constructor allows you to access or return a runtime
+representation of the value. For instance, if you want to copy a string
+generated from C code into an Idris value, you may want to return a
+``Raw String``instead of a ``String`` and use ``MKSTR`` or ``MKSTRlen`` to
+copy it over.
+
+.. code-block:: idris
+
+    getString : () -> IO (Raw String)
+    getString () = foreign FFI_C "get_string" (IO (Raw String))
+
+.. code-block:: cpp
+
+    const VAL get_string ()
+    {
+        char * c_string = get_string_allocated_with_malloc()
+        const VAL idris_string = MKSTR(c_string);
+        free(c_string);
+        return idris_string
+    }
+
 FFI implementation
 ------------------
 
