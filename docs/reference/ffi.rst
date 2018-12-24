@@ -115,6 +115,24 @@ For C, this is:
     FFI_C : FFI
         FFI_C = MkFFI C_Types String String
 
+Linking foreign code
+====================
+
+This is the example of linking C code. 
+
+.. code-block:: idris
+    %include C "mylib.h"
+    %link C "mylib.o"
+
+Example Makefile
+
+.. code-block:: shell
+    DEFAULT: mylib.o main.idr
+    	idris main.idr -o executableFile
+
+    clean:
+    	rm -f executableFile mylib.o main.ibc
+
 Foreign calls
 =============
 
