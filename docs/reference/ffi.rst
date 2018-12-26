@@ -336,9 +336,10 @@ Usage from C code
 
     CData some_allocating_fun(int arg)
     {
-        void * data = (void *) malloc(...);
+        size_t size = sizeof(...);
+        void * data = (void *) malloc(size);
         // ...
-        return cdata_manage(data, finalizer);
+        return cdata_manage(data, size, finalizer);
     }
 
     int other_fun(CData cd, int arg)
