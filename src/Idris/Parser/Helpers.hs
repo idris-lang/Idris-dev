@@ -36,6 +36,7 @@ module Idris.Parser.Helpers
   , iName
   , name
   , identifier
+  , identifierWithExtraChars
   , packageName
     -- * Access
   , accessibility
@@ -269,10 +270,10 @@ reservedIdentifiers = HS.fromList
   , "rewrite", "syntax", "then", "total", "using", "where", "with"
   ]
 
-identifierOrReserved :: Parsing m => m String
-identifierOrReserved = token $ P.try $ do
+identifierOrReservedWithExtraChars :: Parsing m => String -> m String
+identifierOrReservedWithExtraChars extraChars = token $ P.try $ do
   c <- P.satisfy isAlpha <|> P.oneOf "_"
-  cs <- P.many (P.satisfy isAlphaNum <|> P.oneOf "_'.")
+  cs <- P.many (P.satisfy isAlphaNum <|> P.oneOf extraChars)
   return $ c : cs
 
 char :: Parsing m => Char -> m Char
@@ -295,12 +296,15 @@ reserved name = token $ P.try $ do
   P.notFollowedBy (P.satisfy isAlphaNum <|> P.oneOf "_'.") <?> "end of " ++ name
 
 -- | Parses an identifier as a token
-identifier :: Parsing m => m String
-identifier = P.try $ do
-  ident <- identifierOrReserved
+identifierWithExtraChars :: Parsing m => String -> m String
+identifierWithExtraChars extraChars = P.try $ do
+  ident <- identifierOrReservedWithExtraChars extraChars
   when (ident `HS.member` reservedIdentifiers) $ P.unexpected . P.Label . NonEmpty.fromList $ "reserved " ++ ident
   when (ident == "_") $ P.unexpected . P.Label . NonEmpty.fromList $ "wildcard"
   return ident
+
+identifier :: Parsing m => m String
+identifier = identifierWithExtraChars "_'."
 
 -- | Parses an identifier with possible namespace as a name
 iName :: Parsing m => [String] -> m Name

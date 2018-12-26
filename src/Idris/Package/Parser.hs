@@ -13,9 +13,10 @@ import Idris.Imports
 import Idris.Options (Opt)
 import Idris.Package.Common
 import Idris.Parser (moduleName)
-import Idris.Parser.Helpers (Parser, Parsing, eol, iName, identifier, isEol,
-                             lchar, packageName, parseErrorDoc, reserved,
-                             runparser, someSpace, stringLiteral)
+import Idris.Parser.Helpers (Parser, Parsing, eol, iName, identifier,
+                             identifierWithExtraChars, isEol, lchar,
+                             packageName, parseErrorDoc, reserved, runparser,
+                             someSpace, stringLiteral)
 
 import Control.Applicative
 import Control.Monad.State.Strict
@@ -119,6 +120,9 @@ pOptions = do
     Opts.Failure e -> fail $ fst $ Opts.renderFailure e ""
     _              -> fail "Unexpected error"
 
+libIdentifier :: Parsing m => m String
+libIdentifier = identifierWithExtraChars "_'-."
+
 pClause :: PParser ()
 pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "main" (iName []) (\st v -> st { idris_main = Just v })
@@ -129,7 +133,7 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
              in st { pkgdeps    = ps `union` pkgdeps st
                    , idris_opts = pkgs ++ idris_opts st })
       <|> clause "modules" (commaSep moduleName) (\st v -> st { modules = modules st ++ v })
-      <|> clause "libs" (commaSep identifier) (\st v -> st { libdeps = libdeps st ++ v })
+      <|> clause "libs" (commaSep libIdentifier) (\st v -> st { libdeps = libdeps st ++ v })
       <|> clause "objs" (commaSep identifier) (\st v -> st { objs = objs st ++ v })
       <|> clause "makefile" (iName []) (\st v -> st { makefile = Just (show v) })
       <|> clause "tests" (commaSep (iName [])) (\st v -> st { idris_tests = idris_tests st ++ v })
@@ -142,3 +146,4 @@ pClause = clause "executable" filename (\st v -> st { execout = Just v })
       <|> clause "brief" stringLiteral (\st v -> st { pkgbrief = Just v })
       <|> clause "author" textUntilEol (\st v -> st { pkgauthor = Just v })
       <|> clause "maintainer" textUntilEol (\st v -> st { pkgmaintainer = Just v })
+
