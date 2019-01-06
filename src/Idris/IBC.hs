@@ -265,8 +265,9 @@ hashName i n = qhash (i * 5381) (show n)
 
 calculateHash :: IState -> IBCFile -> Int
 calculateHash ist f
-    = let acc = L.filter exported (ibc_access f) in
-          mkHashFrom (map fst acc) (getDefs acc)
+    = let acc = L.filter exported (ibc_access f)
+          inl = L.filter (inlinable (map fst acc)) (ibc_flags f) in
+          mkHashFrom (map fst acc) (getDefs acc ++ L.concatMap getFullDef inl)
   where
     mkHashFrom :: [Name] -> [Term] -> Int
     mkHashFrom ns tms = sum (L.zipWith hashName [1..] ns) +
@@ -275,6 +276,10 @@ calculateHash ist f
     exported (_, Public) = True
     exported (_, Frozen) = True
     exported _ = False
+
+    inlinable acc (n, opts)
+        = n `elem` acc &&
+             (Inlinable `elem` opts || PEGenerated `elem` opts)
 
     findTms :: [(a, Term, Term)] -> [Term]
     findTms = L.concatMap (\ (_, x, y) -> [x, y])
@@ -298,6 +303,12 @@ calculateHash ist f
                    Nothing -> ts
                    Just ty -> ty : ts
     getDefs (_ : ns) = getDefs ns
+
+    getFullDef :: (Name, [FnOpt]) -> [Term]
+    getFullDef (n, _)
+        = case lookupTyExact n (tt_ctxt ist) of
+               Nothing -> []
+               Just ty -> ty : patDef n
 
 -- | Write a package index containing all the imports in the current
 -- IState Used for ':search' of an entire package, to ensure
