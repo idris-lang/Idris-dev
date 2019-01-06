@@ -110,12 +110,14 @@ void c_heap_destroy(CHeap * heap)
 void alloc_heap(Heap * h, size_t heap_size, size_t growth, char * old)
 {
     char * mem = malloc(heap_size);
+
     if (mem == NULL) {
         fprintf(stderr,
                 "RTS ERROR: Unable to allocate heap. Requested %zd bytes.\n",
                 heap_size);
         exit(EXIT_FAILURE);
     }
+    memset(mem, 0, heap_size);
 
     h->heap = mem;
     h->next = aligned_heap_pointer(h->heap);
