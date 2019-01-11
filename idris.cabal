@@ -100,7 +100,7 @@ source-repository head
 
 custom-setup
   setup-depends:
-    Cabal >= 1.10 && <2.3,
+    Cabal >= 1.10 && <2.5,
     base  >= 4 && <5,
     directory,
     filepath,
@@ -308,7 +308,7 @@ Library
                 , utf8-string < 1.1
                 , vector < 0.13
                 , vector-binary-instances < 0.3
-                , zip-archive > 0.2.3.5 && < 0.4
+                , zip-archive > 0.2.3.5 && < 0.5
                 , fsnotify >= 0.2 && < 2.2
                 , async < 2.3
 
