@@ -62,19 +62,29 @@ runparser p i inputname s =
 
 {- * Parse errors -}
 
-newtype ParseError = ParseError (P.ParseErrorBundle String Void)
+newtype ParseError = ParseError { unParseError :: P.ParseErrorBundle String Void }
+
+parseError :: ParseError -> P.ParseError String Void
+parseError = NonEmpty.head . P.bundleErrors . unParseError
+
+parseErrorPosState :: ParseError -> P.PosState String
+parseErrorPosState = P.bundlePosState . unParseError
+
+parseErrorOffset :: ParseError -> Int
+parseErrorOffset = P.errorOffset . parseError
 
 instance Message ParseError where
-  messageExtent (ParseError err) = sourcePositionFC pos
+  messageExtent err = sourcePositionFC pos
     where
-      (pos, _) = P.reachOffsetNoLine (P.errorOffset err') (P.bundlePosState err)
-      err' = NonEmpty.head . P.bundleErrors $ err
-  messageText (ParseError err) = PP.text . init . P.errorBundlePretty $ err
-  messageSource (ParseError err) = Just . P.sourceName . P.pstateSourcePos . P.bundlePosState $ err
+      (pos, _) = P.reachOffsetNoLine (parseErrorOffset err) (parseErrorPosState err)
+  messageText = PP.text . init . P.parseErrorTextPretty . parseError
+  messageSource err = Just sline
+    where
+      (_, sline, _) = P.reachOffset (parseErrorOffset err) (parseErrorPosState err)
 
 -- | A fully formatted parse error, with caret and bar, etc.
-prettyError                    :: ParseError -> String
-prettyError (ParseError err) = P.errorBundlePretty err
+prettyError :: ParseError -> String
+prettyError =  P.errorBundlePretty . unParseError
 
 {- * Mark and restore -}
 
