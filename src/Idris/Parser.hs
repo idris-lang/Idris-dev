@@ -60,7 +60,6 @@ import qualified System.Directory as Dir (doesFileExist, getModificationTime,
 import System.FilePath
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
-import qualified Text.Megaparsec.Char as P
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 {-

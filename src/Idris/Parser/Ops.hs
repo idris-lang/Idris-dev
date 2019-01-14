@@ -17,14 +17,13 @@ import Prelude hiding (pi)
 
 import Control.Applicative
 import Control.Monad
+import qualified Control.Monad.Combinators.Expr as P
 import Control.Monad.State.Strict
 import Data.Char (isAlpha)
 import Data.List
 import Data.List.NonEmpty (fromList)
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
-import qualified Text.Megaparsec.Char as P
-import qualified Text.Megaparsec.Expr as P
 
 -- | Creates table for fixity declarations to build expression parser
 -- using pre-build and user-defined operator/fixity declarations

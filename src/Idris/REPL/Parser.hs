@@ -33,7 +33,6 @@ import Data.List.Split (splitOn)
 import System.Console.ANSI (Color(..))
 import System.FilePath ((</>))
 import qualified Text.Megaparsec as P
-import qualified Text.Megaparsec.Char as P
 
 parseCmd :: IState -> String -> String -> Either IP.ParseError (Either String Command)
 parseCmd i inputname = IP.runparser pCmd i inputname . trim
@@ -68,7 +67,7 @@ parserCommandsForHelp =
   , nameArgCmd ["miss", "missing"] Missing "Show missing clauses"
   , (["doc"], NameArg, "Show internal documentation", cmd_doc)
   , (["mkdoc"], NamespaceArg, "Generate IdrisDoc for namespace(s) and dependencies"
-    , genArg "namespace" (P.many P.anyChar) MakeDoc)
+    , genArg "namespace" (P.many P.anySingle) MakeDoc)
   , (["apropos"], SeqArgs (OptionalArg PkgArgs) NameArg, " Search names, types, and documentation"
     , cmd_apropos)
   , (["s", "search"], SeqArgs (OptionalArg PkgArgs) ExprArg
@@ -198,7 +197,7 @@ pCmd = P.choice [ do c <- cmd names; parser c
     where nop = do P.eof; return (Right NOP)
           unrecognized = do
               IP.lchar ':'
-              cmd <- P.many P.anyChar
+              cmd <- P.many P.anySingle
               let cmd' = takeWhile (/=' ') cmd
               return (Left $ "Unrecognized command: " ++ cmd')
 
@@ -260,7 +259,7 @@ nameArg = genArg "name" IP.name
 fnNameArg = genArg "functionname" IP.fnName
 
 strArg :: (String -> Command) -> String -> IP.IdrisParser (Either String Command)
-strArg = genArg "string" (P.many P.anyChar)
+strArg = genArg "string" (P.many P.anySingle)
 
 moduleArg :: (FilePath -> Command) -> String -> IP.IdrisParser (Either String Command)
 moduleArg = genArg "module" (fmap toPath IP.identifier)
@@ -342,7 +341,7 @@ cmd_execute name = do
 
 cmd_dynamic :: String -> IP.IdrisParser (Either String Command)
 cmd_dynamic name = do
-    let optArg = do l <- P.many P.anyChar
+    let optArg = do l <- P.many P.anySingle
                     if (l /= "")
                         then return $ Right (DynamicLink l)
                         else return $ Right ListDynamic
@@ -440,7 +439,7 @@ cmd_unlet name = Right . Undefine <$> P.many IP.name
 cmd_loadto :: String -> IP.IdrisParser (Either String Command)
 cmd_loadto name = do
     toline <- fromInteger <$> IP.natural
-    f <- P.many P.anyChar
+    f <- P.many P.anySingle
     return (Right (Load f (Just toline)))
 
 cmd_colour :: String -> IP.IdrisParser (Either String Command)

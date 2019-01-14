@@ -397,7 +397,7 @@ popIndent = do ist <- get
 
 -- | Gets current indentation
 indent :: Parsing m => m Int
-indent = P.unPos . P.sourceColumn <$> P.getPosition
+indent = P.unPos . P.sourceColumn <$> P.getSourcePos
 
 -- | Gets last indentation
 lastIndent :: (MonadState IState m) => m Int

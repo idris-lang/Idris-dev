@@ -27,14 +27,13 @@ import System.Exit
 import System.FilePath (isValid, takeExtension, takeFileName)
 import Text.Megaparsec ((<?>))
 import qualified Text.Megaparsec as P
-import qualified Text.Megaparsec.Char as P
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 type PParser = Parser PkgDesc
 
 parseDesc :: FilePath -> IO PkgDesc
 parseDesc fp = do
-    when (not $ takeExtension fp == ".ipkg") $ do
+    unless (takeExtension fp == ".ipkg") $ do
         putStrLn $ unwords ["The presented iPKG file does not have a '.ipkg' extension:", show fp]
         exitWith (ExitFailure 1)
     res <- doesFileExist fp
