@@ -11,7 +11,7 @@ dependent types in general, can be obtained from various sources:
    questions on the mailing list.
 
 -  The IRC channel ``#idris``, on
-   `chat.freenode.net <http://chat.freenode.net>`__.
+   `webchat.freenode.net <https://webchat.freenode.net/>`__.
 
 - The wiki (https://github.com/idris-lang/Idris-dev/wiki/) has further
    user provided information, in particular:
