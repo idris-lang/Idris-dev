@@ -7,6 +7,7 @@ import Control.Monad.RWS
 import Control.Monad.Trans
 
 %access public export
+%default total
 
 interface Catchable (m : Type -> Type) t | m where
     throw : t -> m a

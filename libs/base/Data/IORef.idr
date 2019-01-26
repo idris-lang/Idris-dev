@@ -1,5 +1,7 @@
 module Data.IORef
 
+%default total
+
 ||| A mutable variable in the IO monad.
 export
 data IORef a = MkIORef a
