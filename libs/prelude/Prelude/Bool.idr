@@ -12,7 +12,7 @@ data Bool = False | True
 ||| The underlying implementation of the if ... then ... else ... syntax
 ||| @ b the condition on the if
 ||| @ t the value if b is true
-||| @ e the falue if b is false
+||| @ e the value if b is false
 ifThenElse : (b : Bool) -> (t : Lazy a) -> (e : Lazy a) -> a
 ifThenElse True  t e = t
 ifThenElse False t e = e

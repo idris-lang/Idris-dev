@@ -315,7 +315,8 @@ concat (v::vs) = v ++ concat vs
 
 ||| Foldr without seeding the accumulator
 foldr1 : (t -> t -> t) -> Vect (S n) t -> t
-foldr1 f (x::xs) = foldr f x xs
+foldr1 f [x]        = x
+foldr1 f (x::y::xs) = f x (foldr1 f (y::xs))
 
 ||| Foldl without seeding the accumulator
 foldl1 : (t -> t -> t) -> Vect (S n) t -> t

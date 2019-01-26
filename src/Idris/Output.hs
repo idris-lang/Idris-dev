@@ -75,9 +75,10 @@ instance Message SimpleWarning where
 formatMessage :: Message w => w -> Idris OutputDoc
 formatMessage w = do
     i <- getIState
-    maybeSource <- case messageSource w of
-                     Just src -> pure (Just src)
-                     Nothing  -> readSource fc
+    rs <- readSource fc
+    let maybeSource = case rs of
+          Just src -> Just src
+          Nothing -> messageSource w
     let maybeFormattedSource = maybeSource >>= layoutSource fc (regions (idris_highlightedRegions i))
     return $ layoutMessage (layoutFC fc) maybeFormattedSource (messageText w)
   where

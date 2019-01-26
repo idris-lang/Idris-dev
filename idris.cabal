@@ -100,7 +100,7 @@ source-repository head
 
 custom-setup
   setup-depends:
-    Cabal >= 1.10 && <2.3,
+    Cabal >= 1.10 && <2.5,
     base  >= 4 && <5,
     directory,
     filepath,
@@ -270,7 +270,7 @@ Library
                 , BuildFlags_idris
 
   Build-depends:  base >=4 && <5
-                , aeson >= 0.6 && < 1.4
+                , aeson >= 0.6 && < 1.5
                 , annotated-wl-pprint >= 0.7 && < 0.8
                 , ansi-terminal < 0.9
                 , ansi-wl-pprint < 0.7
@@ -281,18 +281,19 @@ Library
                 , blaze-markup >= 0.5.2.1 && < 0.9
                 , bytestring < 0.11
                 , cheapskate >= 0.1.1 && < 0.2
-                , code-page >= 0.1 && < 0.2
-                , containers >= 0.5 && < 0.6
+                , code-page >= 0.1 && < 0.3
+                , containers >= 0.5 && < 0.7
                 , deepseq < 1.5
                 , directory >= 1.2.2.0 && < 1.2.3.0 || > 1.2.3.0
                 , filepath < 1.5
                 , fingertree >= 0.1.4.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
                 , ieee754 >= 0.7 && < 0.9
-                , megaparsec >= 6.2 && < 7
+                , megaparsec >= 7.0.4 && < 8
                 , mtl >= 2.1 && < 2.3
-                , network < 2.8
+                , network >= 2.7 && < 2.9
                 , optparse-applicative >= 0.13 && < 0.15
+                , parser-combinators >= 1.0.0
                 , pretty < 1.2
                 , process < 1.7
                 , regex-tdfa >= 1.2
@@ -307,7 +308,7 @@ Library
                 , utf8-string < 1.1
                 , vector < 0.13
                 , vector-binary-instances < 0.3
-                , zip-archive > 0.2.3.5 && < 0.4
+                , zip-archive > 0.2.3.5 && < 0.5
                 , fsnotify >= 0.2 && < 2.2
                 , async < 2.3
 

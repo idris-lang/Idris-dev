@@ -660,11 +660,13 @@ elabClause info opts (cnum, PClause fc fname lhs_in_as withs rhs_in_as wherebloc
         i <- getIState
         inf <- isTyInferred fname
 
-        -- Check if we have "with" patterns outside of "with" block
-        when (isOutsideWith lhs_in && (not $ null withs)) $
+        -- Check if we have extra "with" patterns
+        when (not $ null withs) $
             ierror (At (fromMaybe NoFC $ highestFC lhs_in_as)
                        (Elaborating "left hand side of " fname Nothing
-                        (Msg "unexpected patterns outside of \"with\" block")))
+                        (Msg $ if isOutsideWith lhs_in
+                               then "unexpected patterns outside of \"with\" block"
+                               else "unexpected extra \"with\" patterns")))
 
         -- get the parameters first, to pass through to any where block
         let fn_ty = case lookupTy fname ctxt of

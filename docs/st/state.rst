@@ -164,7 +164,7 @@ can define ``ioMakeAndIncrement`` as follows:
           lift $ putStrLn ("var = " ++ show !(read var))
           delete var
 
-The ``lift`` function allows us to use funtions from the underlying
+The ``lift`` function allows us to use functions from the underlying
 computation context (``IO`` here) directly. Again, we'll see the exact type
 of ``lift`` shortly.
 

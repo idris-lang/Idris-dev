@@ -11,6 +11,7 @@ import Data.Proxy
 import Data.Typeable
 import Options.Applicative
 import System.Directory
+import System.Environment
 import System.Exit
 import System.FilePath ((</>))
 import System.Info
@@ -103,20 +104,25 @@ runTest path flags = do
       normalise (x : xs) = x : normalise xs
       normalise [] = []
 
+checkNode :: IO  ()
+checkNode = do
+    nodePath   <- findExecutable "node"
+    nodejsPath <- findExecutable "nodejs"
+    let node = nodePath <|> nodejsPath
+    case node of
+      Nothing -> do
+        putStrLn "For running the test suite against Node, node must be installed."
+        exitFailure
+      Just _  -> return ()
+
 main :: IO ()
 main = do
-  nodePath   <- findExecutable "node"
-  nodejsPath <- findExecutable "nodejs"
-  let node = nodePath <|> nodejsPath
-  case node of
-    Nothing -> do
-      putStrLn "For running the test suite against Node, node must be installed."
-      exitFailure
-    Just _  -> do
-      defaultMainWithIngredients ingredients $
+    args <- getArgs
+    when ("--node" `elem` args) checkNode
+    defaultMainWithIngredients ingredients $
         askOption $ \(NodeOpt node) ->
-          let (codegen, flags) = if node then (JS, ["--codegen", "node"])
-                                         else (C , [])
-           in
-            mkGoldenTests (testFamiliesForCodegen codegen)
-                        (flags ++ idrisFlags)
+            let (codegen, flags) = if node then (JS, ["--codegen", "node"])
+                                           else (C , [])
+            in
+                mkGoldenTests (testFamiliesForCodegen codegen) (flags ++ idrisFlags)
+

@@ -436,12 +436,12 @@ intercalate sep xss = concat $ intersperse sep xss
 |||
 |||     transpose [[], [1, 2]] = [[1], [2]]
 |||     transpose (transpose [[], [1, 2]]) = [[1, 2]]
-|||
-||| TODO: Solution which satisfies the totality checker?
 transpose : List (List a) -> List (List a)
 transpose [] = []
-transpose ([] :: xss) = transpose xss
-transpose ((x::xs) :: xss) = assert_total $ (x :: (mapMaybe head' xss)) :: (transpose (xs :: (map (drop 1) xss)))
+transpose (heads :: tails) = spreadHeads heads (transpose tails) where
+  spreadHeads []              tails           = tails
+  spreadHeads (head :: heads) []              = [head] :: spreadHeads heads []
+  spreadHeads (head :: heads) (tail :: tails) = (head :: tail) :: spreadHeads heads tails
 
 --------------------------------------------------------------------------------
 -- Membership tests
@@ -860,6 +860,12 @@ catMaybes (x::xs) =
 --------------------------------------------------------------------------------
 -- Properties
 --------------------------------------------------------------------------------
+
+Uninhabited ([] = _ :: _) where
+  uninhabited Refl impossible
+
+Uninhabited (_ :: _ = []) where
+  uninhabited Refl impossible
 
 ||| (::) is injective
 consInjective : {x : a} -> {xs : List a} -> {y : b} -> {ys : List b} ->

@@ -1,10 +1,13 @@
 #recheck extra-deps next on resolver or cabal file change
-resolver: lts-11.14
+resolver: lts-12.21
 
 packages:
   - location: .
 
-extra-deps: []
+extra-deps:
+  - megaparsec-7.0.4
+  - parser-combinators-1.0.0
+
 
 flags:
   idris:

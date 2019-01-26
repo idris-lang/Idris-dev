@@ -115,6 +115,24 @@ For C, this is:
     FFI_C : FFI
         FFI_C = MkFFI C_Types String String
 
+Linking foreign code
+====================
+
+This is the example of linking C code. 
+
+.. code-block:: idris
+    %include C "mylib.h"
+    %link C "mylib.o"
+
+Example Makefile
+
+.. code-block:: shell
+    DEFAULT: mylib.o main.idr
+    	idris main.idr -o executableFile
+
+    clean:
+    	rm -f executableFile mylib.o main.ibc
+
 Foreign calls
 =============
 
@@ -336,15 +354,37 @@ Usage from C code
 
     CData some_allocating_fun(int arg)
     {
-        void * data = (void *) malloc(...);
+        size_t size = sizeof(...);
+        void * data = (void *) malloc(size);
         // ...
-        return cdata_manage(data, finalizer);
+        return cdata_manage(data, size, finalizer);
     }
 
     int other_fun(CData cd, int arg)
     {
         int result = foo(cd->data);
         return result;
+    }
+
+The ``Raw`` type constructor allows you to access or return a runtime
+representation of the value. For instance, if you want to copy a string
+generated from C code into an Idris value, you may want to return a
+``Raw String``instead of a ``String`` and use ``MKSTR`` or ``MKSTRlen`` to
+copy it over.
+
+.. code-block:: idris
+
+    getString : () -> IO (Raw String)
+    getString () = foreign FFI_C "get_string" (IO (Raw String))
+
+.. code-block:: cpp
+
+    const VAL get_string ()
+    {
+        char * c_string = get_string_allocated_with_malloc()
+        const VAL idris_string = MKSTR(c_string);
+        free(c_string);
+        return idris_string
     }
 
 FFI implementation

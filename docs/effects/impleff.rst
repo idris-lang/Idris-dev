@@ -144,7 +144,7 @@ functions in ``Eff``, as follows:
 
 **An implementation detail (aside):** The ``call`` function converts
 an ``Effect`` to a function in ``Eff``, given a proof that the effect
-is available. This proof can be constructed automatically by , since
+is available. This proof can be constructed automatically, since
 it is essentially an index into a statically known list of effects:
 
 .. code-block:: idris
