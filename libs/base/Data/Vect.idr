@@ -110,6 +110,20 @@ drop : (n : Nat) -> Vect (n + m) elem -> Vect m elem
 drop Z     xs        = xs
 drop (S k) (x :: xs) = drop k xs
 
+||| Take up to the first n elements of a Vect if they exist.
+||| @ n the maximum number of elements to take
+takeUpto : (x : Nat) -> Vect n elem -> Vect (minimum x n) elem
+takeUpto Z ys = []
+takeUpto x [] = rewrite minimumZeroZeroLeft x in []
+takeUpto (S x) (y::ys) = y :: takeUpto x ys
+
+||| Drop up to the first n elements of a Vect if they exist.
+||| @ n the maximum number of elements to remove.
+dropUpto : (x : Nat) -> Vect n elem -> Vect (n `minus` minimum x n) elem
+dropUpto Z ys {n} = rewrite minusZeroRight n in ys
+dropUpto x [] = []
+dropUpto (S x) (y :: ys) = dropUpto x ys
+
 ||| Take the longest prefix of a Vect such that all elements satisfy some
 ||| Boolean predicate.
 |||
