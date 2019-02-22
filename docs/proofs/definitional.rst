@@ -52,34 +52,37 @@ Curry-Howard correspondence
 So how to we relate these proofs to Idris programs? It turns out that there is a correspondence between constructive logic and type theory. They are the same structure and we can switch backward and forward between the two notations because they are the same thing.
 
 The way that this works is that a  proposition is a type so this,
-  <table border="1">
-    <tr>
-      <td><pre>Idris> 1+1=2
-<span class="style1">2</span> <span class="style2">=</span> <span class="style1">2</span> : <span class="style2">Type</span>
-</pre></td>
-    </tr>
-  </table>
+
+.. code-block:: idris
+
+   Idris> 1+1=2
+   2 = 2 : Type
+
 is a proposition and it is also a type. This is built into Idris so when an '=' equals sign appears in a function type an equality type is generated. The following will also produce an equality type:
-  <table border="1">
+
+<table border="1">
     <tr>
       <td><pre>Idris> 1+1=3
-<span class="style1">2</span> <span class="style2">=</span> <span class="style1">3</span> : <span class="style2">Type</span></pre></td>
+<span class="style1">2 = <span class="style1">3 : Type</pre></td>
     </tr>
-  </table>
+</table>
+
 Both of these are valid propositions so both are valid equality types. But how do we represent true judgment, that is, how do we denote 1+1=2 is true but not 1+1=3.
 A type that is true is inhabited, that is, it can be constructed. An equality type has only on constructor 'Refl' so a proof of 1+1=2 is
-  <table border="1">
+
+<table border="1">
     <tr>
       <td><pre>onePlusOne : 1+1=2
 onePlusOne = Refl</pre></td>
     </tr>
-  </table>
-  <p>So how can Refl, which is a constructor without any parameters, construct and equality type? If we type it on its own then it can't: </p>
+</table>
+
+So how can Refl, which is a constructor without any parameters, construct and equality type? If we type it on its own then it can't:
 
 .. code-block:: idris
 
   Idris> Refl
-  (input):Can't infer argument A to <span class="style1">Refl</span>, Can't infer argument x to <span class="style1">Refl</span>
+  (input):Can't infer argument A to <span class="style1">Refl, Can't infer argument x to <span class="style1">Refl
 
 So it must pattern match on its return type:
 
@@ -90,48 +93,24 @@ So it must pattern match on its return type:
 
 So now that we can represent propositions as types other aspects of propositional logic can also be translated to types as follows:
 
-<table border="1">
-    <tr>
-      <th bgcolor="#FFFF00" scope="col">&nbsp;</th>
-      <th bgcolor="#FFFF00" scope="col">propositions</th>
-      <th bgcolor="#FFFF00" scope="col"> example of possible type</th>
-    </tr>
-    <tr>
-      <th bgcolor="#FFFF00" scope="row">A</th>
-      <td>A</td>
-      <td>x=y</td>
-    </tr>
-    <tr>
-      <th bgcolor="#FFFF00" scope="row">B</th>
-      <td>B</td>
-      <td>y=z</td>
-    </tr>
-    <tr>
-      <th bgcolor="#FFFF00" scope="row">and</th>
-      <td>A /\ B </td>
-      <td>Pair(x=y,y=z)</td>
-    </tr>
-    <tr>
-      <th bgcolor="#FFFF00" scope="row">or</th>
-      <td>A \/ B</td>
-      <td>Either(x=y,y=z)</td>
-    </tr>
-    <tr>
-      <th bgcolor="#FFFF00" scope="row">implies</th>
-      <td>A -&gt; B</td>
-      <td>(x=y) -&gt; (y=x)</td>
-    </tr>
-    <tr>
-      <th bgcolor="#FFFF00" scope="row">for all </th>
-      <td>&nbsp;</td>
-      <td>&nbsp;</td>
-    </tr>
-    <tr>
-      <th bgcolor="#FFFF00" scope="row">exists</th>
-      <td>&nbsp;</td>
-      <td>&nbsp;</td>
-    </tr>
-  </table>
++----------+-------------------+--------------------------+
+|          | propositions      | example of possible type |
++----------+-------------------+--------------------------+
+| A        | x=y               |                          |
++----------+-------------------+--------------------------+
+| B        | y=z               |                          |
++----------+-------------------+--------------------------+
+| and      | A /\ B            | Pair(x=y,y=z)            |
++----------+-------------------+--------------------------+
+| or       | A \/ B            | Either(x=y,y=z)          |
++----------+-------------------+--------------------------+
+| implies  | A -> B            | (x=y) -> (y=x)           |
++----------+-------------------+--------------------------+
+| for all  | y=z               |                          |
++----------+-------------------+--------------------------+
+| exists   | y=z               |                          |
++----------+-------------------+--------------------------+
+
 
 And (conjunction)
 -----------------
@@ -190,7 +169,8 @@ Especially when working with equalities containing variable terms (inside functi
    plusReducesR n = Refl
 
 plusReducesR gives the following error:
-  <table border="1">
+
+<table border="1">
     <tr>
       <td><pre>- + Errors (1)
  `-- proof.idr line 6 col 17:
@@ -208,7 +188,7 @@ plusReducesR gives the following error:
              and
                      plus n 0</pre></td>
     </tr>
-  </table>
+</table>
 
 So why is 'Refl' able to prove some equality types but not others?
 
@@ -221,7 +201,7 @@ So when we type 1+1 in Idris it is immediately converted to 2 because definition
 .. code-block:: idris
 
     Idris&gt; 1+1
-    2</span> : Integer
+    2 : Integer
 
 In the following pages we discuss how to resolve propositionaly equalies.
 
