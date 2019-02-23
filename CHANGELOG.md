@@ -1,4 +1,5 @@
 # New in next version
++ Documentation added to proof section
 
 ## Tool updates
 + Modules no longer require building if imports have changed but all
