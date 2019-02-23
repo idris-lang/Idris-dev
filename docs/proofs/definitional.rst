@@ -13,29 +13,29 @@ Propositions and Judgments
 
 Propositions are the subject of our proofs, before the proof then we can't formally say if they are true or not. If the proof is successful then the result is a 'judgment'.
 For instance, if the ``proposition`` is,
-  <table border="1">
-    <tr>
-      <td>1+1=2</td>
-    </tr>
-  </table>
+
++-------+
+| 1+1=2 |
++-------+
+
 When we prove it, the ``judgment`` is,
-  <table border="1">
-    <tr>
-      <td>1+1=2 true</td>
-    </tr>
-  </table>
+
++------------+
+| 1+1=2 true |
++------------+
+
 Or if the ``proposition`` is,
-  <table border="1">
-    <tr>
-      <td>1+1=3</td>
-    </tr>
-  </table>
+
++-------+
+| 1+1=3 |
++-------+
+
 Obviously  we can't prove it is true, but it is still a valid proposition and perhaps we can prove it is false so the ``judgment`` is, 
-  <table border="1">
-    <tr>
-      <td>1+1=3 false</td>
-    </tr>
-  </table>
+
++-------------+
+| 1+1=3 false |
++-------------+
+
 This may seem a bit pedantic but it is important to be careful,  in mathematics not every proposition is true or false for instance, a proposition may be unproven or even unprovable.
 
 So the logic here is different from the logic that comes from boolean algebra. In that case what is not true is false and what is not false is true. The logic we are using here does not have this 'law of excluded middle' so we have to be careful not to use it.
@@ -60,29 +60,26 @@ The way that this works is that a  proposition is a type so this,
 
 is a proposition and it is also a type. This is built into Idris so when an '=' equals sign appears in a function type an equality type is generated. The following will also produce an equality type:
 
-<table border="1">
-    <tr>
-      <td><pre>Idris> 1+1=3
-<span class="style1">2 = <span class="style1">3 : Type</pre></td>
-    </tr>
-</table>
+
+.. code-block:: idris
+
+   Idris> 1+1=3
+   2 = 3 : Type
 
 Both of these are valid propositions so both are valid equality types. But how do we represent true judgment, that is, how do we denote 1+1=2 is true but not 1+1=3.
 A type that is true is inhabited, that is, it can be constructed. An equality type has only on constructor 'Refl' so a proof of 1+1=2 is
 
-<table border="1">
-    <tr>
-      <td><pre>onePlusOne : 1+1=2
-onePlusOne = Refl</pre></td>
-    </tr>
-</table>
+.. code-block:: idris
+
+   onePlusOne : 1+1=2
+   onePlusOne = Refl
 
 So how can Refl, which is a constructor without any parameters, construct and equality type? If we type it on its own then it can't:
 
 .. code-block:: idris
 
   Idris> Refl
-  (input):Can't infer argument A to <span class="style1">Refl, Can't infer argument x to <span class="style1">Refl
+  (input):Can't infer argument A to Refl, Can't infer argument x to Refl
 
 So it must pattern match on its return type:
 
@@ -170,10 +167,11 @@ Especially when working with equalities containing variable terms (inside functi
 
 plusReducesR gives the following error:
 
-<table border="1">
-    <tr>
-      <td><pre>- + Errors (1)
- `-- proof.idr line 6 col 17:
+
+.. code-block:: idris
+
+   - + Errors (1)
+   `-- proof.idr line 6 col 17:
      When checking right hand side of plusReducesR with expected type
              plus n 0 = n
 
@@ -186,9 +184,7 @@ plusReducesR gives the following error:
              Type mismatch between
                      n
              and
-                     plus n 0</pre></td>
-    </tr>
-</table>
+                     plus n 0
 
 So why is 'Refl' able to prove some equality types but not others?
 
@@ -200,7 +196,7 @@ So when we type 1+1 in Idris it is immediately converted to 2 because definition
 
 .. code-block:: idris
 
-    Idris&gt; 1+1
+    Idris> 1+1
     2 : Integer
 
 In the following pages we discuss how to resolve propositionaly equalies.
@@ -218,12 +214,11 @@ Then we can implement '+' so that it respects these axioms (presumably implement
 
 These are axioms, that is a propositions/types that are asserted to be true without proof. In Idris we can use the 'postulate' keyword 
 
-  <table border="1">
-    <tr>
-      <td><pre>comutePlus ``postulate``: x -&gt; y -&gt; plus x y = plus y x
-</pre></td>
-    </tr>
-  </table>
+
+.. code-block:: idris
+
+   commutePlus ``postulate``: x -> y -> plus x y = plus y x
+
 Alternatively we could define the natural numbers based on Zero and Successor. The axioms above then become derived rules and we also gain the ability to do inductive proofs.
 
 As we know, Idris uses both of these approaches with automatic coercion between them which gives the best of both worlds.
@@ -232,3 +227,7 @@ So what can we learn from this to implement out own types:
 
 -  Should we try to implement both approaches?
 -  Should we define our types by constructing up from primitive types?
+
+Proof theory affects these design decisions.
+
+
