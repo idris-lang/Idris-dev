@@ -529,18 +529,28 @@ getNatLikeCtors ist =
         $ lookupCtxtExact n
         $ idris_callgraph ist
 
+    isRecursive :: Name -> Name -> Bool
+    isRecursive tyN cn
+        | Just (Bind _ Pi{binderTy = P _ argTyN _} _) <- lookupTyExact cn $ tt_ctxt ist
+        , argTyN == tyN
+        = True
+
+        | otherwise = False
+
     natLikeTypes :: [(Name, Name)]
     natLikeTypes = do
-        (_typeName, TI{con_names}) <- toAlist $ idris_datatypes ist
+        (typeName, TI{con_names}) <- toAlist $ idris_datatypes ist
         case con_names of
             [z, s]
                 | getUsedCount z == 0
                 , getUsedCount s == 1
+                , isRecursive typeName s
                 -> [(z, s)]
 
             [s, z]
                 | getUsedCount z == 0
                 , getUsedCount s == 1
+                , isRecursive typeName s
                 -> [(z, s)]
 
             _ -> []  -- not a 2-constructor family
