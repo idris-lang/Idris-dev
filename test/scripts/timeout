@@ -1,17 +1,13 @@
-#!/usr/bin/env perl
-
-use strict;
-use File::Basename;
-
-sub Usage {
-  my $name = basename($0);
-  print STDERR "usage: $name seconds shell-command...\n";
-  exit 2;
-}
-
-Usage if (scalar @ARGV) < 2;
-
-my $timeout = shift;
-
-alarm $timeout;
-exec @ARGV;
+#!/usr/bin/env node
+var cp = require('child_process');
+var args = process.argv.slice(2);
+var timeout = parseInt(args.shift());
+var exe = args.shift();
+cp.execFile(exe, args, { timeout:timeout*1000 }, function(error,stdout,stderr) {
+    if (stdout)
+	process.stdout.write(stdout);
+    if (stderr)
+	process.stderr.write(stderr);
+    if (error)
+	console.error(error);
+});

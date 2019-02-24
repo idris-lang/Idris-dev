@@ -1,37 +1,45 @@
-build:
-	$(MAKE) -C prelude build
-	$(MAKE) -C base build
-	$(MAKE) -C contrib build
-	$(MAKE) -C effects build
-	$(MAKE) -C pruviloj build
+LIBS=prelude base contrib effects pruviloj
 
+build: $(LIBS:=.built)
 
-install:
-	$(MAKE) -C prelude install
-	$(MAKE) -C base install
-	$(MAKE) -C contrib install
-	$(MAKE) -C effects install
-	$(MAKE) -C pruviloj install
+doc: $(LIBS:=.doc)
 
-clean:
-	$(MAKE) -C prelude clean
-	$(MAKE) -C base clean
-	$(MAKE) -C contrib clean
-	$(MAKE) -C effects clean
-	$(MAKE) -C pruviloj clean
+install: $(LIBS:=.install)
 
-doc:
-	$(MAKE)	-C prelude doc
-	$(MAKE)	-C base doc
-	$(MAKE)	-C contrib doc
-	$(MAKE)	-C effects doc
-	$(MAKE)	-C pruviloj doc
+clean: $(LIBS:=.clean)
 
 doc_clean:
-	$(MAKE)	-C prelude doc_clean
-	$(MAKE)	-C base doc_clean
-	$(MAKE)	-C contrib doc_clean
-	$(MAKE)	-C effects doc_clean
-	$(MAKE)	-C pruviloj doc_clean
+	rm -rf */*_doc *.doc
 
-.PHONY: build install clean doc doc_clean
+rebuild: clean build
+
+linecount: $(LIBS:=.linecount)
+
+
+%.built: %
+	cd $< && $(IDRIS) --build $<.ipkg
+	touch $@
+
+%.clean: %
+	cd $< && $(IDRIS) --clean $<.ipkg
+	rm -f $<.built
+
+%.install: % %.built %.doc
+	cd $< && $(IDRIS) --install $<.ipkg && $(IDRIS) --installdoc $<.ipkg
+
+%.doc: %
+	cd $< && $(IDRIS) --mkdoc $<.ipkg
+	touch $@
+
+%.linecount: %
+	cd $< && find . -name '*.idr' | xargs wc -l
+
+base.built: prelude.built
+
+contrib.built: prelude.built base.built
+
+pruviloj.built: prelude.built base.built
+
+effects.built: prelude.built base.built
+
+.PHONY: build rebuild install clean doc doc_clean

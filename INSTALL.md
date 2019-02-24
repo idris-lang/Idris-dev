@@ -125,4 +125,22 @@ encounter this then the fix is to augment the `PKG_CONFIG_PATH` for
 
 ```
 PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig stack build
-``` 
+```
+
+## Experimental Support for Building on NixOS or systems with Nixpkgs
+
+To run the full build process:
+
+    nix-build
+
+The resulting build should be on the `result` directory.
+
+If you wish to install it to your environment:
+
+    nix-env -f default.nix -i idris
+
+For local development with Cabal:
+
+    nix-shell
+    cabal configure --enable-tests -fFFI -fGMP
+    cabal test
