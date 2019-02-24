@@ -526,6 +526,8 @@ isLikeNat ist cn
     = if | cn == z -> Just LikeZ
          | cn == s -> Just LikeS
          | otherwise -> error $ "isLikeNat: constructor not found in its own family: " ++ show (cn, tyN)
+
+    | otherwise = Nothing
   where
     natLikeCtors :: Name -> Type -> Maybe (Name, Name)
     natLikeCtors tyN cTy = case lookupCtxtExact tyN $ idris_datatypes ist of
