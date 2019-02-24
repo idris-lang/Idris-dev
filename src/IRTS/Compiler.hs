@@ -525,7 +525,7 @@ isLikeNat ist cn
     , Just (z, s) <- natLikeCtors tyN cTy
     = if | cn == z -> Just LikeZ
          | cn == s -> Just LikeS
-         | otherwise -> Nothing
+         | otherwise -> error $ "isLikeNat: constructor not found in its own family: " ++ show (cn, tyN)
   where
     natLikeCtors :: Name -> Type -> Maybe (Name, Name)
     natLikeCtors tyN cTy = case lookupCtxtExact tyN $ idris_datatypes ist of
