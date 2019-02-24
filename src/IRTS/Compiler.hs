@@ -417,9 +417,13 @@ irTerm top vs env tm@(App _ f a) = do
                 -> return . padLams $ \[vn] -> LApp False (LV n) [LV vn]
 
                 -- compile Nat-likes as bigints
+                -- not sure if prim applications must be saturated
+                -- let's wrap it in a lambda just to be sure
                 | Just LikeS <- isLikeNat ist n
-                -> irTerm top vs env $
-                    App Complete (P Ref (sUN "prim__addBigInt") Erased) (Constant $ BI 1)
+                -> LLam [sMN 0 "nh"] <$>
+                    (irTerm top vs env $
+                        mkApp (P Ref (sUN "prim__addBigInt") Erased)
+                            [Constant $ BI 1, P Ref (sMN 0 "nh") Erased])
 
                 -- not a newtype, just apply to a constructor
                 | otherwise
@@ -527,23 +531,23 @@ isLikeNat ist cn
 
     | Just cTy <- lookupTyExact cn $ tt_ctxt ist
     , (P TCon{} tyN _, _) <- unApply $ getRetTy cTy
-    , Just (z, s) <- natLikeCtors tyN cTy
+    , Just (z, s) <- natLikeCtors tyN
     = if | cn == z -> Just LikeZ
          | cn == s -> Just LikeS
          | otherwise -> error $ "isLikeNat: constructor not found in its own family: " ++ show (cn, tyN)
 
     | otherwise = Nothing
   where
-    natLikeCtors :: Name -> Type -> Maybe (Name, Name)
-    natLikeCtors tyN cTy = case lookupCtxtExact tyN $ idris_datatypes ist of
+    natLikeCtors :: Name -> Maybe (Name, Name)
+    natLikeCtors tyN = case lookupCtxtExact tyN $ idris_datatypes ist of
         Just TI{con_names = [z, s]}
             | 0 <- getUsedCount z
-            , looksLikeS tyN s cTy
+            , looksLikeS s
             -> Just (z, s)
 
         Just TI{con_names = [s, z]}
             | 0 <- getUsedCount z
-            , looksLikeS tyN s cTy
+            , looksLikeS s
             -> Just (z, s)
 
         _ -> Nothing
@@ -554,11 +558,13 @@ isLikeNat ist cn
         $ lookupCtxtExact n
         $ idris_callgraph ist
 
-    looksLikeS :: Name -> Name -> Type -> Bool
-    looksLikeS tyN cn cTy
+    looksLikeS :: Name -> Bool
+    looksLikeS cn
         | Just [(i, _)] <- fmap usedpos $ lookupCtxtExact cn $ idris_callgraph ist
+        , Just cTy <- lookupTyExact cn $ tt_ctxt ist
         , [recTy] <- [recTy | (j, (_n, recTy)) <- zip [0..] (getArgTys cTy), j == i]
         , (P TCon{} recTyN _, _) <- unApply recTy
+        , (P TCon{} tyN _, _) <- unApply $ getRetTy cTy
         , recTyN == tyN
         = True
 
