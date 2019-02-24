@@ -22,5 +22,6 @@ A tutorial on theorem proving in Idris.
    pluscomm
    inductive
    patterns
+   propositional
    interactive
 
