@@ -521,6 +521,10 @@ data LikeNat = LikeZ | LikeS
 
 isLikeNat :: IState -> Name -> Maybe LikeNat
 isLikeNat ist cn
+    -- if the optimisation is disabled then nothing looks like Nat
+    | GeneralisedNatHack `notElem` opt_optimise (idris_options ist)
+    = Nothing
+
     | Just cTy <- lookupTyExact cn $ tt_ctxt ist
     , (P TCon{} tyN _, _) <- unApply $ getRetTy cTy
     , Just (z, s) <- natLikeCtors tyN cTy

@@ -209,6 +209,11 @@ parseFlags = many $
   <|> flag' (AddOpt PETransform) (long "partial-eval")
   <|> flag' (RemoveOpt PETransform) (long "no-partial-eval" <> help "Switch off partial evaluation, mainly for debugging purposes")
 
+  <|> flag' (AddOpt GeneralisedNatHack) (long "generalised-nat-hack"
+    <> help "Enable compilation of Nat-like types to bigints")
+  <|> flag' (RemoveOpt GeneralisedNatHack) (long "no-generalised-nat-hack"
+    <> help "Disable compilation of Nat-like types to bigints")
+
   <|> OptLevel <$> option auto (short 'O' <> long "level")
 
   <|> TargetTriple <$> strOption (long "target" <> metavar "TRIPLE" <> help "If supported the codegen will target the named triple.")
