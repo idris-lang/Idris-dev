@@ -5,7 +5,7 @@ Description : Coordinates the compilation process.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, FlexibleContexts, PatternGuards, TypeSynonymInstances, NamedFieldPuns #-}
+{-# LANGUAGE CPP, FlexibleContexts, PatternGuards, TypeSynonymInstances, NamedFieldPuns, MultiWayIf #-}
 
 module IRTS.Compiler(compile, generate) where
 
@@ -255,7 +255,6 @@ type Vars = M.Map Name VarInfo
 irTerm :: Name -> Vars -> [Name] -> Term -> Idris LExp
 irTerm top vs env tm@(App _ f a) = do
   ist <- getIState
-  let (likeNatZ, likeNatS) = getNatLikeCtors ist
   case unApply tm of
     (P _ n _, args)
         | n `elem` map fst (idris_metavars ist) \\ primDefs
@@ -396,11 +395,11 @@ irTerm top vs env tm@(App _ f a) = do
                 -> irTerm top vs env (head argsPruned)
 
                 -- compile Nat-likes as bigints
-                | n `S.member` likeNatZ
+                | Just LikeZ <- isLikeNat ist n
                 -> irTerm top vs env $ Constant (BI 0)
 
                 -- compile Nat-likes as bigints
-                | n `S.member` likeNatS
+                | Just LikeS <- isLikeNat ist n
                 -> irTerm top vs env $
                     App Complete (P Ref (sUN "prim__addBigInt") Erased) (Constant $ BI 1)
 
@@ -417,7 +416,7 @@ irTerm top vs env tm@(App _ f a) = do
                 -> return . padLams $ \[vn] -> LApp False (LV n) [LV vn]
 
                 -- compile Nat-likes as bigints
-                | n `S.member` likeNatS
+                | Just LikeS <- isLikeNat ist n
                 -> irTerm top vs env $
                     App Complete (P Ref (sUN "prim__addBigInt") Erased) (Constant $ BI 1)
 
@@ -517,43 +516,46 @@ irTerm top vs env (TType _)           = return LNothing
 irTerm top vs env Erased              = return LNothing
 irTerm top vs env Impossible          = return LNothing
 
-getNatLikeCtors :: IState -> (S.Set Name, S.Set Name)
-getNatLikeCtors ist =
-    ( S.fromList $ map fst natLikeTypes
-    , S.fromList $ map snd natLikeTypes
-    )
+data LikeNat = LikeZ | LikeS
+
+isLikeNat :: IState -> Name -> Maybe LikeNat
+isLikeNat ist cn
+    | Just cTy <- lookupTyExact cn $ tt_ctxt ist
+    , (P TCon{} tyN _, _) <- unApply $ getRetTy cTy
+    , Just (z, s) <- natLikeCtors tyN cTy
+    = if | cn == z -> Just LikeZ
+         | cn == s -> Just LikeS
+         | otherwise -> Nothing
   where
+    natLikeCtors :: Name -> Type -> Maybe (Name, Name)
+    natLikeCtors tyN cTy = case lookupCtxtExact tyN $ idris_datatypes ist of
+        Just TI{con_names = [z, s]}
+            | 0 <- getUsedCount z
+            , looksLikeS tyN s cTy
+            -> Just (z, s)
+
+        Just TI{con_names = [s, z]}
+            | 0 <- getUsedCount z
+            , looksLikeS tyN s cTy
+            -> Just (z, s)
+
+        _ -> Nothing
+
     getUsedCount :: Name -> Int
     getUsedCount n =
         maybe 0 (length . usedpos)
         $ lookupCtxtExact n
         $ idris_callgraph ist
 
-    isRecursive :: Name -> Name -> Bool
-    isRecursive tyN cn
-        | Just (Bind _ Pi{binderTy = P _ argTyN _} _) <- lookupTyExact cn $ tt_ctxt ist
-        , argTyN == tyN
+    looksLikeS :: Name -> Name -> Type -> Bool
+    looksLikeS tyN cn cTy
+        | Just [(i, _)] <- fmap usedpos $ lookupCtxtExact cn $ idris_callgraph ist
+        , [recTy] <- [recTy | (j, (_n, recTy)) <- zip [0..] (getArgTys cTy), j == i]
+        , (P TCon{} recTyN _, _) <- unApply recTy
+        , recTyN == tyN
         = True
 
         | otherwise = False
-
-    natLikeTypes :: [(Name, Name)]
-    natLikeTypes = do
-        (typeName, TI{con_names}) <- toAlist $ idris_datatypes ist
-        case con_names of
-            [z, s]
-                | getUsedCount z == 0
-                , getUsedCount s == 1
-                , isRecursive typeName s
-                -> [(z, s)]
-
-            [s, z]
-                | getUsedCount z == 0
-                , getUsedCount s == 1
-                , isRecursive typeName s
-                -> [(z, s)]
-
-            _ -> []  -- not a 2-constructor family
 
 doForeign :: Vars -> [Name] -> [Term] -> Idris LExp
 doForeign vs env (ret : fname : world : args)
@@ -690,10 +692,32 @@ irSC top vs ImpossibleCase = return LNothing
 irAlt :: Name -> Vars -> LExp -> CaseAlt -> Idris LAlt
 
 -- this leaves out all unused arguments of the constructor
-irAlt top vs _ (ConCase n t args sc) = do
+irAlt top vs tm (ConCase n t args sc) = do
+    likeNat <- isLikeNat <$> getIState <*> pure n
     used <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
     let usedArgs = [a | (i,a) <- zip [0..] args, i `elem` used]
-    LConCase (-1) n usedArgs <$> irSC top (methodVars `M.union` vs) sc
+
+    case likeNat of
+        -- like S
+        Just LikeS -> do
+            sc' <- irSC top vs sc
+            case usedArgs of
+                [pv] -> return $ LDefaultCase $ LLet pv
+                        ( LOp
+                            (LMinus (ATInt ITBig))
+                            [ tm
+                            , LConst (BI 1)
+                            ]
+                        )
+                        sc'
+
+                _ -> ifail $ "irAlt/LikeS: multiple used args: " ++ show usedArgs
+
+        -- like Z
+        Just LikeZ -> LConstCase (BI 0) <$> irSC top vs sc
+
+        -- not like Nat
+        Nothing -> LConCase (-1) n usedArgs <$> irSC top (methodVars `M.union` vs) sc
   where
     methodVars = case n of
         SN (ImplementationCtorN interfaceName)
