@@ -400,8 +400,9 @@ irTerm top vs env tm@(App _ f a) = do
 
                 -- compile Nat-likes as bigints
                 | Just LikeS <- isLikeNat ist n
-                -> irTerm top vs env $
-                    App Complete (P Ref (sUN "prim__addBigInt") Erased) (Constant $ BI 1)
+                -> irTerm top vs env $ mkApp
+                    (P Ref (sUN "prim__addBigInt") Erased)
+                    (Constant (BI 1) : argsPruned)
 
                 | otherwise  -- not newtype, plain data ctor
                 -> buildApp (LV n) argsPruned
@@ -674,17 +675,40 @@ irSC top vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
     detag <- fgetState (opt_detaggable . ist_optimisation cn)
     if detag
         then irSC top vs (Case up n [ConCase cn a ns sc])
-        else LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
+        else do
+            likeNat <- isLikeNat <$> getIState <*> pure cn
+            case likeNat of
+                -- the annoying case: LikeS is translated into a default case
+                -- so we need to change the original DefaultCase to Z-case
+                -- and reorder it before this one
+                Just LikeS -> do
+                    zCase <- LConstCase (BI 0) <$> irSC top vs sc'
+                    sCase <- irAlt top vs (LV n) (ConCase cn a ns sc)
+                    return $ LCase up (LV n) [zCase, sCase]
+
+                -- the usual case
+                _ -> LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
 
 irSC top vs sc@(Case up n alts) = do
-    -- check that neither alternative needs the newtype optimisation,
-    -- see comment above
-    goneWrong <- or <$> mapM isDetaggable alts
-    when goneWrong
-        $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
+    ist <- getIState
 
-    -- everything okay
-    LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
+    if  | [ConCase cns as nss scs, ConCase cnz az nsz scz] <- alts
+        , Just LikeS <- isLikeNat ist cns
+        -> do
+            -- reorder to make the Z case come first
+            zCase <- LConstCase (BI 0) <$> irSC top vs scz
+            sCase <- irAlt top vs (LV n) (ConCase cns as nss scs)
+            return $ LCase up (LV n) [zCase, sCase]
+
+        | otherwise -> do
+            -- check that neither alternative needs the newtype optimisation,
+            -- see comment above
+            goneWrong <- or <$> mapM isDetaggable alts
+            when goneWrong
+                $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
+
+            -- everything okay
+            LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
   where
     isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
     isDetaggable  _                 = return False
