@@ -5,7 +5,7 @@ Description : Coordinates the compilation process.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, FlexibleContexts, PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, FlexibleContexts, PatternGuards, TypeSynonymInstances, NamedFieldPuns #-}
 
 module IRTS.Compiler(compile, generate) where
 
@@ -33,6 +33,7 @@ import Prelude hiding (id, (.))
 import Control.Category
 import Control.Monad.State
 import Data.List
+import Data.Maybe (maybe)
 import qualified Data.Map as M
 import Data.Ord
 import qualified Data.Set as S
@@ -254,6 +255,7 @@ type Vars = M.Map Name VarInfo
 irTerm :: Name -> Vars -> [Name] -> Term -> Idris LExp
 irTerm top vs env tm@(App _ f a) = do
   ist <- getIState
+  let (likeNatZ, likeNatS) = getNatLikeCtors ist
   case unApply tm of
     (P _ n _, args)
         | n `elem` map fst (idris_metavars ist) \\ primDefs
@@ -393,6 +395,15 @@ irTerm top vs env tm@(App _ f a) = do
             EQ  | isNewtype
                 -> irTerm top vs env (head argsPruned)
 
+                -- compile Nat-likes as bigints
+                | n `S.member` likeNatZ
+                -> irTerm top vs env $ Constant (BI 0)
+
+                -- compile Nat-likes as bigints
+                | n `S.member` likeNatS
+                -> irTerm top vs env $
+                    App Complete (P Ref (sUN "prim__addBigInt") Erased) (Constant $ BI 1)
+
                 | otherwise  -- not newtype, plain data ctor
                 -> buildApp (LV n) argsPruned
 
@@ -404,6 +415,11 @@ irTerm top vs env tm@(App _ f a) = do
 
                 | isNewtype  -- newtype but the value is not among args yet
                 -> return . padLams $ \[vn] -> LApp False (LV n) [LV vn]
+
+                -- compile Nat-likes as bigints
+                | n `S.member` likeNatS
+                -> irTerm top vs env $
+                    App Complete (P Ref (sUN "prim__addBigInt") Erased) (Constant $ BI 1)
 
                 -- not a newtype, just apply to a constructor
                 | otherwise
@@ -500,6 +516,34 @@ irTerm top vs env (Constant c)        = return (LConst c)
 irTerm top vs env (TType _)           = return LNothing
 irTerm top vs env Erased              = return LNothing
 irTerm top vs env Impossible          = return LNothing
+
+getNatLikeCtors :: IState -> (S.Set Name, S.Set Name)
+getNatLikeCtors ist =
+    ( S.fromList $ map fst natLikeTypes
+    , S.fromList $ map snd natLikeTypes
+    )
+  where
+    getUsedCount :: Name -> Int
+    getUsedCount n =
+        maybe 0 (length . usedpos)
+        $ lookupCtxtExact n
+        $ idris_callgraph ist
+
+    natLikeTypes :: [(Name, Name)]
+    natLikeTypes = do
+        (_typeName, TI{con_names}) <- toAlist $ idris_datatypes ist
+        case con_names of
+            [z, s]
+                | getUsedCount z == 0
+                , getUsedCount s == 1
+                -> [(z, s)]
+
+            [s, z]
+                | getUsedCount z == 0
+                , getUsedCount s == 1
+                -> [(z, s)]
+
+            _ -> []  -- not a 2-constructor family
 
 doForeign :: Vars -> [Name] -> [Term] -> Idris LExp
 doForeign vs env (ret : fname : world : args)
