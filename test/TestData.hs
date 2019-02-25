@@ -140,6 +140,7 @@ testFamiliesData = [
     , (  9, C_CG )
     , ( 10, NODE_CG )
     , ( 11, NODE_CG )
+    , ( 12, NODE_CG )
     ]),
   ("folding",         "Folding",
     [ (  1, ANY  )]),
