@@ -417,13 +417,12 @@ irTerm top vs env tm@(App _ f a) = do
                 -> return . padLams $ \[vn] -> LApp False (LV n) [LV vn]
 
                 -- compile Nat-likes as bigints
-                -- not sure if prim applications must be saturated
-                -- let's wrap it in a lambda just to be sure
+                -- it seems that prim applications needn't be saturated
                 | Just LikeS <- isLikeNat ist n
-                -> LLam [sMN 0 "nh"] <$>
-                    (irTerm top vs env $
-                        mkApp (P Ref (sUN "prim__addBigInt") Erased)
-                            [Constant $ BI 1, P Ref (sMN 0 "nh") Erased])
+                -> irTerm top vs env $
+                    App Complete
+                        (P Ref (sUN "prim__addBigInt") Erased)
+                        (Constant $ BI 1)
 
                 -- not a newtype, just apply to a constructor
                 | otherwise
