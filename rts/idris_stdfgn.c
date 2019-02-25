@@ -108,6 +108,7 @@ void* idris_dirOpen(char* dname) {
     } else {
         DirInfo* di = malloc(sizeof(DirInfo));
         di->dirptr = d;
+        di->error = 0;
 
         return (void*)di;
     }
