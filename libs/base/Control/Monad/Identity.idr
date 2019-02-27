@@ -29,3 +29,9 @@ Enum a => Enum (Identity a) where
   toNat (Id x) = toNat x
   fromNat n = Id $ fromNat n
   pred (Id n) = Id $ pred n
+
+(Semigroup a) => Semigroup (Identity a) where
+  (<+>) x y = Id (runIdentity x <+> runIdentity y)
+
+(Monoid a) => Monoid (Identity a) where
+  neutral = Id (neutral)
