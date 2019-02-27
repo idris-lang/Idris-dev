@@ -71,15 +71,15 @@ Show SocketFamily where
   show AF_INET6  = "AF_INET6"
 
 ToCode SocketFamily where
-  toCode AF_UNSPEC = 0
-  toCode AF_INET   = 2
-  toCode AF_INET6  = 10
+  toCode AF_UNSPEC = unsafePerformIO (foreign FFI_C "#AF_UNSPEC" (IO Int))
+  toCode AF_INET   = unsafePerformIO (foreign FFI_C "#AF_INET" (IO Int))
+  toCode AF_INET6  = unsafePerformIO (foreign FFI_C "#AF_INET6" (IO Int))
 
 getSocketFamily : Int -> Maybe SocketFamily
 getSocketFamily i =
-    Prelude.List.lookup i [ (0, AF_UNSPEC)
-                          , (2, AF_INET)
-                          , (10, AF_INET6)
+    Prelude.List.lookup i [ (toCode AF_UNSPEC, AF_UNSPEC)
+                          , (toCode AF_INET, AF_INET)
+                          , (toCode AF_INET6, AF_INET6)
                           ]
 
 -- ------------------------------------------------------------ [ Socket Types ]
