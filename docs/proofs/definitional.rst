@@ -6,8 +6,6 @@ In order to understand how to write proofs in Idris I think its worth clarifying
 -  Definitional and propositional equalities
 -  Axiomatic and constructive approaches
 
-If you have experience in logic or using proof assistants like Coq then     you may already know this stuff so you can  skip this page.
-
 Propositions and Judgments
 ==========================
 
