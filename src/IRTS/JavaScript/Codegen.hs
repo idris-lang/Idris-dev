@@ -108,22 +108,25 @@ makeExportDecls :: Map Name LDecl -> ExportIFace -> [Text]
 makeExportDecls defs (Export _ _ e) =
   concatMap makeExport e
   where
-    uncurryF name argTy (Just args) =
-      if length argTy == length args then name
+    uncurryF name argTy (Just args) retTy =
+      if length argTy == length args then
+          case (retTy, length args) of
+            (FIO _, 0) -> T.concat ["function(){return ", name, "()()}"]
+            _ -> name
         else T.concat [ "function(){ return "
                       , name
                       , ".apply(this, Array.prototype.slice.call(arguments, 0,", T.pack $ show $ length args,"))"
                       , T.concat $ map (\x -> T.concat ["(arguments[", T.pack $ show x , "])"]) [length args .. (length argTy - 1)]
                       , "}"
                       ]
-    uncurryF name argTy Nothing = name
+    uncurryF name argTy Nothing retTy = name
 
     makeExport (ExportData _) =
       []
     makeExport (ExportFun name (FStr exportname) retTy argTy) =
       [T.concat [ T.pack $ exportname
                 ,  ": "
-                , uncurryF (jsName name) argTy (getArgList' name defs)
+                , uncurryF (jsName name) argTy (getArgList' name defs) retTy
                 ]
       ]
 
