@@ -30,7 +30,7 @@ calculated just like any other value:
     interpTy : Ty -> Type
     interpTy TyInt       = Integer
     interpTy TyBool      = Bool
-    interpTy (TyFun A T) = interpTy A -> interpTy T
+    interpTy (TyFun a t) = interpTy a -> interpTy t
 
 We're going to define a representation of our language in such a way
 that only well-typed programs can be represented. We'll index the
