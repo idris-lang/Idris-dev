@@ -64,3 +64,6 @@ censor f m = pass $ do a <- m
 ||| The Writer monad itself. See the MonadWriter interface
 Writer : Type -> Type -> Type
 Writer w a = WriterT w Identity a
+
+runWriter : Writer w a -> (a, w)
+runWriter = runIdentity . runWriterT
