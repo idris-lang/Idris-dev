@@ -5,15 +5,15 @@ init:
 
     mkdir C:\ghc
 
-    Invoke-WebRequest "http://downloads.haskell.org/~ghc/8.2.1/ghc-8.2.1-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
+    Invoke-WebRequest "http://downloads.haskell.org/~ghc/8.4.3/ghc-8.4.3-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
 
     7z x C:\ghc\ghc.tar.xz -oC:\ghc
 
     7z x C:\ghc\ghc.tar -oC:\ghc
 
-    $env:PATH="$env:PATH;c:\ghc\ghc-8.2.1\bin;$HOME\AppData\Roaming\cabal\bin"
+    $env:PATH="$env:PATH;c:\ghc\ghc-8.4.3\bin;$HOME\AppData\Roaming\cabal\bin"
 
-    cabal update
+    cabal v1-update
 
     $env:current_posix=c:\msys64\usr\bin\cygpath -u $(pwd)
 
@@ -22,6 +22,6 @@ environment:
   MSYS2_PATH_TYPE: inherit
 build_script:
 - ps: >-
-    c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal install -fffi --enable-tests 2>&1"
+    c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal v1-install -fffi --enable-tests 2>&1"
 test_script:
 - ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && make test_c 2>&1"

@@ -1,10 +1,8 @@
 Entering directory `./src'
-Type checking ./NumOps.idr
-Type checking ./Test.idr
 Leaving directory `./src'
+Test Passed
+Test Passed
 Entering directory `./src'
-Test Passed
-Test Passed
 Leaving directory `./src'
 Entering directory `./src'
 Removed: NumOps.ibc
