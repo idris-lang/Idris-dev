@@ -350,7 +350,7 @@ Implementing ``Sockets``
 
 To implement ``Sockets`` in ``IO``, we'll begin by giving a concrete type
 for ``Sock``. We can use the raw sockets API (implemented in
-``Network.Sockeet``) for this, and use a ``Socket`` stored in a ``State``, no
+``Network.Socket``) for this, and use a ``Socket`` stored in a ``State``, no
 matter what abstract state the socket is in:
 
 .. code-block:: idris
