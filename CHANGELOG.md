@@ -1,5 +1,9 @@
 # New in next version
 
+
+## Library updates
++ `openFile` opens the file in binary mode on Windows.
+
 ## Tool updates
 + Modules no longer require building if imports have changed but all
   interfaces (i.e. types for names declared `export` and definitions of names

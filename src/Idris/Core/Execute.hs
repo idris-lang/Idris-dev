@@ -345,7 +345,7 @@ execForeign env ctxt arity ty fn xs onfail
            = case (fileStr, modeStr) of
                (EConstant (Str f), EConstant (Str mode)) ->
                  do f <- execIO $
-                         catch (do let m = case mode of
+                         catch (do let m = case filter (/= 'b') mode of
                                              "r"  -> Right ReadMode
                                              "w"  -> Right WriteMode
                                              "a"  -> Right AppendMode
