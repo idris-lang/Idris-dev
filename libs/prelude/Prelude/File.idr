@@ -13,6 +13,7 @@ import Prelude.Basics
 import Prelude.Interfaces
 import Prelude.Either
 import Prelude.Show
+
 import IO
 
 %access public export
@@ -108,12 +109,12 @@ validFile (FHandle h) = do x <- nullPtr h
 data Mode = Read | WriteTruncate | Append | ReadWrite | ReadWriteTruncate | ReadAppend
 
 modeStr : Mode -> String
-modeStr Read              = "r"
-modeStr WriteTruncate     = "w"
-modeStr Append            = "a"
-modeStr ReadWrite         = "r+"
-modeStr ReadWriteTruncate = "w+"
-modeStr ReadAppend        = "a+"
+modeStr Read              = "rb"
+modeStr WriteTruncate     = "wb"
+modeStr Append            = "ab"
+modeStr ReadWrite         = "rb+"
+modeStr ReadWriteTruncate = "wb+"
+modeStr ReadAppend        = "ab+"
 
 ||| Open a file
 ||| @ f the filename
