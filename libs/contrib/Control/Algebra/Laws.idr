@@ -6,6 +6,7 @@ import Interfaces.Verified
 
 %access export
 
+||| A prof that -0 = 0 in any verified group.
 inverseNeutralIsNeutral : VerifiedGroup t => inverse (the t A.neutral) = A.neutral
 inverseNeutralIsNeutral {t} =
     let zero = the t neutral in
@@ -13,6 +14,7 @@ inverseNeutralIsNeutral {t} =
     let step2 = replace {P = \x => zero <+> inverse zero = x} (groupInverseIsInverseL zero) step1 in
     replace {P = \x => x = neutral} (monoidNeutralIsNeutralR $ inverse zero) step2
 
+||| A proof that -(-x) = x in any verified group.
 inverseSquaredIsIdentity : VerifiedGroup t => (x : t) -> inverse (inverse x) = x
 inverseSquaredIsIdentity {t} x =
     let zero = the t neutral in
@@ -22,6 +24,7 @@ inverseSquaredIsIdentity {t} x =
     let step4 = replace {P = \r => r = x <+> neutral} (monoidNeutralIsNeutralR (inverse $ inverse x)) step3 in
     replace {P = \r => inverse (inverse x) = r} (monoidNeutralIsNeutralL x) step4
 
+||| A proof that -(x + y) = -x - y in any verified abelian group.
 inverseDistributesOverGroupOp : VerifiedAbelianGroup t => (l, r : t) -> inverse (l <+> r) = inverse l <+> inverse r
 inverseDistributesOverGroupOp {t} l r =
     let step1 = replace {P = \x => x = neutral} (sym $ groupInverseIsInverseL (l <+> r)) $ the (the t neutral = neutral) Refl in
@@ -37,6 +40,7 @@ inverseDistributesOverGroupOp {t} l r =
     let step11 = replace {P = \x => x = inverse r <+> inverse l} (monoidNeutralIsNeutralR (inverse (l <+> r))) step10 in
     replace {P = \x => inverse (l <+> r) = x} (abelianGroupOpIsCommutative (inverse r) (inverse l)) step11
 
+||| A proof that anything multiplied by zero yields zero back.
 multNeutralAbsorbingL : VerifiedRingWithUnity t => (r : t) -> A.neutral <.> r = A.neutral
 multNeutralAbsorbingL r =
     let step1 = the (unity <.> r = r) (ringWithUnityIsUnityR r) in
@@ -48,6 +52,7 @@ multNeutralAbsorbingL r =
     let step7 = replace {P = \x => neutral <.> r <+> x = x} (groupInverseIsInverseL r) step6 in
     replace {P = \x => x = neutral} (monoidNeutralIsNeutralL (neutral <.> r)) step7
 
+||| A proof that anything multiplied by zero yields zero back.
 multNeutralAbsorbingR : VerifiedRingWithUnity t => (l : t) -> l <.> A.neutral = A.neutral
 multNeutralAbsorbingR l =
     let step1 = the (l <.> unity = l) (ringWithUnityIsUnityL l) in
@@ -59,6 +64,8 @@ multNeutralAbsorbingR l =
     let step7 = replace {P = \x => l <.> neutral <+> x = x} (groupInverseIsInverseL l) step6 in
     replace {P = \x => x = neutral} (monoidNeutralIsNeutralL (l <.> neutral)) step7
 
+||| A proof that inverse operator can be extracted before multiplication
+||| (-x)y = -(xy)
 multInverseInversesL : VerifiedRingWithUnity t => (l, r : t) -> inverse l <.> r = inverse (l <.> r)
 multInverseInversesL l r =
     let step1 = replace {P = \x => x <.> r = neutral} (sym $ groupInverseIsInverseL l) (multNeutralAbsorbingL r) in
@@ -69,6 +76,8 @@ multInverseInversesL l r =
     let step6 = replace {P = \x => x <+> inverse l <.> r = inverse (l <.> r)} (groupInverseIsInverseR (l <.> r)) step5 in
     replace {P = \x => x = inverse (l <.> r)} (monoidNeutralIsNeutralR (inverse l <.> r)) step6
 
+||| A proof that inverse operator can be extracted before multiplication
+||| x(-y) = -(xy)
 multInverseInversesR : VerifiedRingWithUnity t => (l, r : t) -> l <.> inverse r = inverse (l <.> r)
 multInverseInversesR l r =
     let step1 = replace {P = \x => l <.> x = neutral} (sym $ groupInverseIsInverseL r) (multNeutralAbsorbingR l) in
@@ -79,6 +88,8 @@ multInverseInversesR l r =
     let step6 = replace {P = \x => x <+> l <.> inverse r = inverse (l <.> r)} (groupInverseIsInverseR (l <.> r)) step5 in
     replace {P = \x => x = inverse (l <.> r)} (monoidNeutralIsNeutralR (l <.> inverse r)) step6
 
+||| A proof that multiplication of inverses is the same as multiplication of original
+||| elements. (-x)(-y) = xy
 multNegativeByNegativeIsPositive : VerifiedRingWithUnity t => (l, r : t) -> inverse l <.> inverse r = l <.> r
 multNegativeByNegativeIsPositive l r =
     rewrite multInverseInversesR (inverse l) r in
