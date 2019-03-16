@@ -77,3 +77,10 @@ multInverseInversesR l r =
     let step5 = replace {P = \x => x = inverse (l <.> r)} (semigroupOpIsAssociative (inverse (l <.> r)) (l <.> r) (l <.> inverse r)) step4 in
     let step6 = replace {P = \x => x <+> l <.> inverse r = inverse (l <.> r)} (groupInverseIsInverseR (l <.> r)) step5 in
     replace {P = \x => x = inverse (l <.> r)} (monoidNeutralIsNeutralR (l <.> inverse r)) step6
+
+multNegativeByNegativeIsPositive : VerifiedRingWithUnity t => (l, r : t) -> inverse l <.> inverse r = l <.> r
+multNegativeByNegativeIsPositive l r =
+    rewrite multInverseInversesR (inverse l) r in
+    rewrite sym $ multInverseInversesL (inverse l) r in
+    rewrite inverseSquaredIsIdentity l in
+    Refl
