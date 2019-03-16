@@ -4,6 +4,7 @@ import Prelude.Algebra as A
 import Control.Algebra
 import Interfaces.Verified
 
+%access export
 
 inverseNeutralIsNeutral : VerifiedGroup t => inverse (the t A.neutral) = A.neutral
 inverseNeutralIsNeutral {t} =
