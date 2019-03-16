@@ -4,8 +4,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
-#ifdef HAS_PTHREAD
 #include <string.h>
+#ifdef HAS_PTHREAD
 #include <stdarg.h>
 #include <pthread.h>
 #endif
