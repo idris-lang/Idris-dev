@@ -1,9 +1,0 @@
-config LIBSEL4_IDRIS_RTS
-    bool "libsel4-idris-rts"
-    default y
-    select HAVE_LIBSEL4_IDRIS_RTS
-    help
-        Idris RTS compiled for seL4
-
-config HAVE_LIBSEL4_IDRIS_RTS
-    bool
