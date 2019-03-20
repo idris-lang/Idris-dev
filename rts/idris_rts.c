@@ -781,6 +781,7 @@ VAL idris_systemInfo(VM* vm, VAL index) {
     return MKSTR(vm, "");
 }
 
+#ifdef HAS_PTHREAD
 typedef struct {
     VM* vm; // thread's VM
     VM* callvm; // calling thread's VM
@@ -788,7 +789,6 @@ typedef struct {
     VAL arg;
 } ThreadData;
 
-#ifdef HAS_PTHREAD
 void* runThread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
     VM* vm = td->vm;
