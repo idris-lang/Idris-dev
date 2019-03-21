@@ -16,7 +16,7 @@ $JSRTS.prim_writeStr = function (x) { return process.stdout.write(x) };
 
 $JSRTS.prim_readStr = function () {
     var ret = '';
-    var b = new Buffer(1024);
+    var b = Buffer.alloc(1024);
     var i = 0;
     while (true) {
         $JSRTS.fs.readSync(0, b, i, 1)
@@ -26,7 +26,7 @@ $JSRTS.prim_readStr = function () {
         }
         i++;
         if (i == b.length) {
-            var nb = new Buffer(b.length * 2);
+            var nb = Buffer.alloc(b.length * 2);
             b.copy(nb)
             b = nb;
         }
