@@ -6,8 +6,8 @@
 void _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
 
 RTSOpts opts = {
-    .init_heap_size = 16384000,
-    .max_stack_size = 4096000,
+    .init_heap_size = 100000,
+    .max_stack_size = 5000,
     .show_summary   = 0
 };
 
@@ -24,7 +24,6 @@ int main() {
     }
 #endif
 
-    free_nullaries();
     // Remove call to terminate since it crashes the application during a free
     //Stats stats = terminate(vm);
 
