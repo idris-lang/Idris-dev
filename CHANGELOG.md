@@ -1,4 +1,5 @@
 # New in next version
++ Documentation added to proof section
 
 
 ## Library updates
