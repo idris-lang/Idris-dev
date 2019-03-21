@@ -8,6 +8,7 @@ modules = CFFI
 
         , Control.Algebra
         , Control.Algebra.Lattice
+        , Control.Algebra.Laws
         , Control.Algebra.NumericImplementations
         , Control.Algebra.VectorSpace
 
