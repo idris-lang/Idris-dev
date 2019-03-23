@@ -141,6 +141,7 @@ Stats terminate(VM* vm) {
 #ifdef HAS_PTHREAD
     pthread_mutex_destroy(&(vm -> inbox_lock));
     pthread_mutex_destroy(&(vm -> inbox_block));
+    pthread_mutex_destroy(&(vm->alloc_lock));
     pthread_cond_destroy(&(vm -> inbox_waiting));
 #endif
     // free(vm);
