@@ -72,6 +72,7 @@ VM* init_vm(int stack_size, size_t heap_size,
 
     vm->max_threads = max_threads;
     vm->processes = 0;
+    vm->creator = NULL;
 
 #else
     global_vm = vm;
@@ -784,7 +785,6 @@ VAL idris_systemInfo(VM* vm, VAL index) {
 #ifdef HAS_PTHREAD
 typedef struct {
     VM* vm; // thread's VM
-    VM* callvm; // calling thread's VM
     func fn;
     VAL arg;
 } ThreadData;
@@ -792,21 +792,17 @@ typedef struct {
 void* runThread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
     VM* vm = td->vm;
-    VM* callvm = td->callvm;
+    func fn = td->fn;
 
     init_threaddata(vm);
 
     TOP(0) = td->arg;
     BASETOP(0);
     ADDTOP(1);
-    td->fn(vm, NULL);
-    callvm->processes--;
-
     free(td);
+    fn(vm, NULL);
 
-    //    Stats stats =
-    terminate(vm);
-    //    aggregate_stats(&(td->vm->stats), &stats);
+    assert(0); // will not be reached
     return NULL;
 }
 
@@ -814,6 +810,7 @@ void* vmThread(VM* callvm, func f, VAL arg) {
     VM* vm = init_vm(callvm->stack_max - callvm->valstack, callvm->heap.size,
                      callvm->max_threads);
     vm->processes=1; // since it can send and receive messages
+    vm->creator = callvm;
     pthread_t t;
     pthread_attr_t attr;
 //    size_t stacksize;
@@ -822,9 +819,8 @@ void* vmThread(VM* callvm, func f, VAL arg) {
 //    pthread_attr_getstacksize (&attr, &stacksize);
 //    pthread_attr_setstacksize (&attr, stacksize*64);
 
-    ThreadData *td = malloc(sizeof(ThreadData));
+    ThreadData *td = malloc(sizeof(ThreadData)); // free'd in runThread
     td->vm = vm;
-    td->callvm = callvm;
     td->fn = f;
     td->arg = copyTo(vm, arg);
 
@@ -841,7 +837,10 @@ void* vmThread(VM* callvm, func f, VAL arg) {
 }
 
 void* idris_stopThread(VM* vm) {
-    close_vm(vm);
+    if (vm->creator != NULL) {
+        vm->creator->processes--;
+    }
+    terminate(vm);
     pthread_exit(NULL);
     return NULL;
 }

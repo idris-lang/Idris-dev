@@ -152,6 +152,7 @@ struct VM {
 
     int processes; // Number of child processes
     int max_threads; // maximum number of threads to run in parallel
+    struct VM* creator; // The VM that created this VM, NULL for root VM
 #endif
     Stats stats;
 
