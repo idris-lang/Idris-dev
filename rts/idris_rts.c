@@ -132,17 +132,15 @@ void init_signals(void) {
 Stats terminate(VM* vm) {
     Stats stats = vm->stats;
     STATS_ENTER_EXIT(stats)
-#ifdef HAS_PTHREAD
-    free(vm->inbox);
-#endif
     free(vm->valstack);
     free_heap(&(vm->heap));
     c_heap_destroy(&(vm->c_heap));
 #ifdef HAS_PTHREAD
-    pthread_mutex_destroy(&(vm -> inbox_lock));
-    pthread_mutex_destroy(&(vm -> inbox_block));
+    pthread_mutex_destroy(&(vm->inbox_lock));
+    pthread_mutex_destroy(&(vm->inbox_block));
     pthread_mutex_destroy(&(vm->alloc_lock));
-    pthread_cond_destroy(&(vm -> inbox_waiting));
+    pthread_cond_destroy(&(vm->inbox_waiting));
+    free(vm->inbox);
 #endif
     // free(vm);
     // Set the VM as inactive, so that if any message gets sent to it
