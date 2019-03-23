@@ -826,6 +826,7 @@ void* vmThread(VM* callvm, func f, VAL arg) {
     callvm->processes++;
 
     int ok = pthread_create(&t, &attr, runThread, td);
+    pthread_attr_destroy(&attr);
 //    usleep(100);
     if (ok == 0) {
         return vm;
