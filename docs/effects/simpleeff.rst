@@ -212,7 +212,8 @@ from the result of a dynamic check:
 
 .. code-block:: idris
 
-    data So : Bool -> Type = Oh : So True
+    data So : Bool -> Type where
+      Oh : So True
 
     choose : (b : Bool) -> Either (So b) (So (not b))
 
