@@ -209,9 +209,9 @@ parseFlags = many $
   <|> flag' (AddOpt PETransform) (long "partial-eval")
   <|> flag' (RemoveOpt PETransform) (long "no-partial-eval" <> help "Switch off partial evaluation, mainly for debugging purposes")
 
-  <|> flag' (AddOpt GeneralisedNatHack) (long "generalised-nat-hack"
+  <|> flag' (AddOpt GeneralisedNatHack) (long "opt-nat-likes"
     <> help "Enable compilation of Nat-like types to bigints")
-  <|> flag' (RemoveOpt GeneralisedNatHack) (long "no-generalised-nat-hack"
+  <|> flag' (RemoveOpt GeneralisedNatHack) (long "no-opt-nat-likes"
     <> help "Disable compilation of Nat-like types to bigints")
 
   <|> OptLevel <$> option auto (short 'O' <> long "level")
