@@ -698,18 +698,18 @@ irSC top vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
                 -- the usual case
                 _ -> LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
 
-irSC top vs sc@(Case up n alts) = do
-    ist <- getIState
-
-    if  | [ConCase cns as nss scs, ConCase cnz az nsz scz] <- alts
+irSC top vs sc@(Case up n alts) = getIState >>= rhs
+  where
+    rhs ist
+        | [ConCase cns as nss scs, ConCase cnz az nsz scz] <- alts
         , Just LikeS <- isLikeNat ist cns
-        -> do
+        = do
             -- reorder to make the Z case come first
             zCase <- LConstCase (BI 0) <$> irSC top vs scz
             sCase <- irAlt top vs (LV n) (ConCase cns as nss scs)
             return $ LCase up (LV n) [zCase, sCase]
 
-        | otherwise -> do
+        | otherwise = do
             -- check that neither alternative needs the newtype optimisation,
             -- see comment above
             goneWrong <- or <$> mapM isDetaggable alts
@@ -718,7 +718,7 @@ irSC top vs sc@(Case up n alts) = do
 
             -- everything okay
             LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
-  where
+
     isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
     isDetaggable  _                 = return False
 
