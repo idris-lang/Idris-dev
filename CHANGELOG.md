@@ -10,6 +10,12 @@
   interfaces (i.e. types for names declared `export` and definitions of names
   declared `public export`) are unchanged.
 
+## Miscellaneous updates
++ Compiler flag `--optimise-nat-like-types` enables compilation
+  of `Nat`-like type families to big integers. A type family
+  is `Nat`-like if, after erasure, it has two constructors,
+  one nullary, the other one with exactly one recursive field.
+
 # New in 1.3.1
 
 ## Tool updates
