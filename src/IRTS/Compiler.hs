@@ -5,7 +5,8 @@ Description : Coordinates the compilation process.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, FlexibleContexts, PatternGuards, TypeSynonymInstances #-}
+{-# LANGUAGE CPP, FlexibleContexts, MultiWayIf, NamedFieldPuns, PatternGuards,
+             TypeSynonymInstances #-}
 
 module IRTS.Compiler(compile, generate) where
 
@@ -34,6 +35,7 @@ import Control.Category
 import Control.Monad.State
 import Data.List
 import qualified Data.Map as M
+import Data.Maybe (maybe)
 import Data.Ord
 import qualified Data.Set as S
 import System.Directory
@@ -393,6 +395,16 @@ irTerm top vs env tm@(App _ f a) = do
             EQ  | isNewtype
                 -> irTerm top vs env (head argsPruned)
 
+                -- compile Nat-likes as bigints
+                | Just LikeZ <- isLikeNat ist n
+                -> irTerm top vs env $ Constant (BI 0)
+
+                -- compile Nat-likes as bigints
+                | Just LikeS <- isLikeNat ist n
+                -> irTerm top vs env $ mkApp
+                    (P Ref (sUN "prim__addBigInt") Erased)
+                    (Constant (BI 1) : argsPruned)
+
                 | otherwise  -- not newtype, plain data ctor
                 -> buildApp (LV n) argsPruned
 
@@ -404,6 +416,14 @@ irTerm top vs env tm@(App _ f a) = do
 
                 | isNewtype  -- newtype but the value is not among args yet
                 -> return . padLams $ \[vn] -> LApp False (LV n) [LV vn]
+
+                -- compile Nat-likes as bigints
+                -- it seems that prim applications needn't be saturated
+                | Just LikeS <- isLikeNat ist n
+                -> irTerm top vs env $
+                    App Complete
+                        (P Ref (sUN "prim__addBigInt") Erased)
+                        (Constant $ BI 1)
 
                 -- not a newtype, just apply to a constructor
                 | otherwise
@@ -500,6 +520,58 @@ irTerm top vs env (Constant c)        = return (LConst c)
 irTerm top vs env (TType _)           = return LNothing
 irTerm top vs env Erased              = return LNothing
 irTerm top vs env Impossible          = return LNothing
+
+data LikeNat = LikeZ | LikeS
+
+isLikeNat :: IState -> Name -> Maybe LikeNat
+isLikeNat ist cn
+    -- Nat itself is special-cased in Idris/DataOpts.hs,
+    -- which will have already happened at this point.
+
+    -- If the optimisation is disabled then nothing looks like Nat.
+    | GeneralisedNatHack `notElem` opt_optimise (idris_options ist)
+    = Nothing
+
+    | Just cTy <- lookupTyExact cn $ tt_ctxt ist
+    , (P TCon{} tyN _, _) <- unApply $ getRetTy cTy
+    , Just (z, s) <- natLikeCtors tyN
+    = if | cn == z -> Just LikeZ
+         | cn == s -> Just LikeS
+         | otherwise -> error $ "isLikeNat: constructor not found in its own family: " ++ show (cn, tyN)
+
+    | otherwise = Nothing
+  where
+    natLikeCtors :: Name -> Maybe (Name, Name)
+    natLikeCtors tyN = case lookupCtxtExact tyN $ idris_datatypes ist of
+        Just TI{con_names = [z, s]}
+            | 0 <- getUsedCount z
+            , looksLikeS s
+            -> Just (z, s)
+
+        Just TI{con_names = [s, z]}
+            | 0 <- getUsedCount z
+            , looksLikeS s
+            -> Just (z, s)
+
+        _ -> Nothing
+
+    getUsedCount :: Name -> Int
+    getUsedCount n =
+        maybe 0 (length . usedpos)
+        $ lookupCtxtExact n
+        $ idris_callgraph ist
+
+    looksLikeS :: Name -> Bool
+    looksLikeS cn
+        | Just [(i, _)] <- fmap usedpos $ lookupCtxtExact cn $ idris_callgraph ist
+        , Just cTy <- lookupTyExact cn $ tt_ctxt ist
+        , [recTy] <- [recTy | (j, (_n, recTy)) <- zip [0..] (getArgTys cTy), j == i]
+        , (P TCon{} recTyN _, _) <- unApply recTy
+        , (P TCon{} tyN _, _) <- unApply $ getRetTy cTy
+        , recTyN == tyN
+        = True
+
+        | otherwise = False
 
 doForeign :: Vars -> [Name] -> [Term] -> Idris LExp
 doForeign vs env (ret : fname : world : args)
@@ -616,18 +688,41 @@ irSC top vs (Case up n alts@[ConCase cn a ns sc, DefaultCase sc']) = do
     detag <- fgetState (opt_detaggable . ist_optimisation cn)
     if detag
         then irSC top vs (Case up n [ConCase cn a ns sc])
-        else LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
+        else do
+            likeNat <- isLikeNat <$> getIState <*> pure cn
+            case likeNat of
+                -- the annoying case: LikeS is translated into a default case
+                -- so we need to change the original DefaultCase to Z-case
+                -- and reorder it before this one
+                Just LikeS -> do
+                    zCase <- LConstCase (BI 0) <$> irSC top vs sc'
+                    sCase <- irAlt top vs (LV n) (ConCase cn a ns sc)
+                    return $ LCase up (LV n) [zCase, sCase]
 
-irSC top vs sc@(Case up n alts) = do
-    -- check that neither alternative needs the newtype optimisation,
-    -- see comment above
-    goneWrong <- or <$> mapM isDetaggable alts
-    when goneWrong
-        $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
+                -- the usual case
+                _ -> LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
 
-    -- everything okay
-    LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
+irSC top vs sc@(Case up n alts) = getIState >>= rhs
   where
+    rhs ist
+        | [ConCase cns as nss scs, ConCase cnz az nsz scz] <- alts
+        , Just LikeS <- isLikeNat ist cns
+        = do
+            -- reorder to make the Z case come first
+            zCase <- LConstCase (BI 0) <$> irSC top vs scz
+            sCase <- irAlt top vs (LV n) (ConCase cns as nss scs)
+            return $ LCase up (LV n) [zCase, sCase]
+
+        | otherwise = do
+            -- check that neither alternative needs the newtype optimisation,
+            -- see comment above
+            goneWrong <- or <$> mapM isDetaggable alts
+            when goneWrong
+                $ ifail ("irSC: non-trivial case-match on detaggable data: " ++ show sc)
+
+            -- everything okay
+            LCase up (LV n) <$> mapM (irAlt top vs (LV n)) alts
+
     isDetaggable (ConCase cn _ _ _) = fgetState $ opt_detaggable . ist_optimisation cn
     isDetaggable  _                 = return False
 
@@ -636,10 +731,32 @@ irSC top vs ImpossibleCase = return LNothing
 irAlt :: Name -> Vars -> LExp -> CaseAlt -> Idris LAlt
 
 -- this leaves out all unused arguments of the constructor
-irAlt top vs _ (ConCase n t args sc) = do
+irAlt top vs tm (ConCase n t args sc) = do
+    likeNat <- isLikeNat <$> getIState <*> pure n
     used <- map fst <$> fgetState (cg_usedpos . ist_callgraph n)
     let usedArgs = [a | (i,a) <- zip [0..] args, i `elem` used]
-    LConCase (-1) n usedArgs <$> irSC top (methodVars `M.union` vs) sc
+
+    case likeNat of
+        -- like S
+        Just LikeS -> do
+            sc' <- irSC top vs sc
+            case usedArgs of
+                [pv] -> return $ LDefaultCase $ LLet pv
+                        ( LOp
+                            (LMinus (ATInt ITBig))
+                            [ tm
+                            , LConst (BI 1)
+                            ]
+                        )
+                        sc'
+
+                _ -> ifail $ "irAlt/LikeS: multiple used args: " ++ show usedArgs
+
+        -- like Z
+        Just LikeZ -> LConstCase (BI 0) <$> irSC top vs sc
+
+        -- not like Nat
+        Nothing -> LConCase (-1) n usedArgs <$> irSC top (methodVars `M.union` vs) sc
   where
     methodVars = case n of
         SN (ImplementationCtorN interfaceName)

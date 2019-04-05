@@ -125,7 +125,7 @@ data HowMuchDocs = FullDocs | OverviewDocs
 
 data OutputFmt = HTMLOutput | LaTeXOutput
 
-data Optimisation = PETransform -- ^ partial eval and associated transforms
+data Optimisation = PETransform | GeneralisedNatHack -- ^ partial eval and associated transforms
   deriving (Show, Eq, Generic)
 
 -- | Recognised logging categories for the Idris compiler.
