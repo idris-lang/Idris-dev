@@ -21,8 +21,11 @@ Usage:  ([--nobanner] | [-q|--quiet] | [--ide-mode] | [--ide-mode-socket] |
         [--codegen TARGET] | [--portable-codegen TARGET] | [--cg-opt ARG] |
         [-e|--eval EXPR] | [--execute] | [--exec EXPR] | [-X|--extension EXT] |
         [--O3] | [--O2] | [--O1] | [--O0] | [--partial-eval] |
-        [--no-partial-eval] | [-O|--level ARG] | [--target TRIPLE] | [--cpu CPU]
-        | [--color|--colour] | [--nocolor|--nocolour] | [--consolewidth WIDTH] |
-        [--highlight] | [--no-tactic-deprecation-warnings] |
+        [--no-partial-eval] |
+        [--optimise-nat-like-types|--optimize-nat-like-types] |
+        [--no-optimise-nat-like-types|--no-optimize-nat-like-types] |
+        [-O|--level ARG] | [--target TRIPLE] | [--cpu CPU] | [--color|--colour]
+        | [--nocolor|--nocolour] | [--consolewidth WIDTH] | [--highlight] |
+        [--no-tactic-deprecation-warnings] |
         [--allow-capitalized-pattern-variables]) [FILES] [-v|--version]
 )
