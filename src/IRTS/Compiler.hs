@@ -5,7 +5,8 @@ Description : Coordinates the compilation process.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE CPP, FlexibleContexts, PatternGuards, TypeSynonymInstances, NamedFieldPuns, MultiWayIf #-}
+{-# LANGUAGE CPP, FlexibleContexts, MultiWayIf, NamedFieldPuns, PatternGuards,
+             TypeSynonymInstances #-}
 
 module IRTS.Compiler(compile, generate) where
 
@@ -33,8 +34,8 @@ import Prelude hiding (id, (.))
 import Control.Category
 import Control.Monad.State
 import Data.List
-import Data.Maybe (maybe)
 import qualified Data.Map as M
+import Data.Maybe (maybe)
 import Data.Ord
 import qualified Data.Set as S
 import System.Directory
