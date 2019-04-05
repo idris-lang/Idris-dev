@@ -524,7 +524,10 @@ data LikeNat = LikeZ | LikeS
 
 isLikeNat :: IState -> Name -> Maybe LikeNat
 isLikeNat ist cn
-    -- if the optimisation is disabled then nothing looks like Nat
+    -- Nat itself is special-cased in Idris/DataOpts.hs,
+    -- which will have already happened at this point.
+
+    -- If the optimisation is disabled then nothing looks like Nat.
     | GeneralisedNatHack `notElem` opt_optimise (idris_options ist)
     = Nothing
 
