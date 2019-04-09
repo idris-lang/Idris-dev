@@ -141,6 +141,9 @@ Stats terminate(VM* vm) {
     pthread_mutex_destroy(&(vm->alloc_lock));
     pthread_cond_destroy(&(vm->inbox_waiting));
     free(vm->inbox);
+    if (vm->creator != NULL) {
+        vm->creator->processes--;
+    }
 #endif
     // free(vm);
     // Set the VM as inactive, so that if any message gets sent to it
@@ -801,7 +804,9 @@ void* runThread(void* arg) {
     free(td);
     fn(vm, NULL);
 
-    assert(0); // will not be reached
+    //    Stats stats =
+    terminate(vm);
+    //    aggregate_stats(&(td->vm->stats), &stats);
     return NULL;
 }
 
@@ -837,9 +842,6 @@ void* vmThread(VM* callvm, func f, VAL arg) {
 }
 
 void* idris_stopThread(VM* vm) {
-    if (vm->creator != NULL) {
-        vm->creator->processes--;
-    }
     terminate(vm);
     pthread_exit(NULL);
     return NULL;
