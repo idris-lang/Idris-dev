@@ -2,12 +2,15 @@
 Interactive Theorem Proving
 ***************************
 
-Idris also supports interactive theorem proving via elaborator reflection.
+Idris supports interactive theorem proving via elaborator reflection.
 
-:ref:'elaborator-reflection' is used to convert high-level Idris code into
-the core language and for customising the language.
+:ref:'elaborator-reflection' is also used to convert high-level Idris code into
+the core language and for customising the language. Here we show how to use it
+to interactively construct proofs.
 
-Here we show how to use it to interactively construct proofs.
+The primary purpose of the elaboration mechanism is to elaborate Idris and so it
+is not optimised to work as a proof assistant, however it can interactively
+construct proofs as described on this page.
 
 Elab and Pruviloj Libraries
 ===========================
