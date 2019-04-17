@@ -574,10 +574,10 @@ appear within the block:
 
 .. code-block:: idris
 
-    using (x:a, y:a, xs:Vect n a)
+    using (y:a, xs:Vect n a)
       data IsElem : a -> Vect n a -> Type where
-         Here  : IsElem x (x :: xs)
-         There : IsElem x xs -> IsElem x (y :: xs)
+         Here  : {x:a} -> IsElem x (x :: xs)
+         There : {x:a} -> IsElem x xs -> IsElem x (y :: xs)
 
 Note: Declaration Order and ``mutual`` blocks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
