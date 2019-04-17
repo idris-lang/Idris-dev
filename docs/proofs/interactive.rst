@@ -24,87 +24,75 @@ rewriteWith and others.
 reflexivity and others.
 
 To use ``pruviloj`` then call Idris with the "-p pruviloj" option and add:
-      import Pruviloj
-      import Pruviloj.Induction
+
+.. code-block:: idris
+    import Pruviloj
+    import Pruviloj.Induction
+
 to the top of your file.
 
-Here are the basic commands from Elab that we will need for the example on
-this page:
+It is useful to get the docs at the REPL by using the ``:doc`` command, and
+search the docstrings using ``:apropos``. So to introduce the functions from
+Elab and Pruviloj, that we will need for the following example, here are
+their docstrings:
 
 .. code-block:: idris
 
-  ||| Substitute a guess into a hole.
-  export
-  solve : Elab ()
-  solve = Prim__Solve
+    *plusReducesZ> :doc solve
+    Language.Reflection.Elab.Tactics.solve : Elab ()
+        Substitute a guess into a hole.
 
 .. code-block:: idris
 
-  ||| Convert a hole to make it suitable for bindings - that is,
-  ||| transform it such that it has the form `?h : t . h` as opposed to
-  ||| `?h : t . f h`.
-  |||
-  ||| The binding tactics require that a hole be directly under its
-  ||| binding, or else the scopes of the generated terms won't make
-  ||| sense. This tactic creates a new hole of the proper form, and
-  ||| points the old hole at it.
-  export
-  attack : Elab ()
-  attack = Prim__Attack
+    *plusReducesZ> :doc attack
+    Language.Reflection.Elab.Tactics.attack : Elab ()
+        Convert a hole to make it suitable for bindings - that is, transform
+        it such that it has the form ?h : t . h as opposed to ?h : t . f h.
+
+        The binding tactics require that a hole be directly under its binding,
+        or else the scopes of the generated terms won't make sense. This
+        tactic creates a new hole of the proper form, and points the old hole
+        at it.
 
 .. code-block:: idris
 
-  ||| Introduce a lambda binding around the current hole and focus on
-  ||| the body. Requires that the hole be in binding form (use
-  ||| `attack`).
-  |||
-  ||| @ n the name to use for the argument
-  export
-  intro : (n : TTName) -> Elab ()
-  intro n = Prim__Intro (Just n)
+*plusReducesZ> :doc intro
+    Language.Reflection.Elab.Tactics.intro : (n : TTName) -> Elab ()
+        Introduce a lambda binding around the current hole and focus on the
+        body. Requires that the hole be in binding form (use attack).
+        Arguments:
+            n : TTName  -- the name to use for the argument
 
 .. code-block:: idris
 
-   ||| Normalise the goal.
-   export
-   compute : Elab ()
-   compute = Prim__Compute
+    *plusReducesZ> :doc compute
+    Language.Reflection.Elab.Tactics.compute : Elab ()
+        Normalise the goal.
 
 .. code-block:: idris
 
-  ||| Attempt to rewrite the goal using an equality.
-  |||
-  ||| The tactic searches the goal for applicable subterms, and
-  ||| constructs a context for `replace` using them. In some cases,
-  ||| this is not possible, and `replace` must be called manually with
-  ||| an appropriate context.
-  |||
-  ||| Because this tactic internally introduces a `let` binding, it
-  ||| requires that the hole be immediately under its binder (use
-  ||| `attack` if it might not be).
-  export
-  rewriteWith : Raw -> Elab ()
-  rewriteWith rule = Prim__Rewrite rule
+*plusReducesZ> :doc rewriteWith
+    Language.Reflection.Elab.Tactics.rewriteWith : Raw -> Elab ()
+        Attempt to rewrite the goal using an equality.
+
+        The tactic searches the goal for applicable subterms, and constructs a
+        context for replace using them. In some cases, this is not possible,
+        and replace must be called manually with an appropriate context.
+
+        Because this tactic internally introduces a let binding, it requires
+        that the hole be immediately under its binder (use attack if it might
+        not be).
 
 Here is the command from pruviloj that we will need for the example on
 this page:
 
 .. code-block:: idris
 
-    ||| A special-purpose tactic that attempts to solve a goal using
-    ||| `Refl`. This is useful for ensuring that goals in fact are trivial
-    ||| when developing or testing other tactics; otherwise, consider
-    ||| using `search`.
-    reflexivity : Elab ()
-    reflexivity =
-        case !goalType of
-          `((=) {A=~a} {B=~_} ~x ~_) =>
-            do fill `(Refl {A=~a} {x=~x})
-               solve
-          _ => fail [ TextPart "The goal is not an equality, so"
-                    , NamePart `{reflexivity}
-                    , TextPart "is not applicable."
-                    ]
+    *plusReducesZ> :doc reflexivity
+    Pruviloj.Core.reflexivity : Elab ()
+        A special-purpose tactic that attempts to solve a goal using Refl.
+        This is useful for ensuring that goals in fact are trivial when
+        developing or testing other tactics; otherwise, consider using search.
 
 Interactive Example: plusReduces
 ================================
@@ -150,7 +138,7 @@ On running , two global names are created, ``plusredZ_Z`` and
 This tells us that we have two holes Main.plusredZ_S and Main.plusredZ_Z. We can solve
 these separately, ``plusredZ_Z`` is the simplest so we will do that first.
 
-The ``:elab plusredZ_Z`` command enters interactive proof mode, which can be used to
+The ``:elab plusredZ_Z`` command enters interactive elaboration mode, which can be used to
 complete the missing definition for plusredZ_Z.
 
 .. code-block:: idris
@@ -161,7 +149,7 @@ complete the missing definition for plusredZ_Z.
     {hole_0} : 0 = 0
 
 This has been normalised to ``0 = 0`` so now we have to prove that ``0`` equals ``0``, which
-is easy to prove by reflexivity from pruviloj library:
+is easy to prove by reflexivity from the pruviloj library:
 
 .. code-block:: idris
     -Main.plusredZ_Z> reflexivity
@@ -218,22 +206,8 @@ braces `{{ih}}. This gives:
     ----------                 Goal:                  ----------
     {hole_0} : S k = S (plus k 0)
 
-Since plus is defined by recursion on its first argument, the term
-``plus (S k) Z`` in the goal can be simplified, so we use ``compute``.
-
-.. code-block:: idris
-
-    -Main.plusredZ_S> compute
-
-    ----------              Assumptions:              ----------
-     k : Nat
-     ih : k = plus k 0
-    ----------                 Goal:                  ----------
-    {hole_0} : S k = S (plus k 0)
-
-
-We know, from the type of ``ih``, that ``k = plus k Z``, so we would
-like to use this knowledge to replace ``plus k Z`` in the goal with
+We know, from the type of ``ih``, that ``k = plus k 0``, so we would
+like to use this knowledge to replace ``plus k 0`` in the goal with
 ``k``. We can achieve this with the ``rewriteWith`` tactic:
 
 .. code-block:: idris
@@ -249,8 +223,9 @@ like to use this knowledge to replace ``plus k Z`` in the goal with
 The ``rewriteWith`` tactic takes an equality proof as an argument, and tries
 to rewrite the goal using that proof. The ih value is entered as a constant
 of type ``TTName`` which is entered as a backtick with double braces `{{ih}} but
-``rewriteWith`` requires a ``raw`` value so we use ``Var`` to do this conversion.
-Here, it results in an equality which is trivially provable using reflexivity:
+``rewriteWith`` requires an expression of type ``Raw``, rather than just a name,
+so the Var constructor is used to make a variable. Here, it results in an equality
+which is trivially provable using reflexivity:
 
 .. code-block:: idris
 
