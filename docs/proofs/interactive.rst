@@ -23,9 +23,10 @@ rewriteWith and others.
 ``pruviloj`` defines some more advanced derived commands such as:
 reflexivity and others.
 
-To use ``pruviloj`` then call Idris with the "-p pruviloj" option and add:
+To use ``pruviloj`` call Idris with the "-p pruviloj" option and add:
 
 .. code-block:: idris
+
     import Pruviloj
     import Pruviloj.Induction
 
