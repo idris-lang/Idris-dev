@@ -200,8 +200,10 @@ multiLineComment = P.hidden $ P.try (string "{-" *> string "-}" *> pure ())
 {-| Parses a documentation comment
 
 @
-  DocComment_t ::=   '|||' ~EOL_t* EOL_t
-                 ;
+  DocComment_t ::= DocCommentLine (ArgCommentLine DocCommentLine*)* ;
+
+  DocCommentLine ::= '|||' ~EOL_t* EOL_t ;
+  ArgCommentLine ::= '|||' '@' ~EOL_t* EOL_t ;
 @
  -}
 docComment :: IdrisParser (Docstring (), [(Name, Docstring ())])
