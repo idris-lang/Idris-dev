@@ -56,7 +56,7 @@ their docstrings:
 
 .. code-block:: idris
 
-*plusReducesZ> :doc intro
+    *plusReducesZ> :doc intro
     Language.Reflection.Elab.Tactics.intro : (n : TTName) -> Elab ()
         Introduce a lambda binding around the current hole and focus on the
         body. Requires that the hole be in binding form (use attack).
@@ -71,7 +71,7 @@ their docstrings:
 
 .. code-block:: idris
 
-*plusReducesZ> :doc rewriteWith
+    *plusReducesZ> :doc rewriteWith
     Language.Reflection.Elab.Tactics.rewriteWith : Raw -> Elab ()
         Attempt to rewrite the goal using an equality.
 
