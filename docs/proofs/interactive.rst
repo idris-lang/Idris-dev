@@ -1,15 +1,102 @@
-***************************************
-DEPRECATED: Interactive Theorem Proving
-***************************************
+***************************
+Interactive Theorem Proving
+***************************
 
-.. warning::
-   The interactive theorem-proving interface documented here has been
-   deprecated in favor of :ref:`elaborator-reflection`.
+Idris supports interactive theorem proving via elaborator reflection.
 
-Idris also supports interactive theorem proving via tactics. This
-is generally not recommended to be used directly, but rather used as a
-mechanism for building proof automation which is beyond the scope of this
-tutorial. In this section, we briefly discus tactics.
+:ref:'elaborator-reflection' is also used to convert high-level Idris code into
+the core language and for customising the language. Here we show how to use it
+to interactively construct proofs.
+
+The primary purpose of the elaboration mechanism is to elaborate Idris and so it
+is not optimised to work as a proof assistant, however it can interactively
+construct proofs as described on this page.
+
+Elab and Pruviloj Libraries
+===========================
+
+Elaborator reflection is defined in prelude/Language/Reflection/Elab.idr
+and pruviloj is defined in Idris-dev/libs/pruviloj/
+
+``Elab`` defines the basics such as: solve, attack, intro, compute,
+rewriteWith and others.
+``pruviloj`` defines some more advanced derived commands such as:
+reflexivity and others.
+
+To use ``pruviloj`` call Idris with the "-p pruviloj" option and add:
+
+.. code-block:: idris
+
+    import Pruviloj
+    import Pruviloj.Induction
+
+to the top of your file.
+
+It is useful to get the docs at the REPL by using the ``:doc`` command, and
+search the docstrings using ``:apropos``. So to introduce the functions from
+Elab and Pruviloj, that we will need for the following example, here are
+their docstrings:
+
+.. code-block:: idris
+
+    *plusReducesZ> :doc solve
+    Language.Reflection.Elab.Tactics.solve : Elab ()
+        Substitute a guess into a hole.
+
+.. code-block:: idris
+
+    *plusReducesZ> :doc attack
+    Language.Reflection.Elab.Tactics.attack : Elab ()
+        Convert a hole to make it suitable for bindings - that is, transform
+        it such that it has the form ?h : t . h as opposed to ?h : t . f h.
+
+        The binding tactics require that a hole be directly under its binding,
+        or else the scopes of the generated terms won't make sense. This
+        tactic creates a new hole of the proper form, and points the old hole
+        at it.
+
+.. code-block:: idris
+
+    *plusReducesZ> :doc intro
+    Language.Reflection.Elab.Tactics.intro : (n : TTName) -> Elab ()
+        Introduce a lambda binding around the current hole and focus on the
+        body. Requires that the hole be in binding form (use attack).
+        Arguments:
+            n : TTName  -- the name to use for the argument
+
+.. code-block:: idris
+
+    *plusReducesZ> :doc compute
+    Language.Reflection.Elab.Tactics.compute : Elab ()
+        Normalise the goal.
+
+.. code-block:: idris
+
+    *plusReducesZ> :doc rewriteWith
+    Language.Reflection.Elab.Tactics.rewriteWith : Raw -> Elab ()
+        Attempt to rewrite the goal using an equality.
+
+        The tactic searches the goal for applicable subterms, and constructs a
+        context for replace using them. In some cases, this is not possible,
+        and replace must be called manually with an appropriate context.
+
+        Because this tactic internally introduces a let binding, it requires
+        that the hole be immediately under its binder (use attack if it might
+        not be).
+
+Here is the command from pruviloj that we will need for the example on
+this page:
+
+.. code-block:: idris
+
+    *plusReducesZ> :doc reflexivity
+    Pruviloj.Core.reflexivity : Elab ()
+        A special-purpose tactic that attempts to solve a goal using Refl.
+        This is useful for ensuring that goals in fact are trivial when
+        developing or testing other tactics; otherwise, consider using search.
+
+Interactive Example: plusReduces
+================================
 
 One way to write proofs interactively is to write the general *structure* of
 the proof, and use the interactive mode to complete the details.
@@ -25,145 +112,134 @@ hypothesis, and insert *holes* for the rest of the definition:
 
 .. code-block:: idris
 
+    import Pruviloj
+    import Pruviloj.Induction
+
     plusReducesZ' : (n:Nat) -> n = plus n Z
     plusReducesZ' Z     = ?plusredZ_Z
     plusReducesZ' (S k) = let ih = plusReducesZ' k in
                           ?plusredZ_S
 
 On running , two global names are created, ``plusredZ_Z`` and
-``plusredZ_S``, with no definition. We can use the ``:m`` command at the
-prompt to find out which holes are still to be solved (or, more
-precisely, which functions exist but have no definitions), then the
-``:t`` command to see their types:
+``plusredZ_S``, with no definition.
 
 .. code-block:: idris
 
-    *theorems> :m
-    Global holes:
-            [plusredZ_S,plusredZ_Z]
+    *theorems> : idris plusReducesZ.idr -p pruviloj
+
+    .  /  _/___/ /____(_)____
+       / // __  / ___/ / ___/     Version 1.2.0
+     _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
+    /___/\__,_/_/  /_/____/       Type :? for help
+
+    Idris is free software with ABSOLUTELY NO WARRANTY.
+    For details type :warranty.
+    Holes: Main.plusredZ_S, Main.plusredZ_Z
+
+This tells us that we have two holes Main.plusredZ_S and Main.plusredZ_Z. We can solve
+these separately, ``plusredZ_Z`` is the simplest so we will do that first.
+
+The ``:elab plusredZ_Z`` command enters interactive elaboration mode, which can be used to
+complete the missing definition for plusredZ_Z.
 
 .. code-block:: idris
 
-    *theorems> :t plusredZ_Z
-    plusredZ_Z : Z = plus Z Z
+    *plusReducesZ> :elab plusredZ_Z
 
-    *theorems> :t plusredZ_S
-    plusredZ_S : (k : Nat) -> (k = plus k Z) -> S k = plus (S k) Z
+    ----------                 Goal:                  ----------
+    {hole_0} : 0 = 0
 
-The ``:p`` command enters interactive proof mode, which can be used to
-complete the missing definitions.
+This has been normalised to ``0 = 0`` so now we have to prove that ``0`` equals ``0``, which
+is easy to prove by reflexivity from the pruviloj library:
+
+.. code-block:: idris
+    -Main.plusredZ_Z> reflexivity
+    plusredZ_Z: No more goals.
+
+This tells us that the proof is complete. We can now leave the interactive mode which
+we entered with the ``:elab`` command. We do this with the ``:qed`` command:
 
 .. code-block:: idris
 
-    *theorems> :p plusredZ_Z
+    -Main.plusredZ_Z> :qed
+    Proof completed!
+    Main.plusredZ_Z = %runElab (do reflexivity)
+    Holes: Main.plusredZ_S
 
-    ---------------------------------- (plusredZ_Z) --------
-    {hole0} : Z = plus Z Z
+This gives us a trace of the proof which is ``plusredZ_Z = %runElab (do reflexivity)``. We
+can cut & paste this into the hole in the original file. This also tells us that we
+have another hole ``Main.plusredZ_S`` remaining.
 
-This gives us a list of premises (above the line; there are none here)
-and the current goal (below the line; named ``{hole0}`` here). At the
-prompt we can enter tactics to direct the construction of the proof. In
-this case, we can normalise the goal with the ``compute`` tactic:
+This remaining proof is bit more complicated, the following diagram gives an overview:
 
-.. code-block:: idris
+|image|
 
-    -plusredZ_Z> compute
-
-    ---------------------------------- (plusredZ_Z) --------
-    {hole0} : Z = Z
-
-Now we have to prove that ``Z`` equals ``Z``, which is easy to prove by
-``Refl``. To apply a function, such as ``Refl``, we use ``refine`` which
-introduces subgoals for each of the function’s explicit arguments
-(``Refl`` has none):
+We approach this remaining proof in the same way by using the ``:elab`` command:
 
 .. code-block:: idris
 
-    -plusredZ_Z> refine Refl
-    plusredZ_Z: no more goals
+    *plusReducesZ> :elab plusredZ_S
 
-Here, we could also have used the ``trivial`` tactic, which tries to
-refine by ``Refl``, and if that fails, tries to refine by each name in
-the local context. When a proof is complete, we use the ``qed`` tactic
-to add the proof to the global context, and remove the hole from the
-unsolved holes list. This also outputs a trace of the proof:
 
-.. code-block:: idris
-
-    -plusredZ_Z> qed
-    plusredZ_Z = proof
-        compute
-        refine Refl
-
-.. code-block:: idris
-
-    *theorems> :m
-    Global holes:
-            [plusredZ_S]
-
-The ``:addproof`` command, at the interactive prompt, will add the proof
-to the source file (effectively in an appendix). Let us now prove the
-other required lemma, ``plusredZ_S``:
-
-.. code-block:: idris
-
-    *theorems> :p plusredZ_S
-
-    ---------------------------------- (plusredZ_S) --------
-    {hole0} : (k : Nat) -> (k = plus k Z) -> S k = plus (S k) Z
+    ----------                 Goal:                  ----------
+    {hole_0} : (k : Nat) -> (k = plus k 0) -> S k = S (plus k 0)
 
 In this case, the goal is a function type, using ``k`` (the argument
 accessible by pattern matching) and ``ih`` — the local variable
 containing the result of the recursive call. We can introduce these as
-premises using the ``intro`` tactic twice (or ``intros``, which
-introduces all arguments as premises). This gives:
+assumptions using the ``intro`` tactic twice. The parameter is entered as
+a constant of type ``TTName`` which is entered as a backtick with double
+braces `{{ih}}. This gives:
 
 .. code-block:: idris
 
-      k : Nat
-      ih : k = plus k Z
-    ---------------------------------- (plusredZ_S) --------
-    {hole2} : S k = plus (S k) Z
+    -Main.plusredZ_S> intro `{{k}}
 
-Since plus is defined by recursion on its first argument, the term
-``plus (S k) Z`` in the goal can be simplified, so we use ``compute``.
+    ----------              Assumptions:              ----------
+     k : Nat
+    ----------                 Goal:                  ----------
+    {hole_0} : (k = plus k 0) -> S k = S (plus k 0)
+    -Main.plusredZ_S> intro `{{ih}}
 
-.. code-block:: idris
+    ----------              Assumptions:              ----------
+     k : Nat
+     ih : k = plus k 0
+    ----------                 Goal:                  ----------
+    {hole_0} : S k = S (plus k 0)
 
-      k : Nat
-      ih : k = plus k Z
-    ---------------------------------- (plusredZ_S) --------
-    {hole2} : S k = S (plus k Z)
-
-We know, from the type of ``ih``, that ``k = plus k Z``, so we would
-like to use this knowledge to replace ``plus k Z`` in the goal with
-``k``. We can achieve this with the ``rewrite`` tactic:
-
-.. code-block:: idris
-
-    -plusredZ_S> rewrite ih
-
-      k : Nat
-      ih : k = plus k Z
-    ---------------------------------- (plusredZ_S) --------
-    {hole3} : S k = S k
-
-    -plusredZ_S>
-
-The ``rewrite`` tactic takes an equality proof as an argument, and tries
-to rewrite the goal using that proof. Here, it results in an equality
-which is trivially provable:
+We know, from the type of ``ih``, that ``k = plus k 0``, so we would
+like to use this knowledge to replace ``plus k 0`` in the goal with
+``k``. We can achieve this with the ``rewriteWith`` tactic:
 
 .. code-block:: idris
 
-    -plusredZ_S> trivial
-    plusredZ_S: no more goals
-    -plusredZ_S> qed
-    plusredZ_S = proof {
-        intros;
-        rewrite ih;
-        trivial;
-    }
+    -Main.plusredZ_S> rewriteWith (Var `{{ih}})
 
-Again, we can add this proof to the end of our source file using the
-``:addproof`` command at the interactive prompt.
+    ----------              Assumptions:              ----------
+     k : Nat
+     ih : k = plus k 0
+    ----------                 Goal:                  ----------
+    {hole_0} : S k = S k
+
+The ``rewriteWith`` tactic takes an equality proof as an argument, and tries
+to rewrite the goal using that proof. The ih value is entered as a constant
+of type ``TTName`` which is entered as a backtick with double braces `{{ih}} but
+``rewriteWith`` requires an expression of type ``Raw``, rather than just a name,
+so the Var constructor is used to make a variable. Here, it results in an equality
+which is trivially provable using reflexivity:
+
+.. code-block:: idris
+
+    -Main.plusredZ_S> reflexivity
+    plusredZ_S: No more goals.
+    -Main.plusredZ_S> :qed
+    Proof completed!
+    Main.plusredZ_S = %runElab (do intro `{{k}}
+                                   intro `{{ih}}
+                                   compute
+                                   rewriteWith (Var `{{ih}})
+                                   reflexivity)
+
+Again, we can cut & paste this into the hole in the original file.
+
+.. |image| image:: ../image/plusReducesProof.png

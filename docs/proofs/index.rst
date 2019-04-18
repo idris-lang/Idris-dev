@@ -24,4 +24,5 @@ A tutorial on theorem proving in Idris.
    patterns
    propositional
    interactive
+   interactiveOld
 
