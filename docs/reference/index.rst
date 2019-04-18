@@ -26,6 +26,7 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    uniqueness-types
    ffi
    syntax-guide
+   syntax-reference
    erasure
    ide-protocol
    semantic-highlighting
