@@ -332,7 +332,7 @@ size_t GETSTROFFLEN(VAL stroff);
 #define PROJECT(vm,r,loc,num) \
     memcpy(&(LOC(loc)), ((Con*)(r))->args, sizeof(VAL)*num)
 #define SLIDE(vm, args) \
-    memcpy(&(LOC(0)), &(TOP(0)), sizeof(VAL)*args)
+    memmove(&(LOC(0)), &(TOP(0)), sizeof(VAL)*args)
 
 void* iallocate(VM *, size_t, int);
 
