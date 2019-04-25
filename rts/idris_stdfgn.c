@@ -206,6 +206,24 @@ VAL idris_time() {
     return MKBIGI(t);
 }
 
+VAL idris_clock(VM* vm) {
+    VAL result;
+#ifdef _WIN32
+    idris_constructor(result, vm, 0, 2, 0);
+    idris_setConArg(result, 0, MKBIGI(0));
+    idris_setConArg(result, 1, MKBIGI(0));
+#else
+    struct timespec ts;
+    // We're not checking the result here, which is of course bad, but
+    // CLOCK_REALTIME is required by POSIX at least!
+    clock_gettime(CLOCK_REALTIME, &ts);
+    idris_constructor(result, vm, 0, 2, 0);
+    idris_setConArg(result, 0, MKBIGI(ts.tv_sec));
+    idris_setConArg(result, 1, MKBIGI(ts.tv_nsec));
+#endif
+    return result;
+}
+
 VAL idris_mkFileError(VM* vm) {
     VAL result;
     switch(errno) {

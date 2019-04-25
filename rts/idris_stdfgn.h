@@ -52,6 +52,7 @@ void* idris_stdin();
 char* getEnvPair(int i);
 
 VAL idris_time();
+VAL idris_clock(VM* vm);
 
 void idris_forceGC();
 

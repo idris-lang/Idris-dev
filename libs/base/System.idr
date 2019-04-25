@@ -93,6 +93,20 @@ time : IO Integer
 time = do MkRaw t <- foreign FFI_C "idris_time" (IO (Raw Integer))
           pure t
 
+||| Wall clock time
+record Clock where
+  constructor MkClock
+  seconds : Integer
+  nanoseconds : Integer
+
+||| Get the system's wall clock time.
+||| At the moment, this returns 0 on Windows
+clockTime : IO Clock
+clockTime
+    = do vm <- getMyVM
+         MkRaw c <- foreign FFI_C "idris_clock" (Ptr -> IO (Raw Clock)) vm
+         pure c
+
 ||| Specify interval to sleep for in microseconds, must be nonnegative
 usleep : (i : Int) -> { auto prf : So (i >= 0) } -> IO ()
 usleep i = foreign FFI_C "idris_usleep" (Int -> IO ()) i
