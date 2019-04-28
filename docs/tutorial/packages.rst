@@ -6,7 +6,7 @@ Packages
 
 Idris includes a simple build system for building packages and executables
 from a named package description file. These files can be used with the
-Idris compiler to manage the development process .
+Idris compiler to manage the development process.
 
 Package Descriptions
 ====================
