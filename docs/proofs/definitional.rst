@@ -125,9 +125,9 @@ We can have a type which corresponds to disjunction:
 
 .. code-block:: idris
 
-   data Or : Type -&gt; Type -&gt; Type where
-   OrIntroLeft : a -&gt; A a b
-   OrIntroRight : b -&gt; A a b
+   data Or : Type -> Type -> Type where
+   OrIntroLeft : a -> A a b
+   OrIntroRight : b -> A a b
 
 There is a built in type called 'Either'.
 
@@ -157,10 +157,10 @@ Especially when working with equalities containing variable terms (inside functi
 
 .. code-block:: idris
 
-   plusReducesL : (n:Nat) -&gt; plus Z n = n
+   plusReducesL : (n:Nat) -> plus Z n = n
    plusReducesL n = Refl
 
-   plusReducesR : (n:Nat) -&gt; plus n Z = n
+   plusReducesR : (n:Nat) -> plus n Z = n
    plusReducesR n = Refl
 
 plusReducesR gives the following error:
