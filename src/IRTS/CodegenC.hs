@@ -72,6 +72,7 @@ codegenC' defs out exec incs objs libs flags exports iface dbg
            Raw -> writeSource out cout
            _ -> do
              (tmpn, tmph) <- tempfile ".c"
+             hSetEncoding tmph utf8
              hPutStr tmph cout
              hFlush tmph
              hClose tmph
@@ -121,7 +122,7 @@ gccDbg _ = []
 
 cname :: Name -> String
 cname n = "_idris_" ++ concatMap cchar (showCG n)
-  where cchar x | isAlpha x || isDigit x = [x]
+  where cchar x | isAscii x && isAlpha x || isDigit x = [x]
                 | otherwise = "_" ++ show (fromEnum x) ++ "_"
 
 indent :: Int -> String
