@@ -25,4 +25,9 @@ A tutorial on theorem proving in Idris.
    propositional
    interactive
    interactiveOld
+   elabReflection
+   tactics
+   example1
+   primative
+   generatingData
 
