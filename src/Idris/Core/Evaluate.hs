@@ -24,6 +24,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
                 lookupNames, lookupTyName, lookupTyNameExact, lookupTy, lookupTyExact,
                 lookupP, lookupP_all, lookupDef, lookupNameDef, lookupDefExact, lookupDefAcc, lookupDefAccExact, lookupVal,
                 mapDefCtxt, tcReducible,
+                lookupTotalAccessibility,
                 lookupTotal, lookupTotalExact, lookupInjectiveExact,
                 lookupRigCount, lookupRigCountExact,
                 lookupNameTotal, lookupMetaInformation, lookupTyEnv, isTCDict,
@@ -1166,6 +1167,12 @@ lookupDefAcc n mkpublic ctxt
   -- io_bind a special case for REPL prettiness
   where mkp (d, _, inj, a, _, _) = if mkpublic && (not (n == sUN "io_bind" || n == sUN "io_pure"))
                                       then (d, Public) else (d, a)
+
+lookupTotalAccessibility :: Name -> Context -> [(Totality,Accessibility)]
+lookupTotalAccessibility n ctxt = fmap unpack $ lookupCtxt n (definitions ctxt)
+
+  where
+    unpack ((_,_,_,a,t,_)) = (t,a)
 
 lookupDefAccExact :: Name -> Bool -> Context ->
                      Maybe (Def, Accessibility)
