@@ -17,7 +17,7 @@ Tactics operate on the proof state. The proof state contains various pieces of i
 
 There  are many other pieces of information in the proof state such as the names used , such as the bodies of case blocks that need to be elaborated.but, for now, we will leave the system to handle these.
 
-.. image:: image/elabProofState.png
+.. image:: ../image/elabProofState.png
    :width: 283px
    :height: 232px
 

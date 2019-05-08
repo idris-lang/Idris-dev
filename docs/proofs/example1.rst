@@ -23,7 +23,7 @@ Example 1
        We fill that with 'intro' which creates a lambda term with a hole for the  expression.
      - diagram
 
-       .. image:: image/tree.png
+       .. image:: ../image/tree.png
           :width: 133px
           :height: 106px
 
@@ -44,14 +44,14 @@ After each tactic we will look at the state:
    * - In order to investigate how the program works we can look at the proofState at each stage as the tactics are applied. So here is the proofState at the start:
      - state
 
-       .. image:: image/elabProofStateEx1_1.png
+       .. image:: ../image/elabProofStateEx1_1.png
           :width: 310px
           :height: 124px
 
    * - We can also look at the logic at each stage: 
      - logic
 
-       .. image:: image/elabLogicEx1_1.png
+       .. image:: ../image/elabLogicEx1_1.png
           :width: 126px
           :height: 33px
 
@@ -98,14 +98,14 @@ After each tactic we will look at the state:
    * - state now looks like this
      - state
 
-       .. image:: image/elabProofStateEx1_2.png
+       .. image:: ../image/elabProofStateEx1_2.png
           :width: 312px
           :height: 124px
 
    * - logic now looks like this
      - logic
 
-       .. image:: image/elabLogicEx1_2.png
+       .. image:: ../image/elabLogicEx1_2.png
           :width: 126px
           :height: 45px
 
@@ -152,14 +152,14 @@ After each tactic we will look at the state:
    * - state now looks like this
      - state
 
-       .. image:: image/elabProofStateEx1_3.png
+       .. image:: ../image/elabProofStateEx1_3.png
           :width: 312px
           :height: 124px
 
    * - logic now looks like this
      - logic
 
-       .. image:: image/elabLogicEx1_3.png
+       .. image:: ../image/elabLogicEx1_3.png
           :width: 131px
           :height: 45px
 
@@ -218,7 +218,7 @@ After each tactic we will look at the state:
    * - logic now looks like this
      - logic
 
-       .. image:: image/elabLogicEx1_4.png
+       .. image:: ../image/elabLogicEx1_4.png
           :width: 131px
           :height: 14px
 

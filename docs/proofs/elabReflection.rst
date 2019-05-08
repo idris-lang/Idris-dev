@@ -7,13 +7,13 @@ In order to extend the language we need to know something about how Idris is com
 
 Here is a diagram of the multistage process at the top level when Idris code gets compiled:
 
-.. image:: image/idrisTopLevel.png
+.. image:: ../image/idrisTopLevel.png
    :width: 484px
    :height: 147px
 
 TT is a core language which is syntactically very simple, this makes it easy for computers to process but very verbose and hard for humans to read. This elaboration is done by a logic language (proof tactics) similar to LTac in Coq. Here we use the word 'tactics' to refer to these elaboration tactics - not to be confused with the old tactics mechanism.
 
-.. image:: image/compareToProofAssist.png
+.. image:: ../image/compareToProofAssist.png
    :width: 229px
    :height: 114px
 
@@ -28,20 +28,20 @@ Type checker:
 - include universe levels
 - distinguish between global and local bound names.
 
-.. image:: image/elabOverview.png
+.. image:: ../image/elabOverview.png
    :width: 268px
    :height: 219px
 
 As already mentioned the TT core language is kept syntactically very simple. Part of the reason for this is that its correctness is already well proven using logic. For instance, here are the binders in TT with corresponding code and logic type introduction rules:
 
-.. image:: image/binders.png
+.. image:: ../image/binders.png
    :width: 310px
    :height: 203px
 
 .. list-table::
 
    * - There is an elaborator for both definitions and terms, the definition elaborator calls the term elaborator when required.
-     - .. image:: image/elab.png
+     - .. image:: ../image/elab.png
           :width: 141px
           :height: 145px
 
