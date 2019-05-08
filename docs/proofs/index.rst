@@ -1,10 +1,10 @@
 .. _proofs-index:
 
-###############
-Theorem Proving
-###############
+#########################################
+Theorem Proving and Elaborator Reflection
+#########################################
 
-A tutorial on theorem proving in Idris. 
+A tutorial on theorem proving in Idris.
 
 .. note::
 
