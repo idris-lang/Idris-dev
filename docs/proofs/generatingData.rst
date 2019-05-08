@@ -86,33 +86,38 @@ This code generates the following data and function:
 
 .. code-block:: idris
 
-data U : Type where
-  Base : U
-  Pi : (code : U) -> (el code -> U) -> U
-  el : U -> Type
-  el (Pi code body) = (x : el code) -> el (body x)
-  el Base = Bool
+  data U : Type where
+    Base : U
+    Pi : (code : U) -> (el code -> U) -> U
+    el : U -> Type
+    el (Pi code body) = (x : el code) -> el (body x)
+    el Base = Bool
 
-Which can be used like this:
+.. list-table:: Usage
 
-.. code-block:: idris
+   * - We can then use U the data structure, like this:
+     - examples
 
-  λΠ> :t U
-  U : Type
-  λΠ> :doc U
-  No documentation for U
-  λΠ> Base
-  Base : U
-  λΠ> DataDef.Pi
-  Pi : (code : U) -> (el code -> U) -> U
+       .. code-block:: idris
 
+         λΠ> :t U
+         U : Type
+         λΠ> :doc U
+         No documentation for U
+         λΠ> Base
+         Base : U
+         λΠ> DataDef.Pi
+         Pi : (code : U) -> (el code -> U) -> U
 
-.. code-block:: idris
+   * - el is the function that has been defined:
+     - examples
 
-  λΠ> :t el
-  el : U -> Type
-  λΠ> el Base
-  Bool : Type
+       .. code-block:: idris
+
+         λΠ> :t el
+         el : U -> Type
+         λΠ> el Base
+         Bool : Type
 
 So these are the functions that we can use to create data and functions in the Elab monad:
 
