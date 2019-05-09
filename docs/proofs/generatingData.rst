@@ -3,7 +3,7 @@ Generating Data and Functions at Compile Time
 
 We can  construct a data structure at compile-time in an Elab monad.
 This can allow proofs to be generated for user defined types or it could allow types to be automatically generated to support user defined types.
-An example is the code, from <a href="https://dl.acm.org/citation.cfm?id=2951932">Christensen-Brady joint paper</a> ('Elaborator Reflection: Extending Idris in Idris'), that automatically generates accessibility predicates using the Bove-Capretta method.
+An example is the code, from `Elaborator reflection: extending Idris in Idris`_, that automatically generates accessibility predicates using the Bove-Capretta method.
 The following simple outline example is adapted from
 `<https://github.com/idris-lang/Idris-dev/blob/master/test/meta002/DataDef.idr>`_
 
@@ -304,3 +304,5 @@ The above functions use the following data/records:
            ||| The constructors for the family
            constructors : List (TTName, List CtorArg, Raw)</td>
 
+.. target-notes::
+.. _`Elaborator reflection: extending Idris in Idris`: https://dl.acm.org/citation.cfm?doid=2951913.2951932
