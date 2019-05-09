@@ -100,7 +100,6 @@ record Clock where
   nanoseconds : Integer
 
 ||| Get the system's wall clock time.
-||| At the moment, this returns 0 on Windows
 clockTime : IO Clock
 clockTime
     = do vm <- getMyVM
