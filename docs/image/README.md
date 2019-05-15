@@ -8,10 +8,9 @@ The image has therefore been generated as an SVG file and then exported to the P
 So, if you need to modify an image, I suggest the following sequence:
 
 * Edit the SVG file using a suitable editor (I use Inkscape).
-* Export the changes to the PNG file, overwriting the ond version.
+* Export the changes to the PNG file, overwriting the old version.
 * upload both files.
 
 Note, when exporting in Inkscape:
 * Select everything first, this stops an enormous boundary being exported.
 * After selecting the file to export to and clicking OK, don't forget to click on export button as well.
-
