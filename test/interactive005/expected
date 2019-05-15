@@ -3,7 +3,7 @@ Hello, World
 Main.main : IO ()
     This is a docstring
     
-    The function is Total
+    The function is: Total & public export
 Main.main is Total
 Hello, World
 id : a -> a
@@ -27,10 +27,10 @@ Main.main : IO ()
     is a
     docstring
     
-    The function is Total
+    The function is: Total & public export
 Main.main : IO ()
     This is a docstring
     
-    The function is Total
+    The function is: Total & public export
 Nat2 : Type
 Invalid filename for compiler output "Test.idr"

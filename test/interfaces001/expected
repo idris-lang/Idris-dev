@@ -8,7 +8,7 @@ Methods:
     myShow : MyShow a => (x : a) -> String
         The shower
         
-        The function is Total
+        The function is: Total & public export
 Implementation constructor:
     MkMyShow : (myShow : a -> String) -> MyShow a
         Build a MyShow
@@ -17,6 +17,7 @@ Implementation constructor:
             
             myShow : a -> String  -- The shower
             
+        The function is: public export
 Implementations:
     MyShow Integer
 MkMyShow : (myShow : a -> String) -> MyShow a
@@ -26,4 +27,4 @@ MkMyShow : (myShow : a -> String) -> MyShow a
         
         myShow : a -> String  -- The shower
         
-    The function is Total
+    The function is: Total & public export

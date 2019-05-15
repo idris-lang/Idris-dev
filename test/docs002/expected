@@ -1,12 +1,12 @@
 T1 : Type
     Some documentation
     
-    The function is Total
+    The function is: Total & public export
 T2 : Type
     Some other documentation
     
-    The function is Total
+    The function is: Total & public export
 T3 : Int
     Some provided postulate
     
-    The function is not yet checked for totality
+    The function is: not yet checked for totality & public export

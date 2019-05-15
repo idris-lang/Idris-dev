@@ -8,7 +8,7 @@ Methods:
     m : C t => t
         member of interface
         
-        The function is Total
+        The function is: Total & public export
 Implementations:
     C A
         implementation of interface

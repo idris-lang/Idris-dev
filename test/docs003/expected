@@ -8,7 +8,7 @@ Methods:
     map : Functor f => (func : a -> b) -> f a -> f b
         Apply a function across everything of type 'a' in a parameterised type
         
-        The function is Total
+        The function is: Total & public export
 Implementations:
     Functor (Pair a)
     Functor List
@@ -33,7 +33,9 @@ Named implementation:
     docs003.mine : Functor List
         
         
+        The function is: public export
 Named implementation:
     docs003.another : Functor List
         More functors!
         
+        The function is: public export

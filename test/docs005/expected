@@ -1,6 +1,7 @@
 Data type docs005.Foobar : Type
     A foobar with an auto implicit
     
+    The function is: public export
 Constructors:
     NewFoo : (xs : List String) ->
         (ys : List Nat) -> {auto prf : NonEmpty ys} -> Foobar
@@ -14,6 +15,7 @@ Constructors:
             
             (auto implicit) prf : NonEmpty ys  -- The prf
             
+        The function is: public export
 docs005.NewFoo : (xs : List String) ->
     (ys : List Nat) -> {auto prf : NonEmpty ys} -> Foobar
     New Foo
@@ -26,4 +28,4 @@ docs005.NewFoo : (xs : List String) ->
         
         (auto implicit) prf : NonEmpty ys  -- The prf
         
-    The function is Total
+    The function is: Total & public export
