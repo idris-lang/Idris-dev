@@ -419,14 +419,6 @@ Read and Write State
 
        lookupFunDefnExact : TTName -> Elab (FunDefn TT)
 
-       .. code-block:: idris
-
-         lookupFunDefnExact n = case !(lookupFunDefn n) of
-           [res] => pure res
-           []    => fail [TextPart
-               "No function named", NamePart n]
-           xs    => fail [TextPart "More than one function named",
-               NamePart n]
    * - lookupArgs
      - Get the argument specification for each overloading of a name.
 
@@ -442,11 +434,6 @@ Read and Write State
        lookupArgsExact : TTName -> Elab (TTName, List FunArg, Raw)
 
        .. code-block:: idris
-
-         lookupArgsExact n = case !(lookupArgs n) of
-           [res] => pure res
-           []    => fail [NamePart n, TextPart "is not defined."]
-           xs    => fail [NamePart n, TextPart "is ambiguous."]
 
    * - check
      - Attempt to type-check a term, getting back itself and its type.
