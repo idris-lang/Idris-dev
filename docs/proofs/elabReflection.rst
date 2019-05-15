@@ -3,7 +3,7 @@ Extending Idris using Elaborator Reflection
 
 Idris provides a mechanism to modify the language without having to recompile Idris itself. We can think of this in terms of metaprogramming or domain specific languages or just building in new capabilities.
 
-In order to extend the language we need to know something about how Idris is complied. On this page we try to limit this explanation to only what we need to customise the elaboration. For more details of the compiler see `Edwin Brady 2013 paper`_ and for customising the elaboration process see `David Christiansen Practical Reflection and Metaprogramming`_ and  `Elaborator reflection: extending Idris in Idris`_. For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs McBride 1999`_.
+In order to extend the language we need to know something about how Idris is complied. This page explains only what is needed to customise the elaboration. For more information about the compiler's implementation see `Edwin Brady's 2013 paper`_ and for customising the elaboration process see `Elaborator reflection: extending Idris in Idris`_ and `David Christiansen's PhD thesis`_ .
 
 Here is a diagram of the multistage process at the top level when Idris code gets compiled:
 
@@ -11,7 +11,7 @@ Here is a diagram of the multistage process at the top level when Idris code get
    :width: 484px
    :height: 147px
 
-TT is a core language which is syntactically very simple, this makes it easy for computers to process but very verbose and hard for humans to read. This elaboration is done by a logic language (proof tactics) similar to LTac in Coq. Here we use the word 'tactics' to refer to these elaboration tactics - not to be confused with the old tactics mechanism.
+TT is a core language which is syntactically very simple, this makes it easy for computers to process but very verbose and hard for humans to read. This elaboration is done by a logic language (proof tactics) similar to LTac in Coq. Here the word 'tactics' is used to refer to these elaboration tactics - not to be confused with the old tactics mechanism.
 
 .. image:: ../image/compareToProofAssist.png
    :width: 229px
@@ -46,10 +46,10 @@ As already mentioned the TT core language is kept syntactically very simple. Par
           :height: 145px
 
 .. target-notes::
-.. _`Edwin Brady 2013 paper`: https://eb.host.cs.st-andrews.ac.uk/drafts/impldtp.pdf
-.. _`David Christiansen Practical Reflection and Metaprogramming`: https://davidchristiansen.dk/david-christiansen-phd.pdf
+.. _`Edwin Brady's 2013 paper`: https://eb.host.cs.st-andrews.ac.uk/drafts/impldtp.pdf
+.. _`David Christiansen's PhD thesis`: https://davidchristiansen.dk/david-christiansen-phd.pdf
 .. _`Elaborator reflection: extending Idris in Idris`: https://dl.acm.org/citation.cfm?doid=2951913.2951932
-.. _`Dependently Typed Functional Programs and their Proofs McBride 1999`: https://www.era.lib.ed.ac.uk/handle/1842/374
+
 
 
 

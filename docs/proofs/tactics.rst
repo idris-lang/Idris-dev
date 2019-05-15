@@ -3,7 +3,12 @@ Elaborator Reflection - Tactics
 
 The Idris part of the code for elaborator reflection is in
 Elab.idr `<https://github.com/idris-lang/Idris-dev/blob/master/libs/prelude/Language/Reflection/Elab.idr>`_
-Before we look at the Elab monad we need to know how to construct terms.
+Before looking at the Elab monad we need to know how to construct terms.
+
+Holes
+=====
+
+For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs McBride 1999`_.
 
 Proof State
 ===========
@@ -24,7 +29,7 @@ There  are many other pieces of information in the proof state such as the names
 Names TTName
 ------------
 
-Names in an Idris program are evaluated at runtime but sometimes we need a 'variable name' which can be referred to as an unevaluated symbol.
+Names in an Idris program are evaluated at runtime but sometimes a 'variable name' is needed, which can be referred to as an unevaluated symbol.
 The  names used in terms have different constructors depending on their type:
 
 +---------------------------+-----------------------------------------------+
@@ -120,7 +125,7 @@ Since names are used frequently in elaborator reflection there is a shortcut for
          P Ref (UN "a") (TConst (AType (ATInt ITBig))) : TT
 
 
-   * - If we want the vale we can escape from quasiquotation by using anti-quotation (tilde)
+   * - If we want the value we can escape from quasiquotation by using anti-quotation (tilde)
      - example
 
        .. code-block:: idris
@@ -151,7 +156,7 @@ quasiquotation summary:
 TT
 ==
 
-There is a notation for a term in TT as it is being constructed (based on a BNF-like grammar), this is used for example in the debug output, it is a compact way to see the state of the term so we use it here.
+There is a notation for a term in TT as it is being constructed (based on a BNF-like grammar), this is used for example in the debug output, it is a compact way to see the state of the term so it is used here.
 So internally the program is stored as a tree structure using the following syntax:
 
 +------------+-------+-------------+---------------------------------------------+
@@ -169,8 +174,9 @@ So internally the program is stored as a tree structure using the following synt
 | binding    |       |             | binding.                                    |
 +------------+-------+-------------+---------------------------------------------+
 | application| t ::= | t t         | As with Idris, juxtaposition indicates      |
-|            |       |             | function application. Note: we use the same |
-|            |       |             | symbol 't' for terms                        |
+|            |       |             | function application. Note: the same symbol |
+|            |       |             | 't' is used for both terms, this does not   |
+|            |       |             | imply they are the same term.               |
 +------------+-------+-------------+---------------------------------------------+
 | Type       | t ::= | T           |                                             |
 | constructor|       |             |                                             |
@@ -429,3 +435,5 @@ However this would cause the application of f to be ill-typed, as it expects an 
 
        letbind : (n : TTName) -> (ty, tm : Raw) -> Elab ()
 
+... target-notes::
+. _`Dependently Typed Functional Programs and their Proofs McBride 1999`: https://www.era.lib.ed.ac.uk/handle/1842/374
