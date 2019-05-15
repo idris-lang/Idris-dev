@@ -8,7 +8,7 @@ Before looking at the Elab monad we need to know how to construct terms.
 Holes
 =====
 
-For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs McBride 1999`_.
+For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs by McBride 1999`_.
 
 Proof State
 ===========
@@ -436,4 +436,4 @@ However this would cause the application of f to be ill-typed, as it expects an 
        letbind : (n : TTName) -> (ty, tm : Raw) -> Elab ()
 
 ... target-notes::
-. _`Dependently Typed Functional Programs and their Proofs McBride 1999`: https://www.era.lib.ed.ac.uk/handle/1842/374
+. _`Dependently Typed Functional Programs and their Proofs by McBride 1999`: https://www.era.lib.ed.ac.uk/handle/1842/374
