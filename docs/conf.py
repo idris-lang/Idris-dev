@@ -51,7 +51,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Idris'
-copyright = u'2017, The Idris Community'
+copyright = u'2017-2019, The Idris Community'
 author = u'The Idris Community'
 
 # The version info for the project you're documenting, acts as replacement for
