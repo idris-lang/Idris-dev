@@ -81,9 +81,9 @@ To install Idris:
 * `stack install`
 
 Stack will install Idris (and related executables) into `$HOME/.local/bin/`
-on Unix based systems and an appropriate place on Windows. The libraries that 
-are included with Idris (e.g. Builtins, Prelude) will 'install' into `<source 
-dir>/.stack_work/install/...` so you'll need to keep your source directory 
+on Unix based systems and an appropriate place on Windows. The libraries that
+are included with Idris (e.g. Builtins, Prelude) will 'install' into `<source
+dir>/.stack_work/install/...` so you'll need to keep your source directory
 around after you've installed Idris using Stack.
 
 Of note: If you haven't used stack before commands will also setup the
@@ -125,4 +125,20 @@ encounter this then the fix is to augment the `PKG_CONFIG_PATH` for
 
 ```
 PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig stack build
-``` 
+```
+
+## Issue with GHC on Ubuntu/Fedora
+
+There is an upstream issue with GHC on some Ubuntu and Fedora machines.
+The issue is that for GHC versions greater than 8.4.X linking to libFFI is broken.
+See the following GHC issue page for more information:
+
+  <https://gitlab.haskell.org/ghc/ghc/issues/15397>
+
+This means that an Idris built with `libFFI` support will fail at runtime as the executable would not be able to find the correct `libffi` shared object.
+This will cause the build to fail.
+Specifically, one will see an error message along the lines of:
+
+> error while loading shared libraries: libffi.so.7: cannot open shared object file: No such file or directory
+
+We have supplied an alternative stack configuration file (`stack-alt.yaml`) that will use a version of GHC prior to the upstream issue being introduced.

@@ -1,0 +1,25 @@
+#recheck extra-deps next on resolver or cabal file change
+resolver: lts-11.4
+
+packages:
+  - location: .
+
+extra-deps:
+  - network-2.8.0.0@sha256:aae171e6c6028a7791dbe4de5b9d2da398056359e3cc7927465ffa3cdae1aa0b
+  - Cabal-2.2.0.1@sha256:2a80d8fb655474f0eaeb20434c47f64f84e6302e55973056f00df8ca050b9683
+  - megaparsec-7.0.4
+  - parser-combinators-1.0.0
+  - zip-archive-0.3.3@sha256:47cf2d66cc8e237f7226837758e1b041e24048ef3820d3d10276c500edb921bf
+  - containers-0.5.11.0@sha256:28ad7337057442f75bc689315ab4ec7bdf5e6b2c39668f306672cecd82c02798
+
+flags:
+  idris:
+    FFI: true
+    GMP: true
+
+ghc-options:
+  idris: -fwarn-unused-imports -fwarn-unused-binds
+
+nix:
+  enable: false
+  shell-file: stack-shell.nix
