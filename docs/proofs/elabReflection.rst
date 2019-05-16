@@ -16,7 +16,7 @@ Compilation of Idris proceeds through a number of stages.
    :height: 147px
    :alt: diagram showing these stages of Idris compilation
 
-TT is a core language which is syntactically very simple, this makes it easy for computers to process but very verbose and hard for humans to read. This elaboration is done by a logic language (proof tactics) similar to LTac in Coq. Here the word 'tactics' is used to refer to these elaboration tactics - not to be confused with the old tactics mechanism.
+TT is a core language which is syntactically very simple. This makes it easy for computers to process but very verbose and hard for humans to read. The Idris elaborator is written in Haskell using an elaboration library that was inspired by the tactics in interactive proof assistants such as Coq.
 
 .. list-table::
 
@@ -31,6 +31,8 @@ During elaboration TT (Raw) structure contains:
 
 - holes - placeholders for terms that have not yet been filled in.
 - guesses - similar to let bindings, except with no reduction rule, so that elaboration programs can control the precise shape of terms that are under construction.
+
+For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs by McBride 1999`_.
 
 Type checker:
 
@@ -61,6 +63,6 @@ As already mentioned the TT core language is kept syntactically very simple. Par
 .. _`Edwin Brady's 2013 paper`: https://eb.host.cs.st-andrews.ac.uk/drafts/impldtp.pdf
 .. _`Elaborator reflection: extending Idris in Idris`: https://dl.acm.org/citation.cfm?doid=2951913.2951932
 .. _`David Christiansen's PhD thesis`: https://davidchristiansen.dk/david-christiansen-phd.pdf
-
+.. _`Dependently Typed Functional Programs and their Proofs by McBride 1999`: https://www.era.lib.ed.ac.uk/handle/1842/374
 
 

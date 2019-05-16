@@ -5,17 +5,13 @@ The Idris part of the code for elaborator reflection is in
 Elab.idr `<https://github.com/idris-lang/Idris-dev/blob/master/libs/prelude/Language/Reflection/Elab.idr>`_
 Before looking at the Elab monad we need to know how to construct terms.
 
-Holes
-=====
-
-For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs by McBride 1999`_.
 
 Proof State
 ===========
 
 Tactics operate on the proof state. The proof state contains various pieces of information, at this stage, the important ones for us are:
 
-- A hole queue - This contains a list of the names of the holes used in the proof term. The solution to each hole may depend on the other holes.
+- A hole queue - This contains a list of the names of the holes used in the proof term. The solution to each hole may depend on the other holes. For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs by McBride 1999`_.
 - A goal type - The type of the term that is under construction for the current goal.
 - A possibly incomplete proof term, which is being calculated and should be the goal type at the end of elaboration.
 - Context - A collection of open unification problems, representing recoverable failures of unification that may yet unify once more variables are solved.
