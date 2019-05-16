@@ -14,7 +14,7 @@ Compilation of Idris proceeds through a number of stages.
 .. image:: ../image/idrisTopLevel.png
    :width: 484px
    :height: 147px
-   :alt: diagram showing these stages of Idris compilation
+   :alt: diagram illustrating these stages of Idris compilation
 
 TT is a core language which is syntactically very simple. This makes it easy for computers to process but very verbose and hard for humans to read. The Idris elaborator is written in Haskell using an elaboration library that was inspired by the tactics in interactive proof assistants such as Coq.
 
@@ -22,8 +22,8 @@ TT is a core language which is syntactically very simple. This makes it easy for
 
    * - There are some similarities with a proof assistant but in Idris the elaborator is an interpreter of Idris source in the elaboration monad, where each syntactic construct of Idris is interpreted as a sequence of tactics.
      - .. image:: ../image/compareToProofAssist.png
-          :width: 229px
-          :height: 114px
+          :width: 206px
+          :height: 112px
           :alt: diagram comparing elaboration with proof assistant
 
 The primitives in the elaboration library are not just useful for the implementors of Idris itself. They can also be used by authors of extensions to the compiler, using a mechanism known as elaborator reflection.
@@ -40,16 +40,16 @@ Type checker:
 - distinguish between global and local bound names.
 
 .. image:: ../image/elabOverview.png
-   :width: 268px
-   :height: 219px
-   :alt: alternate text
+   :width: 410px
+   :height: 282px
+   :alt: diagram illustrating TT language represented in a monad
 
 As already mentioned the TT core language is kept syntactically very simple. Part of the reason for this is that its correctness is already well proven using logic. For instance, here are the binders in TT with corresponding code and logic type introduction rules:
 
 .. image:: ../image/binders.png
    :width: 310px
    :height: 203px
-   :alt: alternate text
+   :alt: diagram illustrating basis of code in logic
 
 .. list-table::
 
@@ -57,7 +57,7 @@ As already mentioned the TT core language is kept syntactically very simple. Par
      - .. image:: ../image/elab.png
           :width: 141px
           :height: 145px
-          :alt: alternate text
+          :alt: diagram illustrating distinction between definition and term elaborator.
 
 .. target-notes::
 .. _`Edwin Brady's 2013 paper`: https://eb.host.cs.st-andrews.ac.uk/drafts/impldtp.pdf
