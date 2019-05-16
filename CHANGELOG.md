@@ -9,6 +9,7 @@
 + Modules no longer require building if imports have changed but all
   interfaces (i.e. types for names declared `export` and definitions of names
   declared `public export`) are unchanged.
++ The result of calling `:doc` now details the accessbility of items as well as their totality.
 
 ## Miscellaneous updates
 + Compiler flag `--optimise-nat-like-types` enables compilation

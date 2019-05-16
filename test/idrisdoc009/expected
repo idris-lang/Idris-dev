@@ -1,10 +1,12 @@
 Data type Test.Test : Type
     Docs for datatype Test.
     
+    The function is: public export
 Constructors:
     MkTest : Test
         
         
+        The function is: public export
 Module Test:
     Docs for module Test.
     

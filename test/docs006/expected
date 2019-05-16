@@ -11,6 +11,6 @@ Methods:
     m : Foo t => t
         member of interface
         
-        The function is Total
+        The function is: Total & public export
 Implementations:
     <no implementations>

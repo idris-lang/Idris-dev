@@ -94,11 +94,9 @@ pprintFD ist totalityFlag nsFlag (FD n doc args ty f) =
            (if not (null argshow)
              then nest 4 $ text "Arguments:" <$> vsep argshow
              else empty)
-      -- show totality status
-      <> let totality = getTotality in
-           (if totalityFlag && not (null totality)
-              then line <> (vsep . map (\t -> text "The function is" <+> t) $ totality)
-              else empty))
+      -- show totality and visibility status
+      <> showTotalVisibility
+      )
 
     where
       ppo = ppOptionIst ist
@@ -135,7 +133,14 @@ pprintFD ist totalityFlag nsFlag (FD n doc args ty f) =
             showArgs args ((n, True):bnd)
       showArgs []                                    _   = [] -- end of arguments
 
-      getTotality = map (text . show) $ lookupTotal n (tt_ctxt ist)
+      showTotalVisibility =
+        case lookupTotalAccessibility n (tt_ctxt ist) of
+          [] -> empty
+          xs -> line <> vsep (map (doShowTotalVisibility) xs)
+
+      doShowTotalVisibility (t,v) = if totalityFlag
+                                       then text "The function is:" <+> ((text . show) t) <+> (text "&") <+> ((text . show) v)
+                                       else text "The function is:" <+> ((text . show) v)
 
 pprintFDWithTotality :: IState -> Bool -> FunDoc -> Doc OutputAnnotation
 pprintFDWithTotality ist = pprintFD ist True
