@@ -34,30 +34,22 @@ During elaboration TT (Raw) structure contains:
 
 For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs by McBride 1999`_.
 
-Type checker:
-
-- include universe levels
-- distinguish between global and local bound names.
+The following diagram is intended to illustrate a high level view of the tactics and how this eventually results in the TT language being generated. It is not necessary to understand the details at this stage. The intention is to help build up some intuition so that, when we get into the details, we can recognise how this fits into the big picture.
 
 .. image:: ../image/elabOverview.png
    :width: 410px
    :height: 282px
-   :alt: diagram illustrating TT language represented in a monad
+   :alt: diagram illustrating overview of TT language being generated from tactics.
 
-As already mentioned the TT core language is kept syntactically very simple. Part of the reason for this is that its correctness is already well proven using logic. For instance, here are the binders in TT with corresponding code and logic type introduction rules:
-
-.. image:: ../image/binders.png
-   :width: 310px
-   :height: 203px
-   :alt: diagram illustrating basis of code in logic
+As already mentioned the TT core language is kept syntactically very simple, for instance, here are the binders in TT with corresponding code and logic type introduction rules:
 
 .. list-table::
 
-   * - There is an elaborator for both definitions and terms, the definition elaborator calls the term elaborator when required.
-     - .. image:: ../image/elab.png
-          :width: 141px
-          :height: 145px
-          :alt: diagram illustrating distinction between definition and term elaborator.
+   * - This diagram illustrates the basis of the compilation process in logic (in this case for binders). It is not necessary to be an expert logician to understand elaborator reflection. However, when learning about tactics, they may appear arbitrary without knowing some theory.
+     - .. image:: ../image/binders.png
+          :width: 310px
+          :height: 203px
+          :alt: diagram illustrating basis of code in logic
 
 .. target-notes::
 .. _`Edwin Brady's 2013 paper`: https://eb.host.cs.st-andrews.ac.uk/drafts/impldtp.pdf
