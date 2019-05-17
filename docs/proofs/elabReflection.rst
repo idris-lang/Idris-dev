@@ -41,11 +41,11 @@ The following diagram is intended to illustrate a high level view of the tactics
    :height: 282px
    :alt: diagram illustrating overview of TT language being generated from tactics.
 
-As already mentioned the TT core language is kept syntactically very simple, for instance, here are the binders in TT with corresponding code and logic type introduction rules:
+As already mentioned the TT core language is kept syntactically very simple, for instance, here are the binders in TT with corresponding code and logic type validity rules:
 
 .. list-table::
 
-   * - This diagram illustrates the basis of the compilation process in logic (in this case for binders). It is not necessary to be an expert logician to understand elaborator reflection. However, when learning about tactics, they may appear arbitrary without knowing some theory.
+   * - This diagram illustrates the basis of the compilation process in logic (in this case for binders). It is not necessary to be an expert logician to understand elaborator reflection. However, when learning about tactics, they may appear arbitrary without knowing some theory. For more information about this see `Edwin Brady's 2013 paper`_.
      - .. image:: ../image/binders.png
           :width: 310px
           :height: 203px
