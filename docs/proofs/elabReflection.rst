@@ -3,7 +3,7 @@ Extending Idris using Elaborator Reflection
 
 Idris provides a mechanism to modify the language without having to recompile Idris itself. We can think of this in terms of metaprogramming or domain specific languages or just building in new capabilities.
 
-In order to extend the language we need to know something about how Idris is compiled. This page explains only what is needed to customise the elaboration. For more information about the compiler's implementation see `Edwin Brady's 2013 paper`_ and for customising the elaboration process see `Elaborator reflection: extending Idris in Idris`_ and `David Christiansen's PhD thesis`_ .
+In order to extend the language we need to know something about how Idris is compiled. This page explains only what is needed to customise the elaboration. For more information about the compiler's implementation see `Edwin Brady's 2013 paper`_ and for customising the elaboration process see `Elaborator reflection: extending Idris in Idris`_ and `David Christiansen's PhD thesis`_.
 
 Compilation of Idris proceeds through a number of stages.
 
