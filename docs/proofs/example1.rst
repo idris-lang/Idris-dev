@@ -1,57 +1,46 @@
-Example 1
-=========
+Elaborator Reflection - Identity Example
+========================================
 
-.. list-table:: Nat identity
+.. list-table::
 
-   * - As an example of elaborator reflection here we step through this identity implementation:
-     - Nat identity.
-
-       .. code-block:: idris
+   * - This example of elaborator reflection steps through this metaprogram that generates the identity function:
+     - .. code-block:: idris
 
          %language ElabReflection
 
          idNat : Nat -> Nat
-         idNat = %runElab (do
-           intro `{{x}}
-           fill (Var `{{x}})
-           solve
-         )
+         idNat = %runElab (do intro `{{x}}
+                              fill (Var `{{x}})
+                              solve)
 
-.. list-table:: Nat identity
+.. list-table::
 
-   * - We start off with a hole for the whole term (of type Nat->Nat).
-       We fill that with 'intro' which creates a lambda term with a hole for the  expression.
-     - diagram
+   * - At the beginning of executing the elaboration script, the initial state consists of a single hole of type Nat -> Nat.
 
-       .. image:: ../image/tree.png
+       Fill that with 'intro' which creates a lambda term with a hole for the  expression.
+     - .. image:: ../image/tree.png
           :width: 133px
           :height: 106px
 
-After each tactic we will look at the state:
+The following is a walkthough looking at the state after each tactic:
 
-.. list-table:: evolution of state
+.. list-table::
 
-   * - We start with the type signature like this:
-     - Nat identity.
-
-       .. code-block:: idris
+   * - Start with the type signature like this:
+     - .. code-block:: idris
 
          %language ElabReflection
 
          idNat : Nat -> Nat
          idNat = %runElab (do
 
-   * - In order to investigate how the program works we can look at the proofState at each stage as the tactics are applied. So here is the proofState at the start:
-     - state
-
-       .. image:: ../image/elabProofStateEx1_1.png
+   * - In order to investigate how the program works this table shows the proofState at each stage as the tactics are applied. So here is the proofState at the start:
+     - .. image:: ../image/elabProofStateEx1_1.png
           :width: 310px
           :height: 124px
 
-   * - We can also look at the logic at each stage: 
-     - logic
-
-       .. image:: ../image/elabLogicEx1_1.png
+   * - This table also shows the logic at each stage:
+     - .. image:: ../image/elabLogicEx1_1.png
           :width: 126px
           :height: 33px
 
@@ -64,9 +53,7 @@ After each tactic we will look at the state:
 
        getHoles
 
-     - state.
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          getEnv=[]
 
