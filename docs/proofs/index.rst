@@ -28,6 +28,5 @@ A tutorial on theorem proving in Idris.
    elabReflection
    tactics
    example1
-   primative
+   primitive
    generatingData
-
