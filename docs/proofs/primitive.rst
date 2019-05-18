@@ -1,7 +1,7 @@
 Primitive Operators
 ===================
 
-.. list-table:: Primitive Operators
+.. list-table::
    :widths: 10 30
    :stub-columns: 1
 
@@ -329,7 +329,7 @@ Primitive Operators
 Read and Write State
 ====================
 
-.. list-table:: Read and Write State
+.. list-table::
    :widths: 10 30
    :stub-columns: 1
 
@@ -375,13 +375,6 @@ Read and Write State
 
        lookupTyExact : TTName -> Elab (TTName, NameType, TT)
 
-       .. code-block:: idris
-
-          lookupTyExact n = case !(lookupTy n) of
-            [res] => pure res
-            []    => fail [NamePart n, TextPart "is not defined."]
-            xs    => fail [NamePart n, TextPart "is ambiguous."]
-
    * - lookupDatatype
      - Find the reflected representation of all datatypes whose names are overloadings of some name.
 
@@ -395,15 +388,6 @@ Read and Write State
        Signature:
 
        lookupDatatypeExact : TTName -> Elab Datatype
-
-       .. code-block:: idris
-
-         lookupDatatypeExact n = case !(lookupDatatype n) of
-           [res] => pure res
-           []    => fail [TextPart 
-              "No datatype named", NamePart n]
-           xs    => fail [TextPart "More than one datatype named",
-               NamePart n]
 
    * - lookupFunDefn
      - Find the reflected function definition of all functions whose names are overloadings of some name.
@@ -427,13 +411,11 @@ Read and Write State
        lookupArgs : TTName -> Elab (List (TTName, List FunArg, Raw))
 
    * - lookupArgsExact
-     - Get the argument specification for a name. Fail if the name does not uniquely resolve. 
+     - Get the argument specification for a name. Fail if the name does not uniquely resolve.
 
        Signature:
 
        lookupArgsExact : TTName -> Elab (TTName, List FunArg, Raw)
-
-       .. code-block:: idris
 
    * - check
      - Attempt to type-check a term, getting back itself and its type.
@@ -448,7 +430,7 @@ Read and Write State
 Error Handling
 ==============
 
-.. list-table:: Error Handling
+.. list-table::
    :widths: 10 30
    :stub-columns: 1
 
@@ -460,7 +442,7 @@ Error Handling
 
        tryCatch : Elab a -> (Err -> Elab a) -> Elab a
 
-       Fixme - following does not work. 
+       Fixme - following does not work.
 
        .. code-block:: idris
 
