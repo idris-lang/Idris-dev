@@ -14,10 +14,11 @@ Elaborator Reflection - Identity Example
                               solve)
 
 .. list-table::
+   :widths: 200 100
 
    * - At the beginning of executing the elaboration script, the initial state consists of a single hole of type Nat -> Nat.
 
-       Fill that with 'intro' which creates a lambda term with a hole for the  expression.
+       As a first approximation, the state consists of a term with holes in it, an indicator of which hole is focused, a queue of the next holes to focus on, and miscellaneous information like a source of fresh names. The intro tactic modifies this state, replacing the focused hole with a lambda and focusing on the lambda's body.
      - .. image:: ../image/tree.png
           :width: 133px
           :height: 106px
@@ -34,10 +35,10 @@ The following is a walkthough looking at the state after each tactic:
          idNat : Nat -> Nat
          idNat = %runElab (do
 
-   * - In order to investigate how the program works this table shows the proofState at each stage as the tactics are applied. So here is the proofState at the start:
+   * - In order to investigate how the program works this table shows the proof state at each stage as the tactics are applied. So here is the proof state at the start:
      - .. image:: ../image/elabProofStateEx1_1.png
           :width: 310px
-          :height: 124px
+          :height: 115px
 
    * - This table also shows the logic at each stage:
      - .. image:: ../image/elabLogicEx1_1.png
@@ -87,7 +88,7 @@ The following is a walkthough looking at the state after each tactic:
 
        .. image:: ../image/elabProofStateEx1_2.png
           :width: 312px
-          :height: 124px
+          :height: 84px
 
    * - logic now looks like this
      - logic
