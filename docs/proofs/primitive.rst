@@ -457,7 +457,9 @@ Error Handling
 
        fail : List ErrorReportPart -> Elab a
 
-       Return type is given by last term so fail cant be at the the last term, we would expect fail to be in some sort of conditional statement:
+       Note: we may need to make sure the return type 'a' is sufficiently constrained. If required add an explicit type {a = ()}.
+
+       Below is some code which includes 'fail'. This will always fail but we could replace 'True' with some more useful condition.
 
        .. code-block:: idris
 
@@ -469,10 +471,9 @@ Error Handling
            fill (Var `{{x}})
            if True
              then
-               fail [TextPart "error message"]
+               fail [TextPart "put error message here"]
              else
                solve
 
          idNat : Nat -> Nat
          idNat = %runElab id1
-

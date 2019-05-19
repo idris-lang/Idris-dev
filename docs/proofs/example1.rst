@@ -83,17 +83,17 @@ The following is a walkthough looking at the state after each tactic:
    * - Introduce a lambda binding around the current hole and focus on the body.
      - intro \`{{x}}
 
-   * - state now looks like this
+   * - The state now looks like this:
      - .. image:: ../image/elabProofStateEx1_2.png
           :width: 312px
           :height: 84px
 
-   * - logic now looks like this
+   * - The logic now looks like this:
      - .. image:: ../image/elabLogicEx1_2.png
           :width: 126px
           :height: 45px
 
-   * - term now looks like this
+   * - The term now looks like this:
      - ?{hole_0} ≈ λ x . ? {hole_2} . {hole_2} . {hole_0}
 
    * - getEnv
@@ -131,17 +131,17 @@ The following is a walkthough looking at the state after each tactic:
    * - Place a term into a hole, unifying its type
      - fill (Var \`{{x}})
 
-   * - state now looks like this
+   * - The state now looks like this:
      - .. image:: ../image/elabProofStateEx1_3.png
           :width: 312px
           :height: 124px
 
-   * - logic now looks like this
+   * - The logic now looks like this:
      - .. image:: ../image/elabLogicEx1_3.png
           :width: 131px
           :height: 45px
 
-   * - term
+   * - The term now looks like this:
      - ?{hole_0} ≈ λ x . ?{hole_2} ≈ x . {hole_2} . {hole_0}
 
    * - getEnv
@@ -189,12 +189,12 @@ The following is a walkthough looking at the state after each tactic:
    * - Substitute a guess into a hole.
      - solve
 
-   * - logic now looks like this
+   * - The logic now looks like this:
      - .. image:: ../image/elabLogicEx1_4.png
           :width: 131px
           :height: 14px
 
-   * - term
+   * - The term now looks like this:
      - ?{hole_0} ≈ λ x . x . {hole_0}
 
    * - getEnv
