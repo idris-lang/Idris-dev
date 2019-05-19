@@ -269,19 +269,17 @@ Primitive Operators
 
        debug : Elab a
 
-       Only seems to compile if 'debug' is last tactic so comment out following tactics like this: 
+       If 'debug' is not the last tactic then make sure its type is sufficiently constrained. In particular, its type is Elab a, but there's no way for Idris to find out which type was meant for a. This can be fixed by either writing an explicit type (e.g. debug {a = ()}) or by using a helper that constrains the type (such as simple in Pruviloj, e.g. simple debug as a line).
 
        .. code-block:: idris
 
          %language ElabReflection
 
          idNat : Nat -> Nat
-         idNat = %runElab (do
-           intro `{{x}}
-           debug
-           --    fill (Var `{{x}})
-           --    solve
-         )
+         idNat = %runElab (do intro `{{x}}
+                              debug {a = ()}
+                              fill (Var `{{x}})
+                              solve)
 
    * - debugMessage
      - Halt elaboration, dumping the internal state and displaying a message.
@@ -294,18 +292,16 @@ Primitive Operators
 
        debugMessage : (msg : List ErrorReportPart) -> Elab a 
 
-       Only seems to compile if 'debug' is last tactic so comment out following tactics like this: 
+       If 'debugMessage' is not the last tactic then make sure its type is sufficiently constrained. In particular, its type is Elab a, but there's no way for Idris to find out which type was meant for a. This can be fixed by either writing an explicit type (e.g. debugMessage [TextPart "message"] {a = ()}) or by using a helper that constrains the type (such as simple in Pruviloj, e.g. simple debug as a line).
 
        .. code-block:: idris
 
           %language ElabReflection
           idNat : Nat -> Nat
-          idNat = %runElab (do
-             intro `{{x}}
-             debugMessage [TextPart "error message"]
-             --    fill (Var `{{x}})
-             --    solve
-             )
+          idNat = %runElab (do intro `{{x}}
+                               debugMessage [TextPart "error message"] {a = ()}
+                               fill (Var `{{x}})
+                               solve)
 
    * - metavar
      - Create a new top-level metavariable to solve the current hole.
@@ -442,21 +438,17 @@ Error Handling
 
        tryCatch : Elab a -> (Err -> Elab a) -> Elab a
 
-       Fixme - following does not work.
-
        .. code-block:: idris
 
          %language ElabReflection
 
-         id1 : Elab ()
-         id1 = do
-           tryCatch (intro `{{x}})
-              (\err -> (intro `{{x}}))
-           fill (Var `{{x}})
-           solve
+         f : Err -> Elab ()
+         f (Msg _) = fill `("message error")
+         f (CantUnify _ _ _ _ _ _) = fill `("unification error")
+         f _ = fill `("other")
 
-         idNat : Nat -> Nat
-         idNat = %runElab id1
+         s2 : String
+         s2 = %runElab (do tryCatch (fill `(True)) f ; solve)
 
    * - fail
      - Halt elaboration with an error
@@ -482,5 +474,5 @@ Error Handling
                solve
 
          idNat : Nat -> Nat
-         idNat = %runElab id1</td>
+         idNat = %runElab id1
 

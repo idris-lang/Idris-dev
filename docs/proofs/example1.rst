@@ -84,16 +84,12 @@ The following is a walkthough looking at the state after each tactic:
      - intro \`{{x}}
 
    * - state now looks like this
-     - state
-
-       .. image:: ../image/elabProofStateEx1_2.png
+     - .. image:: ../image/elabProofStateEx1_2.png
           :width: 312px
           :height: 84px
 
    * - logic now looks like this
-     - logic
-
-       .. image:: ../image/elabLogicEx1_2.png
+     - .. image:: ../image/elabLogicEx1_2.png
           :width: 126px
           :height: 45px
 
@@ -106,9 +102,7 @@ The following is a walkthough looking at the state after each tactic:
 
        getHoles
 
-     - state.
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          getEnv=[(
            `{{x}}, {
@@ -138,16 +132,12 @@ The following is a walkthough looking at the state after each tactic:
      - fill (Var \`{{x}})
 
    * - state now looks like this
-     - state
-
-       .. image:: ../image/elabProofStateEx1_3.png
+     - .. image:: ../image/elabProofStateEx1_3.png
           :width: 312px
           :height: 124px
 
    * - logic now looks like this
-     - logic
-
-       .. image:: ../image/elabLogicEx1_3.png
+     - .. image:: ../image/elabLogicEx1_3.png
           :width: 131px
           :height: 45px
 
@@ -160,9 +150,7 @@ The following is a walkthough looking at the state after each tactic:
 
        getHoles
 
-     - state.
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          getEnv=[(`{{x}}, {λ ({`{{Nat}}.["Nat", "Prelude"]}:
            {type const tag=8,0}).
@@ -184,9 +172,7 @@ The following is a walkthough looking at the state after each tactic:
          getHoles=[{hole_2}, {hole_0}]
 
    * - getGuess
-     - state.
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          {TT:Parameter name ref
             NameType=NameType just bound by intro
@@ -204,9 +190,7 @@ The following is a walkthough looking at the state after each tactic:
      - solve
 
    * - logic now looks like this
-     - logic
-
-       .. image:: ../image/elabLogicEx1_4.png
+     - .. image:: ../image/elabLogicEx1_4.png
           :width: 131px
           :height: 14px
 
@@ -219,9 +203,7 @@ The following is a walkthough looking at the state after each tactic:
 
        getHoles
 
-     - state.
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          getEnv=[]
 
@@ -243,9 +225,7 @@ The following is a walkthough looking at the state after each tactic:
          getHoles=[{hole_0}]
 
    * - getGuess
-     - state.
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          {TT:Bind
             name=`{{x}}
