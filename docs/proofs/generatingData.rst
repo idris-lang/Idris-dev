@@ -1,11 +1,88 @@
 Generating Data and Functions at Compile Time
 =============================================
 
-We can  construct a data structure at compile-time in an Elab monad.
+We can  construct a datatype at compile-time in an Elab monad.
 This can allow proofs to be generated for user defined types or it could allow types to be automatically generated to support user defined types.
 An example is the code, from `Elaborator reflection: extending Idris in Idris`_, that automatically generates accessibility predicates using the Bove-Capretta method.
-The following simple outline example is adapted from
-`<https://github.com/idris-lang/Idris-dev/blob/master/test/meta002/DataDef.idr>`_
+
+Here is a simple example constucting a boolean type:
+
+.. code-block:: idris
+
+  module TwoDef
+  %language ElabReflection
+
+  addTwo : Elab ()
+  addTwo = do let twoname : TTName = `{{TwoDef.Two}}
+              declareDatatype $ Declare twoname [] `(Type)
+              defineDatatype $ DefineDatatype twoname [
+                Constructor `{{F}} [] (Var `{{TwoDef.Two}}),
+                Constructor `{{T}} [] (Var `{{TwoDef.Two}})
+              ]
+
+  %runElab addTwo
+
+.. list-table::
+
+   * - This type is now availible to us as if we had compiled it in the usual way:
+     - .. code-block:: idris
+
+         λΠ> :printdef Two
+         data Two : Type where
+         F : Two
+         T : Two
+
+   * - The constructors are T and F:
+     - .. code-block:: idris
+
+         λΠ> F
+         F : Two
+         λΠ> T
+         T : Two
+
+We can now add some function definitions to the above code:
+
+.. code-block:: idris
+
+  let perm1 = `{{TwoDef.perm1}}
+  let F2 = `{{TwoDef.F}}
+  let T2 = `{{TwoDef.T}}
+  declareType (Declare perm1 [MkFunArg `{{code}} (Var twoname) Explicit NotErased] (Var twoname))
+  defineFunction $ DefineFun perm1 [
+    MkFunClause (Var F2) (Var F2),
+    MkFunClause (Var T2) (Var T2)
+  ]
+
+  let perm2 = `{{TwoDef.perm2}}
+  declareType (Declare perm2 [MkFunArg `{{code}} (Var twoname) Explicit NotErased] (Var twoname))
+  defineFunction $ DefineFun perm2 [
+    MkFunClause (Var F2) (Var T2),
+    MkFunClause (Var T2) (Var F2)
+  ]
+
+.. list-table::
+
+   * - Here are the functions:
+     - .. code-block:: idris
+
+         λΠ> :printdef perm1
+         perm1 : Two -> Two
+         F = F
+         T = T
+         λΠ> :printdef perm2
+         perm2 : Two -> Two
+         F = F
+         T = T
+
+   * - This is what happens when we call the functions:
+     - .. code-block:: idris
+
+         λΠ> perm1 T
+         F T : Two
+         λΠ> perm2 T
+         F T : Two
+
+Here is an example with parameters:
 
 .. code-block:: idris
 
@@ -18,9 +95,9 @@ The following simple outline example is adapted from
     declareDatatype $ Declare dataname [MkFunArg `{{n}} `(Nat) Explicit NotErased] `(Type)
     defineDatatype $ DefineDatatype dataname [
         Constructor `{{MkN}} [MkFunArg `{{x}} `(Nat) Implicit NotErased]
-            (RApp (Var `{{DataDef.N}}) (Var `{{x}})),
+            (RApp (Var dataname) (Var `{{x}})),
         Constructor `{{MkN'}} [MkFunArg `{{x}} `(Nat) Explicit NotErased]
-            (RApp (Var `{{DataDef.N}}) (RApp (Var `{S}) (Var `{{x}})))
+            (RApp (Var dataname) (RApp (Var `{S}) (Var `{{x}})))
     ]
 
   %runElab addData
@@ -46,80 +123,8 @@ Which can be used like this:
   λΠ> :t MkN
   MkN : N x
 
-Here is another, more complicated, example from the same test file. This also creates a function.
 
-.. code-block:: idris
-
-  module DataDef
-  %language ElabReflection
-
-  mkU : Elab ()
-  mkU = do
-    let U = `{{DataDef.U}}
-    let el = `{{DataDef.el}}
-    declareDatatype $ Declare U [] `(Type)
-    declareType $ Declare el [MkFunArg `{{code}} (Var U) Explicit NotErased] `(Type)
-    defineDatatype $ DefineDatatype U [
-      Constructor `{{Base}} [] (Var U),
-      Constructor `{{Pi}}
-        [MkFunArg `{{code}} (Var U) Explicit NotErased,
-          MkFunArg `{{body}} `(~(RApp (Var el) (Var `{{code}})) -> ~(Var U)) Explicit NotErased]
-        (Var U)
-    ]
-    defineFunction $ DefineFun el [
-       MkFunClause (RBind `{{code}} (PVar (Var U))
-           (RBind `{{body}} (PVar `(~(RApp (Var el) (Var `{{code}})) -> ~(Var U)))
-             (RApp (Var el)
-               (RApp (RApp (Var `{{DataDef.Pi}})
-                    (Var `{{code}}))
-                  (Var `{{body}})))))
-        (RBind `{{code}} (PVar (Var U))
-          (RBind `{{body}} (PVar `(~(RApp (Var el) (Var `{{code}})) -> ~(Var U)))
-            (RBind `{{x}} (Pi (RApp (Var el) (Var `{{code}})) `(Type))
-              (RApp (Var el) (RApp (Var `{{body}}) (Var `{{x}})))))),
-      MkFunClause (RApp (Var el) (Var `{{DataDef.Base}})) `(Bool)
-  ]
-
-  %runElab mkU
-
-This code generates the following data and function:
-
-.. code-block:: idris
-
-  data U : Type where
-    Base : U
-    Pi : (code : U) -> (el code -> U) -> U
-    el : U -> Type
-    el (Pi code body) = (x : el code) -> el (body x)
-    el Base = Bool
-
-.. list-table:: Usage
-
-   * - We can then use U the data structure, like this:
-     - examples
-
-       .. code-block:: idris
-
-         λΠ> :t U
-         U : Type
-         λΠ> :doc U
-         No documentation for U
-         λΠ> Base
-         Base : U
-         λΠ> DataDef.Pi
-         Pi : (code : U) -> (el code -> U) -> U
-
-   * - el is the function that has been defined:
-     - examples
-
-       .. code-block:: idris
-
-         λΠ> :t el
-         el : U -> Type
-         λΠ> el Base
-         Bool : Type
-
-So these are the functions that we can use to create data and functions in the Elab monad:
+These are the functions that we can use to create data and functions in the Elab monad:
 
 .. list-table:: Generating Data and Functions
    :widths: 10 30
@@ -153,8 +158,10 @@ So these are the functions that we can use to create data and functions in the E
    * - addImplementation
      - Register a new implementation for interface resolution.
 
-       - @ ifaceName the name of the interface for which an implementation is being registered
-       - @ implName the name of the definition to use in implementation search
+       Arguments:
+
+       - ifaceName the name of the interface for which an implementation is being registered
+       - implName the name of the definition to use in implementation search
 
        Signature:
 
@@ -163,7 +170,9 @@ So these are the functions that we can use to create data and functions in the E
    * - isTCName
      - Determine whether a name denotes an interface.
 
-       @ name a name that might denote an interface.
+       Arguments:
+
+       - name - a name that might denote an interface.
 
        Signature:
 
