@@ -61,6 +61,21 @@ Here is a simple example constructing a boolean type:
 Generating Functions
 --------------------
 
+There are two main 'tactics' associated with generating functions:
+
+- declareType
+- defineFunction
+
+Which declare and define the function as the names suggest.
+
+.. list-table::
+
+   * - These 'tactics' and the data structures associated with them are listed in the tables later on this page, for now, here is a summary:
+     - .. image:: ../image/generateFunction.png
+          :width: 332px
+          :height: 246px
+          :alt: diagram illustrating data structures associated with declareDatatype defineDatatype.
+
 We can now add some function definitions to the above datatype:
 
 .. code-block:: idris
@@ -144,10 +159,12 @@ Which can be used like this:
   λΠ> :t MkN
   MkN : N x
 
+Table of 'tactics' for Generating Data and Functions
+----------------------------------------------------
 
 These are the functions that we can use to create data and functions in the Elab monad:
 
-.. list-table:: Generating Data and Functions
+.. list-table::
    :widths: 10 30
    :stub-columns: 1
 
@@ -199,9 +216,12 @@ These are the functions that we can use to create data and functions in the Elab
 
        isTCName : (name : TTName) -> Elab Bool
 
+Table of Datatypes Associated with Generating Data and Functions
+----------------------------------------------------------------
+
 The above functions use the following data/records:
 
-.. list-table:: Generating Data and Functions data/records
+.. list-table::
    :widths: 10 30
    :stub-columns: 1
 
