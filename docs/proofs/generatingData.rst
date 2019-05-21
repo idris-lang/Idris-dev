@@ -1,11 +1,29 @@
-Generating Data and Functions at Compile Time
-=============================================
+Generating Datatypes and Functions at Compile Time
+==================================================
 
-We can  construct a datatype at compile-time in an Elab monad.
+Program elements, such as datatypes and functions can be constructed at compile-time in the Elab monad.
 This can allow proofs to be generated for user defined types or it could allow types to be automatically generated to support user defined types.
 An example is the code, from `Elaborator reflection: extending Idris in Idris`_, that automatically generates accessibility predicates using the Bove-Capretta method.
 
-Here is a simple example constucting a boolean type:
+Generating Datatypes
+--------------------
+
+There are two main 'tactics' associated with generating datatypes:
+
+- declareDatatype
+- defineDatatype
+
+Which declare and define the datatype as the names suggest.
+
+.. list-table::
+
+   * - These 'tactics' and the data structures associated with them are listed in the tables later on this page, for now, here is a summary:
+     - .. image:: ../image/generateDatatype.png
+          :width: 332px
+          :height: 246px
+          :alt: diagram illustrating data structures associated with declareDatatype defineDatatype.
+
+Here is a simple example constructing a boolean type:
 
 .. code-block:: idris
 
@@ -24,7 +42,7 @@ Here is a simple example constucting a boolean type:
 
 .. list-table::
 
-   * - This type is now availible to us as if we had compiled it in the usual way:
+   * - This type is now available to us as if we had compiled it in the usual way:
      - .. code-block:: idris
 
          λΠ> :printdef Two
@@ -40,7 +58,10 @@ Here is a simple example constucting a boolean type:
          λΠ> T
          T : Two
 
-We can now add some function definitions to the above code:
+Generating Functions
+--------------------
+
+We can now add some function definitions to the above datatype:
 
 .. code-block:: idris
 
@@ -289,6 +310,8 @@ The above functions use the following data/records:
            ||| fully-qualified, and it must have been previously declared as a
            ||| datatype.
            name : TTName
+           ||| A list of constructors for the datatype.
+           constructors : List ConstructorDefn
 
    * - CtorArg
      - CtorParameter
