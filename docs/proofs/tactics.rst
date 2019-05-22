@@ -7,7 +7,9 @@ Before looking at the Elab monad we need to know how to construct terms.
 
 
 Proof State
-===========
+-----------
+
+The terminology 'Proof State' is used by analogy to proof assistants but, as used here, it's really more of a metaprogramming state.
 
 Tactics operate on the proof state. The proof state contains various pieces of information, at this stage, the important ones for us are:
 
@@ -75,9 +77,9 @@ A user defined name can be constructed like this:
          )
 
 Quasiquotation
-==============
+--------------
 
-Since names are used frequently in elaborator reflection there is a shortcut for constructing them: 
+Since names are used frequently in elaborator reflection there is a shortcut for constructing them:
 
 .. list-table:: Quasiquotation
 
@@ -150,7 +152,7 @@ quasiquotation summary:
 +------------+-----------+----------------------------------------------------------+
 
 TT
-==
+--
 
 There is a notation for a term in TT as it is being constructed (based on a BNF-like grammar), this is used for example in the debug output, it is a compact way to see the state of the term so it is used here.
 So internally the program is stored as a tree structure using the following syntax:
@@ -239,6 +241,7 @@ De Bruijn index which is a integer where:
 
 Raw
 ---
+
 Raw is similar to TT except it is used before types are known. The types should be resolved by the type checker.
 
 .. code-block:: idris
@@ -258,7 +261,7 @@ Raw is similar to TT except it is used before types are known. The types should 
     RConstant Const |
 
 Expression Syntax
-=================
+-----------------
 
 There is a way of notating expressions such as those used in the proof state (example: goal type and proof terms) which is reasonably standard in the papers written about this subject.
 
@@ -337,7 +340,7 @@ which introduces another guess.
 The solve tactic completes the proof
 
 Binders
-=======
+-------
 
 Here we look at each tactic in turn to see how they affect the proof state.
 
