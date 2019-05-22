@@ -81,21 +81,17 @@ Quasiquotation
 
 Since names are used frequently in elaborator reflection there is a shortcut for constructing them:
 
-.. list-table:: Quasiquotation
+.. list-table::
 
    * - An unresolved variable "x" is wrapped in backtick and double braces:
-     - example
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
           Idris> `{{x}}
           UN "x" : TTName
 
 
    * - Single braces are used for existing variables:
-     - example
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          Idris> `{x}
          No such variable x
@@ -105,9 +101,9 @@ Since names are used frequently in elaborator reflection there is a shortcut for
 
 
    * - brackets are used for an expression:
-     - example here type is inferable
 
-       .. code-block:: idris
+       here type is inferable
+     - .. code-block:: idris
 
          Idris> :let a=2
          Idris> `(a)
@@ -115,18 +111,14 @@ Since names are used frequently in elaborator reflection there is a shortcut for
 
 
    * - Expression with explicit type:
-     - example
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          Idris> `(a:Integer)
          P Ref (UN "a") (TConst (AType (ATInt ITBig))) : TT
 
 
    * - If we want the value we can escape from quasiquotation by using anti-quotation (tilde)
-     - example
-
-       .. code-block:: idris
+     - .. code-block:: idris
 
          Idris> `(~a)
          2 : Integer
