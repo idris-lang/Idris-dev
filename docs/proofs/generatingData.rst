@@ -76,9 +76,18 @@ Which declare and define the function as the names suggest.
      - .. image:: ../image/generateFunction.png
           :width: 332px
           :height: 246px
-          :alt: diagram illustrating data structures associated with declareDatatype defineDatatype.
+          :alt: diagram illustrating data structures associated with function declare and define.
 
-Note: FunClause - holds a 'let' clause, the left hand side (lhs) and right hand side (rhs) must have the same type. TT does not have 'where' clauses because they are desugared out.
+Note: The left hand side (lhs) and right hand side (rhs) of FunClause typically is of type 'Raw'.
+
+.. list-table::
+
+   * - Bound pattern variables are represented by 'PVar' binders:
+       This diagram shows an example of a possible Raw structure that might be used in a function definition.
+     - .. image:: ../image/generateFunction2.png
+          :width: 264px
+          :height: 239px
+          :alt: diagram illustrating data structures associated with functions.
 
 .. list-table::
 
