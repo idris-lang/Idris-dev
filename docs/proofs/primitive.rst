@@ -323,7 +323,7 @@ Primitive Operators
 
 
 Read and Write State
-====================
+--------------------
 
 .. list-table::
    :widths: 10 30
@@ -424,7 +424,7 @@ Read and Write State
        check : (env : List (TTName, Binder TT)) -> (tm : Raw) -> Elab (TT, TT)
 
 Error Handling
-==============
+--------------
 
 .. list-table::
    :widths: 10 30
