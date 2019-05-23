@@ -3,13 +3,15 @@ module Data.List.Extra
 %default total
 %access export
 
+||| The final segment of the accumulator is the final segment of the result.
+reverseOntoAcc : (xs, ys, zs : List a) ->
+  reverseOnto (ys ++ zs) xs = (reverseOnto ys xs) ++ zs
+reverseOntoAcc [] _ _ = Refl
+reverseOntoAcc (x :: xs) (ys) (zs) = reverseOntoAcc xs (x :: ys) zs
+
 ||| Serves as a specification for reverseOnto.
 reverseOntoSpec : (xs, ys : List a) -> reverseOnto xs ys = reverse ys ++ xs
-reverseOntoSpec _  [] = Refl
-reverseOntoSpec xs (y::ys) =
-  trans (reverseOntoSpec (y::xs) ys)
-        (trans (appendAssociative (reverse ys) [y] xs)
-               (cong {f = \l => l ++ xs} (sym (reverseOntoSpec [y] ys))))
+reverseOntoSpec xs ys = reverseOntoAcc ys [] xs
 
 ||| The reverse of an empty list is an empty list.  Together with reverseCons,
 ||| serves as a specification for reverse.
@@ -26,10 +28,10 @@ reverseAppend : (xs, ys : List a) ->
   reverse (xs ++ ys) = reverse ys ++ reverse xs
 reverseAppend [] ys = sym (appendNilRightNeutral (reverse ys))
 reverseAppend (x :: xs) ys =
-  trans (trans (reverseCons x (xs ++ ys))
-               (cong {f = \l => l ++ [x]} (reverseAppend xs ys)))
-        (sym (trans (cong (reverseCons x xs))
-                    (appendAssociative (reverse ys) (reverse xs) [x])))
+  rewrite reverseCons x (xs ++ ys) in
+    rewrite reverseAppend xs ys in
+      rewrite reverseCons x xs in
+        sym $ appendAssociative (reverse ys) (reverse xs) [x]
 
 ||| Reversing a singleton list is a no-op.
 reverseSingletonId : (x : a) -> reverse [x] = [x]
@@ -39,6 +41,6 @@ reverseSingletonId _ = Refl
 reverseReverseId : (xs : List a) -> reverse (reverse xs) = xs
 reverseReverseId [] = Refl
 reverseReverseId (x :: xs) =
-  trans (cong (reverseCons x xs))
-        (trans (reverseAppend (reverse xs) [x])
-               (cong (reverseReverseId xs)))
+  rewrite reverseCons x xs in
+    rewrite reverseAppend (reverse xs) [x] in
+      cong $ reverseReverseId xs
