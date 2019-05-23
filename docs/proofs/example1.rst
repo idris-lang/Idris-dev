@@ -40,7 +40,7 @@ The following is a walkthough looking at the state after each tactic:
           :width: 310px
           :height: 115px
 
-   * - This table also shows the logic at each stage:
+   * - This table also shows the logic at each stage. The aim is to illustrate the tactics by analogy with proofs, as a line with the premises above it and the conclusion below it. The conclusion is the hole we are trying to fill and the premises may be sub-goals:
      - .. image:: ../image/elabLogicEx1_1.png
           :width: 126px
           :height: 33px
@@ -131,12 +131,12 @@ The following is a walkthough looking at the state after each tactic:
    * - Place a term into a hole, unifying its type
      - fill (Var \`{{x}})
 
-   * - The state now looks like this:
+   * - The state still looks like this:
      - .. image:: ../image/elabProofStateEx1_3.png
           :width: 312px
-          :height: 124px
+          :height: 57px
 
-   * - The logic now looks like this:
+   * - and the logic like this:
      - .. image:: ../image/elabLogicEx1_3.png
           :width: 131px
           :height: 45px
