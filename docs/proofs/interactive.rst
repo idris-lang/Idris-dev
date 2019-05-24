@@ -153,6 +153,7 @@ This has been normalised to ``0 = 0`` so now we have to prove that ``0`` equals 
 is easy to prove by reflexivity from the pruviloj library:
 
 .. code-block:: idris
+
     -Main.plusredZ_Z> reflexivity
     plusredZ_Z: No more goals.
 
