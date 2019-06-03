@@ -24,7 +24,7 @@ comma separated list of modules.  For example, a library test which
 has two modules ``foo.idr`` and ``bar.idr`` as source files would be
 written as follows::
 
-    package foo
+    package test
 
     modules = foo, bar
 
