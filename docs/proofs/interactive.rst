@@ -237,7 +237,6 @@ which is trivially provable using reflexivity:
     Proof completed!
     Main.plusredZ_S = %runElab (do intro `{{k}}
                                    intro `{{ih}}
-                                   compute
                                    rewriteWith (Var `{{ih}})
                                    reflexivity)
 
