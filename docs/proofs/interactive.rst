@@ -240,6 +240,74 @@ which is trivially provable using reflexivity:
                                    rewriteWith (Var `{{ih}})
                                    reflexivity)
 
-Again, we can cut & paste this into the hole in the original file.
+We can't just cut & paste this into the hole in the original file like this:
+
+.. code-block:: idris
+
+  import Pruviloj
+  import Pruviloj.Induction
+
+  %language ElabReflection
+
+  plusReducesZ' : (n:Nat) -> n = plus n Z
+  plusReducesZ' Z     = %runElab (do reflexivity)
+  plusReducesZ' (S k) = let ih = plusReducesZ' k in
+                      (%runElab (do intro `{{k}}
+                               intro `{{ih}}
+                               rewriteWith (Var `{{ih}})
+                               reflexivity)
+                      )
+
+because this gives the following error:
+
+.. code-block:: idris
+
+  Idris> :load elabInteractiveEx2.idr
+  elabInteractiveEx2.idr:10:32:
+     |
+  10 |                                intro `{{ih}}
+     |                                ^
+  unexpected "in"
+  expecting dependent type signature
+
+We can try putting the proof into a seperate function like this:
+
+.. code-block:: idris
+
+  import Pruviloj
+  import Pruviloj.Induction
+
+  %language ElabReflection
+
+  plusredZ_S : (n : Nat) -> (n = plus n Z) -> (S n = S (plus n Z))
+  plusredZ_S k ih = %runElab (do intro `{{k}}
+                                 intro `{{ih}}
+                                 rewriteWith (Var `{{ih}})
+                                 reflexivity)
+
+  plusReducesZ' : (n:Nat) -> n = plus n Z
+  plusReducesZ' Z     = %runElab (do reflexivity)
+  plusReducesZ' (S k) = let ih = plusReducesZ' k in plusredZ_S k ih
+
+but this gives:
+
+.. code-block:: idris
+
+  Idris> :load elabInteractiveEx4.idr
+  Type checking ./elabInteractiveEx4.idr
+  elabInteractiveEx4.idr:7:19-10:43:
+    |
+  7 | plusredZ_S k ih = %runElab (do intro `{{k}}
+    |                   ~~~~~~~~~~~~~~~~~~~~~~~~~ ...
+  When checking right hand side of plusredZ_S with expected type
+        S k = S (plus k 0)
+
+  Can't use lambda here: type is S k = S (plus k 0)
+
+  Holes: Main.plusredZ_S
+
+Issues like this are discussed here [#f1]_
+
+.. [#f1] https://github.com/idris-lang/Idris-dev/issues/4556
 
 .. |image| image:: ../image/plusReducesProof.png
