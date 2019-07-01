@@ -40,10 +40,10 @@ The following is a walkthough looking at the state after each tactic:
           :width: 310px
           :height: 115px
 
-   * - This table also shows the logic at each stage. The aim is to illustrate the tactics by analogy with proofs, as a line with the premises above it and the conclusion below it. The conclusion is the hole we are trying to fill and the premises may be sub-goals:
+   * - This table also shows the holes and what they depend on. The aim is to illustrate the tactics by analogy with proofs, as a line with the premises above it and the conclusion below it. The conclusion is the hole we are trying to fill and the premises may be sub-goals:
      - .. image:: ../image/elabLogicEx1_1.png
-          :width: 126px
-          :height: 33px
+          :width: 277px
+          :height: 15px
 
    * - The term is:
      - ?{hole_0} ≈ ? {hole_2} . {hole_2} . {hole_0}
@@ -88,10 +88,10 @@ The following is a walkthough looking at the state after each tactic:
           :width: 312px
           :height: 84px
 
-   * - The logic now looks like this:
+   * - The holes and what they depend on now looks like this:
      - .. image:: ../image/elabLogicEx1_2.png
-          :width: 126px
-          :height: 45px
+          :width: 279px
+          :height: 26px
 
    * - The term now looks like this:
      - ?{hole_0} ≈ λ x . ? {hole_2} . {hole_2} . {hole_0}
@@ -136,10 +136,10 @@ The following is a walkthough looking at the state after each tactic:
           :width: 312px
           :height: 57px
 
-   * - and the logic like this:
+   * - The holes and what they depend on now looks like this:
      - .. image:: ../image/elabLogicEx1_3.png
-          :width: 131px
-          :height: 45px
+          :width: 290px
+          :height: 26px
 
    * - The term now looks like this:
      - ?{hole_0} ≈ λ x . ?{hole_2} ≈ x . {hole_2} . {hole_0}
@@ -189,7 +189,7 @@ The following is a walkthough looking at the state after each tactic:
    * - Substitute a guess into a hole.
      - solve
 
-   * - The logic now looks like this:
+   * - The holes and what they depend on now looks like this:
      - .. image:: ../image/elabLogicEx1_4.png
           :width: 131px
           :height: 14px
