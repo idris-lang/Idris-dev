@@ -426,5 +426,5 @@ However this would cause the application of f to be ill-typed, as it expects an 
 
        letbind : (n : TTName) -> (ty, tm : Raw) -> Elab ()
 
-... target-notes::
-. _`Dependently Typed Functional Programs and their Proofs by McBride 1999`: https://www.era.lib.ed.ac.uk/handle/1842/374
+.. target-notes::
+.. _`Dependently Typed Functional Programs and their Proofs by McBride 1999`: https://www.era.lib.ed.ac.uk/handle/1842/374
