@@ -27,6 +27,7 @@ A tutorial on theorem proving in Idris.
    interactiveOld
    elabReflection
    tactics
+   holes
    example1
    primitive
    generatingData
