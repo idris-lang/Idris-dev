@@ -20,8 +20,8 @@ Elaborator Reflection - Identity Example
 
        As a first approximation, the state consists of a term with holes in it, an indicator of which hole is focused, a queue of the next holes to focus on, and miscellaneous information like a source of fresh names. The intro tactic modifies this state, replacing the focused hole with a lambda and focusing on the lambda's body.
      - .. image:: ../image/tree.png
-          :width: 133px
-          :height: 106px
+          :width: 119px
+          :height: 109px
 
 The following is a walkthough looking at the state after each tactic:
 
