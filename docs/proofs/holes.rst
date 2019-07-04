@@ -81,10 +81,29 @@ So we are looking for a hole of type Nat and all we know is it has type Nat.
 
 Going back to the full term, the above is wrapped in a guess, so it means: 'a guess that is itself a hole'.
 
+Since the elaborator does not have any further information it has to be given a value:
+
+.. code-block:: idris
+
+  %language ElabReflection
+
+  testFn : Nat
+  testFn = %runElab (do fill `(Z)
+                        debug {a = ()}
+                        solve)
+
+Now we have a guess for hole_2 which is itself a guess for hole_0:
+
+.. code-block:: idris
+
+  ?{hole_0} ≈ ?{hole_2} ≈ Prelude.Nat.Z . {hole_2} . {hole_0}
+
+The guesses can be accepted by calling the 'solve' tactic.
+
 Example Showing Patterns
 ------------------------
 
-In this example a parameter 'n' has been added to the function. This allows us to see how patterns are used. Starting with this file:
+In this next example a parameter 'n' has been added to the function. This allows us to see how patterns are used. Starting with this file:
 
 .. code-block:: idris
 
