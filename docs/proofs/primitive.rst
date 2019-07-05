@@ -30,6 +30,11 @@ Primitive Operators
    * - fill
      -  Place a term into a hole, unifying its type. Fails if the focus is not a hole.
 
+        - .. image:: ../image/fill.png
+             :width: 259px
+             :height: 46px
+             :alt: diagram illustrating fill tactic
+
         Signature:
 
         fill : (e : Raw) -> Elab ()
@@ -45,6 +50,16 @@ Primitive Operators
         and fail if the current focus is not a hole. The type t of the  guess is constructed by unifying tc and th, which may instantiate holes that they refer to. Fail if the current focus is not a hole or if unification fails.
 
         This unification can result in the solution of further holes or the establishment of additional unsolved unification constraints.
+
+        Example:
+
+        .. code-block:: idris
+
+          %language ElabReflection
+
+          testFn : Nat
+          testFn = %runElab (do fill `(Z)
+                                solve)
 
    * - apply
      - Attempt to apply an operator to fill the current hole, potentially solving arguments by unification.
