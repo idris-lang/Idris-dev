@@ -15,7 +15,7 @@
    version="1.1"
    id="svg8"
    inkscape:version="0.92.2 5c3e80d, 2017-08-06"
-   sodipodi:docname="fill.svg">
+   sodipodi:docname="solve.svg">
   <defs
      id="defs2">
     <marker
@@ -92,31 +92,18 @@
        inkscape:export-xdpi="61.120499"
        inkscape:export-ydpi="61.120499" />
     <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
-       x="65.352081"
-       y="105.17709"
-       id="text12"
-       inkscape:export-xdpi="61.120499"
-       inkscape:export-ydpi="61.120499"><tspan
-         sodipodi:role="line"
-         id="tspan10"
-         x="65.352081"
-         y="105.17709"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:4.23333311px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';stroke-width:0.26458332">? {hole} . {hole}</tspan></text>
-    <text
        id="text16"
        y="118.67083"
-       x="56.356247"
+       x="72.231262"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
        xml:space="preserve"
        inkscape:export-xdpi="61.120499"
        inkscape:export-ydpi="61.120499"><tspan
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:4.23333311px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';stroke-width:0.26458332"
          y="118.67083"
-         x="56.356247"
+         x="72.231262"
          id="tspan14"
-         sodipodi:role="line">?{hole} ≈ Prelude.Nat.Z . {hole}</tspan></text>
+         sodipodi:role="line">Prelude.Nat.Z </tspan></text>
     <text
        id="text20"
        y="110.99791"
@@ -129,7 +116,7 @@
          y="110.99791"
          x="82.814583"
          id="tspan18"
-         sodipodi:role="line">fill `(Z)</tspan></text>
+         sodipodi:role="line">solve</tspan></text>
     <path
        style="fill:none;stroke:#ff0000;stroke-width:0.5291667;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow1Mend)"
        d="m 80.668481,106.30075 -0.0032,7.57492"
@@ -143,12 +130,12 @@
        inkscape:export-xdpi="61.120499"
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#0000ff;fill-opacity:1;stroke:none;stroke-width:0.26458332"
-       x="63.499996"
+       x="56.620823"
        y="93.006248"
        id="text832"><tspan
          sodipodi:role="line"
          id="tspan830"
-         x="63.499996"
+         x="56.620823"
          y="93.006248"
          style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:4.23333311px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';fill:#0000ff;stroke-width:0.26458332">focus</tspan></text>
     <path
@@ -157,7 +144,20 @@
        sodipodi:nodetypes="cc"
        inkscape:connector-curvature="0"
        id="path834"
-       d="m 66.645564,94.659084 -0.0032,5.458256"
+       d="m 57.649725,94.659084 -0.0032,5.458256"
        style="fill:none;stroke:#0000ff;stroke-width:0.5291667;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker838)" />
+    <text
+       inkscape:export-ydpi="61.120499"
+       inkscape:export-xdpi="61.120499"
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.26458332"
+       x="56.356247"
+       y="104.91254"
+       id="text842"><tspan
+         sodipodi:role="line"
+         id="tspan840"
+         x="56.356247"
+         y="104.91254"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:4.23333311px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';stroke-width:0.26458332">?{hole} ≈ Prelude.Nat.Z . {hole}</tspan></text>
   </g>
 </svg>

@@ -21,19 +21,38 @@ Primitive Operators
    * - solve
      - Substitute a guess into a hole.
 
+
+       .. image:: ../image/solve.png
+          :width: 141px
+          :height: 74px
+          :alt: diagram illustrating solve tactic
+
+
        Substitute the focused guess throughout its scope, eliminating it and moving focus to the next element of the hole queue. Fail if the focus is not a guess.
 
        Signature:
 
        solve : Elab ()
 
+        Example:
+
+        .. code-block:: idris
+
+          %language ElabReflection
+
+          testFn : Nat
+          testFn = %runElab (do fill `(Z)
+                                solve)
+
    * - fill
      -  Place a term into a hole, unifying its type. Fails if the focus is not a hole.
 
-        - .. image:: ../image/fill.png
-             :width: 259px
-             :height: 46px
-             :alt: diagram illustrating fill tactic
+
+        .. image:: ../image/fill.png
+           :width: 140px
+           :height: 74px
+           :alt: diagram illustrating fill tactic
+
 
         Signature:
 
