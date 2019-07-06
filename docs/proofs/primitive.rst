@@ -144,9 +144,14 @@ Primitive Operators
        unfocus : TTName -> Elab ()
 
    * - attack
-     - Convert a hole to make it suitable for bindings - that is, transform it such that it has the form
+     - Convert a hole to make it suitable for bindings.
 
-       `?h : t . h` as opposed to `?h : t . f h`.
+
+       .. image:: ../image/attack.png
+          :width: 152px
+          :height: 70px
+          :alt: diagram illustrating attack tactic
+
 
        The binding tactics require that a hole be directly under its binding, or else the scopes of the generated terms won't make sense. This tactic creates a new hole of the proper form, and points the old hole at it.
 
