@@ -270,7 +270,7 @@ because this gives the following error:
   unexpected "in"
   expecting dependent type signature
 
-However if we put the proof into a seperate function like this:
+However if we put the proof into a separate function like this:
 
 .. code-block:: idris
 
