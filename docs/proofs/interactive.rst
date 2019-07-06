@@ -4,7 +4,7 @@ Interactive Theorem Proving
 
 Idris supports interactive theorem proving via elaborator reflection.
 
-:ref:'elaborator-reflection' is also used to convert high-level Idris code into
+:ref:`elaborator-reflection` is also used to convert high-level Idris code into
 the core language and for customising the language. Here we show how to use it
 to interactively construct proofs.
 
