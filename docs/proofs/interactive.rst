@@ -4,7 +4,7 @@ Interactive Theorem Proving
 
 Idris supports interactive theorem proving via elaborator reflection.
 
-:ref:'elaborator-reflection' is also used to convert high-level Idris code into
+:ref:`elaborator-reflection` is also used to convert high-level Idris code into
 the core language and for customising the language. Here we show how to use it
 to interactively construct proofs.
 
@@ -237,10 +237,60 @@ which is trivially provable using reflexivity:
     Proof completed!
     Main.plusredZ_S = %runElab (do intro `{{k}}
                                    intro `{{ih}}
-                                   compute
                                    rewriteWith (Var `{{ih}})
                                    reflexivity)
 
-Again, we can cut & paste this into the hole in the original file.
+We can't just cut & paste this into the hole in the original file like this:
+
+.. code-block:: idris
+
+  import Pruviloj
+  import Pruviloj.Induction
+
+  %language ElabReflection
+
+  plusReducesZ' : (n:Nat) -> n = plus n Z
+  plusReducesZ' Z     = %runElab (do reflexivity)
+  plusReducesZ' (S k) = let ih = plusReducesZ' k in
+                      (%runElab (do intro `{{k}}
+                               intro `{{ih}}
+                               rewriteWith (Var `{{ih}})
+                               reflexivity)
+                      )
+
+because this gives the following error:
+
+.. code-block:: idris
+
+  Idris> :load elabInteractiveEx2.idr
+  elabInteractiveEx2.idr:10:32:
+     |
+  10 |                                intro `{{ih}}
+     |                                ^
+  unexpected "in"
+  expecting dependent type signature
+
+However if we put the proof into a separate function like this:
+
+.. code-block:: idris
+
+  import Pruviloj
+  import Pruviloj.Induction
+
+  %language ElabReflection
+
+  plusredZ_S : (k : Nat) -> (ih:(k = plus k Z)) -> (S k = S (plus k Z))
+  plusredZ_S = %runElab (do intro `{{k}}
+                            intro `{{ih}}
+                            rewriteWith (Var `{{ih}})
+                            reflexivity)
+
+  plusReducesZ' : (n:Nat) -> n = plus n Z
+  plusReducesZ' Z     = %runElab (do reflexivity)
+  plusReducesZ' (S k) = let ih = plusReducesZ' k in plusredZ_S k ih
+
+This then loads.
+
+.. [#f1] https://github.com/idris-lang/Idris-dev/issues/4556
 
 .. |image| image:: ../image/plusReducesProof.png
