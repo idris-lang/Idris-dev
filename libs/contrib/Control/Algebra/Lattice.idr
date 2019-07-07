@@ -25,6 +25,9 @@ implementation JoinSemilattice Nat where
 implementation Ord a => JoinSemilattice (MaxiphobicHeap a) where
   join = merge
 
+JoinSemilattice Bool where
+  join a b = a || b
+
 ||| Sets equipped with a binary operation that is commutative, associative and
 ||| idempotent.  Must satisfy the following laws:
 |||
@@ -41,6 +44,9 @@ interface MeetSemilattice a where
 
 implementation MeetSemilattice Nat where
   meet = minimum
+
+MeetSemilattice Bool where
+  meet a b = a && b
 
 ||| Sets equipped with a binary operation that is commutative, associative and
 ||| idempotent and supplied with a unitary element.  Must satisfy the following
@@ -63,6 +69,9 @@ interface JoinSemilattice a => BoundedJoinSemilattice a where
 implementation BoundedJoinSemilattice Nat where
   bottom = Z
 
+BoundedJoinSemilattice Bool where
+  bottom = False
+
 ||| Sets equipped with a binary operation that is commutative, associative and
 ||| idempotent and supplied with a unitary element.  Must satisfy the following
 ||| laws:
@@ -80,6 +89,9 @@ implementation BoundedJoinSemilattice Nat where
 ||| equipped with a "top" element.
 interface MeetSemilattice a => BoundedMeetSemilattice a where
   top : a
+
+BoundedMeetSemilattice Bool where
+  top = True
 
 ||| Sets equipped with two binary operations that are both commutative,
 ||| associative and idempotent, along with absorbtion laws for relating the two
@@ -100,6 +112,8 @@ interface MeetSemilattice a => BoundedMeetSemilattice a where
 interface (JoinSemilattice a, MeetSemilattice a) => Lattice a where { }
 
 implementation Lattice Nat where { }
+
+Lattice Bool where { }
 
 ||| Sets equipped with two binary operations that are both commutative,
 ||| associative and idempotent and supplied with neutral elements, along with
@@ -122,3 +136,5 @@ implementation Lattice Nat where { }
 |||     forall a,     meet a top        == top
 |||     forall a,     join a bottom     == bottom
 interface (BoundedJoinSemilattice a, BoundedMeetSemilattice a) => BoundedLattice a where { }
+
+BoundedLattice Bool where { }

@@ -6,6 +6,7 @@ import Control.Algebra.NumericImplementations
 import Control.Algebra.VectorSpace
 import Data.Vect
 import Data.ZZ
+import Data.Bool.Extra
 
 %default total
 %access public export
@@ -317,7 +318,42 @@ interface JoinSemilattice a => VerifiedJoinSemilattice a where
   joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
   joinSemilatticeJoinIsIdempotent  : (e : a)       -> join e e = e
 
+VerifiedJoinSemilattice Nat where
+  joinSemilatticeJoinIsAssociative = maximumAssociative
+  joinSemilatticeJoinIsCommutative = maximumCommutative
+  joinSemilatticeJoinIsIdempotent  = maximumIdempotent
+
+VerifiedJoinSemilattice Bool where
+  joinSemilatticeJoinIsAssociative = orAssociative
+  joinSemilatticeJoinIsCommutative = orCommutative
+  joinSemilatticeJoinIsIdempotent = orSameNeutral
+
 interface MeetSemilattice a => VerifiedMeetSemilattice a where
   meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
   meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
   meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
+
+VerifiedMeetSemilattice Nat where
+  meetSemilatticeMeetIsAssociative = minimumAssociative
+  meetSemilatticeMeetIsCommutative = minimumCommutative
+  meetSemilatticeMeetIsIdempotent  = minimumIdempotent
+
+VerifiedMeetSemilattice Bool where
+  meetSemilatticeMeetIsAssociative = andAssociative
+  meetSemilatticeMeetIsCommutative = andCommutative
+  meetSemilatticeMeetIsIdempotent = andSameNeutral
+
+interface (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJoinSemilattice a where
+  joinBottomIsIdentity : (x : a) -> join x Lattice.bottom = x
+
+VerifiedBoundedJoinSemilattice Nat where
+  joinBottomIsIdentity = maximumZeroNLeft
+
+VerifiedBoundedJoinSemilattice Bool where
+  joinBottomIsIdentity = orFalseNeutral
+  
+interface (VerifiedMeetSemilattice a, BoundedMeetSemilattice a) => VerifiedBoundedMeetSemilattice a where
+  meetTopIsIdentity : (x : a) -> meet x Lattice.top = x
+
+VerifiedBoundedMeetSemilattice Bool where
+  meetTopIsIdentity = andTrueNeutral
