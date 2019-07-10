@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+echo "test" > remove.me
+${IDRIS:-idris} $@ --quiet --port none ffi013.idr -o ffi013
+./ffi013
+rm -f ffi013 remove.me *.ibc

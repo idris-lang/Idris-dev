@@ -46,6 +46,10 @@ int fileError(void* h) {
     return ferror(f);
 }
 
+int fileRemove(const char *filename) {
+    return remove(filename);
+}
+
 int fileSize(void* h) {
     FILE* f = (FILE*)h;
     int fd = fileno(f);

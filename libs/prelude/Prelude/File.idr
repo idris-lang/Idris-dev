@@ -289,6 +289,17 @@ fEOF : File -> IO Bool
 fEOF (FHandle h) = do eof <- do_feof h
                       pure (not (eof == 0))
 
+private
+do_fremove : String -> IO Int
+do_fremove s = foreign FFI_C "fileRemove" (String -> IO Int) s
+
+||| Remove a file
+||| @s the file name
+export
+fRemove : (s : String) -> IO Bool
+fRemove s = do res <- do_fremove s
+               pure (res == 0)
+
 export
 fpoll : File -> IO Bool
 fpoll (FHandle h) = do p <- foreign FFI_C "fpoll" (Ptr -> IO Int) h
