@@ -390,9 +390,8 @@ execForeign env ctxt arity ty fn xs onfail
                       ". Are all cases covered?"
     | Just (FFun "fileRemove" [(_,fileStr)] _) <- foreignFromTT arity ty fn xs
            = case fileStr of
-               EConstant (Str f) -> do eofp <- execIO $ removeFile f
-                                       let res = ioWrap (EConstant (I $ if eofp then 1 else 0))
-                                       execApp env ctxt res (drop arity xs)
+               EConstant (Str f) -> do execIO $ removeFile f
+                                       execApp env ctxt ioUnit (drop arity xs)
                _ -> execFail . Msg $
                       "The argument to fileRemove should be a constant string, but it was " ++
                       show handle ++
