@@ -394,7 +394,7 @@ execForeign env ctxt arity ty fn xs onfail
                                        execApp env ctxt ioUnit (drop arity xs)
                _ -> execFail . Msg $
                       "The argument to fileRemove should be a constant string, but it was " ++
-                      show handle ++
+                      show fileStr ++
                       ". Are all cases covered?"
     | Just (FFun "fileClose" [(_,handle)] _) <- foreignFromTT arity ty fn xs
            = case handle of
