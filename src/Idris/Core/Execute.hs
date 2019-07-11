@@ -30,6 +30,7 @@ import Data.Maybe
 import Data.Time.Clock.POSIX (getPOSIXTime)
 import Data.Traversable (forM)
 import Debug.Trace
+import System.Directory
 import System.IO
 import System.IO.Error
 import System.IO.Unsafe
@@ -386,6 +387,17 @@ execForeign env ctxt arity ty fn xs onfail
                _ -> execFail . Msg $
                       "The argument to fileError should be a file handle, but it was " ++
                       show handle ++
+                      ". Are all cases covered?"
+    | Just (FFun "fileRemove" [(_,fileStr)] _) <- foreignFromTT arity ty fn xs
+           = case fileStr of
+               EConstant (Str f) -> do res <- execIO $ catch (do removeFile f
+                                                                 return $ ioWrap $ EConstant $ I 0)
+                                                             (\e -> do writeIORef fileError $ mapError e
+                                                                       return $ ioWrap $ EConstant $ I (-1))
+                                       execApp env ctxt res (drop arity xs)
+               _ -> execFail . Msg $
+                      "The argument to fileRemove should be a constant string, but it was " ++
+                      show fileStr ++
                       ". Are all cases covered?"
     | Just (FFun "fileClose" [(_,handle)] _) <- foreignFromTT arity ty fn xs
            = case handle of

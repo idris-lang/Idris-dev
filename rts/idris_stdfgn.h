@@ -12,6 +12,7 @@ void* fileOpen(char* f, char* mode);
 void fileClose(void* h);
 int fileEOF(void* h);
 int fileError(void* h);
+int fileRemove(const char* fname);
 // Returns a negative number if not a file (e.g. directory or device)
 int fileSize(void* h);
 
