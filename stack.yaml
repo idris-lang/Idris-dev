@@ -2,9 +2,10 @@
 resolver: lts-13.21
 
 packages:
-  - location: .
+  - '.'
 
 extra-deps:
+  - binary-0.8.7.0@sha256:ae3e6cca723ac55c54bbb3fa771bcf18142bc727afd57818e66d6ee6c8044f12
   - network-2.8.0.0@sha256:aae171e6c6028a7791dbe4de5b9d2da398056359e3cc7927465ffa3cdae1aa0b
   - Cabal-2.2.0.1@sha256:2a80d8fb655474f0eaeb20434c47f64f84e6302e55973056f00df8ca050b9683
   - megaparsec-7.0.4
@@ -14,8 +15,10 @@ extra-deps:
   - tasty-rerun-1.1.14@sha256:ba9c19a281535bea566e1044bc02c36ef17abcb310af4b6a149ec11780c7ce35
 
 flags:
+  # set to false if you're having trouble with libffi and you can do
+  # without it
   idris:
-    FFI: true
+    FFI: false
     GMP: true
 
 ghc-options:
