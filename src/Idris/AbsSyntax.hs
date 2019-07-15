@@ -1659,7 +1659,8 @@ getUnboundImplicits i t tm = getImps t (collectImps tm)
             argInfo n (Imp opt _ _ _ _ _) Placeholder
                    = (True, PImp 0 True opt n Placeholder)
             argInfo n (Imp opt _ _ _ _ _) t'
-                   = (False, PImp (getPriority i t') True opt n t')
+                   = (InaccessibleArg `elem` opt,
+                          PImp (getPriority i t') True opt n t')
             argInfo n (Exp opt _ _ _) t'
                    = (InaccessibleArg `elem` opt,
                           PExp (getPriority i t') opt n t')
