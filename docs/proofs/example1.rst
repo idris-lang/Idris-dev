@@ -48,28 +48,20 @@ The following is a walkthough looking at the state after each tactic:
    * - The term is:
      - ?{hole_0} ≈ ? {hole_2} . {hole_2} . {hole_0}
 
-   * - It is possible to read the state from the script by calling getEnv, getGoal and getHoles. To show the results I hacked this: `my code`_.
+   * - It is possible to read the state from the script by calling getEnv, getGoal and getHoles.
 
-     - .. code-block:: idris
+     - The output of these calls contain structures with TT code. To show the results I hacked this: `my code`_. TT code is not really designed to be readable by humans, all the names are fully expanded, everything has a type down to universes (type of types). This is shown here to illustrate the information available.
+
+       .. code-block:: idris
 
          getEnv=[]
 
-         getGoal=({hole_2}, {TT:Bind
-            name=`{{__pi_arg}}
-            binder={
-               Π ({`{{Nat}}.["Nat", "Prelude"]}:{type const tag=8,0}).{
-                  TT:TType tt=ext=./Prelude/Nat.idr#20
-               }
-            }
-            tt={
-               TT:Parameter name ref
-               NameType={type const tag=8,0}
-               TTName={`{{Nat}}.["Nat","Prelude"]}
-               TT={TT:TType
-                  tt=ext=./Prelude/Nat.idr#20
-               }
-            }
-         })
+         getGoal=(hole_2, __pi_arg:(Nat.["Nat", "Prelude"]:{
+            type constructor tag=8 number=0}.Type:U=(20:./Prelude/Nat.idr)->.
+               {name ref{type constructor tag=8 number=0}Nat.["Nat","Prelude"]:
+                    Type:U=(20:./Prelude/Nat.idr)
+               })
+            })
 
          getHoles=[{hole_2},{hole_0}]
 
@@ -96,24 +88,14 @@ The following is a walkthough looking at the state after each tactic:
 
      - .. code-block:: idris
 
-         getEnv=[(
-           `{{x}}, {
-              λ ({`{{Nat}}.["Nat", "Prelude"]}:{type const tag=8,0}).
-              {TT:TType
-                  tt=ext=./Prelude/Nat.idr#20
-              }
-           }
-         )]
+         getEnv=[(x, {λ (Nat.["Nat", "Prelude"]:{
+            type constructor tag=8 number=0}).
+               Type:U=(20:./Prelude/Nat.idr)
+            })]
 
-         getGoal=({hole_2},{
-           TT:Parameter name ref
-             NameType={type const tag=8,0}
-           TTName={`{{Nat}}.["Nat", "Prelude"]}
-           TT={TT:TType
-               tt=ext=./Prelude/Nat.idr#20
-            }
-          }
-          )
+         getGoal=(hole_2, {name ref{type constructor tag=8 number=0}
+            Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
+            })
 
           getHoles=[{hole_2},{hole_0}]
 
@@ -140,38 +122,24 @@ The following is a walkthough looking at the state after each tactic:
 
      - .. code-block:: idris
 
-         getEnv=[(`{{x}}, {λ ({`{{Nat}}.["Nat", "Prelude"]}:
-           {type const tag=8,0}).
-             {TT:TType
-               tt=ext=./Prelude/Nat.idr#20
-             }
-           }
-         )]
+         getEnv=[(x, {λ (Nat.["Nat", "Prelude"]:
+            {type constructor tag=8 number=0}).
+               Type:U=(20:./Prelude/Nat.idr)
+            })]
 
-         getGoal=({hole_2},
-           {TT:Parameter name ref
-              NameType={type const tag=8,0}
-             TTName={`{{Nat}}.["Nat", "Prelude"]}
-           TT={TT:TType
-             tt=ext=./Prelude/Nat.idr#20
-           }
-         })
+         getGoal=(hole_2, {name ref{type constructor tag=8 number=0}
+            Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
+            })
 
          getHoles=[{hole_2}, {hole_0}]
 
    * - getGuess
      - .. code-block:: idris
 
-         {TT:Parameter name ref
-            NameType=NameType just bound by intro
-            TTName=`{{x}}
-            TT={TT:Parameter name ref
-               NameType={type const tag=8,0}
-               TTName={`{{Nat}}.["Nat", "Prelude"]}
-               TT={TT:TType
-                  tt=ext=./Prelude/Nat.idr#20
-               }
-            }
+         {name ref bound x:
+           {name ref{type constructor tag=8 number=0}
+              Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
+           }
          }
 
    * - Substitute a guess into a hole.
@@ -195,45 +163,30 @@ The following is a walkthough looking at the state after each tactic:
 
          getEnv=[]
 
-         getGoal=({hole_0}, {TT:Bind
-            name=`{{__pi_arg}}
-            binder={
-               Π ({`{{Nat}}.["Nat", "Prelude"]}:
-                  {type const tag=8,0}).{TT:TType
-                     tt=ext=./Prelude/Nat.idr#20
-               }
-            }
-            tt={TT:Parameter name ref
-               NameType={type const tag=8,0}
-               TTName={`{{Nat}}.["Nat","Prelude"]}
-               TT={TT:TType tt=ext=./Prelude/Nat.idr#20}
-            }
-         })
+         getGoal=(hole_0, __pi_arg:(Nat.["Nat", "Prelude"]:{
+           type constructor tag=8 number=0}.
+              Type:U=(20:./Prelude/Nat.idr)
+           ->.{name ref
+             {type constructor tag=8 number=0}
+                Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
+             })
+          })
 
          getHoles=[{hole_0}]
 
    * - getGuess
      - .. code-block:: idris
 
-         {TT:Bind
-            name=`{{x}}
-            binder={λ ({`{{Nat}}.["Nat","Prelude"]}:{type const tag=8,0}).{
-             TT:TType
-               tt=ext=./Prelude/Nat.idr#20
-             }
+         x:({λ (Nat.["Nat", "Prelude"]:{
+           type constructor tag=8 number=0}).
+              Type:U=(20:./Prelude/Nat.idr)
+            }.{
+            name ref bound
+              x:{name ref {type constructor tag=8 number=0}
+                Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
+                }
+              })
             }
-            tt={TT:Parameter name ref
-               NameType=NameType just bound by intro
-               TTName=`{{x}}
-               TT={TT:Parameter name ref
-                  NameType={type const tag=8,0}
-                  TTName={`{{Nat}}.["Nat", "Prelude"]}
-                  TT={TT:TType
-                     tt=ext=./Prelude/Nat.idr#20
-                  }
-               }
-            }
-         }
 
 .. target-notes::
 .. _`my code`: https://github.com/martinbaker/Idris-dev/blob/uglyTTPrinter/libs/prelude/Language/Reflection/TTPrinter.idr
