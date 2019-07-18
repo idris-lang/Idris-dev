@@ -154,43 +154,41 @@ render : (rfrac : Double)
       -> (width : Int)
       -> (doc : Doc)
       -> PrettyDoc
-render rfrac w doc = best w 0 0 doc (const Empty)
+render rfrac w doc = best 0 0 doc (const Empty)
   where
     rwidth : Int
     rwidth = max 0 $ min w (cast (cast w * rfrac))
 
-    nicest : (lvl : Int)
-          -> (col : Int)
+    nicest : (col : Int)
           -> (x : PrettyDoc)
           -> (y : Lazy PrettyDoc)
           -> PrettyDoc
-    nicest n k x y =
-      if fits (min (w - k) (rwidth - k + n)) x
+    nicest k x y =
+      if fits (min (w - k) (rwidth - k + w)) x
       then x
       else y
 
-    best : (lvl : Int)
-        -> (col : Int)
+    best : (col : Int)
         -> (curr : Int)
         -> (doc  : Doc)
         -> (k : Int -> PrettyDoc)
         -> PrettyDoc
-    best lvl col curr Empty          k = k col
-    best lvl col curr (Chara c)      k = Chara c $ k (col + 1)
-    best lvl col curr (Text len str) k = Text len str $ k (col + len)
-    best lvl col curr (Line undone)  k = Line curr $ k curr
+    best col curr Empty          k = k col
+    best col curr (Chara c)      k = Chara c $ k (col + 1)
+    best col curr (Text len str) k = Text len str $ k (col + len)
+    best col curr (Line undone)  k = Line curr $ k curr
 
-    best lvl col curr (Cat x y) k =
-        best lvl col curr x (\curr' => best lvl curr' curr y k)
+    best col curr (Cat x y) k =
+        best  col curr x (\curr' => best curr' curr y k)
 
-    best lvl col curr (Nest x y) k = best lvl col (curr+x) y k
+    best col curr (Nest x y) k = best col (curr+x) y k
 
-    best lvl col curr (Union x y) k =
-        nicest lvl col (best lvl col curr x k)
-                       (best lvl col curr y k)
+    best col curr (Union x y) k =
+        nicest col (best col curr x k)
+                   (best col curr y k)
 
-    best lvl col curr (Column f)  k = best lvl col curr (f col) k
-    best lvl col curr (Nesting f) k = best lvl col curr (f curr) k
+    best col curr (Column f)  k = best col curr (f col) k
+    best col curr (Nesting f) k = best col curr (f curr) k
 
 ||| Print the document to a string using the given ribbon fraction
 ||| and page width.
