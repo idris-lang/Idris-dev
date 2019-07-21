@@ -72,7 +72,7 @@ A type that is true is inhabited, that is, it can be constructed. An equality ty
    onePlusOne : 1+1=2
    onePlusOne = Refl
 
-So how can Refl, which is a constructor without any parameters, construct and equality type? If we type it on its own then it can't:
+So how can Refl, which is a constructor without any parameters, construct an equality type? If we type it on its own then it can't:
 
 .. code-block:: idris
 
