@@ -1,9 +1,9 @@
 # New in next version
 + Documentation added to proof section
 
-
 ## Library updates
 + `openFile` opens the file in binary mode on Windows.
++ Added library functions `clockTime` and `fRemove`
 
 ## Tool updates
 + Modules no longer require building if imports have changed but all
