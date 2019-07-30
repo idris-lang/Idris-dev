@@ -70,7 +70,7 @@ NixOS unstable.
 
 *Important* Stack will not install any external dependencies required
 to build Idris. Before you try stack please ensure you have the
-correct depenencies.
+correct dependencies.
 
 To build Idris with stack use the following command:
 
