@@ -131,7 +131,7 @@ an extension of ``.lidr`` then it is assumed to be a literate file. In
 literate programs, everything is assumed to be a comment unless the line
 begins with a greater than sign ``>``, for example:
 
-.. code-block:: idris
+.. code-block:: literate-idris
 
     > module literate
 

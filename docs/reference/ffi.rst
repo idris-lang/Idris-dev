@@ -121,12 +121,14 @@ Linking foreign code
 This is the example of linking C code. 
 
 .. code-block:: idris
+
     %include C "mylib.h"
     %link C "mylib.o"
 
 Example Makefile
 
 .. code-block:: shell
+
     DEFAULT: mylib.o main.idr
     	idris main.idr -o executableFile
 

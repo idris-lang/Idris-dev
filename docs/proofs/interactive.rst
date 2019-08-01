@@ -190,7 +190,7 @@ accessible by pattern matching) and ``ih`` — the local variable
 containing the result of the recursive call. We can introduce these as
 assumptions using the ``intro`` tactic twice. The parameter is entered as
 a constant of type ``TTName`` which is entered as a backtick with double
-braces `{{ih}}. This gives:
+braces \`{{ih}}. This gives:
 
 .. code-block:: idris
 
@@ -289,7 +289,7 @@ However if we put the proof into a separate function like this:
   plusReducesZ' Z     = %runElab (do reflexivity)
   plusReducesZ' (S k) = let ih = plusReducesZ' k in plusredZ_S k ih
 
-This then loads.
+This then loads [#f1]_ .
 
 .. [#f1] https://github.com/idris-lang/Idris-dev/issues/4556
 
