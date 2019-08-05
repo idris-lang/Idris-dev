@@ -278,7 +278,7 @@ fromList l =
 (++) []      ys = ys
 (++) (x::xs) ys = x :: xs ++ ys
 
-||| Repeate some value some number of times.
+||| Repeat some value some number of times.
 |||
 ||| @ len the number of times to repeat it
 ||| @ x the value to repeat
