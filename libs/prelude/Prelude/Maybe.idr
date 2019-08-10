@@ -86,6 +86,12 @@ lowerMaybe (Just x) = x
 raiseToMaybe : (Monoid a, Eq a) => a -> Maybe a
 raiseToMaybe x = if x == neutral then Nothing else Just x
 
+||| Return a pair if both arguments are Just
+both : Maybe a -> Maybe b -> Maybe (a, b)
+both Nothing _ = Nothing
+both _ Nothing = Nothing
+both (Just a) (Just b) = Just (a, b)
+
 --------------------------------------------------------------------------------
 -- Interface implementations
 --------------------------------------------------------------------------------
