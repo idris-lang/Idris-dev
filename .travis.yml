@@ -9,7 +9,11 @@ env:
 
 matrix:
   include:
-    - env: CABALVER="2.2" GHCVER="8.4.1" STACKVER="7.14" STYLISH=YES
+    - env: CABALVER="2.4" GHCVER="8.4.3" STACKVER="12.9"
+      compiler: " #GHC 8.4.3"
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.4.3,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.2" GHCVER="8.4.1" STACKVER="7.14"
+      compiler: " #GHC 8.4.1"
       addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.1,hscolour], sources: [hvr-ghc]}}
     - env: CABALVER="2.2" GHCVER="7.10.3" TESTS="test_c"
       compiler: ": #GHC 7.10.3"
