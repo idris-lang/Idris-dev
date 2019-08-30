@@ -272,7 +272,7 @@ Library
   Build-depends:  base >=4 && <5
                 , aeson >= 0.6 && < 1.5
                 , annotated-wl-pprint >= 0.7 && < 0.8
-                , ansi-terminal < 0.9
+                , ansi-terminal < 0.10
                 , ansi-wl-pprint < 0.7
                 , array >= 0.4.0.1 && < 0.6
                 , base64-bytestring < 1.1
