@@ -63,6 +63,7 @@ serializeBC n bc = indent n ++
       SLIDE n -> "SLIDE " ++ show n
       REBASE -> "REBASE"
       RESERVE n -> "RESERVE " ++ show n
+      RESERVENOALLOC n -> "RESERVENOALLOC " ++ show n
       ADDTOP n -> "ADDTOP " ++ show n
       TOPBASE n -> "TOPBASE " ++ show n
       BASETOP n -> "BASETOP " ++ show n
