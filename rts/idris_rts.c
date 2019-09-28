@@ -242,6 +242,13 @@ void* iallocate(VM * vm, size_t isize, int outerlock) {
             vm->heap.size += size;
         }
         idris_gc(vm);
+
+        // If there's still not enough room, grow the heap and try again
+        if (vm->heap.next + size >= vm->heap.end) {
+            vm->heap.size += size+vm->heap.growth;
+            idris_gc(vm);
+        }
+
 #ifdef HAS_PTHREAD
         if (lock) { // not message passing
            pthread_mutex_unlock(&vm->alloc_lock);
