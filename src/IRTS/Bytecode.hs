@@ -86,6 +86,7 @@ data BC =
     -- | reserve n more stack items (i.e. check there's space, grow if
     -- necessary)
   | RESERVE Int
+  | RESERVENOALLOC Int
 
     -- | move the top of stack up
   | ADDTOP Int
@@ -127,13 +128,13 @@ bc reg (SV (Loc i))  r = assign reg (L i) ++ clean r
 bc reg (SApp False f vs) r =
       if argCount == 0
          then moveReg 0 vs ++ [STOREOLD, BASETOP 0, CALL f] ++ ret
-         else RESERVE argCount : moveReg 0 vs ++
+         else RESERVENOALLOC argCount : moveReg 0 vs ++
             [STOREOLD, BASETOP 0, ADDTOP argCount, CALL f] ++ ret
    where
       ret      = assign reg RVal ++ clean r
       argCount = length vs
 bc reg (SApp True f vs) r
-    = RESERVE (length vs) : moveReg 0 vs
+    = RESERVENOALLOC (length vs) : moveReg 0 vs
       ++ [SLIDE (length vs), TOPBASE (length vs), TAILCALL f]
 bc reg (SForeign t fname args) r
     = FOREIGNCALL reg t fname (map farg args) : clean r
