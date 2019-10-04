@@ -242,7 +242,7 @@ through the following directives:
 Testing foreign function calls
 ------------------------------
 
-Normally, the Idris interpreter (used for typechecking and at the REPL)
+Normally, the Idris interpreter (used for typechecking and as the REPL)
 will not perform IO actions. Additionally, as it neither generates C
 code nor compiles to machine code, the ``%lib``, ``%include`` and
 ``%link`` directives have no effect. IO actions and FFI calls can be

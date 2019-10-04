@@ -1190,7 +1190,7 @@ name. For example, a pair type could be defined as follows:
         fst : a
         snd : b
 
-Using the ``class`` record from earlier, the size of the class can be
+Using the ``Class`` record from earlier, the size of the class can be
 restricted using a ``Vect`` and the size included in the type by parameterising
 the record with the size.  For example:
 
