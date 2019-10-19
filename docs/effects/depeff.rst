@@ -43,8 +43,8 @@ express this as follows:
 
 .. code-block:: idris
 
-    readInt : Eff ()[STATE (Vect n Int), STDIO] 
-                    [STATE (Vect (S n) Int), STDIO]
+    readInt : Eff () [STATE (Vect n Int), STDIO]
+                     [STATE (Vect (S n) Int), STDIO]
     readInt = do let x = trim !getStr
                  putM (cast x :: !get)
 
