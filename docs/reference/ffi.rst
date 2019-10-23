@@ -384,7 +384,7 @@ copy it over.
     const VAL get_string ()
     {
         char * c_string = get_string_allocated_with_malloc()
-        const VAL idris_string = MKSTR(c_string);
+        const VAL idris_string = MKSTR(get_vm(), c_string);
         free(c_string);
         return idris_string
     }
