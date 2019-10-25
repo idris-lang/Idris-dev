@@ -202,6 +202,10 @@ empty : Ord k => SortedMap k v
 empty = Empty
 
 export
+singleton : Ord k => k -> v -> SortedMap k v
+singleton k v = M Z (Leaf k v)
+
+export
 lookup : k -> SortedMap k v -> Maybe v
 lookup _ Empty = Nothing
 lookup k (M _ t) = treeLookup k t
