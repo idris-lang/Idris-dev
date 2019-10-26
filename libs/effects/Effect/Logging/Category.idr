@@ -130,7 +130,7 @@ initLogger l cs = call $ InitLogger l cs
 |||
 ||| @l The logging level.
 ||| @cs The logging categories.
-||| @m THe message to be logged.
+||| @m The message to be logged.
 log : (Show a, Eq a) => (l : LogLevel n)
                      -> (cs : List a)
                      -> (m : String)
@@ -141,7 +141,7 @@ log l cs msg = call $ Log l cs msg
 |||
 ||| @l The logging level.
 ||| @cs The logging categories.
-||| @m THe message to be logged.
+||| @m The message to be logged.
 logN : (Show a, Eq a) => (l : Nat)
                       -> {auto prf : LTE l 70}
                       -> (cs : List a)
