@@ -73,8 +73,8 @@ data FileHandle : (m : Mode) -> Type where
 -- ---------------------------------------------- [ Resource Type Construction ]
 
 ||| Calculates the type for the resource being computed over.  `Unit`
-||| to describe pre-and-post file handle acquisistion, and `FileHandle
-||| m` when a file handle has been aqcuired.
+||| to describe pre-and-post file handle acquisition, and `FileHandle
+||| m` when a file handle has been acquired.
 |||
 ||| @m The mode the file handle was generated under.
 ||| @ty The functions return type.
@@ -315,7 +315,7 @@ R = FileHandle Read
 W : Type
 W = FileHandle WriteTruncate
 
-||| A file can only be appeneded to.
+||| A file can only be appended to.
 A : Type
 A = FileHandle Append
 
@@ -324,7 +324,7 @@ RW : Type
 RW = FileHandle ReadWrite
 
 ||| A file opened for reading and writing and has been truncated to
-||| zero if it previsiouly existed.
+||| zero if it previously existed.
 RWPlus : Type
 RWPlus = FileHandle ReadWriteTruncate
 

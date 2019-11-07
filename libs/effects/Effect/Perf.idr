@@ -193,7 +193,7 @@ collectPMetrics b = call $ TurnOn b
 collectPMetricsAndShow : Eff () [PERF]
 collectPMetricsAndShow = call $ TurnOn True
 
-||| Return gatheres metrics
+||| Return gathered metrics
 getPerfMetrics : Eff PMetrics [PERF]
 getPerfMetrics = call $ GetMetrics
 
