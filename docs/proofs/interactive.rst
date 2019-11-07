@@ -15,15 +15,15 @@ construct proofs as described on this page.
 Elab and Pruviloj Libraries
 ===========================
 
-Elaborator reflection is defined in prelude/Language/Reflection/Elab.idr
-and pruviloj is defined in Idris-dev/libs/pruviloj/
+Elaborator reflection is defined in ``prelude/Language/Reflection/Elab.idr``
+and ``pruviloj`` is defined in ``Idris-dev/libs/pruviloj/``.
 
-``Elab`` defines the basics such as: solve, attack, intro, compute,
-rewriteWith and others.
+``Elab`` defines the basics such as: ``solve``, ``attack``, ``intro``, ``compute``,
+``rewriteWith`` and others.
 ``pruviloj`` defines some more advanced derived commands such as:
-reflexivity and others.
+``reflexivity`` and others.
 
-To use ``pruviloj`` call Idris with the "-p pruviloj" option and add:
+To use ``pruviloj`` call Idris with the ``-p pruviloj`` option and add:
 
 .. code-block:: idris
 
@@ -34,7 +34,7 @@ to the top of your file.
 
 It is useful to get the docs at the REPL by using the ``:doc`` command, and
 search the docstrings using ``:apropos``. So to introduce the functions from
-Elab and Pruviloj, that we will need for the following example, here are
+``Elab`` and ``Pruviloj``, that we will need for the following example, here are
 their docstrings:
 
 .. code-block:: idris
@@ -84,7 +84,7 @@ their docstrings:
         that the hole be immediately under its binder (use attack if it might
         not be).
 
-Here is the command from pruviloj that we will need for the example on
+Here is the command from ``pruviloj`` that we will need for the example on
 this page:
 
 .. code-block:: idris
@@ -136,11 +136,11 @@ On running , two global names are created, ``plusredZ_Z`` and
     For details type :warranty.
     Holes: Main.plusredZ_S, Main.plusredZ_Z
 
-This tells us that we have two holes Main.plusredZ_S and Main.plusredZ_Z. We can solve
+This tells us that we have two holes ``Main.plusredZ_S`` and ``Main.plusredZ_Z``. We can solve
 these separately, ``plusredZ_Z`` is the simplest so we will do that first.
 
 The ``:elab plusredZ_Z`` command enters interactive elaboration mode, which can be used to
-complete the missing definition for plusredZ_Z.
+complete the missing definition for ``plusredZ_Z``.
 
 .. code-block:: idris
 
@@ -150,7 +150,7 @@ complete the missing definition for plusredZ_Z.
     {hole_0} : 0 = 0
 
 This has been normalised to ``0 = 0`` so now we have to prove that ``0`` equals ``0``, which
-is easy to prove by reflexivity from the pruviloj library:
+is easy to prove by ``reflexivity`` from the ``pruviloj`` library:
 
 .. code-block:: idris
 
@@ -190,7 +190,7 @@ accessible by pattern matching) and ``ih`` — the local variable
 containing the result of the recursive call. We can introduce these as
 assumptions using the ``intro`` tactic twice. The parameter is entered as
 a constant of type ``TTName`` which is entered as a backtick with double
-braces \`{{ih}}. This gives:
+braces ```{{ih}}``. This gives:
 
 .. code-block:: idris
 
@@ -223,11 +223,11 @@ like to use this knowledge to replace ``plus k 0`` in the goal with
     {hole_0} : S k = S k
 
 The ``rewriteWith`` tactic takes an equality proof as an argument, and tries
-to rewrite the goal using that proof. The ih value is entered as a constant
-of type ``TTName`` which is entered as a backtick with double braces `{{ih}} but
+to rewrite the goal using that proof. The ``ih`` value is entered as a constant
+of type ``TTName`` which is entered as a backtick with double braces ```{{ih}}`` but
 ``rewriteWith`` requires an expression of type ``Raw``, rather than just a name,
-so the Var constructor is used to make a variable. Here, it results in an equality
-which is trivially provable using reflexivity:
+so the ``Var`` constructor is used to make a variable. Here, it results in an equality
+which is trivially provable using ``reflexivity``:
 
 .. code-block:: idris
 
