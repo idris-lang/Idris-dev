@@ -99,11 +99,11 @@ So now that we can represent propositions as types other aspects of propositiona
 +----------+-------------------+--------------------------+
 | B        | y=z               |                          |
 +----------+-------------------+--------------------------+
-| and      | A /\ B            | Pair(x=y,y=z)            |
+| and      | A /\\ B           | ``Pair(x=y,y=z)``        |
 +----------+-------------------+--------------------------+
-| or       | A \/ B            | Either(x=y,y=z)          |
+| or       | A \\/ B           | ``Either(x=y,y=z)``      |
 +----------+-------------------+--------------------------+
-| implies  | A -> B            | (x=y) -> (y=x)           |
+| implies  | A -> B            | ``(x=y) -> (y=x)``       |
 +----------+-------------------+--------------------------+
 | for all  | y=z               |                          |
 +----------+-------------------+--------------------------+
@@ -206,7 +206,7 @@ In the following pages we discuss how to resolve propositionaly equalies.
 Axiomatic and Constructive Approaches
 =====================================
 
-How should we define types so that  we can do proofs on them? In the natural numbers with plus example we could have started by treating it as a group based on the plus operator. So we have axioms:
+How should we define types so that  we can do proofs on them? In the natural numbers with the plus example we could have started by treating it as a group based on the plus operator. So we have axioms:
 
 -  for all x,y : ``x+y=y+x``
 -  for all x: ``x + 0 = x = 0 + x``
@@ -225,7 +225,7 @@ Alternatively we could define the natural numbers based on Zero and Successor. T
 
 As we know, Idris uses both of these approaches with automatic coercion between them which gives the best of both worlds.
 
-So what can we learn from this to implement out own types:
+So what can we learn from this to implement our own types:
 
 -  Should we try to implement both approaches?
 -  Should we define our types by constructing up from primitive types?
