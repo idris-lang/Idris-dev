@@ -1105,7 +1105,7 @@ unApplyRaw tm = ua [] tm
     ua args t         = (t, args)
 
 -- | Build the reflected function definition(s) that correspond(s) to
--- a provided unqualifed name
+-- a provided unqualified name
 buildFunDefns :: IState -> Name -> [RFunDefn Term]
 buildFunDefns ist n =
   [ mkFunDefn name clauses
