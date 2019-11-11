@@ -1,3 +1,7 @@
+*******************
+Background Material
+*******************
+
 In order to understand how to write proofs in Idris I think its worth clarifying some fundamentals, such as,
 
 -  Propositions and judgments
