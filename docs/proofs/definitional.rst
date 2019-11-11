@@ -130,8 +130,8 @@ We can have a type which corresponds to disjunction:
 .. code-block:: idris
 
    data Or : Type -> Type -> Type where
-   OrIntroLeft : a -> A a b
-   OrIntroRight : b -> A a b
+     OrIntroLeft  : a -> A a b
+     OrIntroRight : b -> A a b
 
 There is a built in type called 'Either'.
 
@@ -219,7 +219,7 @@ These are axioms, that is a propositions/types that are asserted to be true with
 
 .. code-block:: idris
 
-   commutePlus ``postulate``: x -> y -> plus x y = plus y x
+   postulate commutePlus: (x:Nat) -> (y:Nat) -> plus x y = plus y x
 
 Alternatively we could define the natural numbers based on Zero and Successor. The axioms above then become derived rules and we also gain the ability to do inductive proofs.
 
