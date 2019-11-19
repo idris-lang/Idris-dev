@@ -10,6 +10,8 @@ extra-deps:
   - containers-0.5.11.0@sha256:28ad7337057442f75bc689315ab4ec7bdf5e6b2c39668f306672cecd82c02798
   - tasty-rerun-1.1.14@sha256:ba9c19a281535bea566e1044bc02c36ef17abcb310af4b6a149ec11780c7ce35
   - binary-0.8.7.0@sha256:ae3e6cca723ac55c54bbb3fa771bcf18142bc727afd57818e66d6ee6c8044f12
+  - text-1.2.4.0@sha256:8c24450feb8e3bbb7ea3e17af24ef57e85db077c4bf53e5bcc345b283d1b1d5b
+  - Cabal-3.0.0.0@sha256:1ba37b8d80e89213b17db7b8b9ea0108da55ca65f8c0cbb7433881a284c5cf67
 
 flags:
   idris:
