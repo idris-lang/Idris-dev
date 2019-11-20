@@ -380,6 +380,14 @@ implementation (Eq elem) => Eq (Vect len elem) where
   (==) (x::xs) (y::ys) = x == y && xs == ys
 
 
+||| Compare two vectors of potentially different length for equality.
+|||
+vecEq : Eq type => Vect n type -> Vect m type -> Bool
+vecEq [] [] = True
+vecEq [] (x :: xs) = False
+vecEq (x :: xs) [] = False
+vecEq (x :: xs) (y :: ys) = x == y && vecEq xs ys
+
 --------------------------------------------------------------------------------
 -- Order
 --------------------------------------------------------------------------------
@@ -976,6 +984,37 @@ implementation DecEq a => DecEq (Vect n a) where
     decEq (x :: xs) (y :: ys) | (_, No nEqTl) = No (\p => nEqTl (vectInjective2 p))
     decEq (x :: xs) (y :: ys) | (No nEqHd, _) = No (\p => nEqHd (vectInjective1 p))
 -}
+
+namespace DiffLength
+
+  ||| A wrapper function to compare two vectors of potentially
+  ||| different length with proof that the lengths are equal.
+  decEqWithProof : DecEq a
+                => (prf : n = m)
+                -> (xs  : Vect n a)
+                -> (ys  : Vect m a)
+                -> Dec (xs = ys)
+  decEqWithProof Refl xs ys with (decEq xs ys)
+    decEqWithProof Refl ys ys | (Yes Refl)  = Yes Refl
+    decEqWithProof Refl xs ys | (No contra) = No contra
+
+  vectorsDiffLength : DecEq a
+                   => (contra : (n = m) -> Void)
+                   -> {xs : Vect n a}
+                   -> {ys : Vect m a}
+                   -> (xs = ys) -> Void
+  vectorsDiffLength contra Refl = contra Refl
+
+  ||| Decidable equality of two vectors of potentially different length.
+  decEq : DecEq a
+       => (xs : Vect n a)
+       -> (ys : Vect m a)
+       -> Dec (xs = ys)
+  decEq xs ys {n} {m} with (decEq n m)
+    decEq xs ys {n = m} {m = m} | (Yes Refl) = decEqWithProof Refl xs ys
+    decEq xs ys {n = n} {m = m} | (No contra) = No (vectorsDiffLength contra)
+
+
 
 --------------------------------------------------------------------------------
 -- Elem
