@@ -156,9 +156,12 @@ file management follows a resource usage protocol with the following
 These requirements can be expressed formally by creating a
 ``FILE_IO`` effect parameterised over a file handle state, which is
 either empty, open for reading, or open for writing. The ``FILE_IO``
-effect’s definition is given below. Note that this
-effect is mainly for illustrative purposes—typically we would also like
-to support random access files and better reporting of error conditions.
+effect’s definition is given below.
+
+.. note::
+    This effect is mainly for illustrative purposes.
+    Typically we would also like to support random access files and
+    better reporting of error conditions.
 
 .. code-block:: idris
 
