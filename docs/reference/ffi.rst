@@ -204,9 +204,10 @@ unable to pass the closed-over values through C. If we want to pass Idris values
 to the callback we have to pass them through C explicitly. Non-primitive Idris
 values can be passed to C via the ``Raw`` type.
 
-The other big limitation is that it doesn't support IO functions. Use
-``unsafePerformIO`` to wrap them (i.e. to make an IO function usable as a callback, change the return type
-from IOr to r, and change the = do to = unsafePerformIO $ do).
+The other big limitation is that it doesn't support ``IO`` functions. Use
+``unsafePerformIO`` to wrap them (i.e. to make an ``IO`` function usable as a
+callback, change the return type from ``IO r`` to ``r``, and change the ``= do``
+to ``= unsafePerformIO $ do``).
 
 There are two special function names:
 ``%wrapper`` returns the function pointer that wraps an Idris function. This
@@ -258,7 +259,7 @@ useful to access constants that are preprocessor definitions (like ``INT_MAX``).
     main = print !intMax
 
 For more complicated interactions with C (such as reading and setting fields
-of a C struct), there is a module CFFI available in the contrib package.
+of a C ``struct``), there is a module C FFI available in the contrib package.
 
 C heap
 ------
@@ -371,7 +372,7 @@ Usage from C code
 The ``Raw`` type constructor allows you to access or return a runtime
 representation of the value. For instance, if you want to copy a string
 generated from C code into an Idris value, you may want to return a
-``Raw String``instead of a ``String`` and use ``MKSTR`` or ``MKSTRlen`` to
+``Raw String`` instead of a ``String`` and use ``MKSTR`` or ``MKSTRlen`` to
 copy it over.
 
 .. code-block:: idris
@@ -393,7 +394,7 @@ FFI implementation
 ------------------
 
 In order to write bindings to external libraries, the details of how
-``foreign`` works are unnecessary --- you simply need to know that
+``foreign`` works are unnecessary: you simply need to know that
 ``foreign`` takes an FFI descriptor, the function name, and its
 type. It is instructive to look a little deeper, however:
 
