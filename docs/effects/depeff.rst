@@ -163,6 +163,12 @@ effect’s definition is given below.
     Typically we would also like to support random access files and
     better reporting of error conditions.
 
+    Moreover, the ``FILE`` effect in the ``Effect.File`` module of
+    the ``effects`` library uses slightly more complicated types to
+    support erroneous behaviour of each function and to support more
+    compilcated modes of opening, like for reading **and** writing,
+    appending or truncating.
+
 .. code-block:: idris
 
     module Effect.File
