@@ -1,3 +1,5 @@
+.. _code-generation-targets:
+
 ************************
 Code Generation Targets
 ************************

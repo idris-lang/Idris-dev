@@ -10,8 +10,8 @@ free to contribute.
 This document assumes that you are already familiar with Idris. It is
 intended for those who want to work on the internals.
 
-People looking to develop new back ends may want to look at [[Idris back
-end IRs\|Idris-back-end-IRs]]
+People looking to develop new back ends may want to look at
+:ref:`code-generation-targets`
 
 Core/TT.hs
 ==========
@@ -53,7 +53,7 @@ with ``SC`` and ``CaseAlt`` to get GHC to generate a function for
 mapping over contained terms.
 
 Constructor cases (``ConCase`` in ``CaseAlt``) refer to numbered
-constructors. Every constructor is numbered 0,1,2,…. At this stage in
+constructors. Every constructor is numbered *0,1,2,…*. At this stage in
 the compiler, the tags are datatype-local. After defunctionalization,
 however, they are made globally unique.
 
@@ -91,12 +91,12 @@ dictionary which makes totality checking easier.
 The ``normalise*`` functions give different behaviors - but
 ``normalise`` is the most common.
 
-``normaliseC`` - "resolved" means with names converted to de Bruijn
-indices as appropriate.
+- ``normaliseC`` - "resolved" means with names converted to de Bruijn
+  indices as appropriate;
 
-``normaliseAll`` - reduce everything, even if it's non-total
+- ``normaliseAll`` - reduce everything, even if it's non-total;
 
-``normaliseTrace`` - special-purpose for debugging
+- ``normaliseTrace`` - special-purpose for debugging.
 
 ``simplify`` - reduce the things that are small - the list argument is
 the things to not reduce.
@@ -110,8 +110,8 @@ Core/Elaborate.hs
 =================
 
 Idris definitions are elaborated one by one and turned into the
-corresponding TT. This is done with a tactic language as an EDSL in the
-Elab monad (or Elab' when there's a custom state).
+corresponding ``TT``. This is done with a tactic language as an EDSL in the
+``Elab`` monad (or ``Elab'`` when there's a custom state).
 
 Lots of plumbing for errors.
 
@@ -122,17 +122,17 @@ The string in the pair returned by elaborate is log information.
 See JFP paper, but the names don't necessarily map to each other. The
 paper is the "idealized version" without logging, additional state, etc.
 
-All the tactics take Raws, typechecking happens there.
+All the tactics take ``Raw`` s, typechecking happens there.
 
-claim (x : t) assumes a new x : t.
+``claim (x : t)`` assumes a new ``x : t``.
 
 PLEASE TIDY THINGS UP!
 
-proofSearch flag to try' is whether the failure came from a human (so
+``proofSearch`` flag is to try whether the failure came from a human (so
 fail) or from a machine (so continue)
 
-Idris-level syntax for providing alternatives explicitly: (\| x, y, z
-\|) try x, y, z in order, and take the first that succeeds.
+Idris-level syntax for providing alternatives explicitly: ``(| x, y, z
+|)`` try ``x``, ``y``, ``z`` in order, and take the first that succeeds.
 
 Core/ProofState.hs
 ==================
@@ -140,37 +140,40 @@ Core/ProofState.hs
 Core/Unify.hs
 =============
 
-Deals with unification. Unification can reply with: - this works - this
-can never work - this will work if these other unification problems work
-out (eg unifying f x with 1)
+Deals with unification. Unification can reply with:
 
-match\_unify: same thing as unification except it's just matching name
-against name, term against term. x + y matches to 0 + y with x = 0. Used
-for <== syntax as well as type class resolution.
+- this works
+- this can never work
+- this will work if these other unification problems work out (e.g.
+  unifying ``f x`` with ``1``)
+
+``match_unify``: same thing as unification except it's just matching name
+against name, term against term. ``x + y`` matches to ``0 + y`` with
+``x = 0``. Used for ``<==`` syntax as well as type class resolution.
 
 Idris/AbsSyntaxTree.hs
 ======================
 
-PTerm is the datatype of Idris syntax. P is for Program. Each PTerm
-turns into a TT term by applying a series of tactics.
+``PTerm`` is the datatype of Idris syntax. ``P`` is for *Program*.
+Each ``PTerm`` turns into a TT term by applying a series of tactics.
 
-IState is the major interpreter state. The global context is the
-tt\_ctxt field.
+``IState`` is the major interpreter state. The global context is the
+``tt_ctxt`` field.
 
-Ctxt maps possibly ambiguous names to their referents.
+``Ctxt`` maps possibly ambiguous names to their referents.
 
 Idris/ElabDecls.hs
 ==================
 
-This is where the actual elaboration from PTerm to TT happens.
+This is where the actual elaboration from ``PTerm`` to ``TT`` happens.
 
 Idris/ElabTerm.hs
 =================
 
-build is the function that creates a Raw. All the "junk" is to deal with
+``build`` is the function that creates a ``Raw``. All the "junk" is to deal with
 things like metavars and so forth. It has to remember what names are
 still to be defined, and it doesn't yet know the type (filled in by
 unificaiton later). Also case expressions have to turn into top-level
 functions.
 
-resolveTC is type class resolution.
+``resolveTC`` is type class resolution.

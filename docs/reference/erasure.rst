@@ -269,7 +269,7 @@ Usage warnings are quite bad and unhelpful at the moment. We should
 include more information and at least translate argument numbers to
 their names.
 
-There is no decent documentation yet. This wiki page is the first one.
+There is no decent documentation yet. This page is the first one.
 
 There is no generally accepted terminology. We switch between
 "dotted", "unused", "erased", "irrelevant", "inaccessible", while each
