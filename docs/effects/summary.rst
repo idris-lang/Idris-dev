@@ -43,16 +43,16 @@ FILE\_IO
     data OpenFile : Mode -> Type
 
     open : (fname : String)
-           -> (m : Mode)
-           -> Eff Bool [FILE_IO ()] 
-                       (\res => [FILE_IO (case res of
-                                               True => OpenFile m
-                                               False => ())])
+        -> (m : Mode)
+        -> Eff Bool [FILE_IO ()]
+                    (\res => [FILE_IO (case res of
+                                            True => OpenFile m
+                                            False => ())])
     close : Eff () [FILE_IO (OpenFile m)] [FILE_IO ()]
 
-    readLine  : Eff String [FILE_IO (OpenFile Read)]
+    readLine  :           Eff String [FILE_IO (OpenFile Read)]
     writeLine : String -> Eff () [FILE_IO (OpenFile Write)]
-    eof       : Eff Bool [FILE_IO (OpenFile Read)]
+    eof       :           Eff Bool [FILE_IO (OpenFile Read)]
 
     Handler FileIO IO where { ... }
 
@@ -69,9 +69,9 @@ RND
 
     RND : EFFECT
 
-    srand  : Integer ->            Eff m () [RND]
-    rndInt : Integer -> Integer -> Eff m Integer [RND]
-    rndFin : (k : Nat) ->          Eff m (Fin (S k)) [RND]
+    srand  : Integer ->            Eff () [RND]
+    rndInt : Integer -> Integer -> Eff Integer [RND]
+    rndFin : (k : Nat) ->          Eff (Fin (S k)) [RND]
 
     Handler Random m where { ... }
 
@@ -86,7 +86,7 @@ SELECT
 
     SELECT : EFFECT
 
-    select : List a -> Eff m a [SELECT]
+    select : List a -> Eff a [SELECT]
 
     Handler Selection Maybe where { ... }
     Handler Selection List where { ... }
@@ -102,10 +102,10 @@ STATE
 
     STATE : Type -> EFFECT
 
-    get    :             Eff m x [STATE x]
-    put    : x ->        Eff m () [STATE x]
-    putM   : y ->        Eff m () [STATE x] [STATE y]
-    update : (x -> x) -> Eff m () [STATE x]
+    get    :             Eff x [STATE x]
+    put    : x ->        Eff () [STATE x]
+    putM   : y ->        Eff () [STATE x] [STATE y]
+    update : (x -> x) -> Eff () [STATE x]
 
     Handler State m where { ... }
 
@@ -121,12 +121,12 @@ STDIO
 
     STDIO : EFFECT
 
-    putChar  : Handler StdIO m => Char ->   Eff m () [STDIO]
-    putStr   : Handler StdIO m => String -> Eff m () [STDIO]
-    putStrLn : Handler StdIO m => String -> Eff m () [STDIO]
+    putChar  : Char   -> Eff () [STDIO]
+    putStr   : String -> Eff () [STDIO]
+    putStrLn : String -> Eff () [STDIO]
 
-    getStr   : Handler StdIO m =>           Eff m String [STDIO]
-    getChar  : Handler StdIO m =>           Eff m Char [STDIO]
+    getStr   :           Eff String [STDIO]
+    getChar  :           Eff Char [STDIO]
 
     Handler StdIO IO where { ... }
     Handler StdIO (IOExcept a) where { ... }
@@ -144,9 +144,9 @@ SYSTEM
 
     SYSTEM : EFFECT
 
-    getArgs : Handler System e =>           Eff e (List String) [SYSTEM]
-    time    : Handler System e =>           Eff e Int [SYSTEM]
-    getEnv  : Handler System e => String -> Eff e (Maybe String) [SYSTEM]
+    getArgs :           Eff (List String) [SYSTEM]
+    time    :           Eff Int [SYSTEM]
+    getEnv  : String -> Eff (Maybe String) [SYSTEM]
 
     Handler System IO where { ... }
     Handler System (IOExcept a) where { ... }

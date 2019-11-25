@@ -153,12 +153,21 @@ file management follows a resource usage protocol with the following
 
 -  When a file is closed, its handle should no longer be used
 
-These requirements can be expressed formally in , by creating a
+These requirements can be expressed formally by creating a
 ``FILE_IO`` effect parameterised over a file handle state, which is
 either empty, open for reading, or open for writing. The ``FILE_IO``
-effect’s definition is given below. Note that this
-effect is mainly for illustrative purposes—typically we would also like
-to support random access files and better reporting of error conditions.
+effect’s definition is given below.
+
+.. note::
+    This effect is mainly for illustrative purposes.
+    Typically we would also like to support random access files and
+    better reporting of error conditions.
+
+    Moreover, the ``FILE`` effect in the ``Effect.File`` module of
+    the ``effects`` library uses slightly more complicated types to
+    support erroneous behaviour of each function and to support more
+    compilcated modes of opening, like for reading **and** writing,
+    appending or truncating.
 
 .. code-block:: idris
 
@@ -173,7 +182,7 @@ to support random access files and better reporting of error conditions.
 
     open : (fname : String)
            -> (m : Mode)
-           -> Eff Bool [FILE_IO ()] 
+           -> Eff Bool [FILE_IO ()]
                        (\res => [FILE_IO (case res of
                                                True => OpenFile m
                                                False => ())])
@@ -191,7 +200,7 @@ In particular, consider the type of ``open``:
 
     open : (fname : String)
            -> (m : Mode)
-           -> Eff Bool [FILE_IO ()] 
+           -> Eff Bool [FILE_IO ()]
                        (\res => [FILE_IO (case res of
                                                True => OpenFile m
                                                False => ())])
@@ -207,7 +216,7 @@ we continue the protocol accordingly.
 
     readFile : Eff (List String) [FILE_IO (OpenFile Read)]
     readFile = readAcc [] where
-        readAcc : List String -> Eff (List String) [FILE_IO (OpenFile Read)] 
+        readAcc : List String -> Eff (List String) [FILE_IO (OpenFile Read)]
         readAcc acc = if (not !eof)
                          then readAcc (!readLine :: acc)
                          else pure (reverse acc)
