@@ -45,3 +45,9 @@ Uninhabited (True = False) where
 
 Uninhabited (False = True) where
   uninhabited Refl impossible
+
+-- Not
+
+total doubleNotDisappears : (b : Bool) -> not (not b) = b
+doubleNotDisappears True  = Refl
+doubleNotDisappears False = Refl
