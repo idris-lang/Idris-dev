@@ -51,3 +51,55 @@ Uninhabited (False = True) where
 total doubleNotDisappears : (b : Bool) -> not (not b) = b
 doubleNotDisappears True  = Refl
 doubleNotDisappears False = Refl
+
+-- Conjunction
+
+total conjTrueRightNeutral : (b : Bool) -> b && True = b
+conjTrueRightNeutral False = Refl
+conjTrueRightNeutral True  = Refl
+
+total conjTrueLeftNeutral : (b : Bool) -> True && b = b
+conjTrueLeftNeutral _ = Refl
+
+total conjFalseRightAbsorbs : (b : Bool) -> b && False = False
+conjFalseRightAbsorbs False = Refl
+conjFalseRightAbsorbs True  = Refl
+
+total conjFalseLeftAbsorbs : (b : Bool) -> False && b = False
+conjFalseLeftAbsorbs _ = Refl
+
+total conjCommutative : (b : Bool) -> (c : Bool) -> b && c = c && b
+conjCommutative False False = Refl
+conjCommutative False True  = Refl
+conjCommutative True  False = Refl
+conjCommutative True  True  = Refl
+
+total conjNotFalse : (b : Bool) -> b && not b = False
+conjNotFalse False = Refl
+conjNotFalse True  = Refl
+
+-- Disjunction
+
+total disjFalseRightNeutral : (b : Bool) -> b || False = b
+disjFalseRightNeutral False = Refl
+disjFalseRightNeutral True  = Refl
+
+total disjFalseLeftNeutral : (b : Bool) -> False || b = b
+disjFalseLeftNeutral _ = Refl
+
+total disjTrueRightAbsorbs : (b : Bool) -> b || True = True
+disjTrueRightAbsorbs False = Refl
+disjTrueRightAbsorbs True  = Refl
+
+total disjTrueLeftAbsorbs : (b : Bool) -> True || b = True
+disjTrueLeftAbsorbs _ = Refl
+
+total disjCommutative : (b : Bool) -> (c : Bool) -> b || c = c || b
+disjCommutative False False = Refl
+disjCommutative False True  = Refl
+disjCommutative True  False = Refl
+disjCommutative True  True  = Refl
+
+total disjNotTrue : (b : Bool) -> b || not b = True
+disjNotTrue False = Refl
+disjNotTrue True  = Refl
