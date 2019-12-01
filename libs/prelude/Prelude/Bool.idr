@@ -103,3 +103,13 @@ disjCommutative True  True  = Refl
 total disjNotTrue : (b : Bool) -> b || not b = True
 disjNotTrue False = Refl
 disjNotTrue True  = Refl
+
+-- De Morgan's Laws
+
+total conjDeMorgan : (b : Bool) -> (c : Bool) -> not (b && c) = not b || not c
+conjDeMorgan False _ = Refl
+conjDeMorgan True  _ = Refl
+
+total disjDeMorgan : (b : Bool) -> (c : Bool) -> not (b || c) = not b && not c
+disjDeMorgan False _ = Refl
+disjDeMorgan True  _ = Refl
