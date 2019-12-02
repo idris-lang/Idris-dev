@@ -182,7 +182,7 @@ interface rather than using ``plus`` directly. They have the names
 
 In the remainder of this tutorial, we will explore several different
 ways of proving ``plus_commutes`` (or, to put it another way, writing
-the function.) We will also discuss how to use such equality proofs, and
+the function). We will also discuss how to use such equality proofs, and
 see where the need for them arises in practice.
 
 .. [1]

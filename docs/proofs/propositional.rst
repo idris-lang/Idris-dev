@@ -1,7 +1,8 @@
-This page attempts to explain some of the techniques used in Idris to prove propositional equalities.
-
+******************************
 Proving Propositional Equality
-==============================
+******************************
+
+This page attempts to explain some of the techniques used in Idris to prove propositional equalities.
 
 We have seen that definitional equalities can be proved using ``Refl`` since they always normalise to unique values that can be compared directly.
 
