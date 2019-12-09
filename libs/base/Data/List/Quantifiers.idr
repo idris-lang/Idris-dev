@@ -75,3 +75,8 @@ all d (x::xs) with (d x)
     case all d xs of
       Yes prf' => Yes (prf :: prf')
       No prf' => No (notAllThere prf')
+
+||| Given a proof of membership for some element, extract the property proof for it
+indexAll : Elem x xs -> All p xs -> p x
+indexAll  Here     (p::_  ) = p
+indexAll (There e) ( _::ps) = indexAll e ps
