@@ -1,8 +1,8 @@
-.. _proofs-index:
+.. _elaborator-index:
 
-#########################################
-Theorem Proving and Elaborator Reflection
-#########################################
+#####################
+Elaborator Reflection
+#####################
 
 A tutorial on theorem proving in Idris.
 
@@ -18,13 +18,7 @@ A tutorial on theorem proving in Idris.
 .. toctree::
    :maxdepth: 1
 
-   definitional
-   pluscomm
-   inductive
-   patterns
-   propositional
-   interactive
-   interactiveOld
+   elaborator-reflection
    elabReflection
    tactics
    holes
