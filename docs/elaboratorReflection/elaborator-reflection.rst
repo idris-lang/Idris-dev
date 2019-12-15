@@ -198,7 +198,12 @@ This is primarily useful for code generation, particularly for generating patter
 
 Learn More
 ==========
-Tactics are discussed in the proofs section.
+
+Some tactics are introduced in the :ref:`proofs-index` section with further details, of those most relevant to elaborator reflection, on the following pages.
 
 The list of built-in tactics can be obtained using the ``:browse`` command in an Idris REPL or the corresponding feature in one of the graphical IDE clients to explore the ``Language.Reflection.Elab.Tactics`` namespace.
 All of the built-in tactics contain documentation strings.
+
+For alternative ways to extend the Idris language see the :ref:`reference-index` section.
+
+The following pages explain more about the theory and practice of elaborator reflection.

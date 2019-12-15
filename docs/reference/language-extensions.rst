@@ -3,7 +3,6 @@ Language Extensions
 *******************
 
 
-
 Type Providers
 ===============
 
@@ -34,3 +33,9 @@ repository <https://github.com/david-christiansen/idris-type-providers>`__.
 More detailed descriptions are available in David Christiansen's `WGP
 '13 paper <http://dx.doi.org/10.1145/2502488.2502495>`__ and `M.Sc.
 thesis <http://itu.dk/people/drc/david-christiansen-thesis.pdf>`__.
+
+Elaborator Reflection
+=====================
+
+Another way to extend the language is elaborator reflection which is described
+in the :ref:`elaborator-index` section.
