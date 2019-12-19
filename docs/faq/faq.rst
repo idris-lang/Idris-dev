@@ -37,7 +37,7 @@ Is there some documentation for the standard lib? List of functions?
 =====================================================================
 
 API documentation for the shipped packages is listed on `the
-documentation page <http://www.idris-lang.org/documentation/>`_.
+documentation page <https://www.idris-lang.org/documentation/>`_.
 
 Unfortunately, the default prelude and shipped packages for `Idris`
 are not necessarily complete with regards to documentation.  Other
@@ -310,7 +310,7 @@ better and it will make sense to revisit this. For now, however, Idris will not
 be offering arbitrary Unicode symbols in operators.
 
 This seems like an instance of `Wadler's
-Law <http://www.haskell.org/haskellwiki/Wadler%27s_Law>`__ in action.
+Law <https://www.haskell.org/haskellwiki/Wadler%27s_Law>`__ in action.
 
 This answer is based on Edwin Brady's response in the following
 `pull request <https://github.com/idris-lang/Idris-dev/pull/694#issuecomment-29559291>`_.

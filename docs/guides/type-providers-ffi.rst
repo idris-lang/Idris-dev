@@ -3,7 +3,7 @@ Type Providers in Idris
 ***********************
 
 `Type providers in Idris
-<http://www.davidchristiansen.dk/pubs/dependent-type-providers.pdf>`__
+<https://www.davidchristiansen.dk/pubs/dependent-type-providers.pdf>`__
 are simple enough, but there are a few caveats to using them that it
 would be worthwhile to go through the basic steps. We also go over
 foreign functions, because these will often be used with type

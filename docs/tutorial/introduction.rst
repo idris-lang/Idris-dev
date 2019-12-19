@@ -6,7 +6,7 @@ Introduction
 
 In conventional programming languages, there is a clear distinction
 between *types* and *values*. For example, in `Haskell
-<http://www.haskell.org>`_, the following are types, representing
+<https://www.haskell.org>`_, the following are types, representing
 integers, characters, lists of characters, and lists of any value
 respectively:
 
@@ -49,7 +49,7 @@ Intended Audience
 
 This tutorial is intended as a brief introduction to the language, and
 is aimed at readers already familiar with a functional language such
-as `Haskell <http://www.haskell.org>`_ or `OCaml <http://ocaml.org>`_.
+as `Haskell <https://www.haskell.org>`_ or `OCaml <https://ocaml.org>`_.
 In particular, a certain amount of familiarity with Haskell syntax is
 assumed, although most concepts will at least be explained
 briefly. The reader is also assumed to have some interest in using

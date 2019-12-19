@@ -14,7 +14,7 @@ the `Control.ST` library in `Idris`.
    Idris Community* has waived all copyright and related or neighbouring
    rights to Documentation for Idris.
 
-   More information concerning the CC0 can be found online at: http://creativecommons.org/publicdomain/zero/1.0/
+   More information concerning the CC0 can be found online at: https://creativecommons.org/publicdomain/zero/1.0/
 
 .. toctree::
    :maxdepth: 1

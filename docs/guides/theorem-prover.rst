@@ -22,7 +22,7 @@ We will be given the following prompt, in future releases the version string wil
          ____    __     _
         /  _/___/ /____(_)____
         / // __  / ___/ / ___/     Version 0.9.18.1
-      _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
+      _/ // /_/ / /  / (__  )      https://www.idris-lang.org/
      /___/\__,_/_/  /_/____/       Type :? for help
 
     Idris is free software with ABSOLUTELY NO WARRANTY.
