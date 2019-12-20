@@ -83,7 +83,7 @@ users of the module being written.  This can be done using ``import public``:
 
 .. code-block:: idris
 
-    # import public Data.Vect
+    import public Data.Vect
 
 .. _syntax-variables:
 
