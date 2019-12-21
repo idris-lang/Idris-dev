@@ -4,11 +4,11 @@
 [![Appveyor build](https://ci.appveyor.com/api/projects/status/xi8yu81oy1134g7o/branch/master?svg=true)](https://ci.appveyor.com/project/idrislang/idris-dev)
 [![Documentation Status](https://readthedocs.org/projects/idris/badge/?version=latest)](https://readthedocs.org/projects/idris/?badge=latest)
 [![Hackage](https://img.shields.io/hackage/v/idris.svg)](https://hackage.haskell.org/package/idris)
-[![Stackage LTS](http://stackage.org/package/idris/badge/lts)](http://stackage.org/lts/package/idris)
-[![Stackage Nightly](http://stackage.org/package/idris/badge/nightly)](http://stackage.org/nightly/package/idris)
+[![Stackage LTS](https://stackage.org/package/idris/badge/lts)](https://stackage.org/lts/package/idris)
+[![Stackage Nightly](https://stackage.org/package/idris/badge/nightly)](https://stackage.org/nightly/package/idris)
 [![IRC](https://img.shields.io/badge/IRC-%23idris-1e72ff.svg?style=flat)](https://www.irccloud.com/invite?channel=%23idris&hostname=irc.freenode.net&port=6697&ssl=1)
 
-Idris (http://idris-lang.org/) is a general-purpose functional programming
+Idris (https://idris-lang.org/) is a general-purpose functional programming
 language with dependent types.
 
 ## Installation Guides.
@@ -28,7 +28,7 @@ Idris has support for external code generators. Supplied with the distribution
 is a C code generator to compile executables, and a JavaScript code generator
 with support for node.js and browser JavaScript.
 
-More information about [code generators can be found on the wiki](http://idris.readthedocs.io/en/latest/reference/codegen.html).
+More information about [code generators can be found on the wiki](https://idris.readthedocs.io/en/latest/reference/codegen.html).
 
 ## More Information
 

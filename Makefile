@@ -56,7 +56,7 @@ linecount:
 
 #Note: this doesn't yet link to Hackage properly
 doc: dist/setup-config
-	$(CABAL) haddock --hyperlink-source --html --hoogle --html-location="http://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
+	$(CABAL) haddock --hyperlink-source --html --hoogle --html-location="https://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
 
 lib_doc:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc

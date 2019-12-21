@@ -13,7 +13,7 @@ ideally while giving up as little high level conveniences as possible.
 
 They are inspired by linear types, `Uniqueness Types
 <https://en.wikipedia.org/wiki/Uniqueness_type>`__ in the `Clean
-<http://wiki.clean.cs.ru.nl/Clean>`__ programming language, and
+<https://wiki.clean.cs.ru.nl/Clean>`__ programming language, and
 ownership types and borrowed pointers in the `Rust
 <https://www.rust-lang.org/>`__ programming language.
 

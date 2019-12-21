@@ -4,7 +4,7 @@ License:        BSD3
 License-file:   LICENSE
 Author:         Edwin Brady
 Maintainer:     Edwin Brady <eb@cs.st-andrews.ac.uk>
-Homepage:       http://www.idris-lang.org/
+Homepage:       https://www.idris-lang.org/
 Bug-reports:    https://github.com/idris-lang/Idris-dev/issues
 
 Stability:      Beta
@@ -16,7 +16,7 @@ Description:    Idris is a general purpose language with full dependent types.
                 meaning that some aspects of a program's behaviour can be
                 specified precisely in the type. The language is closely
                 related to Epigram and Agda. There is a tutorial at
-                <http://www.idris-lang.org/documentation>.
+                <https://www.idris-lang.org/documentation>.
                 Features include:
                 .
                 * Full, first class, dependent types with dependent pattern matching

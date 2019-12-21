@@ -51,7 +51,7 @@ foundations are also well-studied see [5]_, [6]_, [7]_, [8]_.
        Programming Languages and Systems (APLAS '09), Zhenjiang Hu
        (Ed.). Springer-Verlag, Berlin, Heidelberg,
        95-110. DOI=10.1007/978-3-642-10672-9_9
-       http://link.springer.com/chapter/10.1007%2F978-3-642-10672-9_9
+       https://link.springer.com/chapter/10.1007%2F978-3-642-10672-9_9
 
 
 .. [4] Ohad Kammar, Sam Lindley, and Nicolas Oury. 2013. Handlers in

@@ -26,13 +26,13 @@ infixl 9 ...
 (...) = (.) . (.)
 
 ||| Warbler, as named in "To Mock a Mockingbird".
-||| See http://code.jsoftware.com/wiki/Vocabulary/tilde
+||| See https://code.jsoftware.com/wiki/Vocabulary/tilde
 ||| Equivalent to `join` on the Reader monad (`(->) e` in Haskell)
 reflex : (a -> a -> b) -> (a -> b)
 reflex f x = f x x
 
 ||| Phoenix, according to Data.Aviary.
-||| See http://code.jsoftware.com/wiki/Vocabulary/fork.
+||| See https://code.jsoftware.com/wiki/Vocabulary/fork.
 ||| Equivalent to `liftA2` on the Reader monad (`(->) e` in Haskell)
 fork2 : (b -> c -> d) -> (a -> b) -> (a -> c) -> (a -> d)
 fork2 f g h x = f (g x) (h x)

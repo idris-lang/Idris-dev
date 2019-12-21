@@ -167,7 +167,7 @@ loadInputs inputs toline -- furthest line to read in input source files
 banner = "     ____    __     _                                          \n" ++
          "    /  _/___/ /____(_)____                                     \n" ++
          "    / // __  / ___/ / ___/     Version " ++ getIdrisVersion ++ "\n" ++
-         "  _/ // /_/ / /  / (__  )      http://www.idris-lang.org/      \n" ++
+         "  _/ // /_/ / /  / (__  )      https://www.idris-lang.org/     \n" ++
          " /___/\\__,_/_/  /_/____/       Type :? for help               \n" ++
          "\n" ++
          "Idris is free software with ABSOLUTELY NO WARRANTY.            \n" ++

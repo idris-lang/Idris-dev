@@ -8,7 +8,7 @@ of functions with arguments annotated as ``%static``.
 
 (This is an implementation of the partial evaluator described in `this
 ICFP 2010
-paper <http://eb.host.cs.st-andrews.ac.uk/writings/icfp10.pdf>`__.
+paper <https://eb.host.cs.st-andrews.ac.uk/writings/icfp10.pdf>`__.
 Please refer to this for more precise definitions of what follows.)
 
 Partial evaluation is switched off by default since Idris 1.0. It can
@@ -207,7 +207,7 @@ Specialising Interpreters
 A particularly useful situation where partial evaluation becomes
 effective is in defining an interpreter for a well-typed expression
 language, defined as follows (see the `Idris tutorial, section
-4 <http://eb.host.cs.st-andrews.ac.uk/writings/idris-tutorial.pdf>`__
+4 <https://eb.host.cs.st-andrews.ac.uk/writings/idris-tutorial.pdf>`__
 for more details on how this works):
 
 ::

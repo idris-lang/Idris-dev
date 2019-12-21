@@ -6,9 +6,9 @@ Here are a few guidelines that we would like contributors to follow so that we c
 
 ## Getting Started
 
-1. Make sure you are familiar with [Git](http://git-scm.com/book).
+1. Make sure you are familiar with [Git](https://git-scm.com/book).
 1. Make sure you have a [GitHub account](https://github.com/signup/free).
-1. Make sure you are familiar with: [Idris](http://eb.host.cs.st-andrews.ac.uk/writings/idris-tutorial.pdf).
+1. Make sure you are familiar with: [Idris](https://eb.host.cs.st-andrews.ac.uk/writings/idris-tutorial.pdf).
 1. Make sure you can install Idris:
   * [Mac OS X](https://github.com/idris-lang/Idris-dev/wiki/Idris-on-OS-X-using-Homebrew)
   * [Ubuntu](https://github.com/idris-lang/Idris-dev/wiki/Idris-on-Ubuntu)
@@ -72,7 +72,7 @@ We do not want you wasting your time nor duplicating somebody's work!
 
 ## Making Changes
 
-Idris developers and hackers try to adhere to something similar to the [successful git branching model](http://nvie.com/posts/a-successful-git-branching-model/).
+Idris developers and hackers try to adhere to something similar to the [successful git branching model](https://nvie.com/posts/a-successful-git-branching-model/).
 The steps are described below.
 
 ### New contributors
@@ -175,8 +175,8 @@ To help increase the chance of your pull request being accepted:
 * Idris FAQs: [Official](https://idris.readthedocs.io/en/latest/faq/faq.html); [Unofficial](https://github.com/idris-lang/Idris-dev/wiki/Unofficial-FAQ);
 * [Idris Manual](https://github.com/idris-lang/Idris-dev/wiki/Manual);
 * [Idris Tutorial](https://idris.readthedocs.io/en/latest/tutorial/index.html);
-* [Idris News](http://www.idris-lang.org/news/);
-* [other Idris docs](http://www.idris-lang.org/documentation/).
+* [Idris News](https://www.idris-lang.org/news/);
+* [other Idris docs](https://www.idris-lang.org/documentation/).
 * [Using Pull Requests](https://help.github.com/articles/using-pull-requests)
 * [General GitHub Documentation](https://help.github.com/).
 

@@ -71,7 +71,7 @@ runArgParser = do opts <- execParser $ info parser
                                         PP.empty,
                                         PP.text "More details over Idris can be found online here:",
                                         PP.empty,
-                                        PP.indent 4 (PP.text "http://www.idris-lang.org/")]
+                                        PP.indent 4 (PP.text "https://www.idris-lang.org/")]
 
 execArgParserPure :: [String] -> ParserResult [Opt]
 execArgParserPure args = preProcOpts <$> execParserPure (prefs idm) (info parser idm) args

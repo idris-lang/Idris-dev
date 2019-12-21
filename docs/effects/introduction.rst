@@ -3,7 +3,7 @@ Introduction
 ************
 
 Pure functional languages with dependent types such as `Idris
-<http://www.idris-lang.org/>`_ support reasoning about programs directly
+<https://www.idris-lang.org/>`_ support reasoning about programs directly
 in the type system, promising that we can *know* a program will run
 correctly (i.e. according to the specification in its type) simply
 because it compiles. Realistically, though, things are not so simple:

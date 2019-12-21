@@ -4,7 +4,7 @@ Type Directed Search ``:search``
 
 Idris' ``:search`` command searches for terms according to their
 approximate type signature (much like
-`Hoogle <http://www.haskell.org/hoogle/>`__ for Haskell). For
+`Hoogle <https://www.haskell.org/hoogle/>`__ for Haskell). For
 example::
 
     Idris> :search e -> List e -> List e

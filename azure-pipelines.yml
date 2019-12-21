@@ -68,7 +68,7 @@ jobs:
         choco install 7zip.portable -y --no-progress
         choco install msys2 -y --no-progress --params "/InstallDir=C:/msys64/"
         mkdir C:\ghc
-        Invoke-WebRequest "http://downloads.haskell.org/~ghc/8.4.3/ghc-8.4.3-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
+        Invoke-WebRequest "https://downloads.haskell.org/~ghc/8.4.3/ghc-8.4.3-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
         7z x C:\ghc\ghc.tar.xz -oC:\ghc
         7z x C:\ghc\ghc.tar -oC:\ghc
       displayName: "Setting up environment"
