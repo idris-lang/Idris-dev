@@ -34,7 +34,7 @@ Replace
 
 This implements the *indiscernability of identicals* principle, if two terms are equal then they have the same properties. In other words, if ``x=y``, then we can substitute ``y`` for ``x`` in any expression. In our proofs we can express this as:
 
-.. code-block::
+.. code-block:: idris
 
    if x=y
    then P x = P y
