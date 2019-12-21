@@ -65,6 +65,11 @@ weakenN : (n : Nat) -> Fin m -> Fin (m + n)
 weakenN n FZ = FZ
 weakenN n (FS f) = FS (weakenN n f)
 
+||| Weaken the bound on a Fin using an inequality proof
+weakenLTE : LTE n m -> Fin n -> Fin m
+weakenLTE (LTESucc p)  FZ    = FZ
+weakenLTE (LTESucc p) (FS f) = FS $ weakenLTE p f
+
 ||| Attempt to tighten the bound on a Fin.
 ||| Return `Left` if the bound could not be tightened, or `Right` if it could.
 strengthen : Fin (S n) -> Either (Fin (S n)) (Fin n)
@@ -101,6 +106,10 @@ implementation MinBound (Fin (S n)) where
 implementation MaxBound (Fin (S n)) where
   maxBound = last
 
+||| Add two Fins
+addFin : (x : Fin n) -> (y : Fin m) -> Fin (finToNat x + m)
+addFin  FZ    y = y
+addFin (FS x) y = FS $ addFin x y
 
 -- Construct a Fin from an integer literal which must fit in the given Fin
 
