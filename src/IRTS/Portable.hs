@@ -265,6 +265,7 @@ instance ToJSON BC where
     toJSON (FOREIGNCALL r fd ret exps) = object ["FOREIGNCALL" .= (r, fd, ret, exps)]
     toJSON (SLIDE i) = object ["SLIDE" .= i]
     toJSON (RESERVE i) = object ["RESERVE" .= i]
+    toJSON (RESERVENOALLOC i) = object ["RESERVENOALLOC" .= i]
     toJSON (ADDTOP i) = object ["ADDTOP" .= i]
     toJSON (TOPBASE i) = object ["TOPBASE" .= i]
     toJSON (BASETOP i) = object ["BASETOP" .= i]
