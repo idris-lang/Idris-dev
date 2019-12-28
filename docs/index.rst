@@ -25,5 +25,6 @@ Documentation for the Idris Language
    effects/index
    proofs/index
    elaboratorReflection/index
+   parserLibrary/index
    reference/index
    guides/index
