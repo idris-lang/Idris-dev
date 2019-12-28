@@ -1,60 +1,188 @@
 Lexer
 =====
 
-Idris provides a mechanism to modify the language without having to recompile Idris itself. We can think of this in terms of metaprogramming or domain specific languages or just building in new capabilities.
+On this page we will implement a lexer to lex a very simple expression, on the
+next page we will go on to implement a parser for it.
 
-In order to extend the language we need to know something about how Idris is compiled. This page explains only what is needed to customise the elaboration. For more information about the compiler's implementation see `Edwin Brady's 2013 paper`_ and for customising the elaboration process see `Elaborator reflection: extending Idris in Idris`_ and `David Christiansen's PhD thesis`_.
+.. code-block:: idris
 
-Compilation of Idris proceeds through a number of stages.
+  module ParserExample
 
-- First, Idris is desugared by inserting placeholders for terms to be guessed by the compiler and replacing certain syntactic forms, such as do-notation, with the functions that implement them.
-- Then, this desugared Idris is translated into a much simpler core language, called TT. This translation process is called elaboration.
-- Finally, TT is type checked a second time to rule out errors, and then compiled into the target language.
+  import Text.Lexer
+  import public Text.Parser.Core
+  import public Text.Parser
 
-.. image:: ../image/idrisTopLevel.png
+
+to run:
+
+.. code-block:: idris
+
+  cd Idris-dev/libs/contrib
+  idris -p contrib parserEx.idr
+       ____    __     _
+      /  _/___/ /____(_)____
+      / // __  / ___/ / ___/     Version 1.3.2
+    _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
+   /___/\__,_/_/  /_/____/       Type :? for help
+
+  Idris is free software with ABSOLUTELY NO WARRANTY.
+  For details type :warranty.
+  Type checking ./Text/Token.idr
+  Type checking ./Text/Quantity.idr
+  Type checking ./Control/Delayed.idr
+  Type checking ./Data/Bool/Extra.idr
+  Type checking ./Text/Lexer/Core.idr
+  Type checking ./Text/Lexer.idr
+  Type checking ./parserEx.idr
+
+.. code-block:: idris
+
+  *parserEx> lex expressionTokens "1+2"
+  ([MkToken 0 0 (Number 1),
+    MkToken 0
+          (case fspan (\ARG => not (intToBool (prim__eqChar ARG '\n'))) "1" of
+             (incol, "") => c + cast (length incol)
+             (incol, b) => cast (length incol))
+          (Operator "+"),
+    MkToken 0
+          (case fspan (\ARG => not (intToBool (prim__eqChar ARG '\n'))) "+" of
+             (incol, "") => c + cast (length incol)
+             (incol, b) => cast (length incol))
+          (Number 2)],
+   0,
+   case fspan (\ARG => not (intToBool (prim__eqChar ARG '\n'))) "2" of
+     (incol, "") => c + cast (length incol)
+     (incol, b) => cast (length incol),
+   getString (MkStrLen "" 0)) : (List (TokenData ExpressionToken),
+                               Int,
+                               Int,
+                               String)
+  *parserEx>
+
+The lexer uses potentially infinite data structures. It has recursive arguments (codata type) so code is lazy.
+
+.. code-block:: idris
+
+  %default total
+
+  public export
+  data ExpressionToken = Number Integer
+           | Operator String
+           | OParen
+           | CParen
+           | EndInput
+
+.. code-block:: idris
+
+  export
+  Show ExpressionToken where
+    show (Number x) = "number " ++ show x
+    show (Operator x) = "operator " ++ x
+    show OParen = "("
+    show CParen = ")"
+    show EndInput = "end of input"
+
+.. code-block:: idris
+
+  export
+  Show (TokenData ExpressionToken) where
+    show (MkToken l c t) = "line=" ++ show l ++ " col=" ++ show c ++ "tok=" ++ show t
+
+.. code-block:: idris
+
+  -- integer arithmetic operators plus, minus and multiply.
+  export
+  opChars : String
+  opChars = "+-*"
+
+  operator : Lexer
+  operator = some (oneOf opChars)
+
+.. code-block:: idris
+
+  toInt' : String -> Integer
+  toInt' = cast
+
+  expressionTokens : TokenMap ExpressionToken
+  expressionTokens =
+    [(digits, \x => Number (toInt' x)),
+     (operator, \x => Operator x),
+     (is '(' ,\x => OParen),
+     (is ')' ,\x => CParen)]
+
+Lexer
+-----
+
+.. image:: ../image/tokenise.png
    :width: 484px
    :height: 147px
-   :alt: diagram illustrating these stages of Idris compilation
+   :alt: diagram illustrating these stages of lexer and parser
 
-TT is a core language which is syntactically very simple. This makes it easy for computers to process but very verbose and hard for humans to read. The Idris elaborator is written in Haskell using an elaboration library that was inspired by the tactics in interactive proof assistants such as Coq.
+To lex some string to a list of tokens we define the structures using recognisers:
 
-.. list-table::
+img src="recogniser.png" alt="recognisers" width="487" height="249"
 
-   * - There are some similarities with a proof assistant but in Idris the elaborator is an interpreter of Idris source in the elaboration monad, where each syntactic construct of Idris is interpreted as a sequence of tactics.
-     - .. image:: ../image/compareToProofAssist.png
-          :width: 206px
-          :height: 112px
-          :alt: diagram comparing elaboration with proof assistant
+There are constructors and combinators to allow the construction of the lexer definition:
 
-The primitives in the elaboration library are not just useful for the implementors of Idris itself. They can also be used by authors of extensions to the compiler, using a mechanism known as elaborator reflection.
-During elaboration TT (Raw) structure contains:
+A simple recogniser is 'Pred' which uses a predicate (Char -> Bool) to test whether to accept the character. It can be constructed using the 'is' function:
 
-- holes - placeholders for terms that have not yet been filled in.
-- guesses - similar to let bindings, except with no reduction rule, so that elaboration programs can control the precise shape of terms that are under construction.
+.. code-block:: idris
 
-For more information about holes and guesses see `Dependently Typed Functional Programs and their Proofs by McBride 1999`_.
+  Idris> :module Lexer2
+  *Lexer2> is 'a'
+  Pred (\ARG =>
+           intToBool (prim__eqChar ARG 'a'))
+                              : Recognise True
 
-The following diagram is intended to illustrate a high level view of the tactics and how this eventually results in the TT language being generated. It is not necessary to understand the details at this stage. The intention is to help build up some intuition so that, when we get into the details, we can recognise how this fits into the big picture.
-
-.. image:: ../image/elabOverview.png
-   :width: 410px
-   :height: 282px
-   :alt: diagram illustrating overview of TT language being generated from tactics.
-
-As already mentioned the TT core language is kept syntactically very simple, for instance, here are the binders in TT with corresponding code and logic type validity rules:
+Recognisers can be combined, for example,
 
 .. list-table::
 
-   * - This diagram illustrates the basis of the compilation process in logic (in this case for binders). It is not necessary to be an expert logician to understand elaborator reflection. However, when learning about tactics, they may appear arbitrary without knowing some theory. For more information about this see `Edwin Brady's 2013 paper`_.
-     - .. image:: ../image/binders.png
-          :width: 310px
-          :height: 203px
-          :alt: diagram illustrating basis of code in logic
+  * - <+> means sequence two recognisers. If either consumes a character, the sequence
+          is guaranteed to consume a character.
 
-.. target-notes::
-.. _`Edwin Brady's 2013 paper`: https://eb.host.cs.st-andrews.ac.uk/drafts/impldtp.pdf
-.. _`Elaborator reflection: extending Idris in Idris`: https://dl.acm.org/citation.cfm?doid=2951913.2951932
-.. _`David Christiansen's PhD thesis`: https://davidchristiansen.dk/david-christiansen-phd.pdf
-.. _`Dependently Typed Functional Programs and their Proofs by McBride 1999`: https://www.era.lib.ed.ac.uk/handle/1842/374
+      .. code-block:: idris
 
+         *Lexer2> is 'a' <+> is 'b'
+         SeqEat (Pred (\ARG => intToBool (prim__eqChar ARG 'a')))
+               (Delay (is 'b')) : Recognise True
+         *Lexer2> 
 
+    - <|> means if both consume, the combination is guaranteed
+          to consumer a character:
+
+      .. code-block:: idris
+
+        *Lexer2> is 'a' <|> is 'b'
+        Alt (Pred (\ARG => intToBool (prim__eqChar ARG 'a')))
+            (Pred (\ARG => intToBool (prim__eqChar ARG 'b'))) : Recognise True
+        *Lexer2> 
+
+So far, this is static code, to define the lexical structure. To lex a given text we need to pass this to the runtime code.
+
+However this can only  cut up the string into a list of substrings, these must be converted into tokens so we need a way to construct tokens. This will also depend on the  lexical structure we require.
+
+TokenMap
+--------
+
+We then need to generate a TokenMap. This is a  mapping from lexers to the tokens they produce. This is a list of pairs:
+
+.. code-block:: idris
+
+  (Lexer, String -> tokenType)
+
+For each Lexer in the list, if a substring in the input matches, run
+the associated function to produce a token of type `tokenType`
+
+from Core:
+
+.. code-block:: idris
+
+  TokenMap : (tokenType : Type) -> Type
+  TokenMap tokenType = List (Lexer, String -> tokenType)
+
+Here is the code that generates the TokenMap for Idris2 lexer from 
+
+_`TokenMap for Idris2 lexer`: https://github.com/edwinb/Idris2/blob/master/src/Parser/Lexer.idr">src/Parser/Lexer.idr
+
+So, for our code, we can then turn this into a tokenMap by using a function like this:.

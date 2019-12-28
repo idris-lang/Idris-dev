@@ -1,192 +1,276 @@
-Elaborator Reflection - Identity Example
-========================================
+Parser
+======
 
-.. list-table::
+On the previous page we implemented a lexer to lex a very simple expression, on this
+page we will go on to implement a parser for it.
 
-   * - This example of elaborator reflection steps through this metaprogram that generates the identity function:
-     - .. code-block:: idris
+To run our parser we call 'doParse'. This requires the output from the lexer (a list of tokens) and a Grammar.
 
-         %language ElabReflection
+.. code-block:: idris
 
-         idNat : Nat -> Nat
-         idNat = %runElab (do intro `{{x}}
-                              fill (Var `{{x}})
-                              solve)
+  doParse : {c : Bool} ->
+          (commit : Bool) -> (xs : List tok) -> (act : Grammar tok c ty) ->
+          ParseResult xs c ty
 
-.. list-table::
-   :widths: 200 100
+So we need to define the Grammar for our parser
 
-   * - At the beginning of executing the elaboration script, the initial state consists of a single hole of type Nat -> Nat.
+.. code-block:: idris
 
-       As a first approximation, the state consists of a term with holes in it, an indicator of which hole is focused, a queue of the next holes to focus on, and miscellaneous information like a source of fresh names. The intro tactic modifies this state, replacing the focused hole with a lambda and focusing on the lambda's body.
-     - .. image:: ../image/tree.png
-          :width: 119px
-          :height: 109px
+  ||| Description of a language's grammar. The `tok` parameter is the type
+  ||| of tokens, and the `consumes` flag is True if the language is guaranteed
+  ||| to be non-empty - that is, successfully parsing the language is guaranteed
+  ||| to consume some input.
+  public export
+  data Grammar : (tok : Type) -> (consumes : Bool) -> Type -> Type where
+     Empty : (val : ty) -> Grammar tok False ty
+     Terminal : String -> (tok -> Maybe a) -> Grammar tok True a
+     NextIs : String -> (tok -> Bool) -> Grammar tok False tok
+     EOF : Grammar tok False ()
 
-The following is a walkthough looking at the state after each tactic:
+     Fail : Bool -> String -> Grammar tok c ty
+     Commit : Grammar tok False ()
+     MustWork : Grammar tok c a -> Grammar tok c a
 
-.. list-table::
+     SeqEat : Grammar tok True a -> Inf (a -> Grammar tok c2 b) ->
+              Grammar tok True b
+     SeqEmpty : {c1, c2 : Bool} ->
+                Grammar tok c1 a -> (a -> Grammar tok c2 b) ->
+                Grammar tok (c1 || c2) b
+     Alt : {c1, c2 : Bool} ->
+           Grammar tok c1 ty -> Grammar tok c2 ty ->
+           Grammar tok (c1 && c2) ty
 
-   * - Start with the type signature like this:
-     - .. code-block:: idris
+.. code-block:: idris
 
-         %language ElabReflection
+  -- from  Idris2/src/Parser/Support.idr 
+  public export
+  Rule : Type -> Type
+  Rule ty = Grammar (TokenData ExpressionToken) True ty
 
-         idNat : Nat -> Nat
-         idNat = %runElab (do
+.. code-block:: idris
 
-   * - In order to investigate how the program works this table shows the proof state at each stage as the tactics are applied. So here is the proof state at the start:
-     - .. image:: ../image/elabProofStateEx1_1.png
-          :width: 310px
-          :height: 115px
+  export
+  intLiteral : Rule Integer
+  intLiteral
+    = terminal --"Expected integer literal"
+               (\x => case tok x of
+                           Number i => Just i
+                           _ => Nothing)
 
-   * - This table shows the hole types and what they depend on. The aim is to illustrate the types by analogy with proofs, as a line with the premises above it and the conclusion below it.
-     - .. image:: ../image/elabLogicEx1_1.png
-          :width: 277px
-          :height: 15px
+In order to try this out, here is a temporary function, this calls
+parse which takes two parameters:
+* The grammar (in this case intLiteral)
+* The token list from the lexer.
 
-   * - The term is:
-     - ?{hole_0} ≈ ? {hole_2} . {hole_2} . {hole_0}
+.. code-block:: idris
 
-   * - It is possible to read the state from the script by calling getEnv, getGoal and getHoles.
+  test1 : String -> Either (ParseError (TokenData ExpressionToken))
+                        (Integer, List (TokenData ExpressionToken))
+  test1 s = parse intLiteral (fst (lex expressionTokens s))
 
-     - The output of these calls contain structures with TT code. To show the results I hacked this: `my code`_. TT code is not really designed to be readable by humans, all the names are fully expanded, everything has a type down to universes (type of types). This is shown here to illustrate the information available.
+As required, if we pass it a string which is a number literal then it will return the
+number in the 'Right' option.
 
-       .. code-block:: idris
+.. code-block:: idris
 
-         getEnv=[]
+  *parserEx> test1 "123"
+  Right (123, []) : Either (ParseError (TokenData ExpressionToken))
+                         (Integer, List (TokenData ExpressionToken))
 
-         getGoal=(hole_2, __pi_arg:(Nat.["Nat", "Prelude"]:{
-            type constructor tag=8 number=0}.Type:U=(20:./Prelude/Nat.idr)->.
-               {name ref{type constructor tag=8 number=0}Nat.["Nat","Prelude"]:
-                    Type:U=(20:./Prelude/Nat.idr)
-               })
-            })
+If we pass it a string which is not a number literal then it will return an
+error message.
 
-         getHoles=[{hole_2},{hole_0}]
+.. code-block:: idris
 
-   * - getGuess
-     - error no guess
+  *parserEx> test1 "a"
+  Left (Error "End of input"
+            []) : Either (ParseError (TokenData ExpressionToken))
+                         (Integer, List (TokenData ExpressionToken))
 
-   * - Introduce a lambda binding around the current hole and focus on the body.
-     - intro \`{{x}}
+If we pass it a number followed by something else, then it will still be
+successful, this is because we are not specifically checking for end-of-file.
 
-   * - The state now looks like this:
-     - .. image:: ../image/elabProofStateEx1_2.png
-          :width: 312px
-          :height: 84px
+.. code-block:: idris
 
-   * - The hole types now looks like this:
-     - .. image:: ../image/elabLogicEx1_2.png
-          :width: 279px
-          :height: 26px
+  *parserEx> test1 "123a"
+  Right (123, []) : Either (ParseError (TokenData ExpressionToken))
+                         (Integer, List (TokenData ExpressionToken))
+  *parserEx> 
 
-   * - The term now looks like this:
-     - ?{hole_0} ≈ λ x . ? {hole_2} . {hole_2} . {hole_0}
+.. code-block:: idris
 
-   * - Again we can check the state by calling getEnv, getGoal and getHoles: see `my code`_
+  ||| Succeeds if running the predicate on the next token returns Just x,
+  ||| returning x. Otherwise fails.
+  export
+  terminal : (tok -> Maybe a) -> Grammar tok True a
+  terminal = Terminal
 
-     - .. code-block:: idris
+.. code-block:: idris
 
-         getEnv=[(x, {λ (Nat.["Nat", "Prelude"]:{
-            type constructor tag=8 number=0}).
-               Type:U=(20:./Prelude/Nat.idr)
-            })]
+  openParen : Rule Integer
+  openParen = terminal (\x => case tok x of
+                           OParen => Just 0
+                           _ => Nothing)
 
-         getGoal=(hole_2, {name ref{type constructor tag=8 number=0}
-            Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
-            })
+.. code-block:: idris
 
-          getHoles=[{hole_2},{hole_0}]
+  test2 : String -> Either (ParseError (TokenData ExpressionToken))
+                        (Integer, List (TokenData ExpressionToken))
+  test2 s = parse openParen (fst (lex expressionTokens s))
 
-   * - getGuess
-     - error no guess
+.. code-block:: idris
 
-   * - Place a term into a hole, unifying its type
-     - fill (Var \`{{x}})
+  *parserEx> test2 "("
+  Right (0, []) : Either (ParseError (TokenData ExpressionToken))
+                       (Integer, List (TokenData ExpressionToken))
+  *parserEx> test2 "123"
+  Left (Error "Unrecognised token"
+            [MkToken 0
+                     0
+                     (Number 123)]) : Either (ParseError (TokenData ExpressionToken))
+                                             (Integer,
+                                              List (TokenData ExpressionToken))
+  *parserEx> 
 
-   * - The state still looks like this:
-     - .. image:: ../image/elabProofStateEx1_3.png
-          :width: 312px
-          :height: 57px
+.. code-block:: idris
 
-   * - The hole types now looks like this:
-     - .. image:: ../image/elabLogicEx1_3.png
-          :width: 290px
-          :height: 26px
+  test3 : String -> Either (ParseError (TokenData ExpressionToken))
+                        (Integer, List (TokenData ExpressionToken))
+  test3 s = parse (map const openParen <*> intLiteral) (fst (lex expressionTokens s))
 
-   * - The term now looks like this:
-     - ?{hole_0} ≈ λ x . ?{hole_2} ≈ x . {hole_2} . {hole_0}
+.. code-block:: idris
 
-   * - Again we can check the state by calling getEnv, getGoal and getHoles: see `my code`_
+  *parserEx> test3 "(123"
+  Right (0, []) : Either (ParseError (TokenData ExpressionToken))
+                       (Integer, List (TokenData ExpressionToken))
+  *parserEx> test3 "(("
+  Left (Error "Unrecognised token"
+            [MkToken 0
+                     (case fspan (\ARG => not (intToBool (prim__eqChar ARG '\n')))
+                                 "(" of
+                        (incol, "") => c + cast (length incol)
+                        (incol, b) => cast (length incol))
+                     OParen]) : Either (ParseError (TokenData ExpressionToken))
+                                       (Integer, List (TokenData ExpressionToken))
 
-     - .. code-block:: idris
+  *parserEx> test3 "123"
+  Left (Error "Unrecognised token"
+            [MkToken 0
+                     0
+                     (Number 123)]) : Either (ParseError (TokenData ExpressionToken))
+                                             (Integer,
+                                              List (TokenData ExpressionToken))
+  *parserEx> test3 "123("
+  Left (Error "Unrecognised token"
+            [MkToken 0 0 (Number 123),
+             MkToken 0
+                     (case fspan (\ARG => not (intToBool (prim__eqChar ARG '\n')))
+                                 "321" of
+                        (incol, "") => c + cast (length incol)
+                        (incol, b) => cast (length incol))
+                     OParen]) : Either (ParseError (TokenData ExpressionToken))
+                                       (Integer, List (TokenData ExpressionToken))
+  *parserEx>
 
-         getEnv=[(x, {λ (Nat.["Nat", "Prelude"]:
-            {type constructor tag=8 number=0}).
-               Type:U=(20:./Prelude/Nat.idr)
-            })]
+.. code-block:: idris
 
-         getGoal=(hole_2, {name ref{type constructor tag=8 number=0}
-            Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
-            })
+  closeParen : Rule Integer
+  closeParen = terminal (\x => case tok x of
+                           CParen => Just 0
+                           _ => Nothing)
 
-         getHoles=[{hole_2}, {hole_0}]
+.. code-block:: idris
 
-   * - getGuess
-     - .. code-block:: idris
+  ||| Matches if this is an operator token and string matches, that is,
+  ||| it is the required type of operator.
+  op : String -> Rule Integer
+  op s = terminal (\x => case tok x of
+                           (Operator s1) => if s==s1 then Just 0 else Nothing
+                           _ => Nothing)
 
-         {name ref bound x:
-           {name ref{type constructor tag=8 number=0}
-              Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
-           }
-         }
+.. code-block:: idris
 
-   * - Substitute a guess into a hole.
-     - solve
+  paren : Rule Integer -> Rule Integer
+  paren exp = openParen *> exp <* closeParen
 
-   * - The hole types now looks like this:
-     - .. image:: ../image/elabLogicEx1_4.png
-          :width: 131px
-          :height: 14px
+.. code-block:: idris
 
-   * - The term now looks like this:
-     - ?{hole_0} ≈ λ x . x . {hole_0}
+  addInt : Integer -> Integer -> Integer
+  addInt a b = a+b
 
-   * - getEnv
+  export
+  add : Grammar tok c1 Integer ->
+      Grammar tok c2 Integer ->
+      Grammar tok c3 Integer ->
+      Grammar tok ((c1 || c2) || c3) Integer
+  add x y z = map addInt (x *> y) <*> z
 
-       getGoal
+.. code-block:: idris
 
-       getHoles
+  subInt : Integer -> Integer -> Integer
+  subInt a b = a-b
 
-     - .. code-block:: idris
+  export
+  sub : Grammar tok c1 Integer ->
+      Grammar tok c2 Integer ->
+      Grammar tok c3 Integer ->
+      Grammar tok ((c1 || c2) || c3) Integer
+  sub x y z = map subInt (x *> y) <*> z
 
-         getEnv=[]
 
-         getGoal=(hole_0, __pi_arg:(Nat.["Nat", "Prelude"]:{
-           type constructor tag=8 number=0}.
-              Type:U=(20:./Prelude/Nat.idr)
-           ->.{name ref
-             {type constructor tag=8 number=0}
-                Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
-             })
-          })
+  multInt : Integer -> Integer -> Integer
+  multInt a b = a*b
 
-         getHoles=[{hole_0}]
+  export
+  mult : Grammar tok c1 Integer ->
+      Grammar tok c2 Integer ->
+      Grammar tok c3 Integer ->
+      Grammar tok ((c1 || c2) || c3) Integer
+  mult x y z = map multInt (x *> y) <*> z
 
-   * - getGuess
-     - .. code-block:: idris
+.. code-block:: idris
 
-         x:({λ (Nat.["Nat", "Prelude"]:{
-           type constructor tag=8 number=0}).
-              Type:U=(20:./Prelude/Nat.idr)
-            }.{
-            name ref bound
-              x:{name ref {type constructor tag=8 number=0}
-                Nat.["Nat","Prelude"]:Type:U=(20:./Prelude/Nat.idr)
-                }
-              })
-            }
+  partial
+  expr : Rule Integer
+  expr = (add (op "+") expr expr)
+       <|> (sub (op "-") expr expr)
+       <|> (mult (op "*") expr expr)
+       <|> intLiteral <|> (paren expr)
 
-.. target-notes::
-.. _`my code`: https://github.com/martinbaker/Idris-dev/blob/uglyTTPrinter/libs/prelude/Language/Reflection/TTPrinter.idr
+.. code-block:: idris
+
+  *parserEx> parse expr (fst (lex expressionTokens "(1)"))
+  Right (1, []) : Either (ParseError (TokenData ExpressionToken))
+                       (Integer, List (TokenData ExpressionToken))
+  *parserEx>
+
+.. code-block:: idris
+
+  parse : (act : Grammar tok c ty) -> (xs : List tok)
+
+  parse intLiteral (fst (lex expressionTokens "1"))
+
+.. code-block:: idris
+
+  *parserEx> parse expr (fst (lex expressionTokens "1+2"))
+  Right (1,
+       [MkToken 0
+                (case fspan (\ARG => not (intToBool (prim__eqChar ARG '\n'))) "1" of
+                   (incol, "") => c + cast (length incol)
+                   (incol, b) => cast (length incol))
+                (Operator "+"),
+        MkToken 0
+                (case fspan (\ARG => not (intToBool (prim__eqChar ARG '\n'))) "+" of
+                   (incol, "") => c + cast (length incol)
+                   (incol, b) => cast (length incol))
+                (Number 2)]) : Either (ParseError (TokenData ExpressionToken))
+                                      (Integer, List (TokenData ExpressionToken))
+  *parserEx>
+
+.. code-block:: idris
+
+  partial
+  test : String -> Either (ParseError (TokenData ExpressionToken))
+                        (Integer, List (TokenData ExpressionToken))
+  test s = parse expr (fst (lex expressionTokens s))
+
