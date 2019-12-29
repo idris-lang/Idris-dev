@@ -59,8 +59,7 @@ test whether to accept the character. It can be constructed using the 'is' funct
 
 .. code-block:: idris
 
-  Idris> :module Lexer2
-  *Lexer2> is 'a'
+  *parserEx> is 'a'
   Pred (\ARG =>
            intToBool (prim__eqChar ARG 'a'))
                               : Recognise True
@@ -76,39 +75,34 @@ combined, for example,
 
     -  .. code-block:: idris
 
-         *Lexer2> is 'a' <+> is 'b'
+         *parserEx> is 'a' <+> is 'b'
          SeqEat (Pred (\ARG => intToBool (prim__eqChar ARG 'a')))
                (Delay (is 'b')) : Recognise True
-         *Lexer2> 
 
   * - <|> means if both consume, the combination is guaranteed
       to consumer a character:
 
     - .. code-block:: idris
 
-        *Lexer2> is 'a' <|> is 'b'
+        *parserEx> is 'a' <|> is 'b'
         Alt (Pred (\ARG => intToBool (prim__eqChar ARG 'a')))
-            (Pred (\ARG => intToBool (prim__eqChar ARG 'b'))) : Recognise True
-        *Lexer2> 
+            (Pred (\ARG => intToBool (prim__eqChar ARG 'b')))
+                : Recognise True
 
+This diagram shows the recogniser combinator with some of its constructors:
 
 .. image:: ../image/recogniser.png
    :width: 487px
    :height: 249px
    :alt: recogniser data structure
 
-There are constructors and combinators to allow the construction of the lexer definition:
-
-
-So far, this is static code, to define the lexical structure. To lex a given text we need to pass this to the runtime code.
-
-However this can only  cut up the string into a list of substrings, these must be converted into tokens so we need a way to construct tokens. This will also depend on the  lexical structure we require.
-
 Simple Expression Example for Lexer
 -----------------------------------
 
-On this page we will implement a lexer to lex a very simple expression, on the
-next page we will go on to implement a parser for it.
+On this page we will implement a lexer to lex a very simple expression as
+a running example, on the next page we will go on to implement a parser for it.
+
+First import the lexer and parser code:
 
 .. code-block:: idris
 
@@ -118,8 +112,81 @@ next page we will go on to implement a parser for it.
   import public Text.Parser.Core
   import public Text.Parser
 
+Then decide on the tokens that are needed. For this example the idea is to be
+able to parse simple arithmetic expressions, like this:
 
-to run:
+.. code-block:: idris
+
+  1+(2*3)
+
+so we need:
+
+- Numbers (for now integer literals are good enough).
+- Some operators (for now '+', '-' and '*' will do.
+- Opening and closing Parentheses.
+
+We can define these, as tokens, like this:
+
+.. code-block:: idris
+
+  %default total
+
+  public export
+  data ExpressionToken = Number Integer
+           | Operator String
+           | OParen
+           | CParen
+           | EndInput
+
+It may help with debugging and to implement error messages to
+implement 'show' for these tokens:
+
+.. code-block:: idris
+
+  export
+  Show ExpressionToken where
+    show (Number x) = "number " ++ show x
+    show (Operator x) = "operator " ++ x
+    show OParen = "("
+    show CParen = ")"
+    show EndInput = "end of input"
+
+  export
+  Show (TokenData ExpressionToken) where
+    show (MkToken l c t) = "line=" ++ show l ++ " col=" ++ show c ++ "tok=" ++ show t
+
+.. code-block:: idris
+
+The following defines the 'TokenMap' for this example:
+
+  -- integer arithmetic operators plus, minus and multiply.
+  export
+  opChars : String
+  opChars = "+-*"
+
+  operator : Lexer
+  operator = some (oneOf opChars)
+
+  toInt' : String -> Integer
+  toInt' = cast
+
+  expressionTokens : TokenMap ExpressionToken
+  expressionTokens =
+    [(digits, \x => Number (toInt' x)),
+     (operator, \x => Operator x),
+     (is '(' ,\x => OParen),
+     (is ')' ,\x => CParen)]
+
+This specifies the lexer. It gives, for each token, a function to recognise
+the token type and a function to construct the token.
+
+The library module 'Text.Lexer' contains useful functions to help with this.
+For example, the digits function used above, which reads one or more
+numeric characters.
+
+We can now run the code with various strings to see what output the lexer
+produces. This is done by calling the 'lex' function with the TokenMap and
+input string as parameters:
 
 .. code-block:: idris
 
@@ -141,8 +208,6 @@ to run:
   Type checking ./Text/Lexer.idr
   Type checking ./parserEx.idr
 
-.. code-block:: idris
-
   *parserEx> lex expressionTokens "1+2"
   ([MkToken 0 0 (Number 1),
     MkToken 0
@@ -163,56 +228,13 @@ to run:
                                Int,
                                Int,
                                String)
-  *parserEx>
 
-The lexer uses potentially infinite data structures. It has recursive arguments (codata type) so code is lazy.
+The lexer uses potentially infinite data structures. It has recursive arguments (codata type) so code is lazy. In the example the indexes have not been computed but we can pick out the tokens:
 
-.. code-block:: idris
+- (Number 1)
+- (Operator "+")
+- (Number 2)
 
-  %default total
+So the code is working.
 
-  public export
-  data ExpressionToken = Number Integer
-           | Operator String
-           | OParen
-           | CParen
-           | EndInput
-
-.. code-block:: idris
-
-  export
-  Show ExpressionToken where
-    show (Number x) = "number " ++ show x
-    show (Operator x) = "operator " ++ x
-    show OParen = "("
-    show CParen = ")"
-    show EndInput = "end of input"
-
-.. code-block:: idris
-
-  export
-  Show (TokenData ExpressionToken) where
-    show (MkToken l c t) = "line=" ++ show l ++ " col=" ++ show c ++ "tok=" ++ show t
-
-.. code-block:: idris
-
-  -- integer arithmetic operators plus, minus and multiply.
-  export
-  opChars : String
-  opChars = "+-*"
-
-  operator : Lexer
-  operator = some (oneOf opChars)
-
-.. code-block:: idris
-
-  toInt' : String -> Integer
-  toInt' = cast
-
-  expressionTokens : TokenMap ExpressionToken
-  expressionTokens =
-    [(digits, \x => Number (toInt' x)),
-     (operator, \x => Operator x),
-     (is '(' ,\x => OParen),
-     (is ')' ,\x => CParen)]
-
+A parser for this example will be constructed on the next page.
