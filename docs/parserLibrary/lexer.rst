@@ -8,8 +8,8 @@ module:
 
  lex : TokenMap a -> String -> (List (TokenData a), (Int, Int, String))
 
-This function takes a String and returns a list of tokens. With the tokens we have
-indexes back to the original string which can be used in error messages:
+This function takes a String and returns a list of tokens. With the tokens we
+have indexes back to the original string which can be used in error messages:
 
 .. image:: ../image/tokenise.png
    :width: 330px
@@ -24,7 +24,8 @@ In order to construct this list of tokens we need:
 - A way to recognise the tokens in the input string.
 - A way to construct these individual tokens.
 
-This is given by the TokenMap. This is a  mapping from lexers to the tokens they produce. This is a list of pairs:
+This is given by the TokenMap. This is a  mapping from lexers to the tokens
+they produce. This is a list of pairs:
 
 .. code-block:: idris
 
@@ -155,11 +156,11 @@ implement 'show' for these tokens:
   Show (TokenData ExpressionToken) where
     show (MkToken l c t) = "line=" ++ show l ++ " col=" ++ show c ++ "tok=" ++ show t
 
-.. code-block:: idris
-
 The following defines the 'TokenMap' for this example:
 
-  -- integer arithmetic operators plus, minus and multiply.
+.. code-block:: idris
+
+  ||| integer arithmetic operators plus, minus and multiply.
   export
   opChars : String
   opChars = "+-*"
@@ -172,7 +173,7 @@ The following defines the 'TokenMap' for this example:
 
   expressionTokens : TokenMap ExpressionToken
   expressionTokens =
-    [(digits, \x => Number (toInt' x)),
+     [(digits, \x => Number (toInt' x)),
      (operator, \x => Operator x),
      (is '(' ,\x => OParen),
      (is ')' ,\x => CParen)]
@@ -229,7 +230,8 @@ input string as parameters:
                                Int,
                                String)
 
-The lexer uses potentially infinite data structures. It has recursive arguments (codata type) so code is lazy. In the example the indexes have not been computed but we can pick out the tokens:
+The lexer uses potentially infinite data structures. It has recursive arguments (codata type) so code is lazy. In the example the indexes have not been computed but we can
+pick out the tokens:
 
 - (Number 1)
 - (Operator "+")
@@ -237,4 +239,5 @@ The lexer uses potentially infinite data structures. It has recursive arguments 
 
 So the code is working.
 
-A parser for this example will be constructed on the next page.
+We can now go ahead and parse this token list. A parser for this example will
+be constructed on the next page.
