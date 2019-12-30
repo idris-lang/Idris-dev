@@ -97,11 +97,32 @@ This diagram shows the recogniser combinator with some of its constructors:
    :height: 249px
    :alt: recogniser data structure
 
+Whitespace and Comments
+-----------------------
+
+An important reason to have a lexer is to simplify the parser when whitespace
+or comments are required. Without this the parser would require a match for
+every combination, with and without, whitespace and comments.
+
+In some languages the lexer needs to remove whitespace and comments so that
+they don't appear in the token list. In some cases whitespace is significant
+but a single whitespace token can stand for any number of spaces, tabs,
+carriage returns and so on.
+
+In some cases, such as when parsing the Idris language itself, whitespace
+is important to indicate blocks. In this case we might want to output a
+start-of-block token when the indent increases and an end-of-block token
+when the indent decreases.
+
+This topic needs to be more fully expanded here. Until someone does that, a
+possible way to get more information is to see how it is done in Idris 2
+_`here`: https://github.com/edwinb/Idris2/blob/master/src/Parser/Lexer.idr
+
 Simple Expression Example for Lexer
 -----------------------------------
 
 On this page we will implement a lexer to lex a very simple expression as
-a running example, on the next page we will go on to implement a parser for it.
+a running example, on the next page, we will go on to implement a parser for it.
 
 First import the lexer and parser code:
 
