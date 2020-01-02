@@ -12,14 +12,14 @@ To run our parser we call 'parse'. This requires a Grammar and the output from t
 
 If successful this returns 'Right' with a pair of
 
-- the parse result
-- the unparsed tokens (the remaining input)
+- the parse result.
+- the unparsed tokens (the remaining input).
 
 otherwise it returns 'Left' with the error message.
 
 So we need to define the Grammar for our parser, this is done using the following
-'Grammar' data structure, this is a combinator structure similar in principle to the
-recogniser combinator for the lexer which was discussed on the previous page.
+'Grammar' data structure. This is a combinator structure, similar in principle to the
+recogniser combinator for the lexer, which was discussed on the previous page.
 
 As with the Recogniser the Grammar type is dependent on a boolean 'consumes'
 value which allows us to ensure that complicated Grammar structures will always
@@ -71,28 +71,31 @@ Parser Example
 On the previous page we implemented a lexer to 'lex' a very simple expression, on
 this page we will go on to implement a parser for this running example.
 
-Expressed in Backus–Naur form (BNF) the syntax we are aiming at is something
-like this:
+.. list-table::
 
-.. code-block:: idris
+  * - Expressed in Backus–Naur form (BNF) the syntax we are aiming at is something
+      like this:
+    - .. code-block:: idris
 
-  <expr> ::= <integer literal>
+         <expr> ::= <integer literal>
           |  <expr>'+'<expr>
           |  <expr>'-'<expr>
           |  <expr>'*'<expr>
           |  '('<expr>')'
 
-  <integer literal> ::= <digit>|<integer literal><digit>
+         <integer literal> ::= <digit>|<integer literal><digit>
 
-To start, here is a Grammar to parse an integer literal (that is, a sequence of
-numbers).
+.. list-table::
 
-.. code-block:: idris
+  * - To start, here is a Grammar to parse an integer literal (that is, a
+      sequence of numbers).
 
-  export
-  intLiteral : Rule Integer
-  intLiteral
-    = terminal (\x => case tok x of
+    - .. code-block:: idris
+
+         export
+         intLiteral : Rule Integer
+         intLiteral
+           = terminal (\x => case tok x of
                            Number i => Just i
                            _ => Nothing)
 
@@ -137,33 +140,41 @@ successful, this is because we are not specifically checking for end-of-file.
                          (Integer, List (TokenData ExpressionToken))
   *parserEx> 
 
-The 'intLiteral' function above uses the 'terminal' function to construct
-the grammar, this is defined here
+.. list-table::
+
+  * - The 'intLiteral' function above uses the 'terminal' function to
+      construct the grammar
+    - .. code-block:: idris
+
+        ||| Succeeds if running the predicate on the
+        ||| next token returns Just x, returning x.
+        ||| Otherwise fails.
+        export
+        terminal : (tok -> Maybe a) -> Grammar tok True a
+        terminal = Terminal
+
+This is defined here
 : https://github.com/idris-lang/Idris-dev/blob/master/libs/contrib/Text/Parser/Core.idr
 Idris 2 uses a slightly different version which stores an error message like
 "Expected integer literal" which can be output if the rule fails
 : https://github.com/edwinb/Idris2/blob/master/src/Text/Parser/Core.idr
 
-.. code-block:: idris
+.. list-table::
 
-  ||| Succeeds if running the predicate on the next token returns Just x,
-  ||| returning x. Otherwise fails.
-  export
-  terminal : (tok -> Maybe a) -> Grammar tok True a
-  terminal = Terminal
+  * - The 'terminal' function is also used to construct the other
+      elements of the grammar that we require, for instance,
+      opening parenthesis:
 
-The 'terminal' function is also used to construct the other elements of the
-grammar that we require, for instance, opening parenthesis:
+    - .. code-block:: idris
 
-.. code-block:: idris
-
-  openParen : Rule Integer
-  openParen = terminal (\x => case tok x of
+         openParen : Rule Integer
+         openParen = terminal (\x => case tok x of
                            OParen => Just 0
                            _ => Nothing)
 
 Integer value is not really relevant for parenthesis so '0' is used as
 a default value.
+
 As before, we can test this out with a function like this:
 
 .. code-block:: idris
@@ -236,42 +247,49 @@ token lists are not:
                      OParen]) : Either (ParseError (TokenData ExpressionToken))
                                        (Integer, List (TokenData ExpressionToken))
 
-The closing parenthesis is constructed in the same way.
+.. list-table::
 
-.. code-block:: idris
+  * - The closing parenthesis is constructed in the same way.
 
-  closeParen : Rule Integer
-  closeParen = terminal (\x => case tok x of
+    - .. code-block:: idris
+
+        closeParen : Rule Integer
+        closeParen = terminal (\x => case tok x of
                            CParen => Just 0
                            _ => Nothing)
 
-Now we can generate a Grammar for an expression inside parenthesis like this.
+.. list-table::
 
-.. code-block:: idris
+  * - Now we can generate a Grammar for an expression inside parenthesis like this.
 
-  paren : Rule Integer -> Rule Integer
-  paren exp = openParen *> exp <* closeParen
+    - .. code-block:: idris
+
+        paren : Rule Integer -> Rule Integer
+        paren exp = openParen *> exp <* closeParen
 
 The use of '*>' and '<*' instead of '<*>' is an easy way to use the integer
 value from the inner expression.
 
-Now for the operations, in this case: '+', '-' and '*'.
-The syntax we require is that operators like '+' are infix operators, which
-would require a definition like this:
+.. list-table::
 
-.. code-block:: idris
+  * - Now for the operations, in this case: '+', '-' and '*'.
+      The syntax we require is that operators like '+' are infix operators, which
+      would require a definition like this:
 
-  expr = (add expr (op "+") expr)
+    - .. code-block:: idris
+
+        expr = (add expr (op "+") expr)
 
 This is a potentially infinite structure which is not total.
-In order to work up to this gradually I will start with prefix operators (sometimes known as Polish notation)
-then modify later for infix operators.
+In order to work up to this gradually I will start with prefix operators (sometimes known as Polish notation) then modify later for infix operators.
 
-So prefix operators would have this sort of form:
+.. list-table::
 
-.. code-block:: idris
+  * - So prefix operators would have this sort of form:
 
-  expr = (add (op "+") expr expr)
+    - .. code-block:: idris
+
+        expr = (add (op "+") expr expr)
 
 where 'op' is defined like this:
 
@@ -284,19 +302,21 @@ where 'op' is defined like this:
                            (Operator s1) => if s==s1 then Just 0 else Nothing
                            _ => Nothing)
 
-and 'add' is defined like this:
+.. list-table::
 
-.. code-block:: idris
+  * - and 'add' is defined like this:
 
-  addInt : Integer -> Integer -> Integer
-  addInt a b = a+b
+    - .. code-block:: idris
 
-  export
-  add : Grammar tok c1 Integer ->
-      Grammar tok c2 Integer ->
-      Grammar tok c3 Integer ->
-      Grammar tok ((c1 || c2) || c3) Integer
-  add x y z = map addInt (x *> y) <*> z
+        addInt : Integer -> Integer -> Integer
+        addInt a b = a+b
+
+        export
+        add : Grammar tok c1 Integer ->
+            Grammar tok c2 Integer ->
+            Grammar tok c3 Integer ->
+            Grammar tok ((c1 || c2) || c3) Integer
+        add x y z = map addInt (x *> y) <*> z
 
 Where:
 
@@ -343,22 +363,26 @@ partial as it is a potentially infinite structure and so not total.
        <|> (mult (op "*") expr expr)
        <|> intLiteral <|> (paren expr)
 
-To make the testing easier we can use this function:
+.. list-table::
 
-.. code-block:: idris
+  * - To make the testing easier we can use this function:
 
-  partial
-  test : String -> Either (ParseError (TokenData ExpressionToken))
+    - .. code-block:: idris
+
+        partial
+        test : String -> Either (ParseError (TokenData ExpressionToken))
                         (Integer, List (TokenData ExpressionToken))
-  test s = parse expr (fst (lex expressionTokens s))
+        test s = parse expr (fst (lex expressionTokens s))
 
-First test a valid (prefix) expression:
+.. list-table::
 
-.. code-block:: idris
+  * - First test a valid (prefix) expression:
 
-  *parserEx> test "+1*6(4)"
-  Right (25,
-       []) : Either (ParseError (TokenData ExpressionToken))
+    - .. code-block:: idris
+
+        *parserEx> test "+1*6(4)"
+        Right (25,
+             []) : Either (ParseError (TokenData ExpressionToken))
                     (Integer, List (TokenData ExpressionToken))
 
 Then an invalid syntax:

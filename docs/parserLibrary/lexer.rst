@@ -26,8 +26,7 @@ In order to construct this list of tokens we need:
 - A way to recognise the tokens in the input string.
 - A way to construct these individual tokens.
 
-This is given by the TokenMap. This is a  mapping from lexers to the tokens
-they produce. This is a list of pairs:
+This is given by the TokenMap which is a list of pairs containing this information:
 
 .. code-block:: idris
 
@@ -108,7 +107,7 @@ If a recogniser does not consume input there is a danger of an infinite loop.
 To prevent this the recogniser is dependent on a boolean called 'consumes' which
 is true if the recogniser is guaranteed to consume at least one character.
 
-The constructors of Recognise allow us to ensure that, event though parts of
+The constructors of Recognise allow us to ensure that, even though parts of
 the recogniser may not consume, overall the recogniser will consume.
 
 Since 'Recognise True' is more common than 'Recognise False' it is convenient to
@@ -133,12 +132,12 @@ when the indent decreases.
 
 This topic needs to be more fully expanded here. Until someone does that, a
 possible way to get more information is to see how it is done in Idris 2
-_`here`: https://github.com/edwinb/Idris2/blob/master/src/Parser/Lexer.idr
+: https://github.com/edwinb/Idris2/blob/master/src/Parser/Lexer.idr
 
 Simple Expression Example for Lexer
 -----------------------------------
 
-On this page we will implement a lexer to lex a very simple expression as
+On this page we will implement a lexer to 'lex' a very simple expression as
 a running example, on the next page, we will go on to implement a parser for it.
 
 First import the lexer and parser code:
@@ -268,7 +267,7 @@ input string as parameters:
                                Int,
                                String)
 
-The lexer uses potentially infinite data structures. It has recursive arguments (codata type) so code is lazy. In the example the indexes have not been computed but we can
+The lexer uses potentially infinite data structures. It has recursive arguments (codata type) so code is lazy. In the output above the indexes have not been computed but we can
 pick out the tokens:
 
 - (Number 1)

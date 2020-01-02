@@ -52,13 +52,13 @@ Idris 2 has at least 3 compilers:
   PTerm (and eventually TT structure).
 - REPL - compiles input from the command line.
 
-The following diagram is my attempt to work out how the modules in Idris 2 fit together.
+The following diagram is my first attempt to work out how some of the modules in
+Idris 2 fit together (with a few of the dependencies between them shown). The
+Idris 1 library is based on the modules at the bottom of the diagram (shown
+in red).
 
 .. image:: ../image/parserModules.png
    :width: 460px
    :height: 496px
    :alt: diagram illustrating these stages of lexer and parser
-
-
-
 
