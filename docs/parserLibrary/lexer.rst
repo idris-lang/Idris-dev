@@ -1,3 +1,5 @@
+.. _parserLibraryLexer:
+
 Lexer
 =====
 
@@ -96,6 +98,21 @@ This diagram shows the recogniser combinator with some of its constructors:
    :width: 487px
    :height: 249px
    :alt: recogniser data structure
+
+A recogniser consumes its input, that is it advances the index to its input
+string, as it generates the token list. In some cases we don't want this to
+happen, for instance, we may need to lookahead before consuming the input
+string.
+
+If a recogniser does not consume input there is a danger of an infinite loop.
+To prevent this the recogniser is dependent on a boolean called 'consumes' which
+is true if the recogniser is guaranteed to consume at least one character.
+
+The constructors of Recognise allow us to ensure that, event though parts of
+the recogniser may not consume, overall the recogniser will consume.
+
+Since 'Recognise True' is more common than 'Recognise False' it is convenient to
+use 'Lexer' as a type synonym for 'Recognise True'.
 
 Whitespace and Comments
 -----------------------
