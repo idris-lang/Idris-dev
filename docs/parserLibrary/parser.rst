@@ -430,10 +430,10 @@ then it will return 'Right' (to indicate success)
 Infix Notation
 --------------
 
-So far we have implemented a prefix notation for operators (like this: '+ expr expr')
-but the aim is to implemented an infix notation (like this: 'expr + expr'). To do
-this we must be able to deal with potentially infinite data structures (see Codata Types
-here :ref:`sect-typefuns`).
+So far we have implemented a prefix notation for operators (like this:
+'+ expr expr') but the aim is to implemented an infix notation (like this:
+'expr + expr'). To do this we must be able to deal with potentially
+infinite data structures (see Codata Types here :ref:`sect-typefuns`).
 
 First alter the grammar to have infix operations:
 
@@ -479,4 +479,134 @@ First alter the grammar to have infix operations:
 
 However, if this was run, the code would not terminate.
 
+Implement Left Recursion Elimination
+------------------------------------
+
+Left factoring, like this, is a general problem.
+
+If we have a rule like this:
+
+.. code-block:: idris
+
+  A -> (x<*>y) <|> (x<*>z)
+
+If 'x<*>y' fails but 'x<*>z' would succeed a problem is that, 'x<*>y' has already consumed 'x', so now 'x<*>z' will fail.
+
+so we could write code to backtrack. That is 'try' 'x<*>y' without consuming so that, if the first token succeeds but the following tokens fail, then the first tokens would not be consumed.
+
+Another approach is left factoring:
+
+Left Factoring
+--------------
+
+Replace the rule with two rules (that is we add a non-terminal symbol) so for example, instead of:
+
+.. code-block:: idris
+
+  A -> (x<*>y) <|> (x<*>z)
+
+we add an extra rule to give:
+
+.. code-block:: idris
+
+  A -> x<*>N
+  N -> y <|> z
+
+That is we convert a general context-free grammar to a LL(1) grammar. Although not every context-free grammar can be converted to a LL(1) grammar.
+
+This still does not solve the infinite recursion issue and there is another problem: the precedence of the operators +, - and * is not explicit.
+
+To resolve this we can alter the example like this:
+
+.. code-block:: idris
+
+  paren : Rule Integer -> Rule Integer
+  paren exp = openParen *> exp <* closeParen
+
+  addInt : Integer -> Integer -> Integer
+  addInt a b = a+b
+
+  subInt : Integer -> Integer -> Integer
+  subInt a b = a-b
+
+  multInt : Integer -> Integer -> Integer
+  multInt a b = a*b
+
+  partial
+  expr : Rule Integer
+
+  partial
+  exprAtom : Rule Integer
+  exprAtom = intLiteral <|> (paren expr)
+
+  partial
+  expr1 : Rule Integer
+  expr1 = map multInt exprAtom <*> ((op "*") *> exprAtom)
+
+  partial
+  exprMult : Rule Integer
+  exprMult = expr1 <|> exprAtom
+
+  partial
+  expr2 : Rule Integer
+  expr2 = map addInt exprMult <*> ((op "+") *> exprMult)
+
+  partial
+  exprAdd : Rule Integer
+  exprAdd = expr2 <|> exprMult
+
+  partial
+  expr3 : Rule Integer
+  expr3 = map subInt exprAdd <*> ((op "-") *> expr)
+
+  expr = expr3 <|> exprAdd
+
+As the following tests show, this now handles infix operators and precedence.
+
+.. list-table::
+
+  * - For example '*' is an infix operator:
+
+    - .. code-block:: idris
+
+         *parserExInfix> test "2*3"
+         Right (6,
+             []) : Either (ParseError (TokenData ExpressionToken))
+                    (Integer, List (TokenData ExpressionToken))
+
+  * - Check that atomic number literals work:
+
+    - .. code-block:: idris
+
+         *parserExInfix> test "2"
+         Right (2,
+             []) : Either (ParseError (TokenData ExpressionToken))
+                    (Integer, List (TokenData ExpressionToken))
+
+  * - Check that '*' has a higher precedence than '+'.
+
+    - .. code-block:: idris
+
+         *parserExInfix> test "2+3*4"
+         Right (14,
+             []) : Either (ParseError (TokenData ExpressionToken))
+                    (Integer, List (TokenData ExpressionToken))
+
+  * - Also '*' has a higher precedence than '+' when the order is reversed.
+
+    - .. code-block:: idris
+
+         *parserExInfix> test "3*4+2"
+         Right (14,
+             []) : Either (ParseError (TokenData ExpressionToken))
+                    (Integer, List (TokenData ExpressionToken))
+
+  * - Also precedence can be overridden by parenthesis.
+
+    - .. code-block:: idris
+
+         *parserExInfix> test "(2+3)*4"
+         Right (20,
+             []) : Either (ParseError (TokenData ExpressionToken))
+                    (Integer, List (TokenData ExpressionToken))
 
