@@ -48,13 +48,13 @@ This is added to the ``TokenMap`` like this:
      (operator, \x => Operator x),
      (is '(' ,\x => OParen),
      (is ')' ,\x => CParen),
-     (space, Comment),
+     (spaces, Comment),
      (comment, Comment)]
 
 As you can see, the comment is defined like a single line Idris comment,
 it starts with ``--`` and continues for the remainder of the line.
 
-We don't need to define ``space`` because it is already defined in
+We don't need to define ``spaces`` because it is already defined in
 : https://github.com/idris-lang/Idris-dev/blob/master/libs/contrib/Text/Lexer.idr
 like this:
 
@@ -75,17 +75,17 @@ Whitespace and Comments in Parser
 
 Now that there are ``Comment`` tokens the parser needs to be able to handle them.
 
-So far we don't have any syntax that requires spaces to be significant so we
-need to define the grammar so that it will parse with, or without, spaces.
-This needs to be done in a systematic way, here I have defined the grammar so
-that there is an optional space to the right of every atom or operator:
-
 .. code-block:: idris
 
   commentSpace : Rule Integer
   commentSpace = terminal (\x => case tok x of
                            Comment s => Just 0
                            _ => Nothing)
+
+So far we don't have any syntax that requires spaces to be significant so we
+need to define the grammar so that it will parse with, or without, spaces.
+This needs to be done in a systematic way, here I have defined the grammar so
+that there is an optional space to the right of every atom or operator:
 
 .. code-block:: idris
 
@@ -122,6 +122,24 @@ that there is an optional space to the right of every atom or operator:
 
   expr = expr3 <|> exprAdd
 
+Defining Block Structure using Indents
+--------------------------------------
+
+Many languages such as Python, Haskell and Idris use indents to delimit
+the block structure of the language.
+
+We can see how Idris2 does it here
+: https://github.com/edwinb/Idris2/blob/master/src/Parser/Support.idr
+
+.. code-block:: idris
+
+  export
+  IndentInfo : Type
+  IndentInfo = Int
+
+  export
+  init : IndentInfo
+  init = 0
 
 
 
