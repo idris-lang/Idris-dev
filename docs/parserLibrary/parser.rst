@@ -3,7 +3,8 @@
 Parser
 ======
 
-To run our parser we call 'parse'. This requires a Grammar and the output from the lexer (a list of tokens).
+To run our parser we call 'parse'. This requires a Grammar and the output
+from the lexer (a list of tokens).
 
 .. code-block:: idris
 
@@ -18,8 +19,9 @@ If successful this returns 'Right' with a pair of
 otherwise it returns 'Left' with the error message.
 
 So we need to define the Grammar for our parser, this is done using the following
-'Grammar' data structure. This is a combinator structure, similar in principle to the
-recogniser combinator for the lexer, which was discussed on the previous page.
+'Grammar' data structure. This is a combinator structure, similar in principle
+to the recogniser combinator for the lexer, which was discussed on the
+previous page.
 
 As with the Recogniser the Grammar type is dependent on a boolean 'consumes'
 value which allows us to ensure that complicated Grammar structures will always
@@ -111,8 +113,8 @@ parse which takes two parameters:
                         (Integer, List (TokenData ExpressionToken))
   test1 s = parse intLiteral (fst (lex expressionTokens s))
 
-As required, if we pass it a string which is a number literal then it will return the
-number in the 'Right' option.
+As required, if we pass it a string which is a number literal then it will
+return the number in the 'Right' option.
 
 .. code-block:: idris
 
@@ -260,7 +262,8 @@ token lists are not:
 
 .. list-table::
 
-  * - Now we can generate a Grammar for an expression inside parenthesis like this.
+  * - Now we can generate a Grammar for an expression inside parenthesis
+      like this.
 
     - .. code-block:: idris
 
@@ -281,7 +284,8 @@ value from the inner expression.
         expr = (add expr (op "+") expr)
 
 This is a potentially infinite structure which is not total.
-In order to work up to this gradually I will start with prefix operators (sometimes known as Polish notation) then modify later for infix operators.
+In order to work up to this gradually I will start with prefix operators
+(sometimes known as Polish notation) then modify later for infix operators.
 
 .. list-table::
 
@@ -490,16 +494,20 @@ If we have a rule like this:
 
   A -> (x<*>y) <|> (x<*>z)
 
-If 'x<*>y' fails but 'x<*>z' would succeed a problem is that, 'x<*>y' has already consumed 'x', so now 'x<*>z' will fail.
+If 'x<*>y' fails but 'x<*>z' would succeed a problem is that, 'x<*>y' has
+already consumed 'x', so now 'x<*>z' will fail.
 
-so we could write code to backtrack. That is 'try' 'x<*>y' without consuming so that, if the first token succeeds but the following tokens fail, then the first tokens would not be consumed.
+so we could write code to backtrack. That is 'try' 'x<*>y' without consuming
+so that, if the first token succeeds but the following tokens fail, then the
+first tokens would not be consumed.
 
 Another approach is left factoring:
 
 Left Factoring
 --------------
 
-Replace the rule with two rules (that is we add a non-terminal symbol) so for example, instead of:
+Replace the rule with two rules (that is we add a non-terminal symbol) so
+for example, instead of:
 
 .. code-block:: idris
 
@@ -512,9 +520,11 @@ we add an extra rule to give:
   A -> x<*>N
   N -> y <|> z
 
-That is we convert a general context-free grammar to a LL(1) grammar. Although not every context-free grammar can be converted to a LL(1) grammar.
+That is we convert a general context-free grammar to a LL(1) grammar. Although
+not every context-free grammar can be converted to a LL(1) grammar.
 
-This still does not solve the infinite recursion issue and there is another problem: the precedence of the operators +, - and * is not explicit.
+This still does not solve the infinite recursion issue and there is another
+problem: the precedence of the operators +, - and * is not explicit.
 
 To resolve this we can alter the example like this:
 

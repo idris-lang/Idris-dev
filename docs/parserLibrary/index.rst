@@ -21,3 +21,4 @@ A tutorial on the lexer and parser library in Idris.
    introduction
    lexer
    parser
+   whitespace

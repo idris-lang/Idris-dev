@@ -26,7 +26,8 @@ In order to construct this list of tokens we need:
 - A way to recognise the tokens in the input string.
 - A way to construct these individual tokens.
 
-This is given by the TokenMap which is a list of pairs containing this information:
+This is given by the TokenMap which is a list of pairs containing
+this information:
 
 .. code-block:: idris
 
@@ -57,7 +58,8 @@ Recognisers
 The first part of each entry in the TokenMap is the recogniser.
 
 A simple recogniser is 'Pred' which uses a predicate (Char -> Bool) to
-test whether to accept the character. It can be constructed using the 'is' function:
+test whether to accept the character. It can be constructed using the
+'is' function:
 
 .. code-block:: idris
 
@@ -72,8 +74,8 @@ combined, for example,
 
 .. list-table::
 
-  * - <+> means sequence two recognisers. If either consumes a character, the sequence
-      is guaranteed to consume a character.
+  * - <+> means sequence two recognisers. If either consumes a character,
+      the sequence is guaranteed to consume a character.
 
     -  .. code-block:: idris
 
@@ -130,9 +132,8 @@ is important to indicate blocks. In this case we might want to output a
 start-of-block token when the indent increases and an end-of-block token
 when the indent decreases.
 
-This topic needs to be more fully expanded here. Until someone does that, a
-possible way to get more information is to see how it is done in Idris 2
-: https://github.com/edwinb/Idris2/blob/master/src/Parser/Lexer.idr
+This topic will be discussed more fully on this page 
+:ref:`parserLibraryWhitespace`.
 
 Simple Expression Example for Lexer
 -----------------------------------
@@ -267,8 +268,9 @@ input string as parameters:
                                Int,
                                String)
 
-The lexer uses potentially infinite data structures. It has recursive arguments (codata type) so code is lazy. In the output above the indexes have not been computed but we can
-pick out the tokens:
+The lexer uses potentially infinite data structures. It has recursive
+arguments (codata type) so code is lazy. In the output above the indexes
+have not been computed but we can pick out the tokens:
 
 - (Number 1)
 - (Operator "+")
