@@ -3,7 +3,7 @@
 Parser
 ======
 
-To run the parser we call ``parse``. This requires a Grammar and the output
+To run the parser we call ``parse``. This requires a grammar and the output
 from the lexer (which is a list of tokens).
 
 .. code-block:: idris
@@ -18,13 +18,13 @@ If successful this returns 'Right' with a pair of
 
 otherwise it returns 'Left' with the error message.
 
-So we need to define the Grammar for our parser, this is done using the following
+So we need to define the grammar for our parser, this is done using the following
 'Grammar' data structure. This is a combinator structure, similar in principle
 to the recogniser combinator for the lexer, which was discussed on the
 previous page.
 
-As with the Recogniser the Grammar type is dependent on a boolean 'consumes'
-value which allows us to ensure that complicated Grammar structures will always
+As with the Recogniser the ``Grammar`` type is dependent on a boolean 'consumes'
+value which allows us to ensure that complicated ``Grammar`` structures will always
 consume input.
 
 .. code-block:: idris
@@ -53,7 +53,7 @@ consume input.
            Grammar tok c1 ty -> Grammar tok c2 ty ->
            Grammar tok (c1 && c2) ty
 
-So an example of a Grammer type may look something like this:
+So an example of a grammer type may look something like this:
 ``Grammar (TokenData ExpressionToken) True Integer``.
 This is a complicated type name and a given parser will need to use it a lot.
 So to reduce the amount of typing we can use the following type synonym (similar
@@ -89,7 +89,7 @@ this page we will go on to add a parser for this running example.
 
 .. list-table::
 
-  * - To start, here is a Grammar to parse an integer literal (that is, a
+  * - To start, here is a grammar to parse an integer literal (that is, a
       sequence of numeric characters).
 
     - .. code-block:: idris
@@ -280,13 +280,15 @@ So lets try to use this to define a grammar which recognises either:
 - An integer literal inside parenthesis inside parenthesis
 - ... and so on.
 
-This requires a recursively defined structure like this:
+.. list-table::
 
-.. code-block:: idris
+  * - This requires a recursively defined structure like this:
 
-  partial
-  expr : Rule Integer
-  expr = intLiteral <|> (paren expr)
+    - .. code-block:: idris
+
+        partial
+        expr : Rule Integer
+        expr = intLiteral <|> (paren expr)
 
 This is a valid grammar because every time it is called it is guaranteed to
 consume a token. However, as an Idris structure, it is problematic due to
@@ -330,7 +332,7 @@ defined like this:
                 pure r
 
 This can be more flexible than using the ``<*>`` operator. Also it is defined
-using ``Inf`` so we can implement recursively defined grammars like the above.
+using ``Inf`` so we can implement recursively defined grammars as above.
 
 Implementing the Arithmetic Operators
 -------------------------------------
@@ -359,7 +361,7 @@ In order to work up to this gradually lets start with prefix operators
 
         expr = (add (op "+") expr expr)
 
-where `op` is defined like this:
+where ``op`` is defined like this:
 
 .. code-block:: idris
 
@@ -374,6 +376,12 @@ where `op` is defined like this:
 
   * - and ``add`` is defined like this:
 
+      Where:
+
+      - x is the add operator.
+      - y is the first operand.
+      - z is the second operand.
+
     - .. code-block:: idris
 
         addInt : Integer -> Integer -> Integer
@@ -386,40 +394,37 @@ where `op` is defined like this:
             Grammar tok ((c1 || c2) || c3) Integer
         add x y z = map addInt (x *> y) <*> z
 
-Where:
 
-- x is the add operator.
-- y is the first operand.
-- z is the second operand.
 
 The resulting integer will be the sum of the two operands.
 
-The other operators are defined in a similar way:
+.. list-table::
 
-.. code-block:: idris
+  * - The other operators are defined in a similar way:
 
-  subInt : Integer -> Integer -> Integer
-  subInt a b = a-b
+    - .. code-block:: idris
 
-  export
-  sub : Grammar tok c1 Integer ->
-      Grammar tok c2 Integer ->
-      Grammar tok c3 Integer ->
-      Grammar tok ((c1 || c2) || c3) Integer
-  sub x y z = map subInt (x *> y) <*> z
+        subInt : Integer -> Integer -> Integer
+        subInt a b = a-b
 
+        export
+        sub : Grammar tok c1 Integer ->
+            Grammar tok c2 Integer ->
+            Grammar tok c3 Integer ->
+            Grammar tok ((c1 || c2) || c3) Integer
+        sub x y z = map subInt (x *> y) <*> z
 
-  multInt : Integer -> Integer -> Integer
-  multInt a b = a*b
+        multInt : Integer -> Integer -> Integer
+        multInt a b = a*b
 
-  export
-  mult : Grammar tok c1 Integer ->
-      Grammar tok c2 Integer ->
-      Grammar tok c3 Integer ->
-      Grammar tok ((c1 || c2) || c3) Integer
-  mult x y z = map multInt (x *> y) <*> z
+        export
+        mult : Grammar tok c1 Integer ->
+            Grammar tok c2 Integer ->
+            Grammar tok c3 Integer ->
+            Grammar tok ((c1 || c2) || c3) Integer
+        mult x y z = map multInt (x *> y) <*> z
 
-So the top level Grammar can now be defined as follows. Note that this is
+So the top level ``Grammar`` can now be defined as follows. Note that this is
 partial as it is a potentially infinite structure and so not total.
 
 .. code-block:: idris
@@ -472,7 +477,7 @@ Then an invalid syntax:
                                         List (TokenData ExpressionToken))
 
 However if we try something that is invalid, but starts with a valid token,
-then it will return 'Right' (to indicate success)
+then it will return ``Right`` (to indicate success)
 
 .. code-block:: idris
 
@@ -499,20 +504,9 @@ Infix Notation
 --------------
 
 So far we have implemented a prefix notation for operators (like this:
-'+ expr expr') but the aim is to implemented an infix notation (like this:
-'expr + expr'). To do this we must be able to deal with potentially
+``+ expr expr``) but the aim is to implemented an infix notation (like this:
+``expr + expr``). To do this we must be able to deal with potentially
 infinite data structures (see Codata Types here :ref:`sect-typefuns`).
-
-.. code-block:: idris
-
-  expression = ["+"|"-"] term {("+"|"-") term} .
-
-  term = factor {("*"|"/") factor} .
-
-  factor =
-     ident
-     | number
-     | "(" expression ")"
 
 First alter the grammar to have infix operations:
 
@@ -569,10 +563,10 @@ If we have a rule like this:
 
   A -> (x<*>y) <|> (x<*>z)
 
-If 'x<*>y' fails but 'x<*>z' would succeed a problem is that, 'x<*>y' has
-already consumed 'x', so now 'x<*>z' will fail.
+If ``x<*>y`` fails but ``x<*>z`` would succeed a problem is that, ``x<*>y`` has
+already consumed ``x``, so now ``x<*>z`` will fail.
 
-so we could write code to backtrack. That is 'try' 'x<*>y' without consuming
+so we could write code to backtrack. That is ``try`` ``x<*>y`` without consuming
 so that, if the first token succeeds but the following tokens fail, then the
 first tokens would not be consumed.
 
@@ -599,9 +593,22 @@ That is we convert a general context-free grammar to a LL(1) grammar. Although
 not every context-free grammar can be converted to a LL(1) grammar.
 
 This still does not solve the infinite recursion issue and there is another
-problem: the precedence of the operators +, - and * is not explicit.
+problem: the precedence of the operators ``+``, ``-`` and ``*`` is not explicit.
 
-To resolve this we can alter the example like this:
+.. list-table::
+
+  * - To resolve this we can alter the example to have a BNF like this:
+
+    - .. code-block:: idris
+
+        'expression' ::=  ['+'|'-'] 'term' {('+'|'-') 'term'}
+
+        'term' ::=  'factor' {'*' 'factor'}
+
+        'factor' ::=
+           number
+           | '(' 'expression' ')'
+
 
 .. code-block:: idris
 
