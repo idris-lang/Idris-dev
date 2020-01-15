@@ -3,8 +3,8 @@
 Parser
 ======
 
-To run our parser we call 'parse'. This requires a Grammar and the output
-from the lexer (a list of tokens).
+To run the parser we call ``parse``. This requires a Grammar and the output
+from the lexer (which is a list of tokens).
 
 .. code-block:: idris
 
@@ -54,12 +54,12 @@ consume input.
            Grammar tok (c1 && c2) ty
 
 So an example of a Grammer type may look something like this:
-'Grammar (TokenData ExpressionToken) True Integer'.
-
+``Grammar (TokenData ExpressionToken) True Integer``.
 This is a complicated type name and a given parser will need to use it a lot.
 So to reduce the amount of typing we can use the following type synonym (similar
 to what is done in Idris 2
 : https://github.com/edwinb/Idris2/blob/master/src/Parser/Support.idr
+)
 
 .. code-block:: idris
 
@@ -71,12 +71,12 @@ Parser Example
 --------------
 
 On the previous page we implemented a lexer to 'lex' a very simple expression, on
-this page we will go on to implement a parser for this running example.
+this page we will go on to add a parser for this running example.
 
 .. list-table::
 
-  * - Expressed in Backus–Naur form (BNF) the syntax we are aiming at is something
-      like this:
+  * - The syntax we are aiming at is something
+      like this (expressed in Backus–Naur form (BNF)):
     - .. code-block:: idris
 
          <expr> ::= <integer literal>
@@ -90,7 +90,7 @@ this page we will go on to implement a parser for this running example.
 .. list-table::
 
   * - To start, here is a Grammar to parse an integer literal (that is, a
-      sequence of numbers).
+      sequence of numeric characters).
 
     - .. code-block:: idris
 
@@ -144,7 +144,7 @@ successful, this is because we are not specifically checking for end-of-file.
 
 .. list-table::
 
-  * - The 'intLiteral' function above uses the 'terminal' function to
+  * - The ``intLiteral`` function above uses the ``terminal`` function to
       construct the grammar
     - .. code-block:: idris
 
@@ -174,10 +174,10 @@ Idris 2 uses a slightly different version which stores an error message like
                            OParen => Just 0
                            _ => Nothing)
 
-Integer value is not really relevant for parenthesis so '0' is used as
+Integer value is not really relevant for parenthesis so ``0`` (zero) is used as
 a default value.
 
-As before, we can test this out with a function like this:
+As before, this can be tested with a function like this:
 
 .. code-block:: idris
 
@@ -202,10 +202,10 @@ error for anything else:
                                               List (TokenData ExpressionToken))
 
 Now we have two Grammars we can try combining them. The following test looks
-for 'openParen' followed by 'intLiteral', the two Grammars are combined using
-'<*>'. The 'map const' part uses the integer value from the first.
+for ``openParen`` followed by ``intLiteral``, the two Grammars are combined using
+``<*>``. The ``map const`` part uses the integer value from the first.
 
-The following test is looking for '(' followed by a number:
+The following test is looking for ``(`` followed by a number:
 
 .. code-block:: idris
 
@@ -213,8 +213,8 @@ The following test is looking for '(' followed by a number:
                         (Integer, List (TokenData ExpressionToken))
   test3 s = parse (map const openParen <*> intLiteral) (fst (lex expressionTokens s))
 
-We can see below that '(' followed by a number is successfully parsed but other
-token lists are not:
+We can see below that ``(`` followed by a number is successfully parsed but, as
+required, other token lists are not:
 
 .. code-block:: idris
 
@@ -270,21 +270,85 @@ token lists are not:
         paren : Rule Integer -> Rule Integer
         paren exp = openParen *> exp <* closeParen
 
-The use of '*>' and '<*' instead of '<*>' is an easy way to use the integer
+The use of ``*>`` and ``<*`` instead of ``<*>`` is an easy way to use the integer
 value from the inner expression.
+
+So lets try to use this to define a grammar which recognises either:
+
+- An integer literal
+- An integer literal inside parenthesis
+- An integer literal inside parenthesis inside parenthesis
+- ... and so on.
+
+This requires a recursively defined structure like this:
+
+.. code-block:: idris
+
+  partial
+  expr : Rule Integer
+  expr = intLiteral <|> (paren expr)
+
+This is a valid grammar because every time it is called it is guaranteed to
+consume a token. However, as an Idris structure, it is problematic due to
+the recursion. Defining it as partial allows it to compile but at runtime
+we are likely to get a crash with an (unhelpful) error message like
+``killed by signal 11``.
+
+So a better method is to use ``do`` notation as described in the following
+section.
+
+Monadic Combinator
+------------------
+
+In addition to ``<|>`` and ``<*>`` there is a ``>>=`` combinator, which is
+defined like this:
+
+.. code-block:: idris
+
+  ||| Sequence two grammars. If either consumes some input, the sequence is
+  ||| guaranteed to consume some input. If the first one consumes input, the
+  ||| second is allowed to be recursive (because it means some input has been
+  ||| consumed and therefore the input is smaller)
+  export %inline
+  (>>=) : {c1 : Bool} ->
+        Grammar tok c1 a ->
+        inf c1 (a -> Grammar tok c2 b) ->
+        Grammar tok (c1 || c2) b
+  (>>=) {c1 = False} = SeqEmpty
+  (>>=) {c1 = True} = SeqEat
 
 .. list-table::
 
-  * - Now for the operations, in this case: '+', '-' and '*'.
-      The syntax we require is that operators like '+' are infix operators, which
-      would require a definition like this:
+  * - This allows us to use ``do`` notation for the previous parenthesis example:
 
     - .. code-block:: idris
 
-        expr = (add expr (op "+") expr)
+         expr = intLiteral <|> do
+                openParen
+                r <- expr
+                closeParen
+                pure r
 
-This is a potentially infinite structure which is not total.
-In order to work up to this gradually I will start with prefix operators
+This can be more flexible than using the ``<*>`` operator. Also it is defined
+using ``Inf`` so we can implement recursively defined grammars like the above.
+
+Implementing the Arithmetic Operators
+-------------------------------------
+
+.. list-table::
+
+  * - Now for the operations, in this case: ``+``, ``-`` and ``*``.
+      The syntax we require for these infix operators
+      would require recursive grammars like this:
+
+    - .. code-block:: idris
+
+        expr = expr (op "+") expr
+
+As already explained, ``do`` notation can allow us to use recursive
+definitions but not necessarily left-recursion like this.
+
+In order to work up to this gradually lets start with prefix operators
 (sometimes known as Polish notation) then modify later for infix operators.
 
 .. list-table::
@@ -295,7 +359,7 @@ In order to work up to this gradually I will start with prefix operators
 
         expr = (add (op "+") expr expr)
 
-where 'op' is defined like this:
+where `op` is defined like this:
 
 .. code-block:: idris
 
@@ -308,7 +372,7 @@ where 'op' is defined like this:
 
 .. list-table::
 
-  * - and 'add' is defined like this:
+  * - and ``add`` is defined like this:
 
     - .. code-block:: idris
 
@@ -438,6 +502,17 @@ So far we have implemented a prefix notation for operators (like this:
 '+ expr expr') but the aim is to implemented an infix notation (like this:
 'expr + expr'). To do this we must be able to deal with potentially
 infinite data structures (see Codata Types here :ref:`sect-typefuns`).
+
+.. code-block:: idris
+
+  expression = ["+"|"-"] term {("+"|"-") term} .
+
+  term = factor {("*"|"/") factor} .
+
+  factor =
+     ident
+     | number
+     | "(" expression ")"
 
 First alter the grammar to have infix operations:
 
