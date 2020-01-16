@@ -598,10 +598,11 @@ problem: the precedence of the operators ``+``, ``-`` and ``*`` is not explicit.
 .. list-table::
 
   * - To resolve this we can alter the example to have a BNF like this:
+      Where braces ``{ ... }`` mean the contents can occur 1 or more times.
 
     - .. code-block:: idris
 
-        'expression' ::=  ['+'|'-'] 'term' {('+'|'-') 'term'}
+        'expression' ::=  ('+'|'-') 'term' {('+'|'-') 'term'}
 
         'term' ::=  'factor' {'*' 'factor'}
 
@@ -612,46 +613,44 @@ problem: the precedence of the operators ``+``, ``-`` and ``*`` is not explicit.
 
 .. code-block:: idris
 
-  paren : Rule Integer -> Rule Integer
-  paren exp = openParen *> exp <* closeParen
-
-  addInt : Integer -> Integer -> Integer
-  addInt a b = a+b
-
-  subInt : Integer -> Integer -> Integer
-  subInt a b = a-b
-
-  multInt : Integer -> Integer -> Integer
-  multInt a b = a*b
-
-  partial
   expr : Rule Integer
 
-  partial
-  exprAtom : Rule Integer
-  exprAtom = intLiteral <|> (paren expr)
+  factor : Rule Integer
+  factor = intLiteral <|> do
+                openParen
+                r <- expr
+                closeParen
+                pure r
 
-  partial
-  expr1 : Rule Integer
-  expr1 = map multInt exprAtom <*> ((op "*") *> exprAtom)
+  term : Rule Integer
+  term = map multInt factor <*> (
+          (op "*")
+          *> factor)
+       <|> factor
 
-  partial
-  exprMult : Rule Integer
-  exprMult = expr1 <|> exprAtom
+  expr = map addInt term <*> (
+          (op "+")
+          *> term)
+       <|> map subInt term <*> (
+          (op "-")
+          *> term)
+       <|> term
 
-  partial
-  expr2 : Rule Integer
-  expr2 = map addInt exprMult <*> ((op "+") *> exprMult)
+  calc : String -> Either (ParseError (TokenData ExpressionToken))
+                        (Integer, List (TokenData ExpressionToken))
+  calc s = parse expr (fst (lex expressionTokens s))
 
-  partial
-  exprAdd : Rule Integer
-  exprAdd = expr2 <|> exprMult
+  lft : (ParseError (TokenData ExpressionToken)) -> IO ()
+  lft (Error s lst) = putStrLn ("error:"++s)
 
-  partial
-  expr3 : Rule Integer
-  expr3 = map subInt exprAdd <*> ((op "-") *> expr)
+  rht : (Integer, List (TokenData ExpressionToken)) -> IO ()
+  rht i = putStrLn ("right " ++ (show i))
 
-  expr = expr3 <|> exprAdd
+  main : IO ()
+  main = do
+    putStr "alg>"
+    x <- getLine
+    either lft rht (calc x) -- eliminator for Either
 
 As the following tests show, this now handles infix operators and precedence.
 
@@ -661,44 +660,41 @@ As the following tests show, this now handles infix operators and precedence.
 
     - .. code-block:: idris
 
-         *parserExInfix> test "2*3"
-         Right (6,
-             []) : Either (ParseError (TokenData ExpressionToken))
-                    (Integer, List (TokenData ExpressionToken))
+         *algebraREPL> :exec
+         alg>2*3
+         right (6, [])
 
   * - Check that atomic number literals work:
 
     - .. code-block:: idris
 
-         *parserExInfix> test "2"
-         Right (2,
-             []) : Either (ParseError (TokenData ExpressionToken))
-                    (Integer, List (TokenData ExpressionToken))
+         *algebraREPL> :exec
+         alg>2
+         right (2, [])
 
   * - Check that '*' has a higher precedence than '+'.
 
     - .. code-block:: idris
 
-         *parserExInfix> test "2+3*4"
-         Right (14,
-             []) : Either (ParseError (TokenData ExpressionToken))
-                    (Integer, List (TokenData ExpressionToken))
+         *algebraREPL> :exec
+         alg>2+3*4
+         right (14, [])
 
   * - Also '*' has a higher precedence than '+' when the order is reversed.
 
     - .. code-block:: idris
 
-         *parserExInfix> test "3*4+2"
-         Right (14,
-             []) : Either (ParseError (TokenData ExpressionToken))
-                    (Integer, List (TokenData ExpressionToken))
+         *algebraREPL> :exec
+         alg>3*4+2
+         right (14, [])
 
   * - Also precedence can be overridden by parenthesis.
 
     - .. code-block:: idris
 
-         *parserExInfix> test "(2+3)*4"
-         Right (20,
-             []) : Either (ParseError (TokenData ExpressionToken))
-                    (Integer, List (TokenData ExpressionToken))
+         *algebraREPL> :exec
+         alg>(2+3)*4
+         right (20, [])
 
+This is still not correct because it does not correctly parse multiple sums or terms
+like ``1+2+3`` or ``1*2*3``.
