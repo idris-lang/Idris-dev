@@ -8,11 +8,11 @@ discussed how to handle whitespace and comments.
 
 In some grammars whitespace and comments would not be considered significant and
 so we might be tempted not to generate any tokens for them. However, in the
-running example, we may want to make spaces significant. For example, we might
-want to implement function application expressed by juxtaposition as in
-Haskell and Idris like this: ``f x``.
+running example, we may want to make spaces significant in the future. For
+example, we might want to implement function application expressed by
+juxtaposition as in Haskell and Idris like this: ``f x``.
 
-Also, I'm not sure if it is an problem for error messages and so on if some
+Also, I'm not sure if it would be problem for error messages and so on if some
 text does not have corresponding tokens.
 
 So, on this page, we will add a token for whitespace and comments.
@@ -85,42 +85,68 @@ Now that there are ``Comment`` tokens the parser needs to be able to handle them
 So far we don't have any syntax that requires spaces to be significant so we
 need to define the grammar so that it will parse with, or without, spaces.
 This needs to be done in a systematic way, here I have defined the grammar so
-that there is an optional space to the right of every atom or operator:
+that there is an optional space to the right of every atom or operator.
+First we add versions of ``intLiteral`` , ``openParen`` , ``closeParen`` 
+and ``op`` that allow optional spaces/comments to the right of them:
 
 .. code-block:: idris
 
-  partial
-  exprAtom : Rule Integer
-  exprAtom = (intLiteral <* commentSpace)
-           <|> intLiteral <|> (paren expr)
+  intLiteralC : Rule Integer
+  intLiteralC = (intLiteral <* commentSpace) <|> intLiteral
 
-  partial
-  expr1 : Rule Integer
-  expr1 = map multInt exprAtom <*> (
-          (((op "*") <* commentSpace) <|> (op "*"))
-          *> exprAtom)
+  openParenC : Rule Integer
+  openParenC = (openParen <* commentSpace) <|> openParen
 
-  partial
-  exprMult : Rule Integer
-  exprMult = expr1 <|> exprAtom
+  closeParenC : Rule Integer
+  closeParenC = (closeParen <* commentSpace) <|> closeParen
 
-  partial
-  expr2 : Rule Integer
-  expr2 = map addInt exprMult <*> (
-          (((op "+") <* commentSpace) <|> (op "+"))
-          *> exprMult)
+  ||| like op but followed by optional comment or space
+  opC : String -> Rule Integer
+  opC s = ((op s) <* commentSpace) <|> (op s)
 
-  partial
-  exprAdd : Rule Integer
-  exprAdd = expr2 <|> exprMult
+Then we just use these functions instead of the original functions:
 
-  partial
-  expr3 : Rule Integer
-  expr3 = map subInt exprAdd <*> (
-          (((op "-") <* commentSpace) <|> (op "-"))
-          *> expr)
+.. code-block:: idris
 
-  expr = expr3 <|> exprAdd
+  expr : Rule Integer
+
+  factor : Rule Integer
+  factor = intLiteralC <|> do
+                openParenC
+                r <- expr
+                closeParenC
+                pure r
+
+  term : Rule Integer
+  term = map multInt factor <*> (
+          (opC "*")
+          *> factor)
+       <|> factor
+
+  expr = map addInt term <*> (
+          (opC "+")
+          *> term)
+       <|> map subInt term <*> (
+          (opC "-")
+          *> term)
+       <|> term
+
+  calc : String -> Either (ParseError (TokenData ExpressionToken))
+                        (Integer, List (TokenData ExpressionToken))
+  calc s = parse expr (fst (lex expressionTokens s))
+
+  lft : (ParseError (TokenData ExpressionToken)) -> IO ()
+  lft (Error s lst) = putStrLn ("error:"++s)
+
+  rht : (Integer, List (TokenData ExpressionToken)) -> IO ()
+  rht i = putStrLn ("right " ++ (show i))
+
+  main : IO ()
+  main = do
+    putStr "alg>"
+    x <- getLine
+    either lft rht (calc x) -- eliminator for Either
+
 
 Defining Block Structure using Indents
 --------------------------------------
