@@ -23,14 +23,40 @@ choose : (b : Bool) -> Either (So b) (So (not b))
 choose True  = Left Oh
 choose False = Right Oh
 
+--------------------------------------------------------------------------------
+-- Absurd- and negation-related properties
+--------------------------------------------------------------------------------
+
 ||| Absurd when you have proof that both `b` and `not b` is true.
 export
 soAbsurd : So b -> So (not b) -> Void
-soAbsurd sb snb with (sb)
-  | Oh = uninhabited snb
+soAbsurd Oh = uninhabited
+
+||| Absurd when you have a proof of both `b` and `not b` (with something else).
+export
+soConjAbsurd : So b -> So (not b && c) -> Void
+soConjAbsurd Oh = uninhabited
 
 ||| Transmission between usage of value-level `not` and type-level `Not`.
 export
 soNotToNotSo : So (not b) -> Not (So b)
 soNotToNotSo = flip soAbsurd
 
+--------------------------------------------------------------------------------
+--- Operations for `So` of conjunction
+--------------------------------------------------------------------------------
+
+||| Given proofs of two properties you have a proof of a conjunction.
+export
+(&&) : So b -> So c -> So (b && c)
+Oh && Oh = Oh
+
+||| A proof of the right side of a conjunction given a proof of the left side.
+export
+takeSoConjPart : So b -> So (b && c) -> So c
+takeSoConjPart Oh Oh = Oh
+
+||| Splits the proof of a conjunction to a pair of proofs for each part.
+export
+splitSoConj : So (b && c) -> (So b, So c)
+splitSoConj {b=True} Oh = (Oh, Oh)
