@@ -1158,16 +1158,6 @@ void idris_disableBuffering(void) {
   setvbuf(stdout, NULL, _IONBF, 0);
 }
 
-#ifndef SEL4
-int idris_usleep(int usec) {
-    struct timespec t;
-    t.tv_sec = usec / 1000000;
-    t.tv_nsec = (usec % 1000000) * 1000;
-
-    return nanosleep(&t, NULL);
-}
-#endif // SEL4
-
 void stackOverflow(void) {
   fprintf(stderr, "Stack overflow");
   exit(-1);
