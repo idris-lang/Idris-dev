@@ -100,7 +100,7 @@ source-repository head
 
 custom-setup
   setup-depends:
-    Cabal >= 1.10 && <2.5,
+    Cabal >= 1.10 && < 3.1,
     base  >= 4 && <5,
     directory,
     filepath,
@@ -280,7 +280,7 @@ Library
                 , blaze-html >= 0.6.1.3 && < 0.10
                 , blaze-markup >= 0.5.2.1 && < 0.9
                 , bytestring < 0.11
-                , cheapskate >= 0.1.1 && < 0.2
+                , cheapskate >= 0.1.1.2 && < 0.2
                 , code-page >= 0.1 && < 0.3
                 , containers >= 0.5 && < 0.7
                 , deepseq < 1.5
@@ -292,7 +292,7 @@ Library
                 , megaparsec >= 7.0.4 && < 8
                 , mtl >= 2.1 && < 2.3
                 , network >= 2.7 && < 2.9
-                , optparse-applicative >= 0.13 && < 0.15
+                , optparse-applicative >= 0.13 && < 0.16
                 , parser-combinators >= 1.0.0
                 , pretty < 1.2
                 , process < 1.7
@@ -300,8 +300,8 @@ Library
                 , safe >= 0.3.9
                 , split < 0.3
                 , terminal-size < 0.4
-                , text >=1.2.1.0 && < 1.3
-                , time >= 1.4 && < 1.9
+                , text >=1.2.1.0 && < 1.4
+                , time >= 1.4 && < 2.0
                 , transformers >= 0.5 && < 0.6
                 , uniplate >=1.6 && < 1.7
                 , unordered-containers < 0.3
@@ -314,6 +314,7 @@ Library
 
   if !impl(ghc >= 8.0)
     Build-Depends: semigroups == 0.18.*
+                , fail == 4.9.0.*
 
   Default-Language: Haskell2010
   ghc-prof-options: -auto-all -caf-all

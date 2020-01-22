@@ -627,7 +627,7 @@ groupCons cs = gc [] cs
         PConst cval -> return $ addConG cval (ps, res) acc
         PSuc n -> return $ addg False CSuc [n] (ps, res) acc
         PReflected fn args -> return $ addg False (CFn fn) args (ps, res) acc
-        pat -> fail $ show pat ++ " is not a constructor or constant (can't happen)"
+        pat -> error $ show pat ++ " is not a constructor or constant (can't happen)"
 
     addg uniq c conargs res []
            = [ConGroup uniq c [(conargs, res)]]

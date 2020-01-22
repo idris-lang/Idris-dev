@@ -70,6 +70,7 @@ import qualified Prelude as S (Semigroup(..))
 import Control.Applicative (Alternative, Applicative(..))
 import qualified Control.Applicative as A (Alternative(..))
 import Control.DeepSeq (($!!))
+import qualified Control.Monad.Fail as Fail
 import Control.Monad.State.Strict
 import Data.Binary hiding (get, put)
 import Data.Char
@@ -324,6 +325,11 @@ bindTC x k = case x of
 instance Monad TC where
     return x = OK x
     x >>= k = bindTC x k
+#if !(MIN_VERSION_base(4,12,0))
+    fail = Fail.fail
+#endif
+
+instance Fail.MonadFail TC where
     fail e = Error (InternalMsg e)
 
 instance MonadPlus TC where

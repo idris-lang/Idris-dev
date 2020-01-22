@@ -36,6 +36,7 @@ import Idris.Core.TT (FC(..))
 import Idris.Output (Message(..))
 
 import Control.Arrow (app)
+import qualified Control.Monad.Fail as Fail
 import Control.Monad.State.Strict (StateT(..), evalStateT)
 import Control.Monad.Writer.Strict (MonadWriter(..), WriterT(..), listen,
                                     runWriterT, tell)
@@ -51,7 +52,7 @@ import qualified Util.Pretty as PP
 type Parser s = StateT s (WriterT FC (P.Parsec Void String))
 
 -- | A constraint for parsing without state
-type Parsing m = (P.MonadParsec Void String m, MonadWriter FC m)
+type Parsing m = (Fail.MonadFail m, P.MonadParsec Void String m, MonadWriter FC m)
 
 -- | Run the Idris parser stack
 runparser :: Parser st res -> st -> String -> String -> Either ParseError res
