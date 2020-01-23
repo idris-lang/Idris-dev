@@ -12,10 +12,12 @@ running example, we may want to make spaces significant in the future. For
 example, we might want to implement function application expressed by
 juxtaposition as in Haskell and Idris like this: ``f x``.
 
-Also, I'm not sure if it would be problem for error messages and so on if some
-text does not have corresponding tokens.
+So, on this page, we will add a token for whitespace and comments. We will
+then consider two ways to process this:
 
-So, on this page, we will add a token for whitespace and comments.
+- Filter all whitespace tokens from the lexer results before passing to
+  the parser.
+- Process the whitespace tokens in the parser.
 
 Whitespace and Comments in Lexer
 --------------------------------
@@ -70,10 +72,31 @@ like this:
   spaces : Lexer
   spaces = some space
 
+If these whitespace tokens are not significant, that is, they can appear
+anywhere and they are optional then we can filter them out before the parser
+gets them like this:
+
+.. code-block:: idris
+
+  processWhitespace : (List (TokenData ExpressionToken), Int, Int, String)
+                  -> (List (TokenData ExpressionToken), Int, Int, String)
+  processWhitespace (x,l,c,s) = ((filter notComment x),l,c,s) where
+      notComment : TokenData ExpressionToken -> Bool
+      notComment t = case tok t of
+                          Comment _ => False
+                          _ => True
+
+  calc : String -> Either (ParseError (TokenData ExpressionToken))
+                        (Integer, List (TokenData ExpressionToken))
+  calc s = parse expr (fst (processWhitespace (lex expressionTokens s)))
+
+
 Whitespace and Comments in Parser
 ---------------------------------
 
-Now that there are ``Comment`` tokens the parser needs to be able to handle them.
+If we sometimes require whitespace to be significant then we can't filter
+them out as above. In this case the ``Comment`` tokens are sent to the parser
+which now needs to be able to handle them.
 
 .. code-block:: idris
 
@@ -86,7 +109,7 @@ So far we don't have any syntax that requires spaces to be significant so we
 need to define the grammar so that it will parse with, or without, spaces.
 This needs to be done in a systematic way, here I have defined the grammar so
 that there is an optional space to the right of every atom or operator.
-First we add versions of ``intLiteral`` , ``openParen`` , ``closeParen`` 
+First add versions of ``intLiteral`` , ``openParen`` , ``closeParen`` 
 and ``op`` that allow optional spaces/comments to the right of them:
 
 .. code-block:: idris
@@ -104,7 +127,7 @@ and ``op`` that allow optional spaces/comments to the right of them:
   opC : String -> Rule Integer
   opC s = ((op s) <* commentSpace) <|> (op s)
 
-Then we just use these functions instead of the original functions:
+Then just use these functions instead of the original functions:
 
 .. code-block:: idris
 
