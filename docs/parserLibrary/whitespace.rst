@@ -190,14 +190,61 @@ We can see how Idris2 does it here
   init : IndentInfo
   init = 0
 
+EndInput Token
+--------------
 
+So far, the parser will return a successful result even if the full input
+is not consumed. To ensure that the top level syntax is fully matched we
+add a ``EndInput`` token to indicate the last token.
 
+``EndInput`` is added to the other tokens like this:
 
+.. code-block:: idris
 
+  data ExpressionToken = Number Integer
+           | Operator String
+           | OParen
+           | CParen
+           | Comment String
+           | EndInput
 
+A rule to consume this token is added:
 
+.. code-block:: idris
 
+  eoi : Rule Integer
+  eoi = terminal (\x => case tok x of
+                           EndInput => Just 0
+                           _ => Nothing)
 
+Instead of using ``expr`` at the top level of the syntax we can now define
+``exprFull`` as shown here. This will make sure that only when ``EndInput``
+is consumed will the parse be successful:
 
+.. code-block:: idris
 
-           
+  exprFull : Rule Integer
+  exprFull = expr <* eoi
+
+The following code makes sure ``EndInput`` is added to the end of the token
+list:
+
+.. code-block:: idris
+
+  processWhitespace : (List (TokenData ExpressionToken), Int, Int, String)
+                  -> (List (TokenData ExpressionToken), Int, Int, String)
+  processWhitespace (x,l,c,s) = ((filter notComment x)++
+                                      [MkToken l c EndInput],l,c,s) where
+      notComment : TokenData ExpressionToken -> Bool
+      notComment t = case tok t of
+                          Comment _ => False
+                          _ => True
+
+All we have to do now is use ``exprFull`` instead of ``expr``:
+
+.. code-block:: idris
+
+  calc : String -> Either (ParseError (TokenData ExpressionToken))
+                        (Integer, List (TokenData ExpressionToken))
+  calc s = parse exprFull (fst (processWhitespace (lex expressionTokens s)))
+
