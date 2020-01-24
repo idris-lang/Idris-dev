@@ -215,36 +215,6 @@ idrisConfigure _ flags pkgdesc local = do
       autogenComponentModulesDir lbi _ = autogenModulesDir lbi
 #endif
 
-idrisPreSDist args flags = do
-  let dir = S.fromFlag (S.sDistDirectory flags)
-  let verb = S.fromFlag (S.sDistVerbosity flags)
-  generateVersionModule verb "src" True
-  generateBuildFlagsModule verb "src" []
-  generateTargetModule verb "src" "./libs"
-  generateToolchainModule verb "src" Nothing
-  preSDist simpleUserHooks args flags
-
-idrisSDist sdist pkgDesc bi hooks flags = do
-  pkgDesc' <- addGitFiles pkgDesc
-  sdist pkgDesc' bi hooks flags
-    where
-      addGitFiles :: PackageDescription -> IO PackageDescription
-      addGitFiles pkgDesc = do
-        files <- gitFiles
-        return $ pkgDesc { extraSrcFiles = extraSrcFiles pkgDesc ++ files}
-      gitFiles :: IO [FilePath]
-      gitFiles = liftM lines (readProcess "git" ["ls-files"] "")
-
-idrisPostSDist args flags desc lbi = do
-  Control.Exception.catch (do let file = "src" </> "Version_idris" Px.<.> "hs"
-                              let targetFile = "src" </> "Target_idris" Px.<.> "hs"
-                              putStrLn $ "Removing generated modules:\n "
-                                        ++ file ++ "\n" ++ targetFile
-                              removeFile file
-                              removeFile targetFile)
-             (\e -> let e' = (e :: SomeException) in return ())
-  postSDist simpleUserHooks args flags desc lbi
-
 #if !(MIN_VERSION_Cabal(2,0,0))
 rewriteFileEx :: Verbosity -> FilePath -> String -> IO ()
 rewriteFileEx _ = rewriteFile
@@ -353,8 +323,5 @@ main = defaultMainWithHooks $ simpleUserHooks
    , postInst = \_ flags pkg local ->
                   idrisInstall (S.fromFlag $ S.installVerbosity flags)
                                NoCopyDest pkg local
-   , preSDist = idrisPreSDist
-   , sDistHook = idrisSDist (sDistHook simpleUserHooks)
-   , postSDist = idrisPostSDist
    , testHook = idrisTestHook
    }
