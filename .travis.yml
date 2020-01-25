@@ -1,5 +1,5 @@
 dist: bionic
-sudo: false
+sudo: required
 
 language: c
 
