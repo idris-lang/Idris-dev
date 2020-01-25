@@ -80,7 +80,7 @@ install:
   # causing cabal's default configuration (jobs: $ncpus)
   # to run into the GHC #9221 bug which can result in longer build-times.
   - $SED -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
-  - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
+  - cabal v1-install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
   - $SED -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
   # check whether current requested install-plan matches cached package-db snapshot
   - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
@@ -93,7 +93,7 @@ install:
       echo "cabal build-cache MISS";
       rm -rf $HOME/.cabsnap;
       mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-      cabal install -f FFI --only-dependencies --enable-tests;
+      cabal v1-install -f FFI --only-dependencies --enable-tests;
     fi
   # snapshot package-db on cache miss
   - if [ ! -d $HOME/.cabsnap ];
@@ -113,19 +113,19 @@ before_script:
 script:
 ###
   - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
-  - cabal configure -f FFI -f CI --enable-tests
+  - cabal v1-configure -f FFI -f CI --enable-tests
   - echo -en 'travis_fold:end:script.configure\\r'
 ###
   - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'
-  - cabal build
+  - cabal v1-build
   - echo -en 'travis_fold:end:script.build\\r'
 ###
   - echo 'Copy...' && echo -en 'travis_fold:start:script.copy\\r'
-  - cabal copy
+  - cabal v1-copy
   - echo -en 'travis_fold:end:script.copy\\r'
 ###
   - echo 'Register...' && echo -en 'travis_fold:start:script.register\\r'
-  - cabal register
+  - cabal v1-register
   - echo -en 'travis_fold:end:script.register\\r'
 ###
   - echo 'Cppcheck...' && echo -en 'travis_fold:start:script.cppcheck\\r'
