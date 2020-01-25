@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-${IDRIS:-idris} $@ --quiet --port none --nocolor delab001.idr < input
-rm -f *.ibc

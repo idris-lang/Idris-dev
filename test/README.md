@@ -113,18 +113,18 @@ and somewhat self-explanatory.
 
 1. Choose the family your test shall belong to and remember its identifier.
 2. Pick the next available integer in the test family. It will be the index.
-3. Say the family's identifier is `foo` and the index is `42`. You should call `./mktest.pl foo042` ; this will create the directory and a simple `run` script.
+3. Say the family's identifier is `foo` and the index is `42`. You should call `./mktest.pl foo042` ; this will create the directory and a simple `run.sh` script.
 4. Modify the `run` script to your liking. If you want to call the idris executable, write `${IDRIS:-idris} $@`.
 5. Add any file you may need in the directory. If they don't end in `.idr`, you should remember them for the next step.
 6. Add your test in `TestData.hs`. Each family has a list of `(Index, CompatCodegen)`.  See the next section for the available values in `CompatCodegen`. In most cases, you should write `( 42, ANY)`.
-7. Generate the `expected` file by doing:
+7. Generate the `expected.out` file by doing:
     ```
     # Using cabal
     cabal test --test-options="--pattern foo042 --accept"
     # Using stack
     stack test --test-arguments="--pattern foo042 --accept"
     ```
-8. Check the content of `expected`. Maybe the test didn't do what you thought it would. Fix and go back to 7 until it's ok.
+8. Check the content of `expected.out`. Maybe the test didn't do what you thought it would. Fix and go back to 7 until it's ok.
 
 ### Specifying compatible backends
 
@@ -146,7 +146,7 @@ Currently, `NONE` has the same effect as `ANY`, but this will change.
 
 ### Updating golden files
 
-To update the `expected` file for every test, do one of the following:
+To update the `expected.out` file for every test, do one of the following:
 
 ```
 # Using make
@@ -157,4 +157,4 @@ cabal test --test-options="--accept"
 stack test --test-arguments="--accept"
 ```
 
-"Accepted" tests are the ones that update the golden file. A test can still fail if the `run` script itself crashes.
+"Accepted" tests are the ones that update the golden file. A test can still fail if the `run.sh` script itself crashes.

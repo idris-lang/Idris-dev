@@ -18,6 +18,7 @@ import Idris.Info (getIdrisVersion)
 import Idris.Options
 import IRTS.CodegenCommon
 
+import qualified Control.Monad.Fail as Fail
 import Control.Monad.Trans (lift)
 import Control.Monad.Trans.Except (throwE)
 import Control.Monad.Trans.Reader (ask)
@@ -264,7 +265,7 @@ parseCodegen :: String -> Codegen
 parseCodegen "bytecode" = Bytecode
 parseCodegen cg         = Via IBCFormat (map toLower cg)
 
-parseLogCats :: Monad m => String -> m [LogCat]
+parseLogCats :: Fail.MonadFail m => String -> m [LogCat]
 parseLogCats s =
     case lastMay (readP_to_S doParse s) of
       Just (xs, _) -> return xs
@@ -290,7 +291,7 @@ parseLogCats s =
       s <- look
       fail $ "Category: " ++ s ++ " is not recognised."
 
-parseConsoleWidth :: Monad m => String -> m ConsoleWidth
+parseConsoleWidth :: Fail.MonadFail m => String -> m ConsoleWidth
 parseConsoleWidth "auto"     = return AutomaticWidth
 parseConsoleWidth "infinite" = return InfinitelyWide
 parseConsoleWidth  s =

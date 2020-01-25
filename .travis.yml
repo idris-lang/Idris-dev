@@ -1,5 +1,4 @@
-dist: trusty
-sudo: false
+dist: xenial
 
 language: c
 
@@ -11,33 +10,25 @@ matrix:
   include:
     - env: CABALVER="2.4" GHCVER="8.6.5" STACKVER="14.15" STYLISH=YES
       addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="2.2" GHCVER="7.10.3" TESTS="test_c"
-      compiler: ": #GHC 7.10.3"
-      addons: {apt: {packages: [cabal-install-2.2,ghc-7.10.3,cppcheck,hscolour], sources: [hvr-ghc]}}
-# Disabled because it's always timing out
-#    - env: CABALVER="1.24" GHCVER="8.0.1" TESTS="test_c"
-#      compiler: ": #GHC 8.0.1"
-#      addons: {apt: {packages: [cabal-install-1.24,ghc-8.0.1,cppcheck,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="2.0" GHCVER="8.2.2" TESTS="lib_doc doc"
+    - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="lib_doc doc"
       compiler: ": #GHC 8.2.2"
-      addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="2.0" GHCVER="8.2.2" TESTS="test_js"
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="test_js"
       compiler: ": #GHC 8.2.2"
-      addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="2.0" GHCVER="8.2.2" TESTS="test_c"
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="test_c"
       compiler: ": #GHC 8.2.2"
-      addons: {apt: {packages: [cabal-install-2.0,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
-#TODO: The idris built with those fails due to libffi dynamic linking version mismatch.
-#      Caused by the GHC backport to Trusty?
-#    - env: CABALVER="2.2" GHCVER="8.4.1" TESTS="lib_doc doc"
-#      compiler: ": #GHC 8.4.1"
-#      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.1,cppcheck,hscolour], sources: [hvr-ghc]}}
-#    - env: CABALVER="2.2" GHCVER="8.4.1" TESTS="test_js"
-#      compiler: ": #GHC 8.4.1"
-#      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.1,cppcheck,hscolour], sources: [hvr-ghc]}}
-#    - env: CABALVER="2.2" GHCVER="8.4.1" TESTS="test_c"
-#      compiler: ": #GHC 8.4.1"
-#      addons: {apt: {packages: [cabal-install-2.2,ghc-8.4.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
+
+#    - env: CABALVER="3.0" GHCVER="8.8.1" TESTS="lib_doc doc"
+#      compiler: ": #GHC 8.8.1"
+#      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+#   - env: CABALVER="3.0" GHCVER="8.8.1" TESTS="test_js"
+#      compiler: ": #GHC 8.8.1"
+#      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+#    - env: CABALVER="3.0" GHCVER="8.8.1" TESTS="test_c"
+#      compiler: ": #GHC 8.8.1"
+#      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.1,cppcheck,hscolour], sources: [hvr-ghc]}}
   fast-finish: true
 
 cache:
@@ -88,7 +79,7 @@ install:
   # causing cabal's default configuration (jobs: $ncpus)
   # to run into the GHC #9221 bug which can result in longer build-times.
   - $SED -i -r 's/(^jobs:).*/\1 2/' $HOME/.cabal/config
-  - cabal install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
+  - cabal v1-install -f FFI --only-dependencies --enable-tests --dry -v > installplan.txt
   - $SED -i -e '1,/^Resolving /d' installplan.txt; cat installplan.txt
   # check whether current requested install-plan matches cached package-db snapshot
   - if diff -u installplan.txt $HOME/.cabsnap/installplan.txt;
@@ -101,7 +92,7 @@ install:
       echo "cabal build-cache MISS";
       rm -rf $HOME/.cabsnap;
       mkdir -p $HOME/.ghc $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin;
-      cabal install -f FFI --only-dependencies --enable-tests;
+      cabal v1-install -f FFI --only-dependencies --enable-tests;
     fi
   # snapshot package-db on cache miss
   - if [ ! -d $HOME/.cabsnap ];
@@ -114,26 +105,26 @@ install:
 
 before_script:
   - ORIGINAL_DIR=$(pwd)
-  - cabal sdist
+  - cabal v1-sdist
   - cd ..
   - tar -xf ${ORIGINAL_DIR}/dist/${PKGNAME}*.tar.gz
   - cd ${PKGNAME}*
 script:
 ###
   - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
-  - cabal configure -f FFI -f CI --enable-tests
+  - cabal v1-configure -f FFI -f CI --enable-tests
   - echo -en 'travis_fold:end:script.configure\\r'
 ###
   - echo 'Build...' && echo -en 'travis_fold:start:script.build\\r'
-  - cabal build
+  - cabal v1-build
   - echo -en 'travis_fold:end:script.build\\r'
 ###
   - echo 'Copy...' && echo -en 'travis_fold:start:script.copy\\r'
-  - cabal copy
+  - cabal v1-copy
   - echo -en 'travis_fold:end:script.copy\\r'
 ###
   - echo 'Register...' && echo -en 'travis_fold:start:script.register\\r'
-  - cabal register
+  - cabal v1-register
   - echo -en 'travis_fold:end:script.register\\r'
 ###
   - echo 'Cppcheck...' && echo -en 'travis_fold:start:script.cppcheck\\r'

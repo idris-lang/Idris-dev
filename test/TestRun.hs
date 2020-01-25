@@ -62,7 +62,7 @@ ingredients = defaultIngredients ++
 test :: String -> String -> IO () -> TestTree
 test testName path = goldenVsFileDiff testName diff ref output
   where
-    ref = path </> "expected"
+    ref = path </> "expected.out"
     output = path </> "output"
     diff ref new | os == "openbsd" = ["diff", "-u", new, ref]
                  | otherwise = ["diff", "--strip-trailing-cr", "-u", new, ref]
@@ -92,7 +92,7 @@ mkGoldenTests testFamilies flags =
 -- this thing.
 runTest :: String -> Flags -> IO ()
 runTest path flags = do
-  let run = (proc "bash" ("run" : flags)) {cwd = Just path}
+  let run = (proc "bash" ("run.sh" : flags)) {cwd = Just path}
   (_, output, error_out) <- readCreateProcessWithExitCode run ""
   writeFile (path </> "output") (normalise output)
   when (error_out /= "") $ hPutStrLn stderr ("\nError: " ++ path ++ "\n" ++ error_out)

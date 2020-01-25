@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-${IDRIS:-idris} $@ --quiet --port none reg075.idr < input
-rm -f *.ibc

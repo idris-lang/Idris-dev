@@ -30,15 +30,15 @@ stylize:
 	./stylize.sh
 
 test_c:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CABAL) v1-test $(ARGS) --test-options \
 		"$(TEST-ARGS) --rerun-update +RTS -N$(TEST-JOBS) -RTS"
 
 test_js:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CABAL) v1-test $(ARGS) --test-options \
 		"$(TEST-ARGS) --node --rerun-update +RTS -N$(TEST-JOBS) -RTS"
 
 test_update:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CABAL) v1-test $(ARGS) --test-options \
 		"$(TEST-ARGS) --accept +RTS -N$(TEST-JOBS) -RTS"
 
 test_clean:
@@ -56,7 +56,7 @@ linecount:
 
 #Note: this doesn't yet link to Hackage properly
 doc: dist/setup-config
-	$(CABAL) haddock --hyperlink-source --html --hoogle --html-location="https://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
+	$(CABAL) v1-haddock --hyperlink-source --html --hoogle --html-location="https://hackage.haskell.org/packages/archive/\$$pkg/latest/doc/html" --haddock-options="--title Idris"
 
 lib_doc:
 	$(MAKE) -C libs IDRIS=../../dist/build/idris/idris doc
