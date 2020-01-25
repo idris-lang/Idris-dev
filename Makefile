@@ -30,15 +30,15 @@ stylize:
 	./stylize.sh
 
 test_c:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CABAL) v1-test $(ARGS) --test-options \
 		"$(TEST-ARGS) --rerun-update +RTS -N$(TEST-JOBS) -RTS"
 
 test_js:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CABAL) v1-test $(ARGS) --test-options \
 		"$(TEST-ARGS) --node --rerun-update +RTS -N$(TEST-JOBS) -RTS"
 
 test_update:
-	$(CABAL) test $(ARGS) --test-options \
+	$(CABAL) v1-test $(ARGS) --test-options \
 		"$(TEST-ARGS) --accept +RTS -N$(TEST-JOBS) -RTS"
 
 test_clean:

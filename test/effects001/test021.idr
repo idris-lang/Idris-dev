@@ -31,7 +31,7 @@ readFileCount = readAcc []
 
 testFile : TestFileIO () ()
 testFile = do
-    Success <- open "testFile" Read
+    Success <- open "testFile.in" Read
              | (FError err) => do
                  putStrLn "Error!"
                  pure ()

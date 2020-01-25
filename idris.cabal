@@ -116,6 +116,9 @@ Extra-source-files:
                       test/**/*.c
                       test/**/*.h
                       test/**/*.in
+                      test/**/*.txt
+                      test/**/*.js
+                      test/base001/Makefile
                       test/ffi004/theOtherType
                       test/ffi004/theType
                       test/scripts/timeout

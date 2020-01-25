@@ -40,7 +40,7 @@ readFileCount fh cnt =
 
 testFile : (ConsoleIO m, File m) => ST m () []
 testFile = with ST do
-              Right fileHandle <- open "testFile" Read 
+              Right fileHandle <- open "testFile.in" Read
                     | Left ferr => do putStrLn (show ferr)
                                       pure ()
               count <- new 0
