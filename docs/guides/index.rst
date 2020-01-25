@@ -12,7 +12,7 @@ Tutorials submitted by community members.
    Idris Community* has waived all copyright and related or neighboring
    rights to Documentation for Idris.
 
-   More information concerning the CC0 can be found online at: http://creativecommons.org/publicdomain/zero/1.0/
+   More information concerning the CC0 can be found online at: https://creativecommons.org/publicdomain/zero/1.0/
 
 
 .. toctree::

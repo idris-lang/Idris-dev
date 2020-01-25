@@ -3,7 +3,7 @@ import Data.Vect
 
 {- Toy program that outputs the n first digits of Pi.
 
-   Inspired from http://www.haskell.org/haskellwiki/Shootout/Pidigits.
+   Inspired from https://www.haskell.org/haskellwiki/Shootout/Pidigits.
    The original ns and str lazy lists have been replaced by strict functions.
 
    Memory usage seems to be excessive. One of the branches of str is tail recursive, and

@@ -196,16 +196,16 @@ syntax rule, we can even go as far as:
        Aspects of Declarative Languages (PADL'12), Claudio Russo and
        Neng-Fa Zhou (Eds.). Springer-Verlag, Berlin, Heidelberg,
        242-257. DOI=10.1007/978-3-642-27694-1_18
-       http://dx.doi.org/10.1007/978-3-642-27694-1_18
+       https://dx.doi.org/10.1007/978-3-642-27694-1_18
 
 .. [2] Edwin C. Brady. 2011. IDRIS ---: systems programming meets full
        dependent types. In Proceedings of the 5th ACM workshop on
        Programming languages meets program verification (PLPV
        '11). ACM, New York, NY, USA,
        43-54. DOI=10.1145/1929529.1929536
-       http://doi.acm.org/10.1145/1929529.1929536
+       https://doi.acm.org/10.1145/1929529.1929536
 
 .. [3] Edwin Brady and Kevin Hammond. 2010. Correct-by-Construction
        Concurrency: Using Dependent Types to Verify Implementations of
        Effectful Resource Usage Protocols. Fundam. Inf. 102, 2 (April
-       2010), 145-176. http://dl.acm.org/citation.cfm?id=1883636
+       2010), 145-176. https://dl.acm.org/citation.cfm?id=1883636

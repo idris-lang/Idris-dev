@@ -3,13 +3,12 @@ Language Extensions
 *******************
 
 
-
 Type Providers
 ===============
 
 Idris type providers are a way to get the type system to reflect
 observations about the world outside of Idris. Similarly to `F# type
-providers <http://msdn.microsoft.com/en-us/library/vstudio/hh156509.aspx>`__,
+providers <https://msdn.microsoft.com/en-us/library/vstudio/hh156509.aspx>`__,
 they cause effectful computations to run during type checking, returning
 information that the type checker can use when checking the rest of the
 program. While F# type providers are based on code generation, Idris
@@ -32,5 +31,11 @@ to the user.
 Example Idris type providers can be seen at `this
 repository <https://github.com/david-christiansen/idris-type-providers>`__.
 More detailed descriptions are available in David Christiansen's `WGP
-'13 paper <http://dx.doi.org/10.1145/2502488.2502495>`__ and `M.Sc.
+'13 paper <https://dx.doi.org/10.1145/2502488.2502495>`__ and `M.Sc.
 thesis <http://itu.dk/people/drc/david-christiansen-thesis.pdf>`__.
+
+Elaborator Reflection
+=====================
+
+Another way to extend the language is elaborator reflection which is described
+in the :ref:`elaborator-index` section.

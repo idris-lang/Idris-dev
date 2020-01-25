@@ -254,7 +254,7 @@ Benchmarks
 ==========
 
 -  source: https://github.com/ziman/idris-benchmarks
--  results: http://ziman.functor.sk/erasure-bm/
+-  results: https://ziman.functor.sk/erasure-bm/
 
 It can be clearly seen that asymptotics are improved by erasure.
 
@@ -499,4 +499,4 @@ References
 
 .. [BMM04] Edwin Brady, Conor McBride, James McKinna: `Inductive
            families need not store their indices
-           <http://citeseerx.ist.psu.edu/viewdoc/summary;jsessionid=1F796FCF0F2C4C535FC70F62BE2FB821?doi=10.1.1.62.3849>`__
+           <https://citeseerx.ist.psu.edu/viewdoc/summary;jsessionid=1F796FCF0F2C4C535FC70F62BE2FB821?doi=10.1.1.62.3849>`__

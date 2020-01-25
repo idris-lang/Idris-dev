@@ -17,7 +17,7 @@ If you use `Idris` in your work we would prefer it if you would use the followin
   pages = {552--593},
   numpages = {42},
   doi = {10.1017/S095679681300018X},
-  URL = {http://journals.cambridge.org/article_S095679681300018X},
+  URL = {https://journals.cambridge.org/article_S095679681300018X},
 }
 ```
 

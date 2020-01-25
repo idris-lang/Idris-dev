@@ -80,7 +80,7 @@ foreign_prim f fname (FFun arg sc) env
 ||| Idris compiler backend in use. For the default C backend, see the
 ||| documentation for `FFI_C`.
 |||
-||| For more details, please consult [the Idris documentation](http://docs.idris-lang.org/en/latest/reference/ffi.html).
+||| For more details, please consult [the Idris documentation](https://idris.readthedocs.io/en/latest/reference/ffi.html).
 |||
 ||| @ f     an FFI descriptor, which is specific to the compiler backend.
 ||| @ fname the name of the foreign function

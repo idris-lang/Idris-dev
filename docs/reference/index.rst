@@ -14,7 +14,7 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    Idris Community* has waived all copyright and related or neighboring
    rights to Documentation for Idris.
 
-   More information concerning the CC0 can be found online at: http://creativecommons.org/publicdomain/zero/1.0/
+   More information concerning the CC0 can be found online at: https://creativecommons.org/publicdomain/zero/1.0/
 
 
 .. toctree::
@@ -36,7 +36,6 @@ This will tell you how Idris works, for using it you should read the Idris Tutor
    internals
    language-features
    language-extensions
-   elaborator-reflection
    type-directed-search
    partial-evaluation
    misc

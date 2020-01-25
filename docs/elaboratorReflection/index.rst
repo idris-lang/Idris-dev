@@ -1,8 +1,8 @@
-.. _proofs-index:
+.. _elaborator-index:
 
-###############
-Theorem Proving
-###############
+#####################
+Elaborator Reflection
+#####################
 
 A tutorial on theorem proving in Idris.
 
@@ -13,16 +13,15 @@ A tutorial on theorem proving in Idris.
    Idris Community* has waived all copyright and related or neighboring
    rights to Documentation for Idris.
 
-   More information concerning the CC0 can be found online at: https://creativecommons.org/publicdomain/zero/1.0/
+   More information concerning the CC0 can be found online at: http://creativecommons.org/publicdomain/zero/1.0/
 
 .. toctree::
    :maxdepth: 1
 
-   definitional
-   pluscomm
-   inductive
-   patterns
-   propositional
-   interactive
-   interactiveOld
-
+   elaborator-reflection
+   elabReflection
+   tactics
+   holes
+   example1
+   primitive
+   generatingData

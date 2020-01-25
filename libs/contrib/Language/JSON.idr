@@ -1,4 +1,4 @@
-||| The JSON language, as described at http://json.org/
+||| The JSON language, as described at https://json.org/
 module Language.JSON
 
 import Language.JSON.Lexer

@@ -560,7 +560,7 @@ But what about the type of ``Type``? If we ask Idris it reports:
     Type : Type 1
 
 If ``Type`` were its own type, it would lead to an inconsistency due to
-`Girard’s paradox <http://www.cs.cmu.edu/afs/cs.cmu.edu/user/kw/www/scans/girard72thesis.pdf>`_,
+`Girard’s paradox <https://www.cs.cmu.edu/afs/cs.cmu.edu/user/kw/www/scans/girard72thesis.pdf>`_,
 so internally there is a *hierarchy* of types (or *universes*):
 
 .. code-block:: idris

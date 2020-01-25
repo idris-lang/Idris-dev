@@ -129,7 +129,7 @@ On running , two global names are created, ``plusredZ_Z`` and
 
     .  /  _/___/ /____(_)____
        / // __  / ___/ / ___/     Version 1.2.0
-     _/ // /_/ / /  / (__  )      http://www.idris-lang.org/
+     _/ // /_/ / /  / (__  )      https://www.idris-lang.org/
     /___/\__,_/_/  /_/____/       Type :? for help
 
     Idris is free software with ABSOLUTELY NO WARRANTY.
