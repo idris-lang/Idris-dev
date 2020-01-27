@@ -36,10 +36,10 @@ issue the following command:
     $ idris --codegen javascript hello.idr -o hello.js
 
 
-Idris can produce very big chunks of JavaScript code (hello world
-weighs in at 1500 lines). However, the generated code can be minified
-using the `closure-compiler
-<https://developers.google.com/closure/compiler/>`__ from Google.
+Idris can produce big chunks of JavaScript code (hello world weighs in at about
+60 lines). However, the generated code can be minified using the
+`closure-compiler <https://developers.google.com/closure/compiler/>`__ from
+Google.
 
 ::
 
