@@ -19,6 +19,8 @@ matrix:
     - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="test_c"
       compiler: ": #GHC 8.2.2"
       addons: {apt: {packages: [cabal-install-2.4,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="3.0" GHCVER="8.8.2" IDRIS2=YES
+      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2], sources: [hvr-ghc]}}
 
 #    - env: CABALVER="3.0" GHCVER="8.8.1" TESTS="lib_doc doc"
 #      compiler: ": #GHC 8.8.1"
@@ -47,7 +49,7 @@ before_install:
   - unset CC
   - if [[ $TRAVIS_OS_NAME == 'linux' ]];
     then
-        export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$PATH;
+        export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$HOME/.cabal/bin:$HOME/opt/scheme/bin/:$PATH;
         export SED=sed;
         export ZCAT=zcat;
     fi
@@ -62,6 +64,21 @@ before_install:
         export PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig:$PKG_CONFIG_PATH;
     fi
   - if [ -n "$STYLISH" ]; then ./stylize.sh; exit $?; fi
+  - if [ -n "$IDRIS2" ];
+    then
+      git clone https://github.com/edwinb/Idris2 &&
+      wget https://github.com/cisco/ChezScheme/archive/v9.5.2.tar.gz &&
+      tar xvzf v9.5.2.tar.gz &&
+      cd ChezScheme-9.5.2 &&
+      ./configure --threads --installprefix=$HOME/opt/scheme &&
+      make -j install &&
+      cd .. &&
+      cabal v1-update &&
+      travis_wait cabal v1-install &&
+      cd Idris2 &&
+      make idris2 && make base && make contrib;
+      exit $?;
+    fi
 
 install:
   - which cabal
@@ -102,6 +119,7 @@ install:
       cp -a $HOME/.ghc $HOME/.cabsnap/ghc;
       cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
     fi
+  
 
 before_script:
   - ORIGINAL_DIR=$(pwd)
