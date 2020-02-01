@@ -507,10 +507,6 @@ const char *idris_getArg(int i);
 // disable stdin/stdout buffering
 void idris_disableBuffering(void);
 
-#ifndef SEL4
-int idris_usleep(int usec);
-#endif // SEL4
-
 // Handle stack overflow.
 // Just reports an error and exits.
 
