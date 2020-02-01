@@ -10,13 +10,16 @@ module:
 
  lex : TokenMap a -> String -> (List (TokenData a), (Int, Int, String))
 
-This function takes a String and returns a list of tokens. With the tokens we
-have indexes back to the original string which can be used in error messages:
+.. list-table::
 
-.. image:: ../image/tokenise.png
-   :width: 330px
-   :height: 73px
-   :alt: diagram illustrating these stages of lexer
+  * - This function takes a String and returns a list of tokens. With the
+      tokens we have indexes back to the original string which can be used
+      in error messages:
+
+    - .. image:: ../image/tokenise.png
+         :width: 330px
+         :height: 73px
+         :alt: diagram illustrating these stages of lexer
 
 TokenMap
 --------
@@ -34,21 +37,24 @@ this information:
   (Lexer, String -> tokenType)
 
 So for each Lexer in the list, if a substring in the input matches, run
-the associated function to produce a token of type `tokenType`
+the associated function to produce a token of type ``tokenType``
 
-from Text.Lexer.Core:
+.. list-table::
 
-.. code-block:: idris
+  * - from Text.Lexer.Core
+      : https://github.com/idris-lang/Idris-dev/blob/master/libs/contrib/Text/Lexer/Core.idr
 
-  TokenMap : (tokenType : Type) -> Type
-  TokenMap tokenType = List (Lexer, String -> tokenType)
+    - .. code-block:: idris
 
-We can create a tokenMap by using a function like this:
+        TokenMap : (tokenType : Type) -> Type
+        TokenMap tokenType = List (Lexer, String -> tokenType)
 
-.. code-block:: idris
+  * - We can create a tokenMap by using a function like this:
 
-  myTokenMap : TokenMap Token
-  myTokenMap = [(is 'a',CharLit)]
+    - .. code-block:: idris
+
+        myTokenMap : TokenMap Token
+        myTokenMap = [(is 'a',CharLit)]
 
 Once we have a TokenMap we can use it to lex many strings.
 
@@ -74,7 +80,7 @@ combined, for example,
 
 .. list-table::
 
-  * - <+> means sequence two recognisers. If either consumes a character,
+  * - ``<+>`` means sequence two recognisers. If either consumes a character,
       the sequence is guaranteed to consume a character.
 
     -  .. code-block:: idris
@@ -83,7 +89,7 @@ combined, for example,
          SeqEat (Pred (\ARG => intToBool (prim__eqChar ARG 'a')))
                (Delay (is 'b')) : Recognise True
 
-  * - <|> means if both consume, the combination is guaranteed
+  * - ``<|>`` means if both consume, the combination is guaranteed
       to consumer a character:
 
     - .. code-block:: idris
@@ -161,7 +167,7 @@ able to parse simple arithmetic expressions, like this:
 so we need:
 
 - Numbers (for now integer literals are good enough).
-- Some operators (for now '+', '-' and '*' will do.
+- Some operators (for now ``+``, ``-`` and ``*`` will do.
 - Opening and closing Parentheses.
 
 We can define these, as tokens, like this:
@@ -178,7 +184,7 @@ We can define these, as tokens, like this:
            | EndInput
 
 It may help with debugging and to implement error messages to
-implement 'show' for these tokens:
+implement ``show`` for these tokens:
 
 .. code-block:: idris
 
