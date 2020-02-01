@@ -44,3 +44,6 @@ where some interesting projects are being hosted.
 
 For those interested in contributing to Idris directly we kindly ask that
 prospective developers please consult the [Contributing Guide](CONTRIBUTING.md) first.
+
+[Idris 2](https://github.com/edwinb/Idris2) is an early preview of the next generation
+of Idris, implemented in Idris.
