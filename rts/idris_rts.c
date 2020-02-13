@@ -76,14 +76,16 @@ VM* init_vm(int stack_size, size_t heap_size,
     pthread_mutex_init(&(vm->inbox_block), NULL);
     pthread_mutex_init(&(vm->alloc_lock), &rec_attr);
     pthread_cond_init(&(vm->inbox_waiting), NULL);
-
-    vm->max_threads = max_threads;
-    vm->processes = 0;
-    vm->creator = NULL;
-
 #else
     global_vm = vm;
 #endif
+
+#ifdef IS_THREADED
+    vm->max_threads = max_threads;
+    vm->processes = 0;
+    vm->creator = NULL;
+#endif // IS_THREADED
+
     STATS_LEAVE_INIT(vm->stats)
     return vm;
 }
@@ -800,7 +802,7 @@ VAL idris_systemInfo(VM* vm, VAL index) {
     return MKSTR(vm, "");
 }
 
-#ifdef HAS_PTHREAD
+#ifdef IS_THREADED
 typedef struct {
     VM* vm; // thread's VM
     func fn;
@@ -928,7 +930,9 @@ VAL copyTo(VM* vm, VAL x) {
     VAL ret = doCopyTo(vm, x);
     return ret;
 }
+#endif // IS_THREADED
 
+#ifdef HAS_PTHREAD
 // Add a message to another VM's message queue
 int idris_sendMessage(VM* sender, int channel_id, VM* dest, VAL msg) {
     // FIXME: If GC kicks in in the middle of the copy, we're in trouble.
@@ -1113,7 +1117,6 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     }
     return ret;
 }
-#endif
 
 VAL idris_getMsg(Msg* msg) {
     return msg->msg;
@@ -1130,6 +1133,7 @@ int idris_getChannel(Msg* msg) {
 void idris_freeMsg(Msg* msg) {
     free(msg);
 }
+#endif // HAS_PTHREAD
 
 int idris_errno(void) {
     return errno;

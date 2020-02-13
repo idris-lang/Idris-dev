@@ -153,11 +153,14 @@ struct VM {
     Msg* inbox_end; // End of block of memory
     int inbox_nextid; // Next channel id
     Msg* inbox_write; // Location of next message to write
+#endif
 
+#ifdef IS_THREADED
     int processes; // Number of child processes
     int max_threads; // maximum number of threads to run in parallel
     struct VM* creator; // The VM that created this VM, NULL for root VM
-#endif
+#endif // IS_THREADED
+
     Stats stats;
 
     VAL ret;
