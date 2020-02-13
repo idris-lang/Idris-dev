@@ -1,11 +1,18 @@
+#ifndef BARE_METAL
 #include <assert.h>
+#else
+#include "idris_bare_metal.h"
+#endif // BARE_METAL
 #include <errno.h>
+#include <stdio.h>  // sprintf
 
 #include "idris_rts.h"
 #include "idris_gc.h"
 #include "idris_utf8.h"
 #include "idris_bitstring.h"
+#ifndef BARE_METAL
 #include "getline.h"
+#endif // BARE_METAL
 
 #define STATIC_ASSERT(COND,MSG) typedef char static_assertion_##MSG[(COND)?1:-1]
 
@@ -589,6 +596,7 @@ VAL idris_strlen(VM* vm, VAL l) {
     return MKINT((i_int)(idris_utf8_strlen(GETSTR(l))));
 }
 
+#ifndef BARE_METAL
 VAL idris_readStr(VM* vm, FILE* h) {
     VAL ret;
     char *buffer = NULL;
@@ -619,6 +627,7 @@ VAL idris_readChars(VM* vm, int num, FILE* h) {
     free(buffer);
     return ret;
 }
+#endif // BARE_METAL
 
 void idris_crash(char* msg) {
     fprintf(stderr, "%s\n", msg);

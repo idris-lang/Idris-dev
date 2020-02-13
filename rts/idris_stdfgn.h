@@ -55,7 +55,9 @@ char* getEnvPair(int i);
 VAL idris_time();
 VAL idris_clock(VM* vm);
 #ifndef SEL4
+#ifndef BARE_METAL
 int idris_usleep(int usec);
+#endif // BARE_METAL
 #endif // SEL4
 
 void idris_forceGC();

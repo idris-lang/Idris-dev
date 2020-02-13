@@ -229,6 +229,7 @@ VAL idris_clock(VM* vm) {
 }
 
 #ifndef SEL4
+#ifndef BARE_METAL
 int idris_usleep(int usec) {
     struct timespec t;
     t.tv_sec = usec / 1000000;
@@ -236,6 +237,7 @@ int idris_usleep(int usec) {
 
     return nanosleep(&t, NULL);
 }
+#endif // BARE_METAL
 #endif // SEL4
 
 VAL idris_mkFileError(VM* vm) {

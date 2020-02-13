@@ -1,9 +1,13 @@
 #ifndef _IDRISRTS_H
 #define _IDRISRTS_H
 
-#include <assert.h>
 #include <stdlib.h>
+#ifndef BARE_METAL
+#include <assert.h>
 #include <stdio.h>
+#else
+#include "idris_bare_metal.h"
+#endif
 #include <string.h>
 #ifdef HAS_PTHREAD
 #include <stdarg.h>
@@ -284,7 +288,7 @@ typedef intptr_t i_int;
 
 #define INITFRAME TRACE\
                   __attribute__((unused)) VAL* myoldbase;\
-                  void* callres
+                  __attribute__((unused)) void* callres
 
 #define REBASE vm->valstack_base = oldbase; return NULL
 #define RESERVE(x) do { \
@@ -464,10 +468,12 @@ VAL idris_concat(VM* vm, VAL l, VAL r);
 VAL idris_strlt(VM* vm, VAL l, VAL r);
 VAL idris_streq(VM* vm, VAL l, VAL r);
 VAL idris_strlen(VM* vm, VAL l);
+#ifndef BARE_METAL
 // Read a line from a file
 VAL idris_readStr(VM* vm, FILE* h);
 // Read up to 'num' characters from a file
 VAL idris_readChars(VM* vm, int num, FILE* h);
+#endif
 
 VAL idris_strHead(VM* vm, VAL str);
 VAL idris_strShift(VM* vm, VAL str, int num);
