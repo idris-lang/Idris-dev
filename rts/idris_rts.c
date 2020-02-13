@@ -76,6 +76,8 @@ VM* init_vm(int stack_size, size_t heap_size,
     pthread_mutex_init(&(vm->inbox_block), NULL);
     pthread_mutex_init(&(vm->alloc_lock), &rec_attr);
     pthread_cond_init(&(vm->inbox_waiting), NULL);
+#elif defined(HAS_FREERTOS)
+    vm->xTaskHandle = NULL;
 #else
     global_vm = vm;
 #endif
@@ -104,6 +106,8 @@ VM* idris_vm(void) {
 VM* get_vm(void) {
 #ifdef HAS_PTHREAD
     return pthread_getspecific(vm_key);
+#elif defined(HAS_FREERTOS)
+    return pvTaskGetThreadLocalStoragePointer(NULL, 0);
 #else
     return global_vm;
 #endif
@@ -129,6 +133,8 @@ void init_threadkeys(void) {
 void init_threaddata(VM *vm) {
 #ifdef HAS_PTHREAD
     pthread_setspecific(vm_key, vm);
+#elif defined(HAS_FREERTOS)
+    vTaskSetThreadLocalStoragePointer(NULL, 0, vm);
 #endif
 }
 
@@ -153,6 +159,9 @@ Stats terminate(VM* vm) {
     if (vm->creator != NULL) {
         vm->creator->processes--;
     }
+#endif
+#ifdef HAS_FREERTOS
+    free(vm);
 #endif
     // free(vm);
     // Set the VM as inactive, so that if any message gets sent to it
@@ -809,6 +818,7 @@ typedef struct {
     VAL arg;
 } ThreadData;
 
+#ifdef HAS_PTHREAD
 void* runThread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
     VM* vm = td->vm;
@@ -859,9 +869,59 @@ void* vmThread(VM* callvm, func f, VAL arg) {
     }
 }
 
-void* idris_stopThread(VM* vm) {
+#elif defined(HAS_FREERTOS)
+void runThread(void* arg) {
+    ThreadData* td = (ThreadData*)arg;
+    VM* vm = td->vm;
+    func fn = td->fn;
+
+    init_threaddata(vm);
+
+    TOP(0) = td->arg;
+    BASETOP(0);
+    ADDTOP(1);
+    free(td);
+    fn(vm, NULL);
+
+    //    Stats stats =
     terminate(vm);
+    //    aggregate_stats(&(td->vm->stats), &stats);
+}
+
+void* vmThread(VM* callvm, func f, VAL arg) {
+    VM* vm = init_vm(
+        callvm->stack_max - callvm->valstack,
+        callvm->heap.size,
+        callvm->max_threads);
+    vm->processes=1; // since it can send and receive messages
+    vm->creator = callvm;
+
+    ThreadData *td = malloc(sizeof(ThreadData)); // free'd in runThread
+    td->vm = vm;
+    td->fn = f;
+    td->arg = copyTo(vm, arg);
+
+    callvm->processes++;
+
+    TaskHandle_t pxCreatedTask;
+    int ok = xTaskCreate(runThread, "non-root", 2000, td, 0, &pxCreatedTask);
+    if (ok == pdPASS) {
+	vm->xTaskHandle = pxCreatedTask;
+        return vm;
+    } else {
+        terminate(vm);
+        return NULL;
+    }
+}
+#endif
+
+void* idris_stopThread(VM* vm) {
+#ifdef HAS_PTHREAD
     pthread_exit(NULL);
+#elif defined(HAS_FREERTOS)
+    vTaskDelete(vm->xTaskHandle);
+#endif
+    terminate(vm);
     return NULL;
 }
 
@@ -1134,6 +1194,18 @@ void idris_freeMsg(Msg* msg) {
     free(msg);
 }
 #endif // HAS_PTHREAD
+
+#ifdef HAS_FREERTOS
+void idris_queuePut(QueueHandle_t xQueue, VAL msg) {
+    BaseType_t dummy = xQueueSend(xQueue, (void*)&msg, portMAX_DELAY);
+}
+
+VAL idris_queueGet(VM* vm, QueueHandle_t xQueue) {
+    VAL msg = NULL;
+    BaseType_t dummy = xQueueReceive(xQueue, (void*)&msg, portMAX_DELAY);
+    return doCopyTo(vm, msg);
+}
+#endif // HAS_FREERTOS
 
 int idris_errno(void) {
     return errno;
