@@ -1207,6 +1207,10 @@ VAL idris_queueGet(VM* vm, QueueHandle_t xQueue) {
 }
 #endif // HAS_FREERTOS
 
+int isNull(void* ptr) {
+    return ptr==NULL;
+}
+
 int idris_errno(void) {
     return errno;
 }

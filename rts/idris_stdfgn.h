@@ -47,7 +47,6 @@ VAL idris_getString(VM* vm, void* buffer);
 void* do_popen(const char* cmd, const char* mode);
 int fpoll(void* h);
 
-int isNull(void* ptr);
 void* idris_stdin();
 
 char* getEnvPair(int i);

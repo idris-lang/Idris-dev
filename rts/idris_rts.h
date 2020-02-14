@@ -405,6 +405,8 @@ static inline Array * allocArrayF(VM * vm, size_t len, int outer) {
 
 #define allocArray(cl, vm, len, o) (cl) = (VAL)allocArrayF(vm, len, o)
 
+int isNull(void* ptr);
+
 int idris_errno(void);
 char* idris_showerror(int err);
 

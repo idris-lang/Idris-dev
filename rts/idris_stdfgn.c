@@ -191,10 +191,6 @@ void *do_popen(const char *cmd, const char *mode) {
     return f;
 }
 
-int isNull(void* ptr) {
-    return ptr==NULL;
-}
-
 void* idris_stdin() {
     return (void*)stdin;
 }
