@@ -4,8 +4,9 @@
 #include "idris_bare_metal.h"
 #endif // BARE_METAL
 #include <errno.h>
-#include <stdio.h>  // sprintf
 
+#include "itoa.h"
+#include "ftoa.h"
 #include "idris_rts.h"
 #include "idris_gc.h"
 #include "idris_utf8.h"
@@ -527,7 +528,14 @@ void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i
 VAL idris_castIntStr(VM* vm, VAL i) {
     int x = (int) GETINT(i);
     String * cl = allocStr(vm, 16, 0);
-    cl->slen = sprintf(cl->str, "%d", x);
+    if (sizeof(int) == sizeof(int32_t)) {
+        cl->slen = itoa_int32(cl->str, x);
+    } else if (sizeof(int) == sizeof(int64_t)) {
+        cl->slen = itoa_int64(cl->str, x);
+    } else {
+        assert(0); // Should not happen
+    }
+    cl->str[cl->slen] = '\n';
     return (VAL)cl;
 }
 
@@ -539,17 +547,20 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
     case CT_INT: // 8/16 bits
         // max length 16 bit unsigned int str 5 chars (65,535)
         cl = allocStr(vm, 6, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu16, (uint16_t)GETBITS16(i));
+        cl->slen = itoa_int32(cl->str, (uint16_t)GETBITS16(i));
+        cl->str[cl->slen] = '\n';
         break;
     case CT_BITS32:
         // max length 32 bit unsigned int str 10 chars (4,294,967,295)
         cl = allocStr(vm, 11, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu32, GETBITS32(i));
+        cl->slen = itoa_int32(cl->str, GETBITS32(i));
+        cl->str[cl->slen] = '\n';
         break;
     case CT_BITS64:
         // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
         cl = allocStr(vm, 21, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu64, GETBITS64(i));
+        cl->slen = itoa_int64(cl->str, GETBITS64(i));
+        cl->str[cl->slen] = '\n';
         break;
     default:
         fprintf(stderr, "Fatal Error: ClosureType %d, not an integer type", ty);
@@ -569,7 +580,8 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
     String * cl = allocStr(vm, 32, 0);
-    cl->slen = snprintf(cl->str, 32, "%.16g", GETFLOAT(i));
+    cl->slen = ftoa_prec_f0(cl->str, GETFLOAT(i));
+    cl->str[cl->slen] = '\n';
     return (VAL)cl;
 }
 
@@ -1243,11 +1255,15 @@ const char* idris_getArg(int i) {
 }
 
 void idris_disableBuffering(void) {
-  setvbuf(stdin, NULL, _IONBF, 0);
-  setvbuf(stdout, NULL, _IONBF, 0);
+#ifndef BARE_METAL
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+#endif // BARE_METAL
 }
 
 void stackOverflow(void) {
-  fprintf(stderr, "Stack overflow");
-  exit(-1);
+#ifndef BARE_METAL
+    fprintf(stderr, "Stack overflow");
+    exit(-1);
+#endif // BARE_METAL
 }

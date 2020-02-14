@@ -13,6 +13,8 @@ file(GLOB static
     rts/idris_utf8.c
     rts/idris_stdfgn.c
     rts/mini-gmp.c
+    rts/itoa.c
+    rts/ftoa.c
     rts/idris_buffer.c
     rts/getline.c
     rts/idris_net.c
