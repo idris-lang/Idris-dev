@@ -535,7 +535,7 @@ VAL idris_castIntStr(VM* vm, VAL i) {
     } else {
         assert(0); // Should not happen
     }
-    cl->str[cl->slen] = '\n';
+    cl->str[cl->slen] = '\0';
     return (VAL)cl;
 }
 
@@ -548,19 +548,19 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
         // max length 16 bit unsigned int str 5 chars (65,535)
         cl = allocStr(vm, 6, 0);
         cl->slen = itoa_int32(cl->str, (uint16_t)GETBITS16(i));
-        cl->str[cl->slen] = '\n';
+        cl->str[cl->slen] = '\0';
         break;
     case CT_BITS32:
         // max length 32 bit unsigned int str 10 chars (4,294,967,295)
         cl = allocStr(vm, 11, 0);
         cl->slen = itoa_int32(cl->str, GETBITS32(i));
-        cl->str[cl->slen] = '\n';
+        cl->str[cl->slen] = '\0';
         break;
     case CT_BITS64:
         // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
         cl = allocStr(vm, 21, 0);
         cl->slen = itoa_int64(cl->str, GETBITS64(i));
-        cl->str[cl->slen] = '\n';
+        cl->str[cl->slen] = '\0';
         break;
     default:
         fprintf(stderr, "Fatal Error: ClosureType %d, not an integer type", ty);
@@ -581,7 +581,7 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 VAL idris_castFloatStr(VM* vm, VAL i) {
     String * cl = allocStr(vm, 32, 0);
     cl->slen = ftoa_prec_f0(cl->str, GETFLOAT(i));
-    cl->str[cl->slen] = '\n';
+    cl->str[cl->slen] = '\0';
     return (VAL)cl;
 }
 
