@@ -527,13 +527,7 @@ void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i
 VAL idris_castIntStr(VM* vm, VAL i) {
     int x = (int) GETINT(i);
     String * cl = allocStr(vm, 16, 0);
-    if (sizeof(int) == sizeof(int32_t)) {
-        cl->slen = itoa_int32(cl->str, x);
-    } else if (sizeof(int) == sizeof(int64_t)) {
-        cl->slen = itoa_int64(cl->str, x);
-    } else {
-        assert(0); // Should not happen
-    }
+    cl->slen = itoa_int64(cl->str, x);
     cl->str[cl->slen] = '\0';
     return (VAL)cl;
 }
