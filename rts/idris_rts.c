@@ -1,19 +1,18 @@
-#ifndef BARE_METAL
-#include <assert.h>
-#else
+#ifdef BARE_METAL
 #include "idris_bare_metal.h"
+#include "ftoa.h"
+#else
+#include <assert.h>
+#include <stdio.h>  // snprintf
+#include "getline.h"
 #endif // BARE_METAL
 #include <errno.h>
 
 #include "itoa.h"
-#include "ftoa.h"
 #include "idris_rts.h"
 #include "idris_gc.h"
 #include "idris_utf8.h"
 #include "idris_bitstring.h"
-#ifndef BARE_METAL
-#include "getline.h"
-#endif // BARE_METAL
 
 #define STATIC_ASSERT(COND,MSG) typedef char static_assertion_##MSG[(COND)?1:-1]
 
@@ -580,8 +579,12 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
     String * cl = allocStr(vm, 32, 0);
-    cl->slen = ftoa_prec_f0(cl->str, GETFLOAT(i));
+#ifdef BARE_METAL
+    cl->slen = ftoa(cl->str, GETFLOAT(i));
     cl->str[cl->slen] = '\0';
+#else
+    cl->slen = snprintf(cl->str, 32, "%.16g", GETFLOAT(i));
+#endif
     return (VAL)cl;
 }
 
