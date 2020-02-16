@@ -1,4 +1,4 @@
-#define PRECISION 5
+#define PRECISION 16
 #define DO_ROUNDING
 
 int ftoa(char *outbuf, float f);
