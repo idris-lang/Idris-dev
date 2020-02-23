@@ -512,19 +512,18 @@ plusLeftCancel (S left) right right' p =
 
 total plusRightCancel : (left : Nat) -> (left' : Nat) -> (right : Nat) ->
   (p : left + right = left' + right) -> left = left'
-plusRightCancel left left' Z         p = rewrite sym (plusZeroRightNeutral left) in
-                                         rewrite sym (plusZeroRightNeutral left') in
-                                                 p
-plusRightCancel left left' (S right) p =
-  plusRightCancel left left' right
-    (succInjective _ _ (rewrite plusSuccRightSucc left right in
-                        rewrite plusSuccRightSucc left' right in p))
+plusRightCancel left left' right p =
+  plusLeftCancel right left left' $
+    rewrite plusCommutative right left in
+      rewrite plusCommutative right left' in
+        p
 
 total plusLeftLeftRightZero : (left : Nat) -> (right : Nat) ->
   (p : left + right = left) -> right = Z
-plusLeftLeftRightZero Z        right p = p
-plusLeftLeftRightZero (S left) right p =
-  plusLeftLeftRightZero left right (succInjective _ _ p)
+plusLeftLeftRightZero left right p =
+  plusLeftCancel left right Z $
+    rewrite plusZeroRightNeutral left in
+      p
 
 -- Mult
 total multZeroLeftZero : (right : Nat) -> Z * right = Z
@@ -573,12 +572,11 @@ multDistributesOverPlusRight (S left) centre right =
 
 total multDistributesOverPlusLeft : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
   (left + centre) * right = (left * right) + (centre * right)
-multDistributesOverPlusLeft Z        centre right = Refl
-multDistributesOverPlusLeft (S left) centre right =
-  let inductiveHypothesis = multDistributesOverPlusLeft left centre right in
-    rewrite inductiveHypothesis in
-    rewrite plusAssociative right (mult left right) (mult centre right) in
-            Refl
+multDistributesOverPlusLeft left centre right =
+  rewrite multCommutative (left + centre) right in
+    rewrite multCommutative left right in
+      rewrite multCommutative centre right in
+        multDistributesOverPlusRight right left centre
 
 total multAssociative : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
   left * (centre * right) = (left * centre) * right
@@ -597,11 +595,7 @@ multOneLeftNeutral (S right) =
             Refl
 
 total multOneRightNeutral : (left : Nat) -> left * 1 = left
-multOneRightNeutral Z        = Refl
-multOneRightNeutral (S left) =
-  let inductiveHypothesis = multOneRightNeutral left in
-    rewrite inductiveHypothesis in
-            Refl
+multOneRightNeutral left = rewrite multCommutative left 1 in multOneLeftNeutral left
 
 -- Minus
 total minusSuccSucc : (left : Nat) -> (right : Nat) ->
@@ -689,10 +683,7 @@ total powerZeroOne : (base : Nat) -> power base 0 = S Z
 powerZeroOne base = Refl
 
 total powerOneNeutral : (base : Nat) -> power base 1 = base
-powerOneNeutral Z        = Refl
-powerOneNeutral (S base) =
-  let inductiveHypothesis = powerOneNeutral base in
-    rewrite inductiveHypothesis in Refl
+powerOneNeutral base = rewrite multCommutative base 1 in multOneLeftNeutral base
 
 total powerOneSuccOne : (exp : Nat) -> power 1 exp = S Z
 powerOneSuccOne Z       = Refl
@@ -701,8 +692,7 @@ powerOneSuccOne (S exp) =
     rewrite inductiveHypothesis in Refl
 
 total powerSuccSuccMult : (base : Nat) -> power base 2 = mult base base
-powerSuccSuccMult Z        = Refl
-powerSuccSuccMult (S base) = rewrite multOneRightNeutral base in Refl
+powerSuccSuccMult base = rewrite multOneRightNeutral base in Refl
 
 total powerPowerMultPower : (base : Nat) -> (exp : Nat) -> (exp' : Nat) ->
   power (power base exp) exp' = power base (exp * exp')
@@ -796,34 +786,24 @@ minimumIdempotent Z = Refl
 minimumIdempotent (S k) = cong (minimumIdempotent k)
 
 total minimumZeroZeroRight : (right : Nat) -> minimum 0 right = Z
-minimumZeroZeroRight Z = Refl
-minimumZeroZeroRight (S right) = minimumZeroZeroRight right
+minimumZeroZeroRight right = Refl
 
 total minimumZeroZeroLeft : (left : Nat) -> minimum left 0 = Z
-minimumZeroZeroLeft Z        = Refl
-minimumZeroZeroLeft (S left) = Refl
+minimumZeroZeroLeft left = rewrite minimumCommutative left 0 in Refl
 
 total minimumSuccSucc : (left : Nat) -> (right : Nat) ->
   minimum (S left) (S right) = S (minimum left right)
-minimumSuccSucc Z        Z         = Refl
-minimumSuccSucc (S left) Z         = Refl
-minimumSuccSucc Z        (S right) = Refl
-minimumSuccSucc (S left) (S right) = Refl
+minimumSuccSucc left right = Refl
 
 total maximumZeroNRight : (right : Nat) -> maximum Z right = right
-maximumZeroNRight Z         = Refl
-maximumZeroNRight (S right) = Refl
+maximumZeroNRight right = Refl
 
 total maximumZeroNLeft : (left : Nat) -> maximum left Z = left
-maximumZeroNLeft Z        = Refl
-maximumZeroNLeft (S left) = Refl
+maximumZeroNLeft left = rewrite maximumCommutative left Z in Refl
 
 total maximumSuccSucc : (left : Nat) -> (right : Nat) ->
   S (maximum left right) = maximum (S left) (S right)
-maximumSuccSucc Z        Z         = Refl
-maximumSuccSucc (S left) Z         = Refl
-maximumSuccSucc Z        (S right) = Refl
-maximumSuccSucc (S left) (S right) = Refl
+maximumSuccSucc left right = Refl
 
 total sucMaxL : (l : Nat) -> maximum (S l) l = (S l)
 sucMaxL Z = Refl
