@@ -2,18 +2,9 @@ module Data.Nat.Parity
 
 %access public export
 
---------------------------------------------------------------------------------
--- Parity
---------------------------------------------------------------------------------
+----------------------------------------
 
-mutual
-  even : Nat -> Bool
-  even Z = True
-  even (S k) = odd k
-
-  odd : Nat -> Bool
-  odd Z = False
-  odd (S k) = even k
+-- Type-level, constructive definitions of parity.
 
 ||| A nat is Even when it is twice some other nat.
 Even : Nat -> Type
@@ -22,6 +13,8 @@ Even n = (half : Nat ** n = half * 2)
 ||| A nat is Odd when it is one more than twice some other nat.
 Odd : Nat -> Type
 Odd n = (haf : Nat ** n = S $ haf * 2)
+
+----------------------------------------
 
 ||| Two more than an Even is Even.
 add2Even : Even n -> Even (2 + n)
@@ -52,12 +45,70 @@ succDoublePredPred {k = S _} prf = cong {f = Nat.pred} prf
 predEvenOdd : Even (S n) -> Odd n
 predEvenOdd (half ** pf) = (pred half ** succDoublePredPred pf)
 
+----------------------------------------
+
+-- Boolean definitions of parity.
+
+mutual
+  even : Nat -> Bool
+  even Z = True
+  even (S k) = odd k
+
+  odd : Nat -> Bool
+  odd Z = False
+  odd (S k) = even k
+
+----------------------------------------
+
+-- The boolean and type-level definitions are equivalent in the sense
+-- that a proof of one can be gotten from a proof of the other.
+
+mutual
+  ||| Evens are even.
+  evenEven : Even n -> even n = True
+  evenEven {n = Z} _ = Refl
+  evenEven {n = S _} pf = oddOdd $ predEvenOdd pf
+
+  ||| Odds are odd.
+  oddOdd : Odd n -> odd n = True
+  oddOdd {n = Z} (_ ** pf) = absurd pf
+  oddOdd {n = S _} pf = evenEven $ predOddEven pf
+
+mutual
+  ||| If it's even, it's Even.
+  evenEvenConverse : even n = True -> Even n
+  evenEvenConverse {n = Z} prf = (0 ** Refl)
+  evenEvenConverse {n = S k} prf =
+    let (haf ** pf) = oddOddConverse prf in
+      (S haf ** cong pf)
+
+  ||| If it's odd, it's Odd
+  oddOddConverse : odd n = True -> Odd n
+  oddOddConverse {n = Z} prf = absurd prf
+  oddOddConverse {n = S k} prf =
+    let (half ** pf) = evenEvenConverse prf in
+      (half ** cong pf)
+
+----------------------------------------
+
+||| Every nat is either even or odd.
+evenorodd : (n : Nat) -> Either (even n = True) (odd n = True)
+evenorodd Z = Left Refl
+evenorodd (S k) = case evenorodd k of
+  Left l => Right l
+  Right r => Left r
+
 ||| Every nat is either Even or Odd.
 evenOrOdd : (n : Nat) -> Either (Even n) (Odd n)
 evenOrOdd Z = Left (0 ** Refl)
 evenOrOdd (S k) = case evenOrOdd k of
   Left (half ** pf) => Right (half ** cong {f = S} pf)
   Right (haf ** pf) => Left (S haf ** cong {f = S} pf)
+
+||| No nat is both even and odd.
+notevenandodd : even n = True -> odd n = True -> Void
+notevenandodd {n = Z} en on = absurd on
+notevenandodd {n = S _} en on = notevenandodd on en
 
 ||| No nat is both Even and Odd.
 notEvenAndOdd : Even n -> Odd n -> Void
@@ -79,16 +130,7 @@ oddDec n = case evenOrOdd n of
   Left even => No $ notEvenAndOdd even
   Right odd => Yes odd
 
-mutual
-  ||| Evens are even.
-  evenEven : Even n -> even n = True
-  evenEven {n = Z} _ = Refl
-  evenEven {n = S _} pf = oddOdd $ predEvenOdd pf
-
-  ||| Odds are odd.
-  oddOdd : Odd n -> odd n = True
-  oddOdd {n = Z} (_ ** pf) = absurd pf
-  oddOdd {n = S _} pf = evenEven $ predOddEven pf
+----------------------------------------
 
 ||| Even plus Even is Even.
 evenPlusEven : Even j -> Even k -> Even (j + k)
