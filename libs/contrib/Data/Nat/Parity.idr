@@ -100,10 +100,9 @@ evenorodd (S k) = case evenorodd k of
 
 ||| Every nat is either Even or Odd.
 evenOrOdd : (n : Nat) -> Either (Even n) (Odd n)
-evenOrOdd Z = Left (0 ** Refl)
-evenOrOdd (S k) = case evenOrOdd k of
-  Left (half ** pf) => Right (half ** cong {f = S} pf)
-  Right (haf ** pf) => Left (S haf ** cong {f = S} pf)
+evenOrOdd n = case evenorodd n of
+  Left e => Left $ evenEvenConverse e
+  Right o => Right $ oddOddConverse o
 
 ||| No nat is both even and odd.
 notevenandodd : even n = True -> odd n = True -> Void
@@ -112,11 +111,7 @@ notevenandodd {n = S _} en on = notevenandodd on en
 
 ||| No nat is both Even and Odd.
 notEvenAndOdd : Even n -> Odd n -> Void
-notEvenAndOdd {n = Z} _ (_ ** odd) = absurd odd
-notEvenAndOdd {n = (S k)} (half ** even) (haf ** odd) =
-  notEvenAndOdd {n = k}
-   (haf ** cong {f = Nat.pred} odd)
-   (pred half ** succDoublePredPred even)
+notEvenAndOdd en on = notevenandodd (evenEven en) (oddOdd on)
 
 ||| Evenness is decidable.
 evenDec : (n : Nat) -> Dec $ Even n
@@ -132,31 +127,44 @@ oddDec n = case evenOrOdd n of
 
 ----------------------------------------
 
+||| An Odd is the successor of an Even.
+oddSuccEven : Odd n -> (m : Nat ** (n = S m, Even m))
+oddSuccEven (haf ** pf) = (haf * 2 ** (pf, (haf ** Refl)))
+
 ||| Even plus Even is Even.
 evenPlusEven : Even j -> Even k -> Even (j + k)
 evenPlusEven (half_j ** pf_j) (half_k ** pf_k) =
-  rewrite pf_j in
-    rewrite pf_k in
-      (half_j + half_k **
+  (half_j + half_k **
+    rewrite pf_j in
+      rewrite pf_k in
         sym $ multDistributesOverPlusLeft half_j half_k 2)
 
-||| Odd plus Odd is Even.
-oddPlusOdd : Odd j -> Odd k -> Even (j + k)
-oddPlusOdd (haf_j ** pf_j) (haf_k ** pf_k) =
-  rewrite pf_j in
-    rewrite pf_k in
-      rewrite sym $ plusSuccRightSucc (haf_j * 2) (haf_k * 2) in
-        rewrite sym $ multDistributesOverPlusLeft haf_j haf_k 2 in
-          (S (haf_j + haf_k) ** Refl)
+||| Odd plus Even is Odd.
+oddPlusEven : Odd j -> Even k -> Odd (j + k)
+oddPlusEven oj ek =
+  let
+    (i ** (ipj, ei)) = oddSuccEven oj
+    (half_ik ** eik) = evenPlusEven ei ek
+      in
+  (half_ik **
+    rewrite ipj in
+      cong {f = S} eik)
 
 ||| Even plus Odd is Odd.
 evenPlusOdd : Even j -> Odd k -> Odd (j + k)
-evenPlusOdd (half_j ** pf_j) (haf_k ** pf_k) =
-  rewrite pf_j in
-    rewrite pf_k in
-      rewrite sym $ plusSuccRightSucc (half_j * 2) (haf_k * 2) in
-        rewrite sym $ multDistributesOverPlusLeft half_j haf_k 2 in
-          (half_j + haf_k ** Refl)
+evenPlusOdd {j} {k} ej ok = rewrite plusCommutative j k in oddPlusEven ok ej
+
+||| Odd plus Odd is Even.
+oddPlusOdd : Odd j -> Odd k -> Even (j + k)
+oddPlusOdd oj ok =
+  let
+    (i ** (ipj, ei)) = oddSuccEven oj
+    (haf_ik ** oik) = evenPlusOdd ei ok
+      in
+  (S haf_ik **
+    rewrite ipj in
+      rewrite oik in
+        Refl)
 
 ||| A helper fact.
 multShuffle : (a, b, c : Nat) ->
@@ -171,35 +179,39 @@ multShuffle a b c =
 ||| Even times Even is Even.
 evenMultEven : Even j -> Even k -> Even (j * k)
 evenMultEven (half_j ** pf_j) (half_k ** pf_k) =
-  rewrite pf_j in
-    rewrite pf_k in
-      (half_j * half_k * 2 **
+  (half_j * half_k * 2 **
+    rewrite pf_j in
+      rewrite pf_k in
         multShuffle half_j half_k 2)
+
+||| Odd times Even is Even.
+oddMultEven : Odd j -> Even k -> Even (j * k)
+oddMultEven oj (half_k ** pf_k) =
+  let
+    (i ** (ipj, ei)) = oddSuccEven oj
+    (half_ik ** oik) = evenMultEven ei (half_k ** pf_k)
+      in
+  (half_k + half_ik **
+    rewrite multDistributesOverPlusLeft half_k half_ik 2 in
+      rewrite ipj in
+        rewrite oik in
+          rewrite pf_k in
+            Refl)
 
 ||| Even times Odd is Even.
 evenMultOdd : Even j -> Odd k -> Even (j * k)
-evenMultOdd (half_j ** pf_j) (haf_k ** pf_k) =
-  let half = half_j * haf_k * 2 in
-    rewrite pf_j in
-      rewrite pf_k in
-        rewrite multRightSuccPlus (half_j * 2) (haf_k * 2) in
-          rewrite multShuffle half_j haf_k 2 in
-            (half_j + half **
-              sym $ multDistributesOverPlusLeft half_j half 2)
+evenMultOdd {j} {k} ej ok = rewrite multCommutative j k in oddMultEven ok ej
 
 ||| Odd times Odd is Odd.
 oddMultOdd : Odd j -> Odd k -> Odd (j * k)
-oddMultOdd (haf_j ** pf_j) (haf_k ** pf_k) =
+oddMultOdd oj (haf_k ** pf_k) =
   let
-    haf = haf_j * haf_k * 2
-    rem = haf_j + haf_k
+    (i ** (ipj, ei)) = oddSuccEven oj
+    (half_ik ** eik) = evenMultOdd ei (haf_k ** pf_k)
       in
-  rewrite pf_j in
-    rewrite pf_k in
-      rewrite multRightSuccPlus (haf_j * 2) (haf_k * 2) in
-        rewrite multShuffle haf_j haf_k 2 in
-          rewrite plusAssociative (haf_k * 2) (haf_j * 2) (haf * 2) in
-            rewrite sym $ multDistributesOverPlusLeft haf_k haf_j 2 in
-              rewrite plusCommutative haf_k haf_j in
-                rewrite sym $ multDistributesOverPlusLeft rem haf 2 in
-                  (rem + haf ** Refl)
+  (haf_k + half_ik **
+    rewrite multDistributesOverPlusLeft haf_k half_ik 2 in
+      rewrite ipj in
+        rewrite eik in
+          rewrite pf_k in
+            Refl)
