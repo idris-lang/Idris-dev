@@ -1,4 +1,4 @@
-module Data.List.Extra
+module Data.List.Reverse
 
 %default total
 %access export
