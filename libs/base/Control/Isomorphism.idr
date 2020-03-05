@@ -17,21 +17,22 @@ record Iso a b where
 
 -- Isomorphism properties
 
-||| Isomorphism is Reflexive
+||| Isomorphism is reflexive
 isoRefl : Iso a a
-isoRefl = MkIso id id (\x => Refl) (\x => Refl)
+isoRefl = MkIso id id (\_ => Refl) (\_ => Refl)
 
 ||| Isomorphism is transitive
 isoTrans : Iso a b -> Iso b c -> Iso a c
 isoTrans (MkIso to from toFrom fromTo) (MkIso to' from' toFrom' fromTo') =
-  MkIso (\x => to' (to x))
-        (\y => from (from' y))
-        (\y => (to' (to (from (from' y))))  ={ cong (toFrom (from' y)) }=
-               (to' (from' y))              ={ toFrom' y               }=
-               y                            QED)
-        (\x => (from (from' (to' (to x))))  ={ cong (fromTo' (to x)) }=
-               (from (to x))                ={ fromTo x              }=
-               x                            QED)
+  MkIso xto xfrom xtoFrom xfromTo where
+    xto : a -> c
+    xto = to' . to
+    xfrom : c -> a
+    xfrom = from . from'
+    xtoFrom : (z : c) -> xto (xfrom z) = z
+    xtoFrom z = rewrite toFrom $ from' z in toFrom' z
+    xfromTo : (x : a) -> xfrom (xto x) = x
+    xfromTo x = rewrite fromTo' (to x) in fromTo x
 
 Category Iso where
   id = isoRefl
@@ -99,8 +100,7 @@ eitherBotRight = isoTrans eitherComm eitherBotLeft
 
 ||| Isomorphism is a congruence with regards to disjunction
 eitherCong : Iso a a' -> Iso b b' -> Iso (Either a b) (Either a' b')
-eitherCong {a = a} {a' = a'} {b = b} {b' = b'}
-           (MkIso to from toFrom fromTo)
+eitherCong (MkIso to from toFrom fromTo)
            (MkIso to' from' toFrom' fromTo') =
   MkIso (eitherMap to to') (eitherMap from from') ok1 ok2
     where eitherMap : (c -> c') -> (d -> d') -> Either c d -> Either c' d'
@@ -143,9 +143,7 @@ pairAssoc = MkIso to from ok1 ok2
 
 ||| Conjunction with truth is a no-op
 pairUnitRight : Iso (a, ()) a
-pairUnitRight = MkIso fst (\x => (x, ())) (\x => Refl) ok
-  where ok : (x : (a, ())) -> (fst x, ()) = x
-        ok (x, ()) = Refl
+pairUnitRight = MkIso fst (\x => (x, ())) (\_ => Refl) (\(_, ()) => Refl)
 
 ||| Conjunction with truth is a no-op
 pairUnitLeft : Iso ((), a) a
@@ -161,8 +159,7 @@ pairBotRight = isoTrans pairComm pairBotLeft
 
 ||| Isomorphism is a congruence with regards to conjunction
 pairCong : Iso a a' -> Iso b b' -> Iso (a, b) (a', b')
-pairCong {a = a} {a' = a'} {b = b} {b' = b'}
-         (MkIso to from toFrom fromTo)
+pairCong (MkIso to from toFrom fromTo)
          (MkIso to' from' toFrom' fromTo') =
   MkIso to'' from'' iso1 iso2
     where to'' : (a, b) -> (a', b')
@@ -205,7 +202,7 @@ distribLeft = MkIso to from toFrom fromTo
 
 ||| Products distribute over sums
 distribRight : Iso (a, Either b c) (Either (a, b) (a, c))
-distribRight {a} {b} {c} = (pairComm `isoTrans` distribLeft) `isoTrans` eitherCong pairComm pairComm
+distribRight = (pairComm `isoTrans` distribLeft) `isoTrans` eitherCong pairComm pairComm
 
 
 -- Enable preorder reasoning syntax over isomorphisms
@@ -222,7 +219,7 @@ step a iso1 iso2 = isoTrans iso1 iso2
 -- Isomorphisms over Maybe
 ||| Isomorphism is a congruence with respect to Maybe
 maybeCong : Iso a b -> Iso (Maybe a) (Maybe b)
-maybeCong {a} {b} (MkIso to from toFrom fromTo) = MkIso (map to) (map from) ok1 ok2
+maybeCong (MkIso to from toFrom fromTo) = MkIso (map to) (map from) ok1 ok2
   where ok1 : (y : Maybe b) -> map to (map from y) = y
         ok1 Nothing = Refl
         ok1 (Just x) = (Just (to (from x))) ={ cong (toFrom x) }= (Just x) QED
@@ -253,7 +250,7 @@ maybeVoidUnit = (Maybe Void)     ={ maybeEither   }=
                 ()              QED
 
 eitherMaybeLeftMaybe : Iso (Either (Maybe a) b) (Maybe (Either a b))
-eitherMaybeLeftMaybe {a} {b} =
+eitherMaybeLeftMaybe =
   (Either (Maybe a) b)     ={ eitherCongLeft maybeEither }=
   (Either (Either a ()) b) ={ eitherAssoc                }=
   (Either a (Either () b)) ={ eitherCongRight eitherComm }=
@@ -263,7 +260,7 @@ eitherMaybeLeftMaybe {a} {b} =
 
 
 eitherMaybeRightMaybe : Iso (Either a (Maybe b)) (Maybe (Either a b))
-eitherMaybeRightMaybe {a} {b} =
+eitherMaybeRightMaybe =
   (Either a (Maybe b)) ={ eitherComm           }=
   (Either (Maybe b) a) ={ eitherMaybeLeftMaybe }=
   (Maybe (Either b a)) ={ maybeCong eitherComm }=
@@ -288,8 +285,8 @@ maybeIsoS = MkIso forth back fb bf
         fb (FS x) = Refl
 
 finZeroBot : Iso (Fin 0) Void
-finZeroBot = MkIso (\x => void (uninhabited x))
-                   (\x => void x)
+finZeroBot = MkIso (void . uninhabited)
+                   void
                    (\x => void x)
                    (\x => void (uninhabited x))
 
