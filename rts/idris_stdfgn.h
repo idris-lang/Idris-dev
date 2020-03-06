@@ -18,7 +18,7 @@ int fileSize(void* h);
 
 // Return a negative number if not a file (e.g. directory or device)
 VAL fileAccessTime(void* h);
-VAL fileModifiedTime(void* h);
+VAL fileModifiedTime(VM* vm, void* h);
 VAL fileStatusTime(void* h);
 
 void* idris_dirOpen(char* dname);
