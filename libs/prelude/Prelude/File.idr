@@ -150,7 +150,8 @@ do_getFileAccessTime h =
 private
 do_getFileModifiedTime : Ptr -> IO Integer
 do_getFileModifiedTime h = 
-   do MkRaw i <- foreign FFI_C "fileModifiedTime" (Ptr -> IO (Raw Integer)) h
+   do vm <- getMyVM
+      MkRaw i <- foreign FFI_C "fileModifiedTime" (Ptr -> Ptr -> IO (Raw Integer)) vm h
       pure i
 
 private
@@ -175,7 +176,7 @@ export
 fileModifiedTime : File -> IO (Either FileError Integer)
 fileModifiedTime (FHandle h)
     = do s <- do_getFileModifiedTime h
-         if (s < 0)
+         if (s == -1)
             then Left <$> getFileError
             else pure (Right s)
 

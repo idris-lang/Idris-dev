@@ -74,13 +74,13 @@ VAL fileAccessTime(void* h) {
     }
 }
 
-VAL fileModifiedTime(void* h) {
+VAL fileModifiedTime(VM* vm, void* h) {
     FILE* f = (FILE*)h;
     int fd = fileno(f);
 
     struct stat buf;
     if (fstat(fd, &buf) == 0) {
-        return MKBIGI(buf.st_mtime);
+        return MKBIGUI(vm, buf.st_mtime);
     } else {
         return MKBIGI(-1);
     }
