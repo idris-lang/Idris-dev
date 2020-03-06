@@ -115,11 +115,11 @@ Here is an example:
     import Syntax.PreorderReasoning
     multThree : (a, b, c : Nat) -> a * b * c = c * a * b
     multThree a b c =
-      (a * b * c) ={ sym (multAssociative a b c) }=
-      (a * (b * c)) ={ cong (multCommutative b c) }=
-      (a * (c * b)) ={ multAssociative a c b }=
-      (a * c * b) ={ cong {f = (* b)} (multCommutative a c) }=
-      (c * a * b) QED
+      (a * b * c)	={ sym (multAssociative a b c) }=
+      (a * (b * c))	={ cong (multCommutative b c) }=
+      (a * (c * b))	={ multAssociative a c b }=
+      (a * c * b)	={ cong {f = (* b)} (multCommutative a c) }=
+      (c * a * b)	QED
 
 Note that the parentheses are required -- only a simple expression can
 be on the left of ``={ }=`` or ``QED``. Also, when using preorder
