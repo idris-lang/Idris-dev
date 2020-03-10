@@ -301,8 +301,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc,  'idris.tex',  u'Documentation for the Idris Language',    u'The Idris Community', 'report')
-   , ('tutorial/index',  'idris-tutorial.tex',  u'The Idris Tutorial',    u'The Idris Community', 'howto'),
+    # (master_doc,  'idris.tex',  u'Documentation for the Idris Language',    u'The Idris Community', 'report')
+   ('tutorial/index',  'idris-tutorial.tex',  u'The Idris Tutorial',    u'The Idris Community', 'howto'),
 ]
 
 
