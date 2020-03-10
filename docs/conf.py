@@ -251,6 +251,7 @@ latex_elements = {
 # Additional stuff for the LaTeX preamble.
 'preamble': r'''
 \usepackage{lmodern}
+\usepackage{textalpha}
 \usepackage[T1]{fontenc}
 \usepackage[utf8x]{inputenc}
 \usepackage{titlesec}
@@ -300,8 +301,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index',  'idris-documentation-complete.tex',  u'Documentation for the Idris Language',    u'The Idris Community', 'report'),
-   ('tutorial/index',  'idris-tutorial.tex',  u'The Idris Tutorial',    u'The Idris Community', 'howto'),
+    (master_doc,  'idris.tex',  u'Documentation for the Idris Language',    u'The Idris Community', 'report')
+   , ('tutorial/index',  'idris-tutorial.tex',  u'The Idris Tutorial',    u'The Idris Community', 'howto'),
 ]
 
 
