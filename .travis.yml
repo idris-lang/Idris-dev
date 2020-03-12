@@ -12,22 +12,22 @@ matrix:
       addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,hscolour], sources: [hvr-ghc]}}
     - env: CABALVER="2.4" GHCVER="8.6.5" TESTS="lib_doc doc"
       compiler: ": #GHC 8.6.5"
-      addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,cppcheck,hscolour], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,cppcheck,hscolour,libffi-dev], sources: [hvr-ghc]}}
     - env: CABALVER="2.4" GHCVER="8.6.5" TESTS="test_js"
       compiler: ": #GHC 8.6.5"
-      addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,cppcheck,hscolour], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,cppcheck,hscolour,libffi-dev], sources: [hvr-ghc]}}
     - env: CABALVER="2.4" GHCVER="8.6.5" TESTS="test_c"
       compiler: ": #GHC 8.6.5"
-      addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,cppcheck,hscolour], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,cppcheck,hscolour,libffi-dev], sources: [hvr-ghc]}}
     - env: CABALVER="3.0" GHCVER="8.8.2" TESTS="lib_doc doc"
       compiler: ": #GHC 8.8.2"
-      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2,cppcheck,hscolour], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2,cppcheck,hscolour,libffi-dev], sources: [hvr-ghc]}}
     - env: CABALVER="3.0" GHCVER="8.8.2" TESTS="test_js"
       compiler: ": #GHC 8.8.2"
-      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2,cppcheck,hscolour], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2,cppcheck,hscolour,libffi-dev], sources: [hvr-ghc]}}
     - env: CABALVER="3.0" GHCVER="8.8.2" TESTS="test_c"
       compiler: ": #GHC 8.8.2"
-      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2,cppcheck,hscolour], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2,cppcheck,hscolour,libffi-dev], sources: [hvr-ghc]}}
     - env: CABALVER="3.0" GHCVER="8.8.2" IDRIS2=YES
       addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2], sources: [hvr-ghc]}}
   fast-finish: true
