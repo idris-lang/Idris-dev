@@ -73,7 +73,6 @@ Extra-source-files:
                       config.mk
                       custom.mk-alldeps
                       mkpkg.sh
-                      stack-alt.yaml
                       stack-shell.nix
                       stack.yaml
                       stylize.sh
