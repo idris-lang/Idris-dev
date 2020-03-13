@@ -137,7 +137,7 @@ script:
   - echo -en 'travis_fold:end:script.build\\r'
 ###
   - echo 'Copy...' && echo -en 'travis_fold:start:script.copy\\r'
-  - cabal v1-copy
+  - LD_PRELOAD=/opt/ghc/${GHCVER}/lib/ghc-${GHCVER}/rts/libffi.so.7 cabal v1-copy
   - echo -en 'travis_fold:end:script.copy\\r'
 ###
   - echo 'Register...' && echo -en 'travis_fold:start:script.register\\r'
@@ -153,7 +153,7 @@ script:
   - echo 'Tests...' && echo -en 'travis_fold:start:script.tests\\r'
   - for test in $TESTS; do
       echo "make TEST-JOBS=2 $test";
-      travis_wait make TEST-JOBS=2 $test;
+      travis_wait LD_PRELOAD=/opt/ghc/${GHCVER}/lib/ghc-${GHCVER}/rts/libffi.so.7 make TEST-JOBS=2 $test;
     done
   - echo -en 'travis_fold:end:script.tests\\r'
 ###
