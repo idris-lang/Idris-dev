@@ -32,11 +32,11 @@ matrix:
       addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2], sources: [hvr-ghc]}}
   fast-finish: true
 
-cache:
-  directories:
-    - $HOME/.cabsnap
-    - $HOME/.cabal/packages
-    - $HOME/.stack
+# cache:
+#   directories:
+#     - $HOME/.cabsnap
+#     - $HOME/.cabal/packages
+#     - $HOME/.stack
 
 before_cache:
   - rm -fv $HOME/.cabal/packages/hackage.haskell.org/build-reports.log
