@@ -557,26 +557,21 @@ multCommutative (S left) right =
       rewrite multRightSuccPlus right left in
               Refl
 
-total multDistributesOverPlusRight : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
-  left * (centre + right) = (left * centre) + (left * right)
-multDistributesOverPlusRight Z        centre right = Refl
-multDistributesOverPlusRight (S left) centre right =
-  let inductiveHypothesis = multDistributesOverPlusRight left centre right in
-    rewrite inductiveHypothesis in
-    rewrite plusAssociative (plus centre (mult left centre)) right (mult left right) in
-    rewrite sym (plusAssociative centre (mult left centre) right) in
-    rewrite plusCommutative (mult left centre) right in
-    rewrite plusAssociative centre right (mult left centre) in
-    rewrite plusAssociative (plus centre right) (mult left centre) (mult left right) in
-            Refl
-
 total multDistributesOverPlusLeft : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
   (left + centre) * right = (left * right) + (centre * right)
-multDistributesOverPlusLeft left centre right =
-  rewrite multCommutative (left + centre) right in
-    rewrite multCommutative left right in
-      rewrite multCommutative centre right in
-        multDistributesOverPlusRight right left centre
+multDistributesOverPlusLeft Z centre right = Refl
+multDistributesOverPlusLeft (S k) centre right =
+  rewrite multDistributesOverPlusLeft k centre right in
+    rewrite plusAssociative right (k * right) (centre * right) in
+      Refl
+
+total multDistributesOverPlusRight : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
+  left * (centre + right) = (left * centre) + (left * right)
+multDistributesOverPlusRight left centre right =
+  rewrite multCommutative left (centre + right) in
+    rewrite multCommutative left centre in
+      rewrite multCommutative left right in
+  multDistributesOverPlusLeft centre right left
 
 total multAssociative : (left : Nat) -> (centre : Nat) -> (right : Nat) ->
   left * (centre * right) = (left * centre) * right
@@ -588,11 +583,7 @@ multAssociative (S left) centre right =
             Refl
 
 total multOneLeftNeutral : (right : Nat) -> 1 * right = right
-multOneLeftNeutral Z         = Refl
-multOneLeftNeutral (S right) =
-  let inductiveHypothesis = multOneLeftNeutral right in
-    rewrite inductiveHypothesis in
-            Refl
+multOneLeftNeutral right = plusZeroRightNeutral right
 
 total multOneRightNeutral : (left : Nat) -> left * 1 = left
 multOneRightNeutral left = rewrite multCommutative left 1 in multOneLeftNeutral left
