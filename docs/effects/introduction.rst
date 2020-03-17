@@ -17,7 +17,8 @@ exceptions, and verified resource management.
 This tutorial assumes familiarity with pure programming in Idris,
 as described in Sections 1–6 of the main tutorial [1]_. The examples
 presented are tested with Idris and can be found in the
-examples directory of the Idris repository.
+examples directory of the Idris repository. The ``-p effects`` flag 
+is needed when starting Idris.
 
 Consider, for example, the following introductory function which
 illustrates the kind of properties which can be expressed in the type
