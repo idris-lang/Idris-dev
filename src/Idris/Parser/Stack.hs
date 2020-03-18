@@ -5,7 +5,7 @@ Description : Idris parser stack and its primitives.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiParamTypeClasses, CPP #-}
 module Idris.Parser.Stack
   ( -- * Parsing
     Parser(..)
@@ -77,12 +77,20 @@ parseErrorOffset = P.errorOffset . parseError
 instance Message ParseError where
   messageExtent err = sourcePositionFC pos
     where
+#if MIN_VERSION_megaparsec(8,0,0)
       P.PosState {P.pstateSourcePos = pos} =
         P.reachOffsetNoLine (parseErrorOffset err) (parseErrorPosState err)
+#else
+      (pos, _) = P.reachOffsetNoLine (parseErrorOffset err) (parseErrorPosState err)
+#endif
   messageText = PP.text . init . P.parseErrorTextPretty . parseError
   messageSource err = Just sline
     where
+#if MIN_VERSION_megaparsec(8,0,0)
       (sline, _) = P.reachOffset (parseErrorOffset err) (parseErrorPosState err)
+#else
+      (_, sline, _) = P.reachOffset (parseErrorOffset err) (parseErrorPosState err)
+#endif
 
 -- | A fully formatted parse error, with caret and bar, etc.
 prettyError :: ParseError -> String
@@ -90,7 +98,11 @@ prettyError =  P.errorBundlePretty . unParseError
 
 {- * Mark and restore -}
 
+#if MIN_VERSION_megaparsec(8,0,0)
 type Mark = P.State String Void
+#else
+type Mark = P.State String
+#endif
 
 -- | Retrieve the parser state so we can restart from this point later.
 mark :: Parsing m => m Mark

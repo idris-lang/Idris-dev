@@ -320,7 +320,7 @@ Library
                 , fingertree >= 0.1.4.1 && < 0.2
                 , haskeline >= 0.7 && < 0.8
                 , ieee754 >= 0.7 && < 0.9
-                , megaparsec >= 8 && < 9
+                , megaparsec >= 7.0.4 && < 9
                 , mtl >= 2.1 && < 2.3
                 , network >= 2.7 && < 3.1.2
                 , optparse-applicative >= 0.13 && < 0.16
