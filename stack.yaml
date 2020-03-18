@@ -1,17 +1,1 @@
-#recheck extra-deps next on resolver or cabal file change
-resolver: lts-15.3
-
-extra-deps:
-- cheapskate-0.1.1.2
-
-flags:
-  idris:
-    FFI: true
-    GMP: true
-
-ghc-options:
-  idris: -fwarn-unused-imports -fwarn-unused-binds
-
-nix:
-  enable: false
-  shell-file: stack-shell.nix
+stack-15.4.yaml
