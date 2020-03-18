@@ -5,7 +5,7 @@ Description : Idris parser stack and its primitives.
 License     : BSD3
 Maintainer  : The Idris Community.
 -}
-{-# LANGUAGE ConstraintKinds, FlexibleContexts, MultiParamTypeClasses, CPP #-}
+{-# LANGUAGE CPP, ConstraintKinds, FlexibleContexts, MultiParamTypeClasses #-}
 module Idris.Parser.Stack
   ( -- * Parsing
     Parser(..)
