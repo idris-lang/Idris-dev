@@ -147,3 +147,7 @@ A workround for this bug is to override the used libffi version (this is what we
 ```bash
 export LD_PRELOAD=/opt/ghc/${GHCVER}/lib/ghc-${GHCVER}/rts/libffi.so.7
 ```
+
+## GHC 8.6
+
+For reasons that haven't been investigated building the Idris compiler with GHC 8.6 leads to a compiler which doesn't pass test.
