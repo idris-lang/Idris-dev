@@ -325,7 +325,7 @@ bindTC x k = case x of
 instance Monad TC where
     return x = OK x
     x >>= k = bindTC x k
-#if !(MIN_VERSION_base(4,12,0))
+#if !(MIN_VERSION_base(4,13,0))
     fail = Fail.fail
 #endif
 
