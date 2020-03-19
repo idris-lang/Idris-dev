@@ -43,6 +43,12 @@ inverseCommute x y p = selfSquareId (x <+> y) prop where
       rewrite monoidNeutralIsNeutralR y in
         Refl
 
+||| Every element has a right inverse.
+groupInverseIsInverseL : VerifiedGroup t => (x : t) ->
+  x <+> inverse x = Algebra.neutral
+groupInverseIsInverseL x =
+  inverseCommute x (inverse x) (groupInverseIsInverseR x)
+
 ||| -(-x) = x in any verified group.
 inverseSquaredIsIdentity : VerifiedGroup t => (x : t) ->
   inverse (inverse x) = x
