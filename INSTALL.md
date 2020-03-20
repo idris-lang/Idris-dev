@@ -130,7 +130,8 @@ PKG_CONFIG_PATH=/usr/local/opt/libffi/lib/pkgconfig stack build
 ## Issue with GHC on Ubuntu/Fedora
 
 There is an upstream issue with GHC on some Ubuntu and Fedora machines.
-The issue is that for GHC versions greater than 8.4.X linking to libFFI is broken.
+The issue is that for GHC versions greater than 8.4.X linking to libFFI uses the version of libFFI shipped with GHC, instead of the system version.
+
 See the following GHC issue page for more information:
 
   <https://gitlab.haskell.org/ghc/ghc/issues/15397>
@@ -141,4 +142,12 @@ Specifically, one will see an error message along the lines of:
 
 > error while loading shared libraries: libffi.so.7: cannot open shared object file: No such file or directory
 
-We have supplied an alternative stack configuration file (`stack-alt.yaml`) that will use a version of GHC prior to the upstream issue being introduced.
+A workround for this bug is to override the used libffi version (this is what we use on CI):
+
+```bash
+export LD_PRELOAD=/opt/ghc/${GHCVER}/lib/ghc-${GHCVER}/rts/libffi.so.7
+```
+
+## GHC 8.6
+
+For reasons that haven't been investigated building the Idris compiler with GHC 8.6 leads to a compiler which doesn't pass test.

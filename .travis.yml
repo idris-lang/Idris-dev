@@ -8,7 +8,7 @@ env:
 
 matrix:
   include:
-    - env: CABALVER="2.4" GHCVER="8.6.5" STACKVER="14.15" STYLISH=YES
+    - env: CABALVER="2.4" GHCVER="8.6.5" STACKVER="15.4" STYLISH=YES
       addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,hscolour], sources: [hvr-ghc]}}
     - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="lib_doc doc"
       compiler: ": #GHC 8.2.2"
@@ -19,18 +19,26 @@ matrix:
     - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="test_c"
       compiler: ": #GHC 8.2.2"
       addons: {apt: {packages: [cabal-install-2.4,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="3.0" GHCVER="8.8.2" IDRIS2=YES
-      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.2], sources: [hvr-ghc]}}
-
-#    - env: CABALVER="3.0" GHCVER="8.8.1" TESTS="lib_doc doc"
-#      compiler: ": #GHC 8.8.1"
-#      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.1,cppcheck,hscolour], sources: [hvr-ghc]}}
-#   - env: CABALVER="3.0" GHCVER="8.8.1" TESTS="test_js"
-#      compiler: ": #GHC 8.8.1"
-#      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.1,cppcheck,hscolour], sources: [hvr-ghc]}}
-#    - env: CABALVER="3.0" GHCVER="8.8.1" TESTS="test_c"
-#      compiler: ": #GHC 8.8.1"
-#      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.1,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.4" GHCVER="8.4.4" TESTS="lib_doc doc"
+      compiler: ": #GHC 8.4.4"
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.4.4,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.4" GHCVER="8.4.4" TESTS="test_js"
+      compiler: ": #GHC 8.4.4"
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.4.4,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="2.4" GHCVER="8.4.4" TESTS="test_c"
+      compiler: ": #GHC 8.4.4"
+      addons: {apt: {packages: [cabal-install-2.4,ghc-8.4.4,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="3.0" GHCVER="8.8.3" TESTS="lib_doc doc"
+      compiler: ": #GHC 8.8.3"
+      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.3,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="3.0" GHCVER="8.8.3" TESTS="test_js"
+      compiler: ": #GHC 8.8.3"
+      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.3,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="3.0" GHCVER="8.8.3" TESTS="test_c"
+      compiler: ": #GHC 8.8.3"
+      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.3,cppcheck,hscolour], sources: [hvr-ghc]}}
+    - env: CABALVER="3.0" GHCVER="8.8.3" IDRIS2=YES
+      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.3], sources: [hvr-ghc]}}
   fast-finish: true
 
 cache:
@@ -119,7 +127,7 @@ install:
       cp -a $HOME/.ghc $HOME/.cabsnap/ghc;
       cp -a $HOME/.cabal/lib $HOME/.cabal/share $HOME/.cabal/bin installplan.txt $HOME/.cabsnap/;
     fi
-  
+
 
 before_script:
   - ORIGINAL_DIR=$(pwd)
@@ -128,6 +136,7 @@ before_script:
   - tar -xf ${ORIGINAL_DIR}/dist/${PKGNAME}*.tar.gz
   - cd ${PKGNAME}*
 script:
+  - export LD_PRELOAD=/opt/ghc/${GHCVER}/lib/ghc-${GHCVER}/rts/libffi.so.7
 ###
   - echo 'Configure...' && echo -en 'travis_fold:start:script.configure\\r'
   - cabal v1-configure -f FFI -f CI --enable-tests
