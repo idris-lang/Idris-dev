@@ -36,7 +36,7 @@ line : String -> Lexer
 line s = exact s <+> space <+> untilEOL
 
 block : String -> String -> Lexer
-block s e = exact s <+> manyUntil (exact e) any 
+block s e = surround (exact s) (exact e) any
 
 data Token = CodeBlock String String String
            | Any String
@@ -76,7 +76,7 @@ reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc with (lines src) -- Strip t
   reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: ys) with (snocList ys)
     reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: []) | Empty = reduce rest acc -- 2
     reduce (MkToken _ _ (CodeBlock l r src) :: rest) acc | (s :: (srcs ++ [f])) | (Snoc rec) =
-        reduce rest (acc ++ "\n" ++ unlines srcs ++ "\n")
+        reduce rest (acc ++ unlines srcs)
 
 -- [ NOTE ] 1 & 2 shouldn't happen as code blocks are well formed i.e. have two deliminators.
 
