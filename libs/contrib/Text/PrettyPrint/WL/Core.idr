@@ -92,11 +92,19 @@ flatten other = other
 group : Doc -> Doc
 group x = Union (flatten x) x
 
+-- TODO : Prove these believe_me statements, or at least replace them
+--        with explicit postulates.
+
 Semigroup Doc where
   (<+>) x y = beside x y
 
+  semigroupOpIsAssociative x y z = believe_me Doc
+
 Monoid Doc where
   neutral = empty
+
+  monoidNeutralIsNeutralL l = believe_me Doc
+  monoidNeutralIsNeutralR r = believe_me Doc
 
 fold : (f : Doc -> Doc -> Doc) -> (ds : List Doc) -> Doc
 fold _ Nil     = empty

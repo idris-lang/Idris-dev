@@ -1,7 +1,6 @@
 module Data.Bool.Algebra
 
 import Control.Algebra
-import Interfaces.Verified
 
 %access public export
 %default total
@@ -17,10 +16,9 @@ xor True True = False
 xor False False = False
 xor _ _ = True
 
-[PlusBoolSemi] Semigroup Bool where
+Semigroup Bool where
   (<+>) = xor
 
-[PlusBoolSemiV] VerifiedSemigroup Bool using PlusBoolSemi where
   semigroupOpIsAssociative True True True = Refl
   semigroupOpIsAssociative True True False = Refl
   semigroupOpIsAssociative True False True = Refl
@@ -30,36 +28,32 @@ xor _ _ = True
   semigroupOpIsAssociative False True False = Refl
   semigroupOpIsAssociative False False False = Refl
 
-[PlusBoolMonoid] Monoid Bool using PlusBoolSemi where
+Monoid Bool where
   neutral = False
 
-[PlusBoolMonoidV] VerifiedMonoid Bool using PlusBoolSemiV, PlusBoolMonoid where
   monoidNeutralIsNeutralL True = Refl
   monoidNeutralIsNeutralL False = Refl
 
   monoidNeutralIsNeutralR True = Refl
   monoidNeutralIsNeutralR False = Refl
 
-[PlusBoolGroup] Group Bool using PlusBoolMonoid where
+Group Bool where
   -- Each Bool is its own additive inverse.
   inverse = id
 
-[PlusBoolGroupV] VerifiedGroup Bool using PlusBoolMonoidV, PlusBoolGroup where
   groupInverseIsInverseR True = Refl
   groupInverseIsInverseR False = Refl
 
-[PlusBoolAbel] AbelianGroup Bool using PlusBoolGroup where
+AbelianGroup Bool where
 
-[PlusBoolAbelV] VerifiedAbelianGroup Bool using PlusBoolGroupV, PlusBoolAbel where
   abelianGroupOpIsCommutative True True = Refl
   abelianGroupOpIsCommutative True False = Refl
   abelianGroupOpIsCommutative False True = Refl
   abelianGroupOpIsCommutative False False = Refl
 
-[RingBool] Ring Bool using PlusBoolAbel where
+Ring Bool where
   (<.>) = and
 
-[RingBoolV] VerifiedRing Bool using RingBool, PlusBoolAbelV where
   ringOpIsAssociative True True True = Refl
   ringOpIsAssociative True True False = Refl
   ringOpIsAssociative True False True = Refl
@@ -87,12 +81,24 @@ xor _ _ = True
   ringOpIsDistributiveR False True False = Refl
   ringOpIsDistributiveR False False False = Refl
 
-[RingUnBool] RingWithUnity Bool using RingBool where
+RingWithUnity Bool where
   unity = True
 
-VerifiedRingWithUnity Bool using RingUnBool, RingBoolV where
   ringWithUnityIsUnityL True = Refl
   ringWithUnityIsUnityL False = Refl
 
   ringWithUnityIsUnityR True = Refl
   ringWithUnityIsUnityR False = Refl
+
+CommutativeRing Bool where
+  ringOpIsCommutative True True = Refl
+  ringOpIsCommutative True False = Refl
+  ringOpIsCommutative False True = Refl
+  ringOpIsCommutative False False = Refl
+
+Field Bool where
+  -- True is the only "nonzero" element
+  inverseM x _ = x
+
+  fieldInverseIsInverseR False p = void $ p Refl
+  fieldInverseIsInverseR True _ = Refl

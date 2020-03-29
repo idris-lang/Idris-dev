@@ -1,7 +1,7 @@
 module Control.Algebra.Lattice
 
 import Control.Algebra
-import Data.Heap
+import Data.Bool.Extra
 
 %access public export
 
@@ -19,14 +19,9 @@ import Data.Heap
 interface JoinSemilattice a where
   join : a -> a -> a
 
-implementation JoinSemilattice Nat where
-  join = maximum
-
-implementation Ord a => JoinSemilattice (MaxiphobicHeap a) where
-  join = merge
-
-JoinSemilattice Bool where
-  join a b = a || b
+  joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
+  joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
+  joinSemilatticeJoinIsIdempotent  : (e : a)       -> join e e = e
 
 ||| Sets equipped with a binary operation that is commutative, associative and
 ||| idempotent.  Must satisfy the following laws:
@@ -42,11 +37,9 @@ JoinSemilattice Bool where
 interface MeetSemilattice a where
   meet : a -> a -> a
 
-implementation MeetSemilattice Nat where
-  meet = minimum
-
-MeetSemilattice Bool where
-  meet a b = a && b
+  meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
+  meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
+  meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
 
 ||| Sets equipped with a binary operation that is commutative, associative and
 ||| idempotent and supplied with a unitary element.  Must satisfy the following
@@ -66,11 +59,7 @@ MeetSemilattice Bool where
 interface JoinSemilattice a => BoundedJoinSemilattice a where
   bottom  : a
 
-implementation BoundedJoinSemilattice Nat where
-  bottom = Z
-
-BoundedJoinSemilattice Bool where
-  bottom = False
+  joinBottomIsIdentity : (x : a) -> join x Lattice.bottom = x
 
 ||| Sets equipped with a binary operation that is commutative, associative and
 ||| idempotent and supplied with a unitary element.  Must satisfy the following
@@ -90,8 +79,7 @@ BoundedJoinSemilattice Bool where
 interface MeetSemilattice a => BoundedMeetSemilattice a where
   top : a
 
-BoundedMeetSemilattice Bool where
-  top = True
+  meetTopIsIdentity : (x : a) -> meet x Lattice.top = x
 
 ||| Sets equipped with two binary operations that are both commutative,
 ||| associative and idempotent, along with absorbtion laws for relating the two
@@ -110,10 +98,6 @@ BoundedMeetSemilattice Bool where
 |||     forall a b,   meet a (join a b) == a
 |||     forall a b,   join a (meet a b) == a
 interface (JoinSemilattice a, MeetSemilattice a) => Lattice a where { }
-
-implementation Lattice Nat where { }
-
-Lattice Bool where { }
 
 ||| Sets equipped with two binary operations that are both commutative,
 ||| associative and idempotent and supplied with neutral elements, along with
@@ -137,4 +121,50 @@ Lattice Bool where { }
 |||     forall a,     join a bottom     == bottom
 interface (BoundedJoinSemilattice a, BoundedMeetSemilattice a) => BoundedLattice a where { }
 
+-- Implementations ---------------------
+
+-- Nat
+
+JoinSemilattice Nat where
+  join = maximum
+  joinSemilatticeJoinIsAssociative = maximumAssociative
+  joinSemilatticeJoinIsCommutative = maximumCommutative
+  joinSemilatticeJoinIsIdempotent  = maximumIdempotent
+
+MeetSemilattice Nat where
+  meet = minimum
+  meetSemilatticeMeetIsAssociative = minimumAssociative
+  meetSemilatticeMeetIsCommutative = minimumCommutative
+  meetSemilatticeMeetIsIdempotent  = minimumIdempotent
+
+BoundedJoinSemilattice Nat where
+  bottom = Z
+  joinBottomIsIdentity = maximumZeroNLeft
+
+Lattice Nat where { }
+
+-- Bool
+
+JoinSemilattice Bool where
+  join a b = a || b
+  joinSemilatticeJoinIsAssociative = orAssociative
+  joinSemilatticeJoinIsCommutative = orCommutative
+  joinSemilatticeJoinIsIdempotent = orSameNeutral
+
+MeetSemilattice Bool where
+  meet a b = a && b
+  meetSemilatticeMeetIsAssociative = andAssociative
+  meetSemilatticeMeetIsCommutative = andCommutative
+  meetSemilatticeMeetIsIdempotent = andSameNeutral
+
+BoundedJoinSemilattice Bool where
+  bottom = False
+  joinBottomIsIdentity = orFalseNeutral
+
+BoundedMeetSemilattice Bool where
+  top = True
+  meetTopIsIdentity = andTrueNeutral
+
 BoundedLattice Bool where { }
+
+Lattice Bool where { }

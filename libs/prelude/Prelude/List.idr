@@ -272,12 +272,6 @@ Ord a => Ord (List a) where
     else
       compare xs ys
 
-Semigroup (List a) where
-  (<+>) = (++)
-
-Monoid (List a) where
-  neutral = []
-
 Functor List where
   map f []      = []
   map f (x::xs) = f x :: map f xs
@@ -416,14 +410,6 @@ intersperse sep (x::xs) = x :: intersperse' sep xs
     intersperse' : a -> List a -> List a
     intersperse' sep []      = []
     intersperse' sep (y::ys) = sep :: y :: intersperse' sep ys
-
-||| Given a separator list and some more lists, produce a new list by
-||| placing the separator between each of the lists.
-|||
-||| @ sep the separator
-||| @ xss the lists between which the separator will be placed
-intercalate : (sep : List a) -> (xss : List (List a)) -> List a
-intercalate sep xss = concat $ intersperse sep xss
 
 ||| Transposes rows and columns of a list of lists.
 |||
@@ -975,3 +961,24 @@ splitAtTakeDrop (S k) (x :: xs) with (splitAt k xs) proof p
                 in aux (cong {f=(x ::) . fst} prf) (cong {f=snd} prf)
   where aux : {a, b : Type} -> {w, x : a} -> {y, z : b} -> w = x -> y = z -> (w, y) = (x, z)
         aux Refl Refl = Refl
+
+-- Algebra -----------------------------
+
+Semigroup (List a) where
+  (<+>) = (++)
+
+  semigroupOpIsAssociative = appendAssociative
+
+Monoid (List a) where
+  neutral = []
+
+  monoidNeutralIsNeutralL = appendNilRightNeutral
+  monoidNeutralIsNeutralR xs = Refl
+
+||| Given a separator list and some more lists, produce a new list by
+||| placing the separator between each of the lists.
+|||
+||| @ sep the separator
+||| @ xss the lists between which the separator will be placed
+intercalate : (sep : List a) -> (xss : List (List a)) -> List a
+intercalate sep xss = concat $ intersperse sep xss

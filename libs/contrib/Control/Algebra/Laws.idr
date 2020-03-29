@@ -2,14 +2,13 @@ module Control.Algebra.Laws
 
 import Prelude.Algebra as A
 import Control.Algebra as Alg
-import Interfaces.Verified
 
-%access export
+%access public export
 
 -- Monoids
 
 ||| Inverses are unique.
-uniqueInverse : VerifiedMonoid t => (x, y, z : t) ->
+uniqueInverse : Monoid t => (x, y, z : t) ->
   y <+> x = A.neutral -> x <+> z = A.neutral -> y = z
 uniqueInverse x y z p q =
   rewrite sym $ monoidNeutralIsNeutralL y in
@@ -22,7 +21,7 @@ uniqueInverse x y z p q =
 -- Groups
 
 ||| Only identity is self-squaring.
-selfSquareId : VerifiedGroup t => (x : t) ->
+selfSquareId : Group t => (x : t) ->
   x <+> x = x -> x = A.neutral
 selfSquareId x p =
   rewrite sym $ monoidNeutralIsNeutralR x in
@@ -32,7 +31,7 @@ selfSquareId x p =
       Refl
 
 ||| Inverse elements commute.
-inverseCommute : VerifiedGroup t => (x, y : t) ->
+inverseCommute : Group t => (x, y : t) ->
   y <+> x = A.neutral -> x <+> y = A.neutral
 inverseCommute x y p = selfSquareId (x <+> y) prop where
   prop : (x <+> y) <+> (x <+> y) = x <+> y
@@ -44,13 +43,13 @@ inverseCommute x y p = selfSquareId (x <+> y) prop where
         Refl
 
 ||| Every element has a right inverse.
-groupInverseIsInverseL : VerifiedGroup t => (x : t) ->
+groupInverseIsInverseL : Group t => (x : t) ->
   x <+> inverse x = Algebra.neutral
 groupInverseIsInverseL x =
   inverseCommute x (inverse x) (groupInverseIsInverseR x)
 
 ||| -(-x) = x in any verified group.
-inverseSquaredIsIdentity : VerifiedGroup t => (x : t) ->
+inverseSquaredIsIdentity : Group t => (x : t) ->
   inverse (inverse x) = x
 inverseSquaredIsIdentity x =
   let x' = inverse x in
@@ -62,7 +61,7 @@ inverseSquaredIsIdentity x =
       (groupInverseIsInverseR x)
 
 ||| If every square in a group is identity, the group is commutative.
-squareIdCommutative : VerifiedGroup t => (x, y : t) ->
+squareIdCommutative : Group t => (x, y : t) ->
   ((a : t) -> a <+> a = A.neutral) ->
   x <+> y = y <+> x
 squareIdCommutative x y p =
@@ -80,7 +79,7 @@ squareIdCommutative x y p =
           p x
 
 ||| -0 = 0 in any verified group.
-inverseNeutralIsNeutral : VerifiedGroup t =>
+inverseNeutralIsNeutral : Group t =>
   inverse (the t A.neutral) = A.neutral
 inverseNeutralIsNeutral {t} =
   let e = the t neutral in
@@ -89,7 +88,7 @@ inverseNeutralIsNeutral {t} =
         inverseSquaredIsIdentity e
 
 ||| -(x + y) = -y + -x in any verified group.
-inverseOfSum : VerifiedGroup t => (l, r : t) ->
+inverseOfSum : Group t => (l, r : t) ->
   inverse (l <+> r) = inverse r <+> inverse l
 inverseOfSum {t} l r =
   let
@@ -120,7 +119,7 @@ inverseOfSum {t} l r =
               Refl
 
 ||| y = z if x + y = x + z.
-cancelLeft : VerifiedGroup t => (x, y, z : t) ->
+cancelLeft : Group t => (x, y, z : t) ->
   x <+> y = x <+> z -> y = z
 cancelLeft x y z p =
   rewrite sym $ monoidNeutralIsNeutralR y in
@@ -132,7 +131,7 @@ cancelLeft x y z p =
   monoidNeutralIsNeutralR z
 
 ||| y = z if y + x = z + x.
-cancelRight : VerifiedGroup t => (x, y, z : t) ->
+cancelRight : Group t => (x, y, z : t) ->
   y <+> x = z <+> x -> y = z
 cancelRight x y z p =
   rewrite sym $ monoidNeutralIsNeutralL y in
@@ -144,7 +143,7 @@ cancelRight x y z p =
   monoidNeutralIsNeutralL z
 
 ||| For any a and b, ax = b and ya = b have solutions.
-latinSquareProperty : VerifiedGroup t => (a, b : t) ->
+latinSquareProperty : Group t => (a, b : t) ->
   ((x : t ** a <+> x = b),
     (y : t ** y <+> a = b))
 latinSquareProperty a b =
@@ -159,17 +158,17 @@ latinSquareProperty a b =
           monoidNeutralIsNeutralL b))
 
 ||| For any a, b, x, the solution to ax = b is unique.
-uniqueSolutionR : VerifiedGroup t => (a, b, x, y : t) ->
+uniqueSolutionR : Group t => (a, b, x, y : t) ->
   a <+> x = b -> a <+> y = b -> x = y
 uniqueSolutionR a b x y p q = cancelLeft a x y $ trans p (sym q)
 
 ||| For any a, b, y, the solution to ya = b is unique.
-uniqueSolutionL : VerifiedGroup t => (a, b, x, y : t) ->
+uniqueSolutionL : Group t => (a, b, x, y : t) ->
   x <+> a = b -> y <+> a = b -> x = y
 uniqueSolutionL a b x y p q = cancelRight a x y $ trans p (sym q)
 
 ||| -(x + y) = -x + -y in any verified abelian group.
-inverseDistributesOverGroupOp : VerifiedAbelianGroup t => (l, r : t) ->
+inverseDistributesOverGroupOp : AbelianGroup t => (l, r : t) ->
   inverse (l <+> r) = inverse l <+> inverse r
 inverseDistributesOverGroupOp l r =
   rewrite abelianGroupOpIsCommutative (inverse l) (inverse r) in
@@ -178,7 +177,7 @@ inverseDistributesOverGroupOp l r =
 -- Rings
 
 ||| Anything multiplied by zero yields zero back in a verified ring.
-multNeutralAbsorbingL : VerifiedRing t => (r : t) ->
+multNeutralAbsorbingL : Ring t => (r : t) ->
   A.neutral <.> r = A.neutral
 multNeutralAbsorbingL {t} r =
   let
@@ -196,7 +195,7 @@ multNeutralAbsorbingL {t} r =
   groupInverseIsInverseR exr
 
 ||| Anything multiplied by zero yields zero back in a verified ring.
-multNeutralAbsorbingR : VerifiedRing t => (l : t) ->
+multNeutralAbsorbingR : Ring t => (l : t) ->
   l <.> A.neutral = A.neutral
 multNeutralAbsorbingR {t} l =
   let
@@ -215,7 +214,7 @@ multNeutralAbsorbingR {t} l =
 
 ||| Inverse operator can be extracted before multiplication.
 ||| (-x)y = -(xy)
-multInverseInversesL : VerifiedRing t => (l, r : t) ->
+multInverseInversesL : Ring t => (l, r : t) ->
   inverse l <.> r = inverse (l <.> r)
 multInverseInversesL l r =
   let
@@ -234,7 +233,7 @@ multInverseInversesL l r =
 
 ||| Inverse operator can be extracted before multiplication.
 ||| x(-y) = -(xy)
-multInverseInversesR : VerifiedRing t => (l, r : t) ->
+multInverseInversesR : Ring t => (l, r : t) ->
   l <.> inverse r = inverse (l <.> r)
 multInverseInversesR l r =
   let
@@ -254,7 +253,7 @@ multInverseInversesR l r =
 ||| Multiplication of inverses is the same as multiplication of
 ||| original elements.
 ||| (-x)(-y) = xy
-multNegativeByNegativeIsPositive : VerifiedRing t => (l, r : t) ->
+multNegativeByNegativeIsPositive : Ring t => (l, r : t) ->
   inverse l <.> inverse r = l <.> r
 multNegativeByNegativeIsPositive l r =
     rewrite multInverseInversesR (inverse l) r in
@@ -262,14 +261,14 @@ multNegativeByNegativeIsPositive l r =
     rewrite inverseSquaredIsIdentity l in
     Refl
 
-inverseOfUnityR : VerifiedRingWithUnity t => (x : t) ->
+inverseOfUnityR : RingWithUnity t => (x : t) ->
   inverse Alg.unity <.> x = inverse x
 inverseOfUnityR x =
   rewrite multInverseInversesL Alg.unity x in
     rewrite ringWithUnityIsUnityR x in
       Refl
 
-inverseOfUnityL : VerifiedRingWithUnity t => (x : t) ->
+inverseOfUnityL : RingWithUnity t => (x : t) ->
   x <.> inverse Alg.unity = inverse x
 inverseOfUnityL x =
   rewrite multInverseInversesR x Alg.unity in

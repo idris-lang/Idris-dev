@@ -1,5 +1,7 @@
 module Data.SortedMap
 
+import Control.Algebra
+
 -- TODO: write split
 
 private
@@ -300,12 +302,18 @@ export
 -- strictly more powerful I believe, because `mergeLeft` can be emulated with
 -- the `First` monoid. However, this does require more code to do the same
 -- thing.
-export
-Semigroup v => Semigroup (SortedMap k v) where
-  (<+>) = merge
 
-||| For `neutral <+> y`, y is rebuilt in `Ord k`, so this is not a "strict" Monoid.
-||| However, semantically, it should be equal.
-export
-(Ord k, Semigroup v) => Monoid (SortedMap k v) where
-  neutral = empty
+-- export
+-- Semigroup v => Semigroup (SortedMap k v) where
+--   (<+>) = merge
+
+--   semigroupOpIsAssociative l c r = ???
+
+-- ||| For `neutral <+> y`, y is rebuilt in `Ord k`, so this is not a "strict" Monoid.
+-- ||| However, semantically, it should be equal.
+-- export
+-- (Ord k, Semigroup v) => Monoid (SortedMap k v) where
+--   neutral = empty
+
+--   monoidNeutralIsNeutralL l = Refl
+--   monoidNeutralIsNeutralR r = ???

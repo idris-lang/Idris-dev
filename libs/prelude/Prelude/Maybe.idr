@@ -115,6 +115,10 @@ Semigroup (Maybe a) where
   Nothing   <+> m = m
   (Just x)  <+> _ = Just x
 
+  semigroupOpIsAssociative (Just _) _ _ = Refl
+  semigroupOpIsAssociative Nothing (Just _) _ = Refl
+  semigroupOpIsAssociative Nothing Nothing _ = Refl
+
 ||| Transform any semigroup into a monoid by using `Nothing` as the
 ||| designated neutral element and collecting the contents of the
 ||| `Just` constructors using a semigroup structure on `a`. This is
@@ -124,8 +128,23 @@ Semigroup (Maybe a) where
   m         <+> Nothing = m
   (Just m1) <+> (Just m2) = Just (m1 <+> m2)
 
+  semigroupOpIsAssociative Nothing Nothing _ = Refl
+  semigroupOpIsAssociative Nothing (Just _) Nothing = Refl
+  semigroupOpIsAssociative Nothing (Just _) (Just _) = Refl
+  semigroupOpIsAssociative (Just x) Nothing Nothing = Refl
+  semigroupOpIsAssociative (Just x) Nothing (Just y) = Refl
+  semigroupOpIsAssociative (Just _) (Just _) Nothing = Refl
+  semigroupOpIsAssociative (Just x) (Just y) (Just z) =
+    rewrite semigroupOpIsAssociative x y z in Refl
+
 Monoid (Maybe a) where
   neutral = Nothing
+
+  monoidNeutralIsNeutralL Nothing = Refl
+  monoidNeutralIsNeutralL (Just _) = Refl
+
+  monoidNeutralIsNeutralR Nothing = Refl
+  monoidNeutralIsNeutralR (Just _) = Refl
 
 (Monoid a, Eq a) => Cast a (Maybe a) where
   cast = raiseToMaybe

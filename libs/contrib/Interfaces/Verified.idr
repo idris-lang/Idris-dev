@@ -1,12 +1,6 @@
 module Interfaces.Verified
 
-import Control.Algebra
-import Control.Algebra.Lattice
-import Control.Algebra.NumericImplementations
-import Control.Algebra.VectorSpace
 import Data.Vect
-import Data.ZZ
-import Data.Bool.Extra
 
 %default total
 %access public export
@@ -17,6 +11,8 @@ import Data.Bool.Extra
 -- implementations, then some of them can move back to base (or even
 -- prelude, in the cases of Functor, Applicative, Monad, Semigroup,
 -- and Monoid).
+
+-- Functor -----------------------------
 
 interface Functor f => VerifiedFunctor (f : Type -> Type) where
   functorIdentity : {a : Type} -> (g : a -> a) -> ((v : a) -> g v = v) -> (x : f a) -> map g x = x
@@ -54,6 +50,8 @@ VerifiedFunctor (Vect n) where
   functorIdentity g p (x :: xs) = rewrite p x in cong (functorIdentity g p xs)
   functorComposition [] _ _ = Refl
   functorComposition (x :: xs) f g = rewrite functorComposition xs f g in Refl
+
+-- Applicative -------------------------
 
 interface (Applicative f, VerifiedFunctor f) => VerifiedApplicative (f : Type -> Type) where
   applicativeMap : (x : f a) -> (g : a -> b) ->
@@ -167,6 +165,8 @@ VerifiedApplicative Maybe where
   applicativeInterchange x Nothing = Refl
   applicativeInterchange x (Just y) = Refl
 
+-- Monad -------------------------------
+
 interface (Monad m, VerifiedApplicative m) => VerifiedMonad (m : Type -> Type) where
   monadApplicative : (mf : m (a -> b)) -> (mx : m a) ->
                      mf <*> mx = mf >>= \f =>
@@ -215,6 +215,8 @@ VerifiedMonad List where
       (foldrConcatEq' (g1 x) (foldr (\x1, meth => g1 x1 ++ meth) [] xs) g2)
       (cong $ monadAssociativity xs g1 g2)
 
+-- Alternative -------------------------
+
 interface (Alternative f, VerifiedApplicative f) => VerifiedAlternative (f : Type -> Type) where
   alternativeLeftIdentity : (x : f a) -> Applicative.empty <|> x = x
   alternativeRightIdentity : (x : f a) -> x <|> Applicative.empty = x
@@ -232,123 +234,3 @@ VerifiedAlternative List where
   alternativeLeftIdentity _ = Refl
   alternativeRightIdentity = appendNilRightNeutral
   alternativeAssociativity = appendAssociative
-
-interface Semigroup a => VerifiedSemigroup a where
-  semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
-
-implementation VerifiedSemigroup (List a) where
-  semigroupOpIsAssociative = appendAssociative
-
-[PlusNatSemiV] VerifiedSemigroup Nat using PlusNatSemi where
-  semigroupOpIsAssociative = plusAssociative
-
-[MultNatSemiV] VerifiedSemigroup Nat using MultNatSemi where
-  semigroupOpIsAssociative = multAssociative
-
-[PlusZZSemiV] VerifiedSemigroup ZZ using PlusZZSemi where
-  semigroupOpIsAssociative = plusAssociativeZ
-
-[MultZZSemiV] VerifiedSemigroup ZZ using MultZZSemi where
-  semigroupOpIsAssociative = multAssociativeZ
-
-interface (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
-  monoidNeutralIsNeutralL : (l : a) -> l <+> Algebra.neutral = l
-  monoidNeutralIsNeutralR : (r : a) -> Algebra.neutral <+> r = r
-
-[PlusNatMonoidV] VerifiedMonoid Nat using PlusNatSemiV, PlusNatMonoid where
-   monoidNeutralIsNeutralL = plusZeroRightNeutral
-   monoidNeutralIsNeutralR = plusZeroLeftNeutral
-
-[MultNatMonoidV] VerifiedMonoid Nat using MultNatSemiV, MultNatMonoid where
-  monoidNeutralIsNeutralL = multOneRightNeutral
-  monoidNeutralIsNeutralR = multOneLeftNeutral
-
-[PlusZZMonoidV] VerifiedMonoid ZZ using PlusZZSemiV, PlusZZMonoid where
-   monoidNeutralIsNeutralL = plusZeroRightNeutralZ
-   monoidNeutralIsNeutralR = plusZeroLeftNeutralZ
-
-[MultZZMonoidV] VerifiedMonoid ZZ using MultZZSemiV, MultZZMonoid where
-  monoidNeutralIsNeutralL = multOneRightNeutralZ
-  monoidNeutralIsNeutralR = multOneLeftNeutralZ
-
-implementation VerifiedMonoid (List a) where
-  monoidNeutralIsNeutralL = appendNilRightNeutral
-  monoidNeutralIsNeutralR xs = Refl
-
-interface (VerifiedMonoid a, Group a) => VerifiedGroup a where
-  groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
-
-VerifiedGroup ZZ using PlusZZMonoidV where
-  groupInverseIsInverseR k = rewrite sym $ multCommutativeZ (NegS 0) k in
-                             rewrite multNegLeftZ 0 k in
-                             rewrite multOneLeftNeutralZ k in
-                             plusNegateInverseRZ k
-
-interface (VerifiedGroup a, AbelianGroup a) => VerifiedAbelianGroup a where
-  abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
-
-VerifiedAbelianGroup ZZ where
-  abelianGroupOpIsCommutative = plusCommutativeZ
-
-interface (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
-  ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
-  ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
-  ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)
-
-VerifiedRing ZZ where
-  ringOpIsAssociative = multAssociativeZ
-  ringOpIsDistributiveL = multDistributesOverPlusRightZ
-  ringOpIsDistributiveR = multDistributesOverPlusLeftZ
-
-interface (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
-  ringWithUnityIsUnityL : (l : a) -> l <.> Algebra.unity = l
-  ringWithUnityIsUnityR : (r : a) -> Algebra.unity <.> r = r
-
-VerifiedRingWithUnity ZZ where
-  ringWithUnityIsUnityL = multOneRightNeutralZ
-  ringWithUnityIsUnityR = multOneLeftNeutralZ
-
-interface JoinSemilattice a => VerifiedJoinSemilattice a where
-  joinSemilatticeJoinIsAssociative : (l, c, r : a) -> join l (join c r) = join (join l c) r
-  joinSemilatticeJoinIsCommutative : (l, r : a)    -> join l r = join r l
-  joinSemilatticeJoinIsIdempotent  : (e : a)       -> join e e = e
-
-VerifiedJoinSemilattice Nat where
-  joinSemilatticeJoinIsAssociative = maximumAssociative
-  joinSemilatticeJoinIsCommutative = maximumCommutative
-  joinSemilatticeJoinIsIdempotent  = maximumIdempotent
-
-VerifiedJoinSemilattice Bool where
-  joinSemilatticeJoinIsAssociative = orAssociative
-  joinSemilatticeJoinIsCommutative = orCommutative
-  joinSemilatticeJoinIsIdempotent = orSameNeutral
-
-interface MeetSemilattice a => VerifiedMeetSemilattice a where
-  meetSemilatticeMeetIsAssociative : (l, c, r : a) -> meet l (meet c r) = meet (meet l c) r
-  meetSemilatticeMeetIsCommutative : (l, r : a)    -> meet l r = meet r l
-  meetSemilatticeMeetIsIdempotent  : (e : a)       -> meet e e = e
-
-VerifiedMeetSemilattice Nat where
-  meetSemilatticeMeetIsAssociative = minimumAssociative
-  meetSemilatticeMeetIsCommutative = minimumCommutative
-  meetSemilatticeMeetIsIdempotent  = minimumIdempotent
-
-VerifiedMeetSemilattice Bool where
-  meetSemilatticeMeetIsAssociative = andAssociative
-  meetSemilatticeMeetIsCommutative = andCommutative
-  meetSemilatticeMeetIsIdempotent = andSameNeutral
-
-interface (VerifiedJoinSemilattice a, BoundedJoinSemilattice a) => VerifiedBoundedJoinSemilattice a where
-  joinBottomIsIdentity : (x : a) -> join x Lattice.bottom = x
-
-VerifiedBoundedJoinSemilattice Nat where
-  joinBottomIsIdentity = maximumZeroNLeft
-
-VerifiedBoundedJoinSemilattice Bool where
-  joinBottomIsIdentity = orFalseNeutral
-
-interface (VerifiedMeetSemilattice a, BoundedMeetSemilattice a) => VerifiedBoundedMeetSemilattice a where
-  meetTopIsIdentity : (x : a) -> meet x Lattice.top = x
-
-VerifiedBoundedMeetSemilattice Bool where
-  meetTopIsIdentity = andTrueNeutral

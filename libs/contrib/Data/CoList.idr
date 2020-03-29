@@ -1,5 +1,7 @@
 module Data.CoList
 
+import Control.Algebra
+
 %access public export
 %default total
 
@@ -13,11 +15,32 @@ codata CoList : Type -> Type where
 (++) []      right = right
 (++) (x::xs) right = x :: (xs ++ right)
 
+-- Postulates --------------------------
+
+-- These are required for implementing verified interfaces.
+-- TODO : Prove them.
+
+postulate private
+colist_assoc : (l, c, r : CoList a) -> l ++ c ++ r = (l ++ c) ++ r
+
+postulate private
+colist_neutl : (l : CoList a) -> l ++ [] = l
+
+postulate private
+colist_neutr : (r : CoList a) -> [] ++ r = r
+
+----------------------------------------
+
 implementation Semigroup (CoList a) where
   (<+>) = (++)
 
+  semigroupOpIsAssociative = colist_assoc
+
 implementation Monoid (CoList a) where
   neutral = []
+
+  monoidNeutralIsNeutralL = colist_neutl
+  monoidNeutralIsNeutralR = colist_neutr
 
 implementation Functor CoList where
   map f []      = []

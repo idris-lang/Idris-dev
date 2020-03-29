@@ -5,7 +5,6 @@ module Data.Matrix.Algebraic
 
 import public Control.Algebra
 import public Control.Algebra.VectorSpace
-import public Control.Algebra.NumericImplementations
 
 import public Data.Matrix
 
@@ -26,27 +25,85 @@ infixr 7 <&>  -- matrix tensor product
 --               Vectors as members of algebraic interfaces
 -----------------------------------------------------------------------
 
-implementation Semigroup a => Semigroup (Vect n a) where
+-- TODO: Prove properties of matrix algebra for verified algebraic interfaces
+
+Semigroup a => Semigroup (Vect n a) where
   (<+>)= zipWith (<+>)
 
-implementation Monoid a => Monoid (Vect n a) where
+  semigroupOpIsAssociative [] [] [] = Refl
+  semigroupOpIsAssociative (x :: xs) (y :: ys) (z :: zs) =
+    rewrite semigroupOpIsAssociative x y z in
+      rewrite semigroupOpIsAssociative xs ys zs in
+        Refl
+
+Monoid a => Monoid (Vect n a) where
   neutral {n} = replicate n neutral
 
-implementation Group a => Group (Vect n a) where
+  monoidNeutralIsNeutralL [] = Refl
+  monoidNeutralIsNeutralL (x :: xs) =
+    rewrite monoidNeutralIsNeutralL x in
+      rewrite monoidNeutralIsNeutralL xs in
+        Refl
+
+  monoidNeutralIsNeutralR [] = Refl
+  monoidNeutralIsNeutralR (x :: xs) =
+    rewrite monoidNeutralIsNeutralR x in
+      rewrite monoidNeutralIsNeutralR xs in
+        Refl
+
+Group a => Group (Vect n a) where
   inverse = map inverse
 
-implementation AbelianGroup a => AbelianGroup (Vect n a) where {}
+  groupInverseIsInverseR [] = Refl
+  groupInverseIsInverseR (x :: xs) =
+    rewrite groupInverseIsInverseR x in
+      rewrite groupInverseIsInverseR xs in
+        Refl
 
-implementation Ring a => Ring (Vect n a) where
+AbelianGroup a => AbelianGroup (Vect n a) where
+  abelianGroupOpIsCommutative [] [] = Refl
+  abelianGroupOpIsCommutative (x :: xs) (y :: ys) =
+    rewrite abelianGroupOpIsCommutative x y in
+      rewrite abelianGroupOpIsCommutative xs ys in
+        Refl
+
+Ring a => Ring (Vect n a) where
   (<.>) = zipWith (<.>)
 
-implementation RingWithUnity a => RingWithUnity (Vect n a) where
+  ringOpIsAssociative [] [] [] = Refl
+  ringOpIsAssociative (x :: xs) (y :: ys) (z :: zs) =
+    rewrite ringOpIsAssociative x y z in
+      rewrite ringOpIsAssociative xs ys zs in
+        Refl
+  ringOpIsDistributiveL [] [] [] = Refl
+  ringOpIsDistributiveL (x :: xs) (y :: ys) (z :: zs) =
+    rewrite ringOpIsDistributiveL x y z in
+      rewrite ringOpIsDistributiveL xs ys zs in
+        Refl
+  ringOpIsDistributiveR [] [] [] = Refl
+  ringOpIsDistributiveR (x :: xs) (y :: ys) (z :: zs) =
+    rewrite ringOpIsDistributiveR x y z in
+      rewrite ringOpIsDistributiveR xs ys zs in
+        Refl
+
+RingWithUnity a => RingWithUnity (Vect n a) where
   unity {n} = replicate n unity
 
-implementation RingWithUnity a => Module a (Vect n a) where
+  ringWithUnityIsUnityR [] = Refl
+  ringWithUnityIsUnityR (x :: xs) =
+    rewrite ringWithUnityIsUnityR x in
+      rewrite ringWithUnityIsUnityR xs in
+        Refl
+  ringWithUnityIsUnityL [] = Refl
+  ringWithUnityIsUnityL (x :: xs) =
+    rewrite ringWithUnityIsUnityL x in
+      rewrite ringWithUnityIsUnityL xs in
+        Refl
+
+RingWithUnity a => Module a (Vect n a) where
   (<#>) r = map (r <.>)
 
-implementation RingWithUnity a => Module a (Vect n (Vect l a)) where
+RingWithUnity a => Module a (Vect n (Vect l a)) where
   (<#>) r = map (r <#>)
 -- should be Module a b => Module a (Vect n b), but results in 'overlapping implementation'
 
@@ -141,9 +198,3 @@ det {n} m = case n of
   Z     => det2 m
   (S k) => altSum . map (\c => indices FZ c m <.> det (subMatrix FZ c m))
          $ fins (S (S (S k)))
-
------------------------------------------------------------------------
---                      Matrix Algebra Properties
------------------------------------------------------------------------
-
--- TODO: Prove properties of matrix algebra for 'Verified' algebraic interfaces

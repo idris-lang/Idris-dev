@@ -38,11 +38,30 @@ Category Iso where
   id = isoRefl
   (.) = flip isoTrans
 
+-- TODO : Prove these postulates! ------
+
+postulate private
+iso_semigroupOpIsAssociative : (l, c, r : Iso a a) ->
+  isoTrans l (isoTrans c r) = isoTrans (isoTrans l c) r
+
+postulate private
+iso_monoidNeutralIsNeutralL : (l : Iso a a) -> isoTrans l isoRefl = l
+
+postulate private
+iso_monoidNeutralIsNeutralR : (r : Iso a a) -> isoTrans isoRefl r = r
+
+----------------------------------------
+
 Semigroup (Iso a a) where
   (<+>) = isoTrans
 
+  semigroupOpIsAssociative = iso_semigroupOpIsAssociative
+
 Monoid (Iso a a) where
   neutral = isoRefl
+
+  monoidNeutralIsNeutralL = iso_monoidNeutralIsNeutralL
+  monoidNeutralIsNeutralR = iso_monoidNeutralIsNeutralR
 
 ||| Isomorphism is symmetric
 isoSym : Iso a b -> Iso b a

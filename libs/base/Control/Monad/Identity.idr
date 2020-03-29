@@ -33,5 +33,13 @@ Enum a => Enum (Identity a) where
 (Semigroup a) => Semigroup (Identity a) where
   (<+>) x y = Id (runIdentity x <+> runIdentity y)
 
+  semigroupOpIsAssociative (Id l) (Id c) (Id r) =
+    rewrite semigroupOpIsAssociative l c r in Refl
+
 (Monoid a) => Monoid (Identity a) where
   neutral = Id (neutral)
+
+  monoidNeutralIsNeutralL (Id l) =
+    rewrite monoidNeutralIsNeutralL l in Refl
+  monoidNeutralIsNeutralR (Id r) =
+    rewrite monoidNeutralIsNeutralR r in Refl

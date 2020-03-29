@@ -19,6 +19,8 @@ infixl 7 <.>
 interface Monoid a => Group a where
   inverse : a -> a
 
+  groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
+
 (<->) : Group a => a -> a -> a
 (<->) left right = left <+> (inverse right)
 
@@ -36,7 +38,8 @@ interface Monoid a => Group a where
 ||| + Inverse for `<+>`:
 |||     forall a,     a <+> inverse a == neutral
 |||     forall a,     inverse a <+> a == neutral
-interface Group a => AbelianGroup a where { }
+interface Group a => AbelianGroup a where
+  abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
 
 ||| Sets equipped with two binary operations, one associative and commutative
 ||| supplied with a neutral element, and the other associative, with
@@ -60,6 +63,10 @@ interface Group a => AbelianGroup a where { }
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
 interface AbelianGroup a => Ring a where
   (<.>) : a -> a -> a
+
+  ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
+  ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
+  ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)
 
 ||| Sets equipped with two binary operations, one associative and commutative
 ||| supplied with a neutral element, and the other associative supplied with a
@@ -87,6 +94,34 @@ interface AbelianGroup a => Ring a where
 interface Ring a => RingWithUnity a where
   unity : a
 
+  ringWithUnityIsUnityL : (l : a) -> l <.> unity = l
+  ringWithUnityIsUnityR : (r : a) -> unity <.> r = r
+
+||| Sets equipped with two binary operations, one associative and
+||| commutative supplied with a neutral element, and the other
+||| associative and commutative, with distributivity laws relating the
+||| two operations. Must satisfy the following laws:
+|||
+||| +  Associativity of `<+>`:
+|||     forall a b c, a <+> (b <+> c) == (a <+> b) <+> c
+||| + Commutativity of `<+>`:
+|||     forall a b,   a <+> b         == b <+> a
+||| + Neutral for `<+>`:
+|||     forall a,     a <+> neutral   == a
+|||     forall a,     neutral <+> a   == a
+||| + Inverse for `<+>`:
+|||     forall a,     a <+> inverse a == neutral
+|||     forall a,     inverse a <+> a == neutral
+||| + Associativity of `<.>`:
+|||     forall a b c, a <.> (b <.> c) == (a <.> b) <.> c
+||| + Commutativity of `<.>`:
+|||     forall a b,   a <.> b         == b <.> a
+||| + Distributivity of `<.>` and `<+>`:
+|||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
+|||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
+interface Ring a => CommutativeRing a where
+  ringOpIsCommutative : (x, y : a) -> x <.> y = y <.> x
+
 ||| Sets equipped with two binary operations – both associative, commutative and
 ||| possessing a neutral element – and distributivity laws relating the two
 ||| operations. All elements except the additive identity must have a
@@ -104,6 +139,8 @@ interface Ring a => RingWithUnity a where
 |||     forall a,     inverse a <+> a == neutral
 ||| + Associativity of `<.>`:
 |||     forall a b c, a <.> (b <.> c) == (a <.> b) <.> c
+||| + Commutativity of `<.>`:
+|||     forall a b,   a <.> b         == b <.> a
 ||| + Unity for `<.>`:
 |||     forall a,     a <.> unity     == a
 |||     forall a,     unity <.> a     == a
@@ -113,8 +150,11 @@ interface Ring a => RingWithUnity a where
 ||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
-interface RingWithUnity a => Field a where
+interface (RingWithUnity a, CommutativeRing a) => Field a where
   inverseM : (x : a) -> Not (x = Algebra.neutral) -> a
+
+  fieldInverseIsInverseR : (r : a) -> (p : Not (r = Algebra.neutral)) ->
+    inverseM r p <.> r = Algebra.unity
 
 sum' : (Foldable t, Monoid a) => t a -> a
 sum' = concat

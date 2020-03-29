@@ -209,8 +209,13 @@ Cast Char String where
 Semigroup String where
   (<+>) = (++)
 
+  semigroupOpIsAssociative = believe_me String
+
 Monoid String where
   neutral = ""
+
+  monoidNeutralIsNeutralL = believe_me String
+  monoidNeutralIsNeutralR = believe_me String
 
 ||| Splits the string into a part before the predicate
 ||| returns False and the rest of the string.

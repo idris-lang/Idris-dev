@@ -1,6 +1,7 @@
 module Data.SortedSet
 
 import Data.SortedMap
+import Control.Algebra
 
 export
 data SortedSet k = SetWrapper (Data.SortedMap.SortedMap k ())
@@ -53,13 +54,18 @@ export
 intersection : (x, y : SortedSet k) -> SortedSet k
 intersection x y = difference x (difference x y)
 
-export
-Ord k => Semigroup (SortedSet k) where
-  (<+>) = union
+-- export
+-- Ord k => Semigroup (SortedSet k) where
+--   (<+>) = union
 
-export
-Ord k => Monoid (SortedSet k) where
-  neutral = empty
+--   semigroupOpIsAssociative l c r = ???
+
+-- export
+-- Ord k => Monoid (SortedSet k) where
+--   neutral = empty
+
+--   monoidNeutralIsNeutralL l = ???
+--   monoidNeutralIsNeutralR r = ???
 
 export
 keySet : SortedMap k v -> SortedSet k

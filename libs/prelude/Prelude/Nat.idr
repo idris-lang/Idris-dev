@@ -260,48 +260,6 @@ Cast String Nat where
 Cast Nat String where
   cast n = cast (the Integer (cast n))
 
-||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (*)
-record Multiplicative where
-  constructor GetMultiplicative
-  _ : Nat
-
-||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (+)
-record Additive where
-  constructor GetAdditive
-  _ : Nat
-
-Semigroup Multiplicative where
-  (<+>) left right = GetMultiplicative $ left' * right'
-    where
-      left'  : Nat
-      left'  =
-       case left of
-          GetMultiplicative m => m
-
-      right' : Nat
-      right' =
-        case right of
-          GetMultiplicative m => m
-
-Semigroup Additive where
-  left <+> right = GetAdditive $ left' + right'
-    where
-      left'  : Nat
-      left'  =
-        case left of
-          GetAdditive m => m
-
-      right' : Nat
-      right' =
-        case right of
-          GetAdditive m => m
-
-Monoid Multiplicative where
-  neutral = GetMultiplicative $ S Z
-
-Monoid Additive where
-  neutral = GetAdditive Z
-
 ||| Casts negative `Ints` to 0.
 Cast Int Nat where
   cast i = fromInteger (cast i)
@@ -811,3 +769,64 @@ sucMinL (S l) = cong (sucMinL l)
 total sucMinR : (l : Nat) -> minimum l (S l) = l
 sucMinR Z = Refl
 sucMinR (S l) = cong (sucMinR l)
+
+-- Algebra -----------------------------
+
+||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (*)
+record Multiplicative where
+  constructor GetMultiplicative
+  _ : Nat
+
+||| A wrapper for Nat that specifies the semigroup and monoid implementations that use (+)
+record Additive where
+  constructor GetAdditive
+  _ : Nat
+
+Semigroup Multiplicative where
+  (<+>) left right = GetMultiplicative $ left' * right'
+    where
+      left'  : Nat
+      left'  =
+       case left of
+          GetMultiplicative m => m
+
+      right' : Nat
+      right' =
+        case right of
+          GetMultiplicative m => m
+
+  semigroupOpIsAssociative
+    (GetMultiplicative l) (GetMultiplicative c) (GetMultiplicative r) =
+      rewrite multAssociative l c r in Refl
+
+Semigroup Additive where
+  left <+> right = GetAdditive $ left' + right'
+    where
+      left'  : Nat
+      left'  =
+        case left of
+          GetAdditive m => m
+
+      right' : Nat
+      right' =
+        case right of
+          GetAdditive m => m
+
+  semigroupOpIsAssociative
+    (GetAdditive l) (GetAdditive c) (GetAdditive r) =
+      rewrite plusAssociative l c r in Refl
+
+Monoid Multiplicative where
+  neutral = GetMultiplicative $ S Z
+
+  monoidNeutralIsNeutralL (GetMultiplicative l) =
+    rewrite multOneRightNeutral l in Refl
+  monoidNeutralIsNeutralR (GetMultiplicative r) =
+    rewrite plusZeroRightNeutral r in Refl
+
+Monoid Additive where
+  neutral = GetAdditive Z
+
+  monoidNeutralIsNeutralL (GetAdditive l) =
+    rewrite plusZeroRightNeutral l in Refl
+  monoidNeutralIsNeutralR (GetAdditive r) = Refl

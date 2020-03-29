@@ -5,6 +5,7 @@
 
 module Data.Heap
 
+import Control.Algebra.Lattice
 
 %default total
 %access export
@@ -122,11 +123,26 @@ implementation Eq a => Eq (MaxiphobicHeap a) where
     ls == rs && ll == rl && le == re && lr == rr
   _                  == _                  = False
 
-implementation Ord a => Semigroup (MaxiphobicHeap a) where
+-- This is required for implementing verified semigroup.
+-- TODO : Prove it!
+postulate private
+maxiphobicheap_assoc : Ord a => (l, c, r : MaxiphobicHeap a) ->
+  merge l (merge c r) = merge (merge l c) r
+
+Ord a => Semigroup (MaxiphobicHeap a) where
   (<+>) = merge
 
-implementation Ord a => Monoid (MaxiphobicHeap a) where
+  semigroupOpIsAssociative = maxiphobicheap_assoc
+
+Ord a => Monoid (MaxiphobicHeap a) where
   neutral = empty
+
+  monoidNeutralIsNeutralL Empty = Refl
+  monoidNeutralIsNeutralL (Node _ _ _ _) = Refl
+  monoidNeutralIsNeutralR _ = Refl
+
+-- Ord a => JoinSemilattice (MaxiphobicHeap a) where
+--   join = merge
 
 --------------------------------------------------------------------------------
 -- Properties

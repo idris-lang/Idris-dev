@@ -43,13 +43,31 @@ succ (n ** _) = (S n ** ItIsSucc)
 Semigroup PosNat where
   (<+>) = plusPosNat
 
+  semigroupOpIsAssociative (S a ** _) (S b ** _) (S c ** _) =
+    cong {f = \q => (S q ** ItIsSucc)} $
+      plusAssociative a (S b) (S c)
+
+-- I must be missing something obvious here, because it doesn't seem
+-- like it should be hard to prove this. TODO
+
+postulate private
+posnat_semigroupOpIsAssociative : (l, c, r : PosNat) ->
+  multPosNat l (multPosNat c r) = multPosNat (multPosNat l c) r
+
 ||| Semigroup using multiplication
 [MultPosNatSemi] Semigroup PosNat where
   (<+>) = multPosNat
 
+  semigroupOpIsAssociative = posnat_semigroupOpIsAssociative
+
 ||| Monoid, neutral = 1
 [MultPosNatMonoid] Monoid PosNat using MultPosNatSemi where
   neutral = one
+
+  monoidNeutralIsNeutralL (S k ** ItIsSucc) =
+    rewrite multOneRightNeutral k in Refl
+  monoidNeutralIsNeutralR (S k ** ItIsSucc) =
+    rewrite multOneLeftNeutral k in Refl
 
 ||| Convert a Nat to a PosNat, using automatic proof search
 p : (n : Nat) -> {auto ok : IsSucc n} -> PosNat

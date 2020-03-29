@@ -6,6 +6,7 @@ import Data.Chain
 import Data.Combinators
 import Data.PosNat
 import Data.SortedMap
+import Control.Algebra
 
 %default total
 %access export
@@ -120,8 +121,13 @@ Foldable SortedBag where
 union : EndoChain 2 (SortedBag k)
 union = onMaps {n=2} merge
 
-Semigroup (SortedBag a) where
-  (<+>) = union
+-- Semigroup (SortedBag a) where
+--   (<+>) = union
 
-Ord a => Monoid (SortedBag a) where
-  neutral = empty
+--   semigroupOpIsAssociative l c r = ???
+
+-- Ord a => Monoid (SortedBag a) where
+--   neutral = empty
+
+--   monoidNeutralIsNeutralL l = ???
+--   monoidNeutralIsNeutralR r = ???
