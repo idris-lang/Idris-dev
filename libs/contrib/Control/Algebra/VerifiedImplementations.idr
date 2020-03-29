@@ -6,6 +6,7 @@ import Control.Algebra.Lattice
 import Control.Algebra.NumericImplementations
 import Data.Vect
 import Data.ZZ
+import Data.Sign
 import Data.Bool.Extra
 import Data.Morphisms
 import Control.Monad.Identity
@@ -321,3 +322,29 @@ VerifiedSemigroup (Endomorphism a) where
 VerifiedMonoid (Endomorphism a) where
   monoidNeutralIsNeutralL (Endo _) = Refl
   monoidNeutralIsNeutralR (Endo _) = Refl
+
+VerifiedSemigroup Sign where
+  semigroupOpIsAssociative Zero _ _ = Refl
+  semigroupOpIsAssociative Plus Zero _ = Refl
+  semigroupOpIsAssociative Minus Zero _ = Refl
+  semigroupOpIsAssociative Plus Plus Zero = Refl
+  semigroupOpIsAssociative Plus Minus Zero = Refl
+  semigroupOpIsAssociative Minus Plus Zero = Refl
+  semigroupOpIsAssociative Minus Minus Zero = Refl
+  semigroupOpIsAssociative Plus Plus Plus = Refl
+  semigroupOpIsAssociative Plus Minus Plus = Refl
+  semigroupOpIsAssociative Minus Plus Plus = Refl
+  semigroupOpIsAssociative Minus Minus Plus = Refl
+  semigroupOpIsAssociative Plus Plus Minus = Refl
+  semigroupOpIsAssociative Plus Minus Minus = Refl
+  semigroupOpIsAssociative Minus Plus Minus = Refl
+  semigroupOpIsAssociative Minus Minus Minus = Refl
+
+VerifiedMonoid Sign where
+  monoidNeutralIsNeutralL Plus = Refl
+  monoidNeutralIsNeutralL Zero = Refl
+  monoidNeutralIsNeutralL Minus = Refl
+
+  monoidNeutralIsNeutralR Plus = Refl
+  monoidNeutralIsNeutralR Zero = Refl
+  monoidNeutralIsNeutralR Minus = Refl
