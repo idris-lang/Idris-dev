@@ -10,6 +10,7 @@ modules = CFFI
         , Control.Algebra.Lattice
         , Control.Algebra.Laws
         , Control.Algebra.NumericImplementations
+        , Control.Algebra.VerifiedImplementations
         , Control.Algebra.VectorSpace
 
         , Control.Delayed
