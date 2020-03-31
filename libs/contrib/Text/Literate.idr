@@ -36,7 +36,7 @@ line : String -> Lexer
 line s = exact s <+> space <+> untilEOL
 
 block : String -> String -> Lexer
-block s e = surround (exact s) (exact e) any
+block s e = surround (exact s <+> untilEOL) (exact e <+> untilEOL) any
 
 data Token = CodeBlock String String String
            | Any String
@@ -101,7 +101,7 @@ record LiterateError where
 ||| + Bird Style
 |||
 |||```
-|||MkLitStyle Nil [">", "<"] Nil
+|||MkLitStyle Nil [">", "<"] [".lidr"]
 |||```
 |||
 ||| + Literate Haskell (for LaTeX)
@@ -118,6 +118,14 @@ record LiterateError where
 |||MkLitStyle [("#+BEGIN_SRC idris","#+END_SRC"), ("#+COMMENT idris","#+END_COMMENT")]
 |||           ["#+IDRIS:"]
 |||           ["org"]
+|||```
+|||
+||| + Common Mark
+|||
+|||```
+|||MkLitStyle [("```idris","```"), ("<!-- idris","--!>")]
+|||           Nil
+|||           [".md", ".idris.md"]
 |||```
 |||
 public export
@@ -151,5 +159,12 @@ extractCode (MkLitStyle delims markers exts) str =
       case lex (rawTokens delims markers) str of
         (toks, (_,_,"")) => Right $ reduce toks ""
         (_, (l,c,i))     => Left (MkLitErr l c i)
+
+||| Synonym for `extractCode`.
+export
+unlit : (specification : LiterateStyle)
+     -> (litStr        : String)
+     -> Either LiterateError String
+unlit = extractCode
 
 -- --------------------------------------------------------------------- [ EOF ]
