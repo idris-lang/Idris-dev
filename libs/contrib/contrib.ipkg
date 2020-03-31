@@ -30,6 +30,7 @@ modules = CFFI
         , Control.ST.File
 
         , Data.Bool.Extra
+        , Data.Bool.Algebra
         , Data.BoundedList
         , Data.Chain
         , Data.CoList
