@@ -30,7 +30,7 @@ import Data.List.Views
 %default total
 
 untilEOL : Recognise False
-untilEOL = manyUntil (is '\n') any
+untilEOL = manyUntil newline any
 
 line : String -> Lexer
 line s = exact s <+> space <+> untilEOL
