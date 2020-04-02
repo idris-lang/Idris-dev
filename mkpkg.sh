@@ -49,14 +49,17 @@ cp -r libs/contrib/contrib_doc "$DOCDIR"
 tar -czvf lib_docs.tar.gz -C "$DOCDIR" prelude_doc base_doc effects_doc contrib_doc
 
 echo "==> Building Binaries"
-cabal configure --prefix=/usr/local
+cabal v1-update
+cabal v1-sanbox init
+cabal v1-install --only-dependencies
+cabal v1-configure --prefix=/usr/local
 
-cabal build
+cabal v1-build
 
 echo "==> Creating Package"
 mkdir -p /tmp/idris-pkg/
 
-cabal copy --destdir=/tmp/idris-pkg/
+cabal v1-copy --destdir=/tmp/idris-pkg/
 
 pkgbuild --identifier org.idris-lang \
          --version "v$VERSION"       \
