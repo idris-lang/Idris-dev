@@ -84,7 +84,7 @@ Extra-source-files:
                       Makefile
                       config.mk
                       custom.mk-alldeps
-                      mkpkg.sh
+                      packaging/*.sh
                       stack-shell.nix
                       stack.yaml
                       stylize.sh
