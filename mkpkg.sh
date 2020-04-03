@@ -52,7 +52,10 @@ echo "==> Building Binaries"
 cabal v1-update
 cabal v1-sanbox init
 cabal v1-install --only-dependencies
-cabal v1-configure --prefix=/usr/local
+cabal v1-configure \
+      --prefix=/usr/local \
+      --datasubdir="\$pkg/\$version" \
+      --docdir="\$datadir/doc/\$pkg"
 
 cabal v1-build
 
