@@ -14,7 +14,7 @@ VERSION=${1:-}
 echo "==> Building version-$VERSION"
 echo ""
 echo "Q: Have you: (a) set the release flag & (b) checked the demos and the tutorial?"
-read ${FOO:-}
+read -r ${FOO:-}
 
 echo "==> Establishing details"
 echo ""
@@ -26,10 +26,9 @@ case "$MACHINE" in
   i386)   ARCHITECTURE=i386;;
 esac
 
-ARTIFACTS="${ARTIFACTS:-/artifacts}"
 DEBVER=$VERSION
 BASE=idris-$DEBVER-$ARCHITECTURE
-DIST=`pwd`/$BASE
+DIST=$(pwd)/$BASE
 DEST=$DIST/usr/local
 COPYRIGHT=$DEST/share/doc/idris/copyright
 
@@ -41,13 +40,8 @@ echo "===> Dest is: ${DEST}"
 echo "===> Copyright goes to: ${COPYRIGHT}"
 echo ""
 
-echo "Q: Do you want to continue?"
-read ${FOO:-}
-
 echo "==> Removing old build."
-rm -rf ${DEST}
-
-mkdir -p ${DEST}/bin ${DEST}/lib ${DEST}/share
+rm -rf "${DEST}"
 
 echo "==> Building & Copying Idris ${DEBVER}"
 
@@ -55,39 +49,53 @@ cabal v1-update
 cabal v1-sandbox init
 cabal v1-install --only-dependencies
 
+GHCEXE=$(which ghc)
+GHCVER=$(${GHCEXE} --numeric-version)
+export LD_PRELOAD="/opt/ghc/${GHCVER}/lib/ghc-${GHCVER}/rts/libffi.so.7"
+
 cabal v1-configure \
+      -O \
       --prefix=/usr/local \
+      --docdir="\$datadir/doc/\$pkg" \
       --datasubdir="\$pkg/\$version" \
-      --docdir="\$datadir/doc/\$pkg"
+      -fFFI \
+      -fGMP \
+      -f-release \
+      -f-freestanding
 
 cabal v1-build
 
 echo "==> Copying files"
-cabal v1-copy --destdir=${DIST}
+cabal v1-copy \
+      exe:idris \
+      exe:idris-codegen-c \
+      exe:idris-codegen-javascript \
+      exe:idris-codegen-node \
+      --destdir="${DIST}"
 
 echo "==> Preparing to build package"
 
 echo "==> Setting Permissions"
-find $DIST -type d | xargs chmod 755
+find "$DIST" -type d | xargs chmod 755
 
 echo "==> Stripping"
-strip $DEST/bin/idris*
+strip "$DEST"/bin/idris*
 
 echo "==> Compressing Man Page"
-gzip -9 $DEST/share/man/man1/idris.1
+gzip -9 "$DEST"/share/man/man1/idris.1
 
 echo "==> Moving Copyright across"
-cp LICENSE $COPYRIGHT
-echo "" >> $COPYRIGHT
+cp LICENSE "$COPYRIGHT"
+echo "" >> "$COPYRIGHT"
 
 echo "==> Setting CONTROL"
-INSTALLED_SIZE=$(du -k -s $DEST | awk '{print $1}')
-mkdir $DIST/DEBIAN
+INSTALLED_SIZE=$(du -k -s "$DEST" | awk '{print $1}')
+mkdir "$DIST"/DEBIAN
 perl -pe "s/VERSION/$DEBVER/" linux/control.in \
   | perl -pe "s/ARCHITECTURE/$ARCHITECTURE/" \
   | perl -pe "s/INSTALLED_SIZE/$INSTALLED_SIZE/" \
-  > $DIST/DEBIAN/control
+  > "$DIST"/DEBIAN/control
 
 echo "==> Creating Package"
-fakeroot dpkg-deb --build $DIST
-rm -rf $DIST
+fakeroot dpkg-deb --build "$DIST"
+rm -rf "$DIST"
