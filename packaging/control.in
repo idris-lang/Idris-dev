@@ -4,7 +4,7 @@ Section: universe/misc
 Priority: optional
 Architecture: ARCHITECTURE
 Installed-Size: INSTALLED_SIZE
-Depends: libgmp-dev, libffi-dev
+Depends: libgmp-dev, libffi-dev, ghc
 Maintainer: The Idris Community
 Description: Idris is a general purpose language with full dependent types.
              It is compiled, with eager evaluation.
