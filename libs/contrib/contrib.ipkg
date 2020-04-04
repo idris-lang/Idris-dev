@@ -51,6 +51,9 @@ modules = CFFI
         , Data.Matrix.Numeric
 
         , Data.Nat
+        , Data.Nat.Ack
+        , Data.Nat.Fact
+        , Data.Nat.Fib
         , Data.Nat.Parity
         , Data.Nat.DivMod
         , Data.Nat.DivMod.IteratedSubtraction
