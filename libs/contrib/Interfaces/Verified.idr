@@ -82,7 +82,7 @@ VerifiedApplicative (Either a) where
   applicativeHomomorphism x g = Refl
   applicativeInterchange x (Left y) = Refl
   applicativeInterchange x (Right y) = Refl
-  
+
 private
 foldrConcatEq : (g1 : List (a -> b)) -> (g2 : List (a -> b)) ->
                 (xs : List a) ->
@@ -276,14 +276,9 @@ implementation VerifiedMonoid (List a) where
   monoidNeutralIsNeutralR xs = Refl
 
 interface (VerifiedMonoid a, Group a) => VerifiedGroup a where
-  groupInverseIsInverseL : (l : a) -> l <+> inverse l = Algebra.neutral
   groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
 
 VerifiedGroup ZZ using PlusZZMonoidV where
-  groupInverseIsInverseL k = rewrite sym $ multCommutativeZ (NegS 0) k in
-                             rewrite multNegLeftZ 0 k in
-                             rewrite multOneLeftNeutralZ k in
-                             plusNegateInverseLZ k
   groupInverseIsInverseR k = rewrite sym $ multCommutativeZ (NegS 0) k in
                              rewrite multNegLeftZ 0 k in
                              rewrite multOneLeftNeutralZ k in
@@ -351,7 +346,7 @@ VerifiedBoundedJoinSemilattice Nat where
 
 VerifiedBoundedJoinSemilattice Bool where
   joinBottomIsIdentity = orFalseNeutral
-  
+
 interface (VerifiedMeetSemilattice a, BoundedMeetSemilattice a) => VerifiedBoundedMeetSemilattice a where
   meetTopIsIdentity : (x : a) -> meet x Lattice.top = x
 

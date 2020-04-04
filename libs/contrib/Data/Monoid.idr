@@ -8,18 +8,6 @@ module Data.Monoid
 -- TODO: These instances exist, but can't be named the same.
 -- Decide on names for these
 
--- [all] Semigroup Bool where
---   a <+> b = a && b
---
--- [all] Monoid Bool where
---   neutral = True
---
--- [any] Semigroup Bool where
---   a <+> b = a || b
---
--- [any] Monoid Bool where
---   neutral = False
-
 Semigroup () where
   (<+>) _ _ = ()
 
