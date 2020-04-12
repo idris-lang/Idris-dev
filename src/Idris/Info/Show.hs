@@ -3,6 +3,7 @@ module Idris.Info.Show where
 import Idris.Info
 
 import System.Exit
+import System.Directory (XdgDirectory(XdgConfig, XdgCache))
 
 showIdrisCRTSDir :: IO ()
 showIdrisCRTSDir = do
@@ -107,7 +108,8 @@ showIdrisInfo = do
 
   putStrLn "Paths:"
   ldir <- getIdrisLibDir
-  udir <- getIdrisUserDataDir
+  cdir <- getIdrisUserDirs XdgConfig
+  cadir <- getIdrisUserDirs XdgCache
   ddir <- getIdrisDocDir
   idir <- getIdrisDataDir
   crdir <- getIdrisCRTSDir
@@ -116,7 +118,8 @@ showIdrisInfo = do
   putStrLn $ unwords ["-", "Library Dir:", ldir]
   putStrLn $ unwords ["-", "C RTS Dir:", crdir]
   putStrLn $ unwords ["-", "JS RTS Dir:", jrdir]
-  putStrLn $ unwords ["-", "User Dir:",    udir]
+  putStrLn $ unwords ["-", "User Config Dir:", cdir]
+  putStrLn $ unwords ["-", "User Cache Dir:", cadir]
   putStrLn $ unwords ["-", "Documentation Dir:", ddir]
 
   putStrLn "Flags:"

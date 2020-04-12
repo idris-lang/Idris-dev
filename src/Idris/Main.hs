@@ -205,11 +205,15 @@ idrisMain opts =
          Nothing -> return ()
          Just expr -> execScript expr
 
-       -- Create Idris data dir + repl history and config dir
-       idrisCatch (do dir <- runIO $ getIdrisUserDataDir
-                      exists <- runIO $ doesDirectoryExist dir
-                      unless exists $ logLvl 1 ("Creating " ++ dir)
-                      runIO $ createDirectoryIfMissing True (dir </> "repl"))
+       -- Create Idris cache dir + repl history and config dir
+       idrisCatch (do config_dir <- runIO $ getIdrisUserDirs XdgConfig
+                      cache_dir <- runIO $ getIdrisUserDirs XdgCache
+                      config_exists <- runIO $ doesDirectoryExist config_dir
+                      cache_exists <- runIO $ doesDirectoryExist cache_dir
+                      unless config_exists $ logLvl 1 ("Creating " ++ config_dir)
+                      unless cache_exists $ logLvl 1 ("Creating " ++ cache_dir)
+                      runIO $ createDirectoryIfMissing True config_dir
+                      runIO $ createDirectoryIfMissing True (cache_dir </> "repl"))
          (\e -> return ())
 
        historyFile <- runIO $ getIdrisHistoryFile

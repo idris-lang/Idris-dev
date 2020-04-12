@@ -17,7 +17,7 @@ module Idris.Info
   , getIdrisCC
   , getIdrisVersion
   , getIdrisVersionNoGit
-  , getIdrisUserDataDir
+  , getIdrisUserDirs
   , getIdrisInitScript
   , getIdrisHistoryFile
   , getIdrisInstalledPackages
@@ -68,20 +68,26 @@ getIdrisVersion = showVersion S.version ++ suffix
 
 getIdrisVersionNoGit = S.version
 
-
--- | Get the platform-specific, user-specific Idris dir
-getIdrisUserDataDir :: IO FilePath
-getIdrisUserDataDir = getAppUserDataDirectory "idris"
+-- | Locate XDG directories in the current system in a backwards-compatible
+-- manner
+getIdrisUserDirs :: XdgDirectory -> IO FilePath
+getIdrisUserDirs xdg = do
+    old <- getAppUserDataDirectory "idris"
+    exists <- doesDirectoryExist old
+    if exists then
+        return old
+    else
+        getXdgDirectory xdg "idris"
 
 -- | Locate the platform-specific location for the init script
 getIdrisInitScript :: IO FilePath
 getIdrisInitScript = do
-  idrisDir <- getIdrisUserDataDir
+  idrisDir <- getIdrisUserDirs XdgConfig
   return $ idrisDir </> "repl" </> "init"
 
 getIdrisHistoryFile :: IO FilePath
 getIdrisHistoryFile = do
-  udir <- getIdrisUserDataDir
+  udir <- getIdrisUserDirs XdgCache
   return (udir </> "repl" </> "history")
 
 getIdrisInstalledPackages :: IO [String]
