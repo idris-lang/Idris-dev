@@ -40,12 +40,13 @@ Idris supports initialisation scripts.
 Initialisation scripts
 ~~~~~~~~~~~~~~~~~~~~~~
 
-When the Idris REPL starts up, it will attempt to open the file
-repl/init in Idris's application data directory. The application data
-directory is the result of the Haskell function call
-``getAppUserDataDirectory "idris"``, which on most Unix-like systems
-will return $HOME/.idris and on various versions of Windows will return
-paths such as ``C:/Documents And Settings/user/Application Data/appName``.
+When the Idris REPL starts up, it will attempt to open the file repl/init in
+Idris's application data directory. The application data directory is the result
+of the Haskell function call ``getAppUserDataDirectory "idris"``, if that
+exists, or ``getXdgDirectory XdgConfig "idris"`` otherwise. On most Unix-like
+systems that will return, respectively, $HOME/.idris or $HOME/.config/idris, and
+on various versions of Windows will return paths such as ``C:/Documents And
+Settings/user/Application Data/appName``.
 
 The file repl/init is a newline-separate list of REPL commands. Not all
 commands are supported in initialisation scripts — only the subset that
