@@ -2,8 +2,8 @@ module Idris.Info.Show where
 
 import Idris.Info
 
+import System.Directory (XdgDirectory(XdgCache, XdgConfig))
 import System.Exit
-import System.Directory (XdgDirectory(XdgConfig, XdgCache))
 
 showIdrisCRTSDir :: IO ()
 showIdrisCRTSDir = do
