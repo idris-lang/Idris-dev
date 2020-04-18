@@ -11,6 +11,7 @@ modules = CFFI
         , Control.Algebra.Laws
         , Control.Algebra.NumericImplementations
         , Control.Algebra.VerifiedImplementations
+        , Control.Algebra.ComplexImplementations
         , Control.Algebra.VectorSpace
 
         , Control.Delayed

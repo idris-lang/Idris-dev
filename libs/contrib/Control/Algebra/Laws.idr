@@ -4,7 +4,8 @@ import Prelude.Algebra as A
 import Control.Algebra as Alg
 import Interfaces.Verified
 
-%access export
+%access public export
+%default total
 
 -- Monoids
 
