@@ -17,10 +17,10 @@ xor True True = False
 xor False False = False
 xor _ _ = True
 
-[PlusBoolSemi] Semigroup Bool where
+Semigroup Bool where
   (<+>) = xor
 
-[PlusBoolSemiV] VerifiedSemigroup Bool using PlusBoolSemi where
+VerifiedSemigroup Bool where
   semigroupOpIsAssociative True True True = Refl
   semigroupOpIsAssociative True True False = Refl
   semigroupOpIsAssociative True False True = Refl
@@ -30,36 +30,36 @@ xor _ _ = True
   semigroupOpIsAssociative False True False = Refl
   semigroupOpIsAssociative False False False = Refl
 
-[PlusBoolMonoid] Monoid Bool using PlusBoolSemi where
+Monoid Bool where
   neutral = False
 
-[PlusBoolMonoidV] VerifiedMonoid Bool using PlusBoolSemiV, PlusBoolMonoid where
+VerifiedMonoid Bool where
   monoidNeutralIsNeutralL True = Refl
   monoidNeutralIsNeutralL False = Refl
 
   monoidNeutralIsNeutralR True = Refl
   monoidNeutralIsNeutralR False = Refl
 
-[PlusBoolGroup] Group Bool using PlusBoolMonoid where
+Group Bool where
   -- Each Bool is its own additive inverse.
   inverse = id
 
-[PlusBoolGroupV] VerifiedGroup Bool using PlusBoolMonoidV, PlusBoolGroup where
+VerifiedGroup Bool where
   groupInverseIsInverseR True = Refl
   groupInverseIsInverseR False = Refl
 
-[PlusBoolAbel] AbelianGroup Bool using PlusBoolGroup where
+AbelianGroup Bool where
 
-[PlusBoolAbelV] VerifiedAbelianGroup Bool using PlusBoolGroupV, PlusBoolAbel where
+VerifiedAbelianGroup Bool where
   abelianGroupOpIsCommutative True True = Refl
   abelianGroupOpIsCommutative True False = Refl
   abelianGroupOpIsCommutative False True = Refl
   abelianGroupOpIsCommutative False False = Refl
 
-[RingBool] Ring Bool using PlusBoolAbel where
+Ring Bool where
   (<.>) = and
 
-[RingBoolV] VerifiedRing Bool using RingBool, PlusBoolAbelV where
+VerifiedRing Bool where
   ringOpIsAssociative True True True = Refl
   ringOpIsAssociative True True False = Refl
   ringOpIsAssociative True False True = Refl
@@ -87,10 +87,10 @@ xor _ _ = True
   ringOpIsDistributiveR False True False = Refl
   ringOpIsDistributiveR False False False = Refl
 
-[RingUnBool] RingWithUnity Bool using RingBool where
+RingWithUnity Bool where
   unity = True
 
-VerifiedRingWithUnity Bool using RingUnBool, RingBoolV where
+VerifiedRingWithUnity Bool where
   ringWithUnityIsUnityL True = Refl
   ringWithUnityIsUnityL False = Refl
 
