@@ -2,6 +2,7 @@ module Data.BoundedList
 
 import Data.Fin
 import Data.Vect
+import Interfaces.Verified
 
 %access public export
 %default total
@@ -100,10 +101,29 @@ implementation Semigroup a => Semigroup (BoundedList n a) where
   xs <+> [] = xs
   [] <+> ys = ys
 
+VerifiedSemigroup a => VerifiedSemigroup (BoundedList n a) where
+  semigroupOpIsAssociative [] [] [] = Refl
+  semigroupOpIsAssociative [] [] (_ :: _) = Refl
+  semigroupOpIsAssociative [] (_ :: _) [] = Refl
+  semigroupOpIsAssociative [] (_ :: _) (_ :: _) = Refl
+  semigroupOpIsAssociative (_ :: _) [] [] = Refl
+  semigroupOpIsAssociative (_ :: _) [] (_ :: _) = Refl
+  semigroupOpIsAssociative (_ :: _) (_ :: _) [] = Refl
+  semigroupOpIsAssociative (x :: xs) (y :: ys) (z :: zs) =
+    rewrite semigroupOpIsAssociative x y z in
+      rewrite semigroupOpIsAssociative xs ys zs in
+        Refl
+
 -- The Semigroup constraint is only needed because that's how we make a
 -- semigroup from BoundedList, not used in this implementation.
 implementation Semigroup a => Monoid (BoundedList n a) where
   neutral = []
+
+VerifiedMonoid a => VerifiedMonoid (BoundedList n a) where
+  monoidNeutralIsNeutralL [] = Refl
+  monoidNeutralIsNeutralL (_ :: _) = Refl
+  monoidNeutralIsNeutralR [] = Refl
+  monoidNeutralIsNeutralR (_ :: _) = Refl
 
 --------------------------------------------------------------------------------
 -- Misc

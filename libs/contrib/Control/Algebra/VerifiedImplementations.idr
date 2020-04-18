@@ -2,10 +2,13 @@ module Control.VerifiedInterfaces
 
 import Interfaces.Verified
 import Control.Algebra
+import Control.Algebra.Lattice
 import Control.Algebra.NumericImplementations
 import Data.Vect
 import Data.ZZ
 import Data.Bool.Extra
+import Data.Morphisms
+import Control.Monad.Identity
 
 %default total
 %access public export
@@ -299,3 +302,22 @@ VerifiedBoundedJoinSemilattice Bool where
 
 VerifiedBoundedMeetSemilattice Bool where
   meetTopIsIdentity = andTrueNeutral
+
+----------------------------------------
+
+VerifiedSemigroup a => VerifiedSemigroup (Identity a) where
+  semigroupOpIsAssociative (Id l) (Id c) (Id r) =
+    rewrite semigroupOpIsAssociative l c r in Refl
+
+VerifiedMonoid a => VerifiedMonoid (Identity a) where
+  monoidNeutralIsNeutralL (Id l) =
+    rewrite monoidNeutralIsNeutralL l in Refl
+  monoidNeutralIsNeutralR (Id r) =
+    rewrite monoidNeutralIsNeutralR r in Refl
+
+VerifiedSemigroup (Endomorphism a) where
+  semigroupOpIsAssociative (Endo _) (Endo _) (Endo _) = Refl
+
+VerifiedMonoid (Endomorphism a) where
+  monoidNeutralIsNeutralL (Endo _) = Refl
+  monoidNeutralIsNeutralR (Endo _) = Refl
