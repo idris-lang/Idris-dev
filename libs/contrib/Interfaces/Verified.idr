@@ -1,8 +1,6 @@
 module Interfaces.Verified
 
-import Control.Algebra
 import Control.Algebra.Lattice
-import Control.Algebra.VectorSpace
 
 %default total
 %access public export
@@ -41,30 +39,6 @@ interface (Alternative f, VerifiedApplicative f) => VerifiedAlternative (f : Typ
   alternativeRightIdentity : (x : f a) -> x <|> Applicative.empty = x
   alternativeAssociativity : (x : f a) -> (y : f a) -> (z : f a) ->
                              x <|> (y <|> z) = (x <|> y) <|> z
-
-----------------------------------------
-
-interface Semigroup a => VerifiedSemigroup a where
-  semigroupOpIsAssociative : (l, c, r : a) -> l <+> (c <+> r) = (l <+> c) <+> r
-
-interface (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
-  monoidNeutralIsNeutralL : (l : a) -> l <+> Algebra.neutral = l
-  monoidNeutralIsNeutralR : (r : a) -> Algebra.neutral <+> r = r
-
-interface (VerifiedMonoid a, Group a) => VerifiedGroup a where
-  groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
-
-interface (VerifiedGroup a, AbelianGroup a) => VerifiedAbelianGroup a where
-  abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
-
-interface (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
-  ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
-  ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
-  ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)
-
-interface (VerifiedRing a, RingWithUnity a) => VerifiedRingWithUnity a where
-  ringWithUnityIsUnityL : (l : a) -> l <.> Algebra.unity = l
-  ringWithUnityIsUnityR : (r : a) -> Algebra.unity <.> r = r
 
 ----------------------------------------
 

@@ -3,10 +3,10 @@
 ||| and `Control.Algebra.VectorSpace`.
 module Data.Matrix.Algebraic
 
+import public Data.Vect
 import public Control.Algebra
 import public Control.Algebra.VectorSpace
 import public Control.Algebra.NumericImplementations
-import public Interfaces.Verified
 
 import public Data.Matrix
 
@@ -43,13 +43,6 @@ implementation Ring a => Ring (Vect n a) where
 
 implementation RingWithUnity a => RingWithUnity (Vect n a) where
   unity {n} = replicate n unity
-
-implementation RingWithUnity a => Module a (Vect n a) where
-  (<#>) r = map (r <.>)
-
-implementation RingWithUnity a => Module a (Vect n (Vect l a)) where
-  (<#>) r = map (r <#>)
--- should be Module a b => Module a (Vect n b), but results in 'overlapping implementation'
 
 -----------------------------------------------------------------------
 --                        (Ring) Vector functions
@@ -212,3 +205,14 @@ VerifiedRingWithUnity a => VerifiedRingWithUnity (Vect n a) where
     rewrite ringWithUnityIsUnityL x in
       rewrite ringWithUnityIsUnityL xs in
         Refl
+
+-- Vector spaces -----------------------
+
+-- These need to come after the "verified" implementations because ???
+
+implementation RingWithUnity a => Module a (Vect n a) where
+  (<#>) r = map (r <.>)
+
+implementation RingWithUnity a => Module a (Vect n (Vect l a)) where
+  (<#>) r = map (r <#>)
+-- should be Module a b => Module a (Vect n b), but results in 'overlapping implementation'

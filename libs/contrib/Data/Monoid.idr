@@ -2,7 +2,7 @@
 ||| https://hackage.haskell.org/package/base-4.9.0.0/docs/src/Data.Monoid.html
 module Data.Monoid
 
-import Interfaces.Verified
+import Control.Algebra
 
 %access public export
 %default total

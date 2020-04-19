@@ -1,7 +1,6 @@
 module Data.Bool.Algebra
 
 import Control.Algebra
-import Interfaces.Verified
 
 %access public export
 %default total

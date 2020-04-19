@@ -2,7 +2,7 @@ module Data.BoundedList
 
 import Data.Fin
 import Data.Vect
-import Interfaces.Verified
+import Control.Algebra
 
 %access public export
 %default total

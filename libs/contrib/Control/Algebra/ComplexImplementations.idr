@@ -1,6 +1,5 @@
 module Control.Algebra.ComplexImplementations
 
-import Interfaces.Verified
 import Data.Complex
 import Control.Algebra
 import Control.Algebra.Laws

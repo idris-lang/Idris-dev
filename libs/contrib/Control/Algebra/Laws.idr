@@ -2,7 +2,6 @@ module Control.Algebra.Laws
 
 import Prelude.Algebra as A
 import Control.Algebra as Alg
-import Interfaces.Verified
 
 %access public export
 %default total
