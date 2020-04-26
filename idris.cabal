@@ -324,7 +324,7 @@ Library
                 , ansi-terminal < 0.11
                 , ansi-wl-pprint < 0.7
                 , array >= 0.4.0.1 && < 0.6
-                , base64-bytestring < 1.1
+                , base64-bytestring < 1.2
                 , binary >= 0.8.4.1 && < 0.9
                 , blaze-html >= 0.6.1.3 && < 0.10
                 , blaze-markup >= 0.5.2.1 && < 0.10
