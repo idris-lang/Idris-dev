@@ -614,9 +614,7 @@ buildDepMap ci used externs ctx startNames
     lamToLet' :: [Term] -> Term -> Term
     lamToLet' (v:vs) (Bind n (Lam rig ty) tm) = Bind n (Let rig ty v) $ lamToLet' vs tm
     lamToLet'    []  tm = tm
-    lamToLet'    vs  tm = error $
-        "Erasure.hs:lamToLet': unexpected input: "
-            ++ "vs = " ++ show vs ++ ", tm = " ++ show tm
+    lamToLet'    vs  tm = mkApp tm vs
 
     -- split "\x_i -> T(x_i)" into [x_i] and T
     unfoldLams :: Term -> ([Name], Term)
