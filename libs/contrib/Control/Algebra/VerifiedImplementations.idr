@@ -2,6 +2,7 @@ module Control.VerifiedInterfaces
 
 import Interfaces.Verified
 import Control.Algebra
+import Control.Algebra.CyclicGroup
 import Control.Algebra.Lattice
 import Control.Algebra.NumericImplementations
 import Data.Vect
@@ -258,8 +259,21 @@ VerifiedGroup ZZ using PlusZZMonoidV where
                              rewrite multOneLeftNeutralZ k in
                              plusNegateInverseRZ k
 
-VerifiedAbelianGroup ZZ where
-  abelianGroupOpIsCommutative = plusCommutativeZ
+-- Every integer can be gotten by repeatedly adding or subtracting 1.
+CyclicGroup ZZ where
+  generator = (1 ** \x => (x **
+    case x of
+      (Pos Z) => Refl
+      (Pos (S k)) => mtimesSuccPos k
+      (NegS k) => mtimesSuccNeg k))
+    where
+    mtimesSuccPos : (k : Nat) -> Pos (S k) = 1 + (mtimes' k 1)
+    mtimesSuccPos Z = Refl
+    mtimesSuccPos (S k) = rewrite sym $ mtimesSuccPos k in Refl
+
+    mtimesSuccNeg : (k : Nat) -> NegS k = -1 + mtimes' k (-1)
+    mtimesSuccNeg Z = Refl
+    mtimesSuccNeg (S k) = rewrite sym $ mtimesSuccNeg k in Refl
 
 -- Ring
 

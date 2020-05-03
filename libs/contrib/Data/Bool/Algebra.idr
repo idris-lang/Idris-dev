@@ -1,6 +1,8 @@
 module Data.Bool.Algebra
 
 import Control.Algebra
+import Control.Algebra.CyclicGroup
+import Data.ZZ
 
 %access public export
 %default total
@@ -47,13 +49,11 @@ VerifiedGroup Bool where
   groupInverseIsInverseR True = Refl
   groupInverseIsInverseR False = Refl
 
-AbelianGroup Bool where
-
-VerifiedAbelianGroup Bool where
-  abelianGroupOpIsCommutative True True = Refl
-  abelianGroupOpIsCommutative True False = Refl
-  abelianGroupOpIsCommutative False True = Refl
-  abelianGroupOpIsCommutative False False = Refl
+CyclicGroup Bool where
+  generator = (True ** \x =>
+    case x of
+      True => (1 ** Refl)
+      False => (0 ** Refl))
 
 Ring Bool where
   (<.>) = and

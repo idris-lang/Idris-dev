@@ -14,6 +14,7 @@ modules = CFFI
         , Control.Algebra.ComplexImplementations
         , Control.Algebra.VectorSpace
         , Control.Algebra.GroupHomomorphism
+        , Control.Algebra.CyclicGroup
 
         , Control.Delayed
 
