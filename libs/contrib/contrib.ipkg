@@ -53,6 +53,7 @@ modules = CFFI
         , Data.Nat
         , Data.Nat.Ack
         , Data.Nat.Fact
+        , Data.Nat.Factor
         , Data.Nat.Fib
         , Data.Nat.Parity
         , Data.Nat.DivMod
