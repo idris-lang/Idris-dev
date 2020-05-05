@@ -1,5 +1,7 @@
 module Data.Nat.Factor
 
+import Data.Fin
+import Data.Fin.Extra
 import Data.Nat
 
 %default total
@@ -16,10 +18,10 @@ data Factor : Nat -> Nat -> Type where
     CoFactorExists : {n, f : Nat} -> (q : Nat) -> FactorsOf n (f, q) -> Factor n f
 
 data NotFactor : Nat -> Nat -> Type where
-    ProperRemExists : (n, p, q, r : Nat) ->
+    ProperRemExists : (n, p, q : Nat) ->
+        (r : Fin (pred p)) ->
         LTE 1 n ->
-        {auto rltp : LT (S r) p} ->
-        p * q + S r = n ->
+        p * q + S (finToNat r) = n ->
         NotFactor n p
 
 data DecFactor : Nat -> Nat -> Type where
@@ -42,38 +44,37 @@ Uninhabited (FactorsOf n (a, 0)) where
 Uninhabited (Factor Z f) where
     uninhabited (CoFactorExists q prf) = uninhabited prf
 
-aPlusSBNotA : {a, b : Nat} -> a + S b = a -> Void
-aPlusSBNotA {a = Z} {b} prf = absurd prf
-aPlusSBNotA {a = (S k)} {b} prf =
-        aPlusSBNotA $ succInjective (k + S b) k prf
---
 factPairNotFactPairAbsurd : FactorsOf n (p, q) -> NotFactorsOf n (p, q) -> Void
 factPairNotFactPairAbsurd (FactorPair n p q _ prf) (NotFactorPair _ _ _ r _ contra) =
-        aPlusSBNotA $ replace {P = \a => a + S r = n} prf contra
+        plusSuccIsNotIdentity $ replace {P = \a => a + S r = n} prf contra
 
 
 factorNotFactorAbsurd : Factor n p -> NotFactor n p -> Void
-factorNotFactorAbsurd (CoFactorExists q (FactorPair n p q positN prf)) (ProperRemExists n p q' r _ contra {rltp}) =
-        thisIsAbsurd q q' $ replace {P = \x => (p * q') + S r = x} (sym prf) contra
+factorNotFactorAbsurd (CoFactorExists q (FactorPair n p q positN prf)) (ProperRemExists n p q' r _ contra) =
+        thisIsAbsurd q q' prf $ replace {P = \x => (p * q') + S (finToNat r) = x} (sym prf) contra
     where
-    thisIsAbsurd : (q, q' : Nat) -> (p * q') + S r = p * q -> Void
-    thisIsAbsurd q q' a with (cmp q q')
-        thisIsAbsurd q (q + S d) a  | CmpLT d =
-            aPlusSBNotA .
-            replace {P = \x => (p * q) + x = p * q} (sym $ plusSuccRightSucc (p * S d) r) .
-            replace {P = \x => x = p * q} (sym $ plusAssociative (p * q) (p * S d) (S r)) $
-            replace {P = \x => x + S r = p * q} (multDistributesOverPlusRight p q (S d)) a
-        thisIsAbsurd q q a          | CmpEQ = aPlusSBNotA a
-        thisIsAbsurd (q + S d) q a  | CmpGT d =
+    thisIsAbsurd : (q, q' : Nat) -> p * q = n -> (p * q') + S (finToNat r) = p * q -> Void
+    thisIsAbsurd q q' nIsPQ a with (cmp q q')
+        thisIsAbsurd q (q + S d) nIsPQ a  | CmpLT d =
+            plusSuccIsNotIdentity .
+            replace {P = \x => (p * q) + x = p * q} (sym $ plusSuccRightSucc (p * S d) (finToNat r)) .
+            replace {P = \x => x = p * q} (sym $ plusAssociative (p * q) (p * S d) (S $ finToNat r)) $
+            replace {P = \x => x + S (finToNat r) = p * q} (multDistributesOverPlusRight p q (S d)) a
+        thisIsAbsurd q q nIsPQ a          | CmpEQ = plusSuccIsNotIdentity a
+        thisIsAbsurd (q + S d) q nIsPQ a  | CmpGT d =
             let defSr =
-                    replace {P = \x => S r = x} (multRightSuccPlus p d) .
+                    replace {P = \x => S (finToNat r) = x} (multRightSuccPlus p d) .
                     subtractEqLeft $
-                    replace {P = \x => (p * q) + S r = x} (multDistributesOverPlusRight p q (S d)) a
+                    replace {P = \x => (p * q) + S (finToNat r) = x} (multDistributesOverPlusRight p q (S d)) a
+                (_ ** nIsSucc) = lteToSucc positN
+                pGtZ = nonZeroLeftFactor $ replace {P = \x => p * (q + S d) = x} nIsSucc nIsPQ
             in
             succNotLTEzero . subtractLteLeft .
             replace {P = \x => LTE (p + S (p * d)) x} (sym $ plusZeroRightNeutral p) .
-            replace {P = \x => LTE x p} (plusSuccRightSucc p (p * d)) $
-            replace {P = \x => LTE (S x) p} defSr rltp
+            replace {P = \x => LTE x p} (plusSuccRightSucc p (p * d)) .
+            replace {P = \x => LTE (S x) p} defSr .
+            replace {P = LTE (S (S (finToNat r)))} (succPred p {ok = pGtZ}) $
+            LTESucc $ elemSmallerThanBound r
 
 
 swapFactors : FactorsOf n (a, b) -> FactorsOf n (b, a)
@@ -109,39 +110,28 @@ plusDivisorAlsoFactor (CoFactorExists q (FactorPair n f q positN prf)) =
                 cong {f = plus f} prf
 
 plusDivisorNeitherFactor : NotFactor n f -> NotFactor (n + f) f
-plusDivisorNeitherFactor (ProperRemExists n p q r positN remPrf {rltp}) =
+plusDivisorNeitherFactor (ProperRemExists n p q r positN remPrf) =
         ProperRemExists (n + p) p (S q) r (lteTransitive positN $ lteAddRight n) (
                 rewrite multRightSuccPlus p q in
-                rewrite sym $ plusAssociative p (p * q) (S r) in
-                rewrite plusCommutative p ((p * q) + S r) in
+                rewrite sym $ plusAssociative p (p * q) (S $ finToNat r) in
+                rewrite plusCommutative p ((p * q) + S (finToNat r)) in
                 rewrite remPrf in
                 Refl
             )
-            {rltp = rltp}
 
-decFactor : (n, d : Nat) -> LTE 1 n-> DecFactor n d
-decFactor n d positN with (cmp n d)
-    decFactor n (n + S x) positN  | CmpLT x = case n of
-            S k =>
-                ItIsNotFactor $ ProperRemExists (S k) (S k + S x) Z k positN (
-                        rewrite multZeroRightZero (k + S x) in
-                        Refl
-                    ) {rltp = rewrite plusSuccRightSucc k (S x) in
-                        rewrite sym $ plusZeroRightNeutral k in
-                        rewrite plusSuccRightSucc k 0 in
-                        rewrite plusSuccRightSucc k 1 in
-                        rewrite plusZeroRightNeutral k in
-                        addLteLeft . LTESucc $ LTESucc LTEZero
-                    }
-    decFactor n n positN          | CmpEQ = case n of
-            S k => ItIsFactor $ selfFactor (S k)
-    decFactor (d + S x) d positN  | CmpGT x =
-            case assert_total $ decFactor (S x) d (LTESucc LTEZero) of
-                ItIsFactor fprf => ItIsFactor (
-                        rewrite plusCommutative d (S x) in
-                        plusDivisorAlsoFactor fprf
-                    )
-                ItIsNotFactor fcontra => ItIsNotFactor (
-                        rewrite plusCommutative d (S x) in
-                        plusDivisorNeitherFactor fcontra
-                    )
+decFactor : (n, d : Nat) -> {auto nok : LTE 1 n} -> {auto dok : LTE 1 d} -> DecFactor n d
+decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
+        | (Fraction n (S d) q r prf) = case r of
+                FZ =>
+                    let ok =
+                            replace {P = \x => x = n} (plusZeroRightNeutral (q + (d * q))) $
+                            replace {P = \x => x + 0 = n} (multCommutative q (S d)) prf
+                    in
+                    ItIsFactor $ CoFactorExists q (FactorPair n (S d) q nok ok)
+
+                (FS pr) =>
+                    ItIsNotFactor $ ProperRemExists n (S d) q pr nok (
+                            rewrite multCommutative d q in
+                            rewrite sym $ multRightSuccPlus q d in
+                            prf
+                        )

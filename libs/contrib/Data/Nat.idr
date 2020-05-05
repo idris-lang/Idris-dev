@@ -10,6 +10,19 @@ diff k Z = k
 diff Z j = j
 diff (S k) (S j) = diff k j
 
+succPred : (n : Nat) -> {auto ok : LTE 1 n} -> S (pred n) = n
+succPred Z {ok} = absurd $ succNotLTEzero ok
+succPred (S k) {ok} = Refl
+
+plusSuccIsNotIdentity : {a, b : Nat} -> a + S b = a -> Void
+plusSuccIsNotIdentity {a = Z} {b} prf = absurd prf
+plusSuccIsNotIdentity {a = (S k)} {b} prf =
+        plusSuccIsNotIdentity $ succInjective (k + S b) k prf
+
+lteToSucc : LTE 1 n -> (m : Nat ** n = S m)
+lteToSucc {n = Z} prf impossible
+lteToSucc {n = S k} prf = (k ** Refl)
+
 ltePlus : LTE m1 n1 -> LTE m2 n2 -> LTE (m1 + m2) (n1 + n2)
 ltePlus {n1=Z} LTEZero lte = lte
 ltePlus {n1=S k} LTEZero lte = lteSuccRight $ ltePlus {n1=k} LTEZero lte
@@ -76,3 +89,15 @@ rightFactorLteProduct {a} {b} {c} prf =
         rewrite multRightSuccPlus b a in
         rewrite multCommutative b a in
         prf
+
+nonZeroProdNonZeroFactors : (a, b : Nat) -> LTE 1 (S a * S b)
+nonZeroProdNonZeroFactors a b = LTESucc LTEZero
+
+nonZeroLeftFactor : {a, b : Nat} -> a * b = S n -> LTE 1 a
+nonZeroLeftFactor {a = Z} eq = void . SIsNotZ $ sym eq
+nonZeroLeftFactor {a = S k} _ = LTESucc LTEZero
+
+nonZeroRightFactor : {a, b : Nat} -> a * b = S n -> LTE 1 b
+nonZeroRightFactor {a} {b = Z} eq {n} =
+        void . SIsNotZ $ replace (multZeroRightZero a) (sym eq)
+nonZeroRightFactor {b = S k} prf = LTESucc LTEZero
