@@ -143,6 +143,20 @@ cancelRight x y z p =
     rewrite groupInverseIsInverseL x in
   monoidNeutralIsNeutralL z
 
+||| ab = 0 -> a = b^-1
+neutralProductInverseR : VerifiedGroup ty => (a, b : ty) ->
+  a <+> b = A.neutral -> a = inverse b
+neutralProductInverseR a b prf =
+  cancelRight  b a (inverse b) $
+    trans prf $ sym $ groupInverseIsInverseR b
+
+||| ab = 0 -> a^-1 = b
+neutralProductInverseL : VerifiedGroup ty => (a, b : ty) ->
+  a <+> b = A.neutral -> inverse a = b
+neutralProductInverseL a b prf =
+  cancelLeft a (inverse a) b $
+    trans (groupInverseIsInverseL a) $ sym prf
+
 ||| For any a and b, ax = b and ya = b have solutions.
 latinSquareProperty : VerifiedGroup t => (a, b : t) ->
   ((x : t ** a <+> x = b),
