@@ -36,8 +36,6 @@ implementation Monoid a => Monoid (Vect n a) where
 implementation Group a => Group (Vect n a) where
   inverse = map inverse
 
-implementation AbelianGroup a => AbelianGroup (Vect n a) where {}
-
 implementation Ring a => Ring (Vect n a) where
   (<.>) = zipWith (<.>)
 
@@ -167,7 +165,7 @@ VerifiedGroup a => VerifiedGroup (Vect n a) where
       rewrite groupInverseIsInverseR xs in
         Refl
 
-VerifiedAbelianGroup a => VerifiedAbelianGroup (Vect n a) where
+AbelianGroup a => AbelianGroup (Vect n a) where
   abelianGroupOpIsCommutative [] [] = Refl
   abelianGroupOpIsCommutative (x :: xs) (y :: ys) =
     rewrite abelianGroupOpIsCommutative x y in

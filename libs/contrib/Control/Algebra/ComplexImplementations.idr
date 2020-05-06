@@ -17,8 +17,6 @@ Monoid a => Monoid (Complex a) where
 Group a => Group (Complex a) where
   inverse (r :+ i) = (inverse r :+ inverse i)
 
-AbelianGroup a => AbelianGroup (Complex a) where {}
-
 Ring a => Ring (Complex a) where
   (<.>) (a :+ b) (c :+ d) = (a <.> c <-> b <.> d) :+ (a <.> d <+> b <.> c)
 
@@ -56,7 +54,7 @@ VerifiedGroup t => VerifiedGroup (Complex t) where
       rewrite groupInverseIsInverseR i in
         Refl
 
-VerifiedAbelianGroup t => VerifiedAbelianGroup (Complex t) where
+AbelianGroup t => AbelianGroup (Complex t) where
   abelianGroupOpIsCommutative (a :+ i) (b :+ j) =
     rewrite abelianGroupOpIsCommutative a b in
       rewrite abelianGroupOpIsCommutative i j in

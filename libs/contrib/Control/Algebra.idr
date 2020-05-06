@@ -22,22 +22,6 @@ interface Monoid a => Group a where
 (<->) : Group a => a -> a -> a
 (<->) left right = left <+> (inverse right)
 
-||| Sets equipped with a single binary operation that is associative and
-||| commutative, along with a neutral element for that binary operation and
-||| inverses for all elements. Must satisfy the following laws:
-|||
-||| + Associativity of `<+>`:
-|||     forall a b c, a <+> (b <+> c) == (a <+> b) <+> c
-||| + Commutativity of `<+>`:
-|||     forall a b,   a <+> b         == b <+> a
-||| + Neutral for `<+>`:
-|||     forall a,     a <+> neutral   == a
-|||     forall a,     neutral <+> a   == a
-||| + Inverse for `<+>`:
-|||     forall a,     a <+> inverse a == neutral
-|||     forall a,     inverse a <+> a == neutral
-interface Group a => AbelianGroup a where { }
-
 ||| Sets equipped with two binary operations, one associative and commutative
 ||| supplied with a neutral element, and the other associative, with
 ||| distributivity laws relating the two operations.  Must satisfy the following
@@ -58,7 +42,7 @@ interface Group a => AbelianGroup a where { }
 ||| + Distributivity of `<.>` and `<+>`:
 |||     forall a b c, a <.> (b <+> c) == (a <.> b) <+> (a <.> c)
 |||     forall a b c, (a <+> b) <.> c == (a <.> c) <+> (b <.> c)
-interface AbelianGroup a => Ring a where
+interface Group a => Ring a where
   (<.>) : a -> a -> a
 
 ||| Sets equipped with two binary operations, one associative and commutative
@@ -158,10 +142,24 @@ interface (VerifiedSemigroup a, Monoid a) => VerifiedMonoid a where
 interface (VerifiedMonoid a, Group a) => VerifiedGroup a where
   groupInverseIsInverseR : (r : a) -> inverse r <+> r = Algebra.neutral
 
-interface (VerifiedGroup a, AbelianGroup a) => VerifiedAbelianGroup a where
+||| Sets equipped with a single binary operation that is associative and
+||| commutative, along with a neutral element for that binary operation and
+||| inverses for all elements. Must satisfy the following laws:
+|||
+||| + Associativity of `<+>`:
+|||     forall a b c, a <+> (b <+> c) == (a <+> b) <+> c
+||| + Commutativity of `<+>`:
+|||     forall a b,   a <+> b         == b <+> a
+||| + Neutral for `<+>`:
+|||     forall a,     a <+> neutral   == a
+|||     forall a,     neutral <+> a   == a
+||| + Inverse for `<+>`:
+|||     forall a,     a <+> inverse a == neutral
+|||     forall a,     inverse a <+> a == neutral
+interface VerifiedGroup a => AbelianGroup a where
   abelianGroupOpIsCommutative : (l, r : a) -> l <+> r = r <+> l
 
-interface (VerifiedAbelianGroup a, Ring a) => VerifiedRing a where
+interface (AbelianGroup a, Ring a) => VerifiedRing a where
   ringOpIsAssociative   : (l, c, r : a) -> l <.> (c <.> r) = (l <.> c) <.> r
   ringOpIsDistributiveL : (l, c, r : a) -> l <.> (c <+> r) = (l <.> c) <+> (l <.> r)
   ringOpIsDistributiveR : (l, c, r : a) -> (l <+> c) <.> r = (l <.> r) <+> (c <.> r)

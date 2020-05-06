@@ -169,7 +169,7 @@ uniqueSolutionL : VerifiedGroup t => (a, b, x, y : t) ->
 uniqueSolutionL a b x y p q = cancelRight a x y $ trans p (sym q)
 
 ||| -(x + y) = -x + -y in any verified abelian group.
-inverseDistributesOverGroupOp : VerifiedAbelianGroup t => (l, r : t) ->
+inverseDistributesOverGroupOp : AbelianGroup t => (l, r : t) ->
   inverse (l <+> r) = inverse l <+> inverse r
 inverseDistributesOverGroupOp l r =
   rewrite abelianGroupOpIsCommutative (inverse l) (inverse r) in

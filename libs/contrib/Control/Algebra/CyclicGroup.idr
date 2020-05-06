@@ -52,8 +52,6 @@ interface VerifiedGroup a => CyclicGroup a where
 
 ||| Every cyclic group is commutative.
 CyclicGroup a => AbelianGroup a where
-
-CyclicGroup a => VerifiedAbelianGroup a where
   abelianGroupOpIsCommutative {a} l r =
     let
       (g ** gen) = generator {a=a}

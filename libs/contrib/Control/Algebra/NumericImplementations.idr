@@ -18,8 +18,6 @@ Monoid Integer where
 Group Integer where
   inverse = (* -1)
 
-AbelianGroup Integer where
-
 Ring Integer where
   (<.>) = (*)
 
@@ -37,8 +35,6 @@ Monoid Int where
 Group Int where
   inverse = (* -1)
 
-AbelianGroup Int where
-
 Ring Int where
   (<.>) = (*)
 
@@ -55,8 +51,6 @@ Monoid Double where
 
 Group Double where
   inverse = (* -1)
-
-AbelianGroup Double where
 
 Ring Double where
   (<.>) = (*)
@@ -91,8 +85,6 @@ Field Double where
 
 Group ZZ using PlusZZMonoid where
   inverse = (* -1)
-
-AbelianGroup ZZ where
 
 [MultZZSemi] Semigroup ZZ where
   (<+>) = (*)
