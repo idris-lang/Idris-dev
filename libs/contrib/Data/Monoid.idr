@@ -23,6 +23,8 @@ VerifiedMonoid () where
   monoidNeutralIsNeutralL () = Refl
   monoidNeutralIsNeutralR () = Refl
 
+-- Direct Products
+
 (Semigroup m, Semigroup n) => Semigroup (m, n) where
   (a, b) <+> (c, d) = (a <+> c, b <+> d)
 
@@ -44,4 +46,38 @@ VerifiedMonoid () where
   monoidNeutralIsNeutralR (a, b) =
     rewrite monoidNeutralIsNeutralR a in
       rewrite monoidNeutralIsNeutralR b in
+        Refl
+
+(Group g, Group h) => Group (g, h) where
+  inverse (a, b) = (inverse a, inverse b)
+
+(VerifiedGroup g, VerifiedGroup h) => VerifiedGroup (g, h) where
+  groupInverseIsInverseR (a, b) =
+    rewrite groupInverseIsInverseR a in
+      rewrite groupInverseIsInverseR b in
+        Refl
+
+(AbelianGroup g, AbelianGroup h) => AbelianGroup (g, h) where
+  abelianGroupOpIsCommutative (a, b) (c, d) =
+    rewrite abelianGroupOpIsCommutative a c in
+      rewrite abelianGroupOpIsCommutative b d in
+        Refl
+
+(Ring r, Ring s) => Ring (r, s) where
+  (<.>) (a, b) (c, d) = ((a <.> c), (b <.> d))
+
+(VerifiedRing r, VerifiedRing s) => VerifiedRing (r, s) where
+  ringOpIsAssociative (a, b) (c, d) (e, f) =
+    rewrite ringOpIsAssociative a c e in
+      rewrite ringOpIsAssociative b d f in
+        Refl
+
+  ringOpIsDistributiveL (a, b) (c, d) (e, f) =
+    rewrite ringOpIsDistributiveL a c e in
+      rewrite ringOpIsDistributiveL b d f in
+        Refl
+
+  ringOpIsDistributiveR (a, b) (c, d) (e, f) =
+    rewrite ringOpIsDistributiveR a c e in
+      rewrite ringOpIsDistributiveR b d f in
         Refl

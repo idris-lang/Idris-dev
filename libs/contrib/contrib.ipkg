@@ -50,6 +50,7 @@ modules = CFFI
         , Data.List.Zipper
         , Data.List.Reverse
 
+        , Data.Monoid
         , Data.Matrix
         , Data.Matrix.Algebraic
         , Data.Matrix.Numeric
