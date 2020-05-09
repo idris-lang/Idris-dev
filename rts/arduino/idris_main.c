@@ -3,6 +3,8 @@
 #include "idris_rts.h"
 #include "Arduino.h"
 
+void* _idris__123_runMain_95_0_125_(VM* vm, VAL* oldbase);
+
 // The default options should give satisfactory results under many circumstances.
 RTSOpts opts = {
     .init_heap_size = 128,
@@ -15,7 +17,7 @@ int main() {
     init(); // arduino init function
 
     VM* vm = init_vm(opts.max_stack_size, opts.init_heap_size, 1);
-    _idris__123_runMain0_125_(vm, NULL);
+    _idris__123_runMain_95_0_125_(vm, NULL);
 
 #ifdef IDRIS_DEBUG
     if (opts.show_summary) {
