@@ -15,10 +15,10 @@ data NotFactorsOf : Nat -> (Nat, Nat) -> Type where
     NotFactorPair : (n, p, q, r : Nat) -> LTE 1 n -> p * q + S r = n -> NotFactorsOf n (p, q)
 
 data Factor : Nat -> Nat -> Type where
-    CoFactorExists : {n, f : Nat} -> (q : Nat) -> FactorsOf n (f, q) -> Factor n f
+    CofactorExists : {n, p : Nat} -> (q : Nat) -> LTE 1 n -> p * q = n -> Factor n p
 
 data NotFactor : Nat -> Nat -> Type where
-    ProperRemExists : (n, p, q : Nat) ->
+    ProperRemExists : {n, p : Nat} -> (q : Nat) ->
         (r : Fin (pred p)) ->
         LTE 1 n ->
         p * q + S (finToNat r) = n ->
@@ -41,8 +41,8 @@ Uninhabited (FactorsOf n (a, 0)) where
         succNotLTEzero $ replace {P = LTE 1} (sym zeroIsN) posN
 
 
-Uninhabited (Factor Z f) where
-    uninhabited (CoFactorExists q prf) = uninhabited prf
+Uninhabited (Factor Z p) where
+    uninhabited (CofactorExists {n = Z} _ ok _) = uninhabited ok
 
 factPairNotFactPairAbsurd : FactorsOf n (p, q) -> NotFactorsOf n (p, q) -> Void
 factPairNotFactPairAbsurd (FactorPair n p q _ prf) (NotFactorPair _ _ _ r _ contra) =
@@ -50,7 +50,7 @@ factPairNotFactPairAbsurd (FactorPair n p q _ prf) (NotFactorPair _ _ _ r _ cont
 
 
 factorNotFactorAbsurd : Factor n p -> NotFactor n p -> Void
-factorNotFactorAbsurd (CoFactorExists q (FactorPair n p q positN prf)) (ProperRemExists n p q' r _ contra) =
+factorNotFactorAbsurd (CofactorExists {n} {p} q positN prf) (ProperRemExists {n} {p} q' r _ contra) =
         thisIsAbsurd q q' prf $ replace {P = \x => (p * q') + S (finToNat r) = x} (sym prf) contra
     where
     thisIsAbsurd : (q, q' : Nat) -> p * q = n -> (p * q') + S (finToNat r) = p * q -> Void
@@ -87,31 +87,30 @@ oneAndSeflAreFactors n {ok} = FactorPair n n 1 ok (multOneRightNeutral n)
 
 oneIsFactor : (n : Nat) -> {auto ok : LTE 1 n} -> Factor n 1
 oneIsFactor (S k) {ok} =
-        CoFactorExists (S k) (swapFactors $ oneAndSeflAreFactors (S k))
+        CofactorExists (S k) ok (rewrite plusZeroRightNeutral k in Refl)
 
 selfFactor : (n : Nat) -> {auto ok : LTE 1 n} -> Factor n n
-selfFactor (S k) {ok} = CoFactorExists 1 (oneAndSeflAreFactors (S k))
+selfFactor (S k) {ok} = CofactorExists 1 ok (rewrite multOneRightNeutral k in Refl)
 
-factorLteNumber : Factor n f -> LTE f n
-factorLteNumber (CoFactorExists Z (FactorPair n a Z positN prf)) =
-        let nIsZero = replace {P = \x => n = x} (multZeroRightZero a) $ sym prf
+factorLteNumber : Factor n p -> LTE p n
+factorLteNumber (CofactorExists {n} {p} Z positN prf) =
+        let nIsZero = replace {P = \x => n = x} (multZeroRightZero p) $ sym prf
             oneLteZero = replace {P = LTE 1} nIsZero positN
         in
         absurd $ succNotLTEzero oneLteZero
-factorLteNumber (CoFactorExists (S b) (FactorPair n a (S b) positN prf)) =
+factorLteNumber (CofactorExists {n} {p} (S k) positN prf) =
         leftFactorLteProduct prf
 
-plusDivisorAlsoFactor : Factor n f -> Factor (n + f) f
-plusDivisorAlsoFactor (CoFactorExists q (FactorPair n f q positN prf)) =
-        CoFactorExists (S q) $
-            FactorPair (n + f) f (S q) (lteTransitive positN $ lteAddRight n) $
-                rewrite plusCommutative n f in
-                rewrite multRightSuccPlus f q in
-                cong {f = plus f} prf
+plusDivisorAlsoFactor : Factor n p -> Factor (n + p) p
+plusDivisorAlsoFactor (CofactorExists {n} {p} q positN prf) =
+        CofactorExists (S q) (lteTransitive positN $ lteAddRight n) $
+            rewrite plusCommutative n p in
+            rewrite multRightSuccPlus p q in
+            cong {f = plus p} prf
 
-plusDivisorNeitherFactor : NotFactor n f -> NotFactor (n + f) f
-plusDivisorNeitherFactor (ProperRemExists n p q r positN remPrf) =
-        ProperRemExists (n + p) p (S q) r (lteTransitive positN $ lteAddRight n) (
+plusDivisorNeitherFactor : NotFactor n p -> NotFactor (n + p) p
+plusDivisorNeitherFactor (ProperRemExists {n} {p} q r positN remPrf) =
+        ProperRemExists (S q) r (lteTransitive positN $ lteAddRight n) (
                 rewrite multRightSuccPlus p q in
                 rewrite sym $ plusAssociative p (p * q) (S $ finToNat r) in
                 rewrite plusCommutative p ((p * q) + S (finToNat r)) in
@@ -123,14 +122,14 @@ decFactor : (n, d : Nat) -> {auto nok : LTE 1 n} -> {auto dok : LTE 1 d} -> DecF
 decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
         | (Fraction n (S d) q r prf) = case r of
                 FZ =>
-                    let ok =
+                    let prf =
                             replace {P = \x => x = n} (plusZeroRightNeutral (q + (d * q))) $
                             replace {P = \x => x + 0 = n} (multCommutative q (S d)) prf
                     in
-                    ItIsFactor $ CoFactorExists q (FactorPair n (S d) q nok ok)
+                    ItIsFactor $ CofactorExists q nok prf
 
                 (FS pr) =>
-                    ItIsNotFactor $ ProperRemExists n (S d) q pr nok (
+                    ItIsNotFactor $ ProperRemExists q pr nok (
                             rewrite multCommutative d q in
                             rewrite sym $ multRightSuccPlus q d in
                             prf
