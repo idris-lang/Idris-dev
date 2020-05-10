@@ -44,6 +44,10 @@ Uninhabited (FactorsOf n (a, 0)) where
 Uninhabited (Factor Z p) where
     uninhabited (CofactorExists {n = Z} _ ok _) = uninhabited ok
 
+cofactor : Factor n p -> (q : Nat ** q * p = n)
+cofactor (CofactorExists {n} {p} q ok prf) =
+        (q ** rewrite multCommutative q p in prf)
+
 factPairNotFactPairAbsurd : FactorsOf n (p, q) -> NotFactorsOf n (p, q) -> Void
 factPairNotFactPairAbsurd (FactorPair n p q _ prf) (NotFactorPair _ _ _ r _ contra) =
         plusSuccIsNotIdentity $ replace {P = \a => a + S r = n} prf contra
@@ -81,6 +85,11 @@ swapFactors : FactorsOf n (a, b) -> FactorsOf n (b, a)
 swapFactors (FactorPair n a b positN prf) =
         FactorPair n b a positN (rewrite multCommutative b a in prf)
 
+leftFactor : FactorsOf n (p, q) -> Factor n p
+leftFactor (FactorPair n p q ok prf) = CofactorExists q ok prf
+
+rightFactor : FactorsOf n (p, q) -> Factor n q
+rightFactor (FactorPair n p q ok prf) = CofactorExists p ok (rewrite multCommutative q p in prf)
 
 oneAndSeflAreFactors : (n : Nat) -> {auto ok : LTE 1 n} -> FactorsOf n (n, 1)
 oneAndSeflAreFactors n {ok} = FactorPair n n 1 ok (multOneRightNeutral n)
