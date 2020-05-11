@@ -5,7 +5,7 @@ import Data.Fin.Extra
 import Data.Nat
 
 %default total
-%access export
+%access public export
 
 
 data FactorsOf : Nat -> (Nat, Nat) -> Type where
@@ -143,3 +143,16 @@ decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
                             rewrite sym $ multRightSuccPlus q d in
                             prf
                         )
+
+factNotSuccFact : {n, p : Nat} -> GT p 1 -> Factor n p -> NotFactor (S n) p
+factNotSuccFact {n} {p = Z} pGt1 (CofactorExists q positN prf) =
+        absurd $ succNotLTEzero pGt1
+factNotSuccFact {n} {p = S Z} pGt1 (CofactorExists q positN prf) =
+        absurd . succNotLTEzero $ fromLteSucc pGt1
+factNotSuccFact {n} {p = S (S k)} pGt1 (CofactorExists q positN prf) =
+        let r = FZ in -- remember it's remainders precedessor
+        ProperRemExists q r (lteSuccRight positN) (
+            rewrite prf in
+            rewrite plusCommutative n 1 in
+            Refl
+        )
