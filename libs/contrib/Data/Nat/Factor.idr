@@ -28,6 +28,10 @@ data DecFactor : Nat -> Nat -> Type where
     ItIsFactor : Factor n f -> DecFactor n f
     ItIsNotFactor : NotFactor n f -> DecFactor n f
 
+data CommonFactor : Nat -> Nat -> Nat -> Type where
+    CommonFactorExists : {a, b : Nat} -> (p : Nat) -> Factor a p -> Factor b p -> CommonFactor a b p
+
+
 Uninhabited (FactorsOf 0 p) where
     uninhabited (FactorPair n _ _ poistN _) impossible
 
@@ -43,6 +47,10 @@ Uninhabited (FactorsOf n (a, 0)) where
 
 Uninhabited (Factor Z p) where
     uninhabited (CofactorExists {n = Z} _ ok _) = uninhabited ok
+
+Uninhabited (Factor n Z) where
+    uninhabited (CofactorExists q ok prf) =
+        absurd . succNotLTEzero $ replace {P = LTE 1} (sym prf) ok
 
 cofactor : Factor n p -> (q : Nat ** q * p = n)
 cofactor (CofactorExists {n} {p} q ok prf) =
@@ -101,6 +109,12 @@ oneIsFactor (S k) {ok} =
 selfFactor : (n : Nat) -> {auto ok : LTE 1 n} -> Factor n n
 selfFactor (S k) {ok} = CofactorExists 1 ok (rewrite multOneRightNeutral k in Refl)
 
+multFactor : (p, q : Nat) -> {auto positP : LTE 1 p} -> {auto positQ : LTE 1 q} -> Factor (p * q) p
+multFactor Z _ {positP} = absurd $ succNotLTEzero positP
+multFactor _ Z {positQ} = absurd $ succNotLTEzero positQ
+multFactor (S k) (S j) {positP} {positQ} =
+        CofactorExists (S j) (LTESucc LTEZero) Refl
+
 factorLteNumber : Factor n p -> LTE p n
 factorLteNumber (CofactorExists {n} {p} Z positN prf) =
         let nIsZero = replace {P = \x => n = x} (multZeroRightZero p) $ sym prf
@@ -126,6 +140,29 @@ plusDivisorNeitherFactor (ProperRemExists {n} {p} q r positN remPrf) =
                 rewrite remPrf in
                 Refl
             )
+
+multNAlsoFactor : Factor n p -> (a : Nat) -> {auto aok : LTE 1 a} -> Factor (n * a) p
+multNAlsoFactor _ Z {aok} = absurd $ succNotLTEzero aok
+multNAlsoFactor (CofactorExists {n} {p} q positN prf) (S a) =
+        CofactorExists (q * S a) (lteMultRight positN a) $
+            rewrite sym prf in
+            multAssociative p q (S a)
+
+plusFactor : Factor n p -> Factor m p -> Factor (n + m) p
+plusFactor {n} {p} nFactor@(CofactorExists qn positN prfN) (CofactorExists qm positM prfM) =
+        let positP = the (LTE 1 p) $ case n of
+                Z => absurd $ succNotLTEzero positN
+                (S k) => nonZeroLeftFactor {a = p} {b = qn} prfN
+            positQNQM = the (LTE 1 (qn + qm)) $ case qn of
+                Z => absurd . succNotLTEzero .
+                    replace {P = LTE 1} (multZeroRightZero p) $
+                    replace {P = LTE 1} (sym prfN) positN
+                (S k) => LTESucc LTEZero
+        in
+        rewrite sym prfN in
+        rewrite sym prfM in
+        rewrite sym $ multDistributesOverPlusRight p qn qm in
+        multFactor p (qn + qm) {positQ = positQNQM}
 
 decFactor : (n, d : Nat) -> {auto nok : LTE 1 n} -> {auto dok : LTE 1 d} -> DecFactor n d
 decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
@@ -156,3 +193,69 @@ factNotSuccFact {n} {p = S (S k)} pGt1 (CofactorExists q positN prf) =
             rewrite plusCommutative n 1 in
             Refl
         )
+
+oneCommonFactor : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> CommonFactor a b 1
+oneCommonFactor a b {aok} {bok} = CommonFactorExists 1
+        (CofactorExists a aok (rewrite plusZeroRightNeutral a in Refl))
+        (CofactorExists b bok (rewrite plusZeroRightNeutral b in Refl))
+
+selfIsCommonFactor : (a : Nat) -> {auto ok : LTE 1 a} -> CommonFactor a a a
+selfIsCommonFactor Z {ok} = absurd $ succNotLTEzero ok
+selfIsCommonFactor (S k) = CommonFactorExists (S k) (selfFactor $ S k) (selfFactor $ S k)
+
+swapCommonFactor : CommonFactor a b f -> CommonFactor b a f
+swapCommonFactor (CommonFactorExists f aprf bprf) = CommonFactorExists f bprf aprf
+
+
+private
+gcd_reduce : (a, b : Nat) ->
+    {auto aGtB : LTE b a} ->
+    {auto aNonZero : LTE 1 a} ->
+    {auto bNonZero : LTE 1 b} ->
+    (f : Nat ** CommonFactor a b f)
+gcd_reduce Z _ {aNonZero} = absurd $ succNotLTEzero aNonZero
+gcd_reduce _ Z {bNonZero} = absurd $ succNotLTEzero bNonZero
+gcd_reduce (S a) (S b) {aGtB} {aNonZero} {bNonZero} with (divMod (S a) (S b))
+    | Fraction (S a) (S b) q FZ prf =
+        let sbIsFactor = the (plus q (mult b q) = S a) $
+                rewrite multCommutative b q in
+                rewrite sym $ multRightSuccPlus q b in
+                replace {P = \x => x = S a} (plusZeroRightNeutral (q * S b)) prf
+            skDividesA = CofactorExists q aNonZero sbIsFactor
+            skDividesB = selfFactor (S b)
+        in
+        (S b ** CommonFactorExists (S b) skDividesA skDividesB)
+
+    | Fraction (S a) (S b) q (FS r) prf =
+            let rLtSb = lteSuccRight $ elemSmallerThanBound r
+                qGt1 = the (LTE 1 q) $ case q of
+                    Z => absurd . notLteAndGt (S $ finToNat r) b (elemSmallerThanBound r) $
+                        replace {P = LTE (S b)} (sym prf) aGtB
+                    (S k) => LTESucc LTEZero
+                (f ** CommonFactorExists f prfSb prfRem) = gcd_reduce (S b) (S $ finToNat r)
+                prfSa = the (Factor (S a) f) $
+                    rewrite sym prf in
+                    rewrite multCommutative q (S b) in
+                    plusFactor (multNAlsoFactor prfSb q) prfRem
+            in
+            (f ** CommonFactorExists f prfSa prfSb)
+
+gcd : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> (f : Nat ** CommonFactor a b f)
+gcd Z _ {aok} = absurd aok
+gcd _ Z {bok} = absurd bok
+gcd (S a) (S b) with (cmp (S a) (S b))
+    gcd (S (b + S d)) (S b) | CmpGT d =
+        let aGtB = the (LTE (S b) (S (b + S d))) $
+                rewrite sym $ plusSuccRightSucc b d in
+                LTESucc . lteSuccRight $ lteAddRight b
+        in
+        gcd_reduce (S (b + S d)) (S b)
+    gcd (S a) (S a)         | CmpEQ =
+        (S a ** selfIsCommonFactor (S a))
+    gcd (S a) (S (a + S d)) | CmpLT d =
+        let aGtB = the (LTE (S a) (S (plus a (S d)))) $
+                rewrite sym $ plusSuccRightSucc a d in
+                LTESucc . lteSuccRight $ lteAddRight a
+            (f ** prf) = gcd_reduce (S (a + S d)) (S a)
+        in
+        (f ** swapCommonFactor prf)

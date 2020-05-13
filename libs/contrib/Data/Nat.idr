@@ -31,6 +31,11 @@ ltePlus (LTESucc lte1) lte2 = LTESucc $ ltePlus lte1 lte2
 lteCongPlus : (k : Nat) -> LTE m n -> LTE (m + k) (n + k)
 lteCongPlus k lte = ltePlus lte lteRefl
 
+lteMultRight : LTE a b -> (c : Nat) -> LTE a (b * S c)
+lteMultRight {b} prf c =
+        rewrite multRightSuccPlus b c in
+        lteTransitive prf $ lteAddRight b
+
 lteMult : LTE m1 n1 -> LTE m2 n2 -> LTE (m1 * m2) (n1 * n2)
 lteMult LTEZero _ = LTEZero
 lteMult {m1=S k} (LTESucc _) LTEZero = rewrite multZeroRightZero k in LTEZero
@@ -101,3 +106,8 @@ nonZeroRightFactor : {a, b : Nat} -> a * b = S n -> LTE 1 b
 nonZeroRightFactor {a} {b = Z} eq {n} =
         void . SIsNotZ $ replace (multZeroRightZero a) (sym eq)
 nonZeroRightFactor {b = S k} prf = LTESucc LTEZero
+
+notLteAndGt : (a, b : Nat) -> LTE a b -> GT a b -> Void
+notLteAndGt Z b aLteB aGtB = succNotLTEzero aGtB
+notLteAndGt (S k) Z aLteB aGtB = succNotLTEzero aLteB
+notLteAndGt (S k) (S j) aLteB aGtB = notLteAndGt k j (fromLteSucc aLteB) (fromLteSucc aGtB)
