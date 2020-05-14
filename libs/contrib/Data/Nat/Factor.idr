@@ -59,9 +59,9 @@ Uninhabited (Factor n Z) where
     uninhabited (CofactorExists q ok prf) =
         absurd . succNotLTEzero $ replace {P = LTE 1} (sym prf) ok
 
-cofactor : Factor n p -> (q : Nat ** q * p = n)
+cofactor : Factor n p -> (q : Nat ** Factor n q)
 cofactor (CofactorExists {n} {p} q ok prf) =
-        (q ** rewrite multCommutative q p in prf)
+        (q ** CofactorExists p ok $ rewrite multCommutative q p in prf)
 
 factPairNotFactPairAbsurd : FactorsOf n (p, q) -> NotFactorsOf n (p, q) -> Void
 factPairNotFactPairAbsurd (FactorPair n p q _ prf) (NotFactorPair _ _ _ r _ contra) =
