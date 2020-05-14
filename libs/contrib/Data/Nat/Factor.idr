@@ -201,7 +201,7 @@ commonFactorAlsoFactorOfGCD {p} pfa pfb (MkGCD _ greatest) =
         greatest p (CommonFactorExists p pfa pfb)
 
 
-||| A decission procedure for whether of not p is a factor of n.
+||| A decision procedure for whether of not p is a factor of n.
 decFactor : (n, d : Nat) -> {auto nok : LTE 1 n} -> {auto dok : LTE 1 d} -> DecFactor n d
 decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
         | (Fraction n (S d) q r prf) = case r of
