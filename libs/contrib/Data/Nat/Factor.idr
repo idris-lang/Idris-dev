@@ -3,6 +3,7 @@ module Data.Nat.Factor
 import Data.Fin
 import Data.Fin.Extra
 import Data.Nat
+import Syntax.PreorderReasoning
 
 %default total
 %access public export
@@ -30,6 +31,12 @@ data DecFactor : Nat -> Nat -> Type where
 
 data CommonFactor : Nat -> Nat -> Nat -> Type where
     CommonFactorExists : {a, b : Nat} -> (p : Nat) -> Factor a p -> Factor b p -> CommonFactor a b p
+
+data GCD : Nat -> Nat -> Nat -> Type where
+    MkGCD : {a, b, p : Nat} ->
+        (CommonFactor a b p) ->
+        ((q : Nat) -> CommonFactor a b q -> Factor p q) ->
+        GCD a b p
 
 
 Uninhabited (FactorsOf 0 p) where
@@ -93,6 +100,9 @@ swapFactors : FactorsOf n (a, b) -> FactorsOf n (b, a)
 swapFactors (FactorPair n a b positN prf) =
         FactorPair n b a positN (rewrite multCommutative b a in prf)
 
+commonFactorSym : CommonFactor a b p -> CommonFactor b a p
+commonFactorSym (CommonFactorExists p pfa pfb) = CommonFactorExists p pfb pfa
+
 leftFactor : FactorsOf n (p, q) -> Factor n p
 leftFactor (FactorPair n p q ok prf) = CofactorExists q ok prf
 
@@ -108,6 +118,16 @@ oneIsFactor (S k) {ok} =
 
 selfFactor : (n : Nat) -> {auto ok : LTE 1 n} -> Factor n n
 selfFactor (S k) {ok} = CofactorExists 1 ok (rewrite multOneRightNeutral k in Refl)
+
+factorTransitive : Factor a b -> Factor b c -> Factor a c
+factorTransitive (CofactorExists qb positA prfAB) (CofactorExists qc positB prfBC) =
+        CofactorExists (qb * qc) positA (
+            rewrite sym prfAB in
+            rewrite sym prfBC in
+            rewrite sym $ multAssociative c qc qb in
+            rewrite multCommutative qc qb in
+            Refl
+        )
 
 multFactor : (p, q : Nat) -> {auto positP : LTE 1 p} -> {auto positQ : LTE 1 q} -> Factor (p * q) p
 multFactor Z _ {positP} = absurd $ succNotLTEzero positP
@@ -164,6 +184,25 @@ plusFactor {n} {p} nFactor@(CofactorExists qn positN prfN) (CofactorExists qm po
         rewrite sym $ multDistributesOverPlusRight p qn qm in
         multFactor p (qn + qm) {positQ = positQNQM}
 
+minusFactor : {auto positB : LTE 1 b} -> Factor (a + b) p -> Factor a p -> Factor b p
+minusFactor {a} {b} {positB} (CofactorExists qab _ prfAB) (CofactorExists qa _ prfA) =
+        CofactorExists (minus qab qa) positB (
+            rewrite multDistributesOverMinusRight p qab qa in
+            rewrite prfA in
+            rewrite prfAB in
+            sym (
+                (b) ={ sym $ minusZeroRight b }=
+                (minus b 0) ={ sym $ plusMinusLeftCancel a b 0 }=
+                (minus (a + b) (a + 0)) ={ replace {P = \x => minus (a + b) (a + 0) = minus (a + b) x} (plusZeroRightNeutral a) Refl }=
+                (minus (a + b) a) QED
+            )
+        )
+
+commonFactorAlsoFactorOfGCD : Factor a p -> Factor b p -> GCD a b q -> Factor q p
+commonFactorAlsoFactorOfGCD {p} pfa pfb (MkGCD _ greatest) =
+        greatest p (CommonFactorExists p pfa pfb)
+
+
 decFactor : (n, d : Nat) -> {auto nok : LTE 1 n} -> {auto dok : LTE 1 d} -> DecFactor n d
 decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
         | (Fraction n (S d) q r prf) = case r of
@@ -203,9 +242,6 @@ selfIsCommonFactor : (a : Nat) -> {auto ok : LTE 1 a} -> CommonFactor a a a
 selfIsCommonFactor Z {ok} = absurd $ succNotLTEzero ok
 selfIsCommonFactor (S k) = CommonFactorExists (S k) (selfFactor $ S k) (selfFactor $ S k)
 
-swapCommonFactor : CommonFactor a b f -> CommonFactor b a f
-swapCommonFactor (CommonFactorExists f aprf bprf) = CommonFactorExists f bprf aprf
-
 namespace GCD
     %access private
 
@@ -222,8 +258,8 @@ namespace GCD
         size (SearchArgs a b _) = a + b
 
     step : (x : Search) ->
-        (rec : (y : Search) -> Smaller y x ->  (f : Nat ** CommonFactor (left y) (right y) f)) ->
-        (f : Nat ** CommonFactor (left x) (right x) f)
+        (rec : (y : Search) -> Smaller y x ->  (f : Nat ** GCD (left y) (right y) f)) ->
+        (f : Nat ** GCD (left x) (right x) f)
     step (SearchArgs Z _ bLteA {bNonZero}) _ = absurd . succNotLTEzero $ lteTransitive bNonZero bLteA
     step (SearchArgs _ Z _ {bNonZero}) _ = absurd $ succNotLTEzero bNonZero
     step (SearchArgs (S a) (S b) bLteA {bNonZero}) rec with (divMod (S a) (S b))
@@ -234,8 +270,9 @@ namespace GCD
                     replace {P = \x => x = S a} (plusZeroRightNeutral (q * S b)) prf
                 skDividesA = CofactorExists q (lteTransitive bNonZero bLteA) sbIsFactor
                 skDividesB = selfFactor (S b)
+                greatest = \q', (CommonFactorExists q' _ qfb) => qfb
             in
-            (S b ** CommonFactorExists (S b) skDividesA skDividesB)
+            (S b ** MkGCD (CommonFactorExists (S b) skDividesA skDividesB) greatest)
 
         | Fraction (S a) (S b) q (FS r) prf =
                 let rLtSb = lteSuccRight $ elemSmallerThanBound r
@@ -246,15 +283,26 @@ namespace GCD
                     smaller = the (LTE (S (S (plus b (S (finToNat r))))) (S (plus a (S b)))) $
                         rewrite plusCommutative a (S b) in
                         LTESucc . LTESucc . addLteLeft . fromLteSucc $ lteTransitive (elemSmallerThanBound $ FS r) bLteA
-                    (f ** CommonFactorExists f prfSb prfRem) = rec (SearchArgs (S b) (S $ finToNat r) rLtSb) smaller
+                    (f ** MkGCD (CommonFactorExists f prfSb prfRem) greatestSbSr) =
+                        rec (SearchArgs (S b) (S $ finToNat r) rLtSb) smaller
                     prfSa = the (Factor (S a) f) $
                         rewrite sym prf in
                         rewrite multCommutative q (S b) in
                         plusFactor (multNAlsoFactor prfSb q) prfRem
+                    greatest = \q', (CommonFactorExists q' qfa qfb) =>
+                        let sbfqSb =
+                                the (Factor (q * S b) (S b)) $
+                                rewrite multCommutative q (S b) in
+                                multFactor (S b) q
+                            rightPrf = minusFactor {a = q * S b} {b = S (finToNat r)}
+                                (rewrite prf in qfa)
+                                (factorTransitive sbfqSb qfb)
+                        in
+                        greatestSbSr q' (CommonFactorExists q' qfb rightPrf)
                 in
-                (f ** CommonFactorExists f prfSa prfSb)
+                (f ** MkGCD (CommonFactorExists f prfSa prfSb) greatest)
 
-gcd : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> (f : Nat ** CommonFactor a b f)
+gcd : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> (f : Nat ** GCD a b f)
 gcd Z _ {aok} = absurd aok
 gcd _ Z {bok} = absurd bok
 gcd (S a) (S b) with (cmp (S a) (S b))
@@ -265,11 +313,12 @@ gcd (S a) (S b) with (cmp (S a) (S b))
         in
         sizeInd GCD.step $ GCD.SearchArgs (S (b + S d)) (S b) aGtB
     gcd (S a) (S a)         | CmpEQ =
-        (S a ** selfIsCommonFactor (S a))
+        let greatest = \q, (CommonFactorExists q qfa _) => qfa in
+        (S a ** MkGCD (selfIsCommonFactor (S a)) greatest)
     gcd (S a) (S (a + S d)) | CmpLT d =
         let aGtB = the (LTE (S a) (S (plus a (S d)))) $
                 rewrite sym $ plusSuccRightSucc a d in
                 LTESucc . lteSuccRight $ lteAddRight a
-            (f ** prf) = sizeInd GCD.step $ GCD.SearchArgs (S (a + S d)) (S a) aGtB
+            (f ** MkGCD prf greatest) = sizeInd GCD.step $ GCD.SearchArgs (S (a + S d)) (S a) aGtB
         in
-        (f ** swapCommonFactor prf)
+        (f ** MkGCD (commonFactorSym prf) (\q, cf => greatest q $ commonFactorSym cf))
