@@ -9,15 +9,14 @@ import Syntax.PreorderReasoning
 %access public export
 
 
-data FactorsOf : Nat -> (Nat, Nat) -> Type where
-    FactorPair : (n, p, q : Nat) -> LTE 1 n -> p * q = n -> FactorsOf n (p, q)
-
-data NotFactorsOf : Nat -> (Nat, Nat) -> Type where
-    NotFactorPair : (n, p, q, r : Nat) -> LTE 1 n -> p * q + S r = n -> NotFactorsOf n (p, q)
-
+||| Factor n p is a witness that p is indeed a factor of n,
+||| i.e. there exists a q such that p * q = n.
 data Factor : Nat -> Nat -> Type where
     CofactorExists : {n, p : Nat} -> (q : Nat) -> LTE 1 n -> p * q = n -> Factor n p
 
+||| NotFactor n p is a witness that p is NOT a factor of n,
+||| i.e. there exist a q and an r, greater than 0 but smaller than p,
+||| such that p * q + r = n.
 data NotFactor : Nat -> Nat -> Type where
     ProperRemExists : {n, p : Nat} -> (q : Nat) ->
         (r : Fin (pred p)) ->
@@ -25,31 +24,29 @@ data NotFactor : Nat -> Nat -> Type where
         p * q + S (finToNat r) = n ->
         NotFactor n p
 
+||| DecFactor n p is a result of the process which decides
+||| whether or not p is a factor on n.
 data DecFactor : Nat -> Nat -> Type where
     ItIsFactor : Factor n f -> DecFactor n f
     ItIsNotFactor : NotFactor n f -> DecFactor n f
 
+||| CommonFactor n m p is a witness that p is a factor of both n and m.
 data CommonFactor : Nat -> Nat -> Nat -> Type where
     CommonFactorExists : {a, b : Nat} -> (p : Nat) -> Factor a p -> Factor b p -> CommonFactor a b p
 
+||| GCD n m p is a witness that p is THE greatest common factor of both n and m.
+||| The second argument to the constructor is a function which for all q being
+||| a factor of both n and m, proves that q is a factor of p.
+|||
+||| This is equivalent to a more straightforward definition, stating that for
+||| all q being a factor of both n and m, q is less than or equal to p, but more
+||| powerful and therefore more useful for further proofs. See below for a proof
+||| that if q is a factor of p then q must be less than or equal to p.
 data GCD : Nat -> Nat -> Nat -> Type where
     MkGCD : {a, b, p : Nat} ->
         (CommonFactor a b p) ->
         ((q : Nat) -> CommonFactor a b q -> Factor p q) ->
         GCD a b p
-
-
-Uninhabited (FactorsOf 0 p) where
-    uninhabited (FactorPair n _ _ poistN _) impossible
-
-Uninhabited (FactorsOf n (0, a)) where
-    uninhabited (FactorPair n Z a posN prf) =
-            succNotLTEzero $ replace {P = LTE 1} (sym prf) posN
-
-Uninhabited (FactorsOf n (a, 0)) where
-    uninhabited (FactorPair n a Z posN prf) =
-        let zeroIsN = replace {P = \x => x = n} (multZeroRightZero a) prf in
-        succNotLTEzero $ replace {P = LTE 1} (sym zeroIsN) posN
 
 
 Uninhabited (Factor Z p) where
@@ -59,15 +56,13 @@ Uninhabited (Factor n Z) where
     uninhabited (CofactorExists q ok prf) =
         absurd . succNotLTEzero $ replace {P = LTE 1} (sym prf) ok
 
+||| Given a statement that p is factor of n, return its cofactor.
 cofactor : Factor n p -> (q : Nat ** Factor n q)
 cofactor (CofactorExists {n} {p} q ok prf) =
         (q ** CofactorExists p ok $ rewrite multCommutative q p in prf)
 
-factPairNotFactPairAbsurd : FactorsOf n (p, q) -> NotFactorsOf n (p, q) -> Void
-factPairNotFactPairAbsurd (FactorPair n p q _ prf) (NotFactorPair _ _ _ r _ contra) =
-        plusSuccIsNotIdentity $ replace {P = \a => a + S r = n} prf contra
 
-
+||| No number can simultaneously be and not be a factor of another number.
 factorNotFactorAbsurd : Factor n p -> NotFactor n p -> Void
 factorNotFactorAbsurd (CofactorExists {n} {p} q positN prf) (ProperRemExists {n} {p} q' r _ contra) =
         thisIsAbsurd q q' prf $ replace {P = \x => (p * q') + S (finToNat r) = x} (sym prf) contra
@@ -95,30 +90,21 @@ factorNotFactorAbsurd (CofactorExists {n} {p} q positN prf) (ProperRemExists {n}
             replace {P = LTE (S (S (finToNat r)))} (succPred p {ok = pGtZ}) $
             LTESucc $ elemSmallerThanBound r
 
-
-swapFactors : FactorsOf n (a, b) -> FactorsOf n (b, a)
-swapFactors (FactorPair n a b positN prf) =
-        FactorPair n b a positN (rewrite multCommutative b a in prf)
-
+||| The relation of common factor is symmetric, that is if p is a common factor
+||| of n and m, then it is also a common factor if m and n.
 commonFactorSym : CommonFactor a b p -> CommonFactor b a p
 commonFactorSym (CommonFactorExists p pfa pfb) = CommonFactorExists p pfb pfa
 
-leftFactor : FactorsOf n (p, q) -> Factor n p
-leftFactor (FactorPair n p q ok prf) = CofactorExists q ok prf
-
-rightFactor : FactorsOf n (p, q) -> Factor n q
-rightFactor (FactorPair n p q ok prf) = CofactorExists p ok (rewrite multCommutative q p in prf)
-
-oneAndSeflAreFactors : (n : Nat) -> {auto ok : LTE 1 n} -> FactorsOf n (n, 1)
-oneAndSeflAreFactors n {ok} = FactorPair n n 1 ok (multOneRightNeutral n)
-
+||| 1 is a factor of any natural number.
 oneIsFactor : (n : Nat) -> {auto ok : LTE 1 n} -> Factor n 1
 oneIsFactor (S k) {ok} =
         CofactorExists (S k) ok (rewrite plusZeroRightNeutral k in Refl)
 
+||| For all natural numbers n, n is (the greatest) a factor of n.
 selfFactor : (n : Nat) -> {auto ok : LTE 1 n} -> Factor n n
 selfFactor (S k) {ok} = CofactorExists 1 ok (rewrite multOneRightNeutral k in Refl)
 
+||| If b is a factor of a and c is a factor of b, then c is also a factor of a.
 factorTransitive : Factor a b -> Factor b c -> Factor a c
 factorTransitive (CofactorExists qb positA prfAB) (CofactorExists qc positB prfBC) =
         CofactorExists (qb * qc) positA (
@@ -129,12 +115,14 @@ factorTransitive (CofactorExists qb positA prfAB) (CofactorExists qc positB prfB
             Refl
         )
 
+||| For all natural numbers p and q, p is a factor of (p * q).
 multFactor : (p, q : Nat) -> {auto positP : LTE 1 p} -> {auto positQ : LTE 1 q} -> Factor (p * q) p
 multFactor Z _ {positP} = absurd $ succNotLTEzero positP
 multFactor _ Z {positQ} = absurd $ succNotLTEzero positQ
 multFactor (S k) (S j) {positP} {positQ} =
         CofactorExists (S j) (LTESucc LTEZero) Refl
 
+||| Any factor of n must be less than or equal to n.
 factorLteNumber : Factor n p -> LTE p n
 factorLteNumber (CofactorExists {n} {p} Z positN prf) =
         let nIsZero = replace {P = \x => n = x} (multZeroRightZero p) $ sym prf
@@ -144,6 +132,7 @@ factorLteNumber (CofactorExists {n} {p} Z positN prf) =
 factorLteNumber (CofactorExists {n} {p} (S k) positN prf) =
         leftFactorLteProduct prf
 
+||| If p is a factor of n, then it is also a factor of (n + p).
 plusDivisorAlsoFactor : Factor n p -> Factor (n + p) p
 plusDivisorAlsoFactor (CofactorExists {n} {p} q positN prf) =
         CofactorExists (S q) (lteTransitive positN $ lteAddRight n) $
@@ -151,6 +140,7 @@ plusDivisorAlsoFactor (CofactorExists {n} {p} q positN prf) =
             rewrite multRightSuccPlus p q in
             cong {f = plus p} prf
 
+||| If p is NOT a factor of n, then it also is NOT a factor of (n + p).
 plusDivisorNeitherFactor : NotFactor n p -> NotFactor (n + p) p
 plusDivisorNeitherFactor (ProperRemExists {n} {p} q r positN remPrf) =
         ProperRemExists (S q) r (lteTransitive positN $ lteAddRight n) (
@@ -161,6 +151,7 @@ plusDivisorNeitherFactor (ProperRemExists {n} {p} q r positN remPrf) =
                 Refl
             )
 
+||| If p is a factor of n, then it is also a factor of any multiply of n.
 multNAlsoFactor : Factor n p -> (a : Nat) -> {auto aok : LTE 1 a} -> Factor (n * a) p
 multNAlsoFactor _ Z {aok} = absurd $ succNotLTEzero aok
 multNAlsoFactor (CofactorExists {n} {p} q positN prf) (S a) =
@@ -168,6 +159,7 @@ multNAlsoFactor (CofactorExists {n} {p} q positN prf) (S a) =
             rewrite sym prf in
             multAssociative p q (S a)
 
+||| If p is a factor of both n and m, then it is also a factor of their sum.
 plusFactor : Factor n p -> Factor m p -> Factor (n + m) p
 plusFactor {n} {p} nFactor@(CofactorExists qn positN prfN) (CofactorExists qm positM prfM) =
         let positP = the (LTE 1 p) $ case n of
@@ -184,6 +176,10 @@ plusFactor {n} {p} nFactor@(CofactorExists qn positN prfN) (CofactorExists qm po
         rewrite sym $ multDistributesOverPlusRight p qn qm in
         multFactor p (qn + qm) {positQ = positQNQM}
 
+||| If p is a factor of a sum (n + m) and a factor of n, then it is also
+||| a factor of m. This could be expressed more naturally with minus, but
+||| it would be more difficult to prove, since minus lacks certain properties
+||| that one would expect from decent subtraction.
 minusFactor : {auto positB : LTE 1 b} -> Factor (a + b) p -> Factor a p -> Factor b p
 minusFactor {a} {b} {positB} (CofactorExists qab _ prfAB) (CofactorExists qa _ prfA) =
         CofactorExists (minus qab qa) positB (
@@ -198,11 +194,14 @@ minusFactor {a} {b} {positB} (CofactorExists qab _ prfAB) (CofactorExists qa _ p
             )
         )
 
+||| If p is a common factor of a and b, then it is also a factor of their GCD.
+||| This actually follows directly from the definition of GCD.
 commonFactorAlsoFactorOfGCD : Factor a p -> Factor b p -> GCD a b q -> Factor q p
 commonFactorAlsoFactorOfGCD {p} pfa pfb (MkGCD _ greatest) =
         greatest p (CommonFactorExists p pfa pfb)
 
 
+||| A decission procedure for whether of not p is a factor of n.
 decFactor : (n, d : Nat) -> {auto nok : LTE 1 n} -> {auto dok : LTE 1 d} -> DecFactor n d
 decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
         | (Fraction n (S d) q r prf) = case r of
@@ -220,6 +219,8 @@ decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
                             prf
                         )
 
+||| For all p greater than 1, if p is a factor of n, then it is NOT a factor
+||| of (n + 1).
 factNotSuccFact : {n, p : Nat} -> GT p 1 -> Factor n p -> NotFactor (S n) p
 factNotSuccFact {n} {p = Z} pGt1 (CofactorExists q positN prf) =
         absurd $ succNotLTEzero pGt1
@@ -233,15 +234,18 @@ factNotSuccFact {n} {p = S (S k)} pGt1 (CofactorExists q positN prf) =
             Refl
         )
 
+||| 1 is a common factor of any pair of natural numbers.
 oneCommonFactor : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> CommonFactor a b 1
 oneCommonFactor a b {aok} {bok} = CommonFactorExists 1
         (CofactorExists a aok (rewrite plusZeroRightNeutral a in Refl))
         (CofactorExists b bok (rewrite plusZeroRightNeutral b in Refl))
 
+||| Any natural number is a common factor of itself and itself.
 selfIsCommonFactor : (a : Nat) -> {auto ok : LTE 1 a} -> CommonFactor a a a
 selfIsCommonFactor Z {ok} = absurd $ succNotLTEzero ok
 selfIsCommonFactor (S k) = CommonFactorExists (S k) (selfFactor $ S k) (selfFactor $ S k)
 
+-- Some helper definitions only for internal use of gcd procedure.
 namespace GCD
     %access private
 
@@ -302,6 +306,10 @@ namespace GCD
                 in
                 (f ** MkGCD (CommonFactorExists f prfSa prfSb) greatest)
 
+||| An implementation of Euclidean Algorithm for computing greatest common
+||| divisors. It is proven correct and total; returns a proof that computed
+||| number actually IS the GCD. Unfortunately it's very slow, so improvements
+||| in terms of efficiency would be welcome.
 gcd : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> (f : Nat ** GCD a b f)
 gcd Z _ {aok} = absurd aok
 gcd _ Z {bok} = absurd bok
