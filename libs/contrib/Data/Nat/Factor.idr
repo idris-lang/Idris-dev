@@ -206,39 +206,53 @@ selfIsCommonFactor (S k) = CommonFactorExists (S k) (selfFactor $ S k) (selfFact
 swapCommonFactor : CommonFactor a b f -> CommonFactor b a f
 swapCommonFactor (CommonFactorExists f aprf bprf) = CommonFactorExists f bprf aprf
 
+namespace GCD
+    %access private
 
-private
-gcd_reduce : (a, b : Nat) ->
-    {auto aGtB : LTE b a} ->
-    {auto aNonZero : LTE 1 a} ->
-    {auto bNonZero : LTE 1 b} ->
-    (f : Nat ** CommonFactor a b f)
-gcd_reduce Z _ {aNonZero} = absurd $ succNotLTEzero aNonZero
-gcd_reduce _ Z {bNonZero} = absurd $ succNotLTEzero bNonZero
-gcd_reduce (S a) (S b) {aGtB} {aNonZero} {bNonZero} with (divMod (S a) (S b))
-    | Fraction (S a) (S b) q FZ prf =
-        let sbIsFactor = the (plus q (mult b q) = S a) $
-                rewrite multCommutative b q in
-                rewrite sym $ multRightSuccPlus q b in
-                replace {P = \x => x = S a} (plusZeroRightNeutral (q * S b)) prf
-            skDividesA = CofactorExists q aNonZero sbIsFactor
-            skDividesB = selfFactor (S b)
-        in
-        (S b ** CommonFactorExists (S b) skDividesA skDividesB)
+    data Search : Type where
+        SearchArgs : (a, b : Nat) -> LTE b a -> {auto bNonZero : LTE 1 b} -> Search
 
-    | Fraction (S a) (S b) q (FS r) prf =
-            let rLtSb = lteSuccRight $ elemSmallerThanBound r
-                qGt1 = the (LTE 1 q) $ case q of
-                    Z => absurd . notLteAndGt (S $ finToNat r) b (elemSmallerThanBound r) $
-                        replace {P = LTE (S b)} (sym prf) aGtB
-                    (S k) => LTESucc LTEZero
-                (f ** CommonFactorExists f prfSb prfRem) = gcd_reduce (S b) (S $ finToNat r)
-                prfSa = the (Factor (S a) f) $
-                    rewrite sym prf in
-                    rewrite multCommutative q (S b) in
-                    plusFactor (multNAlsoFactor prfSb q) prfRem
+    left : Search -> Nat
+    left (SearchArgs l _ _) = l
+
+    right : Search -> Nat
+    right (SearchArgs _ r _) = r
+
+    Sized Search where
+        size (SearchArgs a b _) = a + b
+
+    step : (x : Search) ->
+        (rec : (y : Search) -> Smaller y x ->  (f : Nat ** CommonFactor (left y) (right y) f)) ->
+        (f : Nat ** CommonFactor (left x) (right x) f)
+    step (SearchArgs Z _ bLteA {bNonZero}) _ = absurd . succNotLTEzero $ lteTransitive bNonZero bLteA
+    step (SearchArgs _ Z _ {bNonZero}) _ = absurd $ succNotLTEzero bNonZero
+    step (SearchArgs (S a) (S b) bLteA {bNonZero}) rec with (divMod (S a) (S b))
+        | Fraction (S a) (S b) q FZ prf =
+            let sbIsFactor = the (plus q (mult b q) = S a) $
+                    rewrite multCommutative b q in
+                    rewrite sym $ multRightSuccPlus q b in
+                    replace {P = \x => x = S a} (plusZeroRightNeutral (q * S b)) prf
+                skDividesA = CofactorExists q (lteTransitive bNonZero bLteA) sbIsFactor
+                skDividesB = selfFactor (S b)
             in
-            (f ** CommonFactorExists f prfSa prfSb)
+            (S b ** CommonFactorExists (S b) skDividesA skDividesB)
+
+        | Fraction (S a) (S b) q (FS r) prf =
+                let rLtSb = lteSuccRight $ elemSmallerThanBound r
+                    qGt1 = the (LTE 1 q) $ case q of
+                        Z => absurd . notLteAndGt (S $ finToNat r) b (elemSmallerThanBound r) $
+                            replace {P = LTE (S b)} (sym prf) bLteA
+                        (S k) => LTESucc LTEZero
+                    smaller = the (LTE (S (S (plus b (S (finToNat r))))) (S (plus a (S b)))) $
+                        rewrite plusCommutative a (S b) in
+                        LTESucc . LTESucc . addLteLeft . fromLteSucc $ lteTransitive (elemSmallerThanBound $ FS r) bLteA
+                    (f ** CommonFactorExists f prfSb prfRem) = rec (SearchArgs (S b) (S $ finToNat r) rLtSb) smaller
+                    prfSa = the (Factor (S a) f) $
+                        rewrite sym prf in
+                        rewrite multCommutative q (S b) in
+                        plusFactor (multNAlsoFactor prfSb q) prfRem
+                in
+                (f ** CommonFactorExists f prfSa prfSb)
 
 gcd : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> (f : Nat ** CommonFactor a b f)
 gcd Z _ {aok} = absurd aok
@@ -249,13 +263,13 @@ gcd (S a) (S b) with (cmp (S a) (S b))
                 rewrite sym $ plusSuccRightSucc b d in
                 LTESucc . lteSuccRight $ lteAddRight b
         in
-        gcd_reduce (S (b + S d)) (S b)
+        sizeInd GCD.step $ GCD.SearchArgs (S (b + S d)) (S b) aGtB
     gcd (S a) (S a)         | CmpEQ =
         (S a ** selfIsCommonFactor (S a))
     gcd (S a) (S (a + S d)) | CmpLT d =
         let aGtB = the (LTE (S a) (S (plus a (S d)))) $
                 rewrite sym $ plusSuccRightSucc a d in
                 LTESucc . lteSuccRight $ lteAddRight a
-            (f ** prf) = gcd_reduce (S (a + S d)) (S a)
+            (f ** prf) = sizeInd GCD.step $ GCD.SearchArgs (S (a + S d)) (S a) aGtB
         in
         (f ** swapCommonFactor prf)
