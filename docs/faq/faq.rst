@@ -37,7 +37,7 @@ Is there some documentation for the standard lib? List of functions?
 =====================================================================
 
 API documentation for the shipped packages is listed on `the
-documentation page <https://www.idris-lang.org/documentation/>`_.
+documentation page <https://www.idris-lang.org/pages/documentation.html>`_.
 
 Unfortunately, the default prelude and shipped packages for `Idris`
 are not necessarily complete with regards to documentation.  Other
