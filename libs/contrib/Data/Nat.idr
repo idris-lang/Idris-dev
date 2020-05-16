@@ -44,20 +44,16 @@ lteMult (LTESucc lte1) (LTESucc lte2) = LTESucc $ ltePlus lte2 $ lteMult lte1 $ 
 lteCongMult : (k : Nat) -> LTE m n -> LTE (m * k) (n * k)
 lteCongMult k lte = lteMult lte lteRefl
 
-addLteRight : LTE a b -> LTE (a + c) (b + c)
-addLteRight {a} {b} {c = Z} prf =
-        rewrite plusZeroRightNeutral a in
-        rewrite plusZeroRightNeutral b in
-        prf
-addLteRight {a} {b} {c = S k} prf =
-        rewrite sym $ plusSuccRightSucc a k in
-        rewrite sym $ plusSuccRightSucc b k in
-        LTESucc $ addLteRight prf
-
 addLteLeft : LTE b c -> LTE (a + b) (a + c)
 addLteLeft {a = Z} {b} {c} prf = prf
 addLteLeft {a = S k} {b} {c} prf =
         LTESucc $ addLteLeft prf
+
+addLteRight : LTE a b -> LTE (a + c) (b + c)
+addLteRight {a} {b} {c} prf =
+        rewrite plusCommutative a c in
+        rewrite plusCommutative b c in
+        addLteLeft {a = c} {b = a} {c = b} prf
 
 subtractLteLeft : LTE (a + b) (a + c) -> LTE b c
 subtractLteLeft {a = Z} {b} {c} prf = prf
@@ -68,15 +64,11 @@ subtractEqLeft {a = Z} prf = prf
 subtractEqLeft {a = S k} {b} {c} prf = subtractEqLeft $ succInjective (k + b) (k + c) prf
 
 subtractEqRight : {a, b, c : Nat} -> a + c = b + c -> a = b
-subtractEqRight {a} {b} {c = Z} prf =
-        rewrite sym $ plusZeroRightNeutral a in
-        rewrite sym $ plusZeroRightNeutral b in
-        prf
-subtractEqRight {a} {b} {c = S k} prf =
-        subtractEqRight $
-        succInjective (a + k) (b + k) .
-        replace {P = \x => S (a + k) = x} (sym $ plusSuccRightSucc b k) $
-        replace {P = \x => x = b + S k} (sym $ plusSuccRightSucc a k) prf
+subtractEqRight {a} {b} {c} prf =
+        subtractEqLeft {a = c} {b = a} {c = b} .
+        trans (plusCommutative c a) .
+        trans prf $
+        plusCommutative b c
 
 leftFactorLteProduct : a * S b = c -> LTE a c
 leftFactorLteProduct {a} {b} {c} prf =
