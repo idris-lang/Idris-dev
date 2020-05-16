@@ -310,6 +310,7 @@ namespace GCD
 ||| divisors. It is proven correct and total; returns a proof that computed
 ||| number actually IS the GCD. Unfortunately it's very slow, so improvements
 ||| in terms of efficiency would be welcome.
+export
 gcd : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> (f : Nat ** GCD a b f)
 gcd Z _ {aok} = absurd aok
 gcd _ Z {bok} = absurd bok
