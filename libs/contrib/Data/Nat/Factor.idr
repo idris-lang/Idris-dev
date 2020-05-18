@@ -3,6 +3,7 @@ module Data.Nat.Factor
 import Data.Fin
 import Data.Fin.Extra
 import Data.Nat
+import Decidable.Order
 import Syntax.PreorderReasoning
 
 %default total
@@ -47,6 +48,22 @@ data GCD : Nat -> Nat -> Nat -> Type where
         ((q : Nat) -> CommonFactor a b q -> Factor p q) ->
         GCD a b p
 
+
+Uninhabited (Factor (S n) Z) where
+    uninhabited (CofactorExists q prf) = uninhabited prf
+
+Preorder Nat Factor where
+    transitive a b c (CofactorExists qb prfAB) (CofactorExists qc prfBC) =
+        CofactorExists (qb * qc) (
+            rewrite prfAB in
+            rewrite prfBC in
+            rewrite sym $ multAssociative c qc qb in
+            rewrite multCommutative qc qb in
+            Refl
+        )
+
+    reflexive Z = CofactorExists 1 Refl
+    reflexive (S k) = CofactorExists 1 (rewrite multOneRightNeutral k in Refl)
 
 ||| Given a statement that p is factor of n, return its cofactor.
 cofactor : Factor n p -> (q : Nat ** Factor n q)
@@ -99,22 +116,6 @@ commonFactorSym (CommonFactorExists p pfa pfb) = CommonFactorExists p pfb pfa
 oneIsFactor : (n : Nat) -> Factor n 1
 oneIsFactor Z = CofactorExists Z Refl
 oneIsFactor (S k) = CofactorExists (S k) (rewrite plusZeroRightNeutral k in Refl)
-
-||| For all natural numbers n, n is (the greatest) a factor of n.
-factorSym : (n : Nat) -> Factor n n
-factorSym Z = CofactorExists 1 Refl
-factorSym (S k) = CofactorExists 1 (rewrite multOneRightNeutral k in Refl)
-
-||| If b is a factor of a and c is a factor of b, then c is also a factor of a.
-factorTransitive : Factor a b -> Factor b c -> Factor a c
-factorTransitive (CofactorExists qb prfAB) (CofactorExists qc prfBC) =
-        CofactorExists (qb * qc) (
-            rewrite prfAB in
-            rewrite prfBC in
-            rewrite sym $ multAssociative c qc qb in
-            rewrite multCommutative qc qb in
-            Refl
-        )
 
 ||| Anything is a factor of 0.
 factorZeroAnything : (a : Nat) -> Factor 0 a
@@ -234,7 +235,7 @@ oneCommonFactor a b = CommonFactorExists 1
 ||| Any natural number is a common factor of itself and itself.
 selfIsCommonFactor : (a : Nat) -> {auto ok : LTE 1 a} -> CommonFactor a a a
 selfIsCommonFactor Z {ok} = absurd $ succNotLTEzero ok
-selfIsCommonFactor (S k) = CommonFactorExists (S k) (factorSym $ S k) (factorSym $ S k)
+selfIsCommonFactor (S k) = CommonFactorExists (S k) (reflexive $ S k) (reflexive $ S k)
 
 -- Some helper definitions only for internal use of gcd procedure.
 namespace GCD
@@ -264,7 +265,7 @@ namespace GCD
                     rewrite sym $ multRightSuccPlus q b in
                     replace {P = \x => S a = x} (plusZeroRightNeutral (q * S b)) $ sym prf
                 skDividesA = CofactorExists q sbIsFactor
-                skDividesB = factorSym (S b)
+                skDividesB = reflexive (S b)
                 greatest = \q', (CommonFactorExists q' _ qfb) => qfb
             in
             (S b ** MkGCD (CommonFactorExists (S b) skDividesA skDividesB) greatest)
@@ -291,7 +292,7 @@ namespace GCD
                                 multFactor (S b) q
                             rightPrf = minusFactor {a = q * S b} {b = S (finToNat r)}
                                 (rewrite prf in qfa)
-                                (factorTransitive sbfqSb qfb)
+                                (transitive (q * S b) (S b) q' sbfqSb qfb)
                         in
                         greatestSbSr q' (CommonFactorExists q' qfb rightPrf)
                 in
@@ -305,11 +306,11 @@ export
 gcd : (a, b : Nat) -> {auto ok : NotBothZero a b} -> (f : Nat ** GCD a b f)
 gcd Z Z impossible
 gcd Z b =
-    (b ** MkGCD (CommonFactorExists b (factorZeroAnything b) (factorSym b)) $
+    (b ** MkGCD (CommonFactorExists b (factorZeroAnything b) (reflexive b)) $
         \q, (CommonFactorExists q _ prf) => prf
     )
 gcd a Z =
-    (a ** MkGCD (CommonFactorExists a (factorSym a) (factorZeroAnything a)) $
+    (a ** MkGCD (CommonFactorExists a (reflexive a) (factorZeroAnything a)) $
         \q, (CommonFactorExists q prf _) => prf
     )
 gcd (S a) (S b) with (cmp (S a) (S b))
