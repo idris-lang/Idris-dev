@@ -12,7 +12,7 @@ import Syntax.PreorderReasoning
 ||| Factor n p is a witness that p is indeed a factor of n,
 ||| i.e. there exists a q such that p * q = n.
 data Factor : Nat -> Nat -> Type where
-    CofactorExists : {n, p : Nat} -> (q : Nat) -> LTE 1 n -> p * q = n -> Factor n p
+    CofactorExists : {n, p : Nat} -> (q : Nat) -> LTE 1 n -> n = p * q -> Factor n p
 
 ||| NotFactor n p is a witness that p is NOT a factor of n,
 ||| i.e. there exist a q and an r, greater than 0 but smaller than p,
@@ -21,7 +21,7 @@ data NotFactor : Nat -> Nat -> Type where
     ProperRemExists : {n, p : Nat} -> (q : Nat) ->
         (r : Fin (pred p)) ->
         LTE 1 n ->
-        p * q + S (finToNat r) = n ->
+        n = p * q + S (finToNat r) ->
         NotFactor n p
 
 ||| DecFactor n p is a result of the process which decides
@@ -49,13 +49,6 @@ data GCD : Nat -> Nat -> Nat -> Type where
         GCD a b p
 
 
-Uninhabited (Factor Z p) where
-    uninhabited (CofactorExists {n = Z} _ ok _) = uninhabited ok
-
-Uninhabited (Factor n Z) where
-    uninhabited (CofactorExists q ok prf) =
-        absurd . succNotLTEzero $ replace {P = LTE 1} (sym prf) ok
-
 ||| Given a statement that p is factor of n, return its cofactor.
 cofactor : Factor n p -> (q : Nat ** Factor n q)
 cofactor (CofactorExists {n} {p} q ok prf) =
@@ -64,31 +57,39 @@ cofactor (CofactorExists {n} {p} q ok prf) =
 
 ||| No number can simultaneously be and not be a factor of another number.
 factorNotFactorAbsurd : Factor n p -> NotFactor n p -> Void
-factorNotFactorAbsurd (CofactorExists {n} {p} q positN prf) (ProperRemExists {n} {p} q' r _ contra) =
-        thisIsAbsurd q q' prf $ replace {P = \x => (p * q') + S (finToNat r) = x} (sym prf) contra
-    where
-    thisIsAbsurd : (q, q' : Nat) -> p * q = n -> (p * q') + S (finToNat r) = p * q -> Void
-    thisIsAbsurd q q' nIsPQ a with (cmp q q')
-        thisIsAbsurd q (q + S d) nIsPQ a  | CmpLT d =
-            plusSuccIsNotIdentity .
-            replace {P = \x => (p * q) + x = p * q} (sym $ plusSuccRightSucc (p * S d) (finToNat r)) .
-            replace {P = \x => x = p * q} (sym $ plusAssociative (p * q) (p * S d) (S $ finToNat r)) $
-            replace {P = \x => x + S (finToNat r) = p * q} (multDistributesOverPlusRight p q (S d)) a
-        thisIsAbsurd q q nIsPQ a          | CmpEQ = plusSuccIsNotIdentity a
-        thisIsAbsurd (q + S d) q nIsPQ a  | CmpGT d =
-            let defSr =
-                    replace {P = \x => S (finToNat r) = x} (multRightSuccPlus p d) .
-                    subtractEqLeft $
-                    replace {P = \x => (p * q) + S (finToNat r) = x} (multDistributesOverPlusRight p q (S d)) a
-                (_ ** nIsSucc) = lteToSucc positN
-                pGtZ = nonZeroLeftFactor $ replace {P = \x => p * (q + S d) = x} nIsSucc nIsPQ
-            in
-            succNotLTEzero . subtractLteLeft .
-            replace {P = \x => LTE (p + S (p * d)) x} (sym $ plusZeroRightNeutral p) .
-            replace {P = \x => LTE x p} (plusSuccRightSucc p (p * d)) .
-            replace {P = \x => LTE (S x) p} defSr .
-            replace {P = LTE (S (S (finToNat r)))} (succPred p {ok = pGtZ}) $
-            LTESucc $ elemSmallerThanBound r
+factorNotFactorAbsurd {n} {p} (CofactorExists q _ prf) (ProperRemExists q' r _ contra) with (cmp q q')
+    factorNotFactorAbsurd {n} {p} (CofactorExists q _ prf) (ProperRemExists (q + S d) r _ contra) | CmpLT d =
+        plusSuccIsNotIdentity {a = p * q} {b = (p * S d) + finToNat r} $
+        rewrite plusSuccRightSucc (p * S d) (finToNat r) in
+        rewrite plusAssociative (p * q) (p * S d) (S (finToNat r)) in
+        rewrite sym $ multDistributesOverPlusRight p q (S d) in
+        rewrite sym contra in
+        rewrite sym prf in
+        Refl
+    factorNotFactorAbsurd {n} {p} (CofactorExists q _ prf) (ProperRemExists q r _ contra) | CmpEQ =
+        uninhabited .
+        subtractEqLeft {a = p * q} {b = S (finToNat r)} {c = 0} $
+        rewrite plusZeroRightNeutral (p * q) in
+        rewrite sym contra in
+        prf
+    factorNotFactorAbsurd {n} {p} (CofactorExists (q + S d) _ prf) (ProperRemExists q r _ contra) | CmpGT d =
+        let srEQpPlusPD = the (plus p (mult p d) = S (finToNat r)) $
+                rewrite sym $ multRightSuccPlus p d in
+                subtractEqLeft {a = p * q} {b = p * (S d)} {c = S (finToNat r)} $
+                    rewrite sym $ multDistributesOverPlusRight p q (S d) in
+                    rewrite sym contra in
+                    sym prf
+        in
+        case p of
+            Z => uninhabited srEQpPlusPD
+            (S k) =>
+                succNotLTEzero .
+                subtractLteLeft {a = k} {b = S (d + (k * d))} {c = 0} $
+                rewrite sym $ plusSuccRightSucc k (d + (k * d)) in
+                rewrite plusZeroRightNeutral k in
+                rewrite srEQpPlusPD in
+                elemSmallerThanBound r
+
 
 ||| The relation of common factor is symmetric, that is if p is a common factor
 ||| of n and m, then it is also a common factor if m and n.
@@ -108,8 +109,8 @@ selfFactor (S k) {ok} = CofactorExists 1 ok (rewrite multOneRightNeutral k in Re
 factorTransitive : Factor a b -> Factor b c -> Factor a c
 factorTransitive (CofactorExists qb positA prfAB) (CofactorExists qc positB prfBC) =
         CofactorExists (qb * qc) positA (
-            rewrite sym prfAB in
-            rewrite sym prfBC in
+            rewrite prfAB in
+            rewrite prfBC in
             rewrite sym $ multAssociative c qc qb in
             rewrite multCommutative qc qb in
             Refl
@@ -125,12 +126,12 @@ multFactor (S k) (S j) {positP} {positQ} =
 ||| Any factor of n must be less than or equal to n.
 factorLteNumber : Factor n p -> LTE p n
 factorLteNumber (CofactorExists {n} {p} Z positN prf) =
-        let nIsZero = replace {P = \x => n = x} (multZeroRightZero p) $ sym prf
+        let nIsZero = replace {P = \x => n = x} (multZeroRightZero p) prf
             oneLteZero = replace {P = LTE 1} nIsZero positN
         in
         absurd $ succNotLTEzero oneLteZero
 factorLteNumber (CofactorExists {n} {p} (S k) positN prf) =
-        leftFactorLteProduct prf
+        leftFactorLteProduct $ sym prf
 
 ||| If p is a factor of n, then it is also a factor of (n + p).
 plusDivisorAlsoFactor : Factor n p -> Factor (n + p) p
@@ -156,23 +157,23 @@ multNAlsoFactor : Factor n p -> (a : Nat) -> {auto aok : LTE 1 a} -> Factor (n *
 multNAlsoFactor _ Z {aok} = absurd $ succNotLTEzero aok
 multNAlsoFactor (CofactorExists {n} {p} q positN prf) (S a) =
         CofactorExists (q * S a) (lteMultRight positN a) $
-            rewrite sym prf in
-            multAssociative p q (S a)
+            rewrite prf in
+            sym $ multAssociative p q (S a)
 
 ||| If p is a factor of both n and m, then it is also a factor of their sum.
 plusFactor : Factor n p -> Factor m p -> Factor (n + m) p
-plusFactor {n} {p} nFactor@(CofactorExists qn positN prfN) (CofactorExists qm positM prfM) =
+plusFactor {n} {p} (CofactorExists qn positN prfN) (CofactorExists qm positM prfM) =
         let positP = the (LTE 1 p) $ case n of
                 Z => absurd $ succNotLTEzero positN
-                (S k) => nonZeroLeftFactor {a = p} {b = qn} prfN
+                (S k) => nonZeroLeftFactor {a = p} {b = qn} $ sym prfN
             positQNQM = the (LTE 1 (qn + qm)) $ case qn of
                 Z => absurd . succNotLTEzero .
                     replace {P = LTE 1} (multZeroRightZero p) $
-                    replace {P = LTE 1} (sym prfN) positN
+                    replace {P = LTE 1} prfN positN
                 (S k) => LTESucc LTEZero
         in
-        rewrite sym prfN in
-        rewrite sym prfM in
+        rewrite prfN in
+        rewrite prfM in
         rewrite sym $ multDistributesOverPlusRight p qn qm in
         multFactor p (qn + qm) {positQ = positQNQM}
 
@@ -184,14 +185,12 @@ minusFactor : {auto positB : LTE 1 b} -> Factor (a + b) p -> Factor a p -> Facto
 minusFactor {a} {b} {positB} (CofactorExists qab _ prfAB) (CofactorExists qa _ prfA) =
         CofactorExists (minus qab qa) positB (
             rewrite multDistributesOverMinusRight p qab qa in
-            rewrite prfA in
-            rewrite prfAB in
-            sym (
-                (b) ={ sym $ minusZeroRight b }=
-                (minus b 0) ={ sym $ plusMinusLeftCancel a b 0 }=
-                (minus (a + b) (a + 0)) ={ replace {P = \x => minus (a + b) (a + 0) = minus (a + b) x} (plusZeroRightNeutral a) Refl }=
-                (minus (a + b) a) QED
-            )
+            rewrite sym prfA in
+            rewrite sym prfAB in
+            (b) ={ sym $ minusZeroRight b }=
+            (minus b 0) ={ sym $ plusMinusLeftCancel a b 0 }=
+            (minus (a + b) (a + 0)) ={ replace {P = \x => minus (a + b) (a + 0) = minus (a + b) x} (plusZeroRightNeutral a) Refl }=
+            (minus (a + b) a) QED
         )
 
 ||| If p is a common factor of a and b, then it is also a factor of their GCD.
@@ -210,13 +209,13 @@ decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
                             replace {P = \x => x = n} (plusZeroRightNeutral (q + (d * q))) $
                             replace {P = \x => x + 0 = n} (multCommutative q (S d)) prf
                     in
-                    ItIsFactor $ CofactorExists q nok prf
+                    ItIsFactor $ CofactorExists q nok (sym prf)
 
                 (FS pr) =>
                     ItIsNotFactor $ ProperRemExists q pr nok (
                             rewrite multCommutative d q in
                             rewrite sym $ multRightSuccPlus q d in
-                            prf
+                            sym prf
                         )
 
 ||| For all p greater than 1, if p is a factor of n, then it is NOT a factor
@@ -229,7 +228,7 @@ factNotSuccFact {n} {p = S Z} pGt1 (CofactorExists q positN prf) =
 factNotSuccFact {n} {p = S (S k)} pGt1 (CofactorExists q positN prf) =
         let r = FZ in -- remember it's remainders precedessor
         ProperRemExists q r (lteSuccRight positN) (
-            rewrite prf in
+            rewrite sym prf in
             rewrite plusCommutative n 1 in
             Refl
         )
@@ -268,10 +267,10 @@ namespace GCD
     step (SearchArgs _ Z _ {bNonZero}) _ = absurd $ succNotLTEzero bNonZero
     step (SearchArgs (S a) (S b) bLteA {bNonZero}) rec with (divMod (S a) (S b))
         | Fraction (S a) (S b) q FZ prf =
-            let sbIsFactor = the (plus q (mult b q) = S a) $
+            let sbIsFactor = the (S a = plus q (mult b q)) $
                     rewrite multCommutative b q in
                     rewrite sym $ multRightSuccPlus q b in
-                    replace {P = \x => x = S a} (plusZeroRightNeutral (q * S b)) prf
+                    replace {P = \x => S a = x} (plusZeroRightNeutral (q * S b)) $ sym prf
                 skDividesA = CofactorExists q (lteTransitive bNonZero bLteA) sbIsFactor
                 skDividesB = selfFactor (S b)
                 greatest = \q', (CommonFactorExists q' _ qfb) => qfb
