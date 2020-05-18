@@ -12,7 +12,7 @@ import Syntax.PreorderReasoning
 ||| Factor n p is a witness that p is indeed a factor of n,
 ||| i.e. there exists a q such that p * q = n.
 data Factor : Nat -> Nat -> Type where
-    CofactorExists : {n, p : Nat} -> (q : Nat) -> LTE 1 n -> n = p * q -> Factor n p
+    CofactorExists : {n, p : Nat} -> (q : Nat) -> n = p * q -> Factor n p
 
 ||| NotFactor n p is a witness that p is NOT a factor of n,
 ||| i.e. there exist a q and an r, greater than 0 but smaller than p,
@@ -20,7 +20,6 @@ data Factor : Nat -> Nat -> Type where
 data NotFactor : Nat -> Nat -> Type where
     ProperRemExists : {n, p : Nat} -> (q : Nat) ->
         (r : Fin (pred p)) ->
-        LTE 1 n ->
         n = p * q + S (finToNat r) ->
         NotFactor n p
 
@@ -51,14 +50,14 @@ data GCD : Nat -> Nat -> Nat -> Type where
 
 ||| Given a statement that p is factor of n, return its cofactor.
 cofactor : Factor n p -> (q : Nat ** Factor n q)
-cofactor (CofactorExists {n} {p} q ok prf) =
-        (q ** CofactorExists p ok $ rewrite multCommutative q p in prf)
+cofactor (CofactorExists {n} {p} q prf) =
+        (q ** CofactorExists p $ rewrite multCommutative q p in prf)
 
 
 ||| No number can simultaneously be and not be a factor of another number.
 factorNotFactorAbsurd : Factor n p -> NotFactor n p -> Void
-factorNotFactorAbsurd {n} {p} (CofactorExists q _ prf) (ProperRemExists q' r _ contra) with (cmp q q')
-    factorNotFactorAbsurd {n} {p} (CofactorExists q _ prf) (ProperRemExists (q + S d) r _ contra) | CmpLT d =
+factorNotFactorAbsurd {n} {p} (CofactorExists q prf) (ProperRemExists q' r contra) with (cmp q q')
+    factorNotFactorAbsurd {n} {p} (CofactorExists q prf) (ProperRemExists (q + S d) r contra) | CmpLT d =
         plusSuccIsNotIdentity {a = p * q} {b = (p * S d) + finToNat r} $
         rewrite plusSuccRightSucc (p * S d) (finToNat r) in
         rewrite plusAssociative (p * q) (p * S d) (S (finToNat r)) in
@@ -66,13 +65,13 @@ factorNotFactorAbsurd {n} {p} (CofactorExists q _ prf) (ProperRemExists q' r _ c
         rewrite sym contra in
         rewrite sym prf in
         Refl
-    factorNotFactorAbsurd {n} {p} (CofactorExists q _ prf) (ProperRemExists q r _ contra) | CmpEQ =
+    factorNotFactorAbsurd {n} {p} (CofactorExists q prf) (ProperRemExists q r contra) | CmpEQ =
         uninhabited .
         subtractEqLeft {a = p * q} {b = S (finToNat r)} {c = 0} $
         rewrite plusZeroRightNeutral (p * q) in
         rewrite sym contra in
         prf
-    factorNotFactorAbsurd {n} {p} (CofactorExists (q + S d) _ prf) (ProperRemExists q r _ contra) | CmpGT d =
+    factorNotFactorAbsurd {n} {p} (CofactorExists (q + S d) prf) (ProperRemExists q r contra) | CmpGT d =
         let srEQpPlusPD = the (plus p (mult p d) = S (finToNat r)) $
                 rewrite sym $ multRightSuccPlus p d in
                 subtractEqLeft {a = p * q} {b = p * (S d)} {c = S (finToNat r)} $
@@ -97,18 +96,19 @@ commonFactorSym : CommonFactor a b p -> CommonFactor b a p
 commonFactorSym (CommonFactorExists p pfa pfb) = CommonFactorExists p pfb pfa
 
 ||| 1 is a factor of any natural number.
-oneIsFactor : (n : Nat) -> {auto ok : LTE 1 n} -> Factor n 1
-oneIsFactor (S k) {ok} =
-        CofactorExists (S k) ok (rewrite plusZeroRightNeutral k in Refl)
+oneIsFactor : (n : Nat) -> Factor n 1
+oneIsFactor Z = CofactorExists Z Refl
+oneIsFactor (S k) = CofactorExists (S k) (rewrite plusZeroRightNeutral k in Refl)
 
 ||| For all natural numbers n, n is (the greatest) a factor of n.
-selfFactor : (n : Nat) -> {auto ok : LTE 1 n} -> Factor n n
-selfFactor (S k) {ok} = CofactorExists 1 ok (rewrite multOneRightNeutral k in Refl)
+factorSym : (n : Nat) -> Factor n n
+factorSym Z = CofactorExists 1 Refl
+factorSym (S k) = CofactorExists 1 (rewrite multOneRightNeutral k in Refl)
 
 ||| If b is a factor of a and c is a factor of b, then c is also a factor of a.
 factorTransitive : Factor a b -> Factor b c -> Factor a c
-factorTransitive (CofactorExists qb positA prfAB) (CofactorExists qc positB prfBC) =
-        CofactorExists (qb * qc) positA (
+factorTransitive (CofactorExists qb prfAB) (CofactorExists qc prfBC) =
+        CofactorExists (qb * qc) (
             rewrite prfAB in
             rewrite prfBC in
             rewrite sym $ multAssociative c qc qb in
@@ -116,74 +116,65 @@ factorTransitive (CofactorExists qb positA prfAB) (CofactorExists qc positB prfB
             Refl
         )
 
-||| For all natural numbers p and q, p is a factor of (p * q).
-multFactor : (p, q : Nat) -> {auto positP : LTE 1 p} -> {auto positQ : LTE 1 q} -> Factor (p * q) p
-multFactor Z _ {positP} = absurd $ succNotLTEzero positP
-multFactor _ Z {positQ} = absurd $ succNotLTEzero positQ
-multFactor (S k) (S j) {positP} {positQ} =
-        CofactorExists (S j) (LTESucc LTEZero) Refl
+||| Anything is a factor of 0.
+factorZeroAnything : (a : Nat) -> Factor 0 a
+factorZeroAnything a = CofactorExists 0 (sym $ multZeroRightZero a)
 
-||| Any factor of n must be less than or equal to n.
-factorLteNumber : Factor n p -> LTE p n
-factorLteNumber (CofactorExists {n} {p} Z positN prf) =
+||| For all natural numbers p and q, p is a factor of (p * q).
+multFactor : (p, q : Nat) -> Factor (p * q) p
+multFactor p q = CofactorExists q Refl
+
+||| If n > 0 then any factor of n must be less than or equal to n.
+factorLteNumber : Factor n p -> {auto positN : LTE 1 n} -> LTE p n
+factorLteNumber (CofactorExists {n} {p} Z prf) {positN} =
         let nIsZero = replace {P = \x => n = x} (multZeroRightZero p) prf
             oneLteZero = replace {P = LTE 1} nIsZero positN
         in
         absurd $ succNotLTEzero oneLteZero
-factorLteNumber (CofactorExists {n} {p} (S k) positN prf) =
+factorLteNumber (CofactorExists {n} {p} (S k) prf) =
         leftFactorLteProduct $ sym prf
 
 ||| If p is a factor of n, then it is also a factor of (n + p).
 plusDivisorAlsoFactor : Factor n p -> Factor (n + p) p
-plusDivisorAlsoFactor (CofactorExists {n} {p} q positN prf) =
-        CofactorExists (S q) (lteTransitive positN $ lteAddRight n) $
+plusDivisorAlsoFactor (CofactorExists {n} {p} q prf) =
+        CofactorExists (S q) $
             rewrite plusCommutative n p in
             rewrite multRightSuccPlus p q in
             cong {f = plus p} prf
 
 ||| If p is NOT a factor of n, then it also is NOT a factor of (n + p).
 plusDivisorNeitherFactor : NotFactor n p -> NotFactor (n + p) p
-plusDivisorNeitherFactor (ProperRemExists {n} {p} q r positN remPrf) =
-        ProperRemExists (S q) r (lteTransitive positN $ lteAddRight n) (
-                rewrite multRightSuccPlus p q in
-                rewrite sym $ plusAssociative p (p * q) (S $ finToNat r) in
-                rewrite plusCommutative p ((p * q) + S (finToNat r)) in
-                rewrite remPrf in
-                Refl
-            )
+plusDivisorNeitherFactor (ProperRemExists {n} {p} q r remPrf) =
+        ProperRemExists (S q) r $
+            rewrite multRightSuccPlus p q in
+            rewrite sym $ plusAssociative p (p * q) (S $ finToNat r) in
+            rewrite plusCommutative p ((p * q) + S (finToNat r)) in
+            rewrite remPrf in
+            Refl
 
 ||| If p is a factor of n, then it is also a factor of any multiply of n.
 multNAlsoFactor : Factor n p -> (a : Nat) -> {auto aok : LTE 1 a} -> Factor (n * a) p
 multNAlsoFactor _ Z {aok} = absurd $ succNotLTEzero aok
-multNAlsoFactor (CofactorExists {n} {p} q positN prf) (S a) =
-        CofactorExists (q * S a) (lteMultRight positN a) $
+multNAlsoFactor (CofactorExists {n} {p} q prf) (S a) =
+        CofactorExists (q * S a) $
             rewrite prf in
             sym $ multAssociative p q (S a)
 
 ||| If p is a factor of both n and m, then it is also a factor of their sum.
 plusFactor : Factor n p -> Factor m p -> Factor (n + m) p
-plusFactor {n} {p} (CofactorExists qn positN prfN) (CofactorExists qm positM prfM) =
-        let positP = the (LTE 1 p) $ case n of
-                Z => absurd $ succNotLTEzero positN
-                (S k) => nonZeroLeftFactor {a = p} {b = qn} $ sym prfN
-            positQNQM = the (LTE 1 (qn + qm)) $ case qn of
-                Z => absurd . succNotLTEzero .
-                    replace {P = LTE 1} (multZeroRightZero p) $
-                    replace {P = LTE 1} prfN positN
-                (S k) => LTESucc LTEZero
-        in
+plusFactor {n} {p} (CofactorExists qn prfN) (CofactorExists qm prfM) =
         rewrite prfN in
         rewrite prfM in
         rewrite sym $ multDistributesOverPlusRight p qn qm in
-        multFactor p (qn + qm) {positQ = positQNQM}
+        multFactor p (qn + qm)
 
 ||| If p is a factor of a sum (n + m) and a factor of n, then it is also
 ||| a factor of m. This could be expressed more naturally with minus, but
 ||| it would be more difficult to prove, since minus lacks certain properties
 ||| that one would expect from decent subtraction.
-minusFactor : {auto positB : LTE 1 b} -> Factor (a + b) p -> Factor a p -> Factor b p
-minusFactor {a} {b} {positB} (CofactorExists qab _ prfAB) (CofactorExists qa _ prfA) =
-        CofactorExists (minus qab qa) positB (
+minusFactor : Factor (a + b) p -> Factor a p -> Factor b p
+minusFactor {a} {b} (CofactorExists qab prfAB) (CofactorExists qa prfA) =
+        CofactorExists (minus qab qa) (
             rewrite multDistributesOverMinusRight p qab qa in
             rewrite sym prfA in
             rewrite sym prfAB in
@@ -201,18 +192,19 @@ commonFactorAlsoFactorOfGCD {p} pfa pfb (MkGCD _ greatest) =
 
 
 ||| A decision procedure for whether of not p is a factor of n.
-decFactor : (n, d : Nat) -> {auto nok : LTE 1 n} -> {auto dok : LTE 1 d} -> DecFactor n d
-decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
+decFactor : (n, d : Nat) -> DecFactor n d
+decFactor n Z = ?whaatIfZ
+decFactor n (S d) with (Data.Fin.Extra.divMod n (S d))
         | (Fraction n (S d) q r prf) = case r of
                 FZ =>
                     let prf =
                             replace {P = \x => x = n} (plusZeroRightNeutral (q + (d * q))) $
                             replace {P = \x => x + 0 = n} (multCommutative q (S d)) prf
                     in
-                    ItIsFactor $ CofactorExists q nok (sym prf)
+                    ItIsFactor $ CofactorExists q (sym prf)
 
                 (FS pr) =>
-                    ItIsNotFactor $ ProperRemExists q pr nok (
+                    ItIsNotFactor $ ProperRemExists q pr (
                             rewrite multCommutative d q in
                             rewrite sym $ multRightSuccPlus q d in
                             sym prf
@@ -221,28 +213,28 @@ decFactor n (S d) {nok} {dok} with (Data.Fin.Extra.divMod n (S d))
 ||| For all p greater than 1, if p is a factor of n, then it is NOT a factor
 ||| of (n + 1).
 factNotSuccFact : {n, p : Nat} -> GT p 1 -> Factor n p -> NotFactor (S n) p
-factNotSuccFact {n} {p = Z} pGt1 (CofactorExists q positN prf) =
+factNotSuccFact {n} {p = Z} pGt1 (CofactorExists q prf) =
         absurd $ succNotLTEzero pGt1
-factNotSuccFact {n} {p = S Z} pGt1 (CofactorExists q positN prf) =
+factNotSuccFact {n} {p = S Z} pGt1 (CofactorExists q prf) =
         absurd . succNotLTEzero $ fromLteSucc pGt1
-factNotSuccFact {n} {p = S (S k)} pGt1 (CofactorExists q positN prf) =
+factNotSuccFact {n} {p = S (S k)} pGt1 (CofactorExists q prf) =
         let r = FZ in -- remember it's remainders precedessor
-        ProperRemExists q r (lteSuccRight positN) (
+        ProperRemExists q r (
             rewrite sym prf in
             rewrite plusCommutative n 1 in
             Refl
         )
 
 ||| 1 is a common factor of any pair of natural numbers.
-oneCommonFactor : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> CommonFactor a b 1
-oneCommonFactor a b {aok} {bok} = CommonFactorExists 1
-        (CofactorExists a aok (rewrite plusZeroRightNeutral a in Refl))
-        (CofactorExists b bok (rewrite plusZeroRightNeutral b in Refl))
+oneCommonFactor : (a, b : Nat) -> CommonFactor a b 1
+oneCommonFactor a b = CommonFactorExists 1
+        (CofactorExists a (rewrite plusZeroRightNeutral a in Refl))
+        (CofactorExists b (rewrite plusZeroRightNeutral b in Refl))
 
 ||| Any natural number is a common factor of itself and itself.
 selfIsCommonFactor : (a : Nat) -> {auto ok : LTE 1 a} -> CommonFactor a a a
 selfIsCommonFactor Z {ok} = absurd $ succNotLTEzero ok
-selfIsCommonFactor (S k) = CommonFactorExists (S k) (selfFactor $ S k) (selfFactor $ S k)
+selfIsCommonFactor (S k) = CommonFactorExists (S k) (factorSym $ S k) (factorSym $ S k)
 
 -- Some helper definitions only for internal use of gcd procedure.
 namespace GCD
@@ -271,8 +263,8 @@ namespace GCD
                     rewrite multCommutative b q in
                     rewrite sym $ multRightSuccPlus q b in
                     replace {P = \x => S a = x} (plusZeroRightNeutral (q * S b)) $ sym prf
-                skDividesA = CofactorExists q (lteTransitive bNonZero bLteA) sbIsFactor
-                skDividesB = selfFactor (S b)
+                skDividesA = CofactorExists q sbIsFactor
+                skDividesB = factorSym (S b)
                 greatest = \q', (CommonFactorExists q' _ qfb) => qfb
             in
             (S b ** MkGCD (CommonFactorExists (S b) skDividesA skDividesB) greatest)
@@ -310,9 +302,16 @@ namespace GCD
 ||| number actually IS the GCD. Unfortunately it's very slow, so improvements
 ||| in terms of efficiency would be welcome.
 export
-gcd : (a, b : Nat) -> {auto aok : LTE 1 a} -> {auto bok : LTE 1 b} -> (f : Nat ** GCD a b f)
-gcd Z _ {aok} = absurd aok
-gcd _ Z {bok} = absurd bok
+gcd : (a, b : Nat) -> {auto ok : NotBothZero a b} -> (f : Nat ** GCD a b f)
+gcd Z Z impossible
+gcd Z b =
+    (b ** MkGCD (CommonFactorExists b (factorZeroAnything b) (factorSym b)) $
+        \q, (CommonFactorExists q _ prf) => prf
+    )
+gcd a Z =
+    (a ** MkGCD (CommonFactorExists a (factorSym a) (factorZeroAnything a)) $
+        \q, (CommonFactorExists q prf _) => prf
+    )
 gcd (S a) (S b) with (cmp (S a) (S b))
     gcd (S (b + S d)) (S b) | CmpGT d =
         let aGtB = the (LTE (S b) (S (b + S d))) $
