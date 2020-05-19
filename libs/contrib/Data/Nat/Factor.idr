@@ -13,26 +13,27 @@ import Syntax.PreorderReasoning
 ||| Factor n p is a witness that p is indeed a factor of n,
 ||| i.e. there exists a q such that p * q = n.
 data Factor : Nat -> Nat -> Type where
-    CofactorExists : {n, p : Nat} -> (q : Nat) -> n = p * q -> Factor n p
+    CofactorExists : {p, n : Nat} -> (q : Nat) -> n = p * q -> Factor p n
 
 ||| NotFactor n p is a witness that p is NOT a factor of n,
 ||| i.e. there exist a q and an r, greater than 0 but smaller than p,
 ||| such that p * q + r = n.
 data NotFactor : Nat -> Nat -> Type where
-    ProperRemExists : {n, p : Nat} -> (q : Nat) ->
+    ZeroNotFactorS : (n : Nat) -> NotFactor Z (S n)
+    ProperRemExists : {p, n : Nat} -> (q : Nat) ->
         (r : Fin (pred p)) ->
         n = p * q + S (finToNat r) ->
-        NotFactor n p
+        NotFactor p n
 
 ||| DecFactor n p is a result of the process which decides
 ||| whether or not p is a factor on n.
 data DecFactor : Nat -> Nat -> Type where
-    ItIsFactor : Factor n f -> DecFactor n f
-    ItIsNotFactor : NotFactor n f -> DecFactor n f
+    ItIsFactor : Factor p n -> DecFactor p n
+    ItIsNotFactor : NotFactor p n -> DecFactor p n
 
 ||| CommonFactor n m p is a witness that p is a factor of both n and m.
 data CommonFactor : Nat -> Nat -> Nat -> Type where
-    CommonFactorExists : {a, b : Nat} -> (p : Nat) -> Factor a p -> Factor b p -> CommonFactor a b p
+    CommonFactorExists : {a, b : Nat} -> (p : Nat) -> Factor p a -> Factor p b -> CommonFactor p a b
 
 ||| GCD n m p is a witness that p is THE greatest common factor of both n and m.
 ||| The second argument to the constructor is a function which for all q being
@@ -44,35 +45,35 @@ data CommonFactor : Nat -> Nat -> Nat -> Type where
 ||| that if q is a factor of p then q must be less than or equal to p.
 data GCD : Nat -> Nat -> Nat -> Type where
     MkGCD : {a, b, p : Nat} ->
-        (CommonFactor a b p) ->
-        ((q : Nat) -> CommonFactor a b q -> Factor p q) ->
-        GCD a b p
+        (CommonFactor p a b) ->
+        ((q : Nat) -> CommonFactor q a b -> Factor q p) ->
+        GCD p a b
 
 
-Uninhabited (Factor (S n) Z) where
+Uninhabited (Factor Z (S n)) where
     uninhabited (CofactorExists q prf) = uninhabited prf
 
 Preorder Nat Factor where
     transitive a b c (CofactorExists qb prfAB) (CofactorExists qc prfBC) =
         CofactorExists (qb * qc) (
-            rewrite prfAB in
             rewrite prfBC in
-            rewrite sym $ multAssociative c qc qb in
-            rewrite multCommutative qc qb in
+            rewrite prfAB in
+            rewrite multAssociative a qb qc in
             Refl
         )
 
-    reflexive Z = CofactorExists 1 Refl
-    reflexive (S k) = CofactorExists 1 (rewrite multOneRightNeutral k in Refl)
+    reflexive a = CofactorExists 1 (rewrite multOneRightNeutral a in Refl)
 
 ||| Given a statement that p is factor of n, return its cofactor.
-cofactor : Factor n p -> (q : Nat ** Factor n q)
+cofactor : Factor p n -> (q : Nat ** Factor q n)
 cofactor (CofactorExists {n} {p} q prf) =
         (q ** CofactorExists p $ rewrite multCommutative q p in prf)
 
 
 ||| No number can simultaneously be and not be a factor of another number.
-factorNotFactorAbsurd : Factor n p -> NotFactor n p -> Void
+factorNotFactorAbsurd : Factor p n -> NotFactor p n -> Void
+factorNotFactorAbsurd {n = S k} {p = Z} (CofactorExists q prf) (ZeroNotFactorS k) =
+        uninhabited prf
 factorNotFactorAbsurd {n} {p} (CofactorExists q prf) (ProperRemExists q' r contra) with (cmp q q')
     factorNotFactorAbsurd {n} {p} (CofactorExists q prf) (ProperRemExists (q + S d) r contra) | CmpLT d =
         plusSuccIsNotIdentity {a = p * q} {b = (p * S d) + finToNat r} $
@@ -109,24 +110,24 @@ factorNotFactorAbsurd {n} {p} (CofactorExists q prf) (ProperRemExists q' r contr
 
 ||| The relation of common factor is symmetric, that is if p is a common factor
 ||| of n and m, then it is also a common factor if m and n.
-commonFactorSym : CommonFactor a b p -> CommonFactor b a p
+commonFactorSym : CommonFactor p a b -> CommonFactor p b a
 commonFactorSym (CommonFactorExists p pfa pfb) = CommonFactorExists p pfb pfa
 
 ||| 1 is a factor of any natural number.
-oneIsFactor : (n : Nat) -> Factor n 1
+oneIsFactor : (n : Nat) -> Factor 1 n
 oneIsFactor Z = CofactorExists Z Refl
 oneIsFactor (S k) = CofactorExists (S k) (rewrite plusZeroRightNeutral k in Refl)
 
 ||| Anything is a factor of 0.
-factorZeroAnything : (a : Nat) -> Factor 0 a
-factorZeroAnything a = CofactorExists 0 (sym $ multZeroRightZero a)
+anythingFactorZero : (a : Nat) -> Factor a 0
+anythingFactorZero a = CofactorExists 0 (sym $ multZeroRightZero a)
 
 ||| For all natural numbers p and q, p is a factor of (p * q).
-multFactor : (p, q : Nat) -> Factor (p * q) p
+multFactor : (p, q : Nat) -> Factor p (p * q)
 multFactor p q = CofactorExists q Refl
 
 ||| If n > 0 then any factor of n must be less than or equal to n.
-factorLteNumber : Factor n p -> {auto positN : LTE 1 n} -> LTE p n
+factorLteNumber : Factor p n -> {auto positN : LTE 1 n} -> LTE p n
 factorLteNumber (CofactorExists {n} {p} Z prf) {positN} =
         let nIsZero = replace {P = \x => n = x} (multZeroRightZero p) prf
             oneLteZero = replace {P = LTE 1} nIsZero positN
@@ -136,7 +137,7 @@ factorLteNumber (CofactorExists {n} {p} (S k) prf) =
         leftFactorLteProduct $ sym prf
 
 ||| If p is a factor of n, then it is also a factor of (n + p).
-plusDivisorAlsoFactor : Factor n p -> Factor (n + p) p
+plusDivisorAlsoFactor : Factor p n -> Factor p (n + p)
 plusDivisorAlsoFactor (CofactorExists {n} {p} q prf) =
         CofactorExists (S q) $
             rewrite plusCommutative n p in
@@ -144,7 +145,10 @@ plusDivisorAlsoFactor (CofactorExists {n} {p} q prf) =
             cong {f = plus p} prf
 
 ||| If p is NOT a factor of n, then it also is NOT a factor of (n + p).
-plusDivisorNeitherFactor : NotFactor n p -> NotFactor (n + p) p
+plusDivisorNeitherFactor : NotFactor p n -> NotFactor p (n + p)
+plusDivisorNeitherFactor (ZeroNotFactorS k) =
+        rewrite plusZeroRightNeutral k in
+        ZeroNotFactorS k
 plusDivisorNeitherFactor (ProperRemExists {n} {p} q r remPrf) =
         ProperRemExists (S q) r $
             rewrite multRightSuccPlus p q in
@@ -154,7 +158,7 @@ plusDivisorNeitherFactor (ProperRemExists {n} {p} q r remPrf) =
             Refl
 
 ||| If p is a factor of n, then it is also a factor of any multiply of n.
-multNAlsoFactor : Factor n p -> (a : Nat) -> {auto aok : LTE 1 a} -> Factor (n * a) p
+multNAlsoFactor : Factor p n -> (a : Nat) -> {auto aok : LTE 1 a} -> Factor p (n * a)
 multNAlsoFactor _ Z {aok} = absurd $ succNotLTEzero aok
 multNAlsoFactor (CofactorExists {n} {p} q prf) (S a) =
         CofactorExists (q * S a) $
@@ -162,7 +166,7 @@ multNAlsoFactor (CofactorExists {n} {p} q prf) (S a) =
             sym $ multAssociative p q (S a)
 
 ||| If p is a factor of both n and m, then it is also a factor of their sum.
-plusFactor : Factor n p -> Factor m p -> Factor (n + m) p
+plusFactor : Factor p n -> Factor p m -> Factor p (n + m)
 plusFactor {n} {p} (CofactorExists qn prfN) (CofactorExists qm prfM) =
         rewrite prfN in
         rewrite prfM in
@@ -173,7 +177,7 @@ plusFactor {n} {p} (CofactorExists qn prfN) (CofactorExists qm prfM) =
 ||| a factor of m. This could be expressed more naturally with minus, but
 ||| it would be more difficult to prove, since minus lacks certain properties
 ||| that one would expect from decent subtraction.
-minusFactor : Factor (a + b) p -> Factor a p -> Factor b p
+minusFactor : Factor p (a + b) -> Factor p a -> Factor p b
 minusFactor {a} {b} (CofactorExists qab prfAB) (CofactorExists qa prfA) =
         CofactorExists (minus qab qa) (
             rewrite multDistributesOverMinusRight p qab qa in
@@ -187,14 +191,15 @@ minusFactor {a} {b} (CofactorExists qab prfAB) (CofactorExists qa prfA) =
 
 ||| If p is a common factor of a and b, then it is also a factor of their GCD.
 ||| This actually follows directly from the definition of GCD.
-commonFactorAlsoFactorOfGCD : Factor a p -> Factor b p -> GCD a b q -> Factor q p
+commonFactorAlsoFactorOfGCD : Factor p a -> Factor p b -> GCD q a b -> Factor p q
 commonFactorAlsoFactorOfGCD {p} pfa pfb (MkGCD _ greatest) =
         greatest p (CommonFactorExists p pfa pfb)
 
 
 ||| A decision procedure for whether of not p is a factor of n.
-decFactor : (n, d : Nat) -> DecFactor n d
-decFactor n Z = ?whaatIfZ
+decFactor : (n, d : Nat) -> DecFactor d n
+decFactor Z Z = ItIsFactor $ reflexive Z
+decFactor (S k) Z = ItIsNotFactor $ ZeroNotFactorS k
 decFactor n (S d) with (Data.Fin.Extra.divMod n (S d))
         | (Fraction n (S d) q r prf) = case r of
                 FZ =>
@@ -213,7 +218,7 @@ decFactor n (S d) with (Data.Fin.Extra.divMod n (S d))
 
 ||| For all p greater than 1, if p is a factor of n, then it is NOT a factor
 ||| of (n + 1).
-factNotSuccFact : {n, p : Nat} -> GT p 1 -> Factor n p -> NotFactor (S n) p
+factNotSuccFact : {n, p : Nat} -> GT p 1 -> Factor p n -> NotFactor p (S n)
 factNotSuccFact {n} {p = Z} pGt1 (CofactorExists q prf) =
         absurd $ succNotLTEzero pGt1
 factNotSuccFact {n} {p = S Z} pGt1 (CofactorExists q prf) =
@@ -227,7 +232,7 @@ factNotSuccFact {n} {p = S (S k)} pGt1 (CofactorExists q prf) =
         )
 
 ||| 1 is a common factor of any pair of natural numbers.
-oneCommonFactor : (a, b : Nat) -> CommonFactor a b 1
+oneCommonFactor : (a, b : Nat) -> CommonFactor 1 a b
 oneCommonFactor a b = CommonFactorExists 1
         (CofactorExists a (rewrite plusZeroRightNeutral a in Refl))
         (CofactorExists b (rewrite plusZeroRightNeutral b in Refl))
@@ -254,8 +259,8 @@ namespace GCD
         size (SearchArgs a b _) = a + b
 
     step : (x : Search) ->
-        (rec : (y : Search) -> Smaller y x ->  (f : Nat ** GCD (left y) (right y) f)) ->
-        (f : Nat ** GCD (left x) (right x) f)
+        (rec : (y : Search) -> Smaller y x ->  (f : Nat ** GCD f (left y) (right y))) ->
+        (f : Nat ** GCD f (left x) (right x))
     step (SearchArgs Z _ bLteA {bNonZero}) _ = absurd . succNotLTEzero $ lteTransitive bNonZero bLteA
     step (SearchArgs _ Z _ {bNonZero}) _ = absurd $ succNotLTEzero bNonZero
     step (SearchArgs (S a) (S b) bLteA {bNonZero}) rec with (divMod (S a) (S b))
@@ -281,18 +286,18 @@ namespace GCD
                         LTESucc . LTESucc . addLteLeft . fromLteSucc $ lteTransitive (elemSmallerThanBound $ FS r) bLteA
                     (f ** MkGCD (CommonFactorExists f prfSb prfRem) greatestSbSr) =
                         rec (SearchArgs (S b) (S $ finToNat r) rLtSb) smaller
-                    prfSa = the (Factor (S a) f) $
+                    prfSa = the (Factor f (S a)) $
                         rewrite sym prf in
                         rewrite multCommutative q (S b) in
                         plusFactor (multNAlsoFactor prfSb q) prfRem
                     greatest = \q', (CommonFactorExists q' qfa qfb) =>
                         let sbfqSb =
-                                the (Factor (q * S b) (S b)) $
+                                the (Factor (S b) (q * S b)) $
                                 rewrite multCommutative q (S b) in
                                 multFactor (S b) q
                             rightPrf = minusFactor {a = q * S b} {b = S (finToNat r)}
                                 (rewrite prf in qfa)
-                                (transitive (q * S b) (S b) q' sbfqSb qfb)
+                                (transitive q' (S b) (q * S b) qfb sbfqSb)
                         in
                         greatestSbSr q' (CommonFactorExists q' qfb rightPrf)
                 in
@@ -303,14 +308,14 @@ namespace GCD
 ||| number actually IS the GCD. Unfortunately it's very slow, so improvements
 ||| in terms of efficiency would be welcome.
 export
-gcd : (a, b : Nat) -> {auto ok : NotBothZero a b} -> (f : Nat ** GCD a b f)
+gcd : (a, b : Nat) -> {auto ok : NotBothZero a b} -> (f : Nat ** GCD f a b)
 gcd Z Z impossible
 gcd Z b =
-    (b ** MkGCD (CommonFactorExists b (factorZeroAnything b) (reflexive b)) $
+    (b ** MkGCD (CommonFactorExists b (anythingFactorZero b) (reflexive b)) $
         \q, (CommonFactorExists q _ prf) => prf
     )
 gcd a Z =
-    (a ** MkGCD (CommonFactorExists a (reflexive a) (factorZeroAnything a)) $
+    (a ** MkGCD (CommonFactorExists a (reflexive a) (anythingFactorZero a)) $
         \q, (CommonFactorExists q prf _) => prf
     )
 gcd (S a) (S b) with (cmp (S a) (S b))
