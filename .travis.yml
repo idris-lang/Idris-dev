@@ -10,15 +10,6 @@ matrix:
   include:
     - env: CABALVER="2.4" GHCVER="8.6.5" STACKVER="15.4" STYLISH=YES
       addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.5,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="lib_doc doc"
-      compiler: ": #GHC 8.2.2"
-      addons: {apt: {packages: [cabal-install-2.4,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="test_js"
-      compiler: ": #GHC 8.2.2"
-      addons: {apt: {packages: [cabal-install-2.4,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="2.4" GHCVER="8.2.2" TESTS="test_c"
-      compiler: ": #GHC 8.2.2"
-      addons: {apt: {packages: [cabal-install-2.4,ghc-8.2.2,cppcheck,hscolour], sources: [hvr-ghc]}}
     - env: CABALVER="2.4" GHCVER="8.4.4" TESTS="lib_doc doc"
       compiler: ": #GHC 8.4.4"
       addons: {apt: {packages: [cabal-install-2.4,ghc-8.4.4,cppcheck,hscolour], sources: [hvr-ghc]}}
