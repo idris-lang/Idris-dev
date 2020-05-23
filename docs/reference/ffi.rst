@@ -113,7 +113,7 @@ For C, this is:
     %error_reverse
     public export
     FFI_C : FFI
-        FFI_C = MkFFI C_Types String String
+        FFI_C = MkFFI C_Types String
 
 Linking foreign code
 ====================
