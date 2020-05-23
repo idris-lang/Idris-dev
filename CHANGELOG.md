@@ -1,5 +1,8 @@
 # New since last release
+
+# New in 1.3.3
 + Updated to work with GHC 8.8 and cabal 3.0
++ Bugfixes and documentation updates
 
 # New in 1.3.2
 + Documentation added to proof section

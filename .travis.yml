@@ -65,7 +65,7 @@ before_install:
   - if [ -n "$STYLISH" ]; then ./stylize.sh; exit $?; fi
   - if [ -n "$IDRIS2" ];
     then
-      git clone https://github.com/edwinb/Idris2 &&
+      git clone https://github.com/edwinb/Idris2-boot &&
       wget https://github.com/cisco/ChezScheme/archive/v9.5.2.tar.gz &&
       tar xvzf v9.5.2.tar.gz &&
       cd ChezScheme-9.5.2 &&
@@ -73,9 +73,10 @@ before_install:
       make -j install &&
       cd .. &&
       cabal v1-update &&
+      travis_wait cabal v1-install --only-dependencies &&
       travis_wait cabal v1-install &&
       cd Idris2 &&
-      make idris2 && make base && make contrib;
+      travis_wait make idris2 && make base && make contrib;
       exit $?;
     fi
 

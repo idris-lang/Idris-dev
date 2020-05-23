@@ -1,10 +1,10 @@
 Cabal-Version:  2.4
 Name:           idris
-Version:        1.3.2
+Version:        1.3.3
 License:        BSD-3-Clause
 License-file:   LICENSE
 Author:         Edwin Brady
-Maintainer:     Edwin Brady <eb@cs.st-andrews.ac.uk>
+Maintainer:     Niklas Larsson <niklas@mm.st>
 Homepage:       https://www.idris-lang.org/
 Bug-reports:    https://github.com/idris-lang/Idris-dev/issues
 
@@ -44,7 +44,7 @@ Description:    Idris is a general purpose language with full dependent types.
 
 Build-type:     Custom
 
-Tested-With:    GHC == 7.10.3, GHC == 8.0.1
+Tested-With:    GHC == 8.6.5, GHC == 8.8.4
 
 -- NOTE: due to https://github.com/haskell/cabal/issues/6125 the use of ** is
 --   heavily discouraged.
