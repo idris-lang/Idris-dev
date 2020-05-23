@@ -64,6 +64,16 @@ export
 Show JSON where
   show = stringify
 
+export
+Eq JSON where
+  JNull == JNull = True
+  (JBoolean a) == (JBoolean b) =  a == b
+  (JNumber a) == (JNumber b) = a == b
+  (JString a) == (JString b) = a == b
+  (JArray a) == (JArray b) = assert_total $ a == b
+  (JObject a) == (JObject b) = assert_total $ a == b
+  _ == _ = False
+
 ||| Format a JSON value, indenting by `n` spaces per nesting level.
 |||
 ||| @curr The current indentation amount, measured in spaces.
