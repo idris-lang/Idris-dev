@@ -202,10 +202,10 @@ VAL idris_bigTimes(VM* vm, VAL x, VAL y) {
         i_int vy = GETINT(y);
         // we could work out likelihood of overflow by checking the number
         // of necessary bits. Here's a quick conservative hack instead.
-        if ((vx < (1<<15) && vy < (1<16)) ||
-            (vx < (1<<16) && vy < (1<15)) ||
-            (vx < (1<<20) && vy < (1<11)) ||
-            (vx < (1<<11) && vy < (1<20)) ||
+        if ((vx < (1<<15) && vy < (1<<16)) ||
+            (vx < (1<<16) && vy < (1<<15)) ||
+            (vx < (1<<20) && vy < (1<<11)) ||
+            (vx < (1<<11) && vy < (1<<20)) ||
             (vx < (1<<23) && vy < (1<<8)) ||
             (vx < (1<<8) && vy < (1<<23))) { // ultra-conservative!
             return INTOP(*,x,y);
