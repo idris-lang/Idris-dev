@@ -358,7 +358,7 @@ void* idris_alloc(size_t size);
 void* idris_realloc(void* old, size_t old_size, size_t size);
 void idris_free(void* ptr, size_t size);
 
-static inline void updateConF(Con * cl, unsigned tag, unsigned arity) {
+static inline void updateConF(Con * cl, uint32_t tag, uint16_t arity) {
     SETTY(cl, CT_CON);
     cl->tag = tag;
     // hdr.u16 used to store arity
@@ -367,7 +367,7 @@ static inline void updateConF(Con * cl, unsigned tag, unsigned arity) {
     // cl->hdr.sz = sizeof(*cl) + sizeof(VAL) * arity;
 }
 
-static inline Con * allocConF(VM * vm, unsigned tag, unsigned arity, int outer) {
+static inline Con * allocConF(VM * vm, uint32_t tag, uint16_t arity, int outer) {
     Con * cl = iallocate(vm, sizeof(*cl) + sizeof(VAL) * arity, outer);
     SETTY(cl, CT_CON);
     cl->tag = tag;
