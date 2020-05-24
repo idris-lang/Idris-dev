@@ -607,16 +607,13 @@ buildDepMap ci used externs ctx startNames
     -- convert applications of lambdas to lets
     -- note that this transformation preserves de bruijn numbering
     lamToLet :: Term -> Term
-    lamToLet tm = lamToLet' args f
+    lamToLet tm = lamToLet' 0 args f
       where
         (f, args) = unApply tm
 
-    lamToLet' :: [Term] -> Term -> Term
-    lamToLet' (v:vs) (Bind n (Lam rig ty) tm) = Bind n (Let rig ty v) $ lamToLet' vs tm
-    lamToLet'    []  tm = tm
-    lamToLet'    vs  tm = error $
-        "Erasure.hs:lamToLet': unexpected input: "
-            ++ "vs = " ++ show vs ++ ", tm = " ++ show tm
+    lamToLet' :: Int -> [Term] -> Term -> Term
+    lamToLet' wk (v:vs) (Bind n (Lam rig ty) tm) = Bind n (Let rig ty (weakenTm wk v)) $ lamToLet' (wk+1) vs tm
+    lamToLet' wk    vs  tm = mkApp tm $ map (weakenTm wk) vs
 
     -- split "\x_i -> T(x_i)" into [x_i] and T
     unfoldLams :: Term -> ([Name], Term)
