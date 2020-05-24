@@ -28,8 +28,8 @@ matrix:
     - env: CABALVER="3.0" GHCVER="8.8.3" TESTS="test_c"
       compiler: ": #GHC 8.8.3"
       addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.3,cppcheck,hscolour], sources: [hvr-ghc]}}
-    - env: CABALVER="3.0" GHCVER="8.8.3" IDRIS2=YES
-      addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.3], sources: [hvr-ghc]}}
+ #   - env: CABALVER="3.0" GHCVER="8.8.3" IDRIS2=YES
+ #     addons: {apt: {packages: [cabal-install-3.0,ghc-8.8.3], sources: [hvr-ghc]}}
   fast-finish: true
 
 cache:
