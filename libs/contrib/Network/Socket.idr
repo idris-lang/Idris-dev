@@ -178,10 +178,10 @@ recvAll sock = recvRec sock [] 64
     recvRec : Socket -> List String -> ByteLength -> IO (Either SocketError String)
     recvRec sock acc n = do res <- recv sock n
                             case res of
-                              Left 0 => pure (Right $ concat $ reverse acc)
                               Left c => pure (Left c)
-                              Right (str, _) => let n' = min (n * 2) 65536 in
-                                                recvRec sock (str :: acc) n'
+                              Right (str, res) => let n' = min (n * 2) 65536 in
+                                                  if res < n then pure (Right $ concat $ reverse $ str :: acc)
+                                                  else recvRec sock (str :: acc) n'
 
 ||| Send a message.
 |||
