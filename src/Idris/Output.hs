@@ -37,20 +37,12 @@ import Prelude hiding ((<$>))
 #endif
 
 import Control.Arrow (first)
-import Control.Monad.Trans.Except (ExceptT(ExceptT), runExceptT)
 import Data.List (intersperse, nub)
 import Data.Maybe (fromJust, fromMaybe, isJust, listToMaybe)
 import qualified Data.Set as S
-import System.Console.Haskeline.MonadException (MonadException(controlIO),
-                                                RunIO(RunIO))
 import System.FilePath (replaceExtension)
 import System.IO (Handle, hPutStr, hPutStrLn)
 import System.IO.Error (tryIOError)
-
-instance MonadException m => MonadException (ExceptT Err m) where
-    controlIO f = ExceptT $ controlIO $ \(RunIO run) -> let
-                    run' = RunIO (fmap ExceptT . run . runExceptT)
-                    in fmap runExceptT $ f run'
 
 pshow :: IState -> Err -> String
 pshow ist err = displayDecorated (consoleDecorate ist) .

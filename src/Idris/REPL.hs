@@ -122,23 +122,21 @@ repl orig mods efile
                              (if colour && not isWindows
                                 then colourisePrompt theme str
                                 else str) ++ " "
-        x <- H.catch (H.withInterrupt $ getInputLine prompt)
-                     (ctrlC (return $ Just ""))
+        x <- H.handleInterrupt (ctrlC (return $ Just "")) (H.withInterrupt $ getInputLine prompt)
         case x of
             Nothing -> do lift $ when (not quiet) (iputStrLn "Bye bye")
                           return ()
             Just input -> -- H.catch
-                do ms <- H.catch (H.withInterrupt $ lift $ processInput input orig mods efile)
-                                 (ctrlC (return (Just mods)))
+                do ms <- H.handleInterrupt (ctrlC (return (Just mods))) (H.withInterrupt $ lift $ processInput input orig mods efile)
                    case ms of
                         Just mods -> let efile' = fromMaybe efile (listToMaybe mods)
                                      in repl orig mods efile'
                         Nothing -> return ()
 --                             ctrlC)
 --       ctrlC
-   where ctrlC :: InputT Idris a -> SomeException -> InputT Idris a
-         ctrlC act e = do lift $ iputStrLn (show e)
-                          act -- repl orig mods
+   where ctrlC :: InputT Idris a -> InputT Idris a
+         ctrlC act = do lift $ iputStrLn "Interrupted"
+                        act -- repl orig mods
 
          showMVs c thm [] = ""
          showMVs c thm ms = "Holes: " ++
