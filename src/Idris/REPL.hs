@@ -515,7 +515,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
                  prettyName True False [] n <>
                  case lookupTyExact n ctxt of
                    Just t ->
-                     space <> colon <> space <> align (group (pprintDelab ist t))
+                     space <> colon <> space <> align (group (pprintDelabTy' ist n t))
                    Nothing ->
                      empty
 
