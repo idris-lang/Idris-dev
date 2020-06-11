@@ -27,7 +27,6 @@ import Paths_idris
 #endif
 import BuildFlags_idris
 
-import Control.Applicative ((<$>))
 import Data.List.Split
 import Data.Maybe (fromMaybe)
 import System.Environment

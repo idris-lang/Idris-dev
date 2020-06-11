@@ -58,8 +58,8 @@ module Idris.Core.TT(
 import Util.Pretty hiding (Str)
 
 -- Work around AMP without CPP
-import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Functor(..), Int,
-                Integer, Maybe(..), Monad(..), Monoid(..), Num(..), Ord(..),
+import Prelude (Bool(..), Double, Enum(..), Eq(..), FilePath, Int,
+                Integer, Maybe(..), Monoid(..), Num(..), Ord(..),
                 Ordering(..), Show(..), String, div, error, fst, max, min, mod,
                 not, otherwise, read, snd, ($), (&&), (.), (||))
 

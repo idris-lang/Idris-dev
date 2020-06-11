@@ -29,7 +29,6 @@ import qualified Data.ByteString.Lazy as BS2
 import qualified Data.List as L
 import qualified Data.Map as M hiding ((!))
 import Data.Maybe
-import Data.Monoid (mempty)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import System.Directory

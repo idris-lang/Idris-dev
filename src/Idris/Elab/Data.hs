@@ -32,13 +32,8 @@ import Prelude hiding (id, (.))
 
 import Control.Category
 import Control.Monad
-import Control.Monad.State.Strict as State
-import Data.Char (isLetter, toLower)
 import Data.List
-import qualified Data.Map as Map
-import Data.Maybe
 import qualified Data.Set as S
-import qualified Data.Text as T
 
 warnLC :: FC -> Name -> Idris ()
 warnLC fc n

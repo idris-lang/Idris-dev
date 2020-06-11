@@ -7,8 +7,6 @@ import Idris.Options
 import IRTS.CodegenJavaScript
 import IRTS.Compiler
 
-import Paths_idris
-
 import Control.Monad
 
 import System.Environment

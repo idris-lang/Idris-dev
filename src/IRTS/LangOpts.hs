@@ -14,9 +14,6 @@ import Idris.Core.TT
 import IRTS.Lang
 
 import Control.Monad.State hiding (lift)
-import Data.List
-
-import Debug.Trace
 
 inlineAll :: [(Name, LDecl)] -> [(Name, LDecl)]
 inlineAll lds = let defs = addAlist lds emptyContext in

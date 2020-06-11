@@ -9,7 +9,6 @@ Maintainer  : The Idris Community.
 module Idris.Package where
 
 import System.Directory
-import System.Directory (copyFile, createDirectoryIfMissing)
 import System.Environment
 import System.Exit
 import System.FilePath (addExtension, addTrailingPathSeparator, dropExtension,

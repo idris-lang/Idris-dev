@@ -21,11 +21,10 @@ import System.FilePath.Windows ((</>))
 import System.Win32.DLL
 import System.Win32.Types
 #else
-import Control.Exception (IOException, throwIO, try)
+import Control.Exception (IOException, try)
 import Foreign.Ptr (FunPtr, nullFunPtr, nullPtr)
 #ifdef linux_HOST_OS
 import Data.Array (bounds, inRange, (!))
-import Data.Functor ((<$>))
 import Data.Maybe (catMaybes)
 #else
 import Data.Array (bounds, (!))

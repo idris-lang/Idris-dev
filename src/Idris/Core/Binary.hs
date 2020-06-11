@@ -12,7 +12,6 @@ module Idris.Core.Binary where
 
 import Idris.Core.TT
 
-import Control.Applicative ((<$>), (<*>))
 import Data.Binary
 import Data.Binary.Get
 import Data.Binary.Put

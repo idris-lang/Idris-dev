@@ -27,11 +27,9 @@ import Prelude hiding ((<$>))
 import qualified Cheapskate as C
 import Cheapskate.Html (renderDoc)
 import qualified Cheapskate.Types as CT
-import Data.Foldable (Foldable)
 import qualified Data.Foldable as F
 import qualified Data.Sequence as S
 import qualified Data.Text as T
-import Data.Traversable (Traversable)
 import GHC.Generics (Generic)
 import Text.Blaze.Html (Html)
 

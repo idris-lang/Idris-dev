@@ -24,7 +24,6 @@ import Control.Monad.Trans.Except (throwE)
 import Control.Monad.Trans.Reader (ask)
 import Data.Char
 import Data.Maybe
-import Data.Monoid ((<>))
 import Options.Applicative
 import Options.Applicative.Arrows
 import Options.Applicative.Types (ReadM(..))

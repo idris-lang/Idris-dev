@@ -6,7 +6,6 @@ import TestData
 import Control.Monad
 import Data.Char (isLetter)
 import qualified Data.IntMap as IMap
-import Data.Monoid ((<>))
 import Data.Proxy
 import Data.Typeable
 import Options.Applicative
