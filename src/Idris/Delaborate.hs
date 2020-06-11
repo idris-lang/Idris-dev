@@ -10,7 +10,7 @@ Maintainer  : The Idris Community.
 module Idris.Delaborate (
     annName, bugaddr, delab, delabWithEnv, delabDirect, delab', delabMV, delabSugared
   , delabTy, delabTy', fancifyAnnots, pprintDelab, pprintNoDelab
-  , pprintDelabTy, pprintErr, resugar
+  , pprintDelabTy', pprintDelabTy, pprintErr, resugar
   ) where
 
 import Idris.AbsSyntax
@@ -283,14 +283,18 @@ pprintNoDelab :: IState -> Term -> Doc OutputAnnotation
 pprintNoDelab ist tm = annotate (AnnTerm [] tm)
                               (prettyIst ist (delab ist tm))
 
+pprintDelabTy' :: IState -> Name -> Term -> Doc OutputAnnotation
+pprintDelabTy' i n ty
+    = annotate (AnnTerm [] ty) . prettyIst i $
+      case lookupCtxt n (idris_implicits i) of
+           (imps:_) -> resugar i $ delabTy' i imps [] ty False False True
+           _ -> resugar i $ delabTy' i [] [] ty False False True
+
 -- | Pretty-print the type of some name
 pprintDelabTy :: IState -> Name -> Doc OutputAnnotation
 pprintDelabTy i n
     = case lookupTy n (tt_ctxt i) of
-           (ty:_) -> annotate (AnnTerm [] ty) . prettyIst i $
-                     case lookupCtxt n (idris_implicits i) of
-                         (imps:_) -> resugar i $ delabTy' i imps [] ty False False True
-                         _ -> resugar i $ delabTy' i [] [] ty False False True
+           (ty:_) -> pprintDelabTy' i n ty
            [] -> error "pprintDelabTy got a name that doesn't exist"
 
 pprintTerm :: IState -> PTerm -> Doc OutputAnnotation

@@ -12,7 +12,6 @@ module Idris.Parser.Data where
 import Idris.AbsSyntax
 import Idris.Core.TT
 import Idris.Docstrings
-import Idris.Options
 import Idris.Parser.Expr
 import Idris.Parser.Helpers
 import Idris.Parser.Ops

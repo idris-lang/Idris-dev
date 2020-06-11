@@ -16,7 +16,6 @@ import Idris.Core.TT
 import Idris.Error
 import IRTS.System (getIdrisLibDir)
 
-import Control.Applicative ((<$>))
 import Control.Monad.State.Strict
 import Data.Char (isAlpha, isDigit, toLower)
 import Data.List (isSuffixOf)

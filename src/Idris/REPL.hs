@@ -515,7 +515,7 @@ runIdeModeCommand h id orig fn modes (IdeMode.BrowseNS ns) =
                  prettyName True False [] n <>
                  case lookupTyExact n ctxt of
                    Just t ->
-                     space <> colon <> space <> align (group (pprintDelab ist t))
+                     space <> colon <> space <> align (group (pprintDelabTy' ist n t))
                    Nothing ->
                      empty
 
@@ -680,6 +680,7 @@ idemodeProcess fn (SetPrinterDepth d) = do process fn (SetPrinterDepth d)
                                            iPrintResult ""
 idemodeProcess fn (Apropos pkg a) = do process fn (Apropos pkg a)
                                        iPrintResult ""
+idemodeProcess fn (Browse ns) = process fn (Browse ns)
 idemodeProcess fn (WhoCalls n) = process fn (WhoCalls n)
 idemodeProcess fn (CallsWho n) = process fn (CallsWho n)
 idemodeProcess fn (PrintDef n) = process fn (PrintDef n)

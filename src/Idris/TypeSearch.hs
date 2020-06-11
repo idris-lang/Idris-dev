@@ -38,20 +38,18 @@ import qualified Prelude as S (Semigroup(..))
 #else
 import Prelude hiding (pred)
 #endif
-import Control.Applicative (Applicative(..), (<$>), (<*>), (<|>))
+import Control.Applicative ((<|>))
 import Control.Arrow (first, second, (&&&), (***))
 import Control.Monad (guard, when)
 import Data.List (find, partition, (\\))
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
-import Data.Monoid (Monoid(mappend, mempty))
 import Data.Ord (comparing)
 import qualified Data.PriorityQueue.FingerTree as Q
 import Data.Set (Set)
 import qualified Data.Set as S
 import qualified Data.Text as T (isPrefixOf, pack)
-import Data.Traversable (traverse)
 
 searchByType :: [PkgName] -> PTerm -> Idris ()
 searchByType pkgs pterm = do

@@ -22,7 +22,6 @@ import Idris.Core.TT
 import Idris.Core.Unify
 import Idris.Delaborate
 
-import Control.Applicative ((<$>))
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.List

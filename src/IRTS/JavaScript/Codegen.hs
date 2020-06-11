@@ -23,10 +23,8 @@ import IRTS.JavaScript.Specialize
 import IRTS.Lang
 import IRTS.System
 
-import Control.Applicative (pure, (<$>))
 import Control.Monad
 import Control.Monad.Trans.State
-import Data.Foldable (foldMap)
 import Data.Generics.Uniplate.Data
 import Data.List
 import Data.Map.Strict (Map)

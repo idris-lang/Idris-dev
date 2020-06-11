@@ -35,7 +35,6 @@ import Control.Category
 import Control.Monad.State
 import Data.List
 import qualified Data.Map as M
-import Data.Maybe (maybe)
 import Data.Ord
 import qualified Data.Set as S
 import System.Directory
