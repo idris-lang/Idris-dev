@@ -256,6 +256,7 @@ idemodeStart :: Bool -> IState -> [FilePath] -> Idris ()
 idemodeStart s orig mods
   = do h <- runIO $ if s then initIdemodeSocket else return stdout
        setIdeMode True h
+       runIO $ hSetNewlineMode h (NewlineMode { inputNL = CRLF, outputNL = LF })
        i <- getIState
        case idris_outputmode i of
          IdeMode n h ->
