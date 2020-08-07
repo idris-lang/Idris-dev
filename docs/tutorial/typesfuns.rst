@@ -88,7 +88,7 @@ natural numbers can be either zero (``Z``), or the successor of
 another natural number (``S k``). Lists can either be empty (``Nil``)
 or a value added to the front of another list (``x :: xs``).
 
-Data types may also be declared by giving the just the *types* of the
+Data types may also be declared by giving just the *types* of the
 constructors. These definitions are equivalent to those above:
 
 .. code-block:: idris
