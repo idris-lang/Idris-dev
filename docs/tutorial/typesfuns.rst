@@ -86,10 +86,27 @@ follows:
 The above declarations are taken from the standard library. Unary
 natural numbers can be either zero (``Z``), or the successor of
 another natural number (``S k``). Lists can either be empty (``Nil``)
-or a value added to the front of another list (``x :: xs``). In the
-declaration for ``List``, we used an infix operator ``::``. New
-operators such as this can be added using a fixity declaration, as
-follows:
+or a value added to the front of another list (``x :: xs``).
+
+Data types may also be declared by giving the just the *types* of the
+constructors. These definitions are equivalent to those above:
+
+.. code-block:: idris
+
+    data Nat : Type where
+        Z : Nat
+        S : Nat -> Nat
+
+    data List : Type -> Type where
+        Nil : List a
+        (::) : a -> List a -> List a
+
+This syntax is more verbose, but more flexible, and is used for
+types that can't be described with the simpler syntax.
+
+In the declaration for ``List``, we used an infix operator ``::``.
+New operators such as this can be added using a fixity declaration,
+as follows:
 
 ::
 
