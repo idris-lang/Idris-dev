@@ -144,7 +144,7 @@ give the constraints on the type variables left of the fat arrow
     sort : Ord a => List a -> List a
 
 Functions, interfaces and implementations can have multiple
-constraints. Multiple constraints are written in brackets in a comma
+constraints. Multiple constraints are written in parentheses in a comma
 separated list, for example:
 
 .. code-block:: idris
