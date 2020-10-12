@@ -146,7 +146,7 @@ source-repository head
 
 custom-setup
   setup-depends:
-    Cabal >= 2.4 && < 3.1,
+    Cabal >= 2.4 && <= 3.4,
     base  >= 4 && <5,
     directory,
     filepath,
