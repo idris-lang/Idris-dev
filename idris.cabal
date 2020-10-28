@@ -341,7 +341,7 @@ Library
                 , megaparsec >= 7.0.4 && < 9
                 , mtl >= 2.1 && < 2.3
                 , network >= 2.7 && < 3.1.2
-                , optparse-applicative >= 0.13 && < 0.16
+                , optparse-applicative >= 0.13 && < 0.17
                 , parser-combinators >= 1.0.0
                 , pretty < 1.2
                 , process < 1.7
@@ -416,7 +416,7 @@ Test-suite regression-and-feature-tests
                , filepath
                , directory
                , haskeline >= 0.7
-               , optparse-applicative >= 0.13 && < 0.16
+               , optparse-applicative >= 0.13 && < 0.17
                , tagged
                , tasty >= 0.8
                , tasty-golden >= 2.0
