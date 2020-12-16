@@ -84,7 +84,11 @@ instance Message ParseError where
       (pos, _) = P.reachOffsetNoLine (parseErrorOffset err) (parseErrorPosState err)
 #endif
   messageText = PP.text . init . P.parseErrorTextPretty . parseError
+#if MIN_VERSION_megaparsec(9,0,0)
+  messageSource err = sline
+#else
   messageSource err = Just sline
+#endif
     where
 #if MIN_VERSION_megaparsec(8,0,0)
       (sline, _) = P.reachOffset (parseErrorOffset err) (parseErrorPosState err)
