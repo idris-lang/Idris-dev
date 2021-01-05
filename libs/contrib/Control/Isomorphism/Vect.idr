@@ -2,7 +2,6 @@ module Control.Isomorphism.Vect
 
 import Control.Isomorphism
 import Data.Vect
-import Interfaces.Verified
 
 %default total
 %access public export
