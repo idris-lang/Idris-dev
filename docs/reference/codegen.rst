@@ -67,7 +67,7 @@ Third Party
 
    These are third-party code generations and may have bit-rotted or
    do not work with current versions of Idris. Please speak to the
-   project's maintainors if there are any problems.
+   project's maintainers if there are any problems.
 
 
 CIL (.NET, Mono, Unity)
