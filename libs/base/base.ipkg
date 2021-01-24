@@ -9,6 +9,7 @@ modules = Control.Arrow
         , Control.Isomorphism
 
         , Control.Monad.Identity
+        , Control.Monad.Maybe
         , Control.Monad.Reader
         , Control.Monad.RWS
         , Control.Monad.State
