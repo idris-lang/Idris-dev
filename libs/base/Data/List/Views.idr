@@ -28,7 +28,7 @@ public export
 data Split : List a -> Type where
      SplitNil : Split []
      SplitOne : Split [x]
-     SplitPair : {x, y : a} -> {xs, ys : List a} -> -- Explicit, don't erae
+     SplitPair : {x, y : a} -> {xs, ys : List a} -> -- Explicit, don't erase
                  Split (x :: xs ++ y :: ys)
 
 splitHelp : (head : a) ->
