@@ -10,7 +10,7 @@ dependent pattern matching. Both can be used for writing programs and proofs.
 However, Idris has been designed from the start to emphasise general purpose
 programming rather than theorem proving. As such, it supports interoperability
 with systems libraries and C programs, and language constructs for
-domain specific language implementation. It also includes higher level
+domain-specific language implementation. It also includes higher level
 programming constructs such as interfaces (similar to type classes) and do notation.
 
 Idris supports multiple back ends (C and JavaScript by default, with the
