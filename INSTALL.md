@@ -11,45 +11,39 @@ installing the latest version that has been released on Hackage.
 Installation instructions for various platforms can be
 [found on the Idris Wiki](https://github.com/idris-lang/Idris-dev/wiki/Installation-Instructions).
 
-## Installing Development Versions
+## Installing the Development Versions
 
-If you like to work against the latest development version, please
-consider using Cabal Sandboxes to minimise disruption to your local
-Haskell setup.  Instructions for installing Idris HEAD within a cabal
-sandbox are
-[available on the Idris Wiki](https://github.com/idris-lang/Idris-dev/wiki/Installing-an-Idris-Development-version-in-a-sandbox).
-
-To configure, edit config.mk. The default values should work for most
+To configure, edit `config.mk`. The default values should work for most
 people.
 
-Idris is built using a Makefile common targets include:
+Idris is built using a Makefile; common targets include:
 
-* `make` This will install everything using cabal and typecheck the
-  libraries.
-* `make test` This target execute the test suite.
+* `make` This will build and install everything using cabal and
+  typecheck the libraries.
+* `make test` This target executes the test suite.
 * `make relib` This target will typecheck and recompile the standard
   library.
 
-Idris has an optional dependency on the `C` library `libffi`. If you
-would like to use the features that it enables, make sure that it is
-compiled for the same architecture as your Haskell compiler (e.g. 64
-bit libraries for 64 bit ghc). By default, Idris builds without it. To
-build with it, pass the flag `-f FFI`.
+If you have Nix installed (e.g. you're on NixOS), then you can use
+`nix-shell --pure` to enter an environment with all the necessary
+dependencies.
 
-A secondary optional dependency is on `libGMP`, this allows better
-support for numeric operations. As with `libFFI` Idris builds with out
-it, to enable `GMP` support use the flag `-f GMP`
-
-To build with `libffi` and `libGMP` by default, create a `custom.mk`
-file and add the following line to it:
+To build with `libffi` and `libGMP`, create a `custom.mk` file and add
+the following line to it:
 
 `CABALFLAGS += -f FFI -f GMP`
 
 The file `custom.mk-alldeps` is a suitable example.
 
+Idris has an optional dependency on these `C` libraries (`libffi` for
+better C FFI, and `libGMP` for better support for numeric
+operations). If you would like to use the features that they enable,
+then make sure that they are compiled for the same architecture as
+your Haskell compiler (e.g. 64 bit libraries for 64 bit GHC).
+
 The continuous integration builds on travis-ci.org are built using the
-ghc-flag -Werror. To enable this behaviour locally also, please
-compile using `make CI=true` or adding the following line into
+GHC flag `-Werror`. To enable this behaviour locally also, please
+compile using `make CI=true`, or add the following line into
 `custom.mk`:
 
 `CI = true`
@@ -57,6 +51,12 @@ compile using `make CI=true` or adding the following line into
 If you are only compiling for installing the most current version, you
 can omit the CI flag, but please make sure you use it if you want to
 contribute.
+
+Even though it is obsolete by now, but you may consider using Cabal
+Sandboxes to minimise disruption to your local Haskell setup.
+Instructions for installing Idris HEAD within a cabal sandbox are
+[available on the Idris
+Wiki](https://github.com/idris-lang/Idris-dev/wiki/Installing-an-Idris-Development-version-in-a-sandbox).
 
 ## Experimental Support for Building with Stack
 
