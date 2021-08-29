@@ -1,4 +1,4 @@
-# Idris
+# Idris 1
 
 [![Build Status](https://travis-ci.org/idris-lang/Idris-dev.svg?branch=master)](https://travis-ci.org/idris-lang/Idris-dev)
 [![Appveyor build](https://ci.appveyor.com/api/projects/status/xi8yu81oy1134g7o/branch/master?svg=true)](https://ci.appveyor.com/project/idrislang/idris-dev)
@@ -11,7 +11,7 @@
 Idris (https://idris-lang.org/) is a general-purpose functional programming
 language with dependent types.
 
-## Installation Guides.
+## Installation
 
 This repository represents the latest development version of the
 language, and may contain bugs that are being actively worked on.  For
@@ -26,9 +26,18 @@ More information about building Idris from source has been detailed in the [Inst
 
 Idris has support for external code generators. Supplied with the distribution
 is a C code generator to compile executables, and a JavaScript code generator
-with support for node.js and browser JavaScript.
+with support for `node.js` and browser JavaScript.
 
-More information about [code generators can be found on the wiki](https://idris.readthedocs.io/en/latest/reference/codegen.html).
+More information about code generators can be found
+[here](https://idris.readthedocs.io/en/latest/reference/codegen.html).
+
+## Status
+
+This is Idris 1, implemented in Haskell. Idris 1 is not actively
+worked on anymore.
+
+[Idris 2](https://github.com/idris-lang/Idris2) is the next generation
+of Idris, and where primary development happens.
 
 ## More Information
 
@@ -45,5 +54,3 @@ where some interesting projects are being hosted.
 For those interested in contributing to Idris directly we kindly ask that
 prospective developers please consult the [Contributing Guide](CONTRIBUTING.md) first.
 
-[Idris 2](https://github.com/idris-lang/Idris2) is an early preview of the next generation
-of Idris, implemented in Idris.
