@@ -27,6 +27,8 @@ import Paths_idris
 #endif
 import BuildFlags_idris
 
+import Control.Monad (Monad, liftM2)
+import Control.Applicative ((<|>))
 import Data.List.Split
 import Data.Maybe (fromMaybe)
 import System.Environment
@@ -60,7 +62,7 @@ overrideIdrisSubDirWith fp envVar = do
     Just ddir -> return ddir
 
 getCC :: IO String
-getCC = fromMaybe cc <$> lookupEnv "IDRIS_CC"
+getCC = fromMaybe cc <$> liftM2 (<|>) (lookupEnv "IDRIS_CC") (lookupEnv "CC")
   where
 #ifdef mingw32_HOST_OS
     cc = "gcc"
@@ -69,7 +71,8 @@ getCC = fromMaybe cc <$> lookupEnv "IDRIS_CC"
 #endif
 
 getEnvFlags :: IO [String]
-getEnvFlags = maybe [] (splitOn " ") <$> lookupEnv "IDRIS_CFLAGS"
+getEnvFlags = maybe [] (splitOn " ") <$> liftM2 (<|>)
+  (lookupEnv "IDRIS_CFLAGS") (lookupEnv "CFLAGS")
 
 
 #if defined(freebsd_HOST_OS) || defined(dragonfly_HOST_OS)\
