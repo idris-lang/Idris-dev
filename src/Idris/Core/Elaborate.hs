@@ -434,8 +434,8 @@ intro n = processTactic' (Intro n)
 introTy :: Raw -> Maybe Name -> Elab' aux ()
 introTy ty n = processTactic' (IntroTy ty n)
 
-forall :: Name -> RigCount -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
-forall n r i t = processTactic' (Forall n r i t)
+forAll :: Name -> RigCount -> Maybe ImplicitInfo -> Raw -> Elab' aux ()
+forAll n r i t = processTactic' (Forall n r i t)
 
 letbind :: Name -> RigCount -> Raw -> Raw -> Elab' aux ()
 letbind n rig t v = processTactic' (LetBind n rig t v)
@@ -823,7 +823,7 @@ arg :: Name -> RigCount -> Maybe ImplicitInfo -> Name -> Elab' aux ()
 arg n r i tyhole = do ty <- unique_hole tyhole
                       claim ty RType
                       movelast ty
-                      forall n r i (Var ty)
+                      forAll n r i (Var ty)
 
 -- try a tactic, if it adds any unification problem, return an error
 no_errors :: Elab' aux () -> Maybe Err -> Elab' aux ()

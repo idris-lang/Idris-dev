@@ -658,13 +658,13 @@ intro mn ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
            _ -> lift $ tfail $ CantIntroduce t'
 intro n ctxt env _ = fail "Can't introduce here."
 
-forall :: Name -> RigCount -> Maybe ImplicitInfo -> Raw -> RunTactic
-forall n rig impl ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
+forAll :: Name -> RigCount -> Maybe ImplicitInfo -> Raw -> RunTactic
+forAll n rig impl ty ctxt env (Bind x (Hole t) (P _ x' _)) | x == x' =
     do (tyv, tyt) <- lift $ check ctxt env ty
        unify' ctxt env (tyt, Nothing) (TType (UVar [] 0), Nothing)
        unify' ctxt env (t, Nothing) (TType (UVar [] 0), Nothing)
        return $ Bind n (Pi rig impl tyv (TType (UVar [] 0))) (Bind x (Hole t) (P Bound x t))
-forall n rig impl ty ctxt env _ = fail "Can't pi bind here"
+forAll n rig impl ty ctxt env _ = fail "Can't pi bind here"
 
 patvar :: Name -> RunTactic
 patvar n ctxt env (Bind x (Hole t) sc) =
@@ -1052,7 +1052,7 @@ process t h = tactic (Just h) (mktac t)
          mktac WHNF_ComputeArgs  = whnf_compute_args
          mktac (Intro n)         = intro n
          mktac (IntroTy ty n)    = introTy ty n
-         mktac (Forall n r i t)  = forall n r i t
+         mktac (Forall n r i t)  = forAll n r i t
          mktac (LetBind n r t v) = letbind n r t v
          mktac (ExpandLet n b)   = expandLet n b
          mktac (Rewrite t)       = rewrite t

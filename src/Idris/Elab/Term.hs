@@ -685,7 +685,7 @@ elab ist info emode opts fn tm
                     _ -> unless (LinearTypes `elem` idris_language_extensions ist
                                        || e_qq ina) $
                            lift $ tfail $ At nfc (Msg "You must turn on the LinearTypes extension to use a linear argument")
-               forall n' (pcount p) (is_scoped p) (Var tyn)
+               forAll n' (pcount p) (is_scoped p) (Var tyn)
                addAutoBind p n'
                addPSname n' -- okay for proof search
                focus tyn
@@ -2107,7 +2107,7 @@ runElabAction info ist fc env tm ns = do tm' <- eval tm
       = do ~[n, ty] <- tacTmArgs 2 tac args
            n' <- reifyTTName n
            ty' <- reifyRaw ty
-           forall n' RigW Nothing ty'
+           forAll n' RigW Nothing ty'
            returnUnit
       | n == tacN "Prim__PatVar"
       = do ~[n] <- tacTmArgs 1 tac args

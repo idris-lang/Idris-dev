@@ -1,19 +1,19 @@
 version: 1.0.{build}
 init:
 - ps: >-
-    choco install cabal --no-progress
+    choco install cabal --version=3.4.1.0 --no-progress
 
     mkdir C:\ghc
 
-    Invoke-WebRequest "https://downloads.haskell.org/~ghc/8.8.2/ghc-8.8.2-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
+    Invoke-WebRequest "https://downloads.haskell.org/~ghc/8.10.7/ghc-8.10.7-x86_64-unknown-mingw32.tar.xz" -OutFile C:\ghc\ghc.tar.xz -UserAgent "Curl"
 
     7z x C:\ghc\ghc.tar.xz -oC:\ghc
 
     7z x C:\ghc\ghc.tar -oC:\ghc
 
-    $env:PATH="$env:PATH;c:\ghc\ghc-8.8.2\bin;$HOME\AppData\Roaming\cabal\bin"
+    $env:PATH="$env:PATH;c:\ghc\ghc-8.10.7\bin;$HOME\AppData\Roaming\cabal\bin"
 
-    cabal v1-update
+    cabal update
 
     $env:current_posix=c:\msys64\usr\bin\cygpath -u $(pwd)
 
