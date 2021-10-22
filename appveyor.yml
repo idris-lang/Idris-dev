@@ -1,7 +1,7 @@
 version: 1.0.{build}
 init:
 - ps: >-
-    choco install cabal --no-progress
+    choco install cabal --version=3.4.1.0 --no-progress
 
     mkdir C:\ghc
 
@@ -11,7 +11,7 @@ init:
 
     7z x C:\ghc\ghc.tar -oC:\ghc
 
-    $env:PATH="$env:PATH;c:\ghc\ghc-8.10.2\bin;$HOME\AppData\Roaming\cabal\bin"
+    $env:PATH="$env:PATH;c:\ghc\ghc-8.10.7\bin;$HOME\AppData\Roaming\cabal\bin"
 
     cabal update
 
@@ -22,6 +22,6 @@ environment:
   MSYS2_PATH_TYPE: inherit
 build_script:
 - ps: >-
-    c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal install -fffi --enable-tests 2>&1"
+    c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && cabal v1-install -fffi --enable-tests 2>&1"
 test_script:
 - ps: c:\msys64\usr\bin\bash -l -c "cd $env:current_posix && make test_c 2>&1"

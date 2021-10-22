@@ -1,5 +1,9 @@
 # New since last release
 
+# New in 1.3.4
++ Renamed 'forall' function for compability with future GHC releases
++ Updated version bounds
++ Bugfixes
 # New in 1.3.3
 + Updated to work with GHC 8.8 and cabal 3.0
 + Bugfixes and documentation updates
