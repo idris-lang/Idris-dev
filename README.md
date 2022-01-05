@@ -44,8 +44,8 @@ of Idris, and where primary development happens.
 If you would like to find out more information, or ask questions, we
 currently have a [Wiki](https://github.com/idris-lang/Idris-dev/wiki);
 a [mailing list](https://groups.google.com/forum/#!forum/idris-lang),
-and an `IRC` channel `#idris` on freenode. To join the IRC channel,
-point your irc client to `chat.freenode.net` then `/join #idris`.
+and an `IRC` channel `#idris` on [libera](https://libera.chat/). To join the IRC channel,
+point your irc client to `irc.libera.chat` then `/join #idris`.
 
 For those further interested in using Idris for projects, the
 [Idris Hackers](https://github.com/idris-hackers) GitHub organisation is
