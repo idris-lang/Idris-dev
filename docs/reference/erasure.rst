@@ -35,7 +35,7 @@ in the `original proposal
 
     uninterleave : {n : Nat} -> Vect (n * 2) a -> (Vect n a, Vect n a)
     uninterleave [] = ([] , [])
-    uninterleave (x :: y :: rest) with (unzipPairs rest)
+    uninterleave (x :: y :: rest) with (uninterleave rest)
       | (xs, ys) = (x :: xs, y :: ys)
 
 Notice that in this case, the second argument is the important one and
