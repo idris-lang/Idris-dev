@@ -44,8 +44,10 @@ For example, the ``Show`` implementation for ``Nat`` could be defined as:
     Idris> show (S (S (S Z)))
     "sssZ" : String
 
-Only one implementation of an interface can be given for a type — implementations may
-not overlap. Implementation declarations can themselves have constraints.
+Only one unnamed implementation of an interface can be given for a type, and implementations may
+not overlap. But see `Named Implementations`_ below.
+
+Implementation declarations can themselves have constraints.
 To help with resolution, the arguments of an implementation must be
 constructors (either data or type constructors) or variables
 (i.e. you cannot give an implementation for a function). For
