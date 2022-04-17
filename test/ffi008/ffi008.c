@@ -11,6 +11,8 @@ int size2(void) {
     return sizeof(struct test2);
 }
 
+struct test2 mystruct;
+
 void print_mystruct(void) {
     printf("a: %d b: %d\n", mystruct.a, mystruct.b);
 }
