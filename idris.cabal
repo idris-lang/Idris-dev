@@ -374,10 +374,10 @@ Library
   else
      build-depends: unix < 2.8
   if flag(FFI)
-     build-depends: libffi < 0.2
+     build-depends: libffi < 0.3
      cpp-options:   -DIDRIS_FFI
   if flag(GMP)
-     build-depends: libffi < 0.2
+     build-depends: libffi < 0.3
      extra-libraries: gmp
      cpp-options:   -DIDRIS_GMP
   if flag(freestanding)
