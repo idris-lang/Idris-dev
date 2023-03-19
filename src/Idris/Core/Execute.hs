@@ -450,14 +450,15 @@ execForeign env ctxt arity ty fn xs onfail
                       "The argument to idris_makeStringBuffer should be an Int, but it was " ++
                       show len ++
                       ". Are all cases covered?"
-    | Just (FFun "idris_addToString" [(_, strBuf), (_, str)] _) <- foreignFromTT arity ty fn xs
-       = case (strBuf, str) of
-              (EStringBuf ref, EConstant (Str add)) ->
+    -- The len argument isn't actually consumed by the haskell interpreter
+    | Just (FFun "idris_addToString" [(_, strBuf), (_, str), (_, len)] _) <- foreignFromTT arity ty fn xs
+       = case (strBuf, str, len) of
+              (EStringBuf ref, EConstant (Str add), EConstant (Int len)) ->
                   do execIO $ modifyIORef ref (++add)
                      execApp env ctxt ioUnit (drop arity xs)
               _ -> execFail . Msg $
-                      "The arguments to idris_addToString should be a StringBuffer and a String, but were " ++
-                      show strBuf ++ " and " ++ show str ++
+                      "The arguments to idris_addToString should be a StringBuffer, a String, and an Int, but were " ++
+                      show strBuf ++ ", " ++ show str ++ " and " ++ show len ++
                       ". Are all cases covered?"
     | Just (FFun "idris_getString" [_, (_, str)] _) <- foreignFromTT arity ty fn xs
        = case str of
@@ -549,7 +550,7 @@ getOp fn (_ : EHandle h : xs)
 getOp fn (_ : EConstant (I len) : EHandle h : xs)
     | fn == prc =
               Just (do contents <- execIO $ hGetChars h len
-                       return (EConstant (Str contents)), xs)
+                       return (EConstant (Str contents), EConstant (I (length contents))), xs)
   where hGetChars h 0 = return ""
         hGetChars h i = do eof <- hIsEOF h
                            if eof then return "" else do
