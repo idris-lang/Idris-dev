@@ -1,6 +1,6 @@
 module Text.Lexer
 
-import Data.Bool.Extra
+import Data.Bool
 
 import public Text.Lexer.Core
 import public Text.Quantity
