@@ -39,6 +39,7 @@ import Idris.TypeSearch (searchByType)
 import Util.Pretty
 
 import Control.DeepSeq
+import Control.Monad
 import Control.Monad.State.Strict
 import System.Console.Haskeline
 import System.Console.Haskeline.History

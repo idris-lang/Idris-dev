@@ -19,6 +19,7 @@ import Idris.Parser.Helpers (Parser, Parsing, eol, iName, identifier,
                              someSpace, stringLiteral)
 
 import Control.Applicative
+import Control.Monad
 import Control.Monad.State.Strict
 import Data.List (union)
 import qualified Options.Applicative as Opts

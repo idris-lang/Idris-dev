@@ -19,6 +19,7 @@ import Idris.Error
 import Idris.Options
 import Idris.Output (iWarn)
 
+import Control.Monad
 import Control.Monad.State.Strict
 import Data.Either
 import Data.List

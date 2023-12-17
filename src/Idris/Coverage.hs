@@ -17,6 +17,7 @@ import Idris.Delaborate
 import Idris.Elab.Utils
 import Idris.Error
 
+import Control.Monad
 import Control.Monad.State.Strict
 import Data.Char
 import Data.List

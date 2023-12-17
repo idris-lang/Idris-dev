@@ -37,6 +37,7 @@ module Idris.Core.Evaluate(normalise, normaliseTrace, normaliseC,
 import Idris.Core.CaseTree
 import Idris.Core.TT
 
+import Control.Monad
 import Control.Monad.State
 import Data.List
 import Data.Maybe (listToMaybe)

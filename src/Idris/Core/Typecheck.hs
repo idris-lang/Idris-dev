@@ -14,6 +14,7 @@ module Idris.Core.Typecheck where
 import Idris.Core.Evaluate
 import Idris.Core.TT
 
+import Control.Monad
 import Control.Monad.State
 
 -- To check conversion, normalise each term wrt the current environment.

@@ -70,6 +70,7 @@ import qualified Prelude as S (Semigroup(..))
 import Control.Applicative (Alternative, Applicative(..))
 import qualified Control.Applicative as A (Alternative(..))
 import Control.DeepSeq (($!!))
+import Control.Monad
 import qualified Control.Monad.Fail as Fail
 import Control.Monad.State.Strict
 import Data.Binary hiding (get, put)
