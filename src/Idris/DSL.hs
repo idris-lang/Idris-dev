@@ -13,6 +13,7 @@ module Idris.DSL (debindApp, desugar) where
 import Idris.AbsSyntax
 import Idris.Core.TT
 
+import Control.Monad
 import Control.Monad.State.Strict
 import Data.Generics.Uniplate.Data (transform)
 

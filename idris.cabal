@@ -339,7 +339,7 @@ Library
                 , haskeline >= 0.8 && < 0.9
                 , ieee754 >= 0.7 && < 0.9
                 , megaparsec >= 7.0.4 && < 10
-                , mtl >= 2.1 && < 2.3
+                , mtl >= 2.1 && < 2.4
                 , network >= 2.7 && < 3.1.2
                 , optparse-applicative >= 0.13 && < 0.17
                 , parser-combinators >= 1.0.0

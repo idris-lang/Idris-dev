@@ -19,6 +19,7 @@ module Idris.Core.ProofTerm(
 import Idris.Core.Evaluate
 import Idris.Core.TT
 
+import Control.Monad
 import Control.Monad.State.Strict
 
 -- | A zipper over terms, in order to efficiently update proof terms.

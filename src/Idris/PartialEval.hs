@@ -19,6 +19,7 @@ import Idris.Core.Evaluate
 import Idris.Core.TT
 import Idris.Delaborate
 
+import Control.Monad
 import Control.Monad.State
 
 -- | Data type representing binding-time annotations for partial evaluation of arguments

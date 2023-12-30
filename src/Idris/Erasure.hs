@@ -22,6 +22,7 @@ import Prelude hiding (id, (.))
 
 import Control.Arrow
 import Control.Category
+import Control.Monad
 import Control.Monad.State
 import Data.IntMap (IntMap)
 import qualified Data.IntMap as IM

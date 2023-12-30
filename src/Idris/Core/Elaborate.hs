@@ -24,6 +24,7 @@ import Idris.Core.TT
 import Idris.Core.Typecheck
 import Idris.Core.Unify
 
+import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 

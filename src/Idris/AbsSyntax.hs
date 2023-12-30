@@ -27,6 +27,7 @@ import System.Directory (canonicalizePath, doesFileExist)
 import System.IO
 
 import Control.Applicative
+import Control.Monad
 import Control.Monad.State
 import Prelude hiding (Applicative, Foldable, Traversable, (<$>))
 

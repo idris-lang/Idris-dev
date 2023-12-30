@@ -32,6 +32,7 @@ import IRTS.Simplified
 import Prelude hiding (id, (.))
 
 import Control.Category
+import Control.Monad
 import Control.Monad.State
 import Data.List
 import qualified Data.Map as M

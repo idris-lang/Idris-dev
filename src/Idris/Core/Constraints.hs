@@ -11,6 +11,7 @@ module Idris.Core.Constraints ( ucheck ) where
 import Idris.Core.TT (ConstraintFC(..), Err'(..), TC(..), UConstraint(..),
                       UExp(..))
 
+import Control.Monad
 import Control.Monad.State.Strict
 import Data.List (partition)
 import qualified Data.Map.Strict as M

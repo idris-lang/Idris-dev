@@ -28,6 +28,7 @@ import Idris.Core.WHNF
 
 import Util.Pretty hiding (fill)
 
+import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 
