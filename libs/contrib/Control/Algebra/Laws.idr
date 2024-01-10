@@ -2,9 +2,9 @@ module Control.Algebra.Laws
 
 import Prelude.Algebra as A
 import Control.Algebra as Alg
-import Interfaces.Verified
 
-%access export
+%access public export
+%default total
 
 -- Monoids
 
@@ -143,6 +143,20 @@ cancelRight x y z p =
     rewrite groupInverseIsInverseL x in
   monoidNeutralIsNeutralL z
 
+||| ab = 0 -> a = b^-1
+neutralProductInverseR : VerifiedGroup ty => (a, b : ty) ->
+  a <+> b = A.neutral -> a = inverse b
+neutralProductInverseR a b prf =
+  cancelRight  b a (inverse b) $
+    trans prf $ sym $ groupInverseIsInverseR b
+
+||| ab = 0 -> a^-1 = b
+neutralProductInverseL : VerifiedGroup ty => (a, b : ty) ->
+  a <+> b = A.neutral -> inverse a = b
+neutralProductInverseL a b prf =
+  cancelLeft a (inverse a) b $
+    trans (groupInverseIsInverseL a) $ sym prf
+
 ||| For any a and b, ax = b and ya = b have solutions.
 latinSquareProperty : VerifiedGroup t => (a, b : t) ->
   ((x : t ** a <+> x = b),
@@ -169,7 +183,7 @@ uniqueSolutionL : VerifiedGroup t => (a, b, x, y : t) ->
 uniqueSolutionL a b x y p q = cancelRight a x y $ trans p (sym q)
 
 ||| -(x + y) = -x + -y in any verified abelian group.
-inverseDistributesOverGroupOp : VerifiedAbelianGroup t => (l, r : t) ->
+inverseDistributesOverGroupOp : AbelianGroup t => (l, r : t) ->
   inverse (l <+> r) = inverse l <+> inverse r
 inverseDistributesOverGroupOp l r =
   rewrite abelianGroupOpIsCommutative (inverse l) (inverse r) in

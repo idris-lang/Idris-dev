@@ -20,7 +20,7 @@ infixr 2 <||>
 ||| + Distributivity of `<#>` and `<+>`:
 |||     forall a v w,  a <#> (v <+> w) == (a <#> v) <+> (a <#> w)
 |||     forall a b v,  (a <+> b) <#> v == (a <#> v) <+> (b <#> v)
-interface (RingWithUnity a, AbelianGroup b) => Module a b where
+interface RingWithUnity a => Module a b where
   (<#>) : a -> b -> b
 
 ||| A vector space is a module over a ring that is also a field
