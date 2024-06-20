@@ -2,7 +2,11 @@
 #include "idris_rts.h"
 #include "idris_gc.h"
 #include "idris_bitstring.h"
+#ifndef BARE_METAL
 #include <assert.h>
+#else
+#include "idris_bare_metal.h"
+#endif
 
 static inline VAL copy_plain(VM* vm, VAL x, size_t sz) {
     VAL cl = iallocate(vm, sz, 1);

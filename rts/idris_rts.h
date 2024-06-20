@@ -1,14 +1,23 @@
 #ifndef _IDRISRTS_H
 #define _IDRISRTS_H
 
-#include <assert.h>
 #include <stdlib.h>
+#ifndef BARE_METAL
+#include <assert.h>
 #include <stdio.h>
+#else
+#include "idris_bare_metal.h"
+#endif
 #include <string.h>
 #ifdef HAS_PTHREAD
 #include <stdarg.h>
 #include <pthread.h>
 #endif
+#ifdef HAS_FREERTOS
+#include <FreeRTOS.h>
+#include <task.h>
+#include <queue.h>
+#endif // HAS_FREERTOS
 
 #include "idris_heap.h"
 #include "idris_stats.h"
@@ -149,11 +158,16 @@ struct VM {
     Msg* inbox_end; // End of block of memory
     int inbox_nextid; // Next channel id
     Msg* inbox_write; // Location of next message to write
+#elif defined(HAS_FREERTOS)
+    TaskHandle_t xTaskHandle;
+#endif
 
+#ifdef IS_THREADED
     int processes; // Number of child processes
     int max_threads; // maximum number of threads to run in parallel
     struct VM* creator; // The VM that created this VM, NULL for root VM
-#endif
+#endif // IS_THREADED
+
     Stats stats;
 
     VAL ret;
@@ -284,7 +298,7 @@ typedef intptr_t i_int;
 
 #define INITFRAME TRACE\
                   __attribute__((unused)) VAL* myoldbase;\
-                  void* callres
+                  __attribute__((unused)) void* callres
 
 #define REBASE vm->valstack_base = oldbase; return NULL
 #define RESERVE(x) do { \
@@ -391,6 +405,8 @@ static inline Array * allocArrayF(VM * vm, size_t len, int outer) {
 
 #define allocArray(cl, vm, len, o) (cl) = (VAL)allocArrayF(vm, len, o)
 
+int isNull(void* ptr);
+
 int idris_errno(void);
 char* idris_showerror(int err);
 
@@ -429,6 +445,11 @@ VM* idris_getSender(Msg* msg);
 int idris_getChannel(Msg* msg);
 void idris_freeMsg(Msg* msg);
 
+#ifdef HAS_FREERTOS
+void idris_queuePut(QueueHandle_t xQueue, VAL msg);
+VAL idris_queueGet(VM* vm, QueueHandle_t xQueue);
+#endif // HAS_FREERTOS
+
 void idris_trace(VM* vm, const char* func, int line);
 void dumpVal(VAL r);
 void dumpStack(VM* vm);
@@ -464,10 +485,12 @@ VAL idris_concat(VM* vm, VAL l, VAL r);
 VAL idris_strlt(VM* vm, VAL l, VAL r);
 VAL idris_streq(VM* vm, VAL l, VAL r);
 VAL idris_strlen(VM* vm, VAL l);
+#ifndef BARE_METAL
 // Read a line from a file
 VAL idris_readStr(VM* vm, FILE* h);
 // Read up to 'num' characters from a file
 VAL idris_readChars(VM* vm, int num, FILE* h);
+#endif
 
 VAL idris_strHead(VM* vm, VAL str);
 VAL idris_strShift(VM* vm, VAL str, int num);
