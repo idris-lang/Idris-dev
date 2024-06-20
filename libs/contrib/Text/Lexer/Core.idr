@@ -1,6 +1,6 @@
 module Text.Lexer.Core
 
-import Data.Bool.Extra
+import Data.Bool
 
 import public Control.Delayed
 
