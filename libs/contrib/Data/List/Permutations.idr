@@ -1,4 +1,4 @@
-module Permutations
+module Data.List.Permutations
 
 %access export
 
