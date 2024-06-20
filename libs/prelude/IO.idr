@@ -135,7 +135,7 @@ prim_write s
 prim_fread : Ptr -> IO' l String
 prim_fread h = MkIO (\w => prim_io_pure (prim__readFile (world w) h))
 
-prim_freadChars : Int -> Ptr -> IO' l String
+prim_freadChars : Int -> Ptr -> IO' l (String, Int)
 prim_freadChars len h 
      = MkIO (\w => prim_io_pure (prim__readChars (world w) len h))
 
