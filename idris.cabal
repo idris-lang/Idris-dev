@@ -320,7 +320,7 @@ Library
 
   Build-depends:  base >=4 && <5
                 , aeson >= 0.6 && < 2.2
-                , annotated-wl-pprint >= 0.7 && < 0.8
+                , annotated-wl-pprint >= 0.7 && < 1.1
                 , ansi-terminal < 0.12 || ^>= 1.0
                 , ansi-wl-pprint < 0.7
                 , array >= 0.4.0.1 && < 0.6
@@ -341,7 +341,7 @@ Library
                 , megaparsec >= 7.0.4 && < 10
                 , mtl >= 2.1 && < 2.4
                 , network >= 2.7 && < 3.1.5
-                , optparse-applicative >= 0.13 && < 0.18
+                , optparse-applicative >= 0.13 && < 0.19
                 , parser-combinators >= 1.0.0
                 , pretty < 1.2
                 , process < 1.7
@@ -416,7 +416,7 @@ Test-suite regression-and-feature-tests
                , filepath
                , directory
                , haskeline >= 0.7
-               , optparse-applicative >= 0.13 && < 0.18
+               , optparse-applicative >= 0.13 && < 0.19
                , tagged
                , tasty >= 0.8
                , tasty-golden >= 2.0
