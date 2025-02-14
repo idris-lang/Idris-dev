@@ -2,7 +2,7 @@
 Miscellaneous
 **************
 
-Things we have yet to classify, or are two small to justify their own page.
+Things we have yet to classify, or are too small to justify their own page.
 
 
 The Unifier Log
