@@ -43,8 +43,10 @@ modules = CFFI
         , Data.Hash
         , Data.Heap
         , Data.IOArray
-        , Data.List.Zipper
+        , Data.List.Group
+        , Data.List.Permutations
         , Data.List.Reverse
+        , Data.List.Zipper
 
         , Data.Matrix
         , Data.Matrix.Algebraic
