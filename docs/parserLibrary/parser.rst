@@ -53,7 +53,7 @@ consume input.
            Grammar tok c1 ty -> Grammar tok c2 ty ->
            Grammar tok (c1 && c2) ty
 
-So an example of a grammer type may look something like this:
+So an example of a grammar type may look something like this:
 ``Grammar (TokenData ExpressionToken) True Integer``.
 This is a complicated type name and a given parser will need to use it a lot.
 So to reduce the amount of typing we can use the following type synonym (similar
