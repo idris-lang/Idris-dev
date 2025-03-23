@@ -6,7 +6,7 @@ import Control.Algebra.NumericImplementations
 import Control.Algebra.VectorSpace
 import Data.Vect
 import Data.ZZ
-import Data.Bool.Extra
+import Data.Bool
 
 %default total
 %access public export
