@@ -3,6 +3,7 @@
 ||| and `Control.Algebra.VectorSpace`.
 module Data.Matrix.Algebraic
 
+import public Data.Vect
 import public Control.Algebra
 import public Control.Algebra.VectorSpace
 import public Control.Algebra.NumericImplementations
@@ -35,20 +36,11 @@ implementation Monoid a => Monoid (Vect n a) where
 implementation Group a => Group (Vect n a) where
   inverse = map inverse
 
-implementation AbelianGroup a => AbelianGroup (Vect n a) where {}
-
 implementation Ring a => Ring (Vect n a) where
   (<.>) = zipWith (<.>)
 
 implementation RingWithUnity a => RingWithUnity (Vect n a) where
   unity {n} = replicate n unity
-
-implementation RingWithUnity a => Module a (Vect n a) where
-  (<#>) r = map (r <.>)
-
-implementation RingWithUnity a => Module a (Vect n (Vect l a)) where
-  (<#>) r = map (r <#>)
--- should be Module a b => Module a (Vect n b), but results in 'overlapping implementation'
 
 -----------------------------------------------------------------------
 --                        (Ring) Vector functions
@@ -146,4 +138,79 @@ det {n} m = case n of
 --                      Matrix Algebra Properties
 -----------------------------------------------------------------------
 
--- TODO: Prove properties of matrix algebra for 'Verified' algebraic interfaces
+VerifiedSemigroup a => VerifiedSemigroup (Vect n a) where
+  semigroupOpIsAssociative [] [] [] = Refl
+  semigroupOpIsAssociative (x :: xs) (y :: ys) (z :: zs) =
+    rewrite semigroupOpIsAssociative x y z in
+      rewrite semigroupOpIsAssociative xs ys zs in
+        Refl
+
+VerifiedMonoid a => VerifiedMonoid (Vect n a) where
+  monoidNeutralIsNeutralL [] = Refl
+  monoidNeutralIsNeutralL (x :: xs) =
+    rewrite monoidNeutralIsNeutralL x in
+      rewrite monoidNeutralIsNeutralL xs in
+        Refl
+
+  monoidNeutralIsNeutralR [] = Refl
+  monoidNeutralIsNeutralR (x :: xs) =
+    rewrite monoidNeutralIsNeutralR x in
+      rewrite monoidNeutralIsNeutralR xs in
+        Refl
+
+VerifiedGroup a => VerifiedGroup (Vect n a) where
+  groupInverseIsInverseR [] = Refl
+  groupInverseIsInverseR (x :: xs) =
+    rewrite groupInverseIsInverseR x in
+      rewrite groupInverseIsInverseR xs in
+        Refl
+
+AbelianGroup a => AbelianGroup (Vect n a) where
+  abelianGroupOpIsCommutative [] [] = Refl
+  abelianGroupOpIsCommutative (x :: xs) (y :: ys) =
+    rewrite abelianGroupOpIsCommutative x y in
+      rewrite abelianGroupOpIsCommutative xs ys in
+        Refl
+
+VerifiedRing a => VerifiedRing (Vect n a) where
+  ringOpIsAssociative [] [] [] = Refl
+  ringOpIsAssociative (x :: xs) (y :: ys) (z :: zs) =
+    rewrite ringOpIsAssociative x y z in
+      rewrite ringOpIsAssociative xs ys zs in
+        Refl
+
+  ringOpIsDistributiveL [] [] [] = Refl
+  ringOpIsDistributiveL (x :: xs) (y :: ys) (z :: zs) =
+    rewrite ringOpIsDistributiveL x y z in
+      rewrite ringOpIsDistributiveL xs ys zs in
+        Refl
+
+  ringOpIsDistributiveR [] [] [] = Refl
+  ringOpIsDistributiveR (x :: xs) (y :: ys) (z :: zs) =
+    rewrite ringOpIsDistributiveR x y z in
+      rewrite ringOpIsDistributiveR xs ys zs in
+        Refl
+
+VerifiedRingWithUnity a => VerifiedRingWithUnity (Vect n a) where
+  ringWithUnityIsUnityR [] = Refl
+  ringWithUnityIsUnityR (x :: xs) =
+    rewrite ringWithUnityIsUnityR x in
+      rewrite ringWithUnityIsUnityR xs in
+        Refl
+
+  ringWithUnityIsUnityL [] = Refl
+  ringWithUnityIsUnityL (x :: xs) =
+    rewrite ringWithUnityIsUnityL x in
+      rewrite ringWithUnityIsUnityL xs in
+        Refl
+
+-- Vector spaces -----------------------
+
+-- These need to come after the "verified" implementations because ???
+
+implementation RingWithUnity a => Module a (Vect n a) where
+  (<#>) r = map (r <.>)
+
+implementation RingWithUnity a => Module a (Vect n (Vect l a)) where
+  (<#>) r = map (r <#>)
+-- should be Module a b => Module a (Vect n b), but results in 'overlapping implementation'

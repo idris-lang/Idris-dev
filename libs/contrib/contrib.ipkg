@@ -10,7 +10,11 @@ modules = CFFI
         , Control.Algebra.Lattice
         , Control.Algebra.Laws
         , Control.Algebra.NumericImplementations
+        , Control.Algebra.VerifiedImplementations
+        , Control.Algebra.ComplexImplementations
         , Control.Algebra.VectorSpace
+        , Control.Algebra.GroupHomomorphism
+        , Control.Algebra.CyclicGroup
 
         , Control.Delayed
 
@@ -46,6 +50,7 @@ modules = CFFI
         , Data.List.Zipper
         , Data.List.Reverse
 
+        , Data.Monoid
         , Data.Matrix
         , Data.Matrix.Algebraic
         , Data.Matrix.Numeric

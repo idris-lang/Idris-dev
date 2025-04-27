@@ -3,8 +3,6 @@
 module Control.Algebra.NumericImplementations
 
 import Control.Algebra
-import Control.Algebra.VectorSpace
-import Data.Complex
 import Data.ZZ
 
 %access public export
@@ -19,8 +17,6 @@ Monoid Integer where
 
 Group Integer where
   inverse = (* -1)
-
-AbelianGroup Integer where
 
 Ring Integer where
   (<.>) = (*)
@@ -39,8 +35,6 @@ Monoid Int where
 Group Int where
   inverse = (* -1)
 
-AbelianGroup Int where
-
 Ring Int where
   (<.>) = (*)
 
@@ -57,8 +51,6 @@ Monoid Double where
 
 Group Double where
   inverse = (* -1)
-
-AbelianGroup Double where
 
 Ring Double where
   (<.>) = (*)
@@ -94,8 +86,6 @@ Field Double where
 Group ZZ using PlusZZMonoid where
   inverse = (* -1)
 
-AbelianGroup ZZ where
-
 [MultZZSemi] Semigroup ZZ where
   (<+>) = (*)
 
@@ -107,28 +97,3 @@ Ring ZZ where
 
 RingWithUnity ZZ where
   unity = 1
-
--- Complex
-
-Semigroup a => Semigroup (Complex a) where
-  (<+>) (a :+ b) (c :+ d) = (a <+> c) :+ (b <+> d)
-
-Monoid a => Monoid (Complex a) where
-  neutral = (neutral :+ neutral)
-
-Group a => Group (Complex a) where
-  inverse (r :+ i) = (inverse r :+ inverse i)
-
-Ring a => AbelianGroup (Complex a) where {}
-
-Ring a => Ring (Complex a) where
-  (<.>) (a :+ b) (c :+ d) = (a <.> c <-> b <.> d) :+ (a <.> d <+> b <.> c)
-
-RingWithUnity a => RingWithUnity (Complex a) where
-  unity = (unity :+ neutral)
-
-RingWithUnity a => Module a (Complex a) where
-  (<#>) x = map (x <.>)
-
-RingWithUnity a => InnerProductSpace a (Complex a) where
-  (x :+ y) <||> z = realPart $ (x :+ inverse y) <.> z
