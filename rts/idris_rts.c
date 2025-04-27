@@ -1,11 +1,18 @@
+#ifdef BARE_METAL
+#include "idris_bare_metal.h"
+#include "ftoa.h"
+#else
 #include <assert.h>
+#include <stdio.h>  // snprintf
+#include "getline.h"
+#endif // BARE_METAL
 #include <errno.h>
 
+#include "itoa.h"
 #include "idris_rts.h"
 #include "idris_gc.h"
 #include "idris_utf8.h"
 #include "idris_bitstring.h"
-#include "getline.h"
 
 #define STATIC_ASSERT(COND,MSG) typedef char static_assertion_##MSG[(COND)?1:-1]
 
@@ -69,14 +76,18 @@ VM* init_vm(int stack_size, size_t heap_size,
     pthread_mutex_init(&(vm->inbox_block), NULL);
     pthread_mutex_init(&(vm->alloc_lock), &rec_attr);
     pthread_cond_init(&(vm->inbox_waiting), NULL);
-
-    vm->max_threads = max_threads;
-    vm->processes = 0;
-    vm->creator = NULL;
-
+#elif defined(HAS_FREERTOS)
+    vm->xTaskHandle = NULL;
 #else
     global_vm = vm;
 #endif
+
+#ifdef IS_THREADED
+    vm->max_threads = max_threads;
+    vm->processes = 0;
+    vm->creator = NULL;
+#endif // IS_THREADED
+
     STATS_LEAVE_INIT(vm->stats)
     return vm;
 }
@@ -95,6 +106,8 @@ VM* idris_vm(void) {
 VM* get_vm(void) {
 #ifdef HAS_PTHREAD
     return pthread_getspecific(vm_key);
+#elif defined(HAS_FREERTOS)
+    return pvTaskGetThreadLocalStoragePointer(NULL, 0);
 #else
     return global_vm;
 #endif
@@ -120,6 +133,8 @@ void init_threadkeys(void) {
 void init_threaddata(VM *vm) {
 #ifdef HAS_PTHREAD
     pthread_setspecific(vm_key, vm);
+#elif defined(HAS_FREERTOS)
+    vTaskSetThreadLocalStoragePointer(NULL, 0, vm);
 #endif
 }
 
@@ -144,6 +159,9 @@ Stats terminate(VM* vm) {
     if (vm->creator != NULL) {
         vm->creator->processes--;
     }
+#endif
+#ifdef HAS_FREERTOS
+    free(vm);
 #endif
     // free(vm);
     // Set the VM as inactive, so that if any message gets sent to it
@@ -509,7 +527,8 @@ void idris_memmove(void* dest, void* src, i_int dest_offset, i_int src_offset, i
 VAL idris_castIntStr(VM* vm, VAL i) {
     int x = (int) GETINT(i);
     String * cl = allocStr(vm, 16, 0);
-    cl->slen = sprintf(cl->str, "%d", x);
+    cl->slen = itoa_int64(cl->str, x);
+    cl->str[cl->slen] = '\0';
     return (VAL)cl;
 }
 
@@ -521,17 +540,20 @@ VAL idris_castBitsStr(VM* vm, VAL i) {
     case CT_INT: // 8/16 bits
         // max length 16 bit unsigned int str 5 chars (65,535)
         cl = allocStr(vm, 6, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu16, (uint16_t)GETBITS16(i));
+        cl->slen = itoa_int32(cl->str, (uint16_t)GETBITS16(i));
+        cl->str[cl->slen] = '\0';
         break;
     case CT_BITS32:
         // max length 32 bit unsigned int str 10 chars (4,294,967,295)
         cl = allocStr(vm, 11, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu32, GETBITS32(i));
+        cl->slen = itoa_int32(cl->str, GETBITS32(i));
+        cl->str[cl->slen] = '\0';
         break;
     case CT_BITS64:
         // max length 64 bit unsigned int str 20 chars (18,446,744,073,709,551,615)
         cl = allocStr(vm, 21, 0);
-        cl->slen = sprintf(cl->str, "%" PRIu64, GETBITS64(i));
+        cl->slen = itoa_int64(cl->str, GETBITS64(i));
+        cl->str[cl->slen] = '\0';
         break;
     default:
         fprintf(stderr, "Fatal Error: ClosureType %d, not an integer type", ty);
@@ -551,7 +573,12 @@ VAL idris_castStrInt(VM* vm, VAL i) {
 
 VAL idris_castFloatStr(VM* vm, VAL i) {
     String * cl = allocStr(vm, 32, 0);
+#ifdef BARE_METAL
+    cl->slen = ftoa(cl->str, GETFLOAT(i));
+    cl->str[cl->slen] = '\0';
+#else
     cl->slen = snprintf(cl->str, 32, "%.16g", GETFLOAT(i));
+#endif
     return (VAL)cl;
 }
 
@@ -589,6 +616,7 @@ VAL idris_strlen(VM* vm, VAL l) {
     return MKINT((i_int)(idris_utf8_strlen(GETSTR(l))));
 }
 
+#ifndef BARE_METAL
 VAL idris_readStr(VM* vm, FILE* h) {
     VAL ret;
     char *buffer = NULL;
@@ -619,6 +647,7 @@ VAL idris_readChars(VM* vm, int num, FILE* h) {
     free(buffer);
     return ret;
 }
+#endif // BARE_METAL
 
 void idris_crash(char* msg) {
     fprintf(stderr, "%s\n", msg);
@@ -791,13 +820,14 @@ VAL idris_systemInfo(VM* vm, VAL index) {
     return MKSTR(vm, "");
 }
 
-#ifdef HAS_PTHREAD
+#ifdef IS_THREADED
 typedef struct {
     VM* vm; // thread's VM
     func fn;
     VAL arg;
 } ThreadData;
 
+#ifdef HAS_PTHREAD
 void* runThread(void* arg) {
     ThreadData* td = (ThreadData*)arg;
     VM* vm = td->vm;
@@ -848,9 +878,59 @@ void* vmThread(VM* callvm, func f, VAL arg) {
     }
 }
 
-void* idris_stopThread(VM* vm) {
+#elif defined(HAS_FREERTOS)
+void runThread(void* arg) {
+    ThreadData* td = (ThreadData*)arg;
+    VM* vm = td->vm;
+    func fn = td->fn;
+
+    init_threaddata(vm);
+
+    TOP(0) = td->arg;
+    BASETOP(0);
+    ADDTOP(1);
+    free(td);
+    fn(vm, NULL);
+
+    //    Stats stats =
     terminate(vm);
+    //    aggregate_stats(&(td->vm->stats), &stats);
+}
+
+void* vmThread(VM* callvm, func f, VAL arg) {
+    VM* vm = init_vm(
+        callvm->stack_max - callvm->valstack,
+        callvm->heap.size,
+        callvm->max_threads);
+    vm->processes=1; // since it can send and receive messages
+    vm->creator = callvm;
+
+    ThreadData *td = malloc(sizeof(ThreadData)); // free'd in runThread
+    td->vm = vm;
+    td->fn = f;
+    td->arg = copyTo(vm, arg);
+
+    callvm->processes++;
+
+    TaskHandle_t pxCreatedTask;
+    int ok = xTaskCreate(runThread, "non-root", 2000, td, 0, &pxCreatedTask);
+    if (ok == pdPASS) {
+	vm->xTaskHandle = pxCreatedTask;
+        return vm;
+    } else {
+        terminate(vm);
+        return NULL;
+    }
+}
+#endif
+
+void* idris_stopThread(VM* vm) {
+#ifdef HAS_PTHREAD
     pthread_exit(NULL);
+#elif defined(HAS_FREERTOS)
+    vTaskDelete(vm->xTaskHandle);
+#endif
+    terminate(vm);
     return NULL;
 }
 
@@ -919,7 +999,9 @@ VAL copyTo(VM* vm, VAL x) {
     VAL ret = doCopyTo(vm, x);
     return ret;
 }
+#endif // IS_THREADED
 
+#ifdef HAS_PTHREAD
 // Add a message to another VM's message queue
 int idris_sendMessage(VM* sender, int channel_id, VM* dest, VAL msg) {
     // FIXME: If GC kicks in in the middle of the copy, we're in trouble.
@@ -1104,7 +1186,6 @@ Msg* idris_recvMessageFrom(VM* vm, int channel_id, VM* sender) {
     }
     return ret;
 }
-#endif
 
 VAL idris_getMsg(Msg* msg) {
     return msg->msg;
@@ -1120,6 +1201,23 @@ int idris_getChannel(Msg* msg) {
 
 void idris_freeMsg(Msg* msg) {
     free(msg);
+}
+#endif // HAS_PTHREAD
+
+#ifdef HAS_FREERTOS
+void idris_queuePut(QueueHandle_t xQueue, VAL msg) {
+    BaseType_t dummy = xQueueSend(xQueue, (void*)&msg, portMAX_DELAY);
+}
+
+VAL idris_queueGet(VM* vm, QueueHandle_t xQueue) {
+    VAL msg = NULL;
+    BaseType_t dummy = xQueueReceive(xQueue, (void*)&msg, portMAX_DELAY);
+    return doCopyTo(vm, msg);
+}
+#endif // HAS_FREERTOS
+
+int isNull(void* ptr) {
+    return ptr==NULL;
 }
 
 int idris_errno(void) {
@@ -1154,11 +1252,15 @@ const char* idris_getArg(int i) {
 }
 
 void idris_disableBuffering(void) {
-  setvbuf(stdin, NULL, _IONBF, 0);
-  setvbuf(stdout, NULL, _IONBF, 0);
+#ifndef BARE_METAL
+    setvbuf(stdin, NULL, _IONBF, 0);
+    setvbuf(stdout, NULL, _IONBF, 0);
+#endif // BARE_METAL
 }
 
 void stackOverflow(void) {
-  fprintf(stderr, "Stack overflow");
-  exit(-1);
+#ifndef BARE_METAL
+    fprintf(stderr, "Stack overflow");
+    exit(-1);
+#endif // BARE_METAL
 }

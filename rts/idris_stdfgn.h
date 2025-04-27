@@ -47,7 +47,6 @@ VAL idris_getString(VM* vm, void* buffer);
 void* do_popen(const char* cmd, const char* mode);
 int fpoll(void* h);
 
-int isNull(void* ptr);
 void* idris_stdin();
 
 char* getEnvPair(int i);
@@ -55,7 +54,9 @@ char* getEnvPair(int i);
 VAL idris_time();
 VAL idris_clock(VM* vm);
 #ifndef SEL4
+#ifndef BARE_METAL
 int idris_usleep(int usec);
+#endif // BARE_METAL
 #endif // SEL4
 
 void idris_forceGC();
